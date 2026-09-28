@@ -12,7 +12,8 @@
 		"title": "Settings",
 		"saveButtonTooltip": "Save changes",
 		"nothingChangedTooltip": "Nothing changed",
-		"doneButtonTooltip": "Discard unsaved changes and go back to tasks view"
+		"doneButtonTooltip": "Discard unsaved changes and go back to tasks view",
+		"unsavedChanges": "Unsaved changes"
 	},
 	"search": {
 		"placeholder": "Search settings...",

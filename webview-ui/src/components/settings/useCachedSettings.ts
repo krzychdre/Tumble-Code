@@ -18,11 +18,14 @@ export function useCachedSettings(initialState: Partial<ExtensionState>) {
 	const [store] = useState(() => createSettingsDraftStore(pickCachedSettings(initialState)))
 	const cachedState = useSyncExternalStore(store.subscribe, store.getState, store.getState)
 	const isChangeDetected = useSyncExternalStore(store.subscribe, store.isDirty, store.isDirty)
+	// §2.10: the tabs (scopes) with unsaved edits, for the dots in the tab list.
+	const dirtyScopes = useSyncExternalStore(store.subscribe, store.getDirtyScopes, store.getDirtyScopes)
 
 	return {
 		store,
 		cachedState,
 		isChangeDetected,
+		dirtyScopes,
 		setChangeDetected: store.setDirty,
 		setApiConfigurationField: store.setApiConfigurationField,
 		mergeFromState: store.mergeFromState,

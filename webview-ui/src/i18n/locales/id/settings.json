@@ -16,7 +16,8 @@
 		"title": "Pengaturan",
 		"saveButtonTooltip": "Simpan perubahan",
 		"nothingChangedTooltip": "Tidak ada yang berubah",
-		"doneButtonTooltip": "Buang perubahan yang belum disimpan dan tutup panel pengaturan"
+		"doneButtonTooltip": "Buang perubahan yang belum disimpan dan tutup panel pengaturan",
+		"unsavedChanges": "Perubahan belum disimpan"
 	},
 	"unsavedChangesDialog": {
 		"title": "Perubahan Belum Disimpan",

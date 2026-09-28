@@ -16,7 +16,8 @@
 		"title": "Configuració",
 		"saveButtonTooltip": "Desar canvis",
 		"nothingChangedTooltip": "No s'ha canviat res",
-		"doneButtonTooltip": "Descartar els canvis no desats i tancar el panell de configuració"
+		"doneButtonTooltip": "Descartar els canvis no desats i tancar el panell de configuració",
+		"unsavedChanges": "Canvis sense desar"
 	},
 	"unsavedChangesDialog": {
 		"title": "Canvis no desats",

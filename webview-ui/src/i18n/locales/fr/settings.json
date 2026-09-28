@@ -16,7 +16,8 @@
 		"title": "Paramètres",
 		"saveButtonTooltip": "Enregistrer les modifications",
 		"nothingChangedTooltip": "Rien n'a changé",
-		"doneButtonTooltip": "Ignorer les modifications non enregistrées et fermer le panneau des paramètres"
+		"doneButtonTooltip": "Ignorer les modifications non enregistrées et fermer le panneau des paramètres",
+		"unsavedChanges": "Modifications non enregistrées"
 	},
 	"unsavedChangesDialog": {
 		"title": "Modifications non enregistrées",

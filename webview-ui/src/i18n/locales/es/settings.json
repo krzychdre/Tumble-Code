@@ -16,7 +16,8 @@
 		"title": "Configuración",
 		"saveButtonTooltip": "Guardar cambios",
 		"nothingChangedTooltip": "Nada ha cambiado",
-		"doneButtonTooltip": "Descartar cambios no guardados y cerrar el panel de configuración"
+		"doneButtonTooltip": "Descartar cambios no guardados y cerrar el panel de configuración",
+		"unsavedChanges": "Cambios sin guardar"
 	},
 	"unsavedChangesDialog": {
 		"title": "Cambios no guardados",

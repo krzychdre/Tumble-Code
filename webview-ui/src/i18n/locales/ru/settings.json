@@ -16,7 +16,8 @@
 		"title": "Настройки",
 		"saveButtonTooltip": "Сохранить изменения",
 		"nothingChangedTooltip": "Изменений нет",
-		"doneButtonTooltip": "Отменить несохранённые изменения и закрыть панель настроек"
+		"doneButtonTooltip": "Отменить несохранённые изменения и закрыть панель настроек",
+		"unsavedChanges": "Несохранённые изменения"
 	},
 	"unsavedChangesDialog": {
 		"title": "Несохранённые изменения",

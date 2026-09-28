@@ -16,7 +16,8 @@
 		"title": "Cài đặt",
 		"saveButtonTooltip": "Lưu thay đổi",
 		"nothingChangedTooltip": "Không có gì thay đổi",
-		"doneButtonTooltip": "Hủy thay đổi chưa lưu và đóng bảng cài đặt"
+		"doneButtonTooltip": "Hủy thay đổi chưa lưu và đóng bảng cài đặt",
+		"unsavedChanges": "Thay đổi chưa lưu"
 	},
 	"unsavedChangesDialog": {
 		"title": "Thay đổi chưa lưu",

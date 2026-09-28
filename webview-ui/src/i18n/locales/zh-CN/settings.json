@@ -16,7 +16,8 @@
 		"title": "设置",
 		"saveButtonTooltip": "保存更改",
 		"nothingChangedTooltip": "暂无更改",
-		"doneButtonTooltip": "放弃未保存的更改并关闭设置面板"
+		"doneButtonTooltip": "放弃未保存的更改并关闭设置面板",
+		"unsavedChanges": "未保存的更改"
 	},
 	"unsavedChangesDialog": {
 		"title": "未保存的更改",

@@ -16,7 +16,8 @@
 		"title": "Ustawienia",
 		"saveButtonTooltip": "Zapisz zmiany",
 		"nothingChangedTooltip": "Nic się nie zmieniło",
-		"doneButtonTooltip": "Odrzuć niezapisane zmiany i zamknij panel ustawień"
+		"doneButtonTooltip": "Odrzuć niezapisane zmiany i zamknij panel ustawień",
+		"unsavedChanges": "Niezapisane zmiany"
 	},
 	"unsavedChangesDialog": {
 		"title": "Niezapisane zmiany",
