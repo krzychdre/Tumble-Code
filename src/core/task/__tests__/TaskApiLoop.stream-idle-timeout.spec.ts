@@ -121,7 +121,7 @@ describe("TaskApiLoop.attemptApiRequest first-chunk idle timeout (R5)", () => {
 		const loop = new TaskApiLoop(access)
 		vi.spyOn(console, "log").mockImplementation(() => {})
 		vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
-		vi.spyOn(loop, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
+		vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
 		vi.spyOn(loop as any, "buildToolsArray").mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
 		const handleError = vi.spyOn(loop as any, "handleApiRequestError").mockImplementation(async function* (
 			error: unknown,

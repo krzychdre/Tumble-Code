@@ -132,7 +132,7 @@ describe("Task - sticky provider profile init race", () => {
 		task.setTaskApiConfigName("new-profile")
 
 		resolveGetState?.({ currentApiConfigName: "old-profile" })
-		await task.waitForApiConfigInitialization()
+		await task.lifecycle.waitForApiConfigInitialization()
 
 		expect(task.taskApiConfigName).toBe("new-profile")
 	})

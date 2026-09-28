@@ -140,12 +140,7 @@ import { TaskTokenTracking } from "./TaskTokenTracking"
 import { TaskContextManager, FORCED_CONTEXT_REDUCTION_PERCENT, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { TaskLifecycle } from "./TaskLifecycle"
 import { TaskSubtasks } from "./TaskSubtasks"
-import {
-	TaskApiLoop,
-	resetGlobalApiRequestTime,
-	getLastGlobalApiRequestTime,
-	setLastGlobalApiRequestTime,
-} from "./TaskApiLoop"
+import { TaskApiLoop } from "./TaskApiLoop"
 import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
@@ -377,24 +372,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
 	autoApprovalHandler: AutoApprovalHandler
-
-	/**
-	 * Reset the global API request timestamp. This should only be used for testing.
-	 * Delegates to TaskApiLoop module.
-	 * @internal
-	 */
-	static resetGlobalApiRequestTime(): void {
-		resetGlobalApiRequestTime()
-	}
-
-	/**
-	 * Get the last global API request timestamp. Used for testing.
-	 * Delegates to TaskApiLoop module.
-	 * @internal
-	 */
-	static get lastGlobalApiRequestTime(): number | undefined {
-		return getLastGlobalApiRequestTime()
-	}
 
 	toolRepetitionDetector: ToolRepetitionDetector
 	rooIgnoreController?: RooIgnoreController
@@ -978,7 +955,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.lifecycle = new TaskLifecycle(this)
 
 		// Listen for provider profile changes to update parser state
-		this.setupProviderProfileChangeListener(provider)
+		this.lifecycle.setupProviderProfileChangeListener(provider)
 
 		// Set up diff strategy
 		this.diffStrategy = new MultiSearchReplaceDiffStrategy()
@@ -1048,8 +1025,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Now initialize mode/api config for new tasks (after lifecycle is ready)
 		if (!historyItem && !taskMode) {
-			this.taskModeReady = this.initializeTaskMode(provider)
-			this.taskApiConfigReady = this.initializeTaskApiConfigName(provider)
+			this.taskModeReady = this.lifecycle.initializeTaskMode(provider)
+			this.taskApiConfigReady = this.lifecycle.initializeTaskApiConfigName(provider)
 		}
 
 		onCreated?.(this)
@@ -1077,75 +1054,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * Initialize the task mode from the provider state.
-	 * Delegates to TaskLifecycle module.
-	 *
-	 * @private
-	 * @param provider - The ClineProvider instance to fetch state from
-	 * @returns Promise that resolves when initialization is complete
-	 */
-	private async initializeTaskMode(provider: ClineProvider): Promise<void> {
-		return this.lifecycle.initializeTaskMode(provider)
-	}
-
-	/**
-	 * Initialize the task API config name from the provider state.
-	 * Delegates to TaskLifecycle module.
-	 *
-	 * @private
-	 * @param provider - The ClineProvider instance to fetch state from
-	 * @returns Promise that resolves when initialization is complete
-	 */
-	private async initializeTaskApiConfigName(provider: ClineProvider): Promise<void> {
-		return this.lifecycle.initializeTaskApiConfigName(provider)
-	}
-
-	/**
-	 * Sets up a listener for provider profile changes.
-	 * Delegates to TaskLifecycle module.
-	 *
-	 * @private
-	 * @param provider - The ClineProvider instance to listen to
-	 */
-	private setupProviderProfileChangeListener(provider: ClineProvider): void {
-		this.lifecycle.setupProviderProfileChangeListener(provider)
-	}
-
-	/**
-	 * Wait for the task mode to be initialized before proceeding.
-	 * This method ensures that any operations depending on the task mode
-	 * will have access to the correct mode value.
-	 *
-	 * ## When to use
-	 * - Before accessing mode-specific configurations
-	 * - When switching between tasks with different modes
-	 * - Before operations that depend on mode-based permissions
-	 *
-	 * ## Example usage
-	 * ```typescript
-	 * // Wait for mode initialization before mode-dependent operations
-	 * await task.waitForModeInitialization();
-	 * const mode = task.taskMode; // Now safe to access synchronously
-	 *
-	 * // Or use with getTaskMode() for a one-liner
-	 * const mode = await task.getTaskMode(); // Internally waits for initialization
-	 * ```
-	 *
-	 * @returns Promise that resolves when the task mode is initialized
-	 * @public
-	 */
-	/**
-	 * Wait for the task mode to be initialized before proceeding.
-	 * Delegates to TaskLifecycle module.
-	 *
-	 * @returns Promise that resolves when the task mode is initialized
-	 * @public
-	 */
-	public async waitForModeInitialization(): Promise<void> {
-		return this.lifecycle.waitForModeInitialization()
-	}
-
-	/**
 	 * Get the task mode asynchronously, ensuring it's properly initialized.
 	 * Delegates to TaskLifecycle module.
 	 *
@@ -1167,28 +1075,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	public get taskMode(): string {
 		return this.lifecycle.taskMode
-	}
-
-	/**
-	 * Wait for the task API config name to be initialized before proceeding.
-	 * Delegates to TaskLifecycle module.
-	 *
-	 * @returns Promise that resolves when the task API config name is initialized
-	 * @public
-	 */
-	public async waitForApiConfigInitialization(): Promise<void> {
-		return this.lifecycle.waitForApiConfigInitialization()
-	}
-
-	/**
-	 * Get the task API config name asynchronously, ensuring it's properly initialized.
-	 * Delegates to TaskLifecycle module.
-	 *
-	 * @returns Promise resolving to the task API config name string or undefined
-	 * @public
-	 */
-	public async getTaskApiConfigName(): Promise<string | undefined> {
-		return this.lifecycle.getTaskApiConfigName()
 	}
 
 	/**
@@ -1242,14 +1128,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// API Messages
 
-	private async getSavedApiConversationHistory(): Promise<ApiMessage[]> {
-		return this.history.getSavedApiConversationHistory()
-	}
-
-	private async addToApiConversationHistory(message: Anthropic.MessageParam, reasoning?: string) {
-		return this.history.addToApiConversationHistory(message, reasoning)
-	}
-
 	// NOTE: We intentionally do NOT mutate stored messages to merge consecutive user turns.
 	// For API requests, consecutive same-role messages are merged via mergeConsecutiveApiMessages()
 	// so rewind/edit behavior can still reference original message boundaries.
@@ -1277,10 +1155,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return this.history.flushPendingToolResultsToHistory()
 	}
 
-	private async saveApiConversationHistory(): Promise<boolean> {
-		return this.history.saveApiConversationHistory()
-	}
-
 	/**
 	 * Public wrapper to retry saving the API conversation history.
 	 * Uses exponential backoff: up to 3 attempts with delays of 100 ms, 500 ms, 1500 ms.
@@ -1292,28 +1166,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Cline Messages
 
-	private async getSavedClineMessages(): Promise<ClineMessage[]> {
-		return this.history.getSavedClineMessages()
-	}
-
-	private async addToClineMessages(message: ClineMessage) {
-		return this.history.addToClineMessages(message)
-	}
-
 	public async overwriteClineMessages(newMessages: ClineMessage[]) {
 		return this.history.overwriteClineMessages(newMessages)
-	}
-
-	private async updateClineMessage(message: ClineMessage) {
-		return this.history.updateClineMessage(message)
-	}
-
-	private async saveClineMessages(): Promise<boolean> {
-		return this.history.saveClineMessages()
-	}
-
-	private findMessageByTimestamp(ts: number): ClineMessage | undefined {
-		return this.history.findMessageByTimestamp(ts)
 	}
 
 	// Note that `partial` has three valid states true (partial message),
@@ -1485,40 +1339,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Start / Resume / Abort / Dispose
 
 	/**
-	 * Get enabled MCP tools count for this task.
-	 * Returns the count along with the number of servers contributing.
-	 *
-	 * @returns Object with enabledToolCount and enabledServerCount
-	 */
-	private async getEnabledMcpToolsCount(): Promise<{ enabledToolCount: number; enabledServerCount: number }> {
-		return this.contextManager.getEnabledMcpToolsCount()
-	}
-
-	/**
 	 * Manually start a **new** task when it was created with `startTask: false`.
 	 * Delegates to TaskLifecycle module.
 	 */
 	public start(): void {
 		this.lifecycle.start()
-	}
-
-	/**
-	 * Start a new task with the given task text and images.
-	 * Delegates to TaskLifecycle module.
-	 *
-	 * @param task - The task text
-	 * @param images - Optional array of image paths
-	 */
-	private async startTask(task?: string, images?: string[]): Promise<void> {
-		return this.lifecycle.startTask(task, images)
-	}
-
-	/**
-	 * Resume a task from history.
-	 * Delegates to TaskLifecycle module.
-	 */
-	private async resumeTaskFromHistory(): Promise<void> {
-		return this.lifecycle.resumeTaskFromHistory()
 	}
 
 	/**
@@ -1619,19 +1444,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Delegates to TaskSubtasks module
 
 	/**
-	 * Start a subtask by delegating to the provider.
-	 * Delegates to TaskSubtasks module.
-	 *
-	 * @param message - The message to send to the child task
-	 * @param initialTodos - Initial todo items for the child task
-	 * @param mode - The mode to use for the child task
-	 * @returns Promise resolving to the child task
-	 */
-	public async startSubtask(message: string, initialTodos: TodoItem[], mode: string) {
-		return this.subtasks.startSubtask(message, initialTodos, mode)
-	}
-
-	/**
 	 * Resume parent task after delegation completion without showing resume ask.
 	 * Delegates to TaskSubtasks module.
 	 *
@@ -1658,18 +1470,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * The main API request loop using stack-based iteration.
-	 * Delegates to TaskApiLoop module.
-	 */
-	public async recursivelyMakeClineRequests(
-		userContent: Anthropic.Messages.ContentBlockParam[],
-		includeFileDetails: boolean = false,
-	): Promise<boolean> {
-		return this.apiLoop.recursivelyMakeClineRequests(userContent, includeFileDetails)
-	}
-
-	/**
 	 * Build the system prompt with MCP, mode, and custom instructions.
+	 * Kept on Task: TaskContextManager reaches it through its Access interface.
 	 * Delegates to TaskApiLoop module.
 	 */
 	async getSystemPrompt(): Promise<string> {
@@ -1677,58 +1479,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * Get the current profile ID from state.
-	 * Delegates to TaskApiLoop module.
-	 */
-	private getCurrentProfileId(state: any): string {
-		return this.apiLoop.getCurrentProfileId(state)
-	}
-
-	/**
-	 * Handle context window exceeded error.
-	 * Delegates to TaskContextManager module via TaskApiLoop.
-	 */
-	private async handleContextWindowExceededError(): Promise<void> {
-		return this.apiLoop.handleContextWindowExceededError()
-	}
-
-	/**
-	 * Enforce the user-configured provider rate limit.
-	 * Delegates to TaskApiLoop module.
-	 */
-	private async maybeWaitForProviderRateLimit(retryAttempt: number): Promise<void> {
-		return this.apiLoop.maybeWaitForProviderRateLimit(retryAttempt)
-	}
-
-	/**
 	 * Attempt an API request with retry logic.
-	 * Delegates to TaskApiLoop module.
+	 * Kept on Task as the spec-facing entry point; delegates to TaskApiLoop.
 	 */
 	public async *attemptApiRequest(
 		retryAttempt: number = 0,
 		options: { skipProviderRateLimit?: boolean } = {},
 	): ApiStream {
 		yield* this.apiLoop.attemptApiRequest(retryAttempt, options)
-	}
-
-	/**
-	 * Shared exponential backoff for retries.
-	 * Delegates to TaskApiLoop module.
-	 */
-	private async backoffAndAnnounce(retryAttempt: number, error: any): Promise<void> {
-		return this.apiLoop.backoffAndAnnounce(retryAttempt, error)
-	}
-
-	/**
-	 * Build clean conversation history by stripping reasoning blocks.
-	 * Delegates to TaskApiLoop module.
-	 */
-	private buildCleanConversationHistory(
-		messages: ApiMessage[],
-	): Array<
-		Anthropic.Messages.MessageParam | { type: "reasoning"; encrypted_content: string; id?: string; summary?: any[] }
-	> {
-		return this.apiLoop.buildCleanConversationHistory(messages, this.api.getModel().info.preserveReasoning === true)
 	}
 
 	// Checkpoints

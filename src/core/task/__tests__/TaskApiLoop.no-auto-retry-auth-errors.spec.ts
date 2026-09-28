@@ -59,9 +59,9 @@ function makeLoop(failure: Error, autoApprovalEnabled = true, failures = 1) {
 	}
 	const loop = new TaskApiLoop(access)
 	vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
-	vi.spyOn(loop, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
+	vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
 	vi.spyOn(loop as any, "buildToolsArray").mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
-	const backoff = vi.spyOn(loop, "backoffAndAnnounce").mockResolvedValue(undefined)
+	const backoff = vi.spyOn((loop as any).retryHandler, "backoffAndAnnounce").mockResolvedValue(undefined)
 	return { loop, access, createMessage, backoff }
 }
 
@@ -541,7 +541,7 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 
 			it("an abort during a 429 backoff past the cap stops the first-chunk retry", async () => {
 				const { loop, access, createMessage, backoff } = sequenceLoop(repeat(429, FAILS_LONGER_THAN_THE_CAP))
-				backoff.mockImplementation(async (attempt: number) => {
+				backoff.mockImplementation(async (attempt: any) => {
 					if (attempt === 9) access.abort = true
 				})
 
