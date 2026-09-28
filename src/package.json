@@ -572,6 +572,7 @@
 	"devDependencies": {
 		"@roo-code/build": "workspace:^",
 		"@roo-code/config-eslint": "workspace:^",
+		"@roo-code/config-vitest": "workspace:^",
 		"@types/clone-deep": "^4.0.4",
 		"@types/lodash.debounce": "^4.0.9",
 		"@types/node": "^22.20.4",

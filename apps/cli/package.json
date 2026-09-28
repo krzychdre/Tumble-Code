@@ -36,6 +36,7 @@
 	"devDependencies": {
 		"@roo-code/config-eslint": "workspace:^",
 		"@roo-code/config-typescript": "workspace:^",
+		"@roo-code/config-vitest": "workspace:^",
 		"@types/node": "^22.20.4",
 		"@types/react": "^19.3.0",
 		"ink-testing-library": "^4.0.0",

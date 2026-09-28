@@ -1,0 +1,21 @@
+{
+	"name": "@roo-code/config-vitest",
+	"description": "Shared vitest settings for every workspace: each vitest.config.ts passes only what differs.",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"default": "./index.js"
+		}
+	},
+	"scripts": {
+		"test": "node --test \"__tests__/*.test.mjs\""
+	},
+	"peerDependencies": {
+		"vitest": "^5.0.2"
+	},
+	"devDependencies": {
+		"vitest": "^5.0.2"
+	}
+}
