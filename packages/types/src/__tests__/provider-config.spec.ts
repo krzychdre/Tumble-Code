@@ -2,8 +2,7 @@ import {
 	activeProviderIds,
 	createKnownPersistedProviderProfile,
 	knownProviderConfigurationSchema,
-	migrateProviderProfiles,
-	migrateProviderProfilesV1ToV2,
+	parseProviderProfilesEnvelope,
 	providerConfigSchemas,
 	providerFieldOwnership,
 	providerProfileToLegacySettings,
@@ -65,29 +64,16 @@ describe("provider configuration schemas", () => {
 	})
 })
 
-describe("provider profile v1 -> v2 migration", () => {
-	const legacy = {
-		schemaVersion: 1,
-		data: {
-			currentApiConfigName: "known",
-			apiConfigs: {
-				known: {
-					id: "known-id",
-					apiProvider: "openai",
-					openAiBaseUrl: "",
-					openAiStreamingEnabled: false,
-					rateLimitSeconds: 0,
-					anthropicBaseUrl: "must-not-leak",
-				},
-				retired: { id: "retired-id", apiProvider: "glama", future: { exact: true } },
-				unknown: { id: "unknown-id", apiProvider: "future-provider", zero: 0, empty: "", no: false },
-			},
-		},
-	}
-
-	it("preserves absent/false/zero/empty and isolates provider fields", () => {
-		const migrated = migrateProviderProfiles(legacy)
-		const known = migrated.data.apiConfigs.known
+describe("stored provider profiles", () => {
+	it("keeps absent/false/zero/empty values and isolates provider fields on save", () => {
+		const known = createKnownPersistedProviderProfile({
+			id: "known-id",
+			apiProvider: "openai",
+			openAiBaseUrl: "",
+			openAiStreamingEnabled: false,
+			rateLimitSeconds: 0,
+			anthropicBaseUrl: "must-not-leak",
+		})
 		expect(known).toEqual({
 			id: "known-id",
 			provider: {
@@ -99,26 +85,29 @@ describe("provider profile v1 -> v2 migration", () => {
 		expect(JSON.stringify(known)).not.toContain("anthropicBaseUrl")
 	})
 
-	it("preserves retired and unknown payloads exactly and idempotently parses v2", () => {
-		const migrated = migrateProviderProfiles(legacy)
-		for (const name of ["retired", "unknown"] as const) {
-			const original = legacy.data.apiConfigs[name]
-			const profile = migrated.data.apiConfigs[name]
-			expect(profile).toBeDefined()
-			if (!profile) throw new Error(`Missing migrated profile ${name}`)
-			expect(profile.provider).toEqual({
-				providerId: original.apiProvider,
-				opaqueLegacyPayload: original,
-			})
+	it("parses the current envelope unchanged", () => {
+		const envelope = {
+			schemaVersion: 2,
+			data: {
+				currentApiConfigName: "known",
+				apiConfigs: {
+					known: { id: "known-id", provider: { providerId: "openai", config: { openAiModelId: "m" } } },
+					retired: {
+						id: "retired-id",
+						provider: { providerId: "glama", opaqueLegacyPayload: { apiProvider: "glama" } },
+					},
+				},
+			},
 		}
-		expect(migrateProviderProfiles(migrated)).toEqual(migrated)
-		expect(providerProfilesEnvelopeSchema.parse(migrated)).toEqual(migrated)
+		expect(parseProviderProfilesEnvelope(envelope)).toEqual(envelope)
+		expect(providerProfilesEnvelopeSchema.parse(envelope)).toEqual(envelope)
 	})
 
-	it("advances sequentially and rejects future versions", () => {
-		const migrated = migrateProviderProfilesV1ToV2(legacy)
-		expect(migrated.schemaVersion).toBe(2)
-		expect(() => migrateProviderProfiles({ schemaVersion: 99, data: {} })).toThrow("newer than supported")
+	it("rejects a record without the current schema version", () => {
+		const flat = { currentApiConfigName: "a", apiConfigs: { a: { apiProvider: "openai" } } }
+		expect(() => parseProviderProfilesEnvelope(flat)).toThrow("only version 2 is supported")
+		expect(() => parseProviderProfilesEnvelope({ schemaVersion: 1, data: flat })).toThrow("schema version 1")
+		expect(() => parseProviderProfilesEnvelope({ schemaVersion: 99, data: {} })).toThrow("schema version 99")
 	})
 
 	it("does not persist plaintext secrets", () => {

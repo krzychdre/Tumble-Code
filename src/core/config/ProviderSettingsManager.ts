@@ -7,8 +7,7 @@ import {
 	classifyProvider,
 	createKnownPersistedProviderProfile,
 	createProviderProfilesEnvelope,
-	extractLegacyInlineSecrets,
-	migrateProviderProfiles,
+	parseProviderProfilesEnvelope,
 	opaqueProviderProfileSchema,
 	providerProfileToLegacySettings,
 	providerProfilesDataSchema,
@@ -31,57 +30,16 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { Mode, modes } from "../../shared/modes"
 import { resolveProviderModel } from "../../api"
 
-import { flagRecord, runFlaggedMigrations } from "./migrations/runner"
-import { PROVIDER_PROFILE_MIGRATIONS } from "./migrations/provider-profiles/registry"
-
-// Type-safe model migrations mapping
-type ModelMigrations = {
-	[K in ProviderName]?: Record<string, string>
-}
-
-const MODEL_MIGRATIONS: ModelMigrations = {} as const satisfies ModelMigrations
-
-/**
- * Detect a pre-v2 (flat, un-versioned) provider-profiles envelope and return
- * its raw `apiConfigs` record so {@link ProviderSettingsManager.initialize}
- * can seed `provider_profile_secrets_v2` from inline secrets before the v2
- * rewrite. Returns undefined for already-versioned v2 envelopes (secrets are
- * already in the secret store) or malformed payloads.
- *
- * A flat apiConfig is one that still carries inline fields (e.g. `apiProvider`,
- * `apiKey`) rather than the v2 `{ provider: { providerId, config } }` shape.
- */
-const extractRawFlatApiConfigs = (raw: unknown): Record<string, Record<string, unknown>> | undefined => {
-	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined
-	const envelope = raw as Record<string, unknown>
-	// Already-versioned envelopes have their secrets routed via the v2 store
-	// path on save; only un-versioned (legacy flat) envelopes need seeding.
-	if ("schemaVersion" in envelope) return undefined
-	const apiConfigs = envelope.apiConfigs
-	if (typeof apiConfigs !== "object" || apiConfigs === null || Array.isArray(apiConfigs)) return undefined
-	const configs = apiConfigs as Record<string, unknown>
-	const flat: Record<string, Record<string, unknown>> = {}
-	for (const [name, value] of Object.entries(configs)) {
-		if (typeof value !== "object" || value === null || Array.isArray(value)) continue
-		const profile = value as Record<string, unknown>
-		// v2-shaped profiles have a nested `provider` object; skip them. Only
-		// flat (legacy) profiles carry inline secrets that need seeding.
-		if (typeof profile.provider === "object" && profile.provider !== null) continue
-		flat[name] = profile
-	}
-	return Object.keys(flat).length > 0 ? flat : undefined
-}
-
 export interface SyncCloudProfilesResult {
 	hasChanges: boolean
 	activeProfileChanged: boolean
 	activeProfileId: string
 }
 
-/** @deprecated Stage 6 flat fixtures remain accepted at this test/import boundary only. */
+/** Profiles as `store()` and `import()` take them: each one stored (v2) or flat, converted per profile. */
 export type ProviderProfilesInput = Pick<
 	ProviderProfilesData,
-	"currentApiConfigName" | "modeApiConfigs" | "cloudProfileIds" | "migrations"
+	"currentApiConfigName" | "modeApiConfigs" | "cloudProfileIds"
 > & {
 	apiConfigs: Record<string, ProviderSettingsWithId | (PersistedProviderProfile & Partial<ProviderSettingsWithId>)>
 }
@@ -104,11 +62,7 @@ export class ProviderSettingsManager {
 			default: { id: this.defaultConfigId, provider: { providerId: "anthropic", config: {} } },
 		},
 		modeApiConfigs: this.defaultModeApiConfigs,
-		// Fresh installs have nothing to migrate: every one-shot migration is done.
-		migrations: flagRecord(PROVIDER_PROFILE_MIGRATIONS, true),
 	}
-
-	private loadedEnvelope: ProviderProfilesEnvelope | undefined
 
 	private readonly context: ExtensionContext
 
@@ -205,135 +159,17 @@ export class ProviderSettingsManager {
 	}
 
 	/**
-	 * Initialize config if it doesn't exist and run migrations.
+	 * Reads the store once, so a store this version cannot read (not the v2
+	 * envelope) is reported at start-up. Nothing is written: a fresh install
+	 * gets the default profile on its first save, and an unreadable store is
+	 * left as it is.
 	 */
 	public async initialize() {
 		try {
-			return await this.lock(async () => {
-				// Capture the raw pre-migration payload before load() rewrites
-				// it into the v2 envelope, so we can seed
-				// `provider_profile_secrets_v2` from legacy inline secrets. This
-				// prevents first-run upgrade from silently dropping every
-				// existing API key (C1) and ensures opaque retired/unknown
-				// profiles no longer persist plaintext secrets on disk (C3).
-				const rawEnvelope = await this.readRawEnvelope()
-				const rawApiConfigs = extractRawFlatApiConfigs(rawEnvelope)
-
-				const providerProfiles = await this.load()
-
-				// Seed the secret store BEFORE store() rewrites the envelope.
-				// Both known-provider flat profiles and opaque flat profiles
-				// are handled: known profiles lose their inline secrets via
-				// pickPresent(providerFieldOwnership[...]); opaque profiles
-				// lose them via stripSecretStateKeys in the migration path.
-				if (rawApiConfigs) {
-					for (const [_name, profile] of Object.entries(rawApiConfigs)) {
-						const profileId = typeof profile.id === "string" ? profile.id : undefined
-						if (!profileId) continue
-						const secrets = extractLegacyInlineSecrets(profile)
-						if (Object.keys(secrets).length === 0) continue
-						await this.updateProfileSecrets(profileId, {
-							id: profileId,
-							...secrets,
-						} as ProviderSettingsWithId)
-					}
-				}
-
-				let isDirty = false
-
-				// Migrate existing installs to have per-mode API config map
-				if (!providerProfiles.modeApiConfigs) {
-					// Use the currently selected config for all modes initially
-					const currentName = providerProfiles.currentApiConfigName
-					const seedId =
-						providerProfiles.apiConfigs[currentName]?.id ??
-						Object.values(providerProfiles.apiConfigs)[0]?.id ??
-						this.defaultConfigId
-					providerProfiles.modeApiConfigs = Object.fromEntries(modes.map((m) => [m.slug, seedId]))
-					isDirty = true
-				}
-
-				// Apply model migrations for all providers
-				if (this.applyModelMigrations(providerProfiles)) {
-					isDirty = true
-				}
-
-				// Ensure all configs have IDs.
-				for (const [_name, apiConfig] of Object.entries(providerProfiles.apiConfigs)) {
-					if (!apiConfig.id) {
-						apiConfig.id = this.generateId()
-						isDirty = true
-					}
-				}
-
-				// Ensure migrations field exists (none recorded yet: all pending)
-				if (!providerProfiles.migrations) {
-					providerProfiles.migrations = flagRecord(PROVIDER_PROFILE_MIGRATIONS, false)
-					isDirty = true
-				}
-
-				// One-shot migrations (one dated file each under
-				// ./migrations/provider-profiles). Their done flags live in
-				// `providerProfiles.migrations` and are written in the same
-				// store() call as the migrated data below.
-				if (
-					await runFlaggedMigrations(
-						PROVIDER_PROFILE_MIGRATIONS,
-						providerProfiles.migrations,
-						providerProfiles,
-						this.context,
-					)
-				) {
-					isDirty = true
-				}
-
-				if (isDirty) {
-					await this.store(providerProfiles)
-				} else if (this.loadedEnvelope === undefined) {
-					await this.store(providerProfiles)
-				}
-			})
+			await this.lock(() => this.load())
 		} catch (error) {
 			throw new Error(`Failed to initialize config: ${error}`)
 		}
-	}
-
-	/**
-	 * Apply model migrations for all providers
-	 * Returns true if any migrations were applied
-	 */
-	private applyModelMigrations(providerProfiles: ProviderProfilesData): boolean {
-		let migrated = false
-
-		try {
-			for (const [_name, apiConfig] of Object.entries(providerProfiles.apiConfigs)) {
-				if (this.isOpaqueProfile(apiConfig) || !("apiModelId" in apiConfig.provider.config)) continue
-				const modelId = apiConfig.provider.config.apiModelId
-				// Skip configs without provider or model ID
-				if (!modelId) {
-					continue
-				}
-
-				// Check if this provider has migrations (with type safety)
-				const provider = apiConfig.provider.providerId
-				const providerMigrations = MODEL_MIGRATIONS[provider]
-				if (!providerMigrations) {
-					continue
-				}
-
-				// Check if the current model ID needs migration
-				const newModelId = providerMigrations[modelId]
-				if (newModelId && newModelId !== modelId) {
-					console.log(`[ModelMigration] Migrating ${provider} model from ${modelId} to ${newModelId}`)
-					apiConfig.provider.config.apiModelId = newModelId
-					migrated = true
-				}
-			}
-		} catch (error) {
-			console.error(`[ModelMigration] Failed to apply model migrations:`, error)
-		}
-
-		return migrated
 	}
 
 	/**
@@ -582,7 +418,16 @@ export class ProviderSettingsManager {
 		}
 	}
 
-	public async export(): Promise<ProviderProfilesInput> {
+	/** The stored profiles as they are (no secrets); unlike `export()`, nothing is filtered out. */
+	public async readProfiles(): Promise<ProviderProfilesData> {
+		try {
+			return await this.lock(async () => structuredClone(await this.load()))
+		} catch (error) {
+			throw new Error(`Failed to read provider profiles: ${error}`)
+		}
+	}
+
+	public async export(): Promise<ProviderProfilesEnvelope> {
 		try {
 			return await this.lock(async () => {
 				const profiles = structuredClone(providerProfilesSchema.parse(await this.load()))
@@ -620,42 +465,20 @@ export class ProviderSettingsManager {
 						console.warn(`Skipping token field filtering for config '${name}': ${error}`)
 					}
 				}
-				return profiles
+				return createProviderProfilesEnvelope(profiles)
 			})
 		} catch (error) {
 			throw new Error(`Failed to export provider profiles: ${error}`)
 		}
 	}
 
+	/**
+	 * Replaces every profile. Secrets are not part of the input: the ones stored
+	 * for a profile id stay attached to that id.
+	 */
 	public async import(providerProfiles: ProviderProfilesInput) {
 		try {
-			return await this.lock(async () => {
-				const migratedEnvelope = migrateProviderProfiles(providerProfiles)
-				this.loadedEnvelope = migratedEnvelope
-				await this.store(migratedEnvelope.data)
-				// Seed `provider_profile_secrets_v2` for every imported profile
-				// that carries inline SECRET_STATE_KEYS. The import boundary in
-				// `importExport.ts` re-attaches previously-known local secrets
-				// (from `previousLegacyProfiles`) onto the flat representation
-				// before calling `import()`, so we must capture them here for
-				// BOTH flat (pre-v2) and v2-shaped inputs. Known-profile v2
-				// configs drop secrets via `pickPresent(providerFieldOwnership[...])`
-				// during `migrateProviderProfiles`, and opaque profiles drop
-				// them via `stripSecretStateKeys`, so the persisted envelope
-				// never carries plaintext secrets while the secret store keeps
-				// them for `getProfile`/`activateProfile`.
-				for (const profile of Object.values(providerProfiles.apiConfigs)) {
-					const profileId = typeof profile.id === "string" ? profile.id : undefined
-					if (!profileId) continue
-					const secrets = extractLegacyInlineSecrets(profile as Record<string, unknown>)
-					if (Object.keys(secrets).length > 0) {
-						await this.updateProfileSecrets(profileId, {
-							id: profileId,
-							...secrets,
-						} as ProviderSettingsWithId)
-					}
-				}
-			})
+			return await this.lock(() => this.store(providerProfiles))
 		} catch (error) {
 			throw new Error(`Failed to import provider profiles: ${error}`)
 		}
@@ -674,47 +497,17 @@ export class ProviderSettingsManager {
 		return `${ProviderSettingsManager.SCOPE_PREFIX}api_config`
 	}
 
-	/**
-	 * Read the raw (un-migrated) secrets-store payload. Returns the parsed
-	 * JSON value (object, string, or null) exactly as stored. Used by
-	 * {@link initialize} to detect pre-v2 flat profiles with inline secrets.
-	 *
-	 * Best-effort: if the secrets store itself is failing (e.g. storage error),
-	 * return null so the subsequent `load()` call raises the properly-wrapped
-	 * error rather than a duplicate raw one. This must never throw — it is a
-	 * pre-flight capture step, not the authoritative read path.
-	 */
-	private async readRawEnvelope(): Promise<unknown> {
-		let content: string | undefined
-		try {
-			content = await this.context.secrets.get(this.secretsKey)
-		} catch {
-			return null
-		}
-		if (!content) return null
-		try {
-			return JSON.parse(content)
-		} catch {
-			return null
-		}
-	}
-
 	private async load(): Promise<ProviderProfilesData> {
 		try {
 			const content = await this.context.secrets.get(this.secretsKey)
 
 			if (!content) {
-				this.loadedEnvelope = createProviderProfilesEnvelope(this.defaultProviderProfiles)
 				return this.defaultProviderProfiles
 			}
 
-			const rawValue = JSON.parse(content)
-			const wasVersioned = typeof rawValue === "object" && rawValue !== null && "schemaVersion" in rawValue
-			const envelope = migrateProviderProfiles(rawValue)
-			this.loadedEnvelope = wasVersioned ? envelope : undefined
-			return envelope.data
+			return parseProviderProfilesEnvelope(JSON.parse(content)).data
 		} catch (error) {
-			if (error instanceof ZodError) {
+			if (error instanceof ZodError && TelemetryService.hasInstance()) {
 				TelemetryService.instance.capture(TelemetryEventName.SCHEMA_VALIDATION_ERROR, {
 					schemaName: "ProviderProfiles",
 					error: error.format(),
@@ -734,7 +527,6 @@ export class ProviderSettingsManager {
 				]),
 			)
 			const envelope = createProviderProfilesEnvelope({ ...providerProfiles, apiConfigs })
-			this.loadedEnvelope = envelope
 			await this.context.secrets.store(this.secretsKey, JSON.stringify(envelope, null, 2))
 		} catch (error) {
 			throw new Error(`Failed to write provider profiles to secrets: ${error}`)

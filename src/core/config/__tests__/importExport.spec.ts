@@ -5,7 +5,13 @@ import * as path from "path"
 
 import * as vscode from "vscode"
 
-import type { ProviderName } from "@roo-code/types"
+import {
+	createKnownPersistedProviderProfile,
+	providerProfileToLegacySettings,
+	type PersistedProviderProfile,
+	type ProviderName,
+	type ProviderSettingsWithId,
+} from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { importSettings, importSettingsFromFile, importSettingsWithFeedback, exportSettings } from "../importExport"
@@ -94,6 +100,45 @@ vi.mock("../../../api", () => {
 	}
 })
 
+/**
+ * The provider profiles envelope (`{ schemaVersion: 2, data }`) that `export()` returns and
+ * `exportSettings` writes, built from flat fixtures. A profile that is already persisted (has
+ * `provider`, e.g. an opaque one) is kept as it is. Flat secrets are dropped by the conversion,
+ * as they never travel in a file.
+ */
+function v2File(profiles: {
+	currentApiConfigName: string
+	apiConfigs: Record<string, ProviderSettingsWithId | PersistedProviderProfile>
+	modeApiConfigs?: Record<string, string>
+}) {
+	return {
+		schemaVersion: 2 as const,
+		data: {
+			...profiles,
+			apiConfigs: Object.fromEntries(
+				Object.entries(profiles.apiConfigs).map(([name, profile]) => [
+					name,
+					"provider" in profile ? profile : createKnownPersistedProviderProfile(profile),
+				]),
+			),
+		},
+	}
+}
+
+/** An opaque (unknown or retired provider) persisted profile. */
+const opaqueProfile = (id: string, providerId: string): PersistedProviderProfile => ({
+	id,
+	provider: { providerId, opaqueLegacyPayload: { apiProvider: providerId } },
+})
+
+/** The provider id of a profile passed to `import()`, flat or persisted. */
+const providerIdOf = (profile: ProviderSettingsWithId | PersistedProviderProfile) =>
+	"provider" in profile ? profile.provider.providerId : profile.apiProvider
+
+/** The flat fields of a persisted known-provider profile, for assertions. */
+const flat = (profile: ProviderSettingsWithId | PersistedProviderProfile) =>
+	"provider" in profile ? providerProfileToLegacySettings(profile) : profile
+
 describe("importExport", () => {
 	let mockProviderSettingsManager: ReturnType<typeof vi.mocked<ProviderSettingsManager>>
 	let mockContextProxy: ReturnType<typeof vi.mocked<ContextProxy>>
@@ -108,9 +153,22 @@ describe("importExport", () => {
 		}
 
 		mockProviderSettingsManager = {
-			export: vi.fn(),
+			export: vi.fn().mockResolvedValue(
+				v2File({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				}),
+			),
+			// The mocked `export()` result is the stored data in these tests.
+			readProfiles: vi.fn().mockImplementation(async () => (await mockProviderSettingsManager.export()).data),
 			import: vi.fn(),
 			listConfig: vi.fn(),
+			// Reads back what the last `import()` call stored, as the real manager does.
+			getProfile: vi.fn().mockImplementation(async ({ name }: { name: string }) => {
+				const stored = mockProviderSettingsManager.import.mock.calls.at(-1)?.[0].apiConfigs[name]
+				if (!stored) throw new Error(`Config with name '${name}' not found`)
+				return { name, id: stored.id, ...flat(stored) }
+			}),
 		} as unknown as ReturnType<typeof vi.mocked<ProviderSettingsManager>>
 
 		mockContextProxy = {
@@ -131,6 +189,7 @@ describe("importExport", () => {
 			secrets: {
 				get: vi.fn().mockImplementation((key: string) => map.get(key)),
 				store: vi.fn().mockImplementation((key: string, value: string) => map.set(key, value)),
+				delete: vi.fn().mockImplementation((key: string) => map.delete(key)),
 			},
 		} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
 	})
@@ -162,16 +221,15 @@ describe("importExport", () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 			;(fs.readFile as Mock).mockResolvedValue(
 				JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
 						},
-					},
+					}),
 					globalSettings: {
 						customInstructions: "Keep this setting",
 						autoApprovalEnabled: true,
@@ -180,10 +238,12 @@ describe("importExport", () => {
 					},
 				}),
 			)
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "default",
-				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				}),
+			)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
 				{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 			])
@@ -211,26 +271,27 @@ describe("importExport", () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 			;(fs.readFile as Mock).mockResolvedValue(
 				JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
 						},
-					},
+					}),
 					globalSettings: {
 						imageGenerationProvider: "roo", // invalid: only "openrouter" is allowed in our fork
 						customInstructions: "Keep this setting",
 					},
 				}),
 			)
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "default",
-				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				}),
+			)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
 				{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 			])
@@ -254,26 +315,27 @@ describe("importExport", () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 			;(fs.readFile as Mock).mockResolvedValue(
 				JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
 						},
-					},
+					}),
 					globalSettings: {
 						customInstructions: "Keep this setting",
 						customModes: [{ slug: "broken-mode", name: "", roleDefinition: "", groups: ["invalid-group"] }],
 					},
 				}),
 			)
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "default",
-				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				}),
+			)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
 				{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 			])
@@ -296,16 +358,15 @@ describe("importExport", () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 			;(fs.readFile as Mock).mockResolvedValue(
 				JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
 						},
-					},
+					}),
 					globalSettings: {
 						autoApprovalEnabled: "yes",
 						mode: 7,
@@ -314,10 +375,12 @@ describe("importExport", () => {
 					},
 				}),
 			)
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "default",
-				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				}),
+			)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
 				{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 			])
@@ -341,19 +404,19 @@ describe("importExport", () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 			const mockFileContent = JSON.stringify({
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "test",
-					apiConfigs: { test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" } },
-				},
+					apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
+				}),
 				globalSettings: { mode: "code", autoApprovalEnabled: true },
 			})
 
 			;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-			const previousProviderProfiles = {
+			const previousProviderProfiles = v2File({
 				currentApiConfigName: "default",
 				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			}
+			})
 
 			mockProviderSettingsManager.export.mockResolvedValue(previousProviderProfiles)
 
@@ -377,8 +440,8 @@ describe("importExport", () => {
 			expect(mockProviderSettingsManager.import).toHaveBeenCalledWith({
 				currentApiConfigName: "test",
 				apiConfigs: {
-					default: { apiProvider: "anthropic" as ProviderName, id: "default-id" },
-					test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" },
+					default: { id: "default-id", provider: { providerId: "anthropic", config: {} } },
+					test: { id: "test-id", provider: { providerId: "openai", config: {} } },
 				},
 				modeApiConfigs: {},
 			})
@@ -397,7 +460,7 @@ describe("importExport", () => {
 
 			// Invalid content (missing required fields).
 			const mockInvalidContent = JSON.stringify({
-				providerProfiles: { apiConfigs: {} },
+				providerProfiles: { schemaVersion: 2, data: { apiConfigs: {} } },
 				globalSettings: {},
 			})
 
@@ -411,7 +474,7 @@ describe("importExport", () => {
 
 			expect(result).toEqual({
 				success: false,
-				error: "[providerProfiles.currentApiConfigName]: Invalid input: expected string, received undefined",
+				error: "[providerProfiles.data.currentApiConfigName]: Invalid input: expected string, received undefined",
 			})
 			expect(fs.readFile).toHaveBeenCalledWith("/mock/path/settings.json", "utf-8")
 			expect(mockProviderSettingsManager.import).not.toHaveBeenCalled()
@@ -422,18 +485,18 @@ describe("importExport", () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 			const mockFileContent = JSON.stringify({
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "test",
-					apiConfigs: { test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" } },
-				},
+					apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
+				}),
 			})
 
 			;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-			const previousProviderProfiles = {
+			const previousProviderProfiles = v2File({
 				currentApiConfigName: "default",
 				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			}
+			})
 
 			mockProviderSettingsManager.export.mockResolvedValue(previousProviderProfiles)
 
@@ -456,8 +519,8 @@ describe("importExport", () => {
 			expect(mockProviderSettingsManager.import).toHaveBeenCalledWith({
 				currentApiConfigName: "test",
 				apiConfigs: {
-					default: { apiProvider: "anthropic" as ProviderName, id: "default-id" },
-					test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" },
+					default: { id: "default-id", provider: { providerId: "anthropic", config: {} } },
+					test: { id: "test-id", provider: { providerId: "openai", config: {} } },
 				},
 				modeApiConfigs: {},
 			})
@@ -516,10 +579,10 @@ describe("importExport", () => {
 
 			const mockFileContent = JSON.stringify({
 				globalSettings: { mode: "code" },
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "anthropic",
 					apiConfigs: { default: { apiProvider: "anthropic" as const, id: "anthropic" } },
-				},
+				}),
 			})
 
 			;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
@@ -536,8 +599,184 @@ describe("importExport", () => {
 			if (result.success && "providerProfiles" in result) {
 				expect(result.providerProfiles?.apiConfigs["openai"]).toBeDefined()
 				expect(result.providerProfiles?.apiConfigs["default"]).toBeDefined()
-				expect(result.providerProfiles?.apiConfigs["default"].apiProvider).toBe("anthropic")
+				expect(result.providerProfiles?.apiConfigs["default"].provider.providerId).toBe("anthropic")
 			}
+		})
+
+		it("keeps a local OpenAI Compatible profile the file does not replace usable (not an unknown provider)", async () => {
+			const providerSettingsManager = new ProviderSettingsManager(mockExtensionContext)
+			await providerSettingsManager.saveConfig("local-compat", {
+				apiProvider: "openai",
+				id: "local-compat-id",
+				openAiBaseUrl: "http://localhost:8000/v1",
+				openAiModelId: "qwen3-coder",
+				modelTemperature: 1,
+			})
+			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+			;(fs.readFile as Mock).mockResolvedValue(
+				JSON.stringify({
+					providerProfiles: v2File({
+						currentApiConfigName: "imported",
+						apiConfigs: { imported: { apiProvider: "anthropic", id: "imported-id" } },
+					}),
+				}),
+			)
+
+			const result = await importSettings({
+				providerSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
+
+			expect(result.success).toBe(true)
+			const profile = await providerSettingsManager.getProfile({ name: "local-compat" })
+			expect(profile.apiProvider).toBe("openai")
+			expect(profile.openAiBaseUrl).toBe("http://localhost:8000/v1")
+			expect(profile.openAiModelId).toBe("qwen3-coder")
+			expect(profile.modelTemperature).toBe(1)
+			await expect(providerSettingsManager.activateProfile({ name: "local-compat" })).resolves.toMatchObject({
+				apiProvider: "openai",
+			})
+		})
+
+		// export() drops the token fields a model does not use; the import must
+		// not write that filtered view back over the local profiles.
+		it("keeps the token fields of a local profile the file does not replace", async () => {
+			const providerSettingsManager = new ProviderSettingsManager(mockExtensionContext)
+			await providerSettingsManager.saveConfig("local-compat", {
+				apiProvider: "openai",
+				id: "local-compat-id",
+				openAiModelId: "qwen3-coder",
+				modelMaxTokens: 4096,
+				modelMaxThinkingTokens: 2048,
+			})
+			const exportedProfile = (await providerSettingsManager.export()).data.apiConfigs["local-compat"]
+			expect("shared" in exportedProfile && exportedProfile.shared?.modelMaxTokens).toBeFalsy()
+			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+			;(fs.readFile as Mock).mockResolvedValue(
+				JSON.stringify({
+					providerProfiles: v2File({
+						currentApiConfigName: "imported",
+						apiConfigs: { imported: { apiProvider: "anthropic", id: "imported-id" } },
+					}),
+				}),
+			)
+
+			const result = await importSettings({
+				providerSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
+
+			expect(result.success).toBe(true)
+			expect(await providerSettingsManager.getProfile({ name: "local-compat" })).toMatchObject({
+				modelMaxTokens: 4096,
+				modelMaxThinkingTokens: 2048,
+			})
+		})
+
+		it("imports its own export back with every profile usable", async () => {
+			const providerSettingsManager = new ProviderSettingsManager(mockExtensionContext)
+			await providerSettingsManager.saveConfig("compat", {
+				apiProvider: "openai",
+				id: "compat-id",
+				openAiBaseUrl: "http://localhost:8000/v1",
+				openAiModelId: "qwen3-coder",
+			})
+			await providerSettingsManager.saveConfig("claude", {
+				apiProvider: "anthropic",
+				id: "claude-id",
+				apiModelId: "claude-sonnet-4-5",
+			})
+			const exported = await providerSettingsManager.export()
+			expect(exported.schemaVersion).toBe(2)
+			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+			;(fs.readFile as Mock).mockResolvedValue(JSON.stringify({ providerProfiles: exported }))
+
+			const result = await importSettings({
+				providerSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
+
+			expect(result.success).toBe(true)
+			expect((result as { warnings?: string[] }).warnings).toBeUndefined()
+			const compat = await providerSettingsManager.getProfile({ name: "compat" })
+			expect(compat.apiProvider).toBe("openai")
+			expect(compat.openAiModelId).toBe("qwen3-coder")
+			const claude = await providerSettingsManager.getProfile({ name: "claude" })
+			expect(claude.apiProvider).toBe("anthropic")
+			expect(claude.apiModelId).toBe("claude-sonnet-4-5")
+			const defaultProfile = await providerSettingsManager.getProfile({ name: "default" })
+			expect(defaultProfile.apiProvider).toBe("anthropic")
+		})
+
+		it("rejects an unversioned file and leaves the stored profiles unchanged", async () => {
+			const providerSettingsManager = new ProviderSettingsManager(mockExtensionContext)
+			await providerSettingsManager.saveConfig("openai", { apiProvider: "openai", id: "openai" })
+			const storedBefore = await mockExtensionContext.secrets.get("roo_cline_config_api_config")
+			;(mockExtensionContext.secrets.store as Mock).mockClear()
+			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+			;(fs.readFile as Mock).mockResolvedValue(
+				JSON.stringify({
+					providerProfiles: {
+						currentApiConfigName: "a",
+						apiConfigs: { a: { apiProvider: "openai", id: "a" } },
+					},
+				}),
+			)
+
+			const result = await importSettings({
+				providerSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
+
+			expect(result.success).toBe(false)
+			expect(result.error).toContain("only version 2 is supported")
+			expect(mockExtensionContext.secrets.store).not.toHaveBeenCalled()
+			expect(await mockExtensionContext.secrets.get("roo_cline_config_api_config")).toBe(storedBefore)
+			expect(mockContextProxy.setValues).not.toHaveBeenCalled()
+		})
+
+		it("keeps the local id (and its secrets) for a same-name imported profile and remaps its mode binding", async () => {
+			const providerSettingsManager = new ProviderSettingsManager(mockExtensionContext)
+			await providerSettingsManager.saveConfig("shared-name", {
+				apiProvider: "openai",
+				id: "local-id",
+				openAiModelId: "local-model",
+				openAiApiKey: "local-secret",
+			})
+			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+			;(fs.readFile as Mock).mockResolvedValue(
+				JSON.stringify({
+					providerProfiles: v2File({
+						currentApiConfigName: "shared-name",
+						apiConfigs: {
+							"shared-name": {
+								apiProvider: "openai",
+								id: "imported-id",
+								openAiModelId: "imported-model",
+							},
+						},
+						modeApiConfigs: { code: "imported-id" },
+					}),
+				}),
+			)
+
+			const result = await importSettings({
+				providerSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
+
+			expect(result.success).toBe(true)
+			const profile = await providerSettingsManager.getProfile({ name: "shared-name" })
+			expect(profile.id).toBe("local-id")
+			expect(profile.openAiModelId).toBe("imported-model")
+			expect(profile.openAiApiKey).toBe("local-secret")
+			expect(await providerSettingsManager.getModeConfigId("code")).toBe("local-id")
+			await expect(providerSettingsManager.getProfile({ id: "imported-id" })).rejects.toThrow()
 		})
 
 		it("should call updateCustomMode for each custom mode in config", async () => {
@@ -549,16 +788,18 @@ describe("importExport", () => {
 			]
 
 			const mockFileContent = JSON.stringify({
-				providerProfiles: { currentApiConfigName: "test", apiConfigs: {} },
+				providerProfiles: v2File({ currentApiConfigName: "test", apiConfigs: {} }),
 				globalSettings: { mode: "code", customModes },
 			})
 
 			;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "test",
-				apiConfigs: {},
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "test",
+					apiConfigs: {},
+				}),
+			)
 
 			mockProviderSettingsManager.listConfig.mockResolvedValue([])
 
@@ -579,20 +820,20 @@ describe("importExport", () => {
 		it("should import settings from provided file path without showing dialog", async () => {
 			const filePath = "/mock/path/settings.json"
 			const mockFileContent = JSON.stringify({
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "test",
-					apiConfigs: { test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" } },
-				},
+					apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
+				}),
 				globalSettings: { mode: "code", autoApprovalEnabled: true },
 			})
 
 			;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 			;(fs.access as Mock).mockResolvedValue(undefined) // File exists and is readable
 
-			const previousProviderProfiles = {
+			const previousProviderProfiles = v2File({
 				currentApiConfigName: "default",
 				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			}
+			})
 
 			mockProviderSettingsManager.export.mockResolvedValue(previousProviderProfiles)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
@@ -616,8 +857,8 @@ describe("importExport", () => {
 			expect(mockProviderSettingsManager.import).toHaveBeenCalledWith({
 				currentApiConfigName: "test",
 				apiConfigs: {
-					default: { apiProvider: "anthropic" as ProviderName, id: "default-id" },
-					test: { apiProvider: "openai" as ProviderName, apiKey: "test-key", id: "test-id" },
+					default: { id: "default-id", provider: { providerId: "anthropic", config: {} } },
+					test: { id: "test-id", provider: { providerId: "openai", config: {} } },
 				},
 				modeApiConfigs: {},
 			})
@@ -664,27 +905,26 @@ describe("importExport", () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 			const mockFileContent = JSON.stringify({
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "openai-provider",
 					apiConfigs: {
 						"openai-provider": {
 							apiProvider: "openai" as ProviderName,
 							apiModelId: "gpt-4",
 							id: "openai-id",
-							apiKey: "test-key",
 							// No modelMaxTokens or modelMaxThinkingTokens fields
 						},
 					},
-				},
+				}),
 				globalSettings: { mode: "code", autoApprovalEnabled: true },
 			})
 
 			;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-			const previousProviderProfiles = {
+			const previousProviderProfiles = v2File({
 				currentApiConfigName: "default",
 				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			}
+			})
 
 			mockProviderSettingsManager.export.mockResolvedValue(previousProviderProfiles)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
@@ -707,12 +947,10 @@ describe("importExport", () => {
 			expect(mockProviderSettingsManager.import).toHaveBeenCalledWith({
 				currentApiConfigName: "openai-provider",
 				apiConfigs: {
-					default: { apiProvider: "anthropic" as ProviderName, id: "default-id" },
+					default: { id: "default-id", provider: { providerId: "anthropic", config: {} } },
 					"openai-provider": {
-						apiProvider: "openai" as ProviderName,
-						apiModelId: "gpt-4",
-						apiKey: "test-key",
 						id: "openai-id",
+						provider: { providerId: "openai", config: { apiModelId: "gpt-4" } },
 					},
 				},
 				modeApiConfigs: {},
@@ -728,30 +966,27 @@ describe("importExport", () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
-							"invalid-profile": {
-								apiProvider: "claude-code", // Invalid/removed provider
-								apiKey: "some-key",
-								id: "invalid-id",
-							},
+							"invalid-profile": opaqueProfile("invalid-id", "claude-code"), // Invalid/removed provider
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 					{ name: "default", id: "default-id", apiProvider: "anthropic" as ProviderName },
@@ -777,41 +1012,39 @@ describe("importExport", () => {
 				expect(mockProviderSettingsManager.import).toHaveBeenCalled()
 				const importedProfiles = mockProviderSettingsManager.import.mock.calls[0][0]
 				expect(importedProfiles.apiConfigs["valid-profile"]).toBeDefined()
-				expect(importedProfiles.apiConfigs["valid-profile"].apiProvider).toBe("openai")
+				expect(providerIdOf(importedProfiles.apiConfigs["valid-profile"])).toBe("openai")
 
 				// The unknown provider profile remains opaque so a newer client can recover it.
 				expect(importedProfiles.apiConfigs["invalid-profile"]).toBeDefined()
-				expect(importedProfiles.apiConfigs["invalid-profile"].apiProvider).toBe("claude-code")
+				expect(providerIdOf(importedProfiles.apiConfigs["invalid-profile"])).toBe("claude-code")
 			})
 
 			it("should skip completely invalid profiles and return warnings", async () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
-							"type-invalid": {
-								// Invalid type - modelTemperature should be a number, not a string
-								modelTemperature: "not-a-number",
-								id: "type-invalid-id",
-							},
+							// No usable provider at all: skipped
+							"type-invalid": opaqueProfile("type-invalid-id", "unknown"),
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 				])
@@ -842,30 +1075,25 @@ describe("importExport", () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "invalid-profile",
 						apiConfigs: {
-							"invalid-profile-1": {
-								// Invalid type - rateLimitSeconds should be number
-								rateLimitSeconds: "not-a-number",
-								id: "invalid-1",
-							},
-							"invalid-profile-2": {
-								// Invalid type - modelTemperature should be number
-								modelTemperature: { invalid: "object" },
-								id: "invalid-2",
-							},
+							// No usable provider at all: skipped
+							"invalid-profile-1": opaqueProfile("invalid-1", "unknown"),
+							"invalid-profile-2": opaqueProfile("invalid-2", "unknown"),
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 
 				const result = await importSettings({
 					providerSettingsManager: mockProviderSettingsManager,
@@ -884,31 +1112,28 @@ describe("importExport", () => {
 			it("should show warning notification when importing with warnings via importSettingsWithFeedback", async () => {
 				const filePath = "/mock/path/settings.json"
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
-							"problematic-profile": {
-								apiProvider: "removed-provider", // Invalid provider
-								apiKey: "some-key",
-								id: "problematic-id",
-							},
+							"problematic-profile": opaqueProfile("problematic-id", "removed-provider"), // Invalid provider
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 				;(fs.access as Mock).mockResolvedValue(undefined)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 				])
@@ -966,24 +1191,25 @@ describe("importExport", () => {
 				const filePath = "/mock/path/settings.json"
 				;(fs.readFile as Mock).mockResolvedValue(
 					JSON.stringify({
-						providerProfiles: {
+						providerProfiles: v2File({
 							currentApiConfigName: "valid-profile",
 							apiConfigs: {
 								"valid-profile": {
 									apiProvider: "openai" as ProviderName,
-									apiKey: "test-key",
 									id: "valid-id",
 								},
 							},
-						},
+						}),
 						globalSettings: { requestDelaySeconds: "slow" },
 					}),
 				)
 				;(fs.access as Mock).mockResolvedValue(undefined)
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 				])
@@ -1016,26 +1242,27 @@ describe("importExport", () => {
 			it("clears settingsImportedAt after posting the imported state so later launches do not replay it", async () => {
 				const filePath = "/mock/path/settings.json"
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 				;(fs.access as Mock).mockResolvedValue(undefined)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 				])
@@ -1067,40 +1294,32 @@ describe("importExport", () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "anthropic-profile",
 						apiConfigs: {
 							"anthropic-profile": {
 								apiProvider: "anthropic" as ProviderName,
-								anthropicApiKey: "key-1",
 								id: "anthropic-id",
 							},
 							"openai-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "key-2",
 								id: "openai-id",
 							},
-							"old-claude-profile": {
-								apiProvider: "claude-code", // Removed provider
-								apiKey: "key-3",
-								id: "claude-id",
-							},
-							"another-invalid": {
-								apiProvider: "some-old-provider", // Another removed provider
-								apiKey: "key-4",
-								id: "another-id",
-							},
+							"old-claude-profile": opaqueProfile("claude-id", "claude-code"), // Removed provider
+							"another-invalid": opaqueProfile("another-id", "some-old-provider"), // Another removed provider
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "anthropic-profile", id: "anthropic-id", apiProvider: "anthropic" as ProviderName },
 					{ name: "openai-profile", id: "openai-id", apiProvider: "openai" as ProviderName },
@@ -1123,12 +1342,12 @@ describe("importExport", () => {
 
 				// Valid profiles should be imported correctly
 				const importedProfiles = mockProviderSettingsManager.import.mock.calls[0][0]
-				expect(importedProfiles.apiConfigs["anthropic-profile"].apiProvider).toBe("anthropic")
-				expect(importedProfiles.apiConfigs["openai-profile"].apiProvider).toBe("openai")
+				expect(providerIdOf(importedProfiles.apiConfigs["anthropic-profile"])).toBe("anthropic")
+				expect(providerIdOf(importedProfiles.apiConfigs["openai-profile"])).toBe("openai")
 
 				// Unknown-provider profiles and their discriminators remain intact.
-				expect(importedProfiles.apiConfigs["old-claude-profile"].apiProvider).toBe("claude-code")
-				expect(importedProfiles.apiConfigs["another-invalid"].apiProvider).toBe("some-old-provider")
+				expect(providerIdOf(importedProfiles.apiConfigs["old-claude-profile"])).toBe("claude-code")
+				expect(providerIdOf(importedProfiles.apiConfigs["another-invalid"])).toBe("some-old-provider")
 			})
 
 			it("should fallback currentApiConfigName when the imported current profile was skipped", async () => {
@@ -1136,30 +1355,28 @@ describe("importExport", () => {
 
 				// Import file where currentApiConfigName points to an invalid profile that gets skipped
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "invalid-current-profile", // This profile is completely invalid
 						apiConfigs: {
-							"invalid-current-profile": {
-								// Invalid type - rateLimitSeconds should be number
-								rateLimitSeconds: "not-a-number",
-								id: "invalid-current-id",
-							},
+							// No usable provider at all: skipped
+							"invalid-current-profile": opaqueProfile("invalid-current-id", "unknown"),
 							"valid-fallback-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "fallback-id",
 							},
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "valid-fallback-profile", id: "fallback-id", apiProvider: "openai" as ProviderName },
 				])
@@ -1204,26 +1421,25 @@ describe("importExport", () => {
 
 				// All profiles in the import are invalid, but we have existing profiles
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "invalid-profile",
 						apiConfigs: {
-							"invalid-profile": {
-								rateLimitSeconds: "not-a-number",
-								id: "invalid-id",
-							},
+							"invalid-profile": opaqueProfile("invalid-id", "unknown"),
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "existing-profile",
-					apiConfigs: {
-						"existing-profile": { apiProvider: "anthropic" as ProviderName, id: "existing-id" },
-					},
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "existing-profile",
+						apiConfigs: {
+							"existing-profile": { apiProvider: "anthropic" as ProviderName, id: "existing-id" },
+						},
+					}),
+				)
 
 				const result = await importSettings({
 					providerSettingsManager: mockProviderSettingsManager,
@@ -1239,36 +1455,29 @@ describe("importExport", () => {
 			it("should show plural summary for multiple profile warnings via importSettingsWithFeedback", async () => {
 				const filePath = "/mock/path/settings.json"
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "valid-profile",
 						apiConfigs: {
 							"valid-profile": {
 								apiProvider: "openai" as ProviderName,
-								apiKey: "test-key",
 								id: "valid-id",
 							},
-							"problematic-profile-1": {
-								apiProvider: "removed-provider-1",
-								apiKey: "key-1",
-								id: "problematic-id-1",
-							},
-							"problematic-profile-2": {
-								apiProvider: "removed-provider-2",
-								apiKey: "key-2",
-								id: "problematic-id-2",
-							},
+							"problematic-profile-1": opaqueProfile("problematic-id-1", "removed-provider-1"),
+							"problematic-profile-2": opaqueProfile("problematic-id-2", "removed-provider-2"),
 						},
-					},
+					}),
 					globalSettings: { mode: "code" },
 				})
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 				;(fs.access as Mock).mockResolvedValue(undefined)
 
-				mockProviderSettingsManager.export.mockResolvedValue({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				})
+				mockProviderSettingsManager.export.mockResolvedValue(
+					v2File({
+						currentApiConfigName: "default",
+						apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+					}),
+				)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
 					{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
 				])
@@ -1334,11 +1543,10 @@ describe("importExport", () => {
 				fsPath: "/mock/path/roo-code-settings.json",
 			})
 
-			const mockProviderProfiles = {
+			const mockProviderProfiles = v2File({
 				currentApiConfigName: "test",
 				apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
-				migrations: { rateLimitSecondsMigrated: false },
-			}
+			})
 
 			mockProviderSettingsManager.export.mockResolvedValue(mockProviderProfiles)
 			const mockGlobalSettings = { mode: "code", autoApprovalEnabled: true }
@@ -1369,11 +1577,10 @@ describe("importExport", () => {
 				fsPath: "/mock/path/roo-code-settings.json",
 			})
 
-			const mockProviderProfiles = {
+			const mockProviderProfiles = v2File({
 				currentApiConfigName: "test",
 				apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
-				migrations: { rateLimitSecondsMigrated: false },
-			}
+			})
 
 			mockProviderSettingsManager.export.mockResolvedValue(mockProviderProfiles)
 
@@ -1401,11 +1608,12 @@ describe("importExport", () => {
 				fsPath: "/mock/path/roo-code-settings.json",
 			})
 
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "test",
-				apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
-				migrations: { rateLimitSecondsMigrated: false },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "test",
+					apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
+				}),
+			)
 
 			mockContextProxy.export.mockResolvedValue({ mode: "code" })
 			// Simulate an error during the safeWriteJson operation
@@ -1431,11 +1639,12 @@ describe("importExport", () => {
 				fsPath: "/mock/path/roo-code-settings.json",
 			})
 
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "test",
-				apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
-				migrations: { rateLimitSecondsMigrated: false },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "test",
+					apiConfigs: { test: { apiProvider: "openai" as ProviderName, id: "test-id" } },
+				}),
+			)
 
 			mockContextProxy.export.mockResolvedValue({ mode: "code" })
 			;(fs.mkdir as Mock).mockRejectedValue(new Error("Directory creation error"))
@@ -1474,7 +1683,7 @@ describe("importExport", () => {
 					fsPath: "/mock/path/roo-code-settings.json",
 				})
 
-				const mockProviderProfiles = {
+				const mockProviderProfiles = v2File({
 					currentApiConfigName: "openai-compatible-provider",
 					apiConfigs: {
 						"openai-compatible-provider": {
@@ -1485,11 +1694,10 @@ describe("importExport", () => {
 						"ollama-provider": {
 							apiProvider: "ollama" as ProviderName,
 							id: "ollama-id",
-							codebaseIndexOllamaBaseUrl: "http://localhost:11434",
 						},
 					},
 					modeApiConfigs: {},
-				}
+				})
 
 				const mockGlobalSettings = {
 					mode: "code",
@@ -1524,7 +1732,7 @@ describe("importExport", () => {
 					fsPath: "/mock/path/roo-code-settings.json",
 				})
 
-				const mockProviderProfiles = {
+				const mockProviderProfiles = v2File({
 					currentApiConfigName: "test-provider",
 					apiConfigs: {
 						"test-provider": {
@@ -1534,7 +1742,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				}
+				})
 
 				const mockGlobalSettings = {
 					mode: "code",
@@ -1571,7 +1779,7 @@ describe("importExport", () => {
 					fsPath: "/mock/path/roo-code-settings.json",
 				})
 
-				const mockProviderProfiles = {
+				const mockProviderProfiles = v2File({
 					currentApiConfigName: "openai-compatible-provider",
 					apiConfigs: {
 						"openai-compatible-provider": {
@@ -1582,7 +1790,6 @@ describe("importExport", () => {
 						"ollama-provider": {
 							apiProvider: "ollama" as ProviderName,
 							id: "ollama-id",
-							codebaseIndexOllamaBaseUrl: "http://localhost:11434",
 						},
 						"anthropic-provider": {
 							apiProvider: "anthropic" as ProviderName,
@@ -1590,7 +1797,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				}
+				})
 
 				const mockGlobalSettings = {
 					mode: "code",
@@ -1631,7 +1838,7 @@ describe("importExport", () => {
 					fsPath: "/mock/path/roo-code-settings.json",
 				})
 
-				const mockProviderProfiles = {
+				const mockProviderProfiles = v2File({
 					currentApiConfigName: "incomplete-provider",
 					apiConfigs: {
 						"incomplete-provider": {
@@ -1641,7 +1848,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				}
+				})
 
 				const mockGlobalSettings = {
 					mode: "code",
@@ -1677,7 +1884,7 @@ describe("importExport", () => {
 					fsPath: "/mock/path/roo-code-settings.json",
 				})
 
-				const mockProviderProfiles = {
+				const mockProviderProfiles = v2File({
 					currentApiConfigName: "openai-provider",
 					apiConfigs: {
 						"openai-provider": {
@@ -1687,7 +1894,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				}
+				})
 
 				const mockGlobalSettings = {
 					mode: "code",
@@ -1720,7 +1927,7 @@ describe("importExport", () => {
 					fsPath: "/mock/path/roo-code-settings.json",
 				})
 
-				const mockProviderProfiles = {
+				const mockProviderProfiles = v2File({
 					currentApiConfigName: "nonexistent-provider",
 					apiConfigs: {
 						"other-provider": {
@@ -1729,7 +1936,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				}
+				})
 
 				const mockGlobalSettings = {
 					mode: "code",
@@ -1766,7 +1973,7 @@ describe("importExport", () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "openai-compatible-provider",
 						apiConfigs: {
 							"openai-compatible-provider": {
@@ -1778,7 +1985,7 @@ describe("importExport", () => {
 							},
 						},
 						modeApiConfigs: {},
-					},
+					}),
 					globalSettings: {
 						mode: "code",
 						codebaseIndexConfig: {
@@ -1795,10 +2002,10 @@ describe("importExport", () => {
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				const previousProviderProfiles = {
+				const previousProviderProfiles = v2File({
 					currentApiConfigName: "default",
 					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				}
+				})
 
 				mockProviderSettingsManager.export.mockResolvedValue(previousProviderProfiles)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
@@ -1830,7 +2037,7 @@ describe("importExport", () => {
 
 				// Provider profiles are imported as-is
 				const importedProviderProfiles = mockProviderSettingsManager.import.mock.calls[0][0]
-				const importedProvider = importedProviderProfiles.apiConfigs["openai-compatible-provider"]
+				const importedProvider = flat(importedProviderProfiles.apiConfigs["openai-compatible-provider"])
 
 				// Provider still has its own settings (not modified by import)
 				expect(importedProvider.codebaseIndexOpenAiCompatibleBaseUrl).toBe("https://old-url.example.com/v1")
@@ -1841,7 +2048,7 @@ describe("importExport", () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "openai-compatible-provider",
 						apiConfigs: {
 							"openai-compatible-provider": {
@@ -1850,7 +2057,7 @@ describe("importExport", () => {
 							},
 						},
 						modeApiConfigs: {},
-					},
+					}),
 					globalSettings: {
 						mode: "code",
 						codebaseIndexConfig: {
@@ -1864,10 +2071,10 @@ describe("importExport", () => {
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				const previousProviderProfiles = {
+				const previousProviderProfiles = v2File({
 					currentApiConfigName: "default",
 					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				}
+				})
 
 				mockProviderSettingsManager.export.mockResolvedValue(previousProviderProfiles)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
@@ -1892,7 +2099,7 @@ describe("importExport", () => {
 				;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
 				const mockFileContent = JSON.stringify({
-					providerProfiles: {
+					providerProfiles: v2File({
 						currentApiConfigName: "anthropic-provider",
 						apiConfigs: {
 							"anthropic-provider": {
@@ -1901,7 +2108,7 @@ describe("importExport", () => {
 							},
 						},
 						modeApiConfigs: {},
-					},
+					}),
 					globalSettings: {
 						mode: "code",
 						codebaseIndexConfig: {
@@ -1916,10 +2123,10 @@ describe("importExport", () => {
 
 				;(fs.readFile as Mock).mockResolvedValue(mockFileContent)
 
-				const previousProviderProfiles = {
+				const previousProviderProfiles = v2File({
 					currentApiConfigName: "default",
 					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-				}
+				})
 
 				mockProviderSettingsManager.export.mockResolvedValue(previousProviderProfiles)
 				mockProviderSettingsManager.listConfig.mockResolvedValue([
@@ -1936,7 +2143,7 @@ describe("importExport", () => {
 
 				// Verify that the provider settings were not modified with OpenAI Compatible fields
 				const importedProviderProfiles = mockProviderSettingsManager.import.mock.calls[0][0]
-				const importedProvider = importedProviderProfiles.apiConfigs["anthropic-provider"]
+				const importedProvider = flat(importedProviderProfiles.apiConfigs["anthropic-provider"])
 
 				expect(importedProvider.codebaseIndexOpenAiCompatibleBaseUrl).toBeUndefined()
 				expect(importedProvider.codebaseIndexOpenAiCompatibleModelDimension).toBeUndefined()
@@ -1950,7 +2157,7 @@ describe("importExport", () => {
 			const testModelDimension = 768
 
 			// Step 1: Set up a provider without OpenAI Compatible settings in profile
-			const mockProviderProfiles = {
+			const mockProviderProfiles = v2File({
 				currentApiConfigName: "test-openai-compatible",
 				apiConfigs: {
 					"test-openai-compatible": {
@@ -1960,7 +2167,7 @@ describe("importExport", () => {
 					},
 				},
 				modeApiConfigs: {},
-			}
+			})
 
 			const mockGlobalSettings = {
 				mode: "code",
@@ -2006,10 +2213,12 @@ describe("importExport", () => {
 
 			// Reset mocks for import
 			vi.clearAllMocks()
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "default",
-				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				}),
+			)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
 				{ name: "test-openai-compatible", id: "test-id", apiProvider: "openai" as ProviderName },
 			])
@@ -2043,7 +2252,7 @@ describe("importExport", () => {
 			// Test with model dimension = 0 (which is falsy but valid)
 			const testModelDimension = 0
 
-			const mockProviderProfiles = {
+			const mockProviderProfiles = v2File({
 				currentApiConfigName: "test-openai-compatible",
 				apiConfigs: {
 					"test-openai-compatible": {
@@ -2053,7 +2262,7 @@ describe("importExport", () => {
 					},
 				},
 				modeApiConfigs: {},
-			}
+			})
 
 			const mockGlobalSettings = {
 				mode: "code",
@@ -2094,10 +2303,12 @@ describe("importExport", () => {
 
 			// Reset mocks for import
 			vi.clearAllMocks()
-			mockProviderSettingsManager.export.mockResolvedValue({
-				currentApiConfigName: "default",
-				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
-			})
+			mockProviderSettingsManager.export.mockResolvedValue(
+				v2File({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+				}),
+			)
 			mockProviderSettingsManager.listConfig.mockResolvedValue([
 				{ name: "test-openai-compatible", id: "test-id", apiProvider: "openai" as ProviderName },
 			])
@@ -2118,7 +2329,7 @@ describe("importExport", () => {
 
 		it("should handle missing model dimension gracefully", async () => {
 			// Test when model dimension is undefined in global state
-			const mockProviderProfiles = {
+			const mockProviderProfiles = v2File({
 				currentApiConfigName: "test-openai-compatible",
 				apiConfigs: {
 					"test-openai-compatible": {
@@ -2128,7 +2339,7 @@ describe("importExport", () => {
 					},
 				},
 				modeApiConfigs: {},
-			}
+			})
 
 			const mockGlobalSettings = {
 				mode: "code",
@@ -2177,7 +2388,7 @@ describe("importExport", () => {
 
 			// Step 1: Create exported settings from "provider-a" with model dimension
 			const exportedSettings = {
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "provider-a",
 					apiConfigs: {
 						"provider-a": {
@@ -2192,7 +2403,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				},
+				}),
 				globalSettings: {
 					mode: "code",
 					codebaseIndexConfig: {
@@ -2206,7 +2417,7 @@ describe("importExport", () => {
 			}
 
 			// Step 2: Set up import environment where current provider is "provider-b" (different!)
-			const currentProviderProfiles = {
+			const currentProviderProfiles = v2File({
 				currentApiConfigName: "provider-b", // Different from exported settings!
 				apiConfigs: {
 					"provider-b": {
@@ -2214,7 +2425,7 @@ describe("importExport", () => {
 						id: "provider-b-id",
 					},
 				},
-			}
+			})
 
 			// Step 3: Mock import operation
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
@@ -2240,8 +2451,8 @@ describe("importExport", () => {
 
 			// The bug: provider-a should have its model dimension preserved, but it might be lost
 			// because the import logic only updates the CURRENT provider (provider-b)
-			const providerA = importedProviderProfiles.apiConfigs["provider-a"]
-			const providerB = importedProviderProfiles.apiConfigs["provider-b"]
+			const providerA = flat(importedProviderProfiles.apiConfigs["provider-a"])
+			const providerB = flat(importedProviderProfiles.apiConfigs["provider-b"])
 
 			// This should pass but might fail due to the bug
 			expect(providerA.codebaseIndexOpenAiCompatibleModelDimension).toBe(1536)
@@ -2256,7 +2467,7 @@ describe("importExport", () => {
 			// This test verifies the FIXED behavior: OpenAI Compatible settings stay in global settings only
 
 			const exportedSettings = {
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "openai-compatible-provider",
 					apiConfigs: {
 						"openai-compatible-provider": {
@@ -2270,7 +2481,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				},
+				}),
 				globalSettings: {
 					mode: "code",
 					codebaseIndexConfig: {
@@ -2286,7 +2497,7 @@ describe("importExport", () => {
 				},
 			}
 
-			const currentProviderProfiles = {
+			const currentProviderProfiles = v2File({
 				currentApiConfigName: "anthropic-provider",
 				apiConfigs: {
 					"anthropic-provider": {
@@ -2294,7 +2505,7 @@ describe("importExport", () => {
 						id: "anthropic-id",
 					},
 				},
-			}
+			})
 
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 			;(fs.readFile as Mock).mockResolvedValue(JSON.stringify(exportedSettings))
@@ -2326,8 +2537,8 @@ describe("importExport", () => {
 
 			// Verify provider profiles do NOT have OpenAI Compatible settings
 			const importedProviderProfiles = mockProviderSettingsManager.import.mock.calls[0][0]
-			const openaiCompatibleProvider = importedProviderProfiles.apiConfigs["openai-compatible-provider"]
-			const anthropicProvider = importedProviderProfiles.apiConfigs["anthropic-provider"]
+			const openaiCompatibleProvider = flat(importedProviderProfiles.apiConfigs["openai-compatible-provider"])
+			const anthropicProvider = flat(importedProviderProfiles.apiConfigs["anthropic-provider"])
 
 			// Neither provider should have OpenAI Compatible settings
 			expect(openaiCompatibleProvider.codebaseIndexOpenAiCompatibleBaseUrl).toBeUndefined()
@@ -2341,7 +2552,7 @@ describe("importExport", () => {
 			// and are NOT copied to provider profiles
 
 			const exportedSettings = {
-				providerProfiles: {
+				providerProfiles: v2File({
 					currentApiConfigName: "anthropic-provider",
 					apiConfigs: {
 						"anthropic-provider": {
@@ -2355,7 +2566,7 @@ describe("importExport", () => {
 						},
 					},
 					modeApiConfigs: {},
-				},
+				}),
 				globalSettings: {
 					mode: "code",
 					codebaseIndexConfig: {
@@ -2371,7 +2582,7 @@ describe("importExport", () => {
 				},
 			}
 
-			const currentProviderProfiles = {
+			const currentProviderProfiles = v2File({
 				currentApiConfigName: "default",
 				apiConfigs: {
 					default: {
@@ -2379,7 +2590,7 @@ describe("importExport", () => {
 						id: "default-id",
 					},
 				},
-			}
+			})
 
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 			;(fs.readFile as Mock).mockResolvedValue(JSON.stringify(exportedSettings))
@@ -2412,8 +2623,8 @@ describe("importExport", () => {
 
 			// Verify NO provider profiles have OpenAI Compatible settings
 			const importedProviderProfiles = mockProviderSettingsManager.import.mock.calls[0][0]
-			const anthropicProvider = importedProviderProfiles.apiConfigs["anthropic-provider"]
-			const openaiCompatibleProvider = importedProviderProfiles.apiConfigs["openai-compatible-provider"]
+			const anthropicProvider = flat(importedProviderProfiles.apiConfigs["anthropic-provider"])
+			const openaiCompatibleProvider = flat(importedProviderProfiles.apiConfigs["openai-compatible-provider"])
 
 			// Neither provider should have OpenAI Compatible settings
 			expect(anthropicProvider.codebaseIndexOpenAiCompatibleBaseUrl).toBeUndefined()
@@ -2433,7 +2644,7 @@ describe("importExport", () => {
 			// Set up provider profiles - note that the OpenAI Compatible provider does NOT have
 			// the codebaseIndexOpenAiCompatibleBaseUrl and codebaseIndexOpenAiCompatibleModelDimension
 			// fields in the provider profile itself
-			const mockProviderProfiles = {
+			const mockProviderProfiles = v2File({
 				currentApiConfigName: "openrouter-provider", // Current provider is OpenRouter
 				apiConfigs: {
 					"openrouter-provider": {
@@ -2443,7 +2654,7 @@ describe("importExport", () => {
 					},
 				},
 				modeApiConfigs: {},
-			}
+			})
 
 			// The global settings now include OpenAI Compatible settings directly in codebaseIndexConfig
 			const mockGlobalSettings = {
@@ -2546,7 +2757,8 @@ describe("importExport", () => {
 				const exportedData = (safeWriteJson as Mock).mock.calls[0][1]
 
 				// Verify that token fields were excluded because reasoning budget is not supported/required
-				const provider = exportedData.providerProfiles.apiConfigs[providerName]
+				expect(exportedData.providerProfiles.schemaVersion).toBe(2)
+				const provider = exportedData.providerProfiles.data.apiConfigs[providerName]
 				expect(provider).toBeDefined()
 				expect(provider.provider.config.apiModelId).toBe(modelId)
 				expect(provider.shared?.modelMaxTokens).toBeUndefined()
@@ -2555,38 +2767,14 @@ describe("importExport", () => {
 		)
 	})
 
-	// H1/H2/R1/R2: real-manager secret round-trip tests. These exercise the
-	// actual `migrateProviderProfiles` + `updateProfileSecrets` boundary
-	// against a Map-backed `ExtensionContext.secrets` (no mocked
-	// `ProviderSettingsManager.import`) so the secret-preservation behavior is
-	// asserted end-to-end rather than via a call-argument mock.
+	// H1/H2/R2: real-manager secret round-trip tests. These exercise the
+	// actual `updateProfileSecrets` boundary against a Map-backed
+	// `ExtensionContext.secrets` (no mocked `ProviderSettingsManager.import`)
+	// so the secret-preservation behavior is asserted end-to-end rather than
+	// via a call-argument mock.
 	describe("secret round-trip through the real ProviderSettingsManager", () => {
-		it("R1: legacy inline apiKey survives initialize() into provider_profile_secrets_v2 and round-trips via getProfile", async () => {
-			// Seed the secrets store with a legacy flat envelope (pre-v2) that
-			// carries an inline `apiKey` for a known provider.
-			const map = new Map<string, string>([
-				[
-					"roo_cline_config_api_config",
-					JSON.stringify({
-						currentApiConfigName: "anthropic",
-						apiConfigs: {
-							anthropic: {
-								apiProvider: "anthropic",
-								apiKey: "legacy-anthropic-key",
-								id: "anthropic-id",
-							},
-						},
-						migrations: {
-							rateLimitSecondsMigrated: true,
-							openAiHeadersMigrated: true,
-							consecutiveMistakeLimitMigrated: true,
-							todoListEnabledMigrated: true,
-							claudeCodeLegacySettingsMigrated: true,
-						},
-					}),
-				],
-			])
-			const ctx = {
+		const mapBackedContext = (map: Map<string, string>) =>
+			({
 				secrets: {
 					get: vi.fn().mockImplementation((key: string) => map.get(key)),
 					store: vi.fn().mockImplementation((key: string, value: string) => {
@@ -2596,42 +2784,12 @@ describe("importExport", () => {
 						map.delete(key)
 					}),
 				},
-			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
-
-			const manager = new ProviderSettingsManager(ctx)
-			await manager.initialize()
-
-			// (a) The persisted v2 envelope must NOT contain the plaintext key.
-			const envelopeJson = map.get("roo_cline_config_api_config") ?? ""
-			expect(envelopeJson).not.toContain("legacy-anthropic-key")
-
-			// (b) The secret store must contain it under the profile id.
-			const v2Secrets = JSON.parse(map.get("roo_cline_config_provider_profile_secrets_v2") ?? "{}")
-			expect(v2Secrets["anthropic-id"]).toBeDefined()
-			expect(v2Secrets["anthropic-id"].apiKey).toBe("legacy-anthropic-key")
-
-			// (c) getProfile must merge the secret back into the runtime config.
-			const { name: _name, ...profile } = await manager.getProfile({ name: "anthropic" })
-			expect(profile.apiKey).toBe("legacy-anthropic-key")
-			expect(profile.apiProvider).toBe("anthropic")
-		})
+			}) as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
 
 		it("R2: v2 export -> v2 import does NOT transfer secrets; existing local secrets are preserved on import", async () => {
 			// Source install: a known provider with a secret in the v2 store.
 			const sourceMap = new Map<string, string>()
-			const sourceCtx = {
-				secrets: {
-					get: vi.fn().mockImplementation((key: string) => sourceMap.get(key)),
-					store: vi.fn().mockImplementation((key: string, value: string) => {
-						sourceMap.set(key, value)
-					}),
-					delete: vi.fn().mockImplementation((key: string) => {
-						sourceMap.delete(key)
-					}),
-				},
-			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
-
-			const sourceManager = new ProviderSettingsManager(sourceCtx)
+			const sourceManager = new ProviderSettingsManager(mapBackedContext(sourceMap))
 			await sourceManager.initialize()
 			await sourceManager.saveConfig("openai", {
 				apiProvider: "openai" as ProviderName,
@@ -2661,13 +2819,6 @@ describe("importExport", () => {
 								},
 							},
 							modeApiConfigs: {},
-							migrations: {
-								rateLimitSecondsMigrated: true,
-								openAiHeadersMigrated: true,
-								consecutiveMistakeLimitMigrated: true,
-								todoListEnabledMigrated: true,
-								claudeCodeLegacySettingsMigrated: true,
-							},
 						},
 					}),
 				],
@@ -2676,27 +2827,13 @@ describe("importExport", () => {
 					JSON.stringify({ "openai-id": { openAiApiKey: "target-openai-key" } }),
 				],
 			])
-			const targetCtx = {
-				secrets: {
-					get: vi.fn().mockImplementation((key: string) => targetMap.get(key)),
-					store: vi.fn().mockImplementation((key: string, value: string) => {
-						targetMap.set(key, value)
-					}),
-					delete: vi.fn().mockImplementation((key: string) => {
-						targetMap.delete(key)
-					}),
-				},
-			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
-
-			const targetManager = new ProviderSettingsManager(targetCtx)
+			const targetManager = new ProviderSettingsManager(mapBackedContext(targetMap))
 			await targetManager.initialize()
 
-			// Import the source export into the target. The import boundary in
-			// importExport.ts re-attaches previous local secrets; here we call
-			// manager.import() directly with the exported envelope to assert
-			// the manager does NOT pull secrets from the export (there are
-			// none) and preserves what the target already had.
-			await targetManager.import(exported)
+			// Import the source export into the target directly through the
+			// manager to assert it does NOT pull secrets from the export (there
+			// are none) and preserves what the target already had.
+			await targetManager.import(exported.data)
 
 			const targetSecrets = JSON.parse(targetMap.get("roo_cline_config_provider_profile_secrets_v2") ?? "{}")
 			// H1: the source secret must NOT have been transferred.
@@ -2704,59 +2841,49 @@ describe("importExport", () => {
 			// The target's pre-existing secret survives (the export carried no
 			// secret for this profile, so import() does not overwrite it).
 			expect(targetSecrets["openai-id"]?.openAiApiKey).toBe("target-openai-key")
+			const { name: _name, ...profile } = await targetManager.getProfile({ name: "openai" })
+			expect(profile.openAiApiKey).toBe("target-openai-key")
 		})
 
-		it("R-extra: opaque retired profile secrets are routed to provider_profile_secrets_v2 and survive export", async () => {
+		it("R-extra: an opaque retired profile gets its secret from provider_profile_secrets_v2 and exports without it", async () => {
 			const map = new Map<string, string>([
 				[
 					"roo_cline_config_api_config",
 					JSON.stringify({
-						currentApiConfigName: "retired",
-						apiConfigs: {
-							retired: {
-								id: "retired-id",
-								apiProvider: "groq",
-								apiKey: "legacy-key",
-								apiModelId: "legacy-model",
+						schemaVersion: 2,
+						data: {
+							currentApiConfigName: "retired",
+							apiConfigs: {
+								retired: {
+									id: "retired-id",
+									provider: {
+										providerId: "groq",
+										opaqueLegacyPayload: { apiProvider: "groq", apiModelId: "legacy-model" },
+									},
+								},
 							},
-						},
-						migrations: {
-							rateLimitSecondsMigrated: true,
-							openAiHeadersMigrated: true,
-							consecutiveMistakeLimitMigrated: true,
-							todoListEnabledMigrated: true,
-							claudeCodeLegacySettingsMigrated: true,
 						},
 					}),
 				],
+				[
+					"roo_cline_config_provider_profile_secrets_v2",
+					JSON.stringify({ "retired-id": { apiKey: "legacy-key" } }),
+				],
 			])
-			const ctx = {
-				secrets: {
-					get: vi.fn().mockImplementation((key: string) => map.get(key)),
-					store: vi.fn().mockImplementation((key: string, value: string) => {
-						map.set(key, value)
-					}),
-					delete: vi.fn().mockImplementation((key: string) => {
-						map.delete(key)
-					}),
-				},
-			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
-
-			const manager = new ProviderSettingsManager(ctx)
+			const manager = new ProviderSettingsManager(mapBackedContext(map))
 			await manager.initialize()
 
-			// C3: opaque payload must not carry the secret.
-			const envelopeJson = map.get("roo_cline_config_api_config") ?? ""
-			expect(envelopeJson).not.toContain("legacy-key")
-			const v2Secrets = JSON.parse(map.get("roo_cline_config_provider_profile_secrets_v2") ?? "{}")
-			expect(v2Secrets["retired-id"].apiKey).toBe("legacy-key")
+			// C3: the stored opaque payload never carries the secret.
+			expect(map.get("roo_cline_config_api_config") ?? "").not.toContain("legacy-key")
 
 			// Export must also be clean.
 			const exported = await manager.export()
 			expect(JSON.stringify(exported)).not.toContain("legacy-key")
+			expect(exported.data.apiConfigs.retired.provider.providerId).toBe("groq")
 			// And getProfile must still merge the secret back.
 			const { name: _name, ...profile } = await manager.getProfile({ name: "retired" })
 			expect(profile.apiKey).toBe("legacy-key")
+			expect(profile.apiModelId).toBe("legacy-model")
 		})
 	})
 })

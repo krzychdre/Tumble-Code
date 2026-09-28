@@ -25,9 +25,6 @@ import { logger } from "../../utils/logging"
 import { validateMemoryPath } from "../memory/paths"
 import { TaskHistoryStore } from "../task-persistence"
 
-import { runStartupMigrations } from "./migrations/runner"
-import { CONTEXT_PROXY_MIGRATIONS } from "./migrations/context-proxy/registry"
-
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
 type RooCodeSettingsKey = keyof RooCodeSettings
@@ -96,17 +93,6 @@ export class ContextProxy {
 		]
 
 		await Promise.all(promises)
-
-		// One-shot legacy-state migrations (one dated file each under
-		// ./migrations/context-proxy). Each detects its own legacy key and is a
-		// no-op once that key is gone.
-		await runStartupMigrations(CONTEXT_PROXY_MIGRATIONS, {
-			globalState: this.originalContext.globalState,
-			secrets: this.originalContext.secrets,
-			stateCache: this.stateCache,
-			secretCache: this.secretCache,
-			storeSecret: (key, value) => this.storeSecret(key, value),
-		})
 
 		this._isInitialized = true
 	}

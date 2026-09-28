@@ -69,6 +69,11 @@ describe("memory paths", () => {
 			initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryDirectory }))
 			expect(getMemoryBaseDir()).toBe(path.join(GLOBAL_STORAGE, "memory"))
 		})
+
+		it("falls back to the default folder for a stored override that no longer validates", () => {
+			initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryDirectory: "relative/dir" }))
+			expect(getMemoryBaseDir()).toBe(path.join(GLOBAL_STORAGE, "memory"))
+		})
 	})
 
 	describe("sanitizeCwd", () => {

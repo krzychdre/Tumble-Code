@@ -118,12 +118,10 @@ describe("ContextProxy", () => {
 		})
 
 		it("should initialize state cache with all global state keys", () => {
-			// +1 for the migration check of vertexJsonCredentials (plain-text copy moved to secrets)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 1)
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length)
 			for (const key of GLOBAL_STATE_KEYS) {
 				expect(mockGlobalState.get).toHaveBeenCalledWith(key)
 			}
-			expect(mockGlobalState.get).toHaveBeenCalledWith("vertexJsonCredentials")
 		})
 
 		it("should initialize secret cache with all secret keys", () => {
@@ -146,8 +144,8 @@ describe("ContextProxy", () => {
 			const result = proxy.getGlobalState("apiProvider")
 			expect(result).toBe("deepseek")
 
-			// Original context should be called once during updateGlobalState (+1 for the vertexJsonCredentials migration check)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 1) // From initialization + migration checks
+			// Original context should be read only during initialization
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length)
 		})
 
 		it("should handle default values correctly", async () => {
@@ -293,7 +291,7 @@ describe("ContextProxy", () => {
 			expect(reloaded.getValue("autoMemoryDirectory")).toBe("")
 		})
 
-		it("still clears an invalid stored autoMemoryDirectory on initialize", async () => {
+		it("writes nothing for an invalid stored autoMemoryDirectory on initialize (memory paths ignore it)", async () => {
 			vi.clearAllMocks()
 			mockGlobalState.get.mockImplementation((key: string) =>
 				key === "autoMemoryDirectory" ? "relative/dir" : undefined,
@@ -302,7 +300,7 @@ describe("ContextProxy", () => {
 			const reloaded = new ContextProxy(mockContext)
 			await reloaded.initialize()
 
-			expect(mockGlobalState.update).toHaveBeenCalledWith("autoMemoryDirectory", undefined)
+			expect(mockGlobalState.update).not.toHaveBeenCalled()
 		})
 	})
 
@@ -422,36 +420,6 @@ describe("ContextProxy", () => {
 			expect(mockSecrets.store).toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
 			expect(mockGlobalState.update).not.toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
 		})
-
-		it("moves a plain-text global state copy into secret storage on initialize", async () => {
-			mockGlobalState.get.mockImplementation((key: string) =>
-				key === "vertexJsonCredentials" ? VERTEX_JSON : undefined,
-			)
-			mockSecrets.get.mockResolvedValue(undefined)
-
-			const migrated = new ContextProxy(mockContext)
-			await migrated.initialize()
-
-			expect(mockSecrets.store).toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("vertexJsonCredentials", undefined)
-			expect(migrated.getProviderSettings().vertexJsonCredentials).toBe(VERTEX_JSON)
-		})
-
-		it("does not overwrite a stored secret with a stale global state copy", async () => {
-			mockGlobalState.get.mockImplementation((key: string) =>
-				key === "vertexJsonCredentials" ? "stale" : undefined,
-			)
-			mockSecrets.get.mockImplementation(async (key: string) =>
-				key === "vertexJsonCredentials" ? VERTEX_JSON : undefined,
-			)
-
-			const migrated = new ContextProxy(mockContext)
-			await migrated.initialize()
-
-			expect(mockSecrets.store).not.toHaveBeenCalledWith("vertexJsonCredentials", "stale")
-			expect(mockGlobalState.update).toHaveBeenCalledWith("vertexJsonCredentials", undefined)
-			expect(migrated.getProviderSettings().vertexJsonCredentials).toBe(VERTEX_JSON)
-		})
 	})
 
 	describe("resetAllState", () => {
@@ -488,21 +456,9 @@ describe("ContextProxy", () => {
 				expect(mockGlobalState.update).toHaveBeenCalledWith(key, undefined)
 			}
 
-			// Total calls should include:
-			// - 2 initial setup writes (apiModelId, apiProvider)
-			// - GLOBAL_STATE_KEYS.length writes from resetAllState's clear loop
-			// - MIGRATION_WRITES_PER_INIT * 2 writes from the auto-memory
-			//   defaults migration, which runs once in beforeEach's initialize()
-			//   and again inside resetAllState's initialize(). The migration
-			//   writes 5 defaults (autoMemoryEnabled, autoDreamEnabled,
-			//   memoryRecallEnabled, autoDreamMinHours, autoDreamMinSessions)
-			//   when those keys are absent (mock get returns undefined).
-			// Legacy task-history keys are no longer cleared during
-			// initialize() — ClineProvider clears them only after a
-			// successful migration, so they contribute 0 writes here.
-			const MIGRATION_WRITES_PER_INIT = 5
-			const expectedUpdateCalls = 2 + GLOBAL_STATE_KEYS.length + MIGRATION_WRITES_PER_INIT * 2
-			expect(mockGlobalState.update).toHaveBeenCalledTimes(expectedUpdateCalls)
+			// 2 initial setup writes (apiModelId, apiProvider) plus one clear per
+			// key; initialize() itself writes nothing.
+			expect(mockGlobalState.update).toHaveBeenCalledTimes(2 + GLOBAL_STATE_KEYS.length)
 		})
 
 		it("should delete all secrets", async () => {
@@ -534,63 +490,6 @@ describe("ContextProxy", () => {
 
 			// Should reinitialize caches
 			expect(initializeSpy).toHaveBeenCalledTimes(1)
-		})
-	})
-
-	describe("invalid apiProvider migration", () => {
-		it("should clear invalid apiProvider from storage during initialization", async () => {
-			// Reset and create a new proxy with invalid provider in state
-			vi.clearAllMocks()
-			mockGlobalState.get.mockImplementation((key: string) => {
-				if (key === "apiProvider") {
-					return "invalid-removed-provider" // Invalid/removed provider
-				}
-				return undefined
-			})
-
-			const proxyWithInvalidProvider = new ContextProxy(mockContext)
-			await proxyWithInvalidProvider.initialize()
-
-			// Should have cleared the invalid apiProvider
-			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", undefined)
-		})
-
-		it("should not clear retired apiProvider from storage during initialization", async () => {
-			// Reset and create a new proxy with retired provider in state
-			vi.clearAllMocks()
-			mockGlobalState.get.mockImplementation((key: string) => {
-				if (key === "apiProvider") {
-					return "groq" // Retired provider
-				}
-				return undefined
-			})
-
-			const proxyWithRetiredProvider = new ContextProxy(mockContext)
-			await proxyWithRetiredProvider.initialize()
-
-			// Should NOT have called update for apiProvider (retired should be preserved)
-			const updateCalls = mockGlobalState.update.mock.calls
-			const apiProviderUpdateCalls = updateCalls.filter((call: unknown[]) => call[0] === "apiProvider")
-			expect(apiProviderUpdateCalls).toHaveLength(0)
-		})
-
-		it("should not modify valid apiProvider during initialization", async () => {
-			// Reset and create a new proxy with valid provider in state
-			vi.clearAllMocks()
-			mockGlobalState.get.mockImplementation((key: string) => {
-				if (key === "apiProvider") {
-					return "anthropic" // Valid provider
-				}
-				return undefined
-			})
-
-			const proxyWithValidProvider = new ContextProxy(mockContext)
-			await proxyWithValidProvider.initialize()
-
-			// Should NOT have called update for apiProvider (it's valid)
-			const updateCalls = mockGlobalState.update.mock.calls
-			const apiProviderUpdateCalls = updateCalls.filter((call: unknown[]) => call[0] === "apiProvider")
-			expect(apiProviderUpdateCalls.length).toBe(0)
 		})
 	})
 
