@@ -2,9 +2,10 @@
 
 import * as React from "react"
 
-import { render, screen, fireEvent, act } from "@/utils/test-utils"
+import { screen, fireEvent, act } from "@/utils/test-utils"
 
 import { TerminalSettings } from "../TerminalSettings"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedButton as RealThemedButton } from "@/components/ui/themed-button"
 
@@ -69,15 +70,10 @@ describe("TerminalSettings VS Code terminal profile (#277)", () => {
 
 	// The profile section applies to the VS Code integrated terminal (terminalShellIntegrationDisabled === false).
 	const setup = (terminalProfile?: string) => {
-		const setCachedStateField = vi.fn()
 		const onTerminalProfilePickerOpened = vi.fn()
-		render(
-			<TerminalSettings
-				terminalShellIntegrationDisabled={false}
-				terminalProfile={terminalProfile}
-				onTerminalProfilePickerOpened={onTerminalProfilePickerOpened}
-				setCachedStateField={setCachedStateField}
-			/>,
+		const { setField: setCachedStateField } = renderWithSettingsDraft(
+			<TerminalSettings onTerminalProfilePickerOpened={onTerminalProfilePickerOpened} />,
+			{ terminalShellIntegrationDisabled: false, terminalProfile },
 		)
 		return { onTerminalProfilePickerOpened, setCachedStateField }
 	}
@@ -134,11 +130,12 @@ describe("TerminalSettings VS Code terminal profile (#277)", () => {
 	})
 
 	it("uses instance-local radio groups", () => {
-		render(
+		renderWithSettingsDraft(
 			<>
-				<TerminalSettings terminalShellIntegrationDisabled={false} setCachedStateField={vi.fn()} />
-				<TerminalSettings terminalShellIntegrationDisabled={false} setCachedStateField={vi.fn()} />
+				<TerminalSettings />
+				<TerminalSettings />
 			</>,
+			{ terminalShellIntegrationDisabled: false },
 		)
 
 		const defaultRadios = screen.getAllByTestId("terminal-profile-default-radio")
@@ -179,17 +176,17 @@ describe("TerminalSettings VS Code terminal profile (#277)", () => {
 	})
 
 	it("shows picker section when VS Code integrated terminal is active (shell integration enabled)", () => {
-		render(<TerminalSettings terminalShellIntegrationDisabled={false} setCachedStateField={vi.fn()} />)
+		renderWithSettingsDraft(<TerminalSettings />, { terminalShellIntegrationDisabled: false })
 		expect(screen.getByTestId("terminal-profile-default-radio")).toBeInTheDocument()
 	})
 
 	it("hides picker section when inline/Execa execution is active (shell integration disabled)", () => {
-		render(<TerminalSettings terminalShellIntegrationDisabled={true} setCachedStateField={vi.fn()} />)
+		renderWithSettingsDraft(<TerminalSettings />, { terminalShellIntegrationDisabled: true })
 		expect(screen.queryByTestId("terminal-profile-default-radio")).not.toBeInTheDocument()
 	})
 
 	it("hides picker section when terminalShellIntegrationDisabled is undefined (defaults to inline mode)", () => {
-		render(<TerminalSettings setCachedStateField={vi.fn()} />)
+		renderWithSettingsDraft(<TerminalSettings />, {})
 		expect(screen.queryByTestId("terminal-profile-default-radio")).not.toBeInTheDocument()
 		expect(screen.queryByText("settings:terminal.inheritEnv.label")).not.toBeInTheDocument()
 	})
@@ -197,7 +194,7 @@ describe("TerminalSettings VS Code terminal profile (#277)", () => {
 	it("shows the command delay default as 50ms", () => {
 		// NOTE: This fork intentionally keeps the existing `terminalCommandDelay ?? 50`
 		// display default (zoo-277 critical finding #6: do not change user-facing default).
-		render(<TerminalSettings terminalShellIntegrationDisabled={false} setCachedStateField={vi.fn()} />)
+		renderWithSettingsDraft(<TerminalSettings />, { terminalShellIntegrationDisabled: false })
 		expect(screen.getByText("50ms")).toBeInTheDocument()
 	})
 
@@ -228,13 +225,9 @@ describe("TerminalSettings VS Code terminal profile (#277)", () => {
 // host default (30 s), not a third, webview-only number.
 describe("TerminalSettings shell integration timeout default (DEF-C25)", () => {
 	it("shows 30s when no timeout is saved", () => {
-		render(
-			<TerminalSettings
-				terminalShellIntegrationDisabled={false}
-				onTerminalProfilePickerOpened={vi.fn()}
-				setCachedStateField={vi.fn()}
-			/>,
-		)
+		renderWithSettingsDraft(<TerminalSettings onTerminalProfilePickerOpened={vi.fn()} />, {
+			terminalShellIntegrationDisabled: false,
+		})
 
 		expect(screen.getByText("30s")).toBeInTheDocument()
 	})

@@ -22,7 +22,7 @@ import {
 	ThemedTextArea,
 } from "@/components/ui"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { postImmediateSetting } from "./postImmediateSetting"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
@@ -31,76 +31,37 @@ import { SearchableSetting } from "./SearchableSetting"
 const UNSET_PROFILE = "-"
 
 type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	autoCondenseContext: boolean
-	autoCondenseContextPercent: number
-	autoCondenseContextApiConfigId?: string
-	pruneBeforeCondense?: boolean
-	pruneToolResultBudget?: number
 	listApiConfigMeta: any[]
-	maxOpenTabsContext: number
-	maxWorkspaceFiles: number
-	showRooIgnoredFiles?: boolean
-	enableSubfolderRules?: boolean
-	maxImageFileSize?: number
-	maxTotalImageSize?: number
-	profileThresholds?: Record<string, number>
-	includeDiagnosticMessages?: boolean
-	maxDiagnosticMessages?: number
-	writeDelayMs: number
-	includeCurrentTime?: boolean
-	includeCurrentCost?: boolean
-	maxGitStatusFiles?: number
-	customSupportPrompts: Record<string, string | undefined>
-	setCustomSupportPrompts: (prompts: Record<string, string | undefined>) => void
-	setCachedStateField: SetCachedStateField<
-		| "autoCondenseContext"
-		| "autoCondenseContextPercent"
-		| "autoCondenseContextApiConfigId"
-		| "pruneBeforeCondense"
-		| "pruneToolResultBudget"
-		| "maxOpenTabsContext"
-		| "maxWorkspaceFiles"
-		| "showRooIgnoredFiles"
-		| "enableSubfolderRules"
-		| "maxImageFileSize"
-		| "maxTotalImageSize"
-		| "profileThresholds"
-		| "includeDiagnosticMessages"
-		| "maxDiagnosticMessages"
-		| "writeDelayMs"
-		| "includeCurrentTime"
-		| "includeCurrentCost"
-		| "maxGitStatusFiles"
-	>
 }
 
 export const ContextManagementSettings = ({
-	autoCondenseContext,
-	autoCondenseContextPercent,
-	autoCondenseContextApiConfigId,
-	pruneBeforeCondense,
-	pruneToolResultBudget,
 	listApiConfigMeta,
-	maxOpenTabsContext,
-	maxWorkspaceFiles,
-	showRooIgnoredFiles,
-	enableSubfolderRules,
-	setCachedStateField,
-	maxImageFileSize,
-	maxTotalImageSize,
-	profileThresholds = {},
-	includeDiagnosticMessages,
-	maxDiagnosticMessages,
-	writeDelayMs,
-	includeCurrentTime,
-	includeCurrentCost,
-	maxGitStatusFiles,
-	customSupportPrompts,
-	setCustomSupportPrompts,
 	className,
 	...props
 }: ContextManagementSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [autoCondenseContext, setAutoCondenseContext] = useSetting("autoCondenseContext")
+	const [autoCondenseContextPercent, setAutoCondenseContextPercent] = useSetting("autoCondenseContextPercent")
+	const [autoCondenseContextApiConfigId, setAutoCondenseContextApiConfigId] = useSetting(
+		"autoCondenseContextApiConfigId",
+	)
+	const [pruneBeforeCondense, setPruneBeforeCondense] = useSetting("pruneBeforeCondense")
+	const [pruneToolResultBudget, setPruneToolResultBudget] = useSetting("pruneToolResultBudget")
+	const [maxOpenTabsContext, setMaxOpenTabsContext] = useSetting("maxOpenTabsContext")
+	const [maxWorkspaceFiles, setMaxWorkspaceFiles] = useSetting("maxWorkspaceFiles")
+	const [showRooIgnoredFiles, setShowRooIgnoredFiles] = useSetting("showRooIgnoredFiles")
+	const [enableSubfolderRules, setEnableSubfolderRules] = useSetting("enableSubfolderRules")
+	const [maxImageFileSize, setMaxImageFileSize] = useSetting("maxImageFileSize")
+	const [maxTotalImageSize, setMaxTotalImageSize] = useSetting("maxTotalImageSize")
+	const [profileThresholds = {}, setProfileThresholds] = useSetting("profileThresholds")
+	const [includeDiagnosticMessages, setIncludeDiagnosticMessages] = useSetting("includeDiagnosticMessages")
+	const [maxDiagnosticMessages, setMaxDiagnosticMessages] = useSetting("maxDiagnosticMessages")
+	const [writeDelayMs, setWriteDelayMs] = useSetting("writeDelayMs")
+	const [includeCurrentTime, setIncludeCurrentTime] = useSetting("includeCurrentTime")
+	const [includeCurrentCost, setIncludeCurrentCost] = useSetting("includeCurrentCost")
+	const [maxGitStatusFiles, setMaxGitStatusFiles] = useSetting("maxGitStatusFiles")
+	const [customSupportPromptsSetting, setCustomSupportPrompts] = useSetting("customSupportPrompts")
+	const customSupportPrompts = customSupportPromptsSetting || {}
 	const [selectedThresholdProfile, setSelectedThresholdProfile] = React.useState<string>("default")
 
 	// Helper function to get the CONDENSE prompt value
@@ -141,14 +102,14 @@ export const ContextManagementSettings = ({
 	// Helper function to handle threshold changes
 	const handleThresholdChange = (value: number) => {
 		if (selectedThresholdProfile === "default") {
-			setCachedStateField("autoCondenseContextPercent", value)
+			setAutoCondenseContextPercent(value)
 		} else {
 			const newThresholds = {
 				...profileThresholds,
 				[selectedThresholdProfile]: value,
 			}
 
-			setCachedStateField("profileThresholds", newThresholds)
+			setProfileThresholds(newThresholds)
 			postImmediateSetting("profileThresholds", newThresholds)
 		}
 	}
@@ -170,7 +131,7 @@ export const ContextManagementSettings = ({
 							max={500}
 							step={1}
 							value={[maxOpenTabsContext ?? 20]}
-							onValueChange={([value]) => setCachedStateField("maxOpenTabsContext", value)}
+							onValueChange={([value]) => setMaxOpenTabsContext(value)}
 							data-testid="open-tabs-limit-slider"
 						/>
 						<span className="w-10">{maxOpenTabsContext ?? 20}</span>
@@ -193,7 +154,7 @@ export const ContextManagementSettings = ({
 							max={500}
 							step={1}
 							value={[maxWorkspaceFiles ?? 200]}
-							onValueChange={([value]) => setCachedStateField("maxWorkspaceFiles", value)}
+							onValueChange={([value]) => setMaxWorkspaceFiles(value)}
 							data-testid="workspace-files-limit-slider"
 						/>
 						<span className="w-10">{maxWorkspaceFiles ?? 200}</span>
@@ -216,7 +177,7 @@ export const ContextManagementSettings = ({
 							max={50}
 							step={1}
 							value={[maxGitStatusFiles ?? 0]}
-							onValueChange={([value]) => setCachedStateField("maxGitStatusFiles", value)}
+							onValueChange={([value]) => setMaxGitStatusFiles(value)}
 							data-testid="max-git-status-files-slider"
 						/>
 						<span className="w-10">{maxGitStatusFiles ?? 0}</span>
@@ -232,7 +193,7 @@ export const ContextManagementSettings = ({
 					label={t("settings:contextManagement.rooignore.label")}>
 					<LabeledCheckbox
 						checked={showRooIgnoredFiles}
-						onChange={(e: any) => setCachedStateField("showRooIgnoredFiles", e.target.checked)}
+						onChange={(e: any) => setShowRooIgnoredFiles(e.target.checked)}
 						data-testid="show-rooignored-files-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.rooignore.label")}
@@ -249,7 +210,7 @@ export const ContextManagementSettings = ({
 					label={t("settings:contextManagement.enableSubfolderRules.label")}>
 					<LabeledCheckbox
 						checked={enableSubfolderRules}
-						onChange={(e: any) => setCachedStateField("enableSubfolderRules", e.target.checked)}
+						onChange={(e: any) => setEnableSubfolderRules(e.target.checked)}
 						data-testid="enable-subfolder-rules-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.enableSubfolderRules.label")}
@@ -277,7 +238,7 @@ export const ContextManagementSettings = ({
 								onChange={(e) => {
 									const newValue = parseInt(e.target.value, 10)
 									if (!isNaN(newValue) && newValue >= 1 && newValue <= 100) {
-										setCachedStateField("maxImageFileSize", newValue)
+										setMaxImageFileSize(newValue)
 									}
 								}}
 								onClick={(e) => e.currentTarget.select()}
@@ -308,7 +269,7 @@ export const ContextManagementSettings = ({
 								onChange={(e) => {
 									const newValue = parseInt(e.target.value, 10)
 									if (!isNaN(newValue) && newValue >= 1 && newValue <= 500) {
-										setCachedStateField("maxTotalImageSize", newValue)
+										setMaxTotalImageSize(newValue)
 									}
 								}}
 								onClick={(e) => e.currentTarget.select()}
@@ -328,7 +289,7 @@ export const ContextManagementSettings = ({
 					label={t("settings:contextManagement.diagnostics.includeMessages.label")}>
 					<LabeledCheckbox
 						checked={includeDiagnosticMessages}
-						onChange={(e: any) => setCachedStateField("includeDiagnosticMessages", e.target.checked)}
+						onChange={(e: any) => setIncludeDiagnosticMessages(e.target.checked)}
 						data-testid="include-diagnostic-messages-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.diagnostics.includeMessages.label")}
@@ -358,7 +319,7 @@ export const ContextManagementSettings = ({
 							]}
 							onValueChange={([value]) => {
 								// When slider reaches 100, set to -1 (unlimited)
-								setCachedStateField("maxDiagnosticMessages", value === 100 ? -1 : value)
+								setMaxDiagnosticMessages(value === 100 ? -1 : value)
 							}}
 							data-testid="max-diagnostic-messages-slider"
 							aria-label={t("settings:contextManagement.diagnostics.maxMessages.label")}
@@ -385,7 +346,7 @@ export const ContextManagementSettings = ({
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={() => setCachedStateField("maxDiagnosticMessages", 50)}
+							onClick={() => setMaxDiagnosticMessages(50)}
 							title={t("settings:contextManagement.diagnostics.maxMessages.resetTooltip")}
 							className="p-1 h-6 w-6"
 							disabled={maxDiagnosticMessages === 50}>
@@ -410,7 +371,7 @@ export const ContextManagementSettings = ({
 							max={5000}
 							step={100}
 							value={[writeDelayMs]}
-							onValueChange={([value]) => setCachedStateField("writeDelayMs", value)}
+							onValueChange={([value]) => setWriteDelayMs(value)}
 							data-testid="write-delay-slider"
 						/>
 						<span className="w-20">{writeDelayMs}ms</span>
@@ -426,7 +387,7 @@ export const ContextManagementSettings = ({
 					label={t("settings:contextManagement.includeCurrentTime.label")}>
 					<LabeledCheckbox
 						checked={includeCurrentTime}
-						onChange={(e: any) => setCachedStateField("includeCurrentTime", e.target.checked)}
+						onChange={(e: any) => setIncludeCurrentTime(e.target.checked)}
 						data-testid="include-current-time-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.includeCurrentTime.label")}
@@ -443,7 +404,7 @@ export const ContextManagementSettings = ({
 					label={t("settings:contextManagement.includeCurrentCost.label")}>
 					<LabeledCheckbox
 						checked={includeCurrentCost}
-						onChange={(e: any) => setCachedStateField("includeCurrentCost", e.target.checked)}
+						onChange={(e: any) => setIncludeCurrentCost(e.target.checked)}
 						data-testid="include-current-cost-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.includeCurrentCost.label")}
@@ -493,7 +454,7 @@ export const ContextManagementSettings = ({
 					label={t("settings:contextManagement.autoCondenseContext.name")}>
 					<LabeledCheckbox
 						checked={autoCondenseContext}
-						onChange={(e: any) => setCachedStateField("autoCondenseContext", e.target.checked)}
+						onChange={(e: any) => setAutoCondenseContext(e.target.checked)}
 						data-testid="auto-condense-context-checkbox">
 						<span className="font-medium">{t("settings:contextManagement.autoCondenseContext.name")}</span>
 					</LabeledCheckbox>
@@ -583,10 +544,7 @@ export const ContextManagementSettings = ({
 								value={autoCondenseContextApiConfigId || UNSET_PROFILE}
 								onValueChange={(value) => {
 									// "" (not undefined) so Save clears the host's value.
-									setCachedStateField(
-										"autoCondenseContextApiConfigId",
-										value === UNSET_PROFILE ? "" : value,
-									)
+									setAutoCondenseContextApiConfigId(value === UNSET_PROFILE ? "" : value)
 								}}
 								data-testid="condense-profile-select">
 								<SelectTrigger className="w-full">
@@ -619,7 +577,7 @@ export const ContextManagementSettings = ({
 					label={t("settings:contextManagement.pruneBeforeCondense.label")}>
 					<LabeledCheckbox
 						checked={pruneBeforeCondense !== false}
-						onChange={(e: any) => setCachedStateField("pruneBeforeCondense", e.target.checked)}
+						onChange={(e: any) => setPruneBeforeCondense(e.target.checked)}
 						data-testid="prune-before-condense-checkbox">
 						<span className="font-medium">{t("settings:contextManagement.pruneBeforeCondense.label")}</span>
 					</LabeledCheckbox>
@@ -652,7 +610,7 @@ export const ContextManagementSettings = ({
 											newValue >= PRUNE_CONDENSE_DEFAULTS.MIN_TOOL_RESULT_BUDGET &&
 											newValue <= PRUNE_CONDENSE_DEFAULTS.MAX_TOOL_RESULT_BUDGET
 										) {
-											setCachedStateField("pruneToolResultBudget", newValue)
+											setPruneToolResultBudget(newValue)
 										}
 									}}
 									onClick={(e) => e.currentTarget.select()}

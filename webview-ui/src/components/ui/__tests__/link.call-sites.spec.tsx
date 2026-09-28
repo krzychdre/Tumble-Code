@@ -17,6 +17,7 @@ import React from "react"
 import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
 import { About } from "@src/components/settings/About"
+import { renderWithSettingsDraft } from "@src/components/settings/__tests__/settingsDraftTestUtils"
 import TelemetryBanner from "@src/components/common/TelemetryBanner"
 import { CheckpointWarning } from "@src/components/chat/CheckpointWarning"
 import { IssueFooter } from "@src/components/marketplace/IssueFooter"
@@ -92,7 +93,7 @@ describe("link call sites (VSCodeLink replacement characterization)", () => {
 	})
 
 	it("About: plain href links render as keyboard-focusable anchors to their targets", async () => {
-		render(<About telemetrySetting="enabled" setTelemetrySetting={vi.fn()} />)
+		renderWithSettingsDraft(<About />, { telemetrySetting: "enabled" })
 
 		const cases: Array<[string, string]> = [
 			[

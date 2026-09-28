@@ -81,14 +81,16 @@ sequenceDiagram
 
   SV->>B: snapshot from extension state on open
   U->>SV: edits a field
-  SV->>B: setCachedStateField (isChangeDetected = true)
+  SV->>B: useSetting(key) setter (isChangeDetected = true)
   U->>SV: Save
   SV->>H: updateSettings, upsertApiConfiguration, ...
   H-->>SV: new state
   Note over SV,B: switching tabs with unsaved edits opens the discard dialog
 ```
 
-Inputs bind to the buffer, never to `useExtensionState()` directly (see `AGENTS.md`). `components/settings/schema.ts`
+Inputs bind to the buffer, never to `useExtensionState()` directly (see `AGENTS.md`). The buffer is a small external
+store (`settings/settingsDraftStore.ts`) that `SettingsView` hands to its sections through `SettingsDraftProvider`; a
+control reads and writes one key with `useSetting(key)` and re-renders only when that key changes. `components/settings/schema.ts`
 declares each setting once, including whether it applies on save or immediately (`apply: "onSave" | "immediate"`).
 Provider-specific forms are looked up in `settings/provider-ui-registry.tsx`.
 

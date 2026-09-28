@@ -3,27 +3,19 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 
 import { WEB_TOOLS_DEFAULTS } from "@roo-code/types"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { Slider, LabeledCheckbox, ThemedTextField } from "@/components/ui"
 
-type WebToolsSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	webToolsEnabled?: boolean
-	searxngBaseUrl?: string
-	webSearchMaxResults?: number
-	setCachedStateField: SetCachedStateField<"webToolsEnabled" | "searxngBaseUrl" | "webSearchMaxResults">
-}
+type WebToolsSettingsProps = HTMLAttributes<HTMLDivElement>
 
-export const WebToolsSettings = ({
-	webToolsEnabled,
-	searxngBaseUrl,
-	webSearchMaxResults,
-	setCachedStateField,
-	...props
-}: WebToolsSettingsProps) => {
+export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [webToolsEnabled, setWebToolsEnabled] = useSetting("webToolsEnabled")
+	const [searxngBaseUrl, setSearxngBaseUrl] = useSetting("searxngBaseUrl")
+	const [webSearchMaxResults, setWebSearchMaxResults] = useSetting("webSearchMaxResults")
 
 	return (
 		<div {...props}>
@@ -34,7 +26,7 @@ export const WebToolsSettings = ({
 					<LabeledCheckbox
 						checked={webToolsEnabled ?? false}
 						onChange={(e: any) => {
-							setCachedStateField("webToolsEnabled", e.target.checked)
+							setWebToolsEnabled(e.target.checked)
 						}}
 						data-testid="web-tools-enabled-checkbox">
 						<span className="font-medium">{t("settings:web.enable.label")}</span>
@@ -58,7 +50,7 @@ export const WebToolsSettings = ({
 								value={searxngBaseUrl ?? ""}
 								placeholder={t("settings:web.searxngBaseUrl.placeholder")}
 								onInput={(e: any) => {
-									setCachedStateField("searxngBaseUrl", e.target.value)
+									setSearxngBaseUrl(e.target.value)
 								}}
 								className="w-full"
 								data-testid="web-searxng-url-input"
@@ -83,7 +75,7 @@ export const WebToolsSettings = ({
 									step={1}
 									defaultValue={[webSearchMaxResults ?? WEB_TOOLS_DEFAULTS.DEFAULT_SEARCH_RESULTS]}
 									onValueChange={([value]) => {
-										setCachedStateField("webSearchMaxResults", value)
+										setWebSearchMaxResults(value)
 									}}
 									className="flex-1"
 									data-testid="web-max-results-slider"

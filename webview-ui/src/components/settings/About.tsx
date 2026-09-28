@@ -3,8 +3,6 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Trans } from "react-i18next"
 import { Download, Upload, TriangleAlert, Bug, Lightbulb, Shield, MessagesSquare } from "lucide-react"
 
-import type { TelemetrySetting } from "@roo-code/types"
-
 import { Package } from "@roo/package"
 
 import { vscode } from "@/utils/vscode"
@@ -14,16 +12,14 @@ import { Button, Link, LabeledCheckbox } from "@/components/ui"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { useSetting } from "./SettingsDraftContext"
 
-type AboutProps = HTMLAttributes<HTMLDivElement> & {
-	telemetrySetting: TelemetrySetting
-	setTelemetrySetting: (setting: TelemetrySetting) => void
-	debug?: boolean
-	setDebug?: (debug: boolean) => void
-}
+type AboutProps = HTMLAttributes<HTMLDivElement>
 
-export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, className, ...props }: AboutProps) => {
+export const About = ({ className, ...props }: AboutProps) => {
 	const { t } = useAppTranslation()
+	const [telemetrySetting, setTelemetrySetting] = useSetting("telemetrySetting")
+	const [debug, setDebug] = useSetting("debug")
 
 	return (
 		<div className={cn("flex flex-col gap-2", className)} {...props}>
@@ -100,25 +96,23 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 							/>
 						</span>
 					</div>
-					{setDebug && (
-						<SearchableSetting
-							settingId="about-debug-mode"
-							section="about"
-							label={t("settings:about.debugMode.label")}
-							className="mt-4 pt-4 border-t border-vscode-settings-headerBorder">
-							<LabeledCheckbox
-								checked={debug ?? false}
-								onChange={(e: any) => {
-									const checked = e.target.checked === true
-									setDebug(checked)
-								}}>
-								{t("settings:about.debugMode.label")}
-							</LabeledCheckbox>
-							<p className="text-vscode-descriptionForeground text-sm mt-0">
-								{t("settings:about.debugMode.description")}
-							</p>
-						</SearchableSetting>
-					)}
+					<SearchableSetting
+						settingId="about-debug-mode"
+						section="about"
+						label={t("settings:about.debugMode.label")}
+						className="mt-4 pt-4 border-t border-vscode-settings-headerBorder">
+						<LabeledCheckbox
+							checked={debug ?? false}
+							onChange={(e: any) => {
+								const checked = e.target.checked === true
+								setDebug(checked)
+							}}>
+							{t("settings:about.debugMode.label")}
+						</LabeledCheckbox>
+						<p className="text-vscode-descriptionForeground text-sm mt-0">
+							{t("settings:about.debugMode.description")}
+						</p>
+					</SearchableSetting>
 				</div>
 			</Section>
 

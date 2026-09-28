@@ -1,4 +1,4 @@
-import { render, fireEvent, waitFor } from "@/utils/test-utils"
+import { act, fireEvent, waitFor } from "@/utils/test-utils"
 import { describe, it, expect, vi } from "vitest"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
@@ -28,30 +28,32 @@ vi.mock("@/components/ui", () => ({
 }))
 
 import { UISettings } from "../UISettings"
+import type { CachedSettings } from "../schema"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 
 describe("UISettings", () => {
-	const defaultProps = {
+	const defaultDraft = {
 		reasoningBlockCollapsed: false,
 		enterBehavior: "send" as const,
 		uiDensity: "comfortable" as const,
-		setCachedStateField: vi.fn(),
 	}
+	const renderUI = (draft: Partial<CachedSettings> = {}) =>
+		renderWithSettingsDraft(<UISettings />, { ...defaultDraft, ...draft })
 
 	it("renders the collapse thinking checkbox", () => {
-		const { getByTestId } = render(<UISettings {...defaultProps} />)
+		const { getByTestId } = renderUI()
 		const checkbox = getByTestId("collapse-thinking-checkbox")
 		expect(checkbox).toBeTruthy()
 	})
 
 	it("displays the correct initial state", () => {
-		const { getByTestId } = render(<UISettings {...defaultProps} reasoningBlockCollapsed={true} />)
+		const { getByTestId } = renderUI({ reasoningBlockCollapsed: true })
 		const checkbox = getByTestId("collapse-thinking-checkbox") as HTMLInputElement
 		expect(checkbox.checked).toBe(true)
 	})
 
 	it("calls setCachedStateField when checkbox is toggled", async () => {
-		const setCachedStateField = vi.fn()
-		const { getByTestId } = render(<UISettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const { getByTestId, setField: setCachedStateField } = renderUI()
 
 		const checkbox = getByTestId("collapse-thinking-checkbox")
 		fireEvent.click(checkbox)
@@ -61,26 +63,25 @@ describe("UISettings", () => {
 		})
 	})
 
-	it("updates checkbox state when prop changes", () => {
-		const { getByTestId, rerender } = render(<UISettings {...defaultProps} reasoningBlockCollapsed={false} />)
+	it("updates checkbox state when the buffered value changes", () => {
+		const { getByTestId, store } = renderUI({ reasoningBlockCollapsed: false })
 		const checkbox = getByTestId("collapse-thinking-checkbox") as HTMLInputElement
 		expect(checkbox.checked).toBe(false)
 
-		rerender(<UISettings {...defaultProps} reasoningBlockCollapsed={true} />)
+		act(() => store.setField("reasoningBlockCollapsed", true))
 		expect(checkbox.checked).toBe(true)
 	})
 
 	// §2.1 density (ai_plans/2026-09-27_ui-modernization.md): the select shows
-	// the buffer's value and writes it through setCachedStateField.
+	// the buffer's value and writes it to the buffer.
 	it("renders the density select with the buffered value", () => {
-		const { getByTestId } = render(<UISettings {...defaultProps} uiDensity="compact" />)
+		const { getByTestId } = renderUI({ uiDensity: "compact" })
 		const select = getByTestId("ui-density-native") as HTMLSelectElement
 		expect(select.value).toBe("compact")
 	})
 
 	it("calls setCachedStateField when density changes", () => {
-		const setCachedStateField = vi.fn()
-		const { getByTestId } = render(<UISettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const { getByTestId, setField: setCachedStateField } = renderUI()
 
 		// The barrel mock renders the Select as a native <select>.
 		fireEvent.change(getByTestId("ui-density-native"), { target: { value: "compact" } })

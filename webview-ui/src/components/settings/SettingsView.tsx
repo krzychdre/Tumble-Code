@@ -46,6 +46,7 @@ import StorageErrorBanner from "../common/StorageErrorBanner"
 import { DiscardChangesDialog } from "../common/DiscardChangesDialog"
 import { buildUpdatedSettings } from "./schema"
 import { useCachedSettings } from "./useCachedSettings"
+import { SettingsDraftProvider } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import ApiConfigManager from "./ApiConfigManager"
 import ApiOptions from "./ApiOptions"
@@ -148,12 +149,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const confirmDialogHandler = useRef<(() => void) | undefined>(undefined)
 
 	const {
+		store: draftStore,
 		cachedState: settings,
 		isChangeDetected,
 		setChangeDetected,
-		setCachedStateField,
 		setApiConfigurationField,
-		setExperimentEnabled,
 		mergeFromState,
 		resetToState,
 	} = useCachedSettings(extensionState)
@@ -477,270 +477,128 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 				{/* Content area - renders only the active tab */}
 				<TabContent ref={contentRef} className={cn("p-0 flex-1 overflow-auto")} data-testid="settings-content">
-					<SearchIndexProvider value={searchContextValue}>
-						{/* Providers Section */}
-						{renderTab === "providers" && (
-							<div>
-								<SectionHeader>{t("settings:sections.providers")}</SectionHeader>
+					<SettingsDraftProvider value={draftStore}>
+						<SearchIndexProvider value={searchContextValue}>
+							{/* Providers Section */}
+							{renderTab === "providers" && (
+								<div>
+									<SectionHeader>{t("settings:sections.providers")}</SectionHeader>
 
-								<Section>
-									<ApiConfigManager
-										currentApiConfigName={currentApiConfigName}
-										listApiConfigMeta={listApiConfigMeta}
-										onSelectConfig={(configName: string) =>
+									<Section>
+										<ApiConfigManager
+											currentApiConfigName={currentApiConfigName}
+											listApiConfigMeta={listApiConfigMeta}
+											onSelectConfig={(configName: string) =>
+												checkUnsaveChanges(() =>
+													vscode.postMessage({
+														type: "loadApiConfiguration",
+														text: configName,
+													}),
+												)
+											}
+											onDeleteConfig={(configName: string) =>
+												vscode.postMessage({ type: "deleteApiConfiguration", text: configName })
+											}
+											onRenameConfig={(oldName: string, newName: string) => {
+												vscode.postMessage({
+													type: "renameApiConfiguration",
+													values: { oldName, newName },
+													apiConfiguration,
+												})
+												prevApiConfigName.current = newName
+											}}
+											onUpsertConfig={(configName: string) =>
+												vscode.postMessage({
+													type: "upsertApiConfiguration",
+													text: configName,
+													apiConfiguration,
+												})
+											}
+										/>
+										<ApiOptions
+											uriScheme={uriScheme}
+											apiConfiguration={apiConfiguration}
+											setApiConfigurationField={setApiConfigurationField}
+											errorMessage={errorMessage}
+											setErrorMessage={setErrorMessage}
+										/>
+									</Section>
+								</div>
+							)}
+
+							{/* Auto-Approve Section */}
+							{renderTab === "autoApprove" && <AutoApproveSettings />}
+
+							{/* Slash Commands Section */}
+							{renderTab === "slashCommands" && <SlashCommandsSettings />}
+
+							{/* Skills Section */}
+							{renderTab === "skills" && <SkillsSettings />}
+
+							{/* Checkpoints Section */}
+							{renderTab === "checkpoints" && <CheckpointSettings />}
+
+							{/* Memory Section */}
+							{renderTab === "memory" && <MemorySettings listApiConfigMeta={listApiConfigMeta ?? []} />}
+
+							{/* Web Tools Section */}
+							{renderTab === "web" && <WebToolsSettings />}
+
+							{/* Notifications Section */}
+							{renderTab === "notifications" && <NotificationSettings />}
+
+							{/* Context Management Section */}
+							{renderTab === "contextManagement" && (
+								<ContextManagementSettings listApiConfigMeta={listApiConfigMeta ?? []} />
+							)}
+
+							{/* Terminal Section */}
+							{renderTab === "terminal" && (
+								<TerminalSettings onTerminalProfilePickerOpened={() => setChangeDetected(true)} />
+							)}
+
+							{/* Modes Section */}
+							{renderTab === "modes" && (
+								<Suspense fallback={<TabLoadingFallback />}>
+									<ModesView
+										onSelectApiConfiguration={(configName: string) =>
 											checkUnsaveChanges(() =>
 												vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
 											)
 										}
-										onDeleteConfig={(configName: string) =>
-											vscode.postMessage({ type: "deleteApiConfiguration", text: configName })
-										}
-										onRenameConfig={(oldName: string, newName: string) => {
-											vscode.postMessage({
-												type: "renameApiConfiguration",
-												values: { oldName, newName },
-												apiConfiguration,
-											})
-											prevApiConfigName.current = newName
-										}}
-										onUpsertConfig={(configName: string) =>
-											vscode.postMessage({
-												type: "upsertApiConfiguration",
-												text: configName,
-												apiConfiguration,
-											})
-										}
 									/>
-									<ApiOptions
-										uriScheme={uriScheme}
-										apiConfiguration={apiConfiguration}
-										setApiConfigurationField={setApiConfigurationField}
-										errorMessage={errorMessage}
-										setErrorMessage={setErrorMessage}
-									/>
-								</Section>
-							</div>
-						)}
+								</Suspense>
+							)}
 
-						{/* Auto-Approve Section */}
-						{renderTab === "autoApprove" && (
-							<AutoApproveSettings
-								alwaysAllowReadOnly={settings.alwaysAllowReadOnly}
-								alwaysAllowReadOnlyOutsideWorkspace={settings.alwaysAllowReadOnlyOutsideWorkspace}
-								alwaysAllowWrite={settings.alwaysAllowWrite}
-								alwaysAllowWriteOutsideWorkspace={settings.alwaysAllowWriteOutsideWorkspace}
-								alwaysAllowWriteProtected={settings.alwaysAllowWriteProtected}
-								alwaysAllowMcp={settings.alwaysAllowMcp}
-								alwaysAllowModeSwitch={settings.alwaysAllowModeSwitch}
-								alwaysAllowSubtasks={settings.alwaysAllowSubtasks}
-								alwaysApprovePlan={settings.alwaysApprovePlan}
-								alwaysAllowExecute={settings.alwaysAllowExecute}
-								alwaysAllowFollowupQuestions={settings.alwaysAllowFollowupQuestions}
-								followupAutoApproveTimeoutMs={settings.followupAutoApproveTimeoutMs}
-								allowedCommands={settings.allowedCommands}
-								allowedMaxRequests={settings.allowedMaxRequests ?? undefined}
-								allowedMaxCost={settings.allowedMaxCost ?? undefined}
-								deniedCommands={settings.deniedCommands}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+							{/* MCP Section */}
+							{renderTab === "mcp" && (
+								<Suspense fallback={<TabLoadingFallback />}>
+									<McpView />
+								</Suspense>
+							)}
 
-						{/* Slash Commands Section */}
-						{renderTab === "slashCommands" && <SlashCommandsSettings />}
+							{/* Worktrees Section */}
+							{renderTab === "worktrees" && <WorktreesView />}
 
-						{/* Skills Section */}
-						{renderTab === "skills" && <SkillsSettings />}
+							{/* Subagents Section */}
+							{renderTab === "subagents" && <SubagentSettings />}
 
-						{/* Checkpoints Section */}
-						{renderTab === "checkpoints" && (
-							<CheckpointSettings
-								enableCheckpoints={settings.enableCheckpoints}
-								checkpointTimeout={settings.checkpointTimeout}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+							{/* Prompts Section */}
+							{renderTab === "prompts" && <PromptsSettings />}
 
-						{/* Memory Section */}
-						{renderTab === "memory" && (
-							<MemorySettings
-								autoMemoryEnabled={settings.autoMemoryEnabled}
-								autoMemoryDirectory={settings.autoMemoryDirectory}
-								autoMemoryShareWithClaudeCode={settings.autoMemoryShareWithClaudeCode}
-								memoryRecallEnabled={settings.memoryRecallEnabled}
-								autoDreamEnabled={settings.autoDreamEnabled}
-								autoDreamMinHours={settings.autoDreamMinHours}
-								autoDreamMinSessions={settings.autoDreamMinSessions}
-								memoryWriterApiConfigId={settings.memoryWriterApiConfigId}
-								listApiConfigMeta={listApiConfigMeta ?? []}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+							{/* UI Section */}
+							{renderTab === "ui" && <UISettings />}
 
-						{/* Web Tools Section */}
-						{renderTab === "web" && (
-							<WebToolsSettings
-								webToolsEnabled={settings.webToolsEnabled}
-								searxngBaseUrl={settings.searxngBaseUrl}
-								webSearchMaxResults={settings.webSearchMaxResults}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+							{/* Experimental Section */}
+							{renderTab === "experimental" && <ExperimentalSettings />}
 
-						{/* Notifications Section */}
-						{renderTab === "notifications" && (
-							<NotificationSettings
-								soundEnabled={settings.soundEnabled}
-								soundVolume={settings.soundVolume}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
+							{/* Language Section */}
+							{renderTab === "language" && <LanguageSettings />}
 
-						{/* Context Management Section */}
-						{renderTab === "contextManagement" && (
-							<ContextManagementSettings
-								autoCondenseContext={settings.autoCondenseContext}
-								autoCondenseContextPercent={settings.autoCondenseContextPercent}
-								autoCondenseContextApiConfigId={settings.autoCondenseContextApiConfigId}
-								pruneBeforeCondense={settings.pruneBeforeCondense}
-								pruneToolResultBudget={settings.pruneToolResultBudget}
-								listApiConfigMeta={listApiConfigMeta ?? []}
-								maxOpenTabsContext={settings.maxOpenTabsContext}
-								maxWorkspaceFiles={settings.maxWorkspaceFiles ?? 200}
-								showRooIgnoredFiles={settings.showRooIgnoredFiles}
-								enableSubfolderRules={settings.enableSubfolderRules}
-								maxImageFileSize={settings.maxImageFileSize}
-								maxTotalImageSize={settings.maxTotalImageSize}
-								profileThresholds={settings.profileThresholds}
-								includeDiagnosticMessages={settings.includeDiagnosticMessages}
-								maxDiagnosticMessages={settings.maxDiagnosticMessages}
-								writeDelayMs={settings.writeDelayMs}
-								includeCurrentTime={settings.includeCurrentTime}
-								includeCurrentCost={settings.includeCurrentCost}
-								maxGitStatusFiles={settings.maxGitStatusFiles}
-								customSupportPrompts={settings.customSupportPrompts || {}}
-								setCustomSupportPrompts={(prompts) =>
-									setCachedStateField("customSupportPrompts", prompts)
-								}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
-
-						{/* Terminal Section */}
-						{renderTab === "terminal" && (
-							<TerminalSettings
-								terminalOutputPreviewSize={settings.terminalOutputPreviewSize}
-								terminalShellIntegrationTimeout={settings.terminalShellIntegrationTimeout}
-								terminalShellIntegrationDisabled={settings.terminalShellIntegrationDisabled}
-								terminalCommandDelay={settings.terminalCommandDelay}
-								terminalPowershellCounter={settings.terminalPowershellCounter}
-								terminalZshClearEolMark={settings.terminalZshClearEolMark}
-								terminalZshOhMy={settings.terminalZshOhMy}
-								terminalZshP10k={settings.terminalZshP10k}
-								terminalZdotdir={settings.terminalZdotdir}
-								terminalProfile={settings.terminalProfile}
-								onTerminalProfilePickerOpened={() => setChangeDetected(true)}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
-
-						{/* Modes Section */}
-						{renderTab === "modes" && (
-							<Suspense fallback={<TabLoadingFallback />}>
-								<ModesView
-									onSelectApiConfiguration={(configName: string) =>
-										checkUnsaveChanges(() =>
-											vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
-										)
-									}
-								/>
-							</Suspense>
-						)}
-
-						{/* MCP Section */}
-						{renderTab === "mcp" && (
-							<Suspense fallback={<TabLoadingFallback />}>
-								<McpView />
-							</Suspense>
-						)}
-
-						{/* Worktrees Section */}
-						{renderTab === "worktrees" && <WorktreesView />}
-
-						{/* Subagents Section */}
-						{renderTab === "subagents" && (
-							<SubagentSettings
-								parallelTasksMaxConcurrency={settings.parallelTasksMaxConcurrency}
-								subagentFollowupTimeoutSec={settings.subagentFollowupTimeoutSec}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
-
-						{/* Prompts Section */}
-						{renderTab === "prompts" && (
-							<PromptsSettings
-								customSupportPrompts={settings.customSupportPrompts || {}}
-								setCustomSupportPrompts={(prompts) =>
-									setCachedStateField("customSupportPrompts", prompts)
-								}
-								includeTaskHistoryInEnhance={settings.includeTaskHistoryInEnhance}
-								setIncludeTaskHistoryInEnhance={(value) =>
-									setCachedStateField("includeTaskHistoryInEnhance", value)
-								}
-							/>
-						)}
-
-						{/* UI Section */}
-						{renderTab === "ui" && (
-							<UISettings
-								reasoningBlockCollapsed={settings.reasoningBlockCollapsed ?? true}
-								enterBehavior={settings.enterBehavior ?? "send"}
-								uiDensity={settings.uiDensity ?? "comfortable"}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
-
-						{/* Experimental Section */}
-						{renderTab === "experimental" && (
-							<ExperimentalSettings
-								setExperimentEnabled={setExperimentEnabled}
-								experiments={settings.experiments}
-								apiConfiguration={apiConfiguration}
-								setApiConfigurationField={setApiConfigurationField}
-								imageGenerationProvider={settings.imageGenerationProvider}
-								openRouterImageApiKey={settings.openRouterImageApiKey as string | undefined}
-								openRouterImageGenerationSelectedModel={
-									settings.openRouterImageGenerationSelectedModel as string | undefined
-								}
-								setImageGenerationProvider={(provider) =>
-									setCachedStateField("imageGenerationProvider", provider)
-								}
-								setOpenRouterImageApiKey={(apiKey) =>
-									setCachedStateField("openRouterImageApiKey", apiKey)
-								}
-								setImageGenerationSelectedModel={(model) =>
-									setCachedStateField("openRouterImageGenerationSelectedModel", model)
-								}
-							/>
-						)}
-
-						{/* Language Section */}
-						{renderTab === "language" && (
-							<LanguageSettings
-								language={settings.language || "en"}
-								setCachedStateField={setCachedStateField}
-							/>
-						)}
-
-						{/* About Section */}
-						{renderTab === "about" && (
-							<About
-								telemetrySetting={settings.telemetrySetting}
-								setTelemetrySetting={(setting) => setCachedStateField("telemetrySetting", setting)}
-								debug={settings.debug}
-								setDebug={(debug) => setCachedStateField("debug", debug)}
-							/>
-						)}
-					</SearchIndexProvider>
+							{/* About Section */}
+							{renderTab === "about" && <About />}
+						</SearchIndexProvider>
+					</SettingsDraftProvider>
 				</TabContent>
 			</div>
 

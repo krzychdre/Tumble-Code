@@ -20,6 +20,7 @@ import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 import ModesView from "@src/components/modes/ModesView"
 import { CreateModeDialog } from "@src/components/modes/CreateModeDialog"
 import PromptsSettings from "@src/components/settings/PromptsSettings"
+import { renderWithSettingsDraft } from "@src/components/settings/__tests__/settingsDraftTestUtils"
 import { ExtensionStateContext } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"
 
@@ -170,15 +171,13 @@ describe("VSCodeTextArea call site: CreateModeDialog", () => {
 
 describe("VSCodeTextArea call sites: PromptsSettings", () => {
 	it("the support prompt is reported on every keystroke, before the field is left", async () => {
-		const setCustomSupportPrompts = vi.fn()
-		render(
-			withState(<PromptsSettings customSupportPrompts={{}} setCustomSupportPrompts={setCustomSupportPrompts} />),
-		)
+		const { setField } = renderWithSettingsDraft(withState(<PromptsSettings />), { customSupportPrompts: {} })
 		await waitFor(() => expect(textAreas()[0].getAttribute("rows")).toBe("6"))
 		const [support] = textAreas()
 		type(support, "Improve: ${userInput}")
 
-		expect(setCustomSupportPrompts).toHaveBeenLastCalledWith(
+		expect(setField).toHaveBeenLastCalledWith(
+			"customSupportPrompts",
 			expect.objectContaining({ ENHANCE: "Improve: ${userInput}" }),
 		)
 	})

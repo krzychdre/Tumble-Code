@@ -4,7 +4,7 @@ import { Trans } from "react-i18next"
 import { buildDocLink } from "@src/utils/docLinks"
 import { Slider, Link, LabeledCheckbox } from "@/components/ui"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
@@ -14,19 +14,12 @@ import {
 	MIN_CHECKPOINT_TIMEOUT_SECONDS,
 } from "@roo-code/types"
 
-type CheckpointSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	enableCheckpoints?: boolean
-	checkpointTimeout?: number
-	setCachedStateField: SetCachedStateField<"enableCheckpoints" | "checkpointTimeout">
-}
+type CheckpointSettingsProps = HTMLAttributes<HTMLDivElement>
 
-export const CheckpointSettings = ({
-	enableCheckpoints,
-	checkpointTimeout,
-	setCachedStateField,
-	...props
-}: CheckpointSettingsProps) => {
+export const CheckpointSettings = (props: CheckpointSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [enableCheckpoints, setEnableCheckpoints] = useSetting("enableCheckpoints")
+	const [checkpointTimeout, setCheckpointTimeout] = useSetting("checkpointTimeout")
 	return (
 		<div {...props}>
 			<SectionHeader>{t("settings:sections.checkpoints")}</SectionHeader>
@@ -39,7 +32,7 @@ export const CheckpointSettings = ({
 					<LabeledCheckbox
 						checked={enableCheckpoints}
 						onChange={(e: any) => {
-							setCachedStateField("enableCheckpoints", e.target.checked)
+							setEnableCheckpoints(e.target.checked)
 						}}>
 						<span className="font-medium">{t("settings:checkpoints.enable.label")}</span>
 					</LabeledCheckbox>
@@ -70,7 +63,7 @@ export const CheckpointSettings = ({
 								step={1}
 								defaultValue={[checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS]}
 								onValueChange={([value]) => {
-									setCachedStateField("checkpointTimeout", value)
+									setCheckpointTimeout(value)
 								}}
 								className="flex-1"
 								data-testid="checkpoint-timeout-slider"

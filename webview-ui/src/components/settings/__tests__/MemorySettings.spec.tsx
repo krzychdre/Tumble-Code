@@ -1,6 +1,9 @@
 // npx vitest src/components/settings/__tests__/MemorySettings.spec.tsx
 
-import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
+import { act, screen, fireEvent, waitFor } from "@/utils/test-utils"
+
+import type { CachedSettings } from "../schema"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { MemorySettings } from "../MemorySettings"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
@@ -44,19 +47,23 @@ vi.mock("@/components/ui", () => ({
 	SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
 }))
 
-const defaultProps = {
+// The Save buffer the section reads (useSetting); only the profile list stays a prop.
+const defaultDraft = {
 	autoMemoryEnabled: true,
 	memoryRecallEnabled: true,
 	autoDreamEnabled: true,
 	autoDreamMinHours: 24,
 	autoDreamMinSessions: 5,
 	memoryWriterApiConfigId: undefined,
-	listApiConfigMeta: [
-		{ id: "profile-1", name: "Cheap Local" },
-		{ id: "profile-2", name: "Fast Cloud" },
-	],
-	setCachedStateField: vi.fn(),
 }
+
+const listApiConfigMeta = [
+	{ id: "profile-1", name: "Cheap Local" },
+	{ id: "profile-2", name: "Fast Cloud" },
+]
+
+const renderMemory = (draft: Partial<CachedSettings> = {}) =>
+	renderWithSettingsDraft(<MemorySettings listApiConfigMeta={listApiConfigMeta} />, { ...defaultDraft, ...draft })
 
 describe("MemorySettings", () => {
 	beforeEach(() => {
@@ -64,14 +71,13 @@ describe("MemorySettings", () => {
 	})
 
 	it("renders the section header and the enable checkbox", () => {
-		render(<MemorySettings {...defaultProps} />)
+		renderMemory()
 		expect(screen.getByText("settings:sections.memory")).toBeInTheDocument()
 		expect(screen.getByText("settings:memory.enable.label")).toBeInTheDocument()
 	})
 
 	it("calls setCachedStateField('autoMemoryEnabled', false) when the enable checkbox is toggled off", async () => {
-		const setCachedStateField = vi.fn()
-		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const { setField: setCachedStateField } = renderMemory()
 		const checkbox = screen.getAllByRole("checkbox")[0]
 		fireEvent.click(checkbox)
 		await waitFor(() => {
@@ -80,8 +86,7 @@ describe("MemorySettings", () => {
 	})
 
 	it("binds the directory input to cachedState (typing calls setCachedStateField)", async () => {
-		const setCachedStateField = vi.fn()
-		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} autoMemoryDirectory="" />)
+		const { setField: setCachedStateField } = renderMemory({ autoMemoryDirectory: "" })
 		const input = screen.getByTestId("memory-directory-input")
 		fireEvent.input(input, { target: { value: "/custom/mem" } })
 		await waitFor(() => {
@@ -91,8 +96,7 @@ describe("MemorySettings", () => {
 
 	// "" (not undefined): JSON drops undefined, so the host would keep the old directory.
 	it("clears the directory to an empty string when the input is emptied", async () => {
-		const setCachedStateField = vi.fn()
-		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} autoMemoryDirectory="/x" />)
+		const { setField: setCachedStateField } = renderMemory({ autoMemoryDirectory: "/x" })
 		const input = screen.getByTestId("memory-directory-input")
 		fireEvent.input(input, { target: { value: "" } })
 		await waitFor(() => {
@@ -101,8 +105,7 @@ describe("MemorySettings", () => {
 	})
 
 	it("calls setCachedStateField when the recall checkbox is toggled", async () => {
-		const setCachedStateField = vi.fn()
-		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const { setField: setCachedStateField } = renderMemory()
 		// The recall checkbox is the second one rendered.
 		const checkboxes = screen.getAllByRole("checkbox")
 		const recallCheckbox = checkboxes[1]
@@ -113,14 +116,13 @@ describe("MemorySettings", () => {
 	})
 
 	it("renders the dream hours + sessions sliders when dream is enabled", () => {
-		render(<MemorySettings {...defaultProps} />)
+		renderMemory()
 		expect(screen.getByTestId("memory-dream-hours-slider")).toBeInTheDocument()
 		expect(screen.getByTestId("memory-dream-sessions-slider")).toBeInTheDocument()
 	})
 
 	it("calls setCachedStateField when the dream-hours slider changes", async () => {
-		const setCachedStateField = vi.fn()
-		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const { setField: setCachedStateField } = renderMemory()
 		const slider = screen.getByTestId("memory-dream-hours-slider") as HTMLInputElement
 		fireEvent.change(slider, { target: { value: "48" } })
 		await waitFor(() => {
@@ -129,14 +131,14 @@ describe("MemorySettings", () => {
 	})
 
 	it("hides the recall/directory/dream controls when memory is disabled", () => {
-		render(<MemorySettings {...defaultProps} autoMemoryEnabled={false} />)
+		renderMemory({ autoMemoryEnabled: false })
 		// Only the enable checkbox should be present; no directory input or sliders.
 		expect(screen.queryByTestId("memory-directory-input")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("memory-dream-hours-slider")).not.toBeInTheDocument()
 	})
 
 	it("renders the writer-profile dropdown with profiles from listApiConfigMeta", () => {
-		render(<MemorySettings {...defaultProps} />)
+		renderMemory()
 		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
 		expect(select).toBeInTheDocument()
 		// The dropdown includes the "Use current profile" option plus one per profile.
@@ -146,7 +148,7 @@ describe("MemorySettings", () => {
 	})
 
 	it("never renders a SelectItem with an empty-string value (Radix rejects it at runtime)", () => {
-		render(<MemorySettings {...defaultProps} />)
+		renderMemory()
 		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
 		const optionValues = Array.from(select.querySelectorAll("option")).map((o) => o.getAttribute("value"))
 		expect(optionValues.length).toBeGreaterThan(0)
@@ -154,8 +156,7 @@ describe("MemorySettings", () => {
 	})
 
 	it("selecting a profile calls setCachedStateField with the profile id", async () => {
-		const setCachedStateField = vi.fn()
-		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const { setField: setCachedStateField } = renderMemory()
 		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
 		fireEvent.change(select, { target: { value: "profile-1" } })
 		await waitFor(() => {
@@ -165,14 +166,7 @@ describe("MemorySettings", () => {
 
 	// "" (not undefined): JSON drops undefined, so the host would keep the old profile.
 	it("selecting the 'use current profile' sentinel calls setCachedStateField with an empty string", async () => {
-		const setCachedStateField = vi.fn()
-		render(
-			<MemorySettings
-				{...defaultProps}
-				memoryWriterApiConfigId="profile-1"
-				setCachedStateField={setCachedStateField}
-			/>,
-		)
+		const { setField: setCachedStateField } = renderMemory({ memoryWriterApiConfigId: "profile-1" })
 		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
 		fireEvent.change(select, { target: { value: "-" } })
 		await waitFor(() => {
@@ -181,14 +175,13 @@ describe("MemorySettings", () => {
 	})
 
 	it("shows 'use current profile' for a cleared (empty string) writer profile", () => {
-		render(<MemorySettings {...defaultProps} memoryWriterApiConfigId="" />)
+		renderMemory({ memoryWriterApiConfigId: "" })
 		// The value handed to Select, not the DOM value: a native select falls
 		// back to its first option by itself, the Radix one shows no item.
 		expect(screen.getByTestId("memory-writer-profile-select")).toHaveAttribute("data-value", "-")
 	})
 	it("toggles sharing the memory directory with Claude Code", async () => {
-		const setCachedStateField = vi.fn()
-		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const { setField: setCachedStateField } = renderMemory()
 
 		fireEvent.click(screen.getByTestId("memory-share-claude-code-checkbox"))
 
@@ -198,10 +191,10 @@ describe("MemorySettings", () => {
 	})
 
 	it("explains that a custom directory overrides sharing", () => {
-		const { rerender } = render(<MemorySettings {...defaultProps} />)
+		const { store } = renderMemory()
 		expect(screen.getByText("settings:memory.shareWithClaudeCode.description")).toBeInTheDocument()
 
-		rerender(<MemorySettings {...defaultProps} autoMemoryDirectory="/srv/memories" />)
+		act(() => store.setField("autoMemoryDirectory", "/srv/memories"))
 		expect(screen.getByText("settings:memory.shareWithClaudeCode.overridden")).toBeInTheDocument()
 	})
 })
