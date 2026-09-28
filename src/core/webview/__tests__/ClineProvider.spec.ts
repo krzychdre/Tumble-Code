@@ -1043,6 +1043,87 @@ describe("ClineProvider", () => {
 		expect(state.clineMessagesSeq).toBeUndefined()
 	})
 
+	// D4: the MDM redirect tail is one private helper called by every
+	// postStateToWebview* variant; each variant must route through it exactly
+	// once, and the helper must post the redirect only when an MDM policy
+	// requires cloud auth and the user is non-compliant.
+	describe("postMdmRedirectToWebview", () => {
+		const mdmServiceStub = (requiresCloudAuth: boolean, compliant: boolean) => ({
+			requiresCloudAuth: () => requiresCloudAuth,
+			isCompliant: () => ({ compliant }),
+		})
+
+		test.each([
+			["postStateToWebview", (p: ClineProvider) => p.postStateToWebview()],
+			["postStateToWebviewWithoutTaskHistory", (p: ClineProvider) => p.postStateToWebviewWithoutTaskHistory()],
+			[
+				"postStateToWebviewWithoutClineMessages",
+				(p: ClineProvider) => p.postStateToWebviewWithoutClineMessages(),
+			],
+		])("%s routes its state post through the MDM redirect helper once", async (_name, postState) => {
+			const mdmRedirectSpy = vi.spyOn(provider as any, "postMdmRedirectToWebview").mockResolvedValue(undefined)
+
+			await postState(provider)
+
+			expect(mdmRedirectSpy).toHaveBeenCalledTimes(1)
+		})
+
+		it("postClineMessageAdded routes through the helper when it sends the message alone", async () => {
+			const mdmRedirectSpy = vi.spyOn(provider as any, "postMdmRedirectToWebview").mockResolvedValue(undefined)
+			const task = new Task(defaultTaskOptions)
+			await provider.addClineToStack(task)
+
+			// Make canSendClineMessageAlone() pass: the view accepts lone
+			// messages, the task is current and the view holds its list.
+			provider.setWebviewAcceptsMessageAdded(true)
+			const message = { ts: 1, type: "say", say: "text", text: "hi" } as ClineMessage
+			task.clineMessages.push(message)
+			;(provider as any).viewClineMessages = { list: task.clineMessages, count: 0 }
+
+			const sent = await provider.postClineMessageAdded(task, message)
+
+			expect(sent).toBe(true)
+			expect(mdmRedirectSpy).toHaveBeenCalledTimes(1)
+		})
+
+		it("posts the cloudButtonClicked action once for a non-compliant user under an auth-requiring MDM policy", async () => {
+			;(provider as any).mdmService = mdmServiceStub(true, false)
+			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+			await (provider as any).postMdmRedirectToWebview()
+
+			expect(postMessageSpy).toHaveBeenCalledTimes(1)
+			expect(postMessageSpy.mock.calls[0][0]).toEqual({ type: "action", action: "cloudButtonClicked" })
+		})
+
+		it("posts nothing without an MDM service", async () => {
+			;(provider as any).mdmService = undefined
+			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+			await (provider as any).postMdmRedirectToWebview()
+
+			expect(postMessageSpy).not.toHaveBeenCalled()
+		})
+
+		it("posts nothing for a compliant user", async () => {
+			;(provider as any).mdmService = mdmServiceStub(true, true)
+			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+			await (provider as any).postMdmRedirectToWebview()
+
+			expect(postMessageSpy).not.toHaveBeenCalled()
+		})
+
+		it("posts nothing when the MDM policy does not require cloud auth", async () => {
+			;(provider as any).mdmService = mdmServiceStub(false, false)
+			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+			await (provider as any).postMdmRedirectToWebview()
+
+			expect(postMessageSpy).not.toHaveBeenCalled()
+		})
+	})
+
 	test("getState returns correct initial state", async () => {
 		const state = await provider.getState()
 
