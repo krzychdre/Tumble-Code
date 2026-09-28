@@ -1,5 +1,5 @@
 // Compile-time contract between Task and the narrow access interfaces its
-// helper modules (TaskHistory, TaskApiLoop, ...) are built with.
+// helper modules (TaskMessageLog, TaskApiLoop, ...) are built with.
 //
 // Task passes `this` to each helper. Before CORE-R5 every call site used
 // `this as unknown as XAccess`, a double cast that silenced real mismatches
@@ -12,7 +12,7 @@ import type { Task } from "../Task"
 import type { TaskApiLoopAccess } from "../TaskApiLoop"
 import type { TaskAskSayAccess } from "../TaskAskSay"
 import type { TaskContextManagerAccess } from "../TaskContextManager"
-import type { TaskHistoryAccess } from "../TaskHistory"
+import type { TaskMessageLogAccess } from "../TaskMessageLog"
 import type { TaskLifecycleAccess } from "../TaskLifecycle"
 import type { TaskStreamProcessorAccess } from "../TaskStreamProcessor"
 import type { TaskSubtasksAccess } from "../TaskSubtasks"
@@ -22,7 +22,7 @@ import type { TaskTokenTrackingAccess } from "../TaskTokenTracking"
 function assertTaskSatisfiesAccessInterfaces(task: Task) {
 	const lifecycle: TaskLifecycleAccess = task
 	const tokenTracking: TaskTokenTrackingAccess = task
-	const history: TaskHistoryAccess = task
+	const history: TaskMessageLogAccess = task
 	const askSay: TaskAskSayAccess = task
 	const streamProcessor: TaskStreamProcessorAccess = task
 	const contextManager: TaskContextManagerAccess = task

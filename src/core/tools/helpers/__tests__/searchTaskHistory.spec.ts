@@ -1,4 +1,4 @@
-// cd src && npx vitest run core/task/__tests__/searchTaskHistory.spec.ts
+// cd src && npx vitest run core/tools/helpers/__tests__/searchTaskHistory.spec.ts
 
 import * as fs from "fs"
 import * as os from "os"
@@ -6,7 +6,7 @@ import * as path from "path"
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 
-import type { ApiMessage } from "../../task-persistence/apiMessages"
+import type { ApiMessage } from "../../../task-persistence/apiMessages"
 import {
 	HISTORY_SEARCH_DEFAULTS,
 	SEARCH_TASK_HISTORY_RESULT_MARKER,

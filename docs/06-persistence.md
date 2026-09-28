@@ -19,7 +19,7 @@ graph TD
   CP[ContextProxy] --> GS
   CP --> SEC
   PSM[ProviderSettingsManager] --> SEC
-  TH[TaskHistory - per task] --> API
+  TH[TaskMessageLog - per task] --> API
   TH --> UI
   THS[TaskHistoryStore - all tasks] --> IDX
   THS --> META
@@ -29,7 +29,7 @@ graph TD
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `src/core/config/ContextProxy.ts`                    | Settings (`globalState`) and secrets (`SecretStorage`) behind one cache; runs legacy key migrations |
 | `src/core/config/ProviderSettingsManager.ts`         | Named provider profiles, in SecretStorage                                                           |
-| `src/core/task/TaskHistory.ts`                       | One task's API and UI messages                                                                      |
+| `src/core/task/TaskMessageLog.ts`                    | One task's API and UI messages                                                                      |
 | `src/core/task-persistence/TaskHistoryStore.ts`      | The history list across tasks: in-memory cache, `_index.json`, per-task records                     |
 | `src/core/checkpoints/`, `src/services/checkpoints/` | Shadow git repositories                                                                             |
 

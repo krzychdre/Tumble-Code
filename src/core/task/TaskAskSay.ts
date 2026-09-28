@@ -16,7 +16,7 @@ import {
 } from "@roo-code/types"
 import { type ToolName } from "@roo-code/types"
 
-import { type TaskHistory } from "./TaskHistory"
+import { type TaskMessageLog } from "./TaskMessageLog"
 import { getToolCallId, findToolAskIndexByCallId } from "./toolAskIdentity"
 import { checkAutoApproval, type CheckAutoApprovalResult } from "../auto-approval"
 import { findLastIndex } from "@roo-code/core/browser"
@@ -53,7 +53,7 @@ export interface TaskAskSayAccess {
 	autoApprovalTimeoutRef?: NodeJS.Timeout
 	messageQueueService: MessageQueueService
 	providerRef: WeakRef<ClineProvider>
-	history: TaskHistory
+	history: TaskMessageLog
 	emit: EventEmitter["emit"]
 	checkpointSave: (force?: boolean, suppressMessage?: boolean) => Promise<unknown>
 	/**

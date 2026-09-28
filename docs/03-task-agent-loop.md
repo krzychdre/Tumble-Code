@@ -15,7 +15,7 @@ graph TD
   AL --> RH[RetryHandler<br/>backoff, countdown, rate limits]
   AL --> SP[TaskStreamProcessor<br/>chunk to say / tool block]
   T --> CM[TaskContextManager<br/>condense and truncate]
-  T --> H[TaskHistory<br/>api and ui message persistence]
+  T --> H[TaskMessageLog<br/>api and ui message persistence]
   T --> AS[TaskAskSay<br/>ask, say, approval]
   T --> R[TaskResumption<br/>resume from history]
   T --> S[TaskSubtasks<br/>delegation to a child task]
@@ -28,7 +28,7 @@ graph TD
 | `TaskStreamProcessor.ts`                                     | Turns stream chunks into `say` rows and partial tool blocks; saves the answer |
 | `TaskContextManager.ts`                                      | Automatic and manual condensing, context-window-exceeded recovery             |
 | `TaskLifecycle.ts`                                           | Mode and profile init, start, abort ordering, dispose, memory writers         |
-| `TaskHistory.ts`                                             | Reads and writes `api_conversation_history.json` and `ui_messages.json`       |
+| `TaskMessageLog.ts`                                          | Reads and writes `api_conversation_history.json` and `ui_messages.json`       |
 | `TaskAskSay.ts`                                              | `ask` (with auto-approval), `say`, handling of the user's answer              |
 | `TaskResumption.ts`                                          | Resuming a task from disk, cleaning stale partial rows                        |
 | `ApiRequestBuilder.ts`                                       | System prompt, tool array, history cleaned for the provider                   |

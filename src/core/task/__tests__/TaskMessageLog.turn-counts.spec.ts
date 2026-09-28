@@ -1,7 +1,7 @@
-// cd src && npx vitest run core/task/__tests__/TaskHistory.turn-counts.spec.ts
+// cd src && npx vitest run core/task/__tests__/TaskMessageLog.turn-counts.spec.ts
 //
 // CORE-R7 (Phase 10): the host-side work one scripted request cycle causes,
-// counted through the real TaskAskSay and TaskHistory. It pins today's numbers
+// counted through the real TaskAskSay and TaskMessageLog. It pins today's numbers
 // (full state pushes, messageUpdated posts, ui_messages saves, getState
 // calls) AND the cloud contract (one TASK_MESSAGE capture per finished
 // message, one Message event per add or update), so a performance change
@@ -39,11 +39,11 @@ vi.mock("../../task-persistence", () => ({
 
 import { TaskAskSay } from "../TaskAskSay"
 import {
-	TaskHistory,
+	TaskMessageLog,
 	CLINE_MESSAGES_SAVE_IDLE_MS,
 	CLINE_MESSAGES_SAVE_MAX_WAIT_MS,
 	flushPendingClineMessageSaves,
-} from "../TaskHistory"
+} from "../TaskMessageLog"
 
 /** Serialized size in bytes, the way the webview and the disk receive it. */
 const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value), "utf8")
@@ -62,15 +62,15 @@ interface Counts {
 	messageEvents: { created: number; updated: number }
 }
 
-/** The task fields TaskAskSay and TaskHistory read, with both helpers attached. */
+/** The task fields TaskAskSay and TaskMessageLog read, with both helpers attached. */
 interface TurnTask {
 	clineMessages: ClineMessage[]
 	askSay: TaskAskSay
-	history: TaskHistory
+	history: TaskMessageLog
 }
 
 /**
- * A task with the real TaskAskSay and TaskHistory, a provider that counts
+ * A task with the real TaskAskSay and TaskMessageLog, a provider that counts
  * what reaches it, and `history` earlier messages of about the median real
  * message size (1.7 KB, measured on 1,053 local tasks).
  *
@@ -153,7 +153,7 @@ function makeTask(historyMessages: number, view: "full" | "appends" = "full") {
 			return true
 		}),
 	} as unknown as TurnTask
-	task.history = new TaskHistory(task as any)
+	task.history = new TaskMessageLog(task as any)
 	task.askSay = new TaskAskSay(task as any)
 
 	const snapshot = (): Counts => ({
@@ -214,7 +214,7 @@ async function runTurn(task: TurnTask, chunks: { reasoning: number; text: number
 	await vi.advanceTimersByTimeAsync(0)
 }
 
-describe("CORE-R7 request-cycle counts (TaskAskSay + TaskHistory)", () => {
+describe("CORE-R7 request-cycle counts (TaskAskSay + TaskMessageLog)", () => {
 	let now = 1_000_000
 
 	beforeEach(() => {

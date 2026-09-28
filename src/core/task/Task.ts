@@ -133,7 +133,7 @@ import { AutoApprovalHandler, checkAutoApproval } from "../auto-approval"
 import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
-import { TaskHistory } from "./TaskHistory"
+import { TaskMessageLog } from "./TaskMessageLog"
 import { TaskAskSay } from "./TaskAskSay"
 import { TaskStreamProcessor } from "./TaskStreamProcessor"
 import { TaskTokenTracking } from "./TaskTokenTracking"
@@ -778,11 +778,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Initial status for the task's history item (set at creation time to avoid race conditions)
 	readonly initialStatus?: "active" | "delegated" | "completed"
 
-	// Callback for TaskHistory to restore todo list (wraps module-level function)
+	// Callback for TaskMessageLog to restore todo list (wraps module-level function)
 	readonly restoreTodoListForTask: () => void
 
 	// Task history management (extracted from Task)
-	readonly history: TaskHistory
+	readonly history: TaskMessageLog
 
 	// Ask/Say communication protocol (extracted from Task)
 	readonly askSay: TaskAskSay
@@ -971,11 +971,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Pass Task as TaskTokenTrackingAccess for property access
 		this.tokenTracking = new TaskTokenTracking(this)
 
-		// Initialize restoreTodoListForTask callback and TaskHistory
-		// Pass Task as TaskHistoryAccess so property reads/writes go through the live
+		// Initialize restoreTodoListForTask callback and TaskMessageLog
+		// Pass Task as TaskMessageLogAccess so property reads/writes go through the live
 		// Task instance (critical for mutable primitives like abort, assistantMessageSavedToHistory).
 		this.restoreTodoListForTask = () => restoreTodoListForTask(this)
-		this.history = new TaskHistory(this)
+		this.history = new TaskMessageLog(this)
 
 		// Initialize TaskAskSay for the ask/say communication protocol
 		// Pass Task as TaskAskSayAccess so property reads/writes go through the live
@@ -1591,7 +1591,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	/**
 	 * Emit token usage update with debouncing.
-	 * This is exposed for TaskHistory to call when saving messages.
+	 * This is exposed for TaskMessageLog to call when saving messages.
 	 */
 	public debouncedEmitTokenUsage(tokenUsage: TokenUsage, toolUsage: ToolUsage): void {
 		this.tokenTracking.emitTokenUsageUpdate(tokenUsage, toolUsage)

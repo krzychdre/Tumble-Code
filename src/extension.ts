@@ -32,7 +32,7 @@ import { syncCloudUrls, registerCloudUrlsSubscription } from "./activate/cloud-u
 import { ContextProxy } from "./core/config/ContextProxy"
 import { initMemoryPaths } from "./core/memory/paths"
 import { ClineProvider } from "./core/webview/ClineProvider"
-import { flushPendingClineMessageSaves } from "./core/task/TaskHistory"
+import { flushPendingClineMessageSaves } from "./core/task/TaskMessageLog"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { Terminal } from "./integrations/terminal/Terminal"
 import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"

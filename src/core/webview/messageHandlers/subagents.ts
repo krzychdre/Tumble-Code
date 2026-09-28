@@ -6,7 +6,7 @@ export const subagentsHandlers: MessageHandlerMap = {
 	subscribeSubagentMessages: async (ctx, message) => {
 		const { provider } = ctx
 		// Open a live tail on a parallel subagent: mark it watched (so
-		// TaskHistory streams its subsequent messages) and send a snapshot
+		// TaskMessageLog streams its subsequent messages) and send a snapshot
 		// of everything said so far. A queued placeholder or an
 		// already-disposed child yields an empty snapshot - the panel
 		// falls back to the summary's finalMessage.

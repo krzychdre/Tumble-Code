@@ -243,7 +243,7 @@ export class SubagentRegistry {
 		this.watched.delete(taskId)
 	}
 
-	/** Consulted by TaskHistory before streaming a background task's messages. */
+	/** Consulted by TaskMessageLog before streaming a background task's messages. */
 	isWatched(taskId: string): boolean {
 		return this.watched.has(taskId)
 	}

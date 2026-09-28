@@ -422,9 +422,7 @@ describe("transcript reducer", () => {
 			sayUpdate(40, "command_output", "b\n", false)
 
 			const rows = model.messages
-			expect(rows.map((m) => [m.id, m.toolData?.command, m.toolData?.output])).toEqual([
-				["40", undefined, "b\n"],
-			])
+			expect(rows.map((m) => [m.id, m.toolData?.command, m.toolData?.output])).toEqual([["40", undefined, "b\n"]])
 		})
 	})
 
@@ -459,8 +457,7 @@ describe("transcript reducer", () => {
 		const reconnected = [{ ...servers[0], status: "disconnected", error: "gone" }]
 		handle({ type: "state", state: { mcpServers: reconnected } } as never)
 		expect(model.mcpServers).toBe(reconnected)
-
-			})
+	})
 
 	it("preserves structured tool details for interactive approval dialogs", () => {
 		const payload = JSON.stringify({
@@ -850,7 +847,6 @@ describe("transcript reducer", () => {
 		sayUpdate(10, "reasoning", "Let me check the config", true)
 		sayUpdate(10, "reasoning", "Let me check the config first.", false)
 
-
 		const thinking = model.messages.filter((m) => m.role === "thinking")
 		expect(thinking).toHaveLength(1)
 		expect(thinking[0]?.partial).toBe(false)
@@ -900,7 +896,6 @@ describe("transcript reducer", () => {
 			{ ts: 1001, type: "say", say: "completion_result", text: "All done.", partial: false },
 		])
 
-
 		const assistantMessages = model.messages.filter((m) => m.role === "assistant")
 		expect(assistantMessages).toHaveLength(2)
 		expect(assistantMessages[0]?.partial).toBe(true)
@@ -925,7 +920,7 @@ describe("transcript reducer", () => {
 	 * forever, and the complete versions arrived with NEW timestamps.
 	 *
 	 * Every new core message posts the whole state
-	 * (TaskHistory.addToClineMessages -> postStateToWebviewWithoutTaskHistory),
+	 * (TaskMessageLog.addToClineMessages -> postStateToWebviewWithoutTaskHistory),
 	 * and each state push replays the entire array through `handleSayMessage`.
 	 * The orphan text partial therefore re-ran on every push and reset the
 	 * dedupe marker to its stale text, while the already-seen complete answer
@@ -1050,7 +1045,6 @@ describe("transcript reducer", () => {
 		core.push({ ts: 4, type: "say", say: "completion_result", text: "All done.", partial: false })
 		stateMessage(core)
 
-
 		const assistantMessages = model.messages.filter((m) => m.role === "assistant")
 		expect(assistantMessages.map((m) => m.content)).toEqual(["Working on it", "All done."])
 	})
@@ -1165,7 +1159,13 @@ describe("transcript reducer", () => {
 				partial: false,
 			},
 			{ ts: 3, type: "say", say: "user_feedback", text: "A", partial: false },
-			{ ts: 4, type: "ask", ask: "tool", text: JSON.stringify({ tool: "readFile", path: "src/old.ts" }), partial: false },
+			{
+				ts: 4,
+				type: "ask",
+				ask: "tool",
+				text: JSON.stringify({ tool: "readFile", path: "src/old.ts" }),
+				partial: false,
+			},
 			{ ts: 5, type: "say", say: "text", text: "done", partial: false },
 		]
 

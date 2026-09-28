@@ -30,7 +30,7 @@ import { getCurrentProfileId } from "./currentProfileId"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { formatResponse } from "../prompts/responses"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
-import { type TaskHistory } from "./TaskHistory"
+import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskStreamProcessor } from "./TaskStreamProcessor"
 import { type UpdateApiReqMsgFn } from "./StreamProcessorTypes"
@@ -185,7 +185,7 @@ export interface TaskApiLoopAccess {
 	cachedStreamingModel?: { id: string; info: any }
 
 	// Delegated modules
-	history: TaskHistory
+	history: TaskMessageLog
 	askSay: TaskAskSay
 	streamProcessor: TaskStreamProcessor
 	contextManager: TaskContextManager

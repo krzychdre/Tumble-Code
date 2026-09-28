@@ -114,8 +114,8 @@ setting, add its default to that table. Code that reads a possibly unset value w
 2. `TaskApiLoop.attemptApiRequest` (`src/core/task/TaskApiLoop.ts`) iterates the stream and hands each chunk to
    `TaskStreamProcessor.processChunk`, which turns text and reasoning into `say(...)` calls and tool calls into
    `presentAssistantMessage` (tool execution).
-3. `TaskAskSay` records the result as a `ClineMessage`; `TaskHistory.addToClineMessages` pushes a state update and
-   `TaskHistory.updateClineMessage` sends a `messageUpdated` message for a streaming partial.
+3. `TaskAskSay` records the result as a `ClineMessage`; `TaskMessageLog.addToClineMessages` pushes a state update and
+   `TaskMessageLog.updateClineMessage` sends a `messageUpdated` message for a streaming partial.
 4. In the webview, `ChatView.tsx` shapes the message list (`modifiedMessages`, `visibleMessages`,
    `groupedMessages`) with the pure functions in `webview-ui/src/components/chat/rows/` (WEB-1) and renders one
    `ChatRow` per entry.

@@ -21,7 +21,7 @@ import { formatResponse } from "../prompts/responses"
 import { type ApiMessage } from "../task-persistence"
 import { buildContextLedger } from "../context-management/ledger/buildLedger"
 import { applyExecutionSnapshot, detectStaleFileChanges, type StaleFile } from "../context-management/executionSnapshot"
-import { type TaskHistory } from "./TaskHistory"
+import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 
 /**
@@ -50,7 +50,7 @@ export interface TaskResumptionAccess {
 	providerRef: WeakRef<any> // ClineProvider
 
 	// Delegated modules
-	history: TaskHistory
+	history: TaskMessageLog
 	askSay: TaskAskSay
 
 	// Methods
