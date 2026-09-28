@@ -52,7 +52,6 @@ import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { getCustomSoundsDir } from "../../integrations/misc/custom-sounds"
-import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 
 import { McpHub } from "../../services/mcp/McpHub"
@@ -943,15 +942,6 @@ export class ClineProvider
 			null,
 			this.disposables,
 		)
-
-		// Listen for when color changes
-		const configDisposable = vscode.workspace.onDidChangeConfiguration(async (e) => {
-			if (e && e.affectsConfiguration("workbench.colorTheme")) {
-				// Sends latest theme name to webview
-				await this.postMessageToWebview({ type: "theme", text: JSON.stringify(await getTheme()) })
-			}
-		})
-		this.webviewDisposables.push(configDisposable)
 
 		// If the extension is starting a new session, clear previous task state.
 		// But don't clear if there's already an active task (e.g., resumed via IPC/bridge).

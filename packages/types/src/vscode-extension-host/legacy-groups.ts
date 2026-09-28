@@ -38,7 +38,6 @@ export type ExtensionUiMessageType = Extract<
 	ExtensionMessageType,
 	| "action"
 	| "selectedImages"
-	| "theme"
 	| "workspaceUpdated"
 	| "invoke"
 	| "enhancedPrompt"
@@ -70,7 +69,7 @@ export type ExtensionModesMessageType = Extract<
 /** @deprecated Use the per-module unions (e.g. `TaskLifecycleExtensionMessageType`). Provider profiles, models, cloud account and organization. */
 export type ExtensionProviderMessageType = Extract<
 	ExtensionMessageType,
-	"listApiConfig" | "authenticatedUser" | "providerModels" | "organizationSwitchResult" | "openAiCodexRateLimits"
+	"listApiConfig" | "providerModels" | "organizationSwitchResult" | "openAiCodexRateLimits"
 >
 
 /** @deprecated Use the per-module unions (e.g. `TaskLifecycleExtensionMessageType`). MCP servers. */
@@ -154,7 +153,6 @@ export type WebviewUiMessageType = Extract<
 	| "openKeyboardShortcuts"
 	| "openExtensionLogs"
 	| "enhancePrompt"
-	| "draggedImages"
 	| "searchCommits"
 	| "searchFiles"
 	| "hasOpenedModeSelector"

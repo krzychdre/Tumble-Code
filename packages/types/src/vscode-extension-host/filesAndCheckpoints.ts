@@ -6,7 +6,7 @@
 
 import { z } from "zod"
 
-/** Images, files, links and checkpoints. `draggedImages` is sent by the chat input but has no handler. */
+/** Images, files, links and checkpoints. */
 export type FilesAndCheckpointsWebviewMessageType =
 	| "selectImages"
 	| "openImage"
@@ -17,7 +17,6 @@ export type FilesAndCheckpointsWebviewMessageType =
 	| "openExternal"
 	| "checkpointDiff"
 	| "checkpointRestore"
-	| "draggedImages"
 
 /** Selected images, file content and checkpoint updates. */
 export type FilesAndCheckpointsExtensionMessageType =

@@ -542,7 +542,6 @@
 		"isbinaryfile": "^5.0.7",
 		"lodash.debounce": "^4.0.8",
 		"mammoth": "^1.12.0",
-		"monaco-vscode-textmate-theme-converter": "^0.1.7",
 		"node-cache": "^5.1.2",
 		"ollama": "^0.6.3",
 		"openai": "^7.23.0",
