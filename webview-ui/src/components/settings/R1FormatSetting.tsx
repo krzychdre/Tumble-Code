@@ -1,4 +1,4 @@
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -13,9 +13,9 @@ export const R1FormatSetting = ({ onChange, openAiR1FormatEnabled }: R1FormatSet
 	return (
 		<div>
 			<div className="flex items-center gap-2">
-				<Checkbox checked={openAiR1FormatEnabled} onChange={onChange}>
+				<LabeledCheckbox checked={openAiR1FormatEnabled} onCheckedChange={onChange}>
 					<span className="font-medium">{t("settings:modelInfo.enableR1Format")}</span>
-				</Checkbox>
+				</LabeledCheckbox>
 			</div>
 			<p className="text-vscode-descriptionForeground text-sm mt-0">
 				{t("settings:modelInfo.enableR1FormatTips")}

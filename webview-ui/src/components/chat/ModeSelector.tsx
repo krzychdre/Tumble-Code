@@ -12,9 +12,7 @@ import { cn } from "@/lib/utils"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
-import { Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
-
-import { IconButton } from "./IconButton"
+import { IconButton, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
 
 const SEARCH_THRESHOLD = 6
 
@@ -315,7 +313,7 @@ export const ModeSelector = ({
 					<div className="flex flex-row items-center justify-between px-2 py-2 border-t border-vscode-dropdown-border">
 						<div className="flex flex-row gap-1">
 							<IconButton
-								iconClass="codicon-extensions"
+								icon="codicon-extensions"
 								title={t("chat:modeSelector.marketplace")}
 								onClick={() => {
 									window.postMessage(
@@ -330,7 +328,7 @@ export const ModeSelector = ({
 								}}
 							/>
 							<IconButton
-								iconClass="codicon-settings-gear"
+								icon="codicon-settings-gear"
 								title={t("chat:modeSelector.settings")}
 								onClick={() => {
 									vscode.postMessage({

@@ -7,7 +7,7 @@ import { screen, fireEvent, act } from "@/utils/test-utils"
 import { TerminalSettings } from "../TerminalSettings"
 import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedButton as RealThemedButton } from "@/components/ui/themed-button"
+import { Button as RealButton } from "@/components/ui/button"
 
 // Mock translation hook to echo keys
 vi.mock("@/i18n/TranslationContext", () => ({
@@ -26,7 +26,7 @@ vi.mock("@/utils/vscode", () => ({
 // Render Select as a list of buttons so we can drive onValueChange in tests.
 vi.mock("@/components/ui", () => ({
 	// The real button, not a stub: only the barrel is mocked.
-	ThemedButton: (props: any) => <RealThemedButton {...props} />,
+	Button: (props: any) => <RealButton {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,

@@ -84,7 +84,7 @@ vi.mock("@/components/ui", () => ({
 	DialogTitle: ({ children }: any) => <div data-testid="dialog-title">{children}</div>,
 	DialogDescription: ({ children }: any) => <div data-testid="dialog-description">{children}</div>,
 	DialogFooter: ({ children }: any) => <div data-testid="dialog-footer">{children}</div>,
-	Checkbox: ({ id, checked, onCheckedChange }: any) => (
+	LabeledCheckbox: ({ id, checked, onCheckedChange }: any) => (
 		<input
 			type="checkbox"
 			id={id}

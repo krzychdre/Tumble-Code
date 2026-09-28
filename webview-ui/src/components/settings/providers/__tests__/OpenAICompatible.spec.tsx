@@ -2,17 +2,19 @@ import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { OpenAICompatible } from "../OpenAICompatible"
 import { ProviderSettings } from "@roo-code/types"
-import { ThemedButton as RealThemedButton } from "@/components/ui/themed-button"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
-// Mock the VSCRUICheckbox component
-vi.mock("@src/components/ui/vscrui-checkbox", () => ({
-	VSCRUICheckbox: ({ children, checked, onChange }: any) => (
+// Mock the checkbox (LabeledCheckbox)
+vi.mock("@src/components/ui/labeled-checkbox", () => ({
+	LabeledCheckbox: ({ children, checked, onChange, onCheckedChange }: any) => (
 		<label data-testid={`checkbox-${children?.toString().replace(/\s+/g, "-").toLowerCase()}`}>
 			<input
 				type="checkbox"
 				checked={checked}
-				onChange={() => onChange(!checked)} // Toggle the checked state
+				onChange={(e) => {
+					onChange?.(e)
+					onCheckedChange?.(!checked) // Toggle the checked state
+				}}
 				data-testid={`checkbox-input-${children?.toString().replace(/\s+/g, "-").toLowerCase()}`}
 			/>
 			{children}
@@ -32,8 +34,6 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 vi.mock("@src/components/ui", () => ({
 	// The real text field (a native input), not a stub.
 	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
-	// The real button, not a stub: only the barrel is mocked.
-	ThemedButton: (props: any) => <RealThemedButton {...props} />,
 	Button: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
 	StandardTooltip: ({ children, content }: any) => <div title={content}>{children}</div>,
 }))

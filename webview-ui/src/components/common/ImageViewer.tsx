@@ -5,8 +5,7 @@ import { vscode } from "@src/utils/vscode"
 import { MermaidActionButtons } from "./MermaidActionButtons"
 import { ZoomableModal } from "./ZoomableModal"
 import { TabButton } from "./TabButton"
-import { IconButton } from "./IconButton"
-import { StandardTooltip } from "@/components/ui"
+import { IconButton, StandardTooltip } from "@/components/ui"
 
 export interface ImageViewerProps {
 	imageUri: string // The URI to use for rendering (webview URI, base64, or regular URL)
@@ -167,7 +166,7 @@ export function ImageViewer({
 							alignItems: "center",
 							justifyContent: "center",
 							backgroundColor: "var(--vscode-editor-background)",
-								padding: "20px",
+							padding: "20px",
 						}}>
 						<span style={{ color: "var(--vscode-errorForeground)" }}>⚠️ {imageError}</span>
 					</div>
@@ -217,11 +216,15 @@ export function ImageViewer({
 					<>
 						{imagePath && (
 							<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-								<IconButton icon={copyFeedback ? "check" : "copy"} onClick={handleCopy} />
+								<IconButton
+									variant="toolbar"
+									icon={copyFeedback ? "check" : "copy"}
+									onClick={handleCopy}
+								/>
 							</StandardTooltip>
 						)}
 						<StandardTooltip content={t("common:mermaid.buttons.save")}>
-							<IconButton icon="save" onClick={handleSave} />
+							<IconButton variant="toolbar" icon="save" onClick={handleSave} />
 						</StandardTooltip>
 					</>
 				}>

@@ -6,7 +6,7 @@ import { useCopyToClipboard } from "@src/utils/clipboard"
 import { vscode } from "@src/utils/vscode"
 import CodeBlock from "../common/CodeBlock"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@src/components/ui/dialog"
-import { Button, ThemedButton } from "../ui"
+import { Button } from "../ui"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import { PROVIDERS } from "../settings/constants"
@@ -211,12 +211,12 @@ export const ErrorRow = memo(
 						</div>
 						<div className="flex items-center transition-opacity opacity-0 group-hover:opacity-100">
 							{showCopyButton && (
-								<ThemedButton
-									appearance="icon"
+								<Button
+									variant="icon"
 									className="ml-0.75 mr-1.75 h-6 text-vscode-editor-foreground flex items-center justify-center bg-transparent"
 									onClick={handleCopy}>
 									<span className={`codicon codicon-${showCopySuccess ? "check" : "copy"}`} />
-								</ThemedButton>
+								</Button>
 							)}
 							<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`} />
 						</div>

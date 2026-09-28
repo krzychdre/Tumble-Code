@@ -1,6 +1,5 @@
-import { IconButton } from "./IconButton"
 import { useRef, useEffect } from "react"
-import { StandardTooltip } from "@/components/ui"
+import { IconButton, StandardTooltip } from "@/components/ui"
 
 interface ZoomControlsProps {
 	zoomLevel: number
@@ -70,6 +69,7 @@ export function ZoomControls({
 		<div className="flex items-center gap-2">
 			<StandardTooltip content={zoomOutTitle}>
 				<IconButton
+					variant="toolbar"
 					icon="zoom-out"
 					onClick={!useContinuousZoom ? onZoomOut || (() => adjustZoom?.(zoomOutStep)) : undefined}
 					onMouseDown={useContinuousZoom && adjustZoom ? () => startContinuousZoom(zoomOutStep) : undefined}
@@ -82,6 +82,7 @@ export function ZoomControls({
 			</div>
 			<StandardTooltip content={zoomInTitle}>
 				<IconButton
+					variant="toolbar"
 					icon="zoom-in"
 					onClick={!useContinuousZoom ? onZoomIn || (() => adjustZoom?.(zoomInStep)) : undefined}
 					onMouseDown={useContinuousZoom && adjustZoom ? () => startContinuousZoom(zoomInStep) : undefined}

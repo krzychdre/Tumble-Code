@@ -1,7 +1,7 @@
 import { CODEBASE_INDEX_DEFAULTS } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Slider, StandardTooltip, ThemedButton } from "@src/components/ui"
+import { Button, Slider, StandardTooltip } from "@src/components/ui"
 
 import type { EmbedderFormContext } from "./EmbedderFormFields"
 
@@ -40,8 +40,8 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 							CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_MIN_SCORE
 						).toFixed(2)}
 					</span>
-					<ThemedButton
-						appearance="icon"
+					<Button
+						variant="icon"
 						title={t("settings:codeIndex.resetToDefault")}
 						onClick={() =>
 							updateSetting(
@@ -50,7 +50,7 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 							)
 						}>
 						<span className="codicon codicon-discard" />
-					</ThemedButton>
+					</Button>
 				</div>
 			</div>
 
@@ -79,8 +79,8 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 						{currentSettings.codebaseIndexSearchMaxResults ??
 							CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_RESULTS}
 					</span>
-					<ThemedButton
-						appearance="icon"
+					<Button
+						variant="icon"
 						title={t("settings:codeIndex.resetToDefault")}
 						onClick={() =>
 							updateSetting(
@@ -89,7 +89,7 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 							)
 						}>
 						<span className="codicon codicon-discard" />
-					</ThemedButton>
+					</Button>
 				</div>
 			</div>
 		</>

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import { type OrganizationAllowList, type RouterModels, openRouterDefaultModelId } from "@roo-code/types"
 
@@ -64,9 +64,9 @@ export const OpenRouter = ({
 			)}
 			{!simplifySettings && (
 				<div>
-					<Checkbox
+					<LabeledCheckbox
 						checked={openRouterBaseUrlSelected}
-						onChange={(checked: boolean) => {
+						onCheckedChange={(checked: boolean) => {
 							setOpenRouterBaseUrlSelected(checked)
 
 							if (!checked) {
@@ -74,7 +74,7 @@ export const OpenRouter = ({
 							}
 						}}>
 						{t("settings:providers.useCustomBaseUrl")}
-					</Checkbox>
+					</LabeledCheckbox>
 					{openRouterBaseUrlSelected && (
 						<ThemedTextField
 							value={apiConfiguration?.openRouterBaseUrl || ""}

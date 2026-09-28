@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Trans } from "react-i18next"
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import { VERTEX_REGIONS, VERTEX_1M_CONTEXT_MODEL_IDS, looksLikeFilePath } from "@roo-code/types"
 
@@ -117,14 +117,14 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 
 			{supports1MContextBeta && (
 				<div>
-					<Checkbox
+					<LabeledCheckbox
 						data-testid="checkbox-vertex-1m-context"
 						checked={apiConfiguration?.vertex1MContext ?? false}
-						onChange={(checked: boolean) => {
+						onCheckedChange={(checked: boolean) => {
 							setApiConfigurationField("vertex1MContext", checked)
 						}}>
 						{t("settings:providers.vertex1MContextBetaLabel")}
-					</Checkbox>
+					</LabeledCheckbox>
 					<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">
 						{t("settings:providers.vertex1MContextBetaDescription")}
 					</div>

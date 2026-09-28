@@ -9,6 +9,10 @@ export interface LabeledCheckboxProps
 	/** Classes for the wrapper that holds box and label (layout, font size). */
 	className?: string
 	style?: React.CSSProperties
+	/** Called with the new boolean state on user input only (after `onChange`). */
+	onCheckedChange?: (checked: boolean) => void
+	/** Shows the dash instead of the check mark while true; does not change `checked`. */
+	indeterminate?: boolean
 }
 
 /**
@@ -29,20 +33,46 @@ export interface LabeledCheckboxProps
  * `checked`. Here `onChange` fires on user input only and the box always
  * shows `checked`.
  *
+ * The webview's only checkbox (UI plan §2.12): the Radix checkbox and the
+ * vscrui adapter were folded in. Call sites that only need the new state use
+ * `onCheckedChange(checked)`; `indeterminate` shows the dash box.
+ *
  * The look comes from the `.ui-checkbox` rules in `index.css`.
  */
 const LabeledCheckbox = React.forwardRef<HTMLInputElement, LabeledCheckboxProps>(
-	({ className, style, children, checked, disabled, ...inputProps }, ref) => {
+	(
+		{ className, style, children, checked, disabled, onChange, onCheckedChange, indeterminate, ...inputProps },
+		ref,
+	) => {
+		const inputRef = React.useRef<HTMLInputElement>(null)
+
+		React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement)
+
+		React.useEffect(() => {
+			if (inputRef.current) {
+				inputRef.current.indeterminate = indeterminate === true
+			}
+		}, [indeterminate])
+
+		const handleChange =
+			onChange || onCheckedChange
+				? (event: React.ChangeEvent<HTMLInputElement>) => {
+						onChange?.(event)
+						onCheckedChange?.(event.target.checked)
+					}
+				: undefined
+
 		const hasLabel = React.Children.count(children) > 0
 		return (
 			<label className={cn("ui-checkbox", className)} style={style} data-disabled={disabled ? "" : undefined}>
 				<span className="ui-checkbox-box">
 					<input
-						ref={ref}
+						ref={inputRef}
 						type="checkbox"
 						className="ui-checkbox-input"
 						checked={!!checked}
 						disabled={disabled}
+						onChange={handleChange}
 						{...inputProps}
 					/>
 					<svg

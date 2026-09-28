@@ -21,7 +21,7 @@ import {
 	Slider,
 	Link,
 	LabeledCheckbox,
-	ThemedButton,
+	Button,
 } from "@/components/ui"
 
 import { useSetting } from "./SettingsDraftContext"
@@ -178,15 +178,15 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									<label htmlFor={defaultProfileId} className="cursor-pointer">
 										{t("settings:terminal.profile.default")}
 									</label>
-									<ThemedButton
-										appearance="secondary"
+									<Button
+										variant="secondary"
 										onClick={() => {
 											onTerminalProfilePickerOpened?.()
 											vscode.postMessage({ type: "openTerminalProfilePicker" })
 										}}
 										data-testid="terminal-profile-configure-button">
 										{t("settings:terminal.profile.configureButton")}
-									</ThemedButton>
+									</Button>
 								</div>
 
 								{/* Level 2: Override */}

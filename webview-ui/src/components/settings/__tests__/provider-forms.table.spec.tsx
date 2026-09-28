@@ -19,10 +19,17 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-vi.mock("@src/components/ui/vscrui-checkbox", () => ({
-	VSCRUICheckbox: ({ children, checked, onChange }: any) => (
+vi.mock("@src/components/ui/labeled-checkbox", () => ({
+	LabeledCheckbox: ({ children, checked, onChange, onCheckedChange }: any) => (
 		<label>
-			<input type="checkbox" checked={checked} onChange={(e) => onChange?.(e.target.checked)} />
+			<input
+				type="checkbox"
+				checked={checked}
+				onChange={(e) => {
+					onChange?.(e)
+					onCheckedChange?.(e.target.checked)
+				}}
+			/>
 			{children}
 		</label>
 	),

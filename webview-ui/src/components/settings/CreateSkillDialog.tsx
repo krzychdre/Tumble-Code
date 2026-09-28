@@ -6,7 +6,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useModeSelection } from "@/hooks/useModeSelection"
 import {
 	Button,
-	Checkbox,
+	LabeledCheckbox,
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -219,7 +219,7 @@ export const CreateSkillDialog: React.FC<CreateSkillDialogProps> = ({
 						<div className="flex flex-col max-h-28 overflow-y-auto">
 							{/* Any mode option */}
 							<div className="flex items-center gap-3 p-1 rounded-lg hover:bg-vscode-list-hoverBackground">
-								<Checkbox
+								<LabeledCheckbox
 									id="create-mode-any"
 									checked={isAnyMode}
 									onCheckedChange={(checked) => toggleAnyMode(checked === true)}
@@ -232,7 +232,7 @@ export const CreateSkillDialog: React.FC<CreateSkillDialogProps> = ({
 								<div
 									key={m.slug}
 									className="flex items-center gap-3 p-1 rounded-lg hover:bg-vscode-list-hoverBackground">
-									<Checkbox
+									<LabeledCheckbox
 										id={`create-mode-${m.slug}`}
 										checked={selectedModes.includes(m.slug)}
 										onCheckedChange={(checked) => toggleMode(m.slug, checked === true)}
