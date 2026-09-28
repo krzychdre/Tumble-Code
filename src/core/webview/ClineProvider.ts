@@ -63,6 +63,7 @@ import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
 import { getWorkspaceGitInfo } from "../../utils/git"
+import { logger } from "../../utils/logging"
 import { getWorkspacePath } from "../../utils/path"
 import { perfCounters } from "../../utils/perfCounters"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
@@ -144,7 +145,9 @@ export class ClineProvider
 	// just-abandoned task leaking into the new task's panel).
 	public readonly subagentRegistry = new SubagentRegistry(
 		(message) => {
-			this.postMessageToWebview(message).catch(() => {})
+			this.postMessageToWebview(message).catch((error) =>
+				logger.debug(`[ClineProvider] subagentsUpdated not posted: ${String(error)}`),
+			)
 		},
 		() => this.getCurrentTask()?.taskId,
 	)
@@ -321,7 +324,7 @@ export class ClineProvider
 			createTask: (text, images, parentTask, options) => this.createTask(text, images, parentTask, options),
 			createTaskWithHistoryItem: (item, options) => this.createTaskWithHistoryItem(item, options),
 			handleModeSwitch: (mode) => this.handleModeSwitch(mode),
-			emit: (event, ...args) => this.emit(event as any, ...(args as any)),
+			emit: (event, ...args) => this.untypedEmitter.emit(event, ...args),
 			showAllowListViolation: (error) => this.showAllowListViolation(error),
 		})
 		const getProviderSettingsManager = () => this.providerSettingsManager
@@ -427,7 +430,7 @@ export class ClineProvider
 		// for the IPC-based API.
 		const getSubagentRegistry = () => this.subagentRegistry
 		const forwardingHost: TaskEventForwardingHost = {
-			emit: (event, ...args) => this.emit(event as any, ...(args as any)),
+			emit: (event, ...args) => this.untypedEmitter.emit(event, ...args),
 			get subagentRegistry() {
 				return getSubagentRegistry()
 			},
@@ -472,7 +475,10 @@ export class ClineProvider
 		event: K,
 		listener: (...args: TaskProviderEvents[K]) => void | Promise<void>,
 	): this {
-		return super.on(event, listener as any)
+		// The base method through its untyped signature (see untypedEmitter);
+		// `this.untypedEmitter.on` would dispatch back to this override.
+		EventEmitter.prototype.on.call(this, event, listener)
+		return this
 	}
 
 	/**
@@ -482,7 +488,19 @@ export class ClineProvider
 		event: K,
 		listener: (...args: TaskProviderEvents[K]) => void | Promise<void>,
 	): this {
-		return super.off(event, listener as any)
+		EventEmitter.prototype.off.call(this, event, listener)
+		return this
+	}
+
+	/**
+	 * This provider as a plain EventEmitter, without the per-event argument
+	 * types. Node's `EventEmitter<T>` computes its parameter types with a
+	 * conditional type that TypeScript cannot resolve for a generic event key
+	 * `K`, so methods that forward a `K` and its arguments go through this
+	 * view. Same object, same listeners: only the static type differs.
+	 */
+	private get untypedEmitter(): EventEmitter {
+		return this
 	}
 
 	/**

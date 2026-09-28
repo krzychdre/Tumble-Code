@@ -1,6 +1,5 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import pWaitFor from "p-wait-for"
-import { serializeError } from "serialize-error"
 import {
 	type ModelInfo,
 	type ProviderSettings,
@@ -51,7 +50,7 @@ import { type ApiMessage } from "../task-persistence"
 import { ApiRequestBuilder, type ToolsArrayResult } from "./ApiRequestBuilder"
 import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 import { type ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
-import { RetryHandler, isRateLimitError, setLastGlobalApiRequestTime } from "./RetryHandler"
+import { RetryHandler, apiErrorDisplayText, isRateLimitError, setLastGlobalApiRequestTime } from "./RetryHandler"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
 import type { Task } from "./Task"
@@ -1174,7 +1173,7 @@ export class TaskApiLoop {
 	 * Handle stream errors
 	 */
 	private async handleStreamError(
-		error: any,
+		error: unknown,
 		abortStream: AbortStreamFn,
 		currentItem: StackItem,
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
@@ -1182,7 +1181,7 @@ export class TaskApiLoop {
 	): Promise<"continue" | "return_true" | "return_false"> {
 		if (!this.access.abandoned) {
 			const cancelReason: ClineApiReqCancelReason = this.access.abort ? "user_cancelled" : "streaming_failed"
-			const rawErrorMessage = error.message ?? JSON.stringify(serializeError(error), null, 2)
+			const rawErrorMessage = apiErrorDisplayText(error)
 			const streamingFailedMessage = this.access.abort
 				? undefined
 				: `${t("common:interruption.streamTerminatedByProvider")}: ${rawErrorMessage}`

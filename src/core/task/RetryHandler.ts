@@ -73,6 +73,21 @@ export interface RetryHandlerAccess {
 	abortTask(): Promise<void>
 }
 
+/** The fields of a Google API error that carry a RetryInfo delay on a 429. */
+type GoogleRetryInfoError = {
+	status?: unknown
+	errorDetails?: Array<{ "@type"?: string; retryDelay?: string }>
+}
+
+/**
+ * The text shown for a failed request: the error's `message`, else the whole
+ * error serialized. Like the `any` code it replaces, it reads `message`
+ * without a null check.
+ */
+export function apiErrorDisplayText(error: unknown): string {
+	return (error as { message?: string }).message ?? JSON.stringify(serializeError(error), null, 2)
+}
+
 /**
  * Thrown out of the first-chunk error dispatch when the user answers the
  * api_req_failed ask with anything but Retry. TaskApiLoop's
@@ -189,7 +204,7 @@ export class RetryHandler {
 	 * @param state - The current provider state
 	 * @returns The delay in seconds
 	 */
-	calculateBackoffDelay(retryAttempt: number, error: any, state: BackoffState | undefined): number {
+	calculateBackoffDelay(retryAttempt: number, error: unknown, state: BackoffState | undefined): number {
 		// `||` would mask a user-set 0 (no backoff): `??` keeps it.
 		const baseDelay = state?.requestDelaySeconds ?? SETTINGS_DEFAULTS.requestDelaySeconds
 
@@ -204,9 +219,10 @@ export class RetryHandler {
 		const rateLimitDelay = this.providerRateLimitDelaySeconds(state)
 
 		// Prefer RetryInfo on 429 if present
-		if (error?.status === 429) {
-			const retryInfo = error?.errorDetails?.find(
-				(d: any) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
+		const googleError = error as GoogleRetryInfoError | null | undefined
+		if (googleError?.status === 429) {
+			const retryInfo = googleError?.errorDetails?.find(
+				(d) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
 			)
 			const match = retryInfo?.retryDelay?.match?.(/^(\d+)s$/)
 			if (match) {
@@ -245,13 +261,14 @@ export class RetryHandler {
 	 * @param error - The error to format
 	 * @returns Formatted error text
 	 */
-	buildErrorHeaderText(error: any): string {
+	buildErrorHeaderText(error: unknown): string {
+		const shown = error as { status?: unknown; message?: string } | null | undefined
 		let headerText: string
-		if (error?.status) {
-			const errorMessage = error?.message || "Unknown error"
-			headerText = `${error.status}\n${errorMessage}`
-		} else if (error?.message) {
-			headerText = error.message
+		if (shown?.status) {
+			const errorMessage = shown?.message || "Unknown error"
+			headerText = `${shown.status}\n${errorMessage}`
+		} else if (shown?.message) {
+			headerText = shown.message
 		} else {
 			headerText = "Unknown error"
 		}
@@ -264,7 +281,7 @@ export class RetryHandler {
 	 * @param retryAttempt - The current retry attempt number
 	 * @param error - The error that triggered the retry
 	 */
-	async backoffAndAnnounce(retryAttempt: number, error: any): Promise<void> {
+	async backoffAndAnnounce(retryAttempt: number, error: unknown): Promise<void> {
 		try {
 			const state = await this.access.providerRef.deref()?.getState()
 			const finalDelay = this.calculateBackoffDelay(retryAttempt, error, state)
@@ -331,7 +348,7 @@ export class RetryHandler {
 	 * caller because it re-enters TaskApiLoop's request generator.
 	 */
 	async *handleApiRequestError(
-		error: any,
+		error: unknown,
 		retryAttempt: number,
 		autoApprovalEnabled: boolean | undefined,
 		iterator: AsyncIterator<any>,
@@ -380,10 +397,7 @@ export class RetryHandler {
 			})
 			return
 		} else {
-			const { response } = await this.access.askSay.ask(
-				"api_req_failed",
-				error.message ?? JSON.stringify(serializeError(error), null, 2),
-			)
+			const { response } = await this.access.askSay.ask("api_req_failed", apiErrorDisplayText(error))
 
 			if (response !== "yesButtonClicked") {
 				throw new ApiRetryDeclinedError()

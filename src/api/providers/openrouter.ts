@@ -20,6 +20,8 @@ import {
 	convertToOpenAiMessages,
 	sanitizeGeminiMessages,
 	consolidateReasoningDetails,
+	type AssistantMessageWithReasoning,
+	type ReasoningDetail,
 } from "../transform/openai-format"
 import { normalizeMistralToolCallId } from "../transform/mistral-format"
 import { ApiStreamChunk } from "../transform/stream"
@@ -260,8 +262,9 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			// Step 2: Inject fake reasoning.encrypted block for tool calls that survived sanitization
 			openAiMessages = openAiMessages.map((msg) => {
 				if (msg.role === "assistant") {
-					const toolCalls = (msg as any).tool_calls as any[] | undefined
-					const existingDetails = (msg as any).reasoning_details as any[] | undefined
+					const withReasoning: AssistantMessageWithReasoning = msg
+					const toolCalls = msg.tool_calls
+					const existingDetails = withReasoning.reasoning_details
 
 					// Only inject if there are tool calls and no existing encrypted reasoning
 					if (toolCalls && toolCalls.length > 0) {
@@ -270,7 +273,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 						if (!hasEncrypted) {
 							// Create ONE fake encrypted block with the FIRST tool call's ID
 							// This is the documented format from OpenRouter for skipping thought signature validation
-							const fakeEncrypted = {
+							const fakeEncrypted: ReasoningDetail = {
 								type: "reasoning.encrypted",
 								data: "skip_thought_signature_validator",
 								id: toolCalls[0].id,
