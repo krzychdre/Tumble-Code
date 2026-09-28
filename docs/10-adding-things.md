@@ -80,8 +80,9 @@ like this).
       `providerSettingsSchemaDiscriminated`, the flat `providerSettingsSchema` (`provider-settings.ts`) and
       `SECRET_STATE_KEYS` (`global-settings.ts`, so the credentials go to `SecretStorage`).
       `provider-schema-derivation.spec.ts` snapshots the generated schemas: review its diff and update it with `-u`.
-    - `provider-model-selection.ts`: the case that resolves the configured model (a static-list provider joins the
-      `resolveCatalogModel` group).
+    - `provider-model-selection.ts`: the case in `resolveProviderModelSelection` that resolves the configured model
+      (a static-list provider joins the `resolveFromCatalog` group). The request (`resolvePortableProviderModel`)
+      and the settings (`useSelectedModel`) both read it, so the settings need no case of their own.
     - `provider-descriptors.ts`: the `PROVIDER_DESCRIPTORS` row (see step 4).
 2. **Handler** (`src/api`): the handler class in `src/api/providers/` implementing `createMessage` returning an
    `ApiStream`; export it from the barrel and register the factory, capabilities and `resolveModel` in
@@ -139,8 +140,9 @@ like this).
       (`ProviderFormId` is derived from the table); only a component named differently needs an entry in
       `customFormIdAliases` there.
     - `service` (the model picker's "browse models" name and link) and `docsSlug` (the docs page) complete the row.
-      The generic model picker, the default model set on a provider switch and the selected-model lookup in
-      `useSelectedModel` read `providerModelDefinitions`, so a static-list provider needs no webview edit beyond
+      The generic model picker and the default model set on a provider switch read `providerModelDefinitions`,
+      and `useSelectedModel` calls the shared `resolveProviderModelSelection`, so a static-list provider needs no
+      webview edit beyond
       the translation keys its descriptor names, added to `webview-ui/src/i18n/locales/*/settings.json`.
     - `modelPicker: "in-form"` when the provider's own form selects the model, so `ApiOptions` does not add the
       generic model picker (`PROVIDERS_WITH_CUSTOM_MODEL_UI` is derived from it); `modelSourceOptions` for a
@@ -154,9 +156,10 @@ like this).
    (`provider-registry.spec.ts`, `provider-descriptors.spec.ts`, `provider-forms.table.spec.tsx`) cover the rows;
    and, only for a real workflow, one e2e case under `apps/vscode-e2e/src/suite/providers/`.
 
-Still manual (not derived from one table yet): the model selection
-switches in `provider-model-selection.ts` and `useSelectedModel.ts` for providers with fetched lists or special
-rules (1M context tiers, Z.ai lines, DeepSeek aliases), and the translation keys in every locale.
+Still manual (not derived from one table yet): the case in `resolveProviderModelSelection` for a provider with a
+fetched list or special rules (1M context tiers, Z.ai lines, DeepSeek aliases), the settings-only branches in
+`useSelectedModel.ts` (OpenRouter, Bedrock, Ollama, LM Studio, VS Code LM: they show info the request does not
+compute), and the translation keys in every locale.
 
 ## How these paths were verified
 
