@@ -298,3 +298,48 @@ describe("getStorageBasePath - storage-root memoization", () => {
 		expect(taskMkdirCalls).toHaveLength(2)
 	})
 })
+
+describe("getStorageBasePathSync", () => {
+	const defaultPath = "/test/global-storage"
+
+	beforeEach(() => {
+		vi.resetModules()
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it("returns the configured custom path without touching the file system", async () => {
+		const customPath = "/test/storage/custom"
+		const vscode = await freshVscode()
+		vi.spyOn(vscode.workspace, "getConfiguration").mockReturnValue({
+			get: vi.fn().mockReturnValue(customPath),
+		} as any)
+
+		const fsPromises = await import("fs/promises")
+		const { getStorageBasePathSync } = await import("../storage")
+
+		expect(getStorageBasePathSync(defaultPath)).toBe(customPath)
+		expect((fsPromises as any).mkdir).not.toHaveBeenCalled()
+		expect((fsPromises as any).access).not.toHaveBeenCalled()
+	})
+
+	it("returns the default path when no custom path is set", async () => {
+		const { getStorageBasePathSync } = await import("../storage")
+
+		expect(getStorageBasePathSync(defaultPath)).toBe(defaultPath)
+	})
+
+	it("returns the default path when the configuration is not accessible", async () => {
+		const vscode = await freshVscode()
+		vi.spyOn(vscode.workspace, "getConfiguration").mockImplementation(() => {
+			throw new Error("no configuration")
+		})
+		vi.spyOn(console, "warn").mockImplementation(() => {})
+
+		const { getStorageBasePathSync } = await import("../storage")
+
+		expect(getStorageBasePathSync(defaultPath)).toBe(defaultPath)
+	})
+})
