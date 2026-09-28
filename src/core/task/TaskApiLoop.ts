@@ -51,6 +51,7 @@ import { ApiRequestBuilder } from "./ApiRequestBuilder"
 import { RetryHandler, isRateLimitError, setLastGlobalApiRequestTime } from "./RetryHandler"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
+import type { Task } from "./Task"
 
 /**
  * Interface for Task access needed by TaskApiLoop.
@@ -239,6 +240,15 @@ export class TaskApiLoop {
 	// Delegate retry/backoff logic to RetryHandler
 	private readonly retryHandler: RetryHandler
 
+	/**
+	 * The access object IS the owning Task (Task.ts constructs this class with
+	 * `this`), and a few callees (checkpoints, environment details, presentAssistantMessage) still take the whole
+	 * Task. One typed cast here replaces an `as any` at each call site.
+	 */
+	private get task(): Task {
+		return this.access as unknown as Task
+	}
+
 	constructor(private readonly access: TaskApiLoopAccess) {
 		// Create the ApiRequestBuilder with a compatible access interface
 		this.apiRequestBuilder = new ApiRequestBuilder({
@@ -309,7 +319,7 @@ export class TaskApiLoop {
 	async initiateTaskLoop(userContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
 		// Kicks off the checkpoints initialization process in the background.
 		const { getCheckpointService } = await import("../checkpoints")
-		getCheckpointService(this.access as any)
+		getCheckpointService(this.task)
 
 		let nextUserContent = userContent
 		let includeFileDetails = true
@@ -629,14 +639,14 @@ export class TaskApiLoop {
 	 * post-switch state (pinned by build-tools-slim-toolset.spec.ts).
 	 */
 	private async prepareUserContent(
-		cycleState: any,
+		cycleState: ProviderState | undefined,
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 		currentIncludeFileDetails: boolean,
 		currentItem: StackItem,
 	): Promise<{
 		finalUserContent: Anthropic.Messages.ContentBlockParam[]
 		shouldAddUserMessage: boolean
-		cycleState: any
+		cycleState: ProviderState | undefined
 	}> {
 		let state = cycleState
 		const provider = this.access.providerRef.deref()
@@ -672,7 +682,7 @@ export class TaskApiLoop {
 			}
 		}
 
-		const environmentDetails = await getEnvironmentDetails(this.access as any, currentIncludeFileDetails, state)
+		const environmentDetails = await getEnvironmentDetails(this.task, currentIncludeFileDetails, state)
 
 		// Remove any existing environment_details blocks
 		const contentWithoutEnvDetails = parsedUserContent.filter((block) => {
@@ -854,7 +864,7 @@ export class TaskApiLoop {
 
 		// Present any partial blocks
 		if (this.access.streamProcessor.partialBlocks.length > 0) {
-			presentAssistantMessage(this.access as any)
+			presentAssistantMessage(this.task)
 		}
 
 		const hasTextContent = this.access.streamProcessor.assistantMessage.length > 0
@@ -953,7 +963,7 @@ export class TaskApiLoop {
 	 * - "skipped": guards failed; caller falls back to the noToolsUsed retry
 	 */
 	private async tryTextCompletionFallback(): Promise<"completed" | "feedback" | "skipped"> {
-		const task = this.access as unknown as import("./Task").Task
+		const task = this.task
 
 		const streamedText = this.access.streamProcessor.assistantMessage.trim()
 		if (!streamedText || this.access.isPaused || this.access.abort) {
@@ -968,8 +978,8 @@ export class TaskApiLoop {
 		// and the retry only makes them regenerate the same answer through
 		// attempt_completion (measured over 956 stored tasks, see
 		// ai_plans/2026-09-10_text-completion-single-result.md).
-		const todoList = (task as any).todoList
-		if (Array.isArray(todoList) && todoList.some((todo: any) => todo?.status === "pending")) {
+		const todoList = task.todoList
+		if (Array.isArray(todoList) && todoList.some((todo) => todo?.status === "pending")) {
 			return "skipped"
 		}
 
@@ -1459,7 +1469,7 @@ export class TaskApiLoop {
 	 * Handle context management before API request
 	 */
 	private async handleContextManagement(params: {
-		state: any
+		state: ProviderState | undefined
 		systemPrompt: string
 		autoCondenseContext: boolean
 		autoCondenseContextPercent: number
@@ -1516,7 +1526,7 @@ export class TaskApiLoop {
 	 * Delegates to ApiRequestBuilder.
 	 */
 	private async buildToolsArray(
-		state: any,
+		state: ProviderState | undefined,
 		apiConfiguration: ProviderSettings | undefined,
 		mode: string | undefined,
 		modelInfo: any,

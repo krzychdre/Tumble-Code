@@ -115,6 +115,25 @@ export interface ToolsArrayResult {
  * ApiRequestBuilder handles the construction of API request components.
  * This includes system prompts, tools arrays, and conversation history.
  */
+/**
+ * A reasoning block stored as the first content block of an assistant message.
+ * Stored history holds these next to Anthropic blocks, but Anthropic's
+ * ContentBlockParam union does not list them, hence this local shape.
+ */
+type EmbeddedReasoningBlock = {
+	type: "reasoning"
+	encrypted_content?: unknown
+	text?: unknown
+	summary?: any[]
+	id?: string
+}
+
+function asEmbeddedReasoningBlock(block: unknown): EmbeddedReasoningBlock | undefined {
+	return (block as { type?: unknown } | undefined)?.type === "reasoning"
+		? (block as EmbeddedReasoningBlock)
+		: undefined
+}
+
 export class ApiRequestBuilder {
 	constructor(private readonly access: ApiRequestBuilderAccess) {}
 
@@ -182,7 +201,7 @@ export class ApiRequestBuilder {
 	 * Build tools array for API request.
 	 */
 	async buildToolsArray(
-		state: any,
+		state: ProviderState | undefined,
 		apiConfiguration: ProviderSettings | undefined,
 		mode: string | undefined,
 		modelInfo: any,
@@ -329,8 +348,7 @@ export class ApiRequestBuilder {
 				const [first, ...rest] = contentArray
 
 				// Check for reasoning_details (OpenRouter format)
-				const msgWithDetails = msg as any
-				if (msgWithDetails.reasoning_details && Array.isArray(msgWithDetails.reasoning_details)) {
+				if (msg.reasoning_details && Array.isArray(msg.reasoning_details)) {
 					let assistantContent: Anthropic.Messages.MessageParam["content"]
 
 					if (contentArray.length === 0) {
@@ -341,24 +359,23 @@ export class ApiRequestBuilder {
 						assistantContent = contentArray
 					}
 
-					cleanConversationHistory.push({
+					// A MessageParam plus the OpenRouter field; built as a typed
+					// variable because the array's element type does not list it.
+					const withDetails: Anthropic.Messages.MessageParam & Pick<ApiMessage, "reasoning_details"> = {
 						role: "assistant",
 						content: assistantContent,
-						reasoning_details: msgWithDetails.reasoning_details,
-					} as any)
+						reasoning_details: msg.reasoning_details,
+					}
+					cleanConversationHistory.push(withDetails)
 
 					continue
 				}
 
 				// Embedded reasoning: encrypted or plain text
-				const hasEncryptedReasoning =
-					first && (first as any).type === "reasoning" && typeof (first as any).encrypted_content === "string"
-				const hasPlainTextReasoning =
-					first && (first as any).type === "reasoning" && typeof (first as any).text === "string"
+				const reasoningBlock = asEmbeddedReasoningBlock(first)
+				const hasPlainTextReasoning = typeof reasoningBlock?.text === "string"
 
-				if (hasEncryptedReasoning) {
-					const reasoningBlock = first as any
-
+				if (reasoningBlock && typeof reasoningBlock.encrypted_content === "string") {
 					if (sendsEncryptedReasoning) {
 						cleanConversationHistory.push({
 							type: "reasoning",

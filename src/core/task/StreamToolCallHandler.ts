@@ -1,4 +1,5 @@
 import { type ToolName } from "@roo-code/types"
+import type { ToolUse } from "../../shared/tools"
 
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
@@ -123,7 +124,11 @@ export class StreamToolCallHandler {
 					)
 				) {
 					const pending = this._task.checkpointSave(true) as Promise<void>
-					pending.catch(() => {})
+					pending.catch(() => {
+						// Deliberate swallow: the rejection surfaces where the write
+						// tool awaits pendingCheckpointSave; this handler only stops an
+						// unhandled rejection when no write tool runs this turn.
+					})
 					this._task.pendingCheckpointSave = pending
 				}
 
@@ -139,15 +144,14 @@ export class StreamToolCallHandler {
 				this.access.streamingToolCallIndices.set(event.id, toolUseIndex)
 
 				// Create initial partial tool use
-				const partialToolUse = {
-					type: "tool_use" as const,
+				// Carries the ID for native protocol
+				const partialToolUse: ToolUse = {
+					type: "tool_use",
+					id: event.id,
 					name: event.name as ToolName,
 					params: {},
 					partial: true,
 				}
-
-				// Store the ID for native protocol
-				;(partialToolUse as any).id = event.id
 
 				// Add to content and present
 				this.access.assistantMessageContent.push(partialToolUse)
@@ -162,7 +166,7 @@ export class StreamToolCallHandler {
 					const toolUseIndex = this.access.streamingToolCallIndices.get(event.id)
 					if (toolUseIndex !== undefined) {
 						// Store the ID for native protocol
-						;(partialToolUse as any).id = event.id
+						partialToolUse.id = event.id
 
 						// Update the existing tool use with new partial data
 						this.access.assistantMessageContent[toolUseIndex] = partialToolUse
@@ -180,7 +184,7 @@ export class StreamToolCallHandler {
 
 				if (finalToolUse) {
 					// Store the tool call ID
-					;(finalToolUse as any).id = event.id
+					finalToolUse.id = event.id
 
 					// Get the index and replace partial with final
 					if (toolUseIndex !== undefined) {
@@ -234,7 +238,7 @@ export class StreamToolCallHandler {
 		if (existingToolUse && existingToolUse.type === "tool_use") {
 			existingToolUse.partial = false
 			// Ensure it has the ID for native protocol
-			;(existingToolUse as any).id = toolCallId
+			existingToolUse.id = toolCallId
 		}
 	}
 
@@ -254,7 +258,9 @@ export class StreamToolCallHandler {
 	 */
 	private handleOrphanedToolCallEnd(toolCallId: string): void {
 		// Scan for a content block with this id.
-		const contentIndex = this.access.assistantMessageContent.findIndex((block) => (block as any).id === toolCallId)
+		const contentIndex = this.access.assistantMessageContent.findIndex(
+			(block) => block.type !== "text" && block.id === toolCallId,
+		)
 
 		if (contentIndex !== -1) {
 			const block = this.access.assistantMessageContent[contentIndex]

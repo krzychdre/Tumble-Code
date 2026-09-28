@@ -70,7 +70,7 @@ export class TaskSubtasks {
 			throw new Error("Provider not available")
 		}
 
-		const child = await (provider as any).delegateParentAndOpenChild({
+		const child = await provider.delegateParentAndOpenChild({
 			parentTaskId: this.access.taskId,
 			message,
 			initialTodos,
