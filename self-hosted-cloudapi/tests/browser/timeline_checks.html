@@ -1,0 +1,94 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  /* Tall rows, so "next" has somewhere to scroll to. */
+  .msg { min-height: 400px; }
+  .tl-target { outline: 2px solid red; }
+</style>
+</head><body>
+<!--
+  The task page's timeline (static/timeline.js): one tick per API request
+  (sized by cost), per error or retry, and per message of yours; a tick
+  scrolls to its row; "Next error" and "Next message of yours" walk those rows
+  in order and wrap; rows the live bridge adds later get their ticks too.
+-->
+<nav id="timeline" class="timeline" aria-label="Conversation timeline" hidden>
+  <div class="tl-jumps">
+    <button type="button" id="tl-next-error" class="btn ghost">Next error</button>
+    <button type="button" id="tl-next-user" class="btn ghost">Next message of yours</button>
+  </div>
+  <div class="tl-track" id="tl-track"></div>
+</nav>
+<div id="page"><div id="conversation"></div></div>
+<script id="messages-data" type="application/json">[
+ {"ts":1,"type":"say","say":"text","text":"Please refactor the parser"},
+ {"ts":2,"type":"say","say":"api_req_started","text":"{\"tokensIn\":100,\"tokensOut\":20,\"cost\":0.01}"},
+ {"ts":3,"type":"say","say":"api_req_started","text":"{\"tokensIn\":900,\"tokensOut\":90,\"cost\":0.10}"},
+ {"ts":4,"type":"say","say":"error","text":"Diff application failed"},
+ {"ts":5,"type":"say","say":"api_req_retry_delayed","text":"Rate limited, retrying in 5s"},
+ {"ts":6,"type":"say","say":"api_req_started","text":"{\"tokensIn\":10,\"tokensOut\":0,\"cancelReason\":\"streaming_failed\",\"streamingFailedMessage\":\"boom\"}"},
+ {"ts":7,"type":"say","say":"user_feedback","text":"No, do it differently"},
+ {"ts":8,"type":"say","say":"api_req_started","text":"{\"tokensIn\":300,\"tokensOut\":30,\"cost\":0.02}"},
+ {"ts":9,"type":"say","say":"completion_result","text":"Done"}
+]</script>
+<script src="../../src/web/static/vendor/marked.min.js"></script>
+<script src="../../src/web/static/vendor/purify.min.js"></script>
+<script src="../../src/web/static/format.js"></script>
+<script src="../../src/web/static/render.js"></script>
+<script src="../../src/web/static/timeline.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function ticks(sel) { return Array.prototype.slice.call(document.querySelectorAll("#tl-track " + (sel || ".tl-tick"))) }
+  function size(t) { return parseFloat(t.style.getPropertyValue("--v")) }
+  function target() { var el = document.querySelector(".msg.tl-target"); return el ? el.getAttribute("data-ts") : null }
+
+  var nav = document.getElementById("timeline")
+  check("timeline revealed once there is something on it", nav.hidden === false)
+  check("one tick per request, error or retry, and message of yours", ticks().length === 8)
+  check("three requests and three errors", ticks(".tl-request").length === 3 && ticks(".tl-error").length === 3)
+  check("two messages of yours (the task and the reply)", ticks(".tl-user").length === 2)
+  var byTs = {}
+  ticks().forEach(function (t) { byTs[t.getAttribute("data-ts")] = t })
+  check("in conversation order", ticks().map(function (t) { return t.getAttribute("data-ts") }).join() === "1,2,3,4,5,6,7,8")
+  check("the dearest request is full size", size(byTs["3"]) === 1)
+  check("a cheaper one is smaller but still visible", size(byTs["2"]) > 0 && size(byTs["2"]) < size(byTs["8"]))
+  check("a failed request is an error tick", byTs["6"].classList.contains("tl-error"))
+  check("a retry is an error tick", byTs["5"].classList.contains("tl-error"))
+  check("ticks say what they are", /API request/.test(byTs["3"].getAttribute("aria-label")) &&
+        /\$0\.1/.test(byTs["3"].getAttribute("aria-label")))
+
+  byTs["8"].click()
+  check("a tick marks its row", target() === "8")
+
+  window.scrollTo(0, 0)
+  var nextError = document.getElementById("tl-next-error")
+  nextError.click()
+  check("next error goes to the first error", target() === "4")
+  nextError.click()
+  check("then the retry", target() === "5")
+  nextError.click()
+  check("then the failed request", target() === "6")
+  nextError.click()
+  check("and wraps round", target() === "4")
+  var nextUser = document.getElementById("tl-next-user")
+  nextUser.click()
+  check("next message of yours after the current one", target() === "7")
+  check("focus moves to the row", document.activeElement && document.activeElement.closest(".msg") &&
+        document.activeElement.closest(".msg").getAttribute("data-ts") === "7")
+
+  // The live bridge adds a row: its tick follows.
+  window.__tumbleConversation.upsert({ ts: 10, type: "say", say: "api_req_started", text: "{\"tokensIn\":5,\"cost\":0.2}" })
+  setTimeout(function () {
+    check("a live row gets its tick", ticks().length === 9)
+    var t10 = document.querySelector('#tl-track .tl-tick[data-ts="10"]')
+    check("sizes are rescaled to the new dearest", !!t10 && size(t10) === 1 &&
+          size(document.querySelector('#tl-track .tl-tick[data-ts="3"]')) === 0.5)
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  }, 300)
+})
+</script>
+</body></html>

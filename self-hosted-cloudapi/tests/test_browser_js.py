@@ -46,6 +46,8 @@ _MIN_CHECKS = {
     "theme_checks.html": 8,
     # Chart colours from the CSS variables, and a redraw on a theme change.
     "metrics_theme_checks.html": 8,
+    # Ticks per request/error/message, sizes by cost, jumps that wrap, live rows.
+    "timeline_checks.html": 19,
     "tasktree_checks.html": 19,
     # escapeHtml must escape " and ' so values interpolated into double-quoted
     # src="..."/title="..." attributes cannot break out (CodeQL #8/#11).
