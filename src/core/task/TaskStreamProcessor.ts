@@ -33,7 +33,7 @@ import {
 import { type ClineProvider } from "../webview/ClineProvider"
 
 import { type TaskAskSay } from "./TaskAskSay"
-import { type TaskHistory } from "./TaskHistory"
+import { type TaskMessageLog } from "./TaskMessageLog"
 import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 
 import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
@@ -100,7 +100,7 @@ export interface TaskStreamProcessorAccess {
 
 	// Delegated modules
 	askSay: TaskAskSay
-	history: TaskHistory
+	history: TaskMessageLog
 
 	// Provider reference (for postStateToWebviewWithoutTaskHistory)
 	providerRef: WeakRef<ClineProvider>

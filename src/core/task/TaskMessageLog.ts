@@ -45,9 +45,9 @@ import {
 	insertBlockBeforeContent,
 	insertBlockAfterContent,
 	convertOrphanedToolResultsToText,
-} from "./TaskHistory.helpers"
+} from "./TaskMessageLog.helpers"
 
-export interface TaskHistoryAccess {
+export interface TaskMessageLogAccess {
 	// Core identifiers
 	taskId: string
 	globalStoragePath: string
@@ -107,8 +107,8 @@ export const CLINE_MESSAGES_SAVE_IDLE_MS = 1_000
 /** ...and at least this often while messages keep coming (the most a crash can lose). */
 export const CLINE_MESSAGES_SAVE_MAX_WAIT_MS = 3_000
 
-/** Every TaskHistory with a coalesced write pending (for {@link flushPendingClineMessageSaves}). */
-const historiesWithPendingSave = new Set<TaskHistory>()
+/** Every TaskMessageLog with a coalesced write pending (for {@link flushPendingClineMessageSaves}). */
+const historiesWithPendingSave = new Set<TaskMessageLog>()
 
 /**
  * Runs every pending coalesced `ui_messages.json` write now. `deactivate` awaits
@@ -119,14 +119,14 @@ export async function flushPendingClineMessageSaves(): Promise<void> {
 	await Promise.all([...historiesWithPendingSave].map((history) => history.flushClineMessages()))
 }
 
-export class TaskHistory {
+export class TaskMessageLog {
 	/** The coalesced `ui_messages.json` write, while one is pending. */
 	private pendingSave?: { idle: NodeJS.Timeout; maxWait: NodeJS.Timeout }
 	/** Writes run one after another, each with the list as it is when it starts. */
 	private saveChain: Promise<unknown> = Promise.resolve()
 	private hasWrittenClineMessages = false
 
-	constructor(private readonly access: TaskHistoryAccess) {}
+	constructor(private readonly access: TaskMessageLogAccess) {}
 
 	// API Conversation History
 

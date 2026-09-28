@@ -20,7 +20,7 @@ import { OutputInterceptor } from "../../integrations/terminal/OutputInterceptor
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { formatResponse } from "../prompts/responses"
 import { type ApiMessage } from "../task-persistence"
-import { type TaskHistory } from "./TaskHistory"
+import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskContextManager } from "./TaskContextManager"
 import { defaultModeSlug } from "../../shared/modes"
@@ -121,7 +121,7 @@ export interface TaskLifecycleAccess {
 	messageQueueStateChangedHandler?: () => void
 
 	// Delegated modules
-	history: TaskHistory
+	history: TaskMessageLog
 	askSay: TaskAskSay
 	contextManager: TaskContextManager
 

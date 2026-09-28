@@ -1,7 +1,7 @@
 import { RooCodeEventName, ProviderSettings, TokenUsage, ToolUsage } from "@roo-code/types"
 
 import { Task } from "../Task"
-import { CLINE_MESSAGES_SAVE_IDLE_MS } from "../TaskHistory"
+import { CLINE_MESSAGES_SAVE_IDLE_MS } from "../TaskMessageLog"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { hasToolUsageChanged, hasTokenUsageChanged } from "../../../shared/getApiMetrics"
 

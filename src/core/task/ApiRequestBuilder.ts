@@ -36,7 +36,7 @@ import { type RooIgnoreController } from "../ignore/RooIgnoreController"
 /**
  * Whether the handler returns encrypted reasoning (OpenAI Native, Codex) and so can take
  * its own encrypted reasoning items back in the next request. The same check decides in
- * TaskHistory whether such an item is stored at all.
+ * TaskMessageLog whether such an item is stored at all.
  */
 function roundTripsEncryptedReasoning(api: ApiHandler): boolean {
 	return typeof (api as { getEncryptedContent?: unknown }).getEncryptedContent === "function"
@@ -280,7 +280,7 @@ export class ApiRequestBuilder {
 				? applyMicrocompactCleared(messages, microcompactedToolUseIds)
 				: messages
 
-		// Encrypted reasoning is OpenAI ciphertext (TaskHistory stores it only from a handler
+		// Encrypted reasoning is OpenAI ciphertext (TaskMessageLog stores it only from a handler
 		// with getEncryptedContent: OpenAI Native and Codex). Only such a handler can read it
 		// back; any other provider (a mode switch to xAI, Anthropic, Bedrock, ...) gets the
 		// history without it (DEF-C46). Decided per request from the current handler, the

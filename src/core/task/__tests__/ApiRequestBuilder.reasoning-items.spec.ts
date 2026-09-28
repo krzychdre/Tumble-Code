@@ -31,7 +31,7 @@ vi.mock("@roo-code/telemetry", () => ({
  * The stored history itself stays as it is, so switching back to OpenAI sends it again.
  */
 
-// An OpenAI Native turn as TaskHistory stores it (buildEncryptedReasoningBlock), plus the
+// An OpenAI Native turn as TaskMessageLog stores it (buildEncryptedReasoningBlock), plus the
 // older stored form: a standalone reasoning entry between the messages.
 function openAiHistory(): ApiMessage[] {
 	return [
@@ -51,7 +51,7 @@ function openAiHistory(): ApiMessage[] {
 	]
 }
 
-// An xAI turn as TaskHistory stores it: plain reasoning text (buildReasoningBlock), xAI's own
+// An xAI turn as TaskMessageLog stores it: plain reasoning text (buildReasoningBlock), xAI's own
 // encrypted reasoning is never stored.
 function xaiHistory(): ApiMessage[] {
 	return [

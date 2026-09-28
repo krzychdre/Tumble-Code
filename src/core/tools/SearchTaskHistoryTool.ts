@@ -7,7 +7,7 @@ import {
 	clampMaxResults,
 	readTaskArtifacts,
 	searchTaskHistoryCorpus,
-} from "../task/searchTaskHistory"
+} from "./helpers/searchTaskHistory"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 

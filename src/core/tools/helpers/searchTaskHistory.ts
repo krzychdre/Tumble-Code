@@ -3,8 +3,8 @@ import * as path from "path"
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 
-import { ARTIFACT_DIRECTORIES, isValidArtifactId } from "../artifacts/ArtifactStore"
-import type { ApiMessage } from "../task-persistence/apiMessages"
+import { ARTIFACT_DIRECTORIES, isValidArtifactId } from "../../artifacts/ArtifactStore"
+import type { ApiMessage } from "../../task-persistence/apiMessages"
 
 /**
  * Search over a task's OWN stored history.

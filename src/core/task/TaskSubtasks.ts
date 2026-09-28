@@ -4,7 +4,7 @@ import { type TodoItem, type ClineMessage, type ClineApiReqCancelReason, RooCode
 
 import { type ApiMessage } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
-import { type TaskHistory } from "./TaskHistory"
+import { type TaskMessageLog } from "./TaskMessageLog"
 import { type ClineProvider } from "../webview/ClineProvider"
 
 /**
@@ -38,7 +38,7 @@ export interface TaskSubtasksAccess {
 	apiConversationHistory: ApiMessage[]
 
 	// Delegated modules
-	history: TaskHistory
+	history: TaskMessageLog
 
 	// Event emission
 	emit: (event: RooCodeEventName.TaskActive, taskId: string) => void

@@ -1,4 +1,4 @@
-// npx vitest run core/task/__tests__/TaskHistory.background-guard.spec.ts
+// npx vitest run core/task/__tests__/TaskMessageLog.background-guard.spec.ts
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 
@@ -13,14 +13,14 @@ vi.mock("../../task-persistence", () => ({
 	}),
 }))
 
-import { TaskHistory, type TaskHistoryAccess } from "../TaskHistory"
+import { TaskMessageLog, type TaskMessageLogAccess } from "../TaskMessageLog"
 import * as taskPersistence from "../../task-persistence"
 
 const saveTaskMessages = vi.mocked(taskPersistence.saveTaskMessages)
 const readTaskMessages = vi.mocked(taskPersistence.readTaskMessages)
 const taskMetadata = vi.mocked(taskPersistence.taskMetadata)
 
-function buildAccess(overrides: Partial<TaskHistoryAccess> = {}): TaskHistoryAccess {
+function buildAccess(overrides: Partial<TaskMessageLogAccess> = {}): TaskMessageLogAccess {
 	const provider = {
 		updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 	}
@@ -34,7 +34,7 @@ function buildAccess(overrides: Partial<TaskHistoryAccess> = {}): TaskHistoryAcc
 		userMessageContent: [],
 		assistantMessageSavedToHistory: true,
 		abort: false,
-		providerRef: { deref: () => provider } as unknown as TaskHistoryAccess["providerRef"],
+		providerRef: { deref: () => provider } as unknown as TaskMessageLogAccess["providerRef"],
 		cloudSyncedMessageTimestamps: new Set<number>(),
 		rootTaskId: undefined,
 		parentTaskId: undefined,
@@ -50,10 +50,10 @@ function buildAccess(overrides: Partial<TaskHistoryAccess> = {}): TaskHistoryAcc
 		restoreTodoListForTask: vi.fn(),
 		isBackground: false,
 		...overrides,
-	} as unknown as TaskHistoryAccess
+	} as unknown as TaskMessageLogAccess
 }
 
-describe("TaskHistory.saveClineMessages — background guard", () => {
+describe("TaskMessageLog.saveClineMessages — background guard", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		readTaskMessages.mockResolvedValue([])
@@ -61,7 +61,7 @@ describe("TaskHistory.saveClineMessages — background guard", () => {
 
 	it("calls updateTaskHistory for foreground tasks", async () => {
 		const access = buildAccess({ isBackground: false })
-		const history = new TaskHistory(access)
+		const history = new TaskMessageLog(access)
 
 		await history.saveClineMessages()
 
@@ -72,7 +72,7 @@ describe("TaskHistory.saveClineMessages — background guard", () => {
 
 	it("saves messages but skips updateTaskHistory for background tasks", async () => {
 		const access = buildAccess({ isBackground: true })
-		const history = new TaskHistory(access)
+		const history = new TaskMessageLog(access)
 
 		await history.saveClineMessages()
 

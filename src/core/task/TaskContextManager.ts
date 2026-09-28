@@ -24,7 +24,7 @@ import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { getMessagesSinceLastSummary, summarizeConversation, getEffectiveApiHistory } from "../condense"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { getCurrentProfileId } from "./currentProfileId"
-import { type TaskHistory } from "./TaskHistory"
+import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 // The persisted history type itself (not a local copy), so a change in the SDK
 // MessageParam (0.128 added the "system" role) cannot make Task and this
@@ -167,7 +167,7 @@ export interface TaskContextManagerAccess {
 	providerRef: WeakRef<ClineProvider>
 
 	// Delegated modules
-	history: TaskHistory
+	history: TaskMessageLog
 	askSay: TaskAskSay
 
 	/**
