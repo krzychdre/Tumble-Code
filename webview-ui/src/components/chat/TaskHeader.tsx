@@ -164,7 +164,6 @@ const TaskHeader = ({
 				: 0,
 		[model, modelId, apiConfiguration],
 	)
-	const reservedForOutput = maxTokens || 0
 
 	const condenseButton = (
 		<LucideIconButton
@@ -310,16 +309,6 @@ return (
 							contextTokens={contextTokens || 0}
 							maxTokens={maxTokens || undefined}
 						/>
-						{(() => {
-							// Percentage of available input space used
-							// (available input space = context window - reserved for output)
-							const availableInputSpace = contextWindow - reservedForOutput
-							const percentage =
-								availableInputSpace > 0
-									? Math.round(((contextTokens || 0) / availableInputSpace) * 100)
-									: 0
-							return <span className="shrink-0">{percentage}%</span>
-						})()}
 						{!!totalCost && (
 							<>
 								<span className="shrink-0">·</span>

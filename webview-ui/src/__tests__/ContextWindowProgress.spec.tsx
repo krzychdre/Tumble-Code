@@ -41,6 +41,14 @@ vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
 	})),
 }))
 
+// Mock getModelMaxOutputTokens so the reserved-for-output slice is a known
+// 1000 tokens against the mocked 4000-token window (the real fallback of 8192
+// is larger than the window and zeroes the available input space).
+vi.mock("@roo-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
+	getModelMaxOutputTokens: () => 1000,
+}))
+
 describe("ContextWindowProgress", () => {
 	const queryClient = new QueryClient()
 
@@ -135,5 +143,59 @@ describe("ContextWindowProgress", () => {
 
 		// Verify the flex container has the expected structure
 		expect(progressBarContainer?.querySelector(".flex-1.relative")).toBeInTheDocument()
+	})
+
+	describe("§2.4 context bar", () => {
+		it("renders as a 3px progressbar with square ends and aria attributes", () => {
+			renderComponent({ contextTokens: 1000, contextWindow: 4000 })
+			fireEvent.click(screen.getByText("Test task"))
+
+			const bar = screen.getByTestId("context-progressbar")
+			expect(bar).toHaveAttribute("role", "progressbar")
+			expect(bar).toHaveAttribute("aria-label", "Context used")
+			expect(bar).toHaveAttribute("aria-valuemin", "0")
+			expect(bar).toHaveAttribute("aria-valuemax", "100")
+			expect(Number(bar.getAttribute("aria-valuenow"))).toBeGreaterThan(0)
+
+			// 3px tall, square ends (no rounded class).
+			const track = bar.firstElementChild
+			expect(track?.className).toContain("h-[3px]")
+			expect(track?.className).not.toContain("rounded")
+		})
+
+		it("shows the percentage as text next to the bar", () => {
+			renderComponent({ contextTokens: 1000, contextWindow: 4000 })
+			fireEvent.click(screen.getByText("Test task"))
+
+			const percent = screen.getByTestId("context-used-percent")
+			expect(percent).toHaveTextContent(/%$/)
+
+			const bar = screen.getByTestId("context-progressbar")
+			expect(percent).toHaveTextContent(`${bar.getAttribute("aria-valuenow")}%`)
+		})
+
+		it("turns the used part --status-waiting above 75% and --status-failed above 90%", () => {
+			// The mocked context window is 4000 with 1000 reserved for output,
+			// so drive the percentage through the token count.
+			const getUsedColor = (contextTokens: number) => {
+				const { unmount } = renderComponent({ contextTokens, contextWindow: 4000 })
+				// Collapse state: click the header toggle (the first "Test task"
+				// match; the expanded body would add a second one).
+				fireEvent.click(screen.getAllByText("Test task")[0])
+				const used = screen.getByTestId("context-tokens-used").firstElementChild
+				const style = used?.getAttribute("style")
+				unmount()
+				return style
+			}
+
+			// Low usage: the normal foreground colour.
+			expect(getUsedColor(1000)).toContain("var(--vscode-foreground)")
+
+			// Above 90% of the 3000 available (window 4000 - 1000 reserved): --status-failed.
+			expect(getUsedColor(2800)).toContain("var(--status-failed)")
+
+			// Above 75% but not above 90%: --status-waiting.
+			expect(getUsedColor(2400)).toContain("var(--status-waiting)")
+		})
 	})
 })
