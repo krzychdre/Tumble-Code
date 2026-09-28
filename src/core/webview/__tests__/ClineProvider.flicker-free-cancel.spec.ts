@@ -194,7 +194,7 @@ describe("ClineProvider flicker-free cancel", () => {
 
 	it("should not remove current task from slot when rehydrating same taskId", async () => {
 		// Setup: install a task as current first
-		;(provider as any).taskSlot.current = mockTask1
+		;(provider as any).taskSlot.seedForTests(mockTask1)
 
 		// Mock event listeners for cleanup
 		;(provider as any).taskEventListeners = new WeakMap()
@@ -235,7 +235,7 @@ describe("ClineProvider flicker-free cancel", () => {
 
 	it("should remove current task when creating different task", async () => {
 		// Setup: install a task as current first
-		;(provider as any).taskSlot.current = mockTask1
+		;(provider as any).taskSlot.seedForTests(mockTask1)
 
 		// Spy on clearCurrentTask to verify it IS called
 		const removeClineFromStackSpy = vi.spyOn(provider, "clearCurrentTask").mockResolvedValue(undefined)
@@ -261,7 +261,7 @@ describe("ClineProvider flicker-free cancel", () => {
 
 	it("should handle an empty slot gracefully during rehydration attempt", async () => {
 		// Setup: no current task
-		;(provider as any).taskSlot.current = undefined
+		;(provider as any).taskSlot.seedForTests()
 
 		// Spy on clearCurrentTask
 		const removeClineFromStackSpy = vi.spyOn(provider, "clearCurrentTask").mockResolvedValue(undefined)
@@ -287,7 +287,7 @@ describe("ClineProvider flicker-free cancel", () => {
 
 	it("should replace only the current task during flicker-free replacement", async () => {
 		// Setup: single current task (D7: the provider holds at most one)
-		;(provider as any).taskSlot.current = mockTask1
+		;(provider as any).taskSlot.seedForTests(mockTask1)
 		;(provider as any).taskEventListeners = new WeakMap()
 		;(provider as any).taskEventListeners.set(mockTask1, [vi.fn()])
 

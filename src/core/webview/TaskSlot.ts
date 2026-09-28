@@ -42,12 +42,18 @@ export class TaskSlot {
 
 	constructor(private readonly host: TaskSlotHost) {}
 
-	/** The current occupant, if any. */
+	/** The current occupant, if any (read-only: install via {@link set}). */
 	get current(): Task | undefined {
 		return this.currentTask
 	}
 
-	set current(task: Task | undefined) {
+	/**
+	 * Installs `task` as the occupant with no side effects — no TaskFocused
+	 * emit, no preparation tasks, no abort of the previous occupant. For
+	 * tests only: specs seed the slot with mock tasks; production code must
+	 * go through {@link set} / {@link replaceInPlace} / {@link clear}.
+	 */
+	seedForTests(task?: Task): void {
 		this.currentTask = task
 	}
 

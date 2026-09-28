@@ -61,7 +61,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 			},
 			detachDelegatedParent: (parentTaskId, childTaskId) => provider.delegation.detach(parentTaskId, childTaskId),
 		})
-		slot.current = childTask as any
+		slot.seedForTests(childTask as any)
 
 		return { slot, provider, childTask, updateTaskHistory, getHistoryItem }
 	}
@@ -294,7 +294,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 			removeTaskEventListeners: vi.fn(),
 			detachDelegatedParent: vi.fn(),
 		})
-		slot.current = taskB as any
+		slot.seedForTests(taskB as any)
 
 		// Simulate what delegateParentAndOpenChild does: pop B with skipDelegationRepair
 		await slot.clear({ skipDelegationRepair: true })

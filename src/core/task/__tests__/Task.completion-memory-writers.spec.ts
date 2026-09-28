@@ -163,7 +163,7 @@ function makeTask(provider: ProviderStandIn, options: { parentTaskId?: string; i
 	history.saveClineMessages = vi.fn().mockResolvedValue(undefined)
 	history.updateClineMessage = vi.fn().mockResolvedValue(undefined)
 	;(task as unknown as { checkpointSave: unknown }).checkpointSave = vi.fn().mockResolvedValue(undefined)
-	provider.taskSlot.current = task
+	provider.taskSlot.seedForTests(task)
 	return task
 }
 
