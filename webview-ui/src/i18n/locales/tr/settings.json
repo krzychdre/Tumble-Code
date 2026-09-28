@@ -275,7 +275,6 @@
 		"configProfile": "Yapılandırma Profili",
 		"description": "Sağlayıcılar ve ayarlar arasında hızlıca geçiş yapmak için farklı API yapılandırmalarını kaydedin.",
 		"apiProvider": "API Sağlayıcı",
-		"apiProviderDocs": "Sağlayıcı Belgeleri",
 		"nameEmpty": "İsim boş olamaz",
 		"nameExists": "Bu isme sahip bir profil zaten mevcut",
 		"deleteProfile": "Profili sil",

@@ -275,7 +275,6 @@
 		"configProfile": "設定プロファイル",
 		"description": "異なるAPI設定を保存して、プロバイダーと設定をすばやく切り替えることができます。",
 		"apiProvider": "APIプロバイダー",
-		"apiProviderDocs": "プロバイダードキュメント",
 		"nameEmpty": "名前を空にすることはできません",
 		"nameExists": "この名前のプロファイルは既に存在します",
 		"deleteProfile": "プロファイルを削除",

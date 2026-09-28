@@ -22,7 +22,6 @@ import { isZaiChinaLine, zaiApiLineConfigs } from "./providers/zai.js"
  *   component in that directory (OAuth flows, fetched model lists, cloud credentials); `none` means the
  *   provider has no settings form (hidden providers).
  * - `service`: the name and link the model picker shows ("browse models at ...").
- * - `docsSlug`: the page under `providers/` on the docs site the settings link to.
  * - `modelPicker`: "in-form" when the provider's own form picks the model (fetched lists,
  *   OAuth), so the settings do not add the generic model picker below it.
  * - `modelSourceOptions`: for a provider whose model list is fetched, which settings keys the
@@ -296,8 +295,6 @@ export type ProviderDescriptor<P extends DescribedProviderId = DescribedProvider
 	readonly form: ProviderFormDescriptor<P>
 	/** Name and link of the service in the model picker; without it the picker shows the id and no link. */
 	readonly service?: { readonly name: string; readonly url: string }
-	/** Page under `providers/` on the docs site; without it the settings show no docs link. */
-	readonly docsSlug?: string
 	/**
 	 * "in-form": the provider's form has its own model selection, so the settings do not show
 	 * the generic model picker. Without it, a provider with a static model list gets the
@@ -326,10 +323,9 @@ const apiKey = (labelKey: string, getKeyLabelKey: string, getKeyUrl: ProviderGet
 const zaiChinaLines = zaiApiLineSchema.options.filter(isZaiChinaLine)
 
 export const PROVIDER_DESCRIPTORS = {
-	openrouter: { form: custom, docsSlug: "openrouter", modelPicker: "in-form" },
+	openrouter: { form: custom, modelPicker: "in-form" },
 	litellm: {
 		form: custom,
-		docsSlug: "litellm",
 		modelPicker: "in-form",
 		modelSourceOptions: { liteLlmBaseUrl: "litellmBaseUrl", liteLlmApiKey: "litellmApiKey" },
 	},
@@ -345,7 +341,6 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "DeepSeek", url: "https://platform.deepseek.com" },
-		docsSlug: "deepseek",
 		modelSourceOptions: { baseUrl: "deepSeekBaseUrl", apiKey: "deepSeekApiKey" },
 	},
 	ollama: {
@@ -386,7 +381,6 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "Ollama", url: "https://ollama.ai" },
-		docsSlug: "ollama",
 		modelPicker: "in-form",
 		modelSourceOptions: { baseUrl: "ollamaBaseUrl", apiKey: "ollamaApiKey" },
 	},
@@ -429,19 +423,16 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "LM Studio", url: "https://lmstudio.ai/docs" },
-		docsSlug: "lmstudio",
 		modelPicker: "in-form",
 		modelSourceOptions: { baseUrl: "lmStudioBaseUrl" },
 	},
 	"vscode-lm": {
 		form: custom,
 		service: { name: "VS Code LM", url: "https://code.visualstudio.com/api/extension-guides/language-model" },
-		docsSlug: "vscode-lm",
 		modelPicker: "in-form",
 	},
 	openai: {
 		form: custom,
-		docsSlug: "openai-compatible",
 		modelPicker: "in-form",
 		modelSourceOptions: { baseUrl: "openAiBaseUrl", apiKey: "openAiApiKey", headers: "openAiHeaders" },
 	},
@@ -480,12 +471,10 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "Anthropic", url: "https://console.anthropic.com" },
-		docsSlug: "anthropic",
 	},
 	bedrock: {
 		form: custom,
 		service: { name: "Amazon Bedrock", url: "https://aws.amazon.com/bedrock" },
-		docsSlug: "bedrock",
 	},
 	gemini: {
 		form: {
@@ -506,7 +495,6 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "Google Gemini", url: "https://ai.google.dev" },
-		docsSlug: "gemini",
 	},
 	"gemini-cli": { form: { kind: "none" } },
 	mistral: {
@@ -529,7 +517,6 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "Mistral", url: "https://console.mistral.ai" },
-		docsSlug: "mistral",
 	},
 	moonshot: {
 		form: {
@@ -552,7 +539,6 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "Moonshot", url: "https://platform.moonshot.cn" },
-		docsSlug: "moonshot",
 	},
 	minimax: {
 		form: {
@@ -578,9 +564,8 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "MiniMax", url: "https://minimax.chat" },
-		docsSlug: "minimax",
 	},
-	"openai-codex": { form: custom, docsSlug: "openai-codex", modelPicker: "in-form" },
+	"openai-codex": { form: custom, modelPicker: "in-form" },
 	"openai-native": {
 		form: {
 			kind: "fields",
@@ -615,17 +600,14 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "OpenAI", url: "https://platform.openai.com" },
-		docsSlug: "openai",
 	},
 	"qwen-code": {
 		form: custom,
 		service: { name: "Qwen Code", url: "https://dashscope.console.aliyun.com" },
-		docsSlug: "qwen-code",
 	},
 	vertex: {
 		form: custom,
 		service: { name: "GCP Vertex AI", url: "https://console.cloud.google.com/vertex-ai" },
-		docsSlug: "vertex",
 	},
 	xai: {
 		form: {
@@ -635,7 +617,6 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "xAI", url: "https://x.ai" },
-		docsSlug: "xai",
 	},
 	zai: {
 		form: {
@@ -662,7 +643,6 @@ export const PROVIDER_DESCRIPTORS = {
 			],
 		},
 		service: { name: "Z.ai", url: "https://z.ai" },
-		docsSlug: "zai",
 	},
 } as const satisfies { [P in DescribedProviderId]: ProviderDescriptor<P> }
 

@@ -337,7 +337,6 @@
 		"configProfile": "Configuration Profile",
 		"description": "Save different API configurations to quickly switch between providers and settings.",
 		"apiProvider": "API Provider",
-		"apiProviderDocs": "Provider Docs",
 		"nameEmpty": "Name cannot be empty",
 		"nameExists": "A profile with this name already exists",
 		"deleteProfile": "Delete Profile",

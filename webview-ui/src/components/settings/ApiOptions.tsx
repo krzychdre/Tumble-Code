@@ -9,7 +9,6 @@ import {
 	classifyProvider,
 	getProviderDefaultModelId,
 	getProviderDefinition,
-	getProviderDescriptor,
 	getProviderModelDefinition,
 	isRetiredProvider,
 	isZaiChinaLine,
@@ -45,7 +44,6 @@ import {
 	Collapsible,
 	CollapsibleTrigger,
 	CollapsibleContent,
-	Link,
 } from "@src/components/ui"
 
 import { MODELS_BY_PROVIDER, PROVIDERS } from "./constants"
@@ -62,8 +60,7 @@ import { RateLimitSecondsControl } from "./RateLimitSecondsControl"
 import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl"
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
 import { type SetApiConfigurationField, useProviderField } from "./providers/shared"
-import { buildDocLink } from "@src/utils/docLinks"
-import { BookOpenText, ExternalLink } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 
 export interface ApiOptionsProps {
 	uriScheme: string | undefined
@@ -279,21 +276,6 @@ const ApiOptions = ({
 		return getModelValidationError(apiConfiguration, routerModels, organizationAllowList)
 	}, [apiConfiguration, routerModels, organizationAllowList])
 
-	const docs = useMemo(() => {
-		const definition = getProviderDefinition(selectedProvider)
-		const name = definition && "label" in definition ? definition.label : undefined
-		const slug = getProviderDescriptor(selectedProvider)?.docsSlug
-
-		if (!name || !slug) {
-			return undefined
-		}
-
-		return {
-			url: buildDocLink(`providers/${slug}`, "provider_docs"),
-			name,
-		}
-	}, [selectedProvider])
-
 	// Convert providers to SearchableSelect options
 	const providerOptions = useMemo(() => {
 		// Organization policy remains a webview concern layered over the portable inventory.
@@ -331,15 +313,7 @@ const ApiOptions = ({
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex flex-col gap-1 relative">
-				<div className="flex justify-between items-center">
-					<label className="block font-medium">{t("settings:providers.apiProvider")}</label>
-					{docs && (
-						<Link href={docs.url} target="_blank" className="flex gap-2">
-							{t("settings:providers.apiProviderDocs")}
-							<BookOpenText className="size-4 inline ml-2" />
-						</Link>
-					)}
-				</div>
+				<label className="block font-medium">{t("settings:providers.apiProvider")}</label>
 				<SearchableSelect
 					value={selectedProvider}
 					onValueChange={(value) => onProviderChange(value as ProviderName)}

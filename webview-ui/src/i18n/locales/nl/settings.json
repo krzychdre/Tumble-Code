@@ -275,7 +275,6 @@
 		"configProfile": "Configuratieprofiel",
 		"description": "Sla verschillende API-configuraties op om snel te wisselen tussen providers en instellingen.",
 		"apiProvider": "API-provider",
-		"apiProviderDocs": "Providerdocumentatie",
 		"nameEmpty": "Naam mag niet leeg zijn",
 		"nameExists": "Er bestaat al een profiel met deze naam",
 		"deleteProfile": "Profiel verwijderen",
