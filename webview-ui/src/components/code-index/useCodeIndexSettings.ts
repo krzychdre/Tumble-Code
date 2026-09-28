@@ -11,6 +11,9 @@ import { EMBEDDER_SECRETS, createValidationSchema } from "./embedderForms"
 
 export type CodeIndexSaveStatus = "idle" | "saving" | "saved" | "error"
 
+/** How long the error line of a failed save stays visible. */
+const SAVE_ERROR_VISIBLE_MS = 5000
+
 // Default settings template
 const getDefaultSettings = (): LocalCodeIndexSettings => ({
 	codebaseIndexEnabled: true,
@@ -93,6 +96,17 @@ export function useCodeIndexSettings(codebaseIndexConfig: CodebaseIndexConfig | 
 	const currentSettingsRef = useRef(currentSettings)
 	currentSettingsRef.current = currentSettings
 
+	// Hides the error of a failed save after SAVE_ERROR_VISIBLE_MS. A new save cancels it, so the
+	// old timer cannot reset a running save to "idle".
+	const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+	const clearSaveErrorTimer = () => {
+		if (saveErrorTimerRef.current !== undefined) {
+			clearTimeout(saveErrorTimerRef.current)
+			saveErrorTimerRef.current = undefined
+		}
+	}
+	useEffect(() => clearSaveErrorTimer, [])
+
 	// Listen for save responses
 	useEffect(() => {
 		const handleMessage = (message: ExtensionMessage) => {
@@ -115,8 +129,12 @@ export function useCodeIndexSettings(codebaseIndexConfig: CodebaseIndexConfig | 
 					setSaveStatus("error")
 					setSaveError(message.error || t("settings:codeIndex.saveError"))
 					// Clear error message after 5 seconds
-					setSaveStatus("idle")
-					setSaveError(null)
+					clearSaveErrorTimer()
+					saveErrorTimerRef.current = setTimeout(() => {
+						saveErrorTimerRef.current = undefined
+						setSaveStatus("idle")
+						setSaveError(null)
+					}, SAVE_ERROR_VISIBLE_MS)
 				}
 			}
 		}
@@ -251,6 +269,7 @@ export function useCodeIndexSettings(codebaseIndexConfig: CodebaseIndexConfig | 
 			return
 		}
 
+		clearSaveErrorTimer()
 		setSaveStatus("saving")
 		setSaveError(null)
 

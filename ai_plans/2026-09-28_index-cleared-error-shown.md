@@ -58,3 +58,25 @@ The dead type names are removed from `packages/types` together with the sends.
 
 - `CodeIndexPopover.index-cleared.spec.tsx`: failed error shown, success removes it, a new
   confirm removes it.
+
+## Fix C: a failed settings save showed no error
+
+Added on the same branch at the coordinator's request after the S5 split (#571) landed.
+
+- Defect: the `codeIndexSettingsSaved` handler (now in
+  `webview-ui/src/components/code-index/useCodeIndexSettings.ts`) sets `saveStatus` to "error"
+  and the error text, then sets them back to "idle" and `null` in the same handler. React batches
+  the four updates, so `CodeIndexActions` never renders the error line. The comment above says
+  "Clear error message after 5 seconds".
+- Evidence: `git log -S` shows the original code had `setTimeout(..., 5000)`; upstream commit
+  5bffebde5 (#5599, code index enable toggle) replaced it with the synchronous reset and kept the
+  comment. The S5 characterization spec pinned the resulting behaviour ("the error text is never
+  rendered").
+- Fix: restore the timer through a ref (`SAVE_ERROR_VISIBLE_MS = 5000`): a failure schedules the
+  reset, a new save or a new failure cancels the old timer first (so it cannot reset a running
+  save to "idle"), and unmount clears it. The file had no timer before, so the ref plus cleanup
+  effect is the usual React pattern.
+- Tests: the pinned case in `CodeIndexPopover.sections.spec.tsx` now expects the error for
+  5 seconds with the edits kept and Save enabled; a new save in that window stays "saving"; the
+  hook's timer is cleared on unmount (measured on the hook alone, because Radix focus handling
+  also schedules timers when the popover unmounts). The first and last fail on the unfixed hook.
