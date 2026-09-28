@@ -7,6 +7,7 @@ import {
 	providerSettingsEntrySchema,
 	providerSettingsSchema,
 } from "./provider-settings.js"
+import { type ProviderCredentialField, providerCredentialKeys } from "./provider-config/index.js"
 import { artifactSpillSettingsSchema } from "./artifact-spill.js"
 import { codebaseIndexModelsSchema, codebaseIndexConfigSchema } from "./codebase-index.js"
 import { experimentsSchema } from "./experiment.js"
@@ -423,26 +424,11 @@ export type RooCodeSettings = GlobalSettings & ProviderSettings
 /**
  * SecretState
  */
-export const SECRET_STATE_KEYS = [
-	"apiKey",
-	"openRouterApiKey",
-	"awsAccessKey",
-	"awsApiKey",
-	"awsSecretKey",
-	"awsSessionToken",
-	// The Vertex service-account key pasted as JSON. `vertexKeyFile` is only a
-	// path to such a file, so it stays in the plain profile config.
-	"vertexJsonCredentials",
-	"openAiApiKey",
-	"ollamaApiKey",
-	"geminiApiKey",
-	"openAiNativeApiKey",
-	"deepSeekApiKey",
-	"moonshotApiKey",
-	"mistralApiKey",
-	"minimaxApiKey",
-	"xaiApiKey",
-	"litellmApiKey",
+/**
+ * The codebase-index credentials. They sit in the flat provider settings
+ * (`codebaseIndexProviderSchema`) but belong to no provider.
+ */
+const CODEBASE_INDEX_SECRET_KEYS = [
 	"codeIndexOpenAiKey",
 	"codeIndexQdrantApiKey",
 	"codebaseIndexOpenAiCompatibleApiKey",
@@ -450,8 +436,17 @@ export const SECRET_STATE_KEYS = [
 	"codebaseIndexMistralApiKey",
 	"codebaseIndexVercelAiGatewayApiKey",
 	"codebaseIndexOpenRouterApiKey",
-	"zaiApiKey",
 ] as const
+
+/**
+ * The provider settings kept in the secret store: every provider credential
+ * (`providerCredentialFields`, so a new provider's API key is covered by its
+ * row there) and the codebase-index credentials.
+ */
+export const SECRET_STATE_KEYS: readonly (ProviderCredentialField | (typeof CODEBASE_INDEX_SECRET_KEYS)[number])[] = [
+	...providerCredentialKeys,
+	...CODEBASE_INDEX_SECRET_KEYS,
+]
 
 // Global secrets that are part of GlobalSettings (not ProviderSettings)
 export const GLOBAL_SECRET_KEYS = [

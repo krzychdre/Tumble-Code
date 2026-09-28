@@ -1,3 +1,4 @@
+import type { providerCredentialFields } from "./provider-config/index.js"
 import { providerModelDefinitions } from "./provider-models.js"
 import type { ProviderName, ProviderSettings } from "./provider-settings.js"
 
@@ -8,6 +9,10 @@ import type { ProviderName, ProviderSettings } from "./provider-settings.js"
  * editor's models (vscode-lm), is the test provider (fake-ai), or resolves a
  * credential set from its cloud SDK (bedrock: AWS access keys, profile or API
  * key; vertex: a service-account file or JSON).
+ *
+ * The field must be one of the provider's credentials in
+ * `providerCredentialFields` (checked by the type below), so it is stored in the
+ * secret store.
  *
  * A field listed here is not necessarily required: `providerRequiresApiKey`
  * says whether a profile is valid without it (Ollama takes an optional key for
@@ -35,7 +40,7 @@ export const providerApiKeyFields = {
 	vertex: null,
 	xai: "xaiApiKey",
 	zai: "zaiApiKey",
-} as const satisfies { [provider in ProviderName]: keyof ProviderSettings | null }
+} as const satisfies { [provider in ProviderName]: (typeof providerCredentialFields)[provider][number] | null }
 
 export type ProviderValidationMessage =
 	| "settings:validation.apiKey"

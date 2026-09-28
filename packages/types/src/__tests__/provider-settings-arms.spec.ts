@@ -5,6 +5,7 @@ import {
 	type KnownProviderId,
 	persistedProviderProfileSchema,
 	providerConfigSchemas,
+	providerCredentialFields,
 	providerProfileToLegacySettings,
 	providerSettingsSchema,
 	providerSettingsSchemaDiscriminated,
@@ -18,7 +19,8 @@ import { discriminatorMap } from "./helpers/discriminated-union.js"
 // (the persisted `providerConfigSchemas[id]`) and the provider's credentials,
 // which live in the secret store and are deliberately absent from the
 // persisted config. Only the credentials may differ between an arm and its
-// config; everything else has to be the same list.
+// config; everything else has to be the same list. The credentials are
+// `providerCredentialFields`, the table the arms are generated from.
 const LEGACY_SHARED_FIELDS = [
 	"includeMaxTokens",
 	"todoListEnabled",
@@ -34,29 +36,7 @@ const LEGACY_SHARED_FIELDS = [
 	"verbosity",
 ]
 
-const CREDENTIAL_FIELDS: Record<KnownProviderId, readonly string[]> = {
-	anthropic: ["apiKey"],
-	openrouter: ["openRouterApiKey"],
-	bedrock: ["awsAccessKey", "awsSecretKey", "awsSessionToken", "awsApiKey"],
-	vertex: ["vertexJsonCredentials"],
-	openai: ["openAiApiKey"],
-	ollama: ["ollamaApiKey"],
-	"vscode-lm": [],
-	lmstudio: [],
-	gemini: ["geminiApiKey"],
-	"gemini-cli": [],
-	"openai-codex": [],
-	"openai-native": ["openAiNativeApiKey"],
-	mistral: ["mistralApiKey"],
-	deepseek: ["deepSeekApiKey"],
-	moonshot: ["moonshotApiKey"],
-	minimax: ["minimaxApiKey"],
-	"fake-ai": [],
-	xai: ["xaiApiKey"],
-	litellm: ["litellmApiKey"],
-	zai: ["zaiApiKey"],
-	"qwen-code": [],
-}
+const CREDENTIAL_FIELDS: Record<KnownProviderId, readonly string[]> = providerCredentialFields
 
 const legacyArms = discriminatorMap(providerSettingsSchemaDiscriminated, "apiProvider")
 

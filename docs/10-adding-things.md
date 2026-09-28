@@ -60,7 +60,7 @@ custom-tool registry (`packages/core/src/custom-tools/`) and `McpHub` respective
 
 ## Add a provider
 
-About 15 code files, most of them one row in a typed table keyed by provider id, so the compiler lists what is
+About 13 code files, most of them one row in a typed table keyed by provider id, so the compiler lists what is
 missing once the id is in `providerRegistry`. Copy the most similar existing provider and follow the compiler
 errors. Worked example: a provider with a static model list and an API key (Moonshot, MiniMax and xAI are shaped
 like this).
@@ -71,13 +71,15 @@ like this).
       fetched lists).
     - `provider-models.ts`: the `providerModelDefinitions` row (model-id field, model list, default model, unknown
       model policy).
-    - `provider-validation.ts`: the API key field in `providerApiKeyFields` and the required fields in
-      `providerValidationRegistry`.
-    - `provider-config/configs.ts` and `provider-config/index.ts`: the config schema, its entry in
-      `providerConfigSchemas` and the `knownProviderConfigurationSchema` arm.
-    - `provider-settings.ts`: the legacy settings arm (the flat `providerSettingsSchema` is on the do-not-touch list:
-      add to it, do not restructure it).
-    - `global-settings.ts`: the API key in `SECRET_STATE_KEYS`, so it is stored in `SecretStorage`.
+    - `provider-validation.ts`: the API key field in `providerApiKeyFields` (it must be one of the provider's
+      `providerCredentialFields`, the compiler checks it) and the required fields in `providerValidationRegistry`.
+    - `provider-config/configs.ts` and `provider-config/index.ts`: the config schema (the persisted, non-secret
+      fields), its entry in `providerConfigSchemas`, and the provider's credential settings keys (API key, access
+      keys) in `providerCredentialFields`. Everything else about the settings schema is generated from these two
+      tables: the persisted `knownProviderConfigurationSchema` arm, the legacy arm in
+      `providerSettingsSchemaDiscriminated`, the flat `providerSettingsSchema` (`provider-settings.ts`) and
+      `SECRET_STATE_KEYS` (`global-settings.ts`, so the credentials go to `SecretStorage`).
+      `provider-schema-derivation.spec.ts` snapshots the generated schemas: review its diff and update it with `-u`.
     - `provider-model-selection.ts`: the case that resolves the configured model (a static-list provider joins the
       `resolveCatalogModel` group).
     - `provider-descriptors.ts`: the `PROVIDER_DESCRIPTORS` row (see step 4).
@@ -136,7 +138,7 @@ like this).
    (`provider-registry.spec.ts`, `provider-descriptors.spec.ts`, `provider-forms.table.spec.tsx`) cover the rows;
    and, only for a real workflow, one e2e case under `apps/vscode-e2e/src/suite/providers/`.
 
-Still manual (not derived from one table yet): the settings schema arms (step 1, three files), the model selection
+Still manual (not derived from one table yet): the model selection
 switches in `provider-model-selection.ts` and `useSelectedModel.ts` for providers with fetched lists or special
 rules (1M context tiers, Z.ai lines, DeepSeek aliases), and the translation keys in every locale.
 

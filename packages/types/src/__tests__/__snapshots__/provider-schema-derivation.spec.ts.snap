@@ -1,0 +1,3901 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generated provider settings schemas > keeps the discriminated legacy arms, in order 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "anthropicBaseUrl": {
+          "type": "string",
+        },
+        "anthropicBeta1MContext": {
+          "type": "boolean",
+        },
+        "anthropicUseAuthToken": {
+          "type": "boolean",
+        },
+        "apiKey": {
+          "type": "string",
+        },
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "anthropic",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiProvider": {
+          "const": "openrouter",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "openRouterApiKey": {
+          "type": "string",
+        },
+        "openRouterBaseUrl": {
+          "type": "string",
+        },
+        "openRouterModelId": {
+          "type": "string",
+        },
+        "openRouterSpecificProvider": {
+          "type": "string",
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "bedrock",
+          "type": "string",
+        },
+        "awsAccessKey": {
+          "type": "string",
+        },
+        "awsApiKey": {
+          "type": "string",
+        },
+        "awsBedrock1MContext": {
+          "type": "boolean",
+        },
+        "awsBedrockEndpoint": {
+          "type": "string",
+        },
+        "awsBedrockEndpointEnabled": {
+          "type": "boolean",
+        },
+        "awsBedrockServiceTier": {
+          "enum": [
+            "STANDARD",
+            "FLEX",
+            "PRIORITY",
+          ],
+          "type": "string",
+        },
+        "awsCustomArn": {
+          "type": "string",
+        },
+        "awsModelContextWindow": {
+          "type": "number",
+        },
+        "awsProfile": {
+          "type": "string",
+        },
+        "awsRegion": {
+          "type": "string",
+        },
+        "awsSecretKey": {
+          "type": "string",
+        },
+        "awsSessionToken": {
+          "type": "string",
+        },
+        "awsUseApiKey": {
+          "type": "boolean",
+        },
+        "awsUseCrossRegionInference": {
+          "type": "boolean",
+        },
+        "awsUseGlobalInference": {
+          "type": "boolean",
+        },
+        "awsUseProfile": {
+          "type": "boolean",
+        },
+        "awsUsePromptCache": {
+          "type": "boolean",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "vertex",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+        "vertex1MContext": {
+          "type": "boolean",
+        },
+        "vertexJsonCredentials": {
+          "type": "string",
+        },
+        "vertexKeyFile": {
+          "type": "string",
+        },
+        "vertexProjectId": {
+          "type": "string",
+        },
+        "vertexRegion": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "openai",
+          "type": "string",
+        },
+        "azureApiVersion": {
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "openAiApiKey": {
+          "type": "string",
+        },
+        "openAiBaseUrl": {
+          "type": "string",
+        },
+        "openAiCustomModelInfo": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "cachableFields": {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                "cacheReadsPrice": {
+                  "type": "number",
+                },
+                "cacheWritesPrice": {
+                  "type": "number",
+                },
+                "contextWindow": {
+                  "type": "number",
+                },
+                "defaultTemperature": {
+                  "type": "number",
+                },
+                "deprecated": {
+                  "type": "boolean",
+                },
+                "description": {
+                  "type": "string",
+                },
+                "excludedTools": {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                "includedTools": {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                "inputPrice": {
+                  "type": "number",
+                },
+                "isFree": {
+                  "type": "boolean",
+                },
+                "isStealthModel": {
+                  "type": "boolean",
+                },
+                "longContextPricing": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "appliesToServiceTiers": {
+                      "items": {
+                        "enum": [
+                          "default",
+                          "flex",
+                          "priority",
+                        ],
+                        "type": "string",
+                      },
+                      "type": "array",
+                    },
+                    "cacheReadsPriceMultiplier": {
+                      "type": "number",
+                    },
+                    "cacheWritesPriceMultiplier": {
+                      "type": "number",
+                    },
+                    "inputPriceMultiplier": {
+                      "type": "number",
+                    },
+                    "outputPriceMultiplier": {
+                      "type": "number",
+                    },
+                    "thresholdTokens": {
+                      "type": "number",
+                    },
+                  },
+                  "required": [
+                    "thresholdTokens",
+                  ],
+                  "type": "object",
+                },
+                "maxCachePoints": {
+                  "type": "number",
+                },
+                "maxThinkingTokens": {
+                  "type": [
+                    "number",
+                    "null",
+                  ],
+                },
+                "maxTokens": {
+                  "type": [
+                    "number",
+                    "null",
+                  ],
+                },
+                "minTokensPerCachePoint": {
+                  "type": "number",
+                },
+                "outputPrice": {
+                  "type": "number",
+                },
+                "preserveReasoning": {
+                  "type": "boolean",
+                },
+                "promptCacheRetention": {
+                  "enum": [
+                    "in_memory",
+                    "24h",
+                  ],
+                  "type": "string",
+                },
+                "reasoningEffort": {
+                  "enum": [
+                    "none",
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "xhigh",
+                    "max",
+                  ],
+                  "type": "string",
+                },
+                "requiredReasoningBudget": {
+                  "type": "boolean",
+                },
+                "requiredReasoningEffort": {
+                  "type": "boolean",
+                },
+                "supportedParameters": {
+                  "items": {
+                    "enum": [
+                      "max_tokens",
+                      "temperature",
+                      "reasoning",
+                      "include_reasoning",
+                    ],
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                "supportsImages": {
+                  "type": "boolean",
+                },
+                "supportsMaxTokens": {
+                  "type": "boolean",
+                },
+                "supportsPromptCache": {
+                  "type": "boolean",
+                },
+                "supportsReasoningBinary": {
+                  "type": "boolean",
+                },
+                "supportsReasoningBudget": {
+                  "type": "boolean",
+                },
+                "supportsReasoningEffort": {
+                  "anyOf": [
+                    {
+                      "type": "boolean",
+                    },
+                    {
+                      "items": {
+                        "enum": [
+                          "disable",
+                          "none",
+                          "minimal",
+                          "low",
+                          "medium",
+                          "high",
+                          "xhigh",
+                          "max",
+                        ],
+                        "type": "string",
+                      },
+                      "type": "array",
+                    },
+                  ],
+                },
+                "supportsTemperature": {
+                  "type": "boolean",
+                },
+                "supportsVerbosity": {
+                  "type": "boolean",
+                },
+                "tiers": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "cacheReadsPrice": {
+                        "type": "number",
+                      },
+                      "cacheWritesPrice": {
+                        "type": "number",
+                      },
+                      "contextWindow": {
+                        "type": "number",
+                      },
+                      "inputPrice": {
+                        "type": "number",
+                      },
+                      "name": {
+                        "enum": [
+                          "default",
+                          "flex",
+                          "priority",
+                        ],
+                        "type": "string",
+                      },
+                      "outputPrice": {
+                        "type": "number",
+                      },
+                    },
+                    "required": [
+                      "contextWindow",
+                    ],
+                    "type": "object",
+                  },
+                  "type": "array",
+                },
+              },
+              "required": [
+                "contextWindow",
+                "supportsPromptCache",
+              ],
+              "type": "object",
+            },
+            {
+              "type": "null",
+            },
+          ],
+        },
+        "openAiHeaders": {
+          "additionalProperties": {
+            "type": "string",
+          },
+          "propertyNames": {
+            "type": "string",
+          },
+          "type": "object",
+        },
+        "openAiHostHeader": {
+          "type": "string",
+        },
+        "openAiModelId": {
+          "type": "string",
+        },
+        "openAiR1FormatEnabled": {
+          "type": "boolean",
+        },
+        "openAiStreamingEnabled": {
+          "type": "boolean",
+        },
+        "openAiUseAzure": {
+          "type": "boolean",
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiProvider": {
+          "const": "ollama",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "ollamaApiKey": {
+          "type": "string",
+        },
+        "ollamaBaseUrl": {
+          "type": "string",
+        },
+        "ollamaModelId": {
+          "type": "string",
+        },
+        "ollamaNumCtx": {
+          "maximum": 9007199254740991,
+          "minimum": 128,
+          "type": "integer",
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiProvider": {
+          "const": "vscode-lm",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+        "vsCodeLmModelSelector": {
+          "additionalProperties": false,
+          "properties": {
+            "family": {
+              "type": "string",
+            },
+            "id": {
+              "type": "string",
+            },
+            "vendor": {
+              "type": "string",
+            },
+            "version": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiProvider": {
+          "const": "lmstudio",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "lmStudioBaseUrl": {
+          "type": "string",
+        },
+        "lmStudioDraftModelId": {
+          "type": "string",
+        },
+        "lmStudioModelId": {
+          "type": "string",
+        },
+        "lmStudioSpeculativeDecodingEnabled": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "gemini",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "geminiApiKey": {
+          "type": "string",
+        },
+        "googleGeminiBaseUrl": {
+          "type": "string",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "gemini-cli",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "geminiCliOAuthPath": {
+          "type": "string",
+        },
+        "geminiCliProjectId": {
+          "type": "string",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "openai-codex",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "openai-native",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "openAiNativeApiKey": {
+          "type": "string",
+        },
+        "openAiNativeBaseUrl": {
+          "type": "string",
+        },
+        "openAiNativeServiceTier": {
+          "enum": [
+            "default",
+            "flex",
+            "priority",
+          ],
+          "type": "string",
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "mistral",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "mistralApiKey": {
+          "type": "string",
+        },
+        "mistralCodestralUrl": {
+          "type": "string",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "deepseek",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "deepSeekApiKey": {
+          "type": "string",
+        },
+        "deepSeekBaseUrl": {
+          "type": "string",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "moonshot",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "moonshotApiKey": {
+          "type": "string",
+        },
+        "moonshotBaseUrl": {
+          "anyOf": [
+            {
+              "const": "https://api.moonshot.ai/v1",
+              "type": "string",
+            },
+            {
+              "const": "https://api.moonshot.cn/v1",
+              "type": "string",
+            },
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "minimax",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "minimaxApiKey": {
+          "type": "string",
+        },
+        "minimaxBaseUrl": {
+          "anyOf": [
+            {
+              "const": "https://api.minimax.io/v1",
+              "type": "string",
+            },
+            {
+              "const": "https://api.minimaxi.com/v1",
+              "type": "string",
+            },
+          ],
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiProvider": {
+          "const": "fake-ai",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "fakeAi": {},
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "xai",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+        "xaiApiKey": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiProvider": {
+          "const": "litellm",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "litellmApiKey": {
+          "type": "string",
+        },
+        "litellmBaseUrl": {
+          "type": "string",
+        },
+        "litellmModelId": {
+          "type": "string",
+        },
+        "litellmUsePromptCache": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "zai",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+        "zaiApiKey": {
+          "type": "string",
+        },
+        "zaiApiLine": {
+          "enum": [
+            "international_coding",
+            "china_coding",
+            "international_api",
+            "china_api",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiModelId": {
+          "type": "string",
+        },
+        "apiProvider": {
+          "const": "qwen-code",
+          "type": "string",
+        },
+        "consecutiveMistakeLimit": {
+          "minimum": 0,
+          "type": "number",
+        },
+        "enableReasoningEffort": {
+          "type": "boolean",
+        },
+        "includeMaxTokens": {
+          "type": "boolean",
+        },
+        "modelMaxThinkingTokens": {
+          "type": "number",
+        },
+        "modelMaxTokens": {
+          "type": "number",
+        },
+        "modelTemperature": {
+          "type": [
+            "number",
+            "null",
+          ],
+        },
+        "qwenCodeOauthPath": {
+          "type": "string",
+        },
+        "rateLimitSeconds": {
+          "type": "number",
+        },
+        "reasoningEffort": {
+          "enum": [
+            "disable",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+          ],
+          "type": "string",
+        },
+        "slimHidesMcp": {
+          "type": "boolean",
+        },
+        "slimToolset": {
+          "type": "boolean",
+        },
+        "todoListEnabled": {
+          "type": "boolean",
+        },
+        "verbosity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "apiProvider": {},
+      },
+      "required": [
+        "apiProvider",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`generated provider settings schemas > keeps the flat schema's keys in order 1`] = `
+[
+  "apiProvider",
+  "includeMaxTokens",
+  "todoListEnabled",
+  "modelTemperature",
+  "rateLimitSeconds",
+  "consecutiveMistakeLimit",
+  "slimToolset",
+  "slimHidesMcp",
+  "enableReasoningEffort",
+  "reasoningEffort",
+  "modelMaxTokens",
+  "modelMaxThinkingTokens",
+  "verbosity",
+  "apiModelId",
+  "anthropicBaseUrl",
+  "anthropicUseAuthToken",
+  "anthropicBeta1MContext",
+  "apiKey",
+  "openRouterModelId",
+  "openRouterBaseUrl",
+  "openRouterSpecificProvider",
+  "openRouterApiKey",
+  "awsRegion",
+  "awsUseCrossRegionInference",
+  "awsUseGlobalInference",
+  "awsUsePromptCache",
+  "awsProfile",
+  "awsUseProfile",
+  "awsUseApiKey",
+  "awsCustomArn",
+  "awsModelContextWindow",
+  "awsBedrockEndpointEnabled",
+  "awsBedrockEndpoint",
+  "awsBedrock1MContext",
+  "awsBedrockServiceTier",
+  "awsAccessKey",
+  "awsSecretKey",
+  "awsSessionToken",
+  "awsApiKey",
+  "vertexKeyFile",
+  "vertexProjectId",
+  "vertexRegion",
+  "vertex1MContext",
+  "vertexJsonCredentials",
+  "openAiBaseUrl",
+  "openAiR1FormatEnabled",
+  "openAiModelId",
+  "openAiCustomModelInfo",
+  "openAiUseAzure",
+  "azureApiVersion",
+  "openAiStreamingEnabled",
+  "openAiHostHeader",
+  "openAiHeaders",
+  "openAiApiKey",
+  "ollamaModelId",
+  "ollamaBaseUrl",
+  "ollamaNumCtx",
+  "ollamaApiKey",
+  "vsCodeLmModelSelector",
+  "lmStudioModelId",
+  "lmStudioBaseUrl",
+  "lmStudioDraftModelId",
+  "lmStudioSpeculativeDecodingEnabled",
+  "googleGeminiBaseUrl",
+  "geminiApiKey",
+  "geminiCliOAuthPath",
+  "geminiCliProjectId",
+  "openAiNativeBaseUrl",
+  "openAiNativeServiceTier",
+  "openAiNativeApiKey",
+  "mistralCodestralUrl",
+  "mistralApiKey",
+  "deepSeekBaseUrl",
+  "deepSeekApiKey",
+  "moonshotBaseUrl",
+  "moonshotApiKey",
+  "minimaxBaseUrl",
+  "minimaxApiKey",
+  "fakeAi",
+  "xaiApiKey",
+  "litellmBaseUrl",
+  "litellmModelId",
+  "litellmUsePromptCache",
+  "litellmApiKey",
+  "zaiApiLine",
+  "zaiApiKey",
+  "qwenCodeOauthPath",
+  "codeIndexOpenAiKey",
+  "codeIndexQdrantApiKey",
+  "codebaseIndexOpenAiCompatibleBaseUrl",
+  "codebaseIndexOpenAiCompatibleApiKey",
+  "codebaseIndexOpenAiCompatibleModelDimension",
+  "codebaseIndexGeminiApiKey",
+  "codebaseIndexMistralApiKey",
+  "codebaseIndexVercelAiGatewayApiKey",
+  "codebaseIndexOpenRouterApiKey",
+]
+`;
+
+exports[`generated provider settings schemas > keeps the flat schema, property order included 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "anthropicBaseUrl": {
+      "type": "string",
+    },
+    "anthropicBeta1MContext": {
+      "type": "boolean",
+    },
+    "anthropicUseAuthToken": {
+      "type": "boolean",
+    },
+    "apiKey": {
+      "type": "string",
+    },
+    "apiModelId": {
+      "type": "string",
+    },
+    "apiProvider": {
+      "anyOf": [
+        {
+          "enum": [
+            "openrouter",
+            "litellm",
+            "deepseek",
+            "ollama",
+            "lmstudio",
+            "vscode-lm",
+            "openai",
+            "fake-ai",
+            "anthropic",
+            "bedrock",
+            "gemini",
+            "gemini-cli",
+            "mistral",
+            "moonshot",
+            "minimax",
+            "openai-codex",
+            "openai-native",
+            "qwen-code",
+            "vertex",
+            "xai",
+            "zai",
+          ],
+          "type": "string",
+        },
+        {
+          "enum": [
+            "cerebras",
+            "chutes",
+            "deepinfra",
+            "doubao",
+            "featherless",
+            "groq",
+            "huggingface",
+            "io-intelligence",
+            "baseten",
+            "fireworks",
+            "poe",
+            "requesty",
+            "sambanova",
+            "unbound",
+            "vercel-ai-gateway",
+          ],
+          "type": "string",
+        },
+      ],
+    },
+    "awsAccessKey": {
+      "type": "string",
+    },
+    "awsApiKey": {
+      "type": "string",
+    },
+    "awsBedrock1MContext": {
+      "type": "boolean",
+    },
+    "awsBedrockEndpoint": {
+      "type": "string",
+    },
+    "awsBedrockEndpointEnabled": {
+      "type": "boolean",
+    },
+    "awsBedrockServiceTier": {
+      "enum": [
+        "STANDARD",
+        "FLEX",
+        "PRIORITY",
+      ],
+      "type": "string",
+    },
+    "awsCustomArn": {
+      "type": "string",
+    },
+    "awsModelContextWindow": {
+      "type": "number",
+    },
+    "awsProfile": {
+      "type": "string",
+    },
+    "awsRegion": {
+      "type": "string",
+    },
+    "awsSecretKey": {
+      "type": "string",
+    },
+    "awsSessionToken": {
+      "type": "string",
+    },
+    "awsUseApiKey": {
+      "type": "boolean",
+    },
+    "awsUseCrossRegionInference": {
+      "type": "boolean",
+    },
+    "awsUseGlobalInference": {
+      "type": "boolean",
+    },
+    "awsUseProfile": {
+      "type": "boolean",
+    },
+    "awsUsePromptCache": {
+      "type": "boolean",
+    },
+    "azureApiVersion": {
+      "type": "string",
+    },
+    "codeIndexOpenAiKey": {
+      "type": "string",
+    },
+    "codeIndexQdrantApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexGeminiApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexMistralApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexOpenAiCompatibleApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexOpenAiCompatibleBaseUrl": {
+      "type": "string",
+    },
+    "codebaseIndexOpenAiCompatibleModelDimension": {
+      "type": "number",
+    },
+    "codebaseIndexOpenRouterApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexVercelAiGatewayApiKey": {
+      "type": "string",
+    },
+    "consecutiveMistakeLimit": {
+      "minimum": 0,
+      "type": "number",
+    },
+    "deepSeekApiKey": {
+      "type": "string",
+    },
+    "deepSeekBaseUrl": {
+      "type": "string",
+    },
+    "enableReasoningEffort": {
+      "type": "boolean",
+    },
+    "fakeAi": {},
+    "geminiApiKey": {
+      "type": "string",
+    },
+    "geminiCliOAuthPath": {
+      "type": "string",
+    },
+    "geminiCliProjectId": {
+      "type": "string",
+    },
+    "googleGeminiBaseUrl": {
+      "type": "string",
+    },
+    "includeMaxTokens": {
+      "type": "boolean",
+    },
+    "litellmApiKey": {
+      "type": "string",
+    },
+    "litellmBaseUrl": {
+      "type": "string",
+    },
+    "litellmModelId": {
+      "type": "string",
+    },
+    "litellmUsePromptCache": {
+      "type": "boolean",
+    },
+    "lmStudioBaseUrl": {
+      "type": "string",
+    },
+    "lmStudioDraftModelId": {
+      "type": "string",
+    },
+    "lmStudioModelId": {
+      "type": "string",
+    },
+    "lmStudioSpeculativeDecodingEnabled": {
+      "type": "boolean",
+    },
+    "minimaxApiKey": {
+      "type": "string",
+    },
+    "minimaxBaseUrl": {
+      "anyOf": [
+        {
+          "const": "https://api.minimax.io/v1",
+          "type": "string",
+        },
+        {
+          "const": "https://api.minimaxi.com/v1",
+          "type": "string",
+        },
+      ],
+    },
+    "mistralApiKey": {
+      "type": "string",
+    },
+    "mistralCodestralUrl": {
+      "type": "string",
+    },
+    "modelMaxThinkingTokens": {
+      "type": "number",
+    },
+    "modelMaxTokens": {
+      "type": "number",
+    },
+    "modelTemperature": {
+      "type": [
+        "number",
+        "null",
+      ],
+    },
+    "moonshotApiKey": {
+      "type": "string",
+    },
+    "moonshotBaseUrl": {
+      "anyOf": [
+        {
+          "const": "https://api.moonshot.ai/v1",
+          "type": "string",
+        },
+        {
+          "const": "https://api.moonshot.cn/v1",
+          "type": "string",
+        },
+      ],
+    },
+    "ollamaApiKey": {
+      "type": "string",
+    },
+    "ollamaBaseUrl": {
+      "type": "string",
+    },
+    "ollamaModelId": {
+      "type": "string",
+    },
+    "ollamaNumCtx": {
+      "maximum": 9007199254740991,
+      "minimum": 128,
+      "type": "integer",
+    },
+    "openAiApiKey": {
+      "type": "string",
+    },
+    "openAiBaseUrl": {
+      "type": "string",
+    },
+    "openAiCustomModelInfo": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "cachableFields": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "cacheReadsPrice": {
+              "type": "number",
+            },
+            "cacheWritesPrice": {
+              "type": "number",
+            },
+            "contextWindow": {
+              "type": "number",
+            },
+            "defaultTemperature": {
+              "type": "number",
+            },
+            "deprecated": {
+              "type": "boolean",
+            },
+            "description": {
+              "type": "string",
+            },
+            "excludedTools": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "includedTools": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "inputPrice": {
+              "type": "number",
+            },
+            "isFree": {
+              "type": "boolean",
+            },
+            "isStealthModel": {
+              "type": "boolean",
+            },
+            "longContextPricing": {
+              "additionalProperties": false,
+              "properties": {
+                "appliesToServiceTiers": {
+                  "items": {
+                    "enum": [
+                      "default",
+                      "flex",
+                      "priority",
+                    ],
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                "cacheReadsPriceMultiplier": {
+                  "type": "number",
+                },
+                "cacheWritesPriceMultiplier": {
+                  "type": "number",
+                },
+                "inputPriceMultiplier": {
+                  "type": "number",
+                },
+                "outputPriceMultiplier": {
+                  "type": "number",
+                },
+                "thresholdTokens": {
+                  "type": "number",
+                },
+              },
+              "required": [
+                "thresholdTokens",
+              ],
+              "type": "object",
+            },
+            "maxCachePoints": {
+              "type": "number",
+            },
+            "maxThinkingTokens": {
+              "type": [
+                "number",
+                "null",
+              ],
+            },
+            "maxTokens": {
+              "type": [
+                "number",
+                "null",
+              ],
+            },
+            "minTokensPerCachePoint": {
+              "type": "number",
+            },
+            "outputPrice": {
+              "type": "number",
+            },
+            "preserveReasoning": {
+              "type": "boolean",
+            },
+            "promptCacheRetention": {
+              "enum": [
+                "in_memory",
+                "24h",
+              ],
+              "type": "string",
+            },
+            "reasoningEffort": {
+              "enum": [
+                "none",
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max",
+              ],
+              "type": "string",
+            },
+            "requiredReasoningBudget": {
+              "type": "boolean",
+            },
+            "requiredReasoningEffort": {
+              "type": "boolean",
+            },
+            "supportedParameters": {
+              "items": {
+                "enum": [
+                  "max_tokens",
+                  "temperature",
+                  "reasoning",
+                  "include_reasoning",
+                ],
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "supportsImages": {
+              "type": "boolean",
+            },
+            "supportsMaxTokens": {
+              "type": "boolean",
+            },
+            "supportsPromptCache": {
+              "type": "boolean",
+            },
+            "supportsReasoningBinary": {
+              "type": "boolean",
+            },
+            "supportsReasoningBudget": {
+              "type": "boolean",
+            },
+            "supportsReasoningEffort": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "items": {
+                    "enum": [
+                      "disable",
+                      "none",
+                      "minimal",
+                      "low",
+                      "medium",
+                      "high",
+                      "xhigh",
+                      "max",
+                    ],
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              ],
+            },
+            "supportsTemperature": {
+              "type": "boolean",
+            },
+            "supportsVerbosity": {
+              "type": "boolean",
+            },
+            "tiers": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "cacheReadsPrice": {
+                    "type": "number",
+                  },
+                  "cacheWritesPrice": {
+                    "type": "number",
+                  },
+                  "contextWindow": {
+                    "type": "number",
+                  },
+                  "inputPrice": {
+                    "type": "number",
+                  },
+                  "name": {
+                    "enum": [
+                      "default",
+                      "flex",
+                      "priority",
+                    ],
+                    "type": "string",
+                  },
+                  "outputPrice": {
+                    "type": "number",
+                  },
+                },
+                "required": [
+                  "contextWindow",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
+          },
+          "required": [
+            "contextWindow",
+            "supportsPromptCache",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "openAiHeaders": {
+      "additionalProperties": {
+        "type": "string",
+      },
+      "propertyNames": {
+        "type": "string",
+      },
+      "type": "object",
+    },
+    "openAiHostHeader": {
+      "type": "string",
+    },
+    "openAiModelId": {
+      "type": "string",
+    },
+    "openAiNativeApiKey": {
+      "type": "string",
+    },
+    "openAiNativeBaseUrl": {
+      "type": "string",
+    },
+    "openAiNativeServiceTier": {
+      "enum": [
+        "default",
+        "flex",
+        "priority",
+      ],
+      "type": "string",
+    },
+    "openAiR1FormatEnabled": {
+      "type": "boolean",
+    },
+    "openAiStreamingEnabled": {
+      "type": "boolean",
+    },
+    "openAiUseAzure": {
+      "type": "boolean",
+    },
+    "openRouterApiKey": {
+      "type": "string",
+    },
+    "openRouterBaseUrl": {
+      "type": "string",
+    },
+    "openRouterModelId": {
+      "type": "string",
+    },
+    "openRouterSpecificProvider": {
+      "type": "string",
+    },
+    "qwenCodeOauthPath": {
+      "type": "string",
+    },
+    "rateLimitSeconds": {
+      "type": "number",
+    },
+    "reasoningEffort": {
+      "enum": [
+        "disable",
+        "none",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "type": "string",
+    },
+    "slimHidesMcp": {
+      "type": "boolean",
+    },
+    "slimToolset": {
+      "type": "boolean",
+    },
+    "todoListEnabled": {
+      "type": "boolean",
+    },
+    "verbosity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "type": "string",
+    },
+    "vertex1MContext": {
+      "type": "boolean",
+    },
+    "vertexJsonCredentials": {
+      "type": "string",
+    },
+    "vertexKeyFile": {
+      "type": "string",
+    },
+    "vertexProjectId": {
+      "type": "string",
+    },
+    "vertexRegion": {
+      "type": "string",
+    },
+    "vsCodeLmModelSelector": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "type": "string",
+        },
+        "id": {
+          "type": "string",
+        },
+        "vendor": {
+          "type": "string",
+        },
+        "version": {
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "xaiApiKey": {
+      "type": "string",
+    },
+    "zaiApiKey": {
+      "type": "string",
+    },
+    "zaiApiLine": {
+      "enum": [
+        "international_coding",
+        "china_coding",
+        "international_api",
+        "china_api",
+      ],
+      "type": "string",
+    },
+  },
+  "type": "object",
+}
+`;
+
+exports[`generated provider settings schemas > keeps the global state keys in order 1`] = `
+[
+  "currentApiConfigName",
+  "listApiConfigMeta",
+  "pinnedApiConfigs",
+  "lastShownAnnouncementId",
+  "customInstructions",
+  "dismissedUpsells",
+  "imageGenerationProvider",
+  "openRouterImageGenerationSelectedModel",
+  "customCondensingPrompt",
+  "autoApprovalEnabled",
+  "autoApprovalMode",
+  "alwaysAllowReadOnly",
+  "alwaysAllowReadOnlyOutsideWorkspace",
+  "alwaysAllowWrite",
+  "alwaysAllowWriteOutsideWorkspace",
+  "alwaysAllowWriteProtected",
+  "writeDelayMs",
+  "requestDelaySeconds",
+  "alwaysAllowMcp",
+  "alwaysAllowModeSwitch",
+  "alwaysAllowSubtasks",
+  "alwaysApprovePlan",
+  "alwaysAllowExecute",
+  "alwaysAllowFollowupQuestions",
+  "followupAutoApproveTimeoutMs",
+  "allowedCommands",
+  "deniedCommands",
+  "commandExecutionTimeout",
+  "commandTimeoutAllowlist",
+  "preventCompletionWithOpenTodos",
+  "allowedMaxRequests",
+  "allowedMaxCost",
+  "autoCondenseContext",
+  "autoCondenseContextPercent",
+  "includeCurrentTime",
+  "includeCurrentCost",
+  "maxGitStatusFiles",
+  "parallelTasksMaxConcurrency",
+  "subagentFollowupTimeoutSec",
+  "includeDiagnosticMessages",
+  "maxDiagnosticMessages",
+  "enableCheckpoints",
+  "checkpointTimeout",
+  "autoMemoryEnabled",
+  "autoMemoryDirectory",
+  "autoMemoryShareWithClaudeCode",
+  "autoDreamEnabled",
+  "autoDreamMinHours",
+  "autoDreamMinSessions",
+  "memoryRecallEnabled",
+  "memoryWriterApiConfigId",
+  "autoCondenseContextApiConfigId",
+  "soundEnabled",
+  "soundVolume",
+  "customSoundCelebration",
+  "customSoundCelebrationOriginal",
+  "customSoundProgressLoop",
+  "customSoundProgressLoopOriginal",
+  "customSoundNotification",
+  "customSoundNotificationOriginal",
+  "maxOpenTabsContext",
+  "maxWorkspaceFiles",
+  "showRooIgnoredFiles",
+  "enableSubfolderRules",
+  "maxImageFileSize",
+  "maxTotalImageSize",
+  "terminalOutputPreviewSize",
+  "terminalShellIntegrationTimeout",
+  "terminalShellIntegrationDisabled",
+  "terminalCommandDelay",
+  "terminalPowershellCounter",
+  "terminalZshClearEolMark",
+  "terminalZshOhMy",
+  "terminalZshP10k",
+  "terminalZdotdir",
+  "terminalProfile",
+  "execaShellPath",
+  "diagnosticsEnabled",
+  "rateLimitSeconds",
+  "experiments",
+  "codebaseIndexModels",
+  "codebaseIndexConfig",
+  "language",
+  "telemetrySetting",
+  "mcpEnabled",
+  "mode",
+  "modeApiConfigs",
+  "customModes",
+  "customModePrompts",
+  "customSupportPrompts",
+  "enhancementApiConfigId",
+  "includeTaskHistoryInEnhance",
+  "historyPreviewCollapsed",
+  "reasoningBlockCollapsed",
+  "enterBehavior",
+  "uiDensity",
+  "profileThresholds",
+  "hasOpenedModeSelector",
+  "lastModeExportPath",
+  "lastModeImportPath",
+  "lastSettingsExportPath",
+  "lastTaskExportPath",
+  "lastImageSavePath",
+  "worktreeAutoOpenPath",
+  "showWorktreesInHomeScreen",
+  "disabledTools",
+  "webToolsEnabled",
+  "webSearchBackend",
+  "searxngBaseUrl",
+  "webSearchMaxResults",
+  "webFetchMaxBytes",
+  "maxInlineToolResultBytes",
+  "pruneBeforeCondense",
+  "pruneToolResultBudget",
+  "apiProvider",
+  "includeMaxTokens",
+  "todoListEnabled",
+  "modelTemperature",
+  "rateLimitSeconds",
+  "consecutiveMistakeLimit",
+  "slimToolset",
+  "slimHidesMcp",
+  "enableReasoningEffort",
+  "reasoningEffort",
+  "modelMaxTokens",
+  "modelMaxThinkingTokens",
+  "verbosity",
+  "apiModelId",
+  "anthropicBaseUrl",
+  "anthropicUseAuthToken",
+  "anthropicBeta1MContext",
+  "openRouterModelId",
+  "openRouterBaseUrl",
+  "openRouterSpecificProvider",
+  "awsRegion",
+  "awsUseCrossRegionInference",
+  "awsUseGlobalInference",
+  "awsUsePromptCache",
+  "awsProfile",
+  "awsUseProfile",
+  "awsUseApiKey",
+  "awsCustomArn",
+  "awsModelContextWindow",
+  "awsBedrockEndpointEnabled",
+  "awsBedrockEndpoint",
+  "awsBedrock1MContext",
+  "awsBedrockServiceTier",
+  "vertexKeyFile",
+  "vertexProjectId",
+  "vertexRegion",
+  "vertex1MContext",
+  "openAiBaseUrl",
+  "openAiR1FormatEnabled",
+  "openAiModelId",
+  "openAiCustomModelInfo",
+  "openAiUseAzure",
+  "azureApiVersion",
+  "openAiStreamingEnabled",
+  "openAiHostHeader",
+  "openAiHeaders",
+  "ollamaModelId",
+  "ollamaBaseUrl",
+  "ollamaNumCtx",
+  "vsCodeLmModelSelector",
+  "lmStudioModelId",
+  "lmStudioBaseUrl",
+  "lmStudioDraftModelId",
+  "lmStudioSpeculativeDecodingEnabled",
+  "googleGeminiBaseUrl",
+  "geminiCliOAuthPath",
+  "geminiCliProjectId",
+  "openAiNativeBaseUrl",
+  "openAiNativeServiceTier",
+  "mistralCodestralUrl",
+  "deepSeekBaseUrl",
+  "moonshotBaseUrl",
+  "minimaxBaseUrl",
+  "fakeAi",
+  "litellmBaseUrl",
+  "litellmModelId",
+  "litellmUsePromptCache",
+  "zaiApiLine",
+  "qwenCodeOauthPath",
+  "codebaseIndexOpenAiCompatibleBaseUrl",
+  "codebaseIndexOpenAiCompatibleModelDimension",
+]
+`;
+
+exports[`generated provider settings schemas > keeps the persisted provider configuration union, in order 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "anthropicBaseUrl": {
+              "type": "string",
+            },
+            "anthropicBeta1MContext": {
+              "type": "boolean",
+            },
+            "anthropicUseAuthToken": {
+              "type": "boolean",
+            },
+            "apiModelId": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "anthropic",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "openRouterBaseUrl": {
+              "type": "string",
+            },
+            "openRouterModelId": {
+              "type": "string",
+            },
+            "openRouterSpecificProvider": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "openrouter",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "awsBedrock1MContext": {
+              "type": "boolean",
+            },
+            "awsBedrockEndpoint": {
+              "type": "string",
+            },
+            "awsBedrockEndpointEnabled": {
+              "type": "boolean",
+            },
+            "awsBedrockServiceTier": {
+              "enum": [
+                "STANDARD",
+                "FLEX",
+                "PRIORITY",
+              ],
+              "type": "string",
+            },
+            "awsCustomArn": {
+              "type": "string",
+            },
+            "awsModelContextWindow": {
+              "type": "number",
+            },
+            "awsProfile": {
+              "type": "string",
+            },
+            "awsRegion": {
+              "type": "string",
+            },
+            "awsUseApiKey": {
+              "type": "boolean",
+            },
+            "awsUseCrossRegionInference": {
+              "type": "boolean",
+            },
+            "awsUseGlobalInference": {
+              "type": "boolean",
+            },
+            "awsUseProfile": {
+              "type": "boolean",
+            },
+            "awsUsePromptCache": {
+              "type": "boolean",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "bedrock",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "vertex1MContext": {
+              "type": "boolean",
+            },
+            "vertexKeyFile": {
+              "type": "string",
+            },
+            "vertexProjectId": {
+              "type": "string",
+            },
+            "vertexRegion": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "vertex",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "azureApiVersion": {
+              "type": "string",
+            },
+            "openAiBaseUrl": {
+              "type": "string",
+            },
+            "openAiCustomModelInfo": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "cachableFields": {
+                      "items": {
+                        "type": "string",
+                      },
+                      "type": "array",
+                    },
+                    "cacheReadsPrice": {
+                      "type": "number",
+                    },
+                    "cacheWritesPrice": {
+                      "type": "number",
+                    },
+                    "contextWindow": {
+                      "type": "number",
+                    },
+                    "defaultTemperature": {
+                      "type": "number",
+                    },
+                    "deprecated": {
+                      "type": "boolean",
+                    },
+                    "description": {
+                      "type": "string",
+                    },
+                    "excludedTools": {
+                      "items": {
+                        "type": "string",
+                      },
+                      "type": "array",
+                    },
+                    "includedTools": {
+                      "items": {
+                        "type": "string",
+                      },
+                      "type": "array",
+                    },
+                    "inputPrice": {
+                      "type": "number",
+                    },
+                    "isFree": {
+                      "type": "boolean",
+                    },
+                    "isStealthModel": {
+                      "type": "boolean",
+                    },
+                    "longContextPricing": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "appliesToServiceTiers": {
+                          "items": {
+                            "enum": [
+                              "default",
+                              "flex",
+                              "priority",
+                            ],
+                            "type": "string",
+                          },
+                          "type": "array",
+                        },
+                        "cacheReadsPriceMultiplier": {
+                          "type": "number",
+                        },
+                        "cacheWritesPriceMultiplier": {
+                          "type": "number",
+                        },
+                        "inputPriceMultiplier": {
+                          "type": "number",
+                        },
+                        "outputPriceMultiplier": {
+                          "type": "number",
+                        },
+                        "thresholdTokens": {
+                          "type": "number",
+                        },
+                      },
+                      "required": [
+                        "thresholdTokens",
+                      ],
+                      "type": "object",
+                    },
+                    "maxCachePoints": {
+                      "type": "number",
+                    },
+                    "maxThinkingTokens": {
+                      "type": [
+                        "number",
+                        "null",
+                      ],
+                    },
+                    "maxTokens": {
+                      "type": [
+                        "number",
+                        "null",
+                      ],
+                    },
+                    "minTokensPerCachePoint": {
+                      "type": "number",
+                    },
+                    "outputPrice": {
+                      "type": "number",
+                    },
+                    "preserveReasoning": {
+                      "type": "boolean",
+                    },
+                    "promptCacheRetention": {
+                      "enum": [
+                        "in_memory",
+                        "24h",
+                      ],
+                      "type": "string",
+                    },
+                    "reasoningEffort": {
+                      "enum": [
+                        "none",
+                        "minimal",
+                        "low",
+                        "medium",
+                        "high",
+                        "xhigh",
+                        "max",
+                      ],
+                      "type": "string",
+                    },
+                    "requiredReasoningBudget": {
+                      "type": "boolean",
+                    },
+                    "requiredReasoningEffort": {
+                      "type": "boolean",
+                    },
+                    "supportedParameters": {
+                      "items": {
+                        "enum": [
+                          "max_tokens",
+                          "temperature",
+                          "reasoning",
+                          "include_reasoning",
+                        ],
+                        "type": "string",
+                      },
+                      "type": "array",
+                    },
+                    "supportsImages": {
+                      "type": "boolean",
+                    },
+                    "supportsMaxTokens": {
+                      "type": "boolean",
+                    },
+                    "supportsPromptCache": {
+                      "type": "boolean",
+                    },
+                    "supportsReasoningBinary": {
+                      "type": "boolean",
+                    },
+                    "supportsReasoningBudget": {
+                      "type": "boolean",
+                    },
+                    "supportsReasoningEffort": {
+                      "anyOf": [
+                        {
+                          "type": "boolean",
+                        },
+                        {
+                          "items": {
+                            "enum": [
+                              "disable",
+                              "none",
+                              "minimal",
+                              "low",
+                              "medium",
+                              "high",
+                              "xhigh",
+                              "max",
+                            ],
+                            "type": "string",
+                          },
+                          "type": "array",
+                        },
+                      ],
+                    },
+                    "supportsTemperature": {
+                      "type": "boolean",
+                    },
+                    "supportsVerbosity": {
+                      "type": "boolean",
+                    },
+                    "tiers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "cacheReadsPrice": {
+                            "type": "number",
+                          },
+                          "cacheWritesPrice": {
+                            "type": "number",
+                          },
+                          "contextWindow": {
+                            "type": "number",
+                          },
+                          "inputPrice": {
+                            "type": "number",
+                          },
+                          "name": {
+                            "enum": [
+                              "default",
+                              "flex",
+                              "priority",
+                            ],
+                            "type": "string",
+                          },
+                          "outputPrice": {
+                            "type": "number",
+                          },
+                        },
+                        "required": [
+                          "contextWindow",
+                        ],
+                        "type": "object",
+                      },
+                      "type": "array",
+                    },
+                  },
+                  "required": [
+                    "contextWindow",
+                    "supportsPromptCache",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "openAiHeaders": {
+              "additionalProperties": {
+                "type": "string",
+              },
+              "propertyNames": {
+                "type": "string",
+              },
+              "type": "object",
+            },
+            "openAiHostHeader": {
+              "type": "string",
+            },
+            "openAiModelId": {
+              "type": "string",
+            },
+            "openAiR1FormatEnabled": {
+              "type": "boolean",
+            },
+            "openAiStreamingEnabled": {
+              "type": "boolean",
+            },
+            "openAiUseAzure": {
+              "type": "boolean",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "openai",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "ollamaBaseUrl": {
+              "type": "string",
+            },
+            "ollamaModelId": {
+              "type": "string",
+            },
+            "ollamaNumCtx": {
+              "maximum": 9007199254740991,
+              "minimum": 128,
+              "type": "integer",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "ollama",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "vsCodeLmModelSelector": {
+              "additionalProperties": false,
+              "properties": {
+                "family": {
+                  "type": "string",
+                },
+                "id": {
+                  "type": "string",
+                },
+                "vendor": {
+                  "type": "string",
+                },
+                "version": {
+                  "type": "string",
+                },
+              },
+              "type": "object",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "vscode-lm",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "lmStudioBaseUrl": {
+              "type": "string",
+            },
+            "lmStudioDraftModelId": {
+              "type": "string",
+            },
+            "lmStudioModelId": {
+              "type": "string",
+            },
+            "lmStudioSpeculativeDecodingEnabled": {
+              "type": "boolean",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "lmstudio",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "googleGeminiBaseUrl": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "gemini",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "geminiCliOAuthPath": {
+              "type": "string",
+            },
+            "geminiCliProjectId": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "gemini-cli",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "openai-codex",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "openAiNativeBaseUrl": {
+              "type": "string",
+            },
+            "openAiNativeServiceTier": {
+              "enum": [
+                "default",
+                "flex",
+                "priority",
+              ],
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "openai-native",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "mistralCodestralUrl": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "mistral",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "deepSeekBaseUrl": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "deepseek",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "moonshotBaseUrl": {
+              "anyOf": [
+                {
+                  "const": "https://api.moonshot.ai/v1",
+                  "type": "string",
+                },
+                {
+                  "const": "https://api.moonshot.cn/v1",
+                  "type": "string",
+                },
+              ],
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "moonshot",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "minimaxBaseUrl": {
+              "anyOf": [
+                {
+                  "const": "https://api.minimax.io/v1",
+                  "type": "string",
+                },
+                {
+                  "const": "https://api.minimaxi.com/v1",
+                  "type": "string",
+                },
+              ],
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "minimax",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "fakeAi": {},
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "fake-ai",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "xai",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "litellmBaseUrl": {
+              "type": "string",
+            },
+            "litellmModelId": {
+              "type": "string",
+            },
+            "litellmUsePromptCache": {
+              "type": "boolean",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "litellm",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "zaiApiLine": {
+              "enum": [
+                "international_coding",
+                "china_coding",
+                "international_api",
+                "china_api",
+              ],
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "zai",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "additionalProperties": false,
+          "properties": {
+            "apiModelId": {
+              "type": "string",
+            },
+            "qwenCodeOauthPath": {
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+        "providerId": {
+          "const": "qwen-code",
+          "type": "string",
+        },
+      },
+      "required": [
+        "providerId",
+        "config",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`secret state keys > lists the same keys (order is not significant: readers and writers visit each once) 1`] = `
+[
+  "apiKey",
+  "awsAccessKey",
+  "awsApiKey",
+  "awsSecretKey",
+  "awsSessionToken",
+  "codeIndexOpenAiKey",
+  "codeIndexQdrantApiKey",
+  "codebaseIndexGeminiApiKey",
+  "codebaseIndexMistralApiKey",
+  "codebaseIndexOpenAiCompatibleApiKey",
+  "codebaseIndexOpenRouterApiKey",
+  "codebaseIndexVercelAiGatewayApiKey",
+  "deepSeekApiKey",
+  "geminiApiKey",
+  "litellmApiKey",
+  "minimaxApiKey",
+  "mistralApiKey",
+  "moonshotApiKey",
+  "ollamaApiKey",
+  "openAiApiKey",
+  "openAiNativeApiKey",
+  "openRouterApiKey",
+  "vertexJsonCredentials",
+  "xaiApiKey",
+  "zaiApiKey",
+]
+`;
