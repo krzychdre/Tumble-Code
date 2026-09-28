@@ -139,7 +139,7 @@ like this).
       `customForms` in `provider-ui-registry.tsx` (the compiler asks for it). The form id is the provider id
       (`ProviderFormId` is derived from the table); only a component named differently needs an entry in
       `customFormIdAliases` there.
-    - `service` (the model picker's "browse models" name and link) and `docsSlug` (the docs page) complete the row.
+    - `service` (the model picker's "browse models" name and link) completes the row.
       The generic model picker and the default model set on a provider switch read `providerModelDefinitions`,
       and `useSelectedModel` calls the shared `resolveProviderModelSelection`, so a static-list provider needs no
       webview edit beyond

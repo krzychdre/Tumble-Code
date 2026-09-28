@@ -28,12 +28,11 @@ describe("PROVIDER_DESCRIPTORS", () => {
 		expect(Object.keys(PROVIDER_DESCRIPTORS).sort()).toEqual([...activeProviderIds].sort())
 	})
 
-	it("gives every selectable provider a docs page and every hidden provider no form", () => {
+	it("gives every selectable provider a form and every hidden provider none", () => {
 		const selectable = new Set<string>(getSelectableProviderDefinitions().map(({ id }) => id))
 
 		for (const [provider, descriptor] of entries) {
 			if (selectable.has(provider)) {
-				expect(descriptor.docsSlug, provider).toMatch(/^[a-z0-9-]+$/)
 				expect(descriptor.form.kind, provider).not.toBe("none")
 			} else {
 				expect(descriptor.form.kind, provider).toBe("none")

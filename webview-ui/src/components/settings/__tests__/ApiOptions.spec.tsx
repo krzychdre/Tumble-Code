@@ -700,39 +700,6 @@ describe("ApiOptions", () => {
 		it("keeps any model id for a provider with a fetched model list", () => {
 			expect(switchTo("openrouter", { openRouterModelId: "some/other-model" })).toEqual([])
 		})
-
-		const expectedDocsPaths: Record<string, string> = {
-			anthropic: "providers/anthropic",
-			bedrock: "providers/bedrock",
-			deepseek: "providers/deepseek",
-			gemini: "providers/gemini",
-			litellm: "providers/litellm",
-			lmstudio: "providers/lmstudio",
-			minimax: "providers/minimax",
-			mistral: "providers/mistral",
-			moonshot: "providers/moonshot",
-			ollama: "providers/ollama",
-			openai: "providers/openai-compatible",
-			"openai-codex": "providers/openai-codex",
-			"openai-native": "providers/openai",
-			openrouter: "providers/openrouter",
-			"qwen-code": "providers/qwen-code",
-			vertex: "providers/vertex",
-			"vscode-lm": "providers/vscode-lm",
-			xai: "providers/xai",
-			zai: "providers/zai",
-		}
-
-		it.each(Object.entries(expectedDocsPaths))("%s links to the docs page %s", (provider, path) => {
-			renderApiOptions({ apiConfiguration: { apiProvider: provider as ProviderSettings["apiProvider"] } })
-			const docsLink = screen
-				.getAllByRole("link")
-				.find((link) => link.getAttribute("href")?.startsWith("https://docs.roocode.com/providers/"))
-			expect(docsLink).toHaveAttribute(
-				"href",
-				`https://docs.roocode.com/${path}?utm_source=extension&utm_medium=ide&utm_campaign=provider_docs`,
-			)
-		})
 	})
 
 	it("does not reintroduce retired providers into active provider options", () => {
