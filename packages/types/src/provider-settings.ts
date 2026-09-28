@@ -4,7 +4,12 @@ import { reasoningEffortSettingSchema, verbosityLevelsSchema } from "./model.js"
 import { codebaseIndexProviderSchema } from "./codebase-index.js"
 import { activeProviderIdsForPublicApi, providerIdsForPublicApi, retiredProviderIds } from "./provider-registry.js"
 import { getProviderModelDefinition, providerModelDefinitions } from "./provider-models.js"
-import { providerConfigSchemas } from "./provider-config/index.js"
+import {
+	type KnownProviderId,
+	knownProviderIds,
+	providerConfigSchemas,
+	providerCredentialFields,
+} from "./provider-config/index.js"
 
 /**
  * constants
@@ -133,98 +138,52 @@ const baseProviderSettingsSchema = z.object({
 /**
  * The legacy flat arm of one provider: the shared profile settings above, the
  * provider's persisted config (`providerConfigSchemas`, the one list of its
- * fields) and its credentials. Credentials live in the secret store, so they
- * are the only provider fields the persisted config deliberately leaves out.
+ * fields) and its credentials (`providerCredentialFields`). Credentials live in
+ * the secret store, so they are the only provider fields the persisted config
+ * deliberately leaves out.
+ *
+ * The arms, the discriminated union and the flat schema below are generated
+ * from those two tables in `providerConfigSchemas` order, so adding a provider
+ * does not touch this file. `provider-schema-derivation.spec.ts` pins the
+ * result (keys, property order, field types).
  */
-const legacyProviderArm = <Config extends z.ZodRawShape, Credentials extends z.ZodRawShape>(
-	config: z.ZodObject<Config>,
-	credentials: Credentials,
-) => baseProviderSettingsSchema.extend(config.shape).extend(credentials)
+type CredentialShape<Fields extends readonly string[]> = { [Field in Fields[number]]: z.ZodOptional<z.ZodString> }
 
-const optionalCredential = () => z.string().optional()
+const credentialShape = <Fields extends readonly string[]>(fields: Fields) =>
+	Object.fromEntries(fields.map((field) => [field, z.string().optional()])) as CredentialShape<Fields>
 
-const anthropicSchema = legacyProviderArm(providerConfigSchemas.anthropic, { apiKey: optionalCredential() })
-const openRouterSchema = legacyProviderArm(providerConfigSchemas.openrouter, { openRouterApiKey: optionalCredential() })
-const bedrockSchema = legacyProviderArm(providerConfigSchemas.bedrock, {
-	awsAccessKey: optionalCredential(),
-	awsSecretKey: optionalCredential(),
-	awsSessionToken: optionalCredential(),
-	awsApiKey: optionalCredential(),
+const legacyProviderArmShape = <K extends KnownProviderId>(providerId: K) => ({
+	...baseProviderSettingsSchema.shape,
+	...(providerConfigSchemas[providerId].shape as (typeof providerConfigSchemas)[K]["shape"]),
+	...credentialShape(providerCredentialFields[providerId]),
 })
-const vertexSchema = legacyProviderArm(providerConfigSchemas.vertex, { vertexJsonCredentials: optionalCredential() })
-const openAiSchema = legacyProviderArm(providerConfigSchemas.openai, { openAiApiKey: optionalCredential() })
-const ollamaSchema = legacyProviderArm(providerConfigSchemas.ollama, { ollamaApiKey: optionalCredential() })
-const vsCodeLmSchema = legacyProviderArm(providerConfigSchemas["vscode-lm"], {})
-const lmStudioSchema = legacyProviderArm(providerConfigSchemas.lmstudio, {})
-const geminiSchema = legacyProviderArm(providerConfigSchemas.gemini, { geminiApiKey: optionalCredential() })
-const geminiCliSchema = legacyProviderArm(providerConfigSchemas["gemini-cli"], {})
-// OpenAI Codex authenticates with OAuth, so it has no credential field.
-const openAiCodexSchema = legacyProviderArm(providerConfigSchemas["openai-codex"], {})
-const openAiNativeSchema = legacyProviderArm(providerConfigSchemas["openai-native"], {
-	openAiNativeApiKey: optionalCredential(),
-})
-const mistralSchema = legacyProviderArm(providerConfigSchemas.mistral, { mistralApiKey: optionalCredential() })
-const deepSeekSchema = legacyProviderArm(providerConfigSchemas.deepseek, { deepSeekApiKey: optionalCredential() })
-const moonshotSchema = legacyProviderArm(providerConfigSchemas.moonshot, { moonshotApiKey: optionalCredential() })
-const minimaxSchema = legacyProviderArm(providerConfigSchemas.minimax, { minimaxApiKey: optionalCredential() })
-const fakeAiSchema = legacyProviderArm(providerConfigSchemas["fake-ai"], {})
-const xaiSchema = legacyProviderArm(providerConfigSchemas.xai, { xaiApiKey: optionalCredential() })
-const litellmSchema = legacyProviderArm(providerConfigSchemas.litellm, { litellmApiKey: optionalCredential() })
-const qwenCodeSchema = legacyProviderArm(providerConfigSchemas["qwen-code"], {})
-const zaiSchema = legacyProviderArm(providerConfigSchemas.zai, { zaiApiKey: optionalCredential() })
+
+const legacyProviderArm = <K extends KnownProviderId>(providerId: K) =>
+	z.object({ ...legacyProviderArmShape(providerId), apiProvider: z.literal(providerId) })
+
+type LegacyProviderArm = { [K in KnownProviderId]: ReturnType<typeof legacyProviderArm<K>> }[KnownProviderId]
+
+type UnionToIntersection<U> = (U extends unknown ? (value: U) => void : never) extends (value: infer I) => void
+	? I
+	: never
+
+/** Every provider's arm fields in one shape; a field several providers share has the same schema in each. */
+type LegacyProviderArmShapes = UnionToIntersection<
+	{ [K in KnownProviderId]: ReturnType<typeof legacyProviderArmShape<K>> }[KnownProviderId]
+>
 
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
 })
 
 export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProvider", [
-	anthropicSchema.merge(z.object({ apiProvider: z.literal("anthropic") })),
-	openRouterSchema.merge(z.object({ apiProvider: z.literal("openrouter") })),
-	bedrockSchema.merge(z.object({ apiProvider: z.literal("bedrock") })),
-	vertexSchema.merge(z.object({ apiProvider: z.literal("vertex") })),
-	openAiSchema.merge(z.object({ apiProvider: z.literal("openai") })),
-	ollamaSchema.merge(z.object({ apiProvider: z.literal("ollama") })),
-	vsCodeLmSchema.merge(z.object({ apiProvider: z.literal("vscode-lm") })),
-	lmStudioSchema.merge(z.object({ apiProvider: z.literal("lmstudio") })),
-	geminiSchema.merge(z.object({ apiProvider: z.literal("gemini") })),
-	geminiCliSchema.merge(z.object({ apiProvider: z.literal("gemini-cli") })),
-	openAiCodexSchema.merge(z.object({ apiProvider: z.literal("openai-codex") })),
-	openAiNativeSchema.merge(z.object({ apiProvider: z.literal("openai-native") })),
-	mistralSchema.merge(z.object({ apiProvider: z.literal("mistral") })),
-	deepSeekSchema.merge(z.object({ apiProvider: z.literal("deepseek") })),
-	moonshotSchema.merge(z.object({ apiProvider: z.literal("moonshot") })),
-	minimaxSchema.merge(z.object({ apiProvider: z.literal("minimax") })),
-	fakeAiSchema.merge(z.object({ apiProvider: z.literal("fake-ai") })),
-	xaiSchema.merge(z.object({ apiProvider: z.literal("xai") })),
-	litellmSchema.merge(z.object({ apiProvider: z.literal("litellm") })),
-	zaiSchema.merge(z.object({ apiProvider: z.literal("zai") })),
-	qwenCodeSchema.merge(z.object({ apiProvider: z.literal("qwen-code") })),
+	...(knownProviderIds.map(legacyProviderArm) as unknown as [LegacyProviderArm, ...LegacyProviderArm[]]),
 	defaultSchema,
 ])
 
 export const providerSettingsSchema = z.object({
 	apiProvider: providerNamesWithRetiredSchema.optional(),
-	...anthropicSchema.shape,
-	...openRouterSchema.shape,
-	...bedrockSchema.shape,
-	...vertexSchema.shape,
-	...openAiSchema.shape,
-	...ollamaSchema.shape,
-	...vsCodeLmSchema.shape,
-	...lmStudioSchema.shape,
-	...geminiSchema.shape,
-	...geminiCliSchema.shape,
-	...openAiCodexSchema.shape,
-	...openAiNativeSchema.shape,
-	...mistralSchema.shape,
-	...deepSeekSchema.shape,
-	...moonshotSchema.shape,
-	...minimaxSchema.shape,
-	...fakeAiSchema.shape,
-	...xaiSchema.shape,
-	...litellmSchema.shape,
-	...zaiSchema.shape,
-	...qwenCodeSchema.shape,
+	...(Object.assign({}, ...knownProviderIds.map(legacyProviderArmShape)) as LegacyProviderArmShapes),
 	...codebaseIndexProviderSchema.shape,
 })
 

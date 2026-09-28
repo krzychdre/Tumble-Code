@@ -66,29 +66,80 @@ export type KnownProviderConfiguration<K extends KnownProviderId = KnownProvider
 	? { providerId: K; config: ProviderConfigMap[K] }
 	: never
 
-export const knownProviderConfigurationSchema = z.discriminatedUnion("providerId", [
-	z.object({ providerId: z.literal("anthropic"), config: providerConfigSchemas.anthropic }),
-	z.object({ providerId: z.literal("openrouter"), config: providerConfigSchemas.openrouter }),
-	z.object({ providerId: z.literal("bedrock"), config: providerConfigSchemas.bedrock }),
-	z.object({ providerId: z.literal("vertex"), config: providerConfigSchemas.vertex }),
-	z.object({ providerId: z.literal("openai"), config: providerConfigSchemas.openai }),
-	z.object({ providerId: z.literal("ollama"), config: providerConfigSchemas.ollama }),
-	z.object({ providerId: z.literal("vscode-lm"), config: providerConfigSchemas["vscode-lm"] }),
-	z.object({ providerId: z.literal("lmstudio"), config: providerConfigSchemas.lmstudio }),
-	z.object({ providerId: z.literal("gemini"), config: providerConfigSchemas.gemini }),
-	z.object({ providerId: z.literal("gemini-cli"), config: providerConfigSchemas["gemini-cli"] }),
-	z.object({ providerId: z.literal("openai-codex"), config: providerConfigSchemas["openai-codex"] }),
-	z.object({ providerId: z.literal("openai-native"), config: providerConfigSchemas["openai-native"] }),
-	z.object({ providerId: z.literal("mistral"), config: providerConfigSchemas.mistral }),
-	z.object({ providerId: z.literal("deepseek"), config: providerConfigSchemas.deepseek }),
-	z.object({ providerId: z.literal("moonshot"), config: providerConfigSchemas.moonshot }),
-	z.object({ providerId: z.literal("minimax"), config: providerConfigSchemas.minimax }),
-	z.object({ providerId: z.literal("fake-ai"), config: providerConfigSchemas["fake-ai"] }),
-	z.object({ providerId: z.literal("xai"), config: providerConfigSchemas.xai }),
-	z.object({ providerId: z.literal("litellm"), config: providerConfigSchemas.litellm }),
-	z.object({ providerId: z.literal("zai"), config: providerConfigSchemas.zai }),
-	z.object({ providerId: z.literal("qwen-code"), config: providerConfigSchemas["qwen-code"] }),
-])
+/**
+ * The settings keys of each provider's credentials: API keys, access keys, pasted service-account
+ * JSON. They are kept in VS Code's secret storage, never in the persisted profile config, so they
+ * are deliberately absent from `providerConfigSchemas`; the legacy flat settings arms add them
+ * (`provider-settings.ts`) and `SECRET_STATE_KEYS` lists them (`global-settings.ts`), both derived
+ * from this table.
+ */
+export const providerCredentialFields = {
+	anthropic: ["apiKey"],
+	openrouter: ["openRouterApiKey"],
+	bedrock: ["awsAccessKey", "awsSecretKey", "awsSessionToken", "awsApiKey"],
+	vertex: ["vertexJsonCredentials"],
+	openai: ["openAiApiKey"],
+	ollama: ["ollamaApiKey"],
+	"vscode-lm": [],
+	lmstudio: [],
+	gemini: ["geminiApiKey"],
+	"gemini-cli": [],
+	// OpenAI Codex authenticates with OAuth, so it has no credential field.
+	"openai-codex": [],
+	"openai-native": ["openAiNativeApiKey"],
+	mistral: ["mistralApiKey"],
+	deepseek: ["deepSeekApiKey"],
+	moonshot: ["moonshotApiKey"],
+	minimax: ["minimaxApiKey"],
+	"fake-ai": [],
+	xai: ["xaiApiKey"],
+	litellm: ["litellmApiKey"],
+	zai: ["zaiApiKey"],
+	"qwen-code": [],
+} as const satisfies { [K in KnownProviderId]: readonly string[] }
+
+/** A settings key that holds a provider credential. */
+export type ProviderCredentialField = (typeof providerCredentialFields)[KnownProviderId][number]
+
+// Compile-time check: a credential is never also a persisted config field of the same provider
+// (it would be written to the plain profile as well as to the secret storage).
+const credentialsAreNotConfig: {
+	[K in KnownProviderId]: Extract<
+		(typeof providerCredentialFields)[K][number],
+		keyof (typeof providerConfigSchemas)[K]["shape"]
+	>
+}[KnownProviderId] extends never
+	? true
+	: never = true
+void credentialsAreNotConfig
+
+/** The known provider ids in `providerConfigSchemas` order, which the generated schemas follow. */
+export const knownProviderIds = Object.keys(providerConfigSchemas) as KnownProviderId[]
+
+/** Every provider credential key, once, in `providerCredentialFields` order. */
+export const providerCredentialKeys: readonly ProviderCredentialField[] = [
+	...new Set(
+		knownProviderIds.flatMap(
+			(providerId): readonly ProviderCredentialField[] => providerCredentialFields[providerId],
+		),
+	),
+]
+
+const knownProviderConfigurationArm = <K extends KnownProviderId>(providerId: K) =>
+	z.object({ providerId: z.literal(providerId), config: providerConfigSchemas[providerId] })
+
+type KnownProviderConfigurationArm = {
+	[K in KnownProviderId]: ReturnType<typeof knownProviderConfigurationArm<K>>
+}[KnownProviderId]
+
+/** One arm per known provider, generated from `providerConfigSchemas`. */
+export const knownProviderConfigurationSchema = z.discriminatedUnion(
+	"providerId",
+	knownProviderIds.map(knownProviderConfigurationArm) as [
+		KnownProviderConfigurationArm,
+		...KnownProviderConfigurationArm[],
+	],
+)
 
 export const retiredProviderConfigurationSchema = z.object({
 	providerId: z.enum(retiredProviderIds),

@@ -136,7 +136,9 @@ named tests in place. This list is now the authoritative copy (the plan it was t
 - Model compatibility: the legacy `read_file` `files` shape and the tool-name aliases (weak models still send
   them); the per-protocol message converters in `src/api/transform/`; the provider registries
   (`packages/types/src/provider-registry.ts`, `src/api/runtime-provider-registry.ts`); the flat
-  `providerSettingsSchema`; the runtime values of `TelemetryEventName`.
+  `providerSettingsSchema` (generated from `providerConfigSchemas` and `providerCredentialFields` since S4;
+  `provider-schema-derivation.spec.ts` pins its keys, their order and their types); the runtime values of
+  `TelemetryEventName`.
 - Public shapes: `ExtensionMessage` and `WebviewMessage` (change them only additively).
 - UI behavior: `webview-ui/src/hooks/useScrollLifecycle.ts` and the ChatRow height contract; the CLI's Ink render
   pipeline (`streamCommit.ts`, `TailViewport.tsx`, the `useInsertionEffect` ordering, `theme.dimmed`).
