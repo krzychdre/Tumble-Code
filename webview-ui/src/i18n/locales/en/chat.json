@@ -8,6 +8,8 @@
 		"cache": "Cache",
 		"apiCost": "API Cost",
 		"size": "Size",
+		"tokensIn": "Tokens in",
+		"tokensOut": "Tokens out",
 		"condenseContext": "Intelligently condense context",
 		"contextWindow": "Context Length",
 		"export": "Export task history",

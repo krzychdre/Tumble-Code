@@ -124,6 +124,59 @@ describe("TaskHeader", () => {
 		expect(screen.getByText("$0.05")).toBeInTheDocument()
 	})
 
+	describe("§2.3 task header", () => {
+		it("renders the clickable header as a button with aria-expanded and aria-controls", () => {
+			renderTaskHeader()
+
+			const header = screen.getByRole("button", { name: /test task/i })
+			expect(header).toHaveAttribute("aria-expanded", "false")
+			expect(header).toHaveAttribute("aria-controls")
+		})
+
+		it("flips aria-expanded when toggled and caps the expanded details container", () => {
+			renderTaskHeader()
+			const header = screen.getByRole("button", { name: /test task/i })
+
+			fireEvent.click(header)
+			expect(header).toHaveAttribute("aria-expanded", "true")
+
+			const details = document.getElementById(header.getAttribute("aria-controls")!)
+			expect(details).not.toBeNull()
+			expect(details).toHaveClass("max-h-[40vh]")
+		})
+
+		it("uses a flat 1px panel border instead of shadow and rounded corners", () => {
+			renderTaskHeader()
+			const header = screen.getByRole("button", { name: /test task/i })
+			const container = header.closest("div")
+
+			expect(container?.className).toContain("border-b")
+			expect(container?.className).toContain("border-vscode-panel-border")
+			expect(container?.className).not.toContain("shadow-lg")
+			expect(container?.className).not.toContain("rounded-xl")
+		})
+
+		it("renders lucide arrows with aria-labels instead of unicode arrows", () => {
+			renderTaskHeader()
+			fireEvent.click(screen.getByRole("button", { name: /test task/i }))
+
+			const up = screen.getByLabelText("chat:task.tokensIn")
+			const down = screen.getByLabelText("chat:task.tokensOut")
+			expect(up).toBeInTheDocument()
+			expect(down).toBeInTheDocument()
+		})
+
+		it("shows one cost chip with the same value collapsed and expanded", () => {
+			renderTaskHeader()
+			// Collapsed: one chip.
+			expect(screen.getAllByText("$0.05")).toHaveLength(1)
+
+			// Expanded: still exactly one chip (single CostWithTooltip).
+			fireEvent.click(screen.getByRole("button", { name: /test task/i }))
+			expect(screen.getAllByText("$0.05")).toHaveLength(1)
+		})
+	})
+
 	it("should not display cost when totalCost is 0", () => {
 		renderTaskHeader({ totalCost: 0 })
 		expect(screen.queryByText("$0.0000")).not.toBeInTheDocument()
