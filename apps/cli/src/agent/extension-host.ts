@@ -24,7 +24,7 @@ import type {
 	RooCodeSettings,
 	WebviewMessage,
 } from "@roo-code/types"
-import { CLI_RUNTIME_ENV, clearCliRuntimeGlobals, readCliRuntimeEnv, setCliRuntimeGlobals } from "@roo-code/types"
+import { CLI_RUNTIME_ENV, clearCliRuntimeGlobals, setCliRuntimeGlobals } from "@roo-code/types"
 import { createVSCodeAPI, IExtensionHost, ExtensionHostEventMap, setRuntimeConfigValues } from "@roo-code/vscode-shim"
 import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 
@@ -32,6 +32,7 @@ import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import { toProviderSettings } from "@/lib/utils/provider-config.js"
 import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
+import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
 import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
@@ -47,27 +48,11 @@ import { AskDispatcher } from "./ask-dispatcher.js"
 // Pre-configured logger for CLI message activity debugging.
 const cliLogger = new DebugLogger("CLI")
 
-// Get the CLI package root directory (for finding node_modules/@vscode/ripgrep)
-// When running from a release tarball, ROO_CLI_ROOT is set by the wrapper script.
-// In development, we fall back to finding the CLI package root by walking up to package.json.
-// This works whether running from dist/ (bundled) or src/agent/ (tsx dev).
+// The CLI package root (for finding node_modules/@vscode/ripgrep); see
+// getCliPackageRoot. `tumble doctor` resolves it the same way.
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-function findCliPackageRoot(): string {
-	let dir = __dirname
-
-	while (dir !== path.dirname(dir)) {
-		if (fs.existsSync(path.join(dir, "package.json"))) {
-			return dir
-		}
-
-		dir = path.dirname(dir)
-	}
-
-	return path.resolve(__dirname, "..")
-}
-
-const CLI_PACKAGE_ROOT = readCliRuntimeEnv(process.env).cliRoot || findCliPackageRoot()
+const CLI_PACKAGE_ROOT = getCliPackageRoot(__dirname)
 
 export interface ExtensionHostOptions {
 	mode: string

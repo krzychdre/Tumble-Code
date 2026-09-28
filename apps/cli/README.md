@@ -47,6 +47,20 @@ Or run:
 tumble upgrade
 ```
 
+### Checking the installation
+
+```bash
+tumble doctor
+```
+
+`doctor` prints one line per check, `[pass]`, `[warn]` or `[fail]`: the Node.js version (22 or newer), the extension
+bundle (`--extension <dir>` checks another one), the ripgrep binary the file search uses, the global MCP servers file
+and whether the cloud API (`ROO_CODE_API_URL`, default `https://app.tumblecode.dev`) answers within 3 seconds. It exits
+with 1 when a check fails. An unreachable cloud is only a warning: sessions run without it.
+
+After a crash the CLI prints the error, the path of the debug log (`~/.roo/cli-debug.log`) and, when the run had no
+`--debug`, a hint to run again with it so the log gets written.
+
 ### Uninstalling
 
 ```bash
@@ -536,6 +550,13 @@ Excluded providers: `vscode-lm` (needs the real VS Code LM API), `fake-ai`
 (hidden internal test provider), `gemini-cli` (no runtime handler). Retired providers (groq,
 huggingface, deepinfra, cerebras, chutes, doubao, featherless,
 io-intelligence) are rejected with a clear error.
+
+**Display Environment Variables:**
+
+| Variable      | Description                                                                              |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| `NO_COLOR`    | Any non-empty value turns colour off ([no-color.org](https://no-color.org))              |
+| `FORCE_COLOR` | Forces colour on (`1`, `2`, `3`: 16, 256 or 16 million colours) and wins over `NO_COLOR` |
 
 **Authentication Environment Variables:**
 

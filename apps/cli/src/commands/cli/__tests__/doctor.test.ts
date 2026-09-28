@@ -172,6 +172,17 @@ describe("checkCloudReachable", () => {
 		expect(result.detail).toContain("fetch failed")
 	})
 
+	it("names the network cause undici hides behind fetch failed", async () => {
+		const cause = Object.assign(new Error("getaddrinfo ENOTFOUND cloud.example"), { code: "ENOTFOUND" })
+		const fetchImpl = vi.fn(async () => {
+			throw new TypeError("fetch failed", { cause })
+		}) as unknown as typeof fetch
+
+		const result = await checkCloudReachable({ url: "https://cloud.example", fetchImpl, timeoutMs: 1000 })
+
+		expect(result.detail).toContain("fetch failed: ENOTFOUND")
+	})
+
 	it("gives up after the timeout", async () => {
 		const fetchImpl = ((_url: string, init?: RequestInit) =>
 			new Promise((_resolve, reject) => {
