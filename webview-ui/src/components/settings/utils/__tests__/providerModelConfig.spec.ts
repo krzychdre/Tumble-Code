@@ -6,6 +6,7 @@ import {
 	isStaticModelProvider,
 	PROVIDERS_WITH_CUSTOM_MODEL_UI,
 	shouldUseGenericModelPicker,
+	getProviderModelSourceOptions,
 } from "../providerModelConfig"
 import { MODELS_BY_PROVIDER } from "../../constants"
 
@@ -240,6 +241,91 @@ describe("providerModelConfig", () => {
 				zai: types.internationalZAiDefaultModelId,
 				minimax: types.minimaxDefaultModelId,
 			})
+		})
+	})
+
+	// Characterization (S4 slice 2): the model-picker split and the fetched-list request options,
+	// pinned for every provider before both moved into PROVIDER_DESCRIPTORS.
+	describe("model picker and model source options for every provider", () => {
+		const providers = [...new Set(types.providerNames)].sort()
+
+		it("PROVIDERS_WITH_CUSTOM_MODEL_UI is exactly the in-form model pickers", () => {
+			expect([...PROVIDERS_WITH_CUSTOM_MODEL_UI].sort()).toEqual([
+				"litellm",
+				"lmstudio",
+				"ollama",
+				"openai",
+				"openai-codex",
+				"openrouter",
+				"vscode-lm",
+			])
+		})
+
+		const genericPicker = [
+			"anthropic",
+			"bedrock",
+			"deepseek",
+			"gemini",
+			"minimax",
+			"mistral",
+			"moonshot",
+			"openai-native",
+			"qwen-code",
+			"vertex",
+			"xai",
+			"zai",
+		]
+
+		it.each(providers)("shouldUseGenericModelPicker(%s)", (provider) => {
+			expect(shouldUseGenericModelPicker(provider)).toBe(genericPicker.includes(provider))
+		})
+
+		// Every settings key any provider could read, each with a distinct value, so the
+		// expected options show exactly which keys feed which option.
+		const everything: types.ProviderSettings = {
+			openAiBaseUrl: "openAiBaseUrl",
+			openAiApiKey: "openAiApiKey",
+			openAiHeaders: { h: "openAiHeaders" },
+			ollamaBaseUrl: "ollamaBaseUrl",
+			ollamaApiKey: "ollamaApiKey",
+			lmStudioBaseUrl: "lmStudioBaseUrl",
+			litellmBaseUrl: "litellmBaseUrl",
+			litellmApiKey: "litellmApiKey",
+			deepSeekBaseUrl: "deepSeekBaseUrl",
+			deepSeekApiKey: "deepSeekApiKey",
+			openRouterBaseUrl: "openRouterBaseUrl",
+			openRouterApiKey: "openRouterApiKey",
+			apiKey: "apiKey",
+			anthropicBaseUrl: "anthropicBaseUrl",
+			geminiApiKey: "geminiApiKey",
+			googleGeminiBaseUrl: "googleGeminiBaseUrl",
+			mistralApiKey: "mistralApiKey",
+			openAiNativeApiKey: "openAiNativeApiKey",
+			openAiNativeBaseUrl: "openAiNativeBaseUrl",
+			moonshotBaseUrl: "https://api.moonshot.cn/v1",
+			minimaxBaseUrl: "https://api.minimaxi.com/v1",
+		}
+
+		const expectedOptions: Record<string, types.ModelSourceOptions> = {
+			openai: { baseUrl: "openAiBaseUrl", apiKey: "openAiApiKey", headers: { h: "openAiHeaders" } },
+			ollama: { baseUrl: "ollamaBaseUrl", apiKey: "ollamaApiKey" },
+			lmstudio: { baseUrl: "lmStudioBaseUrl" },
+			litellm: { liteLlmBaseUrl: "litellmBaseUrl", liteLlmApiKey: "litellmApiKey" },
+			deepseek: { baseUrl: "deepSeekBaseUrl", apiKey: "deepSeekApiKey" },
+		}
+
+		it.each(providers)("getProviderModelSourceOptions(%s)", (provider) => {
+			expect(getProviderModelSourceOptions({ ...everything, apiProvider: provider })).toEqual(
+				expectedOptions[provider] ?? {},
+			)
+		})
+
+		it("keeps unset keys as undefined properties", () => {
+			expect(getProviderModelSourceOptions({ apiProvider: "ollama" })).toStrictEqual({
+				baseUrl: undefined,
+				apiKey: undefined,
+			})
+			expect(getProviderModelSourceOptions({})).toStrictEqual({})
 		})
 	})
 })
