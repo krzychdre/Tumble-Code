@@ -59,7 +59,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		const parentTask = makeParentTask()
 
 		const childStart = vi.fn()
-		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
+		const clearCurrentTask = vi.fn().mockResolvedValue(undefined)
 		const createTask = vi.fn().mockResolvedValue({ taskId: "child-1", start: childStart })
 		const handleModeSwitch = vi.fn().mockResolvedValue(undefined)
 		const taskHistoryStore = makeStoreStub()
@@ -68,7 +68,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			...sharedProviderFields(),
 			emit: providerEmit,
 			getCurrentTask: vi.fn(() => parentTask),
-			removeClineFromStack,
+			clearCurrentTask,
 			createTask,
 			handleModeSwitch,
 			log: vi.fn(),
@@ -87,7 +87,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		expect(child.taskId).toBe("child-1")
 
 		// Invariant: parent closed before child creation
-		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
+		expect(clearCurrentTask).toHaveBeenCalledTimes(1)
 
 		// Child task created with startTask: false and initialStatus: "active"
 		expect(createTask).toHaveBeenCalledWith("Do something", undefined, parentTask, {
@@ -133,7 +133,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			...sharedProviderFields(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
-			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 			createTask: vi.fn().mockResolvedValue({ taskId: "child-1", start: vi.fn() }),
 			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
 			postMessageToWebview,
@@ -167,7 +167,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			...sharedProviderFields(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
-			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 			createTask: vi.fn().mockResolvedValue({ taskId: "child-1", start: vi.fn() }),
 			handleModeSwitch: vi.fn().mockResolvedValue(undefined),
 			postMessageToWebview,
@@ -192,7 +192,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 
 		const parentTask = makeParentTask()
 		const childStart = vi.fn(() => callOrder.push("child.start"))
-		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
+		const clearCurrentTask = vi.fn().mockResolvedValue(undefined)
 		const createTask = vi.fn(async () => {
 			callOrder.push("createTask")
 			return { taskId: "child-1", start: childStart }
@@ -209,7 +209,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			...sharedProviderFields(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
-			removeClineFromStack,
+			clearCurrentTask,
 			createTask,
 			handleModeSwitch,
 			log: vi.fn(),

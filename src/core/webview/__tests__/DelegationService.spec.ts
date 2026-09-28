@@ -84,7 +84,7 @@ function makeHost(store: InMemoryHistoryStore, overrides: Partial<DelegationHost
 		log: vi.fn(),
 		getCurrentTask: vi.fn().mockReturnValue(undefined),
 		getCurrentTaskStack: vi.fn().mockReturnValue([]),
-		removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+		clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 		createTask: vi.fn(),
 		createTaskWithHistoryItem: vi.fn().mockResolvedValue({
 			overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
@@ -157,7 +157,7 @@ describe("DelegationService transition table", () => {
 
 			expect(opened).toBe(child)
 			expect(delegationState(store.get("p"))).toEqual(expected)
-			expect(host.removeClineFromStack).toHaveBeenCalledWith({ skipDelegationRepair: true })
+			expect(host.clearCurrentTask).toHaveBeenCalledWith({ skipDelegationRepair: true })
 			expect(child.start).toHaveBeenCalledTimes(1)
 			expect(host.emit).toHaveBeenCalledWith(RooCodeEventName.TaskDelegated, "p", "c1")
 		})

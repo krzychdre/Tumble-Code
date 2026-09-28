@@ -1267,7 +1267,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await seedFamily()
 			const shadowDelete = vi.spyOn(ShadowCheckpointService, "deleteTask").mockResolvedValue(undefined)
 			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "del-child" } as any)
-			const removeFromStack = vi.spyOn(provider, "removeClineFromStack").mockResolvedValue(undefined)
+			const removeFromStack = vi.spyOn(provider, "clearCurrentTask").mockResolvedValue(undefined)
 			const postState = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 			mockPostMessage.mockClear()
 
@@ -1305,7 +1305,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await seedFamily()
 			const shadowDelete = vi.spyOn(ShadowCheckpointService, "deleteTask").mockResolvedValue(undefined)
 			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "del-unrelated" } as any)
-			const removeFromStack = vi.spyOn(provider, "removeClineFromStack").mockResolvedValue(undefined)
+			const removeFromStack = vi.spyOn(provider, "clearCurrentTask").mockResolvedValue(undefined)
 			vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 			mockPostMessage.mockClear()
 

@@ -112,7 +112,7 @@ describe("Nested delegation resume (A → B → C)", () => {
 		}
 
 		const emitSpy = vi.fn()
-		const removeClineFromStack = vi.fn().mockImplementation(async () => {
+		const clearCurrentTask = vi.fn().mockImplementation(async () => {
 			// Simulate closing current child
 			currentActiveId = undefined
 		})
@@ -149,7 +149,7 @@ describe("Nested delegation resume (A → B → C)", () => {
 			getHistoryItem,
 			emit: emitSpy,
 			getCurrentTask: vi.fn(() => (currentActiveId ? ({ taskId: currentActiveId } as any) : undefined)),
-			removeClineFromStack,
+			clearCurrentTask,
 			createTaskWithHistoryItem,
 			updateTaskHistory,
 			// Wire through provider method so attemptCompletionTool can call it

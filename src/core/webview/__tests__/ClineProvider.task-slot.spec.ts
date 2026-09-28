@@ -1,30 +1,31 @@
 // npx vitest run core/webview/__tests__/ClineProvider.task-slot.spec.ts
 //
-// D7 regression spec: the provider holds ONE foreground task (a slot, not a
-// stack). Every production path removed the current task before adding
-// another, so the retired `clineStack` array never held more than one entry.
-// These tests prove the slot mechanics and that the derived rootTask /
-// taskNumber match what the old array logic produced on every real path.
+// D7/S1 regression spec: the provider holds ONE foreground task (a slot, not a
+// stack), owned by TaskSlot. Every production path removed the current task
+// before adding another, so the retired `clineStack` array never held more
+// than one entry. These tests prove the slot mechanics and that the derived
+// rootTask / taskNumber match what the old array logic produced on every real
+// path.
 
 import { describe, expect, it, vi } from "vitest"
 
 import { ClineProvider } from "../ClineProvider"
+import { TaskSlot } from "../TaskSlot"
 import { DelegationService } from "../DelegationService"
 import type { Task } from "../../task/Task"
 import { RooCodeEventName } from "@roo-code/types"
 
 type ProviderStandIn = {
-	currentTask?: Task
+	taskSlot: TaskSlot
 	taskEventListeners: Map<Task, Array<() => void>>
-	removeClineFromStack: typeof ClineProvider.prototype.removeClineFromStack
-	addClineToStack: typeof ClineProvider.prototype.addClineToStack
+	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
 	getCurrentTask: typeof ClineProvider.prototype.getCurrentTask
 	getCurrentTaskStack: typeof ClineProvider.prototype.getCurrentTaskStack
 	getLiveTaskInstance: typeof ClineProvider.prototype.getLiveTaskInstance
 	clearTask: typeof ClineProvider.prototype.clearTask
-	log: ReturnType<typeof vi.fn>
+	log: (message: string) => void
 	resetSubagentPanel: () => Promise<void>
-	performPreparationTasks: () => Promise<void>
+	performPreparationTasks: (task: Task) => Promise<void>
 	getState: () => Promise<{ mode: string }>
 	delegation: DelegationService
 }
@@ -41,10 +42,9 @@ function makeTask(taskId: string, overrides: Record<string, unknown> = {}): Task
 
 function makeProvider(): ProviderStandIn {
 	const provider: ProviderStandIn = {
-		currentTask: undefined,
+		taskSlot: undefined as unknown as TaskSlot,
 		taskEventListeners: new Map(),
-		removeClineFromStack: ClineProvider.prototype.removeClineFromStack,
-		addClineToStack: ClineProvider.prototype.addClineToStack,
+		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
 		getCurrentTask: ClineProvider.prototype.getCurrentTask,
 		getCurrentTaskStack: ClineProvider.prototype.getCurrentTaskStack,
 		getLiveTaskInstance: ClineProvider.prototype.getLiveTaskInstance,
@@ -55,6 +55,20 @@ function makeProvider(): ProviderStandIn {
 		getState: vi.fn().mockResolvedValue({ mode: "code" }),
 		delegation: undefined as unknown as DelegationService,
 	}
+	provider.taskSlot = new TaskSlot({
+		log: (message) => provider.log(message),
+		getState: () => provider.getState(),
+		performPreparationTasks: (task) => provider.performPreparationTasks(task),
+		removeTaskEventListeners: (task) => {
+			const cleanups = provider.taskEventListeners.get(task)
+			if (cleanups) {
+				cleanups.forEach((cleanup) => cleanup())
+				provider.taskEventListeners.delete(task)
+			}
+		},
+		detachDelegatedParent: async (parentTaskId, childTaskId) =>
+			provider.delegation.detach(parentTaskId, childTaskId),
+	})
 	provider.delegation = new DelegationService(provider as any)
 	return provider
 }
@@ -65,8 +79,8 @@ describe("single-task slot mechanics (D7)", () => {
 		const taskA = makeTask("task-A")
 		const taskB = makeTask("task-B")
 
-		await provider.addClineToStack(taskA)
-		await provider.addClineToStack(taskB)
+		await provider.taskSlot.set(taskA)
+		await provider.taskSlot.set(taskB)
 
 		expect(provider.getCurrentTask()).toBe(taskB)
 		expect(provider.getCurrentTaskStack()).toEqual(["task-B"])
@@ -75,12 +89,12 @@ describe("single-task slot mechanics (D7)", () => {
 		expect(provider.getLiveTaskInstance("task-B")).toBe(taskB)
 	})
 
-	it("removeClineFromStack clears the slot, aborts the task and emits TaskUnfocused", async () => {
+	it("clearCurrentTask clears the slot, aborts the task and emits TaskUnfocused", async () => {
 		const provider = makeProvider()
 		const taskA = makeTask("task-A")
-		await provider.addClineToStack(taskA)
+		await provider.taskSlot.set(taskA)
 
-		await provider.removeClineFromStack()
+		await provider.clearCurrentTask()
 
 		expect(provider.getCurrentTask()).toBeUndefined()
 		expect(provider.getCurrentTaskStack()).toEqual([])
@@ -88,18 +102,18 @@ describe("single-task slot mechanics (D7)", () => {
 		expect(taskA.emit).toHaveBeenCalledWith(RooCodeEventName.TaskUnfocused)
 	})
 
-	it("removeClineFromStack on an empty slot is a no-op", async () => {
+	it("clearCurrentTask on an empty slot is a no-op", async () => {
 		const provider = makeProvider()
 
-		await expect(provider.removeClineFromStack()).resolves.toBeUndefined()
+		await expect(provider.clearCurrentTask()).resolves.toBeUndefined()
 		expect(provider.getCurrentTask()).toBeUndefined()
 	})
 
-	it("addClineToStack emits TaskFocused and runs preparation", async () => {
+	it("set emits TaskFocused and runs preparation", async () => {
 		const provider = makeProvider()
 		const taskA = makeTask("task-A")
 
-		await provider.addClineToStack(taskA)
+		await provider.taskSlot.set(taskA)
 
 		expect(taskA.emit).toHaveBeenCalledWith(RooCodeEventName.TaskFocused)
 	})
@@ -107,7 +121,7 @@ describe("single-task slot mechanics (D7)", () => {
 	it("clearTask aborts and clears a resident task", async () => {
 		const provider = makeProvider()
 		const taskA = makeTask("task-A")
-		await provider.addClineToStack(taskA)
+		await provider.taskSlot.set(taskA)
 
 		await provider.clearTask()
 
@@ -136,7 +150,7 @@ describe("createTask rootTask/taskNumber derivation (D7)", () => {
 	it("top-level task: rootTask undefined, taskNumber 1 (old: empty array)", () => {
 		const provider = makeProvider()
 
-		// Old behavior: after removeClineFromStack, clineStack.length === 0,
+		// Old behavior: after clearCurrentTask, clineStack.length === 0,
 		// so clineStack[0] === undefined and length + 1 === 1.
 		const oldRootTask = provider.getCurrentTask() // undefined (slot empty)
 		const oldTaskNumber = 1 // 0 + 1
@@ -173,7 +187,7 @@ describe("getLiveTaskInstance / condense lookup is slot-scoped (D7)", () => {
 	it("matches only the current task id", () => {
 		const provider = makeProvider()
 		const taskA = makeTask("task-A")
-		provider.currentTask = taskA
+		provider.taskSlot.current = taskA
 
 		expect(provider.getLiveTaskInstance("task-A")).toBe(taskA)
 		expect(provider.getLiveTaskInstance("anything-else")).toBeUndefined()

@@ -36,7 +36,7 @@ export interface DelegationHost {
 	log(message: string): void
 	getCurrentTask(): Task | undefined
 	getCurrentTaskStack(): string[]
-	removeClineFromStack(options?: { skipDelegationRepair?: boolean }): Promise<void>
+	clearCurrentTask(options?: { skipDelegationRepair?: boolean }): Promise<void>
 	createTask(text?: string, images?: string[], parentTask?: Task, options?: CreateTaskOptions): Promise<Task>
 	createTaskWithHistoryItem(item: HistoryItem, options?: { startTask?: boolean }): Promise<Task>
 	handleModeSwitch(mode: Mode): Promise<void>
@@ -150,7 +150,7 @@ export class DelegationService {
 		//    This ensures we never have >1 tasks open at any time during delegation.
 		//    Await abort completion to ensure clean disposal and prevent unhandled rejections.
 		try {
-			await this.host.removeClineFromStack({ skipDelegationRepair: true })
+			await this.host.clearCurrentTask({ skipDelegationRepair: true })
 		} catch (error) {
 			this.host.log(
 				`[delegateParentAndOpenChild] Error during parent disposal (non-fatal): ${
@@ -325,7 +325,7 @@ export class DelegationService {
 	/**
 	 * Attempt to re-attach a detached parent when its cancelled/resumed child later completes.
 	 *
-	 * Both `cancelTask` and `removeClineFromStack` deliberately detach the parent
+	 * Both `cancelTask` and `clearCurrentTask` deliberately detach the parent
 	 * (status → "active", awaitingChildId → undefined) so the parent is not stuck
 	 * waiting for a dead child. But if the child is later resumed and completes,
 	 * nothing re-establishes delegation, so the child falls through to standalone
@@ -461,7 +461,7 @@ export class DelegationService {
 		const historyItem = await this.host.getHistoryItem(parentTaskId)
 
 		// Guard: re-validate delegation state after the async approval gap.
-		// cancelTask() or removeClineFromStack() may have already detached the parent
+		// cancelTask() or clearCurrentTask() may have already detached the parent
 		// (status → "active", awaitingChildId → undefined) while the user was
 		// approving the subtask finish. Routing output back now would corrupt an
 		// unrelated task. The same gate as AttemptCompletionTool (parentAwaitsChild),
@@ -592,14 +592,14 @@ export class DelegationService {
 
 		// 3) Close child instance if still open (single-open-task invariant).
 		//    This MUST happen BEFORE updating the child's status to "completed" because
-		//    removeClineFromStack() → abortTask(true) → saveClineMessages() writes
+		//    clearCurrentTask() → abortTask(true) → saveClineMessages() writes
 		//    the historyItem with initialStatus (typically "active"), which would
 		//    overwrite a "completed" status set earlier.
 		const current = this.host.getCurrentTask()
 		if (current?.taskId === childTaskId) {
 			// This method explicitly persists the parent's active state below, so the
-			// generic delegated→active repair in removeClineFromStack would be redundant.
-			await this.host.removeClineFromStack({ skipDelegationRepair: true })
+			// generic delegated→active repair in clearCurrentTask would be redundant.
+			await this.host.clearCurrentTask({ skipDelegationRepair: true })
 		}
 
 		// 4) Update child metadata to "completed" status.

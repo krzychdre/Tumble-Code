@@ -126,7 +126,8 @@ These look odd but encode tested race fixes or deliberate contracts. Change them
 named tests in place. This list is now the authoritative copy (the plan it was taken from is gone).
 
 - State delivery to the webview: `clineMessagesSeq`, the three `postStateToWebview*` variants, the `sourceTaskId`
-  routing in the webview state merge.
+  routing in the webview state merge. The variants live in `WebviewStatePusher` (`src/core/webview/`)
+  since S1; ClineProvider delegates to it one-for-one.
 - Task control: `cancelTask` and the abort ordering, the global `lastGlobalApiRequestTime` rate limit,
   `TaskHistoryStore` (`src/core/task-persistence/`).
 - Model compatibility: the legacy `read_file` `files` shape and the tool-name aliases (weak models still send

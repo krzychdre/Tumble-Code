@@ -1,15 +1,18 @@
-// npx vitest run __tests__/removeClineFromStack-delegation.spec.ts
+// npx vitest run __tests__/clear-current-task-delegation.spec.ts
 
 import { describe, it, expect, vi } from "vitest"
-import { ClineProvider } from "../core/webview/ClineProvider"
 import { DelegationService } from "../core/webview/DelegationService"
+import { TaskSlot } from "../core/webview/TaskSlot"
 
-describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
+// The delegation-repair half of the old removeClineFromStack (S1: TaskSlot.clear).
+// The repair transition itself lives in DelegationService (CORE-R2); these
+// tests drive it through the slot exactly like the provider does.
+describe("TaskSlot.clear() delegation awareness", () => {
 	/**
-	 * Helper to build a minimal mock provider with a single task on the stack.
+	 * Helper to build a minimal slot host mock with a single task in the slot.
 	 * The task's parentTaskId and taskId are configurable.
 	 */
-	function buildMockProvider(opts: {
+	function buildSlotWithTask(opts: {
 		childTaskId: string
 		parentTaskId?: string
 		parentHistoryItem?: Record<string, any>
@@ -45,11 +48,26 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		}
 		provider.delegation = new DelegationService(provider as any)
 
-		return { provider, childTask, updateTaskHistory, getHistoryItem }
+		const slot = new TaskSlot({
+			log: (message) => provider.log(message),
+			getState: vi.fn().mockResolvedValue({ mode: "code" }),
+			performPreparationTasks: vi.fn().mockResolvedValue(undefined),
+			removeTaskEventListeners: (task) => {
+				const cleanups = provider.taskEventListeners.get(task)
+				if (cleanups) {
+					cleanups.forEach((cleanup: () => void) => cleanup())
+					provider.taskEventListeners.delete(task)
+				}
+			},
+			detachDelegatedParent: (parentTaskId, childTaskId) => provider.delegation.detach(parentTaskId, childTaskId),
+		})
+		slot.current = childTask as any
+
+		return { slot, provider, childTask, updateTaskHistory, getHistoryItem }
 	}
 
 	it("repairs parent metadata (delegated → active) when a delegated child is removed", async () => {
-		const { provider, updateTaskHistory, getHistoryItem } = buildMockProvider({
+		const { slot, provider, updateTaskHistory, getHistoryItem } = buildSlotWithTask({
 			childTaskId: "child-1",
 			parentTaskId: "parent-1",
 			parentHistoryItem: {
@@ -67,10 +85,10 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 			},
 		})
 
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
+		await slot.clear()
 
 		// Slot should be empty after removal
-		expect(provider.currentTask).toBeUndefined()
+		expect(slot.current).toBeUndefined()
 
 		// Parent lookup should have been called
 		expect(getHistoryItem).toHaveBeenCalledWith("parent-1")
@@ -91,15 +109,15 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 	})
 
 	it("does NOT modify parent metadata when the task has no parentTaskId (non-delegated)", async () => {
-		const { provider, updateTaskHistory, getHistoryItem } = buildMockProvider({
+		const { slot, updateTaskHistory, getHistoryItem } = buildSlotWithTask({
 			childTaskId: "standalone-1",
 			// No parentTaskId — this is a top-level task
 		})
 
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
+		await slot.clear()
 
 		// Slot should be empty
-		expect(provider.currentTask).toBeUndefined()
+		expect(slot.current).toBeUndefined()
 
 		// No parent lookup or update should happen
 		expect(getHistoryItem).not.toHaveBeenCalled()
@@ -107,7 +125,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 	})
 
 	it("does NOT modify parent metadata when awaitingChildId does not match the popped child", async () => {
-		const { provider, updateTaskHistory, getHistoryItem } = buildMockProvider({
+		const { slot, updateTaskHistory, getHistoryItem } = buildSlotWithTask({
 			childTaskId: "child-1",
 			parentTaskId: "parent-1",
 			parentHistoryItem: {
@@ -125,7 +143,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 			},
 		})
 
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
+		await slot.clear()
 
 		// Parent was looked up but should NOT be updated
 		expect(getHistoryItem).toHaveBeenCalledWith("parent-1")
@@ -133,7 +151,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 	})
 
 	it("does NOT modify parent metadata when parent status is not 'delegated'", async () => {
-		const { provider, updateTaskHistory, getHistoryItem } = buildMockProvider({
+		const { slot, updateTaskHistory, getHistoryItem } = buildSlotWithTask({
 			childTaskId: "child-1",
 			parentTaskId: "parent-1",
 			parentHistoryItem: {
@@ -150,24 +168,24 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 			},
 		})
 
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
+		await slot.clear()
 
 		expect(getHistoryItem).toHaveBeenCalledWith("parent-1")
 		expect(updateTaskHistory).not.toHaveBeenCalled()
 	})
 
 	it("catches and logs errors during parent metadata repair without blocking the pop", async () => {
-		const { provider, childTask, updateTaskHistory, getHistoryItem } = buildMockProvider({
+		const { slot, provider, childTask, updateTaskHistory, getHistoryItem } = buildSlotWithTask({
 			childTaskId: "child-1",
 			parentTaskId: "parent-1",
 			getHistoryItemError: new Error("Storage unavailable"),
 		})
 
 		// Should NOT throw
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
+		await slot.clear()
 
 		// Slot should still be empty (removal was not blocked)
-		expect(provider.currentTask).toBeUndefined()
+		expect(slot.current).toBeUndefined()
 
 		// The abort should still have been called
 		expect(childTask.abortTask).toHaveBeenCalledWith(true)
@@ -182,24 +200,23 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 	})
 
 	it("handles an empty slot gracefully", async () => {
-		const provider = {
-			currentTask: undefined as any,
-			taskEventListeners: new Map(),
-			log: vi.fn(),
-			getHistoryItem: vi.fn(),
-			updateTaskHistory: vi.fn(),
-		}
+		const log = vi.fn()
+		const slot = new TaskSlot({
+			log,
+			getState: vi.fn().mockResolvedValue({ mode: "code" }),
+			performPreparationTasks: vi.fn(),
+			removeTaskEventListeners: vi.fn(),
+			detachDelegatedParent: vi.fn(),
+		})
 
 		// Should not throw
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
+		await slot.clear()
 
-		expect(provider.currentTask).toBeUndefined()
-		expect(provider.getHistoryItem).not.toHaveBeenCalled()
-		expect(provider.updateTaskHistory).not.toHaveBeenCalled()
+		expect(slot.current).toBeUndefined()
 	})
 
 	it("skips delegation repair when skipDelegationRepair option is true", async () => {
-		const { provider, updateTaskHistory, getHistoryItem } = buildMockProvider({
+		const { slot, updateTaskHistory, getHistoryItem } = buildSlotWithTask({
 			childTaskId: "child-1",
 			parentTaskId: "parent-1",
 			parentHistoryItem: {
@@ -218,10 +235,10 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		})
 
 		// Call with skipDelegationRepair: true (as delegateParentAndOpenChild would)
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider, { skipDelegationRepair: true })
+		await slot.clear({ skipDelegationRepair: true })
 
 		// Slot should be empty after removal
-		expect(provider.currentTask).toBeUndefined()
+		expect(slot.current).toBeUndefined()
 
 		// Parent lookup should NOT have been called — repair was skipped entirely
 		expect(getHistoryItem).not.toHaveBeenCalled()
@@ -230,7 +247,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 
 	it("does NOT reset grandparent during A→B→C nested delegation transition", async () => {
 		// Scenario: A delegated to B, B is now delegating to C.
-		// delegateParentAndOpenChild() pops B via removeClineFromStack({ skipDelegationRepair: true }).
+		// delegateParentAndOpenChild() pops B via clearCurrentTask({ skipDelegationRepair: true }).
 		// Grandparent A should remain "delegated" — its metadata must not be repaired.
 		const grandparentHistory = {
 			id: "task-A",
@@ -270,11 +287,20 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 			updateTaskHistory,
 		}
 
+		const slot = new TaskSlot({
+			log: (message) => provider.log(message),
+			getState: vi.fn().mockResolvedValue({ mode: "code" }),
+			performPreparationTasks: vi.fn(),
+			removeTaskEventListeners: vi.fn(),
+			detachDelegatedParent: vi.fn(),
+		})
+		slot.current = taskB as any
+
 		// Simulate what delegateParentAndOpenChild does: pop B with skipDelegationRepair
-		await (ClineProvider.prototype as any).removeClineFromStack.call(provider, { skipDelegationRepair: true })
+		await slot.clear({ skipDelegationRepair: true })
 
 		// B was removed
-		expect(provider.currentTask).toBeUndefined()
+		expect(slot.current).toBeUndefined()
 
 		// Grandparent A should NOT have been looked up or modified
 		expect(getHistoryItem).not.toHaveBeenCalled()

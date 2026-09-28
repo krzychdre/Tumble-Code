@@ -46,6 +46,8 @@ small "host" object instead of the whole provider:
 graph TD
   CP[ClineProvider]
   CP --> SB[ProviderStateBuilder<br/>getState and the webview state]
+  CP --> SP[WebviewStatePusher<br/>postStateToWebview family]
+  CP --> TS[TaskSlot<br/>the one foreground task]
   CP --> HG[TaskHistoryGateway<br/>history list operations]
   CP --> DS[DelegationService<br/>parent and child task hand-over]
   CP --> MB[ModeProfileBinding<br/>mode to profile, profile activation]
@@ -53,16 +55,18 @@ graph TD
   CP --> BR[BackgroundTaskRunner<br/>memory writers, parallel subagents]
   CP --> SR[SubagentRegistry<br/>live subagent summaries]
   CP --> WH[WebviewHtml<br/>HTML and HMR page]
-  CP --> ST["clineStack: Task[]"]
 ```
 
-### The task stack
+### The task slot
 
-`clineStack` is an array, but in practice it holds at most one task: `createTask` removes the current top-level
-task before adding a new one, and `DelegationService` removes the parent before it opens a child. The parent
-is re-created from history when the child finishes. `addClineToStack` emits `TaskFocused` and runs provider
-preparation (for example the LM Studio model preload); `removeClineFromStack` aborts the task, removes its
-listeners and repairs a delegated parent if needed.
+`ClineProvider` holds exactly one foreground task, in `TaskSlot` (`core/webview/TaskSlot.ts`): `createTask`
+clears the current top-level task before setting a new one, and `DelegationService` clears the parent before
+it opens a child. The parent is re-created from history when the child finishes. `TaskSlot.set` (provider
+method `setCurrentTask`, formerly `addClineToStack`) emits `TaskFocused` and runs provider preparation (for
+example the LM Studio model preload); `TaskSlot.clear` (provider method `clearCurrentTask`, formerly
+`removeClineFromStack`) aborts the task, removes its listeners and repairs a delegated parent if needed.
+`TaskSlot.replaceInPlace` is the flicker-free rehydrate path used by `createTaskWithHistoryItem` when the
+reopened task is the current one.
 
 ### Getting state to the panel
 
@@ -79,7 +83,10 @@ The panel never reads host memory; it receives snapshots and deltas.
 Every snapshot that carries chat rows is stamped with a growing `clineMessagesSeq`. The panel ignores a snapshot
 older than the one it already has, so a slow full-state push cannot overwrite newer streamed rows. This, the three
 `postStateToWebview*` variants and the `sourceTaskId` check on `messageUpdated` are on the "do not touch" list in
-[architecture.md](architecture.md).
+[architecture.md](architecture.md). The method bodies live in `WebviewStatePusher`
+(`core/webview/WebviewStatePusher.ts`), which also owns the per-webview bookkeeping (`webviewAcceptsMessageAdded`,
+the remembered message list); `ClineProvider` keeps one-line delegating methods so the Task classes and the
+message handlers keep calling the provider.
 
 ## From a panel message to a handler
 

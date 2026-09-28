@@ -98,7 +98,7 @@ const makeHost = () => {
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		postStateToWebviewWithoutClineMessages: vi.fn().mockResolvedValue(undefined),
 		getCurrentTask: vi.fn().mockReturnValue(undefined),
-		removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+		clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 	}
 	return { host, state, contextProxy }
 }
@@ -377,7 +377,7 @@ describe("TaskHistoryGateway", () => {
 
 			await gateway.deleteTaskWithId("p")
 
-			expect(host.removeClineFromStack).toHaveBeenCalledTimes(1)
+			expect(host.clearCurrentTask).toHaveBeenCalledTimes(1)
 			expect(ShadowCheckpointService.deleteTask).toHaveBeenCalledWith({
 				taskId: "c",
 				globalStorageDir: "/storage",

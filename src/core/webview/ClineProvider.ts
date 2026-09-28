@@ -91,6 +91,8 @@ import {
 	type TaskHistoryInclusion,
 	type WebviewStatePush,
 } from "./ProviderStateBuilder"
+import { WebviewStatePusher } from "./WebviewStatePusher"
+import { TaskSlot } from "./TaskSlot"
 import { DelegationService } from "./DelegationService"
 import { CloudProfileSync } from "./CloudProfileSync"
 import { ModeProfileBinding } from "./ModeProfileBinding"
@@ -129,10 +131,11 @@ export class ClineProvider
 	private disposables: vscode.Disposable[] = []
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
-	// The single foreground task slot (D7: clineStack was a stack of one —
-	// every production path removed the current task before adding another).
-	// Background tasks (memory writers, parallel subagents) never occupy it.
-	private currentTask?: Task
+	// The single foreground task slot (S1 extracted from ClineProvider, which
+	// D7 had already reduced to a slot: every production path removed the
+	// current task before adding another). Background tasks (memory writers,
+	// parallel subagents) never occupy it.
+	private readonly taskSlot: TaskSlot
 	// Live summaries + tail subscriptions for the UI-visible subset of
 	// backgroundTasks (parallel subagents). Memory writers never register.
 	// The `currentTaskIdProvider` stamps `sourceTaskId` on every
@@ -194,15 +197,15 @@ export class ClineProvider
 	 */
 	private webviewAcceptsMessageAdded = false
 
-	/**
-	 * The message list the view was last sent in a state push (the task's live
-	 * array) and how long it was when posted. A new message is sent alone only
-	 * when it extends exactly this list; see {@link postClineMessageAdded}.
-	 */
-	private viewClineMessages?: { list: readonly ClineMessage[]; count: number }
-
 	/** Builds getState() and the webview state (CORE-R1). */
 	private readonly stateBuilder: ProviderStateBuilder
+
+	/**
+	 * The `postStateToWebview*` family, the `messageAdded`/`messageUpdated`
+	 * fast paths and the per-webview bookkeeping they need (S1; was inline in
+	 * ClineProvider). See {@link WebviewStatePusher}.
+	 */
+	private readonly statePusher: WebviewStatePusher
 
 	/** The parent/child delegation state machine (CORE-R2). */
 	private readonly delegation: DelegationService
@@ -241,6 +244,21 @@ export class ClineProvider
 		const isViewLaunched = () => this.isViewLaunched
 		const isDisposed = () => this._disposed
 		const getCwd = () => this.cwd
+		this.taskSlot = new TaskSlot({
+			log: (message) => this.log(message),
+			getState: () => this.getState(),
+			performPreparationTasks: (task) => this.performPreparationTasks(task),
+			removeTaskEventListeners: (task) => this.removeTaskEventListeners(task),
+			detachDelegatedParent: (parentTaskId, childTaskId) => this.delegation.detach(parentTaskId, childTaskId),
+		})
+		this.statePusher = new WebviewStatePusher({
+			getStateToPostToWebview: (options) =>
+				this.getStateToPostToWebview(options as { includeTaskHistory: TaskHistoryInclusion }),
+			postMessageToWebview: (message) => this.postMessageToWebview(message),
+			getCurrentTask: () => this.getCurrentTask(),
+			shouldRedirectToCloudAuth: () => !!this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance(),
+			hasView: () => !!this.view,
+		})
 		this.taskHistory = new TaskHistoryGateway({
 			get isViewLaunched() {
 				return isViewLaunched()
@@ -257,7 +275,7 @@ export class ClineProvider
 			postStateToWebview: () => this.postStateToWebview(),
 			postStateToWebviewWithoutClineMessages: () => this.postStateToWebviewWithoutClineMessages(),
 			getCurrentTask: () => this.getCurrentTask(),
-			removeClineFromStack: () => this.removeClineFromStack(),
+			clearCurrentTask: () => this.clearCurrentTask(),
 		})
 		this.stateBuilder = new ProviderStateBuilder({
 			contextProxy,
@@ -295,7 +313,7 @@ export class ClineProvider
 			log: (message) => this.log(message),
 			getCurrentTask: () => this.getCurrentTask(),
 			getCurrentTaskStack: () => this.getCurrentTaskStack(),
-			removeClineFromStack: (options) => this.removeClineFromStack(options),
+			clearCurrentTask: (options) => this.clearCurrentTask(options),
 			createTask: (text, images, parentTask, options) => this.createTask(text, images, parentTask, options),
 			createTaskWithHistoryItem: (item, options) => this.createTaskWithHistoryItem(item, options),
 			handleModeSwitch: (mode) => this.handleModeSwitch(mode),
@@ -512,19 +530,9 @@ export class ClineProvider
 	// start of a new task. Callers enforce the single-open invariant: every
 	// production path first removes the previous task (or replaces it
 	// in-place via createTaskWithHistoryItem's rehydrate branch).
-	async addClineToStack(task: Task) {
-		this.currentTask = task
-		task.emit(RooCodeEventName.TaskFocused)
-
-		// Perform special setup provider specific tasks.
-		await this.performPreparationTasks(task)
-
-		// Ensure getState() resolves correctly.
-		const state = await this.getState()
-
-		if (!state || typeof state.mode !== "string") {
-			throw new Error(t("common:errors.retrieve_current_mode"))
-		}
+	// (Was `addClineToStack`; the slot mechanics live in TaskSlot.)
+	async setCurrentTask(task: Task) {
+		await this.taskSlot.set(task)
 	}
 
 	async performPreparationTasks(cline: Task) {
@@ -553,83 +561,26 @@ export class ClineProvider
 	// Removes and destroys the current task instance. Resuming a parent is
 	// NOT done here — it happens by rehydrating the parent from history
 	// (createTaskWithHistoryItem / delegation complete).
-	async removeClineFromStack(options?: { skipDelegationRepair?: boolean }) {
-		// Take the current task instance out of the slot.
-		let task = this.currentTask
-		this.currentTask = undefined
+	// (Was `removeClineFromStack`; the slot mechanics live in TaskSlot.)
+	async clearCurrentTask(options?: { skipDelegationRepair?: boolean }) {
+		await this.taskSlot.clear(options)
+	}
 
-		if (!task) {
-			return
-		}
+	/**
+	 * Runs (and removes) the provider's task-event listener cleanups for
+	 * `task`. Shared by the slot's set/clear/replace paths.
+	 */
+	private removeTaskEventListeners(task: Task): void {
+		const cleanupFunctions = this.taskEventListeners.get(task)
 
-		if (task) {
-			// Capture delegation metadata before abort/dispose, since abortTask(true)
-			// is async and the task reference is cleared afterwards.
-			const childTaskId = task.taskId
-			const parentTaskId = task.parentTaskId
-
-			// NOTE: deliberately no subagentRegistry cleanup here. Popping a
-			// task is often mere abandonment (switching tasks via history, an
-			// in-place rehydrate) — its fan-out children keep running detached
-			// and must stay visible in the panel. The panel is reset at task
-			// boundaries by the entry points (createTask / clearTask /
-			// createTaskWithHistoryItem) via `resetSubagentPanel`, NOT here,
-			// so mid-task re-fan-out for the same parent (beginFanOut) keeps
-			// its semantics. For a pure abandonment (history switch), the
-			// detached children stay visible until the next task boundary.
-
-			task.emit(RooCodeEventName.TaskUnfocused)
-
-			try {
-				// Abort the running task and set isAbandoned to true so
-				// all running promises will exit as well.
-				await task.abortTask(true)
-			} catch (e) {
-				this.log(
-					`[ClineProvider#removeClineFromStack] abortTask() failed ${task.taskId}.${task.instanceId}: ${e.message}`,
-				)
-			}
-
-			// Remove event listeners before clearing the reference.
-			const cleanupFunctions = this.taskEventListeners.get(task)
-
-			if (cleanupFunctions) {
-				cleanupFunctions.forEach((cleanup) => cleanup())
-				this.taskEventListeners.delete(task)
-			}
-
-			// Make sure no reference kept, once promises end it will be
-			// garbage collected.
-			task = undefined
-
-			// Delegation-aware parent metadata repair:
-			// If the popped task was a delegated child, repair the parent's metadata
-			// so it transitions from "delegated" back to "active" and becomes resumable
-			// from the task history list.
-			// Skip when called from delegateParentAndOpenChild() during nested delegation
-			// transitions (A→B→C), where the caller intentionally replaces the active
-			// child and will update the parent to point at the new child.
-			if (parentTaskId && childTaskId && !options?.skipDelegationRepair) {
-				try {
-					if (await this.delegation.detach(parentTaskId, childTaskId)) {
-						this.log(
-							`[ClineProvider#removeClineFromStack] Repaired parent ${parentTaskId} metadata: delegated → active (child ${childTaskId} removed)`,
-						)
-					}
-				} catch (err) {
-					// Non-fatal: log but do not block the pop operation.
-					this.log(
-						`[ClineProvider#removeClineFromStack] Failed to repair parent metadata for ${parentTaskId} (non-fatal): ${
-							err instanceof Error ? err.message : String(err)
-						}`,
-					)
-				}
-			}
+		if (cleanupFunctions) {
+			cleanupFunctions.forEach((cleanup) => cleanup())
+			this.taskEventListeners.delete(task)
 		}
 	}
 
 	public getCurrentTaskStack(): string[] {
-		return this.currentTask ? [this.currentTask.taskId] : []
+		return this.taskSlot.getTaskIds()
 	}
 
 	// Pending Edit Operations Management
@@ -721,8 +672,8 @@ export class ClineProvider
 		this.log("Disposing ClineProvider...")
 
 		// Clear the current task (if any).
-		if (this.currentTask) {
-			await this.removeClineFromStack()
+		if (this.taskSlot.current) {
+			await this.clearCurrentTask()
 		}
 
 		this.log("Cleared all tasks")
@@ -994,7 +945,7 @@ export class ClineProvider
 		// But don't clear if there's already an active task (e.g., resumed via IPC/bridge).
 		const currentTask = this.getCurrentTask()
 		if (!currentTask || currentTask.abandoned || currentTask.abort) {
-			await this.removeClineFromStack()
+			await this.clearCurrentTask()
 		}
 	}
 
@@ -1019,7 +970,7 @@ export class ClineProvider
 			} catch {
 				// Non-fatal: panel reset is best-effort.
 			}
-			await this.removeClineFromStack()
+			await this.clearCurrentTask()
 		}
 
 		// Restore the saved mode and its provider profile (or the CLI's
@@ -1067,37 +1018,16 @@ export class ClineProvider
 		})
 
 		if (isRehydratingCurrentTask) {
-			// Properly dispose of the old task to ensure garbage collection
-			const oldTask = this.currentTask!
-
-			// Abort the old task to stop running processes and mark as abandoned
-			try {
-				await oldTask.abortTask(true)
-			} catch (e) {
-				this.log(
-					`[createTaskWithHistoryItem] abortTask() failed for old task ${oldTask.taskId}.${oldTask.instanceId}: ${e.message}`,
-				)
-			}
-
-			// Remove event listeners from the old task
-			const cleanupFunctions = this.taskEventListeners.get(oldTask)
-			if (cleanupFunctions) {
-				cleanupFunctions.forEach((cleanup) => cleanup())
-				this.taskEventListeners.delete(oldTask)
-			}
-
-			// Replace the current task in-place to avoid UI flicker
-			this.currentTask = task
-			task.emit(RooCodeEventName.TaskFocused)
-
-			// Perform preparation tasks and set up event listeners
-			await this.performPreparationTasks(task)
+			// Replace the current task in-place to avoid UI flicker (the
+			// slot's flicker-free rehydrate path aborts the old instance,
+			// removes its listeners and installs the new one atomically).
+			await this.taskSlot.replaceInPlace(task)
 
 			this.log(
 				`[createTaskWithHistoryItem] rehydrated task ${task.taskId}.${task.instanceId} in-place (flicker-free)`,
 			)
 		} else {
-			await this.addClineToStack(task)
+			await this.setCurrentTask(task)
 
 			this.log(
 				`[createTaskWithHistoryItem] ${task.parentTask ? "child" : "parent"} task ${task.taskId}.${task.instanceId} instantiated`,
@@ -1412,7 +1342,8 @@ export class ClineProvider
 
 	/* Condenses a task's message history to use fewer tokens. */
 	async condenseTaskContext(taskId: string) {
-		const task = this.currentTask?.taskId === taskId ? this.currentTask : undefined
+		const current = this.getCurrentTask()
+		const task = current?.taskId === taskId ? current : undefined
 		if (!task) {
 			// Task gone: still dismiss the spinner so the UI doesn't hang.
 			await this.postMessageToWebview({ type: "condenseTaskContextResponse", text: taskId })
@@ -1448,182 +1379,50 @@ export class ClineProvider
 		await this.postStateToWebview()
 	}
 
+	// The `postStateToWebview*` family and the messageAdded/messageUpdated
+	// fast paths live in WebviewStatePusher (S1); the public surface here
+	// delegates one-to-one so external callers (Task*, messageHandlers,
+	// extension/api) are unchanged. Behavior, payload shapes and sequence
+	// numbering are byte-identical — see WebviewStatePusher for the
+	// per-method contracts.
+
 	/**
-	 * Pushes the whole state to the view. The task history goes along only
-	 * when it changed since the last full push to this view (CORE-R7, see
-	 * {@link ProviderStateBuilder.getStateToPostToWebview}); a new or reloaded
-	 * webview always receives it ({@link forgetWebviewTaskHistory}).
+	 * Pushes the whole state to the view (CORE-R7; see
+	 * {@link WebviewStatePusher.postStateToWebview}).
 	 */
 	async postStateToWebview() {
-		const state = await this.getStateToPostToWebview({ includeTaskHistory: "whenChanged" })
-		this.rememberViewClineMessages(state.clineMessages)
-		this.postMessageToWebview({ type: "state", state })
-		await this.postMdmRedirectToWebview()
+		await this.statePusher.postStateToWebview()
 	}
 
-	/**
-	 * Like postStateToWebview but intentionally omits taskHistory.
-	 *
-	 * Rationale:
-	 * - taskHistory can be large and was being resent on every chat message update.
-	 * - The webview maintains taskHistory in-memory and receives updates via
-	 *   `taskHistoryUpdated` / `taskHistoryItemUpdated` / `taskHistoryItemDeleted`.
-	 *
-	 * This path does NOT call `taskHistoryStore.getAll()`: the builder is
-	 * invoked with `includeTaskHistory: false`, so the history is never
-	 * materialized or sorted here. The webview keeps its in-memory history
-	 * list in sync via the targeted messages.
-	 */
+	/** See {@link WebviewStatePusher.postStateToWebviewWithoutTaskHistory}. */
 	async postStateToWebviewWithoutTaskHistory(): Promise<void> {
-		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
-		const { taskHistory: _omit, ...rest } = state
-		this.rememberViewClineMessages(rest.clineMessages)
-		this.postMessageToWebview({ type: "state", state: rest })
-		await this.postMdmRedirectToWebview()
+		await this.statePusher.postStateToWebviewWithoutTaskHistory()
 	}
 
-	/**
-	 * Like postStateToWebview but intentionally omits both clineMessages and taskHistory.
-	 *
-	 * Rationale:
-	 * - Cloud event handlers (auth, settings, user-info) and mode changes trigger state pushes
-	 *   that have nothing to do with chat messages. Including clineMessages in these pushes
-	 *   creates race conditions where a stale snapshot of clineMessages (captured during async
-	 *   getStateToPostToWebview) overwrites newer messages the task has streamed in the meantime.
-	 * - This method ensures cloud/mode events only push the state fields they actually affect
-	 *   (cloud auth, org settings, profiles, etc.) without interfering with task message streaming.
-	 *
-	 * This path does NOT call `taskHistoryStore.getAll()` (the builder is
-	 * invoked with `includeTaskHistory: false`).
-	 */
+	/** See {@link WebviewStatePusher.postStateToWebviewWithoutClineMessages}. */
 	async postStateToWebviewWithoutClineMessages(): Promise<void> {
-		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
-		// Drop the sequence number with the messages: a push without messages must not raise the
-		// webview's high-water mark and make it reject an older-numbered push that has them.
-		const { clineMessages: _omitMessages, clineMessagesSeq: _omitSeq, taskHistory: _omitHistory, ...rest } = state
-		this.postMessageToWebview({ type: "state", state: rest })
-		await this.postMdmRedirectToWebview()
+		await this.statePusher.postStateToWebviewWithoutClineMessages()
 	}
 
-	/**
-	 * Posts a chat message just added to `task` as a `messageAdded` (the
-	 * message, its index and the state without the message list, the history
-	 * and the sequence number) instead of a state push with the whole list
-	 * (CORE-R7). Returns false, posting nothing, when the view needs the full
-	 * push the caller then sends:
-	 * - the view did not declare `acceptsMessageAdded` on launch (the CLI);
-	 * - `task` is not the current task;
-	 * - the view was not sent this task's current list (a new or resumed task,
-	 *   a replaced list, a new webview) or misses a message before this one.
-	 * The rest of the state travels along because a new message can come with
-	 * other changes (the todo list, the queue, the history item), exactly as
-	 * the full push carried them. If the view changes while that state is
-	 * built, the full push is sent here instead (and true returned).
-	 */
+	/** See {@link WebviewStatePusher.postClineMessageAdded}. */
 	async postClineMessageAdded(
 		task: { readonly taskId: string; readonly clineMessages: ClineMessage[] },
 		message: ClineMessage,
 	): Promise<boolean> {
-		const index = task.clineMessages.lastIndexOf(message)
-
-		if (!this.canSendClineMessageAlone(task, index)) {
-			return false
-		}
-
-		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
-
-		// Re-checked after the await: the view may have been replaced or
-		// reloaded (it holds nothing then), or a full push may already have
-		// carried this message (sending it again is harmless: the webview
-		// replaces a message whose ts it knows).
-		if (!this.canSendClineMessageAlone(task, index)) {
-			await this.postStateToWebviewWithoutTaskHistory()
-			return true
-		}
-
-		const { clineMessages: _omitMessages, clineMessagesSeq: _omitSeq, taskHistory: _omitHistory, ...rest } = state
-		this.viewClineMessages!.count = Math.max(this.viewClineMessages!.count, index + 1)
-		this.postMessageToWebview({
-			type: "messageAdded",
-			sourceTaskId: task.taskId,
-			messageIndex: index,
-			clineMessage: message,
-			state: rest,
-		})
-
-		await this.postMdmRedirectToWebview()
-
-		return true
+		return this.statePusher.postClineMessageAdded(task, message)
 	}
 
-	/**
-	 * The tail every `postStateToWebview*` variant shares (D4): after a state
-	 * push, a non-compliant user under an MDM policy that requires cloud auth
-	 * is redirected to the account tab. Only an actual policy can trigger it;
-	 * without `mdmService` or without `requireCloudAuth` nothing is posted.
-	 */
-	private async postMdmRedirectToWebview(): Promise<void> {
-		if (this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance()) {
-			await this.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
-		}
-	}
-
-	/**
-	 * Shows the view a message of `task` that was changed in place without a
-	 * post of its own (a follow-up marked answered, the rows an aborted stream
-	 * finishes). A full state push used to carry such changes with the next
-	 * added message; a view that gets new messages alone (CORE-R7) needs them
-	 * posted. Only to such a view and only when it holds this task's list;
-	 * any other view (the CLI) still sees them in its next full push, so what
-	 * it receives does not change. Emits no task event.
-	 */
+	/** See {@link WebviewStatePusher.postEditedClineMessage}. */
 	async postEditedClineMessage(
 		task: { readonly taskId: string; readonly clineMessages: ClineMessage[] },
 		message: ClineMessage,
 	): Promise<void> {
-		if (!this.webviewAcceptsMessageAdded || this.viewClineMessages?.list !== task.clineMessages) {
-			return
-		}
-
-		await this.postMessageToWebview({ type: "messageUpdated", sourceTaskId: task.taskId, clineMessage: message })
+		await this.statePusher.postEditedClineMessage(task, message)
 	}
 
-	/**
-	 * The view has every message of `task` before `index` in this very list, so
-	 * the message at `index` can be sent alone. `count >= index`: a full push
-	 * posted after the message was pushed already carries it.
-	 */
-	private canSendClineMessageAlone(task: { readonly clineMessages: ClineMessage[] }, index: number): boolean {
-		const current = this.getCurrentTask()
-
-		return (
-			this.webviewAcceptsMessageAdded &&
-			index !== -1 &&
-			current !== undefined &&
-			current.clineMessages === task.clineMessages &&
-			this.viewClineMessages?.list === task.clineMessages &&
-			this.viewClineMessages.count >= index
-		)
-	}
-
-	/**
-	 * Records the message list a state push is about to post. `postMessage`
-	 * serializes the live array at once, so its length now is what the view
-	 * receives.
-	 */
-	private rememberViewClineMessages(clineMessages: ClineMessage[] | undefined): void {
-		this.viewClineMessages =
-			this.view && clineMessages ? { list: clineMessages, count: clineMessages.length } : undefined
-	}
-
-	/**
-	 * What the view declared on launch (see {@link webviewAcceptsMessageAdded}).
-	 * Also forgets which message list it holds: a (re)loaded webview starts
-	 * empty until its launch push.
-	 */
+	/** See {@link WebviewStatePusher.setWebviewAcceptsMessageAdded}. */
 	setWebviewAcceptsMessageAdded(accepts: boolean): void {
-		this.webviewAcceptsMessageAdded = accepts
-		this.viewClineMessages = undefined
+		this.statePusher.setWebviewAcceptsMessageAdded(accepts)
 	}
 
 	/**
@@ -1772,7 +1571,7 @@ export class ClineProvider
 		await this.contextProxy.resetAllState()
 		await this.providerSettingsManager.resetAllConfigs()
 		await this.customModesManager.resetCustomModes()
-		await this.removeClineFromStack()
+		await this.clearCurrentTask()
 		await this.postStateToWebview()
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
 	}
@@ -1884,7 +1683,7 @@ export class ClineProvider
 	 */
 
 	public getCurrentTask(): Task | undefined {
-		return this.currentTask
+		return this.taskSlot.current
 	}
 
 	private logWebviewHiddenDiagnostics(): void {
@@ -1896,7 +1695,7 @@ export class ClineProvider
 			`[Tumble Code] Webview hidden during active task.\n` +
 				`  taskId:       ${task.taskId}\n` +
 				`  messageCount: ${task.clineMessages.length}\n` +
-				`  stackDepth:   ${this.currentTask ? 1 : 0}\n` +
+				`  stackDepth:   ${this.taskSlot.current ? 1 : 0}\n` +
 				`  timestamp:    ${new Date().toISOString()}\n` +
 				`If the panel appears gray after this, include this log when reporting the issue.`,
 		)
@@ -1972,7 +1771,7 @@ export class ClineProvider
 				// Non-fatal: panel reset is best-effort.
 			}
 			try {
-				await this.removeClineFromStack()
+				await this.clearCurrentTask()
 			} catch {
 				// Non-fatal
 			}
@@ -2005,7 +1804,7 @@ export class ClineProvider
 			...options,
 		})
 
-		await this.addClineToStack(task)
+		await this.setCurrentTask(task)
 		// Gate the explicit start so callers passing `startTask: false`
 		// (e.g. delegateParentAndOpenChild) can persist surrounding metadata
 		// before the task loop begins. Without this, the child loop starts here
@@ -2043,7 +1842,7 @@ export class ClineProvider
 	 * rehydrate while the children kept running.
 	 */
 	public getLiveTaskInstance(taskId: string): Task | undefined {
-		return this.currentTask?.taskId === taskId ? this.currentTask : undefined
+		return this.taskSlot.findLiveInstance(taskId)
 	}
 
 	/**
@@ -2323,9 +2122,10 @@ export class ClineProvider
 		// (the webview scopes by currentTaskId; after the pop there is no
 		// current task and the post would be dropped by the scope guard).
 		await this.resetSubagentPanel()
-		if (this.currentTask) {
-			console.log(`[clearTask] clearing task ${this.currentTask.taskId}.${this.currentTask.instanceId}`)
-			await this.removeClineFromStack()
+		const current = this.taskSlot.current
+		if (current) {
+			console.log(`[clearTask] clearing task ${current.taskId}.${current.instanceId}`)
+			await this.clearCurrentTask()
 		}
 	}
 

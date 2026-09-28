@@ -109,7 +109,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 
 							// `awaitingChildId` is the AUTHORITATIVE delegation signal: it is set only by
 							// delegateParentAndOpenChild and cleared (→ undefined) by every genuine detach
-							// (cancelTask, removeClineFromStack repair, reopenParentFromDelegation). We do NOT
+							// (cancelTask, clearCurrentTask repair, reopenParentFromDelegation). We do NOT
 							// require status === "delegated" because a late, fire-and-forget background
 							// usage-drain save on the (disposed) parent can re-stamp status "delegated" →
 							// "active" while preserving awaitingChildId (see
