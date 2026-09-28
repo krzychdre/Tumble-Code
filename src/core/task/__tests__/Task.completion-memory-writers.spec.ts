@@ -79,6 +79,9 @@ import { attemptCompletionTool, type AttemptCompletionCallbacks } from "../../to
 type ProviderStandIn = {
 	taskSlot: TaskSlot
 	taskEventListeners: Map<Task, Array<() => void>>
+	// The real clearCurrentTask reports the empty slot to the task-history
+	// gateway (P7); the stand-in stubs that seam.
+	taskHistory: { setLiveTaskId: (id: string | undefined) => void }
 	resetSubagentPanel: () => Promise<void>
 	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
 	clearTask: typeof ClineProvider.prototype.clearTask
@@ -104,6 +107,7 @@ function makeProvider(): ProviderStandIn {
 	const provider: ProviderStandIn = {
 		taskSlot: undefined as unknown as TaskSlot,
 		taskEventListeners: new Map(),
+		taskHistory: { setLiveTaskId: vi.fn() },
 		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
 		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
 		clearTask: ClineProvider.prototype.clearTask,

@@ -68,5 +68,7 @@ such as a missing permission is not treated as damage: the file stays where it i
   dispose flush a pending save.
 - API history is saved after each turn.
 - `TaskHistoryStore` updates records inside a per-record lock (`atomicReadAndUpdate`), writes `_index.json` with a
-  debounce, watches task folders for changes made by other windows, and reconciles the index with the disk every
-  five minutes.
+  debounce, watches the live and recently modified task folders for changes made by other windows, and reconciles
+  the index with the disk every five minutes. A folder keeps a watcher while its task occupies a task slot or its
+  record was modified within the last ten minutes (2× the reconcile interval); older tasks rely on the five-minute
+  reconcile for updates, so the watcher count no longer grows with the number of saved tasks.

@@ -18,6 +18,9 @@ import { RooCodeEventName } from "@roo-code/types"
 type ProviderStandIn = {
 	taskSlot: TaskSlot
 	taskEventListeners: Map<Task, Array<() => void>>
+	// The real clearCurrentTask/setCurrentTask report the slot occupant to
+	// the task-history gateway (P7); the stand-in stubs that seam.
+	taskHistory: { setLiveTaskId: (id: string | undefined) => void }
 	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
 	getCurrentTask: typeof ClineProvider.prototype.getCurrentTask
 	getCurrentTaskStack: typeof ClineProvider.prototype.getCurrentTaskStack
@@ -44,6 +47,7 @@ function makeProvider(): ProviderStandIn {
 	const provider: ProviderStandIn = {
 		taskSlot: undefined as unknown as TaskSlot,
 		taskEventListeners: new Map(),
+		taskHistory: { setLiveTaskId: vi.fn() },
 		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
 		getCurrentTask: ClineProvider.prototype.getCurrentTask,
 		getCurrentTaskStack: ClineProvider.prototype.getCurrentTaskStack,
