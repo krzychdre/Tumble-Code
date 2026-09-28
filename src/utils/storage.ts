@@ -7,6 +7,16 @@ import { Package } from "../shared/package"
 import { t } from "../i18n"
 
 /**
+ * Memoized successful storage-root resolutions, keyed by
+ * `${defaultPath}\u0000${customStoragePath}`. Only successful (mkdir + access
+ * passed) resolutions are stored; failures fall through uncached so the next
+ * call retries the fs. Because the config value is part of the key and is
+ * re-read on every call, a runtime setting change resolves fresh without a
+ * config-change listener.
+ */
+const storageBasePathCache = new Map<string, string>()
+
+/**
  * Gets the base storage path for conversations
  * If a custom path is configured, uses that path
  * Otherwise uses the default VSCode extension global storage path
@@ -29,6 +39,12 @@ export async function getStorageBasePath(defaultPath: string): Promise<string> {
 		return defaultPath
 	}
 
+	const cacheKey = `${defaultPath}\u0000${customStoragePath}`
+	const cached = storageBasePathCache.get(cacheKey)
+	if (cached !== undefined) {
+		return cached
+	}
+
 	try {
 		// Ensure custom path exists
 		await fs.mkdir(customStoragePath, { recursive: true })
@@ -36,6 +52,7 @@ export async function getStorageBasePath(defaultPath: string): Promise<string> {
 		// Check directory write permission without creating temp files
 		await fs.access(customStoragePath, fsConstants.R_OK | fsConstants.W_OK | fsConstants.X_OK)
 
+		storageBasePathCache.set(cacheKey, customStoragePath)
 		return customStoragePath
 	} catch (error) {
 		// If path is unusable, report error and fall back to default path
