@@ -11,13 +11,14 @@
 
 import React from "react"
 
-import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@/utils/test-utils"
 import { PopoverTrigger } from "@/components/ui"
 import { vscode } from "@/utils/vscode"
 
 import { CODEBASE_INDEX_DEFAULTS, type IndexingStatus } from "@roo-code/types"
 
 import { CodeIndexPopover } from "../CodeIndexPopover"
+import { useCodeIndexSettings } from "../useCodeIndexSettings"
 
 vi.mock("react-i18next", () => ({
 	Trans: ({ children }: any) => <>{children}</>,
@@ -389,20 +390,68 @@ describe("CodeIndexPopover sections", () => {
 			expect(screen.queryByText("settings:codeIndex.title")).not.toBeInTheDocument()
 		})
 
-		it("a failed save returns to the editable state at once and keeps the edits", () => {
-			renderOpen()
-			openSetup()
-			typeQdrantUrl("http://changed:6333")
-			fireEvent.click(saveButton())
+		describe("a failed save", () => {
+			afterEach(() => {
+				vi.useRealTimers()
+			})
 
-			hostMessage({ type: "codeIndexSettingsSaved", success: false, error: "disk full" })
-			// Current behavior: the status goes to "error" and straight back to "idle" in the same
-			// handler, so the error text is never rendered.
-			expect(screen.queryByText("disk full")).not.toBeInTheDocument()
-			expect(saveButton()).toBeEnabled()
-			expect(
-				(screen.getByPlaceholderText("settings:codeIndex.qdrantUrlPlaceholder") as HTMLInputElement).value,
-			).toBe("http://changed:6333")
+			// The popover is opened with real timers; only the save answer runs on fake ones, so
+			// the 5 second error timer can be stepped through.
+			function failSave(error: string) {
+				const result = renderOpen()
+				openSetup()
+				typeQdrantUrl("http://changed:6333")
+				fireEvent.click(saveButton())
+				vi.useFakeTimers()
+				hostMessage({ type: "codeIndexSettingsSaved", success: false, error })
+				return result
+			}
+
+			it("shows the error for 5 seconds, keeps the edits and lets the user save again", () => {
+				failSave("disk full")
+
+				expect(screen.getByText("disk full")).toBeInTheDocument()
+				expect(saveButton()).toBeEnabled()
+				expect(
+					(screen.getByPlaceholderText("settings:codeIndex.qdrantUrlPlaceholder") as HTMLInputElement).value,
+				).toBe("http://changed:6333")
+
+				act(() => {
+					vi.advanceTimersByTime(4999)
+				})
+				expect(screen.getByText("disk full")).toBeInTheDocument()
+
+				act(() => {
+					vi.advanceTimersByTime(1)
+				})
+				expect(screen.queryByText("disk full")).not.toBeInTheDocument()
+				expect(saveButton()).toBeEnabled()
+			})
+
+			it("a new save during those 5 seconds is not reset to idle by the old timer", () => {
+				failSave("disk full")
+
+				fireEvent.click(saveButton())
+				expect(screen.queryByText("disk full")).not.toBeInTheDocument()
+				expect(screen.getByText("settings:codeIndex.saving").closest("button")).toBeDisabled()
+
+				act(() => {
+					vi.advanceTimersByTime(5000)
+				})
+				expect(screen.getByText("settings:codeIndex.saving").closest("button")).toBeDisabled()
+			})
+
+			it("unmounting clears the pending timer", () => {
+				// The settings hook alone: the popover's own UI (Radix focus handling) also sets
+				// timers on unmount, which would blur the count.
+				vi.useFakeTimers()
+				const { unmount } = renderHook(() => useCodeIndexSettings(undefined, (key: string) => key))
+				hostMessage({ type: "codeIndexSettingsSaved", success: false, error: "disk full" })
+				expect(vi.getTimerCount()).toBe(1)
+
+				unmount()
+				expect(vi.getTimerCount()).toBe(0)
+			})
 		})
 
 		it("closing with unsaved edits asks first; cancel keeps them, discard resets and closes", async () => {

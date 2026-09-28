@@ -251,9 +251,6 @@ vi.mock("../../../integrations/misc/custom-sounds", () => ({
 		originalName: "Sound.mp3",
 	})),
 }))
-vi.mock("../../../integrations/theme/getTheme", () => ({
-	getTheme: h.fn("getTheme", async () => ({ name: "theme" })),
-}))
 vi.mock("../../../services/search/file-search", () => ({
 	searchWorkspaceFiles: h.fn("searchWorkspaceFiles", async () => [
 		{ path: "src/a.ts", type: "file" },

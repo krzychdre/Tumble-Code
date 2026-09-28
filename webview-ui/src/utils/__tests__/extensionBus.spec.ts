@@ -36,50 +36,50 @@ describe("extensionBus", () => {
 	describe("onExtensionMessage", () => {
 		it("delivers only messages of the subscribed type", () => {
 			const handler = vi.fn()
-			track(onExtensionMessage("theme", handler))
+			track(onExtensionMessage("mcpServers", handler))
 
 			send({ type: "state", state: {} })
-			send({ type: "theme", text: "{}" })
+			send({ type: "mcpServers", text: "{}" })
 
 			expect(handler).toHaveBeenCalledTimes(1)
-			expect(handler).toHaveBeenCalledWith({ type: "theme", text: "{}" })
+			expect(handler).toHaveBeenCalledWith({ type: "mcpServers", text: "{}" })
 		})
 
 		it("narrows the message type for the handler", () => {
-			const seen: Array<"theme" | "invoke"> = []
+			const seen: Array<"mcpServers" | "invoke"> = []
 			track(
-				onExtensionMessage(["theme", "invoke"], (message) => {
+				onExtensionMessage(["mcpServers", "invoke"], (message) => {
 					// Compile-time check: the narrowed type only allows the listed literals.
-					const type: "theme" | "invoke" = message.type
+					const type: "mcpServers" | "invoke" = message.type
 					seen.push(type)
 				}),
 			)
 
 			send({ type: "invoke", invoke: "sendMessage" })
-			send({ type: "theme" })
+			send({ type: "mcpServers" })
 			send({ type: "state" })
 
-			expect(seen).toEqual(["invoke", "theme"])
+			expect(seen).toEqual(["invoke", "mcpServers"])
 		})
 
 		it("stops delivering after unsubscribe", () => {
 			const handler = vi.fn()
-			const unsubscribe = onExtensionMessage("theme", handler)
+			const unsubscribe = onExtensionMessage("mcpServers", handler)
 
-			send({ type: "theme" })
+			send({ type: "mcpServers" })
 			unsubscribe()
-			send({ type: "theme" })
+			send({ type: "mcpServers" })
 
 			expect(handler).toHaveBeenCalledTimes(1)
 		})
 
 		it("delivers to several consumers in subscription order", () => {
 			const order: string[] = []
-			track(onExtensionMessage("theme", () => order.push("first")))
+			track(onExtensionMessage("mcpServers", () => order.push("first")))
 			track(onAnyExtensionMessage(() => order.push("any")))
-			track(onExtensionMessage("theme", () => order.push("second")))
+			track(onExtensionMessage("mcpServers", () => order.push("second")))
 
-			send({ type: "theme" })
+			send({ type: "mcpServers" })
 
 			expect(order).toEqual(["first", "any", "second"])
 		})
@@ -88,13 +88,13 @@ describe("extensionBus", () => {
 			const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 			const after = vi.fn()
 			track(
-				onExtensionMessage("theme", () => {
+				onExtensionMessage("mcpServers", () => {
 					throw new Error("boom")
 				}),
 			)
-			track(onExtensionMessage("theme", after))
+			track(onExtensionMessage("mcpServers", after))
 
-			send({ type: "theme" })
+			send({ type: "mcpServers" })
 
 			expect(after).toHaveBeenCalledTimes(1)
 			expect(consoleError).toHaveBeenCalled()
@@ -103,10 +103,10 @@ describe("extensionBus", () => {
 		it("skips a handler unsubscribed by an earlier handler of the same message", () => {
 			const second = vi.fn()
 			let unsubscribeSecond = () => {}
-			track(onExtensionMessage("theme", () => unsubscribeSecond()))
-			unsubscribeSecond = track(onExtensionMessage("theme", second))
+			track(onExtensionMessage("mcpServers", () => unsubscribeSecond()))
+			unsubscribeSecond = track(onExtensionMessage("mcpServers", second))
 
-			send({ type: "theme" })
+			send({ type: "mcpServers" })
 
 			expect(second).not.toHaveBeenCalled()
 		})
@@ -126,7 +126,7 @@ describe("extensionBus", () => {
 			const add = vi.spyOn(window, "addEventListener")
 			const remove = vi.spyOn(window, "removeEventListener")
 
-			const a = onExtensionMessage("theme", () => {})
+			const a = onExtensionMessage("mcpServers", () => {})
 			const b = onExtensionMessage("state", () => {})
 			const c = onAnyExtensionMessage(() => {})
 
@@ -144,15 +144,15 @@ describe("extensionBus", () => {
 		it("subscribes while mounted and always calls the latest handler", () => {
 			const first = vi.fn()
 			const second = vi.fn()
-			const { rerender, unmount } = renderHook(({ handler }) => useExtensionMessage("theme", handler), {
+			const { rerender, unmount } = renderHook(({ handler }) => useExtensionMessage("mcpServers", handler), {
 				initialProps: { handler: first },
 			})
 
-			act(() => send({ type: "theme" }))
+			act(() => send({ type: "mcpServers" }))
 			rerender({ handler: second })
-			act(() => send({ type: "theme" }))
+			act(() => send({ type: "mcpServers" }))
 			unmount()
-			act(() => send({ type: "theme" }))
+			act(() => send({ type: "mcpServers" }))
 
 			expect(first).toHaveBeenCalledTimes(1)
 			expect(second).toHaveBeenCalledTimes(1)

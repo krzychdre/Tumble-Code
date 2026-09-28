@@ -84,7 +84,6 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 		try {
 			await CloudService.instance.logout()
 			await provider.postStateToWebview()
-			provider.postMessageToWebview({ type: "authenticatedUser", userInfo: undefined })
 		} catch (error) {
 			provider.log(`AuthService#logout failed: ${error}`)
 			vscode.window.showErrorMessage("Sign out failed.")

@@ -14,7 +14,7 @@ import type { HistoryItem } from "./history.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
 import type { ClineMessage, QueuedMessage } from "./message.js"
 import type { MarketplaceItem, MarketplaceInstalledMetadata, InstallMarketplaceItemOptions } from "./marketplace.js"
-import type { CloudUserInfo, OrganizationAllowList, ShareVisibility } from "./cloud.js"
+import type { OrganizationAllowList, ShareVisibility } from "./cloud.js"
 import type { SerializedCustomToolDefinition } from "./custom-tool.js"
 import type { GitCommit } from "./git.js"
 import type { McpServer } from "./mcp.js"
@@ -239,7 +239,6 @@ export interface ExtensionMessage {
 	profiles?: string[]
 	hasContent?: boolean
 	items?: MarketplaceItem[]
-	userInfo?: CloudUserInfo
 	organizationAllowList?: OrganizationAllowList
 	tab?: string
 	marketplaceItems?: MarketplaceItem[]
@@ -359,7 +358,6 @@ export interface WebviewMessage {
 	mode?: string
 	promptMode?: string | "enhance"
 	customPrompt?: PromptComponent
-	dataUrls?: string[]
 	/** Generic payload for webview messages that use `values` */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	values?: Record<string, any>

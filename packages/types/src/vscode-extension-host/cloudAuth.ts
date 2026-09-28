@@ -19,11 +19,7 @@ export type CloudAuthWebviewMessageType =
 	| "requestOpenAiCodexRateLimits"
 
 /** Cloud account, sharing, organization and OpenAI Codex replies. */
-export type CloudAuthExtensionMessageType =
-	| "shareTaskSuccess"
-	| "authenticatedUser"
-	| "organizationSwitchResult"
-	| "openAiCodexRateLimits"
+export type CloudAuthExtensionMessageType = "shareTaskSuccess" | "organizationSwitchResult" | "openAiCodexRateLimits"
 
 export interface OpenAiCodexRateLimitsMessage {
 	type: "openAiCodexRateLimits"

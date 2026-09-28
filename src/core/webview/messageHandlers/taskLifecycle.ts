@@ -4,7 +4,6 @@ import * as vscode from "vscode"
 import { TelemetryService } from "@roo-code/telemetry"
 import type { EditQueuedMessagePayload } from "@roo-code/types"
 import { t } from "../../../i18n"
-import { getTheme } from "../../../integrations/theme/getTheme"
 import { checkExistKey } from "../../../shared/checkExistApiConfig"
 import { setPendingTodoList } from "../../tools/UpdateTodoListTool"
 import { resolveIncomingImages, serializeError } from "./context"
@@ -25,8 +24,6 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 
 		provider.postStateToWebview()
 		provider.workspaceTracker?.initializeFilePaths() // Don't await.
-
-		getTheme().then((theme) => provider.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) }))
 
 		// If MCP Hub is already initialized, update the webview with
 		// current server list.

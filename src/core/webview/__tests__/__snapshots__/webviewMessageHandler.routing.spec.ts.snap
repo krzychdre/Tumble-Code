@@ -2679,13 +2679,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudSig
     [
       "provider.postStateToWebview",
     ],
-    [
-      "provider.postMessageToWebview",
-      {
-        "type": "authenticatedUser",
-        "userInfo": undefined,
-      },
-    ],
   ],
   "outcome": "resolved",
 }
@@ -3859,9 +3852,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidL
       "workspaceTracker.initializeFilePaths",
     ],
     [
-      "getTheme",
-    ],
-    [
       "provider.getMcpHub",
     ],
     [
@@ -3888,13 +3878,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidL
     [
       "Telemetry.updateTelemetryState",
       true,
-    ],
-    [
-      "provider.postMessageToWebview",
-      {
-        "text": "{"name":"theme"}",
-        "type": "theme",
-      },
     ],
     [
       "contextProxy.getValue",
@@ -3976,9 +3959,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidL
       "workspaceTracker.initializeFilePaths",
     ],
     [
-      "getTheme",
-    ],
-    [
       "provider.getMcpHub",
     ],
     [
@@ -4005,13 +3985,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidL
     [
       "Telemetry.updateTelemetryState",
       true,
-    ],
-    [
-      "provider.postMessageToWebview",
-      {
-        "text": "{"name":"theme"}",
-        "type": "theme",
-      },
     ],
     [
       "contextProxy.getValue",
