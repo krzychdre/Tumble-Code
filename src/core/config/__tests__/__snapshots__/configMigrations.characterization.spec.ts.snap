@@ -1,0 +1,415 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`config migrations characterization: ContextProxy > does not overwrite existing new-location values with legacy copies > state when new locations already set 1`] = `
+{
+  "autoDreamEnabled": true,
+  "autoDreamMinHours": 24,
+  "autoDreamMinSessions": 5,
+  "autoMemoryEnabled": true,
+  "customSupportPrompts": {
+    "CONDENSE": "already customized",
+  },
+  "memoryRecallEnabled": true,
+  "openRouterImageGenerationSelectedModel": "new/model",
+}
+`;
+
+exports[`config migrations characterization: ContextProxy > keeps a user's explicit memory choices and a stored v1 default next to other prompts > explicit user choices kept 1`] = `
+{
+  "apiProvider": "anthropic",
+  "autoDreamEnabled": false,
+  "autoDreamMinHours": 3,
+  "autoDreamMinSessions": 1,
+  "autoMemoryEnabled": false,
+  "customSupportPrompts": {
+    "ENHANCE": "enhance it",
+  },
+  "memoryRecallEnabled": false,
+}
+`;
+
+exports[`config migrations characterization: ContextProxy > migrates every legacy global-state shape > global state after first start 1`] = `
+{
+  "autoDreamEnabled": true,
+  "autoDreamMinHours": 24,
+  "autoDreamMinSessions": 5,
+  "autoMemoryEnabled": true,
+  "customSupportPrompts": {
+    "CONDENSE": "My own condensing prompt",
+  },
+  "memoryRecallEnabled": true,
+  "openRouterImageGenerationSelectedModel": "google/gemini-2.5-flash-image-preview",
+}
+`;
+
+exports[`config migrations characterization: ContextProxy > migrates every legacy global-state shape > secrets after first start 1`] = `
+{
+  "openRouterImageApiKey": "sk-or-image",
+  "vertexJsonCredentials": "{"type":"service_account"}",
+}
+`;
+
+exports[`config migrations characterization: ProviderSettingsManager > legacy flat profiles without a migrations record: all migrations run and all flags are recorded > envelope after first start 1`] = `
+{
+  "data": {
+    "apiConfigs": {
+      "compat": {
+        "id": "id-compat",
+        "provider": {
+          "config": {
+            "openAiBaseUrl": "https://llm.example.com/v1",
+            "openAiHeaders": {
+              "Host": "llm.internal",
+            },
+            "openAiModelId": "local-model",
+          },
+          "providerId": "openai",
+        },
+        "shared": {
+          "consecutiveMistakeLimit": 3,
+          "rateLimitSeconds": 7,
+          "todoListEnabled": true,
+        },
+      },
+      "keepsOwnValues": {
+        "id": "id-keeps",
+        "provider": {
+          "config": {},
+          "providerId": "anthropic",
+        },
+        "shared": {
+          "consecutiveMistakeLimit": 5,
+          "rateLimitSeconds": 9,
+          "todoListEnabled": false,
+        },
+      },
+      "main": {
+        "id": "id-main",
+        "provider": {
+          "config": {
+            "apiModelId": "claude-sonnet-4-5",
+          },
+          "providerId": "anthropic",
+        },
+        "shared": {
+          "consecutiveMistakeLimit": 3,
+          "rateLimitSeconds": 7,
+          "todoListEnabled": true,
+        },
+      },
+      "oldClaudeCode": {
+        "id": "id-cc",
+        "provider": {
+          "opaqueLegacyPayload": {
+            "apiModelId": "claude-sonnet-4-5",
+            "apiProvider": "claude-code",
+            "consecutiveMistakeLimit": 3,
+            "id": "id-cc",
+            "rateLimitSeconds": 7,
+            "todoListEnabled": true,
+          },
+          "providerId": "claude-code",
+        },
+      },
+    },
+    "currentApiConfigName": "main",
+    "migrations": {
+      "claudeCodeLegacySettingsMigrated": true,
+      "consecutiveMistakeLimitMigrated": true,
+      "openAiHeadersMigrated": true,
+      "rateLimitSecondsMigrated": true,
+      "todoListEnabledMigrated": true,
+    },
+    "modeApiConfigs": {
+      "architect": "id-main",
+      "ask": "id-main",
+      "code": "id-main",
+      "debug": "id-main",
+      "orchestrator": "id-main",
+    },
+  },
+  "schemaVersion": 2,
+}
+`;
+
+exports[`config migrations characterization: ProviderSettingsManager > legacy flat profiles without a migrations record: all migrations run and all flags are recorded > profile secrets after first start 1`] = `
+{
+  "id-compat": {
+    "openAiApiKey": "sk-openai-legacy",
+  },
+  "id-main": {
+    "apiKey": "sk-ant-legacy",
+  },
+}
+`;
+
+exports[`config migrations characterization: ProviderSettingsManager > only the migration whose flag is false (claudeCodeLegacySettingsMigrated) runs > apiConfigs with only claudeCodeLegacySettingsMigrated pending 1`] = `
+{
+  "compat": {
+    "id": "id-compat",
+    "provider": {
+      "config": {
+        "openAiBaseUrl": "https://llm.example.com/v1",
+        "openAiHostHeader": "llm.internal",
+        "openAiModelId": "local-model",
+      },
+      "providerId": "openai",
+    },
+  },
+  "keepsOwnValues": {
+    "id": "id-keeps",
+    "provider": {
+      "config": {},
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "consecutiveMistakeLimit": 5,
+      "rateLimitSeconds": 9,
+      "todoListEnabled": false,
+    },
+  },
+  "main": {
+    "id": "id-main",
+    "provider": {
+      "config": {
+        "apiModelId": "claude-sonnet-4-5",
+      },
+      "providerId": "anthropic",
+    },
+  },
+  "oldClaudeCode": {
+    "id": "id-cc",
+    "provider": {
+      "opaqueLegacyPayload": {
+        "apiModelId": "claude-sonnet-4-5",
+        "apiProvider": "claude-code",
+        "id": "id-cc",
+      },
+      "providerId": "claude-code",
+    },
+  },
+}
+`;
+
+exports[`config migrations characterization: ProviderSettingsManager > only the migration whose flag is false (consecutiveMistakeLimitMigrated) runs > apiConfigs with only consecutiveMistakeLimitMigrated pending 1`] = `
+{
+  "compat": {
+    "id": "id-compat",
+    "provider": {
+      "config": {
+        "openAiBaseUrl": "https://llm.example.com/v1",
+        "openAiHostHeader": "llm.internal",
+        "openAiModelId": "local-model",
+      },
+      "providerId": "openai",
+    },
+    "shared": {
+      "consecutiveMistakeLimit": 3,
+    },
+  },
+  "keepsOwnValues": {
+    "id": "id-keeps",
+    "provider": {
+      "config": {},
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "consecutiveMistakeLimit": 5,
+      "rateLimitSeconds": 9,
+      "todoListEnabled": false,
+    },
+  },
+  "main": {
+    "id": "id-main",
+    "provider": {
+      "config": {
+        "apiModelId": "claude-sonnet-4-5",
+      },
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "consecutiveMistakeLimit": 3,
+    },
+  },
+  "oldClaudeCode": {
+    "id": "id-cc",
+    "provider": {
+      "opaqueLegacyPayload": {
+        "apiModelId": "claude-sonnet-4-5",
+        "apiProvider": "claude-code",
+        "claudeCodeMaxOutputTokens": 8000,
+        "claudeCodePath": "/usr/local/bin/claude",
+        "consecutiveMistakeLimit": 3,
+        "id": "id-cc",
+      },
+      "providerId": "claude-code",
+    },
+  },
+}
+`;
+
+exports[`config migrations characterization: ProviderSettingsManager > only the migration whose flag is false (openAiHeadersMigrated) runs > apiConfigs with only openAiHeadersMigrated pending 1`] = `
+{
+  "compat": {
+    "id": "id-compat",
+    "provider": {
+      "config": {
+        "openAiBaseUrl": "https://llm.example.com/v1",
+        "openAiHeaders": {
+          "Host": "llm.internal",
+        },
+        "openAiModelId": "local-model",
+      },
+      "providerId": "openai",
+    },
+  },
+  "keepsOwnValues": {
+    "id": "id-keeps",
+    "provider": {
+      "config": {},
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "consecutiveMistakeLimit": 5,
+      "rateLimitSeconds": 9,
+      "todoListEnabled": false,
+    },
+  },
+  "main": {
+    "id": "id-main",
+    "provider": {
+      "config": {
+        "apiModelId": "claude-sonnet-4-5",
+      },
+      "providerId": "anthropic",
+    },
+  },
+  "oldClaudeCode": {
+    "id": "id-cc",
+    "provider": {
+      "opaqueLegacyPayload": {
+        "apiModelId": "claude-sonnet-4-5",
+        "apiProvider": "claude-code",
+        "claudeCodeMaxOutputTokens": 8000,
+        "claudeCodePath": "/usr/local/bin/claude",
+        "id": "id-cc",
+      },
+      "providerId": "claude-code",
+    },
+  },
+}
+`;
+
+exports[`config migrations characterization: ProviderSettingsManager > only the migration whose flag is false (rateLimitSecondsMigrated) runs > apiConfigs with only rateLimitSecondsMigrated pending 1`] = `
+{
+  "compat": {
+    "id": "id-compat",
+    "provider": {
+      "config": {
+        "openAiBaseUrl": "https://llm.example.com/v1",
+        "openAiHostHeader": "llm.internal",
+        "openAiModelId": "local-model",
+      },
+      "providerId": "openai",
+    },
+    "shared": {
+      "rateLimitSeconds": 7,
+    },
+  },
+  "keepsOwnValues": {
+    "id": "id-keeps",
+    "provider": {
+      "config": {},
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "consecutiveMistakeLimit": 5,
+      "rateLimitSeconds": 9,
+      "todoListEnabled": false,
+    },
+  },
+  "main": {
+    "id": "id-main",
+    "provider": {
+      "config": {
+        "apiModelId": "claude-sonnet-4-5",
+      },
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "rateLimitSeconds": 7,
+    },
+  },
+  "oldClaudeCode": {
+    "id": "id-cc",
+    "provider": {
+      "opaqueLegacyPayload": {
+        "apiModelId": "claude-sonnet-4-5",
+        "apiProvider": "claude-code",
+        "claudeCodeMaxOutputTokens": 8000,
+        "claudeCodePath": "/usr/local/bin/claude",
+        "id": "id-cc",
+        "rateLimitSeconds": 7,
+      },
+      "providerId": "claude-code",
+    },
+  },
+}
+`;
+
+exports[`config migrations characterization: ProviderSettingsManager > only the migration whose flag is false (todoListEnabledMigrated) runs > apiConfigs with only todoListEnabledMigrated pending 1`] = `
+{
+  "compat": {
+    "id": "id-compat",
+    "provider": {
+      "config": {
+        "openAiBaseUrl": "https://llm.example.com/v1",
+        "openAiHostHeader": "llm.internal",
+        "openAiModelId": "local-model",
+      },
+      "providerId": "openai",
+    },
+    "shared": {
+      "todoListEnabled": true,
+    },
+  },
+  "keepsOwnValues": {
+    "id": "id-keeps",
+    "provider": {
+      "config": {},
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "consecutiveMistakeLimit": 5,
+      "rateLimitSeconds": 9,
+      "todoListEnabled": false,
+    },
+  },
+  "main": {
+    "id": "id-main",
+    "provider": {
+      "config": {
+        "apiModelId": "claude-sonnet-4-5",
+      },
+      "providerId": "anthropic",
+    },
+    "shared": {
+      "todoListEnabled": true,
+    },
+  },
+  "oldClaudeCode": {
+    "id": "id-cc",
+    "provider": {
+      "opaqueLegacyPayload": {
+        "apiModelId": "claude-sonnet-4-5",
+        "apiProvider": "claude-code",
+        "claudeCodeMaxOutputTokens": 8000,
+        "claudeCodePath": "/usr/local/bin/claude",
+        "id": "id-cc",
+        "todoListEnabled": true,
+      },
+      "providerId": "claude-code",
+    },
+  },
+}
+`;

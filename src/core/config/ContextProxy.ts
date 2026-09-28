@@ -22,9 +22,11 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { logger } from "../../utils/logging"
-import { supportPrompt } from "../../shared/support-prompt"
 import { validateMemoryPath } from "../memory/paths"
 import { TaskHistoryStore } from "../task-persistence"
+
+import { runStartupMigrations } from "./migrations/runner"
+import { CONTEXT_PROXY_MIGRATIONS } from "./migrations/context-proxy/registry"
 
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
@@ -95,25 +97,16 @@ export class ContextProxy {
 
 		await Promise.all(promises)
 
-		// Migration: Check for old nested image generation settings and migrate them
-		await this.migrateImageGenerationSettings()
-
-		// Migration: Move credentials that used to live in global state into secret storage
-		await this.migrateGlobalStateSecrets()
-
-		// Migration: Sanitize invalid/removed API providers
-		await this.migrateInvalidApiProvider()
-
-		// Migration: Move legacy customCondensingPrompt to customSupportPrompts
-		await this.migrateLegacyCondensingPrompt()
-
-		// Migration: Clear old default condensing prompt so users get the improved v2 default
-		await this.migrateOldDefaultCondensingPrompt()
-
-		// Migration: Default the native memory system ON for existing users on
-		// first load after upgrade (only sets the flag if it's not yet present,
-		// so users who explicitly disabled memory aren't re-enabled).
-		await this.migrateAutoMemoryDefaults()
+		// One-shot legacy-state migrations (one dated file each under
+		// ./migrations/context-proxy). Each detects its own legacy key and is a
+		// no-op once that key is gone.
+		await runStartupMigrations(CONTEXT_PROXY_MIGRATIONS, {
+			globalState: this.originalContext.globalState,
+			secrets: this.originalContext.secrets,
+			stateCache: this.stateCache,
+			secretCache: this.secretCache,
+			storeSecret: (key, value) => this.storeSecret(key, value),
+		})
 
 		this._isInitialized = true
 	}
@@ -160,261 +153,6 @@ export class ContextProxy {
 	 */
 	public hasLegacyTaskHistory(): boolean {
 		return this.originalContext.globalState.get(TaskHistoryStore.LEGACY_TASK_HISTORY_KEY) !== undefined
-	}
-
-	/**
-	 * Migrates users to the native memory system defaults on first load after
-	 * the feature ships. Only writes defaults for keys that are absent — users
-	 * who have explicitly set a value (including `false`) keep their choice.
-	 *
-	 * Defaults: `autoMemoryEnabled=true`, `autoDreamEnabled=true`,
-	 * `memoryRecallEnabled=true`, `autoDreamMinHours=24`,
-	 * `autoDreamMinSessions=5`. `autoMemoryDirectory` is left unset (globalStorage
-	 * default) unless the user set it.
-	 */
-	private async migrateAutoMemoryDefaults() {
-		try {
-			const updates: Partial<GlobalState> = {}
-			if (this.stateCache.autoMemoryEnabled === undefined) updates.autoMemoryEnabled = true
-			if (this.stateCache.autoDreamEnabled === undefined) updates.autoDreamEnabled = true
-			if (this.stateCache.memoryRecallEnabled === undefined) updates.memoryRecallEnabled = true
-			if (this.stateCache.autoDreamMinHours === undefined) updates.autoDreamMinHours = 24
-			if (this.stateCache.autoDreamMinSessions === undefined) updates.autoDreamMinSessions = 5
-			// If a stored autoMemoryDirectory is invalid (e.g. a leftover from a
-			// removed volume), clear it rather than crash the path module. A
-			// blank value is how the Settings view clears the folder (it means
-			// the default folder) and is kept as it is.
-			const storedMemoryDirectory = this.stateCache.autoMemoryDirectory
-			if (typeof storedMemoryDirectory === "string" && storedMemoryDirectory.trim() !== "") {
-				try {
-					validateMemoryPath(storedMemoryDirectory)
-				} catch {
-					updates.autoMemoryDirectory = undefined
-				}
-			}
-			const keys = Object.keys(updates) as GlobalStateKey[]
-			if (keys.length === 0) return
-			for (const key of keys) {
-				const value = updates[key]
-				this.stateCache[key] = value as any
-				await this.originalContext.globalState.update(key, value as any)
-			}
-			logger.info(`[memory] migrateAutoMemoryDefaults applied ${keys.length} default(s)`)
-		} catch (error) {
-			logger.error(
-				`Error during auto-memory defaults migration: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-		}
-	}
-
-	/**
-	 * Migrates the legacy customCondensingPrompt to the new customSupportPrompts structure
-	 * and removes the legacy field.
-	 *
-	 * Note: Only true customizations are migrated. If the legacy prompt equals the default,
-	 * we skip the migration to avoid pinning users to an old default if the default changes.
-	 */
-	private async migrateLegacyCondensingPrompt() {
-		try {
-			const legacyPrompt = this.originalContext.globalState.get<string>("customCondensingPrompt")
-			if (legacyPrompt) {
-				const currentSupportPrompts =
-					this.originalContext.globalState.get<Record<string, string>>("customSupportPrompts") || {}
-
-				// Only migrate if:
-				// 1. The new location doesn't already have a value
-				// 2. The legacy prompt is a true customization (not equal to the default)
-				// This prevents pinning users to an old default if the default prompt changes.
-				const isCustomized = legacyPrompt.trim() !== supportPrompt.default.CONDENSE.trim()
-				if (!currentSupportPrompts.CONDENSE && isCustomized) {
-					logger.info("Migrating customized legacy customCondensingPrompt to customSupportPrompts")
-					const updatedPrompts = { ...currentSupportPrompts, CONDENSE: legacyPrompt }
-					await this.originalContext.globalState.update("customSupportPrompts", updatedPrompts)
-					this.stateCache.customSupportPrompts = updatedPrompts
-				} else if (!isCustomized) {
-					logger.info("Skipping migration: legacy customCondensingPrompt equals the default prompt")
-				}
-
-				// Always remove the legacy field
-				await this.originalContext.globalState.update("customCondensingPrompt", undefined)
-				this.stateCache.customCondensingPrompt = undefined
-			}
-		} catch (error) {
-			logger.error(
-				`Error during customCondensingPrompt migration: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-	}
-
-	/**
-	 * Clears the old v1 default condensing prompt from customSupportPrompts.CONDENSE if present.
-	 *
-	 * Before PR #10873 "Intelligent Context Condensation v2", the default condensing prompt was
-	 * a simpler 6-section format. Users who had this old default saved in their settings would
-	 * be stuck with it instead of getting the improved v2 default (which includes analysis tags,
-	 * error tracking, all user messages, and better task continuity).
-	 *
-	 * This migration uses fingerprinting to detect the old v1 default - checking for key
-	 * identifying phrases unique to v1 and absence of v2-specific features. This is more
-	 * lenient than exact matching and handles whitespace variations.
-	 */
-	private async migrateOldDefaultCondensingPrompt() {
-		try {
-			const currentSupportPrompts =
-				this.originalContext.globalState.get<Record<string, string>>("customSupportPrompts") || {}
-
-			const savedCondensePrompt = currentSupportPrompts.CONDENSE
-
-			if (savedCondensePrompt && this.isOldV1DefaultCondensePrompt(savedCondensePrompt)) {
-				logger.info(
-					"Clearing old v1 default condensing prompt from customSupportPrompts.CONDENSE - user will now get the improved v2 default",
-				)
-
-				// Remove the CONDENSE key from customSupportPrompts
-				const { CONDENSE: _, ...remainingPrompts } = currentSupportPrompts
-				const updatedPrompts = Object.keys(remainingPrompts).length > 0 ? remainingPrompts : undefined
-
-				await this.originalContext.globalState.update("customSupportPrompts", updatedPrompts)
-				this.stateCache.customSupportPrompts = updatedPrompts
-			}
-		} catch (error) {
-			logger.error(
-				`Error during old default condensing prompt migration: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-	}
-
-	/**
-	 * Detects if a prompt is the old v1 default condensing prompt using fingerprinting.
-	 * This is more lenient than exact matching - it checks for key identifying phrases
-	 * unique to v1 and absence of v2-specific features.
-	 *
-	 * V1 characteristics:
-	 * - Exactly 6 numbered sections (1-6)
-	 * - Contains specific section headers like "Previous Conversation", "Current Work", etc.
-	 * - Does NOT contain v2-specific features like "<analysis>", "SYSTEM OPERATION", etc.
-	 */
-	private isOldV1DefaultCondensePrompt(prompt: string): boolean {
-		// Key phrases unique to the v1 default (must ALL be present)
-		const v1RequiredPhrases = [
-			"Your task is to create a detailed summary of the conversation so far",
-			"1. Previous Conversation:",
-			"2. Current Work:",
-			"3. Key Technical Concepts:",
-			"4. Relevant Files and Code:",
-			"5. Problem Solving:",
-			"6. Pending Tasks and Next Steps:",
-			"Output only the summary of the conversation so far",
-		]
-
-		// V2-specific features (if ANY are present, this is NOT v1 default)
-		const v2Features = [
-			"<analysis>",
-			"SYSTEM OPERATION",
-			"Errors and fixes",
-			"All user messages",
-			"7.", // v2 has more than 6 sections
-			"8.",
-			"9.",
-		]
-
-		// Check that all v1 required phrases are present
-		const hasAllV1Phrases = v1RequiredPhrases.every((phrase) => prompt.toLowerCase().includes(phrase.toLowerCase()))
-
-		// Check that no v2 features are present
-		const hasNoV2Features = v2Features.every((feature) => !prompt.toLowerCase().includes(feature.toLowerCase()))
-
-		return hasAllV1Phrases && hasNoV2Features
-	}
-
-	/**
-	 * Migrates unknown apiProvider values by clearing them from storage.
-	 * Retired providers are preserved so users can keep historical configuration.
-	 */
-	private async migrateInvalidApiProvider() {
-		try {
-			const apiProvider = this.stateCache.apiProvider
-			const isKnownProvider =
-				typeof apiProvider === "string" && (isProviderName(apiProvider) || isRetiredProvider(apiProvider))
-
-			if (apiProvider !== undefined && !isKnownProvider) {
-				logger.info(`[ContextProxy] Found invalid provider "${apiProvider}" in storage - clearing it`)
-				// Clear the invalid provider from both cache and storage
-				this.stateCache.apiProvider = undefined
-				await this.originalContext.globalState.update("apiProvider", undefined)
-			}
-		} catch (error) {
-			logger.error(
-				`Error during invalid API provider migration: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-	}
-
-	/**
-	 * `vertexJsonCredentials` was a plain global state key until it joined
-	 * SECRET_STATE_KEYS. Move a leftover copy into secret storage (unless a
-	 * secret is already stored) and always clear the plain-text copy.
-	 */
-	private async migrateGlobalStateSecrets() {
-		for (const key of ["vertexJsonCredentials"] as const) {
-			try {
-				const legacyValue = this.originalContext.globalState.get<unknown>(key)
-				if (legacyValue === undefined) continue
-				if (typeof legacyValue === "string" && legacyValue !== "" && !this.secretCache[key]) {
-					await this.storeSecret(key, legacyValue)
-				}
-				await this.originalContext.globalState.update(key, undefined)
-				logger.info(`Moved ${key} from global state to secret storage`)
-			} catch (error) {
-				logger.error(
-					`Error moving ${key} to secret storage: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-		}
-	}
-
-	/**
-	 * Migrates old nested openRouterImageGenerationSettings to the new flattened structure
-	 */
-	private async migrateImageGenerationSettings() {
-		try {
-			// Check if there's an old nested structure
-			const oldNestedSettings = this.originalContext.globalState.get<any>("openRouterImageGenerationSettings")
-
-			if (oldNestedSettings && typeof oldNestedSettings === "object") {
-				logger.info("Migrating old nested image generation settings to flattened structure")
-
-				// Migrate the API key if it exists and we don't already have one
-				if (oldNestedSettings.openRouterApiKey && !this.secretCache.openRouterImageApiKey) {
-					await this.originalContext.secrets.store(
-						"openRouterImageApiKey",
-						oldNestedSettings.openRouterApiKey,
-					)
-					this.secretCache.openRouterImageApiKey = oldNestedSettings.openRouterApiKey
-					logger.info("Migrated openRouterImageApiKey to secrets")
-				}
-
-				// Migrate the selected model if it exists and we don't already have one
-				if (oldNestedSettings.selectedModel && !this.stateCache.openRouterImageGenerationSelectedModel) {
-					await this.originalContext.globalState.update(
-						"openRouterImageGenerationSelectedModel",
-						oldNestedSettings.selectedModel,
-					)
-					this.stateCache.openRouterImageGenerationSelectedModel = oldNestedSettings.selectedModel
-					logger.info("Migrated openRouterImageGenerationSelectedModel to global state")
-				}
-
-				// Clean up the old nested structure
-				await this.originalContext.globalState.update("openRouterImageGenerationSettings", undefined)
-				logger.info("Removed old nested openRouterImageGenerationSettings")
-			}
-		} catch (error) {
-			logger.error(
-				`Error during image generation settings migration: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
 	}
 
 	public get extensionUri() {
