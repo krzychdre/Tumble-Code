@@ -107,7 +107,7 @@ describe("pruneToolResults", () => {
 		vi.restoreAllMocks()
 	})
 
-	it("prunes an old oversized result and cites a real artifact id", () => {
+	it("prunes an old oversized result and cites a real artifact id", async () => {
 		const original = bigResult("alpha")
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
@@ -116,7 +116,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		expect(result.artifacts).toHaveLength(1)
@@ -133,7 +133,7 @@ describe("pruneToolResults", () => {
 		expect(fs.readFileSync(artifactPath, "utf8")).toBe(original)
 	})
 
-	it("keeps exactly the first 20 and last 20 lines by default", () => {
+	it("keeps exactly the first 20 and last 20 lines by default", async () => {
 		const original = bigResult("beta")
 		const lines = original.split("\n")
 		const messages: ApiMessage[] = [
@@ -142,7 +142,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 		const body = resultText(result.messages, "old")!.split("\n").slice(1)
 
 		const separator = body.indexOf("...")
@@ -154,7 +154,7 @@ describe("pruneToolResults", () => {
 		expect(resultText(result.messages, "old")).toContain("keeping the first 20 and last 20 lines")
 	})
 
-	it("honours a custom head/tail shape", () => {
+	it("honours a custom head/tail shape", async () => {
 		const original = bigResult("gamma")
 		const lines = original.split("\n")
 		const messages: ApiMessage[] = [
@@ -163,7 +163,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, {
+		const result = await pruneToolResults(messages, {
 			keepBoundary: 3,
 			budgetBytes: BUDGET,
 			store,
@@ -177,7 +177,7 @@ describe("pruneToolResults", () => {
 		expect(body.slice(6)).toEqual(lines.slice(-3))
 	})
 
-	it("never touches the protected recent tail", () => {
+	it("never touches the protected recent tail", async () => {
 		const oldText = bigResult("old")
 		const recentText = bigResult("recent")
 		const messages: ApiMessage[] = [
@@ -188,13 +188,13 @@ describe("pruneToolResults", () => {
 		]
 
 		// keepBoundary 3 protects messages[3..] (the "recent" pair).
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		expect(resultText(result.messages, "recent")).toBe(recentText)
 	})
 
-	it("reads the computeCondenseKeepBoundary sentinel as a tail to protect, not as open season", () => {
+	it("reads the computeCondenseKeepBoundary sentinel as a tail to protect, not as open season", async () => {
 		// On a short history `computeCondenseKeepBoundary` answers `messages.length`.
 		// That is a SENTINEL for the condense ("no raw tail, summarize everything"),
 		// and taken literally by a pruner it would mean "protect nothing" and shred
@@ -207,7 +207,7 @@ describe("pruneToolResults", () => {
 		const boundary = computeCondenseKeepBoundary(messages)
 		expect(boundary).toBe(messages.length)
 
-		const result = pruneToolResults(messages, { keepBoundary: boundary, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: boundary, budgetBytes: BUDGET, store })
 
 		expect(result.messages).toBe(messages)
 		expect(result.prunedCount).toBe(0)
@@ -215,7 +215,7 @@ describe("pruneToolResults", () => {
 		expect(fs.existsSync(path.join(taskDir, "artifacts"))).toBe(false)
 	})
 
-	it("spares the newest CONDENSE_KEEP_RECENT_MESSAGES messages on a short post-condense history", () => {
+	it("spares the newest CONDENSE_KEEP_RECENT_MESSAGES messages on a short post-condense history", async () => {
 		// The shape a task has immediately after a condense: a summary plus a few
 		// fresh tool turns, which is exactly when the sentinel is returned.
 		const messages: ApiMessage[] = [
@@ -228,7 +228,7 @@ describe("pruneToolResults", () => {
 		const boundary = computeCondenseKeepBoundary(messages)
 		expect(boundary).toBe(messages.length)
 
-		const result = pruneToolResults(messages, { keepBoundary: boundary, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: boundary, budgetBytes: BUDGET, store })
 
 		// Only what falls outside the 6-message tail is eligible.
 		expect(result.prunedCount).toBe(1)
@@ -238,7 +238,7 @@ describe("pruneToolResults", () => {
 		expect(resultText(result.messages, "newest")).toBe(bigResult("newest"))
 	})
 
-	it("clamps the boundary itself, so no caller can opt out of the protected tail", () => {
+	it("clamps the boundary itself, so no caller can opt out of the protected tail", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			...toolPair("search_files", bigResult("a"), "a"),
@@ -255,11 +255,11 @@ describe("pruneToolResults", () => {
 		expect(resolveKeepBoundary(3, messages.length)).toBe(3)
 		expect(resolveKeepBoundary(-1, messages.length)).toBe(0)
 
-		const result = pruneToolResults(messages, { keepBoundary: 9_999, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 9_999, budgetBytes: BUDGET, store })
 		expect(resultText(result.messages, "d")).toBe(bigResult("d"))
 	})
 
-	it("fails closed on a result whose tool_use partner is missing", () => {
+	it("fails closed on a result whose tool_use partner is missing", async () => {
 		// An orphaned tool_result: its tool_use was condensed away, so the pass
 		// cannot tell whether this is bulky search output or a protocol result the
 		// bypass list protects. Guessing wrong destroys instructions, so it does
@@ -275,14 +275,14 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 4, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 4, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		expect(resultText(result.messages, "orphan")).toBe(bigResult("orphan"))
 		expect(resultText(result.messages, "known")!.startsWith(PRUNE_NOTICE_PREFIX)).toBe(true)
 	})
 
-	it("respects the byte budget: results at or under it stay whole", () => {
+	it("respects the byte budget: results at or under it stay whole", async () => {
 		const underBudget = bigResult("small", 40) // ~2 KB
 		expect(Buffer.byteLength(underBudget, "utf8")).toBeLessThan(BUDGET)
 
@@ -293,24 +293,24 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 5, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 5, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		expect(resultText(result.messages, "small")).toBe(underBudget)
 		expect(resultText(result.messages, "large")!.startsWith(PRUNE_NOTICE_PREFIX)).toBe(true)
 	})
 
-	it("is idempotent: a second pass over its own output changes nothing", () => {
+	it("is idempotent: a second pass over its own output changes nothing", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			...toolPair("search_files", bigResult("alpha"), "old"),
 			...tail(),
 		]
 
-		const first = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const first = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 		expect(first.prunedCount).toBe(1)
 
-		const second = pruneToolResults(first.messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const second = await pruneToolResults(first.messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(second.messages).toBe(first.messages)
 		expect(second.prunedCount).toBe(0)
@@ -319,9 +319,9 @@ describe("pruneToolResults", () => {
 		expect(fs.readdirSync(path.join(taskDir, "artifacts"))).toHaveLength(1)
 	})
 
-	it("skips results the WS-B spill policy already reduced", () => {
+	it("skips results the WS-B spill policy already reduced", async () => {
 		// A genuinely spilled result, produced by the real policy.
-		const spilled = applyToolResultSpill(bigResult("spilled", 3000), "search_files", {
+		const spilled = await applyToolResultSpill(bigResult("spilled", 3000), "search_files", {
 			store,
 			maxInlineBytes: 24 * 1024,
 		})
@@ -334,13 +334,13 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(0)
 		expect(resultText(result.messages, "spilled")).toBe(spilled.text)
 	})
 
-	it("skips results microcompaction already cleared, in both shapes", () => {
+	it("skips results microcompaction already cleared, in both shapes", async () => {
 		const bare = MICROCOMPACT_CLEARED_PLACEHOLDER
 		const withNotice = `[Tool result: 300 KB, showing first 60 and last 60 lines. Full output saved as artifact "tool-1.txt". Use read_artifact (search/offset/limit) to inspect the rest.]\n${MICROCOMPACT_CLEARED_PLACEHOLDER}`
 
@@ -351,14 +351,14 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 5, budgetBytes: 10, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 5, budgetBytes: 10, store })
 
 		expect(result.prunedCount).toBe(0)
 		expect(resultText(result.messages, "bare")).toBe(bare)
 		expect(resultText(result.messages, "with-notice")).toBe(withNotice)
 	})
 
-	it("never touches user or assistant text blocks", () => {
+	it("never touches user or assistant text blocks", async () => {
 		const userText = bigResult("user-said")
 		const assistantText = bigResult("assistant-said")
 		const messages: ApiMessage[] = [
@@ -369,7 +369,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 6, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 6, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		expect(result.messages[0].content).toBe(userText)
@@ -377,7 +377,7 @@ describe("pruneToolResults", () => {
 		expect((result.messages[2].content as Anthropic.Messages.TextBlockParam[])[0].text).toBe(userText)
 	})
 
-	it("never prunes results of tools on the spill bypass list", () => {
+	it("never prunes results of tools on the spill bypass list", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			...toolPair("read_file", bigResult("file"), "read"),
@@ -388,7 +388,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 11, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 11, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		for (const id of ["read", "skill", "artifact", "complete"]) {
@@ -397,7 +397,7 @@ describe("pruneToolResults", () => {
 		expect(resultText(result.messages, "search")!.startsWith(PRUNE_NOTICE_PREFIX)).toBe(true)
 	})
 
-	it("keeps tool_use/tool_result pairing intact", () => {
+	it("keeps tool_use/tool_result pairing intact", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			...toolPair("search_files", bigResult("a"), "a"),
@@ -407,7 +407,7 @@ describe("pruneToolResults", () => {
 		]
 		const idsBefore = toolUseIds(messages)
 
-		const result = pruneToolResults(messages, { keepBoundary: 7, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 7, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(3)
 		expect(result.messages).toHaveLength(messages.length)
@@ -417,7 +417,7 @@ describe("pruneToolResults", () => {
 		}
 	})
 
-	it("does not mutate the input array or its blocks", () => {
+	it("does not mutate the input array or its blocks", async () => {
 		const original = bigResult("alpha")
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
@@ -426,14 +426,14 @@ describe("pruneToolResults", () => {
 		]
 		const blockBefore = (messages[2].content as Anthropic.Messages.ContentBlockParam[])[0]
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(result.messages).not.toBe(messages)
 		expect((messages[2].content as Anthropic.Messages.ContentBlockParam[])[0]).toBe(blockBefore)
 		expect(resultText(messages, "old")).toBe(original)
 	})
 
-	it("skips the tool_use_ids the caller reserved for microcompaction", () => {
+	it("skips the tool_use_ids the caller reserved for microcompaction", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			...toolPair("search_files", bigResult("a"), "a"),
@@ -441,7 +441,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, {
+		const result = await pruneToolResults(messages, {
 			keepBoundary: 5,
 			budgetBytes: BUDGET,
 			store,
@@ -453,26 +453,38 @@ describe("pruneToolResults", () => {
 		expect(resultText(result.messages, "b")!.startsWith(PRUNE_NOTICE_PREFIX)).toBe(true)
 	})
 
-	it("keeps the result inline when the artifact write fails", () => {
+	// P10: the artifact write is asynchronous, so the pass is too.
+	it("returns a promise so the artifact write runs off the event loop", async () => {
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "task", ts: 0 },
+			...toolPair("search_files", bigResult("alpha"), "old"),
+			...tail(),
+		]
+
+		const pending = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+
+		expect(pending).toBeInstanceOf(Promise)
+		expect((await pending).prunedCount).toBe(1)
+	})
+
+	it("keeps the result inline when the artifact write fails", async () => {
 		const original = bigResult("alpha")
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			...toolPair("search_files", original, "old"),
 			...tail(),
 		]
-		vi.spyOn(store, "save").mockImplementation(() => {
-			throw new Error("disk full")
-		})
+		vi.spyOn(store, "save").mockRejectedValue(new Error("disk full"))
 		vi.spyOn(console, "warn").mockImplementation(() => {})
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(result.messages).toBe(messages)
 		expect(result.prunedCount).toBe(0)
 		expect(resultText(result.messages, "old")).toBe(original)
 	})
 
-	it("prunes oversized text blocks inside an array-shaped result and leaves images alone", () => {
+	it("prunes oversized text blocks inside an array-shaped result and leaves images alone", async () => {
 		const original = bigResult("alpha")
 		const image: Anthropic.Messages.ImageBlockParam = {
 			type: "image",
@@ -495,7 +507,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		const block = (result.messages[2].content as Anthropic.Messages.ContentBlockParam[])[0]
@@ -507,7 +519,7 @@ describe("pruneToolResults", () => {
 		expect((inner[2] as Anthropic.Messages.TextBlockParam).text).toBe("tiny")
 	})
 
-	it("leaves the pre-summary prefix alone: it is already hidden from the API", () => {
+	it("leaves the pre-summary prefix alone: it is already hidden from the API", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			...toolPair("search_files", bigResult("hidden"), "hidden"),
@@ -516,14 +528,14 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 6, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 6, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(1)
 		expect(resultText(result.messages, "hidden")!.startsWith(PRUNE_NOTICE_PREFIX)).toBe(false)
 		expect(resultText(result.messages, "visible")!.startsWith(PRUNE_NOTICE_PREFIX)).toBe(true)
 	})
 
-	it("reports bytesSaved as what the conversation actually lost", () => {
+	it("reports bytesSaved as what the conversation actually lost", async () => {
 		const original = bigResult("alpha")
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
@@ -531,7 +543,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		const before = Buffer.byteLength(original, "utf8")
 		const after = Buffer.byteLength(resultText(result.messages, "old")!, "utf8")
@@ -540,7 +552,7 @@ describe("pruneToolResults", () => {
 		expect(result.prunedText).toBe(`${original}\n`)
 	})
 
-	it("leaves a result inline when the preview would not save at least half the bytes", () => {
+	it("leaves a result inline when the preview would not save at least half the bytes", async () => {
 		// 45 lines of 100 chars: over the budget, but the 20+20 preview plus the
 		// notice is more than half of it, so pruning is not worth a disk write.
 		const marginal = Array.from({ length: 45 }, (_, i) => `line ${i}`.padEnd(100, "-")).join("\n")
@@ -552,7 +564,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 
-		const result = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
+		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 
 		expect(result.prunedCount).toBe(0)
 		expect(resultText(result.messages, "marginal")).toBe(marginal)

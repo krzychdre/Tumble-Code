@@ -1,5 +1,5 @@
 import * as path from "path"
-import * as fsSync from "fs"
+import * as fs from "fs"
 
 import NodeCache from "node-cache"
 import { z } from "zod"
@@ -30,10 +30,90 @@ type CacheableModelSourceId = GetModelsOptions["provider"]
 
 const inFlightRefresh = new Map<CacheableModelSourceId, Promise<ModelRecord>>()
 
+/**
+ * How long a disk-cache lookup (hit or miss) is trusted before the file is
+ * looked at again. Matches the memory cache TTL.
+ */
+const DISK_RECHECK_MS = 5 * 60 * 1000
+
+/**
+ * What this process last saw in (or wrote to) each provider's disk cache file:
+ * the models, or `null` when there was no valid file. `getModelsFromCache` is
+ * synchronous (it backs `getModel()`, which runs on every API request), so
+ * after the first lookup it answers from here and revalidates the file in the
+ * background instead of reading or stat-ing it on the event loop. Without this
+ * mirror every memory expiry, and EVERY call for a provider with no cache file,
+ * went to the disk synchronously.
+ */
+const diskMirror = new Map<ProviderName, { models: ModelRecord | null; checkedAt: number }>()
+
+const inFlightDiskReads = new Map<ProviderName, Promise<ModelRecord | undefined>>()
+
+function rememberDiskState(provider: ProviderName, models: ModelRecord | null): void {
+	diskMirror.set(provider, { models, checkedAt: Date.now() })
+}
+
+/**
+ * Parses and validates a disk cache file; `undefined` when it is not a valid
+ * ModelRecord.
+ */
+function parseDiskModels(provider: ProviderName, data: string): ModelRecord | undefined {
+	// Validate the disk cache data structure using Zod schema
+	// This ensures the data conforms to ModelRecord = Record<string, ModelInfo>
+	const validation = modelRecordSchema.safeParse(JSON.parse(data))
+	if (!validation.success) {
+		console.error(`[MODEL_CACHE] Invalid disk cache data structure for ${provider}:`, validation.error.format())
+		return undefined
+	}
+	return validation.data
+}
+
+/**
+ * Reads a provider's disk cache without blocking the event loop, refreshing
+ * the mirror and, on a hit, the memory cache. Concurrent calls share one read.
+ */
+function readModelsFromDisk(provider: ProviderName): Promise<ModelRecord | undefined> {
+	const existing = inFlightDiskReads.get(provider)
+	if (existing) {
+		return existing
+	}
+
+	const read = (async (): Promise<ModelRecord | undefined> => {
+		try {
+			const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
+			const data = await fs.promises.readFile(path.join(cacheDir, `${provider}_models.json`), "utf8")
+			const models = parseDiskModels(provider, data)
+			rememberDiskState(provider, models ?? null)
+			if (models) {
+				memoryCache.set(provider, models)
+			}
+			return models
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
+				console.error(`[MODEL_CACHE] Error loading ${provider} models from disk:`, error)
+			}
+			rememberDiskState(provider, null)
+			return undefined
+		} finally {
+			inFlightDiskReads.delete(provider)
+		}
+	})()
+
+	inFlightDiskReads.set(provider, read)
+	return read
+}
+
+/** Forgets what this process saw on disk, so each spec starts cold. */
+export function resetModelCacheForTests(): void {
+	diskMirror.clear()
+	inFlightDiskReads.clear()
+}
+
 async function writeModels(router: CacheableModelSourceId, data: ModelRecord) {
 	const filename = `${router}_models.json`
 	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
 	await safeWriteJson(path.join(cacheDir, filename), data)
+	rememberDiskState(router, data)
 }
 
 /**
@@ -89,7 +169,9 @@ async function fetchModelsFromProvider(options: GetModelsOptions): Promise<Model
 export const getModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
 	const { provider } = options
 
-	let models = getModelsFromCache(provider)
+	// Memory first, then the disk cache, read asynchronously: this path may
+	// await, so it never needs the synchronous cold read.
+	let models = memoryCache.get<ModelRecord>(provider) ?? (await readModelsFromDisk(provider))
 
 	if (models) {
 		return models
@@ -219,6 +301,12 @@ export const flushModels = async (options: GetModelsOptions, refresh: boolean = 
  * This ensures providers always have access to last known good data,
  * preventing fallback to hardcoded defaults on startup.
  *
+ * Synchronous because `getModel()` is. Only the very first lookup of a
+ * provider in this process reads the disk synchronously (a cold start must not
+ * fall back to default model info); every later one answers from the disk
+ * mirror and, once the mirror is older than `DISK_RECHECK_MS`, revalidates the
+ * file in the background.
+ *
  * @param provider - The provider to get models for.
  * @returns Models from memory cache, disk cache, or undefined if not cached.
  */
@@ -229,8 +317,18 @@ export function getModelsFromCache(provider: ProviderName): ModelRecord | undefi
 		return memoryModels
 	}
 
-	// Memory cache miss - try to load from disk synchronously
-	// This is acceptable because it only happens on cold start or after cache expiry
+	const mirrored = diskMirror.get(provider)
+	if (mirrored) {
+		if (Date.now() - mirrored.checkedAt >= DISK_RECHECK_MS) {
+			void readModelsFromDisk(provider)
+		}
+		if (mirrored.models) {
+			memoryCache.set(provider, mirrored.models)
+		}
+		return mirrored.models ?? undefined
+	}
+
+	// Cold start: the one synchronous read per provider per process.
 	try {
 		const filename = `${provider}_models.json`
 		const cacheDir = getCacheDirectoryPathSync()
@@ -240,29 +338,23 @@ export function getModelsFromCache(provider: ProviderName): ModelRecord | undefi
 
 		const filePath = path.join(cacheDir, filename)
 
-		// Use synchronous fs to avoid async complexity in getModel() callers
-		if (fsSync.existsSync(filePath)) {
-			const data = fsSync.readFileSync(filePath, "utf8")
-			const models = JSON.parse(data)
-
-			// Validate the disk cache data structure using Zod schema
-			// This ensures the data conforms to ModelRecord = Record<string, ModelInfo>
-			const validation = modelRecordSchema.safeParse(models)
-			if (!validation.success) {
-				console.error(
-					`[MODEL_CACHE] Invalid disk cache data structure for ${provider}:`,
-					validation.error.format(),
-				)
-				return undefined
-			}
-
-			// Populate memory cache for future fast access
-			memoryCache.set(provider, validation.data)
-
-			return validation.data
+		if (!fs.existsSync(filePath)) {
+			rememberDiskState(provider, null)
+			return undefined
 		}
+
+		const models = parseDiskModels(provider, fs.readFileSync(filePath, "utf8"))
+		rememberDiskState(provider, models ?? null)
+
+		if (models) {
+			// Populate memory cache for future fast access
+			memoryCache.set(provider, models)
+		}
+
+		return models
 	} catch (error) {
 		console.error(`[MODEL_CACHE] Error loading ${provider} models from disk:`, error)
+		rememberDiskState(provider, null)
 	}
 
 	return undefined

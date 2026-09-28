@@ -14,6 +14,7 @@ function makeLoop() {
 		userMessageContentReady: false,
 		assistantMessageContent: [{ type: "tool_use", id: "call-1", name: "read_file", params: {}, partial: false }],
 		userMessageContent: [],
+		settlePendingToolResultSpills: vi.fn().mockResolvedValue(undefined),
 		streamProcessor: {
 			finalizeStream: vi.fn().mockResolvedValue(undefined),
 			assembleAndSaveAssistantMessage: vi.fn().mockResolvedValue(undefined),
@@ -60,5 +61,23 @@ describe("TaskApiLoop.finalizeStreamAndProcessResults abort (R4)", () => {
 		expect(await result).toBe("continue")
 		expect(stack).toHaveLength(1)
 		expect(stack[0].userContent).toEqual([{ type: "tool_result", tool_use_id: "call-1", content: "ok" }])
+	})
+
+	// P10: a tool result spills to disk asynchronously; the preview that cites the artifact only
+	// replaces the inline text once the file exists. The loop must settle those writes before it
+	// snapshots userMessageContent for the next request, or the request carries the full text.
+	it("settles pending tool-result spills before snapshotting the results", async () => {
+		const { loop, access } = makeLoop()
+		const stack: any[] = []
+		access.settlePendingToolResultSpills = vi.fn(async () => {
+			access.userMessageContent[0] = { type: "tool_result", tool_use_id: "call-1", content: "preview" }
+		})
+		access.userMessageContent.push({ type: "tool_result", tool_use_id: "call-1", content: "full text" })
+		access.userMessageContentReady = true
+
+		expect(await finalize(loop, stack)).toBe("continue")
+
+		expect(access.settlePendingToolResultSpills).toHaveBeenCalledTimes(1)
+		expect(stack[0].userContent).toEqual([{ type: "tool_result", tool_use_id: "call-1", content: "preview" }])
 	})
 })

@@ -107,6 +107,7 @@ function makeAccess(providerStateOverrides: () => Record<string, unknown> = () =
 		didAlreadyUseTool: false,
 		userMessageContent: [],
 		userMessageContentReady: true,
+		settlePendingToolResultSpills: vi.fn().mockResolvedValue(undefined),
 		assistantMessageContent: [],
 		cachedStreamingModel: { id: "test-model", info: {} },
 		materializedDeferredTools: new Set<string>(),

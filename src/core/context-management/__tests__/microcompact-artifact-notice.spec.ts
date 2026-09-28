@@ -56,7 +56,7 @@ describe("microcompaction keeps artifact notices", () => {
 		fs.rmSync(taskDir, { recursive: true, force: true })
 	})
 
-	it("keeps the prune notice when a later round clears a pruned result (string content)", () => {
+	it("keeps the prune notice when a later round clears a pruned result (string content)", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			{ role: "assistant", content: [{ type: "tool_use", id: "old", name: "search_files", input: {} }], ts: 1 },
@@ -68,7 +68,7 @@ describe("microcompaction keeps artifact notices", () => {
 			})),
 		]
 
-		const pruned = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: 4096, store })
+		const pruned = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: 4096, store })
 		expect(pruned.prunedCount).toBe(1)
 		const artifactId = pruned.artifacts[0]
 
@@ -83,8 +83,8 @@ describe("microcompaction keeps artifact notices", () => {
 		expect(content.split("\n")).toHaveLength(2)
 	})
 
-	it("finds the notice when it is not the first text block of an array-shaped result", () => {
-		const spilled = applyToolResultSpill(bigResult("spilled"), "search_files", {
+	it("finds the notice when it is not the first text block of an array-shaped result", async () => {
+		const spilled = await applyToolResultSpill(bigResult("spilled"), "search_files", {
 			store,
 			maxInlineBytes: 4096,
 		})
@@ -118,7 +118,7 @@ describe("microcompaction keeps artifact notices", () => {
 		expect(content).toContain(`artifact "${spilled.artifactId}"`)
 	})
 
-	it("keeps the notice on the destructive selection path too", () => {
+	it("keeps the notice on the destructive selection path too", async () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "task", ts: 0 },
 			{ role: "assistant", content: [{ type: "tool_use", id: "old", name: "search_files", input: {} }], ts: 1 },
@@ -130,7 +130,7 @@ describe("microcompaction keeps artifact notices", () => {
 			})),
 		]
 
-		const pruned = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: 4096, store })
+		const pruned = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: 4096, store })
 		const artifactId = pruned.artifacts[0]
 
 		const result = microcompactToolResults(pruned.messages, {

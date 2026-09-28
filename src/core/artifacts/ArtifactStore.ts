@@ -103,10 +103,10 @@ export function artifactCandidatePaths(taskDir: string, artifactId: string): str
 /**
  * Upper bound on a single artifact.
  *
- * The write is synchronous (see below), so an unbounded one would block the
- * extension host for as long as the disk takes: a pathological 100 MB MCP
- * payload would freeze the UI. Past this bound the artifact keeps the first
- * `MAX_ARTIFACT_BYTES` and says so at the end of the file.
+ * The write no longer blocks the extension host, but an unbounded artifact
+ * would still cost memory and disk for a payload no model can read: a
+ * pathological 100 MB MCP payload keeps the first `MAX_ARTIFACT_BYTES` and says
+ * so at the end of the file.
  */
 export const MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
 
@@ -136,24 +136,52 @@ function capArtifactText(text: string): string {
 }
 
 /**
+ * Artifact paths a `save` in this process has claimed but not finished
+ * writing. Module level, not per store: two stores for the same task directory
+ * must not hand the same id to two concurrent writes either.
+ */
+const claimedPaths = new Set<string>()
+
+/** Resolves to true when `filePath` exists, without blocking the event loop. */
+async function pathExists(filePath: string): Promise<boolean> {
+	try {
+		await fs.promises.access(filePath)
+		return true
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Forces a file's bytes to disk before it is renamed to its final name.
+ * Without this, a power loss right after the rename can leave the artifact id
+ * pointing at an empty file on file systems that reorder data and metadata
+ * writes (the same reasoning as `safeWriteJson` in `@roo-code/core`).
+ */
+async function flushToDisk(filePath: string): Promise<void> {
+	const handle = await fs.promises.open(filePath, "r+")
+	try {
+		await handle.sync()
+	} finally {
+		await handle.close()
+	}
+}
+
+/**
  * ArtifactStore persists oversized text to a task-local file and hands back an
  * id the model can quote to `read_artifact`.
  *
- * The store is synchronous on the write path, and that is a real cost: a
- * `writeFileSync` blocks the extension host until the bytes are handed to the
- * OS. It is required, not preferred: the spill policy runs inside the
- * synchronous step that turns a tool result into a conversation content block,
- * and it may only replace the text with a preview once the artifact exists on
- * disk, because the preview cites the artifact id as a promise the model can
- * act on. An async write would either force that whole path to become
- * asynchronous (it is called from a dozen synchronous sites) or advertise an
- * id for a file that may still fail to appear. `MAX_ARTIFACT_BYTES` bounds how
- * long the block can last.
+ * The write is asynchronous and atomic: the text goes to a temporary file in
+ * the same directory, and only a complete file is renamed to the artifact id.
+ * A crash or an I/O error mid-write therefore never leaves a truncated file
+ * under an id a model could read and mistake for the whole output. Callers that
+ * put the id in front of a model (the spill policy, the pruner) do so only
+ * after `save` resolves, so the id is never a promise the disk did not keep.
  *
  * @example
  * ```typescript
  * const store = await ArtifactStore.forTask(globalStoragePath, taskId)
- * const artifact = store.save("tool", hugeSearchOutput)
+ * const artifact = await store.save("tool", hugeSearchOutput)
  * // artifact.id === "tool-1706119234567.txt"
  * ```
  */
@@ -183,34 +211,54 @@ export class ArtifactStore {
 	 * are saved in the same millisecond the timestamp is advanced until a free
 	 * name is found, so an id is never silently overwritten.
 	 *
-	 * Text above `MAX_ARTIFACT_BYTES` is truncated with a note appended, so a
-	 * pathological payload cannot block the extension host indefinitely.
+	 * Text above `MAX_ARTIFACT_BYTES` is truncated with a note appended.
 	 *
 	 * `bytes` reports what was written, which is what `read_artifact` will find.
 	 *
-	 * Throws on I/O failure: callers that must not turn a success into an error
-	 * (the spill policy) catch and fall back to keeping the text inline.
+	 * Rejects on I/O failure, and then nothing is left on disk: callers that
+	 * must not turn a success into an error (the spill policy, the pruner) catch
+	 * and fall back to keeping the text inline.
 	 */
-	save(kind: ArtifactKind, text: string, now: number = Date.now()): SavedArtifact {
+	async save(kind: ArtifactKind, text: string, now: number = Date.now()): Promise<SavedArtifact> {
 		const dir = artifactDirForKind(this.taskDir, kind)
 		const payload = capArtifactText(text)
 
-		if (!fs.existsSync(dir)) {
-			fs.mkdirSync(dir, { recursive: true })
-		}
+		await fs.promises.mkdir(dir, { recursive: true })
 
 		let timestamp = Math.max(0, Math.floor(now))
 		let fileName = artifactFileName(kind, timestamp)
 		let filePath = path.join(dir, fileName)
 
-		// Collision safety: two tools can spill inside the same millisecond.
-		while (fs.existsSync(filePath)) {
+		// Collision safety: two tools can spill inside the same millisecond. The
+		// claim is taken synchronously, before any await, so a concurrent save
+		// in this process moves on to the next id instead of racing for this one.
+		// The disk check covers ids written earlier (a resumed task, another
+		// window).
+		for (;;) {
+			if (!claimedPaths.has(filePath)) {
+				claimedPaths.add(filePath)
+				if (!(await pathExists(filePath))) {
+					break
+				}
+				claimedPaths.delete(filePath)
+			}
 			timestamp += 1
 			fileName = artifactFileName(kind, timestamp)
 			filePath = path.join(dir, fileName)
 		}
 
-		fs.writeFileSync(filePath, payload, "utf8")
+		const tempPath = path.join(dir, `.${fileName}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`)
+
+		try {
+			await fs.promises.writeFile(tempPath, payload, { encoding: "utf8", flag: "wx" })
+			await flushToDisk(tempPath)
+			await fs.promises.rename(tempPath, filePath)
+		} catch (error) {
+			await fs.promises.unlink(tempPath).catch(() => {})
+			throw error
+		} finally {
+			claimedPaths.delete(filePath)
+		}
 
 		return { id: fileName, bytes: Buffer.byteLength(payload, "utf8"), path: filePath }
 	}

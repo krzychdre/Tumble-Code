@@ -203,7 +203,10 @@ function isAlreadyReduced(text: string): boolean {
  * @param messages The full API conversation history (including tagged messages).
  * @param options Boundary, budget, preview shape and the artifact store.
  */
-export function pruneToolResults(messages: ApiMessage[], options: PruneToolResultsOptions): PruneToolResultsResult {
+export async function pruneToolResults(
+	messages: ApiMessage[],
+	options: PruneToolResultsOptions,
+): Promise<PruneToolResultsResult> {
 	const noop: PruneToolResultsResult = {
 		messages,
 		prunedCount: 0,
@@ -260,7 +263,7 @@ export function pruneToolResults(messages: ApiMessage[], options: PruneToolResul
 	 * Every "leave it alone" rule lives here so a string result and an array
 	 * result can never be judged differently.
 	 */
-	const pruneText = (text: string, toolUseId: string): string | undefined => {
+	const pruneText = async (text: string, toolUseId: string): Promise<string | undefined> => {
 		if (!text || isAlreadyReduced(text) || skip?.has(toolUseId)) {
 			return undefined
 		}
@@ -282,7 +285,7 @@ export function pruneToolResults(messages: ApiMessage[], options: PruneToolResul
 
 		let artifactId: string
 		try {
-			artifactId = store.save("prune", text, now()).id
+			artifactId = (await store.save("prune", text, now())).id
 		} catch (error) {
 			console.warn(`[toolResultPruner] Keeping ${bytes} byte result inline; artifact write failed:`, error)
 			return undefined
@@ -299,9 +302,67 @@ export function pruneToolResults(messages: ApiMessage[], options: PruneToolResul
 		return replacement
 	}
 
+	type ContentBlock = Anthropic.Messages.ContentBlockParam
+
+	/**
+	 * Returns the block with its oversized text pruned, or the block itself
+	 * (`touched: false`) when nothing in it may or needs to shrink.
+	 */
+	const pruneBlock = async (block: ContentBlock): Promise<{ block: ContentBlock; touched: boolean }> => {
+		const untouched = { block, touched: false }
+
+		// Only tool results shrink. A user text block is the human talking.
+		if (block.type !== "tool_result") {
+			return untouched
+		}
+
+		const tr = block as Anthropic.Messages.ToolResultBlockParam
+		const toolName = toolNameById.get(tr.tool_use_id)
+
+		// Fail CLOSED on an unidentified result. An orphaned tool_result (its
+		// tool_use was condensed away, or the history was written by a build
+		// that named tools differently) could be anything, including one of
+		// the protocol results the bypass list exists to protect. Not pruning
+		// costs a little context; pruning a `skill` or `tools_load` result
+		// costs the task its instructions.
+		if (!toolName || SPILL_BYPASS_TOOLS.has(toolName)) {
+			return untouched
+		}
+
+		if (typeof tr.content === "string") {
+			const replacement = await pruneText(tr.content, tr.tool_use_id)
+			return replacement === undefined ? untouched : { block: { ...tr, content: replacement }, touched: true }
+		}
+
+		if (!Array.isArray(tr.content)) {
+			return untouched
+		}
+
+		// Array form: prune the oversized TEXT blocks and leave images (and
+		// every other block type) exactly where they are.
+		let innerTouched = false
+		const newInner: typeof tr.content = []
+		for (const inner of tr.content) {
+			const replacement = inner.type === "text" ? await pruneText(inner.text, tr.tool_use_id) : undefined
+			if (replacement === undefined) {
+				newInner.push(inner)
+			} else {
+				innerTouched = true
+				newInner.push({ ...inner, text: replacement } as typeof inner)
+			}
+		}
+
+		return innerTouched ? { block: { ...tr, content: newInner }, touched: true } : untouched
+	}
+
 	let anyTouched = false
 
-	const newMessages = messages.map((msg, index) => {
+	// Sequential on purpose: each artifact write is awaited before the next
+	// result is judged, so ids are minted in history order exactly as they were
+	// before the write became asynchronous.
+	const newMessages: ApiMessage[] = []
+
+	for (const [index, msg] of messages.entries()) {
 		// The recent tail, the pre-summary prefix, and everything a previous
 		// condense or truncation already hid are all off limits. Assistant
 		// messages never enter the loop at all, which is what guarantees no
@@ -315,72 +376,27 @@ export function pruneToolResults(messages: ApiMessage[], options: PruneToolResul
 			msg.truncationParent ||
 			msg.isTruncationMarker
 		) {
-			return msg
+			newMessages.push(msg)
+			continue
 		}
 
 		let touched = false
+		const newContent: ContentBlock[] = []
 
-		const newContent = msg.content.map((block) => {
-			// Only tool results shrink. A user text block is the human talking.
-			if (block.type !== "tool_result") {
-				return block
-			}
-
-			const tr = block as Anthropic.Messages.ToolResultBlockParam
-			const toolName = toolNameById.get(tr.tool_use_id)
-
-			// Fail CLOSED on an unidentified result. An orphaned tool_result (its
-			// tool_use was condensed away, or the history was written by a build
-			// that named tools differently) could be anything, including one of
-			// the protocol results the bypass list exists to protect. Not pruning
-			// costs a little context; pruning a `skill` or `tools_load` result
-			// costs the task its instructions.
-			if (!toolName || SPILL_BYPASS_TOOLS.has(toolName)) {
-				return block
-			}
-
-			if (typeof tr.content === "string") {
-				const replacement = pruneText(tr.content, tr.tool_use_id)
-				if (replacement === undefined) {
-					return block
-				}
-				touched = true
-				return { ...tr, content: replacement }
-			}
-
-			if (!Array.isArray(tr.content)) {
-				return block
-			}
-
-			// Array form: prune the oversized TEXT blocks and leave images (and
-			// every other block type) exactly where they are.
-			let innerTouched = false
-			const newInner = tr.content.map((inner) => {
-				if (inner.type !== "text") {
-					return inner
-				}
-				const replacement = pruneText(inner.text, tr.tool_use_id)
-				if (replacement === undefined) {
-					return inner
-				}
-				innerTouched = true
-				return { ...inner, text: replacement }
-			})
-
-			if (!innerTouched) {
-				return block
-			}
-			touched = true
-			return { ...tr, content: newInner }
-		})
+		for (const block of msg.content) {
+			const result = await pruneBlock(block)
+			touched ||= result.touched
+			newContent.push(result.block)
+		}
 
 		if (!touched) {
-			return msg
+			newMessages.push(msg)
+			continue
 		}
 
 		anyTouched = true
-		return { ...msg, content: newContent }
-	})
+		newMessages.push({ ...msg, content: newContent })
+	}
 
 	if (!anyTouched) {
 		return noop

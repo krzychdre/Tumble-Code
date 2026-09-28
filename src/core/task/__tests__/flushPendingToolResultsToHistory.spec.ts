@@ -300,6 +300,39 @@ describe("flushPendingToolResultsToHistory", () => {
 		expect((userMessage.content as any[])[0].tool_use_id).toBe("tool-123")
 	})
 
+	// P10: the spill write is asynchronous, and the preview only replaces the inline text once
+	// the artifact file exists. A flush (delegation, abort) must settle those writes first, or the
+	// persisted history keeps the full text and the artifact on disk is an orphan.
+	it("persists the spill preview once a pending artifact write settles", async () => {
+		const task = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+		;(task as any).assistantMessageSavedToHistory = true
+		const hugeResult = Array.from({ length: 400 }, (_, index) => `line-${index + 1}`.padEnd(80, "x")).join("\n")
+		const save = vi.fn(
+			() =>
+				new Promise((resolve) =>
+					setTimeout(() => resolve({ id: "tool-42.txt", bytes: hugeResult.length, path: "unused" }), 20),
+				),
+		)
+		;(task as any).toolResultSpill = { store: { save }, maxInlineBytes: 1024 }
+
+		task.pushToolResultToUserContent(
+			{ type: "tool_result", tool_use_id: "spill-1", content: hugeResult },
+			{ toolName: "search_files" },
+		)
+		await task.flushPendingToolResultsToHistory()
+
+		expect(save).toHaveBeenCalledTimes(1)
+		const flushed = (task.apiConversationHistory[0].content as any[])[0]
+		expect(flushed.tool_use_id).toBe("spill-1")
+		expect(flushed.content).toContain('Full output saved as artifact "tool-42.txt"')
+		expect(flushed.content.length).toBeLessThan(hugeResult.length)
+	})
+
 	it("should clear userMessageContent after flushing", async () => {
 		const task = new Task({
 			provider: mockProvider,

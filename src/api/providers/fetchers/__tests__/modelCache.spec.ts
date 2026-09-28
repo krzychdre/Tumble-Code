@@ -37,6 +37,10 @@ vi.mock("fs/promises", () => ({
 vi.mock("fs", () => ({
 	existsSync: vi.fn().mockReturnValue(false),
 	readFileSync: vi.fn().mockReturnValue("{}"),
+	// The asynchronous disk read used by getModels and the background recheck.
+	promises: {
+		readFile: vi.fn().mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" })),
+	},
 }))
 
 // Mock all the model fetchers
@@ -59,7 +63,7 @@ vi.mock("../../../core/config/ContextProxy", () => ({
 import type { Mock } from "vitest"
 import * as fsSync from "fs"
 import NodeCache from "node-cache"
-import { getModels, getModelsFromCache } from "../modelCache"
+import { getModels, getModelsFromCache, resetModelCacheForTests } from "../modelCache"
 import { getLiteLLMModels } from "../litellm"
 import { getOpenRouterModels } from "../openrouter"
 import { getDeepSeekModels } from "../deepseek"
@@ -166,6 +170,8 @@ describe("getModelsFromCache disk fallback", () => {
 		mockCache = new MockedNodeCache()
 		// Reset memory cache to always miss
 		mockCache.get.mockReturnValue(undefined)
+		// Every case starts cold: nothing seen on disk yet in this process.
+		resetModelCacheForTests()
 		// Reset fs mocks
 		vi.mocked(fsSync.existsSync).mockReturnValue(false)
 		vi.mocked(fsSync.readFileSync).mockReturnValue("{}")
