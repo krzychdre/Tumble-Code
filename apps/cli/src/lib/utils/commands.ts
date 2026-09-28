@@ -16,6 +16,8 @@ export type GlobalCommandAction =
 	| "setPermissions"
 	| "openMcpPanel"
 	| "openResumePicker"
+	| "copyLastAnswer"
+	| "exportTranscript"
 
 /**
  * Definition of a CLI global command
@@ -56,6 +58,18 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 		name: "resume",
 		description: "Pick an earlier task of this workspace to resume (same as typing #)",
 		action: "openResumePicker",
+	},
+	{
+		name: "copy",
+		description: "Copy the last answer to the clipboard; /copy code copies its last code block",
+		argumentHint: "[code]",
+		action: "copyLastAnswer",
+	},
+	{
+		name: "export",
+		description: "Save this conversation as a Markdown file in the workspace",
+		argumentHint: "[file]",
+		action: "exportTranscript",
 	},
 	{
 		name: "mcp",

@@ -43,6 +43,13 @@ describe("globalCommands", () => {
 			expect(resumeCommand?.action).toBe("openResumePicker")
 		})
 
+		it("should contain /copy and /export", () => {
+			expect(getGlobalCommand("copy")?.action).toBe("copyLastAnswer")
+			expect(getGlobalCommand("copy")?.argumentHint).toBe("[code]")
+			expect(getGlobalCommand("export")?.action).toBe("exportTranscript")
+			expect(getGlobalCommand("export")?.argumentHint).toBe("[file]")
+		})
+
 		it("should have valid structure for all commands", () => {
 			for (const cmd of GLOBAL_COMMANDS) {
 				expect(cmd.name).toBeTruthy()
@@ -124,6 +131,8 @@ describe("globalCommands", () => {
 				"setPermissions",
 				"openMcpPanel",
 				"openResumePicker",
+				"copyLastAnswer",
+				"exportTranscript",
 			]
 
 			for (const cmd of GLOBAL_COMMANDS) {

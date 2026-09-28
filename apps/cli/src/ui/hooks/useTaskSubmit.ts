@@ -1,5 +1,7 @@
 import { useCallback } from "react"
 import { randomUUID } from "crypto"
+import fs from "fs/promises"
+import path from "path"
 import { useStdout } from "ink"
 import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } from "@roo-code/types"
 
@@ -9,6 +11,13 @@ import { getPermissionSettings, resolvePermissionArgument, type PermissionMode }
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
 import { CLEAR_TERMINAL } from "../utils/clearTerminal.js"
+import {
+	defaultExportPath,
+	lastAnswer,
+	lastCodeBlock,
+	osc52Copy,
+	transcriptToMarkdown,
+} from "../utils/transcriptExport.js"
 
 export interface UseTaskSubmitOptions {
 	sendToExtension: ((msg: WebviewMessage) => void) | null
@@ -17,6 +26,10 @@ export interface UseTaskSubmitOptions {
 	resetTranscript: () => void
 	permissionMode: PermissionMode
 	onPermissionModeChange: (mode: PermissionMode) => void
+	/** Where /export writes (a relative /export path is taken from here). Default: the process cwd. */
+	workspacePath?: string
+	/** The model named in the /export heading. */
+	model?: string
 }
 
 export interface UseTaskSubmitReturn {
@@ -46,6 +59,8 @@ export function useTaskSubmit({
 	resetTranscript,
 	permissionMode,
 	onPermissionModeChange,
+	workspacePath,
+	model,
 }: UseTaskSubmitOptions): UseTaskSubmitReturn {
 	const {
 		pendingAsk,
@@ -80,6 +95,70 @@ export function useTaskSubmit({
 			send({ type: "requestModes" })
 		},
 		[resetTranscript],
+	)
+
+	const note = useCallback(
+		(content: string) => addMessage({ id: randomUUID(), role: "system", content }),
+		[addMessage],
+	)
+
+	/**
+	 * /copy [code]: the last answer, or its last fenced code block, to the
+	 * clipboard through OSC 52. Whether the terminal honours OSC 52 cannot be
+	 * read back, so the note says what to do when nothing arrived.
+	 */
+	const copyToClipboard = useCallback(
+		(argument: string) => {
+			const messages = useCLIStore.getState().messages
+			const wantsCode = argument === "code"
+			const text = wantsCode ? lastCodeBlock(messages) : lastAnswer(messages)
+
+			if (argument && !wantsCode) {
+				note("Usage: /copy (the last answer) or /copy code (its last code block).")
+				return
+			}
+
+			if (text === null) {
+				note(wantsCode ? "There is no code block to copy yet." : "There is nothing to copy yet.")
+				return
+			}
+
+			write(osc52Copy(text))
+			note(
+				`Copied the last ${wantsCode ? "code block" : "answer"} (${text.length} characters) with OSC 52. ` +
+					"If the clipboard stays empty, your terminal does not accept OSC 52 " +
+					"(under tmux: set -g set-clipboard on); /export saves the conversation to a file instead.",
+			)
+		},
+		[note, write],
+	)
+
+	/** /export [file]: the transcript as Markdown; never overwrites a file. */
+	const exportTranscript = useCallback(
+		async (argument: string) => {
+			const base = workspacePath ?? process.cwd()
+			const target = argument ? path.resolve(base, argument) : defaultExportPath(base, new Date())
+			const { messages, currentMode } = useCLIStore.getState()
+			const markdown = transcriptToMarkdown(messages, {
+				exportedAt: new Date(),
+				mode: currentMode ?? undefined,
+				model,
+			})
+
+			try {
+				await fs.mkdir(path.dirname(target), { recursive: true })
+				await fs.writeFile(target, markdown, { encoding: "utf8", flag: "wx" })
+				note(`Exported the conversation to ${target}`)
+			} catch (error) {
+				const code = (error as NodeJS.ErrnoException).code
+				note(
+					code === "EEXIST"
+						? `${target} already exists; give /export another file name.`
+						: `Could not export to ${target}: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		},
+		[workspacePath, model, note],
 	)
 
 	/**
@@ -117,6 +196,16 @@ export function useTaskSubmit({
 						write(CLEAR_TERMINAL)
 						useUIStateStore.getState().clearTranscript()
 						resetConversation(sendToExtension)
+						return
+					}
+
+					if (globalCommand?.action === "copyLastAnswer") {
+						copyToClipboard(trimmedText.slice(commandMatch[0].length).trim())
+						return
+					}
+
+					if (globalCommand?.action === "exportTranscript") {
+						await exportTranscript(trimmedText.slice(commandMatch[0].length).trim())
 						return
 					}
 
@@ -222,6 +311,8 @@ export function useTaskSubmit({
 			write,
 			permissionMode,
 			onPermissionModeChange,
+			copyToClipboard,
+			exportTranscript,
 		],
 	)
 
