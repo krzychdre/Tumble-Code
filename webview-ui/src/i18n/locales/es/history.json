@@ -55,5 +55,9 @@
 	"subtaskTag": "Subtarea",
 	"deleteWithSubtasks": "Esto también eliminará {{count}} subtarea(s). ¿Estás seguro?",
 	"expandSubtasks": "Expandir subtareas",
-	"collapseSubtasks": "Contraer subtareas"
+	"collapseSubtasks": "Contraer subtareas",
+	"today": "Hoy",
+	"yesterday": "Ayer",
+	"noHistory": "Aún no hay tareas. Inicia una conversación para crear tu historial.",
+	"noSearchResults": "Ninguna tarea coincide con esta búsqueda."
 }

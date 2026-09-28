@@ -47,5 +47,9 @@
 	"subtaskTag": "Subtask",
 	"deleteWithSubtasks": "This will also delete {{count}} subtask(s). Are you sure?",
 	"expandSubtasks": "Expand subtasks",
-	"collapseSubtasks": "Collapse subtasks"
+	"collapseSubtasks": "Collapse subtasks",
+	"today": "Today",
+	"yesterday": "Yesterday",
+	"noHistory": "No tasks yet. Start a conversation to build your history.",
+	"noSearchResults": "No tasks match this search."
 }

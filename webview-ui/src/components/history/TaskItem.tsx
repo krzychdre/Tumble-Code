@@ -21,6 +21,10 @@ interface TaskItemProps {
 	className?: string
 }
 
+/**
+ * One history row. §2.9: the row is a real <button> — keyboard-focusable,
+ * Enter/Space activate it natively — instead of a div with onClick.
+ */
 const TaskItem = ({
 	item,
 	variant,
@@ -32,6 +36,8 @@ const TaskItem = ({
 	onDelete,
 	className,
 }: TaskItemProps) => {
+	const isCompact = variant === "compact"
+
 	const handleClick = () => {
 		if (isSelectionMode && onToggleSelection) {
 			onToggleSelection(item.id, !isSelected)
@@ -40,15 +46,18 @@ const TaskItem = ({
 		}
 	}
 
-	const isCompact = variant === "compact"
-
 	return (
-		<div
+		<button
+			type="button"
 			key={item.id}
 			data-testid={`task-item-${item.id}`}
+			aria-label={item.task}
+			aria-pressed={isSelectionMode ? isSelected : undefined}
 			className={cn(
-				"cursor-pointer group relative overflow-hidden",
+				"cursor-pointer group relative overflow-hidden text-left w-full",
+				"bg-transparent border-none p-0 font-inherit",
 				"text-vscode-foreground/80 hover:text-vscode-foreground transition-colors",
+				"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-vscode-focusBorder",
 				hasSubtasks ? "rounded-t-xl" : "rounded-xl",
 				className,
 			)}
@@ -118,7 +127,7 @@ const TaskItem = ({
 					/>
 				</div>
 			</div>
-		</div>
+		</button>
 	)
 }
 

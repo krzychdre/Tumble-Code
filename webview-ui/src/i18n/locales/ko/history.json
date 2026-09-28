@@ -47,5 +47,9 @@
 	"subtaskTag": "부분작업",
 	"deleteWithSubtasks": "이는 {{count}} 부분작업도 삭제합니다. 확실하십니까?",
 	"expandSubtasks": "부분작업 확장",
-	"collapseSubtasks": "부분작업 축소"
+	"collapseSubtasks": "부분작업 축소",
+	"today": "오늘",
+	"yesterday": "어제",
+	"noHistory": "아직 작업이 없습니다. 대화를 시작해 기록을 만들어 보세요.",
+	"noSearchResults": "이 검색과 일치하는 작업이 없습니다."
 }

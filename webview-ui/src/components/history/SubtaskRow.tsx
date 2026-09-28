@@ -33,27 +33,24 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 
 	return (
 		<div data-testid={`subtask-row-${item.id}`} className={className}>
-			{/* Task row with depth indentation */}
-			<div
+			{/* Task row with depth indentation. §2.9: a real <button>, so Enter
+			    and focus come from the platform instead of a keydown handler. */}
+			<button
+				type="button"
+				aria-label={item.task}
 				className={cn(
-					"group flex items-center justify-between gap-2 pr-4 py-1 cursor-pointer",
+					"group flex w-full items-center justify-between gap-2 pr-4 py-1 cursor-pointer",
+					"text-left bg-transparent border-none p-0 font-inherit",
 					"text-vscode-foreground/60 hover:text-vscode-foreground transition-colors",
+					"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-vscode-focusBorder",
 				)}
 				style={{ paddingLeft: `${depth * 16}px` }}
-				onClick={handleClick}
-				role="button"
-				tabIndex={0}
-				onKeyDown={(e) => {
-					if (e.key === "Enter" || e.key === " ") {
-						e.preventDefault()
-						handleClick()
-					}
-				}}>
+				onClick={handleClick}>
 				<StandardTooltip content={item.task} delay={600}>
 					<span className="text-sm line-clamp-1">{item.task}</span>
 				</StandardTooltip>
 				<ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-			</div>
+			</button>
 
 			{/* Nested subtask collapsible section */}
 			{hasChildren && (

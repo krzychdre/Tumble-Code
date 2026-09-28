@@ -36,16 +36,17 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 						<span>·</span>
 					</>
 				)}
-				{/* Full date and time (yyyy-mm-dd hh:mm:ss) */}
+				{/* Full date and time (yyyy-mm-dd hh:mm:ss), tabular numerals so
+				    columns of timestamps line up (§2.9). */}
 				<StandardTooltip content={new Date(item.ts).toLocaleString()}>
-					<span>{formatDateTime(item.ts)}</span>
+					<span className="tabular-nums">{formatDateTime(item.ts)}</span>
 				</StandardTooltip>
-
+	
 				{/* Cost */}
 				{!!item.totalCost && (
 					<>
 						<span>·</span>
-						<span className="flex items-center" data-testid="cost-footer-compact">
+						<span className="flex items-center tabular-nums" data-testid="cost-footer-compact">
 							{"$" + item.totalCost.toFixed(2)}
 						</span>
 					</>

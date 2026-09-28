@@ -55,5 +55,9 @@
 	"subtaskTag": "Subtasca",
 	"deleteWithSubtasks": "Això també eliminarà {{count}} subtasca(s). Estàs segur?",
 	"expandSubtasks": "Expandir subtasques",
-	"collapseSubtasks": "Contreure subtasques"
+	"collapseSubtasks": "Contreure subtasques",
+	"today": "Avui",
+	"yesterday": "Ahir",
+	"noHistory": "Encara no hi ha tasques. Comença una conversa per crear l'historial.",
+	"noSearchResults": "Cap tasca coincideix amb la cerca."
 }

@@ -119,3 +119,49 @@ export function useGroupedTasks(tasks: HistoryItem[], searchQuery: string): Grou
 		isSearchMode,
 	}
 }
+
+/**
+	* §2.9: a Virtuoso row — either a day header before the first group of a new
+	* calendar day, or a task group (whose subtask tree is untouched).
+	*/
+export type HistoryRow =
+	| { type: "day-header"; key: string; label: string; day: string }
+	| { type: "group"; key: string; group: TaskGroup }
+
+const dayKey = (ts: number): string => {
+	const d = new Date(ts)
+	return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+
+/** Localized day label: Today / Yesterday / the full date. Pure, exported for tests. */
+export function dayLabel(ts: number, t: (key: string) => string): string {
+	const now = new Date()
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+	const diffDays = Math.round((today.getTime() - new Date(ts).setHours(0, 0, 0, 0)) / 86400000)
+	if (diffDays === 0) {
+		return t("history:today")
+	}
+	if (diffDays === 1) {
+		return t("history:yesterday")
+	}
+	return new Date(ts).toLocaleDateString()
+}
+
+/**
+	* §2.9: interleave day headers into the (newest-first) group list. The
+	* parent-child grouping is untouched — a header row is inserted only where
+	* the next group starts a new calendar day.
+	*/
+export function toDayRows(groups: TaskGroup[], t: (key: string) => string): HistoryRow[] {
+	const rows: HistoryRow[] = []
+	let lastDay: string | undefined
+	for (const group of groups) {
+		const day = dayKey(group.parent.ts)
+		if (day !== lastDay) {
+			rows.push({ type: "day-header", key: `day-${day}`, label: dayLabel(group.parent.ts, t), day })
+			lastDay = day
+		}
+		rows.push({ type: "group", key: group.parent.id, group })
+	}
+	return rows
+}
