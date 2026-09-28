@@ -175,6 +175,8 @@ async def _seed_a_phone_sized_problem(session_factory):
     [
         ("/app", "taskRows"),
         ("/app?scope=all", "taskRows"),
+        # The filter panel opens when a filter beyond the search is active.
+        ("/app?project=lids&sort=cost&dir=desc", "taskRows"),
         ("/app/tasks/run", "messages"),
         ("/app/metrics", None),
         ("/app/settings", None),

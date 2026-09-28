@@ -327,6 +327,7 @@ form.inline {
 input[type="search"],
 input[type="text"],
 input[type="number"],
+input[type="date"],
 select,
 textarea {
 	background: var(--sunken);
@@ -359,7 +360,7 @@ textarea::placeholder {
 	justify-content: space-between;
 	flex-wrap: wrap;
 	gap: var(--s3);
-	margin-bottom: var(--s5);
+	margin-bottom: var(--s3);
 }
 .list-head .page-title {
 	display: inline-flex;
@@ -550,10 +551,17 @@ textarea::placeholder {
 	align-items: stretch;
 	border-bottom: 1px solid var(--line);
 }
-.task-item:hover {
+/* Zebra rows on the runs (not inside a folded tree), so a long row of figures
+   can be followed across to its title. Hover steps one surface further up. */
+.task-list > .task-node:nth-child(even) > .task-item {
 	background: var(--surface-1);
 }
-.task-item.selected {
+.task-list .task-item:hover,
+.task-list > .task-node:nth-child(even) > .task-item:hover {
+	background: var(--surface-2);
+}
+.task-list .task-item.selected,
+.task-list > .task-node:nth-child(even) > .task-item.selected {
 	background: var(--signal-wash);
 }
 
@@ -1146,7 +1154,9 @@ a.signal-value:hover {
 	opacity: 0.35;
 	pointer-events: none;
 }
+/* "3 / 12": what a phone shows instead of the numbered pages. */
 .pager-status {
+	display: none;
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-faint);
@@ -1236,6 +1246,246 @@ a.signal-value:hover {
 	.pager-num {
 		min-width: 1.6rem;
 	}
+}
+
+/* --- column headers (section 3.2) --------------------------------------------
+   The header row is built from the same pieces as a row: a spacer as wide as
+   the checkbox cell, the tree gutter at depth 0, the same grid, and an
+   invisible copy of the Delete button. So every label sits over its column
+   whatever the column widths do. Stuck under the top bar while the list
+   scrolls. */
+.task-head {
+	position: sticky;
+	top: 52px;
+	z-index: 4;
+	display: flex;
+	align-items: stretch;
+	background: var(--bg);
+	border-bottom: 1px solid var(--line-strong);
+}
+.head-check {
+	flex: none;
+	width: calc(var(--s1) + 14px + var(--s2));
+}
+.task-head-cells {
+	flex: 1;
+	min-width: 0;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 8rem 9rem 4.5rem 4.5rem 5.5rem 5rem 5.5rem 8.5rem;
+	align-items: center;
+	gap: var(--s3);
+	padding: var(--s1) var(--s3) var(--s1) var(--s4);
+}
+.head-label,
+.sort-link {
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	color: var(--text-faint);
+	text-align: right;
+	white-space: nowrap;
+}
+.head-title {
+	text-align: left;
+}
+.head-sort {
+	font-size: var(--t-label);
+	text-align: right;
+}
+.sort-link:hover {
+	color: var(--text);
+	text-decoration: none;
+}
+.head-sort.sorted .sort-link {
+	color: var(--signal);
+}
+/* Hangs past the label, so the label itself stays flush with its column. */
+.head-sort.sorted .sort-link {
+	margin-right: -1em;
+}
+.sort-arrow {
+	display: inline-block;
+	width: 1em;
+	text-align: center;
+}
+.head-spacer {
+	visibility: hidden;
+}
+
+/* Visible to a screen reader only: "sorted descending" beside an arrow. */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* --- density ------------------------------------------------------------------
+   The compact density trades the row padding for more rows on screen; the
+   type stays the same size. Set on <html> by tasklist.js, so it survives the
+   list being swapped in place. */
+:root[data-density="compact"] .task-link {
+	padding-top: 1px;
+	padding-bottom: 1px;
+}
+:root[data-density="compact"] .task-link::before {
+	top: 0.3rem;
+	bottom: 0.3rem;
+}
+.list-toggle {
+	padding: 0;
+	margin-left: var(--s4);
+	background: none;
+	border: none;
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	color: var(--text-faint);
+	cursor: pointer;
+}
+.list-toggle:hover {
+	color: var(--text-dim);
+}
+.list-toggle[aria-pressed="true"] {
+	color: var(--signal);
+}
+/* Select mode exists for the phone layout only (see the 640px block). */
+.select-mode {
+	display: none;
+}
+
+/* --- filters --------------------------------------------------------------------
+   One GET form: the search box, a disclosure with the rest, and Apply (which
+   the script makes redundant, and which keeps the form usable without it). */
+.filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--s2) var(--s3);
+	margin-bottom: var(--s4);
+}
+.filter-more > summary {
+	display: inline-flex;
+	align-items: center;
+	min-height: 30px;
+	padding: 0 var(--s3);
+	border: 1px solid var(--line);
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text-dim);
+	cursor: pointer;
+	list-style: none;
+}
+.filter-more > summary::-webkit-details-marker {
+	display: none;
+}
+.filter-more > summary::before {
+	content: "▸";
+	margin-right: var(--s2);
+	font-size: 0.8rem;
+	transition: transform 0.12s ease;
+}
+.filter-more[open] > summary::before {
+	transform: rotate(90deg);
+}
+.filter-more > summary:hover {
+	color: var(--text);
+	border-color: var(--line-strong);
+}
+/* Open, the fields take a row of their own under the search box. */
+.filter-more[open] {
+	order: 3;
+	flex: 1 0 100%;
+}
+.filter-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--s3);
+	margin-top: var(--s2);
+}
+/* Chrome still lays out a closed <details>' content (content-visibility),
+   and its width then counts toward the page's on a phone. */
+.filter-more:not([open]) .filter-fields {
+	display: none;
+}
+.filter-field {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	max-width: 100%;
+}
+.filter-field input[type="text"] {
+	width: 12rem;
+	max-width: 100%;
+}
+.filter-check {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--s2);
+	min-height: 30px;
+	font-size: var(--t-sm);
+	color: var(--text-dim);
+	cursor: pointer;
+}
+.filter-check input {
+	accent-color: var(--signal);
+	margin: 0;
+}
+
+/* Active filters, each one click from gone. Square, like every other control. */
+.filter-chips {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--s2);
+	margin: 0 0 var(--s3);
+	padding: 0;
+	list-style: none;
+}
+.filter-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--s1);
+	max-width: 100%;
+	padding: 1px var(--s2);
+	background: var(--surface-1);
+	border: 1px solid var(--line-strong);
+	border-radius: 0;
+	color: var(--text-dim);
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	overflow-wrap: anywhere;
+}
+.filter-chip b {
+	color: var(--text);
+	font-weight: 600;
+}
+.filter-chip:hover {
+	border-color: var(--signal);
+	color: var(--text);
+	text-decoration: none;
+}
+.filter-chip-x {
+	color: var(--text-faint);
+}
+.filter-chip:hover .filter-chip-x {
+	color: var(--signal);
+}
+.filter-chip-clear {
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+}
+.empty .filter-chips {
+	justify-content: center;
 }
 
 .empty {
@@ -2389,6 +2639,26 @@ table.breakdown tr:last-child td {
 	.cell-date {
 		text-align: left;
 	}
+	/* The rows are no longer columns, so the header keeps only what it can
+	   still do: the four sort links, as one line. */
+	.task-head {
+		align-items: center;
+	}
+	.head-check,
+	.task-head .tree-gutter,
+	.head-spacer,
+	.head-label {
+		display: none;
+	}
+	.task-head-cells {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s1) var(--s4);
+		padding-left: var(--s1);
+	}
+	.head-sort.sorted .sort-link {
+		margin-right: 0;
+	}
 	.btn-delete {
 		color: var(--text-faint);
 		border-color: var(--line);
@@ -2440,6 +2710,56 @@ table.breakdown tr:last-child td {
 	   Deleting stays one tick and "Delete selected" away (the bulk bar). */
 	.task-delete {
 		display: none;
+	}
+	/* The top bar scrolls away here, so the header sticks to the very top. */
+	.task-head {
+		top: 0;
+	}
+	/* A two-line card: the title with its grade, then a wrapping line of the
+	   rest. The title leaves room for the grade beside it, so everything after
+	   the grade starts the second line. */
+	.task-link .cell-title {
+		order: -2;
+		flex: 1 1 calc(100% - 7rem);
+	}
+	.task-link .cell-grade {
+		order: -1;
+	}
+	/* Checkboxes only in select mode. The mode is a checkbox, so :has() needs
+	   no script to act on it. */
+	.select-mode {
+		display: flex;
+		align-items: center;
+		gap: var(--s2);
+		font-family: var(--mono);
+		font-size: var(--t-label);
+		text-transform: uppercase;
+		letter-spacing: 0.09em;
+		color: var(--text-faint);
+		cursor: pointer;
+	}
+	.select-mode input {
+		accent-color: var(--signal);
+		margin: 0;
+	}
+	.task-check,
+	.select-all {
+		display: none;
+	}
+	#bulk-form:has(#select-mode:checked) .task-check,
+	#bulk-form:has(#select-mode:checked) .select-all {
+		display: flex;
+	}
+	.select-head {
+		gap: var(--s4);
+	}
+	/* Previous, next and "3 / 12". */
+	.pager-pages,
+	.pager-jump {
+		display: none;
+	}
+	.pager-status {
+		display: inline;
 	}
 	.tree-gutter {
 		width: calc(1.25rem + var(--depth, 0) * 0.75rem);

@@ -314,7 +314,7 @@ async def test_active_filters_show_as_removable_chips(client, db_session, sessio
     await _seed_filterable(session_factory)
 
     html = _get(client, "/app", project="beta", grade="friction", q="run", sort="cost", dir="asc").text
-    chips = re.findall(r'<a class="chip" href="([^"]+)"[^>]*>(.*?)</a>', html, re.DOTALL)
+    chips = re.findall(r'<a class="filter-chip" href="([^"]+)"[^>]*>(.*?)</a>', html, re.DOTALL)
     by_label = {re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", label)).strip(): unescape(href) for href, label in chips}
 
     assert set(by_label) == {"Search: run ✕", "Project: beta ✕", "Grade: Friction ✕"}
@@ -329,7 +329,7 @@ async def test_active_filters_show_as_removable_chips(client, db_session, sessio
 async def test_no_chips_without_filters(client, db_session, session_factory):
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
-    assert 'class="chip"' not in _get(client, "/app").text
+    assert 'class="filter-chip"' not in _get(client, "/app").text
 
 
 async def test_a_filtered_empty_list_offers_the_way_back(client, db_session, session_factory):
@@ -340,7 +340,7 @@ async def test_a_filtered_empty_list_offers_the_way_back(client, db_session, ses
     assert _order(html) == []
     assert "No tasks match these filters" in html
     empty = html[html.index('class="empty"'):]
-    assert 'class="chip"' in empty
+    assert 'class="filter-chip"' in empty
     assert "/app?scope=roots" in _hrefs(empty)
 
 

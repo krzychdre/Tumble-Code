@@ -2,47 +2,128 @@
 {% import "_spend.html" as spend %}
 {% block title %}Your tasks · Tumble Code{% endblock %}
 {% block content %}
-{# The search terms travel with every scope/page link, so neither switching
-   scope nor paging silently drops the filter the reader is looking at. Encoded
-   once here: a title search for "a&b" would otherwise truncate the URL. #}
-{% set page_q = '&q=' ~ query|urlencode if query else '' %}
+{# Every link and form on this page builds its URL from `view`
+   (web/presenters/task_list.ListView), so scope, search, filters and sort all
+   travel together and none of them is silently dropped. #}
+{% macro chip_list(view) -%}
+<ul class="filter-chips" aria-label="Active filters">
+  {% for c in view.chips() %}
+  <li><a class="filter-chip" href="{{ c.href }}" aria-label="Remove filter {{ c.label }}{% if c.value %}: {{ c.value }}{% endif %}">{{ c.label }}{% if c.value %}: <b>{{ c.value }}</b>{% endif %} <span class="filter-chip-x" aria-hidden="true">✕</span></a></li>
+  {% endfor %}
+  <li><a class="filter-chip-clear" href="{{ view.cleared_url() }}">Clear all</a></li>
+</ul>
+{%- endmacro %}
+{# A column header that sorts: the link flips the direction on the active
+   column; the state is said in words for a screen reader, not only drawn. #}
+{% macro head_cell(key, label) -%}
+{%- set how = view.sorted_as(key) -%}
+<span class="head-sort{{ ' sorted' if how else '' }}"><a class="sort-link" href="{{ view.sort_url(key) }}">{{ label }}<span class="sr-only">{% if how %}, sorted {{ how }}{% endif %}</span>{% if how %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if how == 'ascending' else '↓' }}</span>{% endif %}</a></span>
+{%- endmacro %}
 <div class="list-head">
-  <h1 class="page-title">Your tasks{% if total %} <span class="count-pill">{{ total }}</span>{% endif %}</h1>
+  <h1 class="page-title">Your tasks<span id="list-count" data-swap>{% if total %} <span class="count-pill">{{ total }}</span>{% endif %}</span></h1>
   <div class="list-tools">
     {# Subtasks sit under the run that spawned them, as a tree folded shut by
        default; the flat list is one click away. #}
-    <nav class="scope-control" aria-label="Which tasks to list">
+    <nav class="scope-control" id="scope-control" data-swap aria-label="Which tasks to list">
       <a class="scope-opt{{ ' active' if scope == 'roots' else '' }}"
-         href="/app?scope=roots{{ page_q }}">Runs</a>
+         href="{{ view.scope_url('roots') }}">Runs</a>
       <a class="scope-opt{{ ' active' if scope == 'all' else '' }}"
-         href="/app?scope=all{{ page_q }}">All {{ all_total }}</a>
+         href="{{ view.scope_url('all') }}">All {{ all_total }}</a>
     </nav>
-    <form class="search" method="get" action="/app" role="search">
-      <input type="hidden" name="scope" value="{{ scope }}">
-      <input type="search" name="q" value="{{ query }}" placeholder="Search title or project…" aria-label="Search tasks">
-      {% if query %}<a class="search-clear" href="/app?scope={{ scope }}" title="Clear search">✕</a>{% endif %}
-    </form>
   </div>
 </div>
 
+{# A plain GET form: without scripting, "Apply" (or Enter) reloads the list
+   filtered. tasklist.js submits it 300 ms after the last change instead and
+   swaps the results in place (the [data-swap] regions), so the caret never
+   leaves the field being typed in. #}
+<form id="filter-form" class="filters" method="get" action="/app" role="search">
+  {% for name, value in view.hidden_fields(keep_filters=False) %}
+  <input type="hidden" name="{{ name }}" value="{{ value }}">
+  {% endfor %}
+  <div class="search">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search title or project…" aria-label="Search tasks">
+  </div>
+  <details class="filter-more"{% if view.has_panel_filters %} open{% endif %}>
+    <summary>Filters</summary>
+    <div class="filter-fields">
+      <label class="filter-field"><span class="field-label">Project</span>
+        <input type="text" name="project" value="{{ view.project }}" list="project-options" autocomplete="off"></label>
+      <label class="filter-field"><span class="field-label">Model</span>
+        <input type="text" name="model" value="{{ view.model }}" list="model-options" autocomplete="off"></label>
+      <label class="filter-field"><span class="field-label">Grade</span>
+        <select name="grade">
+          <option value="">Any</option>
+          {% for key, label in (('clean', 'Clean'), ('friction', 'Friction'), ('unfinished', 'Unfinished')) %}
+          <option value="{{ key }}"{% if view.grade == key %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select></label>
+      <label class="filter-field"><span class="field-label">From</span>
+        <input type="date" name="since" value="{{ view.since.isoformat() if view.since else '' }}"></label>
+      <label class="filter-field"><span class="field-label">To</span>
+        <input type="date" name="until" value="{{ view.until.isoformat() if view.until else '' }}"></label>
+      <label class="filter-check"><input type="checkbox" name="subtasks" value="1"{% if view.subtasks %} checked{% endif %}>
+        <span>Has subtasks</span></label>
+    </div>
+  </details>
+  <button type="submit" class="btn ghost filter-apply">Apply</button>
+  <datalist id="project-options">{% for p in project_options %}<option value="{{ p }}">{% endfor %}</datalist>
+  <datalist id="model-options">{% for m in model_options %}<option value="{{ m }}">{% endfor %}</datalist>
+</form>
+
+<div id="task-results" class="task-results" data-swap>
 {% if tasks %}
+{% if view.has_filters %}{{ chip_list(view) }}{% endif %}
 {# One form wraps the whole list, so the checkboxes, the per-row delete and the
    bulk action are all the same submission and nothing has to be mirrored into
    hidden fields by script. The per-row button uses formaction to post to its
    own endpoint. #}
 <form id="bulk-form" method="post" action="/app/tasks/bulk-delete">
-  <input type="hidden" name="scope" value="{{ scope }}">
-  <input type="hidden" name="q" value="{{ query }}">
+  {# The whole view, so the redirect after deleting lands on the same list. #}
+  {% for name, value in view.hidden_fields() %}
+  <input type="hidden" name="{{ name }}" value="{{ value }}">
+  {% endfor %}
 
   <div class="select-head">
+    {# On a phone the checkboxes take room from the title, so they only show in
+       select mode. A real checkbox (no name, never submitted), so the mode
+       works without scripting: the CSS reveals the boxes with :has(). #}
+    <label class="select-mode">
+      <input type="checkbox" id="select-mode">
+      <span>Select</span>
+    </label>
     <label class="select-all">
       <input type="checkbox" id="select-all" aria-label="Select every task on this page">
       <span>Select page</span>
     </label>
+    <span class="spacer"></span>
     {% if tree_view %}
     {# Revealed by tasklist.js only when some run on the page has subtasks. #}
     <button type="button" class="tree-expand-all" id="tree-expand-all" hidden>Expand all</button>
     {% endif %}
+    {# A preference, kept in localStorage by tasklist.js, which reveals it. #}
+    <button type="button" id="density-toggle" class="list-toggle" aria-pressed="false" hidden>Compact</button>
+  </div>
+
+  {# The column headers, laid out on the same tracks as the rows beneath them
+     (a spacer for the checkbox, the tree gutter and the delete button), and
+     stuck under the top bar while the list scrolls. Four columns sort; the
+     rest are labels. #}
+  <div class="task-head">
+    <span class="head-check" aria-hidden="true"></span>
+    {% if tree_view %}<span class="tree-gutter" aria-hidden="true"></span>{% endif %}
+    <div class="task-head-cells">
+      <span class="head-label head-title">Task</span>
+      <span class="head-label">Project</span>
+      <span class="head-label">Model</span>
+      {{ head_cell('messages', 'Messages') }}
+      <span class="head-label">Duration</span>
+      {{ head_cell('tokens', 'Tokens') }}
+      {{ head_cell('cost', 'Cost') }}
+      <span class="head-label">Grade</span>
+      {{ head_cell('updated', 'Updated') }}
+    </div>
+    <span class="task-delete head-spacer" aria-hidden="true"><span class="btn-delete">Delete</span></span>
   </div>
 
   {# Without scripting nothing can be expanded, so the subtrees are simply shown
@@ -121,7 +202,7 @@
 {% if page_count > 1 %}
 <nav class="pager" aria-label="Pagination, page {{ page }} of {{ page_count }}">
   {% if has_prev %}
-  <a class="pager-btn" href="/app?scope={{ scope }}&page={{ page - 1 }}{{ page_q }}" rel="prev">← Newer</a>
+  <a class="pager-btn" href="{{ view.url(page - 1) }}" rel="prev">← Newer</a>
   {% else %}
   <span class="pager-btn disabled">← Newer</span>
   {% endif %}
@@ -136,13 +217,16 @@
     {% elif p == page %}
     <li><span class="pager-num current" aria-current="page">{{ p }}</span></li>
     {% else %}
-    <li><a class="pager-num" href="/app?scope={{ scope }}&page={{ p }}{{ page_q }}" aria-label="Page {{ p }}">{{ p }}</a></li>
+    <li><a class="pager-num" href="{{ view.url(p) }}" aria-label="Page {{ p }}">{{ p }}</a></li>
     {% endif %}
     {% endfor %}
   </ol>
+  {# What a phone shows instead of the numbers: where you are, in a few
+     characters. #}
+  <span class="pager-status">{{ page }} / {{ page_count }}</span>
 
   {% if has_next %}
-  <a class="pager-btn" href="/app?scope={{ scope }}&page={{ page + 1 }}{{ page_q }}" rel="next">Older →</a>
+  <a class="pager-btn" href="{{ view.url(page + 1) }}" rel="next">Older →</a>
   {% else %}
   <span class="pager-btn disabled">Older →</span>
   {% endif %}
@@ -151,8 +235,9 @@
      on screen and a box to type "3" into would be noise. #}
   {% if page_count > pages|length %}
   <form class="pager-jump" method="get" action="/app">
-    <input type="hidden" name="scope" value="{{ scope }}">
-    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+    {% for name, value in view.hidden_fields() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
     <label class="pager-jump-label" for="pager-jump">Go to</label>
     <input id="pager-jump" type="number" name="page" value="{{ page }}"
            min="1" max="{{ page_count }}" step="1" inputmode="numeric"
@@ -164,10 +249,11 @@
 </nav>
 {% endif %}
 
-{% elif query %}
+{% elif view.has_filters %}
 <div class="empty">
-  <p>Nothing matches “{{ query }}”.</p>
-  <p class="empty-hint"><a href="/app?scope={{ scope }}">Clear the search</a> to see all tasks.</p>
+  <p>No tasks match these filters.</p>
+  {{ chip_list(view) }}
+  <p class="empty-hint">Remove a filter above, or <a href="{{ view.cleared_url() }}">clear them all</a>.</p>
 </div>
 {% else %}
 <div class="empty">
@@ -175,6 +261,7 @@
   <p class="empty-hint">In VS Code, open a task and click <strong>Share</strong> to make it appear here.</p>
 </div>
 {% endif %}
+</div>
 {% endblock %}
 {% block scripts %}
 <script src="/static/tasklist.js?v={{ asset_v }}"></script>
