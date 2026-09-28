@@ -40,6 +40,7 @@ import { perfCounters, diffPerfCounters, formatPerfCounters } from "../../utils/
 import { t } from "../../i18n"
 import { getModeBySlug } from "../../shared/modes"
 import { type ClineProvider } from "../webview/ClineProvider"
+import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { AutoApprovalHandler } from "../auto-approval"
@@ -503,8 +504,29 @@ export class TaskApiLoop {
 			modelId,
 		)
 
-		// Respect provider rate limiting
-		await this.retryHandler.maybeWaitForProviderRateLimit(currentItem.retryAttempt ?? 0)
+		// P5: the ONE state snapshot for this request cycle, taken before
+		// anything consumes it. Every stable-state consumer below (the
+		// rate-limit wait, mentions, environment details, the request
+		// generator, the system-prompt builder, the tools array) receives
+		// this object instead of re-reading the provider; only the volatile
+		// decisions (post-stream retry paths, asks, abort) still read live.
+		// Rebuilt once when the cycle itself mutates provider state (the
+		// slash-command mode switch in prepareUserContent).
+		const provider = this.access.providerRef.deref()
+		let cycleState = provider ? await provider.getState() : undefined
+
+		// Respect provider rate limiting. The wait only reads
+		// `rateLimitSeconds` — cycle-stable — so it takes the snapshot.
+		// When the countdown actually waited, re-snapshot afterwards:
+		// pre-P5 the cycle's state read ran after this wait, and settings
+		// changed during a long countdown must still be seen.
+		const rateLimitWaited = await this.retryHandler.maybeWaitForProviderRateLimit(
+			currentItem.retryAttempt ?? 0,
+			cycleState,
+		)
+		if (rateLimitWaited > 0) {
+			cycleState = (await provider?.getState()) ?? cycleState
+		}
 		setLastGlobalApiRequestTime(performance.now())
 
 		await this.access.askSay.say(
@@ -514,16 +536,15 @@ export class TaskApiLoop {
 			}),
 		)
 
-		const provider = this.access.providerRef.deref()
-		const state = provider ? await provider.getState() : undefined
-
 		// Process user content mentions and environment details
-		const { finalUserContent, shouldAddUserMessage } = await this.prepareUserContent(
-			state,
+		const prepared = await this.prepareUserContent(
+			cycleState,
 			currentUserContent,
 			currentIncludeFileDetails,
 			currentItem,
 		)
+		cycleState = prepared.cycleState
+		const { finalUserContent, shouldAddUserMessage } = prepared
 
 		// Memory recall consume: if the prefetch has settled and hasn't been
 		// consumed yet this turn, inject the surfaced memories as hidden
@@ -570,7 +591,10 @@ export class TaskApiLoop {
 			const abortStream = this.access.streamProcessor.createAbortStreamFn(lastApiReqIndex, updateApiReqMsg)
 
 			// Create API stream
-			const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, { skipProviderRateLimit: true })
+			const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, {
+				skipProviderRateLimit: true,
+				cycleState,
+			})
 			this.access.isStreaming = true
 
 			try {
@@ -599,14 +623,22 @@ export class TaskApiLoop {
 	}
 
 	/**
-	 * Prepare user content including mentions and environment details
+	 * Prepare user content including mentions and environment details.
+	 * Returns the (possibly refreshed) cycle state: a slash-command mode
+	 * switch mutates provider state, and the request build must see the
+	 * post-switch state (pinned by build-tools-slim-toolset.spec.ts).
 	 */
 	private async prepareUserContent(
-		state: any,
+		cycleState: any,
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 		currentIncludeFileDetails: boolean,
 		currentItem: StackItem,
-	): Promise<{ finalUserContent: Anthropic.Messages.ContentBlockParam[]; shouldAddUserMessage: boolean }> {
+	): Promise<{
+		finalUserContent: Anthropic.Messages.ContentBlockParam[]
+		shouldAddUserMessage: boolean
+		cycleState: any
+	}> {
+		let state = cycleState
 		const provider = this.access.providerRef.deref()
 		const showRooIgnoredFiles = state?.showRooIgnoredFiles ?? SETTINGS_DEFAULTS.showRooIgnoredFiles
 		const includeDiagnosticMessages =
@@ -626,19 +658,21 @@ export class TaskApiLoop {
 			currentMode,
 		})
 
-		// Switch mode if specified in a slash command's frontmatter
+		// Switch mode if specified in a slash command's frontmatter. This is the
+		// one mid-cycle writer of provider state: after it the cycle snapshot
+		// is stale, so re-snapshot (P5 refresh rule).
 		if (slashCommandMode) {
 			const provider = this.access.providerRef.deref()
 			if (provider) {
-				const state = await provider.getState()
 				const targetMode = getModeBySlug(slashCommandMode, state?.customModes)
 				if (targetMode) {
 					await provider.handleModeSwitch(slashCommandMode)
+					state = (await provider.getState()) ?? state
 				}
 			}
 		}
 
-		const environmentDetails = await getEnvironmentDetails(this.access as any, currentIncludeFileDetails)
+		const environmentDetails = await getEnvironmentDetails(this.access as any, currentIncludeFileDetails, state)
 
 		// Remove any existing environment_details blocks
 		const contentWithoutEnvDetails = parsedUserContent.filter((block) => {
@@ -658,7 +692,7 @@ export class TaskApiLoop {
 			((currentItem.retryAttempt ?? 0) === 0 && !isEmptyUserContent) ||
 			(currentItem.userMessageWasRemoved ?? false)
 
-		return { finalUserContent, shouldAddUserMessage }
+		return { finalUserContent, shouldAddUserMessage, cycleState: state }
 	}
 
 	/**
@@ -1211,15 +1245,21 @@ export class TaskApiLoop {
 
 	/**
 	 * Build the system prompt with MCP, mode, and custom instructions.
-	 * Delegates to ApiRequestBuilder.
+	 * Delegates to ApiRequestBuilder. `cycleState` is the request cycle's
+	 * snapshot (P5); standalone callers omit it and the builder reads live.
 	 */
-	async getSystemPrompt(): Promise<string> {
-		return this.apiRequestBuilder.buildSystemPrompt()
+	async getSystemPrompt(cycleState?: ProviderState): Promise<string> {
+		return this.apiRequestBuilder.buildSystemPrompt(cycleState)
 	}
 
 	/**
 	 * Attempt an API request with retry logic.
 	 * This is an async generator that yields chunks from the API stream.
+	 *
+	 * `options.cycleState` is the request cycle's state snapshot (P5). The
+	 * cycle passes it for the first attempt; retry re-entries omit it and
+	 * read live, because a retry can run minutes later (backoff, a
+	 * context-window truncation) with settings that legitimately changed.
 	 */
 	async *attemptApiRequest(
 		retryAttempt: number = 0,
@@ -1228,9 +1268,11 @@ export class TaskApiLoop {
 			contextAlreadyManaged?: boolean
 			// How many of the retryAttempt retries were for HTTP 429 (not capped).
 			rateLimitRetries?: number
+			/** The cycle's stable-state snapshot; omit for a live read. */
+			cycleState?: ProviderState
 		} = {},
 	): ApiStream {
-		const state = await this.access.providerRef.deref()?.getState()
+		const state = options.cycleState ?? (await this.access.providerRef.deref()?.getState())
 
 		const {
 			apiConfiguration,
@@ -1251,7 +1293,7 @@ export class TaskApiLoop {
 
 		setLastGlobalApiRequestTime(performance.now())
 
-		const systemPrompt = await this.getSystemPrompt()
+		const systemPrompt = await this.getSystemPrompt(state)
 		const { contextTokens: trackedContextTokens } = this.access.getTokenUsage()
 
 		// AP-7: when tracked contextTokens is 0/falsy (e.g. server omitted usage →

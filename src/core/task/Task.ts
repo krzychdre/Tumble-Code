@@ -1472,10 +1472,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	/**
 	 * Build the system prompt with MCP, mode, and custom instructions.
 	 * Kept on Task: TaskContextManager reaches it through its Access interface.
-	 * Delegates to TaskApiLoop module.
+	 * Delegates to TaskApiLoop module. `cycleState` is the request cycle's
+	 * snapshot (P5); standalone callers omit it and the builder reads live.
 	 */
-	async getSystemPrompt(): Promise<string> {
-		return this.apiLoop.getSystemPrompt()
+	async getSystemPrompt(cycleState?: import("../webview/ProviderStateBuilder").ProviderState): Promise<string> {
+		return this.apiLoop.getSystemPrompt(cycleState)
 	}
 
 	/**
@@ -1484,7 +1485,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	public async *attemptApiRequest(
 		retryAttempt: number = 0,
-		options: { skipProviderRateLimit?: boolean } = {},
+		options: {
+			skipProviderRateLimit?: boolean
+			contextAlreadyManaged?: boolean
+			rateLimitRetries?: number
+			/** The cycle's stable-state snapshot (P5); omit for a live read. */
+			cycleState?: import("../webview/ProviderStateBuilder").ProviderState
+		} = {},
 	): ApiStream {
 		yield* this.apiLoop.attemptApiRequest(retryAttempt, options)
 	}

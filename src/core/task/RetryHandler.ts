@@ -288,9 +288,16 @@ export class RetryHandler {
 	 * Enforce user-configured provider rate limit.
 	 * Shows countdown UX on first attempt, skips on retries.
 	 * @param retryAttempt - The current retry attempt number
+	 * @param cycleState - The request cycle's state snapshot (P5). The wait
+	 *   only reads `rateLimitSeconds` (cycle-stable), so the cycle hands its
+	 *   snapshot in; retry re-entries omit it and read live.
+	 * @returns The seconds the countdown actually waited (0 when it did not
+	 *   wait), so the cycle can re-snapshot afterwards — pre-P5 the cycle's
+	 *   state read ran after this wait, and settings changed during a long
+	 *   countdown must still be seen (same freshness as before).
 	 */
-	async maybeWaitForProviderRateLimit(retryAttempt: number): Promise<void> {
-		const state = await this.access.providerRef.deref()?.getState()
+	async maybeWaitForProviderRateLimit(retryAttempt: number, cycleState?: any): Promise<number> {
+		const state = cycleState ?? (await this.access.providerRef.deref()?.getState())
 		const rateLimitDelay = this.providerRateLimitDelaySeconds(state)
 
 		// Only show countdown UX on first attempt
@@ -305,7 +312,9 @@ export class RetryHandler {
 				sleep: (ms) => delay(ms),
 			})
 			await this.access.askSay.say("api_req_rate_limit_wait", undefined, undefined, false)
+			return rateLimitDelay
 		}
+		return 0
 	}
 
 	/**
