@@ -4,23 +4,18 @@ import {
 	type ModelInfo,
 	type ModelRecord,
 	type RouterModels,
-	anthropicModels,
 	bedrockModels,
 	deepSeekModels,
 	deepSeekModelAliases,
 	openAiModelInfoSaneDefaults,
-	vertexModels,
 	vscodeLlmModels,
 	vscodeLlmDefaultModelId,
-	litellmDefaultModelInfo,
 	lMStudioDefaultModelInfo,
-	ANTHROPIC_1M_CONTEXT_MODEL_IDS,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
-	VERTEX_1M_CONTEXT_MODEL_IDS,
 	isRetiredProvider,
 	getProviderDefaultModelId,
-	getProviderModelDefinition,
 	providerModelDefinitions,
+	resolveProviderModelSelection,
 	zaiModelCatalog,
 } from "@roo-code/types"
 
@@ -186,6 +181,10 @@ function getSelectedModel({
 	// this gives a better UX than showing the default model
 	const defaultModelId = getProviderDefaultModelId(provider)
 	switch (provider) {
+		// Settings-only branches: what they show is not what the request computes (OpenRouter merges the
+		// chosen endpoint's info and falls back to the default for an empty id, Bedrock has the custom ARN
+		// pseudo model and a flat 1M window, Ollama caps the window at num_ctx, LM Studio fills its own
+		// defaults, VS Code LM names the selector), so they stay here (S4 slice d).
 		// A configured id is shown even when it is not in the list: requests
 		// use it as is (owner decision 5) and the settings warn about it.
 		case "openrouter": {
@@ -203,11 +202,6 @@ function getSelectedModel({
 			}
 
 			return { id, info }
-		}
-		case "litellm": {
-			const id = apiConfiguration.litellmModelId || defaultModelId
-			const routerInfo = routerModels.litellm?.[id]
-			return { id, info: routerInfo ?? litellmDefaultModelInfo }
 		}
 		case "bedrock": {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
@@ -232,48 +226,6 @@ function getSelectedModel({
 			}
 
 			return { id, info: baseInfo }
-		}
-		case "vertex": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const baseInfo = vertexModels[id as keyof typeof vertexModels]
-
-			// Apply 1M context for supported Claude 4 models when enabled
-			if (VERTEX_1M_CONTEXT_MODEL_IDS.includes(id as any) && apiConfiguration.vertex1MContext && baseInfo) {
-				const modelInfo: ModelInfo = baseInfo
-				const tier = modelInfo.tiers?.[0]
-				if (tier) {
-					const info: ModelInfo = {
-						...modelInfo,
-						contextWindow: tier.contextWindow,
-						inputPrice: tier.inputPrice,
-						outputPrice: tier.outputPrice,
-						cacheWritesPrice: tier.cacheWritesPrice,
-						cacheReadsPrice: tier.cacheReadsPrice,
-					}
-					return { id, info }
-				}
-			}
-
-			return { id, info: baseInfo }
-		}
-		case "deepseek": {
-			const id = apiConfiguration.apiModelId || defaultModelId
-			const routerInfo = routerModels.deepseek?.[id]
-			const staticInfo = deepSeekModels[id as keyof typeof deepSeekModels] ?? deepSeekAliasModels[id]
-			return { id, info: routerInfo ?? staticInfo }
-		}
-		case "zai": {
-			// The request's list (the mainland one on every China line), see `zaiModelCatalog`.
-			const { models, defaultModelId } = zaiModelCatalog(apiConfiguration)
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = models[id]
-			return { id, info }
-		}
-		case "openai": {
-			const id = apiConfiguration.openAiModelId ?? ""
-			const customInfo = apiConfiguration?.openAiCustomModelInfo
-			const info = customInfo ?? openAiModelInfoSaneDefaults
-			return { id, info }
 		}
 		case "ollama": {
 			const id = apiConfiguration.ollamaModelId ?? ""
@@ -307,53 +259,45 @@ function getSelectedModel({
 			const info = vscodeLlmModels[modelFamily as keyof typeof vscodeLlmModels]
 			return { id, info: { ...openAiModelInfoSaneDefaults, ...info, supportsImages: false } } // VSCode LM API currently doesn't support images.
 		}
-		case "anthropic":
-		case "gemini-cli":
-		case "fake-ai": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const baseInfo = anthropicModels[id as keyof typeof anthropicModels]
+		// Everything else is the shared resolver (`resolveProviderModelSelection`), the one the request
+		// uses, with the settings' policies: an unknown id shows no info (the request uses a stand-in),
+		// so the settings warn about it; an empty id stays empty (the request runs the default model),
+		// except on DeepSeek, whose settings always showed the default for it.
+		default: {
+			const resolved = resolveProviderModelSelection(settingsForSharedResolver(provider, apiConfiguration), {
+				fetchedModels: routerModels[provider as keyof RouterModels],
+				emptyModelId: provider === "deepseek" ? "default-model" : "keep-empty",
+			})
 
-			// Apply 1M context beta tier pricing for supported Claude 4 models
-			if (
-				provider === "anthropic" &&
-				ANTHROPIC_1M_CONTEXT_MODEL_IDS.includes(id) &&
-				apiConfiguration.anthropicBeta1MContext &&
-				baseInfo
-			) {
-				// Type assertion since supported Claude 4 models include 1M context pricing tiers.
-				const modelWithTiers = baseInfo as typeof baseInfo & {
-					tiers?: Array<{
-						contextWindow: number
-						inputPrice?: number
-						outputPrice?: number
-						cacheWritesPrice?: number
-						cacheReadsPrice?: number
-					}>
-				}
-				const tier = modelWithTiers.tiers?.[0]
-				if (tier) {
-					// Create a new ModelInfo object with updated values
-					const info: ModelInfo = {
-						...baseInfo,
-						contextWindow: tier.contextWindow,
-						inputPrice: tier.inputPrice ?? baseInfo.inputPrice,
-						outputPrice: tier.outputPrice ?? baseInfo.outputPrice,
-						cacheWritesPrice: tier.cacheWritesPrice ?? baseInfo.cacheWritesPrice,
-						cacheReadsPrice: tier.cacheReadsPrice ?? baseInfo.cacheReadsPrice,
-					}
-					return { id, info }
-				}
+			if (!resolved) {
+				return { id: defaultModelId, info: undefined }
 			}
 
-			return { id, info: baseInfo }
+			// LiteLLM's settings show the stand-in info of an unlisted id, as the request uses it.
+			return { id: resolved.id, info: resolved.known || provider === "litellm" ? resolved.info : undefined }
 		}
-		// Every other provider (xAI, Gemini, Moonshot, MiniMax, OpenAI, Mistral, Qwen Code,
-		// OpenAI Codex, and any new one with a static list): the configured id, or the default
-		// model, looked up in the provider's list in providerModelDefinitions.
-		default: {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const models = getProviderModelDefinition(provider)?.models
-			return { id, info: models && Object.hasOwn(models, id) ? models[id] : undefined }
-		}
+	}
+}
+
+/**
+ * The profile the shared resolver sees for the settings, where the settings resolve a provider unlike
+ * its request (kept on purpose, S4 slice d; see ai_plans/2026-09-28_s4-model-resolution.md):
+ * - gemini-cli and fake-ai show the plain Anthropic list, without the 1M tier;
+ * - Vertex shows an unset id as the default model routed as that id (a Claude model, with its 1M tier);
+ *   the request routes by the configured id and runs the Gemini handler without the tier.
+ */
+function settingsForSharedResolver(provider: ProviderName, apiConfiguration: ProviderSettings): ProviderSettings {
+	switch (provider) {
+		case "gemini-cli":
+		case "fake-ai":
+			return { ...apiConfiguration, apiProvider: "anthropic", anthropicBeta1MContext: undefined }
+		case "vertex":
+			return {
+				...apiConfiguration,
+				apiProvider: provider,
+				apiModelId: apiConfiguration.apiModelId ?? providerModelDefinitions.vertex.defaultModelId,
+			}
+		default:
+			return { ...apiConfiguration, apiProvider: provider }
 	}
 }

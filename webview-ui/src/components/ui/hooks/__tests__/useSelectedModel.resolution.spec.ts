@@ -27,6 +27,7 @@ import {
 	mainlandZAiModels,
 	openAiModelInfoSaneDefaults,
 	openRouterDefaultModelId,
+	resolveProviderModelSelection,
 	vertexModels,
 	vscodeLlmDefaultModelId,
 	vscodeLlmModels,
@@ -383,5 +384,26 @@ describe("useSelectedModel model resolution (characterization)", () => {
 			info: result.current.info,
 			isUnknownModel: result.current.isUnknownModel,
 		}).toEqual(expected)
+	})
+
+	// The settings side of the shared resolver's policies (owner decisions, S4 slice d); the request side is
+	// pinned in packages/types provider-model-resolution.spec.ts.
+	it("an unknown id: the shared resolver keeps stand-in info, the settings show none and warn", () => {
+		const settings: ProviderSettings = { apiProvider: "anthropic", apiModelId: "proxy/claude-sonnet-4-5-x" }
+		expect(resolveProviderModelSelection(settings)).toMatchObject({
+			known: false,
+			info: anthropicModels["claude-sonnet-4-5"],
+		})
+
+		const { result } = renderHook(() => useSelectedModel(settings), { wrapper: createWrapper() })
+		expect(result.current).toMatchObject({ info: undefined, isUnknownModel: true })
+	})
+
+	it("an empty id: the request runs the default model, the settings keep the empty id", () => {
+		const settings: ProviderSettings = { apiProvider: "xai", apiModelId: "" }
+		expect(resolveProviderModelSelection(settings)?.id).toBe(xaiDefaultModelId)
+
+		const { result } = renderHook(() => useSelectedModel(settings), { wrapper: createWrapper() })
+		expect(result.current).toMatchObject({ id: "", info: undefined, isUnknownModel: false })
 	})
 })

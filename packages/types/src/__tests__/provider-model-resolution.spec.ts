@@ -21,6 +21,7 @@ import {
 	openRouterDefaultModelId,
 	openRouterDefaultModelInfo,
 	resolvePortableProviderModel,
+	resolveProviderModelSelection,
 	vertexDefaultModelId,
 	vertexModels,
 	xaiDefaultModelId,
@@ -276,5 +277,86 @@ describe("host model resolution (characterization)", () => {
 
 	it("the guessed Anthropic info is the named model's", () => {
 		expect(guessAnthropicModelInfo("proxy/claude-sonnet-4-5-x")).toBe(anthropicModels["claude-sonnet-4-5"])
+	})
+})
+
+// The shared resolver's two policies (owner decisions, S4 slice d). The request side is
+// `resolvePortableProviderModel`; the settings side is pinned in useSelectedModel.resolution.spec.ts.
+describe("resolveProviderModelSelection policies", () => {
+	it.each(cases)("request side: %s is the default-policy resolution", (_, settings) => {
+		const shared = resolveProviderModelSelection(settings, { fetchedModels: fetched })
+		const portable = resolvePortableProviderModel(settings, fetched)
+
+		expect(portable && { id: portable.id, info: portable.info }).toEqual(
+			shared && { id: shared.id, info: shared.info },
+		)
+	})
+
+	it("an empty id selects the default model by default (the request)", () => {
+		expect(resolveProviderModelSelection({ apiProvider: "xai", apiModelId: "" })).toEqual({
+			id: xaiDefaultModelId,
+			info: models(xaiModels)[xaiDefaultModelId],
+			known: true,
+		})
+	})
+
+	it.each([
+		["xai", { apiProvider: "xai", apiModelId: "" }],
+		["anthropic", { apiProvider: "anthropic", apiModelId: "" }],
+		["gemini", { apiProvider: "gemini", apiModelId: "" }],
+		["vertex", { apiProvider: "vertex", apiModelId: "" }],
+		["zai", { apiProvider: "zai", apiModelId: "" }],
+		["deepseek", { apiProvider: "deepseek", apiModelId: "" }],
+	] as const)("keep-empty keeps an empty %s id, not known (the settings)", (_, settings) => {
+		expect(resolveProviderModelSelection(settings, { emptyModelId: "keep-empty" })).toMatchObject({
+			id: "",
+			known: false,
+		})
+	})
+
+	it.each([
+		["litellm", { apiProvider: "litellm", litellmModelId: "" }, litellmDefaultModelId],
+		["openrouter", { apiProvider: "openrouter", openRouterModelId: "" }, ""],
+		["ollama", { apiProvider: "ollama", ollamaModelId: "" }, ""],
+		["openai", { apiProvider: "openai", openAiModelId: "" }, ""],
+	] as const)("%s has its own empty-id rule and ignores the policy", (_, settings, id) => {
+		for (const emptyModelId of ["default-model", "keep-empty"] as const) {
+			expect(resolveProviderModelSelection(settings, { emptyModelId })?.id).toBe(id)
+		}
+	})
+
+	it.each([
+		[
+			"xai (default model's info)",
+			{ apiProvider: "xai", apiModelId: "grok-api6" },
+			models(xaiModels)[xaiDefaultModelId],
+		],
+		[
+			"anthropic (guessed from the id)",
+			{ apiProvider: "anthropic", apiModelId: "proxy/claude-sonnet-4-5-x" },
+			anthropicModels["claude-sonnet-4-5"],
+		],
+		[
+			"openrouter (stand-in)",
+			{ apiProvider: "openrouter", openRouterModelId: "vendor/api6" },
+			openRouterDefaultModelInfo,
+		],
+		["litellm (stand-in)", { apiProvider: "litellm", litellmModelId: "vendor/api6" }, litellmDefaultModelInfo],
+	] as const)("an unknown id keeps stand-in info and is not known: %s", (_, settings, info) => {
+		expect(resolveProviderModelSelection(settings, { fetchedModels: fetched })).toEqual({
+			id: expect.any(String),
+			info,
+			known: false,
+		})
+	})
+
+	it.each([
+		["a listed id", { apiProvider: "xai", apiModelId: xaiListed }],
+		["an alias", { apiProvider: "deepseek", apiModelId: "deepseek-v4-flash" }],
+		["a fetched id", { apiProvider: "openrouter", openRouterModelId: "fetched/known" }],
+		["no list (OpenAI Compatible)", { apiProvider: "openai", openAiModelId: "anything" }],
+		["no list (VS Code LM)", { apiProvider: "vscode-lm" }],
+	] as const)("%s is known", (_, settings) => {
+		expect(resolveProviderModelSelection(settings, { fetchedModels: fetched })?.known).toBe(true)
 	})
 })
