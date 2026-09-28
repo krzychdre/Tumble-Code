@@ -4,7 +4,15 @@ import type { Worktree, ExtensionMessage } from "@roo-code/types"
 
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button, Checkbox } from "@/components/ui"
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	Button,
+	LabeledCheckbox,
+} from "@/components/ui"
 import { Folder, GitBranch, TriangleAlert } from "lucide-react"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
@@ -94,7 +102,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 					{/* Force delete option (only shown if worktree is locked) */}
 					{worktree.isLocked && (
 						<div className="flex items-center gap-2">
-							<Checkbox
+							<LabeledCheckbox
 								id="force-delete"
 								checked={forceDeleteLocked}
 								onCheckedChange={(checked) => setForceDeleteLocked(checked === true)}

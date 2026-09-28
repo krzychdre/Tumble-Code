@@ -6,7 +6,7 @@ import { Virtuoso } from "react-virtuoso"
 
 import {
 	Button,
-	Checkbox,
+	LabeledCheckbox,
 	Select,
 	SelectContent,
 	SelectItem,
@@ -234,10 +234,9 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 					{isSelectionMode && tasks.length > 0 && (
 						<div className="flex items-center py-1">
 							<div className="flex items-center gap-2">
-								<Checkbox
+								<LabeledCheckbox
 									checked={tasks.length > 0 && selectedTaskIds.length === tasks.length}
 									onCheckedChange={(checked) => toggleSelectAll(checked === true)}
-									variant="description"
 								/>
 								<span className="text-vscode-foreground">
 									{selectedTaskIds.length === tasks.length

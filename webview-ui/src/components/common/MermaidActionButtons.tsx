@@ -1,8 +1,7 @@
 import React from "react"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { IconButton } from "./IconButton"
 import { ZoomControls } from "./ZoomControls"
-import { StandardTooltip } from "@/components/ui"
+import { IconButton, StandardTooltip } from "@/components/ui"
 
 interface MermaidActionButtonsProps {
 	onZoom?: (e: React.MouseEvent) => void
@@ -43,6 +42,7 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 				/>
 				<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
 					<IconButton
+						variant="toolbar"
 						icon="code"
 						onClick={(e: React.MouseEvent) => {
 							e.stopPropagation()
@@ -51,7 +51,7 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 					/>
 				</StandardTooltip>
 				<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-					<IconButton icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
+					<IconButton variant="toolbar" icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
 				</StandardTooltip>
 			</>
 		)
@@ -61,11 +61,12 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 		<>
 			{onZoom && (
 				<StandardTooltip content={t("common:mermaid.buttons.zoom")}>
-					<IconButton icon="zoom-in" onClick={onZoom} />
+					<IconButton variant="toolbar" icon="zoom-in" onClick={onZoom} />
 				</StandardTooltip>
 			)}
 			<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
 				<IconButton
+					variant="toolbar"
 					icon="code"
 					onClick={(e: React.MouseEvent) => {
 						e.stopPropagation()
@@ -74,16 +75,16 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 				/>
 			</StandardTooltip>
 			<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-				<IconButton icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
+				<IconButton variant="toolbar" icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
 			</StandardTooltip>
 			{onSave && (
 				<StandardTooltip content={t("common:mermaid.buttons.save")}>
-					<IconButton icon="save" onClick={onSave} />
+					<IconButton variant="toolbar" icon="save" onClick={onSave} />
 				</StandardTooltip>
 			)}
 			{onClose && (
 				<StandardTooltip content={t("common:mermaid.buttons.close")}>
-					<IconButton icon="close" onClick={onClose} />
+					<IconButton variant="toolbar" icon="close" onClick={onClose} />
 				</StandardTooltip>
 			)}
 		</>

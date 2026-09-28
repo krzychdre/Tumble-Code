@@ -17,7 +17,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 	Button,
-	Checkbox,
+	LabeledCheckbox,
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -315,7 +315,7 @@ export const SkillsSettings: React.FC = () => {
 
 						{/* Any mode option */}
 						<div className="flex items-center gap-3 px-1 rounded-lg hover:bg-vscode-list-hoverBackground">
-							<Checkbox
+							<LabeledCheckbox
 								id="mode-any"
 								checked={isAnyMode}
 								onCheckedChange={(checked) => toggleAnyMode(checked === true)}
@@ -334,7 +334,7 @@ export const SkillsSettings: React.FC = () => {
 								<div
 									key={mode.slug}
 									className="flex items-center gap-3 p-1 rounded-lg hover:bg-vscode-list-hoverBackground">
-									<Checkbox
+									<LabeledCheckbox
 										id={`mode-${mode.slug}`}
 										checked={selectedModes.includes(mode.slug)}
 										onCheckedChange={(checked) => toggleMode(mode.slug, checked === true)}

@@ -2,10 +2,9 @@ import type React from "react"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useZoomPan, WHEEL_ZOOM_STEP } from "@src/hooks/useZoomPan"
-import { StandardTooltip } from "@/components/ui"
+import { IconButton, StandardTooltip } from "@/components/ui"
 
 import { Modal } from "./Modal"
-import { IconButton } from "./IconButton"
 import { ZoomControls } from "./ZoomControls"
 
 export interface ZoomableModalProps {
@@ -55,7 +54,7 @@ function ZoomableModalContent({
 
 				<div className="pr-3">
 					<StandardTooltip content={t("common:mermaid.buttons.close")}>
-						<IconButton icon="close" onClick={onClose} />
+						<IconButton variant="toolbar" icon="close" onClick={onClose} />
 					</StandardTooltip>
 				</div>
 			</div>

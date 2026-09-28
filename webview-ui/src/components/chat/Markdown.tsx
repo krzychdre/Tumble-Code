@@ -1,7 +1,7 @@
 import { memo, useState } from "react"
 
 import { useCopyToClipboard } from "@src/utils/clipboard"
-import { StandardTooltip, ThemedButton } from "@src/components/ui"
+import { Button, StandardTooltip } from "@src/components/ui"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 
@@ -31,12 +31,12 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 						right: "8px",
 						opacity: 0,
 						animation: "fadeIn 0.2s ease-in-out forwards",
-						}}>
+					}}>
 					<style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1.0; } }`}</style>
 					<StandardTooltip content="Copy as markdown">
-						<ThemedButton
+						<Button
 							className="copy-button"
-							appearance="icon"
+							variant="icon"
 							style={{
 								height: "24px",
 								border: "none",
@@ -56,7 +56,7 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 								}
 							}}>
 							<span className="codicon codicon-copy" />
-						</ThemedButton>
+						</Button>
 					</StandardTooltip>
 				</div>
 			)}

@@ -3,12 +3,10 @@ import { Fzf } from "fzf"
 
 import { cn } from "@/lib/utils"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
-import { Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
+import { IconButton, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 import { Button } from "@/components/ui"
-
-import { IconButton } from "./IconButton"
 
 // Above this many target modes, applying requires an explicit confirmation step.
 const LARGE_MODE_ASSIGN_THRESHOLD = 10
@@ -377,13 +375,13 @@ export const ApiConfigSelector = ({
 							<div className="flex flex-row items-center justify-between px-2 py-2 border-t border-vscode-dropdown-border">
 								<div className="flex flex-row gap-1">
 									<IconButton
-										iconClass="codicon-settings-gear"
+										icon="codicon-settings-gear"
 										title={t("chat:edit")}
 										onClick={handleEditClick}
 										tooltip={false}
 									/>
 									<IconButton
-										iconClass={lockApiConfigAcrossModes ? "codicon-lock" : "codicon-unlock"}
+										icon={lockApiConfigAcrossModes ? "codicon-lock" : "codicon-unlock"}
 										title={
 											lockApiConfigAcrossModes
 												? t("chat:unlockApiConfigAcrossModes")
@@ -394,7 +392,7 @@ export const ApiConfigSelector = ({
 									/>
 									{availableModes.length > 0 && (
 										<IconButton
-											iconClass="codicon-checklist"
+											icon="codicon-checklist"
 											title={t("chat:applyConfigToModes.button")}
 											className="opacity-60"
 											onClick={openModesPanel}

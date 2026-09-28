@@ -36,7 +36,7 @@ vi.mock("@/components/ui", () => ({
 			{children}
 		</button>
 	),
-	Checkbox: ({ id, checked, onCheckedChange }: any) => (
+	LabeledCheckbox: ({ id, checked, onCheckedChange }: any) => (
 		<input
 			type="checkbox"
 			id={id}

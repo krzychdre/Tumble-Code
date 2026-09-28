@@ -5,8 +5,7 @@ import { vscode } from "@src/utils/vscode"
 import { MermaidActionButtons } from "./MermaidActionButtons"
 import { ZoomableModal } from "./ZoomableModal"
 import { TabButton } from "./TabButton"
-import { IconButton } from "./IconButton"
-import { StandardTooltip } from "@/components/ui"
+import { IconButton, StandardTooltip } from "@/components/ui"
 
 export interface MermaidButtonProps {
 	containerRef: React.RefObject<HTMLDivElement | null>
@@ -135,15 +134,19 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 					modalViewMode === "diagram" ? (
 						<>
 							<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-								<IconButton icon={copyFeedback ? "check" : "copy"} onClick={handleCopy} />
+								<IconButton
+									variant="toolbar"
+									icon={copyFeedback ? "check" : "copy"}
+									onClick={handleCopy}
+								/>
 							</StandardTooltip>
 							<StandardTooltip content={t("common:mermaid.buttons.save")}>
-								<IconButton icon="save" onClick={handleSave} />
+								<IconButton variant="toolbar" icon="save" onClick={handleSave} />
 							</StandardTooltip>
 						</>
 					) : (
 						<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-							<IconButton icon={copyFeedback ? "check" : "copy"} onClick={handleCopy} />
+							<IconButton variant="toolbar" icon={copyFeedback ? "check" : "copy"} onClick={handleCopy} />
 						</StandardTooltip>
 					)
 				}>

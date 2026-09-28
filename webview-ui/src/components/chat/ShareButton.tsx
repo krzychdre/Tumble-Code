@@ -10,6 +10,7 @@ import { useExtensionSelector } from "@/context/ExtensionStateContext"
 import { useCloudUpsell } from "@/hooks/useCloudUpsell"
 import { CloudUpsellDialog } from "@/components/cloud/CloudUpsellDialog"
 import {
+	IconButton,
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
@@ -19,7 +20,6 @@ import {
 	CommandGroup,
 	StandardTooltip,
 } from "@/components/ui"
-import { LucideIconButton } from "./LucideIconButton"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface ShareButtonProps {
@@ -153,13 +153,13 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 				<Popover open={shareDropdownOpen} onOpenChange={setShareDropdownOpen}>
 					<StandardTooltip content={shareButtonState.title}>
 						<PopoverTrigger asChild>
-							<LucideIconButton
+							<IconButton
 								icon={Share2Icon}
 								disabled={disabled || shareButtonState.disabled}
 								tooltip={false}
 								onClick={handleShareButtonClick}
 								data-testid="share-button"
-								title={t("chat:task.share")}></LucideIconButton>
+								title={t("chat:task.share")}></IconButton>
 						</PopoverTrigger>
 					</StandardTooltip>
 
@@ -218,12 +218,12 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 					</PopoverContent>
 				</Popover>
 			) : (
-				<LucideIconButton
+				<IconButton
 					icon={Share2Icon}
 					disabled={disabled || shareButtonState.disabled}
 					title={shareButtonState.title}
 					onClick={handleShareButtonClick}
-					data-testid="share-button"></LucideIconButton>
+					data-testid="share-button"></IconButton>
 			)}
 
 			{/* Connect to Cloud Modal */}

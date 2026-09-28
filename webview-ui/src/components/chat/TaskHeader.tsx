@@ -21,7 +21,7 @@ import { findLastIndex, getModelMaxOutputTokens } from "@roo-code/core/browser"
 
 import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"
-import { StandardTooltip, Button } from "@src/components/ui"
+import { IconButton, StandardTooltip, Button } from "@src/components/ui"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
 import { vscode } from "@src/utils/vscode"
@@ -32,7 +32,6 @@ import { TaskActions } from "./TaskActions"
 import { ContextWindowProgress } from "./ContextWindowProgress"
 import { Mention } from "./Mention"
 import { TodoListDisplay } from "./TodoListDisplay"
-import { LucideIconButton } from "./LucideIconButton"
 
 /**
  * CostWithTooltip (§2.3, ai_plans/2026-09-27_ui-modernization.md): the cost
@@ -166,7 +165,7 @@ const TaskHeader = ({
 	)
 
 	const condenseButton = (
-		<LucideIconButton
+		<IconButton
 			title={t("chat:task.condenseContext")}
 			icon={FoldVertical}
 			disabled={buttonsDisabled}
@@ -185,52 +184,52 @@ const TaskHeader = ({
 		}
 	}
 
-// §2.3: the clickable header area is a real <button> with aria-expanded so
-// it is reachable with Tab and announced by screen readers (§1.4). The old
-// click-handler-on-a-div excluded interactive children; the same exclusions
-// are kept in a plain onClick.
-const detailsId = "task-header-details"
+	// §2.3: the clickable header area is a real <button> with aria-expanded so
+	// it is reachable with Tab and announced by screen readers (§1.4). The old
+	// click-handler-on-a-div excluded interactive children; the same exclusions
+	// are kept in a plain onClick.
+	const detailsId = "task-header-details"
 
-const isInteractiveTarget = (target: EventTarget | null) => {
-	if (!(target instanceof Element)) {
-		return false
+	const isInteractiveTarget = (target: EventTarget | null) => {
+		if (!(target instanceof Element)) {
+			return false
+		}
+
+		// Nested interactive elements keep their own clicks — except the
+		// header toggle button itself, which IS the expand control.
+		const button = target.closest("button")
+		if (button && !button.hasAttribute("data-task-header-toggle")) {
+			return true
+		}
+
+		return Boolean(
+			target.closest('[role="button"]') ||
+				target.closest(".share-button") ||
+				target.closest("[data-radix-popper-content-wrapper]") ||
+				target.closest("img") ||
+				target.closest("[data-todo-list]") ||
+				target.tagName === "IMG",
+		)
 	}
 
-	// Nested interactive elements keep their own clicks — except the
-	// header toggle button itself, which IS the expand control.
-	const button = target.closest("button")
-	if (button && !button.hasAttribute("data-task-header-toggle")) {
-		return true
+	const toggleExpanded = () => setIsTaskExpanded((prev) => !prev)
+
+	const handleHeaderClick = (e: React.MouseEvent) => {
+		if (isInteractiveTarget(e.target)) {
+			return
+		}
+
+		// Don't expand/collapse if user is selecting text
+		const selection = window.getSelection()
+		if (selection && selection.toString().length > 0) {
+			return
+		}
+
+		toggleExpanded()
 	}
 
-	return Boolean(
-		target.closest('[role="button"]') ||
-			target.closest(".share-button") ||
-			target.closest("[data-radix-popper-content-wrapper]") ||
-			target.closest("img") ||
-			target.closest("[data-todo-list]") ||
-			target.tagName === "IMG",
-	)
-}
-
-const toggleExpanded = () => setIsTaskExpanded((prev) => !prev)
-
-const handleHeaderClick = (e: React.MouseEvent) => {
-	if (isInteractiveTarget(e.target)) {
-		return
-	}
-
-	// Don't expand/collapse if user is selecting text
-	const selection = window.getSelection()
-	if (selection && selection.toString().length > 0) {
-		return
-	}
-
-	toggleExpanded()
-}
-
-return (
-	<div className="group pt-2 pb-0 px-3">
+	return (
+		<div className="group pt-2 pb-0 px-3">
 			{isSubtask && (
 				<div className="mb-2" onClick={(e) => e.stopPropagation()}>
 					<Button
@@ -253,23 +252,23 @@ return (
 				</DismissibleUpsell>
 			)}
 			<div
-			className={cn(
-				"px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1",
-				"bg-vscode-input-background hover:bg-vscode-input-background/90",
-				"text-vscode-foreground/80 hover:text-vscode-foreground",
-				// §2.3: flat like the editor tabs — a 1px panel-border bottom
-				// border instead of shadow + rounded-xl.
-				"border-b border-vscode-panel-border",
-			)}
-			onClick={handleHeaderClick}>
-			<button
-				type="button"
-				data-task-header-toggle
-				aria-expanded={isTaskExpanded}
-				aria-controls={detailsId}
-				// No onClick here on purpose: the click bubbles to the card's
-				// single handler; handling it here too would toggle twice.
-				className="flex justify-between items-center gap-0 w-full text-left bg-transparent border-none p-0 cursor-pointer">
+				className={cn(
+					"px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1",
+					"bg-vscode-input-background hover:bg-vscode-input-background/90",
+					"text-vscode-foreground/80 hover:text-vscode-foreground",
+					// §2.3: flat like the editor tabs — a 1px panel-border bottom
+					// border instead of shadow + rounded-xl.
+					"border-b border-vscode-panel-border",
+				)}
+				onClick={handleHeaderClick}>
+				<button
+					type="button"
+					data-task-header-toggle
+					aria-expanded={isTaskExpanded}
+					aria-controls={detailsId}
+					// No onClick here on purpose: the click bubbles to the card's
+					// single handler; handling it here too would toggle twice.
+					className="flex justify-between items-center gap-0 w-full text-left bg-transparent border-none p-0 cursor-pointer">
 					<div className="flex items-center select-none grow min-w-0">
 						<div className="grow min-w-0">
 							{isTaskExpanded && <span className="font-bold">{t("chat:task.title")}</span>}
@@ -378,13 +377,19 @@ return (
 											<div className="flex items-center gap-1 flex-wrap">
 												{typeof tokensIn === "number" && tokensIn > 0 && (
 													<span className="flex items-center gap-0.5">
-														<ArrowUp className="size-3" aria-label={t("chat:task.tokensIn")} />
+														<ArrowUp
+															className="size-3"
+															aria-label={t("chat:task.tokensIn")}
+														/>
 														{formatLargeNumber(tokensIn)}
 													</span>
 												)}
 												{typeof tokensOut === "number" && tokensOut > 0 && (
 													<span className="flex items-center gap-0.5">
-														<ArrowDown className="size-3" aria-label={t("chat:task.tokensOut")} />
+														<ArrowDown
+															className="size-3"
+															aria-label={t("chat:task.tokensOut")}
+														/>
 														{formatLargeNumber(tokensOut)}
 													</span>
 												)}
@@ -440,14 +445,16 @@ return (
 											<th className="font-medium text-left align-top w-1 whitespace-nowrap pr-2 h-[20px]">
 												{t("chat:task.size")}
 											</th>
-											<td className="font-light align-top">{prettyBytes(currentTaskItem.size)}</td>
+											<td className="font-light align-top">
+												{prettyBytes(currentTaskItem.size)}
+											</td>
 										</tr>
 									)}
 								</tbody>
 							</table>
 						</div>
-				</div>
-			)}
+					</div>
+				)}
 				{/* Todo list - always shown at bottom when todos exist */}
 				{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 			</div>

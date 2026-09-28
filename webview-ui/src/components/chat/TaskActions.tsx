@@ -6,11 +6,11 @@ import type { HistoryItem } from "@roo-code/types"
 import { vscode } from "@/utils/vscode"
 import { useCopyToClipboard } from "@/utils/clipboard"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
+import { IconButton } from "@/components/ui"
 
 import { DeleteTaskDialog } from "../history/DeleteTaskDialog"
 import { ShareButton } from "./ShareButton"
 import { CopyIcon, CheckIcon, DownloadIcon, Trash2Icon, FileJsonIcon, MessageSquareCodeIcon } from "lucide-react"
-import { LucideIconButton } from "./LucideIconButton"
 
 interface TaskActionsProps {
 	item?: HistoryItem
@@ -26,14 +26,14 @@ export const TaskActions = ({ item, buttonsDisabled }: TaskActionsProps) => {
 
 	return (
 		<div className="flex flex-row items-center -ml-0.5 mt-1 gap-1">
-			<LucideIconButton
+			<IconButton
 				icon={DownloadIcon}
 				title={t("chat:task.export")}
 				onClick={() => vscode.postMessage({ type: "exportCurrentTask" })}
 			/>
 
 			{item?.task && (
-				<LucideIconButton
+				<IconButton
 					icon={showCopyFeedback ? CheckIcon : CopyIcon}
 					title={t("history:copyPrompt")}
 					onClick={(e) => copyWithFeedback(item.task, e)}
@@ -41,7 +41,7 @@ export const TaskActions = ({ item, buttonsDisabled }: TaskActionsProps) => {
 			)}
 			{!!item?.size && item.size > 0 && (
 				<>
-					<LucideIconButton
+					<IconButton
 						icon={Trash2Icon}
 						title={t("chat:task.delete")}
 						disabled={buttonsDisabled}
@@ -66,12 +66,12 @@ export const TaskActions = ({ item, buttonsDisabled }: TaskActionsProps) => {
 			<ShareButton item={item} disabled={false} />
 			{debug && item?.id && (
 				<>
-					<LucideIconButton
+					<IconButton
 						icon={FileJsonIcon}
 						title={t("chat:task.openApiHistory")}
 						onClick={() => vscode.postMessage({ type: "openDebugApiHistory" })}
 					/>
-					<LucideIconButton
+					<IconButton
 						icon={MessageSquareCodeIcon}
 						title={t("chat:task.openUiHistory")}
 						onClick={() => vscode.postMessage({ type: "openDebugUiHistory" })}

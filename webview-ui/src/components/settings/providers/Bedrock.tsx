@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import {
 	type ModelInfo,
@@ -175,27 +175,27 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 				</div>
 			)}
 			{supportsGlobalInference && (
-				<Checkbox
+				<LabeledCheckbox
 					checked={apiConfiguration?.awsUseGlobalInference || false}
-					onChange={(checked: boolean) => {
+					onCheckedChange={(checked: boolean) => {
 						// Global Inference takes priority over cross-region when both are enabled
 						setApiConfigurationField("awsUseGlobalInference", checked)
 					}}>
 					{t("settings:providers.awsGlobalInference")}
-				</Checkbox>
+				</LabeledCheckbox>
 			)}
-			<Checkbox
+			<LabeledCheckbox
 				checked={apiConfiguration?.awsUseCrossRegionInference || false}
-				onChange={(checked: boolean) => {
+				onCheckedChange={(checked: boolean) => {
 					setApiConfigurationField("awsUseCrossRegionInference", checked)
 				}}>
 				{t("settings:providers.awsCrossRegion")}
-			</Checkbox>
+			</LabeledCheckbox>
 			{selectedModelInfo?.supportsPromptCache && (
 				<>
-					<Checkbox
+					<LabeledCheckbox
 						checked={apiConfiguration?.awsUsePromptCache ?? true}
-						onChange={handleInputChange("awsUsePromptCache", noTransform)}>
+						onCheckedChange={handleInputChange("awsUsePromptCache", noTransform)}>
 						<div className="flex items-center gap-1">
 							<span>{t("settings:providers.enablePromptCaching")}</span>
 							<StandardTooltip content={t("settings:providers.enablePromptCachingTitle")}>
@@ -205,7 +205,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 								/>
 							</StandardTooltip>
 						</div>
-					</Checkbox>
+					</LabeledCheckbox>
 					<div className="text-sm text-vscode-descriptionForeground ml-6 mt-1">
 						{t("settings:providers.cacheUsageNote")}
 					</div>
@@ -213,26 +213,26 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 			)}
 			{supports1MContextBeta && (
 				<div>
-					<Checkbox
+					<LabeledCheckbox
 						checked={apiConfiguration?.awsBedrock1MContext ?? false}
-						onChange={(checked: boolean) => {
+						onCheckedChange={(checked: boolean) => {
 							setApiConfigurationField("awsBedrock1MContext", checked)
 						}}>
 						{t("settings:providers.awsBedrock1MContextBetaLabel")}
-					</Checkbox>
+					</LabeledCheckbox>
 					<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">
 						{t("settings:providers.awsBedrock1MContextBetaDescription")}
 					</div>
 				</div>
 			)}
-			<Checkbox
+			<LabeledCheckbox
 				checked={awsEndpointSelected}
-				onChange={(isChecked) => {
+				onCheckedChange={(isChecked) => {
 					setAwsEndpointSelected(isChecked)
 					setApiConfigurationField("awsBedrockEndpointEnabled", isChecked)
 				}}>
 				{t("settings:providers.awsBedrockVpc.useCustomVpcEndpoint")}
-			</Checkbox>
+			</LabeledCheckbox>
 			{awsEndpointSelected && (
 				<>
 					<ThemedTextField

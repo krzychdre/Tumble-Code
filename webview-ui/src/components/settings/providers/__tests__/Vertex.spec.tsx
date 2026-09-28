@@ -5,10 +5,17 @@ import { VERTEX_REGIONS } from "@roo-code/types"
 import enSettings from "@src/i18n/locales/en/settings.json"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
-vi.mock("@src/components/ui/vscrui-checkbox", () => ({
-	VSCRUICheckbox: ({ children, checked, onChange, "data-testid": testId }: any) => (
+vi.mock("@src/components/ui/labeled-checkbox", () => ({
+	LabeledCheckbox: ({ children, checked, onChange, onCheckedChange, "data-testid": testId }: any) => (
 		<label data-testid={testId}>
-			<input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+			<input
+				type="checkbox"
+				checked={checked}
+				onChange={(e) => {
+					onChange?.(e)
+					onCheckedChange?.(e.target.checked)
+				}}
+			/>
 			{children}
 		</label>
 	),

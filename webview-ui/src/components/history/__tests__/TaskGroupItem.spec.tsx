@@ -265,8 +265,8 @@ describe("TaskGroupItem", () => {
 			)
 
 			const checkbox = screen.getByRole("checkbox")
-			// Radix checkbox uses data-state instead of checked attribute
-			expect(checkbox).toHaveAttribute("data-state", "checked")
+			// Checked state through the accessible role, not the widget's markup.
+			expect(checkbox).toBeChecked()
 		})
 	})
 

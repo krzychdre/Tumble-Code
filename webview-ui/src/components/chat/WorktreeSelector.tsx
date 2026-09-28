@@ -5,12 +5,11 @@ import type { Worktree, WorktreeListResponse, ExtensionMessage } from "@roo-code
 
 import { cn } from "@/lib/utils"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
-import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, Button } from "@/components/ui"
+import { IconButton, Popover, PopoverContent, PopoverTrigger, StandardTooltip, Button } from "@/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 
 import { CreateWorktreeModal } from "../worktrees/CreateWorktreeModal"
-import { IconButton } from "./IconButton"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface WorktreeSelectorProps {
@@ -113,7 +112,7 @@ export const WorktreeSelector = ({ disabled = false }: WorktreeSelectorProps) =>
 						<div className="flex flex-row items-center justify-between">
 							<h4 className="">{t("worktrees:selector.title")}</h4>
 							<IconButton
-								iconClass="codicon-settings-gear"
+								icon="codicon-settings-gear"
 								title={t("worktrees:selector.settings")}
 								onClick={handleSettingsClick}
 							/>

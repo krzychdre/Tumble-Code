@@ -1,5 +1,6 @@
-// Characterization of the in-repo VSCRUICheckbox (the vscrui replacement)
-// through one of its 10 call sites (every other spec mocks it). It pins what
+// Characterization of the settings checkbox (the vscrui replacement, since
+// UI plan §2.12 part c LabeledCheckbox with onCheckedChange) through one of
+// its call sites (every other spec mocks it). It pins what
 // the settings forms rely on: the label/input/svg markup that index.css styles
 // (.ui-checkbox), a checked state that follows the prop, and onChange called
 // with a boolean.
@@ -11,7 +12,7 @@ vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-describe("R1FormatSetting with the real VSCRUICheckbox", () => {
+describe("R1FormatSetting with the real checkbox", () => {
 	it("renders the label, hidden input, check svg and label text", () => {
 		const { container } = render(<R1FormatSetting onChange={vi.fn()} openAiR1FormatEnabled={true} />)
 

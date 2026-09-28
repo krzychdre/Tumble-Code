@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Trans } from "react-i18next"
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 import { Link, ThemedTextField } from "@src/components/ui"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
@@ -77,13 +77,13 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 				errorMessage={modelNotAvailableError}
 				hidePricing
 			/>
-			<Checkbox
+			<LabeledCheckbox
 				checked={apiConfiguration?.lmStudioSpeculativeDecodingEnabled === true}
-				onChange={(checked) => {
+				onCheckedChange={(checked) => {
 					setApiConfigurationField("lmStudioSpeculativeDecodingEnabled", checked)
 				}}>
 				{t("settings:providers.lmStudio.speculativeDecoding")}
-			</Checkbox>
+			</LabeledCheckbox>
 			{apiConfiguration?.lmStudioSpeculativeDecodingEnabled && (
 				<>
 					<ModelPicker

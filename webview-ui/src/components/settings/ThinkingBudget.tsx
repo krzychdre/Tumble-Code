@@ -37,7 +37,7 @@ Notes:
 */
 
 import { useEffect } from "react"
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import { type ProviderSettings, type ModelInfo, type ReasoningEffortExtended, reasoningEfforts } from "@roo-code/types"
 
@@ -219,13 +219,13 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 			<>
 				{maxOutputTokensControl}
 				<div className="flex flex-col gap-1">
-					<Checkbox
+					<LabeledCheckbox
 						checked={enableReasoningEffort}
-						onChange={(checked: boolean) =>
+						onCheckedChange={(checked: boolean) =>
 							setApiConfigurationField("enableReasoningEffort", checked === true)
 						}>
 						{t("settings:providers.useReasoning")}
-					</Checkbox>
+					</LabeledCheckbox>
 				</div>
 			</>
 		)
@@ -235,13 +235,13 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 		<>
 			{!isReasoningBudgetRequired && (
 				<div className="flex flex-col gap-1">
-					<Checkbox
+					<LabeledCheckbox
 						checked={enableReasoningEffort}
-						onChange={(checked: boolean) =>
+						onCheckedChange={(checked: boolean) =>
 							setApiConfigurationField("enableReasoningEffort", checked === true)
 						}>
 						{t("settings:providers.useReasoning")}
-					</Checkbox>
+					</LabeledCheckbox>
 				</div>
 			)}
 			{(isReasoningBudgetRequired || enableReasoningEffort) && (

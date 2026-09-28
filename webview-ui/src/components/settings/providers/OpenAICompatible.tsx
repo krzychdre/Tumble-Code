@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react"
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import {
 	type ModelInfo,
@@ -10,7 +10,7 @@ import {
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, StandardTooltip, ThemedButton, ThemedTextField } from "@src/components/ui"
+import { Button, StandardTooltip, ThemedTextField } from "@src/components/ui"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { convertHeadersToObject } from "../utils/headers"
@@ -137,30 +137,30 @@ export const OpenAICompatible = ({
 				onChange={handleInputChange("openAiR1FormatEnabled", noTransform)}
 				openAiR1FormatEnabled={apiConfiguration?.openAiR1FormatEnabled ?? false}
 			/>
-			<Checkbox
+			<LabeledCheckbox
 				checked={apiConfiguration?.openAiStreamingEnabled ?? true}
-				onChange={handleInputChange("openAiStreamingEnabled", noTransform)}>
+				onCheckedChange={handleInputChange("openAiStreamingEnabled", noTransform)}>
 				{t("settings:modelInfo.enableStreaming")}
-			</Checkbox>
+			</LabeledCheckbox>
 			<div>
-				<Checkbox
+				<LabeledCheckbox
 					checked={apiConfiguration?.includeMaxTokens ?? true}
-					onChange={handleInputChange("includeMaxTokens", noTransform)}>
+					onCheckedChange={handleInputChange("includeMaxTokens", noTransform)}>
 					{t("settings:includeMaxOutputTokens")}
-				</Checkbox>
+				</LabeledCheckbox>
 				<div className="text-sm text-vscode-descriptionForeground ml-6">
 					{t("settings:includeMaxOutputTokensDescription")}
 				</div>
 			</div>
-			<Checkbox
+			<LabeledCheckbox
 				checked={apiConfiguration?.openAiUseAzure ?? false}
-				onChange={handleInputChange("openAiUseAzure", noTransform)}>
+				onCheckedChange={handleInputChange("openAiUseAzure", noTransform)}>
 				{t("settings:modelInfo.useAzure")}
-			</Checkbox>
+			</LabeledCheckbox>
 			<div>
-				<Checkbox
+				<LabeledCheckbox
 					checked={azureApiVersionSelected}
-					onChange={(checked: boolean) => {
+					onCheckedChange={(checked: boolean) => {
 						setAzureApiVersionSelected(checked)
 
 						if (!checked) {
@@ -168,7 +168,7 @@ export const OpenAICompatible = ({
 						}
 					}}>
 					{t("settings:modelInfo.azureApiVersion")}
-				</Checkbox>
+				</LabeledCheckbox>
 				{azureApiVersionSelected && (
 					<ThemedTextField
 						value={apiConfiguration?.azureApiVersion || ""}
@@ -184,9 +184,9 @@ export const OpenAICompatible = ({
 				<div className="flex justify-between items-center mb-2">
 					<label className="block font-medium">{t("settings:providers.customHeaders")}</label>
 					<StandardTooltip content={t("settings:common.add")}>
-						<ThemedButton appearance="icon" onClick={handleAddCustomHeader}>
+						<Button variant="icon" onClick={handleAddCustomHeader}>
 							<span className="codicon codicon-add"></span>
-						</ThemedButton>
+						</Button>
 					</StandardTooltip>
 				</div>
 				{!customHeaders.length ? (
@@ -209,9 +209,9 @@ export const OpenAICompatible = ({
 								onInput={(e: any) => handleUpdateHeaderValue(index, e.target.value)}
 							/>
 							<StandardTooltip content={t("settings:common.remove")}>
-								<ThemedButton appearance="icon" onClick={() => handleRemoveCustomHeader(index)}>
+								<Button variant="icon" onClick={() => handleRemoveCustomHeader(index)}>
 									<span className="codicon codicon-trash"></span>
-								</ThemedButton>
+								</Button>
 							</StandardTooltip>
 						</div>
 					))
@@ -219,9 +219,9 @@ export const OpenAICompatible = ({
 			</div>
 
 			<div className="flex flex-col gap-1">
-				<Checkbox
+				<LabeledCheckbox
 					checked={apiConfiguration.enableReasoningEffort ?? false}
-					onChange={(checked: boolean) => {
+					onCheckedChange={(checked: boolean) => {
 						setApiConfigurationField("enableReasoningEffort", checked)
 
 						if (!checked) {
@@ -232,7 +232,7 @@ export const OpenAICompatible = ({
 						}
 					}}>
 					{t("settings:providers.setReasoningLevel")}
-				</Checkbox>
+				</LabeledCheckbox>
 				{!!apiConfiguration.enableReasoningEffort && (
 					<ThinkingBudget
 						apiConfiguration={{
@@ -341,12 +341,12 @@ export const OpenAICompatible = ({
 
 				<div>
 					<div className="flex items-center gap-1">
-						<Checkbox
+						<LabeledCheckbox
 							checked={
 								apiConfiguration?.openAiCustomModelInfo?.supportsImages ??
 								openAiModelInfoSaneDefaults.supportsImages
 							}
-							onChange={handleInputChange("openAiCustomModelInfo", (checked) => {
+							onCheckedChange={handleInputChange("openAiCustomModelInfo", (checked) => {
 								return {
 									...(apiConfiguration?.openAiCustomModelInfo || openAiModelInfoSaneDefaults),
 									supportsImages: checked,
@@ -355,7 +355,7 @@ export const OpenAICompatible = ({
 							<span className="font-medium">
 								{t("settings:providers.customModel.imageSupport.label")}
 							</span>
-						</Checkbox>
+						</LabeledCheckbox>
 						<StandardTooltip content={t("settings:providers.customModel.imageSupport.description")}>
 							<i
 								className="codicon codicon-info text-vscode-descriptionForeground"
@@ -370,16 +370,16 @@ export const OpenAICompatible = ({
 
 				<div>
 					<div className="flex items-center gap-1">
-						<Checkbox
+						<LabeledCheckbox
 							checked={apiConfiguration?.openAiCustomModelInfo?.supportsPromptCache ?? false}
-							onChange={handleInputChange("openAiCustomModelInfo", (checked) => {
+							onCheckedChange={handleInputChange("openAiCustomModelInfo", (checked) => {
 								return {
 									...(apiConfiguration?.openAiCustomModelInfo || openAiModelInfoSaneDefaults),
 									supportsPromptCache: checked,
 								}
 							})}>
 							<span className="font-medium">{t("settings:providers.customModel.promptCache.label")}</span>
-						</Checkbox>
+						</LabeledCheckbox>
 						<StandardTooltip content={t("settings:providers.customModel.promptCache.description")}>
 							<i
 								className="codicon codicon-info text-vscode-descriptionForeground"

@@ -1,11 +1,13 @@
 import * as React from "react"
 import { fireEvent, render } from "@/utils/test-utils"
 
-import { VSCRUICheckbox } from "@/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
-describe("VSCRUICheckbox", () => {
+// The boolean `onCheckedChange` and `indeterminate` API that LabeledCheckbox
+// took over from the removed vscrui adapter (UI plan §2.12 part c).
+describe("LabeledCheckbox onCheckedChange and indeterminate", () => {
 	it("renders a label wrapping a native checkbox and the children as label text", () => {
-		const { container } = render(<VSCRUICheckbox checked>label text</VSCRUICheckbox>)
+		const { container } = render(<LabeledCheckbox checked>label text</LabeledCheckbox>)
 
 		const label = container.querySelector("label.ui-checkbox") as HTMLLabelElement
 		expect(label).not.toBeNull()
@@ -20,9 +22,9 @@ describe("VSCRUICheckbox", () => {
 		expect(label.querySelector(".ui-checkbox-label")?.textContent).toBe("label text")
 	})
 
-	it("calls onChange with the new boolean on user input only", () => {
+	it("calls onCheckedChange with the new boolean on user input only", () => {
 		const onChange = vi.fn()
-		const { container, rerender } = render(<VSCRUICheckbox checked={false} onChange={onChange} />)
+		const { container, rerender } = render(<LabeledCheckbox checked={false} onCheckedChange={onChange} />)
 		const input = container.querySelector("input[type='checkbox']") as HTMLInputElement
 
 		fireEvent.click(input)
@@ -30,13 +32,13 @@ describe("VSCRUICheckbox", () => {
 		expect(onChange).toHaveBeenCalledWith(true)
 
 		// Prop changes sync the box but never fire onChange.
-		rerender(<VSCRUICheckbox checked={true} onChange={onChange} />)
+		rerender(<LabeledCheckbox checked={true} onCheckedChange={onChange} />)
 		expect(input.checked).toBe(true)
 		expect(onChange).toHaveBeenCalledTimes(1)
 	})
 
 	it("shows the check mark only when checked", () => {
-		const { container, rerender } = render(<VSCRUICheckbox checked={false} />)
+		const { container, rerender } = render(<LabeledCheckbox checked={false} />)
 		const input = container.querySelector("input[type='checkbox']") as HTMLInputElement
 		expect(input.classList.contains("ui-checkbox-input")).toBe(true)
 
@@ -44,24 +46,24 @@ describe("VSCRUICheckbox", () => {
 		// makes the svg visible; here we assert the DOM state it keys on.
 		expect(input.checked).toBe(false)
 
-		rerender(<VSCRUICheckbox checked={true} />)
+		rerender(<LabeledCheckbox checked={true} />)
 		expect(input.checked).toBe(true)
 	})
 
 	it("reflects indeterminate on the native input", () => {
-		const { container, rerender } = render(<VSCRUICheckbox checked={false} />)
+		const { container, rerender } = render(<LabeledCheckbox checked={false} />)
 		const input = container.querySelector("input[type='checkbox']") as HTMLInputElement
 		expect(input.indeterminate).toBe(false)
 
-		rerender(<VSCRUICheckbox checked={false} indeterminate />)
+		rerender(<LabeledCheckbox checked={false} indeterminate />)
 		expect(input.indeterminate).toBe(true)
 
-		rerender(<VSCRUICheckbox checked={false} indeterminate={false} />)
+		rerender(<LabeledCheckbox checked={false} indeterminate={false} />)
 		expect(input.indeterminate).toBe(false)
 	})
 
 	it("disables the input when disabled", () => {
-		const { container } = render(<VSCRUICheckbox checked={false} disabled />)
+		const { container } = render(<LabeledCheckbox checked={false} disabled />)
 		const label = container.querySelector("label.ui-checkbox") as HTMLLabelElement
 		const input = label.querySelector("input[type='checkbox']") as HTMLInputElement
 
@@ -73,7 +75,7 @@ describe("VSCRUICheckbox", () => {
 
 	it("passes data-testid and aria attributes to the input", () => {
 		const { container } = render(
-			<VSCRUICheckbox checked={false} data-testid="my-checkbox" aria-label="Toggle me" />,
+			<LabeledCheckbox checked={false} data-testid="my-checkbox" aria-label="Toggle me" />,
 		)
 		const input = container.querySelector("input[type='checkbox']") as HTMLInputElement
 		expect(input.getAttribute("data-testid")).toBe("my-checkbox")
@@ -82,7 +84,7 @@ describe("VSCRUICheckbox", () => {
 
 	it("supports Space to toggle via the native input", () => {
 		const onChange = vi.fn()
-		const { container } = render(<VSCRUICheckbox checked={false} onChange={onChange} />)
+		const { container } = render(<LabeledCheckbox checked={false} onCheckedChange={onChange} />)
 		const input = container.querySelector("input[type='checkbox']") as HTMLInputElement
 
 		input.focus()
@@ -93,12 +95,12 @@ describe("VSCRUICheckbox", () => {
 
 	it("forwards the ref to the input", () => {
 		const ref = React.createRef<HTMLInputElement>()
-		render(<VSCRUICheckbox ref={ref} checked={false} />)
+		render(<LabeledCheckbox ref={ref} checked={false} />)
 		expect(ref.current).toBeInstanceOf(HTMLInputElement)
 	})
 
 	it("does not render the label span when there are no children", () => {
-		const { container } = render(<VSCRUICheckbox checked={false} />)
+		const { container } = render(<LabeledCheckbox checked={false} />)
 		expect(container.querySelector(".ui-checkbox-label")).toBeNull()
 	})
 })

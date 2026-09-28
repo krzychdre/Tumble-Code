@@ -29,7 +29,7 @@ import {
 	ThemedOption,
 	ThemedTextField,
 } from "@src/components/ui"
-import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
+import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
 
@@ -192,11 +192,11 @@ const CheckboxField = ({
 
 	return (
 		<div>
-			<Checkbox
+			<LabeledCheckbox
 				checked={apiConfiguration[field.key] ?? false}
-				onChange={(checked: boolean) => setApiConfigurationField(field.key, checked)}>
+				onCheckedChange={(checked: boolean) => setApiConfigurationField(field.key, checked)}>
 				{t(field.labelKey)}
-			</Checkbox>
+			</LabeledCheckbox>
 			{field.descriptionKey && (
 				<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">{t(field.descriptionKey)}</div>
 			)}
@@ -215,10 +215,10 @@ const OptionalUrlField = ({
 
 	const controls = (
 		<>
-			<Checkbox
+			<LabeledCheckbox
 				data-testid={field.toggleTestId}
 				checked={selected}
-				onChange={(checked: boolean) => {
+				onCheckedChange={(checked: boolean) => {
 					setSelected(checked)
 					if (!checked) {
 						setApiConfigurationField(field.key, "")
@@ -228,7 +228,7 @@ const OptionalUrlField = ({
 					}
 				}}>
 				{t(field.toggleLabelKey)}
-			</Checkbox>
+			</LabeledCheckbox>
 			{selected && (
 				<>
 					<ThemedTextField
@@ -239,13 +239,13 @@ const OptionalUrlField = ({
 						className="w-full mt-1"
 					/>
 					{field.revealedFields?.map((revealed) => (
-						<Checkbox
+						<LabeledCheckbox
 							key={revealed.key}
 							checked={apiConfiguration[revealed.key] ?? false}
-							onChange={(checked: boolean) => setApiConfigurationField(revealed.key, checked)}
+							onCheckedChange={(checked: boolean) => setApiConfigurationField(revealed.key, checked)}
 							className="w-full mt-1">
 							{t(revealed.labelKey)}
-						</Checkbox>
+						</LabeledCheckbox>
 					))}
 				</>
 			)}

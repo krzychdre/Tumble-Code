@@ -4,7 +4,7 @@ import type { DisplayHistoryItem } from "./types"
 
 import { vscode } from "@/utils/vscode"
 import { cn } from "@/lib/utils"
-import { Checkbox } from "@/components/ui/checkbox"
+import { LabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 import TaskItemFooter from "./TaskItemFooter"
 import { StandardTooltip } from "../ui"
@@ -70,10 +70,9 @@ const TaskItem = ({
 						onClick={(e) => {
 							e.stopPropagation()
 						}}>
-						<Checkbox
+						<LabeledCheckbox
 							checked={isSelected}
 							onCheckedChange={(checked: boolean) => onToggleSelection?.(item.id, checked === true)}
-							variant="description"
 						/>
 					</div>
 				)}
