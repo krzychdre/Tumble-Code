@@ -1,3 +1,4 @@
+import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 import os from "os"
@@ -97,7 +98,7 @@ import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 
 // core modules
-import { ArtifactStore } from "../artifacts/ArtifactStore"
+import { ArtifactStore, artifactDirForKind } from "../artifacts/ArtifactStore"
 import { applyToolResultSpill, type ToolResultSpillContext } from "../artifacts/spillPolicy"
 import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import type { TaskToolStreamState } from "../tools/toolStreamState"
@@ -745,17 +746,75 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			return false
 		}
 
-		let blockToPush = toolResult
+		this.userMessageContent.push(toolResult)
 
-		if (typeof toolResult.content === "string") {
-			const spilled = applyToolResultSpill(toolResult.content, options?.toolName, this.toolResultSpill)
-			if (spilled.artifactId) {
-				blockToPush = { ...toolResult, content: spilled.text }
-			}
+		if (typeof toolResult.content === "string" && this.toolResultSpill) {
+			this.spillToolResultInBackground(toolResult, toolResult.content, options?.toolName, this.toolResultSpill)
 		}
 
-		this.userMessageContent.push(blockToPush)
 		return true
+	}
+
+	/**
+	 * Tool-result spills whose artifact write has not settled yet. Each one
+	 * swaps its block for the preview once the artifact is on disk.
+	 */
+	private readonly pendingToolResultSpills = new Set<Promise<void>>()
+
+	/**
+	 * Runs the spill policy for a result that is already in `userMessageContent`
+	 * and, once the artifact file exists, replaces that block with the preview
+	 * that cites it.
+	 *
+	 * The write is asynchronous so a large result does not block the extension
+	 * host. Until it settles the result simply stays inline, which is also the
+	 * outcome of a failed write: no preview ever cites an artifact that is not
+	 * on disk. Consumers that hand `userMessageContent` on (the next API request,
+	 * the flush to history) call `settlePendingToolResultSpills` first.
+	 */
+	private spillToolResultInBackground(
+		block: Anthropic.ToolResultBlockParam,
+		text: string,
+		toolName: string | undefined,
+		context: ToolResultSpillContext,
+	): void {
+		const pending = applyToolResultSpill(text, toolName, context)
+			.then((spilled) => {
+				if (!spilled.artifactId) {
+					return
+				}
+
+				const index = this.userMessageContent.indexOf(block)
+				if (index === -1) {
+					// The block already left this turn (abort, reset): the preview
+					// has nowhere to go and the artifact would be an orphan.
+					const orphan = path.join(artifactDirForKind(context.store.getTaskDir(), "tool"), spilled.artifactId)
+					void fs.unlink(orphan).catch(() => {})
+					return
+				}
+
+				this.userMessageContent[index] = { ...block, content: spilled.text }
+			})
+			.catch((error) => {
+				// applyToolResultSpill already turns a failed write into "keep
+				// inline"; anything else is a bug worth seeing, never a crash.
+				console.warn(`[Task#${this.taskId}] tool-result spill failed, keeping the result inline:`, error)
+			})
+			.finally(() => {
+				this.pendingToolResultSpills.delete(pending)
+			})
+
+		this.pendingToolResultSpills.add(pending)
+	}
+
+	/**
+	 * Waits until every pending tool-result spill has either swapped in its
+	 * preview or given up (the result then stays inline).
+	 */
+	public async settlePendingToolResultSpills(): Promise<void> {
+		while (this.pendingToolResultSpills.size > 0) {
+			await Promise.all([...this.pendingToolResultSpills])
+		}
 	}
 	didRejectTool = false
 	didAlreadyUseTool = false

@@ -124,6 +124,8 @@ export interface TaskApiLoopAccess {
 	assistantMessageContent: AssistantMessageContent[]
 	userMessageContent: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolResultBlockParam)[]
 	userMessageContentReady: boolean
+	/** Swaps spilled tool results for their previews once the artifacts exist (P10). */
+	settlePendingToolResultSpills(): Promise<void>
 	didRejectTool: boolean
 	didAlreadyUseTool: boolean
 	cachedStreamingModel?: { id: string; info: any }
@@ -880,6 +882,11 @@ export class TaskApiLoop {
 			if (this.access.abort) {
 				return "return_true"
 			}
+
+			// An oversized result is spilled to disk asynchronously and only swaps
+			// in its preview once the artifact exists; settle that before the
+			// results are snapshotted for the next request.
+			await this.access.settlePendingToolResultSpills()
 
 			const didToolUse = this.access.assistantMessageContent.some(
 				(block) => block.type === "tool_use" || block.type === "mcp_tool_use",

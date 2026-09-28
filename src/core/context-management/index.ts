@@ -525,7 +525,7 @@ export async function manageContext({
 
 		// The same boundary a condense would keep verbatim, so the pruner and the
 		// summarizer agree on exactly which tail is the model's working set.
-		const pruned = pruneToolResults(messages, {
+		const pruned = await pruneToolResults(messages, {
 			keepBoundary: computeCondenseKeepBoundary(messages),
 			budgetBytes: pruneToolResultBudget ?? PRUNE_CONDENSE_DEFAULTS.DEFAULT_TOOL_RESULT_BUDGET,
 			store: artifactStore,

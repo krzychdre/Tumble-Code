@@ -62,6 +62,8 @@ export interface TaskMessageLogAccess {
 
 	// Pending tool results state (for flushPendingToolResultsToHistory)
 	userMessageContent: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolResultBlockParam)[]
+	/** Swaps spilled tool results for their previews once the artifacts exist (P10). */
+	settlePendingToolResultSpills(): Promise<void>
 	assistantMessageSavedToHistory: boolean
 	abort: boolean
 
@@ -280,6 +282,10 @@ export class TaskMessageLog {
 		if (this.access.abort) {
 			return false
 		}
+
+		// Persist the spill previews, not the inline text they replace: the
+		// artifacts are written asynchronously.
+		await this.access.settlePendingToolResultSpills()
 
 		const userMessage = this.buildUserMessageWithToolResults()
 		if (!userMessage) {

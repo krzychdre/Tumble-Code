@@ -195,7 +195,8 @@ export function buildSpillPreview(
  * Best effort by design: if the artifact cannot be written, the full text is
  * returned unchanged. A spill is an optimisation, and it must never turn a
  * successful tool call into an error or into a preview whose artifact does not
- * exist.
+ * exist. The write is asynchronous, and the returned text cites the artifact
+ * only once the file is on disk.
  *
  * It also has to be worth it: a text with few lines is clamped by bytes, so its
  * preview can approach the whole inline budget. Paying a disk write and a lost
@@ -206,11 +207,11 @@ export function buildSpillPreview(
  * @param toolName - Canonical tool name, used for the bypass list.
  * @param context - Store plus limits; `undefined` disables the policy.
  */
-export function applyToolResultSpill(
+export async function applyToolResultSpill(
 	text: string,
 	toolName: string | undefined,
 	context: ToolResultSpillContext | undefined,
-): SpillOutcome {
+): Promise<SpillOutcome> {
 	if (!context || !text) {
 		return { text }
 	}
@@ -239,7 +240,7 @@ export function applyToolResultSpill(
 
 	let artifactId: string
 	try {
-		const saved = context.store.save("tool", text, context.now ? context.now() : Date.now())
+		const saved = await context.store.save("tool", text, context.now ? context.now() : Date.now())
 		artifactId = saved.id
 	} catch (error) {
 		console.warn(
