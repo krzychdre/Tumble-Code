@@ -15,7 +15,7 @@ import { getApiMetrics } from "../../shared/getApiMetrics"
 
 import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 
-import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../services/checkpoints"
+import { CheckpointServiceOptions, ShadowCheckpointService } from "../../services/checkpoints"
 
 const WARNING_THRESHOLD_MS = 5000
 
@@ -111,7 +111,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 			return undefined
 		}
 
-		const service = RepoPerTaskCheckpointService.create(options)
+		const service = ShadowCheckpointService.create(options)
 		task.checkpointServiceInitializing = true
 		await checkGitInstallation(task, service, log, provider)
 		task.checkpointService = service
@@ -132,7 +132,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 
 async function checkGitInstallation(
 	task: Task,
-	service: RepoPerTaskCheckpointService,
+	service: ShadowCheckpointService,
 	log: (message: string) => void,
 	provider: any,
 ) {
