@@ -1,0 +1,47 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<!--
+  static/theme.js: runs in <head>, before anything is painted, and puts the
+  reader's stored choice on <html> as data-theme; then wires the three-state
+  toggle in the top bar (auto, dark, light) once the document is parsed.
+-->
+<script>
+  try { localStorage.setItem("tumble.theme", "light") } catch (e) {}
+</script>
+<script src="../../src/web/static/theme.js"></script>
+<script>
+  // Still in <head>: nothing has been parsed or painted yet.
+  window.__themeInHead = document.documentElement.getAttribute("data-theme")
+</script>
+</head><body>
+<button type="button" id="theme-toggle" class="theme-toggle" hidden>Theme</button>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function stored() { try { return localStorage.getItem("tumble.theme") } catch (e) { return "?" } }
+  var root = document.documentElement
+  var toggle = document.getElementById("theme-toggle")
+  var events = 0
+  window.addEventListener("tumble:theme", function () { events++ })
+
+  check("stored choice applied before the body exists", window.__themeInHead === "light")
+  check("toggle revealed", toggle.hidden === false)
+  check("toggle names the current choice", /light/i.test(toggle.textContent) && /light/i.test(toggle.getAttribute("aria-label")))
+
+  toggle.click()   // light -> auto
+  check("light is followed by auto", root.getAttribute("data-theme") === null && stored() === null)
+  check("auto says so", /auto/i.test(toggle.textContent))
+  toggle.click()   // auto -> dark
+  check("auto is followed by dark", root.getAttribute("data-theme") === "dark" && stored() === "dark")
+  toggle.click()   // dark -> light
+  check("dark is followed by light", root.getAttribute("data-theme") === "light" && stored() === "light")
+  check("every change is announced to the page", events === 3)
+
+  var pre = document.createElement("pre")
+  pre.id = "results"
+  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+  document.body.appendChild(pre)
+  try { localStorage.removeItem("tumble.theme") } catch (e) {}
+})
+</script>
+</body></html>

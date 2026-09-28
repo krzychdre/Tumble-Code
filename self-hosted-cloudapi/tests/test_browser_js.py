@@ -42,6 +42,10 @@ _MIN_CHECKS = {
     "tasklist_filter_checks.html": 19,
     # data-confirm forms (formerly inline onsubmit) and the empty state's copy button.
     "app_checks.html": 7,
+    # The theme applied in <head> and the auto/dark/light toggle.
+    "theme_checks.html": 8,
+    # Chart colours from the CSS variables, and a redraw on a theme change.
+    "metrics_theme_checks.html": 8,
     "tasktree_checks.html": 19,
     # escapeHtml must escape " and ' so values interpolated into double-quoted
     # src="..."/title="..." attributes cannot break out (CodeQL #8/#11).

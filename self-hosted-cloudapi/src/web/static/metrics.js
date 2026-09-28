@@ -21,30 +21,30 @@
 		return
 	}
 
-	// Mirrors the data hues in app.css. Tokens are "in" (cold cyan) and cost is
-	// the signal amber, so the daily chart uses the same encoding as the stat
-	// cards above it — a reader learns the colour once.
-	var TOKENS = "#6cc4f5"
-	var COST = "#e9a33a"
-	var GRID = "rgba(255,255,255,0.06)"
-	var TEXT = "#6b7885"
-	var PANEL = "#141a22"
-	// Categorical hues for the model/mode doughnuts. Ordered so adjacent
-	// segments never sit on neighbouring hues, which keeps small slices legible.
-	var PALETTE = [
-		"#6cc4f5",
-		"#a78bfa",
-		"#4ec9a0",
-		"#e9a33a",
-		"#f2777a",
-		"#6a9bf4",
-		"#d6b4fc",
-		"#8fd6bd",
-		"#f5b855",
-		"#93b7f7",
-	]
+	// Every colour is a CSS variable of app.css, read when the charts are
+	// drawn, so they follow the theme (and draw again when it changes). Tokens
+	// are "in" (cold cyan) and cost is the signal amber, so the daily chart uses
+	// the same encoding as the stat cards above it: a reader learns the colour
+	// once. The doughnuts take the categorical --cat-N hues.
+	var CATEGORIES = 10
 
-	Chart.defaults.color = TEXT
+	function cssVar(name) {
+		return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+	}
+
+	function colours() {
+		var palette = []
+		for (var i = 1; i <= CATEGORIES; i++) palette.push(cssVar("--cat-" + i))
+		return {
+			tokens: cssVar("--d-in"),
+			cost: cssVar("--d-cost"),
+			grid: cssVar("--line"),
+			text: cssVar("--text-faint"),
+			panel: cssVar("--surface-1"),
+			palette: palette,
+		}
+	}
+
 	Chart.defaults.font.family =
 		'ui-monospace, "JetBrains Mono", "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace'
 	Chart.defaults.font.size = 11
@@ -57,109 +57,135 @@
 		return document.getElementById(id)
 	}
 
+	var charts = []
+	var c = colours()
+
 	// Per-day tokens (bars) + cost (line on a second axis).
-	var dailyEl = get("chart-daily")
-	if (dailyEl && data.days && data.days.length) {
-		new Chart(dailyEl, {
-			data: {
-				labels: data.days,
-				datasets: [
-					{
-						type: "bar",
-						label: "Tokens",
-						data: data.day_tokens,
-						backgroundColor: TOKENS,
-						borderRadius: 3,
-						yAxisID: "y",
-						order: 2,
+	function drawDaily() {
+		var dailyEl = get("chart-daily")
+		if (dailyEl && data.days && data.days.length) {
+			charts.push(
+				new Chart(dailyEl, {
+					data: {
+						labels: data.days,
+						datasets: [
+							{
+								type: "bar",
+								label: "Tokens",
+								data: data.day_tokens,
+								backgroundColor: c.tokens,
+								borderRadius: 3,
+								yAxisID: "y",
+								order: 2,
+							},
+							{
+								type: "line",
+								label: "Cost ($)",
+								data: data.day_cost,
+								borderColor: c.cost,
+								backgroundColor: c.cost,
+								tension: 0.3,
+								pointRadius: 3,
+								yAxisID: "yCost",
+								order: 1,
+							},
+						],
 					},
-					{
-						type: "line",
-						label: "Cost ($)",
-						data: data.day_cost,
-						borderColor: COST,
-						backgroundColor: COST,
-						tension: 0.3,
-						pointRadius: 3,
-						yAxisID: "yCost",
-						order: 1,
-					},
-				],
-			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				interaction: { mode: "index", intersect: false },
-				plugins: {
-					legend: { labels: { boxWidth: 12 } },
-					tooltip: {
-						callbacks: {
-							label: function (ctx) {
-								if (ctx.dataset.yAxisID === "yCost") {
-									return "Cost: " + fmtCost(ctx.parsed.y)
-								}
-								return "Tokens: " + Number(ctx.parsed.y).toLocaleString()
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						interaction: { mode: "index", intersect: false },
+						plugins: {
+							legend: { labels: { boxWidth: 12 } },
+							tooltip: {
+								callbacks: {
+									label: function (ctx) {
+										if (ctx.dataset.yAxisID === "yCost") {
+											return "Cost: " + fmtCost(ctx.parsed.y)
+										}
+										return "Tokens: " + Number(ctx.parsed.y).toLocaleString()
+									},
+								},
+							},
+						},
+						scales: {
+							x: { grid: { color: c.grid } },
+							y: {
+								position: "left",
+								grid: { color: c.grid },
+								ticks: { callback: fmtTokens },
+							},
+							yCost: {
+								position: "right",
+								grid: { drawOnChartArea: false },
+								ticks: {
+									callback: function (v) {
+										return "$" + v
+									},
+								},
 							},
 						},
 					},
-				},
-				scales: {
-					x: { grid: { color: GRID } },
-					y: {
-						position: "left",
-						grid: { color: GRID },
-						ticks: { callback: fmtTokens },
-					},
-					yCost: {
-						position: "right",
-						grid: { drawOnChartArea: false },
-						ticks: {
-							callback: function (v) {
-								return "$" + v
-							},
-						},
-					},
-				},
-			},
-		})
+				}),
+			)
+		}
 	}
 
 	function doughnut(elId, labels, values) {
 		var el = get(elId)
 		if (!el || !labels || !labels.length) return
-		new Chart(el, {
-			type: "doughnut",
-			data: {
-				labels: labels,
-				datasets: [
-					{
-						data: values,
-						backgroundColor: labels.map(function (_, i) {
-							return PALETTE[i % PALETTE.length]
-						}),
-						borderColor: PANEL,
-						borderWidth: 2,
-					},
-				],
-			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				cutout: "58%",
-				plugins: {
-					legend: { position: "bottom", labels: { boxWidth: 12 } },
-					tooltip: {
-						callbacks: {
-							label: function (ctx) {
-								return ctx.label + ": " + fmtTokens(ctx.parsed) + " tokens"
+		charts.push(
+			new Chart(el, {
+				type: "doughnut",
+				data: {
+					labels: labels,
+					datasets: [
+						{
+							data: values,
+							backgroundColor: labels.map(function (_, i) {
+								return c.palette[i % c.palette.length]
+							}),
+							borderColor: c.panel,
+							borderWidth: 2,
+						},
+					],
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					cutout: "58%",
+					plugins: {
+						legend: { position: "bottom", labels: { boxWidth: 12 } },
+						tooltip: {
+							callbacks: {
+								label: function (ctx) {
+									return ctx.label + ": " + fmtTokens(ctx.parsed) + " tokens"
+								},
 							},
 						},
 					},
 				},
-			},
-		})
+			}),
+		)
 	}
 
-	doughnut("chart-models", data.model_labels, data.model_tokens)
-	doughnut("chart-modes", data.mode_labels, data.mode_tokens)
+	function draw() {
+		charts.forEach(function (chart) {
+			chart.destroy()
+		})
+		charts = []
+		c = colours()
+		Chart.defaults.color = c.text
+		drawDaily()
+		doughnut("chart-models", data.model_labels, data.model_tokens)
+		doughnut("chart-modes", data.mode_labels, data.mode_tokens)
+	}
+
+	draw()
+
+	// The OS switching between light and dark, and the reader's own toggle
+	// (static/theme.js), both change the variables the charts were drawn with.
+	var scheme = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null
+	if (scheme && scheme.addEventListener) scheme.addEventListener("change", draw)
+	window.addEventListener("tumble:theme", draw)
 })()

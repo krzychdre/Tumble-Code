@@ -1,0 +1,57 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<!--
+  static/metrics.js reads its colours from the CSS variables (so the charts
+  follow the theme) and draws again when the theme changes. Chart.js is
+  stubbed: the checks are about the configuration metrics.js hands it.
+-->
+<style>
+  :root { --d-in: #111111; --d-cost: #222222; --text-faint: #333333; --line: #444444; --surface-1: #555555;
+          --cat-1: #a00001; --cat-2: #a00002; --cat-3: #a00003; --cat-4: #a00004; --cat-5: #a00005;
+          --cat-6: #a00006; --cat-7: #a00007; --cat-8: #a00008; --cat-9: #a00009; --cat-10: #a0000a; }
+  :root[data-theme="light"] { --d-in: #aaaaaa; --d-cost: #bbbbbb; --cat-1: #b00001; }
+</style>
+</head><body>
+<canvas id="chart-daily"></canvas><canvas id="chart-models"></canvas><canvas id="chart-modes"></canvas>
+<script id="metrics-data" type="application/json">{"days": ["2026-09-27", "2026-09-28"], "day_tokens": [10, 20], "day_cost": [0.1, 0.2],
+  "model_labels": ["a", "b"], "model_tokens": [5, 6], "mode_labels": ["code"], "mode_tokens": [7]}</script>
+<script>
+  window.TumbleFormat = { tokens: String, cost: String }
+  window.__charts = []
+  window.Chart = function (el, config) {
+    var chart = { el: el, config: config, destroyed: false, destroy: function () { chart.destroyed = true } }
+    window.__charts.push(chart)
+    return chart
+  }
+  window.Chart.defaults = { font: {} }
+</script>
+<script src="../../src/web/static/metrics.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function norm(c) { return String(c).replace(/\s+/g, "").toLowerCase() }
+  var charts = window.__charts
+  check("three charts drawn", charts.length === 3)
+  var daily = charts[0] && charts[0].config.data.datasets
+  check("tokens bars take --d-in", daily && norm(daily[0].backgroundColor) === "#111111")
+  check("cost line takes --d-cost", daily && norm(daily[1].borderColor) === "#222222")
+  var models = charts[1] && charts[1].config.data.datasets[0].backgroundColor
+  check("doughnut slices take the categorical tokens", models && norm(models[0]) === "#a00001" && norm(models[1]) === "#a00002")
+  check("axis text takes --text-faint", norm(window.Chart.defaults.color) === "#333333")
+
+  document.documentElement.setAttribute("data-theme", "light")
+  window.dispatchEvent(new Event("tumble:theme"))
+  setTimeout(function () {
+    check("the old charts are destroyed", charts.slice(0, 3).every(function (c) { return c.destroyed }))
+    check("and drawn again", charts.length === 6)
+    var again = charts[3] && charts[3].config.data.datasets
+    check("in the new theme's colours", again && norm(again[0].backgroundColor) === "#aaaaaa" &&
+          norm(charts[4].config.data.datasets[0].backgroundColor[0]) === "#b00001")
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  }, 50)
+})
+</script>
+</body></html>

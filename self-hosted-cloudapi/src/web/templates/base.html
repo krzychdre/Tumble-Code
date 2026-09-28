@@ -3,8 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  {# Both schemes: the theme follows the OS unless the reader picked one. #}
+  <meta name="color-scheme" content="dark light">
   <title>{% block title %}Tumble Code{% endblock %}</title>
+  {# Blocking and before the stylesheet: the reader's stored theme is on <html>
+     before the first paint, so a light choice never flashes dark. #}
+  <script src="/static/theme.js?v={{ asset_v }}"></script>
   <link rel="stylesheet" href="/static/app.css?v={{ asset_v }}">
 </head>
 <body>
@@ -20,6 +24,8 @@
       </nav>
     {% endif %}
     <div class="spacer"></div>
+    {# Auto, dark, light; revealed and wired by theme.js. #}
+    <button type="button" id="theme-toggle" class="theme-toggle" hidden>Theme</button>
     {% if user %}
       <span class="user">{{ user.name }}</span>
       <form method="post" action="/app/logout" class="inline">
