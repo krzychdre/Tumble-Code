@@ -8,6 +8,8 @@
 		"cache": "캐시",
 		"apiCost": "API 비용",
 		"size": "크기",
+		"tokensIn": "입력 토큰",
+		"tokensOut": "출력 토큰",
 		"contextWindow": "컨텍스트 창",
 		"export": "작업 기록 내보내기",
 		"delete": "작업 삭제 (Shift + 클릭으로 확인 생략)",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "사용 가능한 공간: {{amount}} 토큰",
 		"tokensUsed": "사용된 토큰: {{used}} / {{total}}",
-		"reservedForResponse": "모델 응답용 예약: {{amount}} 토큰"
+		"reservedForResponse": "모델 응답용 예약: {{amount}} 토큰",
+		"contextUsed": "사용된 컨텍스트"
 	},
 	"retry": {
 		"title": "다시 시도",

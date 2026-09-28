@@ -8,6 +8,8 @@
 		"cache": "कैश",
 		"apiCost": "API लागत",
 		"size": "आकार",
+		"tokensIn": "इनपुट टोकन",
+		"tokensOut": "आउटपुट टोकन",
 		"contextWindow": "संदर्भ लंबाई",
 		"export": "कार्य इतिहास निर्यात करें",
 		"delete": "कार्य हटाएं (पुष्टि को छोड़ने के लिए Shift + क्लिक)",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "उपलब्ध स्थान: {{amount}} tokens",
 		"tokensUsed": "प्रयुक्त tokens: {{used}} / {{total}}",
-		"reservedForResponse": "मॉडल प्रतिक्रिया के लिए आरक्षित: {{amount}} tokens"
+		"reservedForResponse": "मॉडल प्रतिक्रिया के लिए आरक्षित: {{amount}} tokens",
+		"contextUsed": "उपयोग किया गया संदर्भ"
 	},
 	"retry": {
 		"title": "पुनः प्रयास करें",

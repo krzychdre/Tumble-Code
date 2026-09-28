@@ -8,6 +8,8 @@
 		"cache": "Önbellek",
 		"apiCost": "API Maliyeti",
 		"size": "Boyut",
+		"tokensIn": "Giriş tokenları",
+		"tokensOut": "Çıkış tokenları",
 		"contextWindow": "Bağlam Uzunluğu",
 		"export": "Görev geçmişini dışa aktar",
 		"delete": "Görevi sil (Onayı atlamak için Shift + Tıkla)",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "Kullanılabilir alan: {{amount}} token",
 		"tokensUsed": "Kullanılan tokenlar: {{used}} / {{total}}",
-		"reservedForResponse": "Model yanıtı için ayrılan: {{amount}} token"
+		"reservedForResponse": "Model yanıtı için ayrılan: {{amount}} token",
+		"contextUsed": "Kullanılan bağlam"
 	},
 	"retry": {
 		"title": "Yeniden Dene",

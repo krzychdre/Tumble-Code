@@ -8,6 +8,8 @@
 		"cache": "Bộ nhớ đệm",
 		"apiCost": "Chi phí API",
 		"size": "Kích thước",
+		"tokensIn": "Token đầu vào",
+		"tokensOut": "Token đầu ra",
 		"contextWindow": "Chiều dài bối cảnh",
 		"export": "Xuất lịch sử nhiệm vụ",
 		"delete": "Xóa nhiệm vụ (Shift + Click để bỏ qua xác nhận)",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "Không gian khả dụng: {{amount}} tokens",
 		"tokensUsed": "Tokens đã sử dụng: {{used}} trong {{total}}",
-		"reservedForResponse": "Dành riêng cho phản hồi mô hình: {{amount}} tokens"
+		"reservedForResponse": "Dành riêng cho phản hồi mô hình: {{amount}} tokens",
+		"contextUsed": "Ngữ cảnh đã dùng"
 	},
 	"retry": {
 		"title": "Thử lại",

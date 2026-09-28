@@ -8,6 +8,8 @@
 		"cache": "快取",
 		"apiCost": "API 費用",
 		"size": "大小",
+		"tokensIn": "輸入 Token",
+		"tokensOut": "輸出 Token",
 		"condenseContext": "智慧壓縮內容",
 		"contextWindow": "上下文長度",
 		"export": "匯出工作記錄",
@@ -50,7 +52,8 @@
 	"tokenProgress": {
 		"availableSpace": "可用空間：{{amount}} Token",
 		"tokensUsed": "已使用 Token： {{used}} / {{total}}",
-		"reservedForResponse": "模型回應保留：{{amount}} Token"
+		"reservedForResponse": "模型回應保留：{{amount}} Token",
+		"contextUsed": "已用上下文"
 	},
 	"reject": {
 		"title": "拒絕",

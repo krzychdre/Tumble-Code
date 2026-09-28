@@ -8,6 +8,8 @@
 		"cache": "缓存",
 		"apiCost": "API 费用",
 		"size": "大小",
+		"tokensIn": "输入 Token",
+		"tokensOut": "输出 Token",
 		"contextWindow": "上下文长度",
 		"export": "导出任务历史",
 		"delete": "删除任务（Shift + 点击跳过确认）",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "可用: {{amount}}",
 		"tokensUsed": "已使用: {{used}} / {{total}}",
-		"reservedForResponse": "已保留: {{amount}}"
+		"reservedForResponse": "已保留: {{amount}}",
+		"contextUsed": "已用上下文"
 	},
 	"retry": {
 		"title": "重试",

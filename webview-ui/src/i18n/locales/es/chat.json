@@ -8,6 +8,8 @@
 		"cache": "Caché",
 		"apiCost": "Costo de API",
 		"size": "Tamaño",
+		"tokensIn": "Tokens de entrada",
+		"tokensOut": "Tokens de salida",
 		"contextWindow": "Longitud del contexto",
 		"export": "Exportar historial de tareas",
 		"delete": "Eliminar tarea (Shift + Clic para omitir confirmación)",
@@ -50,7 +52,8 @@
 	"tokenProgress": {
 		"availableSpace": "Espacio disponible: {{amount}} tokens",
 		"tokensUsed": "Tokens utilizados: {{used}} de {{total}}",
-		"reservedForResponse": "Reservado para respuesta del modelo: {{amount}} tokens"
+		"reservedForResponse": "Reservado para respuesta del modelo: {{amount}} tokens",
+		"contextUsed": "Contexto usado"
 	},
 	"reject": {
 		"title": "Rechazar",

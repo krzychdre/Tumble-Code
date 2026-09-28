@@ -8,6 +8,8 @@
 		"cache": "Pamięć podręczna",
 		"apiCost": "Koszt API",
 		"size": "Rozmiar",
+		"tokensIn": "Tokeny wejściowe",
+		"tokensOut": "Tokeny wyjściowe",
 		"contextWindow": "Okno kontekstu",
 		"export": "Eksportuj historię zadań",
 		"delete": "Usuń zadanie (Shift + Kliknięcie, aby pominąć potwierdzenie)",
@@ -54,7 +56,8 @@
 	"tokenProgress": {
 		"availableSpace": "Dostępne miejsce: {{amount}} tokenów",
 		"tokensUsed": "Wykorzystane tokeny: {{used}} z {{total}}",
-		"reservedForResponse": "Zarezerwowane dla odpowiedzi modelu: {{amount}} tokenów"
+		"reservedForResponse": "Zarezerwowane dla odpowiedzi modelu: {{amount}} tokenów",
+		"contextUsed": "Wykorzystany kontekst"
 	},
 	"retry": {
 		"title": "Ponów",

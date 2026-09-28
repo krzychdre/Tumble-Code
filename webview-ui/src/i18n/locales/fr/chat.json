@@ -8,6 +8,8 @@
 		"cache": "Cache",
 		"apiCost": "Coût API",
 		"size": "Taille",
+		"tokensIn": "Tokens en entrée",
+		"tokensOut": "Tokens en sortie",
 		"contextWindow": "Durée du contexte",
 		"export": "Exporter l'historique des tâches",
 		"delete": "Supprimer la tâche (Shift + Clic pour ignorer la confirmation)",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "Espace disponible : {{amount}} tokens",
 		"tokensUsed": "Tokens utilisés : {{used}} sur {{total}}",
-		"reservedForResponse": "Réservé pour la réponse du modèle : {{amount}} tokens"
+		"reservedForResponse": "Réservé pour la réponse du modèle : {{amount}} tokens",
+		"contextUsed": "Contexte utilisé"
 	},
 	"retry": {
 		"title": "Réessayer",

@@ -8,6 +8,8 @@
 		"cache": "Cache",
 		"apiCost": "Biaya API",
 		"size": "Ukuran",
+		"tokensIn": "Token masuk",
+		"tokensOut": "Token keluar",
 		"condenseContext": "Kondensasi konteks secara cerdas",
 		"contextWindow": "Panjang Konteks",
 		"export": "Ekspor riwayat tugas",
@@ -56,7 +58,8 @@
 	"tokenProgress": {
 		"availableSpace": "Ruang tersedia: {{amount}} token",
 		"tokensUsed": "Token digunakan: {{used}} dari {{total}}",
-		"reservedForResponse": "Dicadangkan untuk respons model: {{amount}} token"
+		"reservedForResponse": "Dicadangkan untuk respons model: {{amount}} token",
+		"contextUsed": "Konteks terpakai"
 	},
 	"reject": {
 		"title": "Tolak",
