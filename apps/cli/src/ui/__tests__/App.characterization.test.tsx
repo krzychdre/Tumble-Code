@@ -84,15 +84,17 @@ async function flush(ms = 200) {
 }
 
 function normalize(frame: string | undefined): string {
-	return stripVTControlCharacters(frame ?? "")
-		.split(WORKSPACE)
-		.join("<workspace>")
-		// figures.ts draws the bullet as ⏺ on macOS.
-		.split("⏺")
-		.join("●")
-		.split("\n")
-		.map((line) => line.trimEnd())
-		.join("\n")
+	return (
+		stripVTControlCharacters(frame ?? "")
+			.split(WORKSPACE)
+			.join("<workspace>")
+			// figures.ts draws the bullet as ⏺ on macOS.
+			.split("⏺")
+			.join("●")
+			.split("\n")
+			.map((line) => line.trimEnd())
+			.join("\n")
+	)
 }
 
 function msg(ts: number, fields: Partial<ClineMessage>): ClineMessage {
@@ -142,7 +144,6 @@ async function start(options: { nonInteractive?: boolean; prompt?: string } = {}
 		initialPrompt: options.prompt ?? "Say hi",
 		version: "0.0.0-test",
 		mode: "code",
-		user: null,
 		provider: "anthropic",
 		model: "claude-test",
 		workspacePath: WORKSPACE,
@@ -252,10 +253,7 @@ describe("App characterization (recorded message sequences)", () => {
 			"answer partial 3 (two lines)",
 			updated(say(1002, "text", "Hello, world!\n\nSecond line is", true)),
 		)
-		await h.emit(
-			"answer final",
-			updated(say(1002, "text", "Hello, world!\n\nSecond line is here.", false)),
-		)
+		await h.emit("answer final", updated(say(1002, "text", "Hello, world!\n\nSecond line is here.", false)))
 
 		expect(render_(h.frames)).toMatchSnapshot()
 		h.unmount()
@@ -267,10 +265,7 @@ describe("App characterization (recorded message sequences)", () => {
 		await h.emit("prompt echo", state([PROMPT_ECHO]))
 		await h.emit("request started", updated(REQUEST))
 		await h.emit("reasoning partial", updated(say(1002, "reasoning", "The user wants", true)))
-		await h.emit(
-			"reasoning final",
-			updated(say(1002, "reasoning", "The user wants a greeting.", false)),
-		)
+		await h.emit("reasoning final", updated(say(1002, "reasoning", "The user wants a greeting.", false)))
 		await h.emit("answer partial", updated(say(1003, "text", "Hi", true)))
 		await h.emit("answer final", updated(say(1003, "text", "Hi there!", false)))
 
@@ -323,7 +318,11 @@ describe("App characterization (recorded message sequences)", () => {
 		await h.emit(
 			"artifact read",
 			updated(
-				say(1002, "tool", JSON.stringify({ tool: "readArtifact", readStart: 0, readEnd: 1024, totalBytes: 4096 })),
+				say(
+					1002,
+					"tool",
+					JSON.stringify({ tool: "readArtifact", readStart: 0, readEnd: 1024, totalBytes: 4096 }),
+				),
 			),
 		)
 		await h.emit(
@@ -352,10 +351,7 @@ describe("App characterization (recorded message sequences)", () => {
 
 		await h.emit("output chunk", updated(say(1003, "command_output", "a.txt\n", true)))
 		await h.emit("output keep-running ask", updated(ask(1004, "command_output", "")))
-		await h.emit(
-			"output complete (new ts)",
-			updated(say(1005, "command_output", "a.txt\nb.txt\nc.txt\n", false)),
-		)
+		await h.emit("output complete (new ts)", updated(say(1005, "command_output", "a.txt\nb.txt\nc.txt\n", false)))
 		await h.emit("next request", updated(say(1006, "api_req_started", "{}")))
 		await h.emit("answer", updated(say(1007, "text", "Three files.", false)))
 

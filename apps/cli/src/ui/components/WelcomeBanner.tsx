@@ -7,8 +7,6 @@ import * as theme from "../theme.js"
 export interface WelcomeBannerProps {
 	/** Absolute workspace path — shortened with ~ for the home prefix */
 	workspacePath: string
-	/** Logged-in user, if any — renders a "Welcome back, {name}" line */
-	user?: { name?: string } | null
 	/** Provider id (e.g. "openai") */
 	provider: string
 	/** Model id (e.g. "gpt-5") */
@@ -49,7 +47,6 @@ function shortenPath(p: string): string {
  */
 function WelcomeBanner({
 	workspacePath,
-	user,
 	provider,
 	model,
 	mode,
@@ -65,7 +62,6 @@ function WelcomeBanner({
 				<Text dimColor>v{version}</Text>
 			</Box>
 			<Box paddingLeft={2} flexDirection="column">
-				{user?.name && <Text dimColor>Welcome back, {user.name}</Text>}
 				<Text dimColor>cwd: {shortened}</Text>
 				<Text dimColor>
 					{provider} · {model}

@@ -33,5 +33,3 @@ export const ASCII_ROO = `  _,'   ___
       ,/'     \`\\_,`
 
 export const AUTH_BASE_URL = process.env.ROO_AUTH_BASE_URL ?? "http://localhost:3000"
-
-export const SDK_BASE_URL = process.env.ROO_SDK_BASE_URL ?? "http://localhost:3001"

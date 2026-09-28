@@ -542,7 +542,6 @@ io-intelligence) are rejected with a clear error.
 | Variable            | Description                                                                          |
 | ------------------- | ------------------------------------------------------------------------------------ |
 | `ROO_AUTH_BASE_URL` | Web app that `tumble auth login` signs in through (default: `http://localhost:3000`) |
-| `ROO_SDK_BASE_URL`  | Cloud API the CLI talks to (default: `http://localhost:3001`)                        |
 
 ## Architecture
 
@@ -599,10 +598,10 @@ pnpm check-types
 pnpm lint
 ```
 
-The `dev:local` script points the CLI at a self-hosted cloud stack on this machine (`ROO_AUTH_BASE_URL=http://localhost:3000`, `ROO_SDK_BASE_URL=http://localhost:3001`, `ROO_CODE_PROVIDER_URL=http://localhost:8080/proxy`). To use another deployment, set the same variables before `pnpm dev`:
+The `dev:local` script points the CLI at a self-hosted cloud stack on this machine (`ROO_AUTH_BASE_URL=http://localhost:3000`, `ROO_CODE_PROVIDER_URL=http://localhost:8080/proxy`). To use another deployment, set the same variables before `pnpm dev`:
 
 ```bash
-ROO_AUTH_BASE_URL=https://auth.example.com ROO_SDK_BASE_URL=https://api.example.com pnpm dev --print "Hello"
+ROO_AUTH_BASE_URL=https://auth.example.com pnpm dev --print "Hello"
 ```
 
 ## Releasing

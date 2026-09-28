@@ -48,7 +48,6 @@ function createTestHost({
 }: Partial<ExtensionHostOptions> = {}): ExtensionHost {
 	return new ExtensionHost({
 		mode,
-		user: null,
 		provider,
 		model,
 		workspacePath: "/test/workspace",
@@ -131,7 +130,6 @@ describe("ExtensionHost", () => {
 				mode: "code",
 				workspacePath: "/my/workspace",
 				extensionPath: "/my/extension",
-				user: null,
 				apiKey: "test-key",
 				provider: "openrouter",
 				model: "test-model",

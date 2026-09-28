@@ -114,7 +114,6 @@ async function createListHost(options: BaseListOptions, hostOptions: ListHostOpt
 	const extensionHostOptions: ExtensionHostOptions = {
 		mode: "code",
 		reasoningEffort: undefined,
-		user: null,
 		provider: "anthropic",
 		model: getProviderDefaultModelId("anthropic"),
 		apiKey,
