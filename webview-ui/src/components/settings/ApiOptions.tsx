@@ -1,7 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { convertHeadersToObject } from "./utils/headers"
 import { useDebounce } from "react-use"
-import { ExternalLinkIcon } from "@radix-ui/react-icons"
 
 import {
 	type ProviderName,
@@ -63,7 +62,7 @@ import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
 import { type SetApiConfigurationField, useProviderField } from "./providers/shared"
 import { buildDocLink } from "@src/utils/docLinks"
-import { BookOpenText } from "lucide-react"
+import { BookOpenText, ExternalLink } from "lucide-react"
 
 export interface ApiOptionsProps {
 	uriScheme: string | undefined
@@ -488,7 +487,7 @@ const ApiOptions = ({
 													{t("settings:providers.openRouter.providerRouting.title")}
 												</label>
 												<a href={`https://openrouter.ai/${selectedModelId}/providers`}>
-													<ExternalLinkIcon className="w-4 h-4" />
+													<ExternalLink className="w-4 h-4" />
 												</a>
 											</div>
 											<Select

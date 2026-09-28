@@ -110,6 +110,28 @@ describe("CheckpointSaved popover visibility", () => {
 		})
 	})
 
+	it("shows a check glyph on confirm and a cross glyph on cancel in the confirm state", async () => {
+		const { getByTestId, container } = render(<CheckpointSaved {...baseProps} />)
+		const getParentDiv = () =>
+			container.querySelector("[class*='flex items-center justify-between']") as HTMLElement
+
+		fireEvent.mouseEnter(getParentDiv())
+		await waitForOpenHandler()
+		lastOnOpenChange?.(true)
+
+		await userEvent.click(await waitFor(() => getByTestId("restore-files-and-task-btn")))
+
+		const confirm = getByTestId("confirm-restore-btn")
+		expect(confirm.querySelectorAll("svg")).toHaveLength(1)
+		expect(confirm.textContent).toContain("chat:checkpoint.menu.confirm")
+
+		const cancel = screen.getByText("chat:checkpoint.menu.cancel").closest("button") as HTMLElement
+		expect(cancel.querySelectorAll("svg")).toHaveLength(1)
+		// Glyph first, label second.
+		expect(confirm.querySelector("svg")?.nextElementSibling?.textContent).toBe("chat:checkpoint.menu.confirm")
+		expect(cancel.querySelector("svg")?.nextElementSibling?.textContent).toBe("chat:checkpoint.menu.cancel")
+	})
+
 	it("closes popover after preview and after confirm restore", async () => {
 		const { getByTestId, container } = render(<CheckpointSaved {...baseProps} />)
 

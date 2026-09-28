@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons"
+import { Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -25,7 +25,7 @@ const CommandInput = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	// eslint-disable-next-line react/no-unknown-property
 	<div className="flex items-center border-b border-vscode-dropdown-border px-3" cmdk-input-wrapper="">
-		<MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+		<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
 		<CommandPrimitive.Input
 			ref={ref}
 			className={cn(
