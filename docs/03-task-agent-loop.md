@@ -22,21 +22,23 @@ graph TD
   T --> TT[TaskTokenTracking<br/>tokens, cost, tool usage]
 ```
 
-| File                                                         | Responsibility                                                                |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `TaskApiLoop.ts`                                             | The turn loop, one request cycle, the stream loop, error dispatch             |
-| `TaskStreamProcessor.ts`                                     | Turns stream chunks into `say` rows and partial tool blocks; saves the answer |
-| `TaskContextManager.ts`                                      | Automatic and manual condensing, context-window-exceeded recovery             |
-| `TaskLifecycle.ts`                                           | Mode and profile init, start, abort ordering, dispose, memory writers         |
-| `TaskMessageLog.ts`                                          | Reads and writes `api_conversation_history.json` and `ui_messages.json`       |
-| `TaskAskSay.ts`                                              | `ask` (with auto-approval), `say`, handling of the user's answer              |
-| `TaskResumption.ts`                                          | Resuming a task from disk, cleaning stale partial rows                        |
-| `ApiRequestBuilder.ts`                                       | System prompt, tool array, history cleaned for the provider                   |
-| `RetryHandler.ts`                                            | Exponential backoff with countdown rows, provider and global rate limits      |
-| `TaskSubtasks.ts`                                            | `startSubtask`, `resumeAfterDelegation`                                       |
-| `TaskTokenTracking.ts`                                       | Token, cost and tool-usage counters, queued user messages                     |
-| `build-tools.ts`, `deferred-tools*.ts`                       | Which tools the model sees; tools loaded on demand                            |
-| `validateToolResultIds.ts`, `mergeConsecutiveApiMessages.ts` | History fixes the providers require                                           |
+| File                                                         | Responsibility                                                                                                       |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `TaskApiLoop.ts`                                             | The turn loop, one request cycle, the stream loop, error dispatch                                                    |
+| `TaskStreamProcessor.ts`                                     | Turns stream chunks into `say` rows; the chunk dispatcher and coordinator                                            |
+| `StreamToolCallHandler.ts`                                   | Tool-call stream events → partial/final tool_use blocks (parser, dedup guard, eager checkpoint, orphaned-end repair) |
+| `AssistantMessageAssembler.ts`                               | Builds and saves the assistant message for API history (tool_use dedup, new_task isolation)                          |
+| `TaskContextManager.ts`                                      | Automatic and manual condensing, context-window-exceeded recovery                                                    |
+| `TaskLifecycle.ts`                                           | Mode and profile init, start, abort ordering, dispose, memory writers                                                |
+| `TaskMessageLog.ts`                                          | Reads and writes `api_conversation_history.json` and `ui_messages.json`                                              |
+| `TaskAskSay.ts`                                              | `ask` (with auto-approval), `say`, handling of the user's answer                                                     |
+| `TaskResumption.ts`                                          | Resuming a task from disk, cleaning stale partial rows                                                               |
+| `ApiRequestBuilder.ts`                                       | System prompt, tool array, history cleaned for the provider                                                          |
+| `RetryHandler.ts`                                            | Exponential backoff with countdown rows, provider and global rate limits                                             |
+| `TaskSubtasks.ts`                                            | `startSubtask`, `resumeAfterDelegation`                                                                              |
+| `TaskTokenTracking.ts`                                       | Token, cost and tool-usage counters, queued user messages                                                            |
+| `build-tools.ts`, `deferred-tools*.ts`                       | Which tools the model sees; tools loaded on demand                                                                   |
+| `validateToolResultIds.ts`, `mergeConsecutiveApiMessages.ts` | History fixes the providers require                                                                                  |
 
 ## One turn
 
