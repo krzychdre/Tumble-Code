@@ -48,6 +48,7 @@ import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
 import { setupRemoteControlBridge } from "./extension/bridge"
+import { startCloudInBackground } from "./extension/cloudStartup"
 
 import {
 	handleUri,
@@ -279,47 +280,60 @@ export async function activate(context: vscode.ExtensionContext) {
 		postStateListener()
 	}
 
-	// Initialize cloud service. A broken cloud backend (bad URL, corrupted
-	// credentials, Authentik down) must NEVER take down the whole extension —
-	// wrap the entire cloud-init block so activation continues in local-only mode.
-	try {
-		cloudService = await CloudService.createInstance(context, cloudLogger, {
-			"auth-state-changed": authStateChangedHandler,
-			"settings-updated": settingsUpdatedHandler,
-			"user-info": userInfoHandler,
-		})
+	// Start the cloud service in the background (P9). Activation used to await
+	// it here, before the webview and the commands were registered, so a slow
+	// start (the OS keyring read in the auth service) delayed every command.
+	// A broken cloud backend (bad URL, corrupted credentials, Authentik down)
+	// must NEVER take down the whole extension either: every failure below is
+	// logged and activation continues in local-only mode.
+	const cloudStart = startCloudInBackground(
+		async () => {
+			try {
+				cloudService = await CloudService.createInstance(context, cloudLogger, {
+					"auth-state-changed": authStateChangedHandler,
+					"settings-updated": settingsUpdatedHandler,
+					"user-info": userInfoHandler,
+				})
 
-		// Telemetry registration fails softly — a broken telemetry client must
-		// not disable the rest of the cloud layer (pre-existing semantics).
-		try {
-			if (cloudService.telemetryClient) {
-				TelemetryService.instance.register(cloudService.telemetryClient)
+				// Telemetry registration fails softly - a broken telemetry client must
+				// not disable the rest of the cloud layer (pre-existing semantics).
+				try {
+					if (cloudService.telemetryClient) {
+						TelemetryService.instance.register(cloudService.telemetryClient)
+					}
+				} catch (error) {
+					outputChannel.appendLine(
+						`[CloudService] Failed to register TelemetryClient: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				}
+
+				// Add to subscriptions for proper cleanup on deactivate.
+				context.subscriptions.push(cloudService)
+			} catch (error) {
+				cloudService = undefined
+				outputChannel.appendLine(
+					`[CloudService] initialization failed - continuing in local-only mode: ${error instanceof Error ? error.message : String(error)}`,
+				)
 			}
-		} catch (error) {
-			outputChannel.appendLine(
-				`[CloudService] Failed to register TelemetryClient: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
 
-		// Add to subscriptions for proper cleanup on deactivate.
-		context.subscriptions.push(cloudService)
-	} catch (error) {
-		cloudService = undefined
-		outputChannel.appendLine(
-			`[CloudService] initialization failed — continuing in local-only mode: ${error instanceof Error ? error.message : String(error)}`,
-		)
-	}
+			// Trigger initial cloud profile sync now that CloudService is ready.
+			// Safe to call even when cloudService is undefined - the provider internally
+			// guards with CloudService.hasInstance().
+			try {
+				await provider.initializeCloudProfileSyncWhenReady()
+			} catch (error) {
+				outputChannel.appendLine(
+					`[CloudService] Failed to initialize cloud profile sync: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
 
-	// Trigger initial cloud profile sync now that CloudService is ready.
-	// Safe to call even when cloudService is undefined — the provider internally
-	// guards with CloudService.hasInstance().
-	try {
-		await provider.initializeCloudProfileSyncWhenReady()
-	} catch (error) {
-		outputChannel.appendLine(
-			`[CloudService] Failed to initialize cloud profile sync: ${error instanceof Error ? error.message : String(error)}`,
-		)
-	}
+			// The sidebar may have been shown while the cloud was starting, with
+			// signed-out cloud facts: push the real ones (this also runs the MDM
+			// redirect that was held back while the start was pending).
+			await postStateListener()
+		},
+		(message) => outputChannel.appendLine(message),
+	)
 
 	// Finish initializing the provider.
 	TelemetryService.instance.setProvider(provider)
@@ -329,6 +343,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			webviewOptions: { retainContextWhenHidden: true },
 		}),
 	)
+
+	registerCommands({ context, outputChannel, provider })
 
 	// Check for worktree auto-open path (set when switching to a worktree)
 	await checkWorktreeAutoOpen(context, outputChannel)
@@ -345,8 +361,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			`[AutoImport] Error during auto-import: ${error instanceof Error ? error.message : String(error)}`,
 		)
 	}
-
-	registerCommands({ context, outputChannel, provider })
 
 	/**
 	 * We use the text document content provider API to show the left side for diff
@@ -450,18 +464,22 @@ export async function activate(context: vscode.ExtensionContext) {
 	const api = new API(outputChannel, provider)
 
 	// Wire the opt-in live remote-control bridge (extension ↔ backend ↔ browser).
-	try {
-		setupRemoteControlBridge({
-			context,
-			api,
-			provider,
-			log: (message: string) => outputChannel.appendLine(message),
-		})
-	} catch (error) {
-		outputChannel.appendLine(
-			`[bridge] Failed to set up remote control bridge: ${error instanceof Error ? error.message : String(error)}`,
-		)
-	}
+	// It follows the cloud session, so it is set up once the cloud start has
+	// settled (the start never rejects; a failed start leaves it idle).
+	void cloudStart.then(() => {
+		try {
+			setupRemoteControlBridge({
+				context,
+				api,
+				provider,
+				log: (message: string) => outputChannel.appendLine(message),
+			})
+		} catch (error) {
+			outputChannel.appendLine(
+				`[bridge] Failed to set up remote control bridge: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+	})
 
 	return api
 }

@@ -429,8 +429,13 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 		}
 	}
 
+	/**
+	 * Signed in and ready. False (not a throw) while createInstance is still
+	 * initializing: extension activation starts the cloud in the background,
+	 * so a task can ask before the start has finished.
+	 */
 	static isEnabled(): boolean {
-		return !!this._instance?.isAuthenticated()
+		return this.hasInstance() && this._instance!.isAuthenticated()
 	}
 
 	/**

@@ -1093,6 +1093,33 @@ describe("ClineProvider", () => {
 			expect(postMessageSpy.mock.calls[0][0]).toEqual({ type: "action", action: "cloudButtonClicked" })
 		})
 
+		it("holds the redirect back while the cloud still starts in the background (P9)", async () => {
+			const { startCloudInBackground } = await import("../../../extension/cloudStartup")
+			;(provider as any).mdmService = mdmServiceStub(true, false)
+			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+			let finishStart: () => void = () => {}
+			const done = startCloudInBackground(
+				() =>
+					new Promise<void>((resolve) => {
+						finishStart = resolve
+					}),
+				vi.fn(),
+			)
+
+			try {
+				await (provider as any).statePusher.postMdmRedirectToWebview()
+				expect(postMessageSpy).not.toHaveBeenCalled()
+			} finally {
+				finishStart()
+				await done
+			}
+
+			// Settled and still non-compliant: the redirect goes out.
+			await (provider as any).statePusher.postMdmRedirectToWebview()
+			expect(postMessageSpy).toHaveBeenCalledWith({ type: "action", action: "cloudButtonClicked" })
+		})
+
 		it("posts nothing without an MDM service", async () => {
 			;(provider as any).mdmService = undefined
 			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
