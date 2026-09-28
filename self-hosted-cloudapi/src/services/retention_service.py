@@ -4,7 +4,9 @@ Design rule for this module: **nothing deletes without being able to say what it
 is about to delete.** Every entry point comes in a pair — ``plan_*`` decides and
 reports, ``apply_*`` executes exactly that plan. The settings page runs the plan
 on every page load and shows it; the sweep runs the plan and then acts on it.
-The two can never disagree, because they are the same function.
+The two can never disagree, because they are the same function. The page skips
+only the byte-size sums (``measure_size=False``), which read every payload and
+cost ~20x the rest of the plan; it measures them when asked.
 
 Two rules select tasks, and a task goes if *either* matches:
 
@@ -29,7 +31,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
@@ -63,6 +65,9 @@ class RetentionPlan:
     message_bytes: int = 0
     event_bytes: int = 0
     exempt_shared: int = 0
+    # False when the plan was made with measure_size=False: the byte fields
+    # are then 0 because nobody summed them, not because nothing would go.
+    size_measured: bool = True
 
     @property
     def task_count(self) -> int:
@@ -132,15 +137,22 @@ async def plan_sweep(
     user_id: str,
     policy: RetentionPolicy,
     now: Optional[datetime] = None,
+    measure_size: bool = True,
 ) -> RetentionPlan:
     """Work out what applying ``policy`` would delete. Touches nothing.
 
     Runs whether or not the policy is enabled: the settings page shows the
     preview *before* you switch it on, which is the only point at which the
     preview is genuinely useful.
+
+    ``measure_size=False`` counts the messages and events but does not sum
+    their payload lengths. The sums read every stored conversation and event
+    body (0.85 s of 0.9 s on the live corpus with everything selected, against
+    40 ms for the counts), so the settings page leaves them to an explicit
+    request. What is selected is identical either way.
     """
     now = now or datetime.now(timezone.utc)
-    plan = RetentionPlan()
+    plan = RetentionPlan(size_measured=measure_size)
 
     shared_ids: set[str] = set()
     if policy.keep_shared:
@@ -184,24 +196,31 @@ async def plan_sweep(
 
     if plan.task_ids:
         counted = await db.execute(
-            select(
-                func.count(TaskMessage.id),
-                func.coalesce(func.sum(func.length(TaskMessage.message_data)), 0),
-            ).where(TaskMessage.task_id.in_(plan.task_ids))
+            _count_and_size(TaskMessage.id, TaskMessage.message_data, measure_size)
+            .where(TaskMessage.task_id.in_(plan.task_ids))
         )
         plan.message_count, plan.message_bytes = counted.one()
 
     if policy.purge_telemetry and policy.telemetry_max_age_days:
         event_cutoff = now - timedelta(days=policy.telemetry_max_age_days)
         counted = await db.execute(
-            select(
-                func.count(TelemetryEvent.id),
-                func.coalesce(func.sum(func.length(TelemetryEvent.properties)), 0),
-            ).where(*_telemetry_filters(user_id, event_cutoff))
+            _count_and_size(TelemetryEvent.id, TelemetryEvent.properties, measure_size)
+            .where(*_telemetry_filters(user_id, event_cutoff))
         )
         plan.event_count, plan.event_bytes = counted.one()
 
     return plan
+
+
+def _count_and_size(id_column, payload_column, measure_size: bool):
+    """``SELECT count(id), <bytes>``: the summed payload length, or a literal
+    0 when the size is not wanted (the count alone never reads a payload)."""
+    size = (
+        func.coalesce(func.sum(func.length(payload_column)), 0)
+        if measure_size
+        else literal(0)
+    )
+    return select(func.count(id_column), size)
 
 
 def _telemetry_filters(user_id: str, cutoff: datetime):

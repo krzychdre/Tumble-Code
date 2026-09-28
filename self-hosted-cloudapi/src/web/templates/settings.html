@@ -97,7 +97,12 @@
       <span class="signal-value">{{ plan.event_count }}</span><span class="signal-label">Telemetry events</span>
     </div>
     <div class="signal">
+      {% if plan.size is not none %}
       <span class="signal-value">{{ plan.size }}</span><span class="signal-label">Freed (approx.)</span>
+      {% else %}
+      {# Summing the size reads every selected payload, so it is on demand. #}
+      <a class="signal-value" href="/app/settings?size=1">Calculate</a><span class="signal-label">Freed (approx.)</span>
+      {% endif %}
     </div>
   </div>
   <p class="field-hint">

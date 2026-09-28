@@ -130,6 +130,7 @@ def test_the_retention_preview_states_its_size():
         total_bytes = 3 * 1024 * 1024 + 512 * 1024
         is_empty = False
         reasons = {}
+        size_measured = True
 
     assert _plan_view(Plan())["size"] == "3.5 MB"
 
