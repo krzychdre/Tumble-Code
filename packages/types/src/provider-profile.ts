@@ -12,25 +12,6 @@ import { SECRET_STATE_KEYS } from "./global-settings.js"
 
 export const PROVIDER_PROFILES_SCHEMA_VERSION = 2 as const
 
-/**
- * Done-record of the one-shot provider-profile migrations. Flags of deleted
- * migrations stay here as optional keys because the object is strict and
- * stored envelopes still carry them (all five below were retired on
- * 2026-09-28, see RETIRED_PROVIDER_PROFILE_MIGRATION_FLAGS in
- * src/core/config/migrations/provider-profiles/registry.ts).
- */
-export const providerProfileMigrationsSchema = z
-	.object({
-		rateLimitSecondsMigrated: z.boolean().optional(),
-		openAiHeadersMigrated: z.boolean().optional(),
-		consecutiveMistakeLimitMigrated: z.boolean().optional(),
-		todoListEnabledMigrated: z.boolean().optional(),
-		claudeCodeLegacySettingsMigrated: z.boolean().optional(),
-	})
-	.strict()
-
-export type ProviderProfileMigrations = z.infer<typeof providerProfileMigrationsSchema>
-
 export const knownPersistedProviderProfileSchema = z
 	.object({ id: z.string().optional() })
 	.merge(narrowedProviderSettingsSchema)
@@ -53,7 +34,6 @@ export const providerProfilesDataSchema = z
 		apiConfigs: z.record(z.string(), persistedProviderProfileSchema),
 		modeApiConfigs: z.record(z.string(), z.string()).optional(),
 		cloudProfileIds: z.array(z.string()).optional(),
-		migrations: providerProfileMigrationsSchema.optional(),
 	})
 	.passthrough()
 
@@ -68,42 +48,26 @@ export const providerProfilesEnvelopeSchema = z
 
 export type ProviderProfilesEnvelope = z.infer<typeof providerProfilesEnvelopeSchema>
 
-/** Stage 6's flat payload. It is accepted only by the sequential v1 -> v2 migration. */
-export const legacyFlatProviderProfileSchema = z.object({ id: z.string().optional() }).passthrough()
-export type LegacyFlatProviderProfile = ProviderSettingsWithId & Record<string, unknown>
-
-const legacyProviderProfilesDataSchema = z
-	.object({
-		currentApiConfigName: z.string(),
-		apiConfigs: z.record(z.string(), legacyFlatProviderProfileSchema),
-		modeApiConfigs: z.record(z.string(), z.string()).optional(),
-		cloudProfileIds: z.array(z.string()).optional(),
-		migrations: providerProfileMigrationsSchema.optional(),
-	})
-	.passthrough()
-
-export type LegacyProviderProfiles = z.infer<typeof legacyProviderProfilesDataSchema>
-
-const providerProfilesEnvelopeHeaderSchema = z
-	.object({ schemaVersion: z.number().int().nonnegative(), data: z.unknown() })
-	.passthrough()
-
+/**
+ * Thrown for stored or imported provider profiles that are not the current envelope
+ * (`{ schemaVersion: 2, data }`). Older shapes are no longer migrated.
+ */
 export class UnsupportedProviderProfilesVersionError extends Error {
 	readonly code = "UNSUPPORTED_PROVIDER_PROFILES_VERSION"
 
 	constructor(
-		readonly schemaVersion: number,
+		readonly schemaVersion: unknown,
 		readonly supportedSchemaVersion = PROVIDER_PROFILES_SCHEMA_VERSION,
 	) {
 		super(
-			`Provider profile schema version ${schemaVersion} is newer than supported version ${supportedSchemaVersion}`,
+			`Provider profiles have schema version ${schemaVersion === undefined ? "(none)" : String(schemaVersion)}, ` +
+				`only version ${supportedSchemaVersion} is supported. Profiles saved or exported by an older version ` +
+				`are not converted: reset the settings (Settings > About > Reset) and recreate the profiles, ` +
+				`or import a file exported by this version.`,
 		)
 		this.name = "UnsupportedProviderProfilesVersionError"
 	}
 }
-
-type VersionedProviderProfiles = { schemaVersion: number; data: unknown; [key: string]: unknown }
-type ProviderProfilesMigration = (envelope: VersionedProviderProfiles) => VersionedProviderProfiles
 
 const sharedFieldNames = [
 	"includeMaxTokens",
@@ -142,7 +106,7 @@ const pickPresent = (value: Record<string, unknown>, keys: readonly PropertyKey[
 }
 
 /**
- * Strip every SECRET_STATE_KEYS entry from a flat legacy profile so opaque
+ * Strip every SECRET_STATE_KEYS entry from a flat profile so opaque
  * tombstones never carry plaintext secrets to disk. Known-provider configs
  * already lose secrets via `pickPresent(providerFieldOwnership[...])` because
  * the ownership map deliberately excludes secret keys, so this is only
@@ -156,7 +120,11 @@ const stripSecretStateKeys = <T extends Record<string, unknown>>(profile: T): T 
 	return stripped
 }
 
-export const migrateLegacyFlatProviderProfile = (profile: Record<string, unknown>): PersistedProviderProfile => {
+/**
+ * The stored (v2) form of a flat profile, the shape the running extension uses. Credentials are
+ * not part of it: they live in the profile secret store.
+ */
+const toPersistedProviderProfile = (profile: Record<string, unknown>): PersistedProviderProfile => {
 	const providerId = profile.apiProvider
 	const classification = classifyProvider(providerId)
 	if (classification !== "known-active" && classification !== "known-hidden") {
@@ -181,28 +149,6 @@ export const migrateLegacyFlatProviderProfile = (profile: Record<string, unknown
 	} as PersistedProviderProfile
 }
 
-/**
- * Detect whether a flat (pre-v2) profile carries inline SECRET_STATE_KEYS.
- * Used by {@link ProviderSettingsManager.initialize} to seed
- * `provider_profile_secrets_v2` on first-run migration so legacy API keys are
- * not silently dropped when the v2 envelope rewrites the on-disk store.
- *
- * Returns the matched secret keys (with their values) so the caller can route
- * them straight into `updateProfileSecrets`. Known-provider secrets (e.g.
- * `apiKey`, `openRouterApiKey`) and opaque-profile secrets are both captured
- * because opaque tombstones no longer persist them inline after C3.
- */
-export const extractLegacyInlineSecrets = (profile: Record<string, unknown>): Record<string, string> => {
-	const secrets: Record<string, string> = {}
-	for (const key of SECRET_STATE_KEYS) {
-		const value = profile[key]
-		if (typeof value === "string" && value.length > 0) {
-			secrets[key] = value
-		}
-	}
-	return secrets
-}
-
 export const createKnownPersistedProviderProfile = (profile: ProviderSettingsWithId): PersistedProviderProfile => {
 	const parsed = providerSettingsSchema.passthrough().parse(profile)
 	const classification = classifyProvider(parsed.apiProvider)
@@ -212,66 +158,20 @@ export const createKnownPersistedProviderProfile = (profile: ProviderSettingsWit
 		)
 	}
 
-	return knownPersistedProviderProfileSchema.parse(migrateLegacyFlatProviderProfile(profile))
-}
-
-const migrateLegacyToV1: ProviderProfilesMigration = ({ data, ...envelope }) => ({
-	...envelope,
-	schemaVersion: 1,
-	data: legacyProviderProfilesDataSchema.parse(data),
-})
-
-export const migrateProviderProfilesV1ToV2: ProviderProfilesMigration = ({ data, ...envelope }) => {
-	const legacy = legacyProviderProfilesDataSchema.parse(data)
-	return {
-		...envelope,
-		schemaVersion: 2,
-		data: {
-			...legacy,
-			apiConfigs: Object.fromEntries(
-				Object.entries(legacy.apiConfigs).map(([name, profile]) => [
-					name,
-					migrateLegacyFlatProviderProfile(profile),
-				]),
-			),
-		},
-	}
-}
-
-const providerProfilesMigrations: Readonly<Record<number, ProviderProfilesMigration>> = {
-	0: migrateLegacyToV1,
-	1: migrateProviderProfilesV1ToV2,
+	return knownPersistedProviderProfileSchema.parse(toPersistedProviderProfile(profile))
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value)
 
-export const migrateProviderProfiles = (input: unknown): ProviderProfilesEnvelope => {
-	const initialEnvelope: VersionedProviderProfiles =
-		isRecord(input) && "schemaVersion" in input
-			? (providerProfilesEnvelopeHeaderSchema.parse(input) as VersionedProviderProfiles)
-			: { schemaVersion: 0, data: legacyProviderProfilesDataSchema.parse(input) }
-
-	if (initialEnvelope.schemaVersion > PROVIDER_PROFILES_SCHEMA_VERSION) {
-		throw new UnsupportedProviderProfilesVersionError(initialEnvelope.schemaVersion)
+/** The current envelope, validated. Anything else throws {@link UnsupportedProviderProfilesVersionError}. */
+export const parseProviderProfilesEnvelope = (input: unknown): ProviderProfilesEnvelope => {
+	const schemaVersion = isRecord(input) ? input.schemaVersion : undefined
+	if (schemaVersion !== PROVIDER_PROFILES_SCHEMA_VERSION) {
+		throw new UnsupportedProviderProfilesVersionError(schemaVersion)
 	}
 
-	let migratedEnvelope = structuredClone(initialEnvelope)
-	while (migratedEnvelope.schemaVersion < PROVIDER_PROFILES_SCHEMA_VERSION) {
-		const migration = providerProfilesMigrations[migratedEnvelope.schemaVersion]
-		if (!migration) {
-			throw new Error(`Missing provider profile migration for schema version ${migratedEnvelope.schemaVersion}`)
-		}
-		const nextEnvelope = migration(migratedEnvelope)
-		if (nextEnvelope.schemaVersion !== migratedEnvelope.schemaVersion + 1) {
-			throw new Error(
-				`Provider profile migration ${migratedEnvelope.schemaVersion} must advance exactly one schema version`,
-			)
-		}
-		migratedEnvelope = nextEnvelope
-	}
-
-	return providerProfilesEnvelopeSchema.parse(migratedEnvelope)
+	return providerProfilesEnvelopeSchema.parse(input)
 }
 
 export const createProviderProfilesEnvelope = (data: ProviderProfilesData): ProviderProfilesEnvelope =>

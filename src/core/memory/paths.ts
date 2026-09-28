@@ -119,7 +119,15 @@ export function isAutoMemoryEnabled(): boolean {
 export function getMemoryBaseDir(): string {
 	const state = requireState()
 	const override = state.getConfig().autoMemoryDirectory
-	if (override && override.trim()) return validateMemoryPath(override)
+	if (override && override.trim()) {
+		// New values are validated on write (ContextProxy); a stored one that no
+		// longer validates (e.g. a removed volume) falls back to the default.
+		try {
+			return validateMemoryPath(override)
+		} catch (error) {
+			logger.warn(`[memory] ignoring invalid autoMemoryDirectory "${override}": ${error}`)
+		}
+	}
 	return path.join(state.globalStoragePath, "memory")
 }
 

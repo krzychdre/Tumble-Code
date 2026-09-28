@@ -2,65 +2,36 @@ import {
 	PROVIDER_PROFILES_SCHEMA_VERSION,
 	UnsupportedProviderProfilesVersionError,
 	createKnownPersistedProviderProfile,
-	extractLegacyInlineSecrets,
-	migrateProviderProfiles,
+	parseProviderProfilesEnvelope,
 	providerFieldOwnership,
 } from "../provider-profile.js"
 import { PROVIDER_SETTINGS_KEYS } from "../provider-settings.js"
 import { SECRET_STATE_KEYS } from "../global-settings.js"
 
-describe("provider profile persistence", () => {
-	const legacyProfiles = {
-		currentApiConfigName: "future",
-		apiConfigs: {
-			future: {
-				id: "future-id",
-				apiProvider: "future-provider",
-				futureApiKey: "preserve-me",
-				futureSettings: { nested: true },
-			},
-			retired: {
-				id: "retired-id",
-				apiProvider: "groq",
-				groqApiKey: "preserve-me-too",
-			},
-		},
-		futureTopLevelField: { preserved: true },
-	}
-
-	it("migrates an unversioned legacy shape into lossless opaque tombstones", () => {
-		const migrated = migrateProviderProfiles(legacyProfiles)
-
-		expect(migrated.schemaVersion).toBe(PROVIDER_PROFILES_SCHEMA_VERSION)
-		expect(migrated.data.futureTopLevelField).toEqual(legacyProfiles.futureTopLevelField)
-		for (const name of ["future", "retired"] as const) {
-			const profile = migrated.data.apiConfigs[name]
-			expect(profile).toBeDefined()
-			if (!profile) throw new Error(`Missing ${name} profile`)
-			expect(profile.provider).toEqual({
-				providerId: legacyProfiles.apiConfigs[name].apiProvider,
-				opaqueLegacyPayload: legacyProfiles.apiConfigs[name],
-			})
-		}
+describe("provider profile envelope", () => {
+	it("rejects an unversioned record with UnsupportedProviderProfilesVersionError", () => {
+		const unversioned = { currentApiConfigName: "a", apiConfigs: { a: { apiProvider: "openai" } } }
+		expect(() => parseProviderProfilesEnvelope(unversioned)).toThrow(UnsupportedProviderProfilesVersionError)
 	})
 
-	it("is deterministic, idempotent, and does not mutate input", () => {
-		const input = migrateProviderProfiles(legacyProfiles)
-		const snapshot = structuredClone(input)
-		const first = migrateProviderProfiles(input)
-		const second = migrateProviderProfiles(first)
-
-		expect(first).toEqual(second)
-		expect(input).toEqual(snapshot)
-	})
-
-	it("rejects unsupported future versions without interpreting their data", () => {
+	it("rejects other versions without interpreting their data", () => {
 		expect(() =>
-			migrateProviderProfiles({
-				schemaVersion: PROVIDER_PROFILES_SCHEMA_VERSION + 1,
-				data: legacyProfiles,
-			}),
+			parseProviderProfilesEnvelope({ schemaVersion: PROVIDER_PROFILES_SCHEMA_VERSION + 1, data: null }),
 		).toThrow(UnsupportedProviderProfilesVersionError)
+	})
+
+	it("does not mutate its input", () => {
+		const input = {
+			schemaVersion: PROVIDER_PROFILES_SCHEMA_VERSION,
+			data: {
+				currentApiConfigName: "a",
+				apiConfigs: { a: { id: "a-id", provider: { providerId: "openai", config: {} } } },
+				futureTopLevelField: { preserved: true },
+			},
+		}
+		const snapshot = structuredClone(input)
+		expect(parseProviderProfilesEnvelope(input).data.futureTopLevelField).toEqual({ preserved: true })
+		expect(input).toEqual(snapshot)
 	})
 })
 
@@ -81,16 +52,6 @@ describe("vertex JSON credentials survive a profile save", () => {
 		expect(JSON.stringify(saved)).not.toContain("service_account")
 		// ... so the secret store has to be the place that keeps it.
 		expect(SECRET_STATE_KEYS as readonly string[]).toContain("vertexJsonCredentials")
-	})
-
-	it("seeds an inline legacy vertexJsonCredentials into the secret store on migration", () => {
-		expect(
-			extractLegacyInlineSecrets({
-				apiProvider: "vertex",
-				vertexJsonCredentials: VERTEX_JSON,
-				vertexProjectId: "p",
-			}),
-		).toEqual({ vertexJsonCredentials: VERTEX_JSON })
 	})
 
 	it("keeps every provider settings field somewhere when a profile is saved", () => {
