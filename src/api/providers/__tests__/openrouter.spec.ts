@@ -65,6 +65,15 @@ vitest.mock("../fetchers/modelCache", () => ({
 				cacheReadsPrice: 0.3,
 				description: "Claude 3.7 Sonnet with thinking",
 			},
+			"google/gemini-3-pro-preview": {
+				maxTokens: 65536,
+				contextWindow: 1048576,
+				supportsImages: true,
+				supportsPromptCache: false,
+				inputPrice: 2,
+				outputPrice: 12,
+				description: "Gemini 3 Pro Preview",
+			},
 			"openai/gpt-4o": {
 				maxTokens: 16384,
 				contextWindow: 128000,
@@ -560,6 +569,64 @@ describe("OpenRouterHandler", () => {
 			expect(partialChunks).toHaveLength(1)
 			expect(finishReasonChunks).toHaveLength(1)
 			expect(finishReasonChunks[0].finishReason).toBe("tool_calls")
+		})
+	})
+
+	describe("Gemini tool calls get a skip-validation encrypted reasoning block", () => {
+		const geminiOptions: ApiHandlerOptions = { ...mockOptions, openRouterModelId: "google/gemini-3-pro-preview" }
+
+		async function sentMessages(messages: Anthropic.Messages.MessageParam[]) {
+			const handler = new OpenRouterHandler(geminiOptions)
+			const mockCreate = vitest.fn().mockResolvedValue({
+				async *[Symbol.asyncIterator]() {
+					yield { id: "test-id", choices: [{ delta: { content: "ok" } }] }
+				},
+			})
+			;(OpenAI as any).prototype.chat = { completions: { create: mockCreate } } as any
+			await handler.createMessage("test system", messages).next()
+			return mockCreate.mock.calls[0][0].messages as Array<Record<string, unknown>>
+		}
+
+		const toolTurn = (reasoningDetails: unknown[]): Anthropic.Messages.MessageParam[] => [
+			{ role: "user", content: "read it" },
+			{
+				role: "assistant",
+				content: [{ type: "tool_use", id: "call_1", name: "read_file", input: { path: "a.ts" } }],
+				reasoning_details: reasoningDetails,
+			} as Anthropic.Messages.MessageParam,
+			{ role: "user", content: [{ type: "tool_result", tool_use_id: "call_1", content: "file" }] },
+		]
+
+		it("appends one fake encrypted block keyed to the first tool call when none is present", async () => {
+			const textDetail = { type: "reasoning.text", text: "thinking", id: "call_1", format: "google-gemini-v1" }
+			const sent = await sentMessages(toolTurn([textDetail]))
+			const assistant = sent.find((m) => m.role === "assistant")
+
+			expect(assistant?.tool_calls).toEqual([
+				{
+					id: "call_1",
+					type: "function",
+					function: { name: "read_file", arguments: '{"path":"a.ts"}' },
+				},
+			])
+			expect(assistant?.reasoning_details).toEqual([
+				{ type: "reasoning.text", text: "thinking", id: "call_1", format: "google-gemini-v1", index: 0 },
+				{
+					type: "reasoning.encrypted",
+					data: "skip_thought_signature_validator",
+					id: "call_1",
+					format: "google-gemini-v1",
+					index: 0,
+				},
+			])
+		})
+
+		it("leaves the message alone when it already carries an encrypted block", async () => {
+			const encrypted = { type: "reasoning.encrypted", data: "real-signature", id: "call_1", index: 0 }
+			const sent = await sentMessages(toolTurn([encrypted]))
+			const assistant = sent.find((m) => m.role === "assistant")
+
+			expect(assistant?.reasoning_details).toEqual([encrypted])
 		})
 	})
 

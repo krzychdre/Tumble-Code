@@ -5,6 +5,7 @@ import {
 	type CreateTaskOptions,
 	type ExtensionMessage,
 	type HistoryItem,
+	type TaskProviderEvents,
 	type TodoItem,
 	RooCodeEventName,
 } from "@roo-code/types"
@@ -40,7 +41,7 @@ export interface DelegationHost {
 	createTask(text?: string, images?: string[], parentTask?: Task, options?: CreateTaskOptions): Promise<Task>
 	createTaskWithHistoryItem(item: HistoryItem, options?: { startTask?: boolean }): Promise<Task>
 	handleModeSwitch(mode: Mode): Promise<void>
-	emit(event: string | symbol, ...args: any[]): boolean
+	emit<K extends keyof TaskProviderEvents>(event: K, ...args: TaskProviderEvents[K]): boolean
 	/** Shows an organization allow-list rejection; returns whether `error` was one. */
 	showAllowListViolation(error: unknown): boolean
 }

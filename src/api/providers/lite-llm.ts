@@ -16,6 +16,22 @@ import { handleProviderError } from "./utils/error-handler"
 import { RouterProvider } from "./router-provider"
 
 /**
+ * Fields LiteLLM reads that the OpenAI SDK types do not declare: an
+ * Anthropic-style `cache_control` marker on a content part, and
+ * `provider_specific_fields` on a tool call (where the Gemini thought
+ * signature goes).
+ */
+type EphemeralCacheControl = { cache_control: { type: "ephemeral" } }
+type ToolCallWithProviderFields = OpenAI.Chat.ChatCompletionMessageToolCall & {
+	provider_specific_fields?: Record<string, unknown>
+}
+
+/** A copy of `part` with an ephemeral `cache_control` marker appended. */
+function withEphemeralCache<T extends object>(part: T): T & EphemeralCacheControl {
+	return { ...part, cache_control: { type: "ephemeral" } }
+}
+
+/**
  * LiteLLM provider handler
  *
  * This handler uses the LiteLLM API to proxy requests to various LLM providers.
@@ -86,7 +102,7 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 
 		return openAiMessages.map((msg) => {
 			if (msg.role === "assistant") {
-				const toolCalls = (msg as any).tool_calls as any[] | undefined
+				const toolCalls: ToolCallWithProviderFields[] | undefined = msg.tool_calls
 
 				// Only process if there are tool calls
 				if (toolCalls && toolCalls.length > 0) {
@@ -129,13 +145,7 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			// Create system message with cache control in the proper format
 			systemMessage = {
 				role: "system",
-				content: [
-					{
-						type: "text",
-						text: systemPrompt,
-						cache_control: { type: "ephemeral" },
-					} as any,
-				],
+				content: [withEphemeralCache({ type: "text" as const, text: systemPrompt })],
 			}
 
 			// Find the last two user messages to apply caching
@@ -153,25 +163,14 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 					if (typeof message.content === "string") {
 						return {
 							...message,
-							content: [
-								{
-									type: "text",
-									text: message.content,
-									cache_control: { type: "ephemeral" },
-								} as any,
-							],
+							content: [withEphemeralCache({ type: "text" as const, text: message.content })],
 						}
 					} else if (Array.isArray(message.content)) {
 						// Apply cache control to the last content item in the array
 						return {
 							...message,
 							content: message.content.map((content, contentIndex) =>
-								contentIndex === message.content.length - 1
-									? ({
-											...content,
-											cache_control: { type: "ephemeral" },
-										} as any)
-									: content,
+								contentIndex === message.content.length - 1 ? withEphemeralCache(content) : content,
 							),
 						}
 					}

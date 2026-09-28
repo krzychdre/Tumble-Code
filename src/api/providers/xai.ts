@@ -136,8 +136,8 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 
 		if (responseTools) {
 			requestBody.tools = responseTools
-			// Cast tool_choice since metadata uses Chat Completions types but Responses API has its own type
-			requestBody.tool_choice = (metadata?.tool_choice ?? "auto") as any
+			// Chat Completions' tool_choice shape, sent as is: requestBody is an untyped record.
+			requestBody.tool_choice = metadata?.tool_choice ?? "auto"
 			requestBody.parallel_tool_calls = metadata?.parallelToolCalls ?? true
 		}
 
@@ -152,7 +152,7 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 				{
 					...requestBody,
 					stream: true,
-				} as any,
+				},
 				// The task's signal: Stop closes the HTTP request.
 				{ signal: metadata?.signal },
 			)) as unknown as AsyncIterable<any>

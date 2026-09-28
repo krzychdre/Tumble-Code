@@ -31,6 +31,18 @@ export type ReasoningDetail = {
 }
 
 /**
+ * An assistant message as OpenRouter accepts it (used for Gemini 3, xAI and
+ * o-series round trips): the OpenAI shape plus `reasoning_details`, which the
+ * SDK type does not declare.
+ */
+export type AssistantMessageWithReasoning = OpenAI.Chat.ChatCompletionAssistantMessageParam & {
+	reasoning_details?: ReasoningDetail[]
+}
+
+/** A stored Anthropic-format message that may carry the provider's `reasoning_details`. */
+type MessageParamWithReasoning = Anthropic.Messages.MessageParam & { reasoning_details?: unknown }
+
+/**
  * Consolidates reasoning_details by grouping by index and type.
  * - Filters out corrupted encrypted blocks (missing `data` field)
  * - For text blocks: concatenates text, keeps last signature/id/format
@@ -177,9 +189,9 @@ export function sanitizeGeminiMessages(
 
 	for (const msg of messages) {
 		if (msg.role === "assistant") {
-			const anyMsg = msg as any
-			const toolCalls = anyMsg.tool_calls as OpenAI.Chat.ChatCompletionMessageToolCall[] | undefined
-			const reasoningDetails = anyMsg.reasoning_details as ReasoningDetail[] | undefined
+			const withReasoning: AssistantMessageWithReasoning = msg
+			const toolCalls = msg.tool_calls
+			const reasoningDetails = withReasoning.reasoning_details
 
 			if (Array.isArray(toolCalls) && toolCalls.length > 0) {
 				const hasReasoningDetails = Array.isArray(reasoningDetails) && reasoningDetails.length > 0
@@ -192,8 +204,8 @@ export function sanitizeGeminiMessages(
 						}
 					}
 					// Keep any textual content, but drop the tool_calls themselves
-					if (anyMsg.content) {
-						sanitized.push({ role: "assistant", content: anyMsg.content } as any)
+					if (msg.content) {
+						sanitized.push({ role: "assistant", content: msg.content })
 					}
 					continue
 				}
@@ -223,9 +235,9 @@ export function sanitizeGeminiMessages(
 				validReasoningDetails.push(...detailsWithoutId)
 
 				// Build the sanitized message
-				const sanitizedMsg: any = {
+				const sanitizedMsg: AssistantMessageWithReasoning = {
 					role: "assistant",
-					content: anyMsg.content ?? "",
+					content: msg.content ?? "",
 				}
 
 				if (validReasoningDetails.length > 0) {
@@ -242,8 +254,7 @@ export function sanitizeGeminiMessages(
 		}
 
 		if (msg.role === "tool") {
-			const anyMsg = msg as any
-			if (anyMsg.tool_call_id && droppedToolCallIds.has(anyMsg.tool_call_id)) {
+			if (msg.tool_call_id && droppedToolCallIds.has(msg.tool_call_id)) {
 				// Skip tool result for dropped tool call
 				continue
 			}
@@ -308,7 +319,7 @@ export function convertToOpenAiMessages(
 			// will convert a single text block into a string for compactness.
 			// If a message also contains reasoning_details (Gemini 3 / xAI / o-series, etc.),
 			// we must preserve it here as well.
-			const messageWithDetails = anthropicMessage as any
+			const messageWithDetails: MessageParamWithReasoning = anthropicMessage
 			const baseMessage: OpenAI.Chat.ChatCompletionMessageParam & { reasoning_details?: any[] } = {
 				role: anthropicMessage.role,
 				content: anthropicMessage.content,
@@ -317,7 +328,7 @@ export function convertToOpenAiMessages(
 			if (anthropicMessage.role === "assistant") {
 				const mapped = mapReasoningDetails(messageWithDetails.reasoning_details)
 				if (mapped) {
-					;(baseMessage as any).reasoning_details = mapped
+					baseMessage.reasoning_details = mapped
 				}
 			}
 
@@ -475,7 +486,7 @@ export function convertToOpenAiMessages(
 				}))
 
 				// Check if the message has reasoning_details (used by Gemini 3, xAI, etc.)
-				const messageWithDetails = anthropicMessage as any
+				const messageWithDetails: MessageParamWithReasoning = anthropicMessage
 
 				// Build message with reasoning_details BEFORE tool_calls to preserve
 				// the order expected by providers like Roo. Property order matters
