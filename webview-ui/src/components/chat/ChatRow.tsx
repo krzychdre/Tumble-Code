@@ -1,8 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef } from "react"
 import { useSize } from "react-use"
-import deepEqual from "fast-deep-equal"
 
-import type { ClineMessage, SuggestionItem, ClineSayTool } from "@roo-code/types"
+import type { ClineSayTool } from "@roo-code/types"
 
 import { safeJsonParse } from "@roo-code/core/browser"
 
@@ -11,29 +10,8 @@ import type { RowRendererProps, ToolAskKind } from "./rows/renderers/types"
 import { TOOL_RENDERERS } from "./rows/renderers/tool"
 import { SAY_RENDERERS, DefaultSayRow } from "./rows/renderers/say"
 import { ASK_RENDERERS } from "./rows/renderers/ask"
-
-interface ChatRowProps {
-	message: ClineMessage
-	lastModifiedMessage?: ClineMessage
-	isExpanded: boolean
-	isLast: boolean
-	isStreaming: boolean
-	// Whether the selected model takes images; ChatView computes it once for
-	// all rows (the edit box of a user message needs it).
-	supportsImages?: boolean
-	onToggleExpand: (ts: number, expand?: boolean) => void
-	onHeightChange: (isTaller: boolean) => void
-	onSuggestionClick?: (suggestion: SuggestionItem, event?: React.MouseEvent) => void
-	onBatchFileResponse?: (response: { [key: string]: boolean }) => void
-	onFollowUpUnmount?: () => void
-	isFollowUpAnswered?: boolean
-	isFollowUpAutoApprovalPaused?: boolean
-	onJumpToPreviousCheckpoint?: () => void
-	// What the row needs from the history around it (next message's ts,
-	// previous todo list, newTask position). ChatView computes it once per
-	// history change (computeRowMeta), so the row never scans clineMessages.
-	meta?: RowMetaEntry
-}
+import { chatRowPropsEqual } from "./chatRowPropsEqual"
+import type { ChatRowProps } from "./chatRowProps"
 
 const EMPTY_META: RowMetaEntry = {
 	nextTs: undefined,
@@ -75,8 +53,10 @@ const ChatRow = memo(
 		// we cannot return null as virtuoso does not support it, so we use a separate visibleMessages array to filter out messages that should not be rendered
 		return chatrow
 	},
-	// memo does shallow comparison of props, so we need to do deep comparison of arrays/objects whose properties might change
-	deepEqual,
+	// Targeted comparator (P2): reference identity for messages and callbacks,
+	// field comparison only where the pipeline rebuilds objects per token
+	// (command rows, row meta). See chatRowPropsEqual.ts for the audit.
+	chatRowPropsEqual,
 )
 
 export default ChatRow
