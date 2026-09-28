@@ -3,7 +3,16 @@ import { useTranslation } from "react-i18next"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
 import DismissibleUpsell from "@src/components/common/DismissibleUpsell"
-import { ChevronUp, ChevronDown, HardDriveDownload, HardDriveUpload, FoldVertical, ArrowLeft } from "lucide-react"
+import {
+	ChevronUp,
+	ChevronDown,
+	HardDriveDownload,
+	HardDriveUpload,
+	FoldVertical,
+	ArrowLeft,
+	ArrowUp,
+	ArrowDown,
+} from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
 import type { ClineMessage } from "@roo-code/types"
@@ -24,6 +33,52 @@ import { ContextWindowProgress } from "./ContextWindowProgress"
 import { Mention } from "./Mention"
 import { TodoListDisplay } from "./TodoListDisplay"
 import { LucideIconButton } from "./LucideIconButton"
+
+/**
+ * CostWithTooltip (§2.3, ai_plans/2026-09-27_ui-modernization.md): the cost
+ * chip shown both collapsed (inline meta row) and expanded (details table).
+ * One component instead of two diverging copies.
+ */
+const CostWithTooltip = ({
+	totalCost,
+	aggregatedCost,
+	hasSubtasks,
+	costBreakdown,
+	t,
+}: {
+	totalCost: number
+	aggregatedCost?: number
+	hasSubtasks?: boolean
+	costBreakdown?: string
+	t: (key: string, opts?: Record<string, unknown>) => string
+}) => (
+	<StandardTooltip
+		content={
+			hasSubtasks ? (
+				<div>
+					<div>
+						{t("chat:costs.totalWithSubtasks", {
+							cost: (aggregatedCost ?? totalCost).toFixed(2),
+						})}
+					</div>
+					{costBreakdown && <div className="text-xs mt-1">{costBreakdown}</div>}
+				</div>
+			) : (
+				<div>{t("chat:costs.total", { cost: totalCost.toFixed(2) })}</div>
+			)
+		}
+		side="top"
+		sideOffset={8}>
+		<span>
+			${(aggregatedCost ?? totalCost).toFixed(2)}
+			{hasSubtasks && (
+				<span className="text-xs ml-1" title={t("chat:costs.includesSubtasks")}>
+					*
+				</span>
+			)}
+		</span>
+	</StandardTooltip>
+)
 
 export interface TaskHeaderProps {
 	task: ClineMessage
@@ -131,8 +186,52 @@ const TaskHeader = ({
 		}
 	}
 
-	return (
-		<div className="group pt-2 pb-0 px-3">
+// §2.3: the clickable header area is a real <button> with aria-expanded so
+// it is reachable with Tab and announced by screen readers (§1.4). The old
+// click-handler-on-a-div excluded interactive children; the same exclusions
+// are kept in a plain onClick.
+const detailsId = "task-header-details"
+
+const isInteractiveTarget = (target: EventTarget | null) => {
+	if (!(target instanceof Element)) {
+		return false
+	}
+
+	// Nested interactive elements keep their own clicks — except the
+	// header toggle button itself, which IS the expand control.
+	const button = target.closest("button")
+	if (button && !button.hasAttribute("data-task-header-toggle")) {
+		return true
+	}
+
+	return Boolean(
+		target.closest('[role="button"]') ||
+			target.closest(".share-button") ||
+			target.closest("[data-radix-popper-content-wrapper]") ||
+			target.closest("img") ||
+			target.closest("[data-todo-list]") ||
+			target.tagName === "IMG",
+	)
+}
+
+const toggleExpanded = () => setIsTaskExpanded((prev) => !prev)
+
+const handleHeaderClick = (e: React.MouseEvent) => {
+	if (isInteractiveTarget(e.target)) {
+		return
+	}
+
+	// Don't expand/collapse if user is selecting text
+	const selection = window.getSelection()
+	if (selection && selection.toString().length > 0) {
+		return
+	}
+
+	toggleExpanded()
+}
+
+return (
+	<div className="group pt-2 pb-0 px-3">
 			{isSubtask && (
 				<div className="mb-2" onClick={(e) => e.stopPropagation()}>
 					<Button
@@ -155,41 +254,23 @@ const TaskHeader = ({
 				</DismissibleUpsell>
 			)}
 			<div
-				className={cn(
-					"px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1 cursor-pointer",
-					"bg-vscode-input-background hover:bg-vscode-input-background/90",
-					"text-vscode-foreground/80 hover:text-vscode-foreground",
-					"shadow-lg shadow-vscode-sideBar-background/50 rounded-xl",
-					hasTodos && "border-b-0",
-				)}
-				onClick={(e) => {
-					// Don't expand if clicking on todos section
-					if (e.target instanceof Element && e.target.closest("[data-todo-list]")) {
-						return
-					}
-
-					// Don't expand if clicking on buttons or interactive elements
-					if (
-						e.target instanceof Element &&
-						(e.target.closest("button") ||
-							e.target.closest('[role="button"]') ||
-							e.target.closest(".share-button") ||
-							e.target.closest("[data-radix-popper-content-wrapper]") ||
-							e.target.closest("img") ||
-							e.target.tagName === "IMG")
-					) {
-						return
-					}
-
-					// Don't expand/collapse if user is selecting text
-					const selection = window.getSelection()
-					if (selection && selection.toString().length > 0) {
-						return
-					}
-
-					setIsTaskExpanded(!isTaskExpanded)
-				}}>
-				<div className="flex justify-between items-center gap-0">
+			className={cn(
+				"px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1",
+				"bg-vscode-input-background hover:bg-vscode-input-background/90",
+				"text-vscode-foreground/80 hover:text-vscode-foreground",
+				// §2.3: flat like the editor tabs — a 1px panel-border bottom
+				// border instead of shadow + rounded-xl.
+				"border-b border-vscode-panel-border",
+			)}
+			onClick={handleHeaderClick}>
+			<button
+				type="button"
+				data-task-header-toggle
+				aria-expanded={isTaskExpanded}
+				aria-controls={detailsId}
+				// No onClick here on purpose: the click bubbles to the card's
+				// single handler; handling it here too would toggle twice.
+				className="flex justify-between items-center gap-0 w-full text-left bg-transparent border-none p-0 cursor-pointer">
 					<div className="flex items-center select-none grow min-w-0">
 						<div className="grow min-w-0">
 							{isTaskExpanded && <span className="font-bold">{t("chat:task.title")}</span>}
@@ -199,21 +280,26 @@ const TaskHeader = ({
 								</div>
 							)}
 						</div>
-						<div className="flex items-center shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+						<div className="flex items-center shrink-0 ml-2">
 							<StandardTooltip content={isTaskExpanded ? t("chat:task.collapse") : t("chat:task.expand")}>
-								<button
-									onClick={() => setIsTaskExpanded(!isTaskExpanded)}
-									className="shrink-0 min-h-[20px] min-w-[20px] p-[2px] cursor-pointer opacity-85 hover:opacity-100 bg-transparent border-none rounded-md">
+								<span
+									role="button"
+									tabIndex={-1}
+									aria-hidden="true"
+									onClick={(e) => e.stopPropagation()}
+									className="shrink-0 min-h-[20px] min-w-[20px] p-[2px] cursor-pointer opacity-60 hover:opacity-100 bg-transparent">
 									{isTaskExpanded ? (
 										<ChevronUp size={16} />
 									) : (
-										<ChevronDown size={16} className="opacity-0 group-hover:opacity-100" />
+										// §2.2 chevron rule: 60% by default, never hidden —
+										// the old opacity-0-until-hover was invisible to keyboard users.
+										<ChevronDown size={16} />
 									)}
-								</button>
+								</span>
 							</StandardTooltip>
 						</div>
 					</div>
-				</div>
+				</button>
 				{!isTaskExpanded && contextWindow > 0 && (
 					<div
 						className="flex items-center gap-2 text-sm text-muted-foreground/70"
@@ -237,39 +323,21 @@ const TaskHeader = ({
 						{!!totalCost && (
 							<>
 								<span className="shrink-0">·</span>
-								<StandardTooltip
-									content={
-										hasSubtasks ? (
-											<div>
-												<div>
-													{t("chat:costs.totalWithSubtasks", {
-														cost: (aggregatedCost ?? totalCost).toFixed(2),
-													})}
-												</div>
-												{costBreakdown && <div className="text-xs mt-1">{costBreakdown}</div>}
-											</div>
-										) : (
-											<div>{t("chat:costs.total", { cost: totalCost.toFixed(2) })}</div>
-										)
-									}
-									side="top"
-									sideOffset={8}>
-									<span className="shrink-0">
-										${(aggregatedCost ?? totalCost).toFixed(2)}
-										{hasSubtasks && (
-											<span className="text-xs ml-1" title={t("chat:costs.includesSubtasks")}>
-												*
-											</span>
-										)}
-									</span>
-								</StandardTooltip>
+								<CostWithTooltip
+									totalCost={totalCost}
+									aggregatedCost={aggregatedCost}
+									hasSubtasks={hasSubtasks}
+									costBreakdown={costBreakdown}
+									t={t}
+								/>
 							</>
 						)}
 					</div>
 				)}
-				{/* Expanded state: Show task text and images */}
+				{/* Expanded state: Show task text and images. Capped at 40vh with its
+				    own scroll so it never pushes the chat off screen (§2.3). */}
 				{isTaskExpanded && (
-					<>
+					<div id={detailsId} className="flex flex-col gap-1.5 max-h-[40vh] overflow-y-auto">
 						<div
 							ref={textContainerRef}
 							className="text-vscode-font-size overflow-y-auto break-words break-anywhere relative">
@@ -320,10 +388,16 @@ const TaskHeader = ({
 										<td className="font-light align-top">
 											<div className="flex items-center gap-1 flex-wrap">
 												{typeof tokensIn === "number" && tokensIn > 0 && (
-													<span>↑ {formatLargeNumber(tokensIn)}</span>
+													<span className="flex items-center gap-0.5">
+														<ArrowUp className="size-3" aria-label={t("chat:task.tokensIn")} />
+														{formatLargeNumber(tokensIn)}
+													</span>
 												)}
 												{typeof tokensOut === "number" && tokensOut > 0 && (
-													<span>↓ {formatLargeNumber(tokensOut)}</span>
+													<span className="flex items-center gap-0.5">
+														<ArrowDown className="size-3" aria-label={t("chat:task.tokensOut")} />
+														{formatLargeNumber(tokensOut)}
+													</span>
 												)}
 											</div>
 										</td>
@@ -360,38 +434,13 @@ const TaskHeader = ({
 												{t("chat:task.apiCost")}
 											</th>
 											<td className="font-light align-top">
-												<StandardTooltip
-													content={
-														hasSubtasks ? (
-															<div>
-																<div>
-																	{t("chat:costs.totalWithSubtasks", {
-																		cost: (aggregatedCost ?? totalCost).toFixed(2),
-																	})}
-																</div>
-																{costBreakdown && (
-																	<div className="text-xs mt-1">{costBreakdown}</div>
-																)}
-															</div>
-														) : (
-															<div>
-																{t("chat:costs.total", { cost: totalCost.toFixed(2) })}
-															</div>
-														)
-													}
-													side="top"
-													sideOffset={8}>
-													<span>
-														${(aggregatedCost ?? totalCost).toFixed(2)}
-														{hasSubtasks && (
-															<span
-																className="text-xs ml-1"
-																title={t("chat:costs.includesSubtasks")}>
-																*
-															</span>
-														)}
-													</span>
-												</StandardTooltip>
+												<CostWithTooltip
+													totalCost={totalCost}
+													aggregatedCost={aggregatedCost}
+													hasSubtasks={hasSubtasks}
+													costBreakdown={costBreakdown}
+													t={t}
+												/>
 											</td>
 										</tr>
 									)}
@@ -402,16 +451,14 @@ const TaskHeader = ({
 											<th className="font-medium text-left align-top w-1 whitespace-nowrap pr-2 h-[20px]">
 												{t("chat:task.size")}
 											</th>
-											<td className="font-light align-top">
-												{prettyBytes(currentTaskItem.size)}
-											</td>
+											<td className="font-light align-top">{prettyBytes(currentTaskItem.size)}</td>
 										</tr>
 									)}
 								</tbody>
 							</table>
 						</div>
-					</>
-				)}
+				</div>
+			)}
 				{/* Todo list - always shown at bottom when todos exist */}
 				{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 			</div>
