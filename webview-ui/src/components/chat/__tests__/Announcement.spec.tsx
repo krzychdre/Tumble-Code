@@ -70,4 +70,22 @@ describe("Announcement", () => {
 
 		expect(screen.getAllByRole("listitem")).toHaveLength(3)
 	})
+
+	it("renders the X, Discord and Reddit links as an svg glyph with a screen-reader label", () => {
+		render(<Announcement hideAnnouncement={vi.fn()} />)
+
+		for (const [label, href] of [
+			["X", "https://x.com/roocode"],
+			["Discord", "https://discord.gg/rCQcvT7Fnt"],
+			["Reddit", "https://www.reddit.com/r/RooCode/"],
+		]) {
+			const link = screen.getByRole("link", { name: label })
+			expect(link.getAttribute("href")).toBe(href)
+			const svgs = link.querySelectorAll("svg")
+			expect(svgs).toHaveLength(1)
+			expect(svgs[0].getAttribute("aria-hidden")).toBe("true")
+			expect(svgs[0].getAttribute("class")).toContain("w-4")
+			expect(svgs[0].getAttribute("class")).toContain("h-4")
+		}
+	})
 })
