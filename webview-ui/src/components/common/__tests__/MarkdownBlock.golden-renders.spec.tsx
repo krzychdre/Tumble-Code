@@ -77,9 +77,6 @@ const CASES: Array<{ name: string; markdown: string }> = [
 	},
 ]
 
-// styled-components names its classes after a per-process counter.
-const normalize = (html: string) => html.replace(/\bsc-[A-Za-z0-9]+ [A-Za-z0-9]+\b/g, "sc-styled")
-
 const GOLDEN_FILE = path.join(__dirname, "__golden__", "MarkdownBlock.golden.json")
 const UPDATE = process.env.UPDATE_GOLDEN === "1"
 const golden: Record<string, string> = fs.existsSync(GOLDEN_FILE)
@@ -109,7 +106,7 @@ describe("MarkdownBlock golden renders", () => {
 
 	it.each(CASES.map((c) => [c.name, c.markdown] as const))("%s", (name, markdown) => {
 		const { container, unmount } = render(<MarkdownBlock markdown={markdown} />)
-		const html = normalize(container.innerHTML)
+		const html = container.innerHTML
 		unmount()
 		actual[name] = html
 		if (!UPDATE) expect(html).toBe(golden[name])

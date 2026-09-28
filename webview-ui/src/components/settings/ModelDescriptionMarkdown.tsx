@@ -5,8 +5,6 @@ import remarkGfm from "remark-gfm"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleTrigger, Link } from "@/components/ui"
 
-import { StyledMarkdown } from "./styles"
-
 export const ModelDescriptionMarkdown = memo(
 	({
 		markdown = "",
@@ -33,12 +31,13 @@ export const ModelDescriptionMarkdown = memo(
 			<Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="relative">
 				<div ref={textContainerRef} className={cn({ "line-clamp-4": !isExpanded })}>
 					<div ref={textRef}>
-						<StyledMarkdown key={key}>
+						{/* Styled by `.model-description-markdown` in index.css (content-blocks section). */}
+						<div className="model-description-markdown" key={key}>
 							{/* Same markdown stack as MarkdownBlock; singleTilde: false keeps "1~3" literal. */}
 							<ReactMarkdown remarkPlugins={[[remarkGfm, { singleTilde: false }]]}>
 								{markdown}
 							</ReactMarkdown>
-						</StyledMarkdown>
+						</div>
 					</div>
 				</div>
 				<CollapsibleTrigger asChild className={cn({ hidden: !isExpandable })}>
