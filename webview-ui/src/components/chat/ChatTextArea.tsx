@@ -85,7 +85,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
 		const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false)
 
-		// Handle enhanced prompt response and text inserted by the extension.
+		// Handle the enhanced prompt response.
 		useEffect(() => {
 			const messageHandler = (message: ExtensionMessage) => {
 				if (message.type === "enhancedPrompt") {
@@ -111,41 +111,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					}
 
 					setIsEnhancingPrompt(false)
-				} else if (message.type === "insertTextIntoTextarea") {
-					if (message.text && textAreaRef.current) {
-						// Insert the command text at the current cursor position
-						const textarea = textAreaRef.current
-						const currentValue = inputValue
-						const cursorPos = textarea.selectionStart || 0
-
-						// Check if we need to add a space before the command
-						const textBefore = currentValue.slice(0, cursorPos)
-						const needsSpaceBefore = textBefore.length > 0 && !textBefore.endsWith(" ")
-						const prefix = needsSpaceBefore ? " " : ""
-
-						// Insert the text at cursor position
-						const newValue =
-							currentValue.slice(0, cursorPos) +
-							prefix +
-							message.text +
-							" " +
-							currentValue.slice(cursorPos)
-						setInputValue(newValue)
-
-						// Set cursor position after the inserted text
-						const newCursorPos = cursorPos + prefix.length + message.text.length + 1
-						setTimeout(() => {
-							if (textAreaRef.current) {
-								textAreaRef.current.focus()
-								textAreaRef.current.setSelectionRange(newCursorPos, newCursorPos)
-							}
-						}, 0)
-					}
 				}
 			}
 
-			return onExtensionMessage(["enhancedPrompt", "insertTextIntoTextarea"], messageHandler)
-		}, [setInputValue, inputValue])
+			return onExtensionMessage(["enhancedPrompt"], messageHandler)
+		}, [setInputValue])
 
 		const [isDraggingOver, setIsDraggingOver] = useState(false)
 		const [cursorPosition, setCursorPosition] = useState(0)
@@ -688,7 +658,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						}}
 					/>
 				)}
-	
+
 				{/* Quiet hint row (§2.5): always present, at --text-meta size. */}
 				<div
 					data-testid="composer-hint-row"

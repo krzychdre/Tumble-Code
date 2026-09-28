@@ -46,7 +46,6 @@ export type TaskLifecycleExtensionMessageType =
 	| "action"
 	| "invoke"
 	| "acceptInput"
-	| "insertTextIntoTextarea"
 	| "workspaceUpdated"
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse" | "objectResponse"

@@ -66,7 +66,6 @@ type ExpectedExtensionMessageType =
 	| "showDeleteMessageDialog"
 	| "showEditMessageDialog"
 	| "commands"
-	| "insertTextIntoTextarea"
 	| "dismissedUpsells"
 	| "organizationSwitchResult"
 	| "interactionRequired"
