@@ -60,7 +60,7 @@ interface ImagesApiOptions {
 }
 
 /**
- * Shared image generation implementation for OpenRouter and Roo Code Cloud providers
+ * Shared image generation implementation for OpenRouter and Tumble Code Cloud providers
  */
 export async function generateImageWithProvider(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
 	const { baseURL, authToken, model, prompt, inputImage } = options
@@ -72,7 +72,7 @@ export async function generateImageWithProvider(options: ImageGenerationOptions)
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
 				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Code",
-				"X-Title": "Roo Code",
+				"X-Title": "Tumble Code",
 			},
 			signal: AbortSignal.timeout(getApiRequestTimeout()),
 			body: JSON.stringify({
@@ -219,7 +219,7 @@ export async function generateImageWithImagesApi(options: ImagesApiOptions): Pro
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
 				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Code",
-				"X-Title": "Roo Code",
+				"X-Title": "Tumble Code",
 			},
 			body: JSON.stringify(requestBody),
 			signal: AbortSignal.timeout(getApiRequestTimeout()),

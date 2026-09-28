@@ -171,10 +171,10 @@ A [`Makefile`](Makefile) wraps these commands (`make help`, `make dev`,
 
 In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to configure these settings:
 
-| VS Code Setting              | Environment Variable    | Description                                                                           |
-| ---------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
-| `roo-cline.cloudApiUrl`      | `ROO_CODE_API_URL`      | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
-| `roo-cline.clerkBaseUrl`     | `CLERK_BASE_URL`        | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
+| VS Code Setting          | Environment Variable | Description                                                                           |
+| ------------------------ | -------------------- | ------------------------------------------------------------------------------------- |
+| `roo-cline.cloudApiUrl`  | `ROO_CODE_API_URL`   | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
+| `roo-cline.clerkBaseUrl` | `CLERK_BASE_URL`     | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
 
 > **Auto-detect:** When `clerkBaseUrl` is not explicitly configured, the extension
 > automatically uses the same URL as `cloudApiUrl` for Clerk auth requests. This means
@@ -204,7 +204,7 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to con
 
 ### Troubleshooting
 
-**"Failed to handle Roo Code Cloud callback: Error: HTTP 400: Bad Request" after Authentik login:**
+**"Failed to handle Tumble Code Cloud callback: Error: HTTP 400: Bad Request" after Authentik login:**
 
 - This error occurs when the extension tries to validate the auth ticket against the production Clerk (`https://clerk.roocode.com`) instead of your self-hosted API
 - Ensure `roo-cline.cloudApiUrl` is set to your self-hosted API URL (e.g., `http://localhost:8085`)

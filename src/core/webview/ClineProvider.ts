@@ -1126,7 +1126,7 @@ export class ClineProvider
 		return {
 			webview,
 			extensionUri: this.contextProxy.extensionUri,
-			title: "Roo Code",
+			title: "Tumble Code",
 			connectOrigins: [openRouterOrigin(openRouterBaseUrl)],
 			hmrAnalyticsOrigins: ["https://*.posthog.com"],
 		}

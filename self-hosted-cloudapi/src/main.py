@@ -109,8 +109,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Roo Code Cloud API",
-    description="Self-hosted Roo Code Cloud API compatible with the Roo Code VS Code extension",
+    title="Tumble Code Cloud API",
+    description="Self-hosted Tumble Code Cloud API compatible with the Tumble Code VS Code extension",
     version="0.1.0",
     lifespan=lifespan,
 )
