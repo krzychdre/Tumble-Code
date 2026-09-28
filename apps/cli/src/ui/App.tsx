@@ -95,6 +95,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		apiConfiguration,
 		currentTodos,
 		mcpServers,
+		cloudStatus,
 		turnStartedAt,
 		stepStartedAt,
 	} = useCLIStore()
@@ -503,6 +504,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						model={activeModel}
 						contextPercent={contextPercent}
 						cost={footerCost}
+						cloud={cloudStatus}
 						toast={currentToast}
 						exitHint={showExitHint ? "Press Ctrl+C again to exit" : null}
 						accentPrompt={showFollowupCustomInput}

@@ -8,6 +8,7 @@ import type { AutocompleteItem, AutocompleteTrigger, AutocompletePickerState } f
 import type { AutocompleteInputHandle } from "../autocomplete/AutocompleteInput.js"
 import InputFooter from "./InputFooter.js"
 import type { Toast } from "../../hooks/useToast.js"
+import type { CloudStatus } from "../../types.js"
 
 export interface InputAreaProps {
 	/** Called when the user submits text (Enter without picker open) */
@@ -35,6 +36,7 @@ export interface InputAreaProps {
 	model?: string
 	contextPercent?: number | null
 	cost?: number
+	cloud?: CloudStatus | null
 	toast?: Toast | null
 	exitHint?: string | null
 }
@@ -66,6 +68,7 @@ function InputArea({
 	model,
 	contextPercent,
 	cost,
+	cloud,
 	toast,
 	exitHint,
 }: InputAreaProps) {
@@ -100,6 +103,7 @@ function InputArea({
 				model={model}
 				contextPercent={contextPercent}
 				cost={cost}
+				cloud={cloud}
 			/>
 		</Box>
 	)

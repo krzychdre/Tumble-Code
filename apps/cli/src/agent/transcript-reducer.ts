@@ -39,7 +39,7 @@ import {
 	parseToolPayloadText,
 } from "@roo-code/core/cli"
 
-import type { PendingAsk, TaskHistoryItem, TUIMessage, ToolData } from "../ui/types.js"
+import type { CloudStatus, PendingAsk, TaskHistoryItem, TUIMessage, ToolData } from "../ui/types.js"
 import type { FileResult, ModeResult, SlashCommandResult } from "../ui/components/autocomplete/index.js"
 import { extractToolData, formatToolAskMessage, parseTodosFromToolInfo } from "../ui/utils/tools.js"
 import { mcpServersFromMessage } from "../lib/utils/mcp-status.js"
@@ -166,6 +166,7 @@ export type TranscriptEffect =
 	| { type: "setAllSlashCommands"; commands: SlashCommandResult[] }
 	| { type: "setAvailableModes"; modes: ModeResult[] }
 	| { type: "setRouterModels"; models: RouterModelsUpdate }
+	| { type: "setCloudStatus"; status: CloudStatus }
 
 export interface TranscriptReduceOptions {
 	/** Auto-approve mode: asks other than followup and api_req_failed are printed, not asked. */
@@ -814,6 +815,16 @@ export function reduceExtensionMessage(
 
 		if (state.mode) {
 			r.emit({ type: "setCurrentMode", mode: state.mode })
+		}
+
+		// Only full pushes carry cloudIsAuthenticated; a single-field push
+		// (storageErrorMessage) must not reset the footer's cloud status. An
+		// extension without remoteControlStatus has no bridge to report.
+		if (typeof state.cloudIsAuthenticated === "boolean") {
+			r.emit({
+				type: "setCloudStatus",
+				status: { signedIn: state.cloudIsAuthenticated, remoteControl: state.remoteControlStatus ?? "off" },
+			})
 		}
 
 		// The provider settings the extension runs with now; a mode switch can

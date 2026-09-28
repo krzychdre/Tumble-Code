@@ -1,4 +1,4 @@
-import type { ClineAsk, ClineSay, TodoItem, UsableSuggestion } from "@roo-code/types"
+import type { ClineAsk, ClineSay, RemoteControlStatus, TodoItem, UsableSuggestion } from "@roo-code/types"
 import type { ToolPayload } from "@roo-code/core/cli"
 
 export type MessageRole = "system" | "user" | "assistant" | "tool" | "thinking"
@@ -49,4 +49,13 @@ export interface TaskHistoryItem {
 	status?: "active" | "completed" | "delegated"
 	tokensIn?: number
 	tokensOut?: number
+}
+
+/**
+ * The cloud session and its remote-control bridge, for the footer (UI plan
+ * §4). From the extension's full state pushes; null until the first one.
+ */
+export interface CloudStatus {
+	signedIn: boolean
+	remoteControl: RemoteControlStatus
 }

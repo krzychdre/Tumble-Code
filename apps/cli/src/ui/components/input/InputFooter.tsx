@@ -3,6 +3,7 @@ import { Box, Text } from "ink"
 
 import * as theme from "../../theme.js"
 import type { Toast } from "../../hooks/useToast.js"
+import type { CloudStatus } from "../../types.js"
 import ContextGauge from "./ContextGauge.js"
 
 /** Formats a cost as currency with a $ prefix, e.g. 1.5 -> "$1.50". */
@@ -23,6 +24,32 @@ interface InputFooterProps {
 	contextPercent?: number | null
 	/** Cumulative session cost in USD; shown when > 0 */
 	cost?: number
+	/** Cloud session and bridge; shown only when signed in (UI plan §4) */
+	cloud?: CloudStatus | null
+}
+
+/**
+ * The cloud segment, or null for a run without a cloud session (the normal
+ * local run shows nothing). `●` connected; `○` otherwise, with "connecting"
+ * or, in the warning colour, "offline" (the bridge failed and keeps
+ * retrying: sharing and remote control do not work meanwhile).
+ */
+function CloudSegment({ cloud }: { cloud: CloudStatus }) {
+	switch (cloud.remoteControl) {
+		case "connected":
+			return (
+				<Text>
+					<Text color={theme.success}>●</Text>
+					<Text dimColor> cloud</Text>
+				</Text>
+			)
+		case "connecting":
+			return <Text dimColor>○ cloud connecting</Text>
+		case "offline":
+			return <Text color={theme.warning}>○ cloud offline</Text>
+		case "off":
+			return <Text dimColor>○ cloud</Text>
+	}
 }
 
 function toastColor(type: Toast["type"]): string {
@@ -59,11 +86,12 @@ const DimDot = () => <Text dimColor>{" · "}</Text>
  * Single dim line below the input box.
  *
  * Left side (priority order): toast (colored by kind) > exitHint (dim) >
- * "? for shortcuts" (dim). Right side: `{mode} · {model}` + the context
+ * "? for shortcuts" (dim). Right side: the cloud segment (signed-in runs
+ * only), `{mode} · {model}` + the context
  * gauge (when the percent is not null) + ` · {cost}` (when > 0). The gauge
  * owns its own colouring; see ContextGauge.
  */
-function InputFooter({ toast, exitHint, mode, model, contextPercent, cost }: InputFooterProps) {
+function InputFooter({ toast, exitHint, mode, model, contextPercent, cost, cloud }: InputFooterProps) {
 	let leftHint: ReactNode
 	if (toast) {
 		leftHint = (
@@ -79,6 +107,10 @@ function InputFooter({ toast, exitHint, mode, model, contextPercent, cost }: Inp
 
 	const rightParts: ReactNode[] = []
 	let added = false
+	if (cloud?.signedIn) {
+		rightParts.push(<CloudSegment key="cloud" cloud={cloud} />)
+		added = true
+	}
 	if (mode) {
 		if (added) rightParts.push(<DimDot key="sep-mode" />)
 		rightParts.push(

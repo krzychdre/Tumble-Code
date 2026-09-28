@@ -189,7 +189,7 @@ describe("setupRemoteControlBridge status", () => {
 		expect(postState).toHaveBeenCalled()
 	})
 
-	it("has no status once signed out", async () => {
+	it("is off once signed out", async () => {
 		setup()
 		await vi.advanceTimersByTimeAsync(0)
 		cloud.created[0]!.onStatusChange?.("connected")
@@ -198,6 +198,6 @@ describe("setupRemoteControlBridge status", () => {
 		cloud.emit("auth-state-changed")
 		await vi.advanceTimersByTimeAsync(0)
 
-		expect(getRemoteControlStatus()).toBeUndefined()
+		expect(getRemoteControlStatus()).toBe("off")
 	})
 })
