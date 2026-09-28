@@ -57,7 +57,7 @@ describe("spill round trip (real filesystem)", () => {
 		expect(Buffer.byteLength(hugeResult, "utf8")).toBeGreaterThan(290_000)
 
 		const store = await ArtifactStore.forTask(globalStoragePath, taskId)
-		const outcome = applyToolResultSpill(hugeResult, "search_files", { store, maxInlineBytes: 24 * 1024 })
+		const outcome = await applyToolResultSpill(hugeResult, "search_files", { store, maxInlineBytes: 24 * 1024 })
 
 		// The conversation keeps a preview only, and the needle is not in it.
 		expect(outcome.artifactId).toMatch(/^tool-\d+\.txt$/)
@@ -86,7 +86,7 @@ describe("spill round trip (real filesystem)", () => {
 		const hugeResult = Array.from({ length: 2000 }, (_, index) => `line ${index}`.padEnd(200, "x")).join("\n")
 
 		const store = await ArtifactStore.forTask(globalStoragePath, taskId)
-		const outcome = applyToolResultSpill(hugeResult, "execute_command", { store, maxInlineBytes: 24 * 1024 })
+		const outcome = await applyToolResultSpill(hugeResult, "execute_command", { store, maxInlineBytes: 24 * 1024 })
 		expect(outcome.artifactId).toBeDefined()
 
 		const tool = new ReadArtifactTool()
@@ -104,7 +104,7 @@ describe("spill round trip (real filesystem)", () => {
 		const hugeResult = "q".repeat(400_000)
 
 		const store = await ArtifactStore.forTask(globalStoragePath, taskId)
-		const saved = store.save("tool", hugeResult)
+		const saved = await store.save("tool", hugeResult)
 
 		const tool = new ReadArtifactTool()
 		await tool.execute({ artifact_id: saved.id, limit: 400_000 }, task, { pushToolResult } as never)

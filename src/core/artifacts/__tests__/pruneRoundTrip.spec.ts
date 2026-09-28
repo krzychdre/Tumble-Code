@@ -76,7 +76,7 @@ describe("prune round trip (real filesystem)", () => {
 		]
 
 		const store = await ArtifactStore.forTask(globalStoragePath, taskId)
-		const pruned = pruneToolResults(messages, { keepBoundary: 3, budgetBytes: 4096, store })
+		const pruned = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: 4096, store })
 
 		expect(pruned.prunedCount).toBe(1)
 		const artifactId = pruned.artifacts[0]

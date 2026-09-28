@@ -2149,6 +2149,12 @@ describe("pushToolResultToUserContent", () => {
 				{ toolName: "search_files" },
 			)
 
+			// The artifact is written asynchronously: until the file exists the
+			// result stays inline, so no preview ever cites a missing artifact.
+			expect((task.userMessageContent[0] as Anthropic.ToolResultBlockParam).content).toBe(hugeResult)
+
+			await task.settlePendingToolResultSpills()
+
 			const pushed = task.userMessageContent[0] as Anthropic.ToolResultBlockParam
 			const content = pushed.content as string
 
@@ -2163,6 +2169,28 @@ describe("pushToolResultToUserContent", () => {
 			expect(fs.readFileSync(artifactPath, "utf8")).toBe(hugeResult)
 
 			fs.rmSync(artifactsDirFor(task.taskId), { recursive: true, force: true })
+		})
+
+		it("keeps the result inline when the artifact write fails", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+			const save = vi.fn().mockRejectedValue(new Error("ENOSPC: no space left on device"))
+			;(task as any).toolResultSpill = { store: { save }, maxInlineBytes: 1024 }
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+			task.pushToolResultToUserContent(
+				{ type: "tool_result", tool_use_id: "failed-spill-id", content: hugeResult },
+				{ toolName: "search_files" },
+			)
+			await task.settlePendingToolResultSpills()
+
+			expect(save).toHaveBeenCalledTimes(1)
+			expect((task.userMessageContent[0] as Anthropic.ToolResultBlockParam).content).toBe(hugeResult)
+			warn.mockRestore()
 		})
 
 		it("never spills a protocol tool's result", async () => {
