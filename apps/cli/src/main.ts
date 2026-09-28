@@ -15,6 +15,7 @@ import {
 	listModels,
 	listSessions,
 	upgrade,
+	doctor,
 } from "@/commands/index.js"
 
 const program = new Command()
@@ -149,6 +150,14 @@ program
 	.description("Upgrade Tumble Code CLI to the latest version")
 	.action(async () => {
 		await runUpgradeAction(() => upgrade())
+	})
+
+program
+	.command("doctor")
+	.description("Check the extension bundle, ripgrep, Node.js, the MCP config and the cloud connection")
+	.option("-e, --extension <path>", "Path to the extension bundle directory")
+	.action(async (options: { extension?: string }) => {
+		process.exit(await doctor(options))
 	})
 
 const authCommand = program.command("auth").description("Manage Tumble Cloud and provider authentication")
