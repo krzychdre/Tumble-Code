@@ -598,8 +598,8 @@ describe("ClineProvider", () => {
 				apiConfiguration: { apiProvider: "openrouter" },
 				organizationAllowList: { allowAll: true, providers: {} },
 			} as any)
-			vi.spyOn(provider as any, "addClineToStack").mockResolvedValue(undefined)
-			vi.spyOn(provider as any, "removeClineFromStack").mockResolvedValue(undefined)
+			vi.spyOn(provider as any, "setCurrentTask").mockResolvedValue(undefined)
+			vi.spyOn(provider as any, "clearCurrentTask").mockResolvedValue(undefined)
 		}
 
 		it("auto-starts the task by default", async () => {
@@ -656,7 +656,7 @@ describe("ClineProvider", () => {
 			const task = new Task(defaultTaskOptions)
 			Object.defineProperty(task, "taskId", { value: "aborted-task", writable: true })
 			task.abort = true
-			await provider.addClineToStack(task)
+			await provider.setCurrentTask(task)
 			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
 			visibilityCallback()
 			expect(mockOutputChannel.appendLine).not.toHaveBeenCalled()
@@ -665,7 +665,7 @@ describe("ClineProvider", () => {
 		test("logs task state to output channel when an active task is running", async () => {
 			const task = new Task(defaultTaskOptions)
 			Object.defineProperty(task, "taskId", { value: "running-task", writable: true })
-			await provider.addClineToStack(task)
+			await provider.setCurrentTask(task)
 			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
 			visibilityCallback()
 			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("running-task"))
@@ -854,11 +854,11 @@ describe("ClineProvider", () => {
 		const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
 
 		// add the mock object as the current task
-		await provider.addClineToStack(mockCline)
+		await provider.setCurrentTask(mockCline)
 		expect(provider.getCurrentTask()).toBe(mockCline)
 
-		// call the removeClineFromStack method so it will call the current cline abort and remove it from the slot
-		await provider.removeClineFromStack()
+		// call the clearCurrentTask method so it will call the current cline abort and remove it from the slot
+		await provider.clearCurrentTask()
 
 		// check if the abort method was called
 		expect(mockCline.abortTask).toHaveBeenCalled()
@@ -881,7 +881,7 @@ describe("ClineProvider", () => {
 			const postStateToWebviewSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 
 			// Add task to stack
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 
 			// Get the message handler
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -908,8 +908,8 @@ describe("ClineProvider", () => {
 			const postStateToWebviewSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
 
 			// Add both tasks to stack (parent first, then child)
-			await provider.addClineToStack(parentTask)
-			await provider.addClineToStack(childTask)
+			await provider.setCurrentTask(parentTask)
+			await provider.setCurrentTask(childTask)
 
 			// Get the message handler
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -950,7 +950,7 @@ describe("ClineProvider", () => {
 			const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
 
 			// Add only one task as the current task
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 
 			// Verify the slot holds it
 			expect(provider.getCurrentTask()).toBe(mockCline)
@@ -966,7 +966,7 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	test("addClineToStack replaces the current task (single-task slot, D7)", async () => {
+	test("setCurrentTask replaces the current task (single-task slot, D7)", async () => {
 		// Setup Cline instance with auto-mock from the top of the file
 		const mockCline1 = new Task(defaultTaskOptions) // Create a new mocked instance
 		const mockCline2 = new Task(defaultTaskOptions) // Create a new mocked instance
@@ -975,8 +975,8 @@ describe("ClineProvider", () => {
 
 		// install the first, then the second — production discipline is
 		// pop-then-push, but even a bare double-add must not stack.
-		await provider.addClineToStack(mockCline1)
-		await provider.addClineToStack(mockCline2)
+		await provider.setCurrentTask(mockCline1)
+		await provider.setCurrentTask(mockCline2)
 
 		// verify the slot holds exactly the latest task
 		expect(provider.getCurrentTask()).toBe(mockCline2)
@@ -994,7 +994,7 @@ describe("ClineProvider", () => {
 		["postStateToWebviewWithoutTaskHistory", (p: ClineProvider) => p.postStateToWebviewWithoutTaskHistory()],
 	])("%s numbers chat message snapshots in the order they were read", async (_name, postState) => {
 		const task = new Task(defaultTaskOptions)
-		await provider.addClineToStack(task)
+		await provider.setCurrentTask(task)
 		const newerMessages: ClineMessage[] = [{ ts: 1, type: "say", say: "text", text: "child ready" }]
 		task.clineMessages = []
 
@@ -1054,7 +1054,9 @@ describe("ClineProvider", () => {
 				(p: ClineProvider) => p.postStateToWebviewWithoutClineMessages(),
 			],
 		])("%s routes its state post through the MDM redirect helper once", async (_name, postState) => {
-			const mdmRedirectSpy = vi.spyOn(provider as any, "postMdmRedirectToWebview").mockResolvedValue(undefined)
+			const mdmRedirectSpy = vi
+				.spyOn((provider as any).statePusher, "postMdmRedirectToWebview")
+				.mockResolvedValue(undefined)
 
 			await postState(provider)
 
@@ -1062,16 +1064,18 @@ describe("ClineProvider", () => {
 		})
 
 		it("postClineMessageAdded routes through the helper when it sends the message alone", async () => {
-			const mdmRedirectSpy = vi.spyOn(provider as any, "postMdmRedirectToWebview").mockResolvedValue(undefined)
+			const mdmRedirectSpy = vi
+				.spyOn((provider as any).statePusher, "postMdmRedirectToWebview")
+				.mockResolvedValue(undefined)
 			const task = new Task(defaultTaskOptions)
-			await provider.addClineToStack(task)
+			await provider.setCurrentTask(task)
 
 			// Make canSendClineMessageAlone() pass: the view accepts lone
 			// messages, the task is current and the view holds its list.
 			provider.setWebviewAcceptsMessageAdded(true)
 			const message = { ts: 1, type: "say", say: "text", text: "hi" } as ClineMessage
 			task.clineMessages.push(message)
-			;(provider as any).viewClineMessages = { list: task.clineMessages, count: 0 }
+			;(provider as any).statePusher.viewClineMessages = { list: task.clineMessages, count: 0 }
 
 			const sent = await provider.postClineMessageAdded(task, message)
 
@@ -1083,7 +1087,7 @@ describe("ClineProvider", () => {
 			;(provider as any).mdmService = mdmServiceStub(true, false)
 			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
-			await (provider as any).postMdmRedirectToWebview()
+			await (provider as any).statePusher.postMdmRedirectToWebview()
 
 			expect(postMessageSpy).toHaveBeenCalledTimes(1)
 			expect(postMessageSpy.mock.calls[0][0]).toEqual({ type: "action", action: "cloudButtonClicked" })
@@ -1093,7 +1097,7 @@ describe("ClineProvider", () => {
 			;(provider as any).mdmService = undefined
 			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
-			await (provider as any).postMdmRedirectToWebview()
+			await (provider as any).statePusher.postMdmRedirectToWebview()
 
 			expect(postMessageSpy).not.toHaveBeenCalled()
 		})
@@ -1102,7 +1106,7 @@ describe("ClineProvider", () => {
 			;(provider as any).mdmService = mdmServiceStub(true, true)
 			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
-			await (provider as any).postMdmRedirectToWebview()
+			await (provider as any).statePusher.postMdmRedirectToWebview()
 
 			expect(postMessageSpy).not.toHaveBeenCalled()
 		})
@@ -1111,7 +1115,7 @@ describe("ClineProvider", () => {
 			;(provider as any).mdmService = mdmServiceStub(false, false)
 			const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
-			await (provider as any).postMdmRedirectToWebview()
+			await (provider as any).statePusher.postMdmRedirectToWebview()
 
 			expect(postMessageSpy).not.toHaveBeenCalled()
 		})
@@ -1556,7 +1560,7 @@ describe("ClineProvider", () => {
 			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
 			mockCline.clineMessages = mockMessages // Set test-specific messages
 			mockCline.apiConversationHistory = mockApiHistory // Set API history
-			await provider.addClineToStack(mockCline) // Add the mocked instance to the stack
+			await provider.setCurrentTask(mockCline) // Add the mocked instance to the stack
 
 			// Mock getHistoryItem
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
@@ -1598,7 +1602,7 @@ describe("ClineProvider", () => {
 
 		test("handles case when no current task exists", async () => {
 			// Clear the cline stack
-			;(provider as any).currentTask = undefined
+			;(provider as any).taskSlot.current = undefined
 
 			// Trigger message deletion
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -1648,7 +1652,7 @@ describe("ClineProvider", () => {
 			mockCline.overwriteApiConversationHistory = vi.fn()
 			mockCline.handleWebviewAskResponse = vi.fn()
 
-			await provider.addClineToStack(mockCline) // Add the mocked instance to the stack
+			await provider.setCurrentTask(mockCline) // Add the mocked instance to the stack
 
 			// Mock getHistoryItem
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
@@ -2318,7 +2322,7 @@ describe("ClineProvider", () => {
 
 			// Setup Task instance with auto-mock from the top of the file
 			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 
 			const testApiConfig = {
 				apiProvider: "anthropic" as const,
@@ -2742,10 +2746,10 @@ describe("ClineProvider", () => {
 		test("removing the task from the stack detaches every forwarded listener", async () => {
 			const task = await makeTask()
 			attach(task)
-			await provider.addClineToStack(task)
+			await provider.setCurrentTask(task)
 			const emit = vi.spyOn(provider, "emit").mockClear()
 
-			await provider.removeClineFromStack()
+			await provider.clearCurrentTask()
 
 			for (const event of FORWARDED) {
 				expect(task.listenerCount(event)).toBe(0)
@@ -2977,7 +2981,7 @@ describe("getTelemetryProperties", () => {
 
 	test("includes model ID from current Cline instance if available", async () => {
 		// Add mock Cline to stack
-		await provider.addClineToStack(mockCline)
+		await provider.setCurrentTask(mockCline)
 
 		const properties = await provider.getTelemetryProperties()
 
@@ -3197,7 +3201,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.overwriteApiConversationHistory = vi.fn()
 			mockCline.submitUserMessage = vi.fn()
 
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3251,7 +3255,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.overwriteApiConversationHistory = vi.fn()
 			mockCline.submitUserMessage = vi.fn()
 
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3299,7 +3303,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.overwriteApiConversationHistory = vi.fn()
 			mockCline.handleWebviewAskResponse = vi.fn().mockRejectedValue(new Error("Network timeout"))
 
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3339,7 +3343,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.overwriteApiConversationHistory = vi.fn()
 			mockCline.handleWebviewAskResponse = vi.fn()
 
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3389,7 +3393,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.overwriteApiConversationHistory = vi.fn()
 			mockCline.handleWebviewAskResponse = vi.fn()
 
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3467,7 +3471,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.overwriteApiConversationHistory = vi.fn()
 			mockCline.handleWebviewAskResponse = vi.fn()
 
-			await provider.addClineToStack(mockCline)
+			await provider.setCurrentTask(mockCline)
 			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3550,7 +3554,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				] as ClineMessage[]
 				mockCline.apiConversationHistory = [{ ts: 1000 }, { ts: 2000 }] as any[]
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3587,7 +3591,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 				mockCline.handleWebviewAskResponse = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3629,7 +3633,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteClineMessages = vi.fn()
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3678,7 +3682,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 				mockCline.handleWebviewAskResponse = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3722,7 +3726,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				})
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3766,7 +3770,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 				mockCline.submitUserMessage = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3810,7 +3814,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteClineMessages = vi.fn()
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3850,7 +3854,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteClineMessages = vi.fn()
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 				;(provider as any).createTaskWithHistoryItem = vi.fn()
 
@@ -3887,7 +3891,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 				mockCline.handleWebviewAskResponse = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3923,7 +3927,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteClineMessages = vi.fn()
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3967,7 +3971,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 				mockCline.submitUserMessage = vi.fn()
 
-				await provider.addClineToStack(mockCline)
+				await provider.setCurrentTask(mockCline)
 				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]

@@ -203,7 +203,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 
 	it("fast abort: cancelTask completes without spurious failure (control)", async () => {
 		const task = makeMockTask({ isStreaming: true })
-		;(provider as any).currentTask = task
+		;(provider as any).taskSlot.current = task
 
 		provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
 		const createWithHistory = vi.fn().mockResolvedValue(undefined)
@@ -237,7 +237,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 					}, 5000)
 				}),
 		})
-		;(provider as any).currentTask = task
+		;(provider as any).taskSlot.current = task
 
 		provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
 		const createWithHistory = vi.fn().mockResolvedValue(undefined)
@@ -280,7 +280,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		// Verify ordering: abandoned should be false when abortTask starts,
 		// and only set after the pWaitFor completes.
 		const task = makeMockTask({ isStreaming: true })
-		;(provider as any).currentTask = task
+		;(provider as any).taskSlot.current = task
 
 		provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
 		provider.createTaskWithHistoryItem = vi.fn().mockResolvedValue(undefined) as any
@@ -344,7 +344,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 				reasonAtAbortStart.push(task.abortReason)
 				await origAbort()
 			})
-			;(provider as any).currentTask = task
+			;(provider as any).taskSlot.current = task
 			const createBackgroundTask = vi.spyOn(provider, "createBackgroundTask")
 
 			await provider.cancelTask()
@@ -359,7 +359,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 			const bg = makeBackgroundTaskFake()
 			await provider.createBackgroundTask("extract memories", { silentWrites: true })
 			const task = makeMockTask({ isStreaming: true })
-			;(provider as any).currentTask = task
+			;(provider as any).taskSlot.current = task
 
 			await provider.cancelTask()
 

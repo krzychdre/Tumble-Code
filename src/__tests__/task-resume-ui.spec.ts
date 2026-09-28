@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi } from "vitest"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { TaskSlot } from "../core/webview/TaskSlot"
 
 vi.mock("vscode", () => {
 	const window = {
@@ -170,10 +171,10 @@ vi.mock("@roo-code/telemetry", () => ({
 }))
 
 function makeProvider(overrides: Record<string, any> = {}) {
-	return {
+	const provider: Record<string, any> = {
 		getCurrentTask: vi.fn(() => undefined),
-		removeClineFromStack: vi.fn().mockResolvedValue(undefined),
-		addClineToStack: vi.fn().mockResolvedValue(undefined),
+		clearCurrentTask: vi.fn().mockResolvedValue(undefined),
+		setCurrentTask: vi.fn().mockResolvedValue(undefined),
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		updateGlobalState: vi.fn().mockResolvedValue(undefined),
 		log: vi.fn(),
@@ -204,7 +205,7 @@ function makeProvider(overrides: Record<string, any> = {}) {
 			setProviderSettings: vi.fn(),
 			getProviderSettings: vi.fn(() => ({})),
 		},
-		currentTask: undefined,
+		taskSlot: undefined,
 		taskEventListeners: new Map(),
 		// The real method rather than a stub. The history items these tests use
 		// carry no `parallelChildIds`, so it returns at its first guard and
@@ -213,7 +214,21 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		rehydrateSubagents: (ClineProvider.prototype as any).rehydrateSubagents,
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		...overrides,
-	} as unknown as ClineProvider
+	}
+	provider.taskSlot = new TaskSlot({
+		log: (message: string) => provider.log(message),
+		getState: () => provider.getState(),
+		performPreparationTasks: (task: unknown) => provider.performPreparationTasks(task),
+		removeTaskEventListeners: (task: unknown) => {
+			const cleanups = provider.taskEventListeners.get(task)
+			if (cleanups) {
+				cleanups.forEach((cleanup: () => void) => cleanup())
+				provider.taskEventListeners.delete(task)
+			}
+		},
+		detachDelegatedParent: async () => false,
+	})
+	return provider as unknown as ClineProvider
 }
 
 const baseHistoryItem = {
@@ -248,9 +263,9 @@ describe("createTaskWithHistoryItem – eager state push", () => {
 
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => existingTask),
-			currentTask: existingTask,
 			taskEventListeners: new Map([[existingTask, [vi.fn()]]]),
 		})
+		;(provider as any).taskSlot.current = existingTask
 
 		await (ClineProvider.prototype as any).createTaskWithHistoryItem.call(provider, { ...baseHistoryItem })
 

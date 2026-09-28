@@ -6,13 +6,13 @@
 // `completion_result` ask is answered with `yesButtonClicked`. The VS Code
 // webview never sends that answer: its "Start New Task" button (and every
 // other way of leaving a finished task) goes through `clearTask` ->
-// `removeClineFromStack` -> `abortTask(true)`, an ABANDONED abort, and
+// `clearCurrentTask` -> `abortTask(true)`, an ABANDONED abort, and
 // abandoned aborts skip the writers. So in the VS Code chat the writers
 // never ran after a normally completed task.
 //
 // These tests drive the real pieces: a real `Task` (with its real
 // `TaskLifecycle` and `TaskAskSay`), the real `AttemptCompletionTool`, and
-// the real `ClineProvider.clearTask` / `removeClineFromStack` bodies bound to
+// the real `ClineProvider.clearTask` / `clearCurrentTask` bodies bound to
 // a minimal provider stand-in. Only the memory writer entry points are spied.
 
 import { RooCodeEventName, type ProviderSettings } from "@roo-code/types"
@@ -73,33 +73,48 @@ vi.mock("../../../api", () => ({
 
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
+import { TaskSlot } from "../../webview/TaskSlot"
 import { attemptCompletionTool, type AttemptCompletionCallbacks } from "../../tools/AttemptCompletionTool"
 
 type ProviderStandIn = {
-	currentTask?: Task
+	taskSlot: TaskSlot
 	taskEventListeners: Map<Task, Array<() => void>>
 	resetSubagentPanel: () => Promise<void>
-	removeClineFromStack: typeof ClineProvider.prototype.removeClineFromStack
+	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
 	clearTask: typeof ClineProvider.prototype.clearTask
 	cancelTask: typeof ClineProvider.prototype.cancelTask
-	log: ReturnType<typeof vi.fn>
-	delegation: { detach: ReturnType<typeof vi.fn> }
-	[key: string]: unknown
+	log: (message: string) => void
+	delegation: { detach: (parentTaskId: string, childTaskId: string) => Promise<boolean> }
+	context: { globalStorageUri: { fsPath: string } }
+	getState: () => Promise<{ mode?: unknown }>
+	getValue: (key: string) => unknown
+	getTaskHistory: () => Promise<unknown[]>
+	getHistoryItem: (id: string) => Promise<{ status?: string }>
+	notifyBackgroundOutcome: (message: string) => void
+	postStateToWebview: () => Promise<void>
+	postMessageToWebview: (message: unknown) => Promise<void>
+	updateTaskHistory: (item: unknown) => Promise<unknown>
+	memoryWriterQuery: (foreground: unknown, taskId?: string) => () => Promise<string>
 }
 
 function makeProvider(): ProviderStandIn {
 	// The fields `Task`, `TaskAskSay` and `TaskLifecycle` read from their
-	// provider, plus the real `clearTask` / `removeClineFromStack` bodies so
+	// provider, plus the real `clearTask` / `clearCurrentTask` bodies so
 	// the test walks the exact code the webview's "Start New Task" reaches.
 	const provider: ProviderStandIn = {
-		currentTask: undefined,
+		taskSlot: undefined as unknown as TaskSlot,
 		taskEventListeners: new Map(),
 		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
-		removeClineFromStack: ClineProvider.prototype.removeClineFromStack,
+		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
 		clearTask: ClineProvider.prototype.clearTask,
 		cancelTask: ClineProvider.prototype.cancelTask,
 		log: vi.fn(),
-		delegation: { detach: vi.fn().mockResolvedValue(false) },
+		delegation: {
+			detach: vi.fn().mockResolvedValue(false) as unknown as (
+				parentTaskId: string,
+				childTaskId: string,
+			) => Promise<boolean>,
+		},
 		context: { globalStorageUri: { fsPath: "/test/storage" } },
 		getState: vi.fn().mockResolvedValue({ mode: "code" }),
 		getValue: vi.fn().mockReturnValue(undefined),
@@ -111,9 +126,22 @@ function makeProvider(): ProviderStandIn {
 		updateTaskHistory: vi.fn().mockResolvedValue([]),
 		memoryWriterQuery: vi.fn(() => async () => "NONE"),
 		getCurrentTask(this: ProviderStandIn) {
-			return this.currentTask
+			return this.taskSlot.current
 		},
-	}
+	} as ProviderStandIn
+	provider.taskSlot = new TaskSlot({
+		log: (message) => provider.log(message),
+		getState: () => provider.getState(),
+		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
+		removeTaskEventListeners: (task) => {
+			const cleanups = provider.taskEventListeners.get(task)
+			if (cleanups) {
+				cleanups.forEach((cleanup: () => void) => cleanup())
+				provider.taskEventListeners.delete(task)
+			}
+		},
+		detachDelegatedParent: (parentTaskId, childTaskId) => provider.delegation.detach(parentTaskId, childTaskId),
+	})
 	return provider
 }
 
@@ -135,7 +163,7 @@ function makeTask(provider: ProviderStandIn, options: { parentTaskId?: string; i
 	history.saveClineMessages = vi.fn().mockResolvedValue(undefined)
 	history.updateClineMessage = vi.fn().mockResolvedValue(undefined)
 	;(task as unknown as { checkpointSave: unknown }).checkpointSave = vi.fn().mockResolvedValue(undefined)
-	provider.currentTask = task
+	provider.taskSlot.current = task
 	return task
 }
 
@@ -182,7 +210,7 @@ describe("memory writers after a normally completed task", () => {
 		// ChatView answers completion_result with startNewTask() -> "clearTask".
 		await provider.clearTask()
 
-		expect(provider.currentTask).toBeUndefined()
+		expect(provider.taskSlot.current).toBeUndefined()
 		expect(task.abandoned).toBe(true)
 		expect(extractSpy).toHaveBeenCalledTimes(1)
 		expect(extractSpy.mock.calls[0][0]).toMatchObject({ taskId: task.taskId, isMainAgent: true })
@@ -214,8 +242,8 @@ describe("memory writers after a normally completed task", () => {
 		await completeAndWaitForAsk(task)
 
 		// createTaskWithHistoryItem / createTask pop the finished task the
-		// same way: removeClineFromStack -> abortTask(true).
-		await provider.removeClineFromStack()
+		// same way: clearCurrentTask -> abortTask(true).
+		await provider.clearCurrentTask()
 
 		expect(extractSpy).toHaveBeenCalledTimes(1)
 	})
@@ -265,7 +293,7 @@ describe("memory writers after a normally completed task", () => {
 		task.abortReason = "user_cancelled"
 		await task.abortTask()
 		// Rehydration afterwards pops the same instance as an abandoned abort.
-		await provider.removeClineFromStack()
+		await provider.clearCurrentTask()
 
 		expect(extractSpy).not.toHaveBeenCalled()
 		expect(dreamSpy).not.toHaveBeenCalled()
@@ -348,7 +376,7 @@ describe("task-completed telemetry after a normally completed task", () => {
 		const child = makeTask(provider, { parentTaskId: "parent-task" })
 		await completeAndWaitForAsk(child)
 
-		await provider.removeClineFromStack()
+		await provider.clearCurrentTask()
 
 		expect(captureTaskCompletedSpy).toHaveBeenCalledTimes(1)
 		expect(captureTaskCompletedSpy).toHaveBeenCalledWith(
@@ -362,7 +390,7 @@ describe("task-completed telemetry after a normally completed task", () => {
 		const task = makeTask(provider)
 		await completeAndWaitForAsk(task)
 
-		await provider.removeClineFromStack()
+		await provider.clearCurrentTask()
 
 		expect(captureTaskCompletedSpy).toHaveBeenCalledTimes(1)
 		expect(captureTaskCompletedSpy).toHaveBeenCalledWith(task.taskId, expect.anything())
@@ -405,7 +433,7 @@ describe("task-completed telemetry after a normally completed task", () => {
 
 		task.abortReason = "user_cancelled"
 		await task.abortTask()
-		await provider.removeClineFromStack()
+		await provider.clearCurrentTask()
 
 		expect(captureTaskCompletedSpy).not.toHaveBeenCalled()
 	})

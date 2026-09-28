@@ -36,8 +36,8 @@ describe("Single-open-task invariant", () => {
 		// Allow profile
 		vi.spyOn(ProfileValidatorMod.ProfileValidator, "isProfileAllowed").mockReturnValue(true)
 
-		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
-		const addClineToStack = vi.fn().mockResolvedValue(undefined)
+		const clearCurrentTask = vi.fn().mockResolvedValue(undefined)
+		const setCurrentTask = vi.fn().mockResolvedValue(undefined)
 
 		const provider = {
 			// Simulate an existing current task
@@ -50,8 +50,8 @@ describe("Single-open-task invariant", () => {
 				checkpointTimeout: 60,
 				cloudUserInfo: null,
 			}),
-			removeClineFromStack,
-			addClineToStack,
+			clearCurrentTask,
+			setCurrentTask,
 			setProviderProfile: vi.fn(),
 			log: vi.fn(),
 			getStateToPostToWebview: vi.fn(),
@@ -69,19 +69,19 @@ describe("Single-open-task invariant", () => {
 
 		await (ClineProvider.prototype as any).createTask.call(provider, "New task")
 
-		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
-		expect(addClineToStack).toHaveBeenCalledTimes(1)
+		expect(clearCurrentTask).toHaveBeenCalledTimes(1)
+		expect(setCurrentTask).toHaveBeenCalledTimes(1)
 	})
 
 	it("History resume path always closes current before rehydration (non-rehydrating case)", async () => {
-		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
-		const addClineToStack = vi.fn().mockResolvedValue(undefined)
+		const clearCurrentTask = vi.fn().mockResolvedValue(undefined)
+		const setCurrentTask = vi.fn().mockResolvedValue(undefined)
 		const updateGlobalState = vi.fn().mockResolvedValue(undefined)
 
 		const provider = {
 			getCurrentTask: vi.fn(() => undefined), // ensure not rehydrating
-			removeClineFromStack,
-			addClineToStack,
+			clearCurrentTask,
+			setCurrentTask,
 			updateGlobalState,
 			log: vi.fn(),
 			// The mode and profile restore moved to ModeProfileBinding (CORE-R6 c).
@@ -132,16 +132,16 @@ describe("Single-open-task invariant", () => {
 
 		const task = await (ClineProvider.prototype as any).createTaskWithHistoryItem.call(provider, historyItem)
 		expect(task).toBeTruthy()
-		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
-		expect(addClineToStack).toHaveBeenCalledTimes(1)
+		expect(clearCurrentTask).toHaveBeenCalledTimes(1)
+		expect(setCurrentTask).toHaveBeenCalledTimes(1)
 	})
 
 	it("API startNewTask closes current before new task", async () => {
-		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
+		const clearCurrentTask = vi.fn().mockResolvedValue(undefined)
 		const createTask = vi.fn().mockResolvedValue({ taskId: "ipc-1" })
 		const provider = {
 			context: {} as any,
-			removeClineFromStack,
+			clearCurrentTask,
 			postStateToWebview: vi.fn(),
 			postMessageToWebview: vi.fn(),
 			createTask,
@@ -166,7 +166,7 @@ describe("Single-open-task invariant", () => {
 		})
 
 		expect(taskId).toBe("ipc-1")
-		expect(removeClineFromStack).toHaveBeenCalledTimes(1)
+		expect(clearCurrentTask).toHaveBeenCalledTimes(1)
 		expect(createTask).toHaveBeenCalled()
 	})
 })

@@ -162,7 +162,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			cancelCurrentRequest: vi.fn(),
 			abandoned: false,
 		}
-		;(provider as any).currentTask = childTask
+		;(provider as any).taskSlot.current = childTask
 
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		;(provider as any).updateTaskHistory = updateTaskHistory
@@ -221,7 +221,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			log: vi.fn(),
 			updateTaskHistory,
 			getCurrentTask: vi.fn().mockReturnValue(undefined),
-			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 			createTaskWithHistoryItem: vi.fn().mockResolvedValue(undefined),
 			emit: vi.fn(),
 			getHistoryItem: vi

@@ -195,19 +195,19 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		provider.updateTaskHistory = vi.fn().mockResolvedValue([]) as any
 
 		stack = []
-		;(provider as any).currentTask = undefined
+		;(provider as any).taskSlot.current = undefined
 		// Mirror of the provider's current-task slot (D7): keep `stack` in
 		// sync so the assertions below observe what the slot holds.
 		const install = (task: any) => {
-			;(provider as any).currentTask = task
+			;(provider as any).taskSlot.current = task
 			stack.push(task)
 		}
-		provider.addClineToStack = vi.fn(async (task: any) => {
+		provider.setCurrentTask = vi.fn(async (task: any) => {
 			install(task)
 		}) as any
-		provider.removeClineFromStack = vi.fn(async () => {
+		provider.clearCurrentTask = vi.fn(async () => {
 			stack.pop()
-			;(provider as any).currentTask = undefined
+			;(provider as any).taskSlot.current = undefined
 		}) as any
 		;(provider as any).install = install
 	})
@@ -222,7 +222,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 			)
 
 			expect(Task).not.toHaveBeenCalled()
-			expect(provider.addClineToStack).not.toHaveBeenCalled()
+			expect(provider.setCurrentTask).not.toHaveBeenCalled()
 			// The previously open task was closed first (same as createTask);
 			// the webview is told so it does not keep showing it.
 			expect(stack).toHaveLength(0)

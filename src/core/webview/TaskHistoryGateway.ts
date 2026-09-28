@@ -43,7 +43,7 @@ export interface TaskHistoryGatewayHost {
 	postStateToWebview(): Promise<void>
 	postStateToWebviewWithoutClineMessages(): Promise<void>
 	getCurrentTask(): { readonly taskId: string } | undefined
-	removeClineFromStack(): Promise<void>
+	clearCurrentTask(): Promise<void>
 }
 
 /**
@@ -235,9 +235,7 @@ export class TaskHistoryGateway {
 				this.host.log(`[initializeTaskHistoryStore] Migrating ${legacy.length} legacy entries`)
 				const ok = await store.migrateFromLegacyHistory(legacy)
 				if (!ok) {
-					this.host.log(
-						"[initializeTaskHistoryStore] Migration incomplete, legacy keys retained for retry",
-					)
+					this.host.log("[initializeTaskHistoryStore] Migration incomplete, legacy keys retained for retry")
 					return
 				}
 				this.host.log("[initializeTaskHistoryStore] Migration complete")
@@ -509,7 +507,7 @@ export class TaskHistoryGateway {
 			for (const taskId of allIdsToDelete) {
 				if (taskId === this.host.getCurrentTask()?.taskId) {
 					// Close the current task instance; delegation flows will be handled via metadata if applicable.
-					await this.host.removeClineFromStack()
+					await this.host.clearCurrentTask()
 					break
 				}
 			}

@@ -363,7 +363,7 @@ describe("ClineProvider - Sticky Mode", () => {
 				.mockImplementation(() => Promise.resolve())
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask)
+			await provider.setCurrentTask(mockTask)
 
 			// Switch mode
 			await provider.handleModeSwitch("architect")
@@ -396,7 +396,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			}
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask as any)
+			await provider.setCurrentTask(mockTask as any)
 
 			// Mock updateTaskHistory
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
@@ -427,7 +427,7 @@ describe("ClineProvider - Sticky Mode", () => {
 				.mockImplementation(() => Promise.resolve())
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask)
+			await provider.setCurrentTask(mockTask)
 
 			// Switch mode
 			await provider.handleModeSwitch("architect")
@@ -531,7 +531,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			})
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask)
+			await provider.setCurrentTask(mockTask)
 
 			// Trigger a mode switch
 			await provider.handleModeSwitch("debug")
@@ -597,7 +597,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			})
 
 			// Add parent task to stack
-			await provider.addClineToStack(parentTask)
+			await provider.setCurrentTask(parentTask)
 
 			// Create a subtask (simulating new_task tool behavior)
 			const subtask = new Task({
@@ -615,7 +615,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			getCurrentTaskMock.mockReturnValue(parentTask as any)
 
 			// Add subtask to stack
-			await provider.addClineToStack(subtask)
+			await provider.setCurrentTask(subtask)
 
 			// Now mock getCurrentTask to return the subtask (simulating stack behavior)
 			getCurrentTaskMock.mockReturnValue(subtask as any)
@@ -643,7 +643,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			vi.spyOn(mockTask as any, "saveClineMessages").mockRejectedValue(new Error("Save failed"))
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask)
+			await provider.setCurrentTask(mockTask)
 
 			// Switch mode - should not throw
 			await expect(provider.handleModeSwitch("architect")).resolves.not.toThrow()
@@ -782,7 +782,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			}
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask as any)
+			await provider.setCurrentTask(mockTask as any)
 
 			// Mock updateTaskHistory
 			const updateTaskHistorySpy = vi
@@ -837,7 +837,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			}
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask as any)
+			await provider.setCurrentTask(mockTask as any)
 
 			// Mock updateTaskHistory
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
@@ -876,7 +876,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			}
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask as any)
+			await provider.setCurrentTask(mockTask as any)
 
 			// Clear previous calls
 			vi.mocked(mockContext.globalState.update).mockClear()
@@ -902,7 +902,7 @@ describe("ClineProvider - Sticky Mode", () => {
 				emit: vi.fn().mockImplementation((event) => {
 					emitCallCount++
 					// Only throw on the second emit call (taskModeSwitched event)
-					// The first call is for TaskFocused in addClineToStack
+					// The first call is for TaskFocused in setCurrentTask
 					if (emitCallCount === 2 && event === "taskModeSwitched") {
 						throw new Error("Emit failed")
 					}
@@ -914,7 +914,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			}
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask as any)
+			await provider.setCurrentTask(mockTask as any)
 
 			// Mock updateTaskHistory
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
@@ -958,7 +958,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			}
 
 			// Add task to provider stack
-			await provider.addClineToStack(mockTask as any)
+			await provider.setCurrentTask(mockTask as any)
 
 			// Mock updateTaskHistory to throw error
 			vi.spyOn(provider, "updateTaskHistory").mockRejectedValue(new Error("Update failed"))
@@ -1019,9 +1019,9 @@ describe("ClineProvider - Sticky Mode", () => {
 			}
 
 			// Add tasks to provider stack
-			await provider.addClineToStack(task1 as any)
-			await provider.addClineToStack(task2 as any)
-			await provider.addClineToStack(task3 as any)
+			await provider.setCurrentTask(task1 as any)
+			await provider.setCurrentTask(task2 as any)
+			await provider.setCurrentTask(task3 as any)
 
 			// Mock updateTaskHistory
 			const updateTaskHistorySpy = vi
@@ -1119,7 +1119,7 @@ describe("ClineProvider - Sticky Mode", () => {
 
 			// Add all tasks to provider
 			for (const task of tasks) {
-				await provider.addClineToStack(task as any)
+				await provider.setCurrentTask(task as any)
 			}
 
 			// Mock getCurrentTask
