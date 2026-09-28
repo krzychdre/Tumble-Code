@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} archivo(s) modificado(s) en esta conversación"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} línea sin cambios",
+		"unchangedLines_other": "... {{count}} líneas sin cambios",
+		"hiddenLines_one": "{{count}} línea oculta",
+		"hiddenLines_other": "{{count}} líneas ocultas",
+		"openDiff": "Abrir diff",
+		"openFile": "Abrir archivo"
+	},
 	"retry": {
 		"title": "Reintentar",
 		"tooltip": "Intenta la operación de nuevo"

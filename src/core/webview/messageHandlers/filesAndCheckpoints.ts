@@ -70,6 +70,15 @@ export const filesAndCheckpointsHandlers: DomainHandlerMap<"filesAndCheckpoints"
 		openFile(filePath, message.values as { create?: boolean; content?: string; line?: number })
 	},
 
+	// §2.7 "Open diff": show a chat diff (a unified patch) in an editor tab, where
+	// it gets the full width and VS Code's diff syntax colours. Untitled, so
+	// nothing is written to disk.
+	openDiff: async (_ctx, message) => {
+		if (!message.text) return
+		const doc = await vscode.workspace.openTextDocument({ content: message.text, language: "diff" })
+		await vscode.window.showTextDocument(doc, { preview: true })
+	},
+
 	readFileContent: async (ctx, message) => {
 		const { provider, getCurrentCwd } = ctx
 		const relPath = message.text || ""

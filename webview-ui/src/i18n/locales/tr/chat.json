@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "Bu sohbette {{count}} dosya değiştirildi"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} değişmemiş satır",
+		"unchangedLines_other": "... {{count}} değişmemiş satır",
+		"hiddenLines_one": "{{count}} gizli satır",
+		"hiddenLines_other": "{{count}} gizli satır",
+		"openDiff": "Diff'i aç",
+		"openFile": "Dosyayı aç"
+	},
 	"tokenProgress": {
 		"availableSpace": "Kullanılabilir alan: {{amount}} token",
 		"tokensUsed": "Kullanılan tokenlar: {{used}} / {{total}}",

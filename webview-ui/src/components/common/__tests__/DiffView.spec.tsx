@@ -32,7 +32,7 @@ const patch = (body: string[]) => ["--- a/f.ts", "+++ b/f.ts", ...body, ""].join
 
 // One hunk: a deletion, 18 unchanged lines, an addition.
 const longRunDiff = patch([
-	"@@ -1,20 +1,20 @@",
+	"@@ -1,19 +1,19 @@",
 	"-old1",
 	...Array.from({ length: 18 }, (_, i) => ` same${i + 2}`),
 	"+new20",

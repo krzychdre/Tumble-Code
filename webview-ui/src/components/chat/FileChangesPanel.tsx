@@ -154,7 +154,7 @@ const FileChangesPanel = memo(({ clineMessages, className }: FileChangesPanelPro
 						)
 						const isExpanded = expandedPaths.has(path)
 						return (
-							<div key={path} className="rounded border border-vscode-panel-border overflow-hidden">
+							<div key={path} className="border border-vscode-panel-border">
 								<CodeAccordion
 									path={path}
 									code={displayDiff}

@@ -1875,6 +1875,45 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > openDebugUi
 }
 `;
 
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openDiff 1`] = `
+{
+  "events": [
+    [
+      "vscode.workspace.openTextDocument",
+      {
+        "content": "--- a/src/a.ts
++++ b/src/a.ts
+@@ -1 +1 @@
+-a
++b",
+        "language": "diff",
+      },
+    ],
+    [
+      "vscode.window.showTextDocument",
+      {
+        "uri": {
+          "fsPath": {
+            "content": "--- a/src/a.ts
++++ b/src/a.ts
+@@ -1 +1 @@
+-a
++b",
+            "language": "diff",
+          },
+          "path": "[Circular]",
+          "scheme": "file",
+        },
+      },
+      {
+        "preview": true,
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
 exports[`webviewMessageHandler routing (characterization, CORE-R3) > openExtensionLogs 1`] = `
 {
   "events": [

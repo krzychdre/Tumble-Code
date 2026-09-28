@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} bestand(en) gewijzigd in dit gesprek"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} ongewijzigde regel",
+		"unchangedLines_other": "... {{count}} ongewijzigde regels",
+		"hiddenLines_one": "{{count}} verborgen regel",
+		"hiddenLines_other": "{{count}} verborgen regels",
+		"openDiff": "Diff openen",
+		"openFile": "Bestand openen"
+	},
 	"retry": {
 		"title": "Opnieuw proberen",
 		"tooltip": "Probeer de bewerking opnieuw"

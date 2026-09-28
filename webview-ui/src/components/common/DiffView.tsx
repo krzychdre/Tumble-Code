@@ -1,13 +1,18 @@
 import { memo, useMemo, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+
 import { parseUnifiedDiff, type DiffLine } from "@src/utils/parseUnifiedDiff"
 import { normalizeLanguage } from "@src/utils/highlighter"
 import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
 import { highlightHunks } from "@src/utils/highlightDiff"
+import { buildDiffRenderRows, mergedLineNumber } from "@src/utils/diffFolds"
 
 interface DiffViewProps {
 	source: string
 	filePath?: string
 }
+
+const EMPTY_FOLDS: ReadonlySet<string> = new Set()
 
 // Interface for hunk data
 interface Hunk {
@@ -20,9 +25,15 @@ interface Hunk {
 
 /**
  * DiffView component renders unified diffs with side-by-side line numbers
- * matching VSCode's diff editor style
+ * matching VSCode's diff editor style.
+ *
+ * §2.7 (ai_plans/2026-09-27_ui-modernization.md): below 400px of panel width a
+ * container query (index.css) swaps the two line-number columns for one
+ * merged column, and runs of more than six unchanged lines fold into
+ * "... N unchanged lines" buttons (utils/diffFolds.ts).
  */
 const DiffView = memo(({ source, filePath }: DiffViewProps) => {
+	const { t } = useTranslation()
 	// Determine language from file path
 	const normalizedLang = useMemo(() => normalizeLanguage(getLanguageFromPath(filePath || "") || "txt"), [filePath])
 
@@ -167,76 +178,108 @@ const DiffView = memo(({ source, filePath }: DiffViewProps) => {
 		return line.content
 	}
 
+	// Unchanged-line folds the user opened; reset whenever the diff itself changes.
+	const [openFolds, setOpenFolds] = useState<{ source: string; keys: ReadonlySet<string> }>({
+		source,
+		keys: new Set(),
+	})
+	const expandedFolds = openFolds.source === source ? openFolds.keys : EMPTY_FOLDS
+	const rows = useMemo(() => buildDiffRenderRows(processedHunks, expandedFolds), [processedHunks, expandedFolds])
+
+	const openFold = (key: string) =>
+		setOpenFolds({ source, keys: new Set([...(openFolds.source === source ? openFolds.keys : []), key]) })
+
 	return (
-		<div className="diff-view bg-[var(--vscode-editor-background)] rounded-md overflow-hidden text-[0.95em]">
+		<div className="diff-view bg-[var(--vscode-editor-background)] overflow-hidden text-[0.95em]">
 			<div className="overflow-x-hidden">
 				<table className="w-full border-collapse table-auto">
 					<tbody>
-						{processedHunks.flatMap((hunk, hunkIndex) =>
-							hunk.lines.map((line, lineIndex) => {
-								const globalIndex = `${hunkIndex}-${lineIndex}`
-
-								// Render compact separator between hunks
-								if (line.type === "gap") {
-									return (
-										<tr key={globalIndex}>
-											<td className="w-[45px] text-right pr-3 pl-2 select-none align-top whitespace-nowrap bg-[var(--vscode-editor-background)]" />
-											<td className="w-[45px] text-right pr-3 select-none align-top whitespace-nowrap bg-[var(--vscode-editor-background)]" />
-											<td className="w-[12px] align-top bg-[var(--vscode-editor-background)]" />
-											{/* +/- column (empty for gap) */}
-											<td className="w-[16px] text-center select-none bg-[var(--vscode-editor-background)]" />
-											<td className="pr-3 whitespace-pre-wrap break-words w-full italic bg-[var(--vscode-editor-background)]">
-												{`${line.hiddenCount ?? 0} hidden lines`}
-											</td>
-										</tr>
-									)
-								}
-
-								// Use VSCode's built-in diff editor color variables as classes for gutters
-								const gutterBgClass =
-									line.type === "addition"
-										? "bg-[var(--vscode-diffEditor-insertedTextBackground)]"
-										: line.type === "deletion"
-											? "bg-[var(--vscode-diffEditor-removedTextBackground)]"
-											: "bg-[var(--vscode-editorGroup-border)]"
-
-								const contentBgClass =
-									line.type === "addition"
-										? "diff-content-inserted"
-										: line.type === "deletion"
-											? "diff-content-removed"
-											: "diff-content-context"
-
-								const sign = line.type === "addition" ? "+" : line.type === "deletion" ? "-" : ""
-
+						{rows.map((row) => {
+							if (row.kind === "fold") {
 								return (
-									<tr key={globalIndex}>
-										{/* Old line number */}
-										<td
-											className={`w-[45px] text-right pr-1 pl-1 select-none align-top whitespace-nowrap ${gutterBgClass}`}>
-											{line.oldLineNum || ""}
-										</td>
-										{/* New line number */}
-										<td
-											className={`w-[45px] text-right pr-1 select-none align-top whitespace-nowrap ${gutterBgClass}`}>
-											{line.newLineNum || ""}
-										</td>
-										{/* Narrow colored gutter */}
-										<td className={`w-[12px] ${gutterBgClass} align-top`} />
-										{/* +/- fixed column to prevent wrapping into it */}
-										<td
-											className={`w-[16px] text-center select-none whitespace-nowrap px-1 ${gutterBgClass}`}>
-											{sign}
-										</td>
-										{/* Code content (no +/- prefix here) */}
-										<td
-											className={`pl-1 pr-3 whitespace-pre-wrap break-words w-full ${contentBgClass}`}>
-											{renderContent(line, hunk, lineIndex)}
+									<tr key={`fold-${row.key}`}>
+										<td colSpan={6} className="p-0 bg-[var(--vscode-editor-background)]">
+											<button
+												type="button"
+												className="diff-fold w-full text-left px-2 py-0.5 cursor-pointer bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-vscode-list-hoverBackground focus-ring"
+												onClick={() => openFold(row.key)}>
+												{t("chat:diffView.unchangedLines", { count: row.count })}
+											</button>
 										</td>
 									</tr>
 								)
-							}),
-						)}
+							}
+
+							const hunk = processedHunks[row.hunkIndex]
+							const line = hunk.lines[row.lineIndex]
+							const globalIndex = `${row.hunkIndex}-${row.lineIndex}`
+
+							// Render compact separator between hunks
+							if (line.type === "gap") {
+								return (
+									<tr key={globalIndex}>
+										<td className="diff-gutter-split w-[45px] text-right pr-3 pl-2 select-none align-top whitespace-nowrap bg-[var(--vscode-editor-background)]" />
+										<td className="diff-gutter-split w-[45px] text-right pr-3 select-none align-top whitespace-nowrap bg-[var(--vscode-editor-background)]" />
+										<td className="diff-gutter-merged select-none bg-[var(--vscode-editor-background)]" />
+										<td className="w-[12px] align-top bg-[var(--vscode-editor-background)]" />
+										{/* +/- column (empty for gap) */}
+										<td className="w-[16px] text-center select-none bg-[var(--vscode-editor-background)]" />
+										<td className="pr-3 whitespace-pre-wrap break-words w-full italic bg-[var(--vscode-editor-background)]">
+											{t("chat:diffView.hiddenLines", { count: line.hiddenCount ?? 0 })}
+										</td>
+									</tr>
+								)
+							}
+
+							// Use VSCode's built-in diff editor color variables as classes for gutters
+							const gutterBgClass =
+								line.type === "addition"
+									? "bg-[var(--vscode-diffEditor-insertedTextBackground)]"
+									: line.type === "deletion"
+										? "bg-[var(--vscode-diffEditor-removedTextBackground)]"
+										: "bg-[var(--vscode-editorGroup-border)]"
+
+							const contentBgClass =
+								line.type === "addition"
+									? "diff-content-inserted"
+									: line.type === "deletion"
+										? "diff-content-removed"
+										: "diff-content-context"
+
+							const sign = line.type === "addition" ? "+" : line.type === "deletion" ? "-" : ""
+
+							return (
+								<tr key={globalIndex}>
+									{/* Old line number (hidden below 400px panel width) */}
+									<td
+										className={`diff-gutter-split w-[45px] text-right pr-1 pl-1 select-none align-top whitespace-nowrap ${gutterBgClass}`}>
+										{line.oldLineNum || ""}
+									</td>
+									{/* New line number (hidden below 400px panel width) */}
+									<td
+										className={`diff-gutter-split w-[45px] text-right pr-1 select-none align-top whitespace-nowrap ${gutterBgClass}`}>
+										{line.newLineNum || ""}
+									</td>
+									{/* Merged line number (shown only below 400px panel width) */}
+									<td
+										className={`diff-gutter-merged text-right pr-1 pl-1 select-none align-top whitespace-nowrap ${gutterBgClass}`}>
+										{mergedLineNumber(line) || ""}
+									</td>
+									{/* Narrow colored gutter */}
+									<td className={`w-[12px] ${gutterBgClass} align-top`} />
+									{/* +/- fixed column to prevent wrapping into it */}
+									<td
+										className={`w-[16px] text-center select-none whitespace-nowrap px-1 ${gutterBgClass}`}>
+										{sign}
+									</td>
+									{/* Code content (no +/- prefix here) */}
+									<td
+										className={`pl-1 pr-3 whitespace-pre-wrap break-words w-full ${contentBgClass}`}>
+										{renderContent(line, hunk, row.lineIndex)}
+									</td>
+								</tr>
+							)
+						})}
 					</tbody>
 				</table>
 			</div>

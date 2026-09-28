@@ -26,7 +26,7 @@ vi.mock("@src/utils/highlightDiff", () => ({
 
 vi.mock("../CodeBlock", () => ({ default: () => null }))
 
-const diff = ["--- a/src/a.ts", "+++ b/src/a.ts", "@@ -1,3 +1,4 @@", "-x", "+y", "+z", " keep", "-w", ""].join("\n")
+const diff = ["--- a/src/a.ts", "+++ b/src/a.ts", "@@ -1,3 +1,3 @@", "-x", "+y", "+z", " keep", "-w", ""].join("\n")
 
 const renderAccordion = (props: Partial<React.ComponentProps<typeof CodeAccordion>> = {}) =>
 	render(

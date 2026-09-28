@@ -33,6 +33,18 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} plik(ów) zmienionych w tej rozmowie"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} niezmieniony wiersz",
+		"unchangedLines_few": "... {{count}} niezmienione wiersze",
+		"unchangedLines_many": "... {{count}} niezmienionych wierszy",
+		"unchangedLines_other": "... {{count}} niezmienionego wiersza",
+		"hiddenLines_one": "{{count}} ukryty wiersz",
+		"hiddenLines_few": "{{count}} ukryte wiersze",
+		"hiddenLines_many": "{{count}} ukrytych wierszy",
+		"hiddenLines_other": "{{count}} ukrytego wiersza",
+		"openDiff": "Otwórz diff",
+		"openFile": "Otwórz plik"
+	},
 	"subagents": {
 		"headerActive": "Subagenci: {{active}}/{{total}} aktywnych",
 		"headerDone": "Subagenci: {{total}} zakończonych",
