@@ -18,6 +18,8 @@ import { Box, Text, useInput, type Key } from "ink"
 
 import { isGlobalInputSequence } from "@/lib/utils/input.js"
 
+import { isReverseSearchKey } from "./autocomplete/ReverseSearchPrompt.js"
+
 export interface MultilineTextInputProps {
 	/**
 	 * Current value (can contain newlines)
@@ -51,6 +53,11 @@ export interface MultilineTextInputProps {
 	 * autocomplete picker is open: those keys move its highlight instead.
 	 */
 	lineNavigationActive?: boolean
+	/**
+	 * Called on Ctrl+R (reverse search over the input history). Without it
+	 * Ctrl+R does nothing; it never types a literal "r".
+	 */
+	onReverseSearch?: () => void
 	/**
 	 * Placeholder text when empty
 	 */
@@ -200,6 +207,7 @@ export function MultilineTextInput({
 	onEscape,
 	onUpAtFirstLine,
 	onDownAtLastLine,
+	onReverseSearch,
 	lineNavigationActive = true,
 	placeholder = "",
 	isActive = true,
@@ -252,6 +260,11 @@ export function MultilineTextInput({
 			// Ignore inputs that are handled at the App level (global shortcuts)
 			// This includes Ctrl+C (exit), Shift+Tab (mode cycling), etc.
 			if (isGlobalInputSequence(input, key)) {
+				return
+			}
+
+			if (isReverseSearchKey(input, key)) {
+				onReverseSearch?.()
 				return
 			}
 

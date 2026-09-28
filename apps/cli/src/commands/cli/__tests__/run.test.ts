@@ -112,6 +112,7 @@ function baseFlags(overrides: Partial<FlagOptions> = {}): FlagOptions {
 		commandExecutionTimeout: undefined,
 		ephemeral: false,
 		oneshot: false,
+		resume: false,
 		outputFormat: undefined,
 		...overrides,
 	}
@@ -1220,5 +1221,57 @@ describe("run reports a failed print run on stderr with the debug log hint", () 
 		expect(written).toContain("--debug")
 		expect(written).toContain("cli-debug.log")
 		expect(exitSpy).toHaveBeenCalledWith(1)
+	})
+})
+
+// UI plan §4: `tumble --resume` starts the TUI with the task history picker open.
+describe("run --resume", () => {
+	let tempDir: string
+	const stdinWasTTY = process.stdin.isTTY
+	const stdoutWasTTY = process.stdout.isTTY
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-resume-flag-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		process.stdin.isTTY = true
+		process.stdout.isTTY = true
+	})
+
+	afterEach(() => {
+		process.stdin.isTTY = stdinWasTTY
+		process.stdout.isTTY = stdoutWasTTY
+		vi.restoreAllMocks()
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	it("tells the App to open the resume picker", async () => {
+		const { render } = await import("ink")
+		const renderMock = vi.mocked(render)
+		renderMock.mockClear()
+		vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+		vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		await saveSettings({ provider: "openrouter" })
+
+		await run(undefined, baseFlags({ print: false, resume: true }))
+
+		const boundary = renderMock.mock.calls[0]?.[0] as { props: { children: { props: Record<string, unknown> } } }
+		expect(boundary.props.children.props.openResumePicker).toBe(true)
+	})
+
+	it.each([
+		["--print", { print: true }],
+		["--continue", { print: false, continue: true }],
+		["--session-id", { print: false, sessionId: "8b3e0f65-3a3c-4c55-9f0d-2c1b4f1f7a11" }],
+	] as const)("rejects --resume together with %s", async (_name, flags) => {
+		const exitError = new Error("process.exit")
+		vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		await saveSettings({ provider: "openrouter" })
+
+		await expect(run(undefined, baseFlags({ ...flags, resume: true }))).rejects.toBe(exitError)
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--resume"))
 	})
 })

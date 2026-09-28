@@ -36,6 +36,7 @@ program
 	.option("--session-id <session-id>", "Resume a specific task by session ID")
 	.option("-c, --continue", "Resume the most recent task in the current workspace", false)
 	.option("-w, --workspace <path>", "Workspace directory path (defaults to current working directory)")
+	.option("--resume", "Start with a picker of this workspace's earlier tasks to resume", false)
 	.option("-p, --print", "Print response and exit (non-interactive mode)", false)
 	.option(
 		"--stdin-prompt-stream",

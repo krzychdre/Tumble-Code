@@ -120,6 +120,12 @@ export function useTaskSubmit({
 						return
 					}
 
+					if (globalCommand?.action === "openResumePicker") {
+						// The # trigger is the resume picker; App types it into the prompt.
+						useUIStateStore.getState().requestInput("#")
+						return
+					}
+
 					if (globalCommand?.action === "openMcpPanel") {
 						useUIStateStore.getState().setShowMcpPanel(true)
 						return

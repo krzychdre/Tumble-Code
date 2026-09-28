@@ -111,6 +111,11 @@ In interactive mode (see [Terminal UI](#terminal-ui) for the full visual grammar
 - Followup questions show suggestions with a 60-second timeout, then auto-select the first suggestion
 - Browser and MCP actions are auto-approved, every MCP tool included, whether or not its server's config lists it under `alwaysAllow`
 
+### Resuming a task
+
+`tumble --resume` starts with a picker of this workspace's earlier tasks; inside a session `/resume` (or typing `#`)
+opens the same picker. `-c` resumes the most recent task directly, `--session-id <id>` a given one.
+
 ### Approval-Required Mode (`--require-approval`)
 
 If you want manual approval prompts, enable approval-required mode:
@@ -203,6 +208,7 @@ The theme is the Tumble "Hardcore" palette mapped to Claude Code's semantic key 
 | `Ctrl+C` twice | Exit the CLI                                                          |
 | `Ctrl+M`       | Cycle modes (code → architect → ask → debug → …)                      |
 | `Ctrl+T`       | Toggle the TODO viewer                                                |
+| `Ctrl+R`       | Search previous prompts (again for older; `Enter` fills the prompt)   |
 | `Esc`          | Cancel a running task, or close the TODO viewer / MCP panel / dialogs |
 | `y` / `n`      | Approve / reject in approval dialogs (accelerators)                   |
 | `↑` / `↓`      | Navigate autocomplete picker and dialog lists                         |

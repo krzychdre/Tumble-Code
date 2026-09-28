@@ -161,5 +161,21 @@ export function useAutocompleteTriggers({
 		}
 	}, [fileSearchResults]) // Only depend on fileSearchResults - read pickerState from ref
 
+	// The history picker can open before the task history arrives (--resume at
+	// start-up); search again once it does.
+	const prevTaskHistoryRef = useRef(taskHistory)
+
+	useEffect(() => {
+		if (taskHistory === prevTaskHistoryRef.current) {
+			return
+		}
+
+		prevTaskHistoryRef.current = taskHistory
+
+		if (pickerStateRef.current.isOpen && pickerStateRef.current.activeTrigger?.id === "history") {
+			autocompleteRef.current?.refreshSearch()
+		}
+	}, [taskHistory]) // Only depend on taskHistory - read pickerState from ref
+
 	return autocompleteTriggers
 }
