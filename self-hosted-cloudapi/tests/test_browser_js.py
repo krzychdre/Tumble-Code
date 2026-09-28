@@ -38,6 +38,8 @@ _MIN_CHECKS = {
     "render_checks.html": 28,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
+    # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter form.
+    "tasklist_filter_checks.html": 18,
     "tasktree_checks.html": 19,
     # escapeHtml must escape " and ' so values interpolated into double-quoted
     # src="..."/title="..." attributes cannot break out (CodeQL #8/#11).

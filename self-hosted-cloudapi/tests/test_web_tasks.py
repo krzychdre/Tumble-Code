@@ -959,11 +959,12 @@ async def test_pager_links_every_page_in_the_window(client, session_factory, db_
 
     assert resp.status_code == 200
     # The window around page 1, plus the far end, each as its own link.
+    # (Built by ListView.url, so the "&" is entity-encoded like any other.)
     for n in (2, 3, 4, 5, 10):
-        assert f'href="/app?scope=roots&page={n}"' in resp.text
+        assert f'href="/app?scope=roots&amp;page={n}"' in resp.text
     # The page you are on is stated, not offered as a link to itself.
     assert 'aria-current="page"' in resp.text
-    assert 'href="/app?scope=roots&page=1"' not in resp.text
+    assert 'href="/app?scope=roots&amp;page=1"' not in resp.text
     # Pages 6..9 are elided rather than silently dropped.
     assert "pager-gap" in resp.text
 

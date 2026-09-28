@@ -5,11 +5,10 @@ static/render.js from the embedded ClineMessage[] JSON.
 """
 
 import logging
-from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import settings
@@ -30,6 +29,7 @@ from src.web.presenters.task_detail import (
     _tree_entry,
     conversation_json,
 )
+from src.web.presenters.task_list import ListView
 from src.web.presenters.task_rows import _list_row, _workspace_label
 from src.web.templating import templates
 
@@ -52,10 +52,20 @@ async def task_list(
     page: int = Query(1),
     q: str = Query("", max_length=200),
     scope: str = Query("roots"),
+    # The rest of the view (web/presenters/task_list.ListView): read as plain
+    # strings and normalized there, so a bad value is dropped, never a 422.
+    project: str = Query(""),
+    model: str = Query(""),
+    grade: str = Query(""),
+    since: str = Query(""),
+    until: str = Query(""),
+    subtasks: str = Query(""),
+    sort: str = Query(""),
+    dir: str = Query(""),
     user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List the logged-in user's shared tasks, newest first, one page at a time.
+    """List the logged-in user's shared tasks, one page at a time.
 
     Every column shown comes from the task row itself (see
     services/task_summary), so this is a single indexed query regardless of how
@@ -67,43 +77,38 @@ async def task_list(
     subtasks, so listing them flat buried the actual runs among their own
     fragments, and hiding them outright left no way to see a run's shape
     without opening it. ``scope=all`` restores the flat list.
+
+    Sorting (updated, cost, tokens, messages) and the filters are allow-listed
+    GET parameters (``ListView``); the default is newest first.
     """
-    search = q.strip()
-    scope = scope if scope in ("roots", "all") else "roots"
-    filters = [Task.user_id == user["user_id"]]
-    if search:
-        # autoescape: "%" and "_" typed into the box mean those characters,
-        # not LIKE wildcards (SQLAlchemy escapes them, and its escape char).
-        filters.append(
-            or_(
-                Task.title.icontains(search, autoescape=True),
-                Task.workspace_path.icontains(search, autoescape=True),
-            )
-        )
-    if scope == "roots":
-        filters.append(Task.parent_task_id.is_(None))
+    view = ListView.parse(
+        scope=scope, q=q, project=project, model=model, grade=grade,
+        since=since, until=until, subtasks=subtasks, sort=sort, dir=dir,
+    )
+    user_id = user["user_id"]
+    filters = view.conditions(user_id)
 
     total = await db.scalar(select(func.count(Task.id)).where(*filters)) or 0
     page_count = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(max(page, 1), page_count)
 
+    order, rollup = view.order_by(user_id)
+    query = select(Task).where(*filters)
+    if rollup is not None:
+        query = query.outerjoin(rollup, rollup.c.run_id == Task.id)
     result = await db.execute(
-        select(Task)
-        .where(*filters)
-        .order_by(Task.updated_at.desc())
-        .limit(PAGE_SIZE)
-        .offset((page - 1) * PAGE_SIZE)
+        query.order_by(*order).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE)
     )
 
     page_tasks = list(result.scalars().all())
     # One query per tree level for the whole page rather than a lookup per row.
-    tree = await subtrees(db, [t.id for t in page_tasks], user["user_id"])
-    nest = scope == "roots"
+    tree = await subtrees(db, [t.id for t in page_tasks], user_id)
+    nest = view.scope == "roots"
     items = [_list_row(task, tree, nest) for task in page_tasks]
 
     # Shown on the scope toggle so the cost of switching is visible up front.
     all_total = await db.scalar(
-        select(func.count(Task.id)).where(Task.user_id == user["user_id"])
+        select(func.count(Task.id)).where(Task.user_id == user_id)
     ) or 0
 
     return templates.TemplateResponse(
@@ -113,8 +118,9 @@ async def task_list(
             "user": user,
             "tasks": items,
             "nav_active": "tasks",
-            "query": search,
-            "scope": scope,
+            "view": view,
+            "query": view.q,
+            "scope": view.scope,
             "tree_view": nest,
             "page": page,
             "page_count": page_count,
@@ -125,8 +131,32 @@ async def task_list(
             "all_total": all_total,
             "has_prev": page > 1,
             "has_next": page < page_count,
+            **await _filter_suggestions(db, user_id),
         },
     )
+
+
+async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
+    """The user's own projects and models, offered as the filter fields'
+    suggestions (a <datalist>, so any other text can still be typed).
+
+    Two DISTINCT reads over the user's rows; the project is offered by its
+    badge label (the last path segment), which is what the filter matches.
+    """
+    paths = await db.scalars(
+        select(Task.workspace_path)
+        .where(Task.user_id == user_id, Task.workspace_path.is_not(None))
+        .distinct()
+    )
+    labels = {label for label in (_workspace_label(p) for p in paths.all()) if label}
+    joined = await db.scalars(
+        select(Task.models).where(Task.user_id == user_id, Task.models.is_not(None)).distinct()
+    )
+    models = {m.strip() for value in joined.all() for m in value.split(",") if m.strip()}
+    return {
+        "project_options": sorted(labels, key=str.lower),
+        "model_options": sorted(models, key=str.lower),
+    }
 
 
 @router.get("/app/tasks/{task_id}", response_class=HTMLResponse)
@@ -238,14 +268,18 @@ async def bulk_delete_tasks(
         )
         logger.info("[web] bulk delete: %s task(s) removed for %s", deleted, user["user_id"])
 
-    # Selecting on page 3 and deleting everything on it would otherwise leave the
-    # reader on a page that no longer exists.
-    # Both values are user input going back into a URL, so they are encoded:
-    # a raw "&" would start a new parameter, "#" would cut the rest off into a
-    # fragment and "+" would read back as a space.
-    params = {"scope": form.get("scope") or "roots"}
-    query = form.get("q") or ""
-    if query:
-        params["q"] = query
-    target = "/app?" + urlencode(params, quote_via=quote)
-    return RedirectResponse(url=target, status_code=303)
+    # Back to the same view (scope, search, filters, sort), which the form
+    # carries as hidden fields, but to its first page: selecting on page 3 and
+    # deleting everything on it would otherwise leave the reader on a page
+    # that no longer exists. ListView re-validates every value and encodes
+    # them: a raw "&" would start a new parameter, "#" would cut the rest off
+    # into a fragment and "+" would read back as a space.
+    def field(name: str) -> str:
+        value = form.get(name)
+        return value if isinstance(value, str) else ""
+
+    view = ListView.parse(**{name: field(name) for name in _VIEW_FIELDS})
+    return RedirectResponse(url=view.url(), status_code=303)
+
+
+_VIEW_FIELDS = ("scope", "q", "project", "model", "grade", "since", "until", "subtasks", "sort", "dir")

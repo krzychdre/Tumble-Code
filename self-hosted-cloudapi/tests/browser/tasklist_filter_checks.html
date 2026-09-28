@@ -1,0 +1,149 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!--
+  The task list's progressive enhancement (static/tasklist.js): the filter form
+  re-fetches the list 300 ms after the last change and swaps the [data-swap]
+  regions from the response; the density toggle; select mode. fetch is stubbed
+  (a file:// page has no server), so the checks are about what the script asks
+  for and what it does with the answer.
+-->
+<h1>Your tasks<span id="list-count" data-swap> <span class="count-pill">2</span></span></h1>
+<form id="filter-form" method="get" action="/app" role="search">
+  <input type="hidden" name="scope" value="roots">
+  <input type="search" name="q" value="">
+  <input type="text" name="project" value="">
+  <select name="grade"><option value="">Any</option><option value="clean">Clean</option></select>
+  <input type="checkbox" name="subtasks" value="1">
+  <button type="submit" id="apply">Apply</button>
+</form>
+<div id="task-results" data-swap>
+  <form id="bulk-form" method="post" action="/app/tasks/bulk-delete">
+    <div class="select-head">
+      <label class="select-mode"><input type="checkbox" id="select-mode"><span>Select</span></label>
+      <label class="select-all"><input type="checkbox" id="select-all"><span>Select page</span></label>
+      <button type="button" id="density-toggle" aria-pressed="false" hidden>Compact</button>
+    </div>
+    <ul class="task-list">
+      <li class="task-node"><div class="task-item">
+        <label class="task-check"><input type="checkbox" name="task_ids" value="old1" data-child-count="0"></label>
+        <a class="task-link" href="/app/tasks/old1"><span class="cell-title">Old one</span></a>
+      </div></li>
+      <li class="task-node"><div class="task-item">
+        <label class="task-check"><input type="checkbox" name="task_ids" value="old2" data-child-count="0"></label>
+        <a class="task-link" href="/app/tasks/old2"><span class="cell-title">Old two</span></a>
+      </div></li>
+    </ul>
+    <div id="bulk-bar" class="bulk-bar" hidden>
+      <span class="bulk-count"><b id="bulk-n">0</b> selected</span>
+      <label class="bulk-subtasks" id="bulk-subtasks-wrap" hidden>
+        <input type="checkbox" name="include_subtasks" value="1" id="include-subtasks">
+        <span>Include their subtasks (<b id="bulk-children">0</b>)</span>
+      </label>
+      <button type="button" id="bulk-clear">Clear</button>
+      <button type="submit" id="bulk-delete">Delete selected</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Stubbed before tasklist.js loads; the answer is the page a filtered
+  // request would return: fewer rows, a new count.
+  try { localStorage.removeItem("tumble.listDensity") } catch (e) {}
+  window.__fetches = []
+  window.__answer = '<!DOCTYPE html><html><body>' +
+    '<h1>Your tasks<span id="list-count" data-swap> <span class="count-pill">1</span></span></h1>' +
+    '<div id="task-results" data-swap><form id="bulk-form" method="post" action="/app/tasks/bulk-delete">' +
+    '<div class="select-head"><label class="select-mode"><input type="checkbox" id="select-mode"></label>' +
+    '<label class="select-all"><input type="checkbox" id="select-all"></label>' +
+    '<button type="button" id="density-toggle" aria-pressed="false" hidden>Compact</button></div>' +
+    '<ul class="task-list"><li class="task-node"><div class="task-item">' +
+    '<label class="task-check"><input type="checkbox" name="task_ids" value="new1" data-child-count="0"></label>' +
+    '<a class="task-link" href="/app/tasks/new1"><span class="cell-title">New one</span></a></div></li></ul>' +
+    '<div id="bulk-bar" class="bulk-bar" hidden><b id="bulk-n">0</b>' +
+    '<label id="bulk-subtasks-wrap" hidden><input type="checkbox" id="include-subtasks"><b id="bulk-children">0</b></label>' +
+    '<button type="button" id="bulk-clear">Clear</button><button type="submit" id="bulk-delete">Delete</button></div>' +
+    '</form></div></body></html>'
+  window.fetch = function (url, init) {
+    window.__fetches.push({ url: String(url), init: init || {} })
+    var body = window.__answer
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(body) } })
+  }
+</script>
+<script src="../../src/web/static/tasklist.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function later(ms, fn) { setTimeout(fn, ms) }
+  function finish() {
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  }
+
+  // --- density ----------------------------------------------------------------
+  var toggle = document.getElementById("density-toggle")
+  check("density toggle revealed by the script", toggle.hidden === false)
+  toggle.click()
+  check("compact density applied to the page", document.documentElement.getAttribute("data-density") === "compact")
+  check("toggle reports pressed", toggle.getAttribute("aria-pressed") === "true")
+  var stored = null
+  try { stored = localStorage.getItem("tumble.listDensity") } catch (e) { stored = "compact" }
+  check("density remembered", stored === "compact")
+
+  // --- select mode --------------------------------------------------------------
+  var boxes = document.querySelectorAll('input[name="task_ids"]')
+  var mode = document.getElementById("select-mode")
+  mode.click()
+  boxes[0].click()
+  check("a row can be selected in select mode", boxes[0].checked === true)
+  mode.click()
+  check("leaving select mode clears the selection", boxes[0].checked === false)
+  check("and hides the action bar", document.getElementById("bulk-bar").hidden === true)
+
+  // --- progressive filtering ----------------------------------------------------
+  var form = document.getElementById("filter-form")
+  var q = form.querySelector('input[name="q"]')
+  q.value = "ab"
+  q.dispatchEvent(new Event("input", { bubbles: true }))
+  later(100, function () {
+    q.value = "abc"
+    q.dispatchEvent(new Event("input", { bubbles: true }))
+    later(150, function () {
+      check("nothing fetched while typing", window.__fetches.length === 0)
+      later(300, function () {
+        check("one request 300 ms after the last keystroke", window.__fetches.length === 1)
+        var url = (window.__fetches[0] || {}).url || ""
+        check("request carries the form's fields", url.indexOf("/app?") !== -1 && /[?&]q=abc(&|$)/.test(url) && /[?&]scope=roots(&|$)/.test(url))
+        check("empty fields are left out of the URL", url.indexOf("project=") === -1 && url.indexOf("grade=") === -1)
+        later(50, function () {
+          check("results swapped from the response", document.querySelector(".cell-title").textContent === "New one")
+          check("count swapped too", document.querySelector("#list-count .count-pill").textContent === "1")
+          check("the form (and its caret) was not replaced", document.getElementById("filter-form") === form && q.value === "abc")
+          // The new rows are live: the selection code re-bound to them.
+          var fresh = document.querySelector('input[name="task_ids"]')
+          fresh.click()
+          check("new rows are selectable", document.getElementById("bulk-bar").hidden === false)
+          check("density toggle re-bound after the swap",
+                document.getElementById("density-toggle").hidden === false &&
+                document.getElementById("density-toggle").getAttribute("aria-pressed") === "true")
+
+          // A select or checkbox change and an explicit submit take the same path.
+          form.querySelector('select[name="grade"]').value = "clean"
+          form.querySelector('select[name="grade"]').dispatchEvent(new Event("change", { bubbles: true }))
+          document.getElementById("apply").click()
+          later(50, function () {
+            check("submitting fetches at once instead of navigating", window.__fetches.length === 2 &&
+                  /[?&]grade=clean(&|$)/.test(window.__fetches[1].url))
+            later(400, function () {
+              check("the pending debounce was folded into the submit", window.__fetches.length === 2)
+              finish()
+            })
+          })
+        })
+      })
+    })
+  })
+})
+</script>
+</body></html>
