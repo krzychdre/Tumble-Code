@@ -35,8 +35,10 @@
 	},
 	"diffView": {
 		"unchangedLines_one": "... {{count}} línia sense canvis",
+		"unchangedLines_many": "... {{count}} línies sense canvis",
 		"unchangedLines_other": "... {{count}} línies sense canvis",
 		"hiddenLines_one": "{{count}} línia oculta",
+		"hiddenLines_many": "{{count}} línies ocultes",
 		"hiddenLines_other": "{{count}} línies ocultes",
 		"openDiff": "Obre el diff",
 		"openFile": "Obre el fitxer"

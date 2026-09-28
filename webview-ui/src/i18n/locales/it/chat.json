@@ -35,8 +35,10 @@
 	},
 	"diffView": {
 		"unchangedLines_one": "... {{count}} riga invariata",
+		"unchangedLines_many": "... {{count}} righe invariate",
 		"unchangedLines_other": "... {{count}} righe invariate",
 		"hiddenLines_one": "{{count}} riga nascosta",
+		"hiddenLines_many": "{{count}} righe nascoste",
 		"hiddenLines_other": "{{count}} righe nascoste",
 		"openDiff": "Apri diff",
 		"openFile": "Apri file"
