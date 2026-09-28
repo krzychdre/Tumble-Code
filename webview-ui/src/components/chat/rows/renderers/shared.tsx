@@ -7,13 +7,14 @@ export const errorColor = "var(--vscode-errorForeground)"
 export const successColor = "var(--vscode-charts-green)"
 export const cancelledColor = "var(--vscode-descriptionForeground)"
 
-/** The icon + title line at the top of most rows. */
+/** The icon + title line at the top of most rows. Spacing comes from the
+    §2.1 tokens (ai_plans/2026-09-27_ui-modernization.md). */
 export const headerStyle: React.CSSProperties = {
 	display: "flex",
 	alignItems: "center",
-	gap: "10px",
+	gap: "var(--spacing-row)",
 	cursor: "default",
-	marginBottom: "10px",
+	marginBottom: "var(--spacing-row)",
 	wordBreak: "break-word",
 }
 

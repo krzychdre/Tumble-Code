@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "Chatdichtheid",
+			"description": "Bepaalt de afstand tussen chatregels en -blokken",
+			"comfortable": "Comfortabel",
+			"compact": "Compact"
+		},
 		"collapseThinking": {
 			"label": "Denkberichten standaard samenvouwen",
 			"description": "Indien ingeschakeld, worden denkblokken standaard samengevouwen totdat je ermee interageert"

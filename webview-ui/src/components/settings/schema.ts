@@ -154,6 +154,7 @@ export const SETTINGS_SCHEMA = {
 	includeTaskHistoryInEnhance: { apply: "immediate", default: SETTINGS_DEFAULTS.includeTaskHistoryInEnhance },
 	reasoningBlockCollapsed: { apply: "onSave", default: SETTINGS_DEFAULTS.reasoningBlockCollapsed },
 	enterBehavior: { apply: "onSave", default: SETTINGS_DEFAULTS.enterBehavior },
+	uiDensity: { apply: "onSave", default: SETTINGS_DEFAULTS.uiDensity },
 	includeCurrentTime: { apply: "onSave", default: SETTINGS_DEFAULTS.includeCurrentTime },
 	includeCurrentCost: { apply: "onSave", default: SETTINGS_DEFAULTS.includeCurrentCost },
 	maxGitStatusFiles: { apply: "onSave", default: SETTINGS_DEFAULTS.maxGitStatusFiles },

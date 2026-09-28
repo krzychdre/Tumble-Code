@@ -1,6 +1,6 @@
 import { HTMLAttributes, useMemo } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { LabeledCheckbox } from "@src/components/ui"
+import { LabeledCheckbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 import { telemetryClient } from "@/utils/TelemetryClient"
 
 import { SetCachedStateField } from "./types"
@@ -11,12 +11,14 @@ import { SearchableSetting } from "./SearchableSetting"
 interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
 	reasoningBlockCollapsed: boolean
 	enterBehavior: "send" | "newline"
-	setCachedStateField: SetCachedStateField<"reasoningBlockCollapsed" | "enterBehavior">
+	uiDensity: "comfortable" | "compact"
+	setCachedStateField: SetCachedStateField<"reasoningBlockCollapsed" | "enterBehavior" | "uiDensity">
 }
 
 export const UISettings = ({
 	reasoningBlockCollapsed,
 	enterBehavior,
+	uiDensity,
 	setCachedStateField,
 	...props
 }: UISettingsProps) => {
@@ -88,6 +90,35 @@ export const UISettings = ({
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
 								{t("settings:ui.requireCtrlEnterToSend.description", { primaryMod })}
 							</div>
+						</div>
+					</SearchableSetting>
+
+					{/* Chat density setting (§2.1, ai_plans/2026-09-27_ui-modernization.md) */}
+					<SearchableSetting settingId="ui-density" section="ui" label={t("settings:ui.density.label")}>
+						<div className="flex flex-col gap-1">
+							<div className="flex justify-between items-center">
+								<label className="block font-medium mb-1">{t("settings:ui.density.label")}</label>
+							</div>
+							<Select
+								value={uiDensity}
+								onValueChange={(value) => {
+									const newDensity = value as "comfortable" | "compact"
+									setCachedStateField("uiDensity", newDensity)
+
+									// Track telemetry event
+									telemetryClient.capture("ui_settings_density_changed", {
+										density: newDensity,
+									})
+								}}>
+								<SelectTrigger className="w-full" data-testid="ui-density-select">
+									<SelectValue placeholder={t("settings:common.select")} />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="comfortable">{t("settings:ui.density.comfortable")}</SelectItem>
+									<SelectItem value="compact">{t("settings:ui.density.compact")}</SelectItem>
+								</SelectContent>
+							</Select>
+							<div className="text-xs text-muted-foreground mt-1">{t("settings:ui.density.description")}</div>
 						</div>
 					</SearchableSetting>
 				</div>

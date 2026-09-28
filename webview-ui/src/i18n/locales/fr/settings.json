@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "Densité du chat",
+			"description": "Contrôle l'espacement entre les lignes et les blocs du chat",
+			"comfortable": "Confortable",
+			"compact": "Compacte"
+		},
 		"collapseThinking": {
 			"label": "Réduire les messages de réflexion par défaut",
 			"description": "Si activé, les blocs de réflexion seront réduits par défaut jusqu'à ce que vous interagissiez avec eux"

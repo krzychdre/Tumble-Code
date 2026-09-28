@@ -27,6 +27,20 @@
 @theme {
 	--font-display: var(--vscode-font-family);
 
+	/* UI modernization (§2.1, ai_plans/2026-09-27_ui-modernization.md): one
+	   spacing scale. `--spacing-*` keys join Tailwind's spacing scale, so
+	   `py-row` / `px-gutter` utilities work and read the runtime value, which
+	   `[data-density="compact"]` overrides. */
+	--spacing-row: 8px; /* between rows inside a block */
+	--spacing-block: 12px; /* between chat blocks */
+	--spacing-gutter: 12px; /* panel side padding */
+
+	/* Timestamps, counters, hint rows. */
+	--text-meta: calc(var(--vscode-font-size) * 0.85);
+
+	/* The 2px status border on tool blocks (§1.1). */
+	--border-status: 2px;
+
 	/* Console / fixed-width font: the VS Code editor font, with a monospace
 	   fallback chain so every `font-mono` usage is guaranteed fixed-width
 	   even when VS Code does not supply --vscode-editor-font-family. */
@@ -189,7 +203,15 @@
 		--destructive-foreground: var(--vscode-editor-background);
 		--border: var(--vscode-input-border, transparent); /* --border gets theme value or transparent fallback */
 		--input: var(--vscode-input-background);
-		--ring: var(--vscode-input-border);
+		/* The focus ring is the theme's focusBorder, never the (often
+		   transparent) input border (§2.1, ai_plans/2026-09-27_ui-modernization.md). */
+		--ring: var(--vscode-focusBorder, #007fd4);
+		/* Block status colors (§1.1): paired with an icon or a word, never
+		   the only signal. */
+		--status-running: var(--vscode-textLink-foreground, #3794ff);
+		--status-done: var(--vscode-charts-green, #89d185);
+		--status-failed: var(--vscode-errorForeground, #f14c4c);
+		--status-waiting: var(--vscode-charts-yellow, #cca700);
 		--chart-1: var(--vscode-charts-red);
 		--chart-2: var(--vscode-charts-blue);
 		--chart-3: var(--vscode-charts-yellow);
@@ -213,6 +235,15 @@
 	 * `@theme` radius scale. Flatten the static utilities and their directional
 	 * variants here so the entire webview renders square corners from one place.
 	 */
+
+	/* One focus ring for the whole webview: the theme's own focusBorder
+	   (§1.4, ai_plans/2026-09-27_ui-modernization.md). Custom code must use
+	   this token instead of re-deriving it from --vscode-input-border, which
+	   is transparent in many themes. */
+	.focus-ring:focus-visible {
+		outline: 1px solid var(--ring);
+		outline-offset: 1px;
+	}
 	.rounded,
 	.rounded-full,
 	.rounded-s,
@@ -236,6 +267,29 @@
 	.rounded-b-full,
 	.rounded-l-full {
 		border-radius: 0;
+	}
+}
+
+/*
+	* Density (§2.1, ai_plans/2026-09-27_ui-modernization.md): the compact choice
+	* tightens the two chat spacing tokens. `[data-density]` sits on the document
+	* root (App.tsx), so every spacing-token consumer follows it.
+	*/
+[data-density="compact"] {
+	--spacing-row: 4px;
+	--spacing-block: 8px;
+}
+
+/*
+	* Motion is short and optional (§1.6): users who ask the OS for reduced
+	* motion get none, wherever the webview animates or transitions.
+	*/
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
 	}
 }
 

@@ -148,6 +148,12 @@
 		"footer": "Create your own skills with the Skill Writer mode, available in the <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
 	},
 	"ui": {
+		"density": {
+			"label": "Chat density",
+			"description": "Controls the spacing between chat rows and blocks",
+			"comfortable": "Comfortable",
+			"compact": "Compact"
+		},
 		"collapseThinking": {
 			"label": "Collapse Thinking messages by default",
 			"description": "When enabled, thinking blocks will be collapsed by default until you interact with them"

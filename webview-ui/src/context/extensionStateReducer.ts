@@ -121,6 +121,7 @@ const createInitialExtensionState = (): ExtensionState => ({
 	historyPreviewCollapsed: false, // Initialize the new state (default to expanded)
 	reasoningBlockCollapsed: true, // Default to collapsed
 	enterBehavior: "send", // Default: Enter sends, Shift+Enter creates newline
+	uiDensity: "comfortable", // Default: the §2.1 spacing scale (chat spacing tokens)
 	cloudUserInfo: null,
 	cloudIsAuthenticated: false,
 	cloudOrganizations: [],

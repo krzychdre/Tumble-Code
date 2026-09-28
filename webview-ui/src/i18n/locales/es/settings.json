@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "Densidad del chat",
+			"description": "Controla el espaciado entre filas y bloques del chat",
+			"comfortable": "Cómoda",
+			"compact": "Compacta"
+		},
 		"collapseThinking": {
 			"label": "Colapsar mensajes de pensamiento por defecto",
 			"description": "Cuando está activado, los bloques de pensamiento se colapsarán por defecto hasta que interactúes con ellos"

@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "Gęstość czatu",
+			"description": "Steruje odstępami między wierszami i blokami czatu",
+			"comfortable": "Komfortowa",
+			"compact": "Kompaktowa"
+		},
 		"collapseThinking": {
 			"label": "Domyślnie zwijaj komunikaty o myśleniu",
 			"description": "Gdy włączone, bloki myślenia będą domyślnie zwinięte, dopóki nie wejdziesz z nimi w interakcję"

@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "채팅 밀도",
+			"description": "채팅 행과 블록 사이의 간격을 조절합니다",
+			"comfortable": "넓게",
+			"compact": "컴팩트"
+		},
 		"collapseThinking": {
 			"label": "기본적으로 생각 메시지 접기",
 			"description": "활성화하면 상호 작용할 때까지 생각 블록이 기본적으로 접힙니다"

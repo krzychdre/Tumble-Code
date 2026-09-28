@@ -694,6 +694,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							<UISettings
 								reasoningBlockCollapsed={settings.reasoningBlockCollapsed ?? true}
 								enterBehavior={settings.enterBehavior ?? "send"}
+								uiDensity={settings.uiDensity ?? "comfortable"}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}

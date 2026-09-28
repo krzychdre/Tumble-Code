@@ -233,6 +233,7 @@ const buildContextValue = (store: ExtensionStore, client: Client): ExtensionStat
 		taskSyncEnabled: state.taskSyncEnabled,
 		...client.actions,
 		enterBehavior: state.enterBehavior ?? "send",
+		uiDensity: state.uiDensity ?? "comfortable",
 		includeDiagnosticMessages: state.includeDiagnosticMessages,
 		maxDiagnosticMessages: state.maxDiagnosticMessages,
 		showWorktreesInHomeScreen: state.showWorktreesInHomeScreen ?? true,

@@ -109,6 +109,7 @@ const settingsDefaults = {
 	historyPreviewCollapsed: false,
 	reasoningBlockCollapsed: true,
 	enterBehavior: "send",
+	uiDensity: "comfortable",
 } satisfies SettingsDefaultsShape
 
 /**

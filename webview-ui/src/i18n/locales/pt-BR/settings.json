@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "Densidade do chat",
+			"description": "Controla o espaçamento entre linhas e blocos do chat",
+			"comfortable": "Confortável",
+			"compact": "Compacta"
+		},
 		"collapseThinking": {
 			"label": "Recolher mensagens de pensamento por padrão",
 			"description": "Quando ativado, os blocos de pensamento serão recolhidos por padrão até que você interaja com eles"
