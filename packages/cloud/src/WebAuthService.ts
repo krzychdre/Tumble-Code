@@ -351,7 +351,13 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 			this.log("[auth] Successfully authenticated with Tumble Code Cloud")
 		} catch (error) {
 			this.log(`[auth] Error handling Tumble Code Cloud callback: ${error}`)
-			this.changeState("logged-out")
+			// A replayed callback (the same one-time ticket delivered again, e.g.
+			// pasted as a manual URL after the browser already handed it over)
+			// fails on the server, but the session it created is still stored and
+			// refreshing. Only a callback that fails without a session logs out.
+			if (!this.credentials) {
+				this.changeState("logged-out")
+			}
 			throw new Error(`Failed to handle Tumble Code Cloud callback: ${error}`)
 		}
 	}

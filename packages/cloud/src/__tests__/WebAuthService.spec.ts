@@ -447,6 +447,33 @@ describe("WebAuthService", () => {
 			)
 			expect(authStateChangedSpy).toHaveBeenCalled()
 		})
+
+		it("keeps a signed-in session when the same callback is delivered again", async () => {
+			// The first delivery already stored credentials and the session is live.
+			mockContext.secrets.get.mockResolvedValue(
+				JSON.stringify({ clientToken: "test-token", sessionId: "test-session" }),
+			)
+			const signedIn = new WebAuthService(mockContext as unknown as ExtensionContext, mockLog)
+			await signedIn.initialize()
+			signedIn["state"] = "active-session"
+			signedIn["sessionToken"] = "test-jwt"
+
+			// The replayed one-time ticket is refused by the server.
+			const storedState = "valid-state"
+			mockContext.globalState.get.mockReturnValue(storedState)
+			mockFetch.mockResolvedValue({ ok: false, status: 401, statusText: "Unauthorized" })
+
+			const authStateChangedSpy = vi.fn()
+			signedIn.on("auth-state-changed", authStateChangedSpy)
+
+			await expect(signedIn.handleCallback("auth-code", storedState)).rejects.toThrow(
+				"Failed to handle Tumble Code Cloud callback",
+			)
+			expect(signedIn.getState()).toBe("active-session")
+			expect(signedIn.getSessionToken()).toBe("test-jwt")
+			expect(authStateChangedSpy).not.toHaveBeenCalled()
+			expect(mockContext.secrets.delete).not.toHaveBeenCalled()
+		})
 	})
 
 	describe("logout", () => {
