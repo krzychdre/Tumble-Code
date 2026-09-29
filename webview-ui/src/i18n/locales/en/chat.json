@@ -523,7 +523,8 @@
 	"memoryActivity": {
 		"recalling": "Recalling memory…",
 		"writing": "Writing memory…",
-		"both": "Recalling and writing memory…"
+		"both": "Recalling and writing memory…",
+		"idle": "Memory is on"
 	},
 	"planReview": {
 		"annotateTooltip": "Review & annotate",

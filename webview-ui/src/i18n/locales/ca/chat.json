@@ -561,7 +561,8 @@
 	"memoryActivity": {
 		"recalling": "S'està recol·lectant memòria…",
 		"writing": "S'està escrivint memòria…",
-		"both": "S'està recol·lectant i escrivint memòria…"
+		"both": "S'està recol·lectant i escrivint memòria…",
+		"idle": "La memòria està activada"
 	},
 	"thumbnailAlt": "Miniatura {{index}}",
 	"removeImage": "Elimina la imatge {{index}}"

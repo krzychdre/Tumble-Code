@@ -559,7 +559,8 @@
 	"memoryActivity": {
 		"recalling": "Mengingat memori…",
 		"writing": "Menulis memori…",
-		"both": "Mengingat dan menulis memori…"
+		"both": "Mengingat dan menulis memori…",
+		"idle": "Memori aktif"
 	},
 	"thumbnailAlt": "Gambar kecil {{index}}",
 	"removeImage": "Hapus gambar {{index}}"

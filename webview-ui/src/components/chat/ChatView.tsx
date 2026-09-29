@@ -38,7 +38,6 @@ import { QueuedMessages } from "./QueuedMessages"
 import { WorktreeSelector } from "./WorktreeSelector"
 import FileChangesPanel from "./FileChangesPanel"
 import SubagentsPanel from "./SubagentsPanel"
-import MemoryActivityBadge from "./MemoryActivityBadge"
 import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
@@ -106,7 +105,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const messageQueue = useExtensionSelector((s) => s.messageQueue) ?? []
 	const showWorktreesInHomeScreen = useExtensionSelector((s) => s.showWorktreesInHomeScreen)
 	const subagents = useExtensionSelector((s) => s.subagents)
-	const memoryActivity = useExtensionSelector((s) => s.memoryActivity)
 	const clearSubagents = useExtensionSelector((s) => s.clearSubagents)
 
 	const playSound = useChatSounds({ soundEnabled, soundVolume, customSoundUris })
@@ -607,7 +605,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							atBottomThreshold={10}
 						/>
 					</div>
-					<MemoryActivityBadge memoryActivity={memoryActivity} />
 					<SubagentsPanel subagents={subagents} />
 					<FileChangesPanel clineMessages={messages} />
 					{areButtonsVisible && (

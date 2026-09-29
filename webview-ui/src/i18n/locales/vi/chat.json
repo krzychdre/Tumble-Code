@@ -554,7 +554,8 @@
 	"memoryActivity": {
 		"recalling": "Đang gọi lại bộ nhớ…",
 		"writing": "Đang ghi bộ nhớ…",
-		"both": "Đang gọi lại và ghi bộ nhớ…"
+		"both": "Đang gọi lại và ghi bộ nhớ…",
+		"idle": "Bộ nhớ đang bật"
 	},
 	"thumbnailAlt": "Hình thu nhỏ {{index}}",
 	"removeImage": "Xóa hình ảnh {{index}}"

@@ -561,7 +561,8 @@
 	"memoryActivity": {
 		"recalling": "Recuperando memoria…",
 		"writing": "Escribiendo memoria…",
-		"both": "Recuperando y escribiendo memoria…"
+		"both": "Recuperando y escribiendo memoria…",
+		"idle": "La memoria está activada"
 	},
 	"thumbnailAlt": "Miniatura {{index}}",
 	"removeImage": "Eliminar imagen {{index}}"

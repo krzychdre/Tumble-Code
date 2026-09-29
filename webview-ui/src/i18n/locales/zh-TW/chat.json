@@ -544,7 +544,8 @@
 	"memoryActivity": {
 		"recalling": "正在回憶記憶…",
 		"writing": "正在寫入記憶…",
-		"both": "正在回憶並寫入記憶…"
+		"both": "正在回憶並寫入記憶…",
+		"idle": "記憶已開啟"
 	},
 	"thumbnailAlt": "縮圖 {{index}}",
 	"removeImage": "刪除圖片 {{index}}"

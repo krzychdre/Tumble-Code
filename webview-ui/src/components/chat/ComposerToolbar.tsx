@@ -11,6 +11,7 @@ import { ModeSelector } from "./ModeSelector"
 import { ApiConfigSelector } from "./ApiConfigSelector"
 import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
+import MemoryActivityBadge from "./MemoryActivityBadge"
 import { CloudAccountSwitcher } from "../cloud/CloudAccountSwitcher"
 
 interface ComposerToolbarProps {
@@ -109,6 +110,7 @@ export const ComposerToolbar = ({
 					"flex flex-shrink-0 items-center gap-0.5 h-5 leading-none",
 					!isEditMode && cloudUserInfo ? "" : "pr-2",
 				)}>
+				{!isEditMode ? <MemoryActivityBadge /> : null}
 				{!isEditMode ? <IndexingStatusBadge /> : null}
 				{!isEditMode && cloudUserInfo && <CloudAccountSwitcher />}
 			</div>

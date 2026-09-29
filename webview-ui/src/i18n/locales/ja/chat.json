@@ -553,7 +553,8 @@
 	"memoryActivity": {
 		"recalling": "メモリを呼び出し中…",
 		"writing": "メモリを書き込み中…",
-		"both": "メモリを呼び出し・書き込み中…"
+		"both": "メモリを呼び出し・書き込み中…",
+		"idle": "メモリは有効です"
 	},
 	"thumbnailAlt": "サムネイル {{index}}",
 	"removeImage": "画像 {{index}} を削除"

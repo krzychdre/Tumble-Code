@@ -553,7 +553,8 @@
 	"memoryActivity": {
 		"recalling": "Erinnerungen werden abgerufen…",
 		"writing": "Gedächtnis wird geschrieben…",
-		"both": "Gedächtnis wird abgerufen und geschrieben…"
+		"both": "Gedächtnis wird abgerufen und geschrieben…",
+		"idle": "Gedächtnis ist aktiv"
 	},
 	"thumbnailAlt": "Miniaturbild {{index}}",
 	"removeImage": "Bild {{index}} entfernen"
