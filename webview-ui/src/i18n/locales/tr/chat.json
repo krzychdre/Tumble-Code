@@ -554,7 +554,8 @@
 	"memoryActivity": {
 		"recalling": "Bellek geri çağrılıyor…",
 		"writing": "Bellek yazılıyor…",
-		"both": "Bellek geri çağrılıyor ve yazılıyor…"
+		"both": "Bellek geri çağrılıyor ve yazılıyor…",
+		"idle": "Bellek açık"
 	},
 	"thumbnailAlt": "Küçük resim {{index}}",
 	"removeImage": "Görseli kaldır {{index}}"

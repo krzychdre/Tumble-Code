@@ -561,7 +561,8 @@
 	"memoryActivity": {
 		"recalling": "Richiamo della memoria…",
 		"writing": "Scrittura della memoria…",
-		"both": "Richiamo e scrittura della memoria…"
+		"both": "Richiamo e scrittura della memoria…",
+		"idle": "La memoria è attiva"
 	},
 	"thumbnailAlt": "Miniatura {{index}}",
 	"removeImage": "Rimuovi immagine {{index}}"

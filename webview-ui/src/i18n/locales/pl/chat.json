@@ -539,7 +539,8 @@
 	"memoryActivity": {
 		"recalling": "Przywoływanie pamięci…",
 		"writing": "Zapisywanie pamięci…",
-		"both": "Przywoływanie i zapisywanie pamięci…"
+		"both": "Przywoływanie i zapisywanie pamięci…",
+		"idle": "Pamięć jest włączona"
 	},
 	"planReview": {
 		"annotateTooltip": "Przejrzyj i dodaj adnotację",

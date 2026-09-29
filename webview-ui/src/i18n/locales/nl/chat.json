@@ -553,7 +553,8 @@
 	"memoryActivity": {
 		"recalling": "Geheugen wordt opgehaald…",
 		"writing": "Geheugen wordt geschreven…",
-		"both": "Geheugen wordt opgehaald en geschreven…"
+		"both": "Geheugen wordt opgehaald en geschreven…",
+		"idle": "Geheugen staat aan"
 	},
 	"thumbnailAlt": "Miniatuur {{index}}",
 	"removeImage": "Afbeelding {{index}} verwijderen"
