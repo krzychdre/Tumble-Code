@@ -68,7 +68,7 @@
 		}
 	},
 	"slashCommands": {
-		"description": "管理您的斜杠命令，以快速执行自定义工作流和操作。 <DocsLink>了解更多</DocsLink>",
+		"description": "管理您的斜杠命令，以快速执行自定义工作流和操作。",
 		"workspaceCommands": "工作区命令",
 		"globalCommands": "全局命令",
 		"noWorkspaceCommands": "此项目中还没有命令。",
@@ -513,7 +513,7 @@
 		},
 		"enable": {
 			"label": "启用自动存档点",
-			"description": "开启后自动创建任务存档点，方便回溯修改。 <0>了解更多</0>"
+			"description": "开启后自动创建任务存档点，方便回溯修改。"
 		}
 	},
 	"notifications": {
@@ -645,44 +645,44 @@
 		},
 		"shellIntegrationTimeout": {
 			"label": "终端 shell 集成超时",
-			"description": "运行命令前等待 VS Code shell 集成的时间。如果 shell 启动缓慢或看到 'Shell Integration Unavailable' 错误，请提高此值。<0>了解更多</0>"
+			"description": "运行命令前等待 VS Code shell 集成的时间。如果 shell 启动缓慢或看到 'Shell Integration Unavailable' 错误，请提高此值。"
 		},
 		"shellIntegrationDisabled": {
 			"label": "使用内联终端（推荐）",
-			"description": "在内联终端（聊天）中运行命令以绕过 shell 配置文件/集成，实现更快、更可靠的运行。禁用时，Tumble 使用 VS Code 终端及您的 shell 配置文件、提示和插件。<0>了解更多</0>"
+			"description": "在内联终端（聊天）中运行命令以绕过 shell 配置文件/集成，实现更快、更可靠的运行。禁用时，Tumble 使用 VS Code 终端及您的 shell 配置文件、提示和插件。"
 		},
 		"commandDelay": {
 			"label": "终端命令延迟",
-			"description": "在每个命令后添加短暂暂停，以便 VS Code 终端刷新所有输出（bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep）。仅在看到缺少尾部输出时使用；否则保持为 0。<0>了解更多</0>"
+			"description": "在每个命令后添加短暂暂停，以便 VS Code 终端刷新所有输出（bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep）。仅在看到缺少尾部输出时使用；否则保持为 0。"
 		},
 		"powershellCounter": {
 			"label": "启用 PowerShell 计数器解决方案",
-			"description": "当 PowerShell 输出丢失或重复时启用此选项；它会为每个命令附加一个小计数器以稳定输出。如果输出已正常，请保持关闭。<0>了解更多</0>"
+			"description": "当 PowerShell 输出丢失或重复时启用此选项；它会为每个命令附加一个小计数器以稳定输出。如果输出已正常，请保持关闭。"
 		},
 		"zshClearEolMark": {
 			"label": "清除 ZSH EOL 标记",
-			"description": "当您在行尾看到零散的 % 或解析看起来错误时启用此选项；它会省略 Zsh 的行尾标记（%）。<0>了解更多</0>"
+			"description": "当您在行尾看到零散的 % 或解析看起来错误时启用此选项；它会省略 Zsh 的行尾标记（%）。"
 		},
 		"zshOhMy": {
 			"label": "启用 Oh My Zsh 集成",
-			"description": "当您的 Oh My Zsh 主题/插件期望 shell 集成时启用此选项；它会设置 ITERM_SHELL_INTEGRATION_INSTALLED=Yes。关闭此选项以避免设置该变量。<0>了解更多</0>"
+			"description": "当您的 Oh My Zsh 主题/插件期望 shell 集成时启用此选项；它会设置 ITERM_SHELL_INTEGRATION_INSTALLED=Yes。关闭此选项以避免设置该变量。"
 		},
 		"zshP10k": {
 			"label": "启用 Powerlevel10k 集成",
-			"description": "使用 Powerlevel10k shell 集成时启用此选项。<0>了解更多</0>"
+			"description": "使用 Powerlevel10k shell 集成时启用此选项。"
 		},
 		"zdotdir": {
 			"label": "启用 ZDOTDIR 处理",
-			"description": "当 zsh shell 集成失败或与您的 dotfiles 冲突时启用此选项。<0>了解更多</0>"
+			"description": "当 zsh shell 集成失败或与您的 dotfiles 冲突时启用此选项。"
 		},
 		"inheritEnv": {
 			"label": "继承环境变量",
-			"description": "启用此选项以从父 VS Code 进程继承环境变量。<0>了解更多</0>"
+			"description": "启用此选项以从父 VS Code 进程继承环境变量。"
 		},
 		"profile": {
 			"label": "Tumble Code 终端覆盖",
 			"default": "使用 VS Code 默认配置文件（推荐）",
-			"description": "默认情况下，Tumble Code 使用 VS Code 配置的 Shell。选择覆盖可从 VS Code 公开的路径型 Shell 配置文件中选取。仅含来源的配置文件（如内置的 PowerShell 条目）无法在此列出。 <0>了解更多</0>",
+			"description": "默认情况下，Tumble Code 使用 VS Code 配置的 Shell。选择覆盖可从 VS Code 公开的路径型 Shell 配置文件中选取。仅含来源的配置文件（如内置的 PowerShell 条目）无法在此列出。",
 			"overrideLabel": "为 Tumble Code 覆盖 Shell",
 			"configureButton": "在 VS Code 中选择默认配置文件",
 			"noProfiles": "(在 terminal.integrated.profiles 中未找到路径型配置文件)"
@@ -896,7 +896,7 @@
 		}
 	},
 	"skills": {
-		"description": "管理为代理提供上下文指令的技能。技能会在与您的任务相关时自动应用。<DocsLink>了解更多</DocsLink>",
+		"description": "管理为代理提供上下文指令的技能。技能会在与您的任务相关时自动应用。",
 		"workspaceSkills": "工作区技能",
 		"globalSkills": "全局技能",
 		"noWorkspaceSkills": "此项目中还没有技能。",
@@ -944,7 +944,7 @@
 	"memory": {
 		"enable": {
 			"label": "启用持久记忆",
-			"description": "启用后,代理会维护基于文件的记忆,记录你是谁、你的偏好和项目上下文。记忆在扩展的私有存储中跨会话保留。代理在每次任务中读取它,并在你工作时写入。<0>了解更多</0>"
+			"description": "启用后,代理会维护基于文件的记忆,记录你是谁、你的偏好和项目上下文。记忆在扩展的私有存储中跨会话保留。代理在每次任务中读取它,并在你工作时写入。"
 		},
 		"recall": {
 			"label": "启用相关记忆回忆",

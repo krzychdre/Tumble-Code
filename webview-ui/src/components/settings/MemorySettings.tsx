@@ -1,6 +1,5 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { Trans } from "react-i18next"
 
 import type { ProviderSettingsEntry } from "@roo-code/types"
 
@@ -15,7 +14,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 	Slider,
-	Link,
 	LabeledCheckbox,
 	ThemedTextField,
 } from "@/components/ui"
@@ -62,11 +60,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 						<span className="font-medium">{t("settings:memory.enable.label")}</span>
 					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
-						<Trans i18nKey="settings:memory.enable.description">
-							<Link href="https://docs.roocode.com/features/memory" style={{ display: "inline" }}>
-								{" "}
-							</Link>
-						</Trans>
+						{t("settings:memory.enable.description")}
 					</div>
 				</SearchableSetting>
 

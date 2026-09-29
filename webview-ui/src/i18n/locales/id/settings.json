@@ -68,7 +68,7 @@
 		}
 	},
 	"slashCommands": {
-		"description": "Kelola perintah slash kamu untuk mengeksekusi alur kerja dan tindakan kustom dengan cepat. <DocsLink>Pelajari lebih lanjut</DocsLink>",
+		"description": "Kelola perintah slash kamu untuk mengeksekusi alur kerja dan tindakan kustom dengan cepat.",
 		"workspaceCommands": "Perintah Ruang Kerja",
 		"globalCommands": "Perintah Global",
 		"noWorkspaceCommands": "Tidak ada perintah di proyek ini belum.",
@@ -513,7 +513,7 @@
 		},
 		"enable": {
 			"label": "Aktifkan checkpoint otomatis",
-			"description": "Ketika diaktifkan, Tumble akan secara otomatis membuat checkpoint selama eksekusi tugas, memudahkan untuk meninjau perubahan atau kembali ke state sebelumnya. <0>Pelajari lebih lanjut</0>"
+			"description": "Ketika diaktifkan, Tumble akan secara otomatis membuat checkpoint selama eksekusi tugas, memudahkan untuk meninjau perubahan atau kembali ke state sebelumnya."
 		}
 	},
 	"notifications": {
@@ -645,44 +645,44 @@
 		},
 		"shellIntegrationTimeout": {
 			"label": "Timeout integrasi shell terminal",
-			"description": "Waktu tunggu integrasi shell VS Code sebelum menjalankan perintah. Naikkan jika shell lambat start atau muncul error 'Shell Integration Unavailable'. <0>Pelajari lebih lanjut</0>"
+			"description": "Waktu tunggu integrasi shell VS Code sebelum menjalankan perintah. Naikkan jika shell lambat start atau muncul error 'Shell Integration Unavailable'."
 		},
 		"shellIntegrationDisabled": {
 			"label": "Gunakan Terminal Inline (disarankan)",
-			"description": "Jalankan perintah di Terminal Inline (obrolan) untuk melewati profil/integrasi shell untuk proses lebih cepat dan andal. Saat dinonaktifkan, Tumble menggunakan terminal VS Code dengan profil shell, prompt, dan plugin Anda. <0>Pelajari lebih lanjut</0>"
+			"description": "Jalankan perintah di Terminal Inline (obrolan) untuk melewati profil/integrasi shell untuk proses lebih cepat dan andal. Saat dinonaktifkan, Tumble menggunakan terminal VS Code dengan profil shell, prompt, dan plugin Anda."
 		},
 		"commandDelay": {
 			"label": "Delay perintah terminal",
-			"description": "Tambahkan jeda singkat setelah setiap perintah agar VS Code terminal bisa flush semua output (bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep). Gunakan hanya jika output ekor hilang; jika tidak biarkan di 0. <0>Pelajari lebih lanjut</0>"
+			"description": "Tambahkan jeda singkat setelah setiap perintah agar VS Code terminal bisa flush semua output (bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep). Gunakan hanya jika output ekor hilang; jika tidak biarkan di 0."
 		},
 		"powershellCounter": {
 			"label": "Aktifkan solusi penghitung PowerShell",
-			"description": "Aktifkan saat keluaran PowerShell hilang atau digandakan; menambahkan penghitung kecil ke setiap perintah untuk menstabilkan keluaran. Biarkan nonaktif jika keluaran sudah terlihat benar. <0>Pelajari lebih lanjut</0>"
+			"description": "Aktifkan saat keluaran PowerShell hilang atau digandakan; menambahkan penghitung kecil ke setiap perintah untuk menstabilkan keluaran. Biarkan nonaktif jika keluaran sudah terlihat benar."
 		},
 		"zshClearEolMark": {
 			"label": "Hapus tanda EOL ZSH",
-			"description": "Aktifkan saat Anda melihat % liar di akhir baris atau penguraian terlihat salah; menghilangkan tanda akhir baris (%) Zsh. <0>Pelajari lebih lanjut</0>"
+			"description": "Aktifkan saat Anda melihat % liar di akhir baris atau penguraian terlihat salah; menghilangkan tanda akhir baris (%) Zsh."
 		},
 		"zshOhMy": {
 			"label": "Aktifkan integrasi Oh My Zsh",
-			"description": "Aktifkan saat tema/plugin Oh My Zsh Anda mengharapkan integrasi shell; menyetel ITERM_SHELL_INTEGRATION_INSTALLED=Yes. Nonaktifkan untuk menghindari penyetelan variabel tersebut. <0>Pelajari lebih lanjut</0>"
+			"description": "Aktifkan saat tema/plugin Oh My Zsh Anda mengharapkan integrasi shell; menyetel ITERM_SHELL_INTEGRATION_INSTALLED=Yes. Nonaktifkan untuk menghindari penyetelan variabel tersebut."
 		},
 		"zshP10k": {
 			"label": "Aktifkan integrasi Powerlevel10k",
-			"description": "Aktifkan saat menggunakan integrasi shell Powerlevel10k. <0>Pelajari lebih lanjut</0>"
+			"description": "Aktifkan saat menggunakan integrasi shell Powerlevel10k."
 		},
 		"zdotdir": {
 			"label": "Aktifkan penanganan ZDOTDIR",
-			"description": "Aktifkan saat integrasi shell zsh gagal atau bertentangan dengan dotfile Anda. <0>Pelajari lebih lanjut</0>"
+			"description": "Aktifkan saat integrasi shell zsh gagal atau bertentangan dengan dotfile Anda."
 		},
 		"inheritEnv": {
 			"label": "Warisi variabel lingkungan",
-			"description": "Aktifkan untuk mewarisi variabel lingkungan dari proses induk VS Code. <0>Pelajari lebih lanjut</0>"
+			"description": "Aktifkan untuk mewarisi variabel lingkungan dari proses induk VS Code."
 		},
 		"profile": {
 			"label": "Penimpaan terminal Tumble Code",
 			"default": "Gunakan profil default VS Code (direkomendasikan)",
-			"description": "Secara default Tumble Code menggunakan shell yang dikonfigurasi VS Code. Pilih Timpa untuk memilih profil shell berbasis jalur yang diekspos oleh VS Code. Profil hanya sumber (mis., entri PowerShell bawaan) tidak dapat tercantum di sini. <0>Pelajari lebih lanjut</0>",
+			"description": "Secara default Tumble Code menggunakan shell yang dikonfigurasi VS Code. Pilih Timpa untuk memilih profil shell berbasis jalur yang diekspos oleh VS Code. Profil hanya sumber (mis., entri PowerShell bawaan) tidak dapat tercantum di sini.",
 			"overrideLabel": "Timpa shell untuk Tumble Code",
 			"configureButton": "Pilih profil default di VS Code",
 			"noProfiles": "(tidak ada profil berbasis jalur di terminal.integrated.profiles)"
@@ -896,7 +896,7 @@
 		}
 	},
 	"skills": {
-		"description": "Kelola skills yang memberikan instruksi kontekstual kepada agen. Skills diterapkan secara otomatis saat relevan dengan tugas Anda. <DocsLink>Pelajari lebih lanjut</DocsLink>",
+		"description": "Kelola skills yang memberikan instruksi kontekstual kepada agen. Skills diterapkan secara otomatis saat relevan dengan tugas Anda.",
 		"workspaceSkills": "Skills Ruang Kerja",
 		"globalSkills": "Skills Global",
 		"noWorkspaceSkills": "Tidak ada skills di proyek ini belum.",
@@ -944,7 +944,7 @@
 	"memory": {
 		"enable": {
 			"label": "Aktifkan memori persisten",
-			"description": "Saat aktif, agen memelihara memori berbasis berkas tentang siapa Anda, preferensi Anda, dan konteks proyek. Memori bertahan lintas sesi di penyimpanan pribadi ekstensi. Agen membacanya setiap tugas dan menulisnya saat Anda bekerja. <0>Pelajari lebih lanjut</0>"
+			"description": "Saat aktif, agen memelihara memori berbasis berkas tentang siapa Anda, preferensi Anda, dan konteks proyek. Memori bertahan lintas sesi di penyimpanan pribadi ekstensi. Agen membacanya setiap tugas dan menulisnya saat Anda bekerja."
 		},
 		"recall": {
 			"label": "Aktifkan penarikan memori relevan",

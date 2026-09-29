@@ -1,6 +1,6 @@
+import { Trans } from "react-i18next"
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { Plus, Globe, Folder, Edit, Trash2, Settings } from "lucide-react"
-import { Trans } from "react-i18next"
 
 import type { SkillMetadata } from "@roo-code/types"
 
@@ -27,7 +27,6 @@ import {
 	StandardTooltip,
 } from "@/components/ui"
 import { vscode } from "@/utils/vscode"
-import { buildDocLink } from "@/utils/docLinks"
 
 import { SectionHeader } from "./SectionHeader"
 import { CreateSkillDialog } from "./CreateSkillDialog"
@@ -189,22 +188,7 @@ export const SkillsSettings: React.FC = () => {
 			<div className="flex-shrink-0">
 				<SectionHeader>{t("settings:sections.skills")}</SectionHeader>
 				<div className="flex flex-col gap-2 px-5 py-2">
-					<p className="text-vscode-descriptionForeground text-sm m-0">
-						<Trans
-							i18nKey="settings:skills.description"
-							components={{
-								DocsLink: (
-									<a
-										href={buildDocLink("features/skills", "skills_settings")}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="text-vscode-textLink-foreground hover:underline">
-										Docs
-									</a>
-								),
-							}}
-						/>
-					</p>
+					<p className="text-vscode-descriptionForeground text-sm m-0">{t("settings:skills.description")}</p>
 
 					{/* Add Skill button */}
 					<Button variant="secondary" className="py-1" onClick={() => setCreateDialogOpen(true)}>

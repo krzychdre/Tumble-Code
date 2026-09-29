@@ -1,8 +1,6 @@
 import { HTMLAttributes, useState, useCallback, useEffect, useId } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
-import { Trans } from "react-i18next"
-import { buildDocLink } from "@src/utils/docLinks"
 import { useMount } from "react-use"
 
 import {
@@ -19,7 +17,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 	Slider,
-	Link,
 	LabeledCheckbox,
 	Button,
 } from "@/components/ui"
@@ -243,16 +240,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 								)}
 
 								<div className="text-vscode-descriptionForeground text-sm mt-1">
-									<Trans i18nKey="settings:terminal.profile.description">
-										<Link
-											href={buildDocLink(
-												"features/shell-integration",
-												"settings_terminal_profile",
-											)}
-											style={{ display: "inline" }}>
-											{" "}
-										</Link>
-									</Trans>
+									{t("settings:terminal.profile.description")}
 								</div>
 							</SearchableSetting>
 						)}
@@ -269,16 +257,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 								</span>
 							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
-								<Trans i18nKey="settings:terminal.shellIntegrationDisabled.description">
-									<Link
-										href={buildDocLink(
-											"features/shell-integration#use-inline-terminal-recommended",
-											"settings_terminal_shell_integration_disabled",
-										)}
-										style={{ display: "inline" }}>
-										{" "}
-									</Link>
-								</Trans>
+								{t("settings:terminal.shellIntegrationDisabled.description")}
 							</div>
 						</SearchableSetting>
 
@@ -302,16 +281,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										<span className="font-medium">{t("settings:terminal.inheritEnv.label")}</span>
 									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.inheritEnv.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#inherit-environment-variables",
-													"settings_terminal_inherit_env",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.inheritEnv.description")}
 									</div>
 								</SearchableSetting>
 
@@ -344,16 +314,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										</span>
 									</div>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.shellIntegrationTimeout.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#terminal-shell-integration-timeout",
-													"settings_terminal_shell_integration_timeout",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.shellIntegrationTimeout.description")}
 									</div>
 								</SearchableSetting>
 
@@ -377,16 +338,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										<span className="w-10">{terminalCommandDelay ?? 50}ms</span>
 									</div>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.commandDelay.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#terminal-command-delay",
-													"settings_terminal_command_delay",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.commandDelay.description")}
 									</div>
 								</SearchableSetting>
 
@@ -403,16 +355,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										</span>
 									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.powershellCounter.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#enable-powershell-counter-workaround",
-													"settings_terminal_powershell_counter",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.powershellCounter.description")}
 									</div>
 								</SearchableSetting>
 
@@ -429,16 +372,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										</span>
 									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.zshClearEolMark.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#clear-zsh-eol-mark",
-													"settings_terminal_zsh_clear_eol_mark",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.zshClearEolMark.description")}
 									</div>
 								</SearchableSetting>
 
@@ -453,16 +387,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										<span className="font-medium">{t("settings:terminal.zshOhMy.label")}</span>
 									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.zshOhMy.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#enable-oh-my-zsh-integration",
-													"settings_terminal_zsh_oh_my",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.zshOhMy.description")}
 									</div>
 								</SearchableSetting>
 
@@ -477,16 +402,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										<span className="font-medium">{t("settings:terminal.zshP10k.label")}</span>
 									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.zshP10k.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#enable-powerlevel10k-integration",
-													"settings_terminal_zsh_p10k",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.zshP10k.description")}
 									</div>
 								</SearchableSetting>
 
@@ -501,16 +417,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										<span className="font-medium">{t("settings:terminal.zdotdir.label")}</span>
 									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
-										<Trans i18nKey="settings:terminal.zdotdir.description">
-											<Link
-												href={buildDocLink(
-													"features/shell-integration#enable-zdotdir-handling",
-													"settings_terminal_zdotdir",
-												)}
-												style={{ display: "inline" }}>
-												{" "}
-											</Link>
-										</Trans>
+										{t("settings:terminal.zdotdir.description")}
 									</div>
 								</SearchableSetting>
 							</>
