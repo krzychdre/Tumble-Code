@@ -362,7 +362,10 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 	public async setConfiguration(values: RooCodeSettings) {
 		await this.sidebarProvider.contextProxy.setValues(values)
-		await this.sidebarProvider.providerSettingsManager.saveConfig(values.currentApiConfigName || SETTINGS_DEFAULTS.currentApiConfigName, values)
+		await this.sidebarProvider.providerSettingsManager.saveConfig(
+			values.currentApiConfigName || SETTINGS_DEFAULTS.currentApiConfigName,
+			values,
+		)
 		await this.sidebarProvider.postStateToWebview()
 	}
 

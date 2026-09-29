@@ -115,7 +115,9 @@ describe("autoImportSettings", () => {
 				modeApiConfigs: {},
 				currentApiConfigName: "default",
 			}),
-			readProfiles: vi.fn().mockResolvedValue({ currentApiConfigName: "default", apiConfigs: {}, modeApiConfigs: {} }),
+			readProfiles: vi
+				.fn()
+				.mockResolvedValue({ currentApiConfigName: "default", apiConfigs: {}, modeApiConfigs: {} }),
 			import: vi.fn().mockResolvedValue({ success: true }),
 			getProfile: vi.fn().mockResolvedValue({ name: "test-config", id: "test-id", apiProvider: "anthropic" }),
 			listConfig: vi.fn().mockResolvedValue([]),
