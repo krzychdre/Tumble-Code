@@ -34,9 +34,10 @@ describe("RooTips Component", () => {
 			render(<RooTips />)
 		})
 
-		test("renders only the top two tips", () => {
-			// Ensure only two tips are present plus the docs link in the Trans component (3 total links)
-			expect(screen.getAllByRole("link")).toHaveLength(3)
+		test("renders the two tips as plain text, with no links", () => {
+			expect(screen.getByText("rooTips.customizableModes.title")).toBeInTheDocument()
+			expect(screen.getByText("rooTips.modelAgnostic.title")).toBeInTheDocument()
+			expect(screen.queryAllByRole("link")).toHaveLength(0)
 		})
 	})
 })

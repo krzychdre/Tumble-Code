@@ -78,12 +78,9 @@ describe("ChatTextArea composer accessibility (§2.5)", () => {
 		expect(textbox()).toHaveAttribute("aria-label", defaultProps.placeholderText)
 	})
 
-	it("renders the quiet hint row under the input", () => {
+	it("renders no keyboard hint row under the input (it only took space)", () => {
 		const { container } = render(<Harness />)
-		const hintRow = container.querySelector('[data-testid="composer-hint-row"]')
-		expect(hintRow).not.toBeNull()
-		// The i18n key carries the "send · Shift+Enter new line · @ mention · / command" text.
-		expect(hintRow!.textContent).toContain("chat:composerHint")
+		expect(container.querySelector('[data-testid="composer-hint-row"]')).toBeNull()
 	})
 
 	it("shows one focus outline on focus: a single ring class, no double border+outline", () => {

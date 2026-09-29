@@ -101,16 +101,15 @@
 	"enqueueMessage": "Nachricht zur Warteschlange hinzufügen (wird nach Abschluss der aktuellen Aufgabe gesendet)",
 	"scrollToBottom": "Zum Chat-Ende scrollen",
 	"scrollToLatestCheckpoint": "Zum vorherigen Checkpoint scrollen",
-	"about": "Tumble Code ist ein ganzes KI-Entwicklerteam in deinem Editor.",
-	"docs": "Schau in unsere <DocsLink>Dokumentation</DocsLink>, um mehr zu erfahren.",
+	"about": "Tumble ist ein KI-Programmierassistent, der direkt in deinem Editor arbeitet.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Anpassbare Modi",
-			"description": "Spezialisierte Personas, die bei der Sache bleiben und liefern."
+			"title": "Modi für verschiedene Aufgaben",
+			"description": "Wähle einen integrierten Modus wie Code, Architect oder Ask oder erstelle deinen eigenen."
 		},
 		"modelAgnostic": {
-			"title": "Bring dein eigenes Modell mit",
-			"description": "Verwende deinen eigenen Anbieter-Schlüssel oder führe sogar lokale Inferenz aus – kein Aufschlag, keine Bindung, keine Einschränkungen"
+			"title": "Jedes Modell deiner Wahl",
+			"description": "Verbinde einen Anbieter mit deinem eigenen API-Schlüssel oder führe ein lokales Modell aus."
 		}
 	},
 	"selectMode": "Interaktionsmodus auswählen",
@@ -556,7 +555,6 @@
 		"writing": "Gedächtnis wird geschrieben…",
 		"both": "Gedächtnis wird abgerufen und geschrieben…"
 	},
-	"composerHint": "{{key}} senden · Umschalt+Eingabe neue Zeile · @ Erwähnung · / Befehl",
 	"thumbnailAlt": "Miniaturbild {{index}}",
 	"removeImage": "Bild {{index}} entfernen"
 }

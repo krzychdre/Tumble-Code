@@ -101,16 +101,15 @@
 	"enqueueMessage": "Mesajı kuyruğa ekle (mevcut görev tamamlandıktan sonra gönderilecek)",
 	"scrollToBottom": "Sohbetin altına kaydır",
 	"scrollToLatestCheckpoint": "Önceki checkpoint'e kaydır",
-	"about": "Tumble Code, düzenleyicinizdeki bütün bir yapay zeka geliştirme ekibidir.",
-	"docs": "Daha fazla bilgi için <DocsLink>belgelerimize</DocsLink> göz atın.",
+	"about": "Tumble, editörünüzün içinde çalışan bir yapay zeka kodlama asistanıdır.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Özelleştirilebilir modlar",
-			"description": "Göreve odaklanan ve sonuç veren özel kişilikler."
+			"title": "Farklı işler için modlar",
+			"description": "Code, Architect veya Ask gibi yerleşik bir mod seçin ya da kendi modunuzu oluşturun."
 		},
 		"modelAgnostic": {
-			"title": "Kendi modelinizi getirin",
-			"description": "Kendi sağlayıcı anahtarınızı kullanın veya hatta yerel çıkarım yapın — ek ücret yok, kilitlenme yok, kısıtlama yok"
+			"title": "Seçtiğiniz herhangi bir model",
+			"description": "Kendi API anahtarınızla bir sağlayıcıya bağlanın veya yerel bir model çalıştırın."
 		}
 	},
 	"selectMode": "Etkileşim modunu seçin",
@@ -557,7 +556,6 @@
 		"writing": "Bellek yazılıyor…",
 		"both": "Bellek geri çağrılıyor ve yazılıyor…"
 	},
-	"composerHint": "{{key}} gönder · Shift+Enter yeni satır · @ bahsetme · / komut",
 	"thumbnailAlt": "Küçük resim {{index}}",
 	"removeImage": "Görseli kaldır {{index}}"
 }

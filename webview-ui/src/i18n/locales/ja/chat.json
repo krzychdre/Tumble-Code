@@ -101,16 +101,15 @@
 	"enqueueMessage": "メッセージをキューに追加（現在のタスク完了後に送信されます）",
 	"scrollToBottom": "チャットの最下部にスクロール",
 	"scrollToLatestCheckpoint": "前のチェックポイントまでスクロール",
-	"about": "Tumble Codeは、エディタに常駐するAI開発チームです。",
-	"docs": "詳細については、<DocsLink>ドキュメント</DocsLink>をご確認ください。",
+	"about": "Tumble はエディター内で動作する AI コーディングアシスタントです。",
 	"rooTips": {
 		"customizableModes": {
-			"title": "カスタマイズ可能なモード",
-			"description": "タスクに集中し、成果を出す専門のペルソナ。"
+			"title": "用途に合わせたモード",
+			"description": "Code、Architect、Ask などの組み込みモードを選ぶか、独自のモードを作成できます。"
 		},
 		"modelAgnostic": {
-			"title": "独自のモデルを持ち込む",
-			"description": "独自のプロバイダーキーを使用したり、ローカルで推論を実行したりできます — マークアップ、ロックイン、制限はありません"
+			"title": "好きなモデルを選択",
+			"description": "自分の API キーでプロバイダーに接続するか、ローカルモデルを実行できます。"
 		}
 	},
 	"selectMode": "対話モードを選択",
@@ -556,7 +555,6 @@
 		"writing": "メモリを書き込み中…",
 		"both": "メモリを呼び出し・書き込み中…"
 	},
-	"composerHint": "{{key}} 送信 · Shift+Enter 改行 · @ メンション · / コマンド",
 	"thumbnailAlt": "サムネイル {{index}}",
 	"removeImage": "画像 {{index}} を削除"
 }

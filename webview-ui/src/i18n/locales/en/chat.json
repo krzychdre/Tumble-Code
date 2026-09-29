@@ -148,16 +148,15 @@
 	},
 	"scrollToBottom": "Scroll to bottom of chat",
 	"scrollToLatestCheckpoint": "Scroll to previous checkpoint",
-	"about": "Tumble is a whole AI dev team in your editor",
-	"docs": "Check our <DocsLink>docs</DocsLink> to get started",
+	"about": "Tumble is an AI coding assistant that works inside your editor.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Customizable modes that don't swerve",
-			"description": "Specialized personas that stay on-task and deliver."
+			"title": "Modes for different jobs",
+			"description": "Pick a built-in mode such as Code, Architect or Ask, or create your own."
 		},
 		"modelAgnostic": {
-			"title": "Bring your own model, no markup or lock-in",
-			"description": "Use your own provider key or even run local inference — Tumble doesn't charge for it"
+			"title": "Any model you choose",
+			"description": "Connect a provider with your own API key or run a local model."
 		}
 	},
 	"selectMode": "Select mode for interaction",
@@ -544,7 +543,6 @@
 		"reviewFile": "Review plan",
 		"loading": "Loading plan…"
 	},
-	"composerHint": "{{key}} send · Shift+Enter new line · @ mention · / command",
 	"thumbnailAlt": "Thumbnail {{index}}",
 	"removeImage": "Remove image {{index}}"
 }
