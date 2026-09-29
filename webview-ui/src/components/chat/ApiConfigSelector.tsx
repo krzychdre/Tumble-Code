@@ -7,6 +7,7 @@ import { IconButton, Popover, PopoverContent, PopoverTrigger, StandardTooltip } 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 import { Button } from "@/components/ui"
+import { ModeIcon, modeLabel } from "./modeIcon"
 
 // Above this many target modes, applying requires an explicit confirmation step.
 const LARGE_MODE_ASSIGN_THRESHOLD = 10
@@ -271,11 +272,12 @@ export const ApiConfigSelector = ({
 											className="px-3 py-1.5 text-sm cursor-pointer flex items-center gap-2 hover:bg-vscode-list-hoverBackground">
 											<input
 												type="checkbox"
-												aria-label={mode.name}
+												aria-label={modeLabel(mode.name)}
 												checked={selectedModeSlugs.has(mode.slug)}
 												onChange={() => toggleModeSlug(mode.slug)}
 											/>
-											<span className="flex-1 min-w-0 truncate">{mode.name}</span>
+											<ModeIcon slug={mode.slug} className="size-4" />
+											<span className="flex-1 min-w-0 truncate">{modeLabel(mode.name)}</span>
 											{alreadyAssigned && (
 												<span className="text-vscode-descriptionForeground opacity-60 text-xs flex-shrink-0">
 													{t("chat:applyConfigToModes.current")}
