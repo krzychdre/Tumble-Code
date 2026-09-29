@@ -64,6 +64,7 @@ EXPECTED = {
     ("/api/marketplace/modes", ("GET",), "get_modes", "APIRoute"),
     ("/api/marketplace/mcps", ("GET",), "get_mcps", "APIRoute"),
     # The web panel (routers/web.py before CAPI-M5).
+    ("/", ("GET",), "root_redirect", "APIRoute"),
     ("/app", ("GET",), "task_list", "APIRoute"),
     ("/app/metrics", ("GET",), "metrics_page", "APIRoute"),
     ("/app/tasks/{task_id}", ("GET",), "task_detail", "APIRoute"),

@@ -43,6 +43,17 @@ router = APIRouter(tags=["web"])
 PAGE_SIZE = 25
 
 
+@router.get("/", include_in_schema=False)
+async def root_redirect():
+    """The bare origin sends the reader to the task list.
+
+    The extension opens the configured cloudApiUrl as-is (the Cloud view's
+    URL link and "visit website" button), so without this the self-hosted
+    origin answered 404 instead of showing the web panel.
+    """
+    return RedirectResponse(url="/app", status_code=307)
+
+
 @router.get("/app", response_class=HTMLResponse)
 async def task_list(
     request: Request,
