@@ -1,3 +1,4 @@
+import { ModeIcon, modeLabel } from "@src/components/chat/modeIcon"
 import { useState, useEffect, useRef } from "react"
 import { ChevronDown, X, Upload } from "lucide-react"
 
@@ -172,8 +173,15 @@ export const ModeSelectorRow = ({
 								aria-expanded={open}
 								className="justify-between grow"
 								data-testid="mode-select-trigger">
-								<div className="truncate">
-									{localRenames[visualMode] ?? currentModeName ?? t("prompts:modes.selectMode")}
+								<div className="flex items-center gap-1.5 truncate">
+									<ModeIcon slug={visualMode} className="size-4" />
+									<span className="truncate">
+										{modeLabel(
+											localRenames[visualMode] ??
+												currentModeName ??
+												t("prompts:modes.selectMode"),
+										)}
+									</span>
 								</div>
 								<ChevronDown className="opacity-50" />
 							</Button>
@@ -221,6 +229,7 @@ export const ModeSelectorRow = ({
 													}}
 													data-testid={`mode-option-${modeConfig.slug}`}>
 													<div className="flex items-center justify-between w-full">
+														<ModeIcon slug={modeConfig.slug} className="size-4 mr-1.5" />
 														<span
 															style={{
 																whiteSpace: "nowrap",
@@ -229,7 +238,7 @@ export const ModeSelectorRow = ({
 																flex: 2,
 																minWidth: 0,
 															}}>
-															{modeConfig.name}
+															{modeLabel(modeConfig.name)}
 														</span>
 														<span
 															className="text-foreground"

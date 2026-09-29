@@ -7,7 +7,7 @@
 		"editModesConfig": "Edytuj konfigurację trybów",
 		"editGlobalModes": "Edytuj tryby globalne",
 		"editProjectModes": "Edytuj tryby projektu (.roomodes)",
-		"createModeHelpText": "Tryby to wyspecjalizowane persony, które dostosowują zachowanie Tumble. <0>Dowiedz się o używaniu trybów</0> lub <1>dostosowywaniu trybów.</1>",
+		"createModeHelpText": "Tryby to wyspecjalizowane persony, które dostosowują zachowanie Tumble.",
 		"selectMode": "Szukaj trybów"
 	},
 	"apiConfiguration": {
@@ -70,7 +70,7 @@
 	},
 	"globalCustomInstructions": {
 		"title": "Niestandardowe instrukcje dla wszystkich trybów",
-		"description": "Te instrukcje dotyczą wszystkich trybów. Zapewniają podstawowy zestaw zachowań, które mogą być rozszerzone przez instrukcje specyficzne dla trybów poniżej. <0>Dowiedz się więcej</0>",
+		"description": "Te instrukcje dotyczą wszystkich trybów. Zapewniają podstawowy zestaw zachowań, które mogą być rozszerzone przez instrukcje specyficzne dla trybów poniżej.",
 		"loadFromFile": "Instrukcje można również załadować z folderu <span>.roo/rules/</span> w twoim obszarze roboczym lub z globalnego <0>.roo/rules/</0> (.roorules i .clinerules są przestarzałe i wkrótce przestaną działać)."
 	},
 	"systemPrompt": {
