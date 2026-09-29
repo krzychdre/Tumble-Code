@@ -1,8 +1,5 @@
-import { memo, useEffect, useRef, useState, useMemo } from "react"
+import { memo, useRef, useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
-import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
-import DismissibleUpsell from "@src/components/common/DismissibleUpsell"
 import {
 	ChevronUp,
 	ChevronDown,
@@ -17,7 +14,7 @@ import prettyBytes from "pretty-bytes"
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { findLastIndex, getModelMaxOutputTokens } from "@roo-code/core/browser"
+import { getModelMaxOutputTokens } from "@roo-code/core/browser"
 
 import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"
@@ -113,40 +110,11 @@ const TaskHeader = ({
 	todos,
 }: TaskHeaderProps) => {
 	const { t } = useTranslation()
-	// P1: narrow slices. TaskHeader used to consume the whole extension state
-	// (and scan all messages every render); the scan now runs in the selector,
-	// once per committed store change instead of once per render.
+	// P1: narrow slices. TaskHeader used to consume the whole extension state.
 	const apiConfiguration = useExtensionSelector((s) => s.apiConfiguration)
 	const currentTaskItem = useExtensionSelector((s) => s.currentTaskItem)
-	const isTaskComplete = useExtensionSelector((s) => {
-		const clineMessages = s.clineMessages
-		if (!clineMessages || clineMessages.length === 0) {
-			return false
-		}
-		// Check if the task is complete by looking at the last relevant message (skipping resume messages)
-		const lastRelevantIndex = findLastIndex(
-			clineMessages,
-			(m) => !(m.ask === "resume_task" || m.ask === "resume_completed_task"),
-		)
-		return lastRelevantIndex !== -1 ? clineMessages[lastRelevantIndex]?.ask === "completion_result" : false
-	})
 	const { id: modelId, info: model } = useSelectedModel(apiConfiguration)
 	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
-	const [showLongRunningTaskMessage, setShowLongRunningTaskMessage] = useState(false)
-	const { isOpen, openUpsell, closeUpsell, handleConnect } = useCloudUpsell({
-		autoOpenOnAuth: false,
-	})
-
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			if (currentTaskItem && !isTaskComplete) {
-				setShowLongRunningTaskMessage(true)
-			}
-		}, 120_000) // Show upsell after 2 minutes
-
-		return () => clearTimeout(timer)
-	}, [currentTaskItem, isTaskComplete])
-
 	const textContainerRef = useRef<HTMLDivElement>(null)
 	const textRef = useRef<HTMLDivElement>(null)
 	const contextWindow = model?.contextWindow || 1
@@ -241,15 +209,6 @@ const TaskHeader = ({
 						{t("chat:task.backToParentTask")}
 					</Button>
 				</div>
-			)}
-			{showLongRunningTaskMessage && !isTaskComplete && (
-				<DismissibleUpsell
-					upsellId="longRunningTask"
-					onClick={() => openUpsell()}
-					dismissOnClick={false}
-					variant="banner">
-					{t("cloud:upsell.longRunningTask")}
-				</DismissibleUpsell>
 			)}
 			<div
 				className={cn(
@@ -458,7 +417,6 @@ const TaskHeader = ({
 				{/* Todo list - always shown at bottom when todos exist */}
 				{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 			</div>
-			<CloudUpsellDialog open={isOpen} onOpenChange={closeUpsell} onConnect={handleConnect} />
 		</div>
 	)
 }

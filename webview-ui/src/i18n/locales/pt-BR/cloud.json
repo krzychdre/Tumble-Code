@@ -5,7 +5,6 @@
 	"signIn": "Conectar ao Tumble Code Cloud",
 	"connect": "Começar",
 	"cloudBenefitsTitle": "Experimente o Tumble Code Cloud",
-	"cloudComingSoon": "Este recurso chegará em breve — e permitirá que você hospede o backend da nuvem por conta própria.",
 	"cloudBenefitWalkaway": "Acompanhe e controle tarefas de qualquer lugar (incluindo seu telefone)",
 	"cloudBenefitHistory": "Acesse seu histórico de tarefas de qualquer lugar e compartilhe com outros",
 	"cloudBenefitMetrics": "Obtenha uma visão holística do seu consumo de tokens",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "Criar Conta de Equipe",
 	"cloudUrlPillLabel": "URL do Tumble Code Cloud ",
 	"upsell": {
-		"longRunningTask": "Isso pode levar um tempo. Continue de qualquer lugar com a Nuvem.",
-		"taskList": "Gostando do Tumble? Confira o Tumble Code Cloud: acompanhe e controle suas tarefas de qualquer lugar, execute agentes de nuvem autônomos, obtenha estatísticas de uso e muito mais. <learnMoreLink>Saiba mais</learnMoreLink>."
+		"taskList": "Gostando do Tumble? Confira o Tumble Code Cloud: acompanhe e controle suas tarefas de qualquer lugar, obtenha estatísticas de uso e muito mais. <learnMoreLink>Saiba mais</learnMoreLink>."
 	}
 }

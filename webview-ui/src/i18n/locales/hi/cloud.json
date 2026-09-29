@@ -5,7 +5,6 @@
 	"signIn": "Tumble Code Cloud से कनेक्ट करें",
 	"connect": "शुरू करें",
 	"cloudBenefitsTitle": "Tumble Code Cloud आज़माएं",
-	"cloudComingSoon": "यह सुविधा जल्द ही आ रही है — और आपको क्लाउड बैकएंड को स्वयं होस्ट करने की अनुमति देगी।",
 	"cloudBenefitWalkaway": "कहीं से भी कार्यों का पालन और नियंत्रण करें (अपने फोन सहित)",
 	"cloudBenefitHistory": "कहीं से भी अपने कार्य इतिहास तक पहुंचें और उन्हें दूसरों के साथ साझा करें",
 	"cloudBenefitMetrics": "अपने टोकन उपभोग का समग्र दृश्य प्राप्त करें",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "टीम खाता बनाएं",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"longRunningTask": "इसमें थोड़ा समय लग सकता है। क्लाउड के साथ कहीं से भी जारी रखें।",
-		"taskList": "रू का आनंद ले रहे हैं? रू कोड क्लाउड देखें: कहीं से भी अपने कार्यों का पालन और नियंत्रण करें, स्वायत्त क्लाउड एजेंट चलाएं, उपयोग के आंकड़े प्राप्त करें और बहुत कुछ। <learnMoreLink>और जानें</learnMoreLink>।"
+		"taskList": "Tumble का आनंद ले रहे हैं? Tumble Code Cloud देखें: कहीं से भी अपने कार्यों का पालन और नियंत्रण करें, उपयोग के आंकड़े प्राप्त करें और बहुत कुछ। <learnMoreLink>और जानें</learnMoreLink>।"
 	}
 }

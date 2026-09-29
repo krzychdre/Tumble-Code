@@ -5,7 +5,6 @@
 	"signIn": "Kết nối với Tumble Code Cloud",
 	"connect": "Bắt đầu",
 	"cloudBenefitsTitle": "Dùng thử Tumble Code Cloud",
-	"cloudComingSoon": "Tính năng này sắp ra mắt — và sẽ cho phép bạn tự lưu trữ backend đám mây.",
 	"cloudBenefitWalkaway": "Theo dõi và kiểm soát các tác vụ từ mọi nơi (bao gồm cả điện thoại của bạn)",
 	"cloudBenefitHistory": "Truy cập lịch sử tác vụ của bạn từ mọi nơi và chia sẻ chúng với người khác",
 	"cloudBenefitMetrics": "Có cái nhìn toàn diện về mức tiêu thụ token của bạn",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "Tạo Tài Khoản Nhóm",
 	"cloudUrlPillLabel": "URL Tumble Code Cloud",
 	"upsell": {
-		"longRunningTask": "Việc này có thể mất một lúc. Tiếp tục từ mọi nơi với Cloud.",
-		"taskList": "Bạn có thích Tumble không? Hãy xem Tumble Code Cloud: theo dõi và kiểm soát các tác vụ của bạn từ mọi nơi, chạy các agent đám mây tự trị, nhận số liệu thống kê sử dụng và hơn thế nữa. <learnMoreLink>Tìm hiểu thêm</learnMoreLink>."
+		"taskList": "Bạn có thích Tumble không? Hãy xem Tumble Code Cloud: theo dõi và kiểm soát các tác vụ của bạn từ mọi nơi, nhận số liệu thống kê sử dụng và hơn thế nữa. <learnMoreLink>Tìm hiểu thêm</learnMoreLink>."
 	}
 }
