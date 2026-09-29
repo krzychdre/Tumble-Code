@@ -19,8 +19,5 @@
 	"startOver": "다시 시작",
 	"personalAccount": "개인 계정",
 	"createTeamAccount": "팀 계정 만들기",
-	"cloudUrlPillLabel": "Tumble Code Cloud URL",
-	"upsell": {
-		"taskList": "Tumble를 즐기고 계신가요? Tumble Code Cloud를 확인해보세요: 어디서든 작업을 추적하고 제어하며, 사용 통계를 얻는 등 다양한 기능을 제공합니다. <learnMoreLink>더 알아보기</learnMoreLink>."
-	}
+	"cloudUrlPillLabel": "Tumble Code Cloud URL"
 }

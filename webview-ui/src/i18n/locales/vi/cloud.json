@@ -19,8 +19,5 @@
 	"startOver": "Bắt đầu lại",
 	"personalAccount": "Tài Khoản Cá Nhân",
 	"createTeamAccount": "Tạo Tài Khoản Nhóm",
-	"cloudUrlPillLabel": "URL Tumble Code Cloud",
-	"upsell": {
-		"taskList": "Bạn có thích Tumble không? Hãy xem Tumble Code Cloud: theo dõi và kiểm soát các tác vụ của bạn từ mọi nơi, nhận số liệu thống kê sử dụng và hơn thế nữa. <learnMoreLink>Tìm hiểu thêm</learnMoreLink>."
-	}
+	"cloudUrlPillLabel": "URL Tumble Code Cloud"
 }

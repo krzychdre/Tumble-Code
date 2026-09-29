@@ -1,7 +1,6 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { LRUCache } from "lru-cache"
-import { Trans } from "react-i18next"
 
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
@@ -20,8 +19,7 @@ import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import RooHero from "@src/components/welcome/RooHero"
 import RooTips from "@src/components/welcome/RooTips"
-import { StandardTooltip, Button, Link } from "@src/components/ui"
-import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
+import { StandardTooltip, Button } from "@src/components/ui"
 
 import TelemetryBanner from "../common/TelemetryBanner"
 import StorageErrorBanner from "../common/StorageErrorBanner"
@@ -38,8 +36,6 @@ import { QueuedMessages } from "./QueuedMessages"
 import { WorktreeSelector } from "./WorktreeSelector"
 import FileChangesPanel from "./FileChangesPanel"
 import SubagentsPanel from "./SubagentsPanel"
-import DismissibleUpsell from "../common/DismissibleUpsell"
-import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
 import { useStableCallback } from "@src/hooks/useStableCallback"
 import { EVER_VISIBLE_VIEWPORT, filterVisible, markEverVisible } from "./rows/filterVisible"
@@ -54,7 +50,6 @@ import { useChatComposer } from "./hooks/useChatComposer"
 import { MAX_IMAGES_PER_MESSAGE, useChatHostMessages } from "./hooks/useChatHostMessages"
 import { useCheckpointNavigation } from "./hooks/useCheckpointNavigation"
 import { useModeSwitchShortcuts } from "./hooks/useModeSwitchShortcuts"
-import { Cloud } from "lucide-react"
 
 export { MAX_IMAGES_PER_MESSAGE }
 
@@ -101,7 +96,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const soundEnabled = useExtensionSelector((s) => s.soundEnabled)
 	const soundVolume = useExtensionSelector((s) => s.soundVolume)
 	const customSoundUris = useExtensionSelector((s) => s.customSoundUris)
-	const cloudIsAuthenticated = useExtensionSelector((s) => s.cloudIsAuthenticated)
 	const messageQueue = useExtensionSelector((s) => s.messageQueue) ?? []
 	const showWorktreesInHomeScreen = useExtensionSelector((s) => s.showWorktreesInHomeScreen)
 	const subagents = useExtensionSelector((s) => s.subagents)
@@ -153,15 +147,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const prevExpandedRowsRef = useRef<Record<number, boolean> | undefined>(undefined)
 	const scrollContainerRef = useRef<HTMLDivElement>(null)
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
-
-	const {
-		isOpen: isUpsellOpen,
-		openUpsell,
-		closeUpsell,
-		handleConnect,
-	} = useCloudUpsell({
-		autoOpenOnAuth: false,
-	})
 
 	const isProfileDisabled = useMemo(
 		() => !!apiConfiguration && !ProfileValidator.isProfileAllowed(apiConfiguration, organizationAllowList),
@@ -561,27 +546,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							    hero's sideBar-background fades show as a box on the editor
 							    background, and the tab is meant to open straight to work. */}
 							{renderContext !== "editor" && <RooHero />}
-							{/* Show RooTips when authenticated or when user is new */}
+							{/* Show RooTips to new users */}
 							{renderContext !== "editor" && taskHistory.length < 6 && <RooTips />}
 							{/* Everyone should see their task history if any */}
 							{taskHistory.length > 0 && <HistoryPreview />}
 						</div>
-						{/* Logged out users should see a one-time upsell, but not for brand new users */}
-						{!cloudIsAuthenticated && taskHistory.length >= 6 && (
-							<DismissibleUpsell
-								upsellId="taskList2"
-								icon={<Cloud className="size-5 shrink-0" />}
-								onClick={() => openUpsell()}
-								dismissOnClick={false}
-								className="bg-none mt-6 border-border rounded-xl p-3 !text-base">
-								<Trans
-									i18nKey="cloud:upsell.taskList"
-									components={{
-										learnMoreLink: <Link href="#" />,
-									}}
-								/>
-							</DismissibleUpsell>
-						)}
 					</div>
 				</div>
 			)}
@@ -742,7 +711,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			)}
 
 			<div id="roo-portal" />
-			<CloudUpsellDialog open={isUpsellOpen} onOpenChange={closeUpsell} onConnect={handleConnect} />
 		</div>
 	)
 }

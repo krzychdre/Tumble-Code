@@ -19,8 +19,5 @@
 	"pasteCallbackUrl": "Copy the redirect URL from your browser and paste it here:",
 	"startOver": "Start over",
 	"personalAccount": "Personal Account",
-	"createTeamAccount": "Create Team Account",
-	"upsell": {
-		"taskList": "Enjoying Tumble? Check out Tumble Code Cloud: follow and control your tasks from anywhere, get usage stats and more. <learnMoreLink>Learn more</learnMoreLink>."
-	}
+	"createTeamAccount": "Create Team Account"
 }
