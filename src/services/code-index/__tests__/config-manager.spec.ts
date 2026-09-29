@@ -107,7 +107,7 @@ describe("CodeIndexConfigManager", () => {
 				bedrockOptions: { region: "us-east-1", profile: undefined },
 				qdrantUrl: "http://localhost:6333",
 				qdrantApiKey: "",
-				searchMinScore: 0.4,
+				searchMinScore: 0.85,
 			})
 			expect(result.requiresRestart).toBe(false)
 		})
@@ -138,7 +138,7 @@ describe("CodeIndexConfigManager", () => {
 				ollamaOptions: { ollamaBaseUrl: "" },
 				qdrantUrl: "http://qdrant.local",
 				qdrantApiKey: "test-qdrant-key",
-				searchMinScore: 0.4,
+				searchMinScore: 0.85,
 			})
 		})
 
@@ -175,7 +175,7 @@ describe("CodeIndexConfigManager", () => {
 				},
 				qdrantUrl: "http://qdrant.local",
 				qdrantApiKey: "test-qdrant-key",
-				searchMinScore: 0.4,
+				searchMinScore: 0.85,
 			})
 		})
 
@@ -237,7 +237,7 @@ describe("CodeIndexConfigManager", () => {
 				},
 				qdrantUrl: "http://qdrant.local",
 				qdrantApiKey: "test-qdrant-key",
-				searchMinScore: 0.4,
+				searchMinScore: 0.85,
 			})
 		})
 
@@ -275,7 +275,7 @@ describe("CodeIndexConfigManager", () => {
 				},
 				qdrantUrl: "http://qdrant.local",
 				qdrantApiKey: "test-qdrant-key",
-				searchMinScore: 0.4,
+				searchMinScore: 0.85,
 			})
 		})
 
@@ -314,7 +314,7 @@ describe("CodeIndexConfigManager", () => {
 				geminiOptions: undefined,
 				qdrantUrl: "http://qdrant.local",
 				qdrantApiKey: "test-qdrant-key",
-				searchMinScore: 0.4,
+				searchMinScore: 0.85,
 			})
 		})
 
@@ -872,7 +872,7 @@ describe("CodeIndexConfigManager", () => {
 
 					await configManager.loadConfiguration()
 					// Should fall back to default DEFAULT_SEARCH_MIN_SCORE (0.4)
-					expect(configManager.currentSearchMinScore).toBe(0.4)
+					expect(configManager.currentSearchMinScore).toBe(0.85)
 				})
 
 				it("should respect user setting of 0 (edge case)", async () => {
@@ -935,8 +935,8 @@ describe("CodeIndexConfigManager", () => {
 					})
 
 					await configManager.loadConfiguration()
-					// Should use default model (text-embedding-3-small) threshold (0.4)
-					expect(configManager.currentSearchMinScore).toBe(0.4)
+					// embeddingModels is mocked (no model threshold), so the default applies
+					expect(configManager.currentSearchMinScore).toBe(0.85)
 				})
 
 				it("should handle priority correctly: user > model > default", async () => {
@@ -984,7 +984,7 @@ describe("CodeIndexConfigManager", () => {
 
 					const anotherManager = new CodeIndexConfigManager(mockContextProxy)
 					await anotherManager.loadConfiguration()
-					expect(anotherManager.currentSearchMinScore).toBe(0.4) // Default
+					expect(anotherManager.currentSearchMinScore).toBe(0.85) // Default
 				})
 			})
 
@@ -1321,7 +1321,7 @@ describe("CodeIndexConfigManager", () => {
 				openAiCompatibleOptions: undefined,
 				qdrantUrl: "http://qdrant.local",
 				qdrantApiKey: "test-qdrant-key",
-				searchMinScore: 0.4,
+				searchMinScore: 0.85,
 				searchMaxResults: 50,
 			})
 		})
