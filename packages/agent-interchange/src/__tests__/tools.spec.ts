@@ -133,6 +133,25 @@ describe("extractActions — XML tool-call parsing (alert #16 regression)", () =
 		expect(elapsed).toBeLessThan(100)
 	})
 
+	it("reads a patch header path from its own line only", () => {
+		// The header regex used \s*, which crossed the line break of an empty
+		// header and took the next line as the path.
+		const text = [
+			"<apply_patch>",
+			"*** Begin Patch",
+			"*** Update File:\t",
+			"+not a path",
+			"*** Add File:  src/new.ts",
+			"*** End Patch",
+			"</apply_patch>",
+		].join("\n")
+
+		const actions = extractActions(assistantWithText(text))
+
+		expect(actions).toHaveLength(1)
+		expect(actions[0]?.paths).toEqual(["src/new.ts"])
+	})
+
 	it("scans orphan <path> tags inside a tool body in linear time", () => {
 		// The per-tag lookups (<path>, <command>, <result>, …) used a fixed lazy
 		// regex that was quadratic on unclosed tags the same way: ~190 ms at

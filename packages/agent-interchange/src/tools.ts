@@ -148,7 +148,7 @@ function collectPaths(params: Record<string, unknown>): string[] {
 	const patch = str(params.patch)
 
 	if (patch) {
-		paths.push(...matchAll(patch, /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm))
+		paths.push(...matchAll(patch, /^\*\*\* (?:Add|Update|Delete) File:[ \t]*(\S.*)$/gm))
 	}
 
 	if (Array.isArray(params.files)) {
@@ -250,7 +250,7 @@ function fromXml(text: string, messageIndex: number): ToolAction[] {
 			const action: ToolAction = { kind, tool, messageIndex }
 			const paths = unique([
 				...extractTagContents(body, "<path>", "</path>"),
-				...matchAll(body, /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm),
+				...matchAll(body, /^\*\*\* (?:Add|Update|Delete) File:[ \t]*(\S.*)$/gm),
 			])
 
 			if (paths.length > 0) {

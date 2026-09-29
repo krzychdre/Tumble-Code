@@ -22,3 +22,7 @@ Branch: `fix/ci-red-and-code-scanning`, based on main e1e9a696c.
 - Dismissed with a comment (reopenable): #24, #31-#33 (ReDoS query fixtures in tests), #26, #27 (test-only local proxy/target), #25 (debug-only TLS override, documented at the site), #30 (mention grammar escapes spaces only by design).
 
 The inline `// codeql[...]` comments at those sites do not suppress anything in GitHub code scanning; the dismissals are what closes them.
+
+## Follow-up: #16 moved to the patch header regex
+
+After #652 CodeQL re-pointed #16 at `^\*\*\* (Add|Update|Delete) File:\s*(.+)$`. V8 stays fast on it (40000 tabs in 1 ms), but `\s*` and `.+` overlap and `\s*` crosses a line break: an empty `*** Update File:` header took the next patch line as its path. Now `File:[ \t]*(\S.*)$`; new spec case returns `+not a path` on the old regex.
