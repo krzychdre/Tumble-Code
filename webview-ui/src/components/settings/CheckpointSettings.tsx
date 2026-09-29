@@ -1,8 +1,6 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { Trans } from "react-i18next"
-import { buildDocLink } from "@src/utils/docLinks"
-import { Slider, Link, LabeledCheckbox } from "@/components/ui"
+import { Slider, LabeledCheckbox } from "@/components/ui"
 
 import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
@@ -37,13 +35,7 @@ export const CheckpointSettings = (props: CheckpointSettingsProps) => {
 						<span className="font-medium">{t("settings:checkpoints.enable.label")}</span>
 					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
-						<Trans i18nKey="settings:checkpoints.enable.description">
-							<Link
-								href={buildDocLink("features/checkpoints", "settings_checkpoints")}
-								style={{ display: "inline" }}>
-								{" "}
-							</Link>
-						</Trans>
+						{t("settings:checkpoints.enable.description")}
 					</div>
 				</SearchableSetting>
 

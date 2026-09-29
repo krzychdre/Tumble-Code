@@ -68,7 +68,7 @@
 		}
 	},
 	"slashCommands": {
-		"description": "Gestisci i tuoi comandi slash per eseguire rapidamente flussi di lavoro e azioni personalizzate. <DocsLink>Scopri di più</DocsLink>",
+		"description": "Gestisci i tuoi comandi slash per eseguire rapidamente flussi di lavoro e azioni personalizzate.",
 		"workspaceCommands": "Comandi dell'area di lavoro",
 		"globalCommands": "Comandi globali",
 		"noWorkspaceCommands": "Nessun comando in questo progetto ancora.",
@@ -513,7 +513,7 @@
 		},
 		"enable": {
 			"label": "Abilita punti di controllo automatici",
-			"description": "Quando abilitato, Tumble creerà automaticamente punti di controllo durante l'esecuzione dei compiti, facilitando la revisione delle modifiche o il ritorno a stati precedenti. <0>Scopri di più</0>"
+			"description": "Quando abilitato, Tumble creerà automaticamente punti di controllo durante l'esecuzione dei compiti, facilitando la revisione delle modifiche o il ritorno a stati precedenti."
 		}
 	},
 	"notifications": {
@@ -645,44 +645,44 @@
 		},
 		"shellIntegrationTimeout": {
 			"label": "Timeout integrazione shell terminale",
-			"description": "Quanto tempo attendere l'integrazione della shell di VS Code prima di eseguire i comandi. Aumenta se la tua shell si avvia lentamente o vedi errori 'Integrazione Shell Non Disponibile'. <0>Scopri di più</0>"
+			"description": "Quanto tempo attendere l'integrazione della shell di VS Code prima di eseguire i comandi. Aumenta se la tua shell si avvia lentamente o vedi errori 'Integrazione Shell Non Disponibile'."
 		},
 		"shellIntegrationDisabled": {
 			"label": "Usa terminale in linea (consigliato)",
-			"description": "Esegui comandi nel terminale in linea (chat) per bypassare profili/integrazione shell per esecuzioni più veloci e affidabili. Quando disabilitato, Tumble usa il terminale VS Code con il tuo profilo shell, prompt e plugin. <0>Scopri di più</0>"
+			"description": "Esegui comandi nel terminale in linea (chat) per bypassare profili/integrazione shell per esecuzioni più veloci e affidabili. Quando disabilitato, Tumble usa il terminale VS Code con il tuo profilo shell, prompt e plugin."
 		},
 		"commandDelay": {
 			"label": "Ritardo comando terminale",
-			"description": "Aggiunge una breve pausa dopo ogni comando affinché il terminale VS Code possa svuotare tutto l'output (bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep). Usa solo se vedi output finale mancante; altrimenti lascia a 0. <0>Scopri di più</0>"
+			"description": "Aggiunge una breve pausa dopo ogni comando affinché il terminale VS Code possa svuotare tutto l'output (bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep). Usa solo se vedi output finale mancante; altrimenti lascia a 0."
 		},
 		"powershellCounter": {
 			"label": "Abilita workaround contatore PowerShell",
-			"description": "Attiva quando l'output PowerShell è mancante o duplicato; aggiunge un piccolo contatore a ogni comando per stabilizzare l'output. Mantieni disattivato se l'output sembra già corretto. <0>Scopri di più</0>"
+			"description": "Attiva quando l'output PowerShell è mancante o duplicato; aggiunge un piccolo contatore a ogni comando per stabilizzare l'output. Mantieni disattivato se l'output sembra già corretto."
 		},
 		"zshClearEolMark": {
 			"label": "Cancella marcatore EOL ZSH",
-			"description": "Attiva quando vedi % vaganti alla fine delle righe o l'analisi sembra sbagliata; omette il marcatore di fine riga (%) di Zsh. <0>Scopri di più</0>"
+			"description": "Attiva quando vedi % vaganti alla fine delle righe o l'analisi sembra sbagliata; omette il marcatore di fine riga (%) di Zsh."
 		},
 		"zshOhMy": {
 			"label": "Abilita integrazione Oh My Zsh",
-			"description": "Attiva quando il tuo tema/plugin Oh My Zsh si aspetta l'integrazione della shell; imposta ITERM_SHELL_INTEGRATION_INSTALLED=Yes. Disattiva per evitare di impostare quella variabile. <0>Scopri di più</0>"
+			"description": "Attiva quando il tuo tema/plugin Oh My Zsh si aspetta l'integrazione della shell; imposta ITERM_SHELL_INTEGRATION_INSTALLED=Yes. Disattiva per evitare di impostare quella variabile."
 		},
 		"zshP10k": {
 			"label": "Abilita integrazione Powerlevel10k",
-			"description": "Attiva quando usi l'integrazione della shell Powerlevel10k. <0>Scopri di più</0>"
+			"description": "Attiva quando usi l'integrazione della shell Powerlevel10k."
 		},
 		"zdotdir": {
 			"label": "Abilita gestione ZDOTDIR",
-			"description": "Attiva quando l'integrazione della shell zsh fallisce o è in conflitto con i tuoi dotfile. <0>Scopri di più</0>"
+			"description": "Attiva quando l'integrazione della shell zsh fallisce o è in conflitto con i tuoi dotfile."
 		},
 		"inheritEnv": {
 			"label": "Eredita variabili d'ambiente",
-			"description": "Attiva per ereditare le variabili d'ambiente dal processo padre di VS Code. <0>Scopri di più</0>"
+			"description": "Attiva per ereditare le variabili d'ambiente dal processo padre di VS Code."
 		},
 		"profile": {
 			"label": "Override terminale Tumble Code",
 			"default": "Usa il profilo predefinito di VS Code (consigliato)",
-			"description": "Per impostazione predefinita Tumble Code usa la shell configurata in VS Code. Seleziona Override per scegliere un profilo shell con percorso esposto da VS Code. I profili solo sorgente (es. la voce PowerShell integrata) non possono essere elencati qui. <0>Ulteriori informazioni</0>",
+			"description": "Per impostazione predefinita Tumble Code usa la shell configurata in VS Code. Seleziona Override per scegliere un profilo shell con percorso esposto da VS Code. I profili solo sorgente (es. la voce PowerShell integrata) non possono essere elencati qui.",
 			"overrideLabel": "Sostituisci shell per Tumble Code",
 			"configureButton": "Scegli il profilo predefinito in VS Code",
 			"noProfiles": "(nessun profilo con percorso trovato in terminal.integrated.profiles)"
@@ -896,7 +896,7 @@
 		}
 	},
 	"skills": {
-		"description": "Gestisci le skills che forniscono istruzioni contestuali all'agente. Le skills vengono applicate automaticamente quando rilevanti per le tue attività. <DocsLink>Scopri di più</DocsLink>",
+		"description": "Gestisci le skills che forniscono istruzioni contestuali all'agente. Le skills vengono applicate automaticamente quando rilevanti per le tue attività.",
 		"workspaceSkills": "Skills dell'area di lavoro",
 		"globalSkills": "Skills Globali",
 		"noWorkspaceSkills": "Nessuna skill in questo progetto ancora.",
@@ -944,7 +944,7 @@
 	"memory": {
 		"enable": {
 			"label": "Abilita memoria persistente",
-			"description": "Quando abilitata, l'agente mantiene una memoria basata su file su chi sei, le tue preferenze e il contesto del progetto. La memoria persiste tra le sessioni in uno storage privato dell'estensione. L'agente la legge a ogni attività e vi scrive mentre lavori. <0>Scopri di più</0>"
+			"description": "Quando abilitata, l'agente mantiene una memoria basata su file su chi sei, le tue preferenze e il contesto del progetto. La memoria persiste tra le sessioni in uno storage privato dell'estensione. L'agente la legge a ogni attività e vi scrive mentre lavori."
 		},
 		"recall": {
 			"label": "Abilita il richiamo di memoria pertinente",

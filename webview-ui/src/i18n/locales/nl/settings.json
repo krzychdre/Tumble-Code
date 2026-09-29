@@ -68,7 +68,7 @@
 		}
 	},
 	"slashCommands": {
-		"description": "Beheer je slash-commando's om snel aangepaste workflows en acties uit te voeren. <DocsLink>Meer informatie</DocsLink>",
+		"description": "Beheer je slash-commando's om snel aangepaste workflows en acties uit te voeren.",
 		"workspaceCommands": "Werkruimteopdrachten",
 		"globalCommands": "Globale opdrachten",
 		"noWorkspaceCommands": "Nog geen opdrachten in dit project.",
@@ -513,7 +513,7 @@
 		},
 		"enable": {
 			"label": "Automatische checkpoints inschakelen",
-			"description": "Indien ingeschakeld, maakt Tumble automatisch checkpoints tijdens het uitvoeren van taken, zodat je eenvoudig wijzigingen kunt bekijken of terugzetten. <0>Meer informatie</0>"
+			"description": "Indien ingeschakeld, maakt Tumble automatisch checkpoints tijdens het uitvoeren van taken, zodat je eenvoudig wijzigingen kunt bekijken of terugzetten."
 		}
 	},
 	"notifications": {
@@ -645,44 +645,44 @@
 		},
 		"shellIntegrationTimeout": {
 			"label": "Terminal-shell-integratie timeout",
-			"description": "Hoe lang te wachten op VS Code-shell-integratie voordat commando's worden uitgevoerd. Verhoog als je shell traag opstart of je 'Shell-Integratie Niet Beschikbaar'-fouten ziet. <0>Meer informatie</0>"
+			"description": "Hoe lang te wachten op VS Code-shell-integratie voordat commando's worden uitgevoerd. Verhoog als je shell traag opstart of je 'Shell-Integratie Niet Beschikbaar'-fouten ziet."
 		},
 		"shellIntegrationDisabled": {
 			"label": "Inline Terminal gebruiken (aanbevolen)",
-			"description": "Voer commando's uit in de Inline Terminal (chat) om shell-profielen/integratie te omzeilen voor snellere, betrouwbaardere runs. Wanneer uitgeschakeld gebruikt Tumble de VS Code-terminal met je shell-profiel, prompts en plugins. <0>Meer informatie</0>"
+			"description": "Voer commando's uit in de Inline Terminal (chat) om shell-profielen/integratie te omzeilen voor snellere, betrouwbaardere runs. Wanneer uitgeschakeld gebruikt Tumble de VS Code-terminal met je shell-profiel, prompts en plugins."
 		},
 		"commandDelay": {
 			"label": "Terminal-commandovertraging",
-			"description": "Voegt korte pauze toe na elk commando zodat VS Code-terminal alle uitvoer kan flushen (bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep). Gebruik alleen als je ontbrekende tail-uitvoer ziet; anders op 0 laten. <0>Meer informatie</0>"
+			"description": "Voegt korte pauze toe na elk commando zodat VS Code-terminal alle uitvoer kan flushen (bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep). Gebruik alleen als je ontbrekende tail-uitvoer ziet; anders op 0 laten."
 		},
 		"powershellCounter": {
 			"label": "PowerShell-teller workaround inschakelen",
-			"description": "Schakel in wanneer PowerShell-uitvoer ontbreekt of gedupliceerd wordt; voegt kleine teller toe aan elk commando om uitvoer te stabiliseren. Laat uit als uitvoer al correct lijkt. <0>Meer informatie</0>"
+			"description": "Schakel in wanneer PowerShell-uitvoer ontbreekt of gedupliceerd wordt; voegt kleine teller toe aan elk commando om uitvoer te stabiliseren. Laat uit als uitvoer al correct lijkt."
 		},
 		"zshClearEolMark": {
 			"label": "ZSH-EOL-markering wissen",
-			"description": "Schakel in wanneer je verdwaalde % aan regeleinden ziet of parsing verkeerd lijkt; laat Zsh's einde-van-regel-markering (%) weg. <0>Meer informatie</0>"
+			"description": "Schakel in wanneer je verdwaalde % aan regeleinden ziet of parsing verkeerd lijkt; laat Zsh's einde-van-regel-markering (%) weg."
 		},
 		"zshOhMy": {
 			"label": "Oh My Zsh-integratie inschakelen",
-			"description": "Schakel in wanneer je Oh My Zsh-thema/plugins shell-integratie verwachten; stelt ITERM_SHELL_INTEGRATION_INSTALLED=Yes in. Schakel uit om instellen van die variabele te vermijden. <0>Meer informatie</0>"
+			"description": "Schakel in wanneer je Oh My Zsh-thema/plugins shell-integratie verwachten; stelt ITERM_SHELL_INTEGRATION_INSTALLED=Yes in. Schakel uit om instellen van die variabele te vermijden."
 		},
 		"zshP10k": {
 			"label": "Powerlevel10k-integratie inschakelen",
-			"description": "Schakel in wanneer je Powerlevel10k-shell-integratie gebruikt. <0>Meer informatie</0>"
+			"description": "Schakel in wanneer je Powerlevel10k-shell-integratie gebruikt."
 		},
 		"zdotdir": {
 			"label": "ZDOTDIR-afhandeling inschakelen",
-			"description": "Schakel in wanneer zsh-shell-integratie mislukt of conflicteert met je dotfiles. <0>Meer informatie</0>"
+			"description": "Schakel in wanneer zsh-shell-integratie mislukt of conflicteert met je dotfiles."
 		},
 		"inheritEnv": {
 			"label": "Omgevingsvariabelen overnemen",
-			"description": "Schakel in om omgevingsvariabelen over te nemen van het bovenliggende VS Code-proces. <0>Meer informatie</0>"
+			"description": "Schakel in om omgevingsvariabelen over te nemen van het bovenliggende VS Code-proces."
 		},
 		"profile": {
 			"label": "Tumble Code terminal-overschrijving",
 			"default": "VS Code standaardprofiel gebruiken (aanbevolen)",
-			"description": "Standaard gebruikt Tumble Code de shell die in VS Code is geconfigureerd. Selecteer Overschrijven om een shell-profiel met pad te kiezen dat VS Code beschikbaar stelt. Uitsluitend op bron gebaseerde profielen (bijv. de ingebouwde PowerShell-vermelding) kunnen hier niet worden vermeld. <0>Meer informatie</0>",
+			"description": "Standaard gebruikt Tumble Code de shell die in VS Code is geconfigureerd. Selecteer Overschrijven om een shell-profiel met pad te kiezen dat VS Code beschikbaar stelt. Uitsluitend op bron gebaseerde profielen (bijv. de ingebouwde PowerShell-vermelding) kunnen hier niet worden vermeld.",
 			"overrideLabel": "Shell voor Tumble Code overschrijven",
 			"configureButton": "Standaardprofiel kiezen in VS Code",
 			"noProfiles": "(geen profielen met pad gevonden in terminal.integrated.profiles)"
@@ -896,7 +896,7 @@
 		}
 	},
 	"skills": {
-		"description": "Beheer skills die contextuele instructies aan de agent verstrekken. Skills worden automatisch toegepast wanneer ze relevant zijn voor uw taken. <DocsLink>Meer informatie</DocsLink>",
+		"description": "Beheer skills die contextuele instructies aan de agent verstrekken. Skills worden automatisch toegepast wanneer ze relevant zijn voor uw taken.",
 		"workspaceSkills": "Werkruimteskills",
 		"globalSkills": "Globale skills",
 		"noWorkspaceSkills": "Nog geen skills in dit project.",
@@ -944,7 +944,7 @@
 	"memory": {
 		"enable": {
 			"label": "Persistent geheugen inschakelen",
-			"description": "Indien ingeschakeld onderhoudt de agent een bestandsgebaseerd geheugen over wie je bent, je voorkeuren en de projectcontext. Het geheugen blijft bewaard tussen sessies in extensie-eigen opslag. De agent leest het bij elke taak en schrijft ernaar tijdens het werken. <0>Meer info</0>"
+			"description": "Indien ingeschakeld onderhoudt de agent een bestandsgebaseerd geheugen over wie je bent, je voorkeuren en de projectcontext. Het geheugen blijft bewaard tussen sessies in extensie-eigen opslag. De agent leest het bij elke taak en schrijft ernaar tijdens het werken."
 		},
 		"recall": {
 			"label": "Relevante-geheugen ophalen inschakelen",

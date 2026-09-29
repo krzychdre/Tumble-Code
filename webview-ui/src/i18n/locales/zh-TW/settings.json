@@ -68,7 +68,7 @@
 		}
 	},
 	"slashCommands": {
-		"description": "管理您的斜線命令，以便快速執行自訂工作流程和動作。 <DocsLink>了解更多</DocsLink>",
+		"description": "管理您的斜線命令，以便快速執行自訂工作流程和動作。",
 		"workspaceCommands": "工作區命令",
 		"globalCommands": "全域命令",
 		"noWorkspaceCommands": "此專案中還沒有命令。",
@@ -529,7 +529,7 @@
 		},
 		"enable": {
 			"label": "啟用自動檢查點",
-			"description": "啟用後，Tumble 將在工作執行期間自動建立檢查點，方便檢視變更或回到較早的狀態。 <0>了解更多</0>"
+			"description": "啟用後，Tumble 將在工作執行期間自動建立檢查點，方便檢視變更或回到較早的狀態。"
 		}
 	},
 	"notifications": {
@@ -661,44 +661,44 @@
 		},
 		"shellIntegrationTimeout": {
 			"label": "終端機 shell 整合逾時",
-			"description": "執行命令前等待 VS Code shell 整合的時間。如果 shell 啟動緩慢或看到 'Shell Integration Unavailable' 錯誤，請提高此值。<0>了解更多</0>"
+			"description": "執行命令前等待 VS Code shell 整合的時間。如果 shell 啟動緩慢或看到 'Shell Integration Unavailable' 錯誤，請提高此值。"
 		},
 		"shellIntegrationDisabled": {
 			"label": "使用內嵌終端機（建議）",
-			"description": "在內嵌終端機（聊天）中執行命令以繞過 shell 設定檔/整合，實現更快、更可靠的執行。停用時，Tumble 使用 VS Code 終端機及您的 shell 設定檔、提示和外掛程式。<0>了解更多</0>"
+			"description": "在內嵌終端機（聊天）中執行命令以繞過 shell 設定檔/整合，實現更快、更可靠的執行。停用時，Tumble 使用 VS Code 終端機及您的 shell 設定檔、提示和外掛程式。"
 		},
 		"commandDelay": {
 			"label": "終端機命令延遲",
-			"description": "在每個命令後新增短暫暫停，以便 VS Code 終端機刷新所有輸出（bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep）。僅在看到缺少尾部輸出時使用；否則保持為 0。<0>了解更多</0>"
+			"description": "在每個命令後新增短暫暫停，以便 VS Code 終端機刷新所有輸出（bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep）。僅在看到缺少尾部輸出時使用；否則保持為 0。"
 		},
 		"powershellCounter": {
 			"label": "啟用 PowerShell 計數器解決方案",
-			"description": "當 PowerShell 輸出遺失或重複時啟用此選項；它會為每個命令附加一個小計數器以穩定輸出。如果輸出已正常，請保持關閉。<0>了解更多</0>"
+			"description": "當 PowerShell 輸出遺失或重複時啟用此選項；它會為每個命令附加一個小計數器以穩定輸出。如果輸出已正常，請保持關閉。"
 		},
 		"zshClearEolMark": {
 			"label": "清除 ZSH EOL 標記",
-			"description": "當您在行尾看到零散的 % 或解析看起來錯誤時啟用此選項；它會省略 Zsh 的行尾標記（%）。<0>了解更多</0>"
+			"description": "當您在行尾看到零散的 % 或解析看起來錯誤時啟用此選項；它會省略 Zsh 的行尾標記（%）。"
 		},
 		"zshOhMy": {
 			"label": "啟用 Oh My Zsh 整合",
-			"description": "當您的 Oh My Zsh 主題/外掛程式期望 shell 整合時啟用此選項；它會設定 ITERM_SHELL_INTEGRATION_INSTALLED=Yes。關閉此選項以避免設定該變數。<0>了解更多</0>"
+			"description": "當您的 Oh My Zsh 主題/外掛程式期望 shell 整合時啟用此選項；它會設定 ITERM_SHELL_INTEGRATION_INSTALLED=Yes。關閉此選項以避免設定該變數。"
 		},
 		"zshP10k": {
 			"label": "啟用 Powerlevel10k 整合",
-			"description": "使用 Powerlevel10k shell 整合時啟用此選項。<0>了解更多</0>"
+			"description": "使用 Powerlevel10k shell 整合時啟用此選項。"
 		},
 		"zdotdir": {
 			"label": "啟用 ZDOTDIR 處理",
-			"description": "當 zsh shell 整合失敗或與您的 dotfiles 衝突時啟用此選項。<0>了解更多</0>"
+			"description": "當 zsh shell 整合失敗或與您的 dotfiles 衝突時啟用此選項。"
 		},
 		"inheritEnv": {
 			"label": "繼承環境變數",
-			"description": "啟用此選項以從父 VS Code 程序繼承環境變數。<0>了解更多</0>"
+			"description": "啟用此選項以從父 VS Code 程序繼承環境變數。"
 		},
 		"profile": {
 			"label": "Tumble Code 終端機覆寫",
 			"default": "使用 VS Code 預設設定檔（建議）",
-			"description": "預設情況下，Tumble Code 使用 VS Code 設定的 Shell。選擇覆寫可從 VS Code 公開的路徑型 Shell 設定檔中選取。僅含來源的設定檔（如內建的 PowerShell 項目）無法在此列出。 <0>了解更多</0>",
+			"description": "預設情況下，Tumble Code 使用 VS Code 設定的 Shell。選擇覆寫可從 VS Code 公開的路徑型 Shell 設定檔中選取。僅含來源的設定檔（如內建的 PowerShell 項目）無法在此列出。",
 			"overrideLabel": "為 Tumble Code 覆寫 Shell",
 			"configureButton": "在 VS Code 中選擇預設設定檔",
 			"noProfiles": "(在 terminal.integrated.profiles 中未找到路徑型設定檔)"
@@ -896,7 +896,7 @@
 		}
 	},
 	"skills": {
-		"description": "管理為代理提供上下文指令的技能。技能會在與您的任務相關時自動套用。<DocsLink>深入了解</DocsLink>",
+		"description": "管理為代理提供上下文指令的技能。技能會在與您的任務相關時自動套用。",
 		"workspaceSkills": "工作區技能",
 		"globalSkills": "全域技能",
 		"noWorkspaceSkills": "此專案中還沒有技能。",
@@ -944,7 +944,7 @@
 	"memory": {
 		"enable": {
 			"label": "啟用持久記憶",
-			"description": "啟用後,代理會維護基於檔案的記憶,記錄你是誰、你的偏好和專案情境。記憶在擴充套件的私有儲存中跨工作階段保留。代理在每次任務中讀取它,並在你工作時寫入。<0>了解更多</0>"
+			"description": "啟用後,代理會維護基於檔案的記憶,記錄你是誰、你的偏好和專案情境。記憶在擴充套件的私有儲存中跨工作階段保留。代理在每次任務中讀取它,並在你工作時寫入。"
 		},
 		"recall": {
 			"label": "啟用相關記憶回憶",
