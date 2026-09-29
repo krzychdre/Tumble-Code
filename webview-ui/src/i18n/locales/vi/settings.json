@@ -148,7 +148,6 @@
 			"cancelButton": "Hủy",
 			"confirmButton": "Xóa dữ liệu"
 		},
-		"description": "Cấu hình cài đặt lập chỉ mục mã nguồn để kích hoạt tìm kiếm ngữ nghĩa cho dự án của bạn. <0>Tìm hiểu thêm</0>",
 		"statusTitle": "Trạng thái",
 		"embedderProviderLabel": "Nhà cung cấp Embedder",
 		"modelPlaceholder": "Nhập tên mô hình",

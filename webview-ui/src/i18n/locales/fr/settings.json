@@ -107,7 +107,6 @@
 	},
 	"codeIndex": {
 		"title": "Indexation de la base de code",
-		"description": "Configurez les paramètres d'indexation de la base de code pour activer la recherche sémantique dans votre projet. <0>En savoir plus</0>",
 		"statusTitle": "Statut",
 		"enableLabel": "Activer l'indexation de la base de code",
 		"enableDescription": "Activer l'indexation du code pour une recherche et une compréhension du contexte améliorées",

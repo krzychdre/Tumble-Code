@@ -107,7 +107,6 @@
 	},
 	"codeIndex": {
 		"title": "Indexación de código",
-		"description": "Configura los ajustes de indexación de código para habilitar búsqueda semántica en tu proyecto. <0>Más información</0>",
 		"statusTitle": "Estado",
 		"enableLabel": "Habilitar indexación de código",
 		"enableDescription": "Habilita la indexación de código para mejorar la búsqueda y la comprensión del contexto",

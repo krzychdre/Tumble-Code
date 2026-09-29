@@ -148,7 +148,6 @@
 			"cancelButton": "Annuleren",
 			"confirmButton": "Gegevens wissen"
 		},
-		"description": "Configureer codebase-indexeringsinstellingen om semantisch zoeken voor je project in te schakelen. <0>Meer informatie</0>",
 		"statusTitle": "Status",
 		"embedderProviderLabel": "Embedder Provider",
 		"modelPlaceholder": "Voer modelnaam in",

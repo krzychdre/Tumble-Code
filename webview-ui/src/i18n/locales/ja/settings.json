@@ -148,7 +148,6 @@
 			"cancelButton": "キャンセル",
 			"confirmButton": "データをクリア"
 		},
-		"description": "プロジェクトのセマンティック検索を有効にするためのコードベースインデックス設定を構成します。<0>詳細はこちら</0>",
 		"statusTitle": "ステータス",
 		"embedderProviderLabel": "エンベッダープロバイダー",
 		"modelPlaceholder": "モデル名を入力",

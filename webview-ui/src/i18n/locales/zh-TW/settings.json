@@ -123,7 +123,6 @@
 	},
 	"codeIndex": {
 		"title": "程式碼庫索引",
-		"description": "設定程式碼庫索引設定以啟用專案的語意搜尋。<0>了解更多</0>",
 		"statusTitle": "狀態",
 		"enableLabel": "啟用程式碼庫索引",
 		"enableDescription": "啟用程式碼索引以改進搜尋和上下文理解",

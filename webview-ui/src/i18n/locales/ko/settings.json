@@ -148,7 +148,6 @@
 			"cancelButton": "취소",
 			"confirmButton": "데이터 지우기"
 		},
-		"description": "프로젝트의 시맨틱 검색을 활성화하기 위한 코드베이스 인덱싱 설정을 구성합니다. <0>자세히 알아보기</0>",
 		"statusTitle": "상태",
 		"embedderProviderLabel": "임베더 제공자",
 		"modelPlaceholder": "모델 이름을 입력하세요",

@@ -148,7 +148,6 @@
 			"cancelButton": "Anuluj",
 			"confirmButton": "Wyczyść dane"
 		},
-		"description": "Skonfiguruj ustawienia indeksowania bazy kodu, aby włączyć wyszukiwanie semantyczne w swoim projekcie. <0>Dowiedz się więcej</0>",
 		"statusTitle": "Status",
 		"embedderProviderLabel": "Dostawca Embeddera",
 		"modelPlaceholder": "Wprowadź nazwę modelu",

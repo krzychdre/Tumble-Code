@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from "react"
-import { Trans } from "react-i18next"
 
 import type { IndexingStatus, ExtensionMessage } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { buildDocLink } from "@src/utils/docLinks"
-import { Popover, PopoverContent, StandardTooltip, Link, LabeledCheckbox } from "@src/components/ui"
+import { Popover, PopoverContent, StandardTooltip, LabeledCheckbox } from "@src/components/ui"
 import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
 import { useOpenRouterModelProviders } from "@src/components/ui/hooks/useOpenRouterModelProviders"
@@ -145,17 +143,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					avoidCollisions={true}
 					container={portalContainer}>
 					<div className="p-3 border-b border-vscode-dropdown-border cursor-default">
-						<div className="flex flex-row items-center gap-1 p-0 mt-0 mb-1 w-full">
-							<h4 className="m-0 pb-2 flex-1">{t("settings:codeIndex.title")}</h4>
+						<div className="flex flex-row items-center gap-1 p-0 m-0 w-full">
+							<h4 className="m-0 flex-1">{t("settings:codeIndex.title")}</h4>
 						</div>
-						<p className="my-0 pr-4 text-sm w-full">
-							<Trans i18nKey="settings:codeIndex.description">
-								<Link
-									href={buildDocLink("features/experimental/codebase-indexing", "settings")}
-									style={{ display: "inline" }}
-								/>
-							</Trans>
-						</p>
 					</div>
 
 					<div className="p-4">

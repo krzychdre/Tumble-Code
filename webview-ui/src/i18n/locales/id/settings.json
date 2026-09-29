@@ -148,7 +148,6 @@
 			"cancelButton": "Batal",
 			"confirmButton": "Hapus Data"
 		},
-		"description": "Konfigurasi pengaturan pengindeksan codebase untuk mengaktifkan pencarian semantik proyek kamu. <0>Pelajari lebih lanjut</0>",
 		"statusTitle": "Status",
 		"embedderProviderLabel": "Provider Embedder",
 		"modelPlaceholder": "Masukkan nama model",
