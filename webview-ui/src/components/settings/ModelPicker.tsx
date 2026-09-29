@@ -1,5 +1,4 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react"
-import { Trans } from "react-i18next"
 import { ChevronsUpDown, Check, X, Info } from "lucide-react"
 
 import { type ProviderSettings, type ModelInfo, type OrganizationAllowList, isRetiredProvider } from "@roo-code/types"
@@ -19,7 +18,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 	Button,
-	Link,
 } from "@src/components/ui"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
 
@@ -68,8 +66,6 @@ export const ModelPicker = ({
 	defaultModelId,
 	models,
 	modelIdKey,
-	serviceName,
-	serviceUrl,
 	apiConfiguration,
 	setApiConfigurationField,
 	organizationAllowList,
@@ -298,20 +294,6 @@ export const ModelPicker = ({
 							setIsDescriptionExpanded={setIsDescriptionExpanded}
 							hidePricing={hidePricing}
 						/>
-					)}
-					{!hidePricing && (
-						<div className="text-sm text-vscode-descriptionForeground">
-							<Trans
-								i18nKey="settings:modelPicker.automaticFetch"
-								components={{
-									serviceLink: <Link href={serviceUrl} className="text-sm" />,
-									defaultModelLink: (
-										<Link onClick={() => onSelect(defaultModelId)} className="text-sm" />
-									),
-								}}
-								values={{ serviceName, defaultModelId }}
-							/>
-						</div>
 					)}
 				</div>
 			)}
