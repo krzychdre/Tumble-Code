@@ -118,7 +118,8 @@ export const AutoApproveToggle = ({ onToggle, mode, ...props }: AutoApproveToggl
 							data-testid={testId}
 							className={cn(
 								"gap-1.5 text-xs whitespace-nowrap",
-								!isActive && "opacity-50",
+								!isActive &&
+									"opacity-50 [:root[data-auto-approve=elevated]_&]:bg-vscode-input-background [:root[data-auto-approve=elevated]_&]:hover:bg-vscode-input-background",
 								forced &&
 									"!bg-orange-600 hover:!bg-orange-600 !text-white !border-orange-600 !opacity-100 cursor-default",
 							)}>

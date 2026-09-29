@@ -24,15 +24,7 @@ export const GlobalCustomInstructionsSection = ({
 			<h3 className="text-vscode-foreground mb-3">{t("prompts:globalCustomInstructions.title")}</h3>
 
 			<div className="text-sm text-vscode-descriptionForeground mb-2">
-				<Trans i18nKey="prompts:globalCustomInstructions.description">
-					<Link
-						href={buildDocLink(
-							"features/custom-instructions#setting-up-global-rules",
-							"prompts_global_custom_instructions",
-						)}
-						style={{ display: "inline" }}
-						aria-label="Learn more about global custom instructions"></Link>
-				</Trans>
+				{t("prompts:globalCustomInstructions.description")}
 			</div>
 			<ThemedTextArea
 				resize="vertical"

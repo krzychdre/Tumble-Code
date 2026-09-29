@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react"
-import { Trans } from "react-i18next"
 import { Download } from "lucide-react"
 
 import { vscode } from "@src/utils/vscode"
-import { buildDocLink } from "@src/utils/docLinks"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, StandardTooltip, Link } from "@src/components/ui"
+import { Button, StandardTooltip } from "@src/components/ui"
 
 type ModesViewHeaderProps = {
 	onImport: () => void
@@ -124,16 +122,7 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 			</div>
 
 			<div className="text-sm text-vscode-descriptionForeground mb-3">
-				<Trans i18nKey="prompts:modes.createModeHelpText">
-					<Link
-						href={buildDocLink("basic-usage/using-modes", "prompts_view_modes")}
-						style={{ display: "inline" }}
-						aria-label="Learn about using modes"></Link>
-					<Link
-						href={buildDocLink("features/custom-modes", "prompts_view_modes")}
-						style={{ display: "inline" }}
-						aria-label="Learn about customizing modes"></Link>
-				</Trans>
+				{t("prompts:modes.createModeHelpText")}
 			</div>
 		</>
 	)
