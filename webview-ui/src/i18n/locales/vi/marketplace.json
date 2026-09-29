@@ -95,8 +95,5 @@
 		},
 		"cancel": "Hủy",
 		"confirm": "Xóa"
-	},
-	"footer": {
-		"issueText": "Bạn tìm thấy vấn đề với mục marketplace hoặc có đề xuất cho mục mới? <0>Mở issue GitHub</0> để cho chúng tôi biết!"
 	}
 }

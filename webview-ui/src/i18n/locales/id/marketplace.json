@@ -95,8 +95,5 @@
 		},
 		"cancel": "Batal",
 		"confirm": "Hapus"
-	},
-	"footer": {
-		"issueText": "Menemukan masalah dengan item marketplace atau punya saran untuk yang baru? <0>Buka GitHub issue</0> untuk memberi tahu kami!"
 	}
 }

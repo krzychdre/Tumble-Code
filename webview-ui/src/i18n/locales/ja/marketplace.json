@@ -95,8 +95,5 @@
 		},
 		"cancel": "キャンセル",
 		"confirm": "削除"
-	},
-	"footer": {
-		"issueText": "Marketplaceアイテムで問題を見つけた、または新しいアイテムの提案がありますか？<0>GitHub issueを開いて</0>お知らせください！"
 	}
 }
