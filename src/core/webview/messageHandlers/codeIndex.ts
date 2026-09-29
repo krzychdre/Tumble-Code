@@ -23,12 +23,13 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 			const globalStateConfig = {
 				...currentConfig,
 				codebaseIndexEnabled: settings.codebaseIndexEnabled,
-				codebaseIndexQdrantUrl: settings.codebaseIndexQdrantUrl,
+				// Trimmed: a pasted " model-id" made llama-swap answer 404 ("Invalid API endpoint")
+				codebaseIndexQdrantUrl: settings.codebaseIndexQdrantUrl?.trim(),
 				codebaseIndexEmbedderProvider: settings.codebaseIndexEmbedderProvider,
-				codebaseIndexEmbedderBaseUrl: settings.codebaseIndexEmbedderBaseUrl,
-				codebaseIndexEmbedderModelId: settings.codebaseIndexEmbedderModelId,
+				codebaseIndexEmbedderBaseUrl: settings.codebaseIndexEmbedderBaseUrl?.trim(),
+				codebaseIndexEmbedderModelId: settings.codebaseIndexEmbedderModelId?.trim(),
 				codebaseIndexEmbedderModelDimension: settings.codebaseIndexEmbedderModelDimension, // Generic dimension
-				codebaseIndexOpenAiCompatibleBaseUrl: settings.codebaseIndexOpenAiCompatibleBaseUrl,
+				codebaseIndexOpenAiCompatibleBaseUrl: settings.codebaseIndexOpenAiCompatibleBaseUrl?.trim(),
 				codebaseIndexBedrockRegion: settings.codebaseIndexBedrockRegion,
 				codebaseIndexBedrockProfile: settings.codebaseIndexBedrockProfile,
 				codebaseIndexSearchMaxResults: settings.codebaseIndexSearchMaxResults,

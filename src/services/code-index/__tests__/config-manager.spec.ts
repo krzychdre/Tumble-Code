@@ -179,6 +179,30 @@ describe("CodeIndexConfigManager", () => {
 			})
 		})
 
+		it("should trim whitespace around the model id and URLs", async () => {
+			mockContextProxy.getGlobalState.mockImplementation((key: string) => {
+				if (key === "codebaseIndexConfig") {
+					return {
+						codebaseIndexEnabled: true,
+						codebaseIndexQdrantUrl: " http://qdrant.local ",
+						codebaseIndexEmbedderProvider: "openai-compatible",
+						codebaseIndexEmbedderModelId: " granite-embedding-311m-multilingual-r2",
+						codebaseIndexOpenAiCompatibleBaseUrl: "http://embed.local/v1 ",
+					}
+				}
+				return undefined
+			})
+			setupSecretMocks({ codebaseIndexOpenAiCompatibleApiKey: "key" })
+
+			const result = await configManager.loadConfiguration()
+
+			expect(result.currentConfig).toMatchObject({
+				modelId: "granite-embedding-311m-multilingual-r2",
+				qdrantUrl: "http://qdrant.local",
+				openAiCompatibleOptions: { baseUrl: "http://embed.local/v1" },
+			})
+		})
+
 		it("should load OpenAI Compatible configuration with modelDimension from globalState", async () => {
 			const mockGlobalState = {
 				codebaseIndexEnabled: true,
