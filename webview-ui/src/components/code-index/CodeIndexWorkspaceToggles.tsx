@@ -10,6 +10,8 @@ type CodeIndexWorkspaceTogglesProps = {
 /**
  * The per-workspace switches, shown while code indexing is enabled: auto-enable for new workspaces
  * and indexing of this workspace. Both are posted to the host at once, outside the Save button.
+ * They sit inside the collapsed Advanced Configuration group; the popover shows the
+ * "workspace disabled" note itself, so it stays visible while the group is closed.
  */
 export const CodeIndexWorkspaceToggles = ({ indexingStatus }: CodeIndexWorkspaceTogglesProps) => {
 	const { t } = useAppTranslation()
@@ -53,12 +55,6 @@ export const CodeIndexWorkspaceToggles = ({ indexingStatus }: CodeIndexWorkspace
 					{t("settings:codeIndex.workspaceToggleLabel")}
 				</label>
 			</div>
-
-			{!indexingStatus.workspaceEnabled && (
-				<p className="text-xs text-vscode-descriptionForeground pb-2">
-					{t("settings:codeIndex.workspaceDisabledMessage")}
-				</p>
-			)}
 		</>
 	)
 }
