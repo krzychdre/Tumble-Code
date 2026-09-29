@@ -8,6 +8,7 @@ import {
 	type TaskEvents,
 	RooCodeEventName,
 	getMaxMcpToolsThreshold,
+	TOO_MANY_TOOLS_DISMISSAL_ID,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 } from "@roo-code/types"
@@ -468,7 +469,18 @@ export class TaskLifecycle {
 			const deferredToolsEnabled =
 				(await this.access.providerRef.deref()?.getState())?.experiments?.deferredTools === true
 			const threshold = getMaxMcpToolsThreshold(deferredToolsEnabled)
-			if (enabledToolCount > threshold) {
+			// A "don't show again" click stays in force until the count drops
+			// back under the threshold; then it is forgotten so a later rise warns again.
+			const provider = this.access.providerRef.deref()
+			const dismissals = provider?.getValue("dismissedUpsells") ?? []
+			const warningDismissed = dismissals.includes(TOO_MANY_TOOLS_DISMISSAL_ID)
+			if (enabledToolCount <= threshold && warningDismissed) {
+				await provider?.setValue(
+					"dismissedUpsells",
+					dismissals.filter((id) => id !== TOO_MANY_TOOLS_DISMISSAL_ID),
+				)
+			}
+			if (enabledToolCount > threshold && !warningDismissed) {
 				await this.access.askSay.say(
 					"too_many_tools_warning",
 					JSON.stringify({

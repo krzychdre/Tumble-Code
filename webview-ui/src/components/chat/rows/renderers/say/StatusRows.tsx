@@ -1,9 +1,11 @@
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import type { TodoItem } from "@roo-code/types"
+import { TOO_MANY_TOOLS_DISMISSAL_ID, type TodoItem } from "@roo-code/types"
 
 import { safeJsonParse } from "@roo-code/core/browser"
 
+import { vscode } from "@src/utils/vscode"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { ErrorRow } from "@src/components/chat/ErrorRow"
 import { WarningRow } from "@src/components/chat/WarningRow"
@@ -187,7 +189,8 @@ export const TooManyToolsWarningRow = ({ message }: RowRendererProps) => {
 		serverCount: number
 		threshold: number
 	}>(message.text || "{}")
-	if (!warningData) return null
+	const [dismissed, setDismissed] = useState(false)
+	if (!warningData || dismissed) return null
 	const toolsPart = t("chat:tooManyTools.toolsPart", { count: warningData.toolCount })
 	const serversPart = t("chat:tooManyTools.serversPart", { count: warningData.serverCount })
 	return (
@@ -202,6 +205,10 @@ export const TooManyToolsWarningRow = ({ message }: RowRendererProps) => {
 			onAction={() =>
 				window.postMessage({ type: "action", action: "settingsButtonClicked", values: { section: "mcp" } }, "*")
 			}
+			onDismiss={() => {
+				setDismissed(true)
+				vscode.postMessage({ type: "dismissUpsell", upsellId: TOO_MANY_TOOLS_DISMISSAL_ID })
+			}}
 		/>
 	)
 }

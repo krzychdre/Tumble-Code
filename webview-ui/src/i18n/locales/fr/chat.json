@@ -496,7 +496,8 @@
 		"serversPart_many": "{{count}} serveurs MCP",
 		"serversPart_other": "{{count}} serveurs MCP",
 		"messageTemplate": "Tu as {{tools}} activés via {{servers}}. Un nombre aussi élevé peut confondre le modèle et entraîner des erreurs. Essaie de le maintenir en dessous de {{threshold}}.",
-		"openMcpSettings": "Ouvrir les paramètres MCP"
+		"openMcpSettings": "Ouvrir les paramètres MCP",
+		"dontShowAgain": "Ne plus afficher"
 	},
 	"readCommandOutput": {
 		"title": "Tumble read command output"

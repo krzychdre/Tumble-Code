@@ -488,7 +488,8 @@
 		"serversPart_one": "{{count}} MCP-Server",
 		"serversPart_other": "{{count}} MCP-Server",
 		"messageTemplate": "Du hast {{tools}} über {{servers}} aktiviert. Eine so hohe Anzahl kann das Modell verwirren und zu Fehlern führen. Versuche, es unter {{threshold}} zu halten.",
-		"openMcpSettings": "MCP-Einstellungen öffnen"
+		"openMcpSettings": "MCP-Einstellungen öffnen",
+		"dontShowAgain": "Nicht mehr anzeigen"
 	},
 	"readCommandOutput": {
 		"title": "Tumble las Befehlsausgabe"

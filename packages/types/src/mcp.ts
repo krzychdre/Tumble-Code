@@ -7,6 +7,13 @@ import { z } from "zod"
 export const MAX_MCP_TOOLS_THRESHOLD = 60
 
 /**
+ * Id under which a "don't show again" click on the too-many-tools warning is
+ * stored in `dismissedUpsells`. The task start clears it once the tool count is
+ * back under the threshold, so the warning returns if the count grows again.
+ */
+export const TOO_MANY_TOOLS_DISMISSAL_ID = "too-many-tools-warning"
+
+/**
  * Higher warning threshold used when the `deferredTools` experiment is enabled.
  * Deferred loading hides MCP tool schemas from the per-turn prompt, so the
  * model is exposed to far fewer concurrent tools and tolerates a larger

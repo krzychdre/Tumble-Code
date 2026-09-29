@@ -9,6 +9,8 @@ export interface WarningRowProps {
 	docsURL?: string
 	actionText?: string
 	onAction?: () => void
+	/** When set, a small "don't show again" button is shown; the caller hides the row. */
+	onDismiss?: () => void
 }
 
 /**
@@ -20,6 +22,7 @@ export interface WarningRowProps {
  * @param docsURL - Optional documentation link URL (shown as "Learn more" with book icon)
  * @param actionText - Optional text for an action link appended to the message
  * @param onAction - Optional callback when the action link is clicked
+ * @param onDismiss - Optional callback for the "don't show again" button
  *
  * @example
  * <WarningRow
@@ -30,7 +33,7 @@ export interface WarningRowProps {
  *   onAction={() => openSettings()}
  * />
  */
-export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL, actionText, onAction }) => {
+export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL, actionText, onAction, onDismiss }) => {
 	const { t } = useAppTranslation()
 
 	return (
@@ -49,6 +52,14 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 						<BookOpenText className="size-3 mt-[3px]" />
 						{t("chat:apiRequest.errorMessage.docs")}
 					</a>
+				)}
+				{onDismiss && (
+					<button
+						type="button"
+						className="text-xs shrink-0 bg-transparent border-0 p-0 cursor-pointer text-vscode-descriptionForeground hover:text-vscode-foreground"
+						onClick={onDismiss}>
+						{t("chat:tooManyTools.dontShowAgain")}
+					</button>
 				)}
 			</div>
 			<div className="cursor-default ml-2 pl-4 mt-1 pt-0.5 border-l border-vscode-editorWarning-foreground/50">

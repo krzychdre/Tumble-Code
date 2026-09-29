@@ -526,7 +526,8 @@
 		"serversPart_many": "{{count}} serwerów MCP",
 		"serversPart_other": "{{count}} serwera MCP",
 		"messageTemplate": "Masz włączone {{tools}} przez {{servers}}. Taka duża liczba może zamieszać model i prowadzić do błędów. Staraj się, aby była poniżej {{threshold}}.",
-		"openMcpSettings": "Otwórz ustawienia MCP"
+		"openMcpSettings": "Otwórz ustawienia MCP",
+		"dontShowAgain": "Nie pokazuj więcej"
 	},
 	"readCommandOutput": {
 		"title": "Tumble read command output"
