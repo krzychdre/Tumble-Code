@@ -15,6 +15,7 @@ import {
 	type CreateTaskOptions,
 	RooCodeEventName,
 	isSecretStateKey,
+	SETTINGS_DEFAULTS,
 } from "@roo-code/types"
 
 import { Package } from "../shared/package"
@@ -361,7 +362,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 	public async setConfiguration(values: RooCodeSettings) {
 		await this.sidebarProvider.contextProxy.setValues(values)
-		await this.sidebarProvider.providerSettingsManager.saveConfig(values.currentApiConfigName || "default", values)
+		await this.sidebarProvider.providerSettingsManager.saveConfig(values.currentApiConfigName || SETTINGS_DEFAULTS.currentApiConfigName, values)
 		await this.sidebarProvider.postStateToWebview()
 	}
 
