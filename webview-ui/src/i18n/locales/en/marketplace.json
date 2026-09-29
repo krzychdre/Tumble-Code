@@ -95,8 +95,5 @@
 		},
 		"cancel": "Cancel",
 		"confirm": "Remove"
-	},
-	"footer": {
-		"issueText": "Found a problem with a marketplace item or have suggestions for new ones? <0>Open a GitHub issue</0> to let us know!"
 	}
 }

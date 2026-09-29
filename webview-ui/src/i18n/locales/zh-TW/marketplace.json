@@ -95,8 +95,5 @@
 		},
 		"cancel": "取消",
 		"confirm": "移除"
-	},
-	"footer": {
-		"issueText": "發現市集項目有問題或有新建議嗎？<0>到 GitHub 提出 Issue</0> 告訴我們！"
 	}
 }

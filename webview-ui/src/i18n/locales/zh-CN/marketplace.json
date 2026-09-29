@@ -95,8 +95,5 @@
 		},
 		"cancel": "取消",
 		"confirm": "删除"
-	},
-	"footer": {
-		"issueText": "发现 marketplace 项目问题或有新项目建议？<0>在 GitHub 开启 issue</0> 告诉我们！"
 	}
 }

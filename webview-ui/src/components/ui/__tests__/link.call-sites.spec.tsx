@@ -20,7 +20,6 @@ import { About } from "@src/components/settings/About"
 import { renderWithSettingsDraft } from "@src/components/settings/__tests__/settingsDraftTestUtils"
 import TelemetryBanner from "@src/components/common/TelemetryBanner"
 import { CheckpointWarning } from "@src/components/chat/CheckpointWarning"
-import { IssueFooter } from "@src/components/marketplace/IssueFooter"
 import { Vertex } from "@src/components/settings/providers/Vertex"
 import { ModelDescriptionMarkdown } from "@src/components/settings/ModelDescriptionMarkdown"
 
@@ -151,15 +150,6 @@ describe("link call sites (VSCodeLink replacement characterization)", () => {
 			{ type: "action", action: "settingsButtonClicked", values: { section: "checkpoints" } },
 			"*",
 		)
-	})
-
-	it("IssueFooter: the inline style from the call site reaches the link", async () => {
-		render(<IssueFooter />)
-
-		const { host, anchor } = await linkParts("Open a GitHub issue")
-		await expectHref(anchor, "https://github.com/RooCodeInc/Roo-Code/issues/new?template=marketplace.yml")
-		expect(host.style.display).toBe("inline")
-		expect(host.style.fontSize).toBe("inherit")
 	})
 
 	it("Vertex: setup links keep their className and targets", async () => {
