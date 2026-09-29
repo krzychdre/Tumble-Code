@@ -71,10 +71,26 @@ vi.mock("../../core/config/ProviderSettingsManager", async (importOriginal) => {
 vi.mock("../../core/config/ContextProxy")
 vi.mock("../../core/config/CustomModesManager")
 
+import { createKnownPersistedProviderProfile, createProviderProfilesEnvelope } from "@roo-code/types"
+
 import { autoImportSettings } from "../autoImportSettings"
 import * as vscode from "vscode"
 import fsPromises from "fs/promises"
 import { fileExistsAtPath } from "../fs"
+
+// The provider profiles envelope exportSettings writes; older shapes are rejected.
+const providerProfilesFile = () =>
+	createProviderProfilesEnvelope({
+		currentApiConfigName: "test-config",
+		apiConfigs: {
+			"test-config": createKnownPersistedProviderProfile({
+				id: "test-id",
+				apiProvider: "anthropic",
+				apiModelId: "claude-sonnet-5-5",
+			}),
+		},
+		modeApiConfigs: {},
+	})
 
 describe("autoImportSettings", () => {
 	let mockProviderSettingsManager: any
@@ -99,7 +115,9 @@ describe("autoImportSettings", () => {
 				modeApiConfigs: {},
 				currentApiConfigName: "default",
 			}),
+			readProfiles: vi.fn().mockResolvedValue({ currentApiConfigName: "default", apiConfigs: {}, modeApiConfigs: {} }),
 			import: vi.fn().mockResolvedValue({ success: true }),
+			getProfile: vi.fn().mockResolvedValue({ name: "test-config", id: "test-id", apiProvider: "anthropic" }),
 			listConfig: vi.fn().mockResolvedValue([]),
 		}
 
@@ -187,15 +205,7 @@ describe("autoImportSettings", () => {
 
 		// Mock fs.readFile to return valid config
 		const mockSettings = {
-			providerProfiles: {
-				currentApiConfigName: "test-config",
-				apiConfigs: {
-					"test-config": {
-						apiProvider: "anthropic",
-						anthropicApiKey: "test-key",
-					},
-				},
-			},
+			providerProfiles: providerProfilesFile(),
 			globalSettings: {
 				customInstructions: "Test instructions",
 			},
@@ -228,10 +238,7 @@ describe("autoImportSettings", () => {
 		vi.mocked(fileExistsAtPath).mockResolvedValue(true)
 		vi.mocked(fsPromises.readFile).mockResolvedValue(
 			JSON.stringify({
-				providerProfiles: {
-					currentApiConfigName: "test-config",
-					apiConfigs: { "test-config": { apiProvider: "anthropic", anthropicApiKey: "test-key" } },
-				},
+				providerProfiles: providerProfilesFile(),
 				globalSettings: { requestDelaySeconds: "slow", customInstructions: "Test instructions" },
 			}) as any,
 		)
