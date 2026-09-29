@@ -59,7 +59,7 @@ function dispatch(event: MessageEvent) {
 		try {
 			subscription.handler(message)
 		} catch (error) {
-			console.error(`[extensionBus] handler for "${message.type}" failed`, error)
+			console.error('[extensionBus] handler for "%s" failed', message.type, error)
 		}
 	}
 }

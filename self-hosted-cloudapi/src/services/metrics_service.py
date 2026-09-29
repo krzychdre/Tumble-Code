@@ -78,7 +78,10 @@ def _event_ts_ms(props: dict, fallback: datetime) -> float:
         v = props.get(key)
         if isinstance(v, (int, float)) and not isinstance(v, bool):
             return float(v)
-    return fallback.timestamp() * 1000.0
+    # created_at is stored in UTC; SQLite hands it back naive, and a naive
+    # timestamp() would read it in the host's local zone.
+    stamp = fallback if fallback.tzinfo else fallback.replace(tzinfo=timezone.utc)
+    return stamp.timestamp() * 1000.0
 
 
 async def _embedding_payloads(

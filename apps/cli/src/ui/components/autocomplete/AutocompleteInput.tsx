@@ -323,7 +323,7 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 
 	return (
 		<MultilineTextInput
-			key={`autocomplete-input-${history.length}-${inputKeyCounter}`}
+			key={`autocomplete-input-${inputKeyCounter}`}
 			value={inputValue}
 			onChange={handleChange}
 			onSubmit={handleSubmit}

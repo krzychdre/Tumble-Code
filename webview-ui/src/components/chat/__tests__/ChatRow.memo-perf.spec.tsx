@@ -361,12 +361,23 @@ describe("ChatRow memo perf harness", () => {
 			return performance.now() - start
 		}
 
-		const deepMs = time((x, y) => deepEqualSpy.getMockImplementation()!(x, y))
-		const targetedMs = targetedEqual ? time(targetedEqual) : Number.NaN
+		// One timing pass is at the mercy of a GC pause or a busy CI runner,
+		// which only ever adds time. Interleave several rounds and keep each
+		// side's best, so both comparators are measured under the same load.
+		const ROUNDS = 7
+		const deepComparator: Comparator = (x, y) => deepEqualSpy.getMockImplementation()!(x, y)
+		let deepMs = Number.POSITIVE_INFINITY
+		let targetedMs = targetedEqual ? Number.POSITIVE_INFINITY : Number.NaN
+		for (let round = 0; round < ROUNDS; round++) {
+			deepMs = Math.min(deepMs, time(deepComparator))
+			if (targetedEqual) {
+				targetedMs = Math.min(targetedMs, time(targetedEqual))
+			}
+		}
 
 		const report = [
 			`targeted comparator present: ${hasTargeted}`,
-			`${N} comparisons, deep-equal: ${deepMs.toFixed(2)} ms (${(deepMs / N).toFixed(4)} ms/call)`,
+			`${N} comparisons (best of ${ROUNDS}), deep-equal: ${deepMs.toFixed(2)} ms (${(deepMs / N).toFixed(4)} ms/call)`,
 			targetedEqual
 				? `${N} comparisons, targeted:   ${targetedMs.toFixed(2)} ms (${(targetedMs / N).toFixed(4)} ms/call)`
 				: `${N} comparisons, targeted:   n/a (module absent on main)`,

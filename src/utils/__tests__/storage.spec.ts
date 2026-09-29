@@ -1,3 +1,5 @@
+import * as path from "path"
+
 // `getStorageBasePath` memoizes successful storage-root resolutions in module
 // state. To keep every test hermetic, each describe calls `vi.resetModules()`
 // in `beforeEach` and re-imports both `vscode` and the module under test
@@ -287,8 +289,10 @@ describe("getStorageBasePath - storage-root memoization", () => {
 		const first = await getTaskDirectoryPath(defaultPath, "task-1")
 		const second = await getTaskDirectoryPath(defaultPath, "task-1")
 
-		expect(first).toBe(`${customPath}/tasks/task-1`)
-		expect(second).toBe(`${customPath}/tasks/task-1`)
+		// path.join, as the code builds it: backslashes on Windows.
+		const expected = path.join(customPath, "tasks", "task-1")
+		expect(first).toBe(expected)
+		expect(second).toBe(expected)
 		// Storage-root mkdir runs once (memoized)...
 		const rootMkdirCalls = (fsPromises as any).mkdir.mock.calls.filter((c: unknown[]) => c[0] === customPath)
 		expect(rootMkdirCalls).toHaveLength(1)

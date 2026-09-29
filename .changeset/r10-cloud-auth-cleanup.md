@@ -1,5 +1,4 @@
 ---
-"self-hosted-cloudapi": patch
 ---
 
 Auth hygiene in the self-hosted cloud API (R10): OAuth state rows are now single-use — the callback deletes the state row it reads, so a replayed state finds nothing — and the retention cycle purges expired OAuth state rows, login tickets and idle-expired client tokens (only expired ones; tokens configured never to expire are untouched, and the purge runs outside the per-user savepoints so one user's retention round cannot interact with it). The web panel's logout is now a POST that also deactivates the session in the database instead of a GET that only cleared the cookie, so signing out of the panel ends the session everywhere (including the extension's client tokens for it) and an `<img src="/app/logout">` on any same-site page can no longer sign the reader out. Session expiry is finally checked: a session whose `expires_at` is in the past no longer authorizes web-panel requests, while sessions without an expiry keep working as before.

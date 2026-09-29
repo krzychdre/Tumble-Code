@@ -132,4 +132,20 @@ describe("extractActions — XML tool-call parsing (alert #16 regression)", () =
 		// regression (quadratic at n=10000 was ~457 ms).
 		expect(elapsed).toBeLessThan(100)
 	})
+
+	it("scans orphan <path> tags inside a tool body in linear time", () => {
+		// The per-tag lookups (<path>, <command>, <result>, …) used a fixed lazy
+		// regex that was quadratic on unclosed tags the same way: ~190 ms at
+		// n=10000 and ~755 ms at n=20000 before they moved to the scanner.
+		const n = 20000
+		const text = `<read_file>${"<path>a".repeat(n)}</read_file>`
+
+		const start = Date.now()
+		const actions = extractActions(assistantWithText(text))
+		const elapsed = Date.now() - start
+
+		expect(actions).toHaveLength(1)
+		expect(actions[0]?.paths).toBeUndefined()
+		expect(elapsed).toBeLessThan(100)
+	})
 })
