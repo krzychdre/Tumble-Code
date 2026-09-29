@@ -218,7 +218,37 @@ const getCommandsMap = ({
 	},
 })
 
-export const openClineInNewTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {
+/**
+ * Replaces editor tabs left behind by a previous extension host. A tab
+ * outlives a restarted host (installing a VSIX and clicking "Restart
+ * Extensions" does that): it keeps showing the old page, but its messages
+ * reach no provider, so history rows, "View all" and every other round trip do
+ * nothing. The old host cannot close it, by the time `deactivate` runs its
+ * messages no longer reach the window, and a panel serializer only revives
+ * tabs restored with a window. So the new host closes those tabs and opens a
+ * working one. Call it before this host opens a tab of its own.
+ */
+export const replaceOrphanedTabs = async (options: Omit<RegisterCommandOptions, "provider">) => {
+	const orphans = vscode.window.tabGroups.all
+		.flatMap((group) => group.tabs)
+		.filter(
+			(tab) =>
+				tab.input instanceof vscode.TabInputWebview && tab.input.viewType.endsWith(ClineProvider.tabPanelId),
+		)
+	if (orphans.length === 0) {
+		return
+	}
+	// The old tab's group is locked, so it stays open, empty; reuse it.
+	const viewColumn = orphans[0].group.viewColumn
+	await vscode.window.tabGroups.close(orphans)
+	await openClineInNewTab(options, viewColumn)
+}
+
+/** Opens Tumble Code in an editor tab, in `viewColumn` if given, else right of the open editors. */
+export const openClineInNewTab = async (
+	{ context, outputChannel }: Omit<RegisterCommandOptions, "provider">,
+	viewColumn?: vscode.ViewColumn,
+) => {
 	// (This example uses webviewProvider activation event which is necessary to
 	// deserialize cached webview, but since we use retainContextWhenHidden, we
 	// don't need to use that event).
@@ -242,11 +272,11 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	// to the right.
 	const hasVisibleEditors = vscode.window.visibleTextEditors.length > 0
 
-	if (!hasVisibleEditors) {
+	if (viewColumn === undefined && !hasVisibleEditors) {
 		await vscode.commands.executeCommand("workbench.action.newGroupRight")
 	}
 
-	const targetCol = hasVisibleEditors ? Math.max(lastCol + 1, 1) : vscode.ViewColumn.Two
+	const targetCol = viewColumn ?? (hasVisibleEditors ? Math.max(lastCol + 1, 1) : vscode.ViewColumn.Two)
 
 	const newPanel = vscode.window.createWebviewPanel(ClineProvider.tabPanelId, "Tumble Code", targetCol, {
 		enableScripts: true,

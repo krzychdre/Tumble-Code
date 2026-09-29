@@ -53,6 +53,7 @@ import { startCloudInBackground } from "./extension/cloudStartup"
 import {
 	handleUri,
 	registerCommands,
+	replaceOrphanedTabs,
 	registerCodeActions,
 	registerTerminalActions,
 	CodeActionProvider,
@@ -345,6 +346,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	registerCommands({ context, outputChannel, provider })
+	replaceOrphanedTabs({ context, outputChannel }).catch((error) =>
+		outputChannel.appendLine(
+			`Failed to replace an orphaned editor tab: ${error instanceof Error ? error.message : String(error)}`,
+		),
+	)
 
 	// Check for worktree auto-open path (set when switching to a worktree)
 	await checkWorktreeAutoOpen(context, outputChannel)
