@@ -91,6 +91,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const currentTaskItem = useExtensionSelector((s) => s.currentTaskItem)
 	const currentTaskTodos = useExtensionSelector((s) => s.currentTaskTodos)
 	const taskHistory = useExtensionSelector((s) => s.taskHistory)
+	const renderContext = useExtensionSelector((s) => s.renderContext)
 	const apiConfiguration = useExtensionSelector((s) => s.apiConfiguration)
 	const organizationAllowList = useExtensionSelector((s) => s.organizationAllowList)
 	const mode = useExtensionSelector((s) => s.mode)
@@ -558,9 +559,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							className="absolute top-2 right-3 z-10"
 						/>
 						<div className="flex flex-col gap-4 w-full">
-							<RooHero />
+							{/* The logo and intro copy are sidebar-only: in an editor tab the
+							    hero's sideBar-background fades show as a box on the editor
+							    background, and the tab is meant to open straight to work. */}
+							{renderContext !== "editor" && <RooHero />}
 							{/* Show RooTips when authenticated or when user is new */}
-							{taskHistory.length < 6 && <RooTips />}
+							{renderContext !== "editor" && taskHistory.length < 6 && <RooTips />}
 							{/* Everyone should see their task history if any */}
 							{taskHistory.length > 0 && <HistoryPreview />}
 						</div>

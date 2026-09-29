@@ -671,6 +671,48 @@ describe("ClineProvider", () => {
 		})
 	})
 
+	describe("editor tab view state", () => {
+		let viewStateCallback: () => void
+		let panel: any
+
+		const didBecomeVisibleCount = () =>
+			mockPostMessage.mock.calls.filter(
+				([message]: [any]) => message?.type === "action" && message?.action === "didBecomeVisible",
+			).length
+
+		beforeEach(async () => {
+			const { onDidChangeVisibility: _unused, ...rest } = mockWebviewView
+			panel = {
+				...rest,
+				visible: true,
+				// The shared mock disposes at once, which would dispose a tab provider.
+				onDidDispose: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
+				onDidChangeViewState: vi.fn().mockImplementation((cb: () => void) => {
+					viewStateCallback = cb
+					return { dispose: vi.fn() }
+				}),
+			}
+			await provider.resolveWebviewView(panel)
+			mockPostMessage.mockClear()
+		})
+
+		test("losing focus while staying visible does not send didBecomeVisible", () => {
+			// The user clicks another editor group: active flips, visible stays true.
+			viewStateCallback()
+			viewStateCallback()
+			expect(didBecomeVisibleCount()).toBe(0)
+		})
+
+		test("coming back on screen sends didBecomeVisible once", () => {
+			panel.visible = false
+			viewStateCallback()
+			panel.visible = true
+			viewStateCallback()
+			viewStateCallback()
+			expect(didBecomeVisibleCount()).toBe(1)
+		})
+	})
+
 	test("resolveWebviewView sets up webview correctly in development mode even if local server is not running", async () => {
 		provider = new ClineProvider(
 			{ ...mockContext, extensionMode: vscode.ExtensionMode.Development },

@@ -787,6 +787,19 @@ describe("ChatView - DismissibleUpsell Display Tests", () => {
 		})
 	})
 
+	it("hides the logo and intro tips when opened in an editor tab", async () => {
+		const { queryByTestId } = renderChatView()
+
+		mockPostMessage({
+			renderContext: "editor",
+			taskHistory: [{ id: "1", ts: Date.now() }],
+			clineMessages: [],
+		})
+
+		await waitFor(() => expect(queryByTestId("roo-hero")).not.toBeInTheDocument())
+		expect(queryByTestId("roo-tips")).not.toBeInTheDocument()
+	})
+
 	it("shows RooTips when user is authenticated (instead of DismissibleUpsell)", () => {
 		const { queryByTestId, getByTestId } = renderChatView()
 
