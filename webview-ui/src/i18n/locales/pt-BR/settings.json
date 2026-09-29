@@ -148,7 +148,6 @@
 			"cancelButton": "Cancelar",
 			"confirmButton": "Limpar Dados"
 		},
-		"description": "Configure as configurações de indexação da base de código para habilitar a pesquisa semântica do seu projeto. <0>Saiba mais</0>",
 		"statusTitle": "Status",
 		"embedderProviderLabel": "Provedor de Embedder",
 		"modelPlaceholder": "Insira o nome do modelo",

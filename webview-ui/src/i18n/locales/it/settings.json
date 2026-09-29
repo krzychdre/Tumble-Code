@@ -148,7 +148,6 @@
 			"cancelButton": "Annulla",
 			"confirmButton": "Cancella dati"
 		},
-		"description": "Configura le impostazioni di indicizzazione del codebase per abilitare la ricerca semantica del tuo progetto. <0>Scopri di più</0>",
 		"statusTitle": "Stato",
 		"embedderProviderLabel": "Provider Embedder",
 		"modelPlaceholder": "Inserisci il nome del modello",

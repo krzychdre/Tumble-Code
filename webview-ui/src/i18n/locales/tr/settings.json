@@ -148,7 +148,6 @@
 			"cancelButton": "İptal",
 			"confirmButton": "Verileri Temizle"
 		},
-		"description": "Projenizin anlamsal aramasını etkinleştirmek için kod tabanı indeksleme ayarlarını yapılandırın. <0>Daha fazla bilgi</0>",
 		"statusTitle": "Durum",
 		"embedderProviderLabel": "Gömücü Sağlayıcı",
 		"modelPlaceholder": "Model adını girin",

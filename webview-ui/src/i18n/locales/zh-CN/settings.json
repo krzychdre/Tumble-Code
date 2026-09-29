@@ -107,7 +107,6 @@
 	},
 	"codeIndex": {
 		"title": "代码库索引",
-		"description": "配置代码库索引设置以启用项目的语义搜索。<0>了解更多</0>",
 		"statusTitle": "状态",
 		"enableLabel": "启用代码库索引",
 		"enableDescription": "启用代码索引以改进搜索和上下文理解",

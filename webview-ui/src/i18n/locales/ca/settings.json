@@ -148,7 +148,6 @@
 			"cancelButton": "Cancel·lar",
 			"confirmButton": "Esborrar dades"
 		},
-		"description": "Configureu la configuració d'indexació de la base de codi per habilitar la cerca semàntica del vostre projecte. <0>Més informació</0>",
 		"statusTitle": "Estat",
 		"embedderProviderLabel": "Proveïdor d'embeddings",
 		"modelPlaceholder": "Introduïu el nom del model",
