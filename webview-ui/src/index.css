@@ -123,6 +123,8 @@
 	); /* Some themes don't have a border color, so we can fallback to transparent */
 
 	--color-vscode-focusBorder: var(--vscode-focusBorder);
+	/* Frame of popovers and the composer focus outline; turns orange with bypass/autonomous auto-approve. */
+	--color-frame-accent: var(--frame-accent);
 
 	--color-vscode-badge-foreground: var(--vscode-badge-foreground);
 	--color-vscode-badge-background: var(--vscode-badge-background);
@@ -218,6 +220,13 @@
 		--chart-4: var(--vscode-charts-orange);
 		--chart-5: var(--vscode-charts-green);
 		--radius: 0; /* Rectangular corners across the webview. */
+		--frame-accent: var(--vscode-focusBorder, #007fd4);
+	}
+
+	/* Set by useAutoApproveFrameAccent while bypass or autonomous auto-approve is on; same orange as the
+	   auto-approve trigger in the composer. */
+	:root[data-auto-approve="elevated"] {
+		--frame-accent: var(--color-orange-600, oklch(64.6% 0.222 41.116));
 	}
 
 	/* Higher specififty than VSCode's theme and root. */

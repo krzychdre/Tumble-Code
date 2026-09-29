@@ -20,6 +20,7 @@ import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/Messag
 import ErrorBoundary from "./components/ErrorBoundary"
 import { ThemedProgressRing } from "./components/ui"
 import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useAddNonInteractiveClickListener"
+import { useAutoApproveFrameAccent } from "./hooks/useAutoApproveFrameAccent"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
 
@@ -85,6 +86,7 @@ const App = () => {
 	const cloudOrganizations = useExtensionSelector((s) => s.cloudOrganizations)
 	const renderContext = useExtensionSelector((s) => s.renderContext)
 	const mdmCompliant = useExtensionSelector((s) => s.mdmCompliant)
+	useAutoApproveFrameAccent()
 
 	// Create a persistent state manager
 	const marketplaceStateManager = useMemo(() => new MarketplaceViewStateManager(), [])

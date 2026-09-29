@@ -11,6 +11,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 
 import { useAutoApprovalToggles } from "@/hooks/useAutoApprovalToggles"
 import { useAutoApprovalState } from "@/hooks/useAutoApprovalState"
+import { isElevatedAutoApproval } from "@/hooks/useAutoApproveFrameAccent"
 
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
 
@@ -160,9 +161,9 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 
 	// A non-default mode is "active" only while auto-approval is on. The trigger box then
 	// adopts an orange border, a mode-specific icon, and the mode name instead of a count.
-	const isBypass = effectiveAutoApprovalEnabled && autoApprovalMode === "bypass"
-	const isAutonomous = effectiveAutoApprovalEnabled && autoApprovalMode === "autonomous"
-	const isModeActive = isBypass || isAutonomous
+	const isModeActive = isElevatedAutoApproval(effectiveAutoApprovalEnabled, autoApprovalMode)
+	const isBypass = isModeActive && autoApprovalMode === "bypass"
+	const isAutonomous = isModeActive && autoApprovalMode === "autonomous"
 
 	const TriggerIcon = !effectiveAutoApprovalEnabled ? X : isAutonomous ? Zap : isBypass ? ShieldAlert : ShieldCheck
 

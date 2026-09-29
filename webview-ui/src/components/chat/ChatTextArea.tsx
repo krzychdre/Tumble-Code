@@ -522,9 +522,9 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"text-vscode-editor-font-size",
 									"leading-vscode-editor-line-height",
 									isFocused
-										? "border border-transparent outline outline-1 outline-vscode-focusBorder"
+										? "border border-transparent outline outline-1 outline-frame-accent"
 										: isDraggingOver
-											? "border-2 border-dashed border-vscode-focusBorder"
+											? "border-2 border-dashed border-frame-accent"
 											: "border border-transparent",
 									"pl-2",
 									"py-2",
@@ -581,9 +581,9 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"cursor-text",
 									"py-2 pl-2",
 									isFocused
-										? "border border-transparent outline outline-1 outline-vscode-focusBorder"
+										? "border border-transparent outline outline-1 outline-frame-accent"
 										: isDraggingOver
-											? "border-2 border-dashed border-vscode-focusBorder"
+											? "border-2 border-dashed border-frame-accent"
 											: "border border-transparent",
 									isDraggingOver
 										? "bg-[color-mix(in_srgb,var(--vscode-input-background)_95%,var(--vscode-focusBorder))]"

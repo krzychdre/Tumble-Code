@@ -87,11 +87,11 @@ describe("ChatTextArea composer accessibility (§2.5)", () => {
 		render(<Harness />)
 		fireEvent.focus(textbox())
 
-		// The focused composer must not combine a visible focusBorder border
+		// The focused composer must not combine a visible accent border
 		// with the outline (§2.5: "today border and outline double up").
-		expect(textbox().className).toContain("outline-vscode-focusBorder")
+		expect(textbox().className).toContain("outline-frame-accent")
 		expect(textbox().className).toContain("border-transparent")
-		expect(textbox().className).not.toContain("border-vscode-focusBorder")
+		expect(textbox().className).not.toContain("border-frame-accent")
 	})
 
 	it("the @ mention menu is a listbox whose options carry ids and selection state", () => {
