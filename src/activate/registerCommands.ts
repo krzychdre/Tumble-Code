@@ -264,19 +264,9 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
 	}
 
+	// resolveWebviewView also sends didBecomeVisible when the panel comes back
+	// on screen; a second listener here would fire on every focus change.
 	await tabProvider.resolveWebviewView(newPanel)
-
-	// Add listener for visibility changes to notify webview
-	newPanel.onDidChangeViewState(
-		(e) => {
-			const panel = e.webviewPanel
-			if (panel.visible) {
-				panel.webview.postMessage({ type: "action", action: "didBecomeVisible" }) // Use the same message type as in SettingsView.tsx
-			}
-		},
-		null, // First null is for `thisArgs`
-		context.subscriptions, // Register listener for disposal
-	)
 
 	// Handle panel closing events.
 	newPanel.onDidDispose(

@@ -921,8 +921,19 @@ export class ClineProvider
 		if ("onDidChangeViewState" in webviewView) {
 			// WebviewView and WebviewPanel have all the same properties except
 			// for this visibility listener panel.
+			// A panel's view state also changes when it merely loses or gains
+			// focus while staying on screen. Only a hidden -> visible transition
+			// counts, otherwise clicking another editor group sends
+			// didBecomeVisible, the webview focuses its input and pulls the
+			// focus straight back into the panel.
+			let wasVisible = webviewView.visible
 			const viewStateDisposable = webviewView.onDidChangeViewState(() => {
-				if (this.view?.visible) {
+				const isVisible = this.view?.visible ?? false
+				if (isVisible === wasVisible) {
+					return
+				}
+				wasVisible = isVisible
+				if (isVisible) {
 					this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 				} else {
 					this.logWebviewHiddenDiagnostics()
