@@ -24,7 +24,8 @@ interface DismissibleUpsellProps {
 	dismissOnClick?: boolean
 }
 
-const DismissIcon = () => (
+/** The close glyph of the dismiss button, shared with WarningRow so both look the same. */
+export const DismissIcon = () => (
 	<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 		<path
 			fillRule="evenodd"

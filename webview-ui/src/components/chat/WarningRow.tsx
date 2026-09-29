@@ -2,6 +2,7 @@ import React from "react"
 import { TriangleAlert, BookOpenText } from "lucide-react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
+import { DismissIcon } from "@src/components/common/DismissibleUpsell"
 
 export interface WarningRowProps {
 	title: string
@@ -9,6 +10,8 @@ export interface WarningRowProps {
 	docsURL?: string
 	actionText?: string
 	onAction?: () => void
+	/** When set, a close button ("dismiss and don't show again") is shown; the caller hides the row. */
+	onDismiss?: () => void
 }
 
 /**
@@ -20,6 +23,7 @@ export interface WarningRowProps {
  * @param docsURL - Optional documentation link URL (shown as "Learn more" with book icon)
  * @param actionText - Optional text for an action link appended to the message
  * @param onAction - Optional callback when the action link is clicked
+ * @param onDismiss - Optional callback for the "don't show again" button
  *
  * @example
  * <WarningRow
@@ -30,7 +34,7 @@ export interface WarningRowProps {
  *   onAction={() => openSettings()}
  * />
  */
-export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL, actionText, onAction }) => {
+export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL, actionText, onAction, onDismiss }) => {
 	const { t } = useAppTranslation()
 
 	return (
@@ -49,6 +53,16 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 						<BookOpenText className="size-3 mt-[3px]" />
 						{t("chat:apiRequest.errorMessage.docs")}
 					</a>
+				)}
+				{onDismiss && (
+					<button
+						type="button"
+						className="flex items-center justify-center shrink-0 rounded bg-transparent border-none cursor-pointer hover:opacity-50 transition-opacity duration-200 text-vscode-foreground focus:outline focus:outline-1 focus:outline-vscode-focusBorder focus:outline-offset-1"
+						onClick={onDismiss}
+						aria-label={t("common:dismiss")}
+						title={t("common:dismissAndDontShowAgain")}>
+						<DismissIcon />
+					</button>
 				)}
 			</div>
 			<div className="cursor-default ml-2 pl-4 mt-1 pt-0.5 border-l border-vscode-editorWarning-foreground/50">
