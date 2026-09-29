@@ -71,21 +71,19 @@ describe("Announcement", () => {
 		expect(screen.getAllByRole("listitem")).toHaveLength(3)
 	})
 
-	it("renders the X, Discord and Reddit links as an svg glyph with a screen-reader label", () => {
+	it("does not render the X, Discord and Reddit links", () => {
 		render(<Announcement hideAnnouncement={vi.fn()} />)
 
-		for (const [label, href] of [
-			["X", "https://x.com/roocode"],
-			["Discord", "https://discord.gg/rCQcvT7Fnt"],
-			["Reddit", "https://www.reddit.com/r/RooCode/"],
-		]) {
-			const link = screen.getByRole("link", { name: label })
-			expect(link.getAttribute("href")).toBe(href)
-			const svgs = link.querySelectorAll("svg")
-			expect(svgs).toHaveLength(1)
-			expect(svgs[0].getAttribute("aria-hidden")).toBe("true")
-			expect(svgs[0].getAttribute("class")).toContain("w-4")
-			expect(svgs[0].getAttribute("class")).toContain("h-4")
+		for (const label of ["X", "Discord", "Reddit"]) {
+			expect(screen.queryByRole("link", { name: label })).not.toBeInTheDocument()
 		}
+	})
+
+	it("lets the dialog scroll when the release notes are long", () => {
+		render(<Announcement hideAnnouncement={vi.fn()} />)
+
+		const dialog = screen.getByRole("dialog")
+		expect(dialog.className).toContain("max-h-[85vh]")
+		expect(dialog.className).toContain("overflow-y-auto")
 	})
 })
