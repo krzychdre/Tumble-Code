@@ -56,13 +56,19 @@ export interface HttpError extends Error {
 /**
  * Maps HTTP status codes to appropriate error messages
  */
-export function getErrorMessageForStatus(status: number | undefined, embedderType: string): string | undefined {
+export function getErrorMessageForStatus(
+	status: number | undefined,
+	embedderType: string,
+	errorMessage?: string,
+): string | undefined {
 	switch (status) {
 		case 401:
 		case 403:
 			return t("embeddings:validation.authenticationFailed")
 		case 404:
-			return embedderType === "openai"
+			// Routers such as llama-swap answer 404 for a model they do not know
+			// ("no router for requested model"), while a wrong path gives "404 page not found".
+			return embedderType === "openai" || /\bmodel\b/i.test(errorMessage ?? "")
 				? t("embeddings:validation.modelNotAvailable")
 				: t("embeddings:validation.invalidEndpoint")
 		case 429:
@@ -155,7 +161,7 @@ export function handleValidationError(
 	const errorMessage = extractErrorMessage(serializedError)
 
 	// Check for status-based errors first
-	const statusError = getErrorMessageForStatus(statusCode, embedderType)
+	const statusError = getErrorMessageForStatus(statusCode, embedderType, errorMessage)
 	if (statusError) {
 		return { valid: false, error: statusError }
 	}

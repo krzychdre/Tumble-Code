@@ -59,18 +59,24 @@ export class CodeIndexConfigManager {
 
 		const {
 			codebaseIndexEnabled,
-			codebaseIndexQdrantUrl,
+			codebaseIndexQdrantUrl: rawQdrantUrl,
 			codebaseIndexEmbedderProvider,
-			codebaseIndexEmbedderBaseUrl,
-			codebaseIndexEmbedderModelId,
+			codebaseIndexEmbedderBaseUrl: rawEmbedderBaseUrl,
+			codebaseIndexEmbedderModelId: rawEmbedderModelId,
 			codebaseIndexSearchMinScore,
 			codebaseIndexSearchMaxResults,
 		} = codebaseIndexConfig
 
+		// Pasted values often carry stray whitespace, and a model id like " granite-..." makes
+		// routers such as llama-swap answer 404, which surfaced as "Invalid API endpoint".
+		const codebaseIndexQdrantUrl = rawQdrantUrl?.trim()
+		const codebaseIndexEmbedderBaseUrl = rawEmbedderBaseUrl?.trim()
+		const codebaseIndexEmbedderModelId = rawEmbedderModelId?.trim()
+
 		const openAiKey = this.contextProxy?.getSecret("codeIndexOpenAiKey") ?? ""
 		const qdrantApiKey = this.contextProxy?.getSecret("codeIndexQdrantApiKey") ?? ""
 		// Fix: Read OpenAI Compatible settings from the correct location within codebaseIndexConfig
-		const openAiCompatibleBaseUrl = codebaseIndexConfig.codebaseIndexOpenAiCompatibleBaseUrl ?? ""
+		const openAiCompatibleBaseUrl = codebaseIndexConfig.codebaseIndexOpenAiCompatibleBaseUrl?.trim() ?? ""
 		const openAiCompatibleApiKey = this.contextProxy?.getSecret("codebaseIndexOpenAiCompatibleApiKey") ?? ""
 		const geminiApiKey = this.contextProxy?.getSecret("codebaseIndexGeminiApiKey") ?? ""
 		const mistralApiKey = this.contextProxy?.getSecret("codebaseIndexMistralApiKey") ?? ""

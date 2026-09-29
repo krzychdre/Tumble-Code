@@ -1,4 +1,4 @@
-import { sanitizeErrorMessage, isTransientConnectionError } from "../validation-helpers"
+import { sanitizeErrorMessage, isTransientConnectionError, handleValidationError } from "../validation-helpers"
 
 describe("sanitizeErrorMessage", () => {
 	it("should sanitize Unix-style file paths", () => {
@@ -139,5 +139,18 @@ describe("isTransientConnectionError", () => {
 		const wrapped =
 			"Failed during initial scan: Indexing failed: Failed to create embeddings after 3 attempts: connect ECONNREFUSED 127.0.0.1:8080"
 		expect(isTransientConnectionError(wrapped)).toBe(true)
+	})
+})
+
+describe("handleValidationError 404", () => {
+	it("reports an unknown model when the 404 body names the model (llama-swap)", () => {
+		// Real OpenAI SDK error for llama-swap given " granite-..." with a leading space
+		const error = Object.assign(new Error('404 "no router for requested model"'), { status: 404 })
+		expect(handleValidationError(error, "openai-compatible").error).toContain("validation.modelNotAvailable")
+	})
+
+	it("still reports an invalid endpoint for a plain 404 on a wrong path", () => {
+		const error = Object.assign(new Error("HTTP 404: 404 page not found"), { status: 404 })
+		expect(handleValidationError(error, "openai-compatible").error).toContain("validation.invalidEndpoint")
 	})
 })
