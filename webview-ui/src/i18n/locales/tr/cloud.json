@@ -19,8 +19,5 @@
 	"startOver": "Baştan başla",
 	"personalAccount": "Kişisel Hesap",
 	"createTeamAccount": "Takım Hesabı Oluştur",
-	"cloudUrlPillLabel": "Tumble Code Cloud URL'si",
-	"upsell": {
-		"taskList": "Tumble'dan memnun musunuz? Tumble Code Cloud'a göz atın: görevlerinizi her yerden takip edin ve kontrol edin, kullanım istatistikleri alın ve daha fazlasını yapın. <learnMoreLink>Daha fazla bilgi edinin</learnMoreLink>."
-	}
+	"cloudUrlPillLabel": "Tumble Code Cloud URL'si"
 }

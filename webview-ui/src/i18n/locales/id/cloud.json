@@ -19,8 +19,5 @@
 	"startOver": "Mulai dari awal",
 	"personalAccount": "Akun Pribadi",
 	"createTeamAccount": "Buat Akun Tim",
-	"cloudUrlPillLabel": "URL Tumble Code Cloud",
-	"upsell": {
-		"taskList": "Menikmati Tumble? Coba Tumble Code Cloud: ikuti dan kendalikan tugas Anda dari mana saja, dapatkan statistik penggunaan, dan lainnya. <learnMoreLink>Pelajari lebih lanjut</learnMoreLink>."
-	}
+	"cloudUrlPillLabel": "URL Tumble Code Cloud"
 }

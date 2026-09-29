@@ -19,8 +19,5 @@
 	"startOver": "Opnieuw beginnen",
 	"personalAccount": "Persoonlijk Account",
 	"createTeamAccount": "Teamaccount aanmaken",
-	"cloudUrlPillLabel": "Tumble Code Cloud URL",
-	"upsell": {
-		"taskList": "Geniet je van Tumble? Bekijk Tumble Code Cloud: volg en beheer je taken overal, krijg gebruiksstatistieken en meer. <learnMoreLink>Meer informatie</learnMoreLink>."
-	}
+	"cloudUrlPillLabel": "Tumble Code Cloud URL"
 }

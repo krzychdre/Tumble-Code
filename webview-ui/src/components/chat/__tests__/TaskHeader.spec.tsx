@@ -52,12 +52,6 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 	useExtensionState: () => mockExtensionState,
 }))
 
-// Render any DismissibleUpsell unconditionally (the real one waits for the extension's dismissed
-// list), so the "no Cloud upsell banner" test would see one if TaskHeader rendered it again.
-vi.mock("@src/components/common/DismissibleUpsell", () => ({
-	default: ({ children }: { children: React.ReactNode }) => <div data-testid="dismissible-upsell">{children}</div>,
-}))
-
 // Create a variable to hold the mock model info for useSelectedModel
 let mockModelInfo: { contextWindow: number; maxTokens: number } | undefined = undefined
 
@@ -232,7 +226,7 @@ describe("TaskHeader", () => {
 		try {
 			renderTaskHeader()
 			await act(() => vi.advanceTimersByTimeAsync(10 * 60_000))
-			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
+			expect(screen.queryByText("cloud:upsell.longRunningTask")).not.toBeInTheDocument()
 		} finally {
 			vi.useRealTimers()
 		}
