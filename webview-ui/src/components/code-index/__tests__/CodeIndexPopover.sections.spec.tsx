@@ -181,6 +181,7 @@ describe("CodeIndexPopover sections", () => {
 		it("posts the auto-enable and workspace toggles and explains a disabled workspace", () => {
 			renderOpen(status({ autoEnableDefault: false, workspaceEnabled: false }))
 			expect(screen.getByText("settings:codeIndex.workspaceDisabledMessage")).toBeInTheDocument()
+			openAdvanced()
 
 			const autoEnable = document.getElementById("auto-enable-default-toggle") as HTMLInputElement
 			const workspace = document.getElementById("workspace-indexing-toggle") as HTMLInputElement
@@ -193,8 +194,19 @@ describe("CodeIndexPopover sections", () => {
 			expect(posted()).toContainEqual({ type: "toggleWorkspaceIndexing", bool: true })
 		})
 
+		it("keeps the toggles in the collapsed Advanced group but the disabled note visible", () => {
+			renderOpen(status({ workspaceEnabled: false }))
+			expect(document.getElementById("auto-enable-default-toggle")).toBeNull()
+			expect(document.getElementById("workspace-indexing-toggle")).toBeNull()
+			expect(screen.getByText("settings:codeIndex.workspaceDisabledMessage")).toBeInTheDocument()
+
+			openAdvanced()
+			expect(document.getElementById("workspace-indexing-toggle")).not.toBeNull()
+		})
+
 		it("defaults auto-enable to on and hides the disabled message for an enabled workspace", () => {
 			renderOpen(status({ workspaceEnabled: true }))
+			openAdvanced()
 			expect((document.getElementById("auto-enable-default-toggle") as HTMLInputElement).checked).toBe(true)
 			expect(screen.queryByText("settings:codeIndex.workspaceDisabledMessage")).not.toBeInTheDocument()
 		})
@@ -202,6 +214,8 @@ describe("CodeIndexPopover sections", () => {
 		it("unticking the enable box hides the toggles and actions and makes Save available", () => {
 			renderOpen(status({ systemStatus: "Standby" }))
 			expect(saveButton()).toBeDisabled()
+			openAdvanced()
+			expect(document.getElementById("auto-enable-default-toggle")).not.toBeNull()
 			expect(screen.getByText("settings:codeIndex.startIndexingButton")).toBeInTheDocument()
 
 			const enable = screen

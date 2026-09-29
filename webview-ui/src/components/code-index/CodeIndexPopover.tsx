@@ -184,10 +184,18 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 							isOpen={isAdvancedSettingsOpen}
 							onToggle={() => setIsAdvancedSettingsOpen(!isAdvancedSettingsOpen)}>
 							<CodeIndexAdvancedFields settings={currentSettings} updateSetting={updateSetting} />
+							{currentSettings.codebaseIndexEnabled && (
+								// One child, so the disclosure's space-y does not spread the two checkboxes apart
+								<div>
+									<CodeIndexWorkspaceToggles indexingStatus={indexingStatus} />
+								</div>
+							)}
 						</CodeIndexDisclosure>
 
-						{currentSettings.codebaseIndexEnabled && (
-							<CodeIndexWorkspaceToggles indexingStatus={indexingStatus} />
+						{currentSettings.codebaseIndexEnabled && !indexingStatus.workspaceEnabled && (
+							<p className="mt-4 mb-0 text-xs text-vscode-descriptionForeground">
+								{t("settings:codeIndex.workspaceDisabledMessage")}
+							</p>
 						)}
 
 						<CodeIndexActions
