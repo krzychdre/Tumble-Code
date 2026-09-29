@@ -101,16 +101,15 @@
 	"enqueueMessage": "将消息加入队列（当前任务完成后发送）",
 	"scrollToBottom": "滚动到聊天底部",
 	"scrollToLatestCheckpoint": "滚动到上一个检查点",
-	"about": "Tumble Code 是您编辑器中的整个 AI 开发团队。",
-	"docs": "查看我们的 <DocsLink>文档</DocsLink> 了解更多信息。",
+	"about": "Tumble 是在编辑器中运行的 AI 编程助手。",
 	"rooTips": {
 		"customizableModes": {
-			"title": "可自定义模式",
-			"description": "专注任务并交付成果的专业角色。"
+			"title": "适合不同任务的模式",
+			"description": "选择 Code、Architect 或 Ask 等内置模式，或创建你自己的模式。"
 		},
 		"modelAgnostic": {
-			"title": "自带模型",
-			"description": "使用您自己的提供商密钥，甚至可以在本地运行推理 — 无加价，无锁定，无限制"
+			"title": "任选模型",
+			"description": "使用你自己的 API 密钥连接提供商，或运行本地模型。"
 		}
 	},
 	"selectMode": "选择交互模式",
@@ -557,7 +556,6 @@
 		"writing": "正在写入记忆…",
 		"both": "正在回忆并写入记忆…"
 	},
-	"composerHint": "{{key}} 发送 · Shift+Enter 换行 · @ 提及 · / 命令",
 	"thumbnailAlt": "缩略图 {{index}}",
 	"removeImage": "删除图片 {{index}}"
 }

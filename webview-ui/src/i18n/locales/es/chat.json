@@ -103,16 +103,15 @@
 	"enqueueMessage": "Agregar mensaje a la cola (se enviará después de que termine la tarea actual)",
 	"scrollToBottom": "Desplazarse al final del chat",
 	"scrollToLatestCheckpoint": "Desplazarse al checkpoint anterior",
-	"about": "Tumble Code es todo un equipo de desarrollo de IA en tu editor.",
-	"docs": "Consulta nuestra <DocsLink>documentación</DocsLink> para saber más.",
+	"about": "Tumble es un asistente de programación con IA que funciona dentro de tu editor.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Modos personalizables",
-			"description": "Personajes especializados que se mantienen en la tarea y cumplen."
+			"title": "Modos para distintas tareas",
+			"description": "Elige un modo integrado como Code, Architect o Ask, o crea el tuyo propio."
 		},
 		"modelAgnostic": {
-			"title": "Trae tu propio modelo",
-			"description": "Usa tu propia clave de proveedor o incluso ejecuta inferencia local — sin sobrecostes, sin ataduras, sin restricciones"
+			"title": "Cualquier modelo que elijas",
+			"description": "Conecta un proveedor con tu propia clave de API o ejecuta un modelo local."
 		}
 	},
 	"selectMode": "Seleccionar modo de interacción",
@@ -564,7 +563,6 @@
 		"writing": "Escribiendo memoria…",
 		"both": "Recuperando y escribiendo memoria…"
 	},
-	"composerHint": "{{key}} enviar · Mayús+Entrar nueva línea · @ mención · / comando",
 	"thumbnailAlt": "Miniatura {{index}}",
 	"removeImage": "Eliminar imagen {{index}}"
 }

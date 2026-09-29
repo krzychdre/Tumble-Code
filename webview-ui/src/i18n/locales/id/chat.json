@@ -131,16 +131,15 @@
 	"enqueueMessage": "Tambahkan pesan ke antrean (akan dikirim setelah tugas saat ini selesai)",
 	"scrollToBottom": "Gulir ke bawah chat",
 	"scrollToLatestCheckpoint": "Gulir ke checkpoint sebelumnya",
-	"about": "Tumble Code adalah seluruh tim pengembang AI di editor Anda.",
-	"docs": "Lihat <DocsLink>dokumentasi</DocsLink> kami untuk mempelajari lebih lanjut.",
+	"about": "Tumble adalah asisten pemrograman AI yang bekerja di dalam editor Anda.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Mode yang dapat disesuaikan",
-			"description": "Persona khusus yang tetap mengerjakan tugas dan memberikan hasil."
+			"title": "Mode untuk berbagai pekerjaan",
+			"description": "Pilih mode bawaan seperti Code, Architect, atau Ask, atau buat mode Anda sendiri."
 		},
 		"modelAgnostic": {
-			"title": "Bawa model Anda sendiri",
-			"description": "Gunakan kunci penyedia Anda sendiri atau bahkan jalankan inferensi lokal — tanpa markup, tanpa lock-in, tanpa batasan"
+			"title": "Model apa pun pilihan Anda",
+			"description": "Hubungkan penyedia dengan kunci API Anda sendiri atau jalankan model lokal."
 		}
 	},
 	"selectMode": "Pilih mode untuk interaksi",
@@ -562,7 +561,6 @@
 		"writing": "Menulis memori…",
 		"both": "Mengingat dan menulis memori…"
 	},
-	"composerHint": "{{key}} kirim · Shift+Enter baris baru · @ mention · / perintah",
 	"thumbnailAlt": "Gambar kecil {{index}}",
 	"removeImage": "Hapus gambar {{index}}"
 }

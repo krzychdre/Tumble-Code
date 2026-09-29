@@ -125,16 +125,15 @@
 	"enqueueMessage": "Dodaj wiadomość do kolejki (zostanie wysłana po zakończeniu bieżącego zadania)",
 	"scrollToBottom": "Przewiń do dołu czatu",
 	"scrollToLatestCheckpoint": "Przewiń do poprzedniego punktu kontrolnego",
-	"about": "Tumble Code to cały zespół deweloperów AI w Twoim edytorze.",
-	"docs": "Sprawdź naszą <DocsLink>dokumentację</DocsLink>, aby dowiedzieć się więcej.",
+	"about": "Tumble to asystent programisty AI, który działa w Twoim edytorze.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Konfigurowalne tryby",
-			"description": "Wyspecjalizowane persony, które trzymają się zadania i dostarczają."
+			"title": "Tryby do różnych zadań",
+			"description": "Wybierz wbudowany tryb, np. Code, Architect lub Ask, albo utwórz własny."
 		},
 		"modelAgnostic": {
-			"title": "Przynieś własny model",
-			"description": "Użyj własnego klucza dostawcy lub nawet uruchom lokalne wnioskowanie — bez narzutów, bez blokad, bez ograniczeń"
+			"title": "Dowolny wybrany model",
+			"description": "Połącz się z dostawcą własnym kluczem API albo uruchom model lokalnie."
 		}
 	},
 	"selectMode": "Wybierz tryb interakcji",
@@ -574,7 +573,6 @@
 	"searchTaskHistory": {
 		"title": "Tumble przeszukał historię tego zadania"
 	},
-	"composerHint": "{{key}} wyślij · Shift+Enter nowa linia · @ wzmianka · / komenda",
 	"thumbnailAlt": "Miniatura {{index}}",
 	"removeImage": "Usuń obraz {{index}}"
 }

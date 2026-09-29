@@ -101,16 +101,15 @@
 	"enqueueMessage": "Thêm tin nhắn vào hàng đợi (sẽ gửi sau khi nhiệm vụ hiện tại hoàn tất)",
 	"scrollToBottom": "Cuộn xuống cuối cuộc trò chuyện",
 	"scrollToLatestCheckpoint": "Cuộn đến checkpoint trước đó",
-	"about": "Tumble Code là một đội ngũ phát triển AI đầy đủ trong trình chỉnh sửa của bạn.",
-	"docs": "Kiểm tra <DocsLink>tài liệu</DocsLink> của chúng tôi để tìm hiểu thêm.",
+	"about": "Tumble là trợ lý lập trình AI hoạt động ngay trong trình soạn thảo của bạn.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Chế độ có thể tùy chỉnh",
-			"description": "Các nhân vật chuyên biệt luôn bám sát nhiệm vụ và mang lại hiệu quả."
+			"title": "Chế độ cho từng loại công việc",
+			"description": "Chọn một chế độ có sẵn như Code, Architect hoặc Ask, hoặc tự tạo chế độ riêng."
 		},
 		"modelAgnostic": {
-			"title": "Mang theo mô hình của riêng bạn",
-			"description": "Sử dụng khóa nhà cung cấp của riêng bạn hoặc thậm chí chạy suy luận cục bộ — không phụ phí, không khóa, không hạn chế"
+			"title": "Bất kỳ mô hình nào bạn chọn",
+			"description": "Kết nối nhà cung cấp bằng khóa API của riêng bạn hoặc chạy mô hình cục bộ."
 		}
 	},
 	"selectMode": "Chọn chế độ tương tác",
@@ -557,7 +556,6 @@
 		"writing": "Đang ghi bộ nhớ…",
 		"both": "Đang gọi lại và ghi bộ nhớ…"
 	},
-	"composerHint": "{{key}} gửi · Shift+Enter dòng mới · @ nhắc đến · / lệnh",
 	"thumbnailAlt": "Hình thu nhỏ {{index}}",
 	"removeImage": "Xóa hình ảnh {{index}}"
 }

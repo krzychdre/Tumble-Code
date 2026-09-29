@@ -101,16 +101,15 @@
 	"enqueueMessage": "Bericht aan de wachtrij toevoegen (wordt verzonden nadat de huidige taak is voltooid)",
 	"scrollToBottom": "Scroll naar onderaan de chat",
 	"scrollToLatestCheckpoint": "Scroll naar het vorige checkpoint",
-	"about": "Tumble Code is een heel AI-ontwikkelteam in je editor.",
-	"docs": "Bekijk onze <DocsLink>documentatie</DocsLink> voor meer informatie.",
+	"about": "Tumble is een AI-programmeerassistent die in je editor werkt.",
 	"rooTips": {
 		"customizableModes": {
-			"title": "Aanpasbare modi",
-			"description": "Gespecialiseerde persona's die op schema blijven en presteren."
+			"title": "Modi voor verschillende taken",
+			"description": "Kies een ingebouwde modus zoals Code, Architect of Ask, of maak je eigen modus."
 		},
 		"modelAgnostic": {
-			"title": "Breng je eigen model mee",
-			"description": "Gebruik je eigen providersleutel of voer zelfs lokale inferentie uit — geen opslag, geen lock-in, geen beperkingen"
+			"title": "Elk model dat je kiest",
+			"description": "Verbind een provider met je eigen API-sleutel of draai een lokaal model."
 		}
 	},
 	"selectMode": "Selecteer modus voor interactie",
@@ -556,7 +555,6 @@
 		"writing": "Geheugen wordt geschreven…",
 		"both": "Geheugen wordt opgehaald en geschreven…"
 	},
-	"composerHint": "{{key}} verzenden · Shift+Enter nieuwe regel · @ vermelding · / opdracht",
 	"thumbnailAlt": "Miniatuur {{index}}",
 	"removeImage": "Afbeelding {{index}} verwijderen"
 }
