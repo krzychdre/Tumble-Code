@@ -6,7 +6,6 @@ import { MarketplaceManager } from "../MarketplaceManager"
 
 // Mock CloudService
 vi.mock("@roo-code/cloud", () => ({
-	getRooCodeApiUrl: () => "https://test.api.com",
 	CloudService: {
 		hasInstance: vi.fn(),
 		instance: {
