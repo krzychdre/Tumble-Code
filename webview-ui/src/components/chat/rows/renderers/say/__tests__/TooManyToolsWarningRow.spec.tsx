@@ -32,10 +32,12 @@ const props: RowRendererProps = {
 }
 
 describe("TooManyToolsWarningRow", () => {
-	it("hides the row and stores the dismissal when 'don't show again' is clicked", () => {
+	it("hides the row and stores the dismissal when the close button is clicked", () => {
 		const { container } = render(<TooManyToolsWarningRow {...props} />)
 
-		fireEvent.click(screen.getByText("chat:tooManyTools.dontShowAgain"))
+		const close = screen.getByRole("button", { name: "common:dismiss" })
+		expect(close).toHaveAttribute("title", "common:dismissAndDontShowAgain")
+		fireEvent.click(close)
 
 		expect(vscode.postMessage).toHaveBeenCalledWith({
 			type: "dismissUpsell",

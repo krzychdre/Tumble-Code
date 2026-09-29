@@ -496,8 +496,7 @@
 		"serversPart_many": "{{count}} servidores MCP",
 		"serversPart_other": "{{count}} servidores MCP",
 		"messageTemplate": "Você tem {{tools}} habilitadas via {{servers}}. Um número tão alto pode confundir o modelo e levar a erros. Tente mantê-lo abaixo de {{threshold}}.",
-		"openMcpSettings": "Abrir Configurações MCP",
-		"dontShowAgain": "Não mostrar novamente"
+		"openMcpSettings": "Abrir Configurações MCP"
 	},
 	"readCommandOutput": {
 		"title": "Tumble read command output"

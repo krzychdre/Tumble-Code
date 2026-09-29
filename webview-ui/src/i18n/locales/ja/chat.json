@@ -488,8 +488,7 @@
 		"serversPart_one": "{{count}} MCP サーバー",
 		"serversPart_other": "{{count}} MCP サーバー",
 		"messageTemplate": "{{servers}}経由で{{tools}}が有効になっています。このような高い数は、モデルを混乱させてエラーを引き起こす可能性があります。{{threshold}}以下に保つようにしてください。",
-		"openMcpSettings": "MCP 設定を開く",
-		"dontShowAgain": "今後表示しない"
+		"openMcpSettings": "MCP 設定を開く"
 	},
 	"readCommandOutput": {
 		"title": "Tumbleがコマンド出力を読み込みました"

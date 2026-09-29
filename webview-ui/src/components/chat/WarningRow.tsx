@@ -2,6 +2,7 @@ import React from "react"
 import { TriangleAlert, BookOpenText } from "lucide-react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
+import { DismissIcon } from "@src/components/common/DismissibleUpsell"
 
 export interface WarningRowProps {
 	title: string
@@ -9,7 +10,7 @@ export interface WarningRowProps {
 	docsURL?: string
 	actionText?: string
 	onAction?: () => void
-	/** When set, a small "don't show again" button is shown; the caller hides the row. */
+	/** When set, a close button ("dismiss and don't show again") is shown; the caller hides the row. */
 	onDismiss?: () => void
 }
 
@@ -56,9 +57,11 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 				{onDismiss && (
 					<button
 						type="button"
-						className="text-xs shrink-0 bg-transparent border-0 p-0 cursor-pointer text-vscode-descriptionForeground hover:text-vscode-foreground"
-						onClick={onDismiss}>
-						{t("chat:tooManyTools.dontShowAgain")}
+						className="flex items-center justify-center shrink-0 rounded bg-transparent border-none cursor-pointer hover:opacity-50 transition-opacity duration-200 text-vscode-foreground focus:outline focus:outline-1 focus:outline-vscode-focusBorder focus:outline-offset-1"
+						onClick={onDismiss}
+						aria-label={t("common:dismiss")}
+						title={t("common:dismissAndDontShowAgain")}>
+						<DismissIcon />
 					</button>
 				)}
 			</div>

@@ -489,8 +489,7 @@
 		"serversPart_one": "{{count}} MCP sunucusu",
 		"serversPart_other": "{{count}} MCP sunucusu",
 		"messageTemplate": "{{servers}} üzerinden {{tools}} etkinleştirilmiş durumda. Bu kadar fazlası modeli kafası karışabilir ve hatalara neden olabilir. {{threshold}} altında tutmaya çalış.",
-		"openMcpSettings": "MCP Ayarlarını Aç",
-		"dontShowAgain": "Bir daha gösterme"
+		"openMcpSettings": "MCP Ayarlarını Aç"
 	},
 	"readCommandOutput": {
 		"title": "Tumble read command output"
