@@ -5,7 +5,6 @@
 	"signIn": "Verbind met Tumble Code Cloud",
 	"connect": "Aan de slag",
 	"cloudBenefitsTitle": "Probeer Tumble Code Cloud",
-	"cloudComingSoon": "Deze functie komt binnenkort — en stelt je in staat de cloud-backend zelf te hosten.",
 	"cloudBenefitWalkaway": "Volg en beheer taken van overal (inclusief je telefoon)",
 	"cloudBenefitHistory": "Toegang tot je taakgeschiedenis van overal en deel ze met anderen",
 	"cloudBenefitMetrics": "Krijg een holistisch overzicht van je tokenverbruik",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "Teamaccount aanmaken",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"longRunningTask": "Dit kan even duren. Ga overal verder met de Cloud.",
-		"taskList": "Geniet je van Tumble? Bekijk Tumble Code Cloud: volg en beheer je taken overal, voer autonome Cloud-agents uit, krijg gebruiksstatistieken en meer. <learnMoreLink>Meer informatie</learnMoreLink>."
+		"taskList": "Geniet je van Tumble? Bekijk Tumble Code Cloud: volg en beheer je taken overal, krijg gebruiksstatistieken en meer. <learnMoreLink>Meer informatie</learnMoreLink>."
 	}
 }

@@ -5,7 +5,6 @@
 	"signIn": "Hubungkan ke Tumble Code Cloud",
 	"connect": "Mulai",
 	"cloudBenefitsTitle": "Coba Tumble Code Cloud",
-	"cloudComingSoon": "Fitur ini akan segera hadir — dan memungkinkan Anda meng-host sendiri backend cloud.",
 	"cloudBenefitWalkaway": "Ikuti dan kontrol tugas dari mana saja (termasuk ponsel Anda)",
 	"cloudBenefitHistory": "Akses riwayat tugas Anda dari mana saja dan bagikan dengan orang lain",
 	"cloudBenefitMetrics": "Dapatkan tampilan holistik konsumsi token Anda",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "Buat Akun Tim",
 	"cloudUrlPillLabel": "URL Tumble Code Cloud",
 	"upsell": {
-		"longRunningTask": "Ini mungkin akan memakan waktu cukup lama. Lanjutkan dari mana saja dengan Cloud.",
-		"taskList": "Menikmati Tumble? Coba Tumble Code Cloud: ikuti dan kendalikan tugas Anda dari mana saja, jalankan agen Cloud otonom, dapatkan statistik penggunaan, dan lainnya. <learnMoreLink>Pelajari lebih lanjut</learnMoreLink>."
+		"taskList": "Menikmati Tumble? Coba Tumble Code Cloud: ikuti dan kendalikan tugas Anda dari mana saja, dapatkan statistik penggunaan, dan lainnya. <learnMoreLink>Pelajari lebih lanjut</learnMoreLink>."
 	}
 }

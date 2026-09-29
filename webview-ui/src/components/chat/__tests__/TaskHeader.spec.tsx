@@ -31,7 +31,7 @@ vi.mock("@/utils/vscode", () => ({
 }))
 
 // Create a variable to hold the mock state
-let mockExtensionState: {
+const mockExtensionState: {
 	apiConfiguration: ProviderSettings
 	currentTaskItem: { id: string } | null
 	clineMessages: any[]
@@ -52,28 +52,10 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 	useExtensionState: () => mockExtensionState,
 }))
 
-// Mock the useCloudUpsell hook
-vi.mock("@src/hooks/useCloudUpsell", () => ({
-	useCloudUpsell: () => ({
-		isOpen: false,
-		openUpsell: vi.fn(),
-		closeUpsell: vi.fn(),
-		handleConnect: vi.fn(),
-	}),
-}))
-
-// Mock DismissibleUpsell component
+// Render any DismissibleUpsell unconditionally (the real one waits for the extension's dismissed
+// list), so the "no Cloud upsell banner" test would see one if TaskHeader rendered it again.
 vi.mock("@src/components/common/DismissibleUpsell", () => ({
-	default: ({ children, ...props }: any) => (
-		<div data-testid="dismissible-upsell" {...props}>
-			{children}
-		</div>
-	),
-}))
-
-// Mock CloudUpsellDialog component
-vi.mock("@src/components/cloud/CloudUpsellDialog", () => ({
-	CloudUpsellDialog: () => null,
+	default: ({ children }: { children: React.ReactNode }) => <div data-testid="dismissible-upsell">{children}</div>,
 }))
 
 // Create a variable to hold the mock model info for useSelectedModel
@@ -243,186 +225,17 @@ describe("TaskHeader", () => {
 		expect(handleCondenseContext).not.toHaveBeenCalled()
 	})
 
-	describe("DismissibleUpsell behavior", () => {
-		beforeEach(() => {
-			vi.useFakeTimers()
-			// Reset the mock state before each test
-			mockExtensionState = {
-				apiConfiguration: {
-					apiProvider: "anthropic",
-					apiKey: "test-api-key",
-					apiModelId: "claude-3-opus-20240229",
-				} as ProviderSettings,
-				currentTaskItem: { id: "test-task-id" },
-				clineMessages: [],
-			}
-		})
-
-		afterEach(() => {
+	it("shows no Cloud upsell banner however long the task runs", async () => {
+		// The upstream "Continue from anywhere with Cloud" banner promised hosted execution this
+		// fork's cloud does not offer (the model always runs in the local editor).
+		vi.useFakeTimers()
+		try {
+			renderTaskHeader()
+			await act(() => vi.advanceTimersByTimeAsync(10 * 60_000))
+			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
+		} finally {
 			vi.useRealTimers()
-		})
-
-		// The 2-minute timer sets state outside any React event, so every fake-timer advance runs
-		// inside act(): act flushes the resulting render before the assertion. Without it the
-		// render lands one real tick later under React 19 (React 18 happened to flush it earlier).
-
-		it("should show DismissibleUpsell after 2 minutes when task is not complete", async () => {
-			renderTaskHeader()
-
-			// Initially, the upsell should not be visible
-			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
-
-			// Fast-forward time by 2 minutes to match component timeout
-			await act(() => vi.advanceTimersByTimeAsync(120_000))
-
-			// The upsell should now be visible
-			expect(screen.getByTestId("dismissible-upsell")).toBeInTheDocument()
-			expect(screen.getByText("cloud:upsell.longRunningTask")).toBeInTheDocument()
-		})
-
-		it("should not show DismissibleUpsell when task is complete", async () => {
-			// Set up mock state with a completion_result message
-			mockExtensionState = {
-				...mockExtensionState,
-				clineMessages: [
-					{
-						type: "ask",
-						ask: "completion_result",
-						ts: Date.now(),
-						text: "Task completed!",
-					},
-				],
-			}
-
-			renderTaskHeader()
-
-			// Fast-forward time by more than 2 minutes
-			await act(() => vi.advanceTimersByTimeAsync(130_000))
-
-			// The upsell should not appear
-			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
-		})
-
-		it("should not show DismissibleUpsell when currentTaskItem is null", async () => {
-			// Update the mock state to have null currentTaskItem
-			mockExtensionState = {
-				...mockExtensionState,
-				currentTaskItem: null,
-			}
-
-			renderTaskHeader()
-
-			// Fast-forward time by more than 2 minutes
-			await act(() => vi.advanceTimersByTimeAsync(130_000))
-
-			// The upsell should not appear
-			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
-		})
-
-		it("should not show DismissibleUpsell when task has completion_result in clineMessages", async () => {
-			// Set up mock state with a completion_result message from the start
-			mockExtensionState = {
-				...mockExtensionState,
-				clineMessages: [
-					{
-						type: "say",
-						say: "text",
-						ts: Date.now() - 1000,
-						text: "Working on task...",
-					},
-					{
-						type: "ask",
-						ask: "completion_result",
-						ts: Date.now(),
-						text: "Task completed!",
-					},
-				],
-			}
-
-			renderTaskHeader()
-
-			// Fast-forward time by more than 2 minutes
-			await act(() => vi.advanceTimersByTimeAsync(130_000))
-
-			// The upsell should not appear because the task is complete
-			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
-		})
-
-		it("should not show DismissibleUpsell when task has completion_result followed by resume messages", async () => {
-			// Set up mock state with a completion_result message followed by resume messages
-			mockExtensionState = {
-				...mockExtensionState,
-				clineMessages: [
-					{
-						type: "say",
-						say: "text",
-						ts: Date.now() - 3000,
-						text: "Working on task...",
-					},
-					{
-						type: "ask",
-						ask: "completion_result",
-						ts: Date.now() - 2000,
-						text: "Task completed!",
-					},
-					{
-						type: "ask",
-						ask: "resume_completed_task",
-						ts: Date.now() - 1000,
-						text: "Resume completed task?",
-					},
-					{
-						type: "ask",
-						ask: "resume_task",
-						ts: Date.now(),
-						text: "Resume task?",
-					},
-				],
-			}
-
-			renderTaskHeader()
-
-			// Fast-forward time by more than 2 minutes
-			await act(() => vi.advanceTimersByTimeAsync(130_000))
-
-			// The upsell should not appear because the last relevant message (skipping resume messages) is completion_result
-			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
-		})
-
-		it("should show DismissibleUpsell when task has non-completion message followed by resume messages", async () => {
-			// Set up mock state with a non-completion message followed by resume messages
-			mockExtensionState = {
-				...mockExtensionState,
-				clineMessages: [
-					{
-						type: "say",
-						say: "text",
-						ts: Date.now() - 3000,
-						text: "Working on task...",
-					},
-					{
-						type: "ask",
-						ask: "tool",
-						ts: Date.now() - 2000,
-						text: "Need permission to use tool",
-					},
-					{
-						type: "ask",
-						ask: "resume_task",
-						ts: Date.now() - 1000,
-						text: "Resume task?",
-					},
-				],
-			}
-
-			renderTaskHeader()
-
-			// Fast-forward time by 2 minutes to trigger the upsell
-			await act(() => vi.advanceTimersByTimeAsync(120_000))
-
-			// The upsell should appear because the last relevant message (skipping resume messages) is not completion_result
-			expect(screen.getByTestId("dismissible-upsell")).toBeInTheDocument()
-		})
+		}
 	})
 
 	describe("Back to parent task button", () => {

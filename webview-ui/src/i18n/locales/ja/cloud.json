@@ -5,7 +5,6 @@
 	"signIn": "Tumble Code Cloud に接続",
 	"connect": "始める",
 	"cloudBenefitsTitle": "Tumble Code Cloudを試す",
-	"cloudComingSoon": "この機能は近日公開予定です — クラウドバックエンドをセルフホストできるようになります。",
 	"cloudBenefitWalkaway": "どこからでも（スマートフォンを含む）タスクを追跡および制御",
 	"cloudBenefitHistory": "どこからでもタスク履歴にアクセスし、他の人と共有",
 	"cloudBenefitMetrics": "トークン消費の全体像を把握",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "チームアカウントを作成",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"longRunningTask": "これには時間がかかるかもしれません。Cloudを使えばどこからでも続けられます。",
-		"taskList": "Tumbleを楽しんでいますか？Tumble Code Cloudをチェックしてください：どこからでもタスクを追跡および制御し、自律型クラウドエージェントを実行し、使用状況の統計を取得します。<learnMoreLink>詳細</learnMoreLink>。"
+		"taskList": "Tumbleを楽しんでいますか？Tumble Code Cloudをチェックしてください：どこからでもタスクを追跡および制御し、使用状況の統計を取得します。<learnMoreLink>詳細</learnMoreLink>。"
 	}
 }

@@ -5,7 +5,6 @@
 	"signIn": "Connecta't a Tumble Code Cloud",
 	"connect": "Comença",
 	"cloudBenefitsTitle": "Prova Tumble Code Cloud",
-	"cloudComingSoon": "Aquesta funció arribarà aviat — i et permetrà autoallotjar el backend del núvol.",
 	"cloudBenefitWalkaway": "Segueix i controla tasques des de qualsevol lloc (inclòs el telèfon)",
 	"cloudBenefitHistory": "Accedeix al teu historial de tasques des de qualsevol lloc i comparteix-les amb altres",
 	"cloudBenefitMetrics": "Obtén una visió holística del teu consum de tokens",
@@ -22,7 +21,6 @@
 	"personalAccount": "Compte Personal",
 	"createTeamAccount": "Crear Compte d'Equip",
 	"upsell": {
-		"longRunningTask": "Això pot trigar una estona. Continua des de qualsevol lloc amb Cloud.",
-		"taskList": "T'agrada Tumble? Fes una ullada a Tumble Code Cloud: segueix i controla les teves tasques des de qualsevol lloc, executa agents autònoms al núvol, obtén estadístiques d'ús i més. <learnMoreLink>Aprèn-ne més</learnMoreLink>."
+		"taskList": "T'agrada Tumble? Fes una ullada a Tumble Code Cloud: segueix i controla les teves tasques des de qualsevol lloc, obtén estadístiques d'ús i més. <learnMoreLink>Aprèn-ne més</learnMoreLink>."
 	}
 }

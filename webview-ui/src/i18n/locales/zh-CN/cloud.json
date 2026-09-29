@@ -5,7 +5,6 @@
 	"signIn": "连接到 Tumble Code Cloud",
 	"connect": "开始使用",
 	"cloudBenefitsTitle": "试用 Tumble Code Cloud",
-	"cloudComingSoon": "此功能即将推出 — 并将允许您自托管云后端。",
 	"cloudBenefitWalkaway": "随时随地（包括您的手机）跟踪和控制任务",
 	"cloudBenefitHistory": "随时随地访问您的任务历史记录并与他人共享",
 	"cloudBenefitMetrics": "获取您的令牌消耗的整体视图",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "创建团队账户",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"longRunningTask": "这可能需要一段时间。使用 Cloud 从任何地方继续。",
-		"taskList": "喜欢Tumble吗？快来看看Tumble Code Cloud：随时随地关注和控制您的任务，运行自主云代理，获取使用统计数据等等。 <learnMoreLink>了解更多</learnMoreLink>。"
+		"taskList": "喜欢Tumble吗？快来看看Tumble Code Cloud：随时随地关注和控制您的任务，获取使用统计数据等等。 <learnMoreLink>了解更多</learnMoreLink>。"
 	}
 }

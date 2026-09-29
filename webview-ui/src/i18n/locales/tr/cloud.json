@@ -5,7 +5,6 @@
 	"signIn": "Tumble Code Cloud'a bağlan",
 	"connect": "Başlayın",
 	"cloudBenefitsTitle": "Tumble Code Cloud'u Deneyin",
-	"cloudComingSoon": "Bu özellik yakında geliyor — ve bulut arka ucunu kendiniz barındırmanıza olanak tanıyacak.",
 	"cloudBenefitWalkaway": "Görevleri her yerden (telefonunuz dahil) takip edin ve kontrol edin",
 	"cloudBenefitHistory": "Görev geçmişinize her yerden erişin ve başkalarıyla paylaşın",
 	"cloudBenefitMetrics": "Token tüketiminizin bütünsel görünümünü elde edin",
@@ -22,7 +21,6 @@
 	"createTeamAccount": "Takım Hesabı Oluştur",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL'si",
 	"upsell": {
-		"longRunningTask": "Bu biraz zaman alabilir. Bulut ile her yerden devam edin.",
-		"taskList": "Tumble'dan memnun musunuz? Tumble Code Cloud'a göz atın: görevlerinizi her yerden takip edin ve kontrol edin, otonom Bulut ajanlarını çalıştırın, kullanım istatistikleri alın ve daha fazlasını yapın. <learnMoreLink>Daha fazla bilgi edinin</learnMoreLink>."
+		"taskList": "Tumble'dan memnun musunuz? Tumble Code Cloud'a göz atın: görevlerinizi her yerden takip edin ve kontrol edin, kullanım istatistikleri alın ve daha fazlasını yapın. <learnMoreLink>Daha fazla bilgi edinin</learnMoreLink>."
 	}
 }

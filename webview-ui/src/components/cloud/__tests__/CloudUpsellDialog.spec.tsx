@@ -8,7 +8,6 @@ vi.mock("react-i18next", () => ({
 		t: (key: string) => {
 			const translations: Record<string, string> = {
 				"cloud:cloudBenefitsTitle": "Try Roo Code Cloud",
-				"cloud:cloudComingSoon": "This feature is coming soon — and will let you self-host the cloud backend.",
 				"cloud:cloudBenefitWalkaway": "Follow and control tasks from anywhere (including your phone)",
 				"cloud:cloudBenefitHistory": "Access your task history from anywhere and share them with others",
 				"cloud:cloudBenefitMetrics": "Get a holistic view of your token consumption",
@@ -31,9 +30,8 @@ describe("CloudUpsellDialog", () => {
 		render(<CloudUpsellDialog open={true} onOpenChange={mockOnOpenChange} onConnect={mockOnConnect} />)
 
 		expect(screen.getByText("Try Roo Code Cloud")).toBeInTheDocument()
-		expect(
-			screen.getByText("This feature is coming soon — and will let you self-host the cloud backend."),
-		).toBeInTheDocument()
+		// Self-hosting already works, so the old "coming soon" line is gone.
+		expect(screen.queryByText(/coming soon|cloudComingSoon/i)).not.toBeInTheDocument()
 		expect(screen.getByText("Follow and control tasks from anywhere (including your phone)")).toBeInTheDocument()
 		expect(
 			screen.getByText("Access your task history from anywhere and share them with others"),
