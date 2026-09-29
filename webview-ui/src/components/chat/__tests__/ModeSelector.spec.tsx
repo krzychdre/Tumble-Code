@@ -350,4 +350,28 @@ describe("ModeSelector", () => {
 			expect(onChange).not.toHaveBeenCalled()
 		})
 	})
+
+	test("draws an outline icon and hides the emoji in the mode name", () => {
+		mockModes = [
+			{ slug: "code", name: "💻 Code", description: "Code mode", roleDefinition: "r", groups: ["read"] },
+			{
+				slug: "translate",
+				name: "🌐 Translate",
+				description: "Translate",
+				roleDefinition: "r",
+				groups: ["read"],
+			},
+		]
+
+		render(<ModeSelector title="Mode Selector" value={"code" as Mode} onChange={vi.fn()} modeShortcutText="" />)
+
+		const trigger = screen.getByTestId("mode-selector-trigger")
+		expect(trigger).toHaveTextContent(/^Code$/)
+		expect(trigger.querySelector("svg")).not.toBeNull()
+
+		fireEvent.click(trigger)
+		const items = screen.getAllByTestId("mode-selector-item")
+		expect(items.map((item) => item.querySelector(".font-bold")?.textContent)).toEqual(["Code", "Translate"])
+		items.forEach((item) => expect(item.querySelector("svg")).not.toBeNull())
+	})
 })

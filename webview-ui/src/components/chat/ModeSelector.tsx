@@ -14,6 +14,8 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
 import { IconButton, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
 
+import { ModeIcon, modeLabel } from "./modeIcon"
+
 const SEARCH_THRESHOLD = 6
 
 interface ModeSelectorProps {
@@ -223,7 +225,7 @@ export const ModeSelector = ({
 					disabled={disabled}
 					data-testid="mode-selector-trigger"
 					className={cn(
-						"inline-flex items-center relative whitespace-nowrap px-1.5 py-1 text-xs",
+						"inline-flex items-center gap-1.5 relative whitespace-nowrap px-1.5 py-1 text-xs",
 						"bg-transparent border border-[rgba(255,255,255,0.08)] rounded-md text-vscode-foreground",
 						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
 						disabled
@@ -234,7 +236,8 @@ export const ModeSelector = ({
 							? "bg-primary opacity-90 hover:bg-primary-hover text-vscode-button-foreground"
 							: null,
 					)}>
-					<span className="truncate">{selectedMode?.name || ""}</span>
+					{selectedMode && <ModeIcon slug={selectedMode.slug} className="size-3" />}
+					<span className="truncate">{selectedMode ? modeLabel(selectedMode.name) : ""}</span>
 				</PopoverTrigger>
 			</StandardTooltip>
 			<PopoverContent
@@ -286,15 +289,16 @@ export const ModeSelector = ({
 											ref={isSelected ? selectedItemRef : null}
 											onClick={() => handleSelect(mode.slug)}
 											className={cn(
-												"px-3 py-1.5 text-sm cursor-pointer flex items-center",
+												"px-3 py-1.5 text-sm cursor-pointer flex items-center gap-2.5",
 												"hover:bg-vscode-list-hoverBackground",
 												isSelected
 													? "bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground"
 													: "",
 											)}
 											data-testid="mode-selector-item">
+											<ModeIcon slug={mode.slug} className="size-4 self-start mt-0.5" />
 											<div className="flex-1 min-w-0">
-												<div className="font-bold truncate">{mode.name}</div>
+												<div className="font-bold truncate">{modeLabel(mode.name)}</div>
 												{mode.description && (
 													<div className="text-xs text-vscode-descriptionForeground truncate">
 														{mode.description}
