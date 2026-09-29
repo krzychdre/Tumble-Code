@@ -141,7 +141,7 @@ function collectPaths(params: Record<string, unknown>): string[] {
 	const args = str(params.args)
 
 	if (args) {
-		paths.push(...matchAll(args, /<path>([\s\S]*?)<\/path>/g))
+		paths.push(...extractTagContents(args, "<path>", "</path>"))
 	}
 
 	// `apply_patch` carries every target inside the patch envelope.
@@ -249,7 +249,7 @@ function fromXml(text: string, messageIndex: number): ToolAction[] {
 			const kind = actionKindOf(tool)
 			const action: ToolAction = { kind, tool, messageIndex }
 			const paths = unique([
-				...matchAll(body, /<path>([\s\S]*?)<\/path>/g),
+				...extractTagContents(body, "<path>", "</path>"),
 				...matchAll(body, /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm),
 			])
 
@@ -257,17 +257,17 @@ function fromXml(text: string, messageIndex: number): ToolAction[] {
 				action.paths = paths
 			}
 
-			const command = matchAll(body, /<command>([\s\S]*?)<\/command>/g)[0]
+			const command = extractTagContents(body, "<command>", "</command>")[0]
 
 			if (command) {
 				action.command = command
 			}
 
 			const detail =
-				matchAll(body, /<result>([\s\S]*?)<\/result>/g)[0] ??
-				matchAll(body, /<question>([\s\S]*?)<\/question>/g)[0] ??
-				matchAll(body, /<todos>([\s\S]*?)<\/todos>/g)[0] ??
-				matchAll(body, /<message>([\s\S]*?)<\/message>/g)[0]
+				extractTagContents(body, "<result>", "</result>")[0] ??
+				extractTagContents(body, "<question>", "</question>")[0] ??
+				extractTagContents(body, "<todos>", "</todos>")[0] ??
+				extractTagContents(body, "<message>", "</message>")[0]
 
 			if (detail) {
 				action.text = detail.trim()
@@ -287,7 +287,8 @@ function fromXml(text: string, messageIndex: number): ToolAction[] {
  * `indexOf` scan that is O(n) instead of O(n²) on orphan open tags.
  *
  * Why this exists: the dynamic regex built from `XML_TOOL_NAMES` flagged
- * CodeQL alert #16 (polynomial ReDoS). Empirically, `"<read_file>".repeat(n)`
+ * CodeQL alert #16 (polynomial ReDoS), and so did the fixed `<path>` one
+ * later, so every tag lookup in this file goes through here. Empirically, `"<read_file>".repeat(n)`
  * with no close tag made `String.matchAll` quadratic (n=1000→10000 was ~x103,
  * n=10000→20000 was ~x4). This scanner is ~7500× faster at n=10000 and stays
  * linear. `XML_TOOL_NAMES` are constant plain `[a-z_]+` identifiers, so there
