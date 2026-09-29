@@ -6,8 +6,6 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Link } from "@src/components/ui"
 
-import { DiscordLogo, RedditLogo, XLogo } from "./BrandIcons"
-
 interface AnnouncementProps {
 	hideAnnouncement: () => void
 }
@@ -35,7 +33,7 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 					hideAnnouncement()
 				}
 			}}>
-			<DialogContent>
+			<DialogContent className="max-h-[85vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>{t("chat:announcement.title", { version: Package.version })}</DialogTitle>
 				</DialogHeader>
@@ -71,26 +69,6 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 						</ul>
 					</div>
 
-					<div className="mt-4 text-sm text-center text-vscode-descriptionForeground">
-						<div className="flex items-center justify-center gap-4">
-							<SocialLink
-								icon={<XLogo className="w-4 h-4" aria-hidden />}
-								label="X"
-								href="https://x.com/roocode"
-							/>
-							<SocialLink
-								icon={<DiscordLogo className="w-4 h-4" aria-hidden />}
-								label="Discord"
-								href="https://discord.gg/rCQcvT7Fnt"
-							/>
-							<SocialLink
-								icon={<RedditLogo className="w-4 h-4" aria-hidden />}
-								label="Reddit"
-								href="https://www.reddit.com/r/RooCode/"
-							/>
-						</div>
-					</div>
-
 					<div className="mt-3 text-sm text-center text-vscode-descriptionForeground">
 						<Trans i18nKey="chat:announcement.support" components={{ githubLink: <GitHubLink /> }} />
 					</div>
@@ -100,25 +78,12 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 	)
 }
 
-const SocialLink = ({ icon, label, href }: { icon: ReactNode; label: string; href: string }) => (
-	<Link
-		href={href}
-		className="inline-flex items-center gap-1"
-		onClick={(e) => {
-			e.preventDefault()
-			vscode.postMessage({ type: "openExternal", url: href })
-		}}>
-		{icon}
-		<span className="sr-only">{label}</span>
-	</Link>
-)
-
 const GitHubLink = ({ children }: { children?: ReactNode }) => (
 	<Link
-		href="https://github.com/RooCodeInc/Roo-Code"
+		href="https://github.com/krzychdre/Tumble-Code"
 		onClick={(e) => {
 			e.preventDefault()
-			vscode.postMessage({ type: "openExternal", url: "https://github.com/RooCodeInc/Roo-Code" })
+			vscode.postMessage({ type: "openExternal", url: "https://github.com/krzychdre/Tumble-Code" })
 		}}>
 		{children}
 	</Link>
