@@ -2731,51 +2731,123 @@ details.env-details > pre {
 /* --- charts: inline SVG from web/presenters/charts.py -------------------------
    Every mark is coloured here, from the tokens, so the charts follow the
    theme and print; the markup carries geometry only. */
-.chart-daily-pair {
+.chart-legend {
 	display: flex;
-	flex-direction: column;
-	gap: var(--s2);
+	gap: var(--s4);
+	margin-bottom: var(--s2);
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text-dim);
 }
-.chart-row {
+.legend-key {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--s1);
+	cursor: pointer;
+	user-select: none;
+}
+/* The checkbox stays in the page (keyboard, screen readers); its swatch is
+   what shows. */
+.legend-key input {
+	position: absolute;
+	opacity: 0;
+	width: 1px;
+	height: 1px;
+	margin: 0;
+}
+.legend-key i {
+	width: 0.75rem;
+	height: 0.75rem;
+	border-radius: 2px;
+}
+.legend-key:has(input:focus-visible) i {
+	outline: 2px solid var(--text);
+	outline-offset: 2px;
+}
+.key-tokens i {
+	background: var(--d-in);
+}
+.key-cost i {
+	background: var(--d-cost);
+}
+.legend-key:has(input:not(:checked)) {
+	color: var(--text-faint);
+	text-decoration: line-through;
+}
+.legend-key:has(input:not(:checked)) i {
+	opacity: 0.3;
+}
+/* Left axis, plot, right axis; the day labels under the plot only. */
+.chart-plot {
 	display: grid;
-	grid-template-columns: 9rem minmax(0, 1fr);
-	align-items: end;
-	gap: var(--s3);
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	column-gap: var(--s2);
+	row-gap: var(--s1);
 }
-.chart-row-label,
+.chart-yaxis,
 .chart-days {
 	font-family: var(--mono);
 	font-size: var(--t-micro);
-	color: var(--text-faint);
+	line-height: 1;
 }
-.chart-row-label b {
-	color: var(--text);
-	font-weight: 550;
+/* Five labels spread over the plot's height, each centred on its gridline. */
+.chart-yaxis {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	margin-block: -0.5em;
+	min-width: 3.5em;
+}
+.axis-tokens {
+	text-align: right;
+	color: var(--d-in);
+}
+.axis-cost {
+	color: var(--d-cost);
 }
 .chart-days {
+	grid-column: 2;
 	display: flex;
-	justify-content: space-between;
-	margin-left: calc(9rem + var(--s3));
+	color: var(--text-faint);
+}
+.chart-days span {
+	flex: 1 1 0;
+	min-width: 0;
+	text-align: center;
+	white-space: nowrap;
+}
+.chart-combo:has(.toggle-tokens:not(:checked)) :is(.series-tokens, .axis-tokens > span),
+.chart-combo:has(.toggle-cost:not(:checked)) :is(.series-cost, .axis-cost > span) {
+	visibility: hidden;
 }
 .chart-svg {
 	display: block;
 	width: 100%;
 }
 .chart-daily {
-	height: 88px;
+	height: 200px;
 }
 .chart-ranked {
 	height: auto;
 	font-family: var(--mono);
 }
+/* Semi-transparent, so where the bars overlap both stay readable. */
 .chart-bar-tokens {
 	fill: var(--d-in);
+	fill-opacity: 0.55;
 }
 .chart-bar-rank {
 	fill: var(--d-in);
 }
 .chart-bar-cost {
 	fill: var(--d-cost);
+	fill-opacity: 0.8;
+}
+.chart-grid-line {
+	stroke: var(--line);
+	stroke-width: 1;
+	stroke-dasharray: 2 3;
 }
 .chart-hit {
 	fill: transparent;
@@ -2808,12 +2880,8 @@ details.env-details > pre {
 	color: var(--text);
 }
 @media (max-width: 640px) {
-	.chart-row {
-		grid-template-columns: minmax(0, 1fr);
-		gap: var(--s1);
-	}
-	.chart-days {
-		margin-left: 0;
+	.chart-daily {
+		height: 160px;
 	}
 }
 

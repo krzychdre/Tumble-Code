@@ -5,11 +5,13 @@ Server-rendered SVG needs no script, prints, and follows the theme: the
 template gives every mark a class and the stylesheet colours it from the
 tokens, so no colour is ever written into the markup.
 
-Two forms, both one series each (so no legend; the chart title names it):
+Two forms:
 
-- ``daily``: one bar per active day, its height the day's value against the
-  busiest day. Tokens and cost are two of these, never one chart with two
-  y-axes (two scales on one plot invite reading a crossing as meaningful).
+- ``daily``: tokens and cost per day on one plot, one slot per active day.
+  Each series has its own y axis (tokens on the left, cost on the right), both
+  cut into the same four intervals so they share the gridlines. The bars
+  overlap and are semi-transparent (tokens wide, cost narrower inside it), and
+  the legend's checkboxes hide either series with CSS alone.
 - ``ranked``: horizontal bars, biggest first, for tokens by model or mode.
   The eight biggest rows are shown and the rest fold into one "N others"
   row, so a long tail does not push the chart off the card.
@@ -19,16 +21,23 @@ summary for ``aria-label``; the same figures are in a table the chart points
 at with ``aria-describedby``.
 """
 
-from typing import Callable
+import math
 
 from src.utils.format import fmt_cost, fmt_tokens
 
 # Daily chart: each day is a 10-unit slot of a 100-unit-high viewBox that
-# the stylesheet stretches to the card (preserveAspectRatio="none"), so a bar
-# is 8 units wide with a 2-unit gap.
+# the stylesheet stretches to the card (preserveAspectRatio="none"). The token
+# bar is 8 units wide (a 2-unit gap), the cost bar 4 units, centred on it.
 DAY_SLOT = 10
-DAY_GAP = 2
+TOKENS_BAR = 8
+COST_BAR = 4
 PLOT_HEIGHT = 100
+# Both y axes have this many intervals, so their gridlines coincide.
+AXIS_STEPS = 4
+# At most this many day labels under the plot; the rest are left blank.
+DAY_LABELS = 12
+# Tick steps are one of these times a power of ten.
+_NICE = (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10)
 
 # Ranked chart: no viewBox, so text keeps its real size at any width. Each
 # row is the name (left) and the value (right) on one line, the bar under
@@ -45,38 +54,65 @@ def _height(value: float, peak: float) -> float:
     return max(round(PLOT_HEIGHT * value / peak, 2), 1.0)
 
 
-def daily(days: list[dict], key: str, unit: str) -> dict:
-    """Bars for ``key`` ("tokens" or "cost") of metrics_service's ``by_day``."""
-    fmt: Callable[[float], str] = fmt_tokens if key == "tokens" else fmt_cost
-    values = [d[key] or 0 for d in days]
-    peak = max(values, default=0)
-    bars = []
-    for i, (d, value) in enumerate(zip(days, values)):
-        h = _height(value, peak)
-        bars.append(
+def _axis_top(peak: float) -> float:
+    """The smallest "nice" top of the axis that fits ``peak`` in AXIS_STEPS steps."""
+    if peak <= 0:
+        return 0.0
+    raw = peak / AXIS_STEPS
+    power = 10 ** math.floor(math.log10(raw))
+    step = next(m for m in _NICE if raw <= m * power * (1 + 1e-9)) * power
+    return step * AXIS_STEPS
+
+
+def _axis_cost(dollars: float) -> str:
+    """A cost tick, without fmt_cost's four fixed places: "$25", "$0.15"."""
+    return "$" + f"{dollars:.4f}".rstrip("0").rstrip(".")
+
+
+def _bar(slot: int, width: int, value: float, top: float) -> dict:
+    h = _height(value, top)
+    return {"x": slot * DAY_SLOT + (DAY_SLOT - width) / 2, "width": width, "y": round(PLOT_HEIGHT - h, 2), "height": h}
+
+
+def _ticks(top: float, fmt) -> list[str]:
+    """Axis labels from the top down, so they read in the order they are drawn."""
+    return [fmt(top * i / AXIS_STEPS) for i in range(AXIS_STEPS, -1, -1)] if top > 0 else []
+
+
+def daily(days: list[dict]) -> dict:
+    """Tokens and cost per day from metrics_service's ``by_day``, on one plot."""
+    tokens = [d["tokens"] or 0 for d in days]
+    costs = [d["cost"] or 0 for d in days]
+    tokens_top = _axis_top(max(tokens, default=0))
+    cost_top = _axis_top(max(costs, default=0))
+    every = max(math.ceil(len(days) / DAY_LABELS), 1)
+    slots = []
+    for i, (d, t, c) in enumerate(zip(days, tokens, costs)):
+        slots.append(
             {
                 "slot_x": i * DAY_SLOT,
-                "x": i * DAY_SLOT + DAY_GAP / 2,
-                "width": DAY_SLOT - DAY_GAP,
-                "y": round(PLOT_HEIGHT - h, 2),
-                "height": h,
-                "title": f"{d['day']}: {fmt(value)}{unit}",
+                "tokens": _bar(i, TOKENS_BAR, t, tokens_top),
+                "cost": _bar(i, COST_BAR, c, cost_top),
+                # "2026-09-28" -> "09-28": the year is in the table and the hover.
+                "label": d["day"][5:] if i % every == 0 else "",
+                "title": f"{d['day']}: {fmt_tokens(t)} tokens, {fmt_cost(c)}",
             }
         )
-    busiest = days[values.index(peak)]["day"] if days and peak > 0 else None
-    what = "Tokens" if key == "tokens" else "Cost"
     if days:
-        summary = f"{what} per day, {days[0]['day']} to {days[-1]['day']}, {len(days)} active days"
-        summary += f"; highest {fmt(peak)}{unit} on {busiest}" if busiest else "; all zero"
+        summary = f"Tokens and cost per day, {days[0]['day']} to {days[-1]['day']}, {len(days)} active days"
+        for what, values, fmt in (("tokens", tokens, fmt_tokens), ("cost", costs, fmt_cost)):
+            peak = max(values)
+            if peak > 0:
+                summary += f"; highest {what} {fmt(peak)} on {days[values.index(peak)]['day']}"
     else:
-        summary = f"{what} per day: no data"
+        summary = "Tokens and cost per day: no data"
     return {
         "width": max(len(days), 1) * DAY_SLOT,
         "height": PLOT_HEIGHT,
-        "bars": bars,
-        "peak": fmt(peak),
-        "first": days[0]["day"] if days else "",
-        "last": days[-1]["day"] if days else "",
+        "slots": slots,
+        "gridlines": [round(PLOT_HEIGHT * i / AXIS_STEPS, 2) for i in range(AXIS_STEPS)],
+        "tokens_ticks": _ticks(tokens_top, fmt_tokens),
+        "cost_ticks": _ticks(cost_top, _axis_cost),
         "summary": summary,
     }
 
@@ -130,8 +166,7 @@ def ranked(rows: list[dict], what: str) -> dict:
 
 def metrics_charts(metrics: dict) -> dict:
     return {
-        "tokens": daily(metrics["by_day"], "tokens", " tokens"),
-        "cost": daily(metrics["by_day"], "cost", ""),
+        "daily": daily(metrics["by_day"]),
         "models": ranked(metrics["by_model"], "model"),
         "modes": ranked(metrics["by_mode"], "mode"),
     }

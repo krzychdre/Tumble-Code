@@ -4,7 +4,9 @@ They used to be three Chart.js canvases (a 290 KB script, drawn after load,
 with a dual-axis tokens-and-cost chart). Now the page itself carries them,
 like the grade and kind bars: no script, they follow the theme through CSS
 classes (no colour in the markup), they print, and each is role="img" with
-a summary, linked to the table that holds the same figures.
+a summary, linked to the table that holds the same figures. Tokens and cost
+per day share one plot with an axis each, and the legend's checkboxes hide
+either series without a script.
 """
 
 import re
@@ -50,9 +52,8 @@ async def test_the_charts_are_inline_svg_and_chart_js_is_gone(client, session_fa
     assert 'id="metrics-data"' not in html
     assert "<canvas" not in html
     charts = [s for s in _svgs(html) if 'class="chart-svg' in s]
-    # Tokens per day and cost per day are two charts (never one with two
-    # y-axes), then models and modes.
-    assert len(charts) == 4
+    # Tokens and cost per day on one plot, then models and modes.
+    assert len(charts) == 3
     for svg in charts:
         opening = svg[:svg.index(">")]
         assert 'role="img"' in opening and 'aria-label="' in opening
@@ -70,7 +71,11 @@ async def test_each_chart_points_at_the_table_with_its_figures(client, session_f
         assert re.search(rf'<table[^>]*id="{table_id}"', html), table_id
 
 
-async def test_daily_bars_are_scaled_to_the_busiest_day(client, session_factory):
+def _bar_heights(svg: str, series: str) -> list[float]:
+    return [float(h) for h in re.findall(rf'<rect class="chart-bar [^"]*{series}"[^>]*height="([\d.]+)"', svg)]
+
+
+async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(client, session_factory):
     html = await _page(
         client,
         session_factory,
@@ -80,19 +85,50 @@ async def test_daily_bars_are_scaled_to_the_busiest_day(client, session_factory)
             _llm_event(created_at=_days(3)[2], tin=2000, tout=0, cost=0.2),
         ],
     )
-    tokens = next(s for s in _svgs(html) if "chart-daily-tokens" in s)
-    heights = [float(h) for h in re.findall(r'<rect class="chart-bar[^"]*"[^>]*height="([\d.]+)"', tokens)]
-    assert heights == [25.0, 100.0, 50.0]
-    titles = [unescape(t) for t in re.findall(r"<title>(.*?)</title>", tokens)]
-    assert titles == ["2026-09-20: 1k tokens", "2026-09-21: 4k tokens", "2026-09-22: 2k tokens"]
-    summary = unescape(re.search(r'aria-label="([^"]+)"', tokens).group(1))
-    assert "4k" in summary and "2026-09-21" in summary
-    cost = next(s for s in _svgs(html) if "chart-daily-cost" in s)
-    heights = [float(h) for h in re.findall(r'<rect class="chart-bar[^"]*"[^>]*height="([\d.]+)"', cost)]
-    assert heights == [100.0, 20.0, 40.0]
+    daily = next(s for s in _svgs(html) if "chart-daily" in s)
+    # Each series against the top of its own axis: 4k tokens fills the token
+    # axis exactly, the busiest cost ($0.50) sits under a "nice" $0.60.
+    assert _bar_heights(daily, "series-tokens") == [25.0, 100.0, 50.0]
+    assert _bar_heights(daily, "series-cost") == [83.33, 16.67, 33.33]
+    titles = [unescape(t) for t in re.findall(r"<title>(.*?)</title>", daily)]
+    assert titles == [
+        "2026-09-20: 1k tokens, $0.5000",
+        "2026-09-21: 4k tokens, $0.1000",
+        "2026-09-22: 2k tokens, $0.2000",
+    ]
+    summary = unescape(re.search(r'aria-label="([^"]+)"', daily).group(1))
+    assert "highest tokens 4k on 2026-09-21" in summary and "highest cost $0.5000 on 2026-09-20" in summary
+    # Two axes of five ticks each, top down, so the gridlines are shared.
+    def axis(cls: str) -> list[str]:
+        ticks = re.search(rf'class="chart-yaxis {cls}"[^>]*>(.*?)</div>', html).group(1)
+        return re.findall(r"<span>(.*?)</span>", ticks)
+
+    assert axis("axis-tokens") == ["4k", "3k", "2k", "1k", "0"]
+    assert axis("axis-cost") == ["$0.6", "$0.45", "$0.3", "$0.15", "$0"]
+    # The legend toggles are real checkboxes, checked by default.
+    for series in ("tokens", "cost"):
+        assert re.search(rf'<input type="checkbox" class="series-toggle toggle-{series}" checked>', html)
     # The same figures as a table.
     table = re.search(r'<table[^>]*id="table-daily".*?</table>', html, re.DOTALL).group(0)
     assert "2026-09-21" in table and "$0.1000" in table
+
+
+def test_axis_top_is_a_nice_number_just_above_the_peak():
+    from src.web.presenters.charts import _axis_top
+
+    assert _axis_top(0) == 0
+    assert _axis_top(4000) == 4000
+    assert _axis_top(253_700_000) == 320_000_000
+    assert _axis_top(82.53) == 100
+
+
+def test_day_labels_thin_out_on_a_long_period():
+    from src.web.presenters.charts import daily
+
+    days = [{"day": f"2026-08-{i + 1:02d}", "tokens": 1, "cost": 0} for i in range(30)]
+    labels = [s["label"] for s in daily(days)["slots"]]
+    assert sum(1 for label in labels if label) <= 12
+    assert labels[0] == "08-01"
 
 
 async def test_ranked_bars_fold_the_tail_and_escape_names(client, session_factory):
