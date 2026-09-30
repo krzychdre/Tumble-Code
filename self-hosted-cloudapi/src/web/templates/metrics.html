@@ -134,14 +134,29 @@
    geometry): no script, they print, and every mark is coloured by a class
    that reads the theme's tokens. Each is an image with a summary, pointing
    at the table that holds the same figures. #}
-{% macro daily_chart(c, cls, bar_cls) %}
-<svg class="chart-svg chart-daily {{ cls }}" viewBox="0 0 {{ c.width }} {{ c.height }}" preserveAspectRatio="none"
-     role="img" aria-label="{{ c.summary }}" aria-describedby="table-daily">
-  {% for b in c.bars %}
-  <g class="chart-mark"><title>{{ b.title }}</title><rect class="chart-hit" x="{{ b.slot_x }}" y="0" width="10" height="{{ c.height }}"></rect><rect class="chart-bar {{ bar_cls }}" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}"></rect></g>
-  {% endfor %}
-  <line class="chart-axis" x1="0" y1="{{ c.height }}" x2="{{ c.width }}" y2="{{ c.height }}" vector-effect="non-scaling-stroke"></line>
-</svg>
+{% macro daily_chart(c) %}
+{# Tokens and cost on one plot, each on its own axis (tokens left, cost right).
+   The legend is two checkboxes; the stylesheet hides a series and its axis
+   when its box is cleared (:has), so the toggle needs no script. #}
+<div class="chart-combo">
+  <div class="chart-legend" role="group" aria-label="Series shown">
+    <label class="legend-key key-tokens"><input type="checkbox" class="series-toggle toggle-tokens" checked><i></i>Tokens</label>
+    <label class="legend-key key-cost"><input type="checkbox" class="series-toggle toggle-cost" checked><i></i>Cost</label>
+  </div>
+  <div class="chart-plot">
+    <div class="chart-yaxis axis-tokens" aria-hidden="true">{% for t in c.tokens_ticks %}<span>{{ t }}</span>{% endfor %}</div>
+    <svg class="chart-svg chart-daily" viewBox="0 0 {{ c.width }} {{ c.height }}" preserveAspectRatio="none"
+         role="img" aria-label="{{ c.summary }}" aria-describedby="table-daily">
+      {% for y in c.gridlines %}<line class="chart-grid-line" x1="0" y1="{{ y }}" x2="{{ c.width }}" y2="{{ y }}" vector-effect="non-scaling-stroke"></line>{% endfor %}
+      {% for s in c.slots %}
+      <g class="chart-mark"><title>{{ s.title }}</title><rect class="chart-hit" x="{{ s.slot_x }}" y="0" width="10" height="{{ c.height }}"></rect><rect class="chart-bar chart-bar-tokens series-tokens" x="{{ s.tokens.x }}" y="{{ s.tokens.y }}" width="{{ s.tokens.width }}" height="{{ s.tokens.height }}"></rect><rect class="chart-bar chart-bar-cost series-cost" x="{{ s.cost.x }}" y="{{ s.cost.y }}" width="{{ s.cost.width }}" height="{{ s.cost.height }}"></rect></g>
+      {% endfor %}
+      <line class="chart-axis" x1="0" y1="{{ c.height }}" x2="{{ c.width }}" y2="{{ c.height }}" vector-effect="non-scaling-stroke"></line>
+    </svg>
+    <div class="chart-yaxis axis-cost" aria-hidden="true">{% for t in c.cost_ticks %}<span>{{ t }}</span>{% endfor %}</div>
+    <div class="chart-days" aria-hidden="true">{% for s in c.slots %}<span>{{ s.label }}</span>{% endfor %}</div>
+  </div>
+</div>
 {% endmacro %}
 {% macro ranked_chart(c, cls, table_id) %}
 <svg class="chart-svg chart-ranked {{ cls }}" width="100%" height="{{ c.height }}"
@@ -159,18 +174,7 @@
 <section class="chart-grid">
   <div class="chart-card chart-wide">
     <h2 class="chart-title">Tokens &amp; cost per day</h2>
-    {# Two charts on one time axis, not one chart with two y-axes. #}
-    <div class="chart-daily-pair">
-      <div class="chart-row">
-        <span class="chart-row-label">Tokens <b>{{ charts.tokens.peak }}</b> max</span>
-        {{ daily_chart(charts.tokens, 'chart-daily-tokens', 'chart-bar-tokens') }}
-      </div>
-      <div class="chart-row">
-        <span class="chart-row-label">Cost <b>{{ charts.cost.peak }}</b> max</span>
-        {{ daily_chart(charts.cost, 'chart-daily-cost', 'chart-bar-cost') }}
-      </div>
-      <div class="chart-days"><span>{{ charts.tokens.first }}</span><span>{{ charts.tokens.last }}</span></div>
-    </div>
+    {{ daily_chart(charts.daily) }}
     <details class="chart-table">
       <summary>Show as a table</summary>
       <table class="breakdown" id="table-daily">
