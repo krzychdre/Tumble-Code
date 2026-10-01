@@ -44,7 +44,9 @@ vi.mock("react-virtuoso", () => ({
 
 const mockPostMessage = vscode.postMessage as ReturnType<typeof vi.fn>
 
-const now = Date.now()
+// Noon today: "now - 1s" must stay on today's date whatever time the suite runs
+// (right after midnight it used to land on yesterday).
+const now = new Date().setHours(12, 0, 0, 0)
 const DAY = 86400000
 
 const task = (id: string, ts: number, extra: Record<string, unknown> = {}) => ({
