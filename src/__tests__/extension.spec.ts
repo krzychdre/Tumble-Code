@@ -109,7 +109,8 @@ vi.mock("../shared/package", () => ({
 	},
 }))
 
-vi.mock("../shared/language", () => ({
+vi.mock("@roo-code/types", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@roo-code/types")>()),
 	formatLanguage: vi.fn().mockReturnValue("en"),
 }))
 

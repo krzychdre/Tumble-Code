@@ -16,12 +16,12 @@ import {
 	isRetiredProvider,
 	resolveSettings,
 	experimentDefault,
+	formatLanguage,
 } from "@roo-code/types"
 import { CloudService, getRooCodeApiUrl } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { defaultModeSlug } from "../../shared/modes"
-import { formatLanguage } from "../../shared/language"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { resolveCustomSoundUri } from "../../integrations/misc/custom-sounds"
 import { perfCounters } from "../../utils/perfCounters"

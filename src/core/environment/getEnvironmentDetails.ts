@@ -5,9 +5,8 @@ import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
 import delay from "delay"
 
-import { type ExperimentId, SETTINGS_DEFAULTS } from "@roo-code/types"
+import { type ExperimentId, SETTINGS_DEFAULTS, formatLanguage } from "@roo-code/types"
 
-import { formatLanguage } from "../../shared/language"
 import { getFullModeDetails } from "../prompts/modeDetails"
 import { getApiMetrics } from "../../shared/getApiMetrics"
 import { listFiles } from "../../services/glob/list-files"

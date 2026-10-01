@@ -2,10 +2,9 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import * as vscode from "vscode"
 
-import { type Language, type WebviewMessage } from "@roo-code/types"
+import { type Language, type WebviewMessage, formatLanguage } from "@roo-code/types"
 
 import { Package } from "../../shared/package"
-import { formatLanguage } from "../../shared/language"
 import { getHmrHtml, getProductionHtml, type WebviewHtmlOptions } from "./WebviewHtml"
 import { ClineProvider } from "./ClineProvider"
 import { registerPlanReviewFile, unregisterPlanReviewFile } from "./planReviewRegistry"
