@@ -12,7 +12,6 @@ import {
 	SEARCH_TASK_HISTORY_RESULT_MARKER,
 	artifactSearchSources,
 	clampMaxResults,
-	compileHistoryQuery,
 	extractMessageText,
 	formatHistorySearchOutcome,
 	messageSearchSources,
@@ -21,6 +20,7 @@ import {
 	searchTaskHistoryCorpus,
 	type TaskArtifactText,
 } from "../searchTaskHistory"
+import { compileHistoryQuery } from "../searchTaskHistoryQuery"
 
 /** Builds a text message with an explicit timestamp. */
 function message(role: "user" | "assistant", text: string, ts: number): ApiMessage {
