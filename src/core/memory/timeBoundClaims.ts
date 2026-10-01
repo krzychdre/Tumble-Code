@@ -99,11 +99,11 @@ function clauseOf(part: string): string {
 }
 
 /**
- * The time-bound clauses of a text, each an exact substring of it, in order,
- * without duplicates. Fenced code blocks are skipped.
+ * The clauses of a text, line by line, each an exact substring of it without
+ * the list bullet or heading mark in front. Fenced code blocks are skipped.
  */
-export function findTimeBoundClauses(text: string): string[] {
-	const found: string[] = []
+export function splitClauses(text: string): string[] {
+	const clauses: string[] = []
 	let inFence = false
 	for (const line of text.split("\n")) {
 		if (/^\s*(```|~~~)/.test(line)) {
@@ -113,9 +113,21 @@ export function findTimeBoundClauses(text: string): string[] {
 		if (inFence) continue
 		for (const part of splitLine(line).parts) {
 			const clause = clauseOf(part)
-			if (clause && clause.length <= MAX_CLAUSE_CHARS && isTimeBound(clause) && !found.includes(clause)) {
-				found.push(clause)
-			}
+			if (clause) clauses.push(clause)
+		}
+	}
+	return clauses
+}
+
+/**
+ * The time-bound clauses of a text, each an exact substring of it, in order,
+ * without duplicates. Fenced code blocks are skipped.
+ */
+export function findTimeBoundClauses(text: string): string[] {
+	const found: string[] = []
+	for (const clause of splitClauses(text)) {
+		if (clause.length <= MAX_CLAUSE_CHARS && isTimeBound(clause) && !found.includes(clause)) {
+			found.push(clause)
 		}
 	}
 	return found

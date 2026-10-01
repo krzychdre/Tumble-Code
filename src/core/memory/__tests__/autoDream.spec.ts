@@ -9,6 +9,7 @@ import {
 	_inFlightDreamsCount,
 	type AutoDreamConfig,
 } from "../autoDream"
+import { CLAIM_CHECK_SYSTEM_PROMPT } from "../claimCheck"
 import { initMemoryPaths, resetMemoryPaths } from "../paths"
 import * as lock from "../consolidationLock"
 
@@ -455,5 +456,55 @@ describe("drainPendingDreams (MEM-2)", () => {
 
 		acquireSpy.mockRestore()
 		rollbackSpy.mockRestore()
+	})
+})
+
+describe("autoDream claim check", () => {
+	let tmpBase: string
+	const cwd = "/fake/cwd"
+	const baseConfig: AutoDreamConfig = { enabled: true, minHours: 24, minSessions: 5 }
+
+	afterEach(async () => {
+		resetAutoDreamState()
+		resetMemoryPaths()
+		vi.useRealTimers()
+		if (tmpBase) await fs.rm(tmpBase, { recursive: true, force: true })
+	})
+
+	it("settles a claim a newer memory resolves and reports it via onImproved", async () => {
+		const now = Date.now()
+		vi.setSystemTime(now)
+		tmpBase = await fs.mkdtemp(path.join(os.tmpdir(), "roo-dream-"))
+		initMemoryPaths(tmpBase, () => ({}))
+		const memDir = path.join(tmpBase, "memory", "projects", "_fake_cwd", "memory")
+		await fs.mkdir(memDir, { recursive: true })
+		const tokens = path.join(memDir, "project_tokens.md")
+		const audit = path.join(memDir, "project_audit.md")
+		await fs.writeFile(
+			tokens,
+			"---\ndescription: UI tokens merged; VSIX rebuild owed\ntype: project\n---\n\nTokens.\n",
+		)
+		await fs.writeFile(audit, "---\ndescription: Build audit\ntype: project\n---\n\nVSIX rebuilt from main.\n")
+		await fs.utimes(tokens, (now - 3 * 86_400_000) / 1000, (now - 3 * 86_400_000) / 1000)
+		await fs.utimes(audit, (now - 86_400_000) / 1000, (now - 86_400_000) / 1000)
+
+		const acquireSpy = vi.spyOn(lock, "tryAcquireConsolidationLock").mockResolvedValue(0)
+		const runner = vi.fn(async (system: string) => (system === CLAIM_CHECK_SYSTEM_PROMPT ? "DONE" : "KEEP"))
+		let improved: string[] = []
+		await executeAutoDream({
+			cwd,
+			isMainAgent: true,
+			config: baseConfig,
+			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
+			currentTaskId: "current",
+			query: runner,
+			onImproved: (_n, paths) => (improved = paths),
+		})
+		await drainPendingDreams(1000)
+
+		expect(runner.mock.calls.filter(([system]) => system === CLAIM_CHECK_SYSTEM_PROMPT)).toHaveLength(1)
+		expect(improved).toEqual([tokens])
+		expect(await fs.readFile(tokens, "utf-8")).toContain("description: UI tokens merged\n")
+		acquireSpy.mockRestore()
 	})
 })

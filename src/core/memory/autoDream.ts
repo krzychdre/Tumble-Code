@@ -18,12 +18,16 @@
  * The consolidation itself is small and mostly deterministic, so it works on
  * small local models (the earlier design ran a 10-turn agent that re-sent a
  * 25-60k token prompt on every turn):
- * 1. the code picks at most {@link MAX_DREAM_QUERIES} pairs of memories that
+ * 1. the claim check ({@link verifyTimeBoundClaims}) settles time-bound
+ *    clauses ("VSIX rebuild owed") that git or a newer memory shows finished:
+ *    one-word DONE/STILL answers, at most `MAX_CLAIM_QUERIES` per dream;
+ * 2. the code picks at most {@link MAX_DREAM_QUERIES} pairs of memories that
  *    look like the same topic (same type, overlapping name + description words);
- * 2. for each pair ONE small completion answers KEEP, DROP 1/2 or MERGE with
+ * 3. for each pair ONE small completion answers KEEP, DROP 1/2 or MERGE with
  *    the merged text; a merge that loses too much text is refused;
- * 3. the code repairs the MEMORY.md index (dead links out, unindexed files in).
- * A folded or dropped memory moves to `.archive/`, it is never deleted.
+ * 4. the code repairs the MEMORY.md index (dead links out, unindexed files in).
+ * A folded or dropped memory moves to `.archive/`, it is never deleted, and a
+ * file the claim check edits is copied there first.
  */
 
 import fs from "fs/promises"
@@ -40,6 +44,8 @@ import { drainInFlight } from "./extractMemories"
 import { type MemoryHeader, scanMemoryFiles } from "./memoryScan"
 import { archiveMemory, rewriteMemoryBody, syncMemoryIndex } from "./memoryFiles"
 import { type SideQuery } from "./relevance"
+import { verifyTimeBoundClaims } from "./claimCheck"
+import { type ClaimEvidence, type ClaimRef } from "./timeBoundClaims"
 
 /** Scan throttle: don't re-check the session gate more often than this. */
 const SESSION_SCAN_INTERVAL_MS = 10 * 60 * 1000 // 10 min
@@ -62,6 +68,8 @@ export interface AutoDreamContext {
 	currentTaskId?: string
 	/** The one-shot completion each merge decision asks. */
 	query: SideQuery
+	/** Looks up the refs a time-bound clause names (git); without it only newer memories count as evidence. */
+	evidence?: (refs: ReadonlyArray<ClaimRef>, signal: AbortSignal) => Promise<ClaimEvidence[]>
 	/** Called with an "Improved N memories" notice on success (may be a no-op). */
 	onImproved?: (count: number, paths: string[]) => void
 }
@@ -248,17 +256,29 @@ async function decidePair(
 }
 
 /**
- * One consolidation pass: merge decisions on the candidate pairs, then the
- * index repair. Returns the memory files changed (archived ones included).
+ * One consolidation pass: the claim check, merge decisions on the candidate
+ * pairs, then the index repair. Returns the memory files changed (archived
+ * ones included).
  */
-export async function consolidateMemories(memoryDir: string, query: SideQuery, signal: AbortSignal): Promise<string[]> {
-	const changed: string[] = []
+export async function consolidateMemories(
+	memoryDir: string,
+	query: SideQuery,
+	signal: AbortSignal,
+	evidence?: AutoDreamContext["evidence"],
+): Promise<string[]> {
+	const changed = await verifyTimeBoundClaims({
+		memoryDir,
+		memories: await scanMemoryFiles(memoryDir, signal),
+		query,
+		evidence,
+		signal,
+	})
 	for (const pair of findMergeCandidates(await scanMemoryFiles(memoryDir, signal))) {
 		if (signal.aborted) throw new Error("aborted")
 		changed.push(...(await decidePair(memoryDir, pair, query, signal)))
 	}
 	await syncMemoryIndex(memoryDir, await scanMemoryFiles(memoryDir, signal))
-	return changed
+	return [...new Set(changed)]
 }
 
 /**
@@ -314,7 +334,7 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 	// without a use-before-assignment error.
 	const run: Promise<void> | undefined = (async () => {
 		try {
-			const changed = await consolidateMemories(memoryDir, context.query, controller.signal)
+			const changed = await consolidateMemories(memoryDir, context.query, controller.signal, context.evidence)
 			if (changed.length > 0 && context.onImproved) {
 				context.onImproved(changed.length, changed)
 			}

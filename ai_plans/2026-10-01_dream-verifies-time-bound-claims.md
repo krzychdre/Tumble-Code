@@ -76,6 +76,18 @@ For each time-bound clause of the description, the MEMORY.md index line and the 
    directory's frontmatter as real YAML.
 5. STILL: only the check state is written.
 
+Implementation notes (branch 4, `claimCheck.ts`):
+
+- The cap of 40 examined clauses counts only clauses that reach the evidence stage (refs with a lookup wired, or a
+  newer statement found). Clauses nothing could settle cost no lookup and are skipped without counting, so they do
+  not use up the budget meant for the rest of the store.
+- A DONE whose edit could not drop the clause (a clause that is the whole index title) is remembered and not asked
+  again while the facts stay the same.
+- An edited memory keeps its mtime: the rest of the note is as old as before, and a fresh mtime would hide the newer
+  notes that could settle its remaining clauses.
+- The git lookup is injected (`evidence` on `AutoDreamContext` and `consolidateMemories`); until branch 2 is wired,
+  only newer memories count as evidence.
+
 ### 4. Recall warns about unresolved time-bound clauses (`surfacing.ts`)
 
 When a surfaced memory is at least a day old and still contains time-bound clauses, its header lists up to 3 of
