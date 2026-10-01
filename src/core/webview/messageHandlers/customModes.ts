@@ -11,7 +11,7 @@ import { openFile } from "../../../integrations/misc/open-file"
 import { defaultModeSlug } from "../../../shared/modes"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export"
 import { fileExistsAtPath } from "../../../utils/fs"
-import { getWorkspacePath } from "../../../utils/path"
+import { modeRulesDir } from "../../config/modeRulesDir"
 import type { DomainHandlerMap } from "./types"
 
 export const customModesHandlers: DomainHandlerMap<"customModes"> = {
@@ -86,23 +86,11 @@ export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 			// Determine the scope based on source (project or global)
 			const scope = modeToDelete.source || "global"
 
-			// Determine the rules folder path
-			let rulesFolderPath: string
-			if (scope === "project") {
-				const workspacePath = getWorkspacePath()
-				if (workspacePath) {
-					rulesFolderPath = path.join(workspacePath, ".roo", `rules-${message.slug}`)
-				} else {
-					rulesFolderPath = path.join(".roo", `rules-${message.slug}`)
-				}
-			} else {
-				// Global scope - use OS home directory
-				const homeDir = os.homedir()
-				rulesFolderPath = path.join(homeDir, ".roo", `rules-${message.slug}`)
-			}
+			// A project mode has no rules folder while no workspace is open.
+			const rulesFolderPath = await modeRulesDir(message.slug, scope)
 
 			// Check if the rules folder exists
-			const rulesFolderExists = await fileExistsAtPath(rulesFolderPath)
+			const rulesFolderExists = rulesFolderPath ? await fileExistsAtPath(rulesFolderPath) : false
 
 			// If this is a check request, send back the folder info
 			if (message.checkOnly) {
@@ -118,7 +106,7 @@ export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 			await provider.customModesManager.deleteCustomMode(message.slug)
 
 			// Delete the rules folder if it exists
-			if (rulesFolderExists) {
+			if (rulesFolderPath && rulesFolderExists) {
 				try {
 					await fs.rm(rulesFolderPath, { recursive: true, force: true })
 					provider.log(`Deleted rules folder for mode ${message.slug}: ${rulesFolderPath}`)
