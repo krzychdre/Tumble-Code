@@ -20,6 +20,7 @@ import {
 	tomlQuery,
 	vueQuery,
 	luaQuery,
+	scalaQuery,
 	systemrdlQuery,
 	tlaPlusQuery,
 	zigQuery,
@@ -73,8 +74,7 @@ export const TREE_SITTER_GRAMMARS: Readonly<Record<string, TreeSitterGrammar>> =
 	htm: { wasm: "html", query: htmlQuery },
 	ml: { wasm: "ocaml", query: ocamlQuery },
 	mli: { wasm: "ocaml", query: ocamlQuery },
-	// Temporarily uses the Lua query until a Scala query is implemented.
-	scala: { wasm: "scala", query: luaQuery },
+	scala: { wasm: "scala", query: scalaQuery },
 	sol: { wasm: "solidity", query: solidityQuery },
 	toml: { wasm: "toml", query: tomlQuery },
 	vue: { wasm: "vue", query: vueQuery },
