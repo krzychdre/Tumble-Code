@@ -16,7 +16,7 @@ import { compileHistoryQuery, type HistoryQueryMode } from "./searchTaskHistoryQ
  * A long task loses its early turns twice over:
  *
  * 1. Condense replaces the older prefix with a summary. That pass is
- *    non-destructive on disk (`src/core/condense/index.ts` tags the prefix with
+ *    non-destructive on disk (`src/core/condense/summarize.ts` tags the prefix with
  *    `condenseParent` and keeps every message), so text the model can no longer
  *    see after a condense is still in `api_conversation_history.json` verbatim.
  * 2. The deterministic pruner (`src/core/condense/toolResultPruner.ts`) and the
