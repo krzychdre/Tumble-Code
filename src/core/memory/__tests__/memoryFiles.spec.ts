@@ -100,10 +100,13 @@ describe("memoryFiles", () => {
 			const older = path.join(memDir, "feedback_pnpm_only.md")
 			await fs.utimes(older, 1_000, 1_000)
 			const query = vi.fn(
-				async () => "MERGE\nUse pnpm, never npm\nUse pnpm.\nWhy: npm breaks the lockfile.",
+				async (_system: string, _user: string, _signal: AbortSignal) =>
+					"MERGE\nUse pnpm, never npm\nUse pnpm.\nWhy: npm breaks the lockfile.",
 			)
 			const changed = await consolidateMemories(memDir, query, signal)
 			expect(changed).toHaveLength(2)
+			// Merged text is new memory text, so it is asked for in English.
+			expect(query.mock.calls[0][0]).toContain("Write the summary and the merged text in English")
 			const merged = await fs.readFile(older, "utf-8")
 			expect(merged).toContain("description: Use pnpm, never npm\n")
 			expect(merged).toContain("Why: npm breaks the lockfile.")

@@ -200,6 +200,7 @@ export const EXTRACTION_SYSTEM_PROMPT = [
 	"<one-line summary>",
 	"<details, 1 to 5 lines>",
 	"",
+	"Write in English, even if the chat is in another language; keep quoted user words, names, paths and code unchanged.",
 	"To add to an existing memory, use its file name as <short_name>.",
 	"Write nothing else.",
 	"",

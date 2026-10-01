@@ -51,7 +51,10 @@ const MARKER_SOURCES = [
 	// "is STALE vs main", not "a stale closure".
 	String.raw`\b(?:is|are|still|now) (?:\w+ )?(?:stale|outdated)\b`,
 	String.raw`\b(?:stale|outdated) (?:vs|against|compared)\b`,
-	// Polish (\b is ASCII-only in JS, so letters are fenced with \p{L})
+	// Polish, kept for memories written before the English-only rule (the
+	// shared directory still holds some). Other languages are not matched on
+	// purpose: new memories are written in English. \b is ASCII-only in JS,
+	// so letters are fenced with \p{L}.
 	String.raw`(?<!\p{L})jeszcze nie(?!\p{L})`,
 	String.raw`(?<!\p{L})nie ?(?:(?:jest|są|był\p{L}*|został\p{L}*) )?(?:z|s)?(?:mergowan|scalon|wdrożon|wypchnię|przebudowan)`,
 	String.raw`(?<!\p{L})dopóki(?!\p{L})`,
