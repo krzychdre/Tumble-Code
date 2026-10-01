@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch: # Allows manual triggering.
 
+concurrency:
+  group: nightly-publish
+  cancel-in-progress: false
+
 jobs:
   publish-nightly:
     runs-on: ubuntu-latest
@@ -60,3 +64,16 @@ jobs:
             --target "${GITHUB_SHA}" \
             "${VSIX_PATH}"
           echo "Published nightly release nightly-v${VERSION} with asset ${VSIX_PATH}"
+      # Every push to main makes a release; keep only the newest ones so the
+      # releases page stays usable.
+      - name: Prune old nightly releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEEP: 10
+        run: |
+          gh release list --limit 1000 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | startswith("nightly-v"))] | sort_by(.createdAt) | reverse | .[env.KEEP | tonumber:] | .[].tagName' \
+            | while read -r tag; do
+                gh release delete "$tag" --yes --cleanup-tag
+                echo "Deleted $tag"
+              done
