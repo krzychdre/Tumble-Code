@@ -48,11 +48,7 @@ vi.mock("../providers", () => providerMocks)
 vi.mock("../providers/native-ollama", () => ({ NativeOllamaHandler: nativeOllamaMock }))
 
 import { buildApiHandler } from "../index"
-import {
-	providerIdsWithoutRuntimeHandler,
-	runtimeProviderRegistry,
-	type RuntimeProviderId,
-} from "../runtime-provider-registry"
+import { runtimeProviderRegistry, type RuntimeProviderId } from "../runtime-provider-registry"
 
 const runtimeProviderCases = [
 	["openrouter", "OpenRouterHandler"],
@@ -81,17 +77,9 @@ const asMockHandler = (handler: ReturnType<typeof buildApiHandler>): MockHandler
 	handler as unknown as MockHandlerInstance
 
 describe("runtimeProviderRegistry", () => {
-	it("covers every portable active/hidden provider that has a runtime handler", () => {
-		expect(providerIdsWithoutRuntimeHandler).toEqual(["gemini-cli"])
-
-		const expectedRuntimeProviderIds = activeProviderIds.filter(
-			(providerId) => !providerIdsWithoutRuntimeHandler.includes(providerId as "gemini-cli"),
-		)
-
-		expect(Object.keys(runtimeProviderRegistry).sort()).toEqual([...expectedRuntimeProviderIds].sort())
-		expect(runtimeProviderCases.map(([providerId]) => providerId).sort()).toEqual(
-			[...expectedRuntimeProviderIds].sort(),
-		)
+	it("covers every portable active/hidden provider", () => {
+		expect(Object.keys(runtimeProviderRegistry).sort()).toEqual([...activeProviderIds].sort())
+		expect(runtimeProviderCases.map(([providerId]) => providerId).sort()).toEqual([...activeProviderIds].sort())
 	})
 
 	it.each(runtimeProviderCases)("builds the %s handler and forwards its options", (apiProvider, providerClass) => {
@@ -132,11 +120,12 @@ describe("runtimeProviderRegistry", () => {
 		expect(handler.options).toEqual({ apiModelId: "claude-default" })
 	})
 
-	it("preserves the Anthropic fallback for a portable provider without a runtime handler", () => {
-		const handler = asMockHandler(buildApiHandler({ apiProvider: "gemini-cli", apiModelId: "gemini-model" }))
-
-		expect(handler.providerClass).toBe("AnthropicHandler")
-		expect(handler.options).toEqual({ apiModelId: "gemini-model" })
+	// gemini-cli never had a runtime handler: profiles naming it silently ran on
+	// the Anthropic handler (with an Anthropic key, if any). It is retired now.
+	it("rejects gemini-cli as retired instead of running it on the Anthropic handler", () => {
+		expect(() => buildApiHandler({ apiProvider: "gemini-cli", apiModelId: "gemini-model" })).toThrow(
+			'Sorry, provider "gemini-cli" is no longer supported.',
+		)
 	})
 
 	it("rejects an unknown provider ID instead of executing with a fallback", () => {

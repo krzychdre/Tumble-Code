@@ -289,9 +289,7 @@ export function resolveProviderModelSelection(
 			}
 		case "vscode-lm":
 			return { id: "vscode-lm", info: openAiModelInfoSaneDefaults, known: true }
-		// gemini-cli has no handler; the extension runs it on the Anthropic one.
 		case "anthropic":
-		case "gemini-cli":
 			return resolveAnthropicModel(settings, emptyModelId)
 		case "gemini":
 			return resolveGeminiModel(settings, emptyModelId)

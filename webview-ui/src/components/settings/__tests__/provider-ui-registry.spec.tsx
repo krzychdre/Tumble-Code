@@ -52,11 +52,6 @@ describe("providerUiRegistry", () => {
 			reason: "hidden-test-provider",
 			validation: providerValidationRegistry["fake-ai"],
 		})
-		expect(getProviderUiDefinition("gemini-cli")).toEqual({
-			status: "no-form",
-			reason: "headless-provider",
-			validation: providerValidationRegistry["gemini-cli"],
-		})
 	})
 
 	it("keeps the OpenAI alias routing explicit", () => {
@@ -75,7 +70,7 @@ describe("providerUiRegistry", () => {
 			props: { "data-testid": "anthropic-adapter" },
 		})
 		expect(render).toHaveBeenCalledWith(context)
-		expect(renderProviderForm("gemini-cli", context)).toBeNull()
+		expect(renderProviderForm("fake-ai", context)).toBeNull()
 
 		render.mockRestore()
 	})

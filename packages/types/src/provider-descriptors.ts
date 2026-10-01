@@ -496,7 +496,6 @@ export const PROVIDER_DESCRIPTORS = {
 		},
 		service: { name: "Google Gemini", url: "https://ai.google.dev" },
 	},
-	"gemini-cli": { form: { kind: "none" } },
 	mistral: {
 		form: {
 			kind: "fields",

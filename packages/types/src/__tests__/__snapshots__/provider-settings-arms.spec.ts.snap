@@ -35,7 +35,6 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
             "anthropic",
             "bedrock",
             "gemini",
-            "gemini-cli",
             "mistral",
             "moonshot",
             "minimax",
@@ -65,6 +64,7 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
             "sambanova",
             "unbound",
             "vercel-ai-gateway",
+            "gemini-cli",
           ],
           "type": "string",
         },
@@ -171,12 +171,6 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
     },
     "fakeAi": {},
     "geminiApiKey": {
-      "type": "string",
-    },
-    "geminiCliOAuthPath": {
-      "type": "string",
-    },
-    "geminiCliProjectId": {
       "type": "string",
     },
     "googleGeminiBaseUrl": {

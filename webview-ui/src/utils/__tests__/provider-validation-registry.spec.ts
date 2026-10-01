@@ -21,7 +21,6 @@ const validProviderConfigurations = {
 	anthropic: { apiKey: "key" },
 	bedrock: { awsRegion: "us-east-1" },
 	gemini: { geminiApiKey: "key" },
-	"gemini-cli": {},
 	mistral: { mistralApiKey: "key" },
 	moonshot: { moonshotApiKey: "key" },
 	minimax: { minimaxApiKey: "key" },

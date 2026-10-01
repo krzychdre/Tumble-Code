@@ -28,7 +28,6 @@ const expectedActiveProviderIds = [
 	"bedrock",
 	"deepseek",
 	"gemini",
-	"gemini-cli",
 	"mistral",
 	"moonshot",
 	"minimax",
@@ -56,6 +55,7 @@ const expectedRetiredProviderIds = [
 	"sambanova",
 	"unbound",
 	"vercel-ai-gateway",
+	"gemini-cli",
 ] as const
 
 const expectedSelectableProviderIds = [
@@ -126,7 +126,6 @@ describe("providerRegistry", () => {
 		expect(selectableDefinitions.every(({ lifecycle }) => lifecycle === "active")).toBe(true)
 		expect(activeDefinitions.filter(({ lifecycle }) => lifecycle === "hidden").map(({ id }) => id)).toEqual([
 			"fake-ai",
-			"gemini-cli",
 		])
 		expect(activeDefinitions.some(({ id }) => retiredIds.has(id))).toBe(false)
 	})
@@ -144,6 +143,7 @@ describe("providerRegistry", () => {
 		expect(classifyProvider("anthropic")).toBe("known-active")
 		expect(classifyProvider("fake-ai")).toBe("known-hidden")
 		expect(classifyProvider("groq")).toBe("retired")
+		expect(classifyProvider("gemini-cli")).toBe("retired")
 		expect(classifyProvider("future-provider")).toBe("unknown")
 		expect(classifyProvider(undefined)).toBe("unknown")
 	})

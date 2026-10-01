@@ -1053,83 +1053,6 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "type": "string",
         },
         "apiProvider": {
-          "const": "gemini-cli",
-          "type": "string",
-        },
-        "consecutiveMistakeLimit": {
-          "minimum": 0,
-          "type": "number",
-        },
-        "enableReasoningEffort": {
-          "type": "boolean",
-        },
-        "geminiCliOAuthPath": {
-          "type": "string",
-        },
-        "geminiCliProjectId": {
-          "type": "string",
-        },
-        "includeMaxTokens": {
-          "type": "boolean",
-        },
-        "modelMaxThinkingTokens": {
-          "type": "number",
-        },
-        "modelMaxTokens": {
-          "type": "number",
-        },
-        "modelTemperature": {
-          "type": [
-            "number",
-            "null",
-          ],
-        },
-        "rateLimitSeconds": {
-          "type": "number",
-        },
-        "reasoningEffort": {
-          "enum": [
-            "disable",
-            "none",
-            "minimal",
-            "low",
-            "medium",
-            "high",
-            "xhigh",
-            "max",
-          ],
-          "type": "string",
-        },
-        "slimHidesMcp": {
-          "type": "boolean",
-        },
-        "slimToolset": {
-          "type": "boolean",
-        },
-        "todoListEnabled": {
-          "type": "boolean",
-        },
-        "verbosity": {
-          "enum": [
-            "low",
-            "medium",
-            "high",
-          ],
-          "type": "string",
-        },
-      },
-      "required": [
-        "apiProvider",
-      ],
-      "type": "object",
-    },
-    {
-      "additionalProperties": false,
-      "properties": {
-        "apiModelId": {
-          "type": "string",
-        },
-        "apiProvider": {
           "const": "openai-codex",
           "type": "string",
         },
@@ -2066,8 +1989,6 @@ exports[`generated provider settings schemas > keeps the flat schema's keys in o
   "lmStudioSpeculativeDecodingEnabled",
   "googleGeminiBaseUrl",
   "geminiApiKey",
-  "geminiCliOAuthPath",
-  "geminiCliProjectId",
   "openAiNativeBaseUrl",
   "openAiNativeServiceTier",
   "openAiNativeApiKey",
@@ -2135,7 +2056,6 @@ exports[`generated provider settings schemas > keeps the flat schema, property o
             "anthropic",
             "bedrock",
             "gemini",
-            "gemini-cli",
             "mistral",
             "moonshot",
             "minimax",
@@ -2165,6 +2085,7 @@ exports[`generated provider settings schemas > keeps the flat schema, property o
             "sambanova",
             "unbound",
             "vercel-ai-gateway",
+            "gemini-cli",
           ],
           "type": "string",
         },
@@ -2271,12 +2192,6 @@ exports[`generated provider settings schemas > keeps the flat schema, property o
     },
     "fakeAi": {},
     "geminiApiKey": {
-      "type": "string",
-    },
-    "geminiCliOAuthPath": {
-      "type": "string",
-    },
-    "geminiCliProjectId": {
       "type": "string",
     },
     "googleGeminiBaseUrl": {
@@ -2924,8 +2839,6 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "lmStudioDraftModelId",
   "lmStudioSpeculativeDecodingEnabled",
   "googleGeminiBaseUrl",
-  "geminiCliOAuthPath",
-  "geminiCliProjectId",
   "openAiNativeBaseUrl",
   "openAiNativeServiceTier",
   "mistralCodestralUrl",
@@ -3518,35 +3431,6 @@ exports[`generated provider settings schemas > keeps the persisted provider conf
         },
         "providerId": {
           "const": "gemini",
-          "type": "string",
-        },
-      },
-      "required": [
-        "providerId",
-        "config",
-      ],
-      "type": "object",
-    },
-    {
-      "additionalProperties": false,
-      "properties": {
-        "config": {
-          "additionalProperties": false,
-          "properties": {
-            "apiModelId": {
-              "type": "string",
-            },
-            "geminiCliOAuthPath": {
-              "type": "string",
-            },
-            "geminiCliProjectId": {
-              "type": "string",
-            },
-          },
-          "type": "object",
-        },
-        "providerId": {
-          "const": "gemini-cli",
           "type": "string",
         },
       },

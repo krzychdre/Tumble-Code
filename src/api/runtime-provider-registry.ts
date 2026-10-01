@@ -48,19 +48,8 @@ import { resolveZAiModel } from "./providers/zai"
 import { getModelsFromCache } from "./providers/fetchers/modelCache"
 import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "./providers/fetchers/lmstudio"
 
-type PortableActiveProviderId = ActiveProviderDefinition["id"]
-
-/**
- * Portable active/hidden providers that do not have a dedicated runtime handler.
- *
- * `gemini-cli` is retained in the portable inventory for profile compatibility,
- * but the pre-registry factory had no matching case and therefore used the
- * Anthropic fallback. Keeping it outside the runtime registry preserves that
- * behavior without claiming that it has a runtime implementation.
- */
-export const providerIdsWithoutRuntimeHandler = ["gemini-cli"] as const satisfies readonly PortableActiveProviderId[]
-
-export type RuntimeProviderId = Exclude<PortableActiveProviderId, (typeof providerIdsWithoutRuntimeHandler)[number]>
+/** Every active and hidden provider has a runtime handler; retired and unknown ones cannot be executed. */
+export type RuntimeProviderId = ActiveProviderDefinition["id"]
 
 export type RuntimeProviderFactory = (options: ApiHandlerOptions) => ApiHandler
 
@@ -248,6 +237,6 @@ const runtimeProviderEntriesById: ReadonlyMap<string, RuntimeProviderEntry> = ne
 export const getRuntimeProviderEntry = (providerId: string | undefined): RuntimeProviderEntry | undefined =>
 	providerId ? runtimeProviderEntriesById.get(providerId) : undefined
 
-/** The capabilities of a profile's provider; none for providers without a runtime handler. */
+/** The capabilities of a profile's provider; none for retired and unknown providers. */
 export const getRuntimeProviderCapabilities = (providerId: string | undefined): RuntimeProviderCapabilities =>
 	getRuntimeProviderEntry(providerId)?.capabilities ?? withoutCapabilities

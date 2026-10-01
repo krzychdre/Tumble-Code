@@ -12,7 +12,7 @@
  * base-url field the `--base-url` flag writes.
  *
  * Persisted aliases:
- *  - "tumble" — the cloud provider id shipped by BR-09 (rebrand). The CLI has
+ *  - "tumble": the cloud provider id shipped by BR-09 (rebrand). The CLI has
  *    no cloud handler, so it maps to the openrouter provider settings.
  */
 
@@ -31,11 +31,8 @@ import {
  *   The CLI's @roo-code/vscode-shim mock exports no `lm` property, so the
  *   handler would throw at runtime.
  * - "fake-ai": hidden internal test provider, not an inference provider.
- * - "gemini-cli": hidden lifecycle without a runtime handler
- *   (providerIdsWithoutRuntimeHandler in src/api/runtime-provider-registry.ts);
- *   the extension falls back to the Anthropic handler, which is misleading.
  */
-export const excludedProviderIds = ["vscode-lm", "fake-ai", "gemini-cli"] as const satisfies readonly string[]
+export const excludedProviderIds = ["vscode-lm", "fake-ai"] as const satisfies readonly string[]
 
 export type ExcludedProviderId = (typeof excludedProviderIds)[number]
 
@@ -253,7 +250,7 @@ export function getBaseUrlFromEnv(provider: SupportedProvider): string | undefin
  * provider's own field (routers use provider-specific model id fields).
  *
  * Throws when a `baseUrl` is given for a provider whose settings schema has
- * no base-url field (decision 5 of ai_plans/2026-08-04_cli-provider-parity.md) —
+ * no base-url field (decision 5 of ai_plans/2026-08-04_cli-provider-parity.md),
  * instead of silently dropping it.
  */
 export function getProviderSettings(
