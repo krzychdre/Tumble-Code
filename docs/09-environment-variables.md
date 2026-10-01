@@ -50,8 +50,9 @@ a string literal. `packages/vscode-shim` still reads two `globalThis` slots by l
 
 ## CLI provider keys (`apps/cli/src/lib/utils/provider-types.ts`)
 
-The CLI reads `<PROVIDER>_API_KEY` and `<PROVIDER>_BASE_URL` from the environment when a profile does not carry them
-(`getApiKeyFromEnv` / `getBaseUrlFromEnv`). Key vars: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (openai and
+The CLI reads `<PROVIDER>_API_KEY` and `<PROVIDER>_BASE_URL` from the environment when neither a flag nor the settings
+file (or the mode's override) sets the value; they win over the CLI's own extension state (`getApiKeyFromEnv` /
+`getBaseUrlFromEnv`, called from `resolveProviderConfig` in `provider-config.ts`). Key vars: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (openai and
 openai-native), `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`, `LITELLM_API_KEY`, `DEEPSEEK_API_KEY`, `OLLAMA_API_KEY`
 (optional), `MISTRAL_API_KEY`, `MOONSHOT_API_KEY`, `MINIMAX_API_KEY`, `XAI_API_KEY`, `ZAI_API_KEY`. Base-URL vars:
 `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`, `OPENROUTER_BASE_URL`, `LITELLM_BASE_URL`,

@@ -485,7 +485,10 @@ lmstudio have no default model, so name one with `--model` or `model` in the
 settings file.
 
 For providers whose schema has a base-url setting, the CLI also honors a
-`*_BASE_URL` environment variable (and a generic `--base-url` flag).
+`*_BASE_URL` environment variable (and a generic `--base-url` flag). The order
+is the same as for the key: `--base-url` flag > `baseUrl` in the settings file
+(or the mode's override) > the environment variable > the CLI's own extension
+state.
 
 | Provider       | API Key Environment Variable  | Base URL Environment Variable |
 | -------------- | ----------------------------- | ----------------------------- |

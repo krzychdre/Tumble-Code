@@ -23,6 +23,8 @@ describe("resolveProviderConfig", () => {
 		delete process.env.OPENAI_API_KEY
 		delete process.env.OPENROUTER_API_KEY
 		delete process.env.LOCAL_LLM_KEY
+		delete process.env.OPENAI_BASE_URL
+		delete process.env.ANTHROPIC_BASE_URL
 	})
 
 	afterEach(() => {
@@ -134,6 +136,48 @@ describe("resolveProviderConfig", () => {
 			})
 
 			expect(resolved.baseUrl).toBe("http://b/v1")
+		})
+
+		it("falls back to the provider's base-url env var, then the fallback's base URL", () => {
+			const fallback = { provider: "anthropic", baseUrl: "https://shim.example" }
+
+			expect(resolveProviderConfig({ fallback, layers: [] }).baseUrl).toBe("https://shim.example")
+
+			process.env.ANTHROPIC_BASE_URL = "https://proxy.example"
+			expect(resolveProviderConfig({ fallback, layers: [] }).baseUrl).toBe("https://proxy.example")
+
+			process.env.OPENAI_BASE_URL = "http://localhost:8080/v1"
+			expect(resolveProviderConfig({ layers: [{ provider: "openai", model: "m" }] }).baseUrl).toBe(
+				"http://localhost:8080/v1",
+			)
+		})
+
+		it("a settings or flag base URL wins over the env var", () => {
+			process.env.OPENAI_BASE_URL = "http://env/v1"
+
+			expect(resolveProviderConfig({ layers: [{ provider: "openai", baseUrl: "http://a/v1" }] }).baseUrl).toBe(
+				"http://a/v1",
+			)
+			expect(
+				resolveProviderConfig({ layers: [{ provider: "openai" }, { baseUrl: "http://flag/v1" }] }).baseUrl,
+			).toBe("http://flag/v1")
+		})
+
+		it("reads only the active provider's env var, and an empty one counts as unset", () => {
+			process.env.OPENAI_BASE_URL = "http://env/v1"
+			expect(resolveProviderConfig({ layers: [{ provider: "anthropic" }] }).baseUrl).toBeUndefined()
+
+			process.env.ANTHROPIC_BASE_URL = ""
+			const fallback = { provider: "anthropic", baseUrl: "https://shim.example" }
+			expect(resolveProviderConfig({ fallback, layers: [] }).baseUrl).toBe("https://shim.example")
+		})
+
+		it("reaches the extension's provider settings", () => {
+			process.env.OPENAI_BASE_URL = "http://localhost:8080/v1"
+
+			const settings = toProviderSettings(resolveProviderConfig({ layers: [{ provider: "openai", model: "m" }] }))
+
+			expect(settings.openAiBaseUrl).toBe("http://localhost:8080/v1")
 		})
 	})
 
