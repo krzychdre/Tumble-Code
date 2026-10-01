@@ -165,7 +165,6 @@ interface CLIState {
 interface CLIActions {
 	// Message actions
 	addMessage: (msg: TUIMessage) => void
-	updateMessage: (id: string, content: string, partial?: boolean) => void
 
 	// Task actions
 	setPendingAsk: (ask: PendingAsk | null) => void
@@ -277,31 +276,6 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 		updated[existingIndex] = msg
 		set({ messages: updated })
 	},
-
-	updateMessage: (id, content, partial) =>
-		set((state) => {
-			const index = state.messages.findIndex((m) => m.id === id)
-
-			if (index === -1) {
-				return state
-			}
-
-			const existing = state.messages[index]
-
-			if (!existing) {
-				return state
-			}
-
-			const updated = [...state.messages]
-
-			updated[index] = {
-				...existing,
-				content,
-				partial: partial !== undefined ? partial : existing.partial,
-			}
-
-			return { messages: updated }
-		}),
 
 	setPendingAsk: (ask) => set({ pendingAsk: ask }),
 	setLoading: (loading) => {

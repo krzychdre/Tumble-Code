@@ -17,9 +17,6 @@ interface UIState {
 	showCustomInput: boolean
 	isTransitioningToCustomInput: boolean
 
-	// Focus management for scroll area vs input
-	manualFocus: "scroll" | "input" | null
-
 	// TODO viewer overlay
 	showTodoViewer: boolean
 
@@ -63,9 +60,6 @@ interface UIActions {
 	setShowCustomInput: (show: boolean) => void
 	setIsTransitioningToCustomInput: (transitioning: boolean) => void
 
-	// Focus management actions
-	setManualFocus: (focus: "scroll" | "input" | null) => void
-
 	// TODO viewer actions
 	setShowTodoViewer: (show: boolean) => void
 
@@ -83,9 +77,6 @@ interface UIActions {
 	setPickerState: (state: AutocompletePickerState<any>) => void
 
 	requestInput: (text: string | null) => void
-
-	// Reset all UI state to defaults
-	resetUIState: () => void
 }
 
 const initialState: UIState = {
@@ -94,7 +85,6 @@ const initialState: UIState = {
 	countdownSeconds: null,
 	showCustomInput: false,
 	isTransitioningToCustomInput: false,
-	manualFocus: null,
 	showTodoViewer: false,
 	showMcpPanel: false,
 	verboseTranscript: false,
@@ -119,7 +109,6 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 	setCountdownSeconds: (seconds) => set({ countdownSeconds: seconds }),
 	setShowCustomInput: (show) => set({ showCustomInput: show }),
 	setIsTransitioningToCustomInput: (transitioning) => set({ isTransitioningToCustomInput: transitioning }),
-	setManualFocus: (focus) => set({ manualFocus: focus }),
 	setShowTodoViewer: (show) => set({ showTodoViewer: show }),
 	setShowMcpPanel: (show) => set({ showMcpPanel: show }),
 	toggleVerboseTranscript: () =>
@@ -144,5 +133,4 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 		})),
 	setPickerState: (state) => set({ pickerState: state }),
 	requestInput: (text) => set({ requestedInput: text }),
-	resetUIState: () => set(initialState),
 }))

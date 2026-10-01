@@ -126,7 +126,7 @@ describe("useTaskSubmit conversation commands", () => {
 
 	beforeEach(() => {
 		useCLIStore.getState().reset()
-		useUIStateStore.getState().resetUIState()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 		sendToExtension = vi.fn()
 		runTask = vi.fn(async () => undefined)
 		resetTranscript = vi.fn()

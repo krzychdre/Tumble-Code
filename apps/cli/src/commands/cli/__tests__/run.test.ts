@@ -17,8 +17,8 @@ import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
 const mockGetOpenAiCodexAuthStatus = vi.hoisted(() => vi.fn(async () => ({ authenticated: true })))
 
 // Point the real settings storage at a temp dir via the leaf config-dir module.
-// The factory needs a concrete default: other storage modules call
-// getConfigDir() at import time (credentials.ts computes its file path).
+// The factory needs a concrete default for modules that call getConfigDir()
+// at import time.
 vi.mock("@/lib/storage/config-dir.js", () => ({
 	getConfigDir: vi.fn(() => path.join(os.tmpdir(), "cli-config-dir-default")),
 }))
@@ -1168,6 +1168,26 @@ describe("run clears the screen when the interactive UI starts", () => {
 		const warningIndex = errorSpy.mock.calls.findIndex(([line]) => String(line).includes("--terminal-shell"))
 		expect(warningIndex).toBeGreaterThanOrEqual(0)
 		expect(clearOrder).toBeLessThan(errorSpy.mock.invocationCallOrder[warningIndex]!)
+	})
+
+	// The first-run onboarding screen offered one choice and only printed how
+	// to set a key; a single line now says how to choose a provider.
+	it("prints a provider hint only when nothing names a provider", async () => {
+		vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+		vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+		const hints = () => logSpy.mock.calls.filter(([line]) => String(line).includes("No provider configured"))
+
+		await run("hello", baseFlags({ print: false }))
+
+		expect(hints()).toHaveLength(1)
+		expect(String(hints()[0]![0])).toContain(getSettingsPath())
+
+		logSpy.mockClear()
+		await saveSettings({ provider: "openrouter" })
+		await run("hello", baseFlags({ print: false }))
+
+		expect(hints()).toHaveLength(0)
 	})
 
 	it("leaves the screen alone in print mode", async () => {

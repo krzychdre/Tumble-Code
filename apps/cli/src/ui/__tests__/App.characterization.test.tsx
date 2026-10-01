@@ -223,7 +223,7 @@ describe("App characterization (recorded message sequences)", () => {
 		Object.defineProperty(process.stdout, "columns", { value: 100, configurable: true })
 		Object.defineProperty(process.stdout, "rows", { value: 40, configurable: true })
 		useCLIStore.getState().reset()
-		useUIStateStore.getState().resetUIState()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 		staticRegion.last = []
 	})
 

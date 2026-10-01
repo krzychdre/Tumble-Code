@@ -5,12 +5,12 @@ import { fileURLToPath } from "url"
 import pWaitFor from "p-wait-for"
 
 import type { TaskSessionEntry } from "@roo-code/core/cli"
-import type { Command, ModelRecord, WebviewMessage } from "@roo-code/types"
+import type { Command, WebviewMessage } from "@roo-code/types"
 import { getProviderDefaultModelId } from "@roo-code/types"
 
 import { ExtensionHost, type ExtensionHostOptions } from "@/agent/index.js"
 import { readWorkspaceTaskSessions } from "@/lib/task-history/index.js"
-import { loadSettings, loadToken, resolveMcpSettingsPath } from "@/lib/storage/index.js"
+import { loadSettings, resolveMcpSettingsPath } from "@/lib/storage/index.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { getApiKeyFromEnv } from "@/lib/utils/provider.js"
 import { isRecord } from "@/lib/utils/guards.js"
@@ -80,12 +80,6 @@ function outputModesText(modes: ModeLike[]): void {
 	}
 }
 
-function outputModelsText(models: ModelRecord): void {
-	for (const modelId of Object.keys(models).sort()) {
-		process.stdout.write(`${modelId}\n`)
-	}
-}
-
 function formatSessionTitle(task: string): string {
 	const compact = task.replace(/\s+/g, " ").trim()
 
@@ -106,7 +100,7 @@ function outputSessionsText(sessions: SessionLike[]): void {
 async function createListHost(options: BaseListOptions, hostOptions: ListHostOptions): Promise<ExtensionHost> {
 	const workspacePath = resolveWorkspacePath(options.workspace)
 	const extensionPath = resolveExtensionPath(options.extension)
-	const apiKey = options.apiKey || (await loadToken()) || getApiKeyFromEnv("anthropic")
+	const apiKey = options.apiKey || getApiKeyFromEnv("anthropic")
 	// The same global MCP file as a run uses. A settings file that does not
 	// parse must not break a listing, so it falls back to the default file.
 	const { mcpSettingsPath } = await loadSettings().catch(() => ({ mcpSettingsPath: undefined }))
@@ -273,22 +267,6 @@ export async function listModes(options: BaseListOptions): Promise<void> {
 
 		outputModesText(modes)
 	})
-}
-
-export async function listModels(options: BaseListOptions): Promise<void> {
-	const format = parseFormat(options.format)
-	const models: ModelRecord = {}
-
-	if (format === "json") {
-		outputJson({ models })
-		return
-	}
-
-	outputModelsText(models)
-
-	// Quiet the "options unused" lint; the CLI host isn't needed when there
-	// is no router-provided model list to query.
-	void options
 }
 
 export async function listSessions(options: BaseListOptions): Promise<void> {

@@ -4,15 +4,11 @@ import { DEFAULT_FLAGS, REASONING_EFFORTS } from "@/types/constants.js"
 import { VERSION } from "@/lib/utils/version.js"
 import {
 	run,
-	login,
-	logout,
-	status,
 	loginToOpenAiCodex,
 	logoutFromOpenAiCodex,
 	getOpenAiCodexAuthStatus,
 	listCommands,
 	listModes,
-	listModels,
 	listSessions,
 	upgrade,
 	doctor,
@@ -88,7 +84,7 @@ program
 
 const listCommand = program
 	.command("list")
-	.description("List commands, modes, models, or sessions")
+	.description("List commands, modes, or sessions")
 	.enablePositionalOptions()
 	.passThroughOptions()
 
@@ -96,22 +92,12 @@ const applyListOptions = (command: Command) =>
 	command
 		.option("-w, --workspace <path>", "Workspace directory path (defaults to current working directory)")
 		.option("-e, --extension <path>", "Path to the extension bundle directory")
-		.option("-k, --api-key <key>", "Tumble API key (falls back to saved login/session token)")
+		.option("-k, --api-key <key>", "Anthropic API key for the extension the listing starts (not needed to list)")
 		.option("--format <format>", 'Output format: "json" (default) or "text"', "json")
 		.option("-d, --debug", "Enable debug output", false)
 
-const runListAction = async (action: () => Promise<void>) => {
-	try {
-		await action()
-		process.exit(0)
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error)
-		console.error(`[CLI] Error: ${message}`)
-		process.exit(1)
-	}
-}
-
-const runUpgradeAction = async (action: () => Promise<void>) => {
+// Runs a one-shot subcommand: exit 0 when it finishes, else print the error and exit 1.
+const runAndExit = async (action: () => Promise<void>) => {
 	try {
 		await action()
 		process.exit(0)
@@ -124,25 +110,19 @@ const runUpgradeAction = async (action: () => Promise<void>) => {
 
 applyListOptions(listCommand.command("commands").description("List available slash commands")).action(
 	async (options: Parameters<typeof listCommands>[0]) => {
-		await runListAction(() => listCommands(options))
+		await runAndExit(() => listCommands(options))
 	},
 )
 
 applyListOptions(listCommand.command("modes").description("List available modes")).action(
 	async (options: Parameters<typeof listModes>[0]) => {
-		await runListAction(() => listModes(options))
-	},
-)
-
-applyListOptions(listCommand.command("models").description("List available Tumble models")).action(
-	async (options: Parameters<typeof listModels>[0]) => {
-		await runListAction(() => listModels(options))
+		await runAndExit(() => listModes(options))
 	},
 )
 
 applyListOptions(listCommand.command("sessions").description("List task sessions")).action(
 	async (options: Parameters<typeof listSessions>[0]) => {
-		await runListAction(() => listSessions(options))
+		await runAndExit(() => listSessions(options))
 	},
 )
 
@@ -150,7 +130,7 @@ program
 	.command("upgrade")
 	.description("Upgrade Tumble Code CLI to the latest version")
 	.action(async () => {
-		await runUpgradeAction(() => upgrade())
+		await runAndExit(() => upgrade())
 	})
 
 program
@@ -161,16 +141,7 @@ program
 		process.exit(await doctor(options))
 	})
 
-const authCommand = program.command("auth").description("Manage Tumble Cloud and provider authentication")
-
-authCommand
-	.command("login")
-	.description("Authenticate with Tumble Code Cloud")
-	.option("-v, --verbose", "Enable verbose output", false)
-	.action(async (options: { verbose: boolean }) => {
-		const result = await login({ verbose: options.verbose })
-		process.exit(result.success ? 0 : 1)
-	})
+const authCommand = program.command("auth").description("Manage provider authentication")
 
 const codexAuthCommand = authCommand.command("codex").description("Manage ChatGPT subscription access for OpenAI Codex")
 
@@ -195,24 +166,6 @@ codexAuthCommand
 	.description("Show OpenAI Codex OAuth status")
 	.action(async () => {
 		const result = await getOpenAiCodexAuthStatus()
-		process.exit(result.authenticated ? 0 : 1)
-	})
-
-authCommand
-	.command("logout")
-	.description("Log out from Tumble Code Cloud")
-	.option("-v, --verbose", "Enable verbose output", false)
-	.action(async (options: { verbose: boolean }) => {
-		const result = await logout({ verbose: options.verbose })
-		process.exit(result.success ? 0 : 1)
-	})
-
-authCommand
-	.command("status")
-	.description("Show authentication status")
-	.option("-v, --verbose", "Enable verbose output", false)
-	.action(async (options: { verbose: boolean }) => {
-		const result = await status({ verbose: options.verbose })
 		process.exit(result.authenticated ? 0 : 1)
 	})
 

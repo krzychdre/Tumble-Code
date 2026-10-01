@@ -4,7 +4,7 @@ import { useUIStateStore } from "../uiStateStore.js"
 
 describe("useUIStateStore verbose transcript", () => {
 	beforeEach(() => {
-		useUIStateStore.getState().resetUIState()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 	})
 
 	it("starts collapsed at epoch 0", () => {
@@ -47,7 +47,7 @@ describe("useUIStateStore verbose transcript", () => {
 
 describe("useUIStateStore clearTranscript", () => {
 	beforeEach(() => {
-		useUIStateStore.getState().resetUIState()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 	})
 
 	it("starts at clear epoch 0", () => {

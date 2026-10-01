@@ -40,7 +40,7 @@ describe("useGlobalInput ctrl+o", () => {
 
 	beforeEach(() => {
 		useCLIStore.getState().reset()
-		useUIStateStore.getState().resetUIState()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 	})
 
 	it("expands on the first press and collapses on the second", async () => {
@@ -119,7 +119,7 @@ describe("useGlobalInput escape", () => {
 
 	beforeEach(() => {
 		useCLIStore.getState().reset()
-		useUIStateStore.getState().resetUIState()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 		sendToExtension.mockClear()
 		useCLIStore.getState().setLoading(true)
 	})
