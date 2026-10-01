@@ -383,7 +383,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Editing
 	diffViewProvider: DiffViewProvider
-	diffStrategy?: DiffStrategy
+	diffStrategy: DiffStrategy = new MultiSearchReplaceDiffStrategy()
 	didEditFile: boolean = false
 
 	// LLM Messages & Chat Messages
@@ -1023,9 +1023,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Listen for provider profile changes to update parser state
 		this.lifecycle.setupProviderProfileChangeListener(provider)
-
-		// Set up diff strategy
-		this.diffStrategy = new MultiSearchReplaceDiffStrategy()
 
 		this.toolRepetitionDetector = new ToolRepetitionDetector(this.consecutiveMistakeLimit)
 

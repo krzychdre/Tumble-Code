@@ -174,5 +174,5 @@ export interface DiffStrategy {
 		endLine?: number,
 	): Promise<DiffResult>
 
-	getProgressStatus?(toolUse: ToolUse, result?: any): ToolProgressStatus
+	getProgressStatus(toolUse: ToolUse, result?: any): ToolProgressStatus
 }
