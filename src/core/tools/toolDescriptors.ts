@@ -1,7 +1,6 @@
-import type { ClineSayTool, ModeConfig, ToolName } from "@roo-code/types"
+import type { ClineSayTool, ModeConfig, ToolName, ToolParamName } from "@roo-code/types"
 
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
-import type { ToolParamName } from "../../shared/tools"
 
 import {
 	parseAccessMcpResourceArgs,
@@ -128,8 +127,8 @@ export interface ToolDescriptor {
 	/**
 	 * The result never spills to an artifact, for a reason of its own (see
 	 * `SPILL_BYPASS_TOOLS` in `src/core/artifacts/spillPolicy.ts`). Protocol tools are
-	 * exempt already through `PROTOCOL_TOOL_NAMES` in `src/shared/tools.ts`, which stays
-	 * there because src/shared is bundled into the webview and cannot import this file.
+	 * exempt already through `PROTOCOL_TOOL_NAMES` in `@roo-code/types`, which stays
+	 * there because the webview imports it and cannot import this file.
 	 */
 	spillExempt?: boolean
 	/** Offered by a profile with `slimToolset` on (see `SLIM_TOOLSET_ALLOWLIST`). */

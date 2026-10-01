@@ -1,6 +1,6 @@
 import type OpenAI from "openai"
 
-import { ALWAYS_AVAILABLE_TOOLS } from "../../shared/tools"
+import { ALWAYS_AVAILABLE_TOOLS } from "@roo-code/types"
 import { parseMcpToolName } from "../../utils/mcp-name"
 
 /**

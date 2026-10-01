@@ -2,8 +2,8 @@ import type OpenAI from "openai"
 
 import { Task } from "../task/Task"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { ALWAYS_AVAILABLE_TOOLS } from "@roo-code/types"
 import type { ToolUse } from "../../shared/tools"
-import { ALWAYS_AVAILABLE_TOOLS } from "../../shared/tools"
 
 interface ToolsLoadParams {
 	names: string[]

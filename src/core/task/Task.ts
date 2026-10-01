@@ -54,6 +54,8 @@ import {
 	MIN_CHECKPOINT_TIMEOUT_SECONDS,
 	ConsecutiveMistakeError,
 	MAX_MCP_TOOLS_THRESHOLD,
+	type ToolParamName,
+	toolParamNames,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService } from "@roo-code/cloud"
@@ -76,7 +78,7 @@ import {
 import { t } from "../../i18n"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
-import { DiffStrategy, type ToolUse, type ToolParamName, toolParamNames } from "../../shared/tools"
+import { DiffStrategy, type ToolUse } from "../../shared/tools"
 
 // services
 import { McpHub } from "../../services/mcp/McpHub"

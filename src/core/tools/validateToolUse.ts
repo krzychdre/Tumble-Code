@@ -1,9 +1,14 @@
 import type { ToolName, ModeConfig, ExperimentId, GroupOptions, GroupEntry } from "@roo-code/types"
-import { toolNames as validToolNames, EXPERIMENT_IDS } from "@roo-code/types"
+import {
+	toolNames as validToolNames,
+	EXPERIMENT_IDS,
+	TOOL_GROUPS,
+	ALWAYS_AVAILABLE_TOOLS,
+	TOOL_ALIASES,
+} from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
 
 import { type Mode, FileRestrictionError, getModeBySlug, getGroupName } from "../../shared/modes"
-import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS, TOOL_ALIASES } from "../../shared/tools"
 import { isAutoMemPath } from "../memory/paths"
 import { logger } from "../../utils/logging"
 

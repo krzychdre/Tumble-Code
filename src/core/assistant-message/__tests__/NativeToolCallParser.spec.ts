@@ -1,5 +1,5 @@
 import { NativeToolCallParser } from "../NativeToolCallParser"
-import { TOOL_DISPLAY_NAMES } from "../../../shared/tools"
+import { TOOL_DISPLAY_NAMES } from "@roo-code/types"
 import type { ToolName } from "@roo-code/types"
 
 /**

@@ -2,9 +2,8 @@
 
 import { describe, it, expect } from "vitest"
 
-import { toolNames } from "@roo-code/types"
+import { toolNames, PROTOCOL_TOOL_NAMES } from "@roo-code/types"
 
-import { PROTOCOL_TOOL_NAMES } from "../../../shared/tools"
 import { TOOL_DESCRIPTORS, describeToolUse, getToolDescriptor, toolNamesWhere } from "../toolDescriptors"
 
 describe("tool descriptor table (CORE-R4)", () => {

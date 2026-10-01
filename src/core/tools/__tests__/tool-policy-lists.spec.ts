@@ -7,9 +7,8 @@
 
 import { describe, it, expect, vi } from "vitest"
 
-import { toolNames } from "@roo-code/types"
+import { toolNames, PROTOCOL_TOOL_NAMES } from "@roo-code/types"
 
-import { PROTOCOL_TOOL_NAMES } from "../../../shared/tools"
 import { CHECKPOINTED_TOOLS } from "../../checkpoints/checkpointedTools"
 import { COMPACTABLE_TOOL_NAMES } from "../../context-management/microcompact"
 import { SPILL_BYPASS_TOOLS } from "../../artifacts/spillPolicy"

@@ -1,6 +1,5 @@
-import { ARTIFACT_SPILL_DEFAULTS } from "@roo-code/types"
+import { ARTIFACT_SPILL_DEFAULTS, PROTOCOL_TOOL_NAMES } from "@roo-code/types"
 
-import { PROTOCOL_TOOL_NAMES } from "../../shared/tools"
 import { toolNamesWhere } from "../tools/toolDescriptors"
 
 import type { ArtifactStore } from "./ArtifactStore"
@@ -39,7 +38,7 @@ const SPILL_NOTICE_BYTES = 200
  *
  * Three reasons, and they are different:
  *
- * 1. `PROTOCOL_TOOL_NAMES` (`src/shared/tools.ts`): the result is protocol or
+ * 1. `PROTOCOL_TOOL_NAMES` (`@roo-code/types`): the result is protocol or
  *    instructions the task machinery or the next turn consumes, so a preview
  *    changes behaviour instead of saving context. Shared with microcompact's
  *    never-clear set so the two policies cannot drift apart.

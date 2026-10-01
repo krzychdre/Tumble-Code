@@ -1,15 +1,9 @@
 import { parseJSON } from "partial-json"
 
-import { type ToolName, toolNames } from "@roo-code/types"
+import { type ToolName, toolNames, type ToolParamName, toolParamNames } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
 
-import {
-	type ToolUse,
-	type McpToolUse,
-	type ToolParamName,
-	type NativeToolArgs,
-	toolParamNames,
-} from "../../shared/tools"
+import { type ToolUse, type McpToolUse, type NativeToolArgs } from "../../shared/tools"
 import { resolveToolAlias } from "../prompts/tools/filter-tools-for-mode"
 import { getToolDescriptor } from "../tools/toolDescriptors"
 import type {
