@@ -86,7 +86,9 @@ const CodeAccordion = ({
 			) : isFeedback ? (
 				<div className="flex items-center min-w-0">
 					<span className="codicon codicon-feedback mr-1.5" aria-hidden="true" />
-					<span className="whitespace-nowrap overflow-hidden text-ellipsis mr-2 rtl">User Edits</span>
+					<span className="whitespace-nowrap overflow-hidden text-ellipsis mr-2 rtl">
+						{t("chat:fileOperations.userEdits")}
+					</span>
 				</div>
 			) : (
 				<>
@@ -111,7 +113,9 @@ const CodeAccordion = ({
 		progressStatus &&
 		progressStatus.text && (
 			<>
-				{progressStatus.icon && <span className={`codicon codicon-${progressStatus.icon} mr-1`} />}
+				{progressStatus.icon && (
+					<span className={`codicon codicon-${progressStatus.icon} mr-1`} aria-hidden="true" />
+				)}
 				<span className="mr-1 ml-auto text-vscode-descriptionForeground">{progressStatus.text}</span>
 			</>
 		)

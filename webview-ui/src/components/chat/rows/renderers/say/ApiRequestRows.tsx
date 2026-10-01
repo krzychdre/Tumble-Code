@@ -22,7 +22,11 @@ const iconSpan = (iconName: string, color: string) => (
 			alignItems: "center",
 			justifyContent: "center",
 		}}>
-		<span className={`codicon codicon-${iconName}`} style={{ color, fontSize: 16, marginBottom: "-1.5px" }} />
+		<span
+			className={`codicon codicon-${iconName}`}
+			style={{ color, fontSize: 16, marginBottom: "-1.5px" }}
+			aria-hidden="true"
+		/>
 	</div>
 )
 

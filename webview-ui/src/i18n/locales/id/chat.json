@@ -155,7 +155,8 @@
 		"back": "Kembali",
 		"apply": "Terapkan",
 		"confirm": "Konfirmasi",
-		"confirmPrompt": "Terapkan ke {{count}} mode?"
+		"confirmPrompt": "Terapkan ke {{count}} mode?",
+		"modeList": "Mode"
 	},
 	"enhancePrompt": "Tingkatkan prompt dengan konteks tambahan",
 	"enhancePromptDescription": "Tombol 'Tingkatkan Prompt' membantu memperbaiki prompt kamu dengan memberikan konteks tambahan, klarifikasi, atau penyusunan ulang. Coba ketik prompt di sini dan klik tombol lagi untuk melihat cara kerjanya.",
@@ -242,7 +243,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble ingin memuat keterampilan",
-		"didLoad": "Tumble telah memuat keterampilan"
+		"didLoad": "Tumble telah memuat keterampilan",
+		"arguments": "Argumen:"
 	},
 	"instructions": {
 		"wantsToFetch": "Tumble ingin mengambil instruksi detail untuk membantu tugas saat ini"
@@ -264,7 +266,8 @@
 		"wantsToSearchReplace": "Tumble ingin mencari dan mengganti di file ini",
 		"didSearchReplace": "Tumble melakukan pencarian dan penggantian pada file ini",
 		"wantsToInsertWithLineNumber": "Tumble ingin menyisipkan konten ke file ini di baris {{lineNumber}}",
-		"wantsToInsertAtEnd": "Tumble ingin menambahkan konten ke akhir file ini"
+		"wantsToInsertAtEnd": "Tumble ingin menambahkan konten ke akhir file ini",
+		"userEdits": "Edit pengguna"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble ingin melihat file tingkat atas di direktori ini",
@@ -285,7 +288,8 @@
 		"wantsToSearchWithPath": "Tumble ingin mencari codebase untuk <code>{{query}}</code> di <code>{{path}}</code>",
 		"didSearch_one": "Ditemukan 1 hasil",
 		"didSearch_other": "Ditemukan {{count}} hasil",
-		"resultTooltip": "Skor kemiripan: {{score}} (klik untuk membuka file)"
+		"resultTooltip": "Skor kemiripan: {{score}} (klik untuk membuka file)",
+		"displayError": "Gagal menampilkan hasil pencarian."
 	},
 	"commandExecution": {
 		"abort": "Batalkan",
@@ -298,7 +302,8 @@
 		"addToDenied": "Tambahkan ke daftar yang ditolak",
 		"removeFromDenied": "Hapus dari daftar yang ditolak",
 		"expandCommand": "Perluas perintah",
-		"collapseCommand": "Ciutkan perintah"
+		"collapseCommand": "Ciutkan perintah",
+		"clickToEditPattern": "Klik untuk mengedit pola"
 	},
 	"text": {
 		"rooSaid": "Tumble berkata"
@@ -380,7 +385,8 @@
 				"label": "Otonom",
 				"description": "Otomatis penuh: semua yang dilakukan Lewati, ditambah pertanyaan tindak lanjut dijawab otomatis agar agen berjalan sampai selesai."
 			}
-		}
+		},
+		"enabled": "Aktif"
 	},
 	"announcement": {
 		"title": "Tumble Code {{version}} Dirilis",
@@ -472,7 +478,8 @@
 		"problems": "Masalah",
 		"terminal": "Terminal",
 		"url": "Tempel URL untuk mengambil konten",
-		"menuLabel": "Menu konteks"
+		"menuLabel": "Menu konteks",
+		"gitCommits": "Commit Git"
 	},
 	"queuedMessages": {
 		"title": "Pesan Antrian",
@@ -485,7 +492,25 @@
 	"todo": {
 		"partial": "{{completed}} dari {{total}} to-do selesai",
 		"complete": "{{total}} to-do selesai",
-		"updated": "Memperbarui daftar to-do"
+		"updated": "Memperbarui daftar to-do",
+		"userEdit": "Edit pengguna",
+		"userEdits": "Edit pengguna",
+		"listUpdated": "Daftar to-do diperbarui",
+		"edit": "Edit",
+		"done": "Selesai",
+		"add": "Tambah",
+		"addTodo": "Tambah to-do",
+		"cancel": "Batal",
+		"delete": "Hapus",
+		"remove": "Hapus",
+		"itemPlaceholder": "Masukkan item to-do",
+		"newItemPlaceholder": "Masukkan item to-do, tekan Enter untuk menambahkan",
+		"deleteConfirm": "Yakin ingin menghapus item to-do ini?",
+		"status": {
+			"notStarted": "Belum dimulai",
+			"inProgress": "Sedang berjalan",
+			"completed": "Selesai"
+		}
 	},
 	"tooManyTools": {
 		"title": "Terlalu banyak alat diaktifkan",
@@ -564,5 +589,14 @@
 		"idle": "Memori aktif"
 	},
 	"thumbnailAlt": "Gambar kecil {{index}}",
-	"removeImage": "Hapus gambar {{index}}"
+	"removeImage": "Hapus gambar {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Konfigurasi yang disematkan",
+		"all": "Semua konfigurasi"
+	},
+	"markdownPreview": {
+		"open": "Buka di pratinjau",
+		"openAriaLabel": "Buka markdown di pratinjau",
+		"copyAsMarkdown": "Salin sebagai markdown"
+	}
 }

@@ -48,7 +48,8 @@
 		"title": "Mode-specific Custom Instructions (optional)",
 		"resetToDefault": "Reset to default",
 		"description": "Add behavioral guidelines specific to {{modeName}} mode.",
-		"loadFromFile": "Custom instructions specific to {{mode}} mode can also be loaded from the <span>.roo/rules-{{slug}}/</span> folder in your workspace or from the global <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} and .clinerules-{{slug}} are deprecated and will stop working soon)."
+		"loadFromFile": "Custom instructions specific to {{mode}} mode can also be loaded from the <span>.roo/rules-{{slug}}/</span> folder in your workspace or from the global <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} and .clinerules-{{slug}} are deprecated and will stop working soon).",
+		"docsLinkAriaLabel": "Learn about global custom instructions for modes"
 	},
 	"exportMode": {
 		"title": "Export Mode",
@@ -70,7 +71,8 @@
 	"globalCustomInstructions": {
 		"title": "Custom Instructions for All Modes",
 		"description": "These instructions apply to all modes. They provide a base set of behaviors that can be enhanced by mode-specific instructions below.",
-		"loadFromFile": "Instructions can also be loaded from the <span>.roo/rules/</span> folder in your workspace or from the global <0>.roo/rules/</0> (.roorules and .clinerules are deprecated and will stop working soon)."
+		"loadFromFile": "Instructions can also be loaded from the <span>.roo/rules/</span> folder in your workspace or from the global <0>.roo/rules/</0> (.roorules and .clinerules are deprecated and will stop working soon).",
+		"docsLinkAriaLabel": "Learn about setting up global custom instructions"
 	},
 	"systemPrompt": {
 		"preview": "Preview System Prompt",
@@ -189,5 +191,10 @@
 		"rulesFolder": "This mode has a rules folder at {{folderPath}} that will also be deleted.",
 		"confirm": "Delete",
 		"cancel": "Cancel"
+	},
+	"mcpRestriction": {
+		"restrict": "Restrict to specific MCP servers",
+		"noServers": "No MCP servers connected",
+		"notConnected": "{{server}} (not connected)"
 	}
 }

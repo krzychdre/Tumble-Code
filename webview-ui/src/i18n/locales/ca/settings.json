@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "Cercar configuració...",
-		"noResults": "No s'ha trobat cap configuració"
+		"noResults": "No s'ha trobat cap configuració",
+		"clear": "Esborra la cerca"
 	},
 	"header": {
 		"title": "Configuració",
@@ -500,7 +501,8 @@
 			"low": "Baixa",
 			"description": "Controla el nivell de detall de les respostes del model. La verbositat baixa produeix respostes concises, mentre que la verbositat alta proporciona explicacions exhaustives."
 		},
-		"setReasoningLevel": "Activa l'esforç de raonament"
+		"setReasoningLevel": "Activa l'esforç de raonament",
+		"awsAuthMethod": "Mètode d'autenticació"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "Per defecte: http://localhost:11434",
 		"lmStudioUrl": "Per defecte: http://localhost:1234",
-		"geminiUrl": "Per defecte: https://generativelanguage.googleapis.com"
+		"geminiUrl": "Per defecte: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "Per defecte: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "ARN personalitzat",

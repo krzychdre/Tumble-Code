@@ -218,7 +218,10 @@ export const ErrorRow = memo(
 									<span className={`codicon codicon-${showCopySuccess ? "check" : "copy"}`} />
 								</Button>
 							)}
-							<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`} />
+							<span
+								className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}
+								aria-hidden="true"
+							/>
 						</div>
 					</div>
 					{isExpanded && (

@@ -244,7 +244,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 											(e as CustomEvent)?.detail?.target || (e.target as HTMLInputElement)
 										setAllowedMcpServers(target.checked ? [] : undefined)
 									}}>
-									Restrict to specific MCP servers
+									{t("prompts:mcpRestriction.restrict")}
 								</LabeledCheckbox>
 								{allowedMcpServers !== undefined && (
 									<McpServerChecklist

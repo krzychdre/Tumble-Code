@@ -149,7 +149,10 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 															e.preventDefault()
 														}}>
 														{state.filters.tags.includes(tag) ? (
-															<span className="codicon codicon-check" />
+															<span
+																className="codicon codicon-check"
+																aria-hidden="true"
+															/>
 														) : (
 															<span />
 														)}
@@ -167,7 +170,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 				{state.filters.tags.length > 0 && (
 					<div className="text-xs text-vscode-descriptionForeground mt-2 flex items-center justify-between">
 						<div className="flex items-center">
-							<span className="codicon codicon-tag mr-1"></span>
+							<span className="codicon codicon-tag mr-1" aria-hidden="true"></span>
 							{t("marketplace:filters.tags.selected")}
 						</div>
 						<Button
@@ -181,7 +184,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 									payload: { filters: { tags: [] } },
 								})
 							}}>
-							<span className="codicon codicon-close"></span>
+							<span className="codicon codicon-close" aria-hidden="true"></span>
 							{t("marketplace:filters.tags.clear")}
 						</Button>
 					</div>
@@ -191,7 +194,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 			{state.isFetching && isEmpty && (
 				<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground animate-fade-in">
 					<div className="animate-spin mb-4">
-						<span className="codicon codicon-sync text-3xl"></span>
+						<span className="codicon codicon-sync text-3xl" aria-hidden="true"></span>
 					</div>
 					<p>{t("marketplace:items.refresh.refreshing")}</p>
 					<p className="text-sm mt-2 animate-pulse">{t("marketplace:items.refresh.mayTakeMoment")}</p>
@@ -200,7 +203,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 
 			{!state.isFetching && isEmpty && (
 				<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground animate-fade-in">
-					<span className="codicon codicon-inbox text-4xl mb-4 opacity-70"></span>
+					<span className="codicon codicon-inbox text-4xl mb-4 opacity-70" aria-hidden="true"></span>
 					<p className="font-medium">{t("marketplace:items.empty.noItems")}</p>
 					<p className="text-sm mt-2">{t("marketplace:items.empty.adjustFilters")}</p>
 					<Button
@@ -211,7 +214,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 							})
 						}
 						className="mt-4 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground transition-colors">
-						<span className="codicon codicon-clear-all mr-2"></span>
+						<span className="codicon codicon-clear-all mr-2" aria-hidden="true"></span>
 						{t("marketplace:items.empty.clearAllFilters")}
 					</Button>
 				</div>
@@ -222,7 +225,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 					{orgMcps.length > 0 && (
 						<div className="mb-6">
 							<div className="flex items-center gap-2 mb-3 px-1">
-								<span className="codicon codicon-organization text-lg"></span>
+								<span className="codicon codicon-organization text-lg" aria-hidden="true"></span>
 								<h3 className="text-sm font-semibold text-vscode-foreground">
 									{t("marketplace:sections.organizationMcps", {
 										organization: cloudUserInfo?.organizationName,
@@ -256,7 +259,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 						<div>
 							{orgMcps.length > 0 && (
 								<div className="flex items-center gap-2 mb-3 px-1">
-									<span className="codicon codicon-globe text-lg"></span>
+									<span className="codicon codicon-globe text-lg" aria-hidden="true"></span>
 									<h3 className="text-sm font-semibold text-vscode-foreground">
 										{t("marketplace:sections.marketplace")}
 									</h3>

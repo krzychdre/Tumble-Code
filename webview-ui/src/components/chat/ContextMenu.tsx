@@ -169,7 +169,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 						</div>
 					)
 				} else {
-					return <span>Git Commits</span>
+					return <span>{t("chat:contextMenu.gitCommits")}</span>
 				}
 			case ContextMenuOptionType.File:
 			case ContextMenuOptionType.OpenedFile:
@@ -302,7 +302,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 					<div className="p-2 flex items-start gap-4 justify-between">
 						{searchQuery.length === 1 && (
 							<div className="text-sm">
-								<p className="font-bold text-base text-vscode-foreground mt-1 mb-0.5">Slash Commands</p>
+								<p className="font-bold text-base text-vscode-foreground mt-1 mb-0.5">
+									{t("settings:sections.slashCommands")}
+								</p>
 								<p className="text-xs mt-0.5 -mb-1">
 									<Trans
 										i18nKey="settings:slashCommands.description"
@@ -391,7 +393,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 									option.type === ContextMenuOptionType.OpenedFile) && (
 									<img
 										src={getMaterialIconForOption(option)}
-										alt="Mode"
+										alt=""
+										aria-hidden="true"
 										style={{
 											marginRight: "6px",
 											flexShrink: 0,
@@ -415,6 +418,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 												fontSize: "14px",
 												marginTop: 0,
 											}}
+											aria-hidden="true"
 										/>
 									)}
 								{renderOptionContent(option)}
@@ -426,6 +430,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 									<i
 										className="codicon codicon-chevron-right"
 										style={{ fontSize: "10px", flexShrink: 0, marginLeft: 8 }}
+										aria-hidden="true"
 									/>
 								)}
 						</div>

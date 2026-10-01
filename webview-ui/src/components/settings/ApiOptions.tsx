@@ -393,7 +393,7 @@ const ApiOptions = ({
 						<div
 							className="flex flex-row items-start gap-1 text-vscode-editorWarning-foreground text-sm"
 							data-testid="unknown-model-warning">
-							<div className="codicon codicon-warning mt-0.5" />
+							<div className="codicon codicon-warning mt-0.5" aria-hidden="true" />
 							<div>{t("settings:providers.unknownModelWarning", { modelId: selectedModelId })}</div>
 						</div>
 					)}
@@ -420,7 +420,8 @@ const ApiOptions = ({
 						<Collapsible open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
 							<CollapsibleTrigger className="flex items-center gap-1 w-full cursor-pointer hover:opacity-80 mb-2">
 								<span
-									className={`codicon codicon-chevron-${isAdvancedSettingsOpen ? "down" : "right"}`}></span>
+									className={`codicon codicon-chevron-${isAdvancedSettingsOpen ? "down" : "right"}`}
+									aria-hidden="true"></span>
 								<span className="font-medium">{t("settings:advancedSettings.title")}</span>
 							</CollapsibleTrigger>
 							<CollapsibleContent className="space-y-3">

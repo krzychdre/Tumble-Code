@@ -49,7 +49,7 @@ export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpan
 						)}
 						{skillInfo.args && (
 							<div>
-								<span style={{ fontWeight: "500" }}>Arguments: </span>
+								<span style={{ fontWeight: "500" }}>{t("chat:skill.arguments")} </span>
 								<span style={{ color: "var(--vscode-descriptionForeground)" }}>{skillInfo.args}</span>
 							</div>
 						)}
@@ -98,7 +98,7 @@ export const RunSlashCommandToolRow = ({
 					<>
 						{slashCommandInfo.args && (
 							<div>
-								<span style={{ fontWeight: "500" }}>Arguments: </span>
+								<span style={{ fontWeight: "500" }}>{t("chat:skill.arguments")} </span>
 								<span style={{ color: "var(--vscode-descriptionForeground)" }}>
 									{slashCommandInfo.args}
 								</span>

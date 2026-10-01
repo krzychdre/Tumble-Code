@@ -125,7 +125,8 @@
 		"back": "Zurück",
 		"apply": "Anwenden",
 		"confirm": "Bestätigen",
-		"confirmPrompt": "Auf {{count}} Modi anwenden?"
+		"confirmPrompt": "Auf {{count}} Modi anwenden?",
+		"modeList": "Modi"
 	},
 	"enhancePrompt": "Prompt mit zusätzlichem Kontext verbessern",
 	"addImages": "Bilder zur Nachricht hinzufügen",
@@ -214,7 +215,8 @@
 		"wantsToGenerateImage": "Tumble möchte ein Bild generieren",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble möchte ein Bild außerhalb des Arbeitsbereichs generieren",
 		"wantsToGenerateImageProtected": "Tumble möchte ein Bild an einem geschützten Ort generieren",
-		"didGenerateImage": "Tumble hat ein Bild generiert"
+		"didGenerateImage": "Tumble hat ein Bild generiert",
+		"userEdits": "Benutzeränderungen"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble möchte die Dateien auf oberster Ebene in diesem Verzeichnis anzeigen",
@@ -241,7 +243,8 @@
 		"addToDenied": "Zur verweigerten Liste hinzufügen",
 		"removeFromDenied": "Von der verweigerten Liste entfernen",
 		"expandCommand": "Befehl erweitern",
-		"collapseCommand": "Befehl reduzieren"
+		"collapseCommand": "Befehl reduzieren",
+		"clickToEditPattern": "Klicken, um das Muster zu bearbeiten"
 	},
 	"text": {
 		"rooSaid": "Tumble hat gesagt"
@@ -318,7 +321,8 @@
 				"label": "Autonom",
 				"description": "Vollautomatik: alles aus Umgehen, plus Rückfragen werden automatisch beantwortet, sodass der Agent bis zum Ende durchläuft."
 			}
-		}
+		},
+		"enabled": "Aktiviert"
 	},
 	"reasoning": {
 		"thinking": "Denke nach"
@@ -346,7 +350,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble möchte eine Fähigkeit laden",
-		"didLoad": "Tumble hat eine Fähigkeit geladen"
+		"didLoad": "Tumble hat eine Fähigkeit geladen",
+		"arguments": "Argumente:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "In Eingabefeld kopieren (oder Shift + Klick)",
@@ -402,7 +407,8 @@
 		"wantsToSearchWithPath": "Tumble möchte den Codebase nach <code>{{query}}</code> in <code>{{path}}</code> durchsuchen",
 		"didSearch_one": "1 Ergebnis gefunden",
 		"didSearch_other": "{{count}} Ergebnisse gefunden",
-		"resultTooltip": "Ähnlichkeitswert: {{score}} (klicken zum Öffnen der Datei)"
+		"resultTooltip": "Ähnlichkeitswert: {{score}} (klicken zum Öffnen der Datei)",
+		"displayError": "Fehler beim Anzeigen der Suchergebnisse."
 	},
 	"read-batch": {
 		"approve": {
@@ -466,7 +472,8 @@
 		"problems": "Probleme",
 		"terminal": "Terminal",
 		"url": "URL einfügen, um Inhalte abzurufen",
-		"menuLabel": "Kontextmenü"
+		"menuLabel": "Kontextmenü",
+		"gitCommits": "Git-Commits"
 	},
 	"queuedMessages": {
 		"title": "Warteschlange Nachrichten",
@@ -479,7 +486,25 @@
 	"todo": {
 		"partial": "{{completed}} von {{total}} To-Dos erledigt",
 		"complete": "{{total}} To-Dos erledigt",
-		"updated": "Die To-Do-Liste wurde aktualisiert"
+		"updated": "Die To-Do-Liste wurde aktualisiert",
+		"userEdit": "Benutzeränderung",
+		"userEdits": "Benutzeränderungen",
+		"listUpdated": "To-Do-Liste aktualisiert",
+		"edit": "Bearbeiten",
+		"done": "Fertig",
+		"add": "Hinzufügen",
+		"addTodo": "To-Do hinzufügen",
+		"cancel": "Abbrechen",
+		"delete": "Löschen",
+		"remove": "Entfernen",
+		"itemPlaceholder": "To-Do eingeben",
+		"newItemPlaceholder": "To-Do eingeben, mit Enter hinzufügen",
+		"deleteConfirm": "Möchtest du dieses To-Do wirklich löschen?",
+		"status": {
+			"notStarted": "Nicht begonnen",
+			"inProgress": "In Bearbeitung",
+			"completed": "Abgeschlossen"
+		}
 	},
 	"tooManyTools": {
 		"title": "Zu viele Tools aktiviert",
@@ -558,5 +583,14 @@
 		"idle": "Gedächtnis ist aktiv"
 	},
 	"thumbnailAlt": "Miniaturbild {{index}}",
-	"removeImage": "Bild {{index}} entfernen"
+	"removeImage": "Bild {{index}} entfernen",
+	"apiConfigGroups": {
+		"pinned": "Angeheftete Konfigurationen",
+		"all": "Alle Konfigurationen"
+	},
+	"markdownPreview": {
+		"open": "In der Vorschau öffnen",
+		"openAriaLabel": "Markdown in der Vorschau öffnen",
+		"copyAsMarkdown": "Als Markdown kopieren"
+	}
 }

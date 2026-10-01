@@ -250,12 +250,12 @@ export const ModeSelector = ({
 					{showSearch ? (
 						<div className="relative p-2 border-b border-vscode-dropdown-border">
 							<input
-								aria-label="Search modes"
+								aria-label={t("prompts:modes.selectMode")}
 								ref={searchInputRef}
 								value={searchValue}
 								onChange={(e) => setSearchValue(e.target.value)}
 								placeholder={t("chat:modeSelector.searchPlaceholder")}
-								className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded focus:outline-0"
+								className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded focus-ring"
 								data-testid="mode-search-input"
 							/>
 							{searchValue.length > 0 && (
@@ -349,7 +349,10 @@ export const ModeSelector = ({
 						<div className="flex items-center gap-1 pr-1">
 							{showSearch && (
 								<StandardTooltip content={instructionText}>
-									<span className="codicon codicon-info text-xs text-vscode-descriptionForeground opacity-70 hover:opacity-100 cursor-help" />
+									<span
+										className="codicon codicon-info text-xs text-vscode-descriptionForeground opacity-70 hover:opacity-100 cursor-help"
+										aria-hidden="true"
+									/>
 								</StandardTooltip>
 							)}
 							<h4 className="m-0 font-medium text-sm text-vscode-descriptionForeground">

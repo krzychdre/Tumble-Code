@@ -20,7 +20,7 @@ export const EditFileToolRow = ({ message, tool, isExpanded, toggleExpand }: Too
 		return (
 			<>
 				<div style={headerStyle}>
-					<FileDiff className="w-4 shrink-0" aria-label="Batch diff icon" />
+					<FileDiff className="w-4 shrink-0" aria-hidden="true" />
 					<span style={{ fontWeight: "bold" }}>{t("chat:fileOperations.wantsToApplyBatchChanges")}</span>
 				</div>
 				<BatchDiffApproval files={tool.batchDiffs} ts={message.ts} />
@@ -71,7 +71,7 @@ export const EditFileToolRow = ({ message, tool, isExpanded, toggleExpand }: Too
 							color: "var(--vscode-button-foreground)",
 							background: "var(--vscode-button-background)",
 							padding: "2px 8px",
-								border: "none",
+							border: "none",
 						}}>
 						<MessageSquarePlus className="w-3 h-3" />
 						{t("chat:planReview.reviewFile")}

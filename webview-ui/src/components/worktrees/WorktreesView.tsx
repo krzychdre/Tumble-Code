@@ -198,11 +198,11 @@ export const WorktreesView = () => {
 			<div className="flex-1 overflow-y-auto px-4 py-2 min-h-0">
 				{isLoading ? (
 					<div className="flex items-center justify-center h-48">
-						<span className="codicon codicon-loading codicon-modifier-spin text-2xl" />
+						<span className="codicon codicon-loading codicon-modifier-spin text-2xl" aria-hidden="true" />
 					</div>
 				) : error ? (
 					<div className="flex flex-col items-center justify-center h-48 text-vscode-errorForeground">
-						<span className="codicon codicon-error text-4xl mb-4" />
+						<span className="codicon codicon-error text-4xl mb-4" aria-hidden="true" />
 						<p className="text-center">{error}</p>
 					</div>
 				) : (

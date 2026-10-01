@@ -51,5 +51,6 @@
 	"today": "Today",
 	"yesterday": "Yesterday",
 	"noHistory": "No tasks yet. Start a conversation to build your history.",
-	"noSearchResults": "No tasks match this search."
+	"noSearchResults": "No tasks match this search.",
+	"clearSearch": "Clear search"
 }

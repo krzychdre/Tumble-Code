@@ -51,5 +51,6 @@
 	"today": "Bugün",
 	"yesterday": "Dün",
 	"noHistory": "Henüz görev yok. Geçmişinizi oluşturmak için bir sohbet başlatın.",
-	"noSearchResults": "Bu aramayla eşleşen görev yok."
+	"noSearchResults": "Bu aramayla eşleşen görev yok.",
+	"clearSearch": "Aramayı temizle"
 }

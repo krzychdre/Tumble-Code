@@ -17,7 +17,8 @@
 	},
 	"search": {
 		"placeholder": "Search settings...",
-		"noResults": "No settings found"
+		"noResults": "No settings found",
+		"clear": "Clear search"
 	},
 	"unsavedChangesDialog": {
 		"title": "Unsaved Changes",
@@ -562,7 +563,8 @@
 			"low": "Low",
 			"description": "Controls how detailed the model's responses are. Low verbosity produces concise answers, while high verbosity provides thorough explanations."
 		},
-		"setReasoningLevel": "Enable Reasoning Effort"
+		"setReasoningLevel": "Enable Reasoning Effort",
+		"awsAuthMethod": "Authentication Method"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -968,7 +970,8 @@
 	"defaults": {
 		"ollamaUrl": "Default: http://localhost:11434",
 		"lmStudioUrl": "Default: http://localhost:1234",
-		"geminiUrl": "Default: https://generativelanguage.googleapis.com"
+		"geminiUrl": "Default: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "Default: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "Custom ARN",

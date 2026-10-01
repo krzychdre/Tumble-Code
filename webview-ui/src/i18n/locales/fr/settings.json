@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "Rechercher les paramètres...",
-		"noResults": "Aucun paramètre trouvé"
+		"noResults": "Aucun paramètre trouvé",
+		"clear": "Effacer la recherche"
 	},
 	"header": {
 		"title": "Paramètres",
@@ -500,7 +501,8 @@
 			"low": "Faible",
 			"description": "Contrôle le niveau de détail des réponses du modèle. Une faible verbosité produit des réponses concises, tandis qu'une verbosité élevée fournit des explications approfondies."
 		},
-		"setReasoningLevel": "Activer l'effort de raisonnement"
+		"setReasoningLevel": "Activer l'effort de raisonnement",
+		"awsAuthMethod": "Méthode d'authentification"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "Par défaut : http://localhost:11434",
 		"lmStudioUrl": "Par défaut : http://localhost:1234",
-		"geminiUrl": "Par défaut : https://generativelanguage.googleapis.com"
+		"geminiUrl": "Par défaut : https://generativelanguage.googleapis.com",
+		"openRouterUrl": "Par défaut : https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "ARN personnalisé",

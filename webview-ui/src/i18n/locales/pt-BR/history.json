@@ -52,5 +52,6 @@
 	"today": "Hoje",
 	"yesterday": "Ontem",
 	"noHistory": "Nenhuma tarefa ainda. Inicie uma conversa para criar seu histórico.",
-	"noSearchResults": "Nenhuma tarefa corresponde a esta pesquisa."
+	"noSearchResults": "Nenhuma tarefa corresponde a esta pesquisa.",
+	"clearSearch": "Limpar pesquisa"
 }

@@ -101,7 +101,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 				<div className="flex flex-col gap-3">
 					<div className="flex flex-col gap-1">
 						<div className="flex items-center gap-2 font-bold">
-							<span className="codicon codicon-settings-gear" />
+							<span className="codicon codicon-settings-gear" aria-hidden="true" />
 							<div>{t("settings:terminal.basic.label")}</div>
 						</div>
 					</div>
@@ -144,7 +144,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 				<div className="flex flex-col gap-3">
 					<div className="flex flex-col gap-1">
 						<div className="flex items-center gap-2 font-bold">
-							<span className="codicon codicon-tools" />
+							<span className="codicon codicon-tools" aria-hidden="true" />
 							<div>{t("settings:terminal.advanced.label")}</div>
 						</div>
 						<div className="text-vscode-descriptionForeground">

@@ -18,7 +18,8 @@
 	},
 	"ui": {
 		"search_placeholder": "搜尋...",
-		"no_results": "找不到結果"
+		"no_results": "找不到結果",
+		"close": "關閉"
 	},
 	"mermaid": {
 		"loading": "正在產生 Mermaid 圖表...",
@@ -41,7 +42,8 @@
 		"tabs": {
 			"view": "影像"
 		},
-		"noData": "無圖片資料"
+		"noData": "無圖片資料",
+		"generatedAlt": "AI 生成的圖片"
 	},
 	"confirmation": {
 		"deleteMessage": "刪除訊息",

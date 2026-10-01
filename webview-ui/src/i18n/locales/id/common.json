@@ -18,7 +18,8 @@
 	},
 	"ui": {
 		"search_placeholder": "Cari...",
-		"no_results": "Tidak ada hasil yang ditemukan"
+		"no_results": "Tidak ada hasil yang ditemukan",
+		"close": "Tutup"
 	},
 	"mermaid": {
 		"loading": "Membuat diagram mermaid...",
@@ -41,7 +42,8 @@
 		"tabs": {
 			"view": "Gambar"
 		},
-		"noData": "Tidak ada data gambar"
+		"noData": "Tidak ada data gambar",
+		"generatedAlt": "Gambar buatan AI"
 	},
 	"confirmation": {
 		"deleteMessage": "Hapus Pesan",

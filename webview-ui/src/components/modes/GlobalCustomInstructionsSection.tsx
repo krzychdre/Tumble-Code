@@ -67,7 +67,7 @@ export const GlobalCustomInstructionsSection = ({
 									"prompts_global_rules",
 								)}
 								style={{ display: "inline" }}
-								aria-label="Learn about setting up global custom instructions"
+								aria-label={t("prompts:globalCustomInstructions.docsLinkAriaLabel")}
 							/>
 						),
 					}}

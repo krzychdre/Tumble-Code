@@ -44,7 +44,7 @@ export function CondensationResultRow({ data }: CondensationResultRowProps) {
 						${displayCost.toFixed(2)}
 					</ThemedBadge>
 				</div>
-				<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
+				<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`} aria-hidden="true"></span>
 			</div>
 
 			{isExpanded && (

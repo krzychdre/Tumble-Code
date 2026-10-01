@@ -32,7 +32,7 @@ export const AutoApprovedRequestLimitWarning = memo(({ message }: AutoApprovedRe
 	return (
 		<>
 			<div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--vscode-foreground)" }}>
-				<span className="codicon codicon-warning" />
+				<span className="codicon codicon-warning" aria-hidden="true" />
 				<span style={{ fontWeight: "bold" }}>
 					<Trans i18nKey={titleKey} ns="chat" />
 				</span>

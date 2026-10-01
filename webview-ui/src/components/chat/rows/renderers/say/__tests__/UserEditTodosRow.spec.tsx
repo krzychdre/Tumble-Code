@@ -45,7 +45,7 @@ describe("UserEditTodosRow", () => {
 
 	it("shows the todos the user edited, taken from the message payload", () => {
 		const { getByText } = render(<UserEditTodosRow {...props(payload)} />)
-		expect(getByText("User Edit")).toBeInTheDocument()
+		expect(getByText("chat:todo.userEdit")).toBeInTheDocument()
 		expect(getByText("Write the failing test")).toBeInTheDocument()
 		expect(getByText("Step the user added")).toBeInTheDocument()
 	})
@@ -59,7 +59,7 @@ describe("UserEditTodosRow", () => {
 		for (const text of [undefined, "{oops", "[]"]) {
 			renders.count = 0
 			const { getByText, unmount } = render(<UserEditTodosRow {...props(text)} />)
-			expect(getByText("User Edit")).toBeInTheDocument()
+			expect(getByText("chat:todo.userEdit")).toBeInTheDocument()
 			expect(renders.count).toBeLessThanOrEqual(5)
 			unmount()
 		}

@@ -18,7 +18,8 @@
 	},
 	"ui": {
 		"search_placeholder": "Tìm kiếm...",
-		"no_results": "Không tìm thấy kết quả nào"
+		"no_results": "Không tìm thấy kết quả nào",
+		"close": "Đóng"
 	},
 	"mermaid": {
 		"loading": "Đang tạo biểu đồ mermaid...",
@@ -41,7 +42,8 @@
 		"tabs": {
 			"view": "Hình ảnh"
 		},
-		"noData": "Không có dữ liệu hình ảnh"
+		"noData": "Không có dữ liệu hình ảnh",
+		"generatedAlt": "Hình ảnh do AI tạo"
 	},
 	"confirmation": {
 		"deleteMessage": "Xóa Tin Nhắn",

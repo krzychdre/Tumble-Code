@@ -125,7 +125,8 @@
 		"back": "뒤로",
 		"apply": "적용",
 		"confirm": "확인",
-		"confirmPrompt": "{{count}}개 모드에 적용하시겠습니까?"
+		"confirmPrompt": "{{count}}개 모드에 적용하시겠습니까?",
+		"modeList": "모드"
 	},
 	"enhancePrompt": "추가 컨텍스트로 프롬프트 향상",
 	"addImages": "메시지에 이미지 추가",
@@ -214,7 +215,8 @@
 		"wantsToGenerateImage": "Tumble가 이미지를 생성하고 싶어합니다",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble가 워크스페이스 외부에서 이미지를 생성하고 싶어합니다",
 		"wantsToGenerateImageProtected": "Tumble가 보호된 위치에서 이미지를 생성하고 싶어합니다",
-		"didGenerateImage": "Tumble가 이미지를 생성했습니다"
+		"didGenerateImage": "Tumble가 이미지를 생성했습니다",
+		"userEdits": "사용자 편집"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble가 이 디렉토리의 최상위 파일을 보고 싶어합니다",
@@ -241,7 +243,8 @@
 		"addToDenied": "거부 목록에 추가",
 		"removeFromDenied": "거부 목록에서 제거",
 		"expandCommand": "명령 확장",
-		"collapseCommand": "명령 축소"
+		"collapseCommand": "명령 축소",
+		"clickToEditPattern": "클릭하여 패턴 편집"
 	},
 	"text": {
 		"rooSaid": "루가 말했다"
@@ -318,7 +321,8 @@
 				"label": "자율",
 				"description": "완전 자동: 우회의 모든 기능에 더해 후속 질문도 자동 응답되어 에이전트가 끝날 때까지 실행됩니다."
 			}
-		}
+		},
+		"enabled": "사용"
 	},
 	"reasoning": {
 		"thinking": "생각 중"
@@ -346,7 +350,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble가 스킬을 로드하려고 합니다",
-		"didLoad": "Tumble가 스킬을 로드했습니다"
+		"didLoad": "Tumble가 스킬을 로드했습니다",
+		"arguments": "인수:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "입력창에 복사 (또는 Shift + 클릭)",
@@ -402,7 +407,8 @@
 		"wantsToSearchWithPath": "Tumble가 <code>{{path}}</code>에서 <code>{{query}}</code>을(를) 검색하고 싶어합니다",
 		"didSearch_one": "1개의 결과를 찾았습니다",
 		"didSearch_other": "{{count}}개의 결과를 찾았습니다",
-		"resultTooltip": "유사도 점수: {{score}} (클릭하여 파일 열기)"
+		"resultTooltip": "유사도 점수: {{score}} (클릭하여 파일 열기)",
+		"displayError": "검색 결과를 표시하는 중 오류가 발생했습니다."
 	},
 	"read-batch": {
 		"approve": {
@@ -466,7 +472,8 @@
 		"problems": "문제",
 		"terminal": "터미널",
 		"url": "콘텐츠를 가져올 URL 붙여넣기",
-		"menuLabel": "컨텍스트 메뉴"
+		"menuLabel": "컨텍스트 메뉴",
+		"gitCommits": "Git 커밋"
 	},
 	"queuedMessages": {
 		"title": "대기열 메시지",
@@ -479,7 +486,25 @@
 	"todo": {
 		"partial": "{{total}}개의 할 일 중 {{completed}}개 완료",
 		"complete": "{{total}}개의 할 일 완료",
-		"updated": "할 일 목록을 업데이트했습니다"
+		"updated": "할 일 목록을 업데이트했습니다",
+		"userEdit": "사용자 편집",
+		"userEdits": "사용자 편집",
+		"listUpdated": "할 일 목록 업데이트됨",
+		"edit": "편집",
+		"done": "완료",
+		"add": "추가",
+		"addTodo": "할 일 추가",
+		"cancel": "취소",
+		"delete": "삭제",
+		"remove": "제거",
+		"itemPlaceholder": "할 일 항목 입력",
+		"newItemPlaceholder": "할 일 항목을 입력하고 Enter를 눌러 추가",
+		"deleteConfirm": "이 할 일 항목을 삭제하시겠습니까?",
+		"status": {
+			"notStarted": "시작 안 함",
+			"inProgress": "진행 중",
+			"completed": "완료"
+		}
 	},
 	"tooManyTools": {
 		"title": "활성화된 도구가 너무 많습니다",
@@ -558,5 +583,14 @@
 		"idle": "메모리가 켜져 있습니다"
 	},
 	"thumbnailAlt": "섬네일 {{index}}",
-	"removeImage": "이미지 {{index}} 제거"
+	"removeImage": "이미지 {{index}} 제거",
+	"apiConfigGroups": {
+		"pinned": "고정된 구성",
+		"all": "모든 구성"
+	},
+	"markdownPreview": {
+		"open": "미리 보기에서 열기",
+		"openAriaLabel": "마크다운을 미리 보기에서 열기",
+		"copyAsMarkdown": "마크다운으로 복사"
+	}
 }

@@ -51,5 +51,6 @@
 	"today": "今日",
 	"yesterday": "昨日",
 	"noHistory": "タスクはまだありません。会話を始めて履歴を作成しましょう。",
-	"noSearchResults": "この検索に一致するタスクはありません。"
+	"noSearchResults": "この検索に一致するタスクはありません。",
+	"clearSearch": "検索をクリア"
 }

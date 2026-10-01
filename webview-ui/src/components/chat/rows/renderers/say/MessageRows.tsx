@@ -23,7 +23,7 @@ export const TextRow = ({ message }: RowRendererProps) => {
 	return (
 		<div className="group">
 			<div style={headerStyle}>
-				<MessageCircle className="w-4 shrink-0" aria-label="Speech bubble icon" />
+				<MessageCircle className="w-4 shrink-0" aria-hidden="true" />
 				<span style={{ fontWeight: "bold" }}>{t("chat:text.rooSaid")}</span>
 				<div style={{ flexGrow: 1 }} />
 				<OpenMarkdownPreviewButton markdown={message.text} />
@@ -65,7 +65,10 @@ export const CompletionResultSayRow = ({ message }: RowRendererProps) => {
 	return (
 		<div className="group">
 			<div style={headerStyle}>
-				<span className="codicon codicon-check" style={{ color: successColor, marginBottom: "-1.5px" }}></span>
+				<span
+					className="codicon codicon-check"
+					style={{ color: successColor, marginBottom: "-1.5px" }}
+					aria-hidden="true"></span>
 				<span style={{ color: successColor, fontWeight: "bold" }}>{t("chat:taskCompleted")}</span>
 				<div style={{ flexGrow: 1 }} />
 				<OpenMarkdownPreviewButton markdown={message.text} />

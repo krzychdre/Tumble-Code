@@ -37,13 +37,7 @@ export const CommandAskRow = ({ message, isLast, lastModifiedMessage, isExpanded
 		<CommandExecution
 			executionId={message.ts.toString()}
 			text={message.text}
-			icon={
-				isCommandExecuting ? (
-					<ProgressIndicator />
-				) : (
-					<TerminalSquare className="size-4" aria-label="Terminal icon" />
-				)
-			}
+			icon={isCommandExecuting ? <ProgressIndicator /> : <TerminalSquare className="size-4" aria-hidden="true" />}
 			title={<span style={{ color: normalColor, fontWeight: "bold" }}>{t("chat:commandExecution.running")}</span>}
 			isExpanded={isExpanded}
 			onToggleExpand={toggleExpand}
@@ -66,7 +60,10 @@ export const UseMcpServerRow = ({ message, isLast, lastModifiedMessage }: RowRen
 		mcpServerUse === undefined ? null : isMcpServerResponding ? (
 			<ProgressIndicator />
 		) : (
-			<span className="codicon codicon-server" style={{ color: normalColor, marginBottom: "-1.5px" }}></span>
+			<span
+				className="codicon codicon-server"
+				style={{ color: normalColor, marginBottom: "-1.5px" }}
+				aria-hidden="true"></span>
 		)
 	const title =
 		mcpServerUse === undefined ? null : (
@@ -149,7 +146,10 @@ export const CompletionResultAskRow = ({ message }: RowRendererProps) => {
 	return (
 		<div className="group">
 			<div style={headerStyle}>
-				<span className="codicon codicon-check" style={{ color: successColor, marginBottom: "-1.5px" }}></span>
+				<span
+					className="codicon codicon-check"
+					style={{ color: successColor, marginBottom: "-1.5px" }}
+					aria-hidden="true"></span>
 				<span style={{ color: successColor, fontWeight: "bold" }}>{t("chat:taskCompleted")}</span>
 				<div style={{ flexGrow: 1 }} />
 				<OpenMarkdownPreviewButton markdown={message.text} />
@@ -176,7 +176,7 @@ export const FollowupRow = ({
 	return (
 		<>
 			<div style={headerStyle}>
-				<MessageCircleQuestionMark className="w-4 shrink-0" aria-label="Question icon" />
+				<MessageCircleQuestionMark className="w-4 shrink-0" aria-hidden="true" />
 				<span style={{ color: normalColor, fontWeight: "bold" }}>{t("chat:questions.hasQuestion")}</span>
 			</div>
 			<div className="flex flex-col gap-2 ml-6">

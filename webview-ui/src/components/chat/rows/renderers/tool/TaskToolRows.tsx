@@ -28,7 +28,7 @@ export const UpdateTodoListToolRow = ({ message, tool, meta }: ToolRendererProps
 export const SwitchModeToolRow = ({ message, tool }: ToolRendererProps) => (
 	<>
 		<div style={headerStyle}>
-			<PocketKnife className="w-4 shrink-0" aria-label="Switch mode icon" />
+			<PocketKnife className="w-4 shrink-0" aria-hidden="true" />
 			<span style={{ fontWeight: "bold" }}>
 				{message.type === "ask" ? (
 					<>
@@ -140,7 +140,7 @@ export const ReviewPlanToolRow = ({ tool }: ToolRendererProps) => {
 	return (
 		<>
 			<div style={headerStyle}>
-				<ClipboardCheck className="w-4 shrink-0" aria-label="Plan review icon" />
+				<ClipboardCheck className="w-4 shrink-0" aria-hidden="true" />
 				<span style={{ fontWeight: "bold" }}>{t("chat:planReview.pauseTitle")}</span>
 			</div>
 			{tool.path && (

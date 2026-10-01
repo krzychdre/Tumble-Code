@@ -119,7 +119,10 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 					{/* Error message */}
 					{error && (
 						<div className="flex items-center gap-2 px-2 py-1.5 rounded bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
-							<span className="codicon codicon-error text-vscode-errorForeground flex-shrink-0" />
+							<span
+								className="codicon codicon-error text-vscode-errorForeground flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<p className="text-vscode-errorForeground">{error}</p>
 						</div>
 					)}
@@ -132,7 +135,10 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 					<Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
 						{isDeleting ? (
 							<>
-								<span className="codicon codicon-loading codicon-modifier-spin mr-2" />
+								<span
+									className="codicon codicon-loading codicon-modifier-spin mr-2"
+									aria-hidden="true"
+								/>
 								{t("worktrees:deleting")}
 							</>
 						) : (

@@ -59,5 +59,6 @@
 	"today": "Hoy",
 	"yesterday": "Ayer",
 	"noHistory": "Aún no hay tareas. Inicia una conversación para crear tu historial.",
-	"noSearchResults": "Ninguna tarea coincide con esta búsqueda."
+	"noSearchResults": "Ninguna tarea coincide con esta búsqueda.",
+	"clearSearch": "Borrar búsqueda"
 }

@@ -123,7 +123,7 @@ export const AutoApproveToggle = ({ onToggle, mode, ...props }: AutoApproveToggl
 								forced &&
 									"!bg-orange-600 hover:!bg-orange-600 !text-white !border-orange-600 !opacity-100 cursor-default",
 							)}>
-							<span className={`codicon codicon-${icon} text-sm`} />
+							<span className={`codicon codicon-${icon} text-sm`} aria-hidden="true" />
 							<span>{t(labelKey)}</span>
 						</Button>
 					</StandardTooltip>

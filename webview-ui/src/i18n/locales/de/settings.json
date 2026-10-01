@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "Einstellungen durchsuchen...",
-		"noResults": "Keine Einstellungen gefunden"
+		"noResults": "Keine Einstellungen gefunden",
+		"clear": "Suche löschen"
 	},
 	"header": {
 		"title": "Einstellungen",
@@ -500,7 +501,8 @@
 			"low": "Niedrig",
 			"description": "Steuert, wie detailliert die Antworten des Modells sind. Niedrige Ausführlichkeit erzeugt knappe Antworten, während hohe Ausführlichkeit gründliche Erklärungen liefert."
 		},
-		"setReasoningLevel": "Denkaufwand aktivieren"
+		"setReasoningLevel": "Denkaufwand aktivieren",
+		"awsAuthMethod": "Authentifizierungsmethode"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "Standard: http://localhost:11434",
 		"lmStudioUrl": "Standard: http://localhost:1234",
-		"geminiUrl": "Standard: https://generativelanguage.googleapis.com"
+		"geminiUrl": "Standard: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "Standard: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "Benutzerdefinierte ARN",

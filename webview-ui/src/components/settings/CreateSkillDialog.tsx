@@ -168,7 +168,7 @@ export const CreateSkillDialog: React.FC<CreateSkillDialogProps> = ({
 							onChange={handleNameChange}
 							placeholder={t("settings:skills.createDialog.namePlaceholder")}
 							maxLength={64}
-							className="w-full bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded-xl px-3 py-2 focus:outline-none focus:border-vscode-focusBorder"
+							className="w-full bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded-xl px-3 py-2 focus:border-vscode-focusBorder focus-ring"
 						/>
 						{nameError && <span className="text-xs text-vscode-errorForeground">{t(nameError)}</span>}
 					</div>

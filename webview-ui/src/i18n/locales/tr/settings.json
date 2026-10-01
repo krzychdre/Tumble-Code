@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "Ayarları ara...",
-		"noResults": "Ayar bulunamadı"
+		"noResults": "Ayar bulunamadı",
+		"clear": "Aramayı temizle"
 	},
 	"header": {
 		"title": "Ayarlar",
@@ -500,7 +501,8 @@
 			"low": "Düşük",
 			"description": "Modelin yanıtlarının ne kadar ayrıntılı olduğunu kontrol eder. Düşük ayrıntı düzeyi kısa yanıtlar üretirken, yüksek ayrıntı düzeyi kapsamlı açıklamalar sunar."
 		},
-		"setReasoningLevel": "Akıl Yürütme Çabasını Etkinleştir"
+		"setReasoningLevel": "Akıl Yürütme Çabasını Etkinleştir",
+		"awsAuthMethod": "Kimlik doğrulama yöntemi"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "Varsayılan: http://localhost:11434",
 		"lmStudioUrl": "Varsayılan: http://localhost:1234",
-		"geminiUrl": "Varsayılan: https://generativelanguage.googleapis.com"
+		"geminiUrl": "Varsayılan: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "Varsayılan: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "Özel ARN",

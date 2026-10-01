@@ -1,4 +1,6 @@
 import React from "react"
+import { useAppTranslation } from "@src/i18n/TranslationContext"
+
 import { ImageViewer } from "./ImageViewer"
 
 /**
@@ -35,6 +37,7 @@ interface ImageBlockProps {
 }
 
 export default function ImageBlock({ imageUri, imagePath, imageData, path }: ImageBlockProps) {
+	const { t } = useAppTranslation()
 	// Determine which props to use based on what's provided
 	let finalImageUri: string
 	let finalImagePath: string | undefined
@@ -58,7 +61,7 @@ export default function ImageBlock({ imageUri, imagePath, imageData, path }: Ima
 			<ImageViewer
 				imageUri={finalImageUri}
 				imagePath={finalImagePath}
-				alt="AI Generated Image"
+				alt={t("common:image.generatedAlt")}
 				showControls={true}
 			/>
 		</div>

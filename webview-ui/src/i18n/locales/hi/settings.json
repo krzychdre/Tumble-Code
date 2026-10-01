@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "सेटिंग्स खोजें...",
-		"noResults": "कोई सेटिंग नहीं मिली"
+		"noResults": "कोई सेटिंग नहीं मिली",
+		"clear": "खोज साफ़ करें"
 	},
 	"header": {
 		"title": "सेटिंग्स",
@@ -500,7 +501,8 @@
 			"low": "कम",
 			"description": "मॉडल की प्रतिक्रियाएं कितनी विस्तृत हैं, इसे नियंत्रित करता है। कम वर्बोसिटी संक्षिप्त उत्तर देती है, जबकि उच्च वर्बोसिटी विस्तृत स्पष्टीकरण प्रदान करती है।"
 		},
-		"setReasoningLevel": "तर्क प्रयास सक्षम करें"
+		"setReasoningLevel": "तर्क प्रयास सक्षम करें",
+		"awsAuthMethod": "प्रमाणीकरण विधि"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "डिफ़ॉल्ट: http://localhost:11434",
 		"lmStudioUrl": "डिफ़ॉल्ट: http://localhost:1234",
-		"geminiUrl": "डिफ़ॉल्ट: https://generativelanguage.googleapis.com"
+		"geminiUrl": "डिफ़ॉल्ट: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "डिफ़ॉल्ट: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "कस्टम ARN",

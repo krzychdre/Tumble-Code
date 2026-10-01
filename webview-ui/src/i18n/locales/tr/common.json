@@ -18,7 +18,8 @@
 	},
 	"ui": {
 		"search_placeholder": "Ara...",
-		"no_results": "Sonuç bulunamadı"
+		"no_results": "Sonuç bulunamadı",
+		"close": "Kapat"
 	},
 	"mermaid": {
 		"loading": "Mermaid diyagramı oluşturuluyor...",
@@ -41,7 +42,8 @@
 		"tabs": {
 			"view": "Resim"
 		},
-		"noData": "Resim verisi yok"
+		"noData": "Resim verisi yok",
+		"generatedAlt": "Yapay zekâ ile oluşturulan görsel"
 	},
 	"confirmation": {
 		"deleteMessage": "Mesajı Sil",

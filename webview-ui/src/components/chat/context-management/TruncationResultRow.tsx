@@ -42,7 +42,7 @@ export function TruncationResultRow({ data }: TruncationResultRowProps) {
 						{t("chat:contextManagement.tokens")}
 					</span>
 				</div>
-				<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
+				<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`} aria-hidden="true"></span>
 			</div>
 
 			{isExpanded && (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { LabeledCheckbox } from "@src/components/ui"
 import type { McpServer } from "@roo-code/types"
+import { useAppTranslation } from "@src/i18n/TranslationContext"
 import McpServerChecklist from "./McpServerChecklist"
 
 export interface McpServerRestrictionProps {
@@ -47,6 +48,7 @@ function arraysEqualOrBothUndefined(a: string[] | undefined, b: string[] | undef
  *    `lastFlushedRef`), overwrite the cache.
  */
 const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value, mcpServers, onChange }) => {
+	const { t } = useAppTranslation()
 	const [cachedAllowedMcpServers, setCachedAllowedMcpServers] = useState<string[] | undefined>(value)
 
 	const lastFlushedRef = useRef<string[] | undefined>(value)
@@ -135,7 +137,7 @@ const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value
 	return (
 		<div className="mt-3 ml-1" data-testid="mcp-server-restriction">
 			<LabeledCheckbox checked={isRestricted} data-testid="restrict-mcp-servers-toggle" onChange={handleToggle}>
-				Restrict to specific MCP servers
+				{t("prompts:mcpRestriction.restrict")}
 			</LabeledCheckbox>
 			{isRestricted && (
 				<McpServerChecklist

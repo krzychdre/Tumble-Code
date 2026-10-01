@@ -95,7 +95,10 @@ export const WebSearchToolRow = ({ message, tool, meta }: ToolRendererProps) => 
 					<ul className="m-0 list-none rounded-md bg-vscode-editor-background py-1 px-0">
 						{queries.map((query, i) => (
 							<li key={i} className="flex items-start gap-2 px-2.5 py-0.5" title={query}>
-								<span className="codicon codicon-search text-xs text-vscode-descriptionForeground shrink-0 mt-[3px]" />
+								<span
+									className="codicon codicon-search text-xs text-vscode-descriptionForeground shrink-0 mt-[3px]"
+									aria-hidden="true"
+								/>
 								<span className="min-w-0 line-clamp-2 break-words">
 									<QueryText query={query} />
 								</span>
@@ -124,12 +127,18 @@ export const WebFetchToolRow = ({ message, tool, meta }: ToolRendererProps) => {
 							className="group flex w-full min-w-0 items-center gap-2 rounded-md border-none bg-vscode-editor-background px-2.5 py-1.5 text-left text-vscode-foreground cursor-pointer focus-ring"
 							title={t("chat:webFetch.openInBrowser", { url })}
 							onClick={() => vscode.postMessage({ type: "openExternal", url })}>
-							<span className="codicon codicon-globe text-xs text-vscode-descriptionForeground shrink-0" />
+							<span
+								className="codicon codicon-globe text-xs text-vscode-descriptionForeground shrink-0"
+								aria-hidden="true"
+							/>
 							<span className="font-semibold shrink-0">{parts.host}</span>
 							<span className="min-w-0 truncate font-mono text-xs text-vscode-descriptionForeground">
 								{parts.rest}
 							</span>
-							<span className="codicon codicon-link-external ml-auto text-xs text-vscode-descriptionForeground shrink-0 opacity-60 group-hover:opacity-100 group-focus-visible:opacity-100" />
+							<span
+								className="codicon codicon-link-external ml-auto text-xs text-vscode-descriptionForeground shrink-0 opacity-60 group-hover:opacity-100 group-focus-visible:opacity-100"
+								aria-hidden="true"
+							/>
 						</button>
 					) : (
 						<div className="rounded-md bg-vscode-editor-background px-2.5 py-1.5 font-mono text-xs break-all">

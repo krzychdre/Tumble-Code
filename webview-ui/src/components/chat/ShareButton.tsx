@@ -167,7 +167,7 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 						{shareSuccess ? (
 							<div className="p-3">
 								<div className="flex items-center gap-2 text-sm text-[var(--status-done)]">
-									<span className="codicon codicon-check"></span>
+									<span className="codicon codicon-check" aria-hidden="true"></span>
 									<span>
 										{shareSuccess.visibility === "public"
 											? t("chat:task.shareSuccessPublic")
@@ -184,7 +184,9 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 												onSelect={() => handleShare("organization")}
 												className="cursor-pointer">
 												<div className="flex items-center gap-2">
-													<span className="codicon codicon-organization text-sm"></span>
+													<span
+														className="codicon codicon-organization text-sm"
+														aria-hidden="true"></span>
 													<div className="flex flex-col">
 														<span className="text-sm">
 															{t("chat:task.shareWithOrganization")}
@@ -201,7 +203,9 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 												onSelect={() => handleShare("public")}
 												className="cursor-pointer">
 												<div className="flex items-center gap-2">
-													<span className="codicon codicon-globe text-sm"></span>
+													<span
+														className="codicon codicon-globe text-sm"
+														aria-hidden="true"></span>
 													<div className="flex flex-col">
 														<span className="text-sm">{t("chat:task.sharePublicly")}</span>
 														<span className="text-xs text-vscode-descriptionForeground">

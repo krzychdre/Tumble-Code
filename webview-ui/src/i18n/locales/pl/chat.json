@@ -149,7 +149,8 @@
 		"back": "Wstecz",
 		"apply": "Zastosuj",
 		"confirm": "Potwierdź",
-		"confirmPrompt": "Zastosować do {{count}} trybów?"
+		"confirmPrompt": "Zastosować do {{count}} trybów?",
+		"modeList": "Tryby"
 	},
 	"enhancePrompt": "Ulepsz podpowiedź dodatkowym kontekstem",
 	"addImages": "Dodaj obrazy do wiadomości",
@@ -238,7 +239,8 @@
 		"wantsToGenerateImage": "Tumble chce wygenerować obraz",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble chce wygenerować obraz poza obszarem roboczym",
 		"wantsToGenerateImageProtected": "Tumble chce wygenerować obraz w chronionym miejscu",
-		"didGenerateImage": "Tumble wygenerował obraz"
+		"didGenerateImage": "Tumble wygenerował obraz",
+		"userEdits": "Edycje użytkownika"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble chce zobaczyć pliki najwyższego poziomu w tym katalogu",
@@ -265,7 +267,8 @@
 		"addToDenied": "Dodaj do listy odrzuconych",
 		"removeFromDenied": "Usuń z listy odrzuconych",
 		"expandCommand": "Rozwiń polecenie",
-		"collapseCommand": "Zwiń polecenie"
+		"collapseCommand": "Zwiń polecenie",
+		"clickToEditPattern": "Kliknij, aby edytować wzorzec"
 	},
 	"text": {
 		"rooSaid": "Tumble powiedział"
@@ -344,7 +347,8 @@
 				"label": "Autonomiczny",
 				"description": "Pełny automat: wszystko, co robi Pomiń, a dodatkowo pytania uzupełniające są odpowiadane automatycznie, by agent działał do końca."
 			}
-		}
+		},
+		"enabled": "Włączone"
 	},
 	"reasoning": {
 		"thinking": "Myślenie"
@@ -378,7 +382,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble chce załadować umiejętność",
-		"didLoad": "Tumble załadował umiejętność"
+		"didLoad": "Tumble załadował umiejętność",
+		"arguments": "Argumenty:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Kopiuj do pola wprowadzania (lub Shift + kliknięcie)",
@@ -436,7 +441,8 @@
 		"didSearch_few": "Znaleziono {{count}} wyniki",
 		"didSearch_many": "Znaleziono {{count}} wyników",
 		"didSearch_other": "Znaleziono {{count}} wyniku",
-		"resultTooltip": "Wynik podobieństwa: {{score}} (kliknij, aby otworzyć plik)"
+		"resultTooltip": "Wynik podobieństwa: {{score}} (kliknij, aby otworzyć plik)",
+		"displayError": "Błąd wyświetlania wyników wyszukiwania."
 	},
 	"read-batch": {
 		"approve": {
@@ -500,7 +506,8 @@
 		"problems": "Problemy",
 		"terminal": "Terminal",
 		"url": "Wklej adres URL, aby pobrać zawartość",
-		"menuLabel": "Menu kontekstowe"
+		"menuLabel": "Menu kontekstowe",
+		"gitCommits": "Commity Git"
 	},
 	"queuedMessages": {
 		"title": "Wiadomości w kolejce",
@@ -513,7 +520,25 @@
 	"todo": {
 		"partial": "Ukończono {{completed}} z {{total}} zadań do wykonania",
 		"complete": "Ukończono {{total}} zadań do wykonania",
-		"updated": "Zaktualizowano listę zadań do wykonania"
+		"updated": "Zaktualizowano listę zadań do wykonania",
+		"userEdit": "Edycja użytkownika",
+		"userEdits": "Edycje użytkownika",
+		"listUpdated": "Lista zadań zaktualizowana",
+		"edit": "Edytuj",
+		"done": "Gotowe",
+		"add": "Dodaj",
+		"addTodo": "Dodaj zadanie",
+		"cancel": "Anuluj",
+		"delete": "Usuń",
+		"remove": "Usuń",
+		"itemPlaceholder": "Wpisz zadanie",
+		"newItemPlaceholder": "Wpisz zadanie i naciśnij Enter, aby dodać",
+		"deleteConfirm": "Czy na pewno chcesz usunąć to zadanie?",
+		"status": {
+			"notStarted": "Nie rozpoczęte",
+			"inProgress": "W toku",
+			"completed": "Ukończone"
+		}
 	},
 	"tooManyTools": {
 		"title": "Włączono zbyt wiele narzędzi",
@@ -578,5 +603,14 @@
 		"title": "Tumble przeszukał historię tego zadania"
 	},
 	"thumbnailAlt": "Miniatura {{index}}",
-	"removeImage": "Usuń obraz {{index}}"
+	"removeImage": "Usuń obraz {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Przypięte konfiguracje",
+		"all": "Wszystkie konfiguracje"
+	},
+	"markdownPreview": {
+		"open": "Otwórz w podglądzie",
+		"openAriaLabel": "Otwórz markdown w podglądzie",
+		"copyAsMarkdown": "Kopiuj jako markdown"
+	}
 }

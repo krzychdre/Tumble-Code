@@ -466,7 +466,10 @@ const ModelTierSelectField = ({
 				<label className="block font-medium mb-1">{t(field.labelKey)}</label>
 				{field.tooltipKey && (
 					<StandardTooltip content={t(field.tooltipKey)}>
-						<i className="codicon codicon-info text-vscode-descriptionForeground text-xs" />
+						<i
+							className="codicon codicon-info text-vscode-descriptionForeground text-xs"
+							aria-hidden="true"
+						/>
 					</StandardTooltip>
 				)}
 			</div>

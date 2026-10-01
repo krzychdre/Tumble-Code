@@ -14,7 +14,7 @@ export const SearchTaskHistorySayRow = ({ tool: sayTool }: ToolRendererProps) =>
 	const { t } = useTranslation()
 	return (
 		<div style={headerStyle}>
-			<History className="w-4 shrink-0" aria-label="Search task history icon" />
+			<History className="w-4 shrink-0" aria-hidden="true" />
 			<span style={{ fontWeight: "bold" }}>{t("chat:searchTaskHistory.title")}</span>
 			{sayTool.query && (
 				<span className="text-xs ml-1" style={{ color: "var(--vscode-descriptionForeground)" }}>
@@ -33,7 +33,7 @@ export const ReadArtifactSayRow = ({ tool: sayTool }: ToolRendererProps) => {
 
 	return (
 		<div style={headerStyle}>
-			<FileCode2 className="w-4 shrink-0" aria-label="Read artifact icon" />
+			<FileCode2 className="w-4 shrink-0" aria-hidden="true" />
 			<span style={{ fontWeight: "bold" }}>
 				{sayTool.tool === "readArtifact" ? t("chat:readArtifact.title") : t("chat:readCommandOutput.title")}
 			</span>

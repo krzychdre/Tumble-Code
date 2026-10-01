@@ -15,9 +15,11 @@ export const CodeIndexDisclosure = ({ label, isOpen, onToggle, children }: CodeI
 	<div className="mt-4">
 		<button
 			onClick={onToggle}
-			className="flex items-center text-xs text-vscode-foreground hover:text-vscode-textLink-foreground focus:outline-none"
+			className="flex items-center text-xs text-vscode-foreground hover:text-vscode-textLink-foreground focus-ring"
 			aria-expanded={isOpen}>
-			<span className={`codicon codicon-${isOpen ? "chevron-down" : "chevron-right"} mr-1`}></span>
+			<span
+				className={`codicon codicon-${isOpen ? "chevron-down" : "chevron-right"} mr-1`}
+				aria-hidden="true"></span>
 			<span className="text-base font-semibold">{label}</span>
 		</button>
 

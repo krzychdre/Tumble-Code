@@ -17,7 +17,9 @@ export function TabButton({ icon, label, isActive, onClick }: TabButtonProps) {
 				isActive ? activeClasses : inactiveClasses
 			}`}
 			onClick={onClick}>
-			<span className={`codicon codicon-${icon} text-sm${isActive ? " text-vscode-focusBorder" : ""}`}></span>
+			<span
+				className={`codicon codicon-${icon} text-sm${isActive ? " text-vscode-focusBorder" : ""}`}
+				aria-hidden="true"></span>
 			{label}
 		</button>
 	)

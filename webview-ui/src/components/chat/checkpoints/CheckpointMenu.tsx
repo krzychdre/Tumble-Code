@@ -117,7 +117,7 @@ export const CheckpointMenu = ({
 				<StandardTooltip content={t("chat:checkpoint.menu.restore")}>
 					<PopoverTrigger asChild>
 						<Button variant="ghost" size="icon" aria-label={t("chat:checkpoint.menu.restore")}>
-							<span className="codicon codicon-history" />
+							<span className="codicon codicon-history" aria-hidden="true" />
 						</Button>
 					</PopoverTrigger>
 				</StandardTooltip>
@@ -179,14 +179,14 @@ export const CheckpointMenu = ({
 					onClick={onJumpToPreviousCheckpoint}
 					data-testid="jump-previous-checkpoint-btn"
 					aria-label={t("chat:scrollToLatestCheckpoint")}>
-					<span className="codicon codicon-chevron-up" />
+					<span className="codicon codicon-chevron-up" aria-hidden="true" />
 				</Button>
 			</StandardTooltip>
 			<Popover open={moreOpen} onOpenChange={(open) => setMoreOpen(open)} data-testid="more-popover">
 				<StandardTooltip content={t("chat:task.seeMore")}>
 					<PopoverTrigger asChild>
 						<Button variant="ghost" size="icon" aria-label={t("chat:checkpoint.menu.more")}>
-							<span className="codicon codicon-kebab-vertical" />
+							<span className="codicon codicon-kebab-vertical" aria-hidden="true" />
 						</Button>
 					</PopoverTrigger>
 				</StandardTooltip>
@@ -198,7 +198,7 @@ export const CheckpointMenu = ({
 								onDiffFromInit()
 								setMoreOpen(false)
 							}}>
-							<span className="codicon codicon-versions mr-2" />
+							<span className="codicon codicon-versions mr-2" aria-hidden="true" />
 							{t("chat:checkpoint.menu.viewDiffFromInit")}
 						</Button>
 						<Button
@@ -207,7 +207,7 @@ export const CheckpointMenu = ({
 								onDiffWithCurrent()
 								setMoreOpen(false)
 							}}>
-							<span className="codicon codicon-diff mr-2" />
+							<span className="codicon codicon-diff mr-2" aria-hidden="true" />
 							{t("chat:checkpoint.menu.viewDiffWithCurrent")}
 						</Button>
 					</div>
