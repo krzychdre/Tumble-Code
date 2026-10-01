@@ -219,6 +219,21 @@ export function buildAuthorizationUrl(codeChallenge: string, state: string): str
 }
 
 /**
+ * POSTs a form to the token endpoint. Per the implementation guide the body is
+ * application/x-www-form-urlencoded, not JSON.
+ */
+function postTokenForm(fields: Record<string, string>): Promise<Response> {
+	return fetch(OPENAI_CODEX_OAUTH_CONFIG.tokenEndpoint, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/x-www-form-urlencoded",
+		},
+		body: new URLSearchParams(fields).toString(),
+		signal: AbortSignal.timeout(CONTROL_REQUEST_TIMEOUT_MS),
+	})
+}
+
+/**
  * Exchanges the authorization code for tokens
  * Important: Uses application/x-www-form-urlencoded (not JSON)
  * Important: state must NOT be included in token exchange body
@@ -226,21 +241,12 @@ export function buildAuthorizationUrl(codeChallenge: string, state: string): str
 export async function exchangeCodeForTokens(code: string, codeVerifier: string): Promise<OpenAiCodexCredentials> {
 	// Per the implementation guide: use application/x-www-form-urlencoded
 	// and do NOT include state in the body (OpenAI returns error if included)
-	const body = new URLSearchParams({
+	const response = await postTokenForm({
 		grant_type: "authorization_code",
 		client_id: OPENAI_CODEX_OAUTH_CONFIG.clientId,
 		code,
 		redirect_uri: OPENAI_CODEX_OAUTH_CONFIG.redirectUri,
 		code_verifier: codeVerifier,
-	})
-
-	const response = await fetch(OPENAI_CODEX_OAUTH_CONFIG.tokenEndpoint, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/x-www-form-urlencoded",
-		},
-		body: body.toString(),
-		signal: AbortSignal.timeout(CONTROL_REQUEST_TIMEOUT_MS),
 	})
 
 	if (!response.ok) {
@@ -279,19 +285,10 @@ export async function exchangeCodeForTokens(code: string, codeVerifier: string):
  * Uses application/x-www-form-urlencoded (not JSON)
  */
 export async function refreshAccessToken(credentials: OpenAiCodexCredentials): Promise<OpenAiCodexCredentials> {
-	const body = new URLSearchParams({
+	const response = await postTokenForm({
 		grant_type: "refresh_token",
 		client_id: OPENAI_CODEX_OAUTH_CONFIG.clientId,
 		refresh_token: credentials.refresh_token,
-	})
-
-	const response = await fetch(OPENAI_CODEX_OAUTH_CONFIG.tokenEndpoint, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/x-www-form-urlencoded",
-		},
-		body: body.toString(),
-		signal: AbortSignal.timeout(CONTROL_REQUEST_TIMEOUT_MS),
 	})
 
 	if (!response.ok) {
@@ -403,15 +400,29 @@ export class OpenAiCodexOAuthManager {
 			return null
 		}
 
+		return this.refreshAndPersist(this.credentials, true)
+	}
+
+	/**
+	 * Refreshes the given credentials (one request shared by concurrent callers),
+	 * stores the result and returns the new access token, or null when the
+	 * refresh fails. The stored credentials are cleared only when the refresh
+	 * token is clearly invalid or revoked. `forced` only changes the log wording.
+	 */
+	private async refreshAndPersist(credentials: OpenAiCodexCredentials, forced: boolean): Promise<string | null> {
 		try {
 			// De-dupe concurrent refreshes
 			if (!this.refreshPromise) {
-				const prevRefreshToken = this.credentials.refresh_token
-				this.log(`[openai-codex-oauth] Forcing token refresh (expires=${this.credentials.expires})...`)
-				this.refreshPromise = refreshAccessToken(this.credentials).then((newCreds) => {
+				const prevRefreshToken = credentials.refresh_token
+				this.log(
+					forced
+						? `[openai-codex-oauth] Forcing token refresh (expires=${credentials.expires})...`
+						: `[openai-codex-oauth] Access token expired (expires=${credentials.expires}). Refreshing...`,
+				)
+				this.refreshPromise = refreshAccessToken(credentials).then((newCreds) => {
 					const rotated = newCreds.refresh_token !== prevRefreshToken
 					this.log(
-						`[openai-codex-oauth] Forced refresh response received (expires_in≈${Math.round(
+						`[openai-codex-oauth] ${forced ? "Forced refresh" : "Refresh"} response received (expires_in≈${Math.round(
 							(newCreds.expires - Date.now()) / 1000,
 						)}s, refresh_token_rotated=${rotated})`,
 					)
@@ -422,11 +433,15 @@ export class OpenAiCodexOAuthManager {
 			const newCredentials = await this.refreshPromise
 			this.refreshPromise = null
 			await this.saveCredentials(newCredentials)
-			this.log(`[openai-codex-oauth] Forced token persisted (expires=${newCredentials.expires})`)
+			this.log(
+				`[openai-codex-oauth] ${forced ? "Forced token" : "Token"} persisted (expires=${newCredentials.expires})`,
+			)
 			return newCredentials.access_token
 		} catch (error) {
 			this.refreshPromise = null
-			this.logError("[openai-codex-oauth] Failed to force refresh token:", error)
+			this.logError(`[openai-codex-oauth] Failed to ${forced ? "force refresh" : "refresh"} token:`, error)
+
+			// Only clear secrets when the refresh token is clearly invalid/revoked.
 			if (error instanceof OpenAiCodexOAuthTokenError && error.isLikelyInvalidGrant()) {
 				this.log("[openai-codex-oauth] Refresh token appears invalid; clearing stored credentials")
 				await this.clearCredentials()
@@ -499,39 +514,7 @@ export class OpenAiCodexOAuthManager {
 
 		// Check if token is expired and refresh if needed
 		if (isTokenExpired(this.credentials)) {
-			try {
-				// De-dupe concurrent refreshes
-				if (!this.refreshPromise) {
-					this.log(
-						`[openai-codex-oauth] Access token expired (expires=${this.credentials.expires}). Refreshing...`,
-					)
-					const prevRefreshToken = this.credentials.refresh_token
-					this.refreshPromise = refreshAccessToken(this.credentials).then((newCreds) => {
-						const rotated = newCreds.refresh_token !== prevRefreshToken
-						this.log(
-							`[openai-codex-oauth] Refresh response received (expires_in≈${Math.round(
-								(newCreds.expires - Date.now()) / 1000,
-							)}s, refresh_token_rotated=${rotated})`,
-						)
-						return newCreds
-					})
-				}
-
-				const newCredentials = await this.refreshPromise
-				this.refreshPromise = null
-				await this.saveCredentials(newCredentials)
-				this.log(`[openai-codex-oauth] Token persisted (expires=${newCredentials.expires})`)
-			} catch (error) {
-				this.refreshPromise = null
-				this.logError("[openai-codex-oauth] Failed to refresh token:", error)
-
-				// Only clear secrets when the refresh token is clearly invalid/revoked.
-				if (error instanceof OpenAiCodexOAuthTokenError && error.isLikelyInvalidGrant()) {
-					this.log("[openai-codex-oauth] Refresh token appears invalid; clearing stored credentials")
-					await this.clearCredentials()
-				}
-				return null
-			}
+			return this.refreshAndPersist(this.credentials, false)
 		}
 
 		return this.credentials.access_token

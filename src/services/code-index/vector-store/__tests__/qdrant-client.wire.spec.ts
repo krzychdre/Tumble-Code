@@ -162,7 +162,7 @@ describe("QdrantVectorStore against a fake Qdrant server (real client)", () => {
 		])
 
 		for (const req of apiRequests()) {
-			expect(req.headers["user-agent"]).toBe("Roo-Code")
+			expect(req.headers["user-agent"]).toBe("Tumble-Code")
 			expect(req.headers["api-key"]).toBe("secret-key")
 		}
 		expect(apiRequests()[1].headers["content-type"]).toMatch(/^application\/json/)

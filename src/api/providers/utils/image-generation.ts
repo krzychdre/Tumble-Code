@@ -1,5 +1,6 @@
 import { t } from "../../../i18n"
 import { getApiRequestTimeout } from "./timeout-config"
+import { APP_ATTRIBUTION_HEADERS } from "../constants"
 
 // Image generation types
 interface ImageGenerationResponse {
@@ -71,8 +72,7 @@ export async function generateImageWithProvider(options: ImageGenerationOptions)
 			headers: {
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
-				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Code",
-				"X-Title": "Tumble Code",
+				...APP_ATTRIBUTION_HEADERS,
 			},
 			signal: AbortSignal.timeout(getApiRequestTimeout()),
 			body: JSON.stringify({
@@ -218,8 +218,7 @@ export async function generateImageWithImagesApi(options: ImagesApiOptions): Pro
 			headers: {
 				Authorization: `Bearer ${authToken}`,
 				"Content-Type": "application/json",
-				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Code",
-				"X-Title": "Tumble Code",
+				...APP_ATTRIBUTION_HEADERS,
 			},
 			body: JSON.stringify(requestBody),
 			signal: AbortSignal.timeout(getApiRequestTimeout()),

@@ -392,6 +392,11 @@ describe("generateImageWithProvider (chat completions)", () => {
 		// Verify /chat/completions endpoint was used
 		const callUrl = vi.mocked(global.fetch).mock.calls[0][0]
 		expect(callUrl).toContain("/chat/completions")
+		// App attribution shared with the chat providers.
+		expect(vi.mocked(global.fetch).mock.calls[0][1]?.headers).toMatchObject({
+			"HTTP-Referer": "https://github.com/krzychdre/Tumble-Code",
+			"X-Title": "Tumble Code",
+		})
 	})
 
 	it("should handle missing images in response", async () => {
