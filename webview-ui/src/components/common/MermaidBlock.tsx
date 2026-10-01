@@ -147,6 +147,7 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 						<div style={{ display: "flex", alignItems: "center" }}>
 							<button
 								className="mermaid-block-copy"
+								aria-label={t("common:mermaid.buttons.copy")}
 								onClick={(e) => {
 									e.stopPropagation()
 									const combinedContent = `Error: ${error}\n\n\`\`\`mermaid\n${code}\n\`\`\``

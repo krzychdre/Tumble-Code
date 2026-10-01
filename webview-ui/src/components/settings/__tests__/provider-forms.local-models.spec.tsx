@@ -47,7 +47,7 @@ const providerModels = vi.hoisted(() => ({
 	calls: [] as unknown[][],
 }))
 
-vi.mock("@src/components/ui/hooks/useProviderModels", () => ({
+vi.mock("@src/hooks/models/useProviderModels", () => ({
 	useProviderModels: (...args: unknown[]) => {
 		providerModels.calls.push(args)
 		return { models: providerModels.current, modelIds: [], isLoading: false, refresh: () => {} }

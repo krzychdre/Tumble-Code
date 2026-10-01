@@ -11,7 +11,7 @@ import {
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip, ThemedTextField } from "@src/components/ui"
-import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
+import { useProviderModels } from "@src/hooks/models/useProviderModels"
 
 import { convertHeadersToObject } from "../utils/headers"
 import { noTransform } from "../transforms"
@@ -184,7 +184,7 @@ export const OpenAICompatible = ({
 				<div className="flex justify-between items-center mb-2">
 					<label className="block font-medium">{t("settings:providers.customHeaders")}</label>
 					<StandardTooltip content={t("settings:common.add")}>
-						<Button variant="icon" onClick={handleAddCustomHeader}>
+						<Button aria-label={t("settings:common.add")} variant="icon" onClick={handleAddCustomHeader}>
 							<span className="codicon codicon-add"></span>
 						</Button>
 					</StandardTooltip>
@@ -209,7 +209,10 @@ export const OpenAICompatible = ({
 								onInput={(e: any) => handleUpdateHeaderValue(index, e.target.value)}
 							/>
 							<StandardTooltip content={t("settings:common.remove")}>
-								<Button variant="icon" onClick={() => handleRemoveCustomHeader(index)}>
+								<Button
+									aria-label={t("settings:common.remove")}
+									variant="icon"
+									onClick={() => handleRemoveCustomHeader(index)}>
 									<span className="codicon codicon-trash"></span>
 								</Button>
 							</StandardTooltip>

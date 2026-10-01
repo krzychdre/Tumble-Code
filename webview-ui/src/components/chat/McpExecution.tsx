@@ -313,7 +313,12 @@ export const McpExecution = ({
 								<span className="text-xs font-mono text-vscode-descriptionForeground">
 									{t("execution.response", "Response")}
 								</span>
-								<Button variant="ghost" size="icon" className="size-5">
+								<Button
+									variant="ghost"
+									size="icon"
+									className="size-5"
+									aria-label={t("execution.response", "Response")}
+									aria-expanded={isResponseExpanded}>
 									<ChevronDown
 										className={cn("size-3 transition-transform duration-200", {
 											"rotate-0": isResponseExpanded,

@@ -48,7 +48,8 @@
 	},
 	"serverStatus": {
 		"retrying": "Повторная попытка...",
-		"retryConnection": "Повторить подключение"
+		"retryConnection": "Повторить подключение",
+		"restart": "Перезапустить сервер"
 	},
 	"refreshMCP": "Обновить MCP серверы",
 	"execution": {

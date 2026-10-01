@@ -16,7 +16,7 @@ import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
-import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { useSelectedModel } from "@src/hooks/models/useSelectedModel"
 import RooHero from "@src/components/welcome/RooHero"
 import RooTips from "@src/components/welcome/RooTips"
 import { StandardTooltip, Button } from "@src/components/ui"
@@ -588,6 +588,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								<>
 									<StandardTooltip content={t("chat:scrollToBottom")}>
 										<Button
+											aria-label={t("chat:scrollToBottom")}
 											variant="secondary"
 											className={hasLatestCheckpoint ? "flex-1 mr-[6px]" : "flex-[2]"}
 											onClick={handleScrollToBottomAndResetCheckpointCursor}>

@@ -8,7 +8,7 @@ import CodeBlock from "../common/CodeBlock"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@src/components/ui/dialog"
 import { Button } from "../ui"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
-import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { useSelectedModel } from "@src/hooks/models/useSelectedModel"
 import { PROVIDERS } from "../settings/constants"
 
 /**
@@ -214,6 +214,7 @@ export const ErrorRow = memo(
 								<Button
 									variant="icon"
 									className="ml-0.75 mr-1.75 h-6 text-vscode-editor-foreground flex items-center justify-center bg-transparent"
+									aria-label={t("chat:errorDetails.copyToClipboard")}
 									onClick={handleCopy}>
 									<span className={`codicon codicon-${showCopySuccess ? "check" : "copy"}`} />
 								</Button>

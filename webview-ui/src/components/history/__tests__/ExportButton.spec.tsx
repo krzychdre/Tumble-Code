@@ -20,7 +20,7 @@ describe("ExportButton", () => {
 	it("sends export message when clicked", () => {
 		render(<ExportButton itemId="1" />)
 
-		const exportButton = screen.getByRole("button")
+		const exportButton = screen.getByRole("button", { name: "history:exportTask" })
 		fireEvent.click(exportButton)
 
 		expect(vscode.postMessage).toHaveBeenCalledWith({

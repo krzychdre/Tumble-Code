@@ -4,7 +4,7 @@ import { z } from "zod"
 import type { EmbedderProvider } from "@roo-code/types"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
-import { OPENROUTER_DEFAULT_PROVIDER_NAME } from "@src/components/ui/hooks/useOpenRouterModelProviders"
+import { OPENROUTER_DEFAULT_PROVIDER_NAME } from "@src/hooks/models/useOpenRouterModelProviders"
 
 import { DEFAULT_OLLAMA_URL, type CodeIndexSettingKey, type CodeIndexTranslate } from "./codeIndexSettings"
 import {

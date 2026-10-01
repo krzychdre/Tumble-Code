@@ -48,7 +48,8 @@
 	},
 	"serverStatus": {
 		"retrying": "다시 시도 중...",
-		"retryConnection": "연결 다시 시도"
+		"retryConnection": "연결 다시 시도",
+		"restart": "서버 다시 시작"
 	},
 	"refreshMCP": "MCP 서버 새로 고침",
 	"execution": {

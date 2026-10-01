@@ -48,7 +48,8 @@
 	},
 	"serverStatus": {
 		"retrying": "Opnieuw proberen...",
-		"retryConnection": "Verbinding opnieuw proberen"
+		"retryConnection": "Verbinding opnieuw proberen",
+		"restart": "Server herstarten"
 	},
 	"refreshMCP": "MCP-servers vernieuwen",
 	"execution": {

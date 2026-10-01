@@ -464,7 +464,8 @@
 	},
 	"queuedMessages": {
 		"title": "佇列中的訊息",
-		"clickToEdit": "點選以編輯訊息"
+		"clickToEdit": "點選以編輯訊息",
+		"remove": "從佇列中移除訊息"
 	},
 	"contextMenu": {
 		"noResults": "找不到結果",

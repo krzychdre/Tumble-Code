@@ -113,6 +113,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 													variant="ghost"
 													size="icon"
 													className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7"
+													aria-label={t("history:clearSearch")}
 													onClick={() => setTagSearch("")}>
 													<X className="h-4 w-4" />
 												</Button>

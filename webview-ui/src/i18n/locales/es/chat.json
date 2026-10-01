@@ -483,7 +483,8 @@
 	},
 	"queuedMessages": {
 		"title": "Mensajes en cola",
-		"clickToEdit": "Haz clic para editar el mensaje"
+		"clickToEdit": "Haz clic para editar el mensaje",
+		"remove": "Quitar mensaje de la cola"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble quiere ejecutar un comando slash",

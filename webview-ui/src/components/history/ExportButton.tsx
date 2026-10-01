@@ -17,6 +17,7 @@ export const ExportButton = ({ itemId }: { itemId: string }) => {
 	return (
 		<StandardTooltip content={t("history:exportTask")}>
 			<Button
+				aria-label={t("history:exportTask")}
 				data-testid="export"
 				variant="ghost"
 				size="icon"

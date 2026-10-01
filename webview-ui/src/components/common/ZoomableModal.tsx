@@ -61,7 +61,12 @@ function ZoomableModalContent({
 
 				<div className="pr-3">
 					<StandardTooltip content={t("common:mermaid.buttons.close")}>
-						<IconButton variant="toolbar" icon="close" onClick={onClose} />
+						<IconButton
+							aria-label={t("common:mermaid.buttons.close")}
+							variant="toolbar"
+							icon="close"
+							onClick={onClose}
+						/>
 					</StandardTooltip>
 				</div>
 			</div>

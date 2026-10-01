@@ -103,7 +103,11 @@ export const CheckpointMenu = ({
 	return (
 		<div className="flex flex-row gap-1">
 			<StandardTooltip content={t("chat:checkpoint.menu.viewDiff")}>
-				<Button variant="ghost" size="icon" onClick={onCheckpointDiff}>
+				<Button
+					aria-label={t("chat:checkpoint.menu.viewDiff")}
+					variant="ghost"
+					size="icon"
+					onClick={onCheckpointDiff}>
 					<span className="codicon codicon-diff-single" />
 				</Button>
 			</StandardTooltip>

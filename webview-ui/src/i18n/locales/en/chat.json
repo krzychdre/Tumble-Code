@@ -490,7 +490,8 @@
 	},
 	"queuedMessages": {
 		"title": "Queued Messages",
-		"clickToEdit": "Click to edit message"
+		"clickToEdit": "Click to edit message",
+		"remove": "Remove queued message"
 	},
 	"contextMenu": {
 		"noResults": "No results",

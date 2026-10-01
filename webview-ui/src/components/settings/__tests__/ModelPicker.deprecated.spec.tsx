@@ -23,7 +23,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 }))
 
 // Mock the useSelectedModel hook
-vi.mock("@/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: (apiConfiguration: any) => {
 		const modelId = apiConfiguration?.openRouterModelId || "model-1"
 		const models: Record<string, ModelInfo> = {

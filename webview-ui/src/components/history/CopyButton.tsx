@@ -27,6 +27,7 @@ export const CopyButton = ({ itemTask }: CopyButtonProps) => {
 	return (
 		<StandardTooltip content={t("history:copyPrompt")}>
 			<Button
+				aria-label={t("history:copyPrompt")}
 				variant="ghost"
 				size="icon"
 				onClick={onCopy}

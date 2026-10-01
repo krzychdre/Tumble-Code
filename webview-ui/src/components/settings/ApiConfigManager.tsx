@@ -207,6 +207,7 @@ const ApiConfigManager = ({
 						/>
 						<StandardTooltip content={t("settings:common.save")}>
 							<Button
+								aria-label={t("settings:common.save")}
 								variant="ghost"
 								size="icon"
 								disabled={!inputValue.trim()}
@@ -217,6 +218,7 @@ const ApiConfigManager = ({
 						</StandardTooltip>
 						<StandardTooltip content={t("settings:common.cancel")}>
 							<Button
+								aria-label={t("settings:common.cancel")}
 								variant="ghost"
 								size="icon"
 								onClick={handleCancel}
@@ -259,7 +261,12 @@ const ApiConfigManager = ({
 							data-testid="select-component"
 						/>
 						<StandardTooltip content={t("settings:providers.addProfile")}>
-							<Button variant="ghost" size="icon" onClick={handleAdd} data-testid="add-profile-button">
+							<Button
+								aria-label={t("settings:providers.addProfile")}
+								variant="ghost"
+								size="icon"
+								onClick={handleAdd}
+								data-testid="add-profile-button">
 								<span className="codicon codicon-add" />
 							</Button>
 						</StandardTooltip>
@@ -267,6 +274,7 @@ const ApiConfigManager = ({
 							<>
 								<StandardTooltip content={t("settings:providers.renameProfile")}>
 									<Button
+										aria-label={t("settings:providers.renameProfile")}
 										variant="ghost"
 										size="icon"
 										onClick={handleStartRename}
@@ -281,6 +289,11 @@ const ApiConfigManager = ({
 											: t("settings:providers.deleteProfile")
 									}>
 									<Button
+										aria-label={
+											isOnlyProfile
+												? t("settings:providers.cannotDeleteOnlyProfile")
+												: t("settings:providers.deleteProfile")
+										}
 										variant="ghost"
 										size="icon"
 										onClick={handleDelete}

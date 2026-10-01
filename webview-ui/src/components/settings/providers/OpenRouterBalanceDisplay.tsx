@@ -1,6 +1,6 @@
 import { Link } from "@src/components/ui"
 
-import { useOpenRouterKeyInfo } from "@/components/ui/hooks/useOpenRouterKeyInfo"
+import { useOpenRouterKeyInfo } from "@/hooks/models/useOpenRouterKeyInfo"
 
 export const OpenRouterBalanceDisplay = ({ apiKey, baseUrl }: { apiKey: string; baseUrl?: string }) => {
 	const { data: keyInfo } = useOpenRouterKeyInfo(apiKey, baseUrl)

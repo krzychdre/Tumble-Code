@@ -26,7 +26,7 @@ import {
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
+import { useProviderModels } from "@src/hooks/models/useProviderModels"
 import {
 	Link,
 	Select,

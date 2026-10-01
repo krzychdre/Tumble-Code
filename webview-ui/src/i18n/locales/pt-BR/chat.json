@@ -483,7 +483,8 @@
 	},
 	"queuedMessages": {
 		"title": "Mensagens na fila",
-		"clickToEdit": "Clique para editar a mensagem"
+		"clickToEdit": "Clique para editar a mensagem",
+		"remove": "Remover mensagem da fila"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble quer executar um comando slash",

@@ -9,7 +9,7 @@ import {
 } from "@roo-code/types"
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
-import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { useSelectedModel } from "@src/hooks/models/useSelectedModel"
 
 import ApiOptions from "../ApiOptions"
 import { MODELS_BY_PROVIDER } from "../constants"
@@ -52,7 +52,7 @@ vi.mock("@src/components/ui/hooks/useRouterModels", () => ({
 }))
 
 // Mock the selected model hook
-vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@src/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: vi.fn(() => ({
 		provider: "anthropic",
 		id: "claude-3-5-sonnet-20241022",
@@ -61,7 +61,7 @@ vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
 }))
 
 // Mock the OpenRouter model providers hook
-vi.mock("@src/components/ui/hooks/useOpenRouterModelProviders", () => ({
+vi.mock("@src/hooks/models/useOpenRouterModelProviders", () => ({
 	useOpenRouterModelProviders: () => ({
 		data: null,
 	}),

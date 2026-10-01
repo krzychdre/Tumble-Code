@@ -34,7 +34,7 @@ vi.mock("@src/components/chat/TaskHeader", async () => {
 })
 
 // Mock useSelectedModel hook
-vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@src/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: vi.fn(() => ({
 		id: "test",
 		info: { contextWindow: 4000 },

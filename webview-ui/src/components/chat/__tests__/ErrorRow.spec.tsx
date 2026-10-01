@@ -26,7 +26,7 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 }))
 
 // Mock selected model hook
-vi.mock("@/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: () => ({
 		provider: "test-provider",
 		id: "test-model",

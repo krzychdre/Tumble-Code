@@ -50,7 +50,7 @@ import {
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Slider, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
-import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { useSelectedModel } from "@src/hooks/models/useSelectedModel"
 
 interface ThinkingBudgetProps {
 	apiConfiguration: ProviderSettings

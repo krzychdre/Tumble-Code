@@ -477,7 +477,8 @@
 	},
 	"queuedMessages": {
 		"title": "Berichten in wachtrij",
-		"clickToEdit": "Klik om bericht te bewerken"
+		"clickToEdit": "Klik om bericht te bewerken",
+		"remove": "Bericht uit wachtrij verwijderen"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble wil een slash commando uitvoeren",

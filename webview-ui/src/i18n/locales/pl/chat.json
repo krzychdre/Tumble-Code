@@ -511,7 +511,8 @@
 	},
 	"queuedMessages": {
 		"title": "Wiadomości w kolejce",
-		"clickToEdit": "Kliknij, aby edytować wiadomość"
+		"clickToEdit": "Kliknij, aby edytować wiadomość",
+		"remove": "Usuń wiadomość z kolejki"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble chce uruchomić komendę slash",

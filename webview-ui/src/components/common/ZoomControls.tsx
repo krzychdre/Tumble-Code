@@ -69,6 +69,7 @@ export function ZoomControls({
 		<div className="flex items-center gap-2">
 			<StandardTooltip content={zoomOutTitle}>
 				<IconButton
+					aria-label={zoomOutTitle}
 					variant="toolbar"
 					icon="zoom-out"
 					onClick={!useContinuousZoom ? onZoomOut || (() => adjustZoom?.(zoomOutStep)) : undefined}
@@ -82,6 +83,7 @@ export function ZoomControls({
 			</div>
 			<StandardTooltip content={zoomInTitle}>
 				<IconButton
+					aria-label={zoomInTitle}
 					variant="toolbar"
 					icon="zoom-in"
 					onClick={!useContinuousZoom ? onZoomIn || (() => adjustZoom?.(zoomInStep)) : undefined}

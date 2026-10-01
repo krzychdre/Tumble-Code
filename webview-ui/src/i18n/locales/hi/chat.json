@@ -477,7 +477,8 @@
 	},
 	"queuedMessages": {
 		"title": "कतार में संदेश",
-		"clickToEdit": "संदेश संपादित करने के लिए क्लिक करें"
+		"clickToEdit": "संदेश संपादित करने के लिए क्लिक करें",
+		"remove": "कतार से संदेश हटाएँ"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble एक स्लैश कमांड चलाना चाहता है",

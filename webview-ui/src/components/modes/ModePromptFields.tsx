@@ -28,7 +28,12 @@ export const PromptFieldHeader = ({
 		<div className="font-bold">{title}</div>
 		{!isCustomMode && (
 			<StandardTooltip content={resetTooltip}>
-				<Button variant="ghost" size="icon" onClick={onReset} data-testid={resetTestId}>
+				<Button
+					aria-label={resetTooltip}
+					variant="ghost"
+					size="icon"
+					onClick={onReset}
+					data-testid={resetTestId}>
 					<span className="codicon codicon-discard"></span>
 				</Button>
 			</StandardTooltip>
