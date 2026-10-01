@@ -361,8 +361,7 @@ export const OpenAICompatible = ({
 						</LabeledCheckbox>
 						<StandardTooltip content={t("settings:providers.customModel.imageSupport.description")}>
 							<i
-								className="codicon codicon-info text-vscode-descriptionForeground"
-								style={{ fontSize: "12px" }}
+								className="codicon codicon-info text-vscode-descriptionForeground text-xs"
 								aria-hidden="true"
 							/>
 						</StandardTooltip>
@@ -386,8 +385,7 @@ export const OpenAICompatible = ({
 						</LabeledCheckbox>
 						<StandardTooltip content={t("settings:providers.customModel.promptCache.description")}>
 							<i
-								className="codicon codicon-info text-vscode-descriptionForeground"
-								style={{ fontSize: "12px" }}
+								className="codicon codicon-info text-vscode-descriptionForeground text-xs"
 								aria-hidden="true"
 							/>
 						</StandardTooltip>
@@ -433,8 +431,7 @@ export const OpenAICompatible = ({
 							</label>
 							<StandardTooltip content={t("settings:providers.customModel.pricing.input.description")}>
 								<i
-									className="codicon codicon-info text-vscode-descriptionForeground"
-									style={{ fontSize: "12px" }}
+									className="codicon codicon-info text-vscode-descriptionForeground text-xs"
 									aria-hidden="true"
 								/>
 							</StandardTooltip>
@@ -478,8 +475,7 @@ export const OpenAICompatible = ({
 							</label>
 							<StandardTooltip content={t("settings:providers.customModel.pricing.output.description")}>
 								<i
-									className="codicon codicon-info text-vscode-descriptionForeground"
-									style={{ fontSize: "12px" }}
+									className="codicon codicon-info text-vscode-descriptionForeground text-xs"
 									aria-hidden="true"
 								/>
 							</StandardTooltip>
@@ -524,8 +520,7 @@ export const OpenAICompatible = ({
 									<StandardTooltip
 										content={t("settings:providers.customModel.pricing.cacheReads.description")}>
 										<i
-											className="codicon codicon-info text-vscode-descriptionForeground"
-											style={{ fontSize: "12px" }}
+											className="codicon codicon-info text-vscode-descriptionForeground text-xs"
 											aria-hidden="true"
 										/>
 									</StandardTooltip>
@@ -567,8 +562,7 @@ export const OpenAICompatible = ({
 									<StandardTooltip
 										content={t("settings:providers.customModel.pricing.cacheWrites.description")}>
 										<i
-											className="codicon codicon-info text-vscode-descriptionForeground"
-											style={{ fontSize: "12px" }}
+											className="codicon codicon-info text-vscode-descriptionForeground text-xs"
 											aria-hidden="true"
 										/>
 									</StandardTooltip>

@@ -164,10 +164,10 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 
 	return (
 		<div>
+			<ModesViewHeader onImport={importExport.openImportDialog} isImporting={importExport.isImporting} />
+
 			<Section>
 				<div>
-					<ModesViewHeader onImport={importExport.openImportDialog} isImporting={importExport.isImporting} />
-
 					<ModeSelectorRow
 						modes={modes}
 						visualMode={visualMode}

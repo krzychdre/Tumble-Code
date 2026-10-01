@@ -125,25 +125,25 @@ export const FollowUpSuggest = ({
 						<Button
 							variant="outline"
 							className={cn(
-								"text-left whitespace-normal break-words w-full h-auto px-3 py-2 justify-start pr-8 rounded-xl",
+								"text-left whitespace-normal break-words w-full h-auto px-3 py-2 justify-start pr-8",
 								isFirstSuggestion &&
 									countdown !== null &&
 									!suggestionSelected &&
 									!isAnswered &&
-									"border-vscode-foreground/60 rounded-b-none -mb-1",
+									"border-vscode-foreground/60 -mb-1",
 							)}
 							onClick={(event) => handleSuggestionClick(suggestion, event)}
 							aria-label={suggestion.answer}>
 							{suggestion.answer}
 						</Button>
 						{isFirstSuggestion && countdown !== null && !suggestionSelected && !isAnswered && (
-							<p className="rounded-b-xl border-1 border-t-0 border-vscode-foreground/60 text-vscode-descriptionForeground text-xs m-0 mt-1 px-3 pt-2 pb-2">
+							<p className="border-1 border-t-0 border-vscode-foreground/60 text-vscode-descriptionForeground text-xs m-0 mt-1 px-3 pt-2 pb-2">
 								<Timer className="size-3 inline-block -mt-0.5 mr-1 animate-pulse" />
 								{t("chat:followUpSuggest.timerPrefix", { seconds: countdown })}
 							</p>
 						)}
 						{suggestion.mode && (
-							<div className="absolute bottom-0 right-0 text-[10px] text-vscode-badge-foreground pl-1 pr-2.5 pt-0.5 pb-1.5 flex items-center gap-0.5 bg-transparent rounded-xl">
+							<div className="absolute bottom-0 right-0 text-[10px] text-vscode-badge-foreground pl-1 pr-2.5 pt-0.5 pb-1.5 flex items-center gap-0.5 bg-transparent">
 								<span
 									className="codicon codicon-arrow-right"
 									style={{ fontSize: "8px" }}
@@ -154,7 +154,7 @@ export const FollowUpSuggest = ({
 						)}
 						<StandardTooltip content={t("chat:followUpSuggest.copyToInput")}>
 							<div
-								className="absolute cursor-pointer top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-vscode-input-background px-0.5 rounded"
+								className="absolute cursor-pointer top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-vscode-input-background px-0.5"
 								onClick={(e) => {
 									e.stopPropagation()
 									// Cancel the auto-approve timer when edit button is clicked

@@ -168,7 +168,7 @@ export const CreateSkillDialog: React.FC<CreateSkillDialogProps> = ({
 							onChange={handleNameChange}
 							placeholder={t("settings:skills.createDialog.namePlaceholder")}
 							maxLength={64}
-							className="w-full bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded-xl px-3 py-2 focus:border-vscode-focusBorder focus-ring"
+							className="w-full bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border px-3 py-2 focus:border-vscode-focusBorder focus-ring"
 						/>
 						{nameError && <span className="text-xs text-vscode-errorForeground">{t(nameError)}</span>}
 					</div>
@@ -218,7 +218,7 @@ export const CreateSkillDialog: React.FC<CreateSkillDialogProps> = ({
 						{/* Individual mode checkboxes */}
 						<div className="flex flex-col max-h-28 overflow-y-auto">
 							{/* Any mode option */}
-							<div className="flex items-center gap-3 p-1 rounded-lg hover:bg-vscode-list-hoverBackground">
+							<div className="flex items-center gap-3 p-1 hover:bg-vscode-list-hoverBackground">
 								<LabeledCheckbox
 									id="create-mode-any"
 									checked={isAnyMode}
@@ -231,7 +231,7 @@ export const CreateSkillDialog: React.FC<CreateSkillDialogProps> = ({
 							{availableModes.map((m) => (
 								<div
 									key={m.slug}
-									className="flex items-center gap-3 p-1 rounded-lg hover:bg-vscode-list-hoverBackground">
+									className="flex items-center gap-3 p-1 hover:bg-vscode-list-hoverBackground">
 									<LabeledCheckbox
 										id={`create-mode-${m.slug}`}
 										checked={selectedModes.includes(m.slug)}

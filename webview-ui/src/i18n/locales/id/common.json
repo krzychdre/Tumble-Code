@@ -21,6 +21,7 @@
 		"no_results": "Tidak ada hasil yang ditemukan",
 		"close": "Tutup"
 	},
+	"loading": "Memuat",
 	"mermaid": {
 		"loading": "Membuat diagram mermaid...",
 		"render_error": "Tidak Dapat Merender Diagram",

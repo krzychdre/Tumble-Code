@@ -220,7 +220,7 @@ export const McpExecution = ({
 					{status && (
 						<div className="flex flex-row items-center gap-2 font-mono text-xs">
 							<div
-								className={cn("rounded-full size-1.5", {
+								className={cn("size-1.5", {
 									"bg-[var(--status-running)]": status.status === "started",
 									"bg-[var(--status-done)]": status.status === "completed",
 									"bg-[var(--status-failed)]": status.status === "error",
@@ -255,7 +255,7 @@ export const McpExecution = ({
 
 			{/* Collapsible details section */}
 			{isDetailsExpanded && (
-				<div className="w-full bg-vscode-editor-background rounded-xs p-2" data-testid="mcp-details-content">
+				<div className="w-full bg-vscode-editor-background p-2" data-testid="mcp-details-content">
 					{/* Tool information section */}
 					{useMcpServer?.type === "use_mcp_tool" && (
 						<div onClick={(e) => e.stopPropagation()}>

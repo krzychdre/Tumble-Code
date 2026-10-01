@@ -5,12 +5,14 @@ import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip } from "@src/components/ui"
 
+import { SectionHeader } from "../settings/SectionHeader"
+
 type ModesViewHeaderProps = {
 	onImport: () => void
 	isImporting: boolean
 }
 
-/** Title row of the modes page: the mode config file menu, the marketplace and import buttons. */
+/** Section header of the modes page, with the mode config file menu, the marketplace and import buttons. */
 export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps) => {
 	const { t } = useAppTranslation()
 	const [showConfigMenu, setShowConfigMenu] = useState(false)
@@ -28,12 +30,11 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 	}, [showConfigMenu])
 
 	return (
-		<>
-			<div onClick={(e) => e.stopPropagation()} className="flex justify-between items-center mb-3">
-				<h3 className="text-[1.25em] font-semibold text-vscode-foreground mt-4 mb-2">
-					{t("prompts:modes.title")}
-				</h3>
-				<div className="flex gap-2">
+		<SectionHeader
+			description={t("prompts:modes.createModeHelpText")}
+			actions={
+				// Clicks inside the actions must not reach the document listener that closes the menu.
+				<div onClick={(e) => e.stopPropagation()} className="flex gap-2">
 					<div className="relative inline-block">
 						<StandardTooltip content={t("prompts:modes.editModesConfig")}>
 							<Button
@@ -57,7 +58,7 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 							<div
 								onClick={(e) => e.stopPropagation()}
 								onMouseDown={(e) => e.stopPropagation()}
-								className="absolute top-full right-0 w-[200px] mt-1 bg-vscode-editor-background border border-vscode-input-border rounded shadow-md z-[1000]">
+								className="absolute top-full right-0 w-[200px] mt-1 bg-vscode-editor-background border border-vscode-input-border shadow-md z-[1000]">
 								<div
 									className="p-2 cursor-pointer text-vscode-foreground text-sm"
 									onMouseDown={(e) => {
@@ -121,11 +122,8 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 						</Button>
 					</StandardTooltip>
 				</div>
-			</div>
-
-			<div className="text-sm text-vscode-descriptionForeground mb-3">
-				{t("prompts:modes.createModeHelpText")}
-			</div>
-		</>
+			}>
+			{t("prompts:modes.title")}
+		</SectionHeader>
 	)
 }

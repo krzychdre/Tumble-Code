@@ -29,7 +29,6 @@ import {
 	Plug,
 	Server,
 	Users2,
-	ArrowLeft,
 	GitCommitVertical,
 	GlobeLock,
 	GraduationCap,
@@ -39,9 +38,17 @@ import { vscode } from "@src/utils/vscode"
 import { cn } from "@src/lib/utils"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
-import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, StandardTooltip } from "@src/components/ui"
+import {
+	Button,
+	Spinner,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+	StandardTooltip,
+} from "@src/components/ui"
 
-import { Tab, TabContent, TabHeader, TabList, TabTrigger } from "../common/Tab"
+import { Tab, TabContent, TabHeader, TabList, TabTitle, TabTrigger } from "../common/Tab"
 import StorageErrorBanner from "../common/StorageErrorBanner"
 import { DiscardChangesDialog } from "../common/DiscardChangesDialog"
 import { buildUpdatedSettings } from "./schema"
@@ -66,7 +73,6 @@ import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { SkillsSettings } from "./SkillsSettings"
 import { UISettings } from "./UISettings"
-import { ThemedProgressRing } from "@src/components/ui"
 import { WorktreesView } from "../worktrees/WorktreesView"
 import { SettingsSearch } from "./SettingsSearch"
 import { useSearchIndexRegistry, SearchIndexProvider } from "./useSettingsSearch"
@@ -79,12 +85,15 @@ import { onExtensionMessage } from "@src/utils/extensionBus"
 const ModesView = lazy(() => import("../modes/ModesView"))
 const McpView = lazy(() => import("../mcp/McpView"))
 
-// Subtle fallback while a lazy tab's chunk arrives: the standard progress ring.
-const TabLoadingFallback = () => (
-	<div className="flex flex-1 items-center justify-center" data-testid="tab-loading">
-		<ThemedProgressRing />
-	</div>
-)
+// Subtle fallback while a lazy tab's chunk arrives: the standard spinner.
+const TabLoadingFallback = () => {
+	const { t } = useAppTranslation()
+	return (
+		<div className="flex flex-1 items-center justify-center" data-testid="tab-loading">
+			<Spinner label={t("common:loading")} />
+		</div>
+	)
+}
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
@@ -403,14 +412,13 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	return (
 		<Tab>
 			<TabHeader className="flex justify-between items-center gap-2">
-				<div className="flex items-center gap-2 grow">
-					<StandardTooltip content={t("settings:header.doneButtonTooltip")}>
-						<Button variant="ghost" className="px-1.5 -ml-2" onClick={() => checkUnsaveChanges(onDone)}>
-							<ArrowLeft />
-							<span className="sr-only">{t("settings:common.done")}</span>
-						</Button>
-					</StandardTooltip>
-					<h3 className="text-vscode-foreground m-0 flex-shrink-0">{t("settings:header.title")}</h3>
+				<div className="grow">
+					<TabTitle
+						title={t("settings:header.title")}
+						backLabel={t("settings:common.done")}
+						backTooltip={t("settings:header.doneButtonTooltip")}
+						onBack={() => checkUnsaveChanges(onDone)}
+					/>
 				</div>
 				<div className="flex items-center gap-2 shrink-0">
 					<SettingsSearch index={searchIndex} onNavigate={handleSearchNavigate} sections={sections} />

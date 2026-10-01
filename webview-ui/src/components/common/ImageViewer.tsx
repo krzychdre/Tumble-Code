@@ -174,7 +174,7 @@ export function ImageViewer({
 					<img
 						src={imageUri}
 						alt={alt}
-						className="w-full h-auto rounded cursor-pointer"
+						className="w-full h-auto cursor-pointer"
 						onClick={handleOpenInEditor}
 						onError={handleImageError}
 						onLoad={handleImageLoad}
@@ -189,7 +189,7 @@ export function ImageViewer({
 					<div className="mt-1 text-xs text-vscode-descriptionForeground">{formatDisplayPath(imagePath)}</div>
 				)}
 				{showControls && isHovering && (
-					<div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 rounded p-0.5 z-10 opacity-100 transition-opacity duration-200 ease-in-out">
+					<div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 p-0.5 z-10 opacity-100 transition-opacity duration-200 ease-in-out">
 						<MermaidActionButtons
 							onZoom={handleZoom}
 							onCopy={handleCopy}

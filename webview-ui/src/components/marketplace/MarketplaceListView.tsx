@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
@@ -194,9 +195,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 
 			{state.isFetching && isEmpty && (
 				<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground animate-fade-in">
-					<div className="animate-spin mb-4">
-						<span className="codicon codicon-sync text-3xl" aria-hidden="true"></span>
-					</div>
+					<Spinner className="mb-4" />
 					<p>{t("marketplace:items.refresh.refreshing")}</p>
 					<p className="text-sm mt-2 animate-pulse">{t("marketplace:items.refresh.mayTakeMoment")}</p>
 				</div>

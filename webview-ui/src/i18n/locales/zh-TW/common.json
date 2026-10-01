@@ -21,6 +21,7 @@
 		"no_results": "找不到結果",
 		"close": "關閉"
 	},
+	"loading": "載入中",
 	"mermaid": {
 		"loading": "正在產生 Mermaid 圖表...",
 		"render_error": "無法渲染圖表",

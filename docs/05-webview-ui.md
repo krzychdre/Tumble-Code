@@ -99,7 +99,8 @@ Provider-specific forms are looked up in `settings/provider-ui-registry.tsx`.
 - Tailwind v4 with a custom preflight (`src/index.css`). VS Code theme colors are exposed as `--color-vscode-*`,
   and the shadcn semantic tokens (`--background`, `--primary`, ...) map to VS Code variables, so every theme works
   without extra CSS.
-- Square corners everywhere: `--radius: 0` and the Tailwind radius scale are flattened in `index.css`.
+- Square corners everywhere: `--radius: 0` and the Tailwind radius scale are flattened in `index.css`, and
+  `scripts/check-webview-radius.mjs` (in the webview lint) rejects any `rounded*` class.
 - One monospace font, the editor font (`--font-mono`), for tool blocks and code.
 - In-repo `Themed*` components in `components/ui/` replace the removed `@vscode/webview-ui-toolkit`.
 - No CSS-in-JS: `CodeBlock`, `MarkdownBlock`, `MermaidBlock` and the settings model description are styled by the

@@ -13,7 +13,6 @@ interface TaskItemProps {
 	item: DisplayHistoryItem
 	variant: "compact" | "full"
 	showWorkspace?: boolean
-	hasSubtasks?: boolean
 	isSelectionMode?: boolean
 	isSelected?: boolean
 	onToggleSelection?: (taskId: string, isSelected: boolean) => void
@@ -29,7 +28,6 @@ const TaskItem = ({
 	item,
 	variant,
 	showWorkspace = false,
-	hasSubtasks = false,
 	isSelectionMode = false,
 	isSelected = false,
 	onToggleSelection,
@@ -58,7 +56,6 @@ const TaskItem = ({
 				"bg-transparent border-none p-0 font-inherit",
 				"text-vscode-foreground/80 hover:text-vscode-foreground transition-colors",
 				"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-vscode-focusBorder",
-				hasSubtasks ? "rounded-t-xl" : "rounded-xl",
 				className,
 			)}
 			onClick={handleClick}>

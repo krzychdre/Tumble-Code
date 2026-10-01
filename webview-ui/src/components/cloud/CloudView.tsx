@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { ThemedProgressRing, ThemedTextField } from "@src/components/ui"
+import { Spinner, ThemedTextField } from "@src/components/ui"
 
 import { type CloudUserInfo, type CloudOrganizationMembership, TelemetryEventName } from "@roo-code/types"
 
@@ -151,7 +151,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 					<>
 						{userInfo && (
 							<div className="flex flex-col items-start ml-4 mb-6">
-								<div className="w-16 h-16 mb-3 rounded-full overflow-hidden">
+								<div className="w-16 h-16 mb-3 overflow-hidden">
 									{userInfo?.picture ? (
 										<img
 											src={userInfo.picture}
@@ -197,7 +197,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 									{t("cloud:taskSync")}
 									{userInfo?.organizationId && (
 										<StandardTooltip content={t("cloud:taskSyncManagedByOrganization")}>
-											<div className="bg-vscode-badge-background text-vscode-badge-foreground/80 p-1.5 ml-2 -mb-2 relative -top-1 rounded-full inline-block cursor-help">
+											<div className="bg-vscode-badge-background text-vscode-badge-foreground/80 p-1.5 ml-2 -mb-2 relative -top-1 inline-block cursor-help">
 												<Lock className="size-3 block" />
 											</div>
 										</StandardTooltip>
@@ -240,7 +240,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 								// Timeout message with "Having trouble?" link
 								<div className="flex flex-col items-start gap-1">
 									<div className="flex items-center gap-2 text-base text-vscode-descriptionForeground">
-										<ThemedProgressRing className="size-3 text-vscode-foreground" />
+										<Spinner className="size-3" />
 										{t("cloud:authWaiting")}
 									</div>
 									{!showManualEntry && (

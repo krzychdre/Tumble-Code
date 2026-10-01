@@ -21,6 +21,7 @@
 		"no_results": "Nessun risultato trovato",
 		"close": "Chiudi"
 	},
+	"loading": "Caricamento",
 	"mermaid": {
 		"loading": "Generazione del diagramma mermaid...",
 		"render_error": "Impossibile renderizzare il diagramma",

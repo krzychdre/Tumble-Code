@@ -505,7 +505,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								"flex-col-reverse",
 								"min-h-0",
 								"overflow-hidden",
-								"rounded-lg",
 							)}>
 							<div
 								ref={highlightLayerRef}
@@ -531,7 +530,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									isEditMode ? "pr-20" : "pr-9",
 									"z-10",
 									"forced-color-adjust-none",
-									"rounded-lg",
 								)}
 								style={{
 									color: "transparent",
@@ -592,7 +590,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"will-change-background-color",
 									"min-h-[94px]",
 									"box-border",
-									"rounded",
 									"resize-none",
 									"overflow-x-hidden",
 									"overflow-y-auto",

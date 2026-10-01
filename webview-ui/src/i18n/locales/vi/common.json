@@ -21,6 +21,7 @@
 		"no_results": "Không tìm thấy kết quả nào",
 		"close": "Đóng"
 	},
+	"loading": "Đang tải",
 	"mermaid": {
 		"loading": "Đang tạo biểu đồ mermaid...",
 		"render_error": "Không thể hiển thị biểu đồ",

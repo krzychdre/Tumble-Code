@@ -26,6 +26,12 @@ vi.mock("../../../components/common/Tab", () => ({
 	...vi.importActual("../../../components/common/Tab"),
 	Tab: ({ children }: any) => <div data-testid="tab-container">{children}</div>,
 	TabHeader: ({ children }: any) => <div data-testid="tab-header">{children}</div>,
+	TabTitle: ({ title, backLabel, onBack }: any) => (
+		<div>
+			<button onClick={onBack}>{backLabel}</button>
+			<h3>{title}</h3>
+		</div>
+	),
 	TabContent: ({ children, "data-testid": dataTestId }: any) => (
 		<div data-testid={dataTestId || "tab-content"}>{children}</div>
 	),
@@ -66,7 +72,7 @@ vi.mock("../../../components/common/Tab", () => ({
 
 vi.mock("@/components/ui", () => ({
 	// P4: SettingsView lazy-tab fallback renders a progress ring; stub it.
-	ThemedProgressRing: () => <span data-testid="progress-ring" />,
+	Spinner: () => <span data-testid="progress-ring" />,
 	// The real text field (a native input), not a stub.
 	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	...vi.importActual("@/components/ui"),

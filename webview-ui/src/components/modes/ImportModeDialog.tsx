@@ -46,7 +46,7 @@ export function ImportModeDialog({
 	return (
 		<Dialog open onOpenChange={(open) => !open && onCancel()}>
 			<DialogContent
-				className="max-w-md gap-0 rounded-lg p-6"
+				className="max-w-md gap-0 p-6"
 				showCloseButton={false}
 				onInteractOutside={(e) => e.preventDefault()}>
 				<DialogTitle className="mb-4">{t("prompts:modes.importMode")}</DialogTitle>

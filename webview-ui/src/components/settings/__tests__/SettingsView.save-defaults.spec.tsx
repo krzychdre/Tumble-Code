@@ -39,7 +39,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 // Mock UI components
 vi.mock("@src/components/ui", () => ({
 	// P4: SettingsView lazy-tab fallback renders a progress ring; stub it.
-	ThemedProgressRing: () => <span data-testid="progress-ring" />,
+	Spinner: () => <span data-testid="progress-ring" />,
 	// The real text field (a native input), not a stub.
 	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.

@@ -221,7 +221,7 @@ export const ApiConfigSelector = ({
 					data-testid="dropdown-trigger"
 					className={cn(
 						"min-w-0 inline-flex items-center relative whitespace-nowrap px-1.5 py-1 text-xs",
-						"bg-transparent border border-[rgba(255,255,255,0.08)] rounded-md text-vscode-foreground",
+						"bg-transparent border border-[rgba(255,255,255,0.08)] text-vscode-foreground",
 						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
 						disabled
 							? "opacity-50 cursor-not-allowed"
@@ -328,7 +328,7 @@ export const ApiConfigSelector = ({
 										value={searchValue}
 										onChange={(e) => setSearchValue(e.target.value)}
 										placeholder={t("common:ui.search_placeholder")}
-										className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded focus-ring"
+										className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border focus-ring"
 										autoFocus
 									/>
 									{searchValue.length > 0 && (

@@ -12,6 +12,7 @@ import {
 	DialogTitle,
 	Button,
 	LabeledCheckbox,
+	Spinner,
 } from "@/components/ui"
 import { Folder, GitBranch, TriangleAlert } from "lucide-react"
 import { onExtensionMessage } from "@src/utils/extensionBus"
@@ -69,7 +70,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 
 				<div className="flex flex-col gap-3 overflow-hidden">
 					{/* Worktree info */}
-					<div className="flex flex-col p-5 gap-2 cursor-default rounded-xl text-vscode-foreground bg-vscode-input-background">
+					<div className="flex flex-col p-5 gap-2 cursor-default text-vscode-foreground bg-vscode-input-background">
 						<p className="flex items-center gap-2 m-0">
 							<GitBranch className="size-4 shrink-0" />
 							<span className="font-medium truncate">
@@ -118,7 +119,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 
 					{/* Error message */}
 					{error && (
-						<div className="flex items-center gap-2 px-2 py-1.5 rounded bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
+						<div className="flex items-center gap-2 px-2 py-1.5 bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
 							<span
 								className="codicon codicon-error text-vscode-errorForeground flex-shrink-0"
 								aria-hidden="true"
@@ -135,10 +136,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 					<Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
 						{isDeleting ? (
 							<>
-								<span
-									className="codicon codicon-loading codicon-modifier-spin mr-2"
-									aria-hidden="true"
-								/>
+								<Spinner className="size-4 mr-2" />
 								{t("worktrees:deleting")}
 							</>
 						) : (

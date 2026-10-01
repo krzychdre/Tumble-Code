@@ -29,7 +29,7 @@ export const CodeIndexStatusSection = ({ indexingStatus }: CodeIndexStatusSectio
 			<h4 className="text-sm font-medium">{t("settings:codeIndex.statusTitle")}</h4>
 			<div className="text-sm text-vscode-descriptionForeground">
 				<span
-					className={cn("inline-block w-3 h-3 rounded-full mr-2", {
+					className={cn("inline-block w-3 h-3 mr-2", {
 						"bg-vscode-descriptionForeground": indexingStatus.systemStatus === "Standby",
 						"bg-[var(--status-running)] animate-pulse": indexingStatus.systemStatus === "Indexing",
 						"bg-[var(--status-done)]": indexingStatus.systemStatus === "Indexed",
@@ -43,7 +43,7 @@ export const CodeIndexStatusSection = ({ indexingStatus }: CodeIndexStatusSectio
 			{indexingStatus.systemStatus === "Indexing" && (
 				<div className="mt-2">
 					<ProgressPrimitive.Root
-						className="relative h-2 w-full overflow-hidden rounded-full bg-secondary"
+						className="relative h-2 w-full overflow-hidden bg-secondary"
 						value={progressPercentage}>
 						<ProgressPrimitive.Indicator
 							className="h-full w-full flex-1 bg-primary transition-transform duration-300 ease-in-out"

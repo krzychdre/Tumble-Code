@@ -108,7 +108,7 @@ const McpToolRow = ({ tool, serverName, serverSource, alwaysAllowMcp, isInChatCo
 				tool.inputSchema &&
 				"properties" in tool.inputSchema &&
 				Object.keys(tool.inputSchema.properties as Record<string, any>).length > 0 && (
-					<div className="mt-2 text-xs border border-vscode-panel-border rounded p-2">
+					<div className="mt-2 text-xs border border-vscode-panel-border p-2">
 						<div className="mb-1 text-[11px] uppercase opacity-80 text-vscode-descriptionForeground">
 							{t("mcp:tool.parameters")}
 						</div>

@@ -200,8 +200,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 							<span>{t("settings:providers.enablePromptCaching")}</span>
 							<StandardTooltip content={t("settings:providers.enablePromptCachingTitle")}>
 								<i
-									className="codicon codicon-info text-vscode-descriptionForeground"
-									style={{ fontSize: "12px" }}
+									className="codicon codicon-info text-vscode-descriptionForeground text-xs"
 									aria-hidden="true"
 								/>
 							</StandardTooltip>

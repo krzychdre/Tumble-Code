@@ -312,7 +312,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 						type="button"
 						onClick={() => respondToPermission(true)}
 						className={cn(
-							"text-xs px-2 py-1 rounded border-0 cursor-pointer",
+							"text-xs px-2 py-1 border-0 cursor-pointer",
 							"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
 						)}>
 						{t("chat:approve.title")}
@@ -321,7 +321,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 						type="button"
 						onClick={() => respondToPermission(false)}
 						className={cn(
-							"text-xs px-2 py-1 rounded border border-vscode-button-border cursor-pointer",
+							"text-xs px-2 py-1 border border-vscode-button-border cursor-pointer",
 							"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground",
 							"hover:bg-vscode-button-secondaryHoverBackground",
 						)}>
@@ -337,7 +337,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 							type="button"
 							onClick={() => sendAnswer(suggestion.answer)}
 							className={cn(
-								"text-xs px-2 py-1 rounded border border-vscode-button-border cursor-pointer",
+								"text-xs px-2 py-1 border border-vscode-button-border cursor-pointer",
 								"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground",
 								"hover:bg-vscode-button-secondaryHoverBackground",
 							)}>
@@ -364,7 +364,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 								: t("chat:subagents.guidancePlaceholder")
 						}
 						className={cn(
-							"grow text-sm px-2 py-1 rounded border",
+							"grow text-sm px-2 py-1 border",
 							"bg-vscode-input-background text-vscode-input-foreground border-vscode-input-border",
 							"placeholder:text-vscode-input-placeholderForeground focus-ring",
 						)}
@@ -376,7 +376,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 							onClick={() => sendAnswer(input)}
 							disabled={!input.trim()}
 							className={cn(
-								"p-1 rounded border-0 cursor-pointer bg-transparent",
+								"p-1 border-0 cursor-pointer bg-transparent",
 								"text-vscode-foreground hover:bg-vscode-list-hoverBackground",
 								"disabled:opacity-40 disabled:cursor-default",
 							)}>
@@ -413,7 +413,7 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 	const cancellable = isLive(summary) && !isQueuedPlaceholder(summary)
 
 	return (
-		<div className="rounded border border-vscode-panel-border overflow-hidden">
+		<div className="border border-vscode-panel-border overflow-hidden">
 			<div className="flex items-center">
 				<button
 					type="button"
@@ -429,7 +429,7 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 						<ChevronRight className="size-3 shrink-0" aria-hidden />
 					)}
 					<StatusIcon status={summary.status} />
-					<span className="text-xs px-1 py-0.5 rounded bg-vscode-badge-background text-vscode-badge-foreground shrink-0">
+					<span className="text-xs px-1 py-0.5 bg-vscode-badge-background text-vscode-badge-foreground shrink-0">
 						{summary.mode}
 					</span>
 					{summary.apiConfigName && (
@@ -459,7 +459,7 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 							type="button"
 							onClick={cancel}
 							className={cn(
-								"p-1.5 mr-1 rounded border-0 cursor-pointer bg-transparent shrink-0",
+								"p-1.5 mr-1 border-0 cursor-pointer bg-transparent shrink-0",
 								"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-vscode-list-hoverBackground",
 							)}>
 							<Square className="size-3.5" aria-hidden />
@@ -498,7 +498,7 @@ const SubagentsPanel = memo(({ subagents, className }: SubagentsPanelProps) => {
 		<Collapsible open={panelExpanded} onOpenChange={handleOpenChange} className={cn("px-3", className)}>
 			<CollapsibleTrigger
 				className={cn(
-					"flex items-center gap-2 w-full py-2 rounded-md text-left text-vscode-foreground",
+					"flex items-center gap-2 w-full py-2 text-left text-vscode-foreground",
 					"hover:bg-vscode-list-hoverBackground",
 				)}>
 				{panelExpanded ? (

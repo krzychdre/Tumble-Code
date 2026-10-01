@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { RefreshCw, Loader2, FileCode } from "lucide-react"
+import { RefreshCw, FileCode } from "lucide-react"
 
 import type { SerializedCustomToolDefinition } from "@roo-code/types"
 
@@ -7,7 +7,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 
 import { vscode } from "@/utils/vscode"
 
-import { Button, LabeledCheckbox } from "@/components/ui"
+import { Button, LabeledCheckbox, Spinner } from "@/components/ui"
 import { useExtensionMessage } from "@src/utils/extensionBus"
 
 interface ToolParameter {
@@ -98,11 +98,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 						</label>
 						<Button variant="outline" onClick={onRefresh} disabled={isRefreshing}>
 							<div className="flex items-center gap-2">
-								{isRefreshing ? (
-									<Loader2 className="w-4 h-4 animate-spin" />
-								) : (
-									<RefreshCw className="w-4 h-4" />
-								)}
+								{isRefreshing ? <Spinner className="size-4" /> : <RefreshCw className="w-4 h-4" />}
 								{isRefreshing
 									? t("settings:experimental.CUSTOM_TOOLS.refreshing")
 									: t("settings:experimental.CUSTOM_TOOLS.refreshButton")}
@@ -111,7 +107,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 					</div>
 
 					{refreshError && (
-						<div className="p-2 bg-vscode-inputValidation-errorBackground text-vscode-errorForeground rounded text-sm border border-vscode-inputValidation-errorBorder">
+						<div className="p-2 bg-vscode-inputValidation-errorBackground text-vscode-errorForeground text-sm border border-vscode-inputValidation-errorBorder">
 							{t("settings:experimental.CUSTOM_TOOLS.refreshError")}: {refreshError}
 						</div>
 					)}
@@ -124,7 +120,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 						processedTools.map((tool) => (
 							<div
 								key={tool.name}
-								className="bg-vscode-editor-background border border-vscode-panel-border rounded space-y-3 p-3">
+								className="bg-vscode-editor-background border border-vscode-panel-border space-y-3 p-3">
 								<div className="space-y-1">
 									<div className="font-medium text-vscode-foreground">{tool.name}</div>
 									{tool.source && (

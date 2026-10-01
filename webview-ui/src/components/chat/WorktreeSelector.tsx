@@ -89,7 +89,7 @@ export const WorktreeSelector = ({ disabled = false }: WorktreeSelectorProps) =>
 					data-testid="worktree-selector-trigger"
 					className={cn(
 						"inline-flex gap-1 mx-2 mb-1 items-center relative whitespace-nowrap px-3 py-2",
-						"bg-transparent rounded-full text-vscode-foreground text-left text-sm",
+						"bg-transparent text-vscode-foreground text-left text-sm",
 						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
 						disabled
 							? "opacity-50 cursor-not-allowed"

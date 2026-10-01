@@ -263,7 +263,6 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 										checked={scope === "project"}
 										onChange={() => setScope("project")}
 										disabled={!hasWorkspace}
-										className="rounded-full"
 									/>
 									<span className={!hasWorkspace ? "opacity-50" : ""}>
 										{t("marketplace:install.project")}
@@ -276,7 +275,6 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 										value="global"
 										checked={scope === "global"}
 										onChange={() => setScope("global")}
-										className="rounded-full"
 									/>
 									<span>{t("marketplace:install.global")}</span>
 								</label>
@@ -353,7 +351,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 						)}
 						{/* Validation Error */}
 						{validationError && (
-							<div className="text-sm text-[var(--status-failed)] bg-[var(--status-failed)]/10 border border-[var(--status-failed)]/20 rounded p-2">
+							<div className="text-sm text-[var(--status-failed)] bg-[var(--status-failed)]/10 border border-[var(--status-failed)]/20 p-2">
 								{validationError}
 							</div>
 						)}

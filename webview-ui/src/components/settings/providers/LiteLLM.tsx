@@ -4,7 +4,7 @@ import { type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/typ
 
 import { useProviderModels } from "@src/hooks/models/useProviderModels"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, LabeledCheckbox, ThemedTextField } from "@src/components/ui"
+import { Button, LabeledCheckbox, Spinner, ThemedTextField } from "@src/components/ui"
 
 import { ModelPicker } from "../ModelPicker"
 import { type ProviderFormProps, useProviderField } from "./shared"
@@ -92,7 +92,7 @@ export const LiteLLM = ({
 				className="w-full">
 				<div className="flex items-center gap-2">
 					{refreshStatus === "loading" ? (
-						<span className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true" />
+						<Spinner className="size-4" />
 					) : (
 						<span className="codicon codicon-refresh" aria-hidden="true" />
 					)}

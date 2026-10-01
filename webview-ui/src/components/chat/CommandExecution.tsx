@@ -208,7 +208,7 @@ export const CommandExecution = ({
 					{title}
 					{status?.status === "started" && (
 						<StandardTooltip content={t("chat:commandExecution.running")}>
-							<div className="rounded-full size-2 bg-[var(--status-running)] animate-pulse" />
+							<div className="size-2 bg-[var(--status-running)] animate-pulse" />
 						</StandardTooltip>
 					)}
 					{status?.status === "exited" && (
@@ -217,7 +217,7 @@ export const CommandExecution = ({
 								content={t("chat.commandExecution.exitStatus", { exitStatus: status.exitCode })}>
 								<div
 									className={cn(
-										"rounded-full size-2",
+										"size-2",
 										status.exitCode === 0 ? "bg-[var(--status-done)]" : "bg-[var(--status-failed)]",
 									)}
 								/>
@@ -227,7 +227,7 @@ export const CommandExecution = ({
 					{status?.status === "error" && (
 						<div className="flex flex-row items-center gap-2 font-mono text-xs text-vscode-errorForeground">
 							<StandardTooltip content={status.message ?? t("chat:commandExecution.malformedCommand")}>
-								<div className="rounded-full size-2 bg-[var(--status-failed)]" />
+								<div className="size-2 bg-[var(--status-failed)]" />
 							</StandardTooltip>
 						</div>
 					)}
@@ -281,7 +281,7 @@ export const CommandExecution = ({
 			{/* Nothing below the header is mounted while collapsed: no code block,
 			    no ANSI conversion of the output, no pattern selector. */}
 			{isExpanded && (
-				<div className="bg-vscode-editor-background border border-vscode-border rounded-xs ml-6 mt-2">
+				<div className="bg-vscode-editor-background border border-vscode-border ml-6 mt-2">
 					<div className="p-2">
 						<CodeBlock source={command} language="shell" />
 						{output.length > 0 && (
