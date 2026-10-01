@@ -194,6 +194,13 @@ export async function archiveMemory(memoryDir: string, memory: MemoryHeader): Pr
 	await fs.rename(memory.filePath, target)
 }
 
+/** Copy a file into the archive directory before an in-place edit, so the edit stays recoverable. */
+export async function copyToArchive(memoryDir: string, filePath: string): Promise<void> {
+	const archiveDir = join(memoryDir, ARCHIVE_DIR_NAME)
+	await fs.mkdir(archiveDir, { recursive: true })
+	await fs.copyFile(filePath, join(archiveDir, `${Date.now()}_${basename(filePath)}`))
+}
+
 /** Overwrite a memory's body, keeping its frontmatter unless a new description is given. */
 export async function rewriteMemoryBody(memory: MemoryHeader, body: string, description?: string): Promise<void> {
 	const content = await fs.readFile(memory.filePath, "utf-8")

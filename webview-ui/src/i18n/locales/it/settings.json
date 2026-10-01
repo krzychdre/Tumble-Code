@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Abilita consolidamento della memoria (sogno)",
-				"description": "Quando abilitato, l'agente revisiona e riorganizza periodicamente la memoria: unisce i duplicati, rimuove i fatti contraddittori e pota le voci obsolete. Esegue automaticamente quando sono passati tempo e sessioni sufficienti. Controlla anche le note vere solo per un certo periodo (\"non ancora unito\", \"rebuild in sospeso\") rispetto a git e a note più recenti, e segna quelle completate."
+				"description": "Quando abilitato, l'agente revisiona e riorganizza periodicamente la memoria: unisce i duplicati, rimuove i fatti contraddittori e pota le voci obsolete. Esegue automaticamente quando sono passati tempo e sessioni sufficienti. Controlla anche le note vere solo per un certo periodo (\"non ancora unito\", \"rebuild in sospeso\") rispetto a git e a note più recenti, e segna quelle completate. Annota anche, in cima a una nota, i file, i nomi di codice e le versioni dei pacchetti citati che sono cambiati nel repository da quando è stata scritta."
 			},
 			"minHours": {
 				"label": "Ore minime tra i sogni",

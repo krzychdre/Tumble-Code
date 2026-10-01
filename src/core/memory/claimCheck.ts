@@ -24,7 +24,7 @@ import { basename, join } from "path"
 
 import { logger } from "../../utils/logging"
 import { type ClaimEvidenceLookup } from "./claimEvidence"
-import { ARCHIVE_DIR_NAME } from "./memoryFiles"
+import { copyToArchive } from "./memoryFiles"
 import { ENTRYPOINT_NAME } from "./memoryPrompt"
 import { type MemoryHeader } from "./memoryScan"
 import { type SideQuery } from "./relevance"
@@ -456,9 +456,7 @@ interface RunState {
 /** Copy a file into `.archive/` before its first edit in this run. */
 async function backUp(run: RunState, filePath: string): Promise<void> {
 	if (run.backedUp.has(filePath)) return
-	const archiveDir = join(run.memoryDir, ARCHIVE_DIR_NAME)
-	await fs.mkdir(archiveDir, { recursive: true })
-	await fs.copyFile(filePath, join(archiveDir, `${Date.now()}_${basename(filePath)}`))
+	await copyToArchive(run.memoryDir, filePath)
 	run.backedUp.add(filePath)
 }
 

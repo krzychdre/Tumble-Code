@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Bellek birleştirmeyi (dream) etkinleştir",
-				"description": "Etkin olduğunda, aracı periyodik olarak belleği gözden geçirip yeniden düzenler: yinelenenleri birleştirir, çelişen gerçekleri kaldırır ve eski girdileri budar. Yeterli süre ve oturum geçtiğinde otomatik çalışır. Ayrıca yalnızca bir süre doğru olan notları (\"henüz birleştirilmedi\", \"yeniden derleme bekliyor\") git ve daha yeni notlarla karşılaştırır ve tamamlananları işaretler."
+				"description": "Etkin olduğunda, aracı periyodik olarak belleği gözden geçirip yeniden düzenler: yinelenenleri birleştirir, çelişen gerçekleri kaldırır ve eski girdileri budar. Yeterli süre ve oturum geçtiğinde otomatik çalışır. Ayrıca yalnızca bir süre doğru olan notları (\"henüz birleştirilmedi\", \"yeniden derleme bekliyor\") git ve daha yeni notlarla karşılaştırır ve tamamlananları işaretler. Ayrıca notta geçen ve not yazıldıktan sonra depoda değişen dosyaları, kod adlarını ve paket sürümlerini notun başına yazar."
 			},
 			"minHours": {
 				"label": "Dream'ler arası minimum saat",

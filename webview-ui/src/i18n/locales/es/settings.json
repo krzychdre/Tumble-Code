@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Activar consolidación de memoria (ensueño)",
-				"description": "Cuando está activado, el agente revisa y reorganiza periódicamente la memoria: fusiona duplicados, elimina hechos contradictorios y poda entradas obsoletas. Se ejecuta automáticamente cuando ha pasado suficiente tiempo y sesiones. También comprueba las notas que solo eran ciertas por un tiempo (\"aún sin fusionar\", \"recompilación pendiente\") con git y con notas más recientes, y marca las ya terminadas."
+				"description": "Cuando está activado, el agente revisa y reorganiza periódicamente la memoria: fusiona duplicados, elimina hechos contradictorios y poda entradas obsoletas. Se ejecuta automáticamente cuando ha pasado suficiente tiempo y sesiones. También comprueba las notas que solo eran ciertas por un tiempo (\"aún sin fusionar\", \"recompilación pendiente\") con git y con notas más recientes, y marca las ya terminadas. También anota, al inicio de una nota, los archivos, nombres de código y versiones de paquetes que menciona y que cambiaron en el repositorio desde que se escribió."
 			},
 			"minHours": {
 				"label": "Horas mínimas entre ensueños",

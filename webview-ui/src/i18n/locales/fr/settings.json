@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Activer la consolidation de mémoire (rêve)",
-				"description": "Lorsqu'activé, l'agent révise et réorganise périodiquement la mémoire : fusionne les doublons, supprime les faits contredits et élagage les entrées périmées. S'exécute automatiquement quand suffisamment de temps et de sessions se sont écoulés. Il vérifie aussi les notes qui n'étaient vraies que pour un temps (\"pas encore fusionné\", \"reconstruction en attente\") avec git et des notes plus récentes, et marque celles qui sont terminées."
+				"description": "Lorsqu'activé, l'agent révise et réorganise périodiquement la mémoire : fusionne les doublons, supprime les faits contredits et élagage les entrées périmées. S'exécute automatiquement quand suffisamment de temps et de sessions se sont écoulés. Il vérifie aussi les notes qui n'étaient vraies que pour un temps (\"pas encore fusionné\", \"reconstruction en attente\") avec git et des notes plus récentes, et marque celles qui sont terminées. Il indique aussi, en tête d'une note, les fichiers, noms de code et versions de paquets qu'elle mentionne et qui ont changé dans le dépôt depuis sa rédaction."
 			},
 			"minHours": {
 				"label": "Heures minimum entre rêves",
