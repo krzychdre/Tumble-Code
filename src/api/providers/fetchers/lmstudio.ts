@@ -4,6 +4,7 @@ import { LLM, LLMInfo, LLMInstanceInfo, LMStudioClient } from "@lmstudio/sdk"
 import { type ModelInfo, lMStudioDefaultModelInfo } from "@roo-code/types"
 
 import { flushModels } from "./modelCache"
+import { logger } from "../../../utils/logging"
 
 const modelsWithLoadedDetails = new Set<string>()
 
@@ -109,13 +110,13 @@ export const forceFullModelDetailsLoad = async (baseUrl: string, modelId: string
 	} catch (error) {
 		if (error instanceof LmStudioTimeoutError) {
 			// Shown to the user by the caller; the task still starts.
-			console.error(error.message)
+			logger.error(error.message)
 			throw error
 		}
 		if (error.code === "ECONNREFUSED") {
-			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
+			logger.warn(`Error connecting to LMStudio at ${baseUrl}`)
 		} else {
-			console.error(
+			logger.error(
 				`Error refreshing LMStudio model details: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 			)
 		}
@@ -180,7 +181,7 @@ export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Prom
 				// An LM Studio that does not answer this will not answer the next call either.
 				throw error
 			}
-			console.warn("Failed to list downloaded models, falling back to loaded models only")
+			logger.warn("Failed to list downloaded models, falling back to loaded models only")
 		}
 
 		// Get loaded models for their runtime info (context size)
@@ -220,13 +221,13 @@ export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Prom
 		}
 	} catch (error) {
 		if (error instanceof LmStudioTimeoutError) {
-			console.error(`Error fetching LMStudio models: ${error.message}`)
+			logger.error(`Error fetching LMStudio models: ${error.message}`)
 			return {}
 		}
 		if (error.code === "ECONNREFUSED") {
-			console.warn(`Error connecting to LMStudio at ${baseUrl}`)
+			logger.warn(`Error connecting to LMStudio at ${baseUrl}`)
 		} else {
-			console.error(
+			logger.error(
 				`Error fetching LMStudio models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 			)
 		}

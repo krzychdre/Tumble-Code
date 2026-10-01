@@ -2,6 +2,7 @@ import axios from "axios"
 
 import { getOllamaModels, parseOllamaModel } from "../ollama"
 import ollamaModelsData from "./fixtures/ollama-model-details.json"
+import { logger } from "../../../../utils/logging"
 
 // Mock axios
 vi.mock("axios")
@@ -238,7 +239,7 @@ describe("Ollama Fetcher", () => {
 		it("should return an empty list if the initial /api/tags call fails", async () => {
 			const baseUrl = "http://localhost:11434"
 			mockedAxios.get.mockRejectedValueOnce(new Error("Network error"))
-			vi.spyOn(console, "error").mockImplementation(() => {}) // Suppress the logged error
+			vi.spyOn(logger, "error").mockImplementation(() => {}) // Suppress the logged error
 
 			const result = await getOllamaModels(baseUrl)
 
@@ -250,7 +251,7 @@ describe("Ollama Fetcher", () => {
 
 		it("should log an info message and return an empty object on ECONNREFUSED", async () => {
 			const baseUrl = "http://localhost:11434"
-			const consoleInfoSpy = vi.spyOn(console, "warn").mockImplementation(() => {}) // Spy and suppress output
+			const consoleInfoSpy = vi.spyOn(logger, "warn").mockImplementation(() => {}) // Spy and suppress output
 
 			const econnrefusedError = new Error("Connection refused") as any
 			econnrefusedError.code = "ECONNREFUSED"
@@ -264,7 +265,7 @@ describe("Ollama Fetcher", () => {
 			expect(consoleInfoSpy).toHaveBeenCalledWith(`Failed connecting to Ollama at ${baseUrl}`)
 			expect(result).toEqual({})
 
-			consoleInfoSpy.mockRestore() // Restore original console.info
+			consoleInfoSpy.mockRestore() // Restore original logger.info
 		})
 
 		it("should handle models with null families field in API response", async () => {

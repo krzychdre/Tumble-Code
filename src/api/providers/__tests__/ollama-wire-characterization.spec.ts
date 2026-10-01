@@ -15,6 +15,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 import type { ApiHandlerCreateMessageMetadata } from "../../index"
 import type { ApiStreamChunk } from "../../transform/stream"
 import { NativeOllamaHandler } from "../native-ollama"
+import { logger } from "../../../utils/logging"
 
 type RecordedRequest = {
 	url: string
@@ -188,7 +189,7 @@ beforeEach(() => {
 	answer = { kind: "ndjson", chunks: [ndjson(streamLines)] }
 	release = () => {}
 	vi.stubGlobal("fetch", vi.fn(fakeFetch))
-	vi.spyOn(console, "error").mockImplementation(() => {})
+	vi.spyOn(logger, "error").mockImplementation(() => {})
 })
 
 afterEach(() => {

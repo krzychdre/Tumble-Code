@@ -11,6 +11,7 @@ import { getApiErrorStatus } from "../apiErrors"
 import { TagMatcher } from "../../utils/tag-matcher"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { ollamaCompletionUsage } from "./utils/completion-usage"
+import { logger } from "../../utils/logging"
 
 interface OllamaChatOptions {
 	temperature?: number
@@ -411,7 +412,7 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 					}
 				}
 			} catch (streamError: any) {
-				console.error("Error processing Ollama stream:", streamError)
+				logger.error("Error processing Ollama stream:", streamError)
 				throw handleProviderError(streamError, "Ollama", {
 					messageTransformer: (msg) => `Ollama stream processing error: ${msg || "Unknown error"}`,
 				})
@@ -437,7 +438,7 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 				})
 			}
 
-			console.error(`Ollama API error (${statusCode || "unknown"}): ${errorMessage}`)
+			logger.error(`Ollama API error (${statusCode || "unknown"}): ${errorMessage}`)
 			// Same message, but with the ollama package's status_code carried as `status`.
 			throw handleProviderError(error, "Ollama", { messageTransformer: (msg) => msg })
 		}

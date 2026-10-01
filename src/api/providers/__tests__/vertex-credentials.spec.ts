@@ -55,6 +55,7 @@ import { GeminiHandler } from "../gemini"
 import { VertexHandler } from "../vertex"
 import { AnthropicVertexHandler } from "../anthropic-vertex"
 import { parseVertexJsonCredentials } from "../utils/vertex-credentials"
+import { logger } from "../../../utils/logging"
 
 const VALID_CREDS_JSON = JSON.stringify({
 	type: "service_account",
@@ -67,7 +68,8 @@ describe("parseVertexJsonCredentials", () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>
 
 	beforeEach(() => {
-		warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+		// The JSON parse error comes from safeJsonParse in @roo-code/core, which logs to the console.
 		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 	})
 
@@ -144,7 +146,8 @@ describe("GeminiHandler vertex credentials wiring", () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>
 
 	beforeEach(() => {
-		warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+		// The JSON parse error comes from safeJsonParse in @roo-code/core, which logs to the console.
 		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 		googleGenAICtor.mockClear()
 	})
@@ -233,7 +236,7 @@ describe("VertexHandler inherits the path-shape guard from GeminiHandler", () =>
 	let warnSpy: ReturnType<typeof vi.spyOn>
 
 	beforeEach(() => {
-		warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		googleGenAICtor.mockClear()
 	})
 
@@ -264,7 +267,8 @@ describe("AnthropicVertexHandler vertex credentials wiring", () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>
 
 	beforeEach(() => {
-		warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+		// The JSON parse error comes from safeJsonParse in @roo-code/core, which logs to the console.
 		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 		googleAuthCtor.mockClear()
 	})

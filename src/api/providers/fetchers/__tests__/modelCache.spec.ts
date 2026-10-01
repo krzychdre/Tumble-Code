@@ -67,6 +67,7 @@ import { getModels, getModelsFromCache, resetModelCacheForTests } from "../model
 import { getLiteLLMModels } from "../litellm"
 import { getOpenRouterModels } from "../openrouter"
 import { getDeepSeekModels } from "../deepseek"
+import { logger } from "../../../../utils/logging"
 
 const mockGetLiteLLMModels = getLiteLLMModels as Mock<typeof getLiteLLMModels>
 const mockGetOpenRouterModels = getOpenRouterModels as Mock<typeof getOpenRouterModels>
@@ -232,7 +233,7 @@ describe("getModelsFromCache disk fallback", () => {
 			throw new Error("Disk read failed")
 		})
 
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		const result = getModelsFromCache("openrouter")
 
@@ -246,7 +247,7 @@ describe("getModelsFromCache disk fallback", () => {
 		vi.mocked(fsSync.existsSync).mockReturnValue(true)
 		vi.mocked(fsSync.readFileSync).mockReturnValue("invalid json{")
 
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		const result = getModelsFromCache("openrouter")
 

@@ -71,6 +71,7 @@ import { QwenCodeHandler } from "../qwen-code"
 import { XAIHandler } from "../xai"
 import { ZAiHandler } from "../zai"
 import { openAiCodexOAuthManager } from "../../../integrations/openai-codex/oauth"
+import { logger } from "../../../utils/logging"
 
 type Handler = ApiHandler & SingleCompletionHandler
 type Reject = () => Promise<never>
@@ -386,7 +387,7 @@ function expectNotDoublePrefixed(message: string) {
 }
 
 beforeEach(() => {
-	vi.spyOn(console, "error").mockImplementation(() => {})
+	vi.spyOn(logger, "error").mockImplementation(() => {})
 })
 
 afterEach(() => {

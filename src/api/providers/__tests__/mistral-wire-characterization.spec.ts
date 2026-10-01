@@ -20,6 +20,7 @@ import type { ApiHandlerCreateMessageMetadata } from "../../index"
 import type { ApiStreamChunk } from "../../transform/stream"
 import { getApiErrorStatus } from "../../apiErrors"
 import { MistralHandler } from "../mistral"
+import { logger } from "../../../utils/logging"
 
 type RecordedRequest = {
 	url: string
@@ -211,7 +212,7 @@ describe("MistralHandler against the real @mistralai/mistralai client (wire char
 		respondWith = "ok"
 		mockCaptureException.mockClear()
 		vi.stubGlobal("fetch", vi.fn(fakeFetch))
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 	})
 
 	afterEach(() => {

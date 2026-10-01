@@ -14,6 +14,7 @@ import { convertToVsCodeLmMessages, extractTextCountFromMessage } from "../trans
 import { BaseProvider } from "./base-provider"
 import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
+import { logger } from "../../utils/logging"
 
 /**
  * Converts OpenAI-format tools to VSCode Language Model tools.
@@ -82,7 +83,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 						this.client = null
 						this.ensureCleanState()
 					} catch (error) {
-						console.error("Error during configuration change cleanup:", error)
+						logger.error("Error during configuration change cleanup:", error)
 					}
 				}
 			})
@@ -107,16 +108,16 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 		try {
 			// Check if the client is already initialized
 			if (this.client) {
-				console.debug("Tumble Code <Language Model API>: Client already initialized")
+				logger.debug("Tumble Code <Language Model API>: Client already initialized")
 				return
 			}
 			// Create a new client instance
 			this.client = await this.createClient(this.options.vsCodeLmModelSelector || {})
-			console.debug("Tumble Code <Language Model API>: Client initialized successfully")
+			logger.debug("Tumble Code <Language Model API>: Client initialized successfully")
 		} catch (error) {
 			// Handle errors during client initialization
 			const errorMessage = error instanceof Error ? error.message : "Unknown error"
-			console.error("Tumble Code <Language Model API>: Client initialization failed:", errorMessage)
+			logger.error("Tumble Code <Language Model API>: Client initialization failed:", errorMessage)
 			throw new Error(`Tumble Code <Language Model API>: Failed to initialize client: ${errorMessage}`)
 		}
 	}
@@ -224,13 +225,13 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 	private async internalCountTokens(text: string | vscode.LanguageModelChatMessage): Promise<number> {
 		// Check for required dependencies
 		if (!this.client) {
-			console.warn("Tumble Code <Language Model API>: No client available for token counting")
+			logger.warn("Tumble Code <Language Model API>: No client available for token counting")
 			return 0
 		}
 
 		// Validate input
 		if (!text) {
-			console.debug("Tumble Code <Language Model API>: Empty text provided for token counting")
+			logger.debug("Tumble Code <Language Model API>: Empty text provided for token counting")
 			return 0
 		}
 
@@ -254,24 +255,24 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			} else if (text instanceof vscode.LanguageModelChatMessage) {
 				// For chat messages, ensure we have content
 				if (!text.content || (Array.isArray(text.content) && text.content.length === 0)) {
-					console.debug("Tumble Code <Language Model API>: Empty chat message content")
+					logger.debug("Tumble Code <Language Model API>: Empty chat message content")
 					return 0
 				}
 				const countMessage = extractTextCountFromMessage(text)
 				tokenCount = await this.client.countTokens(countMessage, cancellationToken)
 			} else {
-				console.warn("Tumble Code <Language Model API>: Invalid input type for token counting")
+				logger.warn("Tumble Code <Language Model API>: Invalid input type for token counting")
 				return 0
 			}
 
 			// Validate the result
 			if (typeof tokenCount !== "number") {
-				console.warn("Tumble Code <Language Model API>: Non-numeric token count received:", tokenCount)
+				logger.warn("Tumble Code <Language Model API>: Non-numeric token count received:", tokenCount)
 				return 0
 			}
 
 			if (tokenCount < 0) {
-				console.warn("Tumble Code <Language Model API>: Negative token count received:", tokenCount)
+				logger.warn("Tumble Code <Language Model API>: Negative token count received:", tokenCount)
 				return 0
 			}
 
@@ -279,16 +280,16 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 		} catch (error) {
 			// Handle specific error types
 			if (error instanceof vscode.CancellationError) {
-				console.debug("Tumble Code <Language Model API>: Token counting cancelled by user")
+				logger.debug("Tumble Code <Language Model API>: Token counting cancelled by user")
 				return 0
 			}
 
 			const errorMessage = error instanceof Error ? error.message : "Unknown error"
-			console.warn("Tumble Code <Language Model API>: Token counting failed:", errorMessage)
+			logger.warn("Tumble Code <Language Model API>: Token counting failed:", errorMessage)
 
 			// Log additional error details if available
 			if (error instanceof Error && error.stack) {
-				console.debug("Token counting error stack:", error.stack)
+				logger.debug("Token counting error stack:", error.stack)
 			}
 
 			return 0 // Fallback to prevent stream interruption
@@ -316,7 +317,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 
 	private async getClient(): Promise<vscode.LanguageModelChat> {
 		if (!this.client) {
-			console.debug("Tumble Code <Language Model API>: Getting client with options:", {
+			logger.debug("Tumble Code <Language Model API>: Getting client with options:", {
 				vsCodeLmModelSelector: this.options.vsCodeLmModelSelector,
 				hasOptions: !!this.options,
 				selectorKeys: this.options.vsCodeLmModelSelector ? Object.keys(this.options.vsCodeLmModelSelector) : [],
@@ -325,11 +326,11 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			try {
 				// Use default empty selector if none provided to get all available models
 				const selector = this.options?.vsCodeLmModelSelector || {}
-				console.debug("Tumble Code <Language Model API>: Creating client with selector:", selector)
+				logger.debug("Tumble Code <Language Model API>: Creating client with selector:", selector)
 				this.client = await this.createClient(selector)
 			} catch (error) {
 				const message = error instanceof Error ? error.message : "Unknown error"
-				console.error("Tumble Code <Language Model API>: Client creation failed:", message)
+				logger.error("Tumble Code <Language Model API>: Client creation failed:", message)
 				throw new Error(`Tumble Code <Language Model API>: Failed to create client: ${message}`)
 			}
 		}
@@ -417,7 +418,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 				if (chunk instanceof vscode.LanguageModelTextPart) {
 					// Validate text part value
 					if (typeof chunk.value !== "string") {
-						console.warn("Tumble Code <Language Model API>: Invalid text part value received:", chunk.value)
+						logger.warn("Tumble Code <Language Model API>: Invalid text part value received:", chunk.value)
 						continue
 					}
 
@@ -430,26 +431,23 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 					try {
 						// Validate tool call parameters
 						if (!chunk.name || typeof chunk.name !== "string") {
-							console.warn("Tumble Code <Language Model API>: Invalid tool name received:", chunk.name)
+							logger.warn("Tumble Code <Language Model API>: Invalid tool name received:", chunk.name)
 							continue
 						}
 
 						if (!chunk.callId || typeof chunk.callId !== "string") {
-							console.warn(
-								"Tumble Code <Language Model API>: Invalid tool callId received:",
-								chunk.callId,
-							)
+							logger.warn("Tumble Code <Language Model API>: Invalid tool callId received:", chunk.callId)
 							continue
 						}
 
 						// Ensure input is a valid object
 						if (!chunk.input || typeof chunk.input !== "object") {
-							console.warn("Tumble Code <Language Model API>: Invalid tool input received:", chunk.input)
+							logger.warn("Tumble Code <Language Model API>: Invalid tool input received:", chunk.input)
 							continue
 						}
 
 						// Log tool call for debugging
-						console.debug("Tumble Code <Language Model API>: Processing tool call:", {
+						logger.debug("Tumble Code <Language Model API>: Processing tool call:", {
 							name: chunk.name,
 							callId: chunk.callId,
 							inputSize: JSON.stringify(chunk.input).length,
@@ -467,12 +465,12 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 							}
 						}
 					} catch (error) {
-						console.error("Tumble Code <Language Model API>: Failed to process tool call:", error)
+						logger.error("Tumble Code <Language Model API>: Failed to process tool call:", error)
 						// Continue processing other chunks even if one fails
 						continue
 					}
 				} else {
-					console.warn("Tumble Code <Language Model API>: Unknown chunk type received:", chunk)
+					logger.warn("Tumble Code <Language Model API>: Unknown chunk type received:", chunk)
 				}
 			}
 
@@ -493,7 +491,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			}
 
 			if (error instanceof Error) {
-				console.error("Tumble Code <Language Model API>: Stream error details:", {
+				logger.error("Tumble Code <Language Model API>: Stream error details:", {
 					message: error.message,
 					stack: error.stack,
 					name: error.name,
@@ -504,12 +502,12 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			} else if (typeof error === "object" && error !== null) {
 				// Handle error-like objects
 				const errorDetails = JSON.stringify(error, null, 2)
-				console.error("Tumble Code <Language Model API>: Stream error object:", errorDetails)
+				logger.error("Tumble Code <Language Model API>: Stream error object:", errorDetails)
 				throw new Error(`Tumble Code <Language Model API>: Response stream error: ${errorDetails}`)
 			} else {
 				// Fallback for unknown error types
 				const errorMessage = String(error)
-				console.error("Tumble Code <Language Model API>: Unknown stream error:", errorMessage)
+				logger.error("Tumble Code <Language Model API>: Unknown stream error:", errorMessage)
 				throw new Error(`Tumble Code <Language Model API>: Response stream error: ${errorMessage}`)
 			}
 		} finally {
@@ -532,7 +530,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			// Log any missing properties for debugging
 			for (const [prop, value] of Object.entries(requiredProps)) {
 				if (!value && value !== 0) {
-					console.warn(`Tumble Code <Language Model API>: Client missing ${prop} property`)
+					logger.warn(`Tumble Code <Language Model API>: Client missing ${prop} property`)
 				}
 			}
 
@@ -558,7 +556,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			return { id: modelId, info: modelInfo }
 		}
 
-		console.debug("Tumble Code <Language Model API>: No client available, using fallback model info")
+		logger.debug("Tumble Code <Language Model API>: No client available, using fallback model info")
 
 		return resolveVsCodeLmModel(this.options)
 	}
@@ -603,9 +601,7 @@ export async function getVsCodeLmModels() {
 		const models = (await vscode.lm.selectChatModels({})) || []
 		return models.filter((model) => !VSCODE_LM_STATIC_BLACKLIST.includes(model.id))
 	} catch (error) {
-		console.error(
-			`Error fetching VS Code LM models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
-		)
+		logger.error(`Error fetching VS Code LM models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
 		return []
 	}
 }

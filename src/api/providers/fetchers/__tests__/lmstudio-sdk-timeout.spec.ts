@@ -12,6 +12,7 @@ vi.mock("../modelCache", () => ({
 import * as fetcher from "../lmstudio"
 import { forceFullModelDetailsLoad, getLMStudioModels } from "../lmstudio"
 import { startFakeLmStudioServer, type FakeLmStudioServer, type Responder } from "./fake-lmstudio-server"
+import { logger } from "../../../../utils/logging"
 
 const downloaded = {
 	type: "llm",
@@ -107,9 +108,9 @@ afterAll(() => {
 
 beforeEach(() => {
 	Object.assign(fetcher.LM_STUDIO_TIMEOUTS, { requestMs: REQUEST_MS, loadIdleMs: LOAD_IDLE_MS })
-	vi.spyOn(console, "warn").mockImplementation(() => {})
-	vi.spyOn(console, "info").mockImplementation(() => {})
-	consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+	vi.spyOn(logger, "warn").mockImplementation(() => {})
+	vi.spyOn(logger, "info").mockImplementation(() => {})
+	consoleError = vi.spyOn(logger, "error").mockImplementation(() => {})
 })
 
 afterEach(async () => {

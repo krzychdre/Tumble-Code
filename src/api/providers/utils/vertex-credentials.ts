@@ -2,6 +2,7 @@ import type { JWTInput } from "google-auth-library"
 
 import { looksLikeFilePath } from "@roo-code/types"
 import { safeJsonParse } from "@roo-code/core"
+import { logger } from "../../../utils/logging"
 
 // Detects when the "Google Cloud Credentials" field has received a filesystem
 // path instead of the raw JSON contents of a service-account key file. Users
@@ -23,7 +24,7 @@ export function parseVertexJsonCredentials(value: string | undefined): JWTInput 
 		// into the warning so usernames and directory names don't leak into
 		// extension logs. The message still identifies the correct field and
 		// the env var fallback.
-		console.warn(
+		logger.warn(
 			"[Vertex] The 'Google Cloud Credentials' field appears to contain a file path, " +
 				"but this field expects the raw JSON contents of a service-account key file. " +
 				"If you have a path to the credentials file, paste it into the 'Google Cloud Key File Path' field instead, " +

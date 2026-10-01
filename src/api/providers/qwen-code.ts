@@ -17,6 +17,7 @@ import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "./utils/timeout-config"
+import { logger } from "../../utils/logging"
 
 const QWEN_OAUTH_BASE_URL = "https://chat.qwen.ai"
 const QWEN_OAUTH_TOKEN_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/token`
@@ -89,7 +90,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 			const credsStr = await fs.readFile(keyFile, "utf-8")
 			return JSON.parse(credsStr)
 		} catch (error) {
-			console.error(
+			logger.error(
 				`Error reading or parsing credentials file at ${getQwenCachedCredentialPath(this.options.qwenCodeOauthPath)}`,
 			)
 			throw new Error(`Failed to load Qwen OAuth credentials: ${error}`)
@@ -168,7 +169,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 			// shares with us; the existing file mode (normally 0600) is kept.
 			await safeWriteJson(filePath, newCredentials, { prettyPrint: true })
 		} catch (error) {
-			console.error("Failed to save refreshed credentials:", error)
+			logger.error("Failed to save refreshed credentials:", error)
 			// Continue with the refreshed token in memory even if file write fails
 		}
 

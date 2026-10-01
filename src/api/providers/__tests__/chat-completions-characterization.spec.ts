@@ -37,6 +37,7 @@ import { OpenAiHandler } from "../openai"
 import { OpenRouterHandler } from "../openrouter"
 import { QwenCodeHandler } from "../qwen-code"
 import { ZAiHandler } from "../zai"
+import { logger } from "../../../utils/logging"
 
 type RawChunk = Record<string, unknown>
 
@@ -321,7 +322,7 @@ async function replay(handler: ApiHandler): Promise<Replay> {
 }
 
 beforeEach(() => {
-	vi.spyOn(console, "error").mockImplementation(() => {})
+	vi.spyOn(logger, "error").mockImplementation(() => {})
 })
 
 afterEach(() => {

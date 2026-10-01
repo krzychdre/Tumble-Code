@@ -2,6 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import * as vscode from "vscode"
 
 import { imageSourceMediaType } from "./image-source"
+import { logger } from "../../utils/logging"
 
 /**
  * Safely converts a value into a plain object.
@@ -25,7 +26,7 @@ function asObjectSafe(value: any): object {
 
 		return {}
 	} catch (error) {
-		console.warn("Tumble Code <Language Model API>: Failed to parse object:", error)
+		logger.warn("Tumble Code <Language Model API>: Failed to parse object:", error)
 		return {}
 	}
 }
@@ -186,7 +187,7 @@ export function extractTextCountFromMessage(message: vscode.LanguageModelChatMes
 					try {
 						text += JSON.stringify(item.input)
 					} catch (error) {
-						console.error("Tumble Code <Language Model API>: Failed to stringify tool call input:", error)
+						logger.error("Tumble Code <Language Model API>: Failed to stringify tool call input:", error)
 					}
 				}
 			}

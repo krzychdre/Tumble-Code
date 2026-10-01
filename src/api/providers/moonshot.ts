@@ -19,6 +19,7 @@ import type { ApiHandlerCreateMessageMetadata, CompletionResult } from "../index
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 import { openAiCompletionUsage } from "./utils/completion-usage"
 import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
+import { logger } from "../../utils/logging"
 
 const MOONSHOT_DEFAULT_BASE_URL = "https://api.moonshot.ai/v1"
 
@@ -145,7 +146,7 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 				...flattenMessagesForTokenCount(messages),
 			])
 		} catch (err) {
-			console.error(`[${this.providerName}] Failed to count input tokens:`, err)
+			logger.error(`[${this.providerName}] Failed to count input tokens:`, err)
 		}
 
 		let outputTokens = 0
@@ -153,7 +154,7 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 			try {
 				outputTokens = await this.countTokens([{ type: "text", text: assistantText }])
 			} catch (err) {
-				console.error(`[${this.providerName}] Failed to count output tokens:`, err)
+				logger.error(`[${this.providerName}] Failed to count output tokens:`, err)
 			}
 		}
 

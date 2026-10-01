@@ -19,6 +19,7 @@ import { getModelsFromCache } from "./fetchers/modelCache"
 import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
+import { logger } from "../../utils/logging"
 
 /**
  * LM Studio reports most failures (model not loaded, context too small) only in its own
@@ -96,7 +97,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				...flattenMessagesForTokenCount(messages),
 			])
 		} catch (err) {
-			console.error("[LmStudio] Failed to count input tokens:", err)
+			logger.error("[LmStudio] Failed to count input tokens:", err)
 			inputTokens = 0
 		}
 
@@ -146,7 +147,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				try {
 					outputTokens = await this.countTokens([{ type: "text", text: assistantText }])
 				} catch (err) {
-					console.error("[LmStudio] Failed to count output tokens:", err)
+					logger.error("[LmStudio] Failed to count output tokens:", err)
 					outputTokens = 0
 				}
 
