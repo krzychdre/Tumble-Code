@@ -34,6 +34,12 @@ wait for it, and a failed start only means local-only mode. It counts as "starti
 in that window `CloudService.hasInstance()` is false and a Clerk sign-in callback (`handleUri`) waits for it. When the start settles, activation pushes a fresh state to a
 visible webview (which may have shown signed-out cloud facts) and sets up the remote-control bridge.
 
+Diagnostics go through `logger` (`src/utils/logging`), configured as the first step of `activate()`. It writes one
+line per call (time, level, optional `[scope]`) to the Tumble Code output channel; `debug` lines only while the
+`tumble-code.debug` setting is on. A development host also copies every line to the console; the CLI gets a console
+copy of errors only, which it moves to its debug log file. `console.*` is an ESLint error in `src/` outside
+`src/shared` (bundled into the webview too), the token counting worker and `i18n/setup.ts` (runs before activation).
+
 `deactivate()` flushes pending chat-message saves, removes cloud listeners, stops MCP servers, shuts telemetry
 down, cleans terminals and disposes the tree-sitter parsers.
 
