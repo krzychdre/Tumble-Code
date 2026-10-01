@@ -1,5 +1,8 @@
+import { EventEmitter } from "events"
 import type { Mock } from "vitest"
 // npx vitest core/tools/__tests__/useMcpToolTool.spec.ts
+
+import { RooCodeEventName } from "@roo-code/types"
 
 import { useMcpToolTool } from "../UseMcpToolTool"
 import { Task } from "../../task/Task"
@@ -66,7 +69,8 @@ describe("useMcpToolTool", () => {
 			}),
 		}
 
-		mockTask = {
+		// A real emitter, like Task: the tool listens for TaskAborted to cancel its call.
+		mockTask = Object.assign(new EventEmitter(), {
 			consecutiveMistakeCount: 0,
 			recordToolError: vi.fn(),
 			sayAndCreateMissingParamError: vi.fn(),
@@ -74,7 +78,7 @@ describe("useMcpToolTool", () => {
 			ask: vi.fn(),
 			lastMessageTs: 123456789,
 			providerRef: mockProviderRef,
-		}
+		}) as unknown as Partial<Task>
 	})
 
 	describe("parameter validation", () => {
@@ -301,7 +305,9 @@ describe("useMcpToolTool", () => {
 
 			expect(mockTask.consecutiveMistakeCount).toBe(0)
 			expect(mockTask.recordToolError).not.toHaveBeenCalled()
-			expect(callToolMock).toHaveBeenCalledWith("test_server", "test_tool", { headless: true })
+			expect(callToolMock).toHaveBeenCalledWith("test_server", "test_tool", { headless: true }, undefined, {
+				signal: expect.any(AbortSignal),
+			})
 			expect(mockTask.say).toHaveBeenCalledWith("mcp_server_request_started")
 			expect(mockTask.say).toHaveBeenCalledWith("mcp_server_response", "Browser session started", [])
 		})
@@ -690,7 +696,9 @@ describe("useMcpToolTool", () => {
 			expect(mockTask.say).toHaveBeenCalledWith("mcp_server_request_started")
 
 			// The original tool name (with hyphens) should be passed to callTool
-			expect(callToolMock).toHaveBeenCalledWith("test-server", "get-user-profile", {})
+			expect(callToolMock).toHaveBeenCalledWith("test-server", "get-user-profile", {}, undefined, {
+				signal: expect.any(AbortSignal),
+			})
 		})
 	})
 
@@ -977,6 +985,122 @@ describe("useMcpToolTool", () => {
 				"data:image/png;base64,image2data",
 			])
 			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("with 2 image(s)"))
+		})
+	})
+
+	describe("cancellation (Stop)", () => {
+		const block = {
+			type: "tool_use",
+			name: "use_mcp_tool",
+			params: { server_name: "test_server", tool_name: "slow_tool", arguments: "{}" },
+			nativeArgs: { server_name: "test_server", tool_name: "slow_tool", arguments: {} },
+			partial: false,
+		}
+
+		// Behaves like the MCP SDK's client.request: pending until answered, and
+		// rejected at once when the request's signal aborts.
+		function pendingUntilAborted(): Mock {
+			return vi.fn(
+				(
+					_server: string,
+					_tool: string,
+					_args: unknown,
+					_source: unknown,
+					options?: { signal?: AbortSignal },
+				) =>
+					new Promise((_resolve, reject) => {
+						options?.signal?.addEventListener("abort", () =>
+							reject(new Error("MCP error -32001: cancelled")),
+						)
+					}),
+			)
+		}
+
+		function stubHub(callTool: Mock, postMessageToWebview: Mock) {
+			mockProviderRef.deref.mockReturnValue({
+				getMcpHub: () => ({
+					callTool,
+					getAllServers: () => [{ name: "test_server", tools: [{ name: "slow_tool" }] }],
+				}),
+				postMessageToWebview,
+			})
+		}
+
+		function abortTask() {
+			// What TaskLifecycle.prepareAbort does: set the flag, then emit.
+			;(mockTask as any).abort = true
+			;(mockTask as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted)
+		}
+
+		it("cancels the in-flight call when the task aborts and returns without a result", async () => {
+			const callTool = pendingUntilAborted()
+			const postMessageToWebview = vi.fn()
+			stubHub(callTool, postMessageToWebview)
+			mockAskApproval.mockResolvedValue(true)
+
+			const run = useMcpToolTool.handle(mockTask as Task, block as any, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+			await vi.waitFor(() => expect(callTool).toHaveBeenCalled())
+
+			const signal: AbortSignal = callTool.mock.calls[0][4]?.signal
+			expect(signal).toBeInstanceOf(AbortSignal)
+			expect(signal.aborted).toBe(false)
+
+			abortTask()
+			await run
+
+			expect(signal.aborted).toBe(true)
+			// No late result reaches the conversation; the rejection goes to
+			// handleError, which stays silent for an aborting task.
+			expect(mockPushToolResult).not.toHaveBeenCalled()
+			expect(mockTask.say).not.toHaveBeenCalledWith("mcp_server_response", expect.anything(), expect.anything())
+			expect(mockHandleError).toHaveBeenCalledWith("executing MCP tool", expect.any(Error), "use_mcp_tool")
+			// The "running" execution row is ended instead of spinning on.
+			const statuses = postMessageToWebview.mock.calls.map(([m]) => JSON.parse(m.text))
+			expect(statuses.at(-1)).toMatchObject({ status: "error", error: "Cancelled" })
+			expect((mockTask as unknown as EventEmitter).listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+		})
+
+		it("hands an already aborted signal to a call that starts after the abort", async () => {
+			const callTool = pendingUntilAborted()
+			stubHub(callTool, vi.fn())
+			mockAskApproval.mockImplementation(async () => {
+				abortTask()
+				return true
+			})
+			callTool.mockImplementation(async (...args: any[]) => {
+				const signal: AbortSignal = args[4].signal
+				signal.throwIfAborted()
+				return { content: [] }
+			})
+
+			await useMcpToolTool.handle(mockTask as Task, block as any, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(callTool.mock.calls[0][4].signal.aborted).toBe(true)
+			expect(mockPushToolResult).not.toHaveBeenCalled()
+		})
+
+		it("removes its abort listener after a normal result", async () => {
+			const callTool = vi.fn().mockResolvedValue({ content: [{ type: "text", text: "done" }] })
+			stubHub(callTool, vi.fn())
+			mockAskApproval.mockResolvedValue(true)
+
+			await useMcpToolTool.handle(mockTask as Task, block as any, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(mockPushToolResult).toHaveBeenCalledWith("Tool result: done")
+			expect(callTool.mock.calls[0][4].signal.aborted).toBe(false)
+			expect((mockTask as unknown as EventEmitter).listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
 		})
 	})
 })
