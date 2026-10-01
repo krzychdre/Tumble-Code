@@ -479,6 +479,16 @@ describe("ModesView sections", () => {
 			await waitFor(() => expect(screen.queryByText("You are Tumble.")).not.toBeInTheDocument())
 		})
 
+		it("shows the prompt in a labelled modal dialog that Escape closes", async () => {
+			renderView({ mode: "reviewer" })
+			fireEvent.click(screen.getByTestId("preview-prompt-button"))
+			dispatchHostMessage({ type: "systemPrompt", text: "You are Tumble.", mode: "reviewer" })
+
+			const dialog = await screen.findByRole("dialog", { name: "System Prompt (reviewer mode)" })
+			fireEvent.keyDown(dialog, { key: "Escape" })
+			await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+		})
+
 		it("copy asks the host to copy the current mode's prompt", () => {
 			renderView()
 			fireEvent.click(screen.getByTestId("copy-prompt-button"))

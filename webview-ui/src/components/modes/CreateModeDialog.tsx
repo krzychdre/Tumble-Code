@@ -5,6 +5,9 @@ import { type GroupEntry, type McpServer, type ModeConfig, modeConfigSchema } fr
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import {
 	Button,
+	Dialog,
+	DialogContent,
+	DialogTitle,
 	Input,
 	LabeledCheckbox,
 	ThemedRadio,
@@ -15,6 +18,7 @@ import {
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 
 import { availableGroups, getGroupName } from "./modeGroups"
+import { SIDE_PANEL_CLASS } from "./sidePanelDialog"
 
 type ModeSource = "global" | "project"
 
@@ -113,13 +117,13 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 		errors[field] ? <div className="text-xs text-vscode-errorForeground mt-1">{errors[field]}</div> : null
 
 	return (
-		<div className="fixed inset-0 flex justify-end bg-black/50 z-[1000]">
-			<div className="w-[calc(100vw-100px)] h-full bg-vscode-editor-background shadow-md flex flex-col relative">
+		<Dialog open onOpenChange={(open) => !open && onClose()}>
+			<DialogContent
+				className={SIDE_PANEL_CLASS}
+				aria-describedby={undefined}
+				onInteractOutside={(e) => e.preventDefault()}>
 				<div className="flex-1 p-5 overflow-y-auto min-h-0">
-					<Button variant="ghost" size="icon" onClick={onClose} className="absolute top-5 right-5">
-						<span className="codicon codicon-close"></span>
-					</Button>
-					<h2 className="mb-4">{t("prompts:createModeDialog.title")}</h2>
+					<DialogTitle className="mb-4">{t("prompts:createModeDialog.title")}</DialogTitle>
 					<div className="mb-4">
 						<div className="font-bold mb-1">{t("prompts:createModeDialog.name.label")}</div>
 						<Input
@@ -287,7 +291,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						{t("prompts:createModeDialog.buttons.create")}
 					</Button>
 				</div>
-			</div>
-		</div>
+			</DialogContent>
+		</Dialog>
 	)
 }

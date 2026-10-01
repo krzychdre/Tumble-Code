@@ -131,7 +131,7 @@ describe("ImageViewer", () => {
 		const wrapper = (container: HTMLElement) => container.firstElementChild as HTMLElement
 		const button = (root: ParentNode, icon: string) =>
 			root.querySelector(`.codicon-${icon}`)?.closest("button") ?? null
-		const modal = () => document.querySelector(".fixed.inset-0") as HTMLElement | null
+		const modal = () => document.querySelector('[role="dialog"]') as HTMLElement | null
 		const panLayer = () => modal()!.querySelector('[style*="transform"]') as HTMLElement
 		const wheelArea = () => panLayer().parentElement as HTMLElement
 		const zoomBadge = () => modal()!.querySelector(".absolute.bottom-4.left-4")!.textContent

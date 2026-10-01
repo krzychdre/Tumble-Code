@@ -204,6 +204,7 @@ export function ImageViewer({
 			<ZoomableModal
 				isOpen={showModal}
 				onClose={() => setShowModal(false)}
+				title={t("common:image.tabs.view")}
 				tabs={
 					<TabButton
 						icon="file-media"

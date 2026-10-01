@@ -53,8 +53,8 @@ function openModal(container: HTMLElement) {
 	return modal()
 }
 
-/** The modal is rendered as a sibling of the block, fixed to the viewport. */
-const modal = () => document.querySelector(".fixed.inset-0") as HTMLElement | null
+/** The modal is rendered in a portal outside the block, as a dialog. */
+const modal = () => document.querySelector('[role="dialog"]') as HTMLElement | null
 
 /** The element that carries the zoom and pan transform. */
 const panLayer = () => modal()!.querySelector('[style*="transform"]') as HTMLElement
@@ -272,14 +272,27 @@ describe("MermaidButton", () => {
 		expect(zoomBadge()).toBe("100%")
 	})
 
-	it("closes the modal with the close button and with a click on the backdrop", () => {
+	it("closes the modal with the close button, a click on the backdrop and Escape", async () => {
 		const { container } = renderButton()
 		openModal(container)
 		fireEvent.click(button(modal()!, "close")!)
 		expect(modal()).toBeNull()
 
 		openModal(container)
-		fireEvent.click(modal()!)
+		// The dismiss listener is registered on the next tick after opening.
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		fireEvent.pointerDown(document.querySelector('[data-slot="dialog-overlay"]')!)
 		expect(modal()).toBeNull()
+
+		openModal(container)
+		fireEvent.keyDown(modal()!, { key: "Escape" })
+		expect(modal()).toBeNull()
+	})
+
+	it("is a modal dialog named after the diagram tab", () => {
+		const { container } = renderButton()
+		openModal(container)
+		expect(modal()).toHaveAttribute("role", "dialog")
+		expect(modal()).toHaveAccessibleName("common:mermaid.tabs.diagram")
 	})
 })

@@ -113,6 +113,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 			<ZoomableModal
 				isOpen={showModal}
 				onClose={() => setShowModal(false)}
+				title={t("common:mermaid.tabs.diagram")}
 				zoomable={modalViewMode === "diagram"}
 				tabs={
 					<>

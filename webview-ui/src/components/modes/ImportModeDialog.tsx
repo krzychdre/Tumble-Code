@@ -1,5 +1,5 @@
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button } from "@src/components/ui"
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@src/components/ui"
 
 import type { ImportLevel } from "./useModeImportExport"
 
@@ -44,23 +44,26 @@ export function ImportModeDialog({
 	)
 
 	return (
-		<div className="fixed inset-0 flex items-center justify-center bg-black/50 z-[1000]">
-			<div className="bg-vscode-editor-background border border-vscode-editor-lineHighlightBorder rounded-lg shadow-lg p-6 max-w-md w-full">
-				<h3 className="text-lg font-semibold mb-4">{t("prompts:modes.importMode")}</h3>
-				<p className="text-sm text-vscode-descriptionForeground mb-4">{t("prompts:importMode.selectLevel")}</p>
+		<Dialog open onOpenChange={(open) => !open && onCancel()}>
+			<DialogContent
+				className="max-w-md gap-0 rounded-lg p-6"
+				showCloseButton={false}
+				onInteractOutside={(e) => e.preventDefault()}>
+				<DialogTitle className="mb-4">{t("prompts:modes.importMode")}</DialogTitle>
+				<DialogDescription className="mb-4">{t("prompts:importMode.selectLevel")}</DialogDescription>
 				<div className="space-y-3 mb-6">
 					{levelOption("project")}
 					{levelOption("global")}
 				</div>
-				<div className="flex justify-end gap-2">
+				<DialogFooter>
 					<Button variant="secondary" onClick={onCancel}>
 						{t("prompts:createModeDialog.buttons.cancel")}
 					</Button>
 					<Button variant="primary" onClick={onImport} disabled={isImporting}>
 						{isImporting ? t("prompts:importMode.importing") : t("prompts:importMode.import")}
 					</Button>
-				</div>
-			</div>
-		</div>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	)
 }
