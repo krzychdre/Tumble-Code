@@ -102,6 +102,59 @@ export interface QdrantVectorStoreOptions {
 	legacyDocumentPrefix?: string
 }
 
+/** Sent with every Qdrant request; nothing on the Qdrant side depends on the value. */
+const QDRANT_USER_AGENT = "Tumble-Code"
+
+const DEFAULT_QDRANT_URL = "http://localhost:6333"
+
+/** How the Qdrant client is told where the server is. */
+type QdrantConnection =
+	| { host: string; https: boolean; port: number; prefix: string | undefined }
+	/** Last resort for input that is not a URL even after adding http:// (for example "foo bar"). */
+	| { url: string }
+
+/**
+ * Turns the Qdrant URL the user typed into the URL shown in messages and the client connection.
+ *
+ * - Empty or missing: `http://localhost:6333`.
+ * - No scheme (`qdrant.example.com`, `localhost:6333`, `[::1]:6333`): `http://` is added. Input that starts
+ *   with "http" and has a colon is taken as it is, so `httpbin.org:8080` parses with the scheme `httpbin:`.
+ * - A parsable URL is kept as typed (trimmed). The connection always names the port: the explicit one, else
+ *   443 for https and 80 for anything else, so the client never falls back to its own default (6333). A path
+ *   becomes the prefix without trailing slashes; query and fragment are ignored.
+ */
+export function normalizeQdrantUrl(input: string | undefined): { url: string; connection: QdrantConnection } {
+	const url = resolveQdrantUrl(input)
+	let parsed: URL
+	try {
+		parsed = new URL(url)
+	} catch {
+		return { url, connection: { url } }
+	}
+	const https = parsed.protocol === "https:"
+	return {
+		url,
+		connection: {
+			host: parsed.hostname,
+			https,
+			port: parsed.port ? Number(parsed.port) : https ? 443 : 80,
+			prefix: parsed.pathname === "/" ? undefined : parsed.pathname.replace(/\/+$/, ""),
+		},
+	}
+}
+
+function resolveQdrantUrl(input: string | undefined): string {
+	const trimmed = input?.trim()
+	if (!trimmed) {
+		return DEFAULT_QDRANT_URL
+	}
+	if (trimmed.includes("://") && URL.canParse(trimmed)) {
+		return trimmed
+	}
+	// A bare host name or host:port.
+	return trimmed.includes(":") && trimmed.startsWith("http") ? trimmed : `http://${trimmed}`
+}
+
 /**
  * Qdrant implementation of the vector store interface
  */
@@ -111,7 +164,7 @@ export class QdrantVectorStore implements IVectorStore {
 
 	private client: QdrantClient
 	private readonly collectionName: string
-	private readonly qdrantUrl: string = "http://localhost:6333"
+	private readonly qdrantUrl: string
 	private readonly workspacePath: string
 	private readonly legacyDocumentPrefix: string
 
@@ -129,106 +182,15 @@ export class QdrantVectorStore implements IVectorStore {
 	) {
 		this.legacyDocumentPrefix = options.legacyDocumentPrefix ?? ""
 
-		// Parse the URL to determine the appropriate QdrantClient configuration
-		const parsedUrl = this.parseQdrantUrl(url)
-
-		// Store the resolved URL for our property
-		this.qdrantUrl = parsedUrl
+		const { url: resolvedUrl, connection } = normalizeQdrantUrl(url)
+		this.qdrantUrl = resolvedUrl
 		this.workspacePath = workspacePath
-
-		try {
-			const urlObj = new URL(parsedUrl)
-
-			// Always use host-based configuration with explicit ports to avoid QdrantClient defaults
-			let port: number
-			let useHttps: boolean
-
-			if (urlObj.port) {
-				// Explicit port specified - use it and determine protocol
-				port = Number(urlObj.port)
-				useHttps = urlObj.protocol === "https:"
-			} else {
-				// No explicit port - use protocol defaults
-				if (urlObj.protocol === "https:") {
-					port = 443
-					useHttps = true
-				} else {
-					// http: or other protocols default to port 80
-					port = 80
-					useHttps = false
-				}
-			}
-
-			this.client = new QdrantClient({
-				host: urlObj.hostname,
-				https: useHttps,
-				port: port,
-				prefix: urlObj.pathname === "/" ? undefined : urlObj.pathname.replace(/\/+$/, ""),
-				apiKey,
-				headers: {
-					"User-Agent": "Roo-Code",
-				},
-			})
-		} catch (urlError) {
-			// If URL parsing fails, fall back to URL-based config
-			// Note: This fallback won't correctly handle prefixes, but it's a last resort for malformed URLs.
-			this.client = new QdrantClient({
-				url: parsedUrl,
-				apiKey,
-				headers: {
-					"User-Agent": "Roo-Code",
-				},
-			})
-		}
+		this.client = new QdrantClient({ ...connection, apiKey, headers: { "User-Agent": QDRANT_USER_AGENT } })
 
 		// Generate collection name from workspace path
 		const hash = createHash("sha256").update(workspacePath).digest("hex")
 		this.vectorSize = vectorSize
 		this.collectionName = `ws-${hash.substring(0, 16)}`
-	}
-
-	/**
-	 * Parses and normalizes Qdrant server URLs to handle various input formats
-	 * @param url Raw URL input from user
-	 * @returns Properly formatted URL for QdrantClient
-	 */
-	private parseQdrantUrl(url: string | undefined): string {
-		// Handle undefined/null/empty cases
-		if (!url || url.trim() === "") {
-			return "http://localhost:6333"
-		}
-
-		const trimmedUrl = url.trim()
-
-		// Check if it starts with a protocol
-		if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://") && !trimmedUrl.includes("://")) {
-			// No protocol - treat as hostname
-			return this.parseHostname(trimmedUrl)
-		}
-
-		try {
-			// Attempt to parse as complete URL - return as-is, let constructor handle ports
-			const parsedUrl = new URL(trimmedUrl)
-			return trimmedUrl
-		} catch {
-			// Failed to parse as URL - treat as hostname
-			return this.parseHostname(trimmedUrl)
-		}
-	}
-
-	/**
-	 * Handles hostname-only inputs
-	 * @param hostname Raw hostname input
-	 * @returns Properly formatted URL with http:// prefix
-	 */
-	private parseHostname(hostname: string): string {
-		if (hostname.includes(":")) {
-			// Has port - add http:// prefix if missing
-			return hostname.startsWith("http") ? hostname : `http://${hostname}`
-		} else {
-			// No port - add http:// prefix without port (let constructor handle port assignment)
-			return `http://${hostname}`
-		}
 	}
 
 	private async getCollectionInfo(): Promise<Schemas["CollectionInfo"] | null> {
@@ -780,31 +742,7 @@ export class QdrantVectorStore implements IVectorStore {
 	 * Should be called after a successful full workspace scan or incremental scan
 	 */
 	async markIndexingComplete(): Promise<void> {
-		try {
-			// Create a metadata point with a deterministic UUID to mark indexing as complete
-			// Use uuidv5 to generate a consistent UUID from a constant string
-			const metadataId = uuidv5("__indexing_metadata__", QDRANT_CODE_BLOCK_NAMESPACE)
-
-			await this.client.upsert(this.collectionName, {
-				points: [
-					{
-						id: metadataId,
-						vector: new Array(this.vectorSize).fill(0),
-						payload: {
-							type: "metadata",
-							indexing_complete: true,
-							document_prefix: CURRENT_DOCUMENT_PREFIX,
-							completed_at: Date.now(),
-						},
-					},
-				],
-				wait: true,
-			})
-			console.log("[QdrantVectorStore] Marked indexing as complete")
-		} catch (error) {
-			console.error("[QdrantVectorStore] Failed to mark indexing as complete:", describeQdrantError(error), error)
-			throw withQdrantDetail(error)
-		}
+		await this.writeIndexingMarker(true)
 	}
 
 	/**
@@ -812,9 +750,17 @@ export class QdrantVectorStore implements IVectorStore {
 	 * Should be called at the start of indexing to indicate work in progress
 	 */
 	async markIndexingIncomplete(): Promise<void> {
+		await this.writeIndexingMarker(false)
+	}
+
+	/**
+	 * Upserts the indexing metadata point: one point with a deterministic id (uuidv5 of a constant
+	 * string), so the latest marker always replaces the previous one. A finished marker records
+	 * `completed_at`, an in-progress one `started_at`.
+	 */
+	private async writeIndexingMarker(complete: boolean): Promise<void> {
+		const state = complete ? "complete" : "incomplete"
 		try {
-			// Create a metadata point with a deterministic UUID to mark indexing as incomplete
-			// Use uuidv5 to generate a consistent UUID from a constant string
 			const metadataId = uuidv5("__indexing_metadata__", QDRANT_CODE_BLOCK_NAMESPACE)
 
 			await this.client.upsert(this.collectionName, {
@@ -824,21 +770,21 @@ export class QdrantVectorStore implements IVectorStore {
 						vector: new Array(this.vectorSize).fill(0),
 						payload: {
 							type: "metadata",
-							indexing_complete: false,
+							indexing_complete: complete,
 							document_prefix: CURRENT_DOCUMENT_PREFIX,
-							started_at: Date.now(),
+							[complete ? "completed_at" : "started_at"]: Date.now(),
 						},
 					},
 				],
 				wait: true,
 			})
-			console.log("[QdrantVectorStore] Marked indexing as incomplete (in progress)")
-		} catch (error) {
-			console.error(
-				"[QdrantVectorStore] Failed to mark indexing as incomplete:",
-				describeQdrantError(error),
-				error,
+			console.log(
+				complete
+					? "[QdrantVectorStore] Marked indexing as complete"
+					: "[QdrantVectorStore] Marked indexing as incomplete (in progress)",
 			)
+		} catch (error) {
+			console.error(`[QdrantVectorStore] Failed to mark indexing as ${state}:`, describeQdrantError(error), error)
 			throw withQdrantDetail(error)
 		}
 	}

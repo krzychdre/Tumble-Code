@@ -93,6 +93,34 @@ describe("QdrantVectorStore document prefix marker", () => {
 			expect(point.id).toBe(metadataId)
 			expect(point.payload).toMatchObject({ type: "metadata", indexing_complete: complete, document_prefix: "" })
 		})
+
+		it.each([
+			["markIndexingIncomplete", false, "started_at"],
+			["markIndexingComplete", true, "completed_at"],
+		] as const)(
+			"%s writes the marker point (indexing_complete %s, %s) and waits",
+			async (method, complete, timeKey) => {
+				await store("")[method]()
+
+				expect(client.upsert).toHaveBeenCalledTimes(1)
+				const [, request] = client.upsert.mock.calls[0]
+				expect(request).toStrictEqual({
+					points: [
+						{
+							id: metadataId,
+							vector: new Array(SIZE).fill(0),
+							payload: {
+								type: "metadata",
+								indexing_complete: complete,
+								document_prefix: "",
+								[timeKey]: expect.any(Number),
+							},
+						},
+					],
+					wait: true,
+				})
+			},
+		)
 	})
 
 	describe("initialize()", () => {
