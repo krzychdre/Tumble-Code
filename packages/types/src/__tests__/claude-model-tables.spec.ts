@@ -1,8 +1,12 @@
-import { anthropicModels } from "../providers/anthropic.js"
-import { bedrockModels } from "../providers/bedrock.js"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
+import { ANTHROPIC_1M_CONTEXT_MODEL_IDS, anthropicModels } from "../providers/anthropic.js"
+import { BEDROCK_1M_CONTEXT_MODEL_IDS, bedrockModels } from "../providers/bedrock.js"
+import { claudeModels } from "../providers/claude.js"
 import { litellmDefaultModelId } from "../providers/lite-llm.js"
 import { OPEN_ROUTER_PROMPT_CACHING_MODELS, OPEN_ROUTER_REASONING_BUDGET_MODELS } from "../providers/openrouter.js"
-import { vertexModels } from "../providers/vertex.js"
+import { VERTEX_1M_CONTEXT_MODEL_IDS, vertexModels } from "../providers/vertex.js"
 
 // Claude models Anthropic has retired: requests to them fail on every platform,
 // so no model table should offer them (Anthropic model list, 2026-09-25).
@@ -40,5 +44,41 @@ describe("Claude model tables", () => {
 		expect(maxTokens).toBe(128_000)
 		expect(vertexModels[vertexId].maxTokens).toBe(maxTokens)
 		expect(bedrockModels[bedrockId].maxTokens).toBe(maxTokens)
+	})
+
+	// The three tables are derived from one record per model (providers/claude.ts). The fixture is the
+	// Claude entries of the hand-written tables as they stood before the derivation; when a model
+	// changes on purpose, update the record or the platform override and the fixture together.
+	describe("derived from the shared Claude records", () => {
+		const fixture = JSON.parse(
+			readFileSync(join(__dirname, "__fixtures__", "claude-model-tables.json"), "utf8"),
+		) as Record<"anthropic" | "vertex" | "bedrock", { order: string[]; models: Record<string, unknown> }> & {
+			oneMillionContextIds: Record<"anthropic" | "vertex" | "bedrock", string[]>
+		}
+		const claudeEntries = (table: Record<string, unknown>) =>
+			Object.fromEntries(Object.entries(table).filter(([id]) => id.includes("claude")))
+
+		it.each([
+			["anthropic", anthropicModels],
+			["vertex", vertexModels],
+			["bedrock", bedrockModels],
+		] as const)("%s entries are deep-equal to the frozen table, in the same order", (platform, table) => {
+			expect(claudeEntries(table)).toStrictEqual(fixture[platform].models)
+			expect(Object.keys(table)).toEqual(fixture[platform].order)
+		})
+
+		it("lists the same 1M context models", () => {
+			expect([...ANTHROPIC_1M_CONTEXT_MODEL_IDS].sort()).toEqual(
+				[...fixture.oneMillionContextIds.anthropic].sort(),
+			)
+			expect([...VERTEX_1M_CONTEXT_MODEL_IDS]).toEqual(fixture.oneMillionContextIds.vertex)
+			expect([...BEDROCK_1M_CONTEXT_MODEL_IDS]).toEqual(fixture.oneMillionContextIds.bedrock)
+		})
+
+		it("gives each table its own entry objects", () => {
+			expect(anthropicModels["claude-opus-5"]).not.toBe(claudeModels["opus-5"])
+			expect(vertexModels["claude-opus-5"]).not.toBe(anthropicModels["claude-opus-5"])
+			expect(bedrockModels["anthropic.claude-opus-5"]).not.toBe(vertexModels["claude-opus-5"])
+		})
 	})
 })

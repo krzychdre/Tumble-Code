@@ -1,5 +1,7 @@
 import type { ModelInfo } from "../model.js"
 
+import { OPUS_4_200K_WITH_1M_BETA, claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
+
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 export type VertexModelId = keyof typeof vertexModels
 
@@ -292,244 +294,20 @@ export const vertexModels = {
 		inputPrice: 1.25,
 		outputPrice: 5,
 	},
-	"claude-sonnet-4@20250514": {
-		maxTokens: 8192,
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens (≤200K context)
-		outputPrice: 15.0, // $15 per million output tokens (≤200K context)
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-		supportsReasoningBudget: true,
-		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
-		tiers: [
-			{
-				contextWindow: 1_000_000, // 1M tokens with beta flag
-				inputPrice: 6.0, // $6 per million input tokens (>200K context)
-				outputPrice: 22.5, // $22.50 per million output tokens (>200K context)
-				cacheWritesPrice: 7.5, // $7.50 per million tokens (>200K context)
-				cacheReadsPrice: 0.6, // $0.60 per million tokens (>200K context)
-			},
-		],
-	},
-	"claude-sonnet-4-5@20250929": {
-		maxTokens: 8192,
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens (≤200K context)
-		outputPrice: 15.0, // $15 per million output tokens (≤200K context)
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-		supportsReasoningBudget: true,
-		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
-		tiers: [
-			{
-				contextWindow: 1_000_000, // 1M tokens with beta flag
-				inputPrice: 6.0, // $6 per million input tokens (>200K context)
-				outputPrice: 22.5, // $22.50 per million output tokens (>200K context)
-				cacheWritesPrice: 7.5, // $7.50 per million tokens (>200K context)
-				cacheReadsPrice: 0.6, // $0.60 per million tokens (>200K context)
-			},
-		],
-	},
-	"claude-sonnet-4-6": {
-		maxTokens: 8192,
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens (≤200K context)
-		outputPrice: 15.0, // $15 per million output tokens (≤200K context)
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-		supportsReasoningBudget: true,
-		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
-		tiers: [
-			{
-				contextWindow: 1_000_000, // 1M tokens with beta flag
-				inputPrice: 6.0, // $6 per million input tokens (>200K context)
-				outputPrice: 22.5, // $22.50 per million output tokens (>200K context)
-				cacheWritesPrice: 7.5, // $7.50 per million tokens (>200K context)
-				cacheReadsPrice: 0.6, // $0.60 per million tokens (>200K context)
-			},
-		],
-	},
-	"claude-haiku-4-5@20251001": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 1.0,
-		outputPrice: 5.0,
-		cacheWritesPrice: 1.25,
-		cacheReadsPrice: 0.1,
-		supportsReasoningBudget: true,
-	},
-	"claude-opus-4-6": {
-		maxTokens: 128_000,
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 5.0, // $5 per million input tokens (≤200K context)
-		outputPrice: 25.0, // $25 per million output tokens (≤200K context)
-		cacheWritesPrice: 6.25, // $6.25 per million tokens
-		cacheReadsPrice: 0.5, // $0.50 per million tokens
-		supportsReasoningBudget: true,
-		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
-		tiers: [
-			{
-				contextWindow: 1_000_000, // 1M tokens with beta flag
-				inputPrice: 10.0, // $10 per million input tokens (>200K context)
-				outputPrice: 37.5, // $37.50 per million output tokens (>200K context)
-				cacheWritesPrice: 12.5, // $12.50 per million tokens (>200K context)
-				cacheReadsPrice: 1.0, // $1.00 per million tokens (>200K context)
-			},
-		],
-	},
-	"claude-opus-4-7": {
-		maxTokens: 128_000,
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 5.0, // $5 per million input tokens (≤200K context)
-		outputPrice: 25.0, // $25 per million output tokens (≤200K context)
-		cacheWritesPrice: 6.25, // $6.25 per million tokens
-		cacheReadsPrice: 0.5, // $0.50 per million tokens
-		supportsReasoningBudget: true,
-		supportsReasoningBinary: true,
-		supportsTemperature: false,
-		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
-		tiers: [
-			{
-				contextWindow: 1_000_000, // 1M tokens with beta flag
-				inputPrice: 10.0, // $10 per million input tokens (>200K context)
-				outputPrice: 37.5, // $37.50 per million output tokens (>200K context)
-				cacheWritesPrice: 12.5, // $12.50 per million tokens (>200K context)
-				cacheReadsPrice: 1.0, // $1.00 per million tokens (>200K context)
-			},
-		],
-	},
-	"claude-opus-4-8": {
-		maxTokens: 128_000,
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 5.0, // $5 per million input tokens (≤200K context)
-		outputPrice: 25.0, // $25 per million output tokens (≤200K context)
-		cacheWritesPrice: 6.25, // $6.25 per million tokens
-		cacheReadsPrice: 0.5, // $0.50 per million tokens
-		supportsReasoningBudget: true,
-		supportsReasoningBinary: true,
-		supportsTemperature: false,
-		// 4.8 inherits the same Vertex pricing structure as 4.7, no breaking changes.
-		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
-		tiers: [
-			{
-				contextWindow: 1_000_000, // 1M tokens with beta flag
-				inputPrice: 10.0, // $10 per million input tokens (>200K context)
-				outputPrice: 37.5, // $37.50 per million output tokens (>200K context)
-				cacheWritesPrice: 12.5, // $12.50 per million tokens (>200K context)
-				cacheReadsPrice: 1.0, // $1.00 per million tokens (>200K context)
-			},
-		],
-	},
-	"claude-opus-5-5": {
-		maxTokens: 128_000,
-		contextWindow: 1_000_000, // 1M native, no beta flag
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 4.0,
-		outputPrice: 20.0,
-		cacheWritesPrice: 5.0,
-		cacheReadsPrice: 0.2,
-		supportsReasoningBudget: true,
-		supportsReasoningBinary: true,
-		supportsTemperature: false,
-		description:
-			"Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
-	},
-	"claude-opus-5": {
-		maxTokens: 128_000,
-		contextWindow: 1_000_000, // 1M native, no beta flag
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 5.0,
-		outputPrice: 25.0,
-		cacheWritesPrice: 6.25,
-		cacheReadsPrice: 0.5,
-		supportsReasoningBudget: true,
-		supportsReasoningBinary: true,
-		supportsTemperature: false,
-		description:
-			"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
-	},
-	"claude-sonnet-5": {
-		maxTokens: 128_000,
-		contextWindow: 1_000_000, // 1M native, no beta flag
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 2.0,
-		outputPrice: 10.0,
-		cacheWritesPrice: 2.5,
-		cacheReadsPrice: 0.2,
-		supportsReasoningBudget: true,
-		supportsReasoningBinary: true,
-		supportsTemperature: false,
-		description:
-			"Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
-	},
-	"claude-fable-5-1": {
-		maxTokens: 128_000,
-		contextWindow: 1_000_000, // 1M native, no beta flag
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 10.0,
-		outputPrice: 50.0,
-		cacheWritesPrice: 12.5,
-		cacheReadsPrice: 0.25,
-		supportsReasoningBudget: true,
-		supportsReasoningBinary: true,
-		supportsTemperature: false,
-		description:
-			"Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
-	},
-	"claude-fable-5": {
-		maxTokens: 128_000,
-		contextWindow: 1_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 10.0,
-		outputPrice: 50.0,
-		cacheWritesPrice: 12.5,
-		cacheReadsPrice: 1.0,
-		supportsReasoningBudget: true,
-		supportsReasoningBinary: true,
-		supportsTemperature: false,
-		description:
-			"Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
-	},
-	"claude-opus-4-5@20251101": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 5.0,
-		outputPrice: 25.0,
-		cacheWritesPrice: 6.25,
-		cacheReadsPrice: 0.5,
-		supportsReasoningBudget: true,
-	},
-	"claude-opus-4@20250514": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-	},
+	"claude-sonnet-4@20250514": { ...claudeModels["sonnet-4"], maxTokens: 8192 },
+	"claude-sonnet-4-5@20250929": { ...claudeModels["sonnet-4-5"], maxTokens: 8192 },
+	"claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"], maxTokens: 8192 },
+	"claude-haiku-4-5@20251001": { ...withoutFields(claudeModels["haiku-4-5"], "description"), maxTokens: 8192 },
+	"claude-opus-4-6": { ...claudeModels["opus-4-6"] },
+	"claude-opus-4-7": { ...claudeModels["opus-4-7"], ...OPUS_4_200K_WITH_1M_BETA },
+	"claude-opus-4-8": { ...claudeModels["opus-4-8"], ...OPUS_4_200K_WITH_1M_BETA },
+	"claude-opus-5-5": { ...claudeModels["opus-5-5"] },
+	"claude-opus-5": { ...claudeModels["opus-5"] },
+	"claude-sonnet-5": { ...claudeModels["sonnet-5"] },
+	"claude-fable-5-1": { ...claudeModels["fable-5-1"] },
+	"claude-fable-5": { ...claudeModels["fable-5"] },
+	"claude-opus-4-5@20251101": { ...claudeModels["opus-4-5"], maxTokens: 8192 },
+	"claude-opus-4@20250514": { ...withoutFields(claudeModels["opus-4"], "supportsReasoningBudget"), maxTokens: 8192 },
 	"gemini-2.5-flash-lite-preview-06-17": {
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,
@@ -617,16 +395,9 @@ export const vertexModels = {
 	},
 } as const satisfies Record<string, ModelInfo>
 
-// Vertex AI models that support 1M context window beta
+// Vertex AI models that support 1M context window beta: the Claude entries that price its tier.
 // Uses the same beta header 'context-1m-2025-08-07' as Anthropic and Bedrock
-export const VERTEX_1M_CONTEXT_MODEL_IDS = [
-	"claude-sonnet-4@20250514",
-	"claude-sonnet-4-5@20250929",
-	"claude-sonnet-4-6",
-	"claude-opus-4-6",
-	"claude-opus-4-7",
-	"claude-opus-4-8",
-] as const
+export const VERTEX_1M_CONTEXT_MODEL_IDS: readonly string[] = oneMillionContextIds(vertexModels)
 
 export const VERTEX_REGIONS = [
 	{ value: "global", label: "global" },

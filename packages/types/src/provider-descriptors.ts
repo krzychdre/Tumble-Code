@@ -1,7 +1,7 @@
 import type { ServiceTier } from "./model.js"
 import type { ModelSourceOptions } from "./model-source.js"
 import { zaiApiLineSchema } from "./provider-config/configs.js"
-import { ANTHROPIC_1M_CONTEXT_MODEL_IDS } from "./provider-model-selection.js"
+import { ANTHROPIC_1M_CONTEXT_MODEL_IDS } from "./providers/anthropic.js"
 import { getProviderModelDefinition } from "./provider-models.js"
 import type { ActiveProviderDefinition } from "./provider-registry.js"
 import type { ModelIdKey, ProviderSettings } from "./provider-settings.js"
