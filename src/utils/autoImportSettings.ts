@@ -4,6 +4,7 @@ import * as os from "os"
 
 import { Package } from "../shared/package"
 import { fileExistsAtPath } from "./fs"
+import { logger } from "./logging"
 import { t } from "../i18n"
 
 import { importSettingsFromPath, ImportOptions } from "../core/config/importExport"
@@ -13,26 +14,27 @@ import { importSettingsFromPath, ImportOptions } from "../core/config/importExpo
  * This function is called during extension activation to allow users to pre-configure
  * their settings by placing a settings file at a predefined location.
  */
-export async function autoImportSettings(
-	outputChannel: vscode.OutputChannel,
-	{ providerSettingsManager, contextProxy, customModesManager }: ImportOptions,
-): Promise<void> {
+export async function autoImportSettings({
+	providerSettingsManager,
+	contextProxy,
+	customModesManager,
+}: ImportOptions): Promise<void> {
 	try {
 		// Get the auto-import settings path from VSCode settings
 		const settingsPath = vscode.workspace.getConfiguration(Package.name).get<string>("autoImportSettingsPath")
 
 		if (!settingsPath || settingsPath.trim() === "") {
-			outputChannel.appendLine("[AutoImport] No auto-import settings path specified, skipping auto-import")
+			logger.info("[AutoImport] No auto-import settings path specified, skipping auto-import")
 			return
 		}
 
 		// Resolve the path (handle ~ for home directory and relative paths)
 		const resolvedPath = resolvePath(settingsPath.trim())
-		outputChannel.appendLine(`[AutoImport] Checking for settings file at: ${resolvedPath}`)
+		logger.info(`[AutoImport] Checking for settings file at: ${resolvedPath}`)
 
 		// Check if the file exists
 		if (!(await fileExistsAtPath(resolvedPath))) {
-			outputChannel.appendLine(`[AutoImport] Settings file not found at ${resolvedPath}, skipping auto-import`)
+			logger.info(`[AutoImport] Settings file not found at ${resolvedPath}, skipping auto-import`)
 			return
 		}
 
@@ -44,16 +46,14 @@ export async function autoImportSettings(
 		})
 
 		if (result.success) {
-			outputChannel.appendLine(`[AutoImport] Successfully imported settings from ${resolvedPath}`)
+			logger.info(`[AutoImport] Successfully imported settings from ${resolvedPath}`)
 
 			const warnings = (result as { warnings?: string[] }).warnings
 			if (warnings && warnings.length > 0) {
 				const count = warnings.length
-				outputChannel.appendLine(
-					`[AutoImport] Import completed with ${count} warning${count === 1 ? "" : "s"}.`,
-				)
+				logger.warn(`[AutoImport] Import completed with ${count} warning${count === 1 ? "" : "s"}.`)
 				for (const warning of warnings) {
-					outputChannel.appendLine(`[AutoImport] Warning: ${warning}`)
+					logger.warn(`[AutoImport] Warning: ${warning}`)
 				}
 			}
 
@@ -62,17 +62,17 @@ export async function autoImportSettings(
 				t("common:info.auto_import_success", { filename: path.basename(resolvedPath) }),
 			)
 		} else {
-			outputChannel.appendLine(`[AutoImport] Failed to import settings: ${result.error}`)
+			logger.error(`[AutoImport] Failed to import settings: ${result.error}`)
 
 			// Show a warning but don't fail the extension activation
 			vscode.window.showWarningMessage(t("common:warnings.auto_import_failed", { error: result.error }))
 		}
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		outputChannel.appendLine(`[AutoImport] Unexpected error during auto-import: ${errorMessage}`)
+		logger.error(`[AutoImport] Unexpected error during auto-import: ${errorMessage}`)
 
 		// Log error but don't fail extension activation
-		console.warn("Auto-import settings error:", error)
+		logger.warn("Auto-import settings error:", error)
 	}
 }
 

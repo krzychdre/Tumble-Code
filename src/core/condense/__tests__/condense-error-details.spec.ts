@@ -3,6 +3,7 @@
 import type { ApiHandler } from "../../../api"
 import type { ApiMessage } from "../../task-persistence/apiMessages"
 import { summarizeConversation } from "../index"
+import { logger } from "../../../utils/logging"
 
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
@@ -40,7 +41,7 @@ const condenseWith = (thrown: unknown) =>
 	})
 
 describe("summarizeConversation error details", () => {
-	beforeEach(() => vi.spyOn(console, "error").mockImplementation(() => {}))
+	beforeEach(() => vi.spyOn(logger, "error").mockImplementation(() => {}))
 	afterEach(() => vi.restoreAllMocks())
 
 	it("lists the message, status, code, response and body of an API error", async () => {

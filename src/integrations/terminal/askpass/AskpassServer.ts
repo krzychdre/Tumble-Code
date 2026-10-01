@@ -3,6 +3,7 @@ import fs from "fs/promises"
 import net from "net"
 import os from "os"
 import path from "path"
+import { logger } from "../../../utils/logging"
 
 /**
  * Lets a command ask the user for a secret without a terminal.
@@ -97,7 +98,7 @@ export class AskpassServer {
 			// keeps the clear "terminal prompts disabled" error. Verified against
 			// git 2.x with both variables set at once.
 		} catch (error) {
-			console.warn(
+			logger.warn(
 				`[AskpassServer#start] could not set up the askpass bridge: ${error instanceof Error ? error.message : String(error)}`,
 			)
 
@@ -167,7 +168,7 @@ export class AskpassServer {
 					isSecret: looksLikeSecret(prompt),
 				})
 			} catch (error) {
-				console.warn(
+				logger.warn(
 					`[AskpassServer] prompt handler failed: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}

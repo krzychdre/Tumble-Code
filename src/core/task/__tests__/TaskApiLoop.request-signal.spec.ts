@@ -8,6 +8,7 @@
 import { TaskApiLoop } from "../TaskApiLoop"
 import { TaskLifecycle } from "../TaskLifecycle"
 import type { ApiHandlerCreateMessageMetadata } from "../../../api"
+import { logger } from "../../../utils/logging"
 
 function makeTask() {
 	const createMessage = vi.fn(async function* (
@@ -51,7 +52,7 @@ function makeTask() {
 
 describe("TaskApiLoop request signal (API-5)", () => {
 	beforeEach(() => {
-		vi.spyOn(console, "log").mockImplementation(() => {})
+		vi.spyOn(logger, "info").mockImplementation(() => {})
 	})
 
 	afterEach(() => {

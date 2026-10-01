@@ -29,6 +29,7 @@ import { TelemetryEventName } from "@roo-code/types"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
 import { Package } from "../../../shared/package"
 import { reportEmbeddingUsage } from "../embedding-usage"
+import { logger } from "../../../utils/logging"
 
 /**
  * Implementation of the file watcher interface
@@ -343,7 +344,7 @@ export class FileWatcher implements IFileWatcher {
 					return { path: fileDetail.path, result: result, error: undefined }
 				} catch (e) {
 					const error = e as Error
-					console.error(`[FileWatcher] Unhandled exception processing file ${fileDetail.path}:`, e)
+					logger.error(`[FileWatcher] Unhandled exception processing file ${fileDetail.path}:`, e)
 					return { path: fileDetail.path, result: undefined, error: error }
 				}
 			})
@@ -388,7 +389,7 @@ export class FileWatcher implements IFileWatcher {
 				} else {
 					const error = settledResult.reason as Error
 					const rejectedPath = (settledResult.reason as { path?: string } | undefined)?.path || "unknown"
-					console.error("[FileWatcher] A file processing promise was rejected:", settledResult.reason)
+					logger.error("[FileWatcher] A file processing promise was rejected:", settledResult.reason)
 					batchResults.push({
 						path: rejectedPath,
 						status: "error",

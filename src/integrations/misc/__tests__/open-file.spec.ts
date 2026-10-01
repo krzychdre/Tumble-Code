@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 
 import { openFile } from "../open-file"
+import { logger } from "../../../utils/logging"
 
 // Mock vscode module
 vi.mock("vscode", () => ({
@@ -70,7 +71,7 @@ vi.mock("../../i18n", () => ({
 describe("openFile", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
-		vi.spyOn(console, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
 	})
 
 	afterEach(() => {
@@ -94,7 +95,7 @@ describe("openFile", () => {
 			await openFile(invalidPath)
 
 			// Should log a warning about decode failure
-			expect(console.warn).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				"Failed to decode file path: URIError: URI malformed. Using original path.",
 			)
 
@@ -120,7 +121,7 @@ describe("openFile", () => {
 			await openFile(encodedPath)
 
 			// Should not log any warnings
-			expect(console.warn).not.toHaveBeenCalled()
+			expect(logger.warn).not.toHaveBeenCalled()
 
 			// Should use the decoded path - verify it contains the decoded brackets
 			// On Windows, the path will include backslashes instead of forward slashes
@@ -146,7 +147,7 @@ describe("openFile", () => {
 			await openFile(pathWithSpecialChars)
 
 			// Should work without errors
-			expect(console.warn).not.toHaveBeenCalled()
+			expect(logger.warn).not.toHaveBeenCalled()
 			expect(vscode.workspace.openTextDocument).toHaveBeenCalled()
 			expect(vscode.window.showErrorMessage).not.toHaveBeenCalled()
 		})
@@ -167,7 +168,7 @@ describe("openFile", () => {
 			await openFile(normalPath)
 
 			// Should work without errors
-			expect(console.warn).not.toHaveBeenCalled()
+			expect(logger.warn).not.toHaveBeenCalled()
 			expect(vscode.workspace.openTextDocument).toHaveBeenCalled()
 			expect(vscode.window.showErrorMessage).not.toHaveBeenCalled()
 		})

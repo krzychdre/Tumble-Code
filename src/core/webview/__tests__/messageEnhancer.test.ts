@@ -5,6 +5,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { MessageEnhancer } from "../messageEnhancer"
 import * as singleCompletionHandlerModule from "../../../utils/single-completion-handler"
 import { ProviderSettingsManager } from "../../config/ProviderSettingsManager"
+import { logger } from "../../../utils/logging"
 
 // Mock dependencies
 vi.mock("../../../utils/single-completion-handler")
@@ -337,7 +338,7 @@ describe("MessageEnhancer", () => {
 		})
 
 		it("should handle malformed messages gracefully", () => {
-			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Create messages that will cause errors when accessed
 			const malformedMessages = [
@@ -358,7 +359,7 @@ describe("MessageEnhancer", () => {
 		})
 
 		it("should handle messages with circular references", () => {
-			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Create a message with circular reference
 			const circularMessage: any = { type: "ask", text: "Test" }

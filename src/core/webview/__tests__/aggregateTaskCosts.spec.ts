@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { aggregateTaskCostsRecursive } from "../aggregateTaskCosts.js"
 import type { HistoryItem } from "@roo-code/types"
+import { logger } from "../../../utils/logging"
 
 describe("aggregateTaskCostsRecursive", () => {
 	let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
 	beforeEach(() => {
-		consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 	})
 
 	it("should calculate cost for task with no children", async () => {

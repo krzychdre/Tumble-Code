@@ -11,6 +11,7 @@ vitest.mock("@roo-code/core/fs", () => ({
 
 // Import the mocked version
 import { safeWriteJson } from "@roo-code/core/fs"
+import { logger } from "../../../utils/logging"
 // Mock vscode
 vitest.mock("vscode", () => ({
 	Uri: {
@@ -149,7 +150,7 @@ describe("CacheManager", () => {
 		})
 
 		it("should handle save errors gracefully", async () => {
-			const consoleErrorSpy = vitest.spyOn(console, "error").mockImplementation(() => {})
+			const consoleErrorSpy = vitest.spyOn(logger, "error").mockImplementation(() => {})
 			;(safeWriteJson as Mock).mockRejectedValue(new Error("Save failed"))
 
 			cacheManager.updateHash("test.ts", "hash")
@@ -178,7 +179,7 @@ describe("CacheManager", () => {
 		})
 
 		it("should handle clear errors gracefully", async () => {
-			const consoleErrorSpy = vitest.spyOn(console, "error").mockImplementation(() => {})
+			const consoleErrorSpy = vitest.spyOn(logger, "error").mockImplementation(() => {})
 			;(safeWriteJson as Mock).mockRejectedValue(new Error("Save failed"))
 
 			await cacheManager.clearCacheFile()

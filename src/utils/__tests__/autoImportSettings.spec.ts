@@ -77,6 +77,7 @@ import { autoImportSettings } from "../autoImportSettings"
 import * as vscode from "vscode"
 import fsPromises from "fs/promises"
 import { fileExistsAtPath } from "../fs"
+import { logger } from "../logging"
 
 // The provider profiles envelope exportSettings writes; older shapes are rejected.
 const providerProfilesFile = () =>
@@ -96,16 +97,14 @@ describe("autoImportSettings", () => {
 	let mockProviderSettingsManager: any
 	let mockContextProxy: any
 	let mockCustomModesManager: any
-	let mockOutputChannel: any
 	let mockProvider: any
 
 	beforeEach(() => {
 		// Reset all mocks
 		vi.clearAllMocks()
 
-		// Mock output channel
-		mockOutputChannel = {
-			appendLine: vi.fn(),
+		for (const level of ["info", "warn", "error"] as const) {
+			vi.spyOn(logger, level).mockImplementation(() => {})
 		}
 
 		// Mock provider settings manager
@@ -160,13 +159,13 @@ describe("autoImportSettings", () => {
 			get: vi.fn().mockReturnValue(""),
 		} as any)
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] No auto-import settings path specified, skipping auto-import",
 		)
 		expect(mockProviderSettingsManager.import).not.toHaveBeenCalled()
@@ -181,16 +180,16 @@ describe("autoImportSettings", () => {
 		// Mock fileExistsAtPath to return false
 		vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] Checking for settings file at: /home/user/Documents/roo-config.json",
 		)
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] Settings file not found at /home/user/Documents/roo-config.json, skipping auto-import",
 		)
 		expect(mockProviderSettingsManager.import).not.toHaveBeenCalled()
@@ -215,16 +214,16 @@ describe("autoImportSettings", () => {
 
 		vi.mocked(fsPromises.readFile).mockResolvedValue(JSON.stringify(mockSettings) as any)
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] Checking for settings file at: /absolute/path/to/config.json",
 		)
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] Successfully imported settings from /absolute/path/to/config.json",
 		)
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("info.auto_import_success")
@@ -245,17 +244,17 @@ describe("autoImportSettings", () => {
 			}) as any,
 		)
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] Successfully imported settings from /absolute/path/to/config.json",
 		)
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("[AutoImport] Import completed with 1 warning.")
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith("[AutoImport] Import completed with 1 warning.")
+		expect(logger.warn).toHaveBeenCalledWith(
 			expect.stringContaining('[AutoImport] Warning: Setting "globalSettings.requestDelaySeconds"'),
 		)
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("info.auto_import_success")
@@ -274,15 +273,13 @@ describe("autoImportSettings", () => {
 		// Mock fs.readFile to return invalid JSON
 		vi.mocked(fsPromises.readFile).mockResolvedValue("invalid json" as any)
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-			expect.stringContaining("[AutoImport] Failed to import settings:"),
-		)
+		expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("[AutoImport] Failed to import settings:"))
 		expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
 			expect.stringContaining("warnings.auto_import_failed"),
 		)
@@ -298,13 +295,13 @@ describe("autoImportSettings", () => {
 		// Mock fileExistsAtPath to return false (so we can check the resolved path)
 		vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] Checking for settings file at: /home/user/Documents/config.json",
 		)
 	})
@@ -318,13 +315,13 @@ describe("autoImportSettings", () => {
 		// Mock fileExistsAtPath to return false (so we can check the resolved path)
 		vi.mocked(fileExistsAtPath).mockResolvedValue(false)
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.info).toHaveBeenCalledWith(
 			"[AutoImport] Checking for settings file at: /home/user/Documents/config.json",
 		)
 	})
@@ -338,13 +335,13 @@ describe("autoImportSettings", () => {
 		// Mock fileExistsAtPath to throw an error
 		vi.mocked(fileExistsAtPath).mockRejectedValue(new Error("File system error"))
 
-		await autoImportSettings(mockOutputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: mockProviderSettingsManager,
 			contextProxy: mockContextProxy,
 			customModesManager: mockCustomModesManager,
 		})
 
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+		expect(logger.error).toHaveBeenCalledWith(
 			expect.stringContaining("[AutoImport] Unexpected error during auto-import:"),
 		)
 		expect(mockProviderSettingsManager.import).not.toHaveBeenCalled()

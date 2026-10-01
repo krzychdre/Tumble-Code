@@ -13,6 +13,7 @@ import { DiagnosticsCollector, type DiagnosticsTask } from "./DiagnosticsCollect
 import { DiffEditorLifecycleManager, DIFF_VIEW_URI_SCHEME, DIFF_VIEW_LABEL_CHANGES } from "./DiffEditorLifecycleManager"
 import { SaveRecovery, type ApprovedContent } from "./SaveRecovery"
 import { stripAllBOMs } from "./stripAllBOMs"
+import { logger } from "../../utils/logging"
 
 // Re-export the constants so existing imports from this module continue to work.
 export { DIFF_VIEW_URI_SCHEME, DIFF_VIEW_LABEL_CHANGES }
@@ -312,7 +313,7 @@ export class DiffViewProvider {
 			const recovered = await recoverIfStale()
 			if (recovered) return recovered
 			if (!saved) {
-				console.warn(
+				logger.warn(
 					`[DiffViewProvider] saveChanges: editor save() returned false for ${edit.relPath}; falling back to direct disk write`,
 				)
 				return await fallbackToDirectWrite()
@@ -414,7 +415,7 @@ export class DiffViewProvider {
 		userEdits: string | undefined
 		finalContent: string | undefined
 	}> {
-		console.warn(
+		logger.warn(
 			`[DiffViewProvider] saveChanges: diff session went stale before save completed; flushing approved content directly to disk for ${pending.relPath}`,
 		)
 

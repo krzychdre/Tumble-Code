@@ -1,6 +1,7 @@
 // npx vitest run utils/__tests__/countTokens.spec.ts
 
 import type { Anthropic } from "@anthropic-ai/sdk"
+import { logger } from "../logging"
 
 const { execMock, poolFactoryMock, tiktokenMock, tiktokenPerBlockMock } = vi.hoisted(() => {
 	const execMock = vi.fn()
@@ -44,7 +45,7 @@ describe("countTokens worker pool", () => {
 		poolFactoryMock.mockClear()
 		tiktokenMock.mockReset()
 		tiktokenMock.mockResolvedValue(7)
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 	})
 
 	afterEach(() => {
@@ -126,7 +127,7 @@ describe("countTokensPerBlock worker pool", () => {
 		tiktokenMock.mockResolvedValue(7)
 		tiktokenPerBlockMock.mockReset()
 		tiktokenPerBlockMock.mockResolvedValue([3, 4])
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 	})
 
 	afterEach(() => {

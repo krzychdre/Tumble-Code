@@ -22,6 +22,7 @@ import { TaskHistoryStore } from "../../task-persistence"
 import { ClineProvider } from "../ClineProvider"
 import { checkAutoApproval } from "../../auto-approval"
 import { webviewMessageHandler } from "../webviewMessageHandler"
+import { logger } from "../../../utils/logging"
 
 vi.mock("p-wait-for", () => ({
 	__esModule: true,
@@ -426,7 +427,7 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 		delete process.env.POSTHOG_API_KEY
 		for (const key of Object.keys(workspaceConfig)) delete workspaceConfig[key]
 		for (const key of Object.keys(configScopes)) delete configScopes[key]

@@ -16,6 +16,7 @@ import { getApiMetrics } from "../../shared/getApiMetrics"
 import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 
 import { CheckpointServiceOptions, ShadowCheckpointService } from "../../services/checkpoints"
+import { logger } from "../../utils/logging"
 
 const WARNING_THRESHOLD_MS = 5000
 
@@ -40,17 +41,9 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 	// Get checkpoint timeout from task settings (converted to milliseconds)
 	const checkpointTimeoutMs = task.checkpointTimeout * 1000
 
-	const log = (message: string) => {
-		console.log(message)
+	const log = (message: string) => logger.info(message)
 
-		try {
-			provider?.log(message)
-		} catch (err) {
-			// NO-OP
-		}
-	}
-
-	console.log("[Task#getCheckpointService] initializing checkpoints service")
+	logger.info("[Task#getCheckpointService] initializing checkpoints service")
 
 	try {
 		const workspaceDir = task.cwd || getWorkspacePath()
@@ -90,7 +83,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 						sendCheckpointInitWarn(task, "WAIT_TIMEOUT", WARNING_THRESHOLD_MS / 1000)
 					}
 
-					console.log(
+					logger.info(
 						`[Task#getCheckpointService] waiting for service to initialize (${Math.round(elapsed / 1000)}s)`,
 					)
 					return !!task.checkpointService && !!task?.checkpointService?.isInitialized
@@ -185,11 +178,11 @@ async function checkGitInstallation(
 					{ isNonInteractive: true },
 				).catch((err) => {
 					log("[Task#getCheckpointService] caught unexpected error in say('checkpoint_saved')")
-					console.error(err)
+					logger.error(err)
 				})
 			} catch (err) {
 				log("[Task#getCheckpointService] caught unexpected error in on('checkpoint'), disabling checkpoints")
-				console.error(err)
+				logger.error(err)
 				task.enableCheckpoints = false
 			}
 		})
@@ -204,7 +197,7 @@ async function checkGitInstallation(
 		}
 	} catch (err) {
 		log(`[Task#getCheckpointService] Unexpected error during Git check: ${err.message}`)
-		console.error("Git check error:", err)
+		logger.error("Git check error:", err)
 		task.enableCheckpoints = false
 		task.checkpointServiceInitializing = false
 	}
@@ -223,7 +216,7 @@ export async function checkpointSave(task: Task, force = false, suppressMessage 
 	return service
 		.saveCheckpoint(`Task: ${task.taskId}, Time: ${Date.now()}`, { allowEmpty: force, suppressMessage })
 		.catch((err) => {
-			console.error("[Task#checkpointSave] caught unexpected error, disabling checkpoints", err)
+			logger.error("[Task#checkpointSave] caught unexpected error, disabling checkpoints", err)
 			task.enableCheckpoints = false
 		})
 }

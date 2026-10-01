@@ -7,6 +7,7 @@ import { toolNamesWhere } from "../tools/toolDescriptors"
 import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
 
 import type { Task } from "./Task"
+import { logger } from "../../utils/logging"
 
 // Tools that cannot mutate the workspace (the `workspaceReadOnly` column of the
 // tool descriptor table). An eager pre-edit checkpoint is only safe while every
@@ -93,7 +94,7 @@ export class StreamToolCallHandler {
 				// be added to assistantMessageContent, causing API 400 errors:
 				// "tool_use ids must be unique"
 				if (this.access.streamingToolCallIndices.has(event.id)) {
-					console.warn(
+					logger.warn(
 						`[Task#${this.access.taskId}] Ignoring duplicate tool_call_start for ID: ${event.id} (tool: ${event.name})`,
 					)
 					continue
@@ -278,7 +279,7 @@ export class StreamToolCallHandler {
 			// normal parser event flow (the parser only emits tool_call_end for
 			// started tool calls, and a start always creates a content block).
 			// Log a loud error so the orphaned end is never silently swallowed.
-			console.error(
+			logger.error(
 				`[Task#${this.access.taskId}] Orphaned tool_call_end: no content block found for tool call ID: ${toolCallId}`,
 			)
 		}

@@ -19,6 +19,7 @@ import { getCommand } from "../../../utils/commands"
 import { sanitizeCommandList } from "../../auto-approval/sanitizeCommandList"
 import { exportSettings, importSettingsWithFeedback } from "../../config/importExport"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
@@ -224,7 +225,7 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 					value: vscode.workspace.getConfiguration().get(setting),
 				})
 			} catch (error) {
-				console.error(`Failed to get VSCode setting ${message.setting}:`, error)
+				logger.error(`Failed to get VSCode setting ${message.setting}:`, error)
 
 				await provider.postMessageToWebview({
 					type: "vsCodeSetting",
@@ -251,7 +252,7 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 				profiles: Terminal.getAvailableProfileNames(),
 			})
 		} catch (error) {
-			console.error("Failed to get terminal profiles:", error)
+			logger.error("Failed to get terminal profiles:", error)
 			await provider.postMessageToWebview({ type: "terminalProfiles", profiles: [] })
 		}
 	},

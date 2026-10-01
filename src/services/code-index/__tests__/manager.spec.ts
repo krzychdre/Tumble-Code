@@ -3,6 +3,7 @@ import { CodeIndexServiceFactory } from "../service-factory"
 import { RooIgnoreController } from "../../../core/ignore/RooIgnoreController"
 import type { MockedClass } from "vitest"
 import * as path from "path"
+import { logger } from "../../../utils/logging"
 
 // Helper: create a mock vscode.Uri from an fsPath
 function mockUri(fsPath: string, scheme = "file") {
@@ -747,8 +748,8 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			;(manager as any)._orchestrator = { stopWatcher: vi.fn(), stopIndexing: vi.fn(), dispose: vi.fn() }
 			;(manager as any)._searchService = {}
 
-			// Spy on console.error
-			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			// Spy on logger.error
+			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Act - should not throw despite setSystemState error
 			await expect(manager.recoverFromError()).resolves.not.toThrow()

@@ -53,6 +53,26 @@ export default [
 		},
 	},
 	{
+		// Diagnostics go through `logger` (utils/logging), which writes them to the
+		// Tumble Code output channel; console output never reaches it in a packaged
+		// extension. Left out: src/shared (bundled into the webview too), the token
+		// counting worker (its own thread, no logger there) and i18n/setup.ts (runs
+		// at import time, before activation configures the logger).
+		files: ["**/*.ts"],
+		ignores: [
+			"**/__tests__/**",
+			"**/__mocks__/**",
+			"**/*.spec.ts",
+			"**/*.test.ts",
+			"shared/**",
+			"workers/**",
+			"i18n/setup.ts",
+		],
+		rules: {
+			"no-console": "error",
+		},
+	},
+	{
 		files: ["__mocks__/**/*.js"],
 		rules: {
 			"no-undef": "off",

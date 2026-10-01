@@ -15,6 +15,7 @@ import { v5 as uuidv5 } from "uuid"
 
 import { QdrantVectorStore } from "../qdrant-client"
 import { DEFAULT_MAX_SEARCH_RESULTS, DEFAULT_SEARCH_MIN_SCORE, QDRANT_CODE_BLOCK_NAMESPACE } from "../../constants"
+import { logger } from "../../../../utils/logging"
 
 vitest.mock("../../../../i18n", () => ({
 	t: (key: string, params?: Record<string, unknown>) =>
@@ -116,9 +117,9 @@ afterAll(async () => {
 beforeEach(() => {
 	recorded = []
 	handler = () => undefined
-	vitest.spyOn(console, "log").mockImplementation(() => {})
-	vitest.spyOn(console, "warn").mockImplementation(() => {})
-	vitest.spyOn(console, "error").mockImplementation(() => {})
+	vitest.spyOn(logger, "info").mockImplementation(() => {})
+	vitest.spyOn(logger, "warn").mockImplementation(() => {})
+	vitest.spyOn(logger, "error").mockImplementation(() => {})
 })
 
 afterEach(() => {
@@ -189,7 +190,7 @@ describe("QdrantVectorStore against a fake Qdrant server (real client)", () => {
 			...expectedIndexCalls,
 		])
 		// The "already exists" reason lives only on error.data, so being silent proves we read it.
-		expect(console.warn).not.toHaveBeenCalledWith(
+		expect(logger.warn).not.toHaveBeenCalledWith(
 			expect.stringContaining("Could not create payload index"),
 			expect.anything(),
 		)

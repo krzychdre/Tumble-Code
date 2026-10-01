@@ -4,6 +4,7 @@ import { OpenAI } from "openai"
 import { OpenAiEmbedder } from "../openai"
 import { MAX_ITEM_TOKENS } from "../../constants"
 import { resetRateLimitGates } from "../rate-limit-gate"
+import { logger } from "../../../../utils/logging"
 
 // Mock the OpenAI SDK
 vitest.mock("openai")
@@ -35,8 +36,8 @@ vitest.mock("../../../../i18n", () => ({
 
 // Mock console methods
 const consoleMocks = {
-	error: vitest.spyOn(console, "error").mockImplementation(() => {}),
-	warn: vitest.spyOn(console, "warn").mockImplementation(() => {}),
+	error: vitest.spyOn(logger, "error").mockImplementation(() => {}),
+	warn: vitest.spyOn(logger, "warn").mockImplementation(() => {}),
 }
 
 describe("OpenAiEmbedder", () => {
@@ -207,7 +208,7 @@ describe("OpenAiEmbedder", () => {
 				const result = await embedder.createEmbeddings(testTexts)
 
 				// Verify warning was logged
-				expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(`exceeds maximum token limit`))
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(`exceeds maximum token limit`))
 
 				// The oversized text is cut to the limit, not dropped, so vectors stay aligned
 				expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
@@ -263,7 +264,7 @@ describe("OpenAiEmbedder", () => {
 
 				const result = await embedder.createEmbeddings(testTexts)
 
-				expect(console.warn).toHaveBeenCalledTimes(2)
+				expect(logger.warn).toHaveBeenCalledTimes(2)
 				// Two items at the limit (8191 tokens each) fit in one batch
 				expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(1)
 				expect(result).toEqual({
@@ -307,7 +308,7 @@ describe("OpenAiEmbedder", () => {
 				const result = await resultPromise
 
 				expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(3)
-				expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("Rate limit hit, retrying in"))
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Rate limit hit, retrying in"))
 				expect(result).toEqual({
 					embeddings: [[0.1, 0.2, 0.3]],
 					usage: { promptTokens: 10, totalTokens: 15 },
@@ -326,7 +327,7 @@ describe("OpenAiEmbedder", () => {
 				)
 
 				expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(1)
-				expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("Rate limit hit"))
+				expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining("Rate limit hit"))
 			})
 
 			it("should throw error immediately on non-retryable errors", async () => {
@@ -358,7 +359,7 @@ describe("OpenAiEmbedder", () => {
 					"Failed to create embeddings after 3 attempts: API connection failed",
 				)
 
-				expect(console.error).toHaveBeenCalledWith(
+				expect(logger.error).toHaveBeenCalledWith(
 					expect.stringContaining("OpenAiEmbedder error"),
 					expect.any(Error),
 				)

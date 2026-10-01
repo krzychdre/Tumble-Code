@@ -25,6 +25,7 @@ import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "./utils/timeout-config"
+import { logger } from "../../utils/logging"
 
 /**
  * Custom interface for GLM params to support thinking mode.
@@ -319,7 +320,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		// vLLM server reports prefix-cache hits). Mirrors the same switch in
 		// base-openai-compatible-provider.ts.
 		if (process.env.ROO_LOG_RAW_USAGE === "1") {
-			console.log(`[openai-compatible] raw usage: ${JSON.stringify(usage)}`)
+			logger.info(`[openai-compatible] raw usage: ${JSON.stringify(usage)}`)
 		}
 
 		// Servers name the cache figures differently (nested under

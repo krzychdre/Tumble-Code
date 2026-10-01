@@ -26,6 +26,7 @@ vi.mock("delay", () => ({
 }))
 
 import delay from "delay"
+import { logger } from "../../../utils/logging"
 
 vi.mock("uuid", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("uuid")>()
@@ -1515,8 +1516,8 @@ describe("Cline", () => {
 					configurable: true,
 				})
 
-				// Spy on console.error to verify error is logged
-				const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+				// Spy on logger.error to verify error is logged
+				const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 				// Should log error but not throw
 				task.submitUserMessage("test message")
@@ -1524,7 +1525,7 @@ describe("Cline", () => {
 				expect(consoleErrorSpy).toHaveBeenCalledWith("[Task#submitUserMessage] Provider reference lost")
 				expect(handleResponseSpy).not.toHaveBeenCalled()
 
-				// Restore console.error
+				// Restore logger.error
 				consoleErrorSpy.mockRestore()
 			})
 		})
@@ -1612,8 +1613,8 @@ describe("Cline", () => {
 				throw mockError
 			})
 
-			// Spy on console.error to verify error is logged
-			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			// Spy on logger.error to verify error is logged
+			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// abortTask should not throw even if dispose fails
 			await expect(task.abortTask()).resolves.not.toThrow()
@@ -1624,7 +1625,7 @@ describe("Cline", () => {
 			// Verify abort flag is still set
 			expect(task.abort).toBe(true)
 
-			// Restore console.error
+			// Restore logger.error
 			consoleErrorSpy.mockRestore()
 		})
 		describe("Stream Failure Retry", () => {
@@ -1636,8 +1637,8 @@ describe("Cline", () => {
 					startTask: false,
 				})
 
-				// Spy on console.error to verify error logging
-				const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+				// Spy on logger.error to verify error logging
+				const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 				// Spy on abortTask to verify it's NOT called for stream failures
 				const abortTaskSpy = vi.spyOn(task, "abortTask").mockResolvedValue(undefined)
@@ -1655,7 +1656,7 @@ describe("Cline", () => {
 				expect(shouldAbort).toBe(false)
 
 				// Verify error would be logged (this is what the new code does)
-				console.error(
+				logger.error(
 					`[Task#${task.taskId}.${task.instanceId}] Stream failed, will retry: ${streamFailureError.message}`,
 				)
 				expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Stream failed, will retry"))
@@ -1692,8 +1693,8 @@ describe("Cline", () => {
 				const abortSpy = vi.spyOn(mockAbortController, "abort")
 				task.currentRequestAbortController = mockAbortController
 
-				// Spy on console.log
-				const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+				// Spy on logger.info
+				const consoleLogSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
 
 				// Call cancelCurrentRequest
 				task.cancelCurrentRequest()
@@ -1707,7 +1708,7 @@ describe("Cline", () => {
 				// Verify logging
 				expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Aborting current HTTP request"))
 
-				// Restore console.log
+				// Restore logger.info
 				consoleLogSpy.mockRestore()
 			})
 
@@ -2023,8 +2024,8 @@ describe("pushToolResultToUserContent", () => {
 			content: "Second result (should be skipped)",
 		}
 
-		// Spy on console.warn to verify warning is logged
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		// Spy on logger.warn to verify warning is logged
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		// Add first result - should succeed
 		const added1 = task.pushToolResultToUserContent(toolResult1)
@@ -2180,7 +2181,7 @@ describe("pushToolResultToUserContent", () => {
 			})
 			const save = vi.fn().mockRejectedValue(new Error("ENOSPC: no space left on device"))
 			;(task as any).toolResultSpill = { store: { save }, maxInlineBytes: 1024 }
-			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+			const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 			task.pushToolResultToUserContent(
 				{ type: "tool_result", tool_use_id: "failed-spill-id", content: hugeResult },

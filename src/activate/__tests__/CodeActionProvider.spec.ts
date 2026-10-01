@@ -4,6 +4,7 @@ import * as vscode from "vscode"
 import { EditorUtils } from "../../integrations/editor/EditorUtils"
 
 import { CodeActionProvider, TITLES } from "../CodeActionProvider"
+import { logger } from "../../utils/logging"
 
 vi.mock("vscode", () => ({
 	CodeAction: vi.fn().mockImplementation(function (title, kind) {
@@ -119,7 +120,7 @@ describe("CodeActionProvider", () => {
 		})
 
 		it("should handle errors gracefully", () => {
-			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Reset the workspace mock to return true for enableCodeActions
 			const mockGet = vi.fn().mockReturnValue(true)

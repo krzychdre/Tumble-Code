@@ -18,6 +18,7 @@ import { getLiteLLMModels } from "./litellm"
 import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
 import { getDeepSeekModels } from "./deepseek"
+import { logger } from "../../../utils/logging"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
@@ -62,7 +63,7 @@ function parseDiskModels(provider: ProviderName, data: string): ModelRecord | un
 	// This ensures the data conforms to ModelRecord = Record<string, ModelInfo>
 	const validation = modelRecordSchema.safeParse(JSON.parse(data))
 	if (!validation.success) {
-		console.error(`[MODEL_CACHE] Invalid disk cache data structure for ${provider}:`, validation.error.format())
+		logger.error(`[MODEL_CACHE] Invalid disk cache data structure for ${provider}:`, validation.error.format())
 		return undefined
 	}
 	return validation.data
@@ -90,7 +91,7 @@ function readModelsFromDisk(provider: ProviderName): Promise<ModelRecord | undef
 			return models
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
-				console.error(`[MODEL_CACHE] Error loading ${provider} models from disk:`, error)
+				logger.error(`[MODEL_CACHE] Error loading ${provider} models from disk:`, error)
 			}
 			rememberDiskState(provider, null)
 			return undefined
@@ -187,7 +188,7 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 			memoryCache.set(provider, models)
 
 			await writeModels(provider, models).catch((err) =>
-				console.error(`[MODEL_CACHE] Error writing ${provider} models to file cache:`, err),
+				logger.error(`[MODEL_CACHE] Error writing ${provider} models to file cache:`, err),
 			)
 		} else {
 			TelemetryService.instance.captureEvent(TelemetryEventName.MODEL_CACHE_EMPTY_RESPONSE, {
@@ -200,7 +201,7 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 		return models
 	} catch (error) {
 		// Log the error and re-throw it so the caller can handle it (e.g., show a UI message).
-		console.error(`[getModels] Failed to fetch models in modelCache for ${provider}:`, error)
+		logger.error(`[getModels] Failed to fetch models in modelCache for ${provider}:`, error)
 
 		throw error // Re-throw the original error to be handled by the caller.
 	}
@@ -256,13 +257,13 @@ export const refreshModels = async (options: GetModelsOptions): Promise<ModelRec
 
 			// Atomically write to disk (safeWriteJson handles atomic writes)
 			await writeModels(provider, models).catch((err) =>
-				console.error(`[refreshModels] Error writing ${provider} models to disk:`, err),
+				logger.error(`[refreshModels] Error writing ${provider} models to disk:`, err),
 			)
 
 			return models
 		} catch (error) {
 			// Log the error for debugging, then return existing cache if available (graceful degradation)
-			console.error(`[refreshModels] Failed to refresh ${provider} models:`, error)
+			logger.error(`[refreshModels] Failed to refresh ${provider} models:`, error)
 			return getModelsFromCache(provider) || {}
 		} finally {
 			// Always clean up the in-flight tracking
@@ -353,7 +354,7 @@ export function getModelsFromCache(provider: ProviderName): ModelRecord | undefi
 
 		return models
 	} catch (error) {
-		console.error(`[MODEL_CACHE] Error loading ${provider} models from disk:`, error)
+		logger.error(`[MODEL_CACHE] Error loading ${provider} models from disk:`, error)
 		rememberDiskState(provider, null)
 	}
 
@@ -373,7 +374,7 @@ function getCacheDirectoryPathSync(): string | undefined {
 		}
 		return path.join(getStorageBasePathSync(globalStoragePath), "cache")
 	} catch (error) {
-		console.error(`[MODEL_CACHE] Error getting cache directory path:`, error)
+		logger.error(`[MODEL_CACHE] Error getting cache directory path:`, error)
 		return undefined
 	}
 }

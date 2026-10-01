@@ -10,6 +10,7 @@ import { toolNamesMatch } from "../../utils/mcp-name"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { ensureMcpServerAllowed } from "./mcpServerRestriction"
 import { runWithTaskAbortSignal } from "./taskAbortSignal"
+import { logger } from "../../utils/logging"
 
 interface UseMcpToolParams {
 	server_name: string
@@ -263,7 +264,7 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 		} catch (error) {
 			// If there's an error during validation, log it but don't block the tool execution
 			// The actual tool call might still fail with a proper error
-			console.error("Error validating MCP tool existence:", error)
+			logger.error("Error validating MCP tool existence:", error)
 			return { isValid: true }
 		}
 	}

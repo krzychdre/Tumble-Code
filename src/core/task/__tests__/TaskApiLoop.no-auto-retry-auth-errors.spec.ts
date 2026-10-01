@@ -8,6 +8,7 @@
 // proxies return it for transient trouble) keeps the automatic retry.
 
 import { TaskApiLoop } from "../TaskApiLoop"
+import { logger } from "../../../utils/logging"
 
 function apiError(status: number | undefined): Error {
 	const error = new Error(status === undefined ? "socket hang up" : `Provider error ${status}`)
@@ -77,9 +78,9 @@ async function drain(stream: AsyncGenerator<any>): Promise<{ chunks: any[]; thro
 
 describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 	beforeEach(() => {
-		vi.spyOn(console, "log").mockImplementation(() => {})
-		vi.spyOn(console, "warn").mockImplementation(() => {})
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "info").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 	})
 
 	afterEach(() => {

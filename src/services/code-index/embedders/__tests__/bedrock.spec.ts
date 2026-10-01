@@ -4,6 +4,7 @@ import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedroc
 import { BedrockEmbedder } from "../bedrock"
 import { MAX_ITEM_TOKENS } from "../../constants"
 import { resetRateLimitGates } from "../rate-limit-gate"
+import { logger } from "../../../../utils/logging"
 
 // Mock the AWS SDK
 vitest.mock("@aws-sdk/client-bedrock-runtime", () => {
@@ -58,8 +59,8 @@ vitest.mock("../../../../i18n", () => ({
 
 // Mock console methods
 const consoleMocks = {
-	error: vitest.spyOn(console, "error").mockImplementation(() => {}),
-	warn: vitest.spyOn(console, "warn").mockImplementation(() => {}),
+	error: vitest.spyOn(logger, "error").mockImplementation(() => {}),
+	warn: vitest.spyOn(logger, "warn").mockImplementation(() => {}),
 }
 
 describe("BedrockEmbedder", () => {
@@ -398,7 +399,7 @@ describe("BedrockEmbedder", () => {
 				const result = await embedder.createEmbeddings(testTexts)
 
 				// Verify warning was logged
-				expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("exceeds maximum token limit"))
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("exceeds maximum token limit"))
 
 				// The oversized text is cut to the limit, not dropped, so vectors stay aligned
 				expect(mockSend).toHaveBeenCalledTimes(3)
@@ -447,7 +448,7 @@ describe("BedrockEmbedder", () => {
 				const result = await resultPromise
 
 				expect(mockSend).toHaveBeenCalledTimes(3)
-				expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("Rate limit hit, retrying in"))
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Rate limit hit, retrying in"))
 				expect(result).toEqual({
 					embeddings: [[0.1, 0.2, 0.3]],
 					usage: { promptTokens: 2, totalTokens: 2 },
@@ -466,7 +467,7 @@ describe("BedrockEmbedder", () => {
 				)
 
 				expect(mockSend).toHaveBeenCalledTimes(1)
-				expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("Rate limit hit"))
+				expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining("Rate limit hit"))
 			})
 		})
 
@@ -484,7 +485,7 @@ describe("BedrockEmbedder", () => {
 					"Failed to create embeddings after 3 attempts: API connection failed",
 				)
 
-				expect(console.error).toHaveBeenCalledWith(
+				expect(logger.error).toHaveBeenCalledWith(
 					expect.stringContaining("BedrockEmbedder error"),
 					expect.any(Error),
 				)

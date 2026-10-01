@@ -42,6 +42,7 @@ vi.mock("fs/promises", () => ({
 
 // Import safeWriteJson to use in mocks
 import { safeWriteJson } from "@roo-code/core/fs"
+import { logger } from "../../../utils/logging"
 // Mock safeWriteJson
 vi.mock("@roo-code/core/fs", () => ({
 	safeWriteJson: vi.fn(async (filePath, data) => {
@@ -152,15 +153,15 @@ describe("McpHub", () => {
 	let mockProvider: Partial<ClineProvider>
 
 	// Store original console methods
-	const originalConsoleError = console.error
+	const originalConsoleError = logger.error
 	const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform")
 
 	beforeEach(() => {
 		vi.clearAllMocks()
 		fakeWatchers = createFakeWatcherFactory()
 
-		// Mock console.error to suppress error messages during tests
-		console.error = vi.fn()
+		// Mock logger.error to suppress error messages during tests
+		logger.error = vi.fn()
 
 		const mockUri: Uri = {
 			scheme: "file",
@@ -230,7 +231,7 @@ describe("McpHub", () => {
 
 	afterEach(() => {
 		// Restore original console methods
-		console.error = originalConsoleError
+		logger.error = originalConsoleError
 		// Restore original platform
 		if (originalPlatform) {
 			Object.defineProperty(process, "platform", originalPlatform)
@@ -3576,7 +3577,7 @@ describe("McpHub", () => {
 				expect(server.error).toBe("socket hang up")
 				expect(server.errorHistory!.at(-1)).toMatchObject({ message: "socket hang up", level: "error" })
 				expect(postMessage).toHaveBeenCalledTimes(1)
-				expect(console.error).toHaveBeenCalledWith(`Transport error for "t"${label}:`, expect.any(Error))
+				expect(logger.error).toHaveBeenCalledWith(`Transport error for "t"${label}:`, expect.any(Error))
 			})
 
 			it("onerror with a non-Error records its string form", async () => {

@@ -14,6 +14,7 @@ vi.mock("../modelCache", () => ({
 import { forceFullModelDetailsLoad, getLMStudioModels, hasLoadedFullDetails, LM_STUDIO_TIMEOUTS } from "../lmstudio"
 import { flushModels } from "../modelCache"
 import { startFakeLmStudioServer, type FakeLmStudioServer, type Responder } from "./fake-lmstudio-server"
+import { logger } from "../../../../utils/logging"
 
 // A model as a current LM Studio server describes it (the SDK drops fields it does not know).
 const downloadedLlama = {
@@ -111,9 +112,9 @@ afterAll(() => {
 
 beforeEach(async () => {
 	oldServerShape = false
-	vi.spyOn(console, "warn").mockImplementation(() => {})
-	vi.spyOn(console, "error").mockImplementation(() => {})
-	vi.spyOn(console, "info").mockImplementation(() => {})
+	vi.spyOn(logger, "warn").mockImplementation(() => {})
+	vi.spyOn(logger, "error").mockImplementation(() => {})
+	vi.spyOn(logger, "info").mockImplementation(() => {})
 	server = await startFakeLmStudioServer({ respond: answer })
 	baseUrl = server.baseUrl
 })
@@ -229,7 +230,7 @@ describe("LM Studio fetcher wire characterization (real @lmstudio/sdk, fake serv
 			const models = await getLMStudioModels(baseUrl)
 
 			expect(models).toEqual({})
-			expect(vi.mocked(console.error).mock.calls.flat().join("\n")).toContain(
+			expect(vi.mocked(logger.error).mock.calls.flat().join("\n")).toContain(
 				`LM Studio at ${baseUrl} did not answer the list of downloaded models within 0.2 s`,
 			)
 			// Stopped at the first call: listLoaded is never sent.

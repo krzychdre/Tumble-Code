@@ -18,6 +18,7 @@ import { ANTHROPIC_DEFAULT_MAX_TOKENS, PRUNE_CONDENSE_DEFAULTS, TelemetryEventNa
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { microcompactToolResults, microcompactTargetChars, MICROCOMPACT_PLACEHOLDER_TOKENS } from "./microcompact"
 import { buildContextLedger, type ContextLedger } from "./ledger"
+import { logger } from "../../utils/logging"
 
 /**
  * Context Management
@@ -180,7 +181,7 @@ export function resolveCondenseThreshold(
 		return profileThreshold
 	}
 	if (warnOnInvalid) {
-		console.warn(
+		logger.warn(
 			`Invalid profile threshold ${profileThreshold} for profile "${profileId}". Using global default of ${globalPercent}%`,
 		)
 	}

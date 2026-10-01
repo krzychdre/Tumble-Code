@@ -3,6 +3,7 @@ import os from "os"
 import * as vscode from "vscode"
 
 import { arePathsEqual } from "@roo-code/core/path"
+import { logger } from "./logging"
 
 /*
 The Node.js 'path' module resolves and normalizes paths differently depending on the platform:
@@ -105,7 +106,7 @@ export const getWorkspacePathForContext = (contextPath?: string): string => {
 			return workspaceFolder.uri.fsPath
 		}
 		// Debug logging when falling back
-		console.debug(`[CodeIndex] No workspace found for context path: ${contextPath}, falling back to default`)
+		logger.debug(`[CodeIndex] No workspace found for context path: ${contextPath}, falling back to default`)
 	}
 
 	// Fall back to current behavior

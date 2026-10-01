@@ -15,6 +15,7 @@ import { applyComputedEdit, type EditSaveContext } from "./helpers/applyComputed
 import type { ToolUse } from "../../shared/tools"
 import { parsePatch, ParseError, processAllHunks } from "./apply-patch"
 import type { ApplyPatchFileChange } from "./apply-patch"
+import { logger } from "../../utils/logging"
 
 interface ApplyPatchParams {
 	patch: string
@@ -327,7 +328,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		try {
 			await fs.unlink(absolutePath)
 		} catch (error) {
-			console.error(`Failed to delete original file after move: ${error}`)
+			logger.error(`Failed to delete original file after move: ${error}`)
 		}
 
 		await task.fileContextTracker.trackFileContext(movePath, "roo_edited" as RecordSource)

@@ -34,6 +34,7 @@ import { type ClineProvider } from "../webview/ClineProvider"
 import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { type ApiMessage } from "../task-persistence"
 import { type RooIgnoreController } from "../ignore/RooIgnoreController"
+import { logger } from "../../utils/logging"
 
 /**
  * Whether the handler returns encrypted reasoning (OpenAI Native, Codex) and so can take
@@ -165,7 +166,7 @@ export class ApiRequestBuilder {
 			}
 
 			await pWaitFor(() => !mcpHub!.isConnecting, { timeout: 10_000 }).catch(() => {
-				console.error("MCP servers failed to connect in time")
+				logger.error("MCP servers failed to connect in time")
 			})
 		}
 

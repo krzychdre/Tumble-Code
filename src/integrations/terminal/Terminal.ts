@@ -9,6 +9,7 @@ import { BaseTerminal } from "./BaseTerminal"
 import { TerminalProcess } from "./TerminalProcess"
 import { ShellIntegrationManager } from "./ShellIntegrationManager"
 import { mergePromise } from "./mergePromise"
+import { logger } from "../../utils/logging"
 
 export class Terminal extends BaseTerminal {
 	public terminal: vscode.Terminal
@@ -41,7 +42,7 @@ export class Terminal extends BaseTerminal {
 					options.shellArgs = profileShell.shellArgs
 				}
 
-				console.info(
+				logger.info(
 					`[Terminal] Creating terminal with profile "${Terminal.getTerminalProfile()}" -> ${profileShell.shellPath}`,
 				)
 
@@ -101,7 +102,7 @@ export class Terminal extends BaseTerminal {
 			// Set up event handlers
 			process.once("continue", () => resolve())
 			process.once("error", (error) => {
-				console.error(`[Terminal ${this.id}] error:`, error)
+				logger.error(`[Terminal ${this.id}] error:`, error)
 				reject(error)
 			})
 
@@ -129,7 +130,7 @@ export class Terminal extends BaseTerminal {
 						process.run(command)
 					})
 					.catch(() => {
-						console.log(`[Terminal ${this.id}] Shell integration not available. Command execution aborted.`)
+						logger.info(`[Terminal ${this.id}] Shell integration not available. Command execution aborted.`)
 
 						// Clean up temporary directory if shell integration is not available
 						ShellIntegrationManager.zshCleanupTmpDir(this.id)
@@ -533,7 +534,7 @@ export class Terminal extends BaseTerminal {
 			| undefined
 
 		if (!profile) {
-			console.warn(`[Terminal] Configured terminal profile "${profileName}" not found for ${platformKey}.`)
+			logger.warn(`[Terminal] Configured terminal profile "${profileName}" not found for ${platformKey}.`)
 			return undefined
 		}
 
@@ -542,7 +543,7 @@ export class Terminal extends BaseTerminal {
 		if (!pathValue) {
 			// Profiles defined only by `source` (e.g. "PowerShell") can't be mapped to
 			// a shell path here, so we fall back to the default terminal.
-			console.warn(
+			logger.warn(
 				`[Terminal] Terminal profile "${profileName}" has no resolvable "path"; using default terminal.`,
 			)
 			return undefined

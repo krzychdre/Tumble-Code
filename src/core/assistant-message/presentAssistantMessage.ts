@@ -32,6 +32,7 @@ import {
 	answerDeferredDirectCall,
 	rejectUnknownTool,
 } from "./steps/toolUseRun"
+import { logger } from "../../utils/logging"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -67,7 +68,7 @@ async function prepareToolResultSpill(task: Task, state?: ArtifactSpillSettings)
 		const resolvedState = state ?? (await task.providerRef.deref()?.getState())
 		await task.ensureToolResultSpill(resolveMaxInlineToolResultBytes(resolvedState))
 	} catch (error) {
-		console.warn("[presentAssistantMessage] Could not prepare the tool-result spill policy:", error)
+		logger.warn("[presentAssistantMessage] Could not prepare the tool-result spill policy:", error)
 	}
 }
 
@@ -103,7 +104,7 @@ export async function presentAssistantMessage(task: Task) {
 	// Every caller fires this without awaiting it, so a throw here could only become an unhandled rejection.
 	// An aborted task simply stops presenting; the API loop notices the abort flag on its own.
 	if (task.abort) {
-		console.log(`[Task#presentAssistantMessage] task ${task.taskId}.${task.instanceId} aborted, skipping`)
+		logger.debug(`[Task#presentAssistantMessage] task ${task.taskId}.${task.instanceId} aborted, skipping`)
 		return
 	}
 
@@ -136,8 +137,8 @@ export async function presentAssistantMessage(task: Task) {
 		// This provides 80-90% reduction in cloning overhead (5-100ms saved per block).
 		block = { ...task.assistantMessageContent[task.currentStreamingContentIndex] }
 	} catch (error) {
-		console.error(`ERROR cloning block:`, error)
-		console.error(
+		logger.error(`ERROR cloning block:`, error)
+		logger.error(
 			`Block content:`,
 			JSON.stringify(task.assistantMessageContent[task.currentStreamingContentIndex], null, 2),
 		)
@@ -271,7 +272,7 @@ async function presentMcpToolUse(task: Task, mcpBlock: McpToolUse): Promise<void
 			})
 		} catch (resolverErr) {
 			// Resolver is best-effort: never block a live MCP execution if it throws.
-			console.warn("[presentAssistantMessage] auto-materialize hook failed:", resolverErr)
+			logger.warn("[presentAssistantMessage] auto-materialize hook failed:", resolverErr)
 		}
 	}
 

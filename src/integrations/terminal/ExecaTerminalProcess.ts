@@ -9,6 +9,7 @@ import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { AskpassServer } from "./askpass/AskpassServer"
 import { promptForSecret } from "./askpass/promptForSecret"
 import { getUtf8LocaleEnv } from "./localeEnv"
+import { logger } from "../../utils/logging"
 
 // On POSIX the command gets its own session (setsid), so it has no controlling
 // terminal. Without it, `git`, `ssh` and `sudo` open /dev/tty by path to ask for
@@ -182,10 +183,10 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 			}
 		} catch (error) {
 			if (error instanceof ExecaError) {
-				console.error(`[ExecaTerminalProcess#run] shell execution error: ${error.message}`)
+				logger.error(`[ExecaTerminalProcess#run] shell execution error: ${error.message}`)
 				exitDetails = ExecaTerminalProcess.exitDetailsFromError(error)
 			} else {
-				console.error(
+				logger.error(
 					`[ExecaTerminalProcess#run] shell execution error: ${error instanceof Error ? error.message : String(error)}`,
 				)
 
@@ -227,14 +228,14 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		let timeoutId: NodeJS.Timeout | undefined
 
 		const kill = new Promise<undefined>((resolve) => {
-			console.log(`[ExecaTerminalProcess#run] SIGKILL -> ${this.pid}`)
+			logger.info(`[ExecaTerminalProcess#run] SIGKILL -> ${this.pid}`)
 
 			timeoutId = setTimeout(() => {
 				try {
 					this.subprocess?.kill("SIGKILL")
 				} catch (e) {
 					// the process may have exited already
-					console.warn(`[ExecaTerminalProcess#run] SIGKILL failed: ${e}`)
+					logger.warn(`[ExecaTerminalProcess#run] SIGKILL failed: ${e}`)
 				}
 
 				resolve(undefined)
@@ -253,7 +254,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 				return ExecaTerminalProcess.exitDetailsFromError(error)
 			}
 
-			console.log(
+			logger.info(
 				`[ExecaTerminalProcess#run] subprocess termination error: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		} finally {
@@ -331,7 +332,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 				try {
 					this.subprocess.kill("SIGKILL")
 				} catch (e) {
-					console.warn(
+					logger.warn(
 						`[ExecaTerminalProcess#abort] Failed to kill subprocess: ${e instanceof Error ? e.message : String(e)}`,
 					)
 				}
@@ -342,7 +343,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 				try {
 					process.kill(this.pid, "SIGKILL")
 				} catch (e) {
-					console.warn(
+					logger.warn(
 						`[ExecaTerminalProcess#abort] Failed to kill process ${this.pid}: ${e instanceof Error ? e.message : String(e)}`,
 					)
 				}
@@ -367,13 +368,13 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 						try {
 							process.kill(pid, "SIGKILL")
 						} catch (e) {
-							console.warn(
+							logger.warn(
 								`[ExecaTerminalProcess#abort] Failed to send SIGKILL to child PID ${pid}: ${e instanceof Error ? e.message : String(e)}`,
 							)
 						}
 					}
 				} else {
-					console.error(
+					logger.error(
 						`[ExecaTerminalProcess#abort] Failed to get process tree for PID ${this.pid}: ${err.message}`,
 					)
 				}

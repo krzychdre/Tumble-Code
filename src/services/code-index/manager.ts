@@ -17,6 +17,7 @@ import { t } from "../../i18n"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 import { isTransientConnectionError } from "./shared/validation-helpers"
+import { logger } from "../../utils/logging"
 
 export class CodeIndexManager {
 	// --- Singleton Implementation ---
@@ -338,7 +339,7 @@ export class CodeIndexManager {
 			this._stateManager.setSystemState("Standby", "")
 		} catch (error) {
 			// Log error but continue with recovery - clearing service instances is more important
-			console.error("Failed to clear error state during recovery:", error)
+			logger.error("Failed to clear error state during recovery:", error)
 		} finally {
 			// Force re-initialization by clearing service instances
 			// This ensures a clean slate even if state update failed. The orchestrator is
@@ -401,7 +402,7 @@ export class CodeIndexManager {
 		})
 		this._retryAttempt++
 
-		console.log(
+		logger.info(
 			`[CodeIndexManager] Connection error detected. Scheduling automatic reindex retry in ${Math.round(
 				delay / 1000,
 			)}s (attempt ${this._retryAttempt}).`,
@@ -443,7 +444,7 @@ export class CodeIndexManager {
 			return
 		}
 		if (!this._contextProxy) {
-			console.warn("[CodeIndexManager] Cannot auto-retry indexing: no context proxy available.")
+			logger.warn("[CodeIndexManager] Cannot auto-retry indexing: no context proxy available.")
 			return
 		}
 
@@ -455,7 +456,7 @@ export class CodeIndexManager {
 		} catch (error) {
 			// Expected when the service is still unreachable — _recreateServices() has
 			// already set the Error state, so the subscription will reschedule.
-			console.warn(
+			logger.warn(
 				`[CodeIndexManager] Automatic reindex retry failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
@@ -558,7 +559,7 @@ export class CodeIndexManager {
 			ignoreInstance.add(".gitignore")
 		} catch (error) {
 			// Should never happen: reading file failed even though it exists
-			console.error("Unexpected error loading .gitignore:", error)
+			logger.error("Unexpected error loading .gitignore:", error)
 			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
 				error: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
@@ -653,7 +654,7 @@ export class CodeIndexManager {
 					await this._recreateServices()
 				} catch (error) {
 					// Error state already set in _recreateServices
-					console.error("Failed to recreate services:", error)
+					logger.error("Failed to recreate services:", error)
 					TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
 						error: error instanceof Error ? error.message : String(error),
 						stack: error instanceof Error ? error.stack : undefined,

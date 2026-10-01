@@ -11,6 +11,7 @@
 
 import i18n from "../../../i18n/setup"
 import { getApiErrorStatus, type ProviderErrorFields } from "../../apiErrors"
+import { logger } from "../../../utils/logging"
 
 /**
  * Handles API provider errors and transforms them into user-friendly messages
@@ -62,7 +63,7 @@ export function handleProviderError(
 		const msg = anyErr?.error?.metadata?.raw || error.message || ""
 
 		// Log the original error details for debugging
-		console.error(`[${providerName}] API error:`, {
+		logger.error(`[${providerName}] API error:`, {
 			message: msg,
 			name: error.name,
 			stack: error.stack,
@@ -109,7 +110,7 @@ export function handleProviderError(
 	}
 
 	// Non-Error: wrap with provider-specific prefix (or the caller's own wording)
-	console.error(`[${providerName}] Non-Error exception:`, error)
+	logger.error(`[${providerName}] Non-Error exception:`, error)
 	const wrapped: Error & ProviderErrorFields = new Error(
 		options?.messageTransformer
 			? options.messageTransformer(String(error))

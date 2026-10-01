@@ -13,6 +13,7 @@ import { McpConfigStore } from "./McpConfigStore"
 import { McpConfigWatcher, type McpWatcherFactory, vscodeWatcherFactory } from "./McpConfigWatcher"
 import { logMcpError, type McpConnection, McpConnectionManager } from "./McpConnectionManager"
 import { McpToolCatalog, type McpRequestOptions } from "./McpToolCatalog"
+import { logger } from "../../utils/logging"
 
 export { type ConnectedMcpConnection, type DisconnectedMcpConnection, type McpConnection } from "./McpConnectionManager"
 
@@ -86,7 +87,7 @@ export class McpHub {
 				},
 			},
 		)
-		this.watchMcpSettingsFile().catch(console.error)
+		this.watchMcpSettingsFile().catch((error) => logger.error(error))
 		this.watchProjectMcpFile()
 		this.configWatcher.watchWorkspaceFolders()
 		this.initializationPromise = Promise.all([
@@ -142,7 +143,7 @@ export class McpHub {
 		// console.log(`McpHub: Client unregistered. Ref count: ${this.refCount}`)
 
 		if (this.refCount <= 0) {
-			console.log("McpHub: Last client unregistered. Disposing hub.")
+			logger.info("McpHub: Last client unregistered. Disposing hub.")
 			await this.dispose()
 		}
 	}
@@ -182,12 +183,12 @@ export class McpHub {
 				return result.servers
 			case "invalid-json": {
 				const errorMessage = t("mcp:errors.invalid_settings_syntax")
-				console.error(errorMessage, result.error)
+				logger.error(errorMessage, result.error)
 				vscode.window.showErrorMessage(errorMessage)
 				return undefined
 			}
 			case "invalid-schema":
-				console.error(`Invalid MCP settings format in ${filePath}:`, result.errorMessages)
+				logger.error(`Invalid MCP settings format in ${filePath}:`, result.errorMessages)
 				vscode.window.showErrorMessage(
 					t("mcp:errors.invalid_settings_validation", { errorMessages: result.errorMessages }),
 				)
@@ -271,7 +272,7 @@ export class McpHub {
 				await this.updateServerConnections(result.servers, source, false)
 			} else if (result.status === "invalid-schema") {
 				const { errorMessages } = result
-				console.error(`Invalid ${source} MCP settings format:`, errorMessages)
+				logger.error(`Invalid ${source} MCP settings format:`, errorMessages)
 				vscode.window.showErrorMessage(t("mcp:errors.invalid_settings_validation", { errorMessages }))
 
 				if (source === "global") {
@@ -284,7 +285,7 @@ export class McpHub {
 				}
 			} else {
 				const errorMessage = t("mcp:errors.invalid_settings_syntax")
-				console.error(errorMessage, result.error)
+				logger.error(errorMessage, result.error)
 				vscode.window.showErrorMessage(errorMessage)
 			}
 		} catch (error) {
@@ -423,10 +424,10 @@ export class McpHub {
 			try {
 				await targetProvider.postMessageToWebview(message)
 			} catch (error) {
-				console.error("[McpHub] Error calling targetProvider.postMessageToWebview:", error)
+				logger.error("[McpHub] Error calling targetProvider.postMessageToWebview:", error)
 			}
 		} else {
-			console.error(
+			logger.error(
 				"[McpHub] No target provider available (neither from getInstance nor providerRef) - cannot send mcpServers message to webview",
 			)
 		}
@@ -472,7 +473,7 @@ export class McpHub {
 						)
 					}
 				} catch (error) {
-					console.error(`Failed to refresh capabilities for ${serverName}:`, error)
+					logger.error(`Failed to refresh capabilities for ${serverName}:`, error)
 				}
 			}
 
@@ -655,7 +656,7 @@ export class McpHub {
 						serverName: conn.server.name,
 						error: errorMessage,
 					})
-					console.error(`Failed to disconnect MCP server ${conn.server.name}: ${errorMessage}`)
+					logger.error(`Failed to disconnect MCP server ${conn.server.name}: ${errorMessage}`)
 				}
 			}
 
@@ -674,7 +675,7 @@ export class McpHub {
 			try {
 				await this.refreshAllConnections()
 			} catch (error) {
-				console.error(`Failed to refresh MCP connections after disabling: ${error}`)
+				logger.error(`Failed to refresh MCP connections after disabling: ${error}`)
 				vscode.window.showErrorMessage(t("mcp:errors.refresh_after_disable"))
 			}
 		} else {
@@ -682,7 +683,7 @@ export class McpHub {
 			try {
 				await this.refreshAllConnections()
 			} catch (error) {
-				console.error(`Failed to refresh MCP connections after enabling: ${error}`)
+				logger.error(`Failed to refresh MCP connections after enabling: ${error}`)
 				vscode.window.showErrorMessage(t("mcp:errors.refresh_after_enable"))
 			}
 		}

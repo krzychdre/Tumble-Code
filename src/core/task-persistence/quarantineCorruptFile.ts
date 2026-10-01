@@ -1,4 +1,5 @@
 import * as fs from "fs/promises"
+import { logger } from "../../utils/logging"
 
 /**
  * Move a task file that cannot be read aside, so the next save does not overwrite it.
@@ -15,10 +16,10 @@ export async function quarantineCorruptFile(filePath: string, reason: string): P
 
 	try {
 		await fs.rename(filePath, quarantinePath)
-		console.error(`[quarantineCorruptFile] ${reason}. Moved ${filePath} to ${quarantinePath}`)
+		logger.error(`[quarantineCorruptFile] ${reason}. Moved ${filePath} to ${quarantinePath}`)
 		return quarantinePath
 	} catch (error) {
-		console.error(
+		logger.error(
 			`[quarantineCorruptFile] ${reason}. Could not move ${filePath} aside: ${error instanceof Error ? error.message : String(error)}`,
 		)
 		return undefined

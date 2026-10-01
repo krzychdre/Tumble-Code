@@ -37,6 +37,7 @@ import type { Task } from "./Task"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import type { ArtifactStore } from "../artifacts/ArtifactStore"
+import { logger } from "../../utils/logging"
 
 /**
  * Module-level constants for context management
@@ -269,7 +270,7 @@ export class TaskContextManager {
 		try {
 			return await this.access.fileContextTracker.getFilesReadByRoo()
 		} catch (error) {
-			console.error(`[TaskContextManager#${context}] Failed to get files read by Roo:`, error)
+			logger.error(`[TaskContextManager#${context}] Failed to get files read by Roo:`, error)
 			return undefined
 		}
 	}
@@ -395,7 +396,7 @@ export class TaskContextManager {
 			const servers = mcpHub.getServers()
 			return countEnabledMcpTools(servers)
 		} catch (error) {
-			console.error("[TaskContextManager#getEnabledMcpToolsCount] Error counting MCP tools:", error)
+			logger.error("[TaskContextManager#getEnabledMcpToolsCount] Error counting MCP tools:", error)
 			return { enabledToolCount: 0, enabledServerCount: 0 }
 		}
 	}
@@ -429,7 +430,7 @@ export class TaskContextManager {
 		const currentProfileId = getCurrentProfileId(state)
 
 		// Log the context window error for debugging
-		console.warn(
+		logger.warn(
 			`[TaskContextManager#${this.access.taskId}] Context window exceeded for model ${this.access.api.getModel().id}. ` +
 				`Current tokens: ${contextTokens}, Context window: ${contextWindow}. ` +
 				`Forcing truncation to ${FORCED_CONTEXT_REDUCTION_PERCENT}% of current context.`,
@@ -893,7 +894,7 @@ export class TaskContextManager {
 		} catch (error) {
 			// Never fatal: without a store the prune pass is skipped and the
 			// existing microcompact/condense/truncate chain handles the pressure.
-			console.warn("[TaskContextManager#resolvePruneOptions] Artifact store unavailable, prune disabled:", error)
+			logger.warn("[TaskContextManager#resolvePruneOptions] Artifact store unavailable, prune disabled:", error)
 		}
 
 		return { pruneBeforeCondense, pruneToolResultBudget, artifactStore }

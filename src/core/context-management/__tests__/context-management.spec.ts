@@ -17,6 +17,7 @@ import {
 	willManageContext,
 	resolveCondenseThreshold,
 } from "../index"
+import { logger } from "../../../utils/logging"
 
 // Create a mock ApiHandler for testing
 class MockApiHandler extends BaseProvider {
@@ -1509,7 +1510,7 @@ describe("Context Management", () => {
 		})
 
 		it("warns about an out-of-range value only when asked to", () => {
-			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+			const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
 			try {
 				resolveCondenseThreshold({ p: 150 }, "p", 75)
 				expect(warn).not.toHaveBeenCalled()

@@ -247,7 +247,7 @@ export class TaskLifecycle {
 					this.access.updateApiConfiguration(newState.apiConfiguration)
 				}
 			} catch (error) {
-				console.error(
+				logger.error(
 					`[Task#${this.access.taskId}.${this.access.instanceId}] Failed to update API configuration on profile change:`,
 					error,
 				)
@@ -547,7 +547,7 @@ export class TaskLifecycle {
 	 */
 	cancelCurrentRequest(destroyClient: boolean = false): void {
 		if (this.access.currentRequestAbortController) {
-			console.log(`[Task#${this.access.taskId}.${this.access.instanceId}] Aborting current HTTP request`)
+			logger.info(`[Task#${this.access.taskId}.${this.access.instanceId}] Aborting current HTTP request`)
 			this.access.currentRequestAbortController.abort()
 			this.access.currentRequestAbortController = undefined
 		}
@@ -644,7 +644,7 @@ export class TaskLifecycle {
 			try {
 				this.triggerMemoryBackgroundWriters()
 			} catch (error) {
-				console.error("Error triggering memory background writers:", error)
+				logger.error("Error triggering memory background writers:", error)
 			}
 		}
 
@@ -665,7 +665,7 @@ export class TaskLifecycle {
 					})
 				}
 			} catch (error) {
-				console.error("Error capturing task completed telemetry:", error)
+				logger.error("Error capturing task completed telemetry:", error)
 			}
 		}
 
@@ -707,7 +707,7 @@ export class TaskLifecycle {
 		try {
 			this.dispose() // Call the centralized dispose method
 		} catch (error) {
-			console.error(`Error during task ${this.access.taskId}.${this.access.instanceId} disposal:`, error)
+			logger.error(`Error during task ${this.access.taskId}.${this.access.instanceId} disposal:`, error)
 			// Don't rethrow - we want abort to always succeed
 		}
 		// Save the countdown message in the automatic retry or other content.
@@ -715,7 +715,7 @@ export class TaskLifecycle {
 			// Save the countdown message in the automatic retry or other content.
 			await this.access.history.saveClineMessages()
 		} catch (error) {
-			console.error(
+			logger.error(
 				`Error saving messages during abort for task ${this.access.taskId}.${this.access.instanceId}:`,
 				error,
 			)
@@ -756,7 +756,7 @@ export class TaskLifecycle {
 				await drainPendingExtraction(60_000)
 				await drainPendingDreams(60_000)
 			} catch (error) {
-				console.error("Error draining memory background writers:", error)
+				logger.error("Error draining memory background writers:", error)
 			}
 		}
 	}
@@ -804,7 +804,7 @@ export class TaskLifecycle {
 			query,
 			onSaved: (count) => {
 				if (count > 0) {
-					console.log(`[memory] extractMemories saved ${count} memor${count === 1 ? "y" : "ies"}`)
+					logger.info(`[memory] extractMemories saved ${count} memor${count === 1 ? "y" : "ies"}`)
 					provider.notifyBackgroundOutcome(t("common:info.memory_saved", { count }))
 				}
 			},
@@ -832,7 +832,7 @@ export class TaskLifecycle {
 					query,
 					onImproved: (count) => {
 						if (count > 0) {
-							console.log(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
+							logger.info(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
 							provider.notifyBackgroundOutcome(t("common:info.memory_consolidated", { count }))
 						}
 					},
@@ -846,21 +846,21 @@ export class TaskLifecycle {
 	 * This is the centralized cleanup method called on abort and task completion.
 	 */
 	dispose(): void {
-		console.log(`[Task#dispose] disposing task ${this.access.taskId}.${this.access.instanceId}`)
+		logger.debug(`[Task#dispose] disposing task ${this.access.taskId}.${this.access.instanceId}`)
 
 		// A coalesced ui_messages.json write that is still pending runs now
 		// (CORE-R7 step 4); for an aborted task the abort path writes instead.
 		try {
 			this.access.history.flushPendingSave()
 		} catch (error) {
-			console.error("Error flushing the pending message save:", error)
+			logger.error("Error flushing the pending message save:", error)
 		}
 
 		// Cancel any in-progress HTTP request
 		try {
 			this.access.cancelCurrentRequest()
 		} catch (error) {
-			console.error("Error cancelling current request:", error)
+			logger.error("Error cancelling current request:", error)
 		}
 
 		// Abort any in-flight memory recall prefetch so a lingering side-query
@@ -868,7 +868,7 @@ export class TaskLifecycle {
 		try {
 			this.access.memoryCoordinator?.disposePrefetch()
 		} catch (error) {
-			console.error("Error disposing memory prefetch:", error)
+			logger.error("Error disposing memory prefetch:", error)
 		}
 
 		// Remove provider profile change listener
@@ -881,7 +881,7 @@ export class TaskLifecycle {
 				this.access.providerProfileChangeListener = undefined
 			}
 		} catch (error) {
-			console.error("Error removing provider profile change listener:", error)
+			logger.error("Error removing provider profile change listener:", error)
 		}
 
 		// Dispose message queue and remove event listeners.
@@ -896,7 +896,7 @@ export class TaskLifecycle {
 
 			this.access.messageQueueService.dispose()
 		} catch (error) {
-			console.error("Error disposing message queue:", error)
+			logger.error("Error disposing message queue:", error)
 		}
 
 		// Remove all event listeners to prevent memory leaks.
@@ -904,7 +904,7 @@ export class TaskLifecycle {
 			// Note: We cannot call removeAllListeners directly through the access interface
 			// The Task itself handles this via its EventEmitter inheritance
 		} catch (error) {
-			console.error("Error removing event listeners:", error)
+			logger.error("Error removing event listeners:", error)
 		}
 
 		// Release any terminals associated with this task.
@@ -912,7 +912,7 @@ export class TaskLifecycle {
 			// Release any terminals associated with this task.
 			TerminalRegistry.releaseTerminalsForTask(this.access.taskId)
 		} catch (error) {
-			console.error("Error releasing terminals:", error)
+			logger.error("Error releasing terminals:", error)
 		}
 
 		// Cleanup command output artifacts.
@@ -928,7 +928,7 @@ export class TaskLifecycle {
 				return OutputInterceptor.cleanup(outputDir)
 			})
 			.catch((error) => {
-				console.error("Error cleaning up command output artifacts:", error)
+				logger.error("Error cleaning up command output artifacts:", error)
 			})
 
 		try {
@@ -937,23 +937,23 @@ export class TaskLifecycle {
 				this.access.rooIgnoreController = undefined
 			}
 		} catch (error) {
-			console.error("Error disposing RooIgnoreController:", error)
+			logger.error("Error disposing RooIgnoreController:", error)
 			// This is the critical one for the leak fix.
 		}
 
 		try {
 			this.access.fileContextTracker.dispose()
 		} catch (error) {
-			console.error("Error disposing file context tracker:", error)
+			logger.error("Error disposing file context tracker:", error)
 		}
 
 		try {
 			// If we're not streaming then `abortStream` won't be called.
 			if (this.access.isStreaming && this.access.diffViewProvider.isEditing) {
-				this.access.diffViewProvider.revertChanges().catch(console.error)
+				this.access.diffViewProvider.revertChanges().catch((error) => logger.error(error))
 			}
 		} catch (error) {
-			console.error("Error reverting diff changes:", error)
+			logger.error("Error reverting diff changes:", error)
 		}
 	}
 }

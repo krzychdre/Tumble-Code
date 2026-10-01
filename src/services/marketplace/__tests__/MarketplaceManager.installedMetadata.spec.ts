@@ -9,6 +9,7 @@ import * as os from "os"
 import * as path from "path"
 
 import { MarketplaceManager } from "../MarketplaceManager"
+import { logger } from "../../../utils/logging"
 
 const dirs = vi.hoisted(() => ({ workspace: "", global: "" }))
 
@@ -66,7 +67,7 @@ describe("MarketplaceManager.getInstallationMetadata", () => {
 	})
 
 	it("reports a corrupt mcp.json and still lists the other installed items", async () => {
-		const error = vi.spyOn(console, "error").mockImplementation(() => {})
+		const error = vi.spyOn(logger, "error").mockImplementation(() => {})
 		const corruptFile = path.join(dirs.workspace, ".roo", "mcp.json")
 		await fs.writeFile(path.join(dirs.workspace, ".roomodes"), "customModes:\n  - slug: project-mode\n")
 		await fs.writeFile(corruptFile, '{ "mcpServers": { broken')
@@ -78,7 +79,7 @@ describe("MarketplaceManager.getInstallationMetadata", () => {
 	})
 
 	it("does not report files that do not exist", async () => {
-		const error = vi.spyOn(console, "error").mockImplementation(() => {})
+		const error = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		const metadata = await new MarketplaceManager({} as any).getInstallationMetadata()
 

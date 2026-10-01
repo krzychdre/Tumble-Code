@@ -8,6 +8,7 @@
 // volatile decisions (post-stream retry paths, asks) still read live.
 
 import { TaskApiLoop, type TaskApiLoopAccess } from "../TaskApiLoop"
+import { logger } from "../../../utils/logging"
 
 const systemPromptMock = vi.hoisted(() => vi.fn().mockResolvedValue("system prompt"))
 vi.mock("../../prompts/system", () => ({ SYSTEM_PROMPT: systemPromptMock }))
@@ -179,9 +180,9 @@ describe("TaskApiLoop: one state snapshot per request cycle (P5)", () => {
 		promptSources.length = 0
 		systemPromptMock.mockClear()
 		envDetailsMock.mockClear()
-		vi.spyOn(console, "log").mockImplementation(() => {})
-		vi.spyOn(console, "warn").mockImplementation(() => {})
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "info").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 	})
 
 	afterEach(() => {

@@ -16,14 +16,15 @@ import { CodeIndexManager } from "../services/code-index/manager"
 import { importSettingsWithFeedback } from "../core/config/importExport"
 import { registerRipgrepDiagnosticCommand } from "../services/ripgrep/diagnostic"
 import { t } from "../i18n"
+import { logger } from "../utils/logging"
 
 /**
  * Helper to get the visible ClineProvider instance or log if not found.
  */
-export function getVisibleProviderOrLog(outputChannel: vscode.OutputChannel): ClineProvider | undefined {
+export function getVisibleProviderOrLog(): ClineProvider | undefined {
 	const visibleProvider = ClineProvider.getVisibleInstance()
 	if (!visibleProvider) {
-		outputChannel.appendLine("Cannot find any visible Tumble Code instances.")
+		logger.warn("Cannot find any visible Tumble Code instances.")
 		return undefined
 	}
 	return visibleProvider
@@ -65,7 +66,7 @@ const getCommandsMap = ({
 }: RegisterCommandOptions): Record<Exclude<CommandId, "showRipgrepDiagnostic">, CommandCallback> => ({
 	activationCompleted: () => {},
 	cloudButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 
 		if (!visibleProvider) {
 			return
@@ -76,7 +77,7 @@ const getCommandsMap = ({
 		visibleProvider.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
 	},
 	plusButtonClicked: async () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 
 		if (!visibleProvider) {
 			return
@@ -98,7 +99,7 @@ const getCommandsMap = ({
 	},
 	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
 	settingsButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 
 		if (!visibleProvider) {
 			return
@@ -111,7 +112,7 @@ const getCommandsMap = ({
 		visibleProvider.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 	},
 	historyButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 
 		if (!visibleProvider) {
 			return
@@ -122,7 +123,7 @@ const getCommandsMap = ({
 		visibleProvider.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
 	},
 	marketplaceButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 		if (!visibleProvider) return
 		visibleProvider.postMessageToWebview({ type: "action", action: "marketplaceButtonClicked" })
 	},
@@ -132,7 +133,7 @@ const getCommandsMap = ({
 		await promptForCustomStoragePath()
 	},
 	importSettings: async (filePath?: string) => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 		if (!visibleProvider) {
 			return
 		}
@@ -157,18 +158,18 @@ const getCommandsMap = ({
 				provider.postMessageToWebview({ type: "action", action: "focusInput" })
 			}
 		} catch (error) {
-			outputChannel.appendLine(`Error focusing input: ${error}`)
+			logger.error(`Error focusing input: ${error}`)
 		}
 	},
 	focusPanel: async () => {
 		try {
 			await focusPanel(getTabPanel(), getSidebarPanel())
 		} catch (error) {
-			outputChannel.appendLine(`Error focusing panel: ${error}`)
+			logger.error(`Error focusing panel: ${error}`)
 		}
 	},
 	acceptInput: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 
 		if (!visibleProvider) {
 			return
@@ -177,7 +178,7 @@ const getCommandsMap = ({
 		visibleProvider.postMessageToWebview({ type: "acceptInput" })
 	},
 	toggleAutoApprove: async () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = getVisibleProviderOrLog()
 
 		if (!visibleProvider) {
 			return

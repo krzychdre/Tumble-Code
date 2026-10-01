@@ -67,6 +67,7 @@ import { XAIHandler } from "../xai"
 import { ZAiHandler } from "../zai"
 import { VertexHandler } from "../vertex"
 import { openAiCodexOAuthManager } from "../../../integrations/openai-codex/oauth"
+import { logger } from "../../../utils/logging"
 
 type Phase = "stream" | "response"
 
@@ -463,9 +464,9 @@ async function waitUntilBlocked(sdk: FakeSdk, index = 0) {
 }
 
 beforeEach(() => {
-	vi.spyOn(console, "error").mockImplementation(() => {})
-	vi.spyOn(console, "log").mockImplementation(() => {})
-	vi.spyOn(console, "warn").mockImplementation(() => {})
+	vi.spyOn(logger, "error").mockImplementation(() => {})
+	vi.spyOn(logger, "info").mockImplementation(() => {})
+	vi.spyOn(logger, "warn").mockImplementation(() => {})
 	// A fallback request after the abort would be a second request: it must not stay open either.
 	vi.stubGlobal(
 		"fetch",

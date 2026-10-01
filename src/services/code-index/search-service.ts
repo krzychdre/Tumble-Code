@@ -7,6 +7,7 @@ import { CodeIndexStateManager } from "./state-manager"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 import { reportEmbeddingUsage } from "./embedding-usage"
+import { logger } from "../../utils/logging"
 
 /**
  * Service responsible for searching the code index.
@@ -61,7 +62,7 @@ export class CodeIndexSearchService {
 			const results = await this.vectorStore.search(vector, normalizedPrefix, minScore, maxResults)
 			return results
 		} catch (error) {
-			console.error("[CodeIndexSearchService] Error during search:", error)
+			logger.error("[CodeIndexSearchService] Error during search:", error)
 			this.stateManager.setSystemState("Error", `Search failed: ${(error as Error).message}`)
 
 			// Capture telemetry for the error

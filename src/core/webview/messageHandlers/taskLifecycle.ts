@@ -8,6 +8,7 @@ import { checkExistKey } from "../../../shared/checkExistApiConfig"
 import { setPendingTodoList } from "../../tools/UpdateTodoListTool"
 import { resolveIncomingImages, serializeError } from "./context"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 	webviewDidLaunch: async (ctx, message) => {
@@ -203,7 +204,7 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 			const results = []
 
 			// Only log start and end of the operation
-			console.log(`Batch deletion started: ${ids.length} tasks total`)
+			logger.info(`Batch deletion started: ${ids.length} tasks total`)
 
 			for (let i = 0; i < ids.length; i += batchSize) {
 				const batch = ids.slice(i, i + batchSize)
@@ -214,7 +215,7 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 						return { id, success: true }
 					} catch (error) {
 						// Keep error logging for debugging purposes
-						console.log(
+						logger.info(
 							`Failed to delete task ${id}: ${error instanceof Error ? error.message : String(error)}`,
 						)
 						return { id, success: false }
@@ -232,7 +233,7 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 			// Log final results
 			const successCount = results.filter((r) => r.success).length
 			const failCount = results.length - successCount
-			console.log(
+			logger.info(
 				`Batch deletion completed: ${successCount}/${ids.length} tasks successful, ${failCount} tasks failed`,
 			)
 		}
@@ -260,7 +261,7 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 				aggregatedCosts: result.aggregatedCosts,
 			})
 		} catch (error) {
-			console.error("Error getting task with aggregated costs:", error)
+			logger.error("Error getting task with aggregated costs:", error)
 			await provider.postMessageToWebview({
 				type: "taskWithAggregatedCosts",
 				// Include taskId when available for correlation in UI logs.

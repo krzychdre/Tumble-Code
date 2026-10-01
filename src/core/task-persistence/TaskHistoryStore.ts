@@ -557,7 +557,7 @@ export class TaskHistoryStore {
 		// must not race a fresh acquire by flushing a partial/empty index.
 		if (this.initializedSuccessfully) {
 			this.flushIndex().catch((err) => {
-				console.error("[TaskHistoryStore] Error flushing index on dispose:", err)
+				logger.error("[TaskHistoryStore] Error flushing index on dispose:", err)
 			})
 		}
 	}
@@ -1099,7 +1099,7 @@ export class TaskHistoryStore {
 			try {
 				await this.writeIndex()
 			} catch (err) {
-				console.error("[TaskHistoryStore] Failed to write index:", err)
+				logger.error("[TaskHistoryStore] Failed to write index:", err)
 			}
 		}, TaskHistoryStore.INDEX_WRITE_DEBOUNCE_MS)
 	}
@@ -1289,19 +1289,19 @@ export class TaskHistoryStore {
 					})
 
 					this.fsWatcher.on("error", (err) => {
-						console.error("[TaskHistoryStore] fs.watch error:", err)
+						logger.error("[TaskHistoryStore] fs.watch error:", err)
 						// fs.watch is unreliable on some platforms; periodic
 						// reconciliation serves as the fallback.
 					})
 				} catch (err) {
-					console.error("[TaskHistoryStore] Failed to start fs.watch:", err)
+					logger.error("[TaskHistoryStore] Failed to start fs.watch:", err)
 				}
 
 				// Arm watchers for task directories that already exist.
 				this.refreshTaskDirWatchers().catch(logWatcherFailure)
 			})
 			.catch((err) => {
-				console.error("[TaskHistoryStore] Failed to get tasks dir for watcher:", err)
+				logger.error("[TaskHistoryStore] Failed to get tasks dir for watcher:", err)
 			})
 	}
 
@@ -1344,7 +1344,7 @@ export class TaskHistoryStore {
 						this.notifyChanged(event)
 					}
 				} catch (err) {
-					console.error(`[TaskHistoryStore] targeted refresh for ${id} failed:`, err)
+					logger.error(`[TaskHistoryStore] targeted refresh for ${id} failed:`, err)
 				}
 			}),
 		)
@@ -1497,7 +1497,7 @@ export class TaskHistoryStore {
 				// and close watchers for dirs that are gone.
 				await this.refreshTaskDirWatchers()
 			} catch (err) {
-				console.error("[TaskHistoryStore] Periodic reconciliation failed:", err)
+				logger.error("[TaskHistoryStore] Periodic reconciliation failed:", err)
 			}
 			this.startPeriodicReconciliation()
 		}, TaskHistoryStore.RECONCILE_INTERVAL_MS)

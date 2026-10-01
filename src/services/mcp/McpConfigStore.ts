@@ -8,6 +8,7 @@ import { getProjectRooDirectoryForCwd } from "../roo-config"
 
 import { formatSchemaIssues, type McpConfigSource, type McpServerConfig, McpSettingsSchema } from "./mcpConfigSchema"
 import { getGlobalMcpSettingsPath } from "./mcpSettingsPath"
+import { logger } from "../../utils/logging"
 
 const EMPTY_SETTINGS_FILE = `{
   "mcpServers": {
@@ -122,7 +123,7 @@ export class McpConfigStore {
 			return Object.keys(await this.readServerEntries(source))
 		} catch (error) {
 			// An unreadable or half-written settings file only loses the display order.
-			console.error(`Failed to read ${source} MCP settings for server order:`, error)
+			logger.error(`Failed to read ${source} MCP settings for server order:`, error)
 			return []
 		}
 	}
@@ -140,7 +141,7 @@ export class McpConfigStore {
 		try {
 			await fs.access(filePath)
 		} catch (error) {
-			console.error("Settings file not accessible:", error)
+			logger.error("Settings file not accessible:", error)
 			throw new Error("Settings file not accessible")
 		}
 		const config = await this.readFile(filePath)

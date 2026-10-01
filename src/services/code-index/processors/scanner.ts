@@ -32,6 +32,7 @@ import { backoffDelayMsNoJitter } from "@roo-code/core"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
 import { Package } from "../../../shared/package"
 import { reportEmbeddingUsage } from "../embedding-usage"
+import { logger } from "../../../utils/logging"
 
 export class DirectoryScanner implements IDirectoryScanner {
 	private readonly batchSegmentThreshold: number
@@ -255,7 +256,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 					if (error instanceof DOMException && error.name === "AbortError") {
 						throw error
 					}
-					console.error(`Error processing file ${filePath} in workspace ${scanWorkspace}:`, error)
+					logger.error(`Error processing file ${filePath} in workspace ${scanWorkspace}:`, error)
 					TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
 						error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
 						stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
@@ -347,7 +348,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 						const errorStatus = error?.status || error?.response?.status || error?.statusCode
 						const errorMessage = error instanceof Error ? error.message : String(error)
 
-						console.error(
+						logger.error(
 							`[DirectoryScanner] Failed to delete points for ${cachedFilePath} in workspace ${scanWorkspace}:`,
 							error,
 						)
@@ -374,7 +375,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 							)
 						}
 						// Log error and continue processing instead of re-throwing
-						console.error(`Failed to delete points for removed file: ${cachedFilePath}`, error)
+						logger.error(`Failed to delete points for removed file: ${cachedFilePath}`, error)
 					}
 				}
 			}
@@ -422,7 +423,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 							deleteError?.status || deleteError?.response?.status || deleteError?.statusCode
 						const errorMessage = deleteError instanceof Error ? deleteError.message : String(deleteError)
 
-						console.error(
+						logger.error(
 							`[DirectoryScanner] Failed to delete points for ${uniqueFilePaths.length} files before upsert in workspace ${scanWorkspace}:`,
 							deleteError,
 						)
@@ -483,7 +484,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 				success = true
 			} catch (error) {
 				lastError = error as Error
-				console.error(
+				logger.error(
 					`[DirectoryScanner] Error processing batch (attempt ${attempts}) in workspace ${scanWorkspace}:`,
 					error,
 				)
@@ -506,7 +507,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 		}
 
 		if (!success && lastError) {
-			console.error(`[DirectoryScanner] Failed to process batch after ${MAX_BATCH_RETRIES} attempts`)
+			logger.error(`[DirectoryScanner] Failed to process batch after ${MAX_BATCH_RETRIES} attempts`)
 			if (onError) {
 				// Preserve the original error message from embedders which now have detailed i18n messages
 				const errorMessage = lastError.message || "Unknown error"

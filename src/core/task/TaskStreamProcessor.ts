@@ -33,6 +33,7 @@ import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvide
 
 import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
 import { IncrementalReasoningFormatter } from "./reasoningFormatter"
+import { logger } from "../../utils/logging"
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 
@@ -284,7 +285,7 @@ export class TaskStreamProcessor {
 				})
 
 				if (!toolUse) {
-					console.error(`Failed to parse tool call for task ${this.access.taskId}:`, chunk)
+					logger.error(`Failed to parse tool call for task ${this.access.taskId}:`, chunk)
 					break
 				}
 
@@ -688,7 +689,7 @@ export class TaskStreamProcessor {
 				while (item && !item.done) {
 					// Check for timeout
 					if (performance.now() - startTime > timeoutMs) {
-						console.warn(
+						logger.warn(
 							`[Background Usage Collection] Timed out after ${timeoutMs}ms for model: ${modelId}, processed ${chunkCount} chunks`,
 						)
 						// Clean up the iterator before breaking
@@ -731,12 +732,12 @@ export class TaskStreamProcessor {
 						lastApiReqIndex,
 					)
 				} else {
-					console.warn(
+					logger.warn(
 						`[Background Usage Collection] Suspicious: request ${apiReqIndex} is complete, but no usage info was found. Model: ${modelId}`,
 					)
 				}
 			} catch (error) {
-				console.error("Error draining stream for usage data:", error)
+				logger.error("Error draining stream for usage data:", error)
 				// Still try to capture whatever usage data we have collected so far
 				if (bgInputTokens > 0 || bgOutputTokens > 0 || bgCacheWriteTokens > 0 || bgCacheReadTokens > 0) {
 					await captureUsageData(

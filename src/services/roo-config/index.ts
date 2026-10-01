@@ -3,6 +3,7 @@ import * as os from "os"
 import fs from "fs/promises"
 
 import { memoizeRooDirectoryLookup } from "./cache"
+import { logger } from "../../utils/logging"
 
 export { invalidateRooDirectoryCache, ROO_DIRECTORY_CACHE_TTL_MS } from "./cache"
 
@@ -233,7 +234,7 @@ export async function discoverSubfolderRooDirectories(cwd: string): Promise<stri
 
 		const fileCount = results.filter((result) => result.type === "file").length
 		if (fileCount >= ROO_DIRECTORY_DISCOVERY_LIMIT) {
-			console.warn(
+			logger.warn(
 				`[roo-config] Subfolder .roo discovery in ${cwd} stopped after ${ROO_DIRECTORY_DISCOVERY_LIMIT} files; .roo directories past that point are ignored.`,
 			)
 		}

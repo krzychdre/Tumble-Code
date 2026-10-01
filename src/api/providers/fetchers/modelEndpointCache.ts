@@ -13,6 +13,7 @@ import { fileExistsAtPath } from "../../../utils/fs"
 import { safeWriteJson } from "@roo-code/core/fs"
 import { getOpenRouterModelEndpoints } from "./openrouter"
 import { getModels } from "./modelCache"
+import { logger } from "../../../utils/logging"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
@@ -86,7 +87,7 @@ export const getModelEndpoints = async ({
 			await writeModelEndpoints(key, modelProviders)
 			// console.log(`[getModelProviders] wrote ${key} endpoints to file cache`)
 		} catch (error) {
-			console.error(`[getModelProviders] error writing ${key} endpoints to file cache`, error)
+			logger.error(`[getModelProviders] error writing ${key} endpoints to file cache`, error)
 		}
 
 		return modelProviders
@@ -96,7 +97,7 @@ export const getModelEndpoints = async ({
 		modelProviders = await readModelEndpoints(key)
 		// console.log(`[getModelProviders] read ${key} endpoints from file cache`)
 	} catch (error) {
-		console.error(`[getModelProviders] error reading ${key} endpoints from file cache`, error)
+		logger.error(`[getModelProviders] error reading ${key} endpoints from file cache`, error)
 	}
 
 	return modelProviders ?? {}

@@ -3,6 +3,7 @@
 import axios from "axios"
 import { RemoteConfigLoader } from "../RemoteConfigLoader"
 import type { MarketplaceItemType } from "@roo-code/types"
+import { logger } from "../../../utils/logging"
 
 // Mock axios
 vi.mock("axios")
@@ -148,7 +149,7 @@ describe("RemoteConfigLoader", () => {
 		})
 
 		it("skips an invalid file with a warning and keeps the valid ones", async () => {
-			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+			const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
 			serveRepo({
 				"modes/good.yaml": modeYaml("good"),
 				// Missing name, description and content.
@@ -243,7 +244,7 @@ describe("RemoteConfigLoader", () => {
 
 		it("does not cache a result with a file that failed to download", async () => {
 			vi.useFakeTimers()
-			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+			const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
 			serveRepo({ "modes/a.yaml": modeYaml("a"), "modes/b.yaml": modeYaml("b") })
 			const serve = mockedAxios.get.getMockImplementation()
 			let failB = true

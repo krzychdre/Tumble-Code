@@ -15,6 +15,7 @@ import { getToolActionApprovalCategory } from "./tools"
 import { isMcpToolAlwaysAllowed } from "./mcp"
 import { getCommandDecision } from "./commands"
 import { getModeBySlug } from "../../shared/modes"
+import { logger } from "../../utils/logging"
 
 // We have auto-approval actions for different categories.
 export type AutoApprovalState =
@@ -212,7 +213,7 @@ export async function checkAutoApproval({
 		try {
 			tool = JSON.parse(text || "{}")
 		} catch (error) {
-			console.error("Failed to parse tool:", error)
+			logger.error("Failed to parse tool:", error)
 		}
 
 		if (!tool) {

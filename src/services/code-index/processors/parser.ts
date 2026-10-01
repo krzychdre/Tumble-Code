@@ -10,6 +10,7 @@ import { MAX_BLOCK_CHARS, MIN_BLOCK_CHARS, MIN_CHUNK_REMAINDER_CHARS, MAX_CHARS_
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
+import { logger } from "../../../utils/logging"
 
 /**
  * Implementation of the code parser interface
@@ -51,7 +52,7 @@ export class CodeParser implements ICodeParser {
 				content = await readFile(filePath, "utf8")
 				fileHash = this.createFileHash(content)
 			} catch (error) {
-				console.error(`Error reading file ${filePath}:`, error)
+				logger.error(`Error reading file ${filePath}:`, error)
 				TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
 					error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
 					stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
@@ -110,7 +111,7 @@ export class CodeParser implements ICodeParser {
 		try {
 			parsers = await loadRequiredLanguageParsers([filePath])
 		} catch (error) {
-			console.error(`Error loading language parser for ${filePath}:`, error)
+			logger.error(`Error loading language parser for ${filePath}:`, error)
 			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
 				error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
 				stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
@@ -121,7 +122,7 @@ export class CodeParser implements ICodeParser {
 
 		const language = parsers[ext]
 		if (!language) {
-			console.warn(`No parser available for file extension: ${ext}`)
+			logger.warn(`No parser available for file extension: ${ext}`)
 			return []
 		}
 

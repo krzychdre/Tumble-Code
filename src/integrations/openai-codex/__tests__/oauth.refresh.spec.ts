@@ -151,7 +151,7 @@ describe("OpenAI Codex OAuth token requests", () => {
 		function manager(initial?: OpenAiCodexCredentials) {
 			const { context, store } = makeContext(initial)
 			const m = new OpenAiCodexOAuthManager()
-			m.initialize(context, () => {})
+			m.initialize(context)
 			return { m, store }
 		}
 

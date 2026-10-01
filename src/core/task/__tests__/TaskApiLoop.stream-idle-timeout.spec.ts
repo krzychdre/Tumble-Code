@@ -10,6 +10,7 @@ vi.mock("../../../api/providers/utils/timeout-config", () => ({
 }))
 
 import { TaskApiLoop, StreamIdleTimeoutError, raceNextChunkWithAbort } from "../TaskApiLoop"
+import { logger } from "../../../utils/logging"
 
 function silentIterator(): AsyncIterator<string> {
 	return { next: () => new Promise(() => {}) }
@@ -119,7 +120,7 @@ describe("TaskApiLoop.attemptApiRequest first-chunk idle timeout (R5)", () => {
 			askSay: { ask: vi.fn(), say: vi.fn() },
 		}
 		const loop = new TaskApiLoop(access)
-		vi.spyOn(console, "log").mockImplementation(() => {})
+		vi.spyOn(logger, "info").mockImplementation(() => {})
 		vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
 		vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
 		vi.spyOn(loop as any, "buildToolsArray").mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })

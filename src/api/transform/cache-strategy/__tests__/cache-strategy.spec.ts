@@ -4,6 +4,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { MultiPointStrategy } from "../multi-point-strategy"
 import { CacheStrategyConfig, ModelInfo, CachePointPlacement } from "../types"
 import { AwsBedrockHandler } from "../../../providers/bedrock"
+import { logger } from "../../../../utils/logging"
 
 // Common test utilities
 const defaultModelInfo: ModelInfo = {
@@ -921,10 +922,10 @@ describe("Cache Strategy", () => {
 				// This test verifies that when new messages have fewer tokens than the smallest combined gap,
 				// the algorithm keeps all existing cache points and doesn't add a new one
 
-				// Create a spy on console.log to capture the actual values
-				const originalConsoleLog = console.log
+				// Create a spy on logger.info to capture the actual values
+				const originalConsoleLog = logger.info
 				const mockConsoleLog = vitest.fn()
-				console.log = mockConsoleLog
+				logger.info = mockConsoleLog
 
 				try {
 					// Create messages with a small addition at the end
@@ -989,8 +990,8 @@ describe("Cache Strategy", () => {
 
 					// No new cache point should be added for the small addition
 				} finally {
-					// Restore original console.log
-					console.log = originalConsoleLog
+					// Restore original logger.info
+					logger.info = originalConsoleLog
 				}
 			})
 

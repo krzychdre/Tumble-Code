@@ -13,6 +13,8 @@ if (fs.existsSync(envPath)) {
 		dotenvx.config({ path: envPath, quiet: true })
 	} catch (e) {
 		// Best-effort only: never fail extension activation due to optional env loading.
+		// The logger is not configured this early; the console is the only place to report it.
+		// eslint-disable-next-line no-console
 		console.warn("Failed to load environment variables:", e)
 	}
 }
@@ -23,7 +25,6 @@ import { TelemetryService, PostHogTelemetryClient } from "@roo-code/telemetry"
 import { customToolRegistry } from "@roo-code/core"
 
 import "./utils/path" // Necessary to have access to String.prototype.toPosix.
-import { createOutputChannelLogger, createDualLogger } from "./utils/outputChannelLogger"
 import { initializeNetworkProxy } from "./utils/networkProxy"
 
 import { Package } from "./shared/package"
@@ -41,7 +42,7 @@ import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
 import { disposeLanguageParsers } from "./services/tree-sitter/languageParser"
 import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
-import { configureLogger, createLineLogger } from "./utils/logging"
+import { configureLogger, logger, setDebugLogging } from "./utils/logging"
 import { perfCounters } from "./utils/perfCounters"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
@@ -104,23 +105,21 @@ async function checkWorktreeAutoOpen(
 			// Clear the state first to prevent re-triggering
 			await context.globalState.update("worktreeAutoOpenPath", undefined)
 
-			outputChannel.appendLine(
-				`[Worktree] Auto-opening Tumble Code sidebar for worktree: ${worktreeAutoOpenPath}`,
-			)
+			logger.info(`[Worktree] Auto-opening Tumble Code sidebar for worktree: ${worktreeAutoOpenPath}`)
 
 			// Open the Tumble Code sidebar with a slight delay to ensure UI is ready
 			setTimeout(async () => {
 				try {
 					await vscode.commands.executeCommand(`${Package.name}.plusButtonClicked`)
 				} catch (error) {
-					outputChannel.appendLine(
+					logger.error(
 						`[Worktree] Error auto-opening sidebar: ${error instanceof Error ? error.message : String(error)}`,
 					)
 				}
 			}, 500)
 		}
 	} catch (error) {
-		outputChannel.appendLine(
+		logger.error(
 			`[Worktree] Error checking worktree auto-open: ${error instanceof Error ? error.message : String(error)}`,
 		)
 	}
@@ -132,18 +131,35 @@ export async function activate(context: vscode.ExtensionContext) {
 	extensionContext = context
 	outputChannel = vscode.window.createOutputChannel(Package.outputChannel)
 	context.subscriptions.push(outputChannel)
+	const isDebugSettingOn = () => vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false) === true
+	const cliRuntime = readCliRuntimeEnv(process.env)
 	// Before anything below can log (settings migrations run during activation).
-	configureLogger(createLineLogger((line) => outputChannel.appendLine(line)))
-	outputChannel.appendLine(`${Package.name} extension activated - ${JSON.stringify(Package)}`)
+	configureLogger({
+		appendLine: (line) => outputChannel.appendLine(line),
+		// A development host keeps a console copy for the debugger. The CLI mutes the
+		// console except console.error, which it writes to its debug log file, so it
+		// gets errors only and its terminal UI stays clean.
+		consoleLevel:
+			context.extensionMode === vscode.ExtensionMode.Development
+				? "debug"
+				: cliRuntime.isCliRuntime || cliRuntime.codexAuthOnly
+					? "error"
+					: undefined,
+		debug: isDebugSettingOn(),
+	})
+	logger.info(`${Package.name} extension activated - ${JSON.stringify(Package)}`)
 
-	// The debug setting also turns on the [perf] counters (CORE-R7 step 1).
-	const syncPerfCounters = () =>
-		perfCounters.setEnabled(vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false) === true)
-	syncPerfCounters()
+	// The debug setting turns on debug log lines and the [perf] counters.
+	const syncDebugSetting = () => {
+		const enabled = isDebugSettingOn()
+		setDebugLogging(enabled)
+		perfCounters.setEnabled(enabled)
+	}
+	syncDebugSetting()
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration((event) => {
 			if (event.affectsConfiguration(`${Package.name}.debug`)) {
-				syncPerfCounters()
+				syncDebugSetting()
 			}
 		}),
 	)
@@ -151,8 +167,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Provider-auth commands need the bundled OAuth implementation and the same
 	// SecretStorage as normal CLI runs, but not full extension activation (cloud,
 	// telemetry, indexing, webview, or terminal setup).
-	if (readCliRuntimeEnv(process.env).codexAuthOnly) {
-		openAiCodexOAuthManager.initialize(context, (message) => outputChannel.appendLine(message))
+	if (cliRuntime.codexAuthOnly) {
+		openAiCodexOAuthManager.initialize(context)
 		return {
 			getOpenAiCodexOAuthManager: () => openAiCodexOAuthManager,
 		}
@@ -161,7 +177,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize network proxy configuration early, before any network requests.
 	// When proxyUrl is configured, all HTTP/HTTPS traffic will be routed through it.
 	// Only applied in debug mode (F5).
-	await initializeNetworkProxy(context, outputChannel)
+	await initializeNetworkProxy(context)
 
 	// Sync cloud URL overrides from VS Code settings into the @roo-code/cloud package.
 	// This must happen before any cloud service initialization so that the
@@ -177,9 +193,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Run in the background -- the prompt awaits the user's button click, and if we
 	// awaited here the rest of activate() (including registerCommands) would block
 	// until the user responds, leaving every `roo-cline.*` command unregistered.
-	void migrateFromRooCode(context, outputChannel).catch((error) => {
+	void migrateFromRooCode(context).catch((error) => {
 		const message = error instanceof Error ? error.message : String(error)
-		outputChannel.appendLine(`[migrate-from-roo-code] background failure: ${message}`)
+		logger.error(`[migrate-from-roo-code] background failure: ${message}`)
 	})
 
 	// Initialize telemetry service.
@@ -188,11 +204,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	try {
 		telemetryService.register(new PostHogTelemetryClient())
 	} catch (error) {
-		console.warn("Failed to register PostHogTelemetryClient:", error)
+		logger.warn("Failed to register PostHogTelemetryClient:", error)
 	}
 
-	// Create logger for cloud services.
-	const cloudLogger = createDualLogger(createOutputChannelLogger(outputChannel))
+	// The cloud package logs through this function.
+	const cloudLogger = (...args: unknown[]) => logger.info(...args)
 
 	// Initialize i18n for internationalization support.
 	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
@@ -201,7 +217,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	TerminalRegistry.initialize()
 
 	// Initialize OpenAI Codex OAuth manager for ChatGPT subscription-based access.
-	openAiCodexOAuthManager.initialize(context, (message) => outputChannel.appendLine(message))
+	openAiCodexOAuthManager.initialize(context)
 
 	// Get default commands from configuration.
 	const defaultCommands = vscode.workspace.getConfiguration(Package.name).get<string[]>("allowedCommands") || []
@@ -237,7 +253,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		void manager?.initialize(contextProxy).catch((error) => {
 			const message = error instanceof Error ? error.message : String(error)
-			outputChannel.appendLine(
+			logger.error(
 				`[CodeIndexManager] Error during background CodeIndexManager configuration/indexing for ${folder.uri.fsPath}: ${message}`,
 			)
 		})
@@ -299,7 +315,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						TelemetryService.instance.register(cloudService.telemetryClient)
 					}
 				} catch (error) {
-					outputChannel.appendLine(
+					logger.error(
 						`[CloudService] Failed to register TelemetryClient: ${error instanceof Error ? error.message : String(error)}`,
 					)
 				}
@@ -308,7 +324,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				context.subscriptions.push(cloudService)
 			} catch (error) {
 				cloudService = undefined
-				outputChannel.appendLine(
+				logger.error(
 					`[CloudService] initialization failed - continuing in local-only mode: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}
@@ -319,7 +335,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			try {
 				await provider.initializeCloudProfileSyncWhenReady()
 			} catch (error) {
-				outputChannel.appendLine(
+				logger.error(
 					`[CloudService] Failed to initialize cloud profile sync: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}
@@ -328,7 +344,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			// signed-out cloud facts: push the real ones.
 			await postStateListener()
 		},
-		(message) => outputChannel.appendLine(message),
+		(message) => logger.info(message),
 	)
 
 	// Finish initializing the provider.
@@ -342,7 +358,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	registerCommands({ context, outputChannel, provider })
 	replaceOrphanedTabs({ context, outputChannel }).catch((error) =>
-		outputChannel.appendLine(
+		logger.error(
 			`Failed to replace an orphaned editor tab: ${error instanceof Error ? error.message : String(error)}`,
 		),
 	)
@@ -352,15 +368,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Auto-import configuration if specified in settings.
 	try {
-		await autoImportSettings(outputChannel, {
+		await autoImportSettings({
 			providerSettingsManager: provider.providerSettingsManager,
 			contextProxy: provider.contextProxy,
 			customModesManager: provider.customModesManager,
 		})
 	} catch (error) {
-		outputChannel.appendLine(
-			`[AutoImport] Error during auto-import: ${error instanceof Error ? error.message : String(error)}`,
-		)
+		logger.error(`[AutoImport] Error during auto-import: ${error instanceof Error ? error.message : String(error)}`)
 	}
 
 	/**
@@ -416,7 +430,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			{ path: path.join(context.extensionPath, "node_modules/@roo-code/cloud"), pattern: "**/*" },
 		]
 
-		console.log(
+		logger.info(
 			`♻️♻️♻️ Core auto-reloading: Watching for changes in ${watchPaths.map(({ path }) => path).join(", ")}`,
 		)
 
@@ -429,10 +443,10 @@ export async function activate(context: vscode.ExtensionContext) {
 				clearTimeout(reloadTimeout)
 			}
 
-			console.log(`♻️ ${uri.fsPath} changed; scheduling reload...`)
+			logger.info(`♻️ ${uri.fsPath} changed; scheduling reload...`)
 
 			reloadTimeout = setTimeout(() => {
-				console.log(`♻️ Reloading host after debounce delay...`)
+				logger.info(`♻️ Reloading host after debounce delay...`)
 				vscode.commands.executeCommand("workbench.action.reloadWindow")
 			}, DEBOUNCE_DELAY)
 		}
@@ -473,10 +487,10 @@ export async function activate(context: vscode.ExtensionContext) {
 				context,
 				api,
 				provider,
-				log: (message: string) => outputChannel.appendLine(message),
+				log: (message: string) => logger.info(message),
 			})
 		} catch (error) {
-			outputChannel.appendLine(
+			logger.error(
 				`[bridge] Failed to set up remote control bridge: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		}
@@ -487,15 +501,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
 // This method is called when your extension is deactivated.
 export async function deactivate() {
-	outputChannel.appendLine(`${Package.name} extension deactivated`)
+	logger.info(`${Package.name} extension deactivated`)
 
 	// Coalesced chat-message writes of streaming tasks (CORE-R7 step 4).
 	try {
 		await flushPendingClineMessageSaves()
 	} catch (error) {
-		outputChannel.appendLine(
-			`Failed to write pending task messages: ${error instanceof Error ? error.message : String(error)}`,
-		)
+		logger.error(`Failed to write pending task messages: ${error instanceof Error ? error.message : String(error)}`)
 	}
 
 	if (cloudService && CloudService.hasInstance()) {
@@ -512,9 +524,9 @@ export async function deactivate() {
 				CloudService.instance.off("user-info", userInfoHandler)
 			}
 
-			outputChannel.appendLine("CloudService event handlers cleaned up")
+			logger.info("CloudService event handlers cleaned up")
 		} catch (error) {
-			outputChannel.appendLine(
+			logger.error(
 				`Failed to clean up CloudService event handlers: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		}

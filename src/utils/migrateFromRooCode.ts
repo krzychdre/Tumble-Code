@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
 import { fileExistsAtPath } from "./fs"
+import { logger } from "./logging"
 
 const MIGRATION_COMPLETED_KEY = "tumble-code.migrationFromRooCodeCompleted"
 const LEGACY_PUBLISHER = "RooVeterinaryInc"
@@ -51,10 +52,7 @@ const CONFIG_KEYS_TO_MIGRATE = [
  * Idempotent: once the migration runs successfully (or the user declines),
  * a flag in globalState prevents it from prompting again.
  */
-export async function migrateFromRooCode(
-	context: vscode.ExtensionContext,
-	outputChannel: vscode.OutputChannel,
-): Promise<void> {
+export async function migrateFromRooCode(context: vscode.ExtensionContext): Promise<void> {
 	if (context.globalState.get<boolean>(MIGRATION_COMPLETED_KEY)) {
 		return
 	}
@@ -79,25 +77,25 @@ export async function migrateFromRooCode(
 	if (choice !== "Import") {
 		// User declined; mark complete to avoid re-prompting.
 		await context.globalState.update(MIGRATION_COMPLETED_KEY, true)
-		outputChannel.appendLine("[migrate-from-roo-code] User declined import; skipping.")
+		logger.info("[migrate-from-roo-code] User declined import; skipping.")
 		return
 	}
 
 	try {
 		if (hasLegacyConfig) {
-			await migrateConfigKeys(outputChannel)
+			await migrateConfigKeys()
 		}
 		if (hasLegacyStorage && legacyStorageDir) {
-			await migrateGlobalStorage(legacyStorageDir, context.globalStorageUri.fsPath, outputChannel)
+			await migrateGlobalStorage(legacyStorageDir, context.globalStorageUri.fsPath)
 		}
 		await context.globalState.update(MIGRATION_COMPLETED_KEY, true)
-		outputChannel.appendLine("[migrate-from-roo-code] Migration complete.")
+		logger.info("[migrate-from-roo-code] Migration complete.")
 		vscode.window.showInformationMessage(
 			"Tumble Code imported your Roo Code settings. API keys must be re-entered manually.",
 		)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
-		outputChannel.appendLine(`[migrate-from-roo-code] Migration failed: ${message}`)
+		logger.error(`[migrate-from-roo-code] Migration failed: ${message}`)
 		// Leave the flag unset so the user can retry on next activation.
 	}
 }
@@ -113,7 +111,7 @@ function detectLegacyConfig(): boolean {
 	})
 }
 
-async function migrateConfigKeys(outputChannel: vscode.OutputChannel): Promise<void> {
+async function migrateConfigKeys(): Promise<void> {
 	const legacy = vscode.workspace.getConfiguration(LEGACY_CONFIG_NAMESPACE)
 	const next = vscode.workspace.getConfiguration(NEW_CONFIG_NAMESPACE)
 	if (typeof legacy.inspect !== "function") return
@@ -122,11 +120,11 @@ async function migrateConfigKeys(outputChannel: vscode.OutputChannel): Promise<v
 		const inspected = legacy.inspect(key)
 		if (inspected?.globalValue !== undefined) {
 			await next.update(key, inspected.globalValue, vscode.ConfigurationTarget.Global)
-			outputChannel.appendLine(`[migrate-from-roo-code] copied global ${LEGACY_CONFIG_NAMESPACE}.${key}`)
+			logger.info(`[migrate-from-roo-code] copied global ${LEGACY_CONFIG_NAMESPACE}.${key}`)
 		}
 		if (inspected?.workspaceValue !== undefined) {
 			await next.update(key, inspected.workspaceValue, vscode.ConfigurationTarget.Workspace)
-			outputChannel.appendLine(`[migrate-from-roo-code] copied workspace ${LEGACY_CONFIG_NAMESPACE}.${key}`)
+			logger.info(`[migrate-from-roo-code] copied workspace ${LEGACY_CONFIG_NAMESPACE}.${key}`)
 		}
 	}
 }
@@ -141,14 +139,10 @@ function computeLegacyStorageDir(context: vscode.ExtensionContext): string | und
 	return path.join(parent, `${LEGACY_PUBLISHER}.${LEGACY_NAME}`)
 }
 
-async function migrateGlobalStorage(
-	legacyDir: string,
-	newDir: string,
-	outputChannel: vscode.OutputChannel,
-): Promise<void> {
+async function migrateGlobalStorage(legacyDir: string, newDir: string): Promise<void> {
 	await fs.mkdir(newDir, { recursive: true })
 	await copyDirectory(legacyDir, newDir)
-	outputChannel.appendLine(`[migrate-from-roo-code] copied globalStorage from ${legacyDir} to ${newDir}`)
+	logger.info(`[migrate-from-roo-code] copied globalStorage from ${legacyDir} to ${newDir}`)
 }
 
 async function copyDirectory(src: string, dest: string): Promise<void> {

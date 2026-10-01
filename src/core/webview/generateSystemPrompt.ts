@@ -6,6 +6,7 @@ import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildSystemPromptInput } from "../prompts/system-prompt-input"
 
 import { ClineProvider } from "./ClineProvider"
+import { logger } from "../../utils/logging"
 
 /**
  * The "copy system prompt" preview. It shows exactly what the live request
@@ -26,7 +27,7 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 	try {
 		modelInfo = resolveProviderModel(state.apiConfiguration).info
 	} catch (error) {
-		console.error("Error fetching model info for system prompt preview:", error)
+		logger.error("Error fetching model info for system prompt preview:", error)
 	}
 
 	return SYSTEM_PROMPT(

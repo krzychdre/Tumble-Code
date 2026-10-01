@@ -7,6 +7,7 @@
 // (or, on a stalled connection, only after the R5 idle timeout fired).
 
 import { TaskApiLoop } from "../TaskApiLoop"
+import { logger } from "../../../utils/logging"
 
 /**
  * A stream whose next() calls only resolve when the test pushes a result.
@@ -53,7 +54,7 @@ async function runProcessStream(stream: AsyncIterable<any>, streamProcessor: any
 
 describe("TaskApiLoop.processStream chunk order (F3)", () => {
 	beforeEach(() => {
-		vi.spyOn(console, "log").mockImplementation(() => {})
+		vi.spyOn(logger, "info").mockImplementation(() => {})
 	})
 
 	afterEach(() => {

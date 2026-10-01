@@ -1,6 +1,7 @@
 import * as path from "path"
 import { Parser as ParserT, Language as LanguageT, Query as QueryT } from "web-tree-sitter"
 import { TREE_SITTER_GRAMMARS, hasTreeSitterGrammar } from "./languageGrammars"
+import { logger } from "../../utils/logging"
 
 export interface LanguageParser {
 	[key: string]: {
@@ -17,7 +18,7 @@ async function loadLanguage(wasmPath: string) {
 		const { Language } = require("web-tree-sitter")
 		return await Language.load(wasmPath)
 	} catch (error) {
-		console.error(`Error loading language: ${wasmPath}: ${error instanceof Error ? error.message : error}`)
+		logger.error(`Error loading language: ${wasmPath}: ${error instanceof Error ? error.message : error}`)
 		throw error
 	}
 }
@@ -30,7 +31,7 @@ function initParser(): Promise<void> {
 		const { Parser } = require("web-tree-sitter")
 		parserInit = (Parser.init() as Promise<void>).catch((error: unknown) => {
 			parserInit = undefined
-			console.error(`Error initializing parser: ${error instanceof Error ? error.message : error}`)
+			logger.error(`Error initializing parser: ${error instanceof Error ? error.message : error}`)
 			throw error
 		})
 	}

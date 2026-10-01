@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 
 import { formatResponse } from "../../prompts/responses"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { logger } from "../../../utils/logging"
 
 /**
  * Characterization of the tool callbacks (`askApproval`, `pushToolResult`, `handleError`)
@@ -170,7 +171,7 @@ describe.each<BlockKind>(["tool_use", "mcp_tool_use"])("tool callbacks for a %s 
 	})
 
 	it("delivers only the first result for a block and warns about the duplicate", async () => {
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		useMcpToolHandle.mockImplementation(async (_task: any, _block: any, callbacks: any) => {
 			callbacks.pushToolResult("first")
 			callbacks.pushToolResult("second")

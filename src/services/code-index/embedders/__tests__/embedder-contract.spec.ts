@@ -126,6 +126,7 @@ import { GeminiEmbedder } from "../gemini"
 import { MistralEmbedder } from "../mistral"
 import { BedrockEmbedder } from "../bedrock"
 import { CodeIndexOllamaEmbedder } from "../ollama"
+import { logger } from "../../../../utils/logging"
 
 /** The Ollama REST API and a full OpenAI-compatible endpoint URL both go through fetch. */
 async function fakeFetch(input: unknown, init?: RequestInit): Promise<Response> {
@@ -211,8 +212,8 @@ describe.each(cases)("embedder contract: $name", ({ create, maxItemTokens }) => 
 		server.reset()
 		captureEvent().mockClear()
 		vi.stubGlobal("fetch", vi.fn(fakeFetch))
-		vi.spyOn(console, "warn").mockImplementation(() => {})
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 	})
 
 	afterEach(() => {
@@ -321,8 +322,8 @@ describe("rate limits are tracked per endpoint", () => {
 		clock += 60 * 60 * 1000
 		vi.useFakeTimers({ now: clock })
 		server.reset()
-		vi.spyOn(console, "warn").mockImplementation(() => {})
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 	})
 
 	afterEach(() => {

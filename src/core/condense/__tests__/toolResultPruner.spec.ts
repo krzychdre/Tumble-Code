@@ -14,6 +14,7 @@ import { MICROCOMPACT_CLEARED_PLACEHOLDER } from "../../context-management/micro
 import { ApiMessage } from "../../task-persistence/apiMessages"
 import { computeCondenseKeepBoundary } from "../index"
 import { PRUNE_NOTICE_PREFIX, pruneToolResults, resolveKeepBoundary } from "../toolResultPruner"
+import { logger } from "../../../utils/logging"
 
 /**
  * Unit tests for the deterministic tool-result pruner (WS-C).
@@ -475,7 +476,7 @@ describe("pruneToolResults", () => {
 			...tail(),
 		]
 		vi.spyOn(store, "save").mockRejectedValue(new Error("disk full"))
-		vi.spyOn(console, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		const result = await pruneToolResults(messages, { keepBoundary: 3, budgetBytes: BUDGET, store })
 

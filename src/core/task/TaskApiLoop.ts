@@ -54,6 +54,7 @@ import { RetryHandler, apiErrorDisplayText, isRateLimitError, setLastGlobalApiRe
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
 import type { Task } from "./Task"
+import { logger } from "../../utils/logging"
 
 /**
  * Interface for Task access needed by TaskApiLoop.
@@ -393,7 +394,7 @@ export class TaskApiLoop {
 			// Foreground tasks pass `maxAgentTurns === undefined` and are unaffected.
 			if (this.access.maxAgentTurns !== undefined) {
 				if (this.access.agentTurnCount >= this.access.maxAgentTurns) {
-					console.log(
+					logger.info(
 						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
 					)
 					// Use a distinct abortReason so callers can distinguish
@@ -771,7 +772,7 @@ export class TaskApiLoop {
 				this.access.streamProcessor.processChunk(chunk, streamModelInfo)
 
 				if (this.access.abort) {
-					console.log(`aborting stream, this.abandoned = ${this.access.abandoned}`)
+					logger.debug(`aborting stream, this.abandoned = ${this.access.abandoned}`)
 
 					if (!this.access.abandoned) {
 						await abortStream("user_cancelled")
@@ -847,7 +848,7 @@ export class TaskApiLoop {
 		)
 
 		drainStreamInBackgroundToFindAllUsage(lastApiReqIndex).catch((error) => {
-			console.error("Background usage collection failed:", error)
+			logger.error("Background usage collection failed:", error)
 		})
 	}
 
@@ -1029,7 +1030,7 @@ export class TaskApiLoop {
 				toolDescription: () => "attempt_completion (text-only completion fallback)",
 			})
 		} catch (error) {
-			console.error(
+			logger.error(
 				`[Task#${this.access.taskId}.${this.access.instanceId}] text-completion fallback failed: ${error?.message ?? error}`,
 			)
 			return "skipped"
@@ -1117,7 +1118,7 @@ export class TaskApiLoop {
 			)
 
 			if (this.access.abort) {
-				console.log(
+				logger.info(
 					`[Task#${this.access.taskId}.${this.access.instanceId}] Task aborted during empty-assistant retry backoff`,
 				)
 				return "return_true"
@@ -1207,7 +1208,7 @@ export class TaskApiLoop {
 					return "return_true"
 				}
 
-				console.error(
+				logger.error(
 					`[Task#${this.access.taskId}.${this.access.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
 				)
 
@@ -1239,7 +1240,7 @@ export class TaskApiLoop {
 					await this.retryHandler.backoffAndAnnounce(currentItem.retryAttempt ?? 0, error)
 
 					if (this.access.abort) {
-						console.log(
+						logger.info(
 							`[Task#${this.access.taskId}.${this.access.instanceId}] Task aborted during mid-stream retry backoff`,
 						)
 						this.access.abortReason = "user_cancelled"
@@ -1330,7 +1331,7 @@ export class TaskApiLoop {
 						contextTokens = await this.access.api.countTokens(fallbackContent)
 					}
 				} catch (err) {
-					console.error(`[Task#${this.access.taskId}] Failed to compute fallback contextTokens:`, err)
+					logger.error(`[Task#${this.access.taskId}] Failed to compute fallback contextTokens:`, err)
 					// Leave contextTokens as 0 → context management skipped (same as today)
 				}
 			}
@@ -1426,7 +1427,7 @@ export class TaskApiLoop {
 		abortSignal.addEventListener(
 			"abort",
 			() => {
-				console.log(
+				logger.debug(
 					`[Task#${this.access.taskId}.${this.access.instanceId}] AbortSignal triggered for current request`,
 				)
 				this.access.currentRequestAbortController = undefined

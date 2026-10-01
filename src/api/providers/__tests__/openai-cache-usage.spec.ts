@@ -4,6 +4,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 
 import { ApiHandlerOptions } from "../../../shared/api"
 import { OpenAiHandler } from "../openai"
+import { logger } from "../../../utils/logging"
 
 const mockCreate = vitest.fn()
 
@@ -133,7 +134,7 @@ describe("OpenAiHandler cache usage reporting", () => {
 
 	it("dumps the raw usage object when ROO_LOG_RAW_USAGE=1", async () => {
 		process.env.ROO_LOG_RAW_USAGE = "1"
-		const logSpy = vitest.spyOn(console, "log").mockImplementation(() => {})
+		const logSpy = vitest.spyOn(logger, "info").mockImplementation(() => {})
 
 		mockCreate.mockResolvedValue(
 			streamWithUsage({
@@ -151,7 +152,7 @@ describe("OpenAiHandler cache usage reporting", () => {
 	})
 
 	it("does not log raw usage by default", async () => {
-		const logSpy = vitest.spyOn(console, "log").mockImplementation(() => {})
+		const logSpy = vitest.spyOn(logger, "info").mockImplementation(() => {})
 
 		mockCreate.mockResolvedValue(streamWithUsage({ prompt_tokens: 1000, completion_tokens: 10 }))
 

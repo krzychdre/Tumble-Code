@@ -28,6 +28,7 @@ import { type MessageQueueService } from "../message-queue/MessageQueueService"
 import { type ClineProvider } from "../webview/ClineProvider"
 import { type AutoApprovalOverride } from "./Task"
 import pWaitFor from "p-wait-for"
+import { logger } from "../../utils/logging"
 
 /**
  * How long a headless subagent's interactive ask (followup question) may wait
@@ -115,12 +116,12 @@ export class TaskAskSay {
 					setTimeout(() => {
 						this.access
 							.submitUserMessage(queued.text, queued.images)
-							.catch((err) => console.error(`[Task] Failed to submit queued message:`, err))
+							.catch((err) => logger.error(`[Task] Failed to submit queued message:`, err))
 					}, 0)
 				}
 			}
 		} catch (e) {
-			console.error(`[Task] Queue processing error:`, e)
+			logger.error(`[Task] Queue processing error:`, e)
 		}
 	}
 
@@ -558,7 +559,7 @@ export class TaskAskSay {
 				void this.access.history.postEditedClineMessage(this.access.clineMessages[lastFollowUpIndex])
 				// Save the updated messages
 				this.access.history.saveClineMessages().catch((error) => {
-					console.error("Failed to save answered follow-up state:", error)
+					logger.error("Failed to save answered follow-up state:", error)
 				})
 			}
 		}
@@ -573,7 +574,7 @@ export class TaskAskSay {
 				this.access.clineMessages[lastToolAskIndex].isAnswered = true
 				void this.access.history.updateClineMessage(this.access.clineMessages[lastToolAskIndex])
 				this.access.history.saveClineMessages().catch((error) => {
-					console.error("Failed to save answered tool-ask state:", error)
+					logger.error("Failed to save answered tool-ask state:", error)
 				})
 			}
 		}

@@ -2,6 +2,7 @@ import type { ModelRecord } from "@roo-code/types"
 import { deepSeekModelAliases, deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
 
 import { DEFAULT_HEADERS } from "../constants"
+import { logger } from "../../../utils/logging"
 
 /**
  * Fetches available models from the DeepSeek API and merges them with known specs.
@@ -40,7 +41,7 @@ export async function getDeepSeekModels(baseUrl?: string, apiKey?: string): Prom
 				errorBody = "(unable to read response body)"
 			}
 
-			console.error(`[getDeepSeekModels] HTTP error:`, {
+			logger.error(`[getDeepSeekModels] HTTP error:`, {
 				status: response.status,
 				statusText: response.statusText,
 				url,
@@ -53,7 +54,7 @@ export async function getDeepSeekModels(baseUrl?: string, apiKey?: string): Prom
 		const data = await response.json()
 
 		if (!data?.data || !Array.isArray(data.data)) {
-			console.error("[getDeepSeekModels] Unexpected response format:", data)
+			logger.error("[getDeepSeekModels] Unexpected response format:", data)
 			throw new Error("Failed to fetch DeepSeek models: Unexpected response format.")
 		}
 

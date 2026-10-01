@@ -17,6 +17,7 @@ import { readApiMessages, saveApiMessages, saveTaskMessages } from "../task-pers
 import { readTaskMessages } from "../task-persistence/taskMessages"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 import { findLastNewTaskToolUse, formatSubtaskResult, hasToolResultFor } from "./delegationHistory"
+import { logger } from "../../utils/logging"
 
 /**
  * What the delegation state machine needs from its provider. The member names
@@ -127,11 +128,11 @@ export class DelegationService {
 			const flushSuccess = await parent.flushPendingToolResultsToHistory()
 
 			if (!flushSuccess) {
-				console.warn(`[delegateParentAndOpenChild] Flush failed for parent ${parentTaskId}, retrying...`)
+				logger.warn(`[delegateParentAndOpenChild] Flush failed for parent ${parentTaskId}, retrying...`)
 				const retrySuccess = await parent.retrySaveApiConversationHistory()
 
 				if (!retrySuccess) {
-					console.error(
+					logger.error(
 						`[delegateParentAndOpenChild] CRITICAL: Parent ${parentTaskId} API history not persisted to disk. Child return may produce stale state.`,
 					)
 					vscode.window.showWarningMessage(

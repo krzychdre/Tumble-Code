@@ -7,6 +7,7 @@ import { TerminalProcess } from "./TerminalProcess"
 import { Terminal } from "./Terminal"
 import { ExecaTerminal } from "./ExecaTerminal"
 import { ShellIntegrationManager } from "./ShellIntegrationManager"
+import { logger } from "../../utils/logging"
 
 // Although vscode.window.terminals provides a list of all open terminals,
 // there's no way to know whether they're busy or not (exitStatus does not
@@ -50,7 +51,7 @@ export class TerminalRegistry {
 				async (e: vscode.TerminalShellExecutionStartEvent) => {
 					const terminal = this.getTerminalByVSCETerminal(e.terminal)
 
-					console.info("[onDidStartTerminalShellExecution]", {
+					logger.debug("[onDidStartTerminalShellExecution]", {
 						command: e.execution?.commandLine?.value,
 						terminalId: terminal?.id,
 					})
@@ -65,7 +66,7 @@ export class TerminalRegistry {
 						terminal.setActiveStream(stream)
 						terminal.busy = true // Mark terminal as busy when shell execution starts
 					} else {
-						console.error(
+						logger.error(
 							"[onDidStartTerminalShellExecution] Shell execution started, but not from a Tumble Code-tracked terminal:",
 							e,
 						)
@@ -83,14 +84,14 @@ export class TerminalRegistry {
 					const process = terminal?.process
 					const exitDetails = TerminalProcess.interpretExitCode(e.exitCode)
 
-					console.info("[onDidEndTerminalShellExecution]", {
+					logger.debug("[onDidEndTerminalShellExecution]", {
 						command: e.execution?.commandLine?.value,
 						terminalId: terminal?.id,
 						...exitDetails,
 					})
 
 					if (!terminal) {
-						console.error(
+						logger.error(
 							"[onDidEndTerminalShellExecution] Shell execution ended, but not from a Tumble Code-tracked terminal:",
 							e,
 						)
@@ -109,7 +110,7 @@ export class TerminalRegistry {
 						// waiting for completion, deliver the signal so it doesn't
 						// hang forever. See #489 / #622.
 						if (process) {
-							console.info(
+							logger.debug(
 								"[TerminalRegistry] End event arrived before running=true (race); delivering completion signal",
 								{ terminalId: terminal.id, exitCode: e.exitCode },
 							)
@@ -122,7 +123,7 @@ export class TerminalRegistry {
 					}
 
 					if (!process) {
-						console.error(
+						logger.error(
 							"[TerminalRegistry] Shell execution end event received on running terminal, but process is undefined:",
 							{ terminalId: terminal.id, exitCode: e.exitCode },
 						)
@@ -139,7 +140,7 @@ export class TerminalRegistry {
 				this.disposables.push(endDisposable)
 			}
 		} catch (error) {
-			console.error("[TerminalRegistry] Error setting up shell execution handlers:", error)
+			logger.error("[TerminalRegistry] Error setting up shell execution handlers:", error)
 		}
 	}
 
@@ -326,7 +327,7 @@ export class TerminalRegistry {
 					try {
 						terminal.process?.abort()
 					} catch (error) {
-						console.error(
+						logger.error(
 							`[TerminalRegistry] Error aborting process for terminal ${terminal.id} on release:`,
 							error,
 						)

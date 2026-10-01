@@ -6,6 +6,7 @@ import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 
 import type { McpConnection } from "../McpConnectionManager"
 import { McpToolCatalog } from "../McpToolCatalog"
+import { logger } from "../../../utils/logging"
 
 function connected(request: Mock, overrides: Record<string, unknown> = {}): McpConnection {
 	return {
@@ -25,7 +26,7 @@ describe("McpToolCatalog", () => {
 	let catalog: McpToolCatalog
 
 	beforeEach(() => {
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 		connections = []
 		entries = {}
 		written = []

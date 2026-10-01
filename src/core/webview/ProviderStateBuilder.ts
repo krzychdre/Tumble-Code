@@ -31,6 +31,7 @@ import type { ContextProxy } from "../config/ContextProxy"
 import type { Task } from "../task/Task"
 import type { TaskHistoryStore } from "../task-persistence"
 import { sanitizeCommandList } from "../auto-approval/sanitizeCommandList"
+import { logger } from "../../utils/logging"
 
 /** What `ClineProvider.getState()` returns: the settings accessor of the extension host. */
 export type ProviderState = Omit<
@@ -135,7 +136,7 @@ async function readCloudFacts(): Promise<CloudFacts> {
 	// Synchronous facts are read without an await, so a state build takes as
 	// many microtask turns as before CORE-R1 (timing-sensitive callers exist).
 	const logFailure = (what: string, error: unknown) =>
-		console.error(`[getState] failed to get ${what}: ${error instanceof Error ? error.message : String(error)}`)
+		logger.error(`[getState] failed to get ${what}: ${error instanceof Error ? error.message : String(error)}`)
 
 	let organizationAllowList: OrganizationAllowList = ORGANIZATION_ALLOW_ALL
 	try {
@@ -222,7 +223,7 @@ function resolveCommandList(key: "allowedCommands" | "deniedCommands", globalSta
 				: sanitizeCommandList(scopes?.globalValue)
 		return [...new Set([...fromGlobalState, ...fromSettings])]
 	} catch (error) {
-		console.error(`Error reading the ${key} setting:`, error)
+		logger.error(`Error reading the ${key} setting:`, error)
 		return [...new Set(fromGlobalState)]
 	}
 }

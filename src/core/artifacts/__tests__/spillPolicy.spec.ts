@@ -13,6 +13,7 @@ import {
 	SPILL_BYPASS_TOOLS,
 	type ToolResultSpillContext,
 } from "../spillPolicy"
+import { logger } from "../../../utils/logging"
 
 /** Store double that records what it was asked to persist. */
 function createStore(overrides: Partial<ArtifactStore> = {}) {
@@ -118,7 +119,7 @@ describe("applyToolResultSpill", () => {
 			}) as unknown as ArtifactStore["save"],
 		})
 		const text = makeLines(400)
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		const outcome = await applyToolResultSpill(text, "search_files", makeContext(store, 1024))
 

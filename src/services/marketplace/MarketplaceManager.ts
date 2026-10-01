@@ -17,6 +17,7 @@ import type { CustomModesManager } from "../../core/config/CustomModesManager"
 
 import { RemoteConfigLoader } from "./RemoteConfigLoader"
 import { SimpleInstaller } from "./SimpleInstaller"
+import { logger } from "../../utils/logging"
 
 export interface MarketplaceItemsResponse {
 	organizationMcps: MarketplaceItem[]
@@ -47,7 +48,7 @@ export class MarketplaceManager {
 					orgSettings = CloudService.instance.getOrganizationSettings()
 				}
 			} catch (orgError) {
-				console.warn("Failed to load organization settings:", orgError)
+				logger.warn("Failed to load organization settings:", orgError)
 				const orgErrorMessage = orgError instanceof Error ? orgError.message : String(orgError)
 				errors.push(`Organization settings: ${orgErrorMessage}`)
 			}
@@ -81,7 +82,7 @@ export class MarketplaceManager {
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			console.error("Failed to load marketplace items:", error)
+			logger.error("Failed to load marketplace items:", error)
 
 			return {
 				organizationMcps: [],
@@ -269,7 +270,7 @@ export class MarketplaceManager {
 		try {
 			globalSettingsPath = await ensureSettingsDirectoryExists(this.context)
 		} catch (error) {
-			console.error("Error checking global installations:", error)
+			logger.error("Error checking global installations:", error)
 			return
 		}
 		await this.collectInstalled(path.join(globalSettingsPath, GlobalFileNames.customModes), "mode", metadata)
@@ -299,7 +300,7 @@ export class MarketplaceManager {
 			}
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
-				console.error(`Cannot read installed marketplace items from ${filePath}:`, error)
+				logger.error(`Cannot read installed marketplace items from ${filePath}:`, error)
 			}
 			return
 		}

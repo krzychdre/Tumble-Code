@@ -11,6 +11,7 @@ import { GlobalFileNames } from "../../shared/globalFileNames"
 import { getTaskDirectoryPath } from "../../utils/storage"
 
 import { quarantineCorruptFile } from "./quarantineCorruptFile"
+import { logger } from "../../utils/logging"
 
 export type ApiMessage = Anthropic.MessageParam & {
 	ts?: number
@@ -56,7 +57,7 @@ export async function readApiMessages({
 
 	// The Cline-era claude_messages.json is no longer read (deleted 2026-09-28,
 	// ai_plans/2026-09-28_delete-old-config-migrations.md).
-	console.error(
+	logger.error(
 		`[Roo-Debug] readApiMessages: API conversation history file not found for taskId: ${taskId}. Expected at: ${filePath}`,
 	)
 	return []
@@ -79,7 +80,7 @@ async function readCurrentApiMessages(taskId: string, filePath: string): Promise
 		return []
 	}
 	if (parsedData.length === 0) {
-		console.error(
+		logger.error(
 			`[Roo-Debug] readApiMessages: Found API conversation history file, but it's empty (parsed as []). TaskId: ${taskId}, Path: ${filePath}`,
 		)
 	}

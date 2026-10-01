@@ -302,7 +302,7 @@ export class RetryHandler {
 				return
 			}
 
-			console.error("Exponential backoff failed:", err)
+			logger.error("Exponential backoff failed:", err)
 		}
 	}
 
@@ -358,7 +358,7 @@ export class RetryHandler {
 		const isContextWindowExceededError = checkContextWindowExceededError(error)
 
 		if (isContextWindowExceededError && retryAttempt < MAX_CONTEXT_WINDOW_RETRIES) {
-			console.warn(
+			logger.warn(
 				`[Task#${this.access.taskId}] Context window exceeded for model ${this.access.api.getModel().id}. ` +
 					`Retry attempt ${retryAttempt + 1}/${MAX_CONTEXT_WINDOW_RETRIES}. ` +
 					`Attempting automatic truncation...`,
@@ -501,7 +501,7 @@ export class RetryHandler {
 			attempts,
 		})
 		this.access.apiFailureMessage = message
-		console.error(
+		logger.error(
 			`[Task#${this.access.taskId}.${this.access.instanceId}] Background task stopped, not retrying: ${message}`,
 		)
 		this.access.abortReason = "streaming_failed"

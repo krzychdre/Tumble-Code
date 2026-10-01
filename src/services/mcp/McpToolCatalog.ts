@@ -17,6 +17,7 @@ import type {
 import { type McpConfigSource, ServerConfigSchema } from "./mcpConfigSchema"
 import type { McpConfigStore } from "./McpConfigStore"
 import { logMcpError, type McpConnection, type McpServerCapabilities } from "./McpConnectionManager"
+import { logger } from "../../utils/logging"
 
 export interface McpToolCatalogDeps {
 	findConnection: (serverName: string, source?: McpConfigSource) => McpConnection | undefined
@@ -70,7 +71,7 @@ export class McpToolCatalog {
 				alwaysAllowConfig = serverEntry?.alwaysAllow || []
 				disabledToolsList = serverEntry?.disabledTools || []
 			} catch (error) {
-				console.error(`Failed to read tool configuration for ${serverName}:`, error)
+				logger.error(`Failed to read tool configuration for ${serverName}:`, error)
 				// Continue with empty configs
 			}
 
@@ -86,7 +87,7 @@ export class McpToolCatalog {
 
 			return tools
 		} catch (error) {
-			console.error(`Failed to fetch tools for ${serverName}:`, error)
+			logger.error(`Failed to fetch tools for ${serverName}:`, error)
 			return []
 		}
 	}
@@ -167,7 +168,7 @@ export class McpToolCatalog {
 			const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
 			timeout = (parsedConfig.timeout ?? 60) * 1000
 		} catch (error) {
-			console.error("Failed to parse server config for timeout:", error)
+			logger.error("Failed to parse server config for timeout:", error)
 			// Default to 60 seconds if parsing fails
 			timeout = 60 * 1000
 		}
