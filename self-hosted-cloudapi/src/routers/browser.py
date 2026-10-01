@@ -10,12 +10,10 @@ import logging
 import re
 import secrets
 import urllib.parse
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse, HTMLResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
@@ -37,7 +35,7 @@ from src.services.auth_service import (
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
 from src.auth.network_access import client_allowed
-from src.utils.json_script import json_for_script
+from src.web.templating import templates
 from config.auth import can_sign_in_on, front_channel
 from config.settings import settings
 
@@ -83,27 +81,19 @@ def _refuse_auth_redirect() -> HTMLResponse:
 
 router = APIRouter(tags=["browser-auth"])
 
-# The sign-in pages live beside the web viewer's templates but stand alone
-# (they extend nothing), so this module keeps its own loader.
-_templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "web" / "templates"))
-
-
 def _auth_success_html(redirect_url: str) -> str:
     """Render an HTML page that navigates to a vscode:// URI.
 
     Browsers often block HTTP 307 redirects to custom protocol URIs, so we
-    return an HTML page that uses JavaScript + a fallback link instead
+    return an HTML page whose script follows a fallback link instead
     (templates/auth_success.html).
     """
-    return _templates.get_template("auth_success.html").render(
-        redirect_url=redirect_url,
-        redirect_js=json_for_script(redirect_url),
-    )
+    return templates.get_template("auth_success.html").render(redirect_url=redirect_url)
 
 
 def _auth_error_html(reason: str, detail: str = "") -> str:
     """Render an HTML error page for authentication failures (templates/auth_error.html)."""
-    return _templates.get_template("auth_error.html").render(reason=reason, detail=detail)
+    return templates.get_template("auth_error.html").render(reason=reason, detail=detail)
 
 
 async def _start_sign_in(

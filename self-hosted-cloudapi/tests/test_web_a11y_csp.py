@@ -20,9 +20,6 @@ from tests.web_helpers import _add_message, _llm_event, _msgs, _override_web_use
 _WEB = Path(__file__).resolve().parent.parent / "src" / "web"
 _CSS = (_WEB / "static" / "app.css").read_text(encoding="utf-8")
 _TEMPLATES = sorted((_WEB / "templates").glob("*.html"))
-# The two sign-in pages hand a browser back to VS Code and are served outside
-# the panel (routers/browser.py); they keep their own inline style and script.
-_STANDALONE = {"auth_success.html", "auth_error.html"}
 
 
 async def _seed_everything(session_factory):
@@ -80,10 +77,13 @@ async def test_every_page_starts_with_a_skip_link(rendered):
 
 
 def _root_tokens(css: str) -> dict[str, str]:
+    """The :root tokens, colours resolved to their dark side (the light side is
+    checked in test_web_light_theme)."""
     css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
     root = css[css.index(":root {"):]
     root = root[:root.index("\n}")]
-    return dict(re.findall(r"(--[\w-]+):\s*([^;]+);", root))
+    tokens = dict(re.findall(r"(--[\w-]+):\s*([^;]+);", root))
+    return {k: re.sub(r"^light-dark\(.+?,\s*(#[0-9a-fA-F]{6})\)$", r"\1", v) for k, v in tokens.items()}
 
 
 def _luminance(hex_color: str) -> float:
@@ -160,7 +160,7 @@ async def test_the_task_list_announces_its_count_after_a_filter(rendered):
 _HANDLER = re.compile(r"\son[a-z]+\s*=", re.IGNORECASE)
 
 
-@pytest.mark.parametrize("template", [t for t in _TEMPLATES if t.name not in _STANDALONE], ids=lambda p: p.name)
+@pytest.mark.parametrize("template", _TEMPLATES, ids=lambda p: p.name)
 def test_templates_have_no_inline_handlers_or_display_none(template):
     source = template.read_text(encoding="utf-8")
     assert not _HANDLER.search(source)
@@ -234,7 +234,7 @@ async def test_panel_pages_carry_a_strict_csp(rendered):
 
 
 async def test_the_login_page_and_api_are_left_alone(client):
-    """The sign-in pages keep their inline script; JSON needs no policy."""
+    """The sign-in pages are served outside the panel's prefixes; JSON needs no policy."""
     assert "content-security-policy" not in client.get("/health").headers
     resp = client.get("/auth/error", params={"message": "nope"})
     assert "content-security-policy" not in resp.headers
