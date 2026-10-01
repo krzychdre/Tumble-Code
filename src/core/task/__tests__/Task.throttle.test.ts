@@ -3,7 +3,7 @@ import { RooCodeEventName, ProviderSettings, TokenUsage, ToolUsage } from "@roo-
 import { Task } from "../Task"
 import { CLINE_MESSAGES_SAVE_IDLE_MS } from "../TaskMessageLog"
 import { ClineProvider } from "../../webview/ClineProvider"
-import { hasToolUsageChanged, hasTokenUsageChanged } from "../../../shared/getApiMetrics"
+import { hasToolUsageChanged, hasTokenUsageChanged } from "@roo-code/core/browser"
 
 // Mock dependencies
 vi.mock("../../webview/ClineProvider")

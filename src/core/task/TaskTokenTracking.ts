@@ -3,7 +3,7 @@ import EventEmitter from "events"
 
 import { type ClineMessage, type TokenUsage, type ToolUsage, type ToolName, RooCodeEventName } from "@roo-code/types"
 
-import { getApiMetrics, hasTokenUsageChanged, hasToolUsageChanged } from "../../shared/getApiMetrics"
+import { consolidateTokenUsage, hasTokenUsageChanged, hasToolUsageChanged } from "@roo-code/core/browser"
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
 
@@ -95,7 +95,7 @@ export class TaskTokenTracking {
 	 * Get current token usage metrics from messages.
 	 */
 	public getTokenUsage(): TokenUsage {
-		return getApiMetrics(this.combineMessages(this.access.clineMessages.slice(1)))
+		return consolidateTokenUsage(this.combineMessages(this.access.clineMessages.slice(1)))
 	}
 
 	/**

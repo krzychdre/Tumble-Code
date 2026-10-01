@@ -8,7 +8,7 @@ import delay from "delay"
 import { type ExperimentId, SETTINGS_DEFAULTS, formatLanguage } from "@roo-code/types"
 
 import { getFullModeDetails } from "../prompts/modeDetails"
-import { getApiMetrics } from "../../shared/getApiMetrics"
+import { consolidateTokenUsage } from "@roo-code/core/browser"
 import { listFiles } from "../../services/glob/list-files"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../integrations/terminal/Terminal"
@@ -268,7 +268,7 @@ export async function getEnvironmentDetails(
 
 	// Add context tokens information (if enabled).
 	if (includeCurrentCost) {
-		const { totalCost } = getApiMetrics(task.clineMessages)
+		const { totalCost } = consolidateTokenUsage(task.clineMessages)
 		details += `\n\n# Current Cost\n${totalCost !== null ? `$${totalCost.toFixed(2)}` : "(Not available)"}`
 	}
 

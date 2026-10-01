@@ -11,7 +11,7 @@ import { getWorkspacePath } from "../../utils/path"
 import { checkGitInstalled } from "../../utils/git"
 import { t } from "../../i18n"
 
-import { getApiMetrics } from "../../shared/getApiMetrics"
+import { consolidateTokenUsage } from "@roo-code/core/browser"
 
 import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 
@@ -255,9 +255,8 @@ export async function checkpointRestore(
 			// Calculate metrics from messages that will be deleted (must be done before rewind)
 			const deletedMessages = task.clineMessages.slice(index + 1)
 
-			const { totalTokensIn, totalTokensOut, totalCacheWrites, totalCacheReads, totalCost } = getApiMetrics(
-				task.combineMessages(deletedMessages),
-			)
+			const { totalTokensIn, totalTokensOut, totalCacheWrites, totalCacheReads, totalCost } =
+				consolidateTokenUsage(task.combineMessages(deletedMessages))
 
 			// Use MessageManager to properly handle context-management events
 			// This ensures orphaned Summary messages and truncation markers are cleaned up
