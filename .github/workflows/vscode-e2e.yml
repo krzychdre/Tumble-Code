@@ -12,8 +12,7 @@ name: VS Code e2e (manual)
 #   only once that ask is accepted, which nothing does here, so the helper
 #   waitUntilCompleted (suite/utils.ts) also treats that ask as completion.
 # The suites that need OPENROUTER_API_KEY (task, modes, markdown-lists) skip
-# themselves, providers/deepseek-v4.test skips without DEEPSEEK_API_KEY, and the
-# tools/* and subtasks suites are skipped in the code (suite.skip).
+# themselves and providers/deepseek-v4.test skips without DEEPSEEK_API_KEY.
 
 on:
     workflow_dispatch:
