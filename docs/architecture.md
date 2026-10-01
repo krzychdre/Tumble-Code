@@ -8,7 +8,8 @@ start at [docs/README.md](README.md).
 
 Item names such as `CORE-R1` in code comments refer to the 2026-09-24 refactor plan. That plan is kept on the
 `docs/refactor-plan-2026-09-24` branch (intentionally unmerged); what it achieved and what remains is summarised
-in [`ai_plans/2026-09-27_simplification-roadmap.md`](../ai_plans/2026-09-27_simplification-roadmap.md).
+in [`ai_plans/2026-09-27_simplification-roadmap.md`](../ai_plans/2026-09-27_simplification-roadmap.md). What each
+ID in the code means is listed in [plan-ids.md](plan-ids.md).
 
 ## The workspaces
 

@@ -23,6 +23,9 @@ Plans and proposals live in `ai_plans/`. The current ones:
 - [`ai_plans/2026-09-27_ui-modernization.md`](../ai_plans/2026-09-27_ui-modernization.md): UI proposals for the
   VS Code panel, the cloud web panel and the CLI.
 
+Code comments sometimes name a plan item (`CORE-R1`, `DEF-S8`, `P9`); [plan-ids.md](plan-ids.md) says what each one
+was and which pull request did it.
+
 ## How these pages are written
 
 - They name files and symbols, not line numbers. Line numbers rot within a week; a symbol name can be found with a
