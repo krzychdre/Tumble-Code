@@ -25,7 +25,7 @@ import {
 } from "@roo-code/types"
 
 import { logger } from "../../../utils/logging"
-import { shouldUseReasoningBudget } from "../../../shared/api"
+import { shouldUseReasoningBudget } from "@roo-code/core/browser"
 import { normalizeToolSchema } from "../../../utils/json-schema"
 import { MultiPointStrategy } from "../../transform/cache-strategy/multi-point-strategy"
 import type { CachePointPlacement, ModelInfo as CacheModelInfo } from "../../transform/cache-strategy/types"

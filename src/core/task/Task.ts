@@ -67,7 +67,7 @@ import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
 // shared
-import { findLastIndex } from "@roo-code/core/browser"
+import { findLastIndex, getModelMaxOutputTokens } from "@roo-code/core/browser"
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
 import { t } from "../../i18n"
@@ -75,7 +75,6 @@ import { getApiMetrics, hasTokenUsageChanged, hasToolUsageChanged } from "../../
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import { DiffStrategy, type ToolUse, type ToolParamName, toolParamNames } from "../../shared/tools"
-import { getModelMaxOutputTokens } from "../../shared/api"
 
 // services
 import { McpHub } from "../../services/mcp/McpHub"

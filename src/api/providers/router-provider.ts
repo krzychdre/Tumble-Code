@@ -2,7 +2,7 @@ import OpenAI from "openai"
 
 import { type ModelInfo, type ModelRecord } from "@roo-code/types"
 
-import type { ApiHandlerOptions, FetchableModelSourceId } from "../../shared/api"
+import type { ApiHandlerOptions, FetchableModelSourceId } from "@roo-code/core/browser"
 
 import { BaseProvider } from "./base-provider"
 import { getModels, getModelsFromCache } from "./fetchers/modelCache"

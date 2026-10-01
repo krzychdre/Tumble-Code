@@ -11,7 +11,7 @@ import {
 	shouldUseReasoningBudget,
 	shouldUseReasoningEffort,
 	getModelMaxOutputTokens,
-} from "../../shared/api"
+} from "@roo-code/core/browser"
 
 import {
 	type AnthropicReasoningParams,

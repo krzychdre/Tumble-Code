@@ -26,7 +26,7 @@
 
 import { internationalZAiModels, mainlandZAiModels, type ModelInfo } from "@roo-code/types"
 
-import { getModelMaxOutputTokens } from "../../../shared/api"
+import { getModelMaxOutputTokens } from "@roo-code/core/browser"
 
 type Limits = {
 	maxTokens: number

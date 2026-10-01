@@ -11,7 +11,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { safeWriteJson } from "@roo-code/core/fs"
 import { ContextProxy } from "../../../core/config/ContextProxy"
 import { getCacheDirectoryPath, getStorageBasePathSync } from "../../../utils/storage"
-import type { GetModelsOptions } from "../../../shared/api"
+import type { GetModelsOptions } from "@roo-code/core/browser"
 
 import { getOpenRouterModels } from "./openrouter"
 import { getLiteLLMModels } from "./litellm"

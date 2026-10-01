@@ -13,7 +13,7 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { ApiHandlerOptions } from "../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { convertToMistralMessages } from "../transform/mistral-format"
 import { ApiStream } from "../transform/stream"

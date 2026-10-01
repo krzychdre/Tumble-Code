@@ -12,7 +12,7 @@ vi.mock("@roo-code/telemetry", () => ({
 }))
 
 import { GeminiHandler } from "../gemini"
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 describe("GeminiHandler backend support", () => {
 	beforeEach(() => {

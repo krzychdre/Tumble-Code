@@ -18,7 +18,7 @@ vi.mock("openai", () => {
 })
 
 import { LmStudioHandler } from "../lm-studio"
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 describe("LmStudioHandler Native Tools", () => {
 	let handler: LmStudioHandler

@@ -3,7 +3,7 @@ import OpenAI from "openai"
 
 import { type ModelInfo, type UnknownModelPolicy, resolveCatalogModel } from "@roo-code/types"
 
-import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
+import { type ApiHandlerOptions, getModelMaxOutputTokens } from "@roo-code/core/browser"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { streamChatCompletion } from "../transform/chat-completions-stream"

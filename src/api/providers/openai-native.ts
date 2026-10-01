@@ -13,7 +13,7 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { calculateApiCost } from "@roo-code/core/browser"
 import { ApiStream } from "../transform/stream"

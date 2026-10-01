@@ -17,7 +17,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
-import { getModelMaxOutputTokens } from "../../shared/api"
+import { getModelMaxOutputTokens } from "@roo-code/core/browser"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { McpHub } from "../../services/mcp/McpHub"
 import { manageContext, willManageContext } from "../context-management"

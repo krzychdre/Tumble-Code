@@ -6,7 +6,7 @@ import { getModelParams } from "../model-params"
 import {
 	DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS,
 	DEFAULT_HYBRID_REASONING_MODEL_THINKING_TOKENS,
-} from "../../../shared/api"
+} from "@roo-code/core/browser"
 
 describe("getModelParams", () => {
 	const baseModel: ModelInfo = {

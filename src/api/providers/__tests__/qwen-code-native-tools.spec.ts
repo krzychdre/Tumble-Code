@@ -28,7 +28,7 @@ vi.mock("openai", () => {
 
 import { promises as fs } from "node:fs"
 import { QwenCodeHandler } from "../qwen-code"
-import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../../shared/api"
+import { type ApiHandlerOptions, getModelMaxOutputTokens } from "@roo-code/core/browser"
 
 describe("QwenCodeHandler Native Tools", () => {
 	let handler: QwenCodeHandler

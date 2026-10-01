@@ -1,6 +1,6 @@
 import { type ModelInfo, selectVertexModel } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { getModelParams } from "../transform/model-params"
 

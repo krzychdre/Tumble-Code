@@ -16,7 +16,7 @@ import OpenAI from "openai"
 import { ApiProviderError } from "@roo-code/types"
 
 import { OpenAiNativeHandler } from "../openai-native"
-import { ApiHandlerOptions } from "../../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 
 // Mock OpenAI client - now everything uses Responses API
 const mockResponsesCreate = vitest.fn()

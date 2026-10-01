@@ -7,7 +7,7 @@ import * as path from "path"
 import { safeWriteJson } from "@roo-code/core/fs"
 import { type ModelInfo, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 
-import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
+import { type ApiHandlerOptions, getModelMaxOutputTokens } from "@roo-code/core/browser"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"

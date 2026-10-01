@@ -4,7 +4,7 @@ import { GoogleAuth } from "google-auth-library"
 
 import { type ModelInfo, ANTHROPIC_DEFAULT_MAX_TOKENS, selectAnthropicVertexModel } from "@roo-code/types"
 
-import { ApiHandlerOptions } from "../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { ApiStream } from "../transform/stream"
 import { addCacheBreakpoints } from "../transform/caching/vertex"

@@ -132,7 +132,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 import { deepSeekDefaultModelId, deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE, type ModelInfo } from "@roo-code/types"
 
 import { calculateApiCost } from "@roo-code/core/browser"
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { DeepSeekHandler } from "../deepseek"
 
