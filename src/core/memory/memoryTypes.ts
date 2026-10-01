@@ -152,4 +152,6 @@ export const TRUSTING_RECALL_SECTION: readonly string[] = [
 	'"The memory says X exists" is not the same as "X exists now."',
 	"",
 	"A memory that summarizes repo state (activity logs, architecture snapshots) is frozen in time. If the user asks about *recent* or *current* state, prefer `git log` or reading the code over recalling the snapshot.",
+	"",
+	"A line that says something is owed, pending, not merged or deferred was true on the day it was written; check it before you repeat it.",
 ]
