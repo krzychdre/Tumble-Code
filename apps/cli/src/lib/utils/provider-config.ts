@@ -20,6 +20,9 @@
  * API key order: a layer's `apiKey`, else its `apiKeyEnv` (both only from
  * layers of the active provider, highest first), then the provider's
  * conventional env var (e.g. OPENAI_API_KEY), then the fallback's key.
+ *
+ * Base URL order, the same without `apiKeyEnv`: a layer's `baseUrl`, then the
+ * provider's base-url env var (e.g. OPENAI_BASE_URL), then the fallback's.
  */
 
 import { getProviderDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@roo-code/types"
@@ -29,6 +32,7 @@ import { DEFAULT_FLAGS } from "@/types/constants.js"
 
 import {
 	getApiKeyFromEnv,
+	getBaseUrlFromEnv,
 	getModelField,
 	getProviderSettings,
 	isSupportedProvider,
@@ -116,10 +120,12 @@ export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfi
 	const own = scoped.filter((entry) => entry.provider === provider).map((entry) => entry.layer)
 	const fallbackIsOwn = fallback?.provider !== undefined && resolveProviderIdAlias(fallback.provider) === provider
 
-	const pick = (key: "model" | "baseUrl"): string | undefined =>
-		own.find((layer) => layer[key])?.[key] ?? (fallbackIsOwn ? fallback?.[key] || undefined : undefined)
+	const fromLayers = (key: "model" | "baseUrl"): string | undefined => own.find((layer) => layer[key])?.[key]
+	const fromFallback = (key: "model" | "baseUrl"): string | undefined =>
+		fallbackIsOwn ? fallback?.[key] || undefined : undefined
 
-	const model = pick("model") ?? defaultModelFor(provider)
+	const model = fromLayers("model") ?? fromFallback("model") ?? defaultModelFor(provider)
+	const baseUrl = fromLayers("baseUrl") ?? (getBaseUrlFromEnv(provider) || undefined) ?? fromFallback("baseUrl")
 
 	let apiKey: string | undefined
 	let missingApiKeyEnv: string | undefined
@@ -139,7 +145,7 @@ export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfi
 		rawProvider,
 		provider,
 		model,
-		baseUrl: pick("baseUrl"),
+		baseUrl,
 		apiKey,
 		missingApiKeyEnv,
 		reasoningEffort:
