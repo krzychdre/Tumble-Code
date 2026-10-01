@@ -21,8 +21,6 @@ window.addEventListener("load", function () {
   function stored() { try { return localStorage.getItem("tumble.theme") } catch (e) { return "?" } }
   var root = document.documentElement
   var toggle = document.getElementById("theme-toggle")
-  var events = 0
-  window.addEventListener("tumble:theme", function () { events++ })
 
   check("stored choice applied before the body exists", window.__themeInHead === "light")
   check("toggle revealed", toggle.hidden === false)
@@ -35,7 +33,6 @@ window.addEventListener("load", function () {
   check("auto is followed by dark", root.getAttribute("data-theme") === "dark" && stored() === "dark")
   toggle.click()   // dark -> light
   check("dark is followed by light", root.getAttribute("data-theme") === "light" && stored() === "light")
-  check("every change is announced to the page", events === 3)
 
   var pre = document.createElement("pre")
   pre.id = "results"

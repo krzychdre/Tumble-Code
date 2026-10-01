@@ -8,8 +8,7 @@
  *
  * Once the document is parsed, the toggle in the top bar is revealed (it
  * starts hidden: without scripting the OS preference still applies) and cycles
- * auto, dark, light. Every change fires "tumble:theme" on window, so anything
- * drawn with the theme's colours (the metrics charts) can draw again.
+ * auto, dark, light.
  */
 ;(function () {
 	"use strict"
@@ -61,7 +60,6 @@
 			}
 			apply(theme)
 			show(theme)
-			window.dispatchEvent(new Event("tumble:theme"))
 		})
 	}
 
