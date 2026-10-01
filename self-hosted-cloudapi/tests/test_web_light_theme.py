@@ -1,8 +1,9 @@
 """A light theme for the web panel, chosen by the OS or by the reader (UI plan 3.1).
 
-Only the :root tokens are redefined, once for a light OS preference (unless
-the reader forced dark) and once for a forced light theme; everything else in
-app.css reads the tokens. The reader's choice (auto, dark, light) lives in
+Every colour token in :root is a ``light-dark(light, dark)`` pair, so each
+colour is written once; the color-scheme (the OS preference, or the reader's
+forced choice) picks the side, and everything else in app.css reads the
+tokens. The reader's choice (auto, dark, light) lives in
 localStorage and is applied by a script in <head> before the first paint.
 """
 
@@ -35,26 +36,43 @@ def _tokens(block: str) -> dict[str, str]:
     return {k: v.strip() for k, v in re.findall(r"(--[\w-]+):\s*([^;]+);", block)}
 
 
+_PAIR = re.compile(r"^light-dark\((.+?),\s*((?:#|rgba?\().+)\)$")
+
+
+def _side(value: str, theme: str) -> str:
+    """One side of a ``light-dark(light, dark)`` token; other tokens as they are."""
+    pair = _PAIR.match(value)
+    if not pair:
+        return value
+    return pair.group(1).strip() if theme == "light" else pair.group(2).strip()
+
+
+def _theme(theme: str) -> dict[str, str]:
+    return {k: _side(v, theme) for k, v in _tokens(_block(_NO_COMMENTS, ":root {")).items()}
+
+
 def _dark() -> dict[str, str]:
-    return _tokens(_block(_NO_COMMENTS, ":root {"))
+    return _theme("dark")
 
 
 def _light() -> dict[str, str]:
-    return _tokens(_block(_NO_COMMENTS, ':root[data-theme="light"]'))
+    return _theme("light")
 
 
-def test_light_tokens_are_defined_for_the_os_and_for_the_toggle():
-    media = _block(_NO_COMMENTS, "@media (prefers-color-scheme: light)")
-    assert ':root:not([data-theme="dark"])' in media
-    os_light = _tokens(_block(media, ':root:not([data-theme="dark"])'))
-    forced = _light()
-    assert os_light == forced and forced
-    # Every colour the dark theme defines has a light counterpart.
-    colours = {k for k, v in _dark().items() if v.startswith(("#", "rgba(", "rgb("))}
-    assert colours <= set(forced), sorted(colours - set(forced))
-    # And the UA widgets (scrollbars, date pickers) follow.
-    assert "color-scheme: light" in _block(_NO_COMMENTS, ':root[data-theme="light"]')
-    assert "color-scheme: dark" in _block(_NO_COMMENTS, ":root {")
+def test_every_colour_is_written_once_for_both_themes():
+    raw = _tokens(_block(_NO_COMMENTS, ":root {"))
+    colours = {k: v for k, v in raw.items() if re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", v)}
+    assert colours
+    # A colour token is a light-dark() pair whose two sides are colours.
+    singles = sorted(k for k, v in colours.items() if not _PAIR.match(v))
+    assert singles == [], singles
+    # No second palette anywhere: the scheme picks the side.
+    assert "prefers-color-scheme" not in _NO_COMMENTS
+    assert "color-scheme: light dark" in _block(_NO_COMMENTS, ":root {")
+    # The reader's forced choice pins the scheme, and the UA widgets
+    # (scrollbars, date pickers) follow it.
+    assert _block(_NO_COMMENTS, ':root[data-theme="light"]').strip() == "color-scheme: light;"
+    assert _block(_NO_COMMENTS, ':root[data-theme="dark"]').strip() == "color-scheme: dark;"
 
 
 def test_the_light_accent_is_the_darker_amber():
@@ -77,10 +95,7 @@ def test_text_and_data_hues_pass_aa_on_the_page_and_the_panels(theme):
 def test_no_colour_literal_outside_the_token_blocks():
     """A literal would stay dark-theme in the light theme (the top bar's
     rgba(13, 17, 23, .85) did)."""
-    rest = _NO_COMMENTS
-    for selector in (":root {", ':root[data-theme="light"]', "@media (prefers-color-scheme: light)"):
-        block = _block(rest, selector)
-        rest = rest.replace(block, "")
+    rest = _NO_COMMENTS.replace(_block(_NO_COMMENTS, ":root {"), "")
     literals = re.findall(r"#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)", rest)
     assert literals == []
     topbar = _block(_NO_COMMENTS, ".topbar {")

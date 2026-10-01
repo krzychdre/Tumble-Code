@@ -7,6 +7,7 @@ extension token in dependencies.py) is pinned here from the outside, so the move
 can be checked against the behaviour it had before.
 """
 
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
@@ -253,6 +254,8 @@ def test_sign_in_routes_refuse_a_foreign_redirect_with_the_error_page(client, ro
     assert page.paragraphs == [
         "Invalid sign-in request.",
         "The sign-in link does not return to an editor. Start the sign-in again from the extension.",
+        # The action row: its text is the link's, collected in link_texts.
+        "",
     ]
 
 
@@ -271,7 +274,6 @@ class _Page(HTMLParser):
         self.link_texts: list[str] = []
         self.scripts: list[str] = []
         self.styles: list[str] = []
-        self.divs: list[str] = []
         self._stack: list[str] = []
         self._text: list[str] = []
 
@@ -282,8 +284,6 @@ class _Page(HTMLParser):
         self._text = []
         if tag == "a":
             self.links.append(dict(attrs)["href"])
-        if tag == "div":
-            self.divs.append(dict(attrs).get("class") or "")
 
     def handle_endtag(self, tag):
         text = "".join(self._text)
@@ -309,32 +309,6 @@ def _parse(body: str) -> _Page:
     return page
 
 
-def _js_string_argument(script: str) -> str:
-    """Decode the string literal passed to window.location.assign(...)."""
-    start = script.index("window.location.assign(") + len("window.location.assign(")
-    quote = script[start]
-    assert quote in "'\"", script
-    out, i = [], start + 1
-    while script[i] != quote:
-        ch = script[i]
-        if ch == "\\":
-            nxt = script[i + 1]
-            if nxt == "x":
-                out.append(chr(int(script[i + 2 : i + 4], 16)))
-                i += 4
-                continue
-            if nxt == "u":
-                out.append(chr(int(script[i + 2 : i + 6], 16)))
-                i += 6
-                continue
-            out.append({"n": "\n", "t": "\t", "r": "\r"}.get(nxt, nxt))
-            i += 2
-            continue
-        out.append(ch)
-        i += 1
-    return "".join(out)
-
-
 TRICKY_URLS = [
     "vscode://QUB-IT.tumble-code/auth/clerk/callback?code=abc&state=xyz",
     "vscode://a.b/auth/clerk/callback?code=a%2Bb%3D&state=%2F",
@@ -354,15 +328,21 @@ def test_success_page_sends_the_browser_to_exactly_the_url(url):
     page = _parse(body)
     assert page.title == "Tumble Code - Authentication Successful"
     assert page.h1 == "Authentication Successful"
-    assert page.paragraphs == ["You have successfully signed in to Tumble Code.Returning to VS Code..."]
-    assert page.links == [url]
-    assert page.link_texts == ["Return to VS Code manually"]
-    assert len(page.scripts) == 1
-    assert _js_string_argument(page.scripts[0]) == url
-    # The URL can never close the script element early.
-    assert body.count("</script>") == 1
-    assert "#4ec9b0" in page.styles[0]
-    assert page.divs == ["container", "check"]
+    assert page.paragraphs == [
+        "You have successfully signed in to Tumble Code.Returning to VS Code...",
+        "",
+    ]
+    # The link the script follows (static/auth_return.js reads its href) is
+    # exactly the URL, and nothing else on the page leaves for the editor.
+    assert url in page.links
+    assert page.link_texts[page.links.index(url)] == "Return to VS Code manually"
+    assert re.search(r'<a class="btn" id="return-link" href="[^"]*">', body)
+    # No inline script: the URL can never close a script element.
+    assert all(not text.strip() for text in page.scripts)
+    assert '<script src="/static/auth_return.js?v=' in body
+    # On the panel's own layout and stylesheet, so it follows the theme.
+    assert '<link rel="stylesheet" href="/static/app.css?v=' in body
+    assert page.styles == []
 
 
 @pytest.mark.parametrize(
@@ -381,13 +361,15 @@ def test_error_page_shows_the_reason_and_the_detail_as_text(reason, detail):
     page = _parse(body)
     assert page.title == "Tumble Code - Authentication Error"
     assert page.h1 == "Authentication Failed"
-    assert page.paragraphs == [reason, detail]
-    assert page.links == ["javascript:window.close()"]
-    assert page.link_texts == ["Close this tab"]
-    assert page.scripts == []
-    assert "#f44747" in page.styles[0]
-    assert page.divs == ["container", "cross"]
+    # The last paragraph is the action row (its text is the link's).
+    assert page.paragraphs == [reason, detail, ""]
+    assert "javascript:window.close()" in page.links
+    assert "Close this tab" in page.link_texts
+    # Only the panel's shared scripts, no inline one and no inline style.
+    assert all(not text.strip() for text in page.scripts)
     assert "<script>" not in body
+    assert page.styles == []
+    assert '<link rel="stylesheet" href="/static/app.css?v=' in body
 
 
 @pytest.mark.parametrize(
@@ -404,7 +386,7 @@ def test_auth_error_route_renders_the_error_page(client, reason, message):
     resp = client.get("/auth/error", params={"reason": reason} if reason else {})
     assert resp.status_code == 400
     assert resp.headers["content-type"] == "text/html; charset=utf-8"
-    assert _parse(resp.text).paragraphs == [message, ""]
+    assert _parse(resp.text).paragraphs == [message, "", ""]
 
 
 # --- dependencies.py: the extension's Bearer JWT -----------------------------

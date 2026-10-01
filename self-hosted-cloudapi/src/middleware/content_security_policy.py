@@ -24,8 +24,8 @@ What the policy allows, and why:
   here, no plugins.
 
 The sign-in pages of routers/browser.py (``/auth/...``) are left alone: they
-hand the browser back to VS Code with a small inline script, and live outside
-the panel. JSON responses need no policy.
+live outside the panel's prefixes, and the error page closes its tab through a
+``javascript:`` link. JSON responses need no policy.
 
 A pure ASGI middleware, so it only touches the response headers and never
 re-streams a body.

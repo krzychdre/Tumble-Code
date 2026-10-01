@@ -118,7 +118,7 @@ class TestAuthCallbackRedirect:
         )
 
     def test_callback_html_is_success_page(self, client, mock_auth_flow):
-        """The HTML response should be a success page with JavaScript redirect."""
+        """The HTML response should be a success page whose script follows the link."""
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
@@ -127,7 +127,7 @@ class TestAuthCallbackRedirect:
         assert response.status_code == 200
         body = response.text
         assert "Authentication Successful" in body
-        assert "window.location.assign" in body
+        assert 'id="return-link"' in body and "/static/auth_return.js" in body
 
     def test_callback_invalid_state_returns_error_html(self, client, mock_auth_flow):
         """When state is invalid (not found in store), should return an error HTML page."""
