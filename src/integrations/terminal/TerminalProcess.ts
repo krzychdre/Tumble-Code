@@ -1,6 +1,7 @@
 import type { ExitCodeDetails } from "./types"
 import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { Terminal } from "./Terminal"
+import { logger } from "../../utils/logging"
 
 export class TerminalProcess extends BaseTerminalProcess {
 	// #266: Some processes (interactive tools, programs that trap SIGINT and
@@ -55,7 +56,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 		if (!isShellIntegrationAvailable) {
 			terminal.sendText(command, true)
 
-			console.warn(
+			logger.warn(
 				"[TerminalProcess] Shell integration not available. Command sent without knowledge of response.",
 			)
 
@@ -154,7 +155,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 			stream = await streamAvailable
 		} catch (error) {
 			// Stream timeout or other error occurred
-			console.error("[Terminal Process] Stream error:", error.message)
+			logger.error("[Terminal Process] Stream error:", error.message)
 
 			// Emit completed event with error message
 			this.emit(
@@ -269,7 +270,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 				.finally(() => {
 					this.aborting = false
 				})
-				.catch((err) => console.error("[TerminalProcess] retryAbort error:", err))
+				.catch((err) => logger.error("[TerminalProcess] retryAbort error:", err))
 		}
 	}
 

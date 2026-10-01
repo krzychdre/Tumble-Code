@@ -6,6 +6,7 @@ import { mergePromise } from "../mergePromise"
 import { TerminalProcess } from "../TerminalProcess"
 import { Terminal } from "../Terminal"
 import { TerminalRegistry } from "../TerminalRegistry"
+import { logger } from "../../../utils/logging"
 
 class TestTerminalProcess extends TerminalProcess {
 	public callTrimRetrievedOutput(): void {
@@ -173,8 +174,8 @@ describe("TerminalProcess", () => {
 		})
 
 		it("handles terminals without shell integration", async () => {
-			// Temporarily suppress the expected console.warn for this test
-			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+			// Temporarily suppress the expected logger.warn for this test
+			const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 			// Create a terminal without shell integration
 			const noShellTerminal = {
@@ -217,7 +218,7 @@ describe("TerminalProcess", () => {
 			expect(noShellTerminal.sendText).toHaveBeenCalledWith("test command", true)
 			expect(commandSubmitted).toBe(true)
 
-			// Restore the original console.warn
+			// Restore the original logger.warn
 			consoleWarnSpy.mockRestore()
 		})
 

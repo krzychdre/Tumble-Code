@@ -4,6 +4,7 @@ import delay from "delay"
 import { DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { diagnosticsToProblemsString, getNewDiagnostics } from "../diagnostics"
+import { logger } from "../../utils/logging"
 
 /**
  * The part of a task (Task) the collector reads: the provider's diagnostic
@@ -68,7 +69,7 @@ export class DiagnosticsCollector {
 				await delay(safeDelayMs)
 			} catch (error) {
 				// Log error but continue - delay failure shouldn't break the save operation
-				console.warn(`Failed to apply write delay: ${error}`)
+				logger.warn(`Failed to apply write delay: ${error}`)
 			}
 
 			const postDiagnostics = vscode.languages.getDiagnostics()

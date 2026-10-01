@@ -1,6 +1,7 @@
 import { EventEmitter } from "events"
 
 import type { RooTerminalProcess, RooTerminalProcessEvents, ExitCodeDetails } from "./types"
+import { logger } from "../../utils/logging"
 
 /**
  * How often a running command hands its new output to the "line" listener, for
@@ -267,7 +268,7 @@ export abstract class BaseTerminalProcess extends EventEmitter<RooTerminalProces
 					this.emitRemainingBufferIfListening()
 				} catch (error) {
 					// A timer callback has no caller to throw to.
-					console.error("[BaseTerminalProcess] failed to emit buffered output:", error)
+					logger.error("[BaseTerminalProcess] failed to emit buffered output:", error)
 				}
 			}, TERMINAL_OUTPUT_THROTTLE_MS - elapsed)
 		}

@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import * as fs from "fs/promises"
 
 import { DiffViewProvider } from "../DiffViewProvider"
+import { logger } from "../../../utils/logging"
 
 vi.mock("delay", () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
@@ -170,7 +171,7 @@ describe("DiffViewProvider race-condition safety", () => {
 		// fires diffViewProvider.reset() between askApproval() and saveChanges() in
 		// WriteToFileTool.execute(). activeEdit is nulled, but the user already
 		// approved the change: the buffered content MUST still reach disk.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		installFakeSession(provider)
 		vi.mocked(vscode.workspace.applyEdit).mockResolvedValue(true)
@@ -198,7 +199,7 @@ describe("DiffViewProvider race-condition safety", () => {
 	it("saveChanges() returns empty tuple when neither activeEdit nor pendingSave is set", async () => {
 		// Pins the no-op fast path: a fresh provider with nothing buffered must
 		// short-circuit cleanly: no fs.writeFile, no recovery warning.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		const result = await provider.saveChanges(false, 0)
 
@@ -255,7 +256,7 @@ describe("DiffViewProvider race-condition safety", () => {
 		// The fix moves the pendingSave publication BEFORE any await in the isFinal
 		// branch, so even a bail at the EARLIEST possible stale-check still leaves
 		// the approved bytes in the recovery buffer.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		const { session } = installFakeSession(provider)
 
 		// Arm the very first applyEdit (the partial replace at the top of update())
@@ -310,7 +311,7 @@ describe("DiffViewProvider race-condition safety", () => {
 		// its awaits: here, updatedDocument.save(). Without the post-await
 		// isStale recheck, the editor branch would keep operating on a detached
 		// session and the approved bytes might never reach disk reliably.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		const { session } = installFakeSession(provider)
 
 		// Arm document.save() with a deferred promise so we control when it
@@ -374,7 +375,7 @@ describe("DiffViewProvider race-condition safety", () => {
 		// Ctrl+S to save the buffer themselves. The fix captures save()'s return
 		// and falls through to flushPendingSaveDirectly() when it's false, so the
 		// user-approved bytes still land on disk.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		const { session } = installFakeSession(provider)
 
 		// Make the document dirty, but arm save() to silently refuse (return false).
@@ -413,7 +414,7 @@ describe("DiffViewProvider race-condition safety", () => {
 		// may not. With pendingSave populated by update(isFinal=true), the
 		// flushPendingSaveDirectly() path is idempotent and guarantees the
 		// user-approved bytes are on disk regardless of buffer state.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		const { session } = installFakeSession(provider)
 
 		// Document is NOT dirty: editor branch would skip save() entirely.
@@ -451,7 +452,7 @@ describe("DiffViewProvider race-condition safety", () => {
 		// and the !isDirty filter in closeAllDiffViews() skipped it on the later
 		// reset() too. The fix: flushPendingSaveDirectly() must tear the tab down,
 		// and closeAllDiffViews() must be able to close a Roo-owned dirty tab.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		// A Roo diff tab whose modified-side document is still dirty.
 		const diffTabSave = vi.fn().mockResolvedValue(true)

@@ -6,6 +6,7 @@ import * as diff from "diff"
 import { arePathsEqual } from "../../utils/path"
 
 import { stripAllBOMs } from "./stripAllBOMs"
+import { logger } from "../../utils/logging"
 
 export const DIFF_VIEW_URI_SCHEME = "cline-diff"
 export const DIFF_VIEW_LABEL_CHANGES = "Original ↔ Roo's Changes"
@@ -49,7 +50,7 @@ export class DiffEditorLifecycleManager {
 				try {
 					await vscode.window.tabGroups.close(tab)
 				} catch (err) {
-					console.error(`Failed to close tab ${tab.label}`, err)
+					logger.error(`Failed to close tab ${tab.label}`, err)
 				}
 			}
 			documentWasOpen = true
@@ -289,9 +290,9 @@ export class DiffEditorLifecycleManager {
 				await new Promise((resolve) => setTimeout(resolve, 0))
 			}
 
-			console.error(`Failed to close diff tab ${tab.label} after ${CLOSE_DIFF_TAB_MAX_ATTEMPTS} attempts`)
+			logger.error(`Failed to close diff tab ${tab.label} after ${CLOSE_DIFF_TAB_MAX_ATTEMPTS} attempts`)
 		} catch (err) {
-			console.error(`Failed to close diff tab ${tab.label}`, err)
+			logger.error(`Failed to close diff tab ${tab.label}`, err)
 		}
 	}
 

@@ -10,6 +10,7 @@ import type {
 	RooTerminalProcessResultPromise,
 	ExitCodeDetails,
 } from "./types"
+import { logger } from "../../utils/logging"
 
 export abstract class BaseTerminal implements RooTerminal {
 	public readonly provider: RooTerminalProvider
@@ -53,7 +54,7 @@ export abstract class BaseTerminal implements RooTerminal {
 			if (!this.process) {
 				this.running = false
 
-				console.warn(
+				logger.warn(
 					`[Terminal ${this.provider}/${this.id}] process is undefined, so cannot set terminal stream (probably user-initiated non-Roo command)`,
 				)
 
