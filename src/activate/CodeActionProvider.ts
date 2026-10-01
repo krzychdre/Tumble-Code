@@ -5,6 +5,7 @@ import { Package } from "../shared/package"
 
 import { getCodeActionCommand } from "../utils/commands"
 import { EditorUtils } from "../integrations/editor/EditorUtils"
+import { logger } from "../utils/logging"
 
 export const TITLES: Record<CodeActionName, string> = {
 	EXPLAIN: "Explain with Tumble Code",
@@ -97,7 +98,7 @@ export class CodeActionProvider implements vscode.CodeActionProvider {
 
 			return actions
 		} catch (error) {
-			console.error("Error providing code actions:", error)
+			logger.error("Error providing code actions:", error)
 			return []
 		}
 	}

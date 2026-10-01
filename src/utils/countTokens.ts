@@ -3,6 +3,7 @@ import workerpool from "workerpool"
 
 import { countTokensPerBlockResultSchema, countTokensResultSchema } from "../workers/types"
 import { tiktoken, tiktokenPerBlock } from "./tiktoken"
+import { logger } from "./logging"
 
 let pool: workerpool.Pool | null | undefined = undefined
 
@@ -54,7 +55,7 @@ async function runCount<T>(
 	} catch (error) {
 		if (!isQueueFullError(error)) {
 			pool = null
-			console.error(error)
+			logger.error(error)
 		}
 
 		return inline()

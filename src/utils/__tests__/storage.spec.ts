@@ -1,4 +1,5 @@
 import * as path from "path"
+import { logger } from "../logging"
 
 // `getStorageBasePath` memoizes successful storage-root resolutions in module
 // state. To keep every test hermetic, each describe calls `vi.resetModules()`
@@ -340,7 +341,7 @@ describe("getStorageBasePathSync", () => {
 		vi.spyOn(vscode.workspace, "getConfiguration").mockImplementation(() => {
 			throw new Error("no configuration")
 		})
-		vi.spyOn(console, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		const { getStorageBasePathSync } = await import("../storage")
 
