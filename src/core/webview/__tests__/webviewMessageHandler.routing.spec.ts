@@ -153,7 +153,8 @@ vi.mock("os", async (importOriginal) => {
 
 vi.mock("@roo-code/core/fs", () => ({ safeWriteJson: h.fn("safeWriteJson", async () => undefined) }))
 vi.mock("../../../services/roo-config", () => ({
-	getRooDirectoriesForCwd: h.fn("getRooDirectoriesForCwd", (cwd: string) => [`${cwd}/.roo`]),
+	// Like the real function: the global .roo first, then the project one.
+	getRooDirectoriesForCwd: h.fn("getRooDirectoriesForCwd", (cwd: string) => ["/home/user/.roo", `${cwd}/.roo`]),
 }))
 vi.mock("@roo-code/core", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@roo-code/core")>()),

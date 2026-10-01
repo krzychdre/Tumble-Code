@@ -611,6 +611,10 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteCusto
       "getWorkspacePath",
     ],
     [
+      "getRooDirectoriesForCwd",
+      "/workspace",
+    ],
+    [
       "fileExistsAtPath",
       "/workspace/.roo/rules-m1",
     ],
@@ -635,6 +639,10 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteCusto
     ],
     [
       "getWorkspacePath",
+    ],
+    [
+      "getRooDirectoriesForCwd",
+      "/workspace",
     ],
     [
       "fileExistsAtPath",
@@ -2271,6 +2279,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > refreshCust
     [
       "customToolRegistry.loadFromDirectories",
       [
+        "/home/user/.roo/tools",
         "/workspace/.roo/tools",
       ],
     ],
