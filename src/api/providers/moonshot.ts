@@ -17,8 +17,6 @@ import { convertToR1Format } from "../transform/r1-format"
 
 import type { ApiHandlerCreateMessageMetadata, CompletionResult } from "../index"
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
-import { handleProviderError } from "./utils/error-handler"
-import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage } from "./utils/completion-usage"
 import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
 
@@ -81,43 +79,26 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 		return { id, info, ...params }
 	}
 
-	protected override createStream(
+	// No parallel_tool_calls: the field is not in Moonshot's request schema.
+	protected override readonly sendsParallelToolCalls = false
+
+	// The R1 converter sends a preserved reasoning block back as reasoning_content,
+	// which the Kimi thinking models expect on the assistant turns of a tool loop.
+	protected override convertMessages(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata,
-		requestOptions?: OpenAI.RequestOptions,
-	) {
-		const { id: model, maxTokens, temperature } = this.getModel()
+	): OpenAI.Chat.ChatCompletionMessageParam[] {
+		return [{ role: "system", content: systemPrompt }, ...convertToR1Format(messages)]
+	}
 
-		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-			model,
-			max_tokens: maxTokens ?? undefined,
-			temperature,
-			// The R1 converter sends a preserved reasoning block back as reasoning_content,
-			// which the Kimi thinking models expect on the assistant turns of a tool loop.
-			messages: [{ role: "system", content: systemPrompt }, ...convertToR1Format(messages)],
-			stream: true,
-			// Without this the API sends no final usage chunk (and no cache figures).
-			stream_options: { include_usage: true },
-			tools: this.convertToolsForOpenAI(metadata?.tools),
-			tool_choice: metadata?.tool_choice,
-			// No parallel_tool_calls: the field is not in Moonshot's request schema.
-		}
+	protected override getSamplingParams() {
+		const { maxTokens, temperature } = this.getModel()
+		return { max_tokens: maxTokens ?? undefined, temperature }
+	}
 
-		// Same contract as the base createStream: the task's signal (the Stop button) or
-		// cancelRequest() aborts this controller, and the base createMessage clears it once the
-		// stream ends.
-		this.abortController = createRequestAbortController(metadata?.signal)
-
-		try {
-			return this.getClient().chat.completions.create(params, {
-				...requestOptions,
-				signal: this.abortController.signal,
-			})
-		} catch (error) {
-			this.abortController = undefined
-			throw handleProviderError(error, this.providerName)
-		}
+	// Moonshot has no binary reasoning switch.
+	protected override getExtraStreamParams() {
+		return {}
 	}
 
 	/**
@@ -197,20 +178,11 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 			...(this.options.modelTemperature != null && { temperature: this.options.modelTemperature }),
 		}
 
-		this.abortController = new AbortController()
-		try {
-			const response = await this.getClient().chat.completions.create(params, {
-				signal: this.abortController.signal,
-			})
+		const response = await this.sendCompletion(params)
 
-			return {
-				text: response.choices?.[0]?.message.content || "",
-				usage: openAiCompletionUsage(withLegacyCachedTokens(response.usage)),
-			}
-		} catch (error) {
-			throw handleProviderError(error, this.providerName)
-		} finally {
-			this.abortController = undefined
+		return {
+			text: response.choices?.[0]?.message.content || "",
+			usage: openAiCompletionUsage(withLegacyCachedTokens(response.usage)),
 		}
 	}
 }

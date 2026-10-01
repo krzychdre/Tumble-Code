@@ -6,7 +6,6 @@ import {
 	deepSeekDefaultModelId,
 	deepSeekModelAliases,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
-	OPENAI_AZURE_AI_INFERENCE_PATH,
 	providerModelDefinitions,
 	resolveCatalogModel,
 } from "@roo-code/types"
@@ -16,11 +15,8 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 import { convertToR1Format } from "../transform/r1-format"
-import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import { OpenAiHandler } from "./openai"
-import { handleProviderError } from "./utils/error-handler"
-import { createRequestAbortController } from "./utils/request-abort"
 import { openAiUsageChunk } from "./utils/completion-usage"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
@@ -144,36 +140,19 @@ export class DeepSeekHandler extends OpenAiHandler {
 
 		addDeepSeekMaxTokensIfNeeded(requestOptions, this.options, maxTokens)
 
-		// Check if base URL is Azure AI Inference (for DeepSeek via Azure)
-		const isAzureAiInference = this._isAzureAiInference(this.options.deepSeekBaseUrl)
+		// The Azure AI Inference path applies when deepSeekBaseUrl points there (it is the
+		// handler's openAiBaseUrl).
+		const stream = await this.openChatStream(
+			requestOptions as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
+			metadata?.signal,
+			"DeepSeek",
+		)
 
-		// The task's signal (the Stop button) or cancelRequest() aborts this controller, which ends
-		// the HTTP request.
-		this.abortController = createRequestAbortController(metadata?.signal)
-
-		let stream
-		try {
-			stream = await this.getClient().chat.completions.create(
-				requestOptions as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
-				{
-					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-					signal: this.abortController.signal,
-				},
-			)
-		} catch (error) {
-			this.abortController = undefined
-			throw handleProviderError(error, "DeepSeek")
-		}
-
-		try {
-			// DeepSeek sends its thinking in reasoning_content, before the answer
-			// text, and may finish with "stop" or "tool_calls" (AP-6).
-			yield* streamChatCompletion(stream, {
-				mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
-			})
-		} finally {
-			this.abortController = undefined
-		}
+		// DeepSeek sends its thinking in reasoning_content, before the answer
+		// text, and may finish with "stop" or "tool_calls" (AP-6).
+		yield* this.streamUntilDone(stream, {
+			mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
+		})
 	}
 
 	// DeepSeek reports its prompt cache at the top level of `usage`:

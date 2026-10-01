@@ -18,8 +18,11 @@ import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usag
 /** Binary reasoning switch some OpenAI-compatible APIs (e.g. Z.ai) accept next to the standard params. */
 type ThinkingParam = { thinking?: { type: "enabled" } }
 
-/** MiniMax reports some errors in a `base_resp` field of an HTTP 200 response. */
-type MiniMaxBaseResp = { base_resp?: { status_code?: number; status_msg?: string } }
+/**
+ * Provider-specific fields of a streamed request (reasoning switches and the like), sent next
+ * to the standard Chat Completions params.
+ */
+type ExtraStreamParams = Record<string, unknown>
 
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
 	providerName: string
@@ -94,52 +97,73 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		return this.client
 	}
 
+	/**
+	 * Whether a streamed request carries `parallel_tool_calls`. Off for APIs whose request
+	 * schema does not have the field.
+	 */
+	protected readonly sendsParallelToolCalls: boolean = true
+
+	/** The conversation in Chat Completions form, system prompt first. */
+	protected convertMessages(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+	): OpenAI.Chat.ChatCompletionMessageParam[] {
+		return [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)]
+	}
+
+	/** `max_tokens` and `temperature` of a streamed request. */
+	protected getSamplingParams(): { max_tokens?: number; temperature?: number } {
+		const { id: model, info } = this.getModel()
+
+		return {
+			// Centralized cap: clamp to 20% of the context window (unless provider-specific exceptions apply)
+			max_tokens:
+				getModelMaxOutputTokens({
+					modelId: model,
+					model: info,
+					settings: this.options,
+					format: "openai",
+				}) ?? undefined,
+			temperature: this.options.modelTemperature ?? info.defaultTemperature ?? this.defaultTemperature,
+		}
+	}
+
+	/** Provider-specific fields of a streamed request; the default is the binary reasoning switch. */
+	protected getExtraStreamParams(): ExtraStreamParams {
+		return this.binaryThinkingParam()
+	}
+
+	/** `thinking: { type: "enabled" }` when reasoning is on and the model has the binary switch. */
+	private binaryThinkingParam(): ThinkingParam {
+		return this.options.enableReasoningEffort && this.getModel().info.supportsReasoningBinary
+			? { thinking: { type: "enabled" } }
+			: {}
+	}
+
 	protected createStream(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
-		requestOptions?: OpenAI.RequestOptions,
 	) {
-		const { id: model, info } = this.getModel()
-
-		// Centralized cap: clamp to 20% of the context window (unless provider-specific exceptions apply)
-		const max_tokens =
-			getModelMaxOutputTokens({
-				modelId: model,
-				model: info,
-				settings: this.options,
-				format: "openai",
-			}) ?? undefined
-
-		const temperature = this.options.modelTemperature ?? info.defaultTemperature ?? this.defaultTemperature
-
-		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & ThinkingParam = {
-			model,
-			max_tokens,
-			temperature,
-			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
+		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+			model: this.getModel().id,
+			...this.getSamplingParams(),
+			messages: this.convertMessages(systemPrompt, messages),
 			stream: true,
+			// Without this the API sends no final usage chunk (and no cache figures).
 			stream_options: { include_usage: true },
 			tools: this.convertToolsForOpenAI(metadata?.tools),
 			tool_choice: metadata?.tool_choice,
-			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
-		}
-
-		// Add thinking parameter if reasoning is enabled and model supports it
-		if (this.options.enableReasoningEffort && info.supportsReasoningBinary) {
-			params.thinking = { type: "enabled" }
+			...(this.sendsParallelToolCalls && { parallel_tool_calls: metadata?.parallelToolCalls ?? true }),
+			...this.getExtraStreamParams(),
 		}
 
 		// A fresh controller for this request: the task's signal (the Stop button) or
-		// cancelRequest() aborts it.
+		// cancelRequest() aborts it, and createMessage clears it once the stream ends.
 		this.abortController = createRequestAbortController(metadata?.signal)
-		const mergedRequestOptions: OpenAI.RequestOptions = {
-			...requestOptions,
-			signal: this.abortController.signal,
-		}
 
 		try {
-			return this.getClient().chat.completions.create(params, mergedRequestOptions)
+			return this.getClient().chat.completions.create(params, { signal: this.abortController.signal })
 		} catch (error) {
 			this.abortController = undefined
 			throw handleProviderError(error, this.providerName)
@@ -156,15 +180,6 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		try {
 			yield* streamChatCompletion(stream, {
 				thinkTags: true,
-				onChunk: (chunk) => {
-					// Provider-specific error responses inside the stream (e.g. MiniMax base_resp)
-					const baseResp = (chunk as { base_resp?: { status_code?: number; status_msg?: string } }).base_resp
-					if (baseResp?.status_code && baseResp.status_code !== 0) {
-						throw new Error(
-							`${this.providerName} API Error (${baseResp.status_code}): ${baseResp.status_msg || "Unknown error"}`,
-						)
-					}
-				},
 				mapUsage: (usage) => this.processUsageMetrics(usage, this.getModel().info),
 			})
 		} finally {
@@ -189,36 +204,30 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	}
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		const { id: modelId, info: modelInfo } = this.getModel()
-
-		const params: OpenAI.Chat.Completions.ChatCompletionCreateParams & ThinkingParam = {
-			model: modelId,
+		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & ThinkingParam = {
+			model: this.getModel().id,
 			messages: [{ role: "user", content: prompt }],
+			...this.binaryThinkingParam(),
 		}
 
-		// Add thinking parameter if reasoning is enabled and model supports it
-		if (this.options.enableReasoningEffort && modelInfo.supportsReasoningBinary) {
-			params.thinking = { type: "enabled" }
-		}
+		const response = await this.sendCompletion(params)
 
+		return {
+			text: response.choices?.[0]?.message.content || "",
+			usage: openAiCompletionUsage(response.usage),
+		}
+	}
+
+	/**
+	 * Sends a one-shot (non-streamed) request that cancelRequest() can abort; errors are
+	 * rethrown through handleProviderError.
+	 */
+	protected async sendCompletion(
+		params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+	): Promise<OpenAI.Chat.Completions.ChatCompletion> {
 		this.abortController = new AbortController()
 		try {
-			const response = await this.getClient().chat.completions.create(params, {
-				signal: this.abortController.signal,
-			})
-
-			// Check for provider-specific error responses (e.g., MiniMax base_resp)
-			const responseAny = response as typeof response & MiniMaxBaseResp
-			if (responseAny.base_resp?.status_code && responseAny.base_resp.status_code !== 0) {
-				throw new Error(
-					`${this.providerName} API Error (${responseAny.base_resp.status_code}): ${responseAny.base_resp.status_msg || "Unknown error"}`,
-				)
-			}
-
-			return {
-				text: response.choices?.[0]?.message.content || "",
-				usage: openAiCompletionUsage(response.usage),
-			}
+			return await this.getClient().chat.completions.create(params, { signal: this.abortController.signal })
 		} catch (error) {
 			throw handleProviderError(error, this.providerName)
 		} finally {
