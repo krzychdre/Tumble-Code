@@ -62,7 +62,7 @@ Also green: `openai*.spec.ts`, `base-openai-compatible-provider*.spec.ts`, `moon
   so the sent value is the same today (the characterization spec covers it).
 - Kept as is on purpose: a stream request of the compatible base that rejects (as opposed to throwing synchronously)
   still reaches the caller as the raw SDK error, not through `handleProviderError`, and its controller is cleared only
-  by the next request. Wrapping it would change the error text Z.ai and Moonshot users see; worth a separate item.
+  by the next request or cancelRequest(). Wrapping it would change the error the caller gets for Z.ai and Moonshot; worth a separate item.
 - Not touched: LiteLLM, Qwen Code, OpenRouter, LM Studio and Bedrock also build Chat Completions requests by hand,
   but their abort and error handling differ (stream-wide try/catch with a "streaming" prefix, LM Studio's hint text,
   Bedrock's own SDK), so a shared helper would not fit them without behaviour changes.
