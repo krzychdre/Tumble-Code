@@ -371,6 +371,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 					/>
 					<StandardTooltip content={t("chat:subagents.send")}>
 						<button
+							aria-label={t("chat:subagents.send")}
 							type="button"
 							onClick={() => sendAnswer(input)}
 							disabled={!input.trim()}
@@ -454,6 +455,7 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 				{cancellable && (
 					<StandardTooltip content={t("chat:subagents.cancel")}>
 						<button
+							aria-label={t("chat:subagents.cancel")}
 							type="button"
 							onClick={cancel}
 							className={cn(

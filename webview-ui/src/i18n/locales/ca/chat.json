@@ -475,7 +475,8 @@
 	},
 	"queuedMessages": {
 		"title": "Missatges en cua",
-		"clickToEdit": "Feu clic per editar el missatge"
+		"clickToEdit": "Feu clic per editar el missatge",
+		"remove": "Treu el missatge de la cua"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble vol executar una comanda slash",

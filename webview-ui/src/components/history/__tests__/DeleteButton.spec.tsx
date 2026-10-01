@@ -13,7 +13,7 @@ describe("DeleteButton", () => {
 		const onDelete = vi.fn()
 		render(<DeleteButton itemId="test-id" onDelete={onDelete} />)
 
-		const deleteButton = screen.getByRole("button")
+		const deleteButton = screen.getByRole("button", { name: "history:deleteTaskTitle" })
 		fireEvent.click(deleteButton)
 
 		expect(onDelete).toHaveBeenCalledWith("test-id")

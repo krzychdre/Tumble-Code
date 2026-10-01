@@ -424,7 +424,11 @@ export const ContextManagementSettings = ({
 					<div className="flex justify-between items-center mb-1">
 						<label className="block font-medium">{t("prompts:supportPrompts.types.CONDENSE.label")}</label>
 						<StandardTooltip content={t("prompts:supportPrompts.resetPrompt", { promptType: "CONDENSE" })}>
-							<Button variant="ghost" size="icon" onClick={handleCondenseReset}>
+							<Button
+								aria-label={t("prompts:supportPrompts.resetPrompt", { promptType: "CONDENSE" })}
+								variant="ghost"
+								size="icon"
+								onClick={handleCondenseReset}>
 								<span className="codicon codicon-discard"></span>
 							</Button>
 						</StandardTooltip>

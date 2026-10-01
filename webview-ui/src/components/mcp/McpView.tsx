@@ -303,6 +303,7 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 					<Button
 						variant="ghost"
 						size="icon"
+						aria-label={t("mcp:deleteDialog.title")}
 						onClick={() => setShowDeleteConfirm(true)}
 						style={{ marginRight: "8px" }}>
 						<span className="codicon codicon-trash" style={{ fontSize: "14px" }}></span>
@@ -310,6 +311,7 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 					<Button
 						variant="ghost"
 						size="icon"
+						aria-label={t("mcp:serverStatus.restart")}
 						onClick={handleRestart}
 						disabled={server.status === "connecting"}
 						style={{ marginRight: "8px" }}>

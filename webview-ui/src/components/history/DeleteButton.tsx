@@ -27,6 +27,7 @@ export const DeleteButton = ({ itemId, onDelete }: DeleteButtonProps) => {
 	return (
 		<StandardTooltip content={t("history:deleteTaskTitle")}>
 			<Button
+				aria-label={t("history:deleteTaskTitle")}
 				variant="ghost"
 				size="icon"
 				data-testid="delete-task-button"

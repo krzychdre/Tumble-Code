@@ -1,4 +1,4 @@
-// npx vitest src/components/ui/hooks/__tests__/useSelectedModel.spec.ts
+// npx vitest src/hooks/models/__tests__/useSelectedModel.spec.ts
 
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"

@@ -477,7 +477,8 @@
 	},
 	"queuedMessages": {
 		"title": "대기열 메시지",
-		"clickToEdit": "클릭하여 메시지 편집"
+		"clickToEdit": "클릭하여 메시지 편집",
+		"remove": "대기열에서 메시지 제거"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble가 슬래시 명령어를 실행하려고 합니다",

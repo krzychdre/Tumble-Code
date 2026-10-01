@@ -478,7 +478,8 @@
 	},
 	"queuedMessages": {
 		"title": "Sıradaki Mesajlar",
-		"clickToEdit": "Mesajı düzenlemek için tıkla"
+		"clickToEdit": "Mesajı düzenlemek için tıkla",
+		"remove": "Mesajı sıradan kaldır"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble bir slash komutu çalıştırmak istiyor",

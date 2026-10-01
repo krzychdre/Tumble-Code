@@ -182,6 +182,7 @@ export const ApiConfigSelector = ({
 						)}
 						<StandardTooltip content={isPinned ? t("chat:unpin") : t("chat:pin")}>
 							<Button
+								aria-label={isPinned ? t("chat:unpin") : t("chat:pin")}
 								variant="ghost"
 								size="icon"
 								tabIndex={-1}

@@ -218,6 +218,7 @@ export function ImageViewer({
 						{imagePath && (
 							<StandardTooltip content={t("common:mermaid.buttons.copy")}>
 								<IconButton
+									aria-label={t("common:mermaid.buttons.copy")}
 									variant="toolbar"
 									icon={copyFeedback ? "check" : "copy"}
 									onClick={handleCopy}
@@ -225,7 +226,12 @@ export function ImageViewer({
 							</StandardTooltip>
 						)}
 						<StandardTooltip content={t("common:mermaid.buttons.save")}>
-							<IconButton variant="toolbar" icon="save" onClick={handleSave} />
+							<IconButton
+								aria-label={t("common:mermaid.buttons.save")}
+								variant="toolbar"
+								icon="save"
+								onClick={handleSave}
+							/>
 						</StandardTooltip>
 					</>
 				}>

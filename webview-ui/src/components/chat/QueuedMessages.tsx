@@ -94,6 +94,7 @@ export const QueuedMessages = ({ queue, onRemove, onUpdate }: QueuedMessagesProp
 										variant="ghost"
 										size="icon"
 										className="shrink-0"
+										aria-label={t("queuedMessages.remove")}
 										onClick={(e) => {
 											e.stopPropagation()
 											onRemove(index)

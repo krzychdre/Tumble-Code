@@ -8,7 +8,7 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Popover, PopoverContent, StandardTooltip, LabeledCheckbox } from "@src/components/ui"
 import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
-import { useOpenRouterModelProviders } from "@src/components/ui/hooks/useOpenRouterModelProviders"
+import { useOpenRouterModelProviders } from "@src/hooks/models/useOpenRouterModelProviders"
 import { DiscardChangesDialog } from "@src/components/common/DiscardChangesDialog"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 

@@ -483,7 +483,8 @@
 	},
 	"queuedMessages": {
 		"title": "Pesan Antrian",
-		"clickToEdit": "Klik untuk mengedit pesan"
+		"clickToEdit": "Klik untuk mengedit pesan",
+		"remove": "Hapus pesan dari antrian"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble ingin menjalankan perintah slash",

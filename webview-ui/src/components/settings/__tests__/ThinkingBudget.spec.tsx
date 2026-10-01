@@ -33,7 +33,7 @@ vi.mock("@/components/ui", () => ({
 	),
 }))
 
-vi.mock("@/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: (apiConfiguration: any) => {
 		// Return the model ID based on apiConfiguration for testing
 		// For Gemini tests, check if apiProvider is gemini and use apiModelId

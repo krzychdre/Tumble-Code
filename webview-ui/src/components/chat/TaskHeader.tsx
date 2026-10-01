@@ -20,7 +20,7 @@ import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"
 import { IconButton, StandardTooltip, Button } from "@src/components/ui"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
-import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
+import { useSelectedModel } from "@/hooks/models/useSelectedModel"
 import { vscode } from "@src/utils/vscode"
 
 import Thumbnails from "../common/Thumbnails"

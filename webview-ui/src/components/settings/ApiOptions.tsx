@@ -1,5 +1,4 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react"
-import { convertHeadersToObject } from "./utils/headers"
 import { useDebounce } from "react-use"
 
 import {
@@ -26,13 +25,13 @@ import {
 
 import { validateApiConfigurationExcludingModelErrors, getModelValidationError } from "@src/utils/validate"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
-import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { useProviderModels } from "@src/hooks/models/useProviderModels"
+import { useSelectedModel } from "@src/hooks/models/useSelectedModel"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import {
 	useOpenRouterModelProviders,
 	OPENROUTER_DEFAULT_PROVIDER_NAME,
-} from "@src/components/ui/hooks/useOpenRouterModelProviders"
+} from "@src/hooks/models/useOpenRouterModelProviders"
 import { filterProviders, filterModels } from "./utils/organizationFilters"
 import {
 	Select,
@@ -81,37 +80,6 @@ const ApiOptions = ({
 }: ApiOptionsProps) => {
 	const { t } = useAppTranslation()
 	const { organizationAllowList, openAiCodexIsAuthenticated } = useExtensionState()
-
-	const [customHeaders, setCustomHeaders] = useState<[string, string][]>(() => {
-		const headers = apiConfiguration?.openAiHeaders || {}
-		return Object.entries(headers)
-	})
-
-	useEffect(() => {
-		const propHeaders = apiConfiguration?.openAiHeaders || {}
-
-		if (JSON.stringify(customHeaders) !== JSON.stringify(Object.entries(propHeaders))) {
-			setCustomHeaders(Object.entries(propHeaders))
-		}
-	}, [apiConfiguration?.openAiHeaders, customHeaders])
-
-	// Helper to convert array of tuples to object (filtering out empty keys).
-
-	// Debounced effect to update the main configuration when local
-	// customHeaders state stabilizes.
-	useDebounce(
-		() => {
-			const currentConfigHeaders = apiConfiguration?.openAiHeaders || {}
-			const newHeadersObject = convertHeadersToObject(customHeaders)
-
-			// Only update if the processed object is different from the current config.
-			if (JSON.stringify(currentConfigHeaders) !== JSON.stringify(newHeadersObject)) {
-				setApiConfigurationField("openAiHeaders", newHeadersObject, false)
-			}
-		},
-		300,
-		[customHeaders, apiConfiguration?.openAiHeaders, setApiConfigurationField],
-	)
 
 	const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
 

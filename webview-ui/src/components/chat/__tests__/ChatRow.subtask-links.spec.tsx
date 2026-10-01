@@ -54,7 +54,7 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 }))
 
 // Mock useSelectedModel hook
-vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@src/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: () => ({ info: { supportsImages: true } }),
 }))
 

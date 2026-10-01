@@ -250,6 +250,7 @@ export const WorktreesView = () => {
 									<div className="flex items-center gap-1 ml-3 min-[400px]:ml-0 flex-shrink-0">
 										<StandardTooltip content={t("worktrees:openInNewWindow")}>
 											<Button
+												aria-label={t("worktrees:openInNewWindow")}
 												variant="ghost"
 												size="icon"
 												disabled={worktree.isCurrent}
@@ -263,6 +264,7 @@ export const WorktreesView = () => {
 
 										<StandardTooltip content={t("worktrees:delete")}>
 											<Button
+												aria-label={t("worktrees:delete")}
 												variant="ghost"
 												size="icon"
 												disabled={worktree.isCurrent || worktree.isBare}

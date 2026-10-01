@@ -244,6 +244,7 @@ export const CommandExecution = ({
 								{status.pid && <div className="whitespace-nowrap">(PID: {status.pid})</div>}
 								<StandardTooltip content={t("chat:commandExecution.abort")}>
 									<Button
+										aria-label={t("chat:commandExecution.abort")}
 										variant="ghost"
 										size="icon"
 										onClick={() =>

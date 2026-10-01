@@ -477,7 +477,8 @@
 	},
 	"queuedMessages": {
 		"title": "キューメッセージ",
-		"clickToEdit": "クリックしてメッセージを編集"
+		"clickToEdit": "クリックしてメッセージを編集",
+		"remove": "キューからメッセージを削除"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumbleはスラッシュコマンドを実行したい",

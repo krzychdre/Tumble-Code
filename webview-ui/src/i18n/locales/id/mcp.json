@@ -49,7 +49,8 @@
 	},
 	"serverStatus": {
 		"retrying": "Mencoba lagi...",
-		"retryConnection": "Coba Koneksi Lagi"
+		"retryConnection": "Coba Koneksi Lagi",
+		"restart": "Mulai ulang server"
 	},
 	"execution": {
 		"running": "Berjalan",

@@ -483,7 +483,8 @@
 	},
 	"queuedMessages": {
 		"title": "Messaggi in coda",
-		"clickToEdit": "Clicca per modificare il messaggio"
+		"clickToEdit": "Clicca per modificare il messaggio",
+		"remove": "Rimuovi messaggio dalla coda"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble vuole eseguire un comando slash",

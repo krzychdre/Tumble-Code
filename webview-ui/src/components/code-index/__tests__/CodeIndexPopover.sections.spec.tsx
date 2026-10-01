@@ -34,7 +34,7 @@ vi.mock("@/utils/vscode", () => ({
 	vscode: { postMessage: vi.fn() },
 }))
 
-vi.mock("@/components/ui/hooks/useOpenRouterModelProviders", () => ({
+vi.mock("@/hooks/models/useOpenRouterModelProviders", () => ({
 	useOpenRouterModelProviders: () => ({ data: undefined, isLoading: false }),
 	OPENROUTER_DEFAULT_PROVIDER_NAME: "[default]",
 }))

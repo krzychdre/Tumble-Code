@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from "react"
 
 import { type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/types"
 
-import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
+import { useProviderModels } from "@src/hooks/models/useProviderModels"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, LabeledCheckbox, ThemedTextField } from "@src/components/ui"
 

@@ -478,7 +478,8 @@
 	},
 	"queuedMessages": {
 		"title": "Tin nhắn trong hàng đợi",
-		"clickToEdit": "Nhấp để chỉnh sửa tin nhắn"
+		"clickToEdit": "Nhấp để chỉnh sửa tin nhắn",
+		"remove": "Xoá tin nhắn khỏi hàng đợi"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble muốn chạy lệnh slash",

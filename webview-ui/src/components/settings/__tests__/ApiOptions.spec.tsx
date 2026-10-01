@@ -1,6 +1,6 @@
 // npx vitest src/components/settings/__tests__/ApiOptions.spec.tsx
 
-import { render, screen, fireEvent, within } from "@/utils/test-utils"
+import { act, render, screen, fireEvent, within } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { type ModelInfo, type ProviderSettings, openAiModelInfoSaneDefaults } from "@roo-code/types"
@@ -242,7 +242,7 @@ vi.mock("../providers/LiteLLM", () => ({
 	),
 }))
 
-vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@src/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: vi.fn((apiConfiguration: ProviderSettings) => {
 		if (apiConfiguration.apiModelId === "api6-unknown-model") {
 			return {
@@ -302,6 +302,29 @@ describe("ApiOptions", () => {
 		renderApiOptions({ apiConfiguration: { apiProvider: "xai", apiModelId: "api6-unknown-model" } })
 
 		expect(screen.getByTestId("unknown-model-warning")).toBeInTheDocument()
+	})
+
+	// The OpenAI-compatible form owns the custom headers; ApiOptions used to mirror them and write
+	// a normalized copy back after a debounce, a second writer of the same field.
+	it("never writes openAiHeaders itself", () => {
+		vi.useFakeTimers()
+		try {
+			const setApiConfigurationField = vi.fn()
+			renderApiOptions({
+				apiConfiguration: {
+					apiProvider: "xai",
+					apiModelId: "grok-4.6",
+					openAiHeaders: { " X-Untrimmed ": "1" },
+				},
+				setApiConfigurationField,
+			})
+			act(() => {
+				vi.advanceTimersByTime(1000)
+			})
+			expect(setApiConfigurationField.mock.calls.filter(([field]) => field === "openAiHeaders")).toEqual([])
+		} finally {
+			vi.useRealTimers()
+		}
 	})
 
 	it("shows no unknown-model warning for a listed model", () => {

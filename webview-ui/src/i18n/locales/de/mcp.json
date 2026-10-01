@@ -48,7 +48,8 @@
 	},
 	"serverStatus": {
 		"retrying": "Wiederhole...",
-		"retryConnection": "Verbindung wiederholen"
+		"retryConnection": "Verbindung wiederholen",
+		"restart": "Server neu starten"
 	},
 	"refreshMCP": "MCP-Server aktualisieren",
 	"execution": {

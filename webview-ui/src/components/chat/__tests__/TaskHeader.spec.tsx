@@ -56,7 +56,7 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 let mockModelInfo: { contextWindow: number; maxTokens: number } | undefined = undefined
 
 // Mock useSelectedModel hook
-vi.mock("@/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: () => ({
 		provider: "anthropic",
 		id: "test-model",

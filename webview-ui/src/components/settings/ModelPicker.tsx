@@ -4,7 +4,7 @@ import { ChevronsUpDown, Check, X, Info } from "lucide-react"
 import { type ProviderSettings, type ModelInfo, type OrganizationAllowList, isRetiredProvider } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
+import { useSelectedModel } from "@/hooks/models/useSelectedModel"
 import { filterModels } from "./utils/organizationFilters"
 import { cn } from "@src/lib/utils"
 import {

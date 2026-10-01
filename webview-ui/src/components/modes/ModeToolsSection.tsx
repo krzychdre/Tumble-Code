@@ -66,7 +66,11 @@ export const ModeToolsSection = ({
 				{customMode && (
 					<StandardTooltip
 						content={isToolsEditMode ? t("prompts:tools.doneEditing") : t("prompts:tools.editTools")}>
-						<Button variant="ghost" size="icon" onClick={onToggleToolsEditMode}>
+						<Button
+							aria-label={isToolsEditMode ? t("prompts:tools.doneEditing") : t("prompts:tools.editTools")}
+							variant="ghost"
+							size="icon"
+							onClick={onToggleToolsEditMode}>
 							<span className={`codicon codicon-${isToolsEditMode ? "check" : "edit"}`}></span>
 						</Button>
 					</StandardTooltip>

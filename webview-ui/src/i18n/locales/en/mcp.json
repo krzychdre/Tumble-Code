@@ -49,7 +49,8 @@
 	},
 	"serverStatus": {
 		"retrying": "Retrying...",
-		"retryConnection": "Retry Connection"
+		"retryConnection": "Retry Connection",
+		"restart": "Restart server"
 	},
 	"execution": {
 		"running": "Running",

@@ -41,7 +41,7 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 	useExtensionState: () => ({ version: "1.0.0", apiConfiguration: {} }),
 }))
 
-vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@src/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: () => ({ provider: "test-provider", id: "test-model" }),
 }))
 

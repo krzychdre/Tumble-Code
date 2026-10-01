@@ -1,7 +1,7 @@
 import type { Mock } from "vitest"
 import { renderHook } from "@testing-library/react"
 
-import { useEscapeKey } from "./useEscapeKey"
+import { useEscapeKey } from "../useEscapeKey"
 
 describe("useEscapeKey", () => {
 	let mockOnEscape: Mock

@@ -483,7 +483,8 @@
 	},
 	"queuedMessages": {
 		"title": "Messages en file d'attente",
-		"clickToEdit": "Cliquez pour modifier le message"
+		"clickToEdit": "Cliquez pour modifier le message",
+		"remove": "Retirer le message de la file d'attente"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble veut exécuter une commande slash",

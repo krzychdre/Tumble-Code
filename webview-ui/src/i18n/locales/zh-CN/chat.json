@@ -478,7 +478,8 @@
 	},
 	"queuedMessages": {
 		"title": "队列消息",
-		"clickToEdit": "点击编辑消息"
+		"clickToEdit": "点击编辑消息",
+		"remove": "从队列中移除消息"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble 想要运行斜杠命令",

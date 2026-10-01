@@ -37,6 +37,7 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 					<div className="relative inline-block">
 						<StandardTooltip content={t("prompts:modes.editModesConfig")}>
 							<Button
+								aria-label={t("prompts:modes.editModesConfig")}
 								variant="ghost"
 								size="icon"
 								className="flex"
@@ -91,6 +92,7 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 					</div>
 					<StandardTooltip content={t("chat:modeSelector.marketplace")}>
 						<Button
+							aria-label={t("chat:modeSelector.marketplace")}
 							variant="ghost"
 							size="icon"
 							onClick={() => {

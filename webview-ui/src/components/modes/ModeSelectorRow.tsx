@@ -145,6 +145,7 @@ export const ModeSelectorRow = ({
 					/>
 					<StandardTooltip content={t("settings:common.save")}>
 						<Button
+							aria-label={t("settings:common.save")}
 							variant="ghost"
 							size="icon"
 							disabled={!renameInputValue.trim()}
@@ -155,6 +156,7 @@ export const ModeSelectorRow = ({
 					</StandardTooltip>
 					<StandardTooltip content={t("settings:common.cancel")}>
 						<Button
+							aria-label={t("settings:common.cancel")}
 							variant="ghost"
 							size="icon"
 							onClick={handleCancelRenameMode}
@@ -265,7 +267,12 @@ export const ModeSelectorRow = ({
 
 					{/* New mode (+) moved here from the top bar */}
 					<StandardTooltip content={t("prompts:modes.createNewMode")}>
-						<Button variant="ghost" size="icon" onClick={onCreate} data-testid="add-mode-button">
+						<Button
+							aria-label={t("prompts:modes.createNewMode")}
+							variant="ghost"
+							size="icon"
+							onClick={onCreate}
+							data-testid="add-mode-button">
 							<span className="codicon codicon-add" />
 						</Button>
 					</StandardTooltip>
@@ -273,6 +280,7 @@ export const ModeSelectorRow = ({
 					{/* Edit (rename) mode - only enabled for custom modes */}
 					<StandardTooltip content={t("settings:providers.renameProfile")}>
 						<Button
+							aria-label={t("settings:providers.renameProfile")}
 							variant="ghost"
 							size="icon"
 							onClick={handleStartRenameMode}
@@ -285,6 +293,7 @@ export const ModeSelectorRow = ({
 					{/* Delete mode - disabled for built-in modes */}
 					<StandardTooltip content={t("prompts:createModeDialog.deleteMode")}>
 						<Button
+							aria-label={t("prompts:createModeDialog.deleteMode")}
 							variant="ghost"
 							size="icon"
 							onClick={() => {

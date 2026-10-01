@@ -25,7 +25,7 @@ describe("CopyButton", () => {
 	it("copies task content when clicked", () => {
 		render(<CopyButton itemTask="Test task content" />)
 
-		const copyButton = screen.getByRole("button")
+		const copyButton = screen.getByRole("button", { name: "history:copyPrompt" })
 		fireEvent.click(copyButton)
 
 		expect(mockCopy).toHaveBeenCalledWith("Test task content")

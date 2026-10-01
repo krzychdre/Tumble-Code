@@ -31,6 +31,7 @@ export const SystemPromptActions = ({ currentModeSlug }: SystemPromptActionsProp
 				</Button>
 				<StandardTooltip content={t("prompts:systemPrompt.copy")}>
 					<Button
+						aria-label={t("prompts:systemPrompt.copy")}
 						variant="ghost"
 						size="icon"
 						onClick={() => {

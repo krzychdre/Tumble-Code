@@ -45,15 +45,15 @@ vi.mock("@src/components/common/VSCodeButtonLink", () => ({
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
-vi.mock("@src/components/ui/hooks/useProviderModels", () => ({
+vi.mock("@src/hooks/models/useProviderModels", () => ({
 	useProviderModels: () => ({ models: {}, modelIds: [], isLoading: false, refresh: vi.fn() }),
 }))
 
-vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
+vi.mock("@src/hooks/models/useSelectedModel", () => ({
 	useSelectedModel: () => ({ id: "test-model", info: undefined }),
 }))
 
-vi.mock("@/components/ui/hooks/useOpenRouterKeyInfo", () => ({
+vi.mock("@/hooks/models/useOpenRouterKeyInfo", () => ({
 	useOpenRouterKeyInfo: () => ({ data: undefined }),
 }))
 

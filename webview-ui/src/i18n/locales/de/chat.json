@@ -477,7 +477,8 @@
 	},
 	"queuedMessages": {
 		"title": "Warteschlange Nachrichten",
-		"clickToEdit": "Klicken zum Bearbeiten der Nachricht"
+		"clickToEdit": "Klicken zum Bearbeiten der Nachricht",
+		"remove": "Nachricht aus der Warteschlange entfernen"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble möchte einen Slash-Befehl ausführen",

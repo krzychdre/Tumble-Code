@@ -42,6 +42,7 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 				/>
 				<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
 					<IconButton
+						aria-label={t("common:mermaid.buttons.viewCode")}
 						variant="toolbar"
 						icon="code"
 						onClick={(e: React.MouseEvent) => {
@@ -51,7 +52,12 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 					/>
 				</StandardTooltip>
 				<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-					<IconButton variant="toolbar" icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
+					<IconButton
+						aria-label={t("common:mermaid.buttons.copy")}
+						variant="toolbar"
+						icon={copyFeedback ? "check" : "copy"}
+						onClick={onCopy}
+					/>
 				</StandardTooltip>
 			</>
 		)
@@ -61,11 +67,17 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 		<>
 			{onZoom && (
 				<StandardTooltip content={t("common:mermaid.buttons.zoom")}>
-					<IconButton variant="toolbar" icon="zoom-in" onClick={onZoom} />
+					<IconButton
+						aria-label={t("common:mermaid.buttons.zoom")}
+						variant="toolbar"
+						icon="zoom-in"
+						onClick={onZoom}
+					/>
 				</StandardTooltip>
 			)}
 			<StandardTooltip content={t("common:mermaid.buttons.viewCode")}>
 				<IconButton
+					aria-label={t("common:mermaid.buttons.viewCode")}
 					variant="toolbar"
 					icon="code"
 					onClick={(e: React.MouseEvent) => {
@@ -75,16 +87,31 @@ export const MermaidActionButtons: React.FC<MermaidActionButtonsProps> = ({
 				/>
 			</StandardTooltip>
 			<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-				<IconButton variant="toolbar" icon={copyFeedback ? "check" : "copy"} onClick={onCopy} />
+				<IconButton
+					aria-label={t("common:mermaid.buttons.copy")}
+					variant="toolbar"
+					icon={copyFeedback ? "check" : "copy"}
+					onClick={onCopy}
+				/>
 			</StandardTooltip>
 			{onSave && (
 				<StandardTooltip content={t("common:mermaid.buttons.save")}>
-					<IconButton variant="toolbar" icon="save" onClick={onSave} />
+					<IconButton
+						aria-label={t("common:mermaid.buttons.save")}
+						variant="toolbar"
+						icon="save"
+						onClick={onSave}
+					/>
 				</StandardTooltip>
 			)}
 			{onClose && (
 				<StandardTooltip content={t("common:mermaid.buttons.close")}>
-					<IconButton variant="toolbar" icon="close" onClick={onClose} />
+					<IconButton
+						aria-label={t("common:mermaid.buttons.close")}
+						variant="toolbar"
+						icon="close"
+						onClick={onClose}
+					/>
 				</StandardTooltip>
 			)}
 		</>

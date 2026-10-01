@@ -48,7 +48,8 @@
 	},
 	"serverStatus": {
 		"retrying": "Đang thử lại...",
-		"retryConnection": "Thử kết nối lại"
+		"retryConnection": "Thử kết nối lại",
+		"restart": "Khởi động lại máy chủ"
 	},
 	"refreshMCP": "Làm mới Máy chủ MCP",
 	"execution": {
