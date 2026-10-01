@@ -11,7 +11,8 @@
  {"ts":8,"type":"say","say":"subtask_result","text":"Child finished"},
  {"ts":9,"type":"say","say":"user_feedback","text":"No, do it differently"},
  {"ts":10,"type":"say","say":"completion_result","text":"Done"},
- {"ts":11,"type":"say","say":"api_req_started","text":"{\"tokensIn\":900,\"tokensOut\":90,\"cost\":0.09}"}
+ {"ts":11,"type":"say","say":"api_req_started","text":"{\"tokensIn\":900,\"tokensOut\":90,\"cost\":0.09}"},
+ {"ts":12,"type":"say","say":"text","text":"I will split the parser in two"}
 ]</script>
 <!-- Which model answered each request. Derived server-side and shipped apart
      from the messages; ts 11 is deliberately absent — an unattributed request
@@ -23,11 +24,23 @@
 <script src="../../src/web/static/render.js"></script>
 <script>
 window.addEventListener("load", function () {
-  var out = [], fail = 0
+  var out = [], fail = 0, convo0
   function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
 
   var rows = document.querySelectorAll("#conversation .msg")
-  check("rendered all 11 rows", rows.length === 11)
+  check("rendered all 12 rows", rows.length === 12)
+
+  // The task's instruction is the first row, a plain "text" say like an
+  // assistant answer; it is yours, labelled and coloured like your replies.
+  check("the task's instruction is yours", rows[0].classList.contains("role-user") &&
+        rows[0].querySelector(".msg-role").textContent === "You")
+  check("a later text say is the assistant's", rows[11].classList.contains("role-assistant") &&
+        rows[11].querySelector(".msg-role").textContent === "Assistant")
+  convo0 = window.__tumbleConversation
+  convo0.upsert({ts:1,type:"say",say:"text",text:"Please refactor the parser, carefully"})
+  var first = document.querySelector('#conversation .msg[data-ts="1"]')
+  check("the instruction stays yours after a live update",
+        first.classList.contains("role-user") && /carefully/.test(first.textContent))
 
   // The stamp is split so a phone can drop the date (app.css), and together
   // the two parts must still read exactly as toLocaleString() did.
