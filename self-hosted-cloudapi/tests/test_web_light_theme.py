@@ -84,7 +84,7 @@ def test_text_and_data_hues_pass_aa_on_the_page_and_the_panels(theme):
     t = _dark() if theme == "dark" else _light()
     grounds = ("--bg", "--surface-1")
     for fg in ("--text", "--text-dim", "--text-faint", "--signal", "--d-in", "--d-out", "--d-cache",
-               "--d-cost", "--d-error", "--d-you"):
+               "--d-cost", "--d-error", "--d-you", "--status-run"):
         for bg in grounds:
             assert contrast(t[fg], t[bg]) >= 4.5, (theme, fg, bg, round(contrast(t[fg], t[bg]), 2))
     # Text set on a filled button.

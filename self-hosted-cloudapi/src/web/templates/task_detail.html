@@ -25,7 +25,7 @@
     {% if can_delete %}
     <form class="task-delete-detail" method="post" action="/app/tasks/{{ task.id }}/delete"
           data-confirm="Delete this task and its conversation permanently? This cannot be undone.">
-      <button class="btn-delete" type="submit">Delete task</button>
+      <button class="btn ghost small btn-delete" type="submit">Delete task</button>
     </form>
     {% endif %}
   </div>
@@ -152,8 +152,8 @@
    screen, above it on a narrow one. #}
 <nav id="timeline" class="timeline" aria-label="Conversation timeline" hidden>
   <div class="tl-jumps">
-    <button type="button" id="tl-next-error" class="btn ghost">Next error</button>
-    <button type="button" id="tl-next-user" class="btn ghost">Next message of yours</button>
+    <button type="button" id="tl-next-error" class="btn ghost small">Next error</button>
+    <button type="button" id="tl-next-user" class="btn ghost small">Next message of yours</button>
   </div>
   <div class="tl-track" id="tl-track"></div>
 </nav>
