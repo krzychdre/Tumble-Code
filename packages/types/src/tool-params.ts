@@ -99,16 +99,6 @@ export function isLegacyReadFileParams(params: ReadFileToolParams): params is Le
 	return hasLegacyFlag || hasFilesArray
 }
 
-export interface Coordinate {
-	x: number
-	y: number
-}
-
-export interface Size {
-	width: number
-	height: number
-}
-
 export interface GenerateImageParams {
 	prompt: string
 	path: string

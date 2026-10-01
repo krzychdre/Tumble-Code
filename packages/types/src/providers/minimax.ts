@@ -129,8 +129,3 @@ export const minimaxModels = {
 			"MiniMax M2.1 highspeed: same performance as M2.1 but with faster response (approximately 100 tps vs 60 tps). See pricing at https://platform.minimax.io/docs/guides/pricing-paygo. Requires TokenPlan High-Speed subscription for use with TokenPlan keys. Note: When using TokenPlan, usage is billed per request, not per token.",
 	},
 } as const satisfies Record<string, ModelInfo>
-
-export const minimaxDefaultModelInfo: ModelInfo = minimaxModels[minimaxDefaultModelId]
-
-export const MINIMAX_DEFAULT_MAX_TOKENS = 16_384
-export const MINIMAX_DEFAULT_TEMPERATURE = 1.0

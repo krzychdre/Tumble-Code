@@ -191,10 +191,6 @@ export type ProviderSettings = z.infer<typeof providerSettingsSchema>
 
 export const providerSettingsWithIdSchema = providerSettingsSchema.extend({ id: z.string().optional() })
 
-export const discriminatedProviderSettingsWithIdSchema = providerSettingsSchemaDiscriminated.and(
-	z.object({ id: z.string().optional() }),
-)
-
 export type ProviderSettingsWithId = z.infer<typeof providerSettingsWithIdSchema>
 
 export const PROVIDER_SETTINGS_KEYS = providerSettingsSchema.keyof().options

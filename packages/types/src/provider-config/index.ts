@@ -30,7 +30,6 @@ export * from "./compatibility.js"
 export * from "./shared.js"
 
 export type KnownProviderId = (typeof activeProviderIds)[number]
-export type RetiredProviderId = (typeof retiredProviderIds)[number]
 
 export const providerConfigSchemas = {
 	anthropic: anthropicConfigSchema,
@@ -54,15 +53,6 @@ export const providerConfigSchemas = {
 	zai: zaiConfigSchema,
 	"qwen-code": qwenCodeConfigSchema,
 } satisfies { [K in KnownProviderId]: z.ZodTypeAny }
-
-type ProviderConfigMap = {
-	[K in KnownProviderId]: z.infer<(typeof providerConfigSchemas)[K] & z.ZodTypeAny>
-}
-
-export type ProviderConfig<K extends KnownProviderId = KnownProviderId> = ProviderConfigMap[K]
-export type KnownProviderConfiguration<K extends KnownProviderId = KnownProviderId> = K extends KnownProviderId
-	? { providerId: K; config: ProviderConfigMap[K] }
-	: never
 
 /**
  * The settings keys of each provider's credentials: API keys, access keys, pasted service-account
@@ -148,19 +138,11 @@ export const unknownProviderConfigurationSchema = z.object({
 	opaqueLegacyPayload: z.record(z.string(), z.unknown()),
 })
 
-export type RetiredProviderConfiguration = z.infer<typeof retiredProviderConfigurationSchema>
-export type UnknownProviderConfiguration = z.infer<typeof unknownProviderConfigurationSchema>
-export type OpaqueProviderConfiguration = RetiredProviderConfiguration | UnknownProviderConfiguration
-
 export const narrowedProviderSettingsSchema = z.object({
 	provider: knownProviderConfigurationSchema,
 	shared: sharedProfileSettingsSchema.optional(),
 })
 
-export type NarrowedProviderSettings = z.infer<typeof narrowedProviderSettingsSchema>
-
 export const opaqueNarrowedProviderSettingsSchema = z.object({
 	provider: z.union([retiredProviderConfigurationSchema, unknownProviderConfigurationSchema]),
 })
-
-export type OpaqueNarrowedProviderSettings = z.infer<typeof opaqueNarrowedProviderSettingsSchema>

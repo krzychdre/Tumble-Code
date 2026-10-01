@@ -85,8 +85,8 @@ const rawGroupEntryArraySchema = z.array(groupEntrySchema).refine(
  *
  * The type assertion to `z.ZodType<GroupEntry[], GroupEntry[]>` is
  * required because `z.preprocess` erases the input type to `unknown`, which
- * propagates through `modeConfigSchema → rooCodeSettingsSchema → createRunSchema`
- * and breaks `zodResolver` generic inference in downstream consumers.
+ * propagates into every schema built on `modeConfigSchema` and breaks generic
+ * inference in downstream consumers.
  */
 export const groupEntryArraySchema = z.preprocess((val) => {
 	if (!Array.isArray(val)) return val
@@ -160,8 +160,6 @@ export const customModesSettingsSchema = z.object({
 	),
 })
 
-export type CustomModesSettings = z.infer<typeof customModesSettingsSchema>
-
 /**
  * PromptComponent
  */
@@ -197,8 +195,6 @@ export type CustomModePrompts = z.infer<typeof customModePromptsSchema>
  */
 
 export const customSupportPromptsSchema = z.record(z.string(), z.string().optional())
-
-export type CustomSupportPrompts = z.infer<typeof customSupportPromptsSchema>
 
 /**
  * DEFAULT_MODES

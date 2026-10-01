@@ -67,5 +67,3 @@ export const moonshotModels = {
 			"Kimi K2.5 is the latest generation of Moonshot AI's Kimi series, featuring improved reasoning capabilities and enhanced performance across diverse tasks.",
 	},
 } as const satisfies Record<string, ModelInfo>
-
-export const MOONSHOT_DEFAULT_TEMPERATURE = 0.6
