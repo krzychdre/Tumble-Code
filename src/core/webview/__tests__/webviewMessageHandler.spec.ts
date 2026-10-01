@@ -393,6 +393,29 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		expect(fs.rm).not.toHaveBeenCalled()
 	})
 
+	// With no workspace open a project mode has no rules folder. The handler used to fall back
+	// to the relative ".roo/rules-<slug>", which resolves against the extension host's cwd.
+	it("never offers or deletes a relative rules folder for a project mode with no workspace", async () => {
+		const slug = "test-no-workspace"
+		vi.mocked(getWorkspacePath).mockReturnValue("")
+		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
+			{ name: "No Workspace", slug, roleDefinition: "Role", groups: [], source: "project" } as ModeConfig,
+		])
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true)
+		vi.mocked(mockClineProvider.customModesManager.deleteCustomMode).mockResolvedValue(undefined)
+
+		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug, checkOnly: true })
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "deleteCustomModeCheck",
+			slug,
+			rulesFolderPath: undefined,
+		})
+
+		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
+		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
+		expect(fs.rm).not.toHaveBeenCalled()
+	})
+
 	it("should handle errors when deleting rules folder", async () => {
 		const slug = "test-mode-error"
 		const rulesFolderPath = path.join("/mock/workspace", ".roo", `rules-${slug}`)
