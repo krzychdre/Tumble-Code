@@ -10,7 +10,7 @@ tables are typed `Record<ToolName, ...>`: forget a row and the build fails.
 | Tool name list, param names, display names, groups                     | `packages/types/src/tool.ts`                                   |
 | Typed arguments per tool (`NativeToolArgs`)                            | `src/shared/tools.ts`                                          |
 | JSON schema the model sees                                             | `src/core/prompts/tools/native-tools/<name>.ts` and `index.ts` |
-| Argument parsing (partial and complete)                                | `src/core/assistant-message/toolArgParsers.ts`                 |
+| Argument parsing (partial and complete)                                | `src/core/tools/toolArgParsers.ts`                             |
 | Behaviour flags: approval category, checkpoint, compaction, `describe` | `src/core/tools/toolDescriptors.ts` (`TOOL_DESCRIPTORS`)       |
 | Tool instance lookup                                                   | `src/core/assistant-message/toolHandlers.ts` (`TOOL_HANDLERS`) |
 | Implementation                                                         | `src/core/tools/<Name>Tool.ts`, a `BaseTool` subclass          |

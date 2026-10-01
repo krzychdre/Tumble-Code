@@ -23,7 +23,7 @@ sequenceDiagram
   EH->>X: require(extension.js), then activate(context)
   EH->>EH: wait until ready (10 s limit)
   EH->>X: updateSettings, cliModeProviderSettings, webviewDidLaunch (in this order)
-  R->>R: TUI (Ink) if stdin and stdout are TTYs, else print / json / stream-json
+  R->>R: TUI (Ink) if stdin and stdout are TTYs and --print is not set, else print mode (text, json or stream-json)
 ```
 
 The runtime contract (six environment variables and two `globalThis` slots) is defined once in
@@ -31,17 +31,34 @@ The runtime contract (six environment variables and two `globalThis` slots) is d
 
 ## Message flow
 
-The shim's webview object is an event emitter. The CLI plays the part of the chat panel:
+The shim's webview object is an event emitter. The CLI plays the part of the chat panel: what the user types (or
+the prompt given on the command line) goes in as a `webviewMessage`, and every message the extension posts comes
+out as an `extensionWebviewMessage` that two readers inside `ExtensionClient` (`agent/extension-client.ts`) take in:
 
 ```mermaid
 flowchart LR
-  CLI[CLI input] -- "emit webviewMessage" --> SHIM[shim webview]
+  IN[TUI input or the --print prompt] -- "emit webviewMessage" --> SHIM[shim webview]
   SHIM --> WMH[webviewMessageHandler in extension.js]
-  EXT[extension postMessage] -- "emit extensionWebviewMessage" --> C1[ExtensionClient<br/>MessageProcessor, StateStore]
-  EXT --> C2[TranscriptReader<br/>reduceExtensionMessage]
-  C2 --> SINK[useTranscriptSink] --> STORE[zustand ui/store.ts] --> INK[Ink components]
-  EXT --> C3[OutputManager / JsonEventEmitter<br/>print and JSON modes]
+  EXT[extension postMessage] -- "emit extensionWebviewMessage" --> TR[TranscriptReader<br/>reduceExtensionMessage]
+  EXT --> MP[MessageProcessor<br/>DeliveryReader]
+  TR -- TUI --> SINK[useTranscriptSink] --> STORE[zustand ui/store.ts] --> INK[Ink components]
+  TR -- "print, text" --> PRN[TranscriptPrinter] --> OUT[OutputManager<br/>writes only]
+  MP -- "delivery events" --> JSON[JsonEventEmitter<br/>json and stream-json]
+  MP -- "waitingForInput" --> ASK[AskDispatcher<br/>print, text]
 ```
+
+- **Rows.** `TranscriptReader` (`agent/transcript-reader.ts`) runs the transcript reducer on every message and sends
+  the resulting row changes to the one sink attached to it: the TUI's `useTranscriptSink`, which applies them to
+  the zustand store, or in print mode `TranscriptPrinter` (`agent/transcript-printer.ts`), which writes the rows'
+  text through `OutputManager`. `OutputManager` decides nothing; it only writes lines. With no sink attached (JSON
+  output) the reader does nothing.
+- **Deliveries.** `MessageProcessor` passes every state push and `messageUpdated` to the `DeliveryReader`
+  (`agent/transcript-deliveries.ts`), which keeps the client's copy of the task's messages and hands out only the
+  news: a message the first time it arrives, again only when it changed, with a resumed task's history marked. The
+  client publishes them as `delivery` events, and derives the agent loop state (`agent/agent-state.ts`) from the
+  same copy for its `stateChange`, `waitingForInput` and `taskCompleted` events. `JsonEventEmitter` builds the JSON
+  output from the `delivery` events (the message `ts` is the event id); `AskDispatcher` answers or prompts for the
+  asks of a text print run (in the TUI the components answer them, a JSON run relies on auto-approval).
 
 ## Rendering in the terminal
 

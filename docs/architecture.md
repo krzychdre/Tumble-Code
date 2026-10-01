@@ -53,12 +53,16 @@ graph TD
   cli --> shim[vscode-shim]
   cli -. "loads src/dist/extension.js at runtime" .-> src
   interchange --> core
+  cloud --> core
   cloud --> types
   telemetry --> types
   core --> types
   nightly[apps/vscode-nightly] --> build
   src -. dev .-> build
 ```
+
+`packages/cloud` imports `@roo-code/core` for one thing: the shared exponential-backoff helper
+(`packages/cloud/src/backoff.ts` re-exports `@roo-code/core/backoff`). `core` must therefore never import `cloud`.
 
 Three checks enforce this (PKG-2, CORE-R10):
 
@@ -67,7 +71,10 @@ Three checks enforce this (PKG-2, CORE-R10):
   package name and declare it in `package.json`, otherwise pnpm, turbo (the build cache) and knip (the unused-code
   checker) do not see the dependency.
 - `src/eslint.config.mjs` forbids importing `vscode` in `src/shared`, because the webview bundles that folder and
-  has no `vscode` module. The only exceptions are `shared/cloud-urls.ts` and `shared/vsCodeSelectorUtils.ts`.
+  has no `vscode` module, nor importing the extension-only folders (`core`, `api`, `services` and the others).
+  There are no exceptions: the last two vscode-bound files moved out to `src/activate/cloud-urls.ts` and
+  `src/api/providers/utils/vsCodeSelectorUtils.ts`, and `packages/config-eslint/__tests__/boundaries.test.mjs`
+  checks that the rule still rejects them under their old names.
 - `src/__tests__/layering.spec.ts` pins three edges inside `src`: `ClineProvider` does not import `src/activate`
   (the panel references live in `core/webview/panelRegistry.ts`); `shared/modes.ts` imports neither `vscode` nor
   extension code (the host-side helpers are in `core/prompts/modeDetails.ts`); and `McpHub`, `McpServerManager`,

@@ -1,7 +1,7 @@
 # Level 3: adding a setting, a tool, a provider
 
 The three most common extension changes, as file-by-file checklists. The 2026-09 refactor made each of them mostly
-"add rows to typed tables and follow the compiler errors" — the tables are `Record<Name, ...>`, so a missing row fails
+"add rows to typed tables and follow the compiler errors": the tables are `Record<Name, ...>`, so a missing row fails
 the build instead of failing at runtime. Details of how each mechanism works are on
 [04-tools-and-providers.md](04-tools-and-providers.md) and [architecture.md](architecture.md); this page is only the
 path.
@@ -18,7 +18,7 @@ Save buffer (the `cachedState` rule from `AGENTS.md`: controls bind to the buffe
    (D2). `SETTINGS_DEFAULTS` and `resolveSettings` are re-exported through `@roo-code/types`.
 3. **Host side**: read it via the settings object `ContextProxy` returns (`getGlobalSettings` / the `Task` and
    `ClineProvider` accessors), not `globalState` directly.
-4. **Settings view**: add a row to `SETTINGS_SCHEMA` in `webview-ui/src/components/settings/schema.ts` — it says when
+4. **Settings view**: add a row to `SETTINGS_SCHEMA` in `webview-ui/src/components/settings/schema.ts`; it says when
    the change reaches the host (`onSave` via the Save button, or `immediate` via `postImmediateSetting` for things a
    running task already consults) and how Save serializes it. Then render the control in the right section component,
    binding to the buffer with `const [value, setValue] = useSetting("yourKey")` from `settings/SettingsDraftContext.tsx`
@@ -27,7 +27,7 @@ Save buffer (the `cachedState` rule from `AGENTS.md`: controls bind to the buffe
    `ProviderStateBuilder` (`src/core/webview/ProviderStateBuilder.ts`) posts, so it arrives as part of `ExtensionState`.
 6. **Docs and changelog**: a changeset, and when the setting changes a documented mechanism, the docs page in the
    same PR. If a secret or credential is involved, it belongs in `SecretStorage` (via `ContextProxy` secrets or
-   `ProviderSettingsManager`), never in `globalState` or a plain env var — see [06-persistence.md](06-persistence.md).
+   `ProviderSettingsManager`), never in `globalState` or a plain env var (see [06-persistence.md](06-persistence.md)).
 
 For an environment variable instead of (or beside) a setting, add a row to
 [09-environment-variables.md](09-environment-variables.md) in the same PR.
@@ -40,8 +40,8 @@ One class plus rows in typed tables; the compiler enforces the wiring.
    typed arguments to `NativeToolArgs` in `src/shared/tools.ts`.
 2. **Schema the model sees**: write `src/core/prompts/tools/native-tools/<name>.ts` and export it from the
    `index.ts` there.
-3. **Parsing**: add a parser entry in `src/core/assistant-message/toolArgParsers.ts` (partial and complete parsing).
-4. **Descriptor**: add a row to `TOOL_DESCRIPTORS` (`src/core/tools/toolDescriptors.ts`) with the behaviour flags —
+3. **Parsing**: add a parser entry in `src/core/tools/toolArgParsers.ts` (partial and complete parsing).
+4. **Descriptor**: add a row to `TOOL_DESCRIPTORS` (`src/core/tools/toolDescriptors.ts`) with the behaviour flags:
    `approvalCategory`, `requiresCheckpoint`, whether it counts toward context compaction, `describe`.
 5. **Handler**: add the lookup row in `TOOL_HANDLERS` (`src/core/assistant-message/toolHandlers.ts`) pointing at your
    `BaseTool` subclass in `src/core/tools/`.
