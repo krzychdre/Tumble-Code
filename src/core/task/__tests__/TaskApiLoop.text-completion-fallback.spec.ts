@@ -1,6 +1,6 @@
 // Text-only responses complete the task through the real AttemptCompletionTool
 // instead of paying a full extra turn on a noToolsUsed retry. See
-// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5).
+// ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5).
 //
 // npx vitest run core/task/__tests__/TaskApiLoop.text-completion-fallback.spec.ts
 
@@ -86,7 +86,7 @@ describe("TaskApiLoop text-completion fallback", () => {
 		// was In Progress while the text-only turn was the summary itself; the
 		// old gate forced a noToolsUsed retry that regenerated the same answer
 		// through attempt_completion. See
-		// ai_plans/2026-09-10_text-completion-single-result.md.
+		// ai_plans/archive/2026-09/2026-09-10_text-completion-single-result.md.
 		const { loop } = makeLoop({
 			todoList: [
 				{ id: "1", content: "fetch articles", status: "completed" },

@@ -641,7 +641,7 @@ export class TaskStreamProcessor {
 					// delegateParentAndOpenChild just wrote — which makes the child's attempt_completion
 					// finalize the whole task instead of returning to the parent. The guard lives here
 					// (not in saveClineMessages) because abortTask deliberately persists final state.
-					// See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+					// See ai_plans/archive/2026-06/2026-06-08_delegated-subtask-no-return.md.
 					if (!access.abort && !access.abandoned) {
 						await access.history.saveClineMessages()
 					}

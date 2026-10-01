@@ -1,7 +1,7 @@
 // Eager pre-edit checkpoint: when a write tool's call starts streaming, the
 // checkpoint begins immediately so it overlaps argument streaming instead of
 // blocking tool execution in checkpointSaveAndMark. See
-// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-3).
+// ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-3).
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 

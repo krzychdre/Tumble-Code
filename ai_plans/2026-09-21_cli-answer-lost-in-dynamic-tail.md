@@ -121,7 +121,7 @@ duplicate as the finalization of the earlier partial).
 ### Why the clamps exist (must keep working)
 
 Commits `35abe1507` and `e84909c04` (plan
-`ai_plans/2026-08-07_cli-clamp-dynamic-tail-height.md`): ink can only erase rows
+`ai_plans/archive/2026-08/2026-08-07_cli-clamp-dynamic-tail-height.md`): ink can only erase rows
 inside the visible viewport. If the dynamic region grows to the terminal height,
 rows scroll into scrollback where they can never be erased (permanent
 duplicates), and at `lastOutputHeight >= rows` ink switches to

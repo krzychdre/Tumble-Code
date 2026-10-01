@@ -14,7 +14,7 @@ import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTask
  * the memory writers' one-shot query as its own class. These tests pin the
  * memory query's profile choice and fallback, and the start / complete /
  * cancel / dispose ordering of a background task. A user cancel must never wait on or trigger a memory
- * writer (see ai_plans/2026-07-11_fix-stop-button-memory-writers-on-cancel.md).
+ * writer (see ai_plans/archive/2026-07/2026-07-11_fix-stop-button-memory-writers-on-cancel.md).
  */
 
 const rm = vi.hoisted(() => vi.fn(async () => {}))

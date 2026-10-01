@@ -11,7 +11,7 @@
 # whose text must stand alone, because the caller never sees the image.
 #
 # History:
-# - 2026-08-13 (ai_plans/2026-08-13_vision-mode-image-analysis.md): initial
+# - 2026-08-13 (ai_plans/archive/2026-08/2026-08-13_vision-mode-image-analysis.md): initial
 #   version. Declarative-first: the round-trip (delegate -> analyze -> text
 #   back) needs no extension code; the only code change is a delegation hint
 #   appended to read_file's unsupported-image notice so weak text-only models

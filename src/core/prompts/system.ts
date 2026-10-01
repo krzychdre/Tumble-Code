@@ -76,7 +76,7 @@ import {
  * is truthy, so it wins in `getModeSelection` (src/shared/modes.ts) and drops
  * MODE. Unreachable from the settings UI (it trims before saving); reachable
  * only programmatically. Recorded in
- * ai_plans/2026-08-25_prefix-opener-review-fixes.md as a follow-up candidate.
+ * ai_plans/archive/2026-08/2026-08-25_prefix-opener-review-fixes.md as a follow-up candidate.
  * USER'S CUSTOM INSTRUCTIONS renders unconditionally too, because the Language
  * Preference entry is always pushed into it (sections/custom-instructions.ts);
  * `prefix-stability.spec.ts` carries a guard test that fails if anyone puts

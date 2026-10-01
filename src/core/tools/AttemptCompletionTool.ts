@@ -114,13 +114,13 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 							// require status === "delegated" because a late, fire-and-forget background
 							// usage-drain save on the (disposed) parent can re-stamp status "delegated" →
 							// "active" while preserving awaitingChildId (see
-							// ai_plans/2026-06-08_delegated-subtask-no-return.md). A real detach always clears
+							// ai_plans/archive/2026-06/2026-06-08_delegated-subtask-no-return.md). A real detach always clears
 							// awaitingChildId, so keying on it preserves #73's cancel-race protection.
 							// The same gate guards DelegationService.complete (parentAwaitsChild).
 							//
 							// If the gate fails (parent was detached by cancel/restart), try to re-attach
 							// via tryReattachDelegatedParent — which re-stamps the parent ONLY when all five
-							// evidence conditions hold (see ai_plans/2026-07-12_delegated-child-return-after-cancel.md).
+							// evidence conditions hold (see ai_plans/archive/2026-07/2026-07-12_delegated-child-return-after-cancel.md).
 							// Short-circuit: re-attach is only attempted when the gate fails.
 							const gatePasses = parentAwaitsChild(parentHistory, task.taskId)
 							const shouldDelegate =

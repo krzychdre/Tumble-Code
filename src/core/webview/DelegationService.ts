@@ -55,7 +55,7 @@ export interface DelegationHost {
  * required to be "delegated" (only "completed" is rejected): a late
  * background usage-drain save on the disposed parent can flip the status
  * "delegated" to "active" while keeping `awaitingChildId`. See
- * ai_plans/2026-06-08_delegated-subtask-no-return.md.
+ * ai_plans/archive/2026-06/2026-06-08_delegated-subtask-no-return.md.
  */
 export function parentAwaitsChild(parent: HistoryItem | undefined, childTaskId: string): boolean {
 	return parent?.awaitingChildId === childTaskId && parent?.status !== "completed"
@@ -333,7 +333,7 @@ export class DelegationService {
 	 * completion instead of returning its result to the parent.
 	 *
 	 * This method re-stamps the parent `{status: "delegated", awaitingChildId: childTaskId}`
-	 * ONLY when ALL five evidence conditions hold (see ai_plans/2026-07-12_delegated-child-return-after-cancel.md):
+	 * ONLY when ALL five evidence conditions hold (see ai_plans/archive/2026-07/2026-07-12_delegated-child-return-after-cancel.md):
 	 *   1. parentHistory.status === "active" (not completed; not already delegated to someone else);
 	 *   2. parentHistory.awaitingChildId === undefined (no live delegation);
 	 *   3. parentHistory.delegatedToId === childTaskId (the parent's LAST delegation was to THIS child);

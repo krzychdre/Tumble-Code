@@ -46,7 +46,7 @@ interface AutoMaterializeOptions {
  *    where `payload` is a tool_result string containing the now-known
  *    schema and a retry hint.
  *
- * See `ai_plans/deferred-tool-loading.md` §8.3.
+ * See `ai_plans/archive/undated/deferred-tool-loading.md` §8.3.
  */
 export function tryAutoMaterializeDirectCall(options: AutoMaterializeOptions): AutoMaterializeOutcome | null {
 	const { task, blockName, nativeArgs, experiments } = options

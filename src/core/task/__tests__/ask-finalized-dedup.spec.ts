@@ -6,7 +6,7 @@ import { TaskAskSay } from "../TaskAskSay"
 // duplicate. The duplicate breaks executionId-based UI status routing (most visibly
 // for execute_command, but the same shape affects every askApproval-using tool that
 // shares ask:"tool" — codebase_search, read_file, apply_diff, list_files, etc.).
-// See ai_plans/2026-05-15_21-16_fix-duplicate-execute-command-cards.md.
+// See ai_plans/archive/2026-05/2026-05-15_21-16_fix-duplicate-execute-command-cards.md.
 
 function makeTaskWithAskSay() {
 	const task = Object.create(Task.prototype) as Task

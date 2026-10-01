@@ -184,7 +184,7 @@ export async function presentAssistantMessage(cline: Task) {
 				// (without using `tools_load` first), promote it to the active set so
 				// the next turn carries the full schema. The live MCP execution below
 				// works regardless. Gated on the deferredTools experiment so behaviour
-				// is byte-identical with the flag off. See ai_plans/deferred-tool-loading.md §8.3.
+				// is byte-identical with the flag off. See ai_plans/archive/undated/deferred-tool-loading.md §8.3.
 				try {
 					const stateForResolver = await cline.providerRef.deref()?.getState()
 					tryAutoMaterializeDirectCall({
@@ -330,7 +330,7 @@ export async function presentAssistantMessage(cline: Task) {
 				// with `input: {}` — the ToolsLoadTool handler converts that into
 				// structured guidance instead of an error. Gated by `deferredTools`
 				// so behaviour with the experiment OFF is byte-identical to today.
-				// See ai_plans/deferred-tool-loading.md §8.2.
+				// See ai_plans/archive/undated/deferred-tool-loading.md §8.2.
 				const allowsEmptyNativeArgs = stateExperiments?.deferredTools === true && block.name === "tools_load"
 
 				// Auto-materialize: a direct call to a deferred tool name without

@@ -27,7 +27,7 @@ import { formatReminderSection } from "./reminder"
 // turns are omitted when identical to what the previous turn already sent:
 // the model still has them in history, and re-sending churns every message
 // with noise the model re-reads and re-reasons about each turn. See
-// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-2).
+// ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-2).
 interface EnvSectionSnapshot {
 	visibleFiles: string
 	openTabs: string

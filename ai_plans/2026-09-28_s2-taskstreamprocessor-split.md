@@ -2,7 +2,7 @@
 
 Roadmap item S2 (`ai_plans/2026-09-27_simplification-roadmap.md`, Priority 4): "`TaskStreamProcessor` (1,144):
 extract tool-call event handling and assistant-message assembly (old plan 2B)." Old plan 2B
-(`ai_plans/refactor-task-ts-phase2-cleanup-plan.md`, item 5) wanted a `TaskStreamProcessor →
+(`ai_plans/archive/undated/refactor-task-ts-phase2-cleanup-plan.md`, item 5) wanted a `TaskStreamProcessor →
 AssistantMessageBuilder` extraction of message-assembly concerns; the roadmap wording adds the tool-call event
 loop and is authoritative. Base: main @ 49c7bc874 (S1 merged; D3/D7/D8/D10 before it).
 

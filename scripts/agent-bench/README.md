@@ -2,7 +2,7 @@
 
 Measures how efficiently a model+harness combination completes a fixed set of
 tasks. Used to gate the efficiency workstreams in
-`ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md`.
+`ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md`.
 
 ## Protocol
 
@@ -24,7 +24,7 @@ tasks. Used to gate the efficiency workstreams in
 Run the full set twice per branch (variance on GLM is real); report both.
 
 To measure a whole period of real work instead of the fixed set — which is how
-the numbers in `ai_plans/2026-07-27_verbosity-and-turn-economics.md` were
+the numbers in `ai_plans/archive/2026-07/2026-07-27_verbosity-and-turn-economics.md` were
 produced — use the date window and grouping flags:
 
 ```bash

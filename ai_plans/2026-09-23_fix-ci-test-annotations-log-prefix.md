@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Branch: `fix/ci-test-annotations-log-prefix` (off `main` at 896a59fd5)
-Follows: PR #183 (`ai_plans/2026-09-03_fix-windows-ci-path-assertions.md`), whose
+Follows: PR #183 (`ai_plans/archive/2026-09/2026-09-03_fix-windows-ci-path-assertions.md`), whose
 second commit (f55a56ef0) is documented retroactively in the last section.
 
 ## Symptom

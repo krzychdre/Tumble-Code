@@ -90,7 +90,7 @@ export interface BackgroundModelHandlerOptions {
  * request — preventing the "payload sized for 200k sent to an 8k model" and
  * "image blocks sent to a text-only model" failure modes. When no background
  * is configured (passthrough) they report the fallback, matching prior
- * behavior. See `ai_plans/2026-07-13_background-model-for-compaction-memory.md`.
+ * behavior. See `ai_plans/archive/2026-07/2026-07-13_background-model-for-compaction-memory.md`.
  */
 export class BackgroundModelHandler implements ApiHandler {
 	private readonly bg?: ApiHandler
