@@ -7,9 +7,9 @@
 #
 # Credentials and the redirect URI are read from the container environment
 # (set in docker-compose.yml / .env), so the api and Authentik stay in sync
-# from a single source of truth. The application slug MUST equal the api's
-# AUTHENTIK_APP_SLUG (default: tumble-code), since app-specific endpoints
-# (jwks, end-session, discovery) are built from it.
+# from a single source of truth. The application slug is fixed (tumble-code):
+# the api reaches Authentik through its global OAuth endpoints and never
+# builds a URL from the slug.
 #
 # NOTE: the oauth2provider schema (notably redirect_uris and property_mappings)
 # is Authentik-version-sensitive. This is authored for the Authentik version
@@ -87,7 +87,7 @@ entries:
       users:
         - !Find [authentik_core.user, [username, akadmin]]
 
-  # 3. Application bound to the provider. slug must match AUTHENTIK_APP_SLUG.
+  # 3. Application bound to the provider.
   - model: authentik_core.application
     state: present
     id: tumble-code-application

@@ -118,7 +118,6 @@ class Settings(BaseSettings):
     authentik_internal_url: Optional[str] = Field(
         None, description="Internal Authentik URL for back-channel calls; falls back to authentik_base_url"
     )
-    authentik_app_slug: str = Field("tumble-code", description="Authentik application slug for app-specific endpoints")
     authentik_client_id: str = Field(..., description="OAuth2 client ID")
     authentik_client_secret: Optional[str] = None
     authentik_redirect_uri: str = Field(..., description="OAuth2 redirect URI")

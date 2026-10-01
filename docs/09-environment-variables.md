@@ -76,8 +76,11 @@ credentials through OAuth caches, the AWS SDK or gcloud instead; those SDK chain
 Pydantic-settings: every field of `Settings` maps to an uppercased variable. `CLOUDAPI_ENV_FILE` names the env file
 (default `.env`; the test suite sets it empty so a developer's `.env` cannot change test results). `extra="ignore"`
 lets one `.env` carry the docker-compose infra keys too. Descriptions, defaults and the startup validation rules
-(secret length, CORS format, network format) live in `settings.py` and `docker-compose.yml`; `.env.example` is the
-template.
+(secret length, CORS format, network format) live in `settings.py` only; `.env.example` is the template. The bundled
+`docker-compose.yml` passes the optional variables through by name, so an unset one falls back to the `settings.py`
+default. It sets values of its own only for `DATABASE_URL` (its Postgres) and `AUTHENTIK_INTERNAL_URL` (the
+`auth_server` service), gives the bundled stack's local addresses as fallbacks for the required URLs and client id,
+and refuses to start without `SECRET_KEY` and `JWT_SECRET`.
 
 | Variable                                                              | Default                            | What it does                                                                                          |
 | --------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -90,7 +93,6 @@ template.
 | `CLIENT_TOKEN_IDLE_DAYS`                                              | `30`                               | Days the extension's token may go unused before expiring; `0` = never.                                |
 | `AUTHENTIK_BASE_URL`                                                  | required                           | Front-channel (browser) Authentik URL.                                                                |
 | `AUTHENTIK_INTERNAL_URL`                                              | falls back to `AUTHENTIK_BASE_URL` | Back-channel (server-to-server) URL; compose service name inside docker.                              |
-| `AUTHENTIK_APP_SLUG`                                                  | `tumble-code`                      | Authentik application slug.                                                                           |
 | `AUTHENTIK_CLIENT_ID` / `AUTHENTIK_CLIENT_SECRET`                     | `tumble-code` / -                  | OAuth2 client credentials (the blueprint provisions the same values into Authentik).                  |
 | `AUTHENTIK_REDIRECT_URI`                                              | required                           | OAuth2 redirect URI.                                                                                  |
 | `CORS_ORIGINS`                                                        | empty                              | Extra trusted origins (comma-separated or JSON array); `*` ignored with a warning (DEF-S8).           |
@@ -100,7 +102,7 @@ template.
 | `BRIDGE_ENABLED` / `BRIDGE_PATH`                                      | `true` / `/bridge/socket.io`       | Live remote-control bridge switch and socket.io mount path (min two segments).                        |
 | `TELEMETRY_ENABLED`                                                   | `true`                             | `false` = telemetry endpoints accept-and-ignore.                                                      |
 | `BACKFILL_MAX_BYTES`                                                  | 50 MiB                             | Largest accepted task backfill upload (413 above).                                                    |
-| `ENABLE_TASK_SHARING` / `ALLOW_PUBLIC_TASK_SHARING`                   | `true` / `true`                    | Task sharing at the org-less level / public links (settings.py; not in compose).                      |
+| `ENABLE_TASK_SHARING` / `ALLOW_PUBLIC_TASK_SHARING`                   | `true` / `true`                    | Task sharing at the org-less level / public links.                                                    |
 | `RATE_LIMIT_ENABLED` / `RATE_LIMIT_REQUESTS_PER_MINUTE`               | `true` / `60`                      | slowapi per-IP rate limiting.                                                                         |
 | `RETENTION_SWEEP_ENABLED` / `RETENTION_SWEEP_HOURS`                   | `true` / `6`                       | Background data-retention sweep.                                                                      |
 | `CLOUDAPI_ENV_FILE`                                                   | `.env`                             | Which env file pydantic reads; empty value reads none.                                                |
