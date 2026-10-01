@@ -11,42 +11,53 @@ services:
     build: .
     ports:
       - "${PORT:-8085}:${PORT:-8085}"
+    # config/settings.py is the one place that holds the api's defaults. A
+    # bare name below passes the variable through from the shell or .env when
+    # it is set and leaves it out of the container when it is not, so the
+    # settings.py default applies. A `${VAR:-}` form would not do: it hands
+    # the app an empty string, which pydantic-settings does not treat as
+    # missing (BRIDGE_ENABLED="" or PORT="" fail validation at startup).
+    # Values are given here only where the compose stack itself decides them
+    # (its own Postgres, the in-network Authentik address) or where settings.py
+    # has no default and the bundled stack has an obvious one.
     environment:
-      PORT: ${PORT:-8085}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: postgresql://roo:password@postgres:5432/roo_cloud
-      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-random-secret-key}
-      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-jwt-secret}
-      # The two defaults above are placeholders the api refuses at startup:
-      # set real values in .env (see .env.example).
-      CLIENT_TOKEN_IDLE_DAYS: ${CLIENT_TOKEN_IDLE_DAYS:-30}
+      # Required secrets: there is no safe default, so `docker compose up`
+      # stops with this message instead of starting an api that refuses them.
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env (see .env.example)}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (see .env.example)}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8085}
       # Browser-facing Authentik URL (front-channel: authorize / logout redirects).
       AUTHENTIK_BASE_URL: ${AUTHENTIK_BASE_URL:-http://localhost:9000}
       # In-network Authentik URL (back-channel: token / userinfo / jwks / discovery).
       # The api container's own localhost is not Authentik, so it must reach the
       # auth_server service by name.
       AUTHENTIK_INTERNAL_URL: ${AUTHENTIK_INTERNAL_URL:-http://auth_server:9000}
-      AUTHENTIK_APP_SLUG: ${AUTHENTIK_APP_SLUG:-tumble-code}
-      # Same credentials the blueprint provisions into Authentik.
+      # Same credentials the blueprint provisions into Authentik (the
+      # auth_server environment below uses the same fallbacks).
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-tumble-code}
-      AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
       AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:8085}
-      # Extra trusted web origins; API_BASE_URL and WEB_PUBLIC_URL are always
-      # trusted. Empty is the right value for the bundled stack.
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
-      # Web panel from other machines (see .env.example): who may open it, and
-      # the address they open it at.
-      WEB_ALLOWED_NETWORKS: ${WEB_ALLOWED_NETWORKS:-}
-      WEB_PUBLIC_URL: ${WEB_PUBLIC_URL:-}
-      MARKETPLACE_SOURCE: ${MARKETPLACE_SOURCE:-yaml}
-      MARKETPLACE_YAML_DIR: ${MARKETPLACE_YAML_DIR:-./config/marketplace}
-      BRIDGE_ENABLED: ${BRIDGE_ENABLED:-false}
-      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
-      BACKFILL_MAX_BYTES: ${BACKFILL_MAX_BYTES:-52428800}
-      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
-      RATE_LIMIT_REQUESTS_PER_MINUTE: ${RATE_LIMIT_REQUESTS_PER_MINUTE:-60}
+      # Passed through only when set; settings.py holds the defaults.
+      PORT:
+      LOG_LEVEL:
+      JWT_ALGORITHM:
+      CLIENT_TOKEN_IDLE_DAYS:
+      AUTHENTIK_CLIENT_SECRET:
+      CORS_ORIGINS:
+      WEB_ALLOWED_NETWORKS:
+      WEB_PUBLIC_URL:
+      MARKETPLACE_SOURCE:
+      MARKETPLACE_YAML_DIR:
+      BRIDGE_ENABLED:
+      BRIDGE_PATH:
+      TELEMETRY_ENABLED:
+      BACKFILL_MAX_BYTES:
+      ENABLE_TASK_SHARING:
+      ALLOW_PUBLIC_TASK_SHARING:
+      RATE_LIMIT_ENABLED:
+      RATE_LIMIT_REQUESTS_PER_MINUTE:
+      RETENTION_SWEEP_ENABLED:
+      RETENTION_SWEEP_HOURS:
     healthcheck:
       # Readiness, not liveness: /health would report ok even with a dead
       # database. The slim image has no curl/wget; python ships with the
