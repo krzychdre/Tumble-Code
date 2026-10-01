@@ -25,7 +25,7 @@ describe("useFollowupCountdown", () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers()
-		useUIStateStore.getState().resetUIState()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 		autoAcceptEnabled = true
 		pendingAsk = defaultPendingAsk
 		onAutoSubmit = vi.fn()

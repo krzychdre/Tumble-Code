@@ -37,16 +37,6 @@ export type FlagOptions = {
 	outputFormat?: OutputFormat
 }
 
-export enum OnboardingProviderChoice {
-	Byok = "byok",
-}
-
-export interface OnboardingResult {
-	choice: OnboardingProviderChoice
-	token?: string
-	skipped: boolean
-}
-
 /** Provider settings one mode may override in cli-settings.json. */
 export interface CliModeSettings {
 	provider?: SupportedProvider
@@ -68,7 +58,6 @@ export interface CliModelSettings {
 }
 
 export interface CliSettings {
-	onboardingProviderChoice?: OnboardingProviderChoice
 	/** Default mode to use (e.g., "code", "architect", "ask", "debug") */
 	mode?: string
 	/** Default provider to use */

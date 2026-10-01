@@ -66,27 +66,24 @@ Options:
   -h, --help                             display help for command
 
 Commands:
-  list                                   List commands, modes, models, or sessions
+  list                                   List commands, modes, or sessions
   upgrade                                Upgrade Tumble Code CLI to the latest version
   doctor [options]                       Check the extension bundle, ripgrep, Node.js, the MCP config and the cloud connection
-  auth                                   Manage Tumble Cloud and provider authentication
+  auth                                   Manage provider authentication
 "
 `;
 
 exports[`CLI argument parser (commander characterization) > help output > ["auth","--help"] 1`] = `
 "Usage: tumble auth [options] [command]
 
-Manage Tumble Cloud and provider authentication
+Manage provider authentication
 
 Options:
-  -h, --help        display help for command
+  -h, --help      display help for command
 
 Commands:
-  login [options]   Authenticate with Tumble Code Cloud
-  codex             Manage ChatGPT subscription access for OpenAI Codex
-  logout [options]  Log out from Tumble Code Cloud
-  status [options]  Show authentication status
-  help [command]    display help for command
+  codex           Manage ChatGPT subscription access for OpenAI Codex
+  help [command]  display help for command
 "
 `;
 
@@ -117,21 +114,10 @@ Options:
 "
 `;
 
-exports[`CLI argument parser (commander characterization) > help output > ["auth","login","--help"] 1`] = `
-"Usage: tumble auth login [options]
-
-Authenticate with Tumble Code Cloud
-
-Options:
-  -v, --verbose  Enable verbose output (default: false)
-  -h, --help     display help for command
-"
-`;
-
 exports[`CLI argument parser (commander characterization) > help output > ["list","--help"] 1`] = `
 "Usage: tumble list [options] [command]
 
-List commands, modes, models, or sessions
+List commands, modes, or sessions
 
 Options:
   -h, --help          display help for command
@@ -139,7 +125,6 @@ Options:
 Commands:
   commands [options]  List available slash commands
   modes [options]     List available modes
-  models [options]    List available Tumble models
   sessions [options]  List task sessions
   help [command]      display help for command
 "
@@ -154,8 +139,8 @@ Options:
   -w, --workspace <path>  Workspace directory path (defaults to current working
                           directory)
   -e, --extension <path>  Path to the extension bundle directory
-  -k, --api-key <key>     Tumble API key (falls back to saved login/session
-                          token)
+  -k, --api-key <key>     Anthropic API key for the extension the listing starts
+                          (not needed to list)
   --format <format>       Output format: "json" (default) or "text" (default:
                           "json")
   -d, --debug             Enable debug output (default: false)
@@ -172,8 +157,8 @@ Options:
   -w, --workspace <path>  Workspace directory path (defaults to current working
                           directory)
   -e, --extension <path>  Path to the extension bundle directory
-  -k, --api-key <key>     Tumble API key (falls back to saved login/session
-                          token)
+  -k, --api-key <key>     Anthropic API key for the extension the listing starts
+                          (not needed to list)
   --format <format>       Output format: "json" (default) or "text" (default:
                           "json")
   -d, --debug             Enable debug output (default: false)

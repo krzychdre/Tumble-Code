@@ -24,5 +24,3 @@ export const REASONING_EFFORTS = [...reasoningEffortsExtended, "unspecified", "d
  * Used in both the TUI (App.tsx) and the extension host (extension-host.ts).
  */
 export const FOLLOWUP_TIMEOUT_SECONDS = 60
-
-export const AUTH_BASE_URL = process.env.ROO_AUTH_BASE_URL ?? "http://localhost:3000"

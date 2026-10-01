@@ -47,7 +47,6 @@ import {
 	getConfiguredContextWindow,
 } from "@/lib/utils/model-settings.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
-import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { isValidSessionId } from "@/lib/utils/session-id.js"
@@ -289,12 +288,18 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		)
 	}
 
-	const isOnboardingEnabled = isTuiEnabled && !flagOptions.provider && !settings.provider
-
 	// Provider connection: flags > settings file > the CLI's own extension
 	// state (~/.vscode-mock) > defaults, with provider-bound values (model,
 	// base URL, key) used only for the provider they were written for.
 	const vsCodeConfig = readVsCodeConfig()
+
+	// With no provider anywhere (flag, settings file, the CLI's own extension
+	// state) the run starts on the default provider; say how to choose one.
+	if (isTuiEnabled && !flagOptions.provider && !settings.provider && !vsCodeConfig?.provider) {
+		console.log(
+			`[CLI] No provider configured, using ${DEFAULT_FLAGS.provider}. Set provider and apiKey (or apiKeyEnv) in ${getSettingsPath()}, or pass --provider and --api-key.`,
+		)
+	}
 	const settingsProviderConfig = pickProviderConfig(settings)
 	const flagProviderConfig = {
 		provider: flagOptions.provider,
@@ -402,17 +407,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		debug: flagOptions.debug,
 		exitOnComplete: effectiveExitOnComplete,
 		terminalShell,
-	}
-
-	// Tumble Code Cloud Authentication
-
-	if (isOnboardingEnabled) {
-		let { onboardingProviderChoice } = settings
-
-		if (!onboardingProviderChoice) {
-			const { choice } = await runOnboarding()
-			onboardingProviderChoice = choice
-		}
 	}
 
 	// Validations: every configuration this run can switch to is checked now,

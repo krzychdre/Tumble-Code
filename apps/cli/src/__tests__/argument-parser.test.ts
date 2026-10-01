@@ -8,15 +8,11 @@
 
 const mocks = vi.hoisted(() => ({
 	run: vi.fn(),
-	login: vi.fn(async () => ({ success: true })),
-	logout: vi.fn(async () => ({ success: true })),
-	status: vi.fn(async () => ({ authenticated: true })),
 	loginToOpenAiCodex: vi.fn(async () => ({ success: true })),
 	logoutFromOpenAiCodex: vi.fn(async () => ({ success: true })),
 	getOpenAiCodexAuthStatus: vi.fn(async () => ({ authenticated: true })),
 	listCommands: vi.fn(async () => {}),
 	listModes: vi.fn(async () => {}),
-	listModels: vi.fn(async () => {}),
 	listSessions: vi.fn(async () => {}),
 	upgrade: vi.fn(async () => {}),
 }))
@@ -108,7 +104,6 @@ describe("CLI argument parser (commander characterization)", () => {
 			[["list", "sessions", "--help"]],
 			[["upgrade", "--help"]],
 			[["auth", "--help"]],
-			[["auth", "login", "--help"]],
 			[["auth", "codex", "--help"]],
 			[["auth", "codex", "status", "--help"]],
 		])("%j", async (args) => {
@@ -314,15 +309,27 @@ describe("CLI argument parser (commander characterization)", () => {
 		expect(mocks.listSessions).toHaveBeenCalledWith({ format: "json", debug: false })
 	})
 
-	it("routes auth and nested codex subcommands", async () => {
-		expect((await parse(["auth", "login", "-v"])).exitCode).toBe(0)
-		expect(mocks.login).toHaveBeenCalledWith({ verbose: true })
-
+	it("routes nested codex auth subcommands", async () => {
 		expect((await parse(["auth", "codex", "status"])).exitCode).toBe(0)
 		expect(mocks.getOpenAiCodexAuthStatus).toHaveBeenCalledTimes(1)
 
 		expect((await parse(["upgrade"])).exitCode).toBe(0)
 		expect(mocks.upgrade).toHaveBeenCalledTimes(1)
+	})
+
+	// The cloud sign-in and the always-empty model list were removed: their
+	// names now fail like any unknown subcommand.
+	it("rejects the removed auth login/logout/status and list models", async () => {
+		for (const args of [
+			["auth", "login"],
+			["auth", "logout"],
+			["auth", "status"],
+			["list", "models"],
+		]) {
+			const result = await parse(args)
+			expect(result.exitCode).toBe(1)
+			expect(result.stderr).toContain(`unknown command '${args[1]}'`)
+		}
 	})
 
 	it("handles an unknown list subcommand", async () => {

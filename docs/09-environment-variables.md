@@ -48,12 +48,6 @@ a string literal. `packages/vscode-shim` still reads two `globalThis` slots by l
 | `ROO_EXTENSION_PATH`      | CLI host                         | Path to the built extension (`src/dist`) the host loads.                                                                                |
 | `ROO_RIPGREP_PATH`        | CLI host                         | Path to the bundled ripgrep binary.                                                                                                     |
 
-Plus the CLI's own endpoints in `apps/cli/src/types/constants.ts`:
-
-| Variable            | What it does                                                                 |
-| ------------------- | ---------------------------------------------------------------------------- |
-| `ROO_AUTH_BASE_URL` | Sign-in page base for `tumble auth login` (default `http://localhost:3000`). |
-
 ## CLI provider keys (`apps/cli/src/lib/utils/provider-types.ts`)
 
 The CLI reads `<PROVIDER>_API_KEY` and `<PROVIDER>_BASE_URL` from the environment when a profile does not carry them
@@ -145,7 +139,8 @@ Read by the test harnesses; set in CI, rarely by hand.
   which was its only reader.
 
 What is left of the cloud URL family: `ROO_CODE_API_URL` and `CLERK_BASE_URL` (extension, overridable by settings),
-`ROO_AUTH_BASE_URL` (CLI sign-in page) and `POSTHOG_HOST` (telemetry collector).
+and `POSTHOG_HOST` (telemetry collector). `ROO_AUTH_BASE_URL` went with `tumble auth login` (its sign-in page
+`/cli/sign-in` never existed on the self-hosted cloud).
 
 ## Settings versus environment
 

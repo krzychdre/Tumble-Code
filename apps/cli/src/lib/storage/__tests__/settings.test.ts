@@ -123,7 +123,7 @@ describe.skipIf(process.platform === "win32")("isSettingsFileReadableByOthers", 
 		await saveSettings({ provider: "openai" })
 		fs.chmodSync(getSettingsPath(), 0o600)
 
-		await saveSettings({ onboardingProviderChoice: undefined, mode: "architect" })
+		await saveSettings({ mode: "architect" })
 
 		await expect(isSettingsFileReadableByOthers()).resolves.toBe(false)
 	})

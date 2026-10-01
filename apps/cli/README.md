@@ -231,50 +231,6 @@ When `--require-approval` is active, actions prompt for yes/no approval in a per
 
 When the agent asks a followup question, a permission-bordered dialog renders the question as a bold title, numbered suggestions, and a final `Type my own answer…` option. An auto-accept countdown (`Auto-selecting "{label}" in {n}s — press any arrow key to cancel`) runs at the bottom; press any arrow key to cancel and choose manually. Selecting `Type my own answer…` reveals the input area for a free-form reply.
 
-### Tumble Code Cloud Authentication
-
-To use Tumble Code Cloud features (like the provider proxy), you need to authenticate:
-
-```bash
-# Log in to Tumble Code Cloud (opens browser)
-tumble auth login
-
-# Check authentication status
-tumble auth status
-
-# Log out
-tumble auth logout
-```
-
-The `auth login` command:
-
-1. Opens your browser to authenticate with Tumble Code Cloud
-2. Receives a secure token via localhost callback
-3. Stores the token in `~/.config/roo/credentials.json`
-
-Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when your token expires.
-
-**Authentication Flow:**
-
-```
-┌──────┐         ┌─────────┐         ┌───────────────┐
-│  CLI │         │ Browser │         │ Tumble Code Cloud│
-└──┬───┘         └────┬────┘         └───────┬───────┘
-   │                  │                      │
-   │ Open auth URL    │                      │
-   │─────────────────>│                      │
-   │                  │                      │
-   │                  │ Authenticate         │
-   │                  │─────────────────────>│
-   │                  │                      │
-   │                  │<─────────────────────│
-   │                  │ Token via callback   │
-   │<─────────────────│                      │
-   │                  │                      │
-   │ Store token      │                      │
-   │                  │                      │
-```
-
 ## Options
 
 | Option                                  | Description                                                                                  | Default                 |
@@ -303,17 +259,10 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ## Auth Commands
 
-| Command              | Description                         |
-| -------------------- | ----------------------------------- |
-| `tumble auth login`  | Authenticate with Tumble Code Cloud |
-| `tumble auth logout` | Clear stored authentication token   |
-| `tumble auth status` | Show current authentication status  |
-
 ### ChatGPT Plus/Pro (OpenAI Codex OAuth)
 
-ChatGPT subscription access is separate from Tumble Code Cloud authentication
-and from usage billed through an `OPENAI_API_KEY`. Sign in once, then select the
-`openai-codex` provider:
+ChatGPT subscription access is separate from usage billed through an
+`OPENAI_API_KEY`. Sign in once, then select the `openai-codex` provider:
 
 ```bash
 tumble auth codex login
@@ -336,8 +285,9 @@ supported because it discards the OAuth credential store.
 
 `~/.roo/cli-settings.json` holds your defaults, so a bare `tumble` needs no
 flags. Only you write it: neither a CLI run nor the VS Code extension changes
-it (the first-run onboarding records its one choice, nothing else). Flags apply
-to the run they are given on and are never saved.
+it. Flags apply to the run they are given on and are never saved. When no
+provider is configured anywhere, the interactive session starts on `openrouter`
+and prints a one-line hint saying where to set one.
 
 ```json
 {
@@ -572,12 +522,6 @@ io-intelligence) are rejected with a clear error.
 | `NO_COLOR`    | Any non-empty value turns colour off ([no-color.org](https://no-color.org))              |
 | `FORCE_COLOR` | Forces colour on (`1`, `2`, `3`: 16, 256 or 16 million colours) and wins over `NO_COLOR` |
 
-**Authentication Environment Variables:**
-
-| Variable            | Description                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| `ROO_AUTH_BASE_URL` | Web app that `tumble auth login` signs in through (default: `http://localhost:3000`) |
-
 ## Architecture
 
 ```
@@ -631,12 +575,6 @@ pnpm check-types
 
 # Linting
 pnpm lint
-```
-
-The `dev:local` script points `tumble auth login` at a sign-in page on this machine (`ROO_AUTH_BASE_URL=http://localhost:3000`). To use another deployment, set the same variable before `pnpm dev`:
-
-```bash
-ROO_AUTH_BASE_URL=https://auth.example.com pnpm dev --print "Hello"
 ```
 
 ## Releasing

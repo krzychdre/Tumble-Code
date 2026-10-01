@@ -11,15 +11,11 @@ const mockRun = vi.hoisted(() => vi.fn())
 
 vi.mock("@/commands/index.js", () => ({
 	run: mockRun,
-	login: vi.fn(),
-	logout: vi.fn(),
-	status: vi.fn(),
 	loginToOpenAiCodex: vi.fn(),
 	logoutFromOpenAiCodex: vi.fn(),
 	getOpenAiCodexAuthStatus: vi.fn(),
 	listCommands: vi.fn(),
 	listModes: vi.fn(),
-	listModels: vi.fn(),
 	listSessions: vi.fn(),
 	upgrade: vi.fn(),
 }))
