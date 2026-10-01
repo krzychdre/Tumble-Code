@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Settings · Tumble Code{% endblock %}
 {% block content %}
-<h1 class="page-title">Settings</h1>
+<div class="page-head">
+  <h1 class="page-title">Settings</h1>
+</div>
 
 {% if ran %}
 <div class="notice">Retention ran. {{ ran }} task{{ '' if ran == '1' else 's' }} removed.</div>

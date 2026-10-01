@@ -251,5 +251,5 @@ async def test_an_empty_list_explains_how_to_connect(client, db_session):
     panel = html[html.index('class="connect'):]
     assert "tumble-code.cloudApiUrl" in panel
     assert f'<code id="api-url">{app_settings.api_base_url}</code>' in panel
-    assert re.search(r'<button type="button" class="btn ghost copy-btn" data-copy="#api-url" hidden>', panel)
+    assert re.search(r'<button type="button" class="btn ghost small copy-btn" data-copy="#api-url" hidden>', panel)
     assert "Share" in panel

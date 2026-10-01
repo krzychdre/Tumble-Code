@@ -127,7 +127,7 @@
       <span class="head-label">Grade</span>
       {{ head_cell('updated', 'Updated') }}
     </div>
-    <span class="task-delete head-spacer" aria-hidden="true"><span class="btn-delete">Delete</span></span>
+    <span class="task-delete head-spacer" aria-hidden="true"><span class="btn ghost small btn-delete">Delete</span></span>
   </div>
 
   {# Without scripting nothing can be expanded, so the subtrees are simply shown
@@ -176,7 +176,7 @@
         <span class="cell-date"{% if t.updated_at %} data-ts="{{ t.updated_at.isoformat() }}"{% endif %}>{{ t.updated_at.strftime('%Y-%m-%d %H:%M') if t.updated_at else '' }}</span>
       </a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/{{ t.id }}/delete"
+        <button class="btn ghost small btn-delete" type="submit" formaction="/app/tasks/{{ t.id }}/delete"
                 title="Delete task" aria-label="Delete “{{ t.title }}”"
                 data-confirm="Delete “{{ t.title }}” and its conversation permanently? This cannot be undone.">Delete</button>
       </div>
@@ -206,9 +206,9 @@
 {% if page_count > 1 %}
 <nav class="pager" aria-label="Pagination, page {{ page }} of {{ page_count }}">
   {% if has_prev %}
-  <a class="pager-btn" href="{{ view.url(page - 1) }}" rel="prev">← Newer</a>
+  <a class="btn ghost small pager-btn" href="{{ view.url(page - 1) }}" rel="prev">← Newer</a>
   {% else %}
-  <span class="pager-btn disabled">← Newer</span>
+  <span class="btn ghost small pager-btn disabled">← Newer</span>
   {% endif %}
 
   {# Numbered pages: any page in the window is one click away, the two ends are
@@ -230,9 +230,9 @@
   <span class="pager-status">{{ page }} / {{ page_count }}</span>
 
   {% if has_next %}
-  <a class="pager-btn" href="{{ view.url(page + 1) }}" rel="next">Older →</a>
+  <a class="btn ghost small pager-btn" href="{{ view.url(page + 1) }}" rel="next">Older →</a>
   {% else %}
-  <span class="pager-btn disabled">Older →</span>
+  <span class="btn ghost small pager-btn disabled">Older →</span>
   {% endif %}
 
   {# Only once the numbers stop covering the range: with 4 pages all four are
@@ -247,7 +247,7 @@
            min="1" max="{{ page_count }}" step="1" inputmode="numeric"
            aria-label="Go to page number">
     <span class="pager-of">of {{ page_count }}</span>
-    <button class="btn ghost" type="submit">Go</button>
+    <button class="btn ghost small" type="submit">Go</button>
   </form>
   {% endif %}
 </nav>
@@ -255,7 +255,7 @@
 
 {% elif view.has_filters %}
 <div class="empty">
-  <p>No tasks match these filters.</p>
+  <p class="empty-lead">No tasks match these filters.</p>
   {{ chip_list(view) }}
   <p class="empty-hint">Remove a filter above, or <a href="{{ view.cleared_url() }}">clear them all</a>.</p>
 </div>
@@ -267,7 +267,7 @@
   <ol class="connect-steps">
     <li>In VS Code, open the settings and set <code>tumble-code.cloudApiUrl</code> to
       <span class="copy-row"><code id="api-url">{{ api_url }}</code>
-      <button type="button" class="btn ghost copy-btn" data-copy="#api-url" hidden>Copy</button></span></li>
+      <button type="button" class="btn ghost small copy-btn" data-copy="#api-url" hidden>Copy</button></span></li>
     <li>Sign in from the Tumble Code panel (the account icon).</li>
     <li>Open a task and click <strong>Share</strong>. It appears here, and live tasks can be followed and steered from this page.</li>
   </ol>
