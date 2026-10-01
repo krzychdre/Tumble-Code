@@ -16,11 +16,11 @@ Item C13 of `ai_plans/2026-10-01_simplification-round-2.md`.
       `getMessagesSinceLastSummary`, `toolPairsSatisfiedFrom`, `computeCondenseKeepBoundary`,
       `getEffectiveApiHistory`, `cleanupAfterTruncation` (old `:720-1005`).
     - `__tests__/condense-error-details.spec.ts` (new, committed before the split).
-- (b) `src/core/tools/helpers/searchTaskHistory.ts` (962 to 756 lines): `HistoryQueryMode`,
+- (b) `src/core/tools/helpers/searchTaskHistory.ts` (962 to 757 lines): `HistoryQueryMode`,
   `compileHistoryQuery`, `parseSlashDelimited`, `isCatastrophicPattern`, `isUnboundedQuantifierAt` (old
   `:99-106`, `:166-361`) moved to `searchTaskHistoryQuery.ts` (new). The spec imports `compileHistoryQuery` from
   there. One doc pointer now says `condense/summarize.ts` instead of `condense/index.ts`.
-- (c) `src/core/config/CustomModesManager.ts` (1032 to 767 lines): `exportModeWithRules`, `importRulesFiles`,
+- (c) `src/core/config/CustomModesManager.ts` (1032 to 766 lines): `exportModeWithRules`, `importRulesFiles`,
   `importModeWithRules` and the export/import types (old `:27-51`, `:748-1018`) moved to `modeExport.ts` (new) as
   functions that take a `ModeExportHost` (`getCustomModes`, `updateCustomMode`, `refreshMergedState`). The
   manager keeps `exportModeWithRules` / `importModeWithRules` as one-line delegators. `ROOMODES_FILENAME` moved
