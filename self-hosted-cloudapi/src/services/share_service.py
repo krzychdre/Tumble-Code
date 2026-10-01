@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 
 from config.settings import settings
+from src.database import dialect_insert
 from src.models.task import Task, TaskMessage, TaskShare
 from src.models.settings import OrganizationSettings
 from src.schemas.share import ShareResponse
@@ -72,14 +73,8 @@ async def share_task(
     # others conflict and get rowcount 0, then refresh the surviving row.
     # index_elements (never constraint=...): Postgres only accepts ON CONFLICT
     # ON CONSTRAINT for a constraint, not a unique index.
-    dialect = db.bind.dialect.name
-    if dialect == "postgresql":
-        from sqlalchemy.dialects.postgresql import insert as _insert
-    else:
-        from sqlalchemy.dialects.sqlite import insert as _insert
-
     result = await db.execute(
-        _insert(TaskShare)
+        dialect_insert(db)(TaskShare)
         .values(
             task_id=task_id,
             visibility=visibility,

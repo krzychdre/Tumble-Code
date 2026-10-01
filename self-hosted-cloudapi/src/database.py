@@ -1,5 +1,8 @@
 """SQLAlchemy database engine and session factory."""
 
+from typing import Callable, Optional
+
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
@@ -25,6 +28,20 @@ async_session_factory = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
+
+# The two dialects with a native INSERT ... ON CONFLICT: Postgres in
+# production, SQLite in the tests.
+_DIALECT_INSERTS = {"postgresql": postgresql.insert, "sqlite": sqlite.insert}
+
+
+def dialect_insert(db: AsyncSession) -> Optional[Callable]:
+    """The ``insert`` of the session's dialect, the one that has
+    ``on_conflict_do_nothing`` / ``on_conflict_do_update``.
+
+    None on any other dialect: the caller then falls back to a plain insert.
+    """
+    return _DIALECT_INSERTS.get(db.bind.dialect.name)
 
 
 class Base(DeclarativeBase):

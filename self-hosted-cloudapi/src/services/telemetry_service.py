@@ -1,9 +1,27 @@
 """Telemetry event recording service."""
 
 import json
+
+import anyio
+from sqlalchemy import delete, desc, func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.database import dialect_insert
 from src.models.event import TelemetryEvent
+from src.models.task import Task, TaskMessage
+from src.services.model_attribution import note_completion_model
+from src.services.session_quality import (
+    KIND_COMPLETION,
+    KIND_COMPLETION_REPLY,
+    KIND_INTERVENTION,
+    KIND_REQUEST,
+    KIND_TOOL,
+    classify_conversation,
+    classify_message,
+    tool_path_of,
+)
+from src.services.task_summary import derive_prompt, derive_title, message_metrics, refresh_task_summary
+from src.services.task_tree import adopt_from_relations, link_pending_children, record_relation
 from src.services.telemetry_vocab import LLM_COMPLETION_EVENT
 
 
@@ -20,17 +38,6 @@ async def _live_quality_kind(db, task_id: str, message: dict, ts) -> str | None:
     That costs one indexed lookup, and only for ``user_feedback`` messages,
     which are rare (278 in a 53 000-message corpus).
     """
-    from sqlalchemy import desc, select
-    from src.models.task import TaskMessage
-    from src.services.session_quality import (
-        KIND_COMPLETION,
-        KIND_INTERVENTION,
-        KIND_COMPLETION_REPLY,
-        KIND_REQUEST,
-        KIND_TOOL,
-        classify_message,
-    )
-
     kind = classify_message(message, awaiting_completion=False)
     if kind != KIND_INTERVENTION or ts is None:
         return kind
@@ -60,8 +67,6 @@ async def _link_task_tree(db, task_id: str) -> None:
     now). Doing both here means no ordering of shares, backfills and live
     streams can leave the tree half-built.
     """
-    from src.services.task_tree import adopt_from_relations, link_pending_children
-
     await adopt_from_relations(db, task_id)
     await link_pending_children(db, task_id)
 
@@ -86,29 +91,21 @@ async def _get_or_create_task(db, task_id: str, user_id: str):
     The lookup comes first so a chunk for a task that already exists, the
     common case, costs one SELECT as before.
     """
-    from sqlalchemy import select
-    from src.models.task import Task
-
     query = select(Task).where(Task.id == task_id)
     task = (await db.execute(query)).scalar_one_or_none()
     if task is not None:
         return task, False
 
-    dialect = db.bind.dialect.name
-    if dialect not in ("postgresql", "sqlite"):
+    upsert_insert = dialect_insert(db)
+    if upsert_insert is None:
         # No portable ON CONFLICT: keep the plain insert.
         task = Task(id=task_id, user_id=user_id)
         db.add(task)
         await db.flush()
         return task, True
 
-    if dialect == "postgresql":
-        from sqlalchemy.dialects.postgresql import insert as _insert
-    else:
-        from sqlalchemy.dialects.sqlite import insert as _insert
-
     result = await db.execute(
-        _insert(Task)
+        upsert_insert(Task)
         .values(id=task_id, user_id=user_id)
         .on_conflict_do_nothing(index_elements=["id"])
     )
@@ -157,16 +154,12 @@ async def record_event(
     # Telemetry is the only place a subtask states which task spawned it, and
     # it says so long before the subtask exists as a row. Capture the link here
     # so the web view can render the tree. See services/task_tree.
-    from src.services.task_tree import record_relation
-
     await record_relation(db, properties, user_id=user_id)
 
     # …and the only place that says which model answered: a stored
     # `api_req_started` carries tokens and cost but no model. See
     # services/model_attribution.
     if event_type == LLM_COMPLETION_EVENT and event.task_id:
-        from src.services.model_attribution import note_completion_model
-
         model = properties.get("modelId")
         if isinstance(model, str) and model:
             await note_completion_model(db, event.task_id, model)
@@ -191,9 +184,6 @@ def _build_backfill_rows(task_id: str, messages: list) -> tuple[list[dict], str,
     same keys, ready for one bulk INSERT; the column defaults (``id``,
     ``created_at``) are filled per row by the insert.
     """
-    from src.services.session_quality import classify_conversation
-    from src.services.task_summary import derive_prompt, derive_title, message_metrics
-
     # The token/cost figures are parsed here, once, and stored alongside the
     # message so the task rollup is a numeric SUM rather than a re-parse of the
     # whole conversation on every page view (see services/task_summary).
@@ -271,11 +261,6 @@ async def backfill_messages(
     written with one bulk INSERT, not one ORM object per message: the event
     loop only runs the queries (P11).
     """
-    import anyio
-    from sqlalchemy import delete, insert
-    from src.models.task import TaskMessage
-    from src.services.task_summary import refresh_task_summary
-
     # Get-or-create the parent task, owned by the uploading user. The row is
     # in the database before any message is inserted (FK on task_id).
     task, _created = await _get_or_create_task(db, task_id, user_id)
@@ -353,11 +338,6 @@ async def upsert_task_message(
     final drops the `"partial":true"` flag and can be a few bytes shorter despite
     longer text — which is exactly why finals bypass the length check.)
     """
-    from sqlalchemy import func
-    from src.models.task import TaskMessage
-    from src.services.session_quality import tool_path_of
-    from src.services.task_summary import message_metrics
-
     if not isinstance(message, dict):
         return False
 
@@ -387,15 +367,10 @@ async def upsert_task_message(
         # revision cost two to four queries per chunk for nothing.
         await _link_task_tree(db, task_id)
 
-    dialect = db.bind.dialect.name
-    if ts is not None and dialect in ("postgresql", "sqlite"):
-        if dialect == "postgresql":
-            from sqlalchemy.dialects.postgresql import insert as _insert
-        else:
-            from sqlalchemy.dialects.sqlite import insert as _insert
-
+    upsert_insert = dialect_insert(db)
+    if ts is not None and upsert_insert is not None:
         is_final = not message.get("partial")
-        base = _insert(TaskMessage).values(
+        base = upsert_insert(TaskMessage).values(
             task_id=task_id, message_data=payload, message_ts=ts, **metrics, **quality
         )
         on_conflict = dict(
@@ -452,8 +427,6 @@ async def _refresh_after_live_write(
     """
     if not is_final:
         return
-
-    from src.services.task_summary import derive_prompt, derive_title, refresh_task_summary
 
     # Only a text-bearing message can supply a title, and only the first one
     # ever does — refresh_task_summary keeps an existing title as-is.
