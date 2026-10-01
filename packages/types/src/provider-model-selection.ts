@@ -75,9 +75,7 @@ const anthropicModelIdMatchers: ReadonlyArray<readonly [string, AnthropicModelId
 	Object.keys(anthropicModels) as AnthropicModelId[]
 )
 	// Known ids plus their undated aliases (claude-haiku-4-5-20251001 also as
-	// claude-haiku-4-5), lowercased and longest first; the ":thinking" variant
-	// only matches exactly.
-	.filter((id) => !id.includes(":"))
+	// claude-haiku-4-5), lowercased and longest first.
 	.flatMap((id) => {
 		const undated = id.replace(/-\d{8}$/, "")
 		return undated === id ? [[id, id] as const] : [[id, id] as const, [undated, id] as const]

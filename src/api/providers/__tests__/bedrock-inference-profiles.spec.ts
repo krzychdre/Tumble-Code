@@ -22,7 +22,7 @@ describe("Amazon Bedrock Inference Profiles", () => {
 	// Helper function to create a handler with specific options
 	const createHandler = (options: Partial<ApiHandlerOptions> = {}) => {
 		const defaultOptions: ApiHandlerOptions = {
-			apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsRegion: "us-east-1",
 			...options,
 		}
@@ -130,95 +130,95 @@ describe("Amazon Bedrock Inference Profiles", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "us-gov-east-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
-			expect(model.id).toBe("ug.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("ug.anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should apply us. prefix for US commercial regions", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "us-east-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
-			expect(model.id).toBe("us.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should apply eu. prefix for European regions", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "eu-west-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
-			expect(model.id).toBe("eu.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("eu.anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should apply apac. prefix for Asia Pacific regions", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "ap-southeast-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
-			expect(model.id).toBe("apac.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("apac.anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should apply ca. prefix for Canada regions", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "ca-central-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
-			expect(model.id).toBe("ca.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("ca.anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should apply sa. prefix for South America regions", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "sa-east-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
-			expect(model.id).toBe("sa.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("sa.anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should not apply prefix when cross-region inference is disabled", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: false,
 				awsRegion: "us-gov-east-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
-			expect(model.id).toBe("anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should handle unsupported regions gracefully", () => {
 			const handler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "af-south-1", // Unsupported region
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const model = handler.getModel()
 			// Should remain unchanged when no prefix is found
-			expect(model.id).toBe("anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should work with different model IDs", () => {
 			const testModels = [
-				"anthropic.claude-3-haiku-20240307-v1:0",
-				"anthropic.claude-3-opus-20240229-v1:0",
+				"anthropic.claude-haiku-4-5-20251001-v1:0",
+				"anthropic.claude-opus-4-20250514-v1:0",
 				"amazon.nova-pro-v1:0",
 				"meta.llama3-1-70b-instruct-v1:0",
 			]
@@ -240,21 +240,21 @@ describe("Amazon Bedrock Inference Profiles", () => {
 			const govHandler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "us-gov-east-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const govModel = govHandler.getModel()
-			expect(govModel.id).toBe("ug.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(govModel.id).toBe("ug.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 			// Test that regular us-east-1 still gets us. prefix
 			const usHandler = createHandler({
 				awsUseCrossRegionInference: true,
 				awsRegion: "us-east-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			const usModel = usHandler.getModel()
-			expect(usModel.id).toBe("us.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(usModel.id).toBe("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should prioritize global inference over cross-region inference when both are enabled", () => {
@@ -290,12 +290,12 @@ describe("Amazon Bedrock Inference Profiles", () => {
 				awsUseCrossRegionInference: true,
 				awsUseGlobalInference: true,
 				awsRegion: "us-east-1",
-				apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0", // Model that does NOT support global inference
+				apiModelId: "anthropic.claude-opus-4-20250514-v1:0", // Model that does NOT support global inference
 			})
 
 			const model = handler.getModel()
 			// Should fall back to cross-region prefix since model doesn't support global inference
-			expect(model.id).toBe("us.anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("us.anthropic.claude-opus-4-20250514-v1:0")
 		})
 	})
 })

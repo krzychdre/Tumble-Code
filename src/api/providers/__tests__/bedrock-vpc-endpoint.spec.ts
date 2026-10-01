@@ -42,7 +42,7 @@ describe("Amazon Bedrock VPC Endpoint Functionality", () => {
 		it("should configure client with endpoint URL when both URL and enabled flag are provided", () => {
 			// Create handler with endpoint URL and enabled flag
 			new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -62,7 +62,7 @@ describe("Amazon Bedrock VPC Endpoint Functionality", () => {
 		it("should not configure client with endpoint URL when URL is provided but enabled flag is false", () => {
 			// Create handler with endpoint URL but disabled flag
 			new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -88,7 +88,7 @@ describe("Amazon Bedrock VPC Endpoint Functionality", () => {
 		it("should handle empty endpoint URL gracefully", () => {
 			// Create handler with empty endpoint URL but enabled flag
 			new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -111,7 +111,7 @@ describe("Amazon Bedrock VPC Endpoint Functionality", () => {
 		it("should handle undefined endpoint URL gracefully", () => {
 			// Create handler with undefined endpoint URL but enabled flag
 			new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -137,7 +137,7 @@ describe("Amazon Bedrock VPC Endpoint Functionality", () => {
 		it("should handle invalid endpoint URLs by passing them directly to AWS SDK", () => {
 			// Create handler with an invalid URL format
 			new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -161,7 +161,7 @@ describe("Amazon Bedrock VPC Endpoint Functionality", () => {
 		it("should maintain consistent behavior across multiple requests", async () => {
 			// Create handler with endpoint URL and enabled flag
 			const handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",

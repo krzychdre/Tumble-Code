@@ -75,7 +75,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 
 		// Create handler with a model that supports native tools
 		handler = new AwsBedrockHandler({
-			apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",
@@ -242,7 +242,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 	describe("createMessage with native tools", () => {
 		it("should include toolConfig when tools are provided", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -272,7 +272,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 
 		it("should always include toolConfig (tools are always present after PR #10841)", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -302,7 +302,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 
 		it("should include toolConfig with undefined toolChoice when tool_choice is none", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -332,7 +332,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 
 		it("should include fine-grained tool streaming beta for Claude models with native tools", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -363,7 +363,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 
 		it("should always include fine-grained tool streaming beta for Claude models", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -396,7 +396,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 	describe("tool call streaming events", () => {
 		it("should yield tool_call_partial for toolUse block start", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -471,7 +471,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 
 		it("should yield tool_call_partial for contentBlock toolUse structure", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -526,7 +526,7 @@ describe("AwsBedrockHandler Native Tool Calling", () => {
 
 		it("should handle mixed text and tool use content", async () => {
 			const handlerWithNativeTools = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",

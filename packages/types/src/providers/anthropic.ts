@@ -173,7 +173,7 @@ export const anthropicModels = {
 		outputPrice: 25.0, // $25 per million output tokens (regular tier)
 		cacheWritesPrice: 6.25, // $6.25 per million tokens
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
-		// 4.8 inherits the adaptive-thinking model introduced in 4.7 — no breaking
+		// 4.8 inherits the adaptive-thinking model introduced in 4.7, no breaking
 		// API changes. supportsReasoningBudget is kept true so the existing token-cap
 		// handling and max-token overrides behave identically.
 		supportsReasoningBudget: true,
@@ -227,17 +227,6 @@ export const anthropicModels = {
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
 		supportsReasoningBudget: true,
 	},
-	"claude-opus-4-1-20250805": {
-		maxTokens: 32_000, // Overridden to 8k if `enableReasoningEffort` is false.
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 15.0, // $15 per million input tokens
-		outputPrice: 75.0, // $75 per million output tokens
-		cacheWritesPrice: 18.75, // $18.75 per million tokens
-		cacheReadsPrice: 1.5, // $1.50 per million tokens
-		supportsReasoningBudget: true,
-	},
 	"claude-opus-4-20250514": {
 		maxTokens: 32_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 200_000,
@@ -248,68 +237,6 @@ export const anthropicModels = {
 		cacheWritesPrice: 18.75, // $18.75 per million tokens
 		cacheReadsPrice: 1.5, // $1.50 per million tokens
 		supportsReasoningBudget: true,
-	},
-	"claude-3-7-sonnet-20250219:thinking": {
-		maxTokens: 128_000, // Unlocked by passing `beta` flag to the model. Otherwise, it's 64k.
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens
-		outputPrice: 15.0, // $15 per million output tokens
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-		supportsReasoningBudget: true,
-		requiredReasoningBudget: true,
-	},
-	"claude-3-7-sonnet-20250219": {
-		maxTokens: 8192, // Since we already have a `:thinking` virtual model we aren't setting `supportsReasoningBudget: true` here.
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens
-		outputPrice: 15.0, // $15 per million output tokens
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-	},
-	"claude-3-5-sonnet-20241022": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens
-		outputPrice: 15.0, // $15 per million output tokens
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-	},
-	"claude-3-5-haiku-20241022": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: false,
-		supportsPromptCache: true,
-		inputPrice: 1.0,
-		outputPrice: 5.0,
-		cacheWritesPrice: 1.25,
-		cacheReadsPrice: 0.1,
-	},
-	"claude-3-opus-20240229": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-	},
-	"claude-3-haiku-20240307": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.25,
-		outputPrice: 1.25,
-		cacheWritesPrice: 0.3,
-		cacheReadsPrice: 0.03,
 	},
 	"claude-haiku-4-5-20251001": {
 		maxTokens: 64_000,

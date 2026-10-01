@@ -41,7 +41,7 @@ describe("AwsBedrockHandler Error Handling", () => {
 		vi.clearAllMocks()
 		mockCaptureException.mockClear()
 		handler = new AwsBedrockHandler({
-			apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",

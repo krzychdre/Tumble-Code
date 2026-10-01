@@ -6,12 +6,11 @@ export type BedrockModelId = keyof typeof bedrockModels
 
 export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 
-export const bedrockDefaultPromptRouterModelId: BedrockModelId = "anthropic.claude-3-sonnet-20240229-v1:0"
+// Priced stand-in for a prompt router until the router reports the model it invoked.
+export const bedrockDefaultPromptRouterModelId: BedrockModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 // March, 12 2025 - updated prices to match US-West-2 list price shown at
-// https://aws.amazon.com/bedrock/pricing, including older models that are part
-// of the default prompt routers AWS enabled for GA of the promot router
-// feature.
+// https://aws.amazon.com/bedrock/pricing.
 export const bedrockModels = {
 	"anthropic.claude-sonnet-4-5-20250929-v1:0": {
 		maxTokens: 8192,
@@ -129,22 +128,8 @@ export const bedrockModels = {
 		maxCachePoints: 4,
 		cachableFields: ["system", "messages", "tools"],
 	},
-	"anthropic.claude-opus-4-1-20250805-v1:0": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningBudget: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-		minTokensPerCachePoint: 1024,
-		maxCachePoints: 4,
-		cachableFields: ["system", "messages", "tools"],
-	},
 	"anthropic.claude-opus-4-6-v1": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -168,13 +153,13 @@ export const bedrockModels = {
 		],
 	},
 	"anthropic.claude-opus-4-7": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
 		supportsPromptCache: true,
 		supportsReasoningBudget: true,
-		inputPrice: 5.0, // $5 per million input tokens (≤200K context) — verify against Bedrock console
-		outputPrice: 25.0, // $25 per million output tokens (≤200K context) — verify against Bedrock console
+		inputPrice: 5.0, // $5 per million input tokens (≤200K context), verify against Bedrock console
+		outputPrice: 25.0, // $25 per million output tokens (≤200K context), verify against Bedrock console
 		cacheWritesPrice: 6.25, // $6.25 per million tokens
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
 		minTokensPerCachePoint: 1024,
@@ -192,20 +177,20 @@ export const bedrockModels = {
 		],
 	},
 	"anthropic.claude-opus-4-8": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
 		supportsPromptCache: true,
 		supportsReasoningBudget: true,
-		inputPrice: 5.0, // $5 per million input tokens (≤200K context) — verify against Bedrock console
-		outputPrice: 25.0, // $25 per million output tokens (≤200K context) — verify against Bedrock console
+		inputPrice: 5.0, // $5 per million input tokens (≤200K context), verify against Bedrock console
+		outputPrice: 25.0, // $25 per million output tokens (≤200K context), verify against Bedrock console
 		cacheWritesPrice: 6.25, // $6.25 per million tokens
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
 		minTokensPerCachePoint: 1024,
 		maxCachePoints: 4,
 		cachableFields: ["system", "messages", "tools"],
 		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
-		// 4.8 inherits the same Bedrock pricing structure as 4.7 — no API breaking changes.
+		// 4.8 inherits the same Bedrock pricing structure as 4.7, no API breaking changes.
 		// Adaptive thinking is the only supported reasoning mode (same as 4.7).
 		tiers: [
 			{
@@ -218,7 +203,7 @@ export const bedrockModels = {
 		],
 	},
 	"anthropic.claude-opus-5-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M context window native (no beta header required)
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -236,7 +221,7 @@ export const bedrockModels = {
 			"Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
 	},
 	"anthropic.claude-opus-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M context window native (no beta header required)
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -254,7 +239,7 @@ export const bedrockModels = {
 			"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
 	},
 	"anthropic.claude-sonnet-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M context window native (no beta header required)
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -272,7 +257,7 @@ export const bedrockModels = {
 			"Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
 	},
 	"anthropic.claude-fable-5-1": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M context window native (no beta header required)
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -290,7 +275,7 @@ export const bedrockModels = {
 			"Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
 	},
 	"anthropic.claude-fable-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000,
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -335,46 +320,6 @@ export const bedrockModels = {
 		maxCachePoints: 4,
 		cachableFields: ["system", "messages", "tools"],
 	},
-	"anthropic.claude-3-7-sonnet-20250219-v1:0": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningBudget: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-		minTokensPerCachePoint: 1024,
-		maxCachePoints: 4,
-		cachableFields: ["system", "messages", "tools"],
-	},
-	"anthropic.claude-3-5-sonnet-20241022-v2:0": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-		minTokensPerCachePoint: 1024,
-		maxCachePoints: 4,
-		cachableFields: ["system", "messages", "tools"],
-	},
-	"anthropic.claude-3-5-haiku-20241022-v1:0": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: false,
-		supportsPromptCache: true,
-		inputPrice: 0.8,
-		outputPrice: 4.0,
-		cacheWritesPrice: 1.0,
-		cacheReadsPrice: 0.08,
-		minTokensPerCachePoint: 2048,
-		maxCachePoints: 4,
-		cachableFields: ["system", "messages", "tools"],
-	},
 	"anthropic.claude-haiku-4-5-20251001-v1:0": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
@@ -388,38 +333,6 @@ export const bedrockModels = {
 		minTokensPerCachePoint: 2048,
 		maxCachePoints: 4,
 		cachableFields: ["system", "messages", "tools"],
-	},
-	"anthropic.claude-3-5-sonnet-20240620-v1:0": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: false,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-	},
-	"anthropic.claude-3-opus-20240229-v1:0": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: false,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-	},
-	"anthropic.claude-3-sonnet-20240229-v1:0": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: false,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-	},
-	"anthropic.claude-3-haiku-20240307-v1:0": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: false,
-		inputPrice: 0.25,
-		outputPrice: 1.25,
 	},
 	"deepseek.r1-v1:0": {
 		maxTokens: 32_768,

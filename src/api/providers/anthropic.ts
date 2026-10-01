@@ -2,7 +2,13 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
 import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
 
-import { type ModelInfo, ANTHROPIC_DEFAULT_MAX_TOKENS, ApiProviderError, selectAnthropicModel } from "@roo-code/types"
+import {
+	type ModelInfo,
+	ANTHROPIC_1M_CONTEXT_MODEL_IDS,
+	ANTHROPIC_DEFAULT_MAX_TOKENS,
+	ApiProviderError,
+	selectAnthropicModel,
+} from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import type { ApiHandlerOptions } from "../../shared/api"
@@ -47,14 +53,8 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	): ApiStream {
 		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
-		const {
-			id: modelId,
-			betas = ["fine-grained-tool-streaming-2025-05-14"],
-			maxTokens,
-			temperature,
-			info,
-			reasoningBudget,
-		} = this.getModel()
+		const { id: modelId, maxTokens, temperature, info, reasoningBudget } = this.getModel()
+		const betas = ["fine-grained-tool-streaming-2025-05-14"]
 		const thinking = getAnthropicProviderReasoning({
 			model: info,
 			reasoningBudget,
@@ -65,14 +65,8 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		// Filter out non-Anthropic blocks (reasoning, thoughtSignature, etc.) before sending to the API
 		const sanitizedMessages = filterNonAnthropicBlocks(messages)
 
-		// Add 1M context beta flag if enabled for supported models (Claude Sonnet 4/4.5/4.6, Opus 4.6)
-		if (
-			(modelId === "claude-sonnet-4-20250514" ||
-				modelId === "claude-sonnet-4-5" ||
-				modelId === "claude-sonnet-4-6" ||
-				modelId === "claude-opus-4-6") &&
-			this.options.anthropicBeta1MContext
-		) {
+		// Add 1M context beta flag if enabled for supported models (the same list the settings checkbox uses)
+		if (ANTHROPIC_1M_CONTEXT_MODEL_IDS.includes(modelId) && this.options.anthropicBeta1MContext) {
 			betas.push("context-1m-2025-08-07")
 		}
 
@@ -164,12 +158,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			defaultTemperature: 0,
 		})
 
-		return {
-			id: toAnthropicRequestModelId(id),
-			info,
-			betas: id === "claude-3-7-sonnet-20250219:thinking" ? ["output-128k-2025-02-19"] : undefined,
-			...params,
-		}
+		return { id, info, ...params }
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
@@ -209,15 +198,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	}
 }
 
-// The `:thinking` suffix indicates that the model is a "Hybrid" reasoning
-// model and that reasoning is required to be enabled. The actual model ID
-// honored by Anthropic's API does not have this suffix.
-const toAnthropicRequestModelId = (id: string) =>
-	id === "claude-3-7-sonnet-20250219:thinking" ? "claude-3-7-sonnet-20250219" : id
-
 /** The `{ id, info }` that `AnthropicHandler.getModel()` reports, without building a handler. */
 export function resolveAnthropicModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
-	const { id, info } = selectAnthropicModel(options)
-
-	return { id: toAnthropicRequestModelId(id), info }
+	return selectAnthropicModel(options)
 }

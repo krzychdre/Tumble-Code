@@ -125,7 +125,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 	describe("ConverseStream command input", () => {
 		it("plain text request", async () => {
 			const input = await commandInputFor({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsUsePromptCache: false,
 			})
 			expect(input).toMatchInlineSnapshot(`
@@ -165,7 +165,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				      "role": "user",
 				    },
 				  ],
-				  "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				  "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				  "system": [
 				    {
 				      "text": "You are a helpful assistant.",
@@ -234,7 +234,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 		it("prompt caching on, two consecutive requests of one conversation", async () => {
 			const handler = new AwsBedrockHandler({
 				...baseSettings,
-				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsUsePromptCache: true,
 			})
 			const long = (label: string) => `${label} ${"lorem ipsum dolor sit amet ".repeat(400)}`
@@ -286,7 +286,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				      "role": "user",
 				    },
 				  ],
-				  "modelId": "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				  "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				  "system": [
 				    {
 				      "text": "<text length=10807>",
@@ -375,7 +375,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				      "role": "user",
 				    },
 				  ],
-				  "modelId": "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				  "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				  "system": [
 				    {
 				      "text": "<text length=10807>",
@@ -398,7 +398,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 
 		it("extended thinking with a budget (settings)", async () => {
 			const input = await commandInputFor({
-				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsUsePromptCache: false,
 				enableReasoningEffort: true,
 				modelMaxTokens: 8192,
@@ -446,7 +446,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				      "role": "user",
 				    },
 				  ],
-				  "modelId": "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				  "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				  "system": [
 				    {
 				      "text": "You are a helpful assistant.",
@@ -597,7 +597,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 			const input = await commandInputFor({
 				awsRegion: "us-east-1",
 				awsCustomArn:
-					"arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+					"arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsUsePromptCache: false,
 			})
 			expect(input).toMatchInlineSnapshot(`
@@ -637,7 +637,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				      "role": "user",
 				    },
 				  ],
-				  "modelId": "arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+				  "modelId": "arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				  "system": [
 				    {
 				      "text": "You are a helpful assistant.",
@@ -843,7 +843,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 					},
 				},
 			]
-			const settings = { apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0", awsUsePromptCache: false }
+			const settings = { apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0", awsUsePromptCache: false }
 			const byChoice: Record<string, unknown> = {}
 			for (const [label, tool_choice] of [
 				["undefined", undefined],
@@ -1103,7 +1103,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 		it("yields the exact chunk list for a scripted stream", async () => {
 			const handler = new AwsBedrockHandler({
 				...baseSettings,
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 			mockSend.mockResolvedValueOnce({ stream: scripted(events) })
 			const { chunks, error } = await collect(handler.createMessage("system", shortConversation))
@@ -1228,7 +1228,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 						trace: {
 							promptRouter: {
 								invokedModelId:
-									"arn:aws:bedrock:us-east-1:123456789:foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
+									"arn:aws:bedrock:us-east-1:123456789:foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
 								usage: {
 									inputTokens: 11,
 									outputTokens: 22,
@@ -1243,7 +1243,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 						trace: {
 							promptRouter: {
 								invokedModelId:
-									"arn:aws:bedrock:us-east-1:123456789:foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0",
+									"arn:aws:bedrock:us-east-1:123456789:foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
 							},
 						},
 					},
@@ -1279,7 +1279,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 			expect(summarize({ id: model.id, inputPrice: model.info.inputPrice })).toMatchInlineSnapshot(`
 				{
 				  "id": "arn:aws:bedrock:us-east-1:123456789:default-prompt-router/anthropic.claude:1",
-				  "inputPrice": 0.8,
+				  "inputPrice": 1,
 				}
 			`)
 		})
@@ -1296,7 +1296,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 		async function run(send: () => void) {
 			const handler = new AwsBedrockHandler({
 				...baseSettings,
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 			send()
 			const { chunks, error } = await collect(handler.createMessage("system", shortConversation))
@@ -1322,7 +1322,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 			const original = throttlingError()
 			const handler = new AwsBedrockHandler({
 				...baseSettings,
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 			mockSend.mockRejectedValueOnce(original)
 			const { chunks, error } = await collect(handler.createMessage("system", shortConversation))
@@ -1357,7 +1357,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				  "telemetry": [
 				    {
 				      "message": "Rate exceeded",
-				      "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				      "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				      "operation": "createMessage",
 				      "provider": "Bedrock",
 				    },
@@ -1380,7 +1380,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				  "telemetry": [
 				    {
 				      "message": "Too many requests, please wait",
-				      "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				      "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				      "operation": "createMessage",
 				      "provider": "Bedrock",
 				    },
@@ -1413,7 +1413,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				  "telemetry": [
 				    {
 				      "message": "plain string failure",
-				      "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				      "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				      "operation": "createMessage",
 				      "provider": "Bedrock",
 				    },
@@ -1454,7 +1454,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				  "telemetry": [
 				    {
 				      "message": "Malformed input request: field required",
-				      "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				      "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				      "operation": "createMessage",
 				      "provider": "Bedrock",
 				    },
@@ -1487,7 +1487,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				  "telemetry": [
 				    {
 				      "message": "No stream available in the response",
-				      "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				      "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				      "operation": "createMessage",
 				      "provider": "Bedrock",
 				    },

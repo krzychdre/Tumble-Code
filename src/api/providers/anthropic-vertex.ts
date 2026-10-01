@@ -19,7 +19,6 @@ import {
 
 import { BaseProvider } from "./base-provider"
 import { parseVertexJsonCredentials } from "./utils/vertex-credentials"
-import { withoutThinkingSuffix } from "./utils/thinking-suffix"
 import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { anthropicCompletionUsage } from "./utils/completion-usage"
@@ -200,7 +199,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		}
 
 		return {
-			id: withoutThinkingSuffix(id),
+			id,
 			info,
 			betas: betas.length > 0 ? betas : undefined,
 			...params,
@@ -257,5 +256,5 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 export function resolveAnthropicVertexModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
 	const { id, info } = selectAnthropicVertexModel(options)
 
-	return { id: withoutThinkingSuffix(id), info }
+	return { id, info }
 }

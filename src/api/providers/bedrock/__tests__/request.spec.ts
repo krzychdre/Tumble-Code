@@ -71,7 +71,7 @@ describe("bedrock request builders", () => {
 	})
 
 	describe("buildThinkingFields", () => {
-		const model = { id: "anthropic.claude-3-7-sonnet-20250219-v1:0", info }
+		const model = { id: "anthropic.claude-sonnet-4-5-20250929-v1:0", info }
 
 		it("returns undefined when thinking is not requested", () => {
 			expect(buildThinkingFields({ model, settings: {}, isAdaptiveThinkingModel: false })).toBeUndefined()
@@ -137,7 +137,7 @@ describe("bedrock request builders", () => {
 
 		it("keeps the service tier only for supported models", () => {
 			expect(resolveServiceTier("amazon.nova-pro-v1:0", "FLEX")).toBe("FLEX")
-			expect(resolveServiceTier("anthropic.claude-3-5-sonnet-20241022-v2:0", "FLEX")).toBeFalsy()
+			expect(resolveServiceTier("anthropic.claude-sonnet-4-5-20250929-v1:0", "FLEX")).toBeFalsy()
 			expect(resolveServiceTier("amazon.nova-pro-v1:0", undefined)).toBeFalsy()
 		})
 	})
@@ -232,8 +232,8 @@ describe("bedrock request builders", () => {
 		it("assembles the payload with thinking, betas, tools and service tier", () => {
 			const settings: ProviderSettings = { awsBedrockServiceTier: "PRIORITY", modelTemperature: 0.3 }
 			const payload = buildConverseStreamPayload({
-				model: { id: "us.anthropic.claude-3-7-sonnet-20250219-v1:0", info },
-				baseModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				model: { id: "us.anthropic.claude-sonnet-4-5-20250929-v1:0", info },
+				baseModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				isAdaptiveThinkingModel: false,
 				settings,
 				formatted: { system: [{ text: "sys" }], messages: [] },
@@ -241,7 +241,7 @@ describe("bedrock request builders", () => {
 				toolConfig: { tools: [], toolChoice: { auto: {} } },
 			})
 			expect(payload).toEqual({
-				modelId: "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+				modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				messages: [],
 				system: [{ text: "sys" }],
 				inferenceConfig: { maxTokens: 8192, temperature: 0.3 },

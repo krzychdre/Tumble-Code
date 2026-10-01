@@ -16,23 +16,8 @@ describe("OpenRouter API", () => {
 
 			const models = await getOpenRouterModels()
 
-			expect(models["anthropic/claude-3.7-sonnet"]).toEqual({
-				maxTokens: 8192,
-				contextWindow: 200000,
-				supportsImages: true,
-				supportsPromptCache: true,
-				inputPrice: 3,
-				outputPrice: 15,
-				cacheWritesPrice: 3.75,
-				cacheReadsPrice: 0.3,
-				description: expect.any(String),
-				supportsReasoningBudget: false,
-				supportsReasoningEffort: false,
-				supportedParameters: ["max_tokens", "temperature", "reasoning", "include_reasoning"],
-			})
-
-			expect(models["anthropic/claude-3.7-sonnet:thinking"]).toEqual({
-				maxTokens: 128000,
+			expect(models["anthropic/claude-sonnet-4"]).toEqual({
+				maxTokens: 64000,
 				contextWindow: 200000,
 				supportsImages: true,
 				supportsPromptCache: true,
@@ -42,37 +27,11 @@ describe("OpenRouter API", () => {
 				cacheReadsPrice: 0.3,
 				description: expect.any(String),
 				supportsReasoningBudget: true,
-				requiredReasoningBudget: true,
 				supportsReasoningEffort: true,
 				supportedParameters: ["max_tokens", "temperature", "reasoning", "include_reasoning"],
 			})
 
 			expect(models["google/gemini-2.5-flash-preview-05-20"].maxTokens).toEqual(65535)
-
-			const anthropicModels = Object.entries(models)
-				.filter(([id, _]) => id.startsWith("anthropic/claude-3"))
-				.map(([id, model]) => ({ id, maxTokens: model.maxTokens }))
-				.sort(({ id: a }, { id: b }) => a.localeCompare(b))
-
-			expect(anthropicModels).toEqual([
-				{ id: "anthropic/claude-3-haiku", maxTokens: 4096 },
-				{ id: "anthropic/claude-3-haiku:beta", maxTokens: 4096 },
-				{ id: "anthropic/claude-3-opus", maxTokens: 4096 },
-				{ id: "anthropic/claude-3-opus:beta", maxTokens: 4096 },
-				{ id: "anthropic/claude-3-sonnet", maxTokens: 4096 },
-				{ id: "anthropic/claude-3-sonnet:beta", maxTokens: 4096 },
-				{ id: "anthropic/claude-3.5-haiku", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.5-haiku-20241022", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.5-haiku-20241022:beta", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.5-haiku:beta", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.5-sonnet", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.5-sonnet-20240620", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.5-sonnet-20240620:beta", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.5-sonnet:beta", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.7-sonnet", maxTokens: 8192 },
-				{ id: "anthropic/claude-3.7-sonnet:beta", maxTokens: 128000 },
-				{ id: "anthropic/claude-3.7-sonnet:thinking", maxTokens: 128000 },
-			])
 
 			nockDone()
 		})

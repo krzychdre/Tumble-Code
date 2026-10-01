@@ -367,7 +367,7 @@ export const vertexModels = {
 		supportsReasoningBudget: true,
 	},
 	"claude-opus-4-6": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -388,7 +388,7 @@ export const vertexModels = {
 		],
 	},
 	"claude-opus-4-7": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -411,7 +411,7 @@ export const vertexModels = {
 		],
 	},
 	"claude-opus-4-8": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -422,7 +422,7 @@ export const vertexModels = {
 		supportsReasoningBudget: true,
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
-		// 4.8 inherits the same Vertex pricing structure as 4.7 — no breaking changes.
+		// 4.8 inherits the same Vertex pricing structure as 4.7, no breaking changes.
 		// Tiered pricing for extended context (requires beta flag 'context-1m-2025-08-07')
 		tiers: [
 			{
@@ -435,7 +435,7 @@ export const vertexModels = {
 		],
 	},
 	"claude-opus-5-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M native, no beta flag
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -450,7 +450,7 @@ export const vertexModels = {
 			"Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
 	},
 	"claude-opus-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M native, no beta flag
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -465,7 +465,7 @@ export const vertexModels = {
 			"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
 	},
 	"claude-sonnet-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M native, no beta flag
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -480,7 +480,7 @@ export const vertexModels = {
 			"Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
 	},
 	"claude-fable-5-1": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000, // 1M native, no beta flag
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -495,7 +495,7 @@ export const vertexModels = {
 			"Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
 	},
 	"claude-fable-5": {
-		maxTokens: 8192,
+		maxTokens: 128_000,
 		contextWindow: 1_000_000,
 		supportsImages: true,
 		supportsPromptCache: true,
@@ -520,17 +520,6 @@ export const vertexModels = {
 		cacheReadsPrice: 0.5,
 		supportsReasoningBudget: true,
 	},
-	"claude-opus-4-1@20250805": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-		supportsReasoningBudget: true,
-	},
 	"claude-opus-4@20250514": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
@@ -540,78 +529,6 @@ export const vertexModels = {
 		outputPrice: 75.0,
 		cacheWritesPrice: 18.75,
 		cacheReadsPrice: 1.5,
-	},
-	"claude-3-7-sonnet@20250219:thinking": {
-		maxTokens: 64_000,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-		supportsReasoningBudget: true,
-		requiredReasoningBudget: true,
-	},
-	"claude-3-7-sonnet@20250219": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-	},
-	"claude-3-5-sonnet-v2@20241022": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-	},
-	"claude-3-5-sonnet@20240620": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
-	},
-	"claude-3-5-haiku@20241022": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: false,
-		supportsPromptCache: true,
-		inputPrice: 1.0,
-		outputPrice: 5.0,
-		cacheWritesPrice: 1.25,
-		cacheReadsPrice: 0.1,
-	},
-	"claude-3-opus@20240229": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-	},
-	"claude-3-haiku@20240307": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.25,
-		outputPrice: 1.25,
-		cacheWritesPrice: 0.3,
-		cacheReadsPrice: 0.03,
 	},
 	"gemini-2.5-flash-lite-preview-06-17": {
 		maxTokens: 64_000,

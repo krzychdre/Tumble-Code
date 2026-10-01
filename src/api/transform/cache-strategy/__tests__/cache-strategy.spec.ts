@@ -283,7 +283,7 @@ describe("Cache Strategy", () => {
 
 			// Create a handler with prompt cache enabled and a model that supports it
 			handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0", // This model supports prompt cache
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0", // This model supports prompt cache
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -292,7 +292,7 @@ describe("Cache Strategy", () => {
 
 			// Mock the getModel method to return a model with cachableFields and multi-point support
 			vitest.spyOn(handler, "getModel").mockReturnValue({
-				id: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				id: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				info: {
 					maxTokens: 8192,
 					contextWindow: 200000,
@@ -384,7 +384,7 @@ describe("Cache Strategy", () => {
 		it("should use MultiPointStrategy when maxCachePoints is 1", async () => {
 			// Mock the getModel method to return a model with only single-point support
 			vitest.spyOn(handler, "getModel").mockReturnValue({
-				id: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				id: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				info: {
 					maxTokens: 8192,
 					contextWindow: 200000,
@@ -425,7 +425,7 @@ describe("Cache Strategy", () => {
 		it("should use MultiPointStrategy when prompt cache is disabled", async () => {
 			// Create a handler with prompt cache disabled
 			handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -434,7 +434,7 @@ describe("Cache Strategy", () => {
 
 			// Mock the getModel method
 			vitest.spyOn(handler, "getModel").mockReturnValue({
-				id: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				id: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				info: {
 					maxTokens: 8192,
 					contextWindow: 200000,
