@@ -1,7 +1,7 @@
 /**
  * Per embedder provider behaviour of the code index settings form.
  *
- * For each of the 8 embedder providers the popover shows its own fields. These
+ * For each of the 7 embedder providers the popover shows its own fields. These
  * tests pin, per provider:
  * - which validation errors appear when Save is pressed with the required
  *   fields empty (nothing is sent to the extension then);
@@ -44,7 +44,6 @@ const MODELS = {
 	openai: { "text-embedding-3-small": { dimension: 1536 } },
 	gemini: { "gemini-embedding-001": { dimension: 3072 } },
 	mistral: { "codestral-embed-2505": { dimension: 1536 } },
-	"vercel-ai-gateway": { "openai/text-embedding-3-small": { dimension: 1536 } },
 	bedrock: { "amazon.titan-embed-text-v2:0": { dimension: 1024 } },
 	openrouter: { "openai/text-embedding-3-small": { dimension: 1536 } },
 }
@@ -173,21 +172,6 @@ const CASES: ProviderCase[] = [
 		secretFlag: "hasMistralApiKey",
 	},
 	{
-		provider: "vercel-ai-gateway",
-		inputs: [{ placeholder: "settings:codeIndex.vercelAiGatewayApiKeyPlaceholder", value: "vc-key" }],
-		dropdownModel: "openai/text-embedding-3-small",
-		emptyErrors: [
-			"settings:codeIndex.validation.vercelAiGatewayApiKeyRequired",
-			"settings:codeIndex.validation.modelSelectionRequired",
-		],
-		payload: {
-			codebaseIndexVercelAiGatewayApiKey: "vc-key",
-			codebaseIndexEmbedderModelId: "openai/text-embedding-3-small",
-		},
-		secretField: "codebaseIndexVercelAiGatewayApiKey",
-		secretFlag: "hasVercelAiGatewayApiKey",
-	},
-	{
 		provider: "bedrock",
 		inputs: [
 			{ placeholder: "settings:codeIndex.bedrockRegionPlaceholder", value: "eu-central-1" },
@@ -290,7 +274,6 @@ describe("CodeIndexPopover per embedder provider", () => {
 			"openai-compatible": true,
 			gemini: true,
 			mistral: true,
-			"vercel-ai-gateway": true,
 			bedrock: true,
 			openrouter: true,
 		}
@@ -375,6 +358,19 @@ describe("CodeIndexPopover per embedder provider", () => {
 				expect(payloads[0]).toEqual(expect.objectContaining(rest))
 			})
 		}
+	})
+
+	// A saved config can name an embedder this version no longer has (Vercel AI Gateway was removed).
+	// The form must still open, show no provider fields, and let the user pick another embedder.
+	it("opens with a removed embedder provider saved, showing no provider fields", () => {
+		renderFor("vercel-ai-gateway" as EmbedderProvider)
+
+		expect(screen.getByPlaceholderText("settings:codeIndex.qdrantUrlPlaceholder")).toBeInTheDocument()
+		const placeholders = Array.from(document.querySelectorAll("input[placeholder]"), (input) =>
+			input.getAttribute("placeholder"),
+		)
+		expect(placeholders.filter((p) => !p?.startsWith("settings:codeIndex.qdrant"))).toEqual([])
+		expect(document.querySelector(".ui-dropdown")).toBeNull()
 	})
 
 	describe("URL fields", () => {

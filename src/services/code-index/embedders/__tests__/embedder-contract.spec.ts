@@ -124,7 +124,6 @@ import { OpenAICompatibleEmbedder } from "../openai-compatible"
 import { OpenRouterEmbedder } from "../openrouter"
 import { GeminiEmbedder } from "../gemini"
 import { MistralEmbedder } from "../mistral"
-import { VercelAiGatewayEmbedder } from "../vercel-ai-gateway"
 import { BedrockEmbedder } from "../bedrock"
 import { CodeIndexOllamaEmbedder } from "../ollama"
 
@@ -183,11 +182,6 @@ const cases: EmbedderCase[] = [
 	{
 		name: "mistral",
 		create: () => new MistralEmbedder("k"),
-		maxItemTokens: MAX_ITEM_TOKENS,
-	},
-	{
-		name: "vercel-ai-gateway",
-		create: () => new VercelAiGatewayEmbedder("k"),
 		maxItemTokens: MAX_ITEM_TOKENS,
 	},
 	{

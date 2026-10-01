@@ -2394,10 +2394,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestCode
     ],
     [
       "context.secrets.get",
-      "codebaseIndexVercelAiGatewayApiKey",
-    ],
-    [
-      "context.secrets.get",
       "codebaseIndexOpenRouterApiKey",
     ],
     [
@@ -2411,7 +2407,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestCode
           "hasOpenAiKey": true,
           "hasOpenRouterApiKey": false,
           "hasQdrantApiKey": false,
-          "hasVercelAiGatewayApiKey": false,
         },
       },
     ],

@@ -55,7 +55,6 @@
 		"geminiConfigMissing": "Gömücü oluşturmak için Gemini yapılandırması eksik",
 		"mistralConfigMissing": "Gömücü oluşturmak için Mistral yapılandırması eksik",
 		"openRouterConfigMissing": "Gömücü oluşturmak için OpenRouter yapılandırması eksik",
-		"vercelAiGatewayConfigMissing": "Gömücü oluşturmak için Vercel AI Gateway yapılandırması eksik",
 		"bedrockConfigMissing": "Gömücü oluşturmak için Amazon Bedrock yapılandırması eksik",
 		"invalidEmbedderType": "Geçersiz gömücü türü yapılandırıldı: {{embedderProvider}}",
 		"vectorDimensionNotDeterminedOpenAiCompatible": "'{{provider}}' sağlayıcısı ile '{{modelId}}' modeli için vektör boyutu belirlenemedi. OpenAI uyumlu sağlayıcı ayarlarında 'Gömme Boyutu'nun doğru ayarlandığından emin ol.",

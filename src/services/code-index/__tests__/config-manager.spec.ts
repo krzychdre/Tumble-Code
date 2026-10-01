@@ -58,6 +58,50 @@ describe("CodeIndexConfigManager", () => {
 		})
 	})
 
+	// Vercel AI Gateway was removed as an embedder. A config saved with it must not fall back to OpenAI
+	// (that would send the code to a provider the user did not pick) and must not throw: indexing stays
+	// unconfigured until another embedder is chosen.
+	describe("saved embedder provider that this version does not have", () => {
+		const removedProviderState = {
+			codebaseIndexEnabled: true,
+			codebaseIndexQdrantUrl: "http://qdrant.local",
+			codebaseIndexEmbedderProvider: "vercel-ai-gateway",
+			codebaseIndexEmbedderModelId: "openai/text-embedding-3-small",
+		}
+
+		beforeEach(() => {
+			mockContextProxy.getGlobalState.mockReturnValue(removedProviderState)
+			// A leftover secret of the removed provider and a stored OpenAI key must both be ignored.
+			setupSecretMocks({ codebaseIndexVercelAiGatewayApiKey: "vc-key", codeIndexOpenAiKey: "sk-openai" })
+		})
+
+		it("is not configured and does not throw", async () => {
+			configManager = new CodeIndexConfigManager(mockContextProxy)
+
+			expect(configManager.isFeatureEnabled).toBe(true)
+			expect(configManager.isFeatureConfigured).toBe(false)
+			expect(configManager.getConfig().isConfigured).toBe(false)
+
+			const result = await configManager.loadConfiguration()
+			expect(result.currentConfig.isConfigured).toBe(false)
+			expect(result.requiresRestart).toBe(false)
+		})
+
+		it("starts indexing once the user picks an available embedder", async () => {
+			configManager = new CodeIndexConfigManager(mockContextProxy)
+			mockContextProxy.getGlobalState.mockReturnValue({
+				...removedProviderState,
+				codebaseIndexEmbedderProvider: "openai",
+				codebaseIndexEmbedderModelId: "text-embedding-3-small",
+			})
+
+			const result = await configManager.loadConfiguration()
+			expect(result.currentConfig.isConfigured).toBe(true)
+			expect(result.currentConfig.embedderProvider).toBe("openai")
+			expect(result.requiresRestart).toBe(true)
+		})
+	})
+
 	describe("isFeatureEnabled", () => {
 		it("should return false when codebaseIndexEnabled is false", async () => {
 			mockContextProxy.getGlobalState.mockReturnValue({

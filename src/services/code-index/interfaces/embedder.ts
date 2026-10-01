@@ -58,7 +58,6 @@ export type AvailableEmbedders =
 	| "openai-compatible"
 	| "gemini"
 	| "mistral"
-	| "vercel-ai-gateway"
 	| "bedrock"
 	| "openrouter"
 

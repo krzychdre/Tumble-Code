@@ -5,7 +5,6 @@ export type EmbedderProvider =
 	| "openai-compatible"
 	| "gemini"
 	| "mistral"
-	| "vercel-ai-gateway"
 	| "bedrock"
 	| "openrouter"
 

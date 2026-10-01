@@ -21,18 +21,13 @@ export const CODEBASE_INDEX_DEFAULTS = {
 export const codebaseIndexConfigSchema = z.object({
 	codebaseIndexEnabled: z.boolean().optional(),
 	codebaseIndexQdrantUrl: z.string().optional(),
+	// A stored provider that was removed (such as "vercel-ai-gateway") reads as unset instead of failing
+	// the whole settings parse, so exporting settings keeps working. The code index itself reads the raw
+	// stored value and stays unconfigured until the user picks another embedder.
 	codebaseIndexEmbedderProvider: z
-		.enum([
-			"openai",
-			"ollama",
-			"openai-compatible",
-			"gemini",
-			"mistral",
-			"vercel-ai-gateway",
-			"bedrock",
-			"openrouter",
-		])
-		.optional(),
+		.enum(["openai", "ollama", "openai-compatible", "gemini", "mistral", "bedrock", "openrouter"])
+		.optional()
+		.catch(undefined),
 	codebaseIndexEmbedderBaseUrl: z.string().optional(),
 	codebaseIndexEmbedderModelId: z.string().optional(),
 	codebaseIndexEmbedderModelDimension: z.number().optional(),
@@ -64,7 +59,6 @@ export const codebaseIndexModelsSchema = z.object({
 	"openai-compatible": z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	gemini: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	mistral: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
-	"vercel-ai-gateway": z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	openrouter: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	bedrock: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 })
@@ -83,7 +77,6 @@ export const codebaseIndexProviderSchema = z.object({
 	codebaseIndexOpenAiCompatibleModelDimension: z.number().optional(),
 	codebaseIndexGeminiApiKey: z.string().optional(),
 	codebaseIndexMistralApiKey: z.string().optional(),
-	codebaseIndexVercelAiGatewayApiKey: z.string().optional(),
 	codebaseIndexOpenRouterApiKey: z.string().optional(),
 })
 

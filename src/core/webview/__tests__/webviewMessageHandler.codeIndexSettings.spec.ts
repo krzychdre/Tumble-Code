@@ -120,7 +120,6 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 			codebaseIndexOpenAiCompatibleApiKey: "c",
 			codebaseIndexGeminiApiKey: "g",
 			codebaseIndexMistralApiKey: "m",
-			codebaseIndexVercelAiGatewayApiKey: "v",
 			codebaseIndexOpenRouterApiKey: "o",
 		})
 		expect(provider.contextProxy.storeSecret.mock.calls.map(([key]) => key)).toEqual([
@@ -129,7 +128,6 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 			"codebaseIndexOpenAiCompatibleApiKey",
 			"codebaseIndexGeminiApiKey",
 			"codebaseIndexMistralApiKey",
-			"codebaseIndexVercelAiGatewayApiKey",
 			"codebaseIndexOpenRouterApiKey",
 		])
 	})
