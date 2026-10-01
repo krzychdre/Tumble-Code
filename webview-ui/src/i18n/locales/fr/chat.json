@@ -545,12 +545,13 @@
 		"permissionNeeded": "Cette sous-tâche nécessite une autorisation pour continuer"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble veut chercher sur le web <code>{{queries}}</code>",
-		"didSearch": "Tumble a cherché sur le web <code>{{queries}}</code>"
+		"title": "Recherche web",
+		"queryCount_one": "{{count}} requête",
+		"queryCount_other": "{{count}} requêtes"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble veut lire <code>{{url}}</code>",
-		"didFetch": "Tumble a lu <code>{{url}}</code>"
+		"title": "Page web",
+		"openInBrowser": "Ouvrir {{url}} dans le navigateur"
 	},
 	"readArtifact": {
 		"title": "Tumble lit un artefact"

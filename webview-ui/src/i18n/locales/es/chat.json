@@ -545,12 +545,13 @@
 		"permissionNeeded": "Esta subtarea necesita permiso para continuar"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble quiere buscar en la web <code>{{queries}}</code>",
-		"didSearch": "Tumble buscó en la web <code>{{queries}}</code>"
+		"title": "Búsqueda web",
+		"queryCount_one": "{{count}} consulta",
+		"queryCount_other": "{{count}} consultas"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble quiere leer <code>{{url}}</code>",
-		"didFetch": "Tumble leyó <code>{{url}}</code>"
+		"title": "Página web",
+		"openInBrowser": "Abrir {{url}} en el navegador"
 	},
 	"readArtifact": {
 		"title": "Tumble lee un artefacto"

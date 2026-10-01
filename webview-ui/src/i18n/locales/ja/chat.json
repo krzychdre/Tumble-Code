@@ -537,12 +537,13 @@
 		"permissionNeeded": "このサブタスクを続行するには許可が必要です"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble がウェブで <code>{{queries}}</code> を検索したがっています",
-		"didSearch": "Tumble はウェブで <code>{{queries}}</code> を検索しました"
+		"title": "ウェブ検索",
+		"queryCount_one": "{{count}} 件のクエリ",
+		"queryCount_other": "{{count}} 件のクエリ"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble が <code>{{url}}</code> を読み取りたがっています",
-		"didFetch": "Tumble は <code>{{url}}</code> を読み取りました"
+		"title": "ウェブページ",
+		"openInBrowser": "{{url}} をブラウザで開く"
 	},
 	"readArtifact": {
 		"title": "Tumble がアーティファクトを読み取りました"

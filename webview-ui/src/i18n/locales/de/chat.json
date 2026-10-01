@@ -537,12 +537,13 @@
 		"permissionNeeded": "Diese Teilaufgabe benötigt eine Berechtigung, um fortzufahren"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble möchte im Web nach <code>{{queries}}</code> suchen",
-		"didSearch": "Tumble hat im Web nach <code>{{queries}}</code> gesucht"
+		"title": "Websuche",
+		"queryCount_one": "{{count}} Suchanfrage",
+		"queryCount_other": "{{count}} Suchanfragen"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble möchte <code>{{url}}</code> lesen",
-		"didFetch": "Tumble hat <code>{{url}}</code> gelesen"
+		"title": "Webseite",
+		"openInBrowser": "{{url}} im Browser öffnen"
 	},
 	"readArtifact": {
 		"title": "Tumble liest Artefakt"

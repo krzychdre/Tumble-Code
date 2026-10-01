@@ -543,12 +543,13 @@
 		"permissionNeeded": "Sub-tugas ini butuh izin untuk lanjut"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble ingin mencari di web <code>{{queries}}</code>",
-		"didSearch": "Tumble mencari di web <code>{{queries}}</code>"
+		"title": "Pencarian web",
+		"queryCount_one": "{{count}} kueri",
+		"queryCount_other": "{{count}} kueri"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble ingin membaca <code>{{url}}</code>",
-		"didFetch": "Tumble membaca <code>{{url}}</code>"
+		"title": "Halaman web",
+		"openInBrowser": "Buka {{url}} di browser"
 	},
 	"readArtifact": {
 		"title": "Tumble membaca artefak"

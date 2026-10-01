@@ -537,12 +537,13 @@
 		"permissionNeeded": "Deze subtaak heeft toestemming nodig om door te gaan"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble wil op het web zoeken naar <code>{{queries}}</code>",
-		"didSearch": "Tumble heeft op het web gezocht naar <code>{{queries}}</code>"
+		"title": "Zoeken op het web",
+		"queryCount_one": "{{count}} zoekopdracht",
+		"queryCount_other": "{{count}} zoekopdrachten"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble wil <code>{{url}}</code> lezen",
-		"didFetch": "Tumble heeft <code>{{url}}</code> gelezen"
+		"title": "Webpagina",
+		"openInBrowser": "{{url}} openen in de browser"
 	},
 	"readArtifact": {
 		"title": "Tumble leest artefact"

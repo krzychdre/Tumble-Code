@@ -528,12 +528,13 @@
 		"permissionNeeded": "此子任務需要權限才能繼續"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble 想在網頁中搜尋 <code>{{queries}}</code>",
-		"didSearch": "Tumble 已在網頁中搜尋 <code>{{queries}}</code>"
+		"title": "網頁搜尋",
+		"queryCount_one": "{{count}} 個查詢",
+		"queryCount_other": "{{count}} 個查詢"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble 想讀取 <code>{{url}}</code>",
-		"didFetch": "Tumble 已讀取 <code>{{url}}</code>"
+		"title": "網頁",
+		"openInBrowser": "在瀏覽器中開啟 {{url}}"
 	},
 	"readArtifact": {
 		"title": "Tumble 讀取 artifact"

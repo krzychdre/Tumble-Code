@@ -228,7 +228,12 @@ const TOOL_CASES: Case[] = [
 	},
 	{ name: "webSearch", message: toolAsk({ tool: "webSearch", queries: ["vitest snapshot", "react 18"] }) },
 	{ name: "webSearch without queries", message: toolAsk({ tool: "webSearch" }) },
+	{
+		name: "webSearch with operators",
+		message: toolAsk({ tool: "webSearch", queries: ['TIA "URLRewrite2" site:siemens.com OR site:elektroda.pl'] }),
+	},
 	{ name: "webFetch", message: toolAsk({ tool: "webFetch", fetchedUrl: "https://example.com/page" }) },
+	{ name: "webFetch with a non-web URL", message: toolAsk({ tool: "webFetch", fetchedUrl: "file:///etc/passwd" }) },
 	{
 		name: "updateTodoList",
 		message: toolAsk({

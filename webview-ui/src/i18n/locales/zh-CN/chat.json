@@ -538,12 +538,13 @@
 		"permissionNeeded": "此子任务需要权限才能继续"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble 想在网页中搜索 <code>{{queries}}</code>",
-		"didSearch": "Tumble 已在网页中搜索 <code>{{queries}}</code>"
+		"title": "网页搜索",
+		"queryCount_one": "{{count}} 个查询",
+		"queryCount_other": "{{count}} 个查询"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble 想读取 <code>{{url}}</code>",
-		"didFetch": "Tumble 已读取 <code>{{url}}</code>"
+		"title": "网页",
+		"openInBrowser": "在浏览器中打开 {{url}}"
 	},
 	"readArtifact": {
 		"title": "Tumble 读取 artifact"

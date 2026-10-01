@@ -538,12 +538,13 @@
 		"permissionNeeded": "Tác vụ con này cần quyền để tiếp tục"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble muốn tìm trên web <code>{{queries}}</code>",
-		"didSearch": "Tumble đã tìm trên web <code>{{queries}}</code>"
+		"title": "Tìm kiếm web",
+		"queryCount_one": "{{count}} truy vấn",
+		"queryCount_other": "{{count}} truy vấn"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble muốn đọc <code>{{url}}</code>",
-		"didFetch": "Tumble đã đọc <code>{{url}}</code>"
+		"title": "Trang web",
+		"openInBrowser": "Mở {{url}} trong trình duyệt"
 	},
 	"readArtifact": {
 		"title": "Tumble đọc artifact"

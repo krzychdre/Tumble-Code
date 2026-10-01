@@ -537,12 +537,13 @@
 		"permissionNeeded": "이 하위 작업을 계속하려면 권한이 필요합니다"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble이 웹에서 <code>{{queries}}</code>을(를) 검색하려 합니다",
-		"didSearch": "Tumble이 웹에서 <code>{{queries}}</code>을(를) 검색했습니다"
+		"title": "웹 검색",
+		"queryCount_one": "쿼리 {{count}}개",
+		"queryCount_other": "쿼리 {{count}}개"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble이 <code>{{url}}</code>을(를) 읽으려 합니다",
-		"didFetch": "Tumble이 <code>{{url}}</code>을(를) 읽었습니다"
+		"title": "웹 페이지",
+		"openInBrowser": "브라우저에서 {{url}} 열기"
 	},
 	"readArtifact": {
 		"title": "Tumble 아티팩트 읽기"

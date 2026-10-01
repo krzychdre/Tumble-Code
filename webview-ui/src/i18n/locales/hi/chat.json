@@ -537,12 +537,13 @@
 		"permissionNeeded": "इस उपकार्य को आगे बढ़ने के लिए अनुमति चाहिए"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble वेब पर <code>{{queries}}</code> खोजना चाहता है",
-		"didSearch": "Tumble ने वेब पर <code>{{queries}}</code> खोजा"
+		"title": "वेब खोज",
+		"queryCount_one": "{{count}} क्वेरी",
+		"queryCount_other": "{{count}} क्वेरी"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble <code>{{url}}</code> पढ़ना चाहता है",
-		"didFetch": "Tumble ने <code>{{url}}</code> पढ़ा"
+		"title": "वेब पेज",
+		"openInBrowser": "{{url}} को ब्राउज़र में खोलें"
 	},
 	"readArtifact": {
 		"title": "Tumble कलाकृति पढ़ता है"

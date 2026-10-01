@@ -561,12 +561,15 @@
 		"pauseTitle": "Plan zaktualizowany — przejrzyj i zatwierdź"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble chce wyszukać w sieci <code>{{queries}}</code>",
-		"didSearch": "Tumble wyszukał w sieci <code>{{queries}}</code>"
+		"title": "Wyszukiwanie w sieci",
+		"queryCount_one": "{{count}} zapytanie",
+		"queryCount_few": "{{count}} zapytania",
+		"queryCount_many": "{{count}} zapytań",
+		"queryCount_other": "{{count}} zapytania"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble chce odczytać <code>{{url}}</code>",
-		"didFetch": "Tumble odczytał <code>{{url}}</code>"
+		"title": "Strona internetowa",
+		"openInBrowser": "Otwórz {{url}} w przeglądarce"
 	},
 	"readArtifact": {
 		"title": "Tumble odczytał artefakt"
