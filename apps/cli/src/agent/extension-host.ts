@@ -38,7 +38,6 @@ import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/stor
 
 import type { WaitingForInputEvent } from "./events.js"
 import type { MessageDelivery } from "./transcript-deliveries.js"
-import type { AgentStateInfo } from "./agent-state.js"
 import { ExtensionClient } from "./extension-client.js"
 import { OutputManager } from "./output-manager.js"
 import { TranscriptPrinter } from "./transcript-printer.js"
@@ -123,7 +122,7 @@ interface WebviewViewProvider {
 export interface ExtensionHostInterface extends IExtensionHost<ExtensionHostEventMap> {
 	client: ExtensionClient
 	activate(): Promise<void>
-	runTask(prompt: string, taskId?: string, configuration?: RooCodeSettings, images?: string[]): Promise<void>
+	runTask(prompt: string, taskId?: string): Promise<void>
 	resumeTask(taskId: string): Promise<void>
 	sendToExtension(message: WebviewMessage): void
 	dispose(): Promise<void>
@@ -598,19 +597,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		})
 	}
 
-	public async runTask(
-		prompt: string,
-		taskId?: string,
-		configuration?: RooCodeSettings,
-		images?: string[],
-	): Promise<void> {
-		this.sendToExtension({
-			type: "newTask",
-			text: prompt,
-			taskId,
-			taskConfiguration: configuration,
-			...(images !== undefined ? { images } : {}),
-		})
+	public async runTask(prompt: string, taskId?: string): Promise<void> {
+		this.sendToExtension({ type: "newTask", text: prompt, taskId })
 		return this.waitForTaskCompletion()
 	}
 
@@ -621,24 +609,6 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		this.client.beginHistoryReplay()
 		this.sendToExtension({ type: "showTaskWithId", text: taskId })
 		return this.waitForTaskCompletion()
-	}
-
-	// ==========================================================================
-	// Public Agent State API
-	// ==========================================================================
-
-	/**
-	 * Get the current agent loop state.
-	 */
-	public getAgentState(): AgentStateInfo {
-		return this.client.getAgentState()
-	}
-
-	/**
-	 * Check if the agent is currently waiting for user input.
-	 */
-	public isWaitingForInput(): boolean {
-		return this.client.getAgentState().isWaitingForInput
 	}
 
 	// ==========================================================================

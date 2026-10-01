@@ -11,14 +11,7 @@ exports[`JSON output (characterization) > json: answer repeated in completion_re
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -48,14 +41,7 @@ exports[`JSON output (characterization) > json: command output 1`] = `
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -106,14 +92,7 @@ exports[`JSON output (characterization) > json: command output finalized in plac
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -159,14 +138,7 @@ exports[`JSON output (characterization) > json: error say 1`] = `
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -206,14 +178,7 @@ exports[`JSON output (characterization) > json: partial then final, then complet
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -248,14 +213,7 @@ exports[`JSON output (characterization) > json: reasoning then answer 1`] = `
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -291,14 +249,7 @@ exports[`JSON output (characterization) > json: restarted stream after interleav
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -333,14 +284,7 @@ exports[`JSON output (characterization) > json: resumed task 1`] = `
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -370,14 +314,7 @@ exports[`JSON output (characterization) > json: state push replays 1`] = `
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -413,14 +350,7 @@ exports[`JSON output (characterization) > json: tool asks 1`] = `
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -491,14 +421,7 @@ exports[`JSON output (characterization) > json: two new messages in one state pu
       "subtype": "init",
       "content": "Task started",
       "schemaVersion": 1,
-      "protocol": "roo-cli-stream",
-      "capabilities": [
-        "stdin:start",
-        "stdin:message",
-        "stdin:cancel",
-        "stdin:ping",
-        "stdin:shutdown"
-      ]
+      "protocol": "roo-cli-stream"
     },
     {
       "type": "user",
@@ -524,7 +447,7 @@ exports[`JSON output (characterization) > json: two new messages in one state pu
 `;
 
 exports[`JSON output (characterization) > stream-json: answer repeated in completion_result 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Sum it","done":true}
 {"type":"assistant","id":3,"content":"The sum "}
 {"type":"assistant","id":3,"content":"is 5."}
@@ -534,7 +457,7 @@ exports[`JSON output (characterization) > stream-json: answer repeated in comple
 `;
 
 exports[`JSON output (characterization) > stream-json: command output 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"List files","done":true}
 {"type":"tool_use","id":3,"subtype":"command","tool_use":{"name":"execute_command","input":{"command":"ls -1"}},"done":true}
 {"type":"tool_result","id":3,"subtype":"command","tool_result":{"name":"execute_command","output":"a.txt"}}
@@ -547,7 +470,7 @@ exports[`JSON output (characterization) > stream-json: command output 1`] = `
 `;
 
 exports[`JSON output (characterization) > stream-json: command output finalized in place 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Run it","done":true}
 {"type":"tool_use","id":2,"subtype":"command","tool_use":{"name":"execute_command","input":{"command":"echo hi"}},"done":true}
 {"type":"tool_result","id":2,"subtype":"command","tool_result":{"name":"execute_command","output":"h"}}
@@ -558,7 +481,7 @@ exports[`JSON output (characterization) > stream-json: command output finalized 
 `;
 
 exports[`JSON output (characterization) > stream-json: error say 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Do it","done":true}
 {"type":"error","id":3,"content":"Something broke"}
 {"type":"assistant","id":4,"content":"Recovered."}
@@ -568,7 +491,7 @@ exports[`JSON output (characterization) > stream-json: error say 1`] = `
 `;
 
 exports[`JSON output (characterization) > stream-json: partial then final, then completion 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Say hi","done":true}
 {"type":"assistant","id":3,"content":"Hel"}
 {"type":"assistant","id":3,"content":"lo "}
@@ -579,7 +502,7 @@ exports[`JSON output (characterization) > stream-json: partial then final, then 
 `;
 
 exports[`JSON output (characterization) > stream-json: reasoning then answer 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Think first","done":true}
 {"type":"thinking","id":3,"content":"Let me "}
 {"type":"thinking","id":3,"content":"think."}
@@ -592,7 +515,7 @@ exports[`JSON output (characterization) > stream-json: reasoning then answer 1`]
 `;
 
 exports[`JSON output (characterization) > stream-json: restarted stream after interleaved reasoning 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Greet me","done":true}
 {"type":"assistant","id":3,"content":"Dzi"}
 {"type":"thinking","id":4,"content":"Polite form."}
@@ -604,7 +527,7 @@ exports[`JSON output (characterization) > stream-json: restarted stream after in
 `;
 
 exports[`JSON output (characterization) > stream-json: resumed task 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":6,"content":"","done":true}
 {"type":"assistant","id":8,"content":"New "}
 {"type":"assistant","id":8,"content":"answer."}
@@ -614,7 +537,7 @@ exports[`JSON output (characterization) > stream-json: resumed task 1`] = `
 `;
 
 exports[`JSON output (characterization) > stream-json: state push replays 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Replay","done":true}
 {"type":"assistant","id":2,"content":"Once."}
 {"type":"assistant","id":2,"content":"Once.","done":true}
@@ -624,7 +547,7 @@ exports[`JSON output (characterization) > stream-json: state push replays 1`] = 
 `;
 
 exports[`JSON output (characterization) > stream-json: tool asks 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Read it","done":true}
 {"type":"tool_use","id":3,"subtype":"tool","tool_use":{"name":"readFile","input":{"tool":"readFile","path":"src/a.ts","content":"src/a.ts"}},"done":true}
 {"type":"assistant","id":4,"content":"{\\"tool\\":\\"searchTaskHistory\\",\\"query\\":\\"x\\"}","subtype":"tool","done":true}
@@ -637,7 +560,7 @@ exports[`JSON output (characterization) > stream-json: tool asks 1`] = `
 `;
 
 exports[`JSON output (characterization) > stream-json: two new messages in one state push 1`] = `
-"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"Batch","done":true}
 {"type":"assistant","id":3,"content":"First part.","done":true}
 {"type":"assistant","id":4,"content":"Second part.","done":true}

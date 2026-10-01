@@ -95,8 +95,6 @@ function baseFlags(overrides: Partial<FlagOptions> = {}): FlagOptions {
 		continue: false,
 		workspace: undefined,
 		print: true,
-		stdinPromptStream: false,
-		signalOnlyExit: false,
 		extension: undefined,
 		debug: false,
 		requireApproval: false,

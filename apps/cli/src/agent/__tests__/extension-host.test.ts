@@ -446,23 +446,6 @@ describe("ExtensionHost", () => {
 		})
 	})
 
-	describe("public agent state API", () => {
-		it("should return agent state from getAgentState()", () => {
-			const host = createTestHost()
-			const state = host.getAgentState()
-
-			expect(state).toBeDefined()
-			expect(state.state).toBeDefined()
-			expect(state.isWaitingForInput).toBeDefined()
-			expect(state.isRunning).toBeDefined()
-		})
-
-		it("should return isWaitingForInput() status", () => {
-			const host = createTestHost()
-			expect(typeof host.isWaitingForInput()).toBe("boolean")
-		})
-	})
-
 	describe("quiet mode", () => {
 		describe("setupQuietMode", () => {
 			it("should not modify console when integrationTest is true", () => {

@@ -3,7 +3,6 @@ import path from "path"
 import { fileURLToPath } from "url"
 
 import { createElement } from "react"
-import pWaitFor from "p-wait-for"
 
 import { setLogger } from "@roo-code/vscode-shim"
 import { debugLog, getDebugLogPath } from "@roo-code/core/cli"
@@ -56,57 +55,8 @@ import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
 import { ExtensionHost, ExtensionHostOptions } from "@/agent/index.js"
 import { installProcessGuards } from "@/lib/process-guards.js"
 import { formatCrashHint, formatCrashReport } from "@/lib/crash-report.js"
-import { isExpectedControlFlowError } from "./cancellation.js"
-import { runStdinStreamMode } from "./stdin-stream.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const SIGNAL_ONLY_EXIT_KEEPALIVE_MS = 60_000
-/**
- * The stdin-stream resume bootstrap waits for the task to register its live
- * resume ask. Registration involves history reads and writes, so this budget
- * is more generous than the old wait for any waiting state: a timeout here
- * falls back to the old behavior, which loses the first message command (F1).
- */
-const STREAM_RESUME_ASK_WAIT_TIMEOUT_MS = 10_000
-
-/**
- * Whether the task is waiting on the LIVE resume ask it asks when it is
- * opened (`resume_completed_task` for a finished task, `resume_task` for a
- * paused one). The ask is registered only once the resumed task re-runs
- * `resumeTaskFromHistory`; a state push of the persisted history can arrive
- * much earlier, its tail still holding the OLD ask (typically
- * `completion_result`, or a stale resume ask from an abandoned open), which
- * would make a message command answer an ask nothing is waiting on — the
- * answer is then cleared when the real ask is registered and the turn is
- * lost (the F1 integration flake). The live ask is told from a stale tail by
- * its timestamp: it is appended after `since` (the extension runs in this
- * process, so the clocks agree).
- */
-export function isLiveResumeAskWaiting(host: ExtensionHost, since: number): boolean {
-	const agentState = host.client.getAgentState()
-	return (
-		agentState.isWaitingForInput &&
-		(agentState.currentAsk === "resume_task" || agentState.currentAsk === "resume_completed_task") &&
-		(agentState.lastMessageTs ?? 0) > since
-	)
-}
-
-async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: string): Promise<void> {
-	const bootstrapStartedAt = Date.now()
-	// The JSON output shows what the task does from here on, not its history.
-	host.client.beginHistoryReplay()
-	host.sendToExtension({ type: "showTaskWithId", text: sessionId })
-
-	// Best-effort wait so early stdin "message" commands can target the
-	// resumed task. Wait for the LIVE resume ask, not just any waiting state:
-	// the first full state push carries the persisted history, whose tail is
-	// the pre-resume ask (F1).
-	await pWaitFor(() => isLiveResumeAskWaiting(host, bootstrapStartedAt), {
-		interval: 25,
-		timeout: STREAM_RESUME_ASK_WAIT_TIMEOUT_MS,
-	}).catch(() => undefined)
-}
-
 function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
 }
@@ -503,47 +453,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
-	if (flagOptions.stdinPromptStream && !flagOptions.print) {
-		console.error("[CLI] Error: --stdin-prompt-stream requires --print mode")
-		console.error("[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream [options]")
-		process.exit(1)
-	}
-
-	if (flagOptions.signalOnlyExit && !flagOptions.stdinPromptStream) {
-		console.error("[CLI] Error: --signal-only-exit requires --stdin-prompt-stream")
-		console.error(
-			"[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream --signal-only-exit",
-		)
-		process.exit(1)
-	}
-
-	if (flagOptions.stdinPromptStream && outputFormat !== "stream-json") {
-		console.error("[CLI] Error: --stdin-prompt-stream requires --output-format=stream-json")
-		console.error("[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream [options]")
-		process.exit(1)
-	}
-
-	if (flagOptions.stdinPromptStream && process.stdin.isTTY) {
-		console.error("[CLI] Error: --stdin-prompt-stream requires piped stdin")
-		console.error(
-			'[CLI] Example: printf \'{"command":"start","requestId":"1","prompt":"1+1=?"}\\n\' | tumble --print --output-format stream-json --stdin-prompt-stream [options]',
-		)
-		process.exit(1)
-	}
-
-	if (flagOptions.stdinPromptStream && prompt) {
-		console.error("[CLI] Error: cannot use positional prompt or --prompt-file with --stdin-prompt-stream")
-		console.error("[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream [options]")
-		process.exit(1)
-	}
-
-	if (flagOptions.stdinPromptStream && requestedCreateSessionId) {
-		console.error("[CLI] Error: --create-with-session-id is not supported with --stdin-prompt-stream")
-		console.error('[CLI] Use per-request "taskId" in stdin start commands instead.')
-		process.exit(1)
-	}
-
-	const useStdinPromptStream = flagOptions.stdinPromptStream
 	let resolvedResumeSessionId: string | undefined
 
 	if (isResumeRequested) {
@@ -558,13 +467,10 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	}
 
 	if (!isTuiEnabled) {
-		if (!prompt && !useStdinPromptStream && !isResumeRequested) {
+		if (!prompt && !isResumeRequested) {
 			if (flagOptions.print) {
 				console.error("[CLI] Error: no prompt provided")
 				console.error("[CLI] Usage: tumble --print [options] <prompt>")
-				console.error(
-					"[CLI] For stdin control mode: tumble --print --output-format stream-json --stdin-prompt-stream [options]",
-				)
 			} else {
 				console.error("[CLI] Error: prompt is required in non-interactive mode")
 				console.error("[CLI] Usage: tumble <prompt> [options]")
@@ -668,23 +574,14 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		}
 	} else {
 		const useJsonOutput = outputFormat === "json" || outputFormat === "stream-json"
-		const signalOnlyExit = flagOptions.signalOnlyExit
 
 		extensionHostOptions.disableOutput = useJsonOutput
 		// Nobody answers an api_req_failed ask in an unattended print or JSON run.
 		extensionHostOptions.exitOnApiRequestFailed = extensionHostOptions.nonInteractive
 
 		const host = new ExtensionHost(extensionHostOptions)
-		let streamRequestId: string | undefined
-		let keepAliveInterval: NodeJS.Timeout | undefined
-		let isShuttingDown = false
-		let hostDisposed = false
-
 		const jsonEmitter = useJsonOutput
-			? new JsonEventEmitter({
-					mode: outputFormat as "json" | "stream-json",
-					requestIdProvider: () => streamRequestId,
-				})
+			? new JsonEventEmitter({ mode: outputFormat as "json" | "stream-json" })
 			: null
 
 		const emitRuntimeError = (error: Error, source?: string) => {
@@ -724,71 +621,23 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			}
 		}
 
-		const ensureKeepAliveInterval = () => {
-			if (!signalOnlyExit || keepAliveInterval) {
-				return
-			}
-
-			keepAliveInterval = setInterval(() => {}, SIGNAL_ONLY_EXIT_KEEPALIVE_MS)
-		}
-
-		const disposeHost = async () => {
-			if (hostDisposed) {
-				return
-			}
-
-			hostDisposed = true
-			jsonEmitter?.detach()
-			await host.dispose()
-		}
-
-		const parkUntilSignal = async (reason: string): Promise<never> => {
-			ensureKeepAliveInterval()
-
-			if (!useJsonOutput) {
-				console.error(`[CLI] ${reason} (--signal-only-exit active; waiting for SIGINT/SIGTERM).`)
-			}
-
-			await new Promise<void>(() => {})
-			throw new Error("unreachable")
-		}
-
 		// The same guard module the TUI uses (R6). Cleanup is one pass shared
 		// by signals, crashes and the task loop's own exit paths: host dispose
-		// + JSON emitter flush. Expected control-flow errors are ignored;
-		// --signal-only-exit keeps the process parked (no exit, cleanup stays
-		// with the task loop, which already ran disposeHost before parking).
+		// + JSON emitter flush. The guards run it at most once.
 		const disposeGuards = installProcessGuards({
 			onCleanup: async (cause) => {
-				isShuttingDown = true
-
 				if (!useJsonOutput && cause !== "dispose") {
 					console.log(`\n[CLI] Received ${cause}, shutting down...`)
 				}
 
-				await disposeHost()
+				jsonEmitter?.detach()
+				await host.dispose()
 
 				if (jsonEmitter) {
 					await jsonEmitter.flush()
 				}
 			},
 			onError: (error, source) => emitRuntimeError(normalizeError(error), source),
-			keepAlive: signalOnlyExit,
-			isExpectedError: (error) =>
-				isExpectedControlFlowError(error, {
-					stdinStreamMode: useStdinPromptStream,
-					shuttingDown: isShuttingDown,
-					operation: "runtime",
-				}),
-			// --signal-only-exit parks instead of exiting, so a stdin harness
-			// keeps its process; every other run exits with the guard's code.
-			onExit: (code) => {
-				if (signalOnlyExit) {
-					return
-				}
-
-				process.exit(code)
-			},
 		})
 
 		try {
@@ -798,49 +647,21 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 				jsonEmitter.attachToClient(host.client)
 			}
 
-			if (useStdinPromptStream) {
-				if (!jsonEmitter || outputFormat !== "stream-json") {
-					throw new Error("--stdin-prompt-stream requires --output-format=stream-json to emit control events")
-				}
-
-				if (isResumeRequested) {
-					await bootstrapResumeForStdinStream(host, resolvedResumeSessionId!)
-				}
-
-				await runStdinStreamMode({
-					host,
-					jsonEmitter,
-					setStreamRequestId: (id) => {
-						streamRequestId = id
-					},
-				})
+			if (isResumeRequested) {
+				await host.resumeTask(resolvedResumeSessionId!)
 			} else {
-				if (isResumeRequested) {
-					await host.resumeTask(resolvedResumeSessionId!)
-				} else {
-					await host.runTask(prompt!, requestedCreateSessionId)
-				}
+				await host.runTask(prompt!, requestedCreateSessionId)
 			}
 
 			// The shared cleanup pass (host dispose + JSON flush) also removes
 			// the guards, so nothing double-handles a late signal.
 			await disposeGuards()
 			await flushStdout()
-
-			if (signalOnlyExit) {
-				await parkUntilSignal("Task loop completed")
-			}
-
 			process.exit(0)
 		} catch (error) {
 			emitRuntimeError(normalizeError(error))
 			await disposeGuards()
 			await flushStdout()
-
-			if (signalOnlyExit) {
-				await parkUntilSignal("Task loop failed")
-			}
-
 			process.exit(1)
 		}
 	}

@@ -22,7 +22,7 @@
 import type { ClineMessage } from "@roo-code/types"
 import { consolidateApiRequests, consolidateTokenUsage } from "@roo-code/core/cli"
 
-import type { JsonEvent, JsonEventCost, JsonEventQueueItem, JsonFinalOutput } from "@/types/json-events.js"
+import type { JsonEvent, JsonEventCost, JsonFinalOutput } from "@/types/json-events.js"
 
 import type { ExtensionClient } from "./extension-client.js"
 import type { AgentStateChangeEvent, TaskCompletedEvent } from "./events.js"
@@ -37,14 +37,6 @@ export interface JsonEventEmitterOptions {
 	mode: "json" | "stream-json"
 	/** Output stream (defaults to process.stdout) */
 	stdout?: NodeJS.WriteStream
-	/** Optional request id provider for correlating stream events */
-	requestIdProvider?: () => string | undefined
-	/** Transport schema version emitted in system:init */
-	schemaVersion?: number
-	/** Transport protocol identifier emitted in system:init */
-	protocol?: string
-	/** Supported stdin protocol capabilities emitted in system:init */
-	capabilities?: string[]
 }
 
 /**
@@ -111,8 +103,6 @@ const SKIP_SAY_TYPES = new Set([
 
 /** Key offset for reasoning content to avoid collision with text content delta tracking */
 const REASONING_KEY_OFFSET = 1_000_000_000
-/** Grace period to wait for final say:command_output after status:exited */
-const COMMAND_OUTPUT_EXIT_GRACE_MS = 250
 
 export class JsonEventEmitter {
 	private mode: "json" | "stream-json"
@@ -127,10 +117,6 @@ export class JsonEventEmitter {
 	 */
 	private costMessages = new Map<number, ClineMessage>()
 	private client: ExtensionClient | undefined
-	private requestIdProvider: () => string | undefined
-	private schemaVersion: number
-	private protocol: string
-	private capabilities: string[]
 	private seenMessageIds = new Set<number>()
 	// Track previous content for delta computation
 	private previousContent = new Map<number, string>()
@@ -140,12 +126,6 @@ export class JsonEventEmitter {
 	private activeCommandToolUseId: number | undefined
 	// Track command output snapshots by command tool-use id for delta computation.
 	private previousCommandOutputByToolUseId = new Map<number, string>()
-	// Track command ids whose output is being streamed from commandExecutionStatus updates.
-	private statusDrivenCommandOutputIds = new Set<number>()
-	// Track command ids that already emitted a terminal command_output done event.
-	private completedCommandOutputIds = new Set<number>()
-	// Track exited commands awaiting final say:command_output completion.
-	private pendingCommandCompletionByToolUseId = new Map<number, { exitCode?: number; timer: NodeJS.Timeout }>()
 	// Track the completion result content
 	private completionResultContent: string | undefined
 	// Track the latest assistant text as a fallback for result.content.
@@ -156,16 +136,6 @@ export class JsonEventEmitter {
 	constructor(options: JsonEventEmitterOptions) {
 		this.mode = options.mode
 		this.stdout = options.stdout ?? process.stdout
-		this.requestIdProvider = options.requestIdProvider ?? (() => undefined)
-		this.schemaVersion = options.schemaVersion ?? 1
-		this.protocol = options.protocol ?? "roo-cli-stream"
-		this.capabilities = options.capabilities ?? [
-			"stdin:start",
-			"stdin:message",
-			"stdin:cancel",
-			"stdin:ping",
-			"stdin:shutdown",
-		]
 	}
 
 	/**
@@ -187,48 +157,8 @@ export class JsonEventEmitter {
 			type: "system",
 			subtype: "init",
 			content: "Task started",
-			schemaVersion: this.schemaVersion,
-			protocol: this.protocol,
-			capabilities: this.capabilities,
-		})
-	}
-
-	emitControl(event: {
-		subtype: "ack" | "done" | "error"
-		requestId?: string
-		command?: JsonEvent["command"]
-		taskId?: string
-		content?: string
-		success?: boolean
-		code?: string
-	}): void {
-		this.emitEvent({
-			type: "control",
-			subtype: event.subtype,
-			requestId: event.requestId,
-			command: event.command,
-			taskId: event.taskId,
-			content: event.content,
-			success: event.success,
-			code: event.code,
-			done: event.subtype === "done" ? true : undefined,
-		})
-	}
-
-	emitQueue(event: {
-		subtype: "snapshot" | "enqueued" | "dequeued" | "drained" | "updated"
-		taskId?: string
-		content?: string
-		queueDepth: number
-		queue: JsonEventQueueItem[]
-	}): void {
-		this.emitEvent({
-			type: "queue",
-			subtype: event.subtype,
-			taskId: event.taskId,
-			content: event.content,
-			queueDepth: event.queueDepth,
-			queue: event.queue,
+			schemaVersion: 1,
+			protocol: "roo-cli-stream",
 		})
 	}
 
@@ -340,124 +270,38 @@ export class JsonEventEmitter {
 		return normalized.startsWith(previous) ? normalized.slice(previous.length) : normalized
 	}
 
-	private emitCommandOutputEvent(
-		commandId: number,
-		fullOutput: string | undefined,
-		isDone: boolean,
-		exitCode?: number,
-	): void {
+	private emitCommandOutputEvent(commandId: number, fullOutput: string | undefined, isDone: boolean): void {
+		const event: JsonEvent = {
+			type: "tool_result",
+			id: commandId,
+			subtype: "command",
+			tool_result: { name: "execute_command" },
+		}
+
 		if (this.mode === "stream-json") {
 			const outputDelta = this.computeCommandOutputDelta(commandId, fullOutput)
-			const event: JsonEvent = {
-				type: "tool_result",
-				id: commandId,
-				subtype: "command",
-				tool_result: { name: "execute_command" },
-			}
-
-			if (outputDelta !== null && outputDelta.length > 0) {
-				event.tool_result = { name: "execute_command", output: outputDelta }
-			}
-
-			if (isDone && exitCode !== undefined) {
-				event.tool_result = {
-					...(event.tool_result ?? { name: "execute_command" }),
-					exitCode,
-				}
-			}
-
-			if (isDone) {
-				event.done = true
-				this.clearPendingCommandCompletion(commandId)
-				this.previousCommandOutputByToolUseId.delete(commandId)
-				this.statusDrivenCommandOutputIds.delete(commandId)
-				this.completedCommandOutputIds.add(commandId)
-				if (this.activeCommandToolUseId === commandId) {
-					this.activeCommandToolUseId = undefined
-				}
-			}
 
 			// Suppress empty partial updates that carry no delta.
 			if (!isDone && outputDelta === null) {
 				return
 			}
 
-			this.emitEvent(event)
-			return
+			if (outputDelta !== null && outputDelta.length > 0) {
+				event.tool_result = { name: "execute_command", output: outputDelta }
+			}
+		} else {
+			event.tool_result = { name: "execute_command", output: fullOutput }
 		}
 
-		this.emitEvent({
-			type: "tool_result",
-			id: commandId,
-			subtype: "command",
-			tool_result: {
-				name: "execute_command",
-				output: fullOutput,
-				...(isDone && exitCode !== undefined ? { exitCode } : {}),
-			},
-			...(isDone ? { done: true } : {}),
-		})
-
 		if (isDone) {
-			this.clearPendingCommandCompletion(commandId)
+			event.done = true
 			this.previousCommandOutputByToolUseId.delete(commandId)
-			this.statusDrivenCommandOutputIds.delete(commandId)
-			this.completedCommandOutputIds.add(commandId)
 			if (this.activeCommandToolUseId === commandId) {
 				this.activeCommandToolUseId = undefined
 			}
 		}
-	}
 
-	public emitCommandOutputChunk(outputSnapshot: string): void {
-		const commandId = this.activeCommandToolUseId
-		if (commandId === undefined) {
-			return
-		}
-
-		this.statusDrivenCommandOutputIds.add(commandId)
-		this.emitCommandOutputEvent(commandId, outputSnapshot, false)
-	}
-
-	public markCommandOutputExited(exitCode?: number): void {
-		const commandId = this.activeCommandToolUseId
-		if (commandId === undefined) {
-			return
-		}
-
-		this.statusDrivenCommandOutputIds.add(commandId)
-		this.clearPendingCommandCompletion(commandId)
-
-		const timer = setTimeout(() => {
-			// Fallback close if final say:command_output never arrives.
-			if (!this.pendingCommandCompletionByToolUseId.has(commandId)) {
-				return
-			}
-			this.pendingCommandCompletionByToolUseId.delete(commandId)
-			this.emitCommandOutputEvent(commandId, undefined, true, exitCode)
-		}, COMMAND_OUTPUT_EXIT_GRACE_MS)
-		timer.unref?.()
-
-		this.pendingCommandCompletionByToolUseId.set(commandId, { exitCode, timer })
-	}
-
-	public emitCommandOutputDone(exitCode?: number): void {
-		const commandId = this.activeCommandToolUseId
-		if (commandId === undefined) {
-			return
-		}
-
-		this.statusDrivenCommandOutputIds.add(commandId)
-		this.emitCommandOutputEvent(commandId, undefined, true, exitCode)
-	}
-
-	private clearPendingCommandCompletion(commandId: number): void {
-		const pending = this.pendingCommandCompletionByToolUseId.get(commandId)
-		if (!pending) {
-			return
-		}
-		clearTimeout(pending.timer)
-		this.pendingCommandCompletionByToolUseId.delete(commandId)
+		this.emitEvent(event)
 	}
 
 	/**
@@ -707,19 +551,7 @@ export class JsonEventEmitter {
 		const toolInfo = parseToolInfo(msg.text)
 
 		if (subtype === "command") {
-			if (this.activeCommandToolUseId !== undefined && this.activeCommandToolUseId !== msg.ts) {
-				const previousCommandId = this.activeCommandToolUseId
-				const pending = this.pendingCommandCompletionByToolUseId.get(previousCommandId)
-				if (pending) {
-					clearTimeout(pending.timer)
-					this.pendingCommandCompletionByToolUseId.delete(previousCommandId)
-					this.emitCommandOutputEvent(previousCommandId, undefined, true, pending.exitCode)
-				}
-			}
-
 			this.activeCommandToolUseId = msg.ts
-			this.completedCommandOutputIds.delete(msg.ts)
-			this.clearPendingCommandCompletion(msg.ts)
 
 			if (isStreamingPartial) {
 				const commandDelta = this.computeStructuredDelta(msg.ts, msg.text)
@@ -799,28 +631,9 @@ export class JsonEventEmitter {
 		})
 	}
 
+	/** Command output is reported under the id of the execute_command tool use that started it. */
 	private handleCommandOutputMessage(msg: ClineMessage, isDone: boolean): void {
-		const commandId = this.activeCommandToolUseId ?? msg.ts
-		if (this.completedCommandOutputIds.has(commandId)) {
-			return
-		}
-
-		const pending = this.pendingCommandCompletionByToolUseId.get(commandId)
-		if (pending) {
-			if (!isDone) {
-				return
-			}
-			clearTimeout(pending.timer)
-			this.pendingCommandCompletionByToolUseId.delete(commandId)
-			this.emitCommandOutputEvent(commandId, msg.text, true, pending.exitCode)
-			return
-		}
-
-		if (this.statusDrivenCommandOutputIds.has(commandId)) {
-			return
-		}
-
-		this.emitCommandOutputEvent(commandId, msg.text, isDone)
+		this.emitCommandOutputEvent(this.activeCommandToolUseId ?? msg.ts, msg.text, isDone)
 	}
 
 	/**
@@ -882,13 +695,10 @@ export class JsonEventEmitter {
 	 * For json mode: accumulate for final output
 	 */
 	private emitEvent(event: JsonEvent): void {
-		const requestId = event.requestId ?? this.requestIdProvider()
-		const payload = requestId ? { ...event, requestId } : event
-
-		this.events.push(payload)
+		this.events.push(event)
 
 		if (this.mode === "stream-json") {
-			this.outputLine(payload)
+			this.outputLine(event)
 		}
 	}
 
@@ -936,34 +746,5 @@ export class JsonEventEmitter {
 		while (this.pendingWrites.size > 0) {
 			await Promise.all([...this.pendingWrites])
 		}
-	}
-
-	/**
-	 * Get accumulated events (for testing or external use).
-	 */
-	getEvents(): JsonEvent[] {
-		return [...this.events]
-	}
-
-	/**
-	 * Clear accumulated events and state.
-	 */
-	clear(): void {
-		this.events = []
-		this.costMessages.clear()
-		this.seenMessageIds.clear()
-		this.previousContent.clear()
-		this.previousToolUseContent.clear()
-		this.activeCommandToolUseId = undefined
-		this.previousCommandOutputByToolUseId.clear()
-		this.statusDrivenCommandOutputIds.clear()
-		this.completedCommandOutputIds.clear()
-		for (const pending of this.pendingCommandCompletionByToolUseId.values()) {
-			clearTimeout(pending.timer)
-		}
-		this.pendingCommandCompletionByToolUseId.clear()
-		this.completionResultContent = undefined
-		this.lastAssistantText = undefined
-		this.expectPromptEchoAsUser = true
 	}
 }

@@ -34,16 +34,6 @@ program
 	.option("-w, --workspace <path>", "Workspace directory path (defaults to current working directory)")
 	.option("--resume", "Start with a picker of this workspace's earlier tasks to resume", false)
 	.option("-p, --print", "Print response and exit (non-interactive mode)", false)
-	.option(
-		"--stdin-prompt-stream",
-		"Read NDJSON commands from stdin (requires --print and --output-format stream-json)",
-		false,
-	)
-	.option(
-		"--signal-only-exit",
-		"Do not exit from normal completion/errors; only terminate on SIGINT/SIGTERM (intended for stdin stream harnesses)",
-		false,
-	)
 	.option("-e, --extension <path>", "Path to the extension bundle directory")
 	.option("-d, --debug", "Enable debug output (includes detailed debug information)", false)
 	.option("-a, --require-approval", "Require manual approval for actions", false)

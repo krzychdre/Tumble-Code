@@ -3,9 +3,9 @@
  *
  * run.ts points ROO_CLI_FAKE_AI_MODULE at this file, so the CLI hands it to
  * the extension on the hidden `fake-ai` provider (src/api/providers/fake-ai.ts)
- * instead of calling a real model. The cases test the stdin stream protocol
- * (start, message, cancel, queueing, shutdown), not model quality, so the
- * model only has to answer the cases' prompts the same way every time:
+ * instead of calling a real model. The cases test the CLI's print mode and its
+ * JSON output, not model quality, so the model only has to answer the cases'
+ * prompts the same way every time:
  *
  * - "Run exactly this command ...: <command>. After it finishes, ..." runs
  *   <command> with execute_command, and the command's result is answered
@@ -125,8 +125,7 @@ const fakeModel = {
 		const reply = decideReply(messages)
 		callCounter += 1
 
-		// A little streamed text first, so the cases that react to the first
-		// assistant chunk (followup-during-streaming) see one before the tool.
+		// A little streamed text first, as a real model sends before a tool call.
 		const preface = reply.tool === "execute_command" ? "Running the command." : "Answering."
 		for (const word of preface.split(" ")) {
 			yield { type: "text", text: `${word} ` }

@@ -245,7 +245,7 @@ describe("ExtensionClient", () => {
 			expect(client.isInitialized()).toBe(true)
 			expect(client.getAgentState().state).toBe(AgentLoopState.WAITING_FOR_INPUT)
 			expect(client.getAgentState().isWaitingForInput).toBe(true)
-			expect(client.getCurrentAsk()).toBe("tool")
+			expect(client.getAgentState().currentAsk).toBe("tool")
 		})
 	})
 
@@ -418,7 +418,7 @@ describe("ExtensionClient", () => {
 
 			expect(client.isInitialized()).toBe(true)
 			expect(texts(client.getMessages())).toEqual(["1:Hi"])
-			expect(client.hasActiveTask()).toBe(true)
+			expect(client.getAgentState().state).not.toBe(AgentLoopState.NO_TASK)
 		})
 
 		it("ignores a push without clineMessages and a messageUpdated without a message", () => {
@@ -445,7 +445,6 @@ describe("ExtensionClient", () => {
 			expect(client.getMessages()).toEqual([])
 			expect(client.isInitialized()).toBe(false)
 			expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
-			expect(client.hasActiveTask()).toBe(false)
 		})
 
 		it("orders a push as state change events then deliveries, an update as deliveries then state change events", () => {
@@ -485,7 +484,7 @@ describe("ExtensionClient", () => {
 			const { client } = createMockClient()
 			const seen: string[] = []
 			const look = (event: string) =>
-				seen.push(`${event} ${client.getMessages().length} ${client.getCurrentAsk() ?? "-"}`)
+				seen.push(`${event} ${client.getMessages().length} ${client.getAgentState().currentAsk ?? "-"}`)
 			client.on("stateChange", () => look("stateChange"))
 			client.on("delivery", () => look("delivery"))
 
@@ -533,17 +532,6 @@ describe("ExtensionClient", () => {
 				askResponse: "messageResponse",
 				text: "My answer",
 				images: ["image-data"],
-			})
-		})
-
-		it("should send cancelTask message", () => {
-			const { client, sentMessages } = createMockClient()
-
-			client.cancelTask()
-
-			expect(sentMessages).toHaveLength(1)
-			expect(sentMessages[0]).toEqual({
-				type: "cancelTask",
 			})
 		})
 	})
@@ -645,7 +633,7 @@ describe("Integration", () => {
 			]),
 		)
 		expect(client.getAgentState().isWaitingForInput).toBe(true)
-		expect(client.getCurrentAsk()).toBe("tool")
+		expect(client.getAgentState().currentAsk).toBe("tool")
 
 		// 5. User approves, task completes.
 		client.handleMessage(
@@ -661,7 +649,7 @@ describe("Integration", () => {
 			]),
 		)
 		expect(client.getAgentState().state).toBe(AgentLoopState.IDLE)
-		expect(client.getCurrentAsk()).toBe("completion_result")
+		expect(client.getAgentState().currentAsk).toBe("completion_result")
 
 		// Verify we saw the expected state transitions.
 		expect(states).toContain(AgentLoopState.STREAMING)

@@ -45,8 +45,6 @@ Options:
   -w, --workspace <path>                 Workspace directory path (defaults to current working directory)
   --resume                               Start with a picker of this workspace's earlier tasks to resume (default: false)
   -p, --print                            Print response and exit (non-interactive mode) (default: false)
-  --stdin-prompt-stream                  Read NDJSON commands from stdin (requires --print and --output-format stream-json) (default: false)
-  --signal-only-exit                     Do not exit from normal completion/errors; only terminate on SIGINT/SIGTERM (intended for stdin stream harnesses) (default: false)
   -e, --extension <path>                 Path to the extension bundle directory
   -d, --debug                            Enable debug output (includes detailed debug information) (default: false)
   -a, --require-approval                 Require manual approval for actions (default: false)
