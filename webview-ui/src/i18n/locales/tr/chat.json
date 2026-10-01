@@ -538,12 +538,13 @@
 		"permissionNeeded": "Bu alt görevi sürdürmek için izin gerekiyor"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble web'de <code>{{queries}}</code> aramak istiyor",
-		"didSearch": "Tumble web'de <code>{{queries}}</code> aradı"
+		"title": "Web araması",
+		"queryCount_one": "{{count}} sorgu",
+		"queryCount_other": "{{count}} sorgu"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble <code>{{url}}</code> okumak istiyor",
-		"didFetch": "Tumble <code>{{url}}</code> okudu"
+		"title": "Web sayfası",
+		"openInBrowser": "{{url}} adresini tarayıcıda aç"
 	},
 	"readArtifact": {
 		"title": "Tumble artefakt okudu"

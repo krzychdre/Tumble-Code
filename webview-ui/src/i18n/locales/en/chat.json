@@ -474,12 +474,13 @@
 		"didRun": "Tumble ran a slash command"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble wants to search the web for <code>{{queries}}</code>",
-		"didSearch": "Tumble searched the web for <code>{{queries}}</code>"
+		"title": "Web search",
+		"queryCount_one": "{{count}} query",
+		"queryCount_other": "{{count}} queries"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble wants to read <code>{{url}}</code>",
-		"didFetch": "Tumble read <code>{{url}}</code>"
+		"title": "Web page",
+		"openInBrowser": "Open {{url}} in the browser"
 	},
 	"queuedMessages": {
 		"title": "Queued Messages",

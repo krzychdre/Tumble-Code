@@ -1,11 +1,16 @@
-import { Trans } from "react-i18next"
+import React from "react"
+import { Trans, useTranslation } from "react-i18next"
 
-import { toolPayloadQueriesText, toolPayloadSearchScope } from "@roo-code/core/browser"
+import { toolPayloadSearchScope } from "@roo-code/core/browser"
 
+import { vscode } from "@src/utils/vscode"
 import CodeAccordion from "@src/components/common/CodeAccordion"
+import { BlockTimestamp } from "@src/components/chat/BlockTimestamp"
 
 import { headerStyle, toolIcon } from "../shared"
 import type { ToolRendererProps } from "../types"
+
+import { splitSearchQuery, splitWebUrl } from "./webToolText"
 
 /** A semantic search of the code index. */
 export const CodebaseSearchToolRow = ({ tool }: ToolRendererProps) => (
@@ -29,36 +34,113 @@ export const CodebaseSearchToolRow = ({ tool }: ToolRendererProps) => (
 	</div>
 )
 
-/** A web search, with the queries it runs. */
-export const WebSearchToolRow = ({ message, tool }: ToolRendererProps) => {
-	const queries = toolPayloadQueriesText(tool)
+/** The pill on the right of a web row's header, styled like the API request cost. */
+const headerPill =
+	"text-xs text-vscode-descriptionForeground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
+
+/**
+ * The header a web row shares with the API request row: icon, short title,
+ * start time and duration. The title stays the same before and after approval,
+ * because an auto-approved ask is never rewritten into a say.
+ */
+const WebRowHeader = ({
+	icon,
+	title,
+	message,
+	meta,
+	pill,
+}: Pick<ToolRendererProps, "message" | "meta"> & { icon: string; title: string; pill?: string }) => (
+	<div className="text-sm" style={headerStyle}>
+		{toolIcon(icon)}
+		<span style={{ fontWeight: "bold" }}>{title}</span>
+		<BlockTimestamp startTs={message.ts} endTs={message.partial ? undefined : meta.nextTs} />
+		<span className="flex-grow" />
+		{pill && <span className={headerPill}>{pill}</span>}
+	</div>
+)
+
+const QueryText = ({ query }: { query: string }) => (
+	<>
+		{splitSearchQuery(query).map((part, i) =>
+			part.kind === "operator" ? (
+				<span key={i} className="font-mono text-[0.9em] text-vscode-textLink-foreground">
+					{part.text}
+				</span>
+			) : part.kind === "quote" ? (
+				<span key={i} className="text-[var(--vscode-textPreformat-foreground)]">
+					{part.text}
+				</span>
+			) : (
+				<React.Fragment key={i}>{part.text}</React.Fragment>
+			),
+		)}
+	</>
+)
+
+/** A web search: one line per query in a card under the header. */
+export const WebSearchToolRow = ({ message, tool, meta }: ToolRendererProps) => {
+	const { t } = useTranslation()
+	const queries = (tool.queries ?? []).filter((query) => query.trim() !== "")
 	return (
-		<div style={headerStyle}>
-			{toolIcon("search")}
-			<span style={{ fontWeight: "bold" }}>
-				<Trans
-					i18nKey={message.type === "ask" ? "chat:webSearch.wantsToSearch" : "chat:webSearch.didSearch"}
-					components={{ code: <code></code> }}
-					values={{ queries }}
-				/>
-			</span>
-		</div>
+		<>
+			<WebRowHeader
+				icon="search"
+				title={t("chat:webSearch.title")}
+				message={message}
+				meta={meta}
+				pill={queries.length > 0 ? t("chat:webSearch.queryCount", { count: queries.length }) : undefined}
+			/>
+			{queries.length > 0 && (
+				<div className="pl-6">
+					<ul className="m-0 list-none rounded-md bg-vscode-editor-background py-1 px-0">
+						{queries.map((query, i) => (
+							<li key={i} className="flex items-start gap-2 px-2.5 py-0.5" title={query}>
+								<span className="codicon codicon-search text-xs text-vscode-descriptionForeground shrink-0 mt-[3px]" />
+								<span className="min-w-0 line-clamp-2 break-words">
+									<QueryText query={query} />
+								</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</>
 	)
 }
 
-/** A web page fetch, with the URL it read. */
-export const WebFetchToolRow = ({ message, tool }: ToolRendererProps) => (
-	<div style={headerStyle}>
-		{toolIcon("globe")}
-		<span style={{ fontWeight: "bold" }}>
-			<Trans
-				i18nKey={message.type === "ask" ? "chat:webFetch.wantsToFetch" : "chat:webFetch.didFetch"}
-				components={{ code: <code></code> }}
-				values={{ url: tool.fetchedUrl }}
-			/>
-		</span>
-	</div>
-)
+/** A web page fetch: the page's host and path in a card that opens it in the browser. */
+export const WebFetchToolRow = ({ message, tool, meta }: ToolRendererProps) => {
+	const { t } = useTranslation()
+	const url = tool.fetchedUrl ?? ""
+	const parts = splitWebUrl(url)
+	return (
+		<>
+			<WebRowHeader icon="globe" title={t("chat:webFetch.title")} message={message} meta={meta} />
+			{url !== "" && (
+				<div className="pl-6">
+					{parts ? (
+						<button
+							type="button"
+							className="group flex w-full min-w-0 items-center gap-2 rounded-md border-none bg-vscode-editor-background px-2.5 py-1.5 text-left text-vscode-foreground cursor-pointer focus-ring"
+							title={t("chat:webFetch.openInBrowser", { url })}
+							onClick={() => vscode.postMessage({ type: "openExternal", url })}>
+							<span className="codicon codicon-globe text-xs text-vscode-descriptionForeground shrink-0" />
+							<span className="font-semibold shrink-0">{parts.host}</span>
+							<span className="min-w-0 truncate font-mono text-xs text-vscode-descriptionForeground">
+								{parts.rest}
+							</span>
+							<span className="codicon codicon-link-external ml-auto text-xs text-vscode-descriptionForeground shrink-0 opacity-60 group-hover:opacity-100 group-focus-visible:opacity-100" />
+						</button>
+					) : (
+						<div className="rounded-md bg-vscode-editor-background px-2.5 py-1.5 font-mono text-xs break-all">
+							{url}
+						</div>
+					)}
+				</div>
+			)}
+		</>
+	)
+}
 
 /** A regex search over files. */
 export const SearchFilesToolRow = ({ message, tool, isExpanded, toggleExpand }: ToolRendererProps) => (

@@ -556,12 +556,15 @@
 		"permissionNeeded": "Этой подзадаче требуется разрешение для продолжения"
 	},
 	"webSearch": {
-		"wantsToSearch": "Tumble хочет искать в интернете <code>{{queries}}</code>",
-		"didSearch": "Tumble искал в интернете <code>{{queries}}</code>"
+		"title": "Поиск в интернете",
+		"queryCount_one": "{{count}} запрос",
+		"queryCount_few": "{{count}} запроса",
+		"queryCount_many": "{{count}} запросов",
+		"queryCount_other": "{{count}} запроса"
 	},
 	"webFetch": {
-		"wantsToFetch": "Tumble хочет прочитать <code>{{url}}</code>",
-		"didFetch": "Tumble прочитал <code>{{url}}</code>"
+		"title": "Веб-страница",
+		"openInBrowser": "Открыть {{url}} в браузере"
 	},
 	"readArtifact": {
 		"title": "Tumble читает артефакт"
