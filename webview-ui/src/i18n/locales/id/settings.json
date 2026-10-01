@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Aktifkan konsolidasi memori (dream)",
-				"description": "Saat aktif, agen secara berkala meninjau dan menata ulang memori: menggabungkan duplikat, menghapus fakta yang bertentangan, dan memangkas entri usang. Berjalan otomatis ketika cukup waktu dan sesi telah berlalu."
+				"description": "Saat aktif, agen secara berkala meninjau dan menata ulang memori: menggabungkan duplikat, menghapus fakta yang bertentangan, dan memangkas entri usang. Berjalan otomatis ketika cukup waktu dan sesi telah berlalu. Agen juga memeriksa catatan yang hanya benar untuk sementara (\"belum di-merge\", \"rebuild tertunda\") terhadap git dan catatan yang lebih baru, lalu menandai yang sudah selesai."
 			},
 			"minHours": {
 				"label": "Jam minimum antar dream",

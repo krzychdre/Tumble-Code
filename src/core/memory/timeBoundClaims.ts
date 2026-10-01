@@ -32,7 +32,8 @@ const MARKER_SOURCES = [
 	String.raw`\b(?:not|never) (?:been |yet )?(?:merged|pushed|deployed|released|rebuilt|landed|installed|live|done|fixed)\b`,
 	String.raw`\bstill (?:open|owed|unmerged|pending|todo|to do|needed|missing|waiting|blocked|broken|failing|not|unfixed|on)\b`,
 	String.raw`\bto-?do\b`,
-	String.raw`\bdeferred\b`,
+	// Not "deferred-tools": a hyphen after a marker makes it part of a name.
+	String.raw`\bdeferred\b(?!-)`,
 	String.raw`\bpostponed\b`,
 	String.raw`\bblocked (?:on|by)\b`,
 	String.raw`\bwaiting (?:for|on)\b`,
@@ -47,22 +48,68 @@ const MARKER_SOURCES = [
 	String.raw`\bmust (?:run|rebuild|merge|push|deploy|install)\b`,
 	String.raw`\bneeds? (?:a |to )?(?:rebuild|merge|push|deploy|review)\b`,
 	String.raw`\bfor now\b`,
-	String.raw`\btemporar(?:y|ily)\b`,
+	// "is STALE vs main", not "a stale closure".
+	String.raw`\b(?:is|are|still|now) (?:\w+ )?(?:stale|outdated)\b`,
+	String.raw`\b(?:stale|outdated) (?:vs|against|compared)\b`,
 	// Polish (\b is ASCII-only in JS, so letters are fenced with \p{L})
 	String.raw`(?<!\p{L})jeszcze nie(?!\p{L})`,
-	String.raw`(?<!\p{L})nie ?(?:z|s)?(?:mergowan|scalon|wdrożon|wypchnię|przebudowan)`,
+	String.raw`(?<!\p{L})nie ?(?:(?:jest|są|był\p{L}*|został\p{L}*) )?(?:z|s)?(?:mergowan|scalon|wdrożon|wypchnię|przebudowan)`,
+	String.raw`(?<!\p{L})dopóki(?!\p{L})`,
 	String.raw`(?<!\p{L})odłożon`,
 	String.raw`(?<!\p{L})odroczon`,
 	String.raw`(?<!\p{L})do zrobienia(?!\p{L})`,
 	String.raw`(?<!\p{L})czeka(?:my|ją|)(?!\p{L})`,
 	String.raw`(?<!\p{L})w toku(?!\p{L})`,
-	String.raw`(?<!\p{L})tymczasow`,
 	String.raw`(?<!\p{L})na razie(?!\p{L})`,
 	String.raw`(?<!\p{L})zaległ`,
 	String.raw`(?<!\p{L})do przebudowania(?!\p{L})`,
 ]
 
 const MARKER_RE = new RegExp(MARKER_SOURCES.join("|"), "iu")
+const MARKER_GLOBAL_RE = new RegExp(MARKER_SOURCES.join("|"), "giu")
+
+/**
+ * The markers git can settle: something is not merged or not pushed yet.
+ * "VSIX rebuild owed for #570" names a merged PR, but the rebuild is what is
+ * owed, and git knows nothing about it.
+ */
+const MERGE_MARKER_RE = new RegExp(
+	[
+		String.raw`\bun(?:merged|pushed)\b`,
+		String.raw`\b(?:not|never) (?:been |yet )?(?:merged|pushed|landed)\b`,
+		String.raw`\bpending merge\b`,
+		String.raw`\bneeds? (?:a |to )?(?:merge|push)\b`,
+		String.raw`\bmust (?:merge|push)\b`,
+		String.raw`(?<!\p{L})nie ?(?:z|s)?(?:mergowan|scalon|wypchnię)`,
+	].join("|"),
+	"giu",
+)
+
+/**
+ * Words saying something got finished, unless negated ("not merged", "nie
+ * zmergowane"). A clause carrying one reports the past ("MERGED as #156,
+ * branch looked unmerged", "follow-up item, completed 2026-09-26"), so it is
+ * not a time-bound claim, and a newer clause carrying one can settle a claim.
+ */
+const COMPLETION_RE = new RegExp(
+	String.raw`(?<!(?:not|never|n't|to be)\s+(?:(?:been|yet|be)\s+)?)\b(?:rebuilt|merged|landed|deployed|installed|done|fixed|resolved|shipped|released|pushed|completed|finished|closed)\b` +
+		String.raw`|(?<!\p{L})(?<!nie\s(?:(?:jest|są|był\p{L}*|został\p{L}*)\s)?)(?:zrobion|wdrożon|przebudowan|zmergowan|scalon|naprawion)`,
+	"iu",
+)
+
+/** A state kept on purpose ("intentionally unmerged", "celowo") is not waiting for anything. */
+const PERMANENT_RE =
+	/\b(?:intentionally|deliberately|by design|on purpose)\b|(?<!\p{L})(?:celowo|z założenia)(?!\p{L})/iu
+
+/** Whether a text carries a time-bound marker at all, completion words or not. */
+export function hasTimeBoundMarker(text: string): boolean {
+	return MARKER_RE.test(text)
+}
+
+/** Whether a text says, without negation, that something got finished. */
+export function hasCompletionWord(text: string): boolean {
+	return COMPLETION_RE.test(text)
+}
 
 /** The note the dream leaves on a resolved clause; a clause carrying it is never reported again. */
 export const RESOLVED_MARKER = "[resolved "
@@ -81,7 +128,12 @@ const BULLET_RE = /^(?:[-*+]\s+|\d+[.)]\s+|#+\s+|>\s*)+/
 
 /** Whether a clause reads as true only for a while. */
 export function isTimeBound(clause: string): boolean {
-	return MARKER_RE.test(clause) && !clause.includes(RESOLVED_MARKER)
+	return (
+		MARKER_RE.test(clause) &&
+		!clause.includes(RESOLVED_MARKER) &&
+		!COMPLETION_RE.test(clause) &&
+		!PERMANENT_RE.test(clause)
+	)
 }
 
 /** A line cut into clauses and the separators between them: `parts[0] + seps[0] + parts[1] + ...`. */
@@ -155,29 +207,46 @@ const COMMIT_RE = /(?<![\w/.-])(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)([0-9a-f]{7,40})
 // Repo-relative only: a path after "/", "~" or ":" is absolute or part of a URL.
 const FILE_RE = /(?<![\w/.:~-])((?:[\w.-]+\/)+[\w.-]+\.[A-Za-z0-9]{1,8})(?![\w/])/g
 
-/** The references a clause names, in order of appearance, at most {@link MAX_REFS}. */
-export function extractRefs(clause: string): ClaimRef[] {
-	const found: Array<{ at: number; key: string; ref: ClaimRef }> = []
+interface LocatedRef {
+	at: number
+	end: number
+	key: string
+	ref: ClaimRef
+}
+
+/** Every reference occurrence of a clause with its span, in order of appearance. */
+function locateRefs(clause: string): LocatedRef[] {
+	const found: LocatedRef[] = []
 	const branchSpans: Array<[number, number]> = []
 	for (const m of clause.matchAll(BRANCH_RE)) {
 		const name = m[1]
-		found.push({ at: m.index, key: `branch:${name}`, ref: { kind: "branch", name } })
+		// "docs/a.md" is a file: branch names do not end in a file extension.
+		if (/\.[a-z]{1,5}$/i.test(name)) continue
+		found.push({ at: m.index, end: m.index + name.length, key: `branch:${name}`, ref: { kind: "branch", name } })
 		branchSpans.push([m.index, m.index + name.length])
 	}
 	const insideBranch = (at: number) => branchSpans.some(([from, to]) => at >= from && at < to)
 	for (const m of clause.matchAll(PR_RE)) {
 		const number = Number(m[1])
-		found.push({ at: m.index, key: `pr:${number}`, ref: { kind: "pr", number } })
+		found.push({ at: m.index, end: m.index + m[0].length, key: `pr:${number}`, ref: { kind: "pr", number } })
 	}
 	for (const m of clause.matchAll(COMMIT_RE)) {
 		if (insideBranch(m.index)) continue
-		found.push({ at: m.index, key: `commit:${m[1]}`, ref: { kind: "commit", sha: m[1] } })
+		found.push({
+			at: m.index,
+			end: m.index + m[1].length,
+			key: `commit:${m[1]}`,
+			ref: { kind: "commit", sha: m[1] },
+		})
 	}
 	for (const m of clause.matchAll(FILE_RE)) {
 		if (insideBranch(m.index)) continue
-		found.push({ at: m.index, key: `file:${m[1]}`, ref: { kind: "file", path: m[1] } })
+		found.push({ at: m.index, end: m.index + m[1].length, key: `file:${m[1]}`, ref: { kind: "file", path: m[1] } })
 	}
-	found.sort((a, b) => a.at - b.at)
+	return found.sort((a, b) => a.at - b.at)
+}
+
+function uniqueRefs(found: ReadonlyArray<LocatedRef>): ClaimRef[] {
 	const seen = new Set<string>()
 	const refs: ClaimRef[] = []
 	for (const { key, ref } of found) {
@@ -187,6 +256,43 @@ export function extractRefs(clause: string): ClaimRef[] {
 		if (refs.length >= MAX_REFS) break
 	}
 	return refs
+}
+
+/** The references a clause names, in order of appearance, at most {@link MAX_REFS}. */
+export function extractRefs(clause: string): ClaimRef[] {
+	return uniqueRefs(locateRefs(clause))
+}
+
+/** At most this many words may stand between a marker and the reference it is about. */
+const MAX_WORDS_TO_MARKER = 2
+
+/**
+ * The references a clause's marker is about: those at most
+ * {@link MAX_WORDS_TO_MARKER} words from a marker ("fix/x STILL unmerged",
+ * "#12 is not merged"). In "branch STILL unmerged, now CONFLICTS with #654"
+ * #654 is a different change, not the unmerged one. With `mergeOnly` only the
+ * markers git can settle count (not merged, not pushed), and file refs never
+ * count. Pure code.
+ */
+export function refsNearMarker(clause: string, mergeOnly = false): ClaimRef[] {
+	const markers = [...clause.matchAll(mergeOnly ? MERGE_MARKER_RE : MARKER_GLOBAL_RE)].map(
+		(m) => [m.index, m.index + m[0].length] as const,
+	)
+	const wordsBetween = (from: number, to: number) =>
+		from >= to
+			? 0
+			: clause
+					.slice(from, to)
+					.split(/\s+/)
+					.filter((w) => /[\p{L}\p{N}]/u.test(w)).length
+	const near = locateRefs(clause).filter(
+		(r) =>
+			!(mergeOnly && r.ref.kind === "file") &&
+			markers.some(
+				([at, end]) => (r.end <= at ? wordsBetween(r.end, at) : wordsBetween(end, r.at)) <= MAX_WORDS_TO_MARKER,
+			),
+	)
+	return uniqueRefs(near)
 }
 
 /** A short human label of a reference, for prompts and notes. */
@@ -219,12 +325,14 @@ export interface ClaimEvidence {
 }
 
 /**
- * The git half of the dream's gate: a clause qualifies when it names at least
- * one reference and every reference it names has landed. Evidence for other
- * refs (from neighbouring clauses) is ignored.
+ * The git half of the dream's gate: a clause qualifies when it names a PR,
+ * commit or branch and every reference it names has landed. A file that exists
+ * says nothing about whether the work around it is finished, so file refs
+ * alone never qualify. Evidence for other refs (from neighbouring clauses) is
+ * ignored.
  */
 export function allRefsLanded(refs: ReadonlyArray<ClaimRef>, evidence: ReadonlyArray<ClaimEvidence>): boolean {
-	if (refs.length === 0) return false
+	if (!refs.some((r) => r.kind !== "file")) return false
 	const key = (r: ClaimRef) => `${r.kind}:${describeRef(r)}`
 	const landed = new Set(evidence.filter((e) => e.landed === true).map((e) => key(e.ref)))
 	return refs.every((r) => landed.has(key(r)))
@@ -249,6 +357,23 @@ export function removeClause(text: string, clause: string): string {
 	}
 	const joined = parts.map((p, k) => p + (seps[k] ?? "")).join("")
 	return joined.replace(/[\s;,]+$/, "").trim()
+}
+
+/**
+ * Drop a resolved clause from a single-line text. When the only time-bound
+ * part of the clause is a parenthetical, only that goes: "cleared in
+ * d55078ec7 (not pushed)" keeps "cleared in d55078ec7", which is still true.
+ * Otherwise the whole clause goes ({@link removeClause}).
+ */
+export function dropResolvedClause(text: string, clause: string): string {
+	const marked = [...clause.matchAll(/\s*\([^()]*\)/g)].filter((m) => MARKER_RE.test(m[0]))
+	if (marked.length > 0 && text.includes(clause)) {
+		let rest = clause
+		for (const m of marked) rest = rest.replace(m[0], "")
+		rest = rest.trim()
+		if (rest && !MARKER_RE.test(rest)) return text.replace(clause, rest)
+	}
+	return removeClause(text, clause)
 }
 
 /**

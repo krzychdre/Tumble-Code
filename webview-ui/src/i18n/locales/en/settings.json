@@ -605,7 +605,7 @@
 		"dream": {
 			"enable": {
 				"label": "Enable memory consolidation (dream)",
-				"description": "When enabled, the agent periodically reviews and reorganizes memory: merges duplicates, removes contradicted facts, and prunes stale entries. Runs automatically when enough time and sessions have passed."
+				"description": "When enabled, the agent periodically reviews and reorganizes memory: merges duplicates, removes contradicted facts, and prunes stale entries. Runs automatically when enough time and sessions have passed. It also checks notes that were true only for a while (\"not merged yet\", \"rebuild owed\") against git and newer notes, and marks the finished ones."
 			},
 			"minHours": {
 				"label": "Minimum hours between dreams",

@@ -23,6 +23,7 @@ import fs from "fs/promises"
 import { basename, join } from "path"
 
 import { logger } from "../../utils/logging"
+import { type ClaimEvidenceLookup } from "./claimEvidence"
 import { ARCHIVE_DIR_NAME } from "./memoryFiles"
 import { ENTRYPOINT_NAME } from "./memoryPrompt"
 import { type MemoryHeader } from "./memoryScan"
@@ -36,8 +37,10 @@ import {
 	describeRef,
 	extractRefs,
 	findTimeBoundClauses,
-	isTimeBound,
-	removeClause,
+	hasCompletionWord,
+	hasTimeBoundMarker,
+	refsNearMarker,
+	dropResolvedClause,
 	splitClauses,
 } from "./timeBoundClaims"
 
@@ -80,12 +83,33 @@ export function parseClaimVerdict(answer: string): "done" | "still" {
 	return first.toUpperCase() === "DONE" ? "done" : "still"
 }
 
-// Completion words: a newer clause carrying one says something got finished.
-const COMPLETION_RE = new RegExp(
-	String.raw`\b(?:rebuilt|merged|landed|deployed|installed|done|fixed|resolved|shipped|released|pushed|built|completed|finished)\b` +
-		String.raw`|(?<!\p{L})(?:zrobion|wdrożon|przebudowan|zmergowan|scalon|naprawion)`,
-	"iu",
-)
+/**
+ * The action a claim waits for and the word that reports it done. A claim
+ * naming one of these is settled only by a newer clause with the matching
+ * past form: "VSIX rebuild owed" needs "rebuilt", never a "done" about
+ * something else.
+ */
+const ACTIONS: ReadonlyArray<{ pending: RegExp; finished: RegExp }> = [
+	{ pending: /\brebuil[dt]|(?<!\p{L})przebudow/iu, finished: /\brebuilt\b|(?<!\p{L})przebudowan/iu },
+	{ pending: /merg|(?<!\p{L})scal/iu, finished: /\bmerged\b|(?<!\p{L})zmergowan|(?<!\p{L})scalon/iu },
+	{ pending: /\bpush|unpushed|wypchn/iu, finished: /\bpushed\b|(?<!\p{L})wypchnię/iu },
+	{ pending: /deploy|wdroż/iu, finished: /\bdeployed\b|(?<!\p{L})wdrożon/iu },
+	{ pending: /\binstall/iu, finished: /\binstalled\b/iu },
+	{ pending: /release/iu, finished: /\breleased\b/iu },
+	{ pending: /\bfix|napraw/iu, finished: /\bfixed\b|(?<!\p{L})naprawion/iu },
+]
+
+/** The actions a claim waits for; empty for a claim like "follow-up" or "open:" that names none. */
+function claimActions(claim: string) {
+	return ACTIONS.filter((a) => a.pending.test(claim))
+}
+
+/** Whether `statement` reports, without negation, the action `claim` waits for (any completion when it names none). */
+function reportsSameAction(claim: string, statement: string): boolean {
+	if (!hasCompletionWord(statement)) return false
+	const actions = claimActions(claim)
+	return actions.length === 0 || actions.some((a) => a.finished.test(statement))
+}
 
 // Filler plus the status vocabulary every project memory shares: two clauses
 // match on their topic ("VSIX", "api image"), never on "rebuild" or "merged".
@@ -131,6 +155,46 @@ function refText(ref: ClaimRef): string {
 		case "file":
 			return ref.path
 	}
+}
+
+// Upper-case status words that are not a topic.
+const STATUS_CAPS = new Set([
+	"still",
+	"owed",
+	"not",
+	"yet",
+	"done",
+	"todo",
+	"wip",
+	"pr",
+	"open",
+	"merged",
+	"unmerged",
+	"landed",
+	"fixed",
+	"never",
+	"only",
+	"all",
+	"and",
+	"ok",
+	"nie",
+])
+
+/**
+ * The anchors of a clause: what names one specific thing. Refs (a PR, branch,
+ * commit or path), an upper-case identifier ("VSIX", "CLI", "DEF-C36") or a
+ * code span. A newer clause must share one; plain words like "git" or "tree"
+ * matched unrelated notes on the real memory store.
+ */
+function anchors(text: string, refs: ReadonlyArray<ClaimRef>): Set<string> {
+	const found = new Set<string>()
+	for (const ref of refs) found.add(describeRef(ref).toLowerCase())
+	for (const m of text.matchAll(/(?<![\p{L}\p{N}_])([A-Z][A-Z0-9]*(?:[-_.][A-Z0-9]+)*)(?![\p{L}\p{N}_])/gu)) {
+		const word = m[1].toLowerCase()
+		if (m[1].replace(/[^A-Z]/g, "").length >= 2 && !STATUS_CAPS.has(word)) found.add(word)
+	}
+	for (const m of text.matchAll(/`([^`\n]{2,60})`/g)) found.add(m[1].toLowerCase())
+	return found
 }
 
 /** The topic words of a clause: each ref as one word, then the remaining words minus filler, status words and plain numbers. */
@@ -183,10 +247,11 @@ export interface NewerStatement {
 
 /**
  * Statements of memories changed strictly after `source` that look like the
- * claim got finished: a clause (outside frontmatter and fenced code) that is
- * not time-bound itself, carries a completion word and shares the claim's
- * topic words (two, or all of them when the claim has fewer). At most two,
- * newest memory first. Pure code.
+ * claim got finished: a clause (outside frontmatter and fenced code) with no
+ * time-bound marker and no `[resolved` note, that reports the claim's action
+ * as finished ({@link reportsSameAction}), shares one of the claim's anchors
+ * ({@link anchors}) and its topic words (two, or all of them when the claim
+ * has fewer). At most two, newest memory first. Pure code.
  */
 export function findNewerStatements(
 	clause: string,
@@ -194,15 +259,24 @@ export function findNewerStatements(
 	others: ReadonlyArray<MemoryText>,
 ): NewerStatement[] {
 	const claimWords = distinctiveWords(clause)
+	// Only the refs the claim's marker is about: in "STILL unmerged, CONFLICTS with #654" the claim is not about #654.
+	const claimAnchors = anchors(clause, refsNearMarker(clause))
 	const required = Math.min(2, claimWords.size)
-	if (required === 0) return []
+	// A claim naming no action is settled by any completion word, so it needs two shared anchors, not one:
+	// "WS-F follow-up ... GLM" matched an unrelated "MERGED ... GLM review" on the real store.
+	const requiredAnchors = claimActions(clause).length > 0 ? 1 : 2
+	if (required === 0 || claimAnchors.size < requiredAnchors) return []
 	const newer = others
 		.filter((m) => m.mtimeMs > source.mtimeMs && m.filename !== source.filename)
 		.sort((a, b) => b.mtimeMs - a.mtimeMs)
 	const found: NewerStatement[] = []
 	for (const memory of newer) {
 		for (const statement of splitClauses(splitFile(memory.content).body)) {
-			if (isTimeBound(statement) || !COMPLETION_RE.test(statement)) continue
+			// A clause this check already marked is a verdict, not a fact; its own evidence still counts directly.
+			if (statement.includes(RESOLVED_MARKER) || hasTimeBoundMarker(statement)) continue
+			if (!reportsSameAction(clause, statement)) continue
+			const sharedAnchors = [...anchors(statement, extractRefs(statement))].filter((a) => claimAnchors.has(a))
+			if (sharedAnchors.length < requiredAnchors) continue
 			let shared = 0
 			for (const word of distinctiveWords(statement)) if (claimWords.has(word)) shared++
 			if (shared < required) continue
@@ -368,6 +442,8 @@ function annotateBody(body: string, clause: string, note: string): string {
 
 interface LoadedMemory extends MemoryText {
 	filePath: string
+	/** Feedback and user memories are rules and preferences, not project state: never checked. */
+	isRule: boolean
 }
 
 interface RunState {
@@ -393,7 +469,7 @@ async function resolveClause(run: RunState, memory: LoadedMemory, clause: string
 	let newHead = head
 	const desc = readDescription(head)
 	if (desc) {
-		let value = removeClause(desc.value, clause)
+		let value = dropResolvedClause(desc.value, clause)
 		if (value === "") value = annotateClause(desc.value, clause, note)
 		if (value !== desc.value) {
 			newHead = head.slice(0, desc.at) + renderDescription(desc, value) + head.slice(desc.at + desc.line.length)
@@ -415,8 +491,8 @@ async function resolveClause(run: RunState, memory: LoadedMemory, clause: string
 		const lines = run.index.split("\n")
 		const entry = findIndexEntry(lines, memory.filename)
 		if (entry) {
-			const title = removeClause(entry.title, clause) || entry.title
-			let hook = removeClause(entry.hook, clause)
+			const title = dropResolvedClause(entry.title, clause) || entry.title
+			let hook = dropResolvedClause(entry.hook, clause)
 			if (hook === "" && entry.hook !== "") hook = annotateClause(entry.hook, clause, note)
 			const line = entry.lead + title + entry.link + entry.sep + hook
 			if (line !== lines[entry.lineNo]) {
@@ -466,7 +542,7 @@ export async function verifyTimeBoundClaims(params: {
 	memoryDir: string
 	memories: ReadonlyArray<MemoryHeader>
 	query: SideQuery
-	evidence?: (refs: ReadonlyArray<ClaimRef>, signal: AbortSignal) => Promise<ClaimEvidence[]>
+	evidence?: ClaimEvidenceLookup
 	signal: AbortSignal
 	now?: number
 }): Promise<string[]> {
@@ -479,7 +555,9 @@ export async function verifyTimeBoundClaims(params: {
 		params.memories.map(async (m): Promise<LoadedMemory | undefined> => {
 			try {
 				const content = await fs.readFile(m.filePath, "utf-8")
-				return { filename: m.filename, filePath: m.filePath, mtimeMs: m.mtimeMs, content }
+				const isRule =
+					m.type === "feedback" || m.type === "user" || /^(?:feedback|user)_/.test(basename(m.filename))
+				return { filename: m.filename, filePath: m.filePath, mtimeMs: m.mtimeMs, content, isRule }
 			} catch {
 				return undefined
 			}
@@ -501,6 +579,7 @@ export async function verifyTimeBoundClaims(params: {
 
 	try {
 		outer: for (const memory of memories) {
+			if (memory.isRule) continue
 			const { head, body } = splitFile(memory.content)
 			const clauses = [
 				...findTimeBoundClauses(readDescription(head)?.value ?? ""),
@@ -510,10 +589,13 @@ export async function verifyTimeBoundClaims(params: {
 
 			for (const clause of clauses) {
 				if (asked >= MAX_CLAIM_QUERIES || examined >= MAX_CLAIMS_EXAMINED) break outer
-				const refs = extractRefs(clause)
+				// Only the refs the clause's marker is about are looked up and shown;
+				// git settles only "not merged / not pushed" claims about such a ref.
+				const refs = refsNearMarker(clause)
+				const mergeRefs = refsNearMarker(clause, true)
 				const newer = findNewerStatements(clause, memory, memories)
 				// Nothing could settle this clause: no lookup, no question.
-				if (newer.length === 0 && (refs.length === 0 || !evidence)) continue
+				if (newer.length === 0 && (mergeRefs.length === 0 || !evidence)) continue
 				examined++
 
 				let git: ClaimEvidence[] = []
@@ -529,9 +611,9 @@ export async function verifyTimeBoundClaims(params: {
 					}
 				}
 				// The gate: a ref known NOT to have landed vetoes; otherwise every
-				// ref landed or a newer note speaks about it.
+				// ref of a merge claim landed, or a newer note reports it finished.
 				if (git.some((e) => e.landed === false)) continue
-				if (!allRefsLanded(refs, git) && newer.length === 0) continue
+				if (!allRefsLanded(mergeRefs, git) && newer.length === 0) continue
 
 				const facts = [
 					...git.map((e) => e.text),

@@ -68,7 +68,11 @@ interface GitLookupOptions {
 	run?: CommandRunner
 }
 
-/** The default branch: its short name and its refs (local and origin/) with distinct tips. */
+/**
+ * The default branch: its short name and the ref that counts. When origin/ has
+ * it, only origin/ counts: a commit on the local main alone is not pushed, so
+ * it must not settle a "not pushed" claim.
+ */
 type Repo = { ok: true; name: string; refs: string[] } | { ok: false; why: string }
 
 /** Branch names a memory can name; anything else (options, globs, `..`) is never passed to git. */
@@ -136,8 +140,9 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 		const existing = await refTips(wanted, signal)
 		if (!existing) return { ok: false, why: "git did not answer" }
 		for (const name of names) {
-			const refs = existing.filter((r) => r === `refs/heads/${name}` || r === `refs/remotes/origin/${name}`)
-			if (refs.length > 0) return { ok: true, name, refs }
+			const remote = `refs/remotes/origin/${name}`
+			if (existing.includes(remote)) return { ok: true, name, refs: [remote] }
+			if (existing.includes(`refs/heads/${name}`)) return { ok: true, name, refs: [`refs/heads/${name}`] }
 		}
 		return { ok: false, why: "the repository has no main or master branch" }
 	}

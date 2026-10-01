@@ -124,11 +124,42 @@ describe("findNewerStatements", () => {
 		])
 	})
 
-	it("needs two shared topic words when the claim has them", () => {
+	it("does not treat a clause the check already resolved as a fact", () => {
+		const others = [
+			{
+				filename: "project_newer.md",
+				mtimeMs: NOW - DAY,
+				content: "VSIX rebuild owed [resolved 2026-09-30: newer note project_audit.md says so].\n",
+			},
+		]
+		expect(findNewerStatements("VSIX rebuild still owed.", source, others)).toEqual([])
+	})
+
+	it("needs a shared anchor and two shared topic words when the claim has them", () => {
 		const others = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "VSIX rebuilt.\n" }]
-		expect(findNewerStatements("api image rebuild STILL OWED", source, others)).toEqual([])
-		const matching = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "The api image was rebuilt.\n" }]
-		expect(findNewerStatements("api image rebuild STILL OWED", source, matching)).toHaveLength(1)
+		expect(findNewerStatements("API image rebuild STILL OWED", source, others)).toEqual([])
+		const matching = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "The API image was rebuilt.\n" }]
+		expect(findNewerStatements("API image rebuild STILL OWED", source, matching)).toHaveLength(1)
+		// Plain words are no anchor: "git", "tree" or "api" matched unrelated notes on a real store.
+		const plain = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "The api image was rebuilt.\n" }]
+		expect(findNewerStatements("api image rebuild STILL OWED", source, plain)).toEqual([])
+	})
+
+	it("needs the claim's own action reported as finished", () => {
+		const others = [
+			{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "VSIX installed. VSIX review done.\n" },
+		]
+		expect(findNewerStatements("VSIX rebuild still owed.", source, others)).toEqual([])
+		const negated = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "VSIX was not rebuilt.\n" }]
+		expect(findNewerStatements("VSIX rebuild still owed.", source, negated)).toEqual([])
+		// A claim naming no action accepts any completion word, but needs two shared anchors.
+		const one = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "DEF-C36 is done.\n" }]
+		expect(findNewerStatements("Still open: DEF-C36 `maxTokens` cap", source, one)).toEqual([])
+		const two = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "DEF-C36 `maxTokens` cap is done.\n" }]
+		expect(findNewerStatements("Still open: DEF-C36 `maxTokens` cap", source, two)).toHaveLength(1)
+		// Polish negation with an auxiliary verb is not a completion.
+		const pl = [{ filename: "project_x.md", mtimeMs: NOW - DAY, content: "VSIX nie jest przebudowany.\n" }]
+		expect(findNewerStatements("VSIX rebuild still owed.", source, pl)).toEqual([])
 	})
 
 	it("ignores older memories, time-bound clauses, frontmatter and fenced code", () => {
@@ -149,7 +180,7 @@ describe("findNewerStatements", () => {
 		const others = [
 			{ filename: "a.md", mtimeMs: NOW - 2 * DAY, content: "VSIX rebuilt on Monday.\n" },
 			{ filename: "b.md", mtimeMs: NOW - DAY, content: `${long}\n` },
-			{ filename: "c.md", mtimeMs: NOW - 1.5 * DAY, content: "VSIX installed.\n" },
+			{ filename: "c.md", mtimeMs: NOW - 1.5 * DAY, content: "VSIX rebuilt again.\n" },
 		]
 		const found = findNewerStatements("VSIX rebuild still owed.", source, others)
 		expect(found.map((s) => s.filename)).toEqual(["b.md", "c.md"])
@@ -220,6 +251,22 @@ describe("verifyTimeBoundClaims", () => {
 		expect(Object.values((await readState()).checks)).toEqual([{ at: "2026-10-01", verdict: "done" }])
 	})
 
+	it("does not let a merged PR settle a rebuild, or a merge of a different change", async () => {
+		await writeMemory(
+			"project_ui.md",
+			memory("UI", "VSIX rebuild owed for #570.\n- branch STILL unmerged and now CONFLICTS with #654."),
+			3,
+		)
+		const { calls, query } = stubQuery("DONE")
+		const ev = stubEvidence(
+			() => true,
+			() => "PR is on main.",
+		)
+		expect(await run(query, { evidence: ev.evidence })).toEqual([])
+		expect(ev.calls).toEqual([])
+		expect(calls).toHaveLength(0)
+	})
+
 	it("never asks when a ref is known not to have landed, even with a newer note", async () => {
 		await writeMemory("project_old.md", memory("Tokens", "VSIX for #700 not merged yet."), 3)
 		await writeMemory("project_new.md", memory("Later", "VSIX for #700 merged."), 1)
@@ -282,7 +329,7 @@ describe("verifyTimeBoundClaims", () => {
 		await run(query, { now: NOW + 14 * DAY })
 		expect(calls).toHaveLength(2)
 
-		await writeMemory("project_later.md", memory("Later", "VSIX installed on the laptop."), 1)
+		await writeMemory("project_later.md", memory("Later", "VSIX rebuilt again on the laptop."), 1)
 		await run(query)
 		expect(calls).toHaveLength(3)
 		expect(calls[2].user).toContain("project_later.md")
@@ -306,7 +353,7 @@ describe("verifyTimeBoundClaims", () => {
 	})
 
 	it(`asks at most ${MAX_CLAIM_QUERIES} questions per run`, async () => {
-		const body = [101, 102, 103, 104, 105, 106].map((n) => `- Fix #${n} still open.`).join("\n")
+		const body = [101, 102, 103, 104, 105, 106].map((n) => `- #${n} not merged yet.`).join("\n")
 		await writeMemory("project_many.md", memory("Many fixes", body), 3)
 		const { calls, query } = stubQuery("STILL")
 		const ev = stubEvidence(() => true)
@@ -352,23 +399,32 @@ describe("verifyTimeBoundClaims", () => {
 
 	it("annotates a clause that is the whole index hook and keeps a title it would empty", async () => {
 		await writeMemory("project_chart.md", memory("Chart", "Body."), 3)
-		await writeMemory("project_audit.md", memory("Audit", "The chart-fix branch was merged into main."), 1)
+		await writeMemory("project_audit.md", memory("Audit", "The CHART-FIX branch was merged into main."), 1)
 		await fs.writeFile(
 			path.join(dir, "MEMORY.md"),
-			"- [Chart-fix branch unmerged](project_chart.md): chart-fix branch STILL unmerged\n",
+			"- [CHART-FIX branch unmerged](project_chart.md): CHART-FIX branch STILL unmerged\n",
 		)
 		const { calls, query } = stubQuery("DONE")
 		await run(query)
 		// One clause from the title, one from the hook.
 		expect(calls).toHaveLength(2)
 		expect(await fs.readFile(path.join(dir, "MEMORY.md"), "utf-8")).toBe(
-			"- [Chart-fix branch unmerged](project_chart.md): chart-fix branch STILL unmerged " +
+			"- [CHART-FIX branch unmerged](project_chart.md): CHART-FIX branch STILL unmerged " +
 				"[resolved 2026-10-01: newer note project_audit.md says so]\n",
 		)
 	})
 
+	it("never checks feedback or user memories, which hold rules and not project state", async () => {
+		await writeMemory("feedback_tokens.md", memory("Rule", "VSIX rebuild still owed."), 5)
+		await writeMemory("user_tokens.md", memory("Pref", "VSIX rebuild still owed."), 5)
+		await writeMemory("project_audit.md", memory("Audit", "VSIX rebuilt from main."), 3)
+		const { calls, query } = stubQuery("DONE")
+		expect(await run(query)).toEqual([])
+		expect(calls).toHaveLength(0)
+	})
+
 	it("stops with 'aborted' before the next question once the signal fires", async () => {
-		const body = [101, 102].map((n) => `- Fix #${n} still open.`).join("\n")
+		const body = [101, 102].map((n) => `- #${n} not merged yet.`).join("\n")
 		await writeMemory("project_many.md", memory("Many fixes", body), 3)
 		const controller = new AbortController()
 		const { calls, query } = stubQuery(() => {

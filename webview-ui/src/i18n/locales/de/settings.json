@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Gedächtnis-Konsolidierung (Traum) aktivieren",
-				"description": "Wenn aktiviert, überprüft und reorganisiert der Agent das Gedächtnis regelmäßig: führt Duplikate zusammen, entfernt widersprüchliche Fakten und bereinigt veraltete Einträge. Läuft automatisch, wenn genug Zeit und Sitzungen vergangen sind."
+				"description": "Wenn aktiviert, überprüft und reorganisiert der Agent das Gedächtnis regelmäßig: führt Duplikate zusammen, entfernt widersprüchliche Fakten und bereinigt veraltete Einträge. Läuft automatisch, wenn genug Zeit und Sitzungen vergangen sind. Außerdem prüft er Notizen, die nur eine Zeit lang stimmten (\"noch nicht gemergt\", \"Neubau ausstehend\"), gegen git und neuere Notizen und markiert die erledigten."
 			},
 			"minHours": {
 				"label": "Mindeststunden zwischen Träumen",

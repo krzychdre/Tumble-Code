@@ -979,7 +979,7 @@
 		"dream": {
 			"enable": {
 				"label": "Włącz konsolidację pamięci (marzenie)",
-				"description": "Gdy włączone, agent okresowo przegląda i reorganizuje pamięć: łączy duplikaty, usuwa sprzeczne fakty i wycina nieaktualne wpisy. Uruchamia się automatycznie, gdy upłynie wystarczająco dużo czasu i sesji."
+				"description": "Gdy włączone, agent okresowo przegląda i reorganizuje pamięć: łączy duplikaty, usuwa sprzeczne fakty i wycina nieaktualne wpisy. Uruchamia się automatycznie, gdy upłynie wystarczająco dużo czasu i sesji. Sprawdza też notatki prawdziwe tylko przez jakiś czas (\"jeszcze niezmergowane\", \"zaległa przebudowa\") w gicie i w nowszych notatkach, i oznacza te już zakończone."
 			},
 			"minHours": {
 				"label": "Minimalne godziny między marzeniami",

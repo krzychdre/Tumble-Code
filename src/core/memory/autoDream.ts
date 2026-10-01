@@ -45,7 +45,7 @@ import { type MemoryHeader, scanMemoryFiles } from "./memoryScan"
 import { archiveMemory, rewriteMemoryBody, syncMemoryIndex } from "./memoryFiles"
 import { type SideQuery } from "./relevance"
 import { verifyTimeBoundClaims } from "./claimCheck"
-import { type ClaimEvidence, type ClaimRef } from "./timeBoundClaims"
+import { type ClaimEvidenceLookup, createGitClaimEvidenceLookup } from "./claimEvidence"
 
 /** Scan throttle: don't re-check the session gate more often than this. */
 const SESSION_SCAN_INTERVAL_MS = 10 * 60 * 1000 // 10 min
@@ -68,8 +68,8 @@ export interface AutoDreamContext {
 	currentTaskId?: string
 	/** The one-shot completion each merge decision asks. */
 	query: SideQuery
-	/** Looks up the refs a time-bound clause names (git); without it only newer memories count as evidence. */
-	evidence?: (refs: ReadonlyArray<ClaimRef>, signal: AbortSignal) => Promise<ClaimEvidence[]>
+	/** Looks up the refs a time-bound clause names; defaults to the git repository at `cwd`. */
+	evidence?: ClaimEvidenceLookup
 	/** Called with an "Improved N memories" notice on success (may be a no-op). */
 	onImproved?: (count: number, paths: string[]) => void
 }
@@ -264,7 +264,7 @@ export async function consolidateMemories(
 	memoryDir: string,
 	query: SideQuery,
 	signal: AbortSignal,
-	evidence?: AutoDreamContext["evidence"],
+	evidence?: ClaimEvidenceLookup,
 ): Promise<string[]> {
 	const changed = await verifyTimeBoundClaims({
 		memoryDir,
@@ -334,7 +334,8 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 	// without a use-before-assignment error.
 	const run: Promise<void> | undefined = (async () => {
 		try {
-			const changed = await consolidateMemories(memoryDir, context.query, controller.signal, context.evidence)
+			const evidence = context.evidence ?? createGitClaimEvidenceLookup(context.cwd)
+			const changed = await consolidateMemories(memoryDir, context.query, controller.signal, evidence)
 			if (changed.length > 0 && context.onImproved) {
 				context.onImproved(changed.length, changed)
 			}
