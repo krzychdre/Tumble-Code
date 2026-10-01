@@ -186,6 +186,7 @@ export const DREAM_SYSTEM_PROMPT = [
 	"<one-line summary>",
 	"<merged text: every fact from both files; when they disagree, the newer file wins>",
 	"",
+	"Write the summary and the merged text in English; keep quoted user words, names, paths and code unchanged.",
 	"Write nothing else.",
 ].join("\n")
 

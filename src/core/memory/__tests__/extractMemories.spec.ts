@@ -212,7 +212,10 @@ describe("extractMemories", () => {
 		it("appends to an existing memory the answer names instead of creating a duplicate", async () => {
 			const memDir = getAutoMemPath(cwd)
 			const existing = path.join(memDir, "user_role.md")
-			await fs.writeFile(existing, "---\nname: user_role\ndescription: Backend engineer\ntype: user\n---\n\nWrites Go.\n")
+			await fs.writeFile(
+				existing,
+				"---\nname: user_role\ndescription: Backend engineer\ntype: user\n---\n\nWrites Go.\n",
+			)
 			const runner = vi.fn(async () => "## user: user_role.md\nAlso maintains the Kotlin plugins.")
 			await executeExtractMemories({
 				cwd,
@@ -231,7 +234,10 @@ describe("extractMemories", () => {
 
 		it("asks one small prompt: the instruction, the manifest and the transcript, nothing else", async () => {
 			const memDir = getAutoMemPath(cwd)
-			await fs.writeFile(path.join(memDir, "user_role.md"), "---\ndescription: Backend engineer\ntype: user\n---\nbody\n")
+			await fs.writeFile(
+				path.join(memDir, "user_role.md"),
+				"---\ndescription: Backend engineer\ntype: user\n---\nbody\n",
+			)
 			const runner = vi.fn(async (_system: string, _user: string, _signal: AbortSignal) => "NONE")
 			await executeExtractMemories({
 				cwd,
@@ -245,6 +251,7 @@ describe("extractMemories", () => {
 			expect(runner).toHaveBeenCalledTimes(1)
 			const [system, user] = runner.mock.calls[0]
 			expect(system).toContain("NONE")
+			expect(system).toContain("Write in English, even if the chat is in another language")
 			expect(user).toContain("- user_role.md: Backend engineer")
 			expect(user).toContain("remember my name is Ada")
 			expect(system.length + user.length).toBeLessThan(3000)
@@ -475,7 +482,9 @@ describe("extractMemories", () => {
 
 		it("ignores unknown types, unprefixed look-alike lines and blocks past the cap", () => {
 			const block = (n: number) => `## user: note_${n}\nfact ${n}\nproject: not a header`
-			const drafts = parseMemoryDrafts(["## opinion: x\nskip me", block(1), block(2), block(3), block(4)].join("\n"))
+			const drafts = parseMemoryDrafts(
+				["## opinion: x\nskip me", block(1), block(2), block(3), block(4)].join("\n"),
+			)
 			expect(drafts.map((d) => d.name)).toEqual(["note_1", "note_2", "note_3"])
 			expect(drafts[0].body).toBe("project: not a header")
 		})
