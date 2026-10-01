@@ -333,7 +333,7 @@ describe("OpenRouterHandler", () => {
 		it("adds cache control for supported models", async () => {
 			const handler = new OpenRouterHandler({
 				...mockOptions,
-				openRouterModelId: "anthropic/claude-3.5-sonnet",
+				openRouterModelId: "anthropic/claude-sonnet-4.5",
 			})
 
 			const mockStream = {
@@ -562,7 +562,7 @@ describe("OpenRouterHandler", () => {
 				chunks.push(chunk)
 			}
 
-			// Should have tool_call_partial and finish_reason (not tool_call_end — providers no longer call processFinishReason)
+			// Should have tool_call_partial and finish_reason (not tool_call_end, providers no longer call processFinishReason)
 			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
 			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
 

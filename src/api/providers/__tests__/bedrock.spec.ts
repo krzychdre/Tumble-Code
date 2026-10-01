@@ -58,7 +58,7 @@ describe("AwsBedrockHandler", () => {
 		vi.clearAllMocks()
 
 		handler = new AwsBedrockHandler({
-			apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",
@@ -68,7 +68,7 @@ describe("AwsBedrockHandler", () => {
 	describe("getModel", () => {
 		it("should return the correct model info for a standard model", () => {
 			const modelInfo = handler.getModel()
-			expect(modelInfo.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+			expect(modelInfo.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			expect(modelInfo.info).toBeDefined()
 			expect(modelInfo.info.maxTokens).toBeDefined()
 			expect(modelInfo.info.contextWindow).toBeDefined()
@@ -79,7 +79,7 @@ describe("AwsBedrockHandler", () => {
 			// The implementation now extracts the model ID from the ARN instead of using the ARN directly
 			// We'll update the test to match the new behavior
 			const customArnHandler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -105,7 +105,7 @@ describe("AwsBedrockHandler", () => {
 				"arn:aws:bedrock:ap-northeast-3:123456789012:default-prompt-router/my_router_arn_no_model",
 			)
 			expect(modelInfo.info).toBeDefined()
-			expect(modelInfo.info.maxTokens).toBe(4096)
+			expect(modelInfo.info.maxTokens).toBe(8192)
 		})
 	})
 
@@ -174,7 +174,7 @@ describe("AwsBedrockHandler", () => {
 		describe("parseBaseModelId", () => {
 			it("should remove defined inference profile prefixes", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "us-east-1",
@@ -183,20 +183,20 @@ describe("AwsBedrockHandler", () => {
 				// Access private method using type casting
 				const parseBaseModelId = (handler as any).parseBaseModelId.bind(handler)
 
-				expect(parseBaseModelId("us.anthropic.claude-3-5-sonnet-20241022-v2:0")).toBe(
-					"anthropic.claude-3-5-sonnet-20241022-v2:0",
+				expect(parseBaseModelId("us.anthropic.claude-sonnet-4-5-20250929-v1:0")).toBe(
+					"anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
-				expect(parseBaseModelId("eu.anthropic.claude-3-haiku-20240307-v1:0")).toBe(
-					"anthropic.claude-3-haiku-20240307-v1:0",
+				expect(parseBaseModelId("eu.anthropic.claude-haiku-4-5-20251001-v1:0")).toBe(
+					"anthropic.claude-haiku-4-5-20251001-v1:0",
 				)
-				expect(parseBaseModelId("apac.anthropic.claude-3-opus-20240229-v1:0")).toBe(
-					"anthropic.claude-3-opus-20240229-v1:0",
+				expect(parseBaseModelId("apac.anthropic.claude-opus-4-20250514-v1:0")).toBe(
+					"anthropic.claude-opus-4-20250514-v1:0",
 				)
 			})
 
 			it("should not modify model IDs without defined prefixes", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "us-east-1",
@@ -204,15 +204,15 @@ describe("AwsBedrockHandler", () => {
 
 				const parseBaseModelId = (handler as any).parseBaseModelId.bind(handler)
 
-				expect(parseBaseModelId("anthropic.claude-3-5-sonnet-20241022-v2:0")).toBe(
-					"anthropic.claude-3-5-sonnet-20241022-v2:0",
+				expect(parseBaseModelId("anthropic.claude-sonnet-4-5-20250929-v1:0")).toBe(
+					"anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 				expect(parseBaseModelId("amazon.titan-text-express-v1")).toBe("amazon.titan-text-express-v1")
 			})
 
 			it("should not modify model IDs with other prefixes", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "us-east-1",
@@ -221,14 +221,14 @@ describe("AwsBedrockHandler", () => {
 				const parseBaseModelId = (handler as any).parseBaseModelId.bind(handler)
 
 				// Other prefixes should be preserved as part of the model ID
-				expect(parseBaseModelId("ap.anthropic.claude-3-5-sonnet-20241022-v2:0")).toBe(
-					"ap.anthropic.claude-3-5-sonnet-20241022-v2:0",
+				expect(parseBaseModelId("ap.anthropic.claude-sonnet-4-5-20250929-v1:0")).toBe(
+					"ap.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
-				expect(parseBaseModelId("apne1.anthropic.claude-3-5-sonnet-20241022-v2:0")).toBe(
-					"apne1.anthropic.claude-3-5-sonnet-20241022-v2:0",
+				expect(parseBaseModelId("apne1.anthropic.claude-sonnet-4-5-20250929-v1:0")).toBe(
+					"apne1.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
-				expect(parseBaseModelId("use1.anthropic.claude-3-5-sonnet-20241022-v2:0")).toBe(
-					"use1.anthropic.claude-3-5-sonnet-20241022-v2:0",
+				expect(parseBaseModelId("use1.anthropic.claude-sonnet-4-5-20250929-v1:0")).toBe(
+					"use1.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 			})
 		})
@@ -236,7 +236,7 @@ describe("AwsBedrockHandler", () => {
 		describe("cross-region inference integration", () => {
 			it("should apply correct prefix when cross-region inference is enabled", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "us-east-1",
@@ -244,12 +244,12 @@ describe("AwsBedrockHandler", () => {
 				})
 
 				const model = handler.getModel()
-				expect(model.id).toBe("us.anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(model.id).toBe("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 			})
 
 			it("should apply correct prefix for different regions", () => {
 				const euHandler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "eu-west-1",
@@ -257,20 +257,20 @@ describe("AwsBedrockHandler", () => {
 				})
 
 				const apacHandler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "ap-southeast-1",
 					awsUseCrossRegionInference: true,
 				})
 
-				expect(euHandler.getModel().id).toBe("eu.anthropic.claude-3-5-sonnet-20241022-v2:0")
-				expect(apacHandler.getModel().id).toBe("apac.anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(euHandler.getModel().id).toBe("eu.anthropic.claude-sonnet-4-5-20250929-v1:0")
+				expect(apacHandler.getModel().id).toBe("apac.anthropic.claude-sonnet-4-5-20250929-v1:0")
 			})
 
 			it("should not apply prefix when cross-region inference is disabled", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "us-east-1",
@@ -278,12 +278,12 @@ describe("AwsBedrockHandler", () => {
 				})
 
 				const model = handler.getModel()
-				expect(model.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(model.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			})
 
 			it("should not apply prefix for unsupported regions", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "unknown-region",
@@ -291,7 +291,7 @@ describe("AwsBedrockHandler", () => {
 				})
 
 				const model = handler.getModel()
-				expect(model.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(model.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			})
 		})
 
@@ -307,12 +307,12 @@ describe("AwsBedrockHandler", () => {
 				const parseArn = (handler as any).parseArn.bind(handler)
 
 				const result = parseArn(
-					"arn:aws:bedrock:us-east-1:123456789012:foundation-model/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+					"arn:aws:bedrock:us-east-1:123456789012:foundation-model/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 
 				expect(result.isValid).toBe(true)
 				expect(result.crossRegionInference).toBe(true)
-				expect(result.modelId).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(result.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			})
 
 			it("should not detect cross-region inference for non-prefixed models", () => {
@@ -326,12 +326,12 @@ describe("AwsBedrockHandler", () => {
 				const parseArn = (handler as any).parseArn.bind(handler)
 
 				const result = parseArn(
-					"arn:aws:bedrock:us-east-1:123456789012:foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0",
+					"arn:aws:bedrock:us-east-1:123456789012:foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 
 				expect(result.isValid).toBe(true)
 				expect(result.crossRegionInference).toBe(false)
-				expect(result.modelId).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(result.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			})
 
 			it("should detect cross-region inference for defined prefixes", () => {
@@ -345,17 +345,17 @@ describe("AwsBedrockHandler", () => {
 				const parseArn = (handler as any).parseArn.bind(handler)
 
 				const euResult = parseArn(
-					"arn:aws:bedrock:eu-west-1:123456789012:foundation-model/eu.anthropic.claude-3-5-sonnet-20241022-v2:0",
+					"arn:aws:bedrock:eu-west-1:123456789012:foundation-model/eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 				const apacResult = parseArn(
-					"arn:aws:bedrock:ap-southeast-1:123456789012:foundation-model/apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
+					"arn:aws:bedrock:ap-southeast-1:123456789012:foundation-model/apac.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 
 				expect(euResult.crossRegionInference).toBe(true)
-				expect(euResult.modelId).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(euResult.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 				expect(apacResult.crossRegionInference).toBe(true)
-				expect(apacResult.modelId).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+				expect(apacResult.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			})
 
 			it("should not detect cross-region inference for other prefixes", () => {
@@ -370,11 +370,11 @@ describe("AwsBedrockHandler", () => {
 
 				// Other prefixes should not trigger cross-region inference detection
 				const result = parseArn(
-					"arn:aws:bedrock:us-east-1:123456789012:foundation-model/ap.anthropic.claude-3-5-sonnet-20241022-v2:0",
+					"arn:aws:bedrock:us-east-1:123456789012:foundation-model/ap.anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 
 				expect(result.crossRegionInference).toBe(false)
-				expect(result.modelId).toBe("ap.anthropic.claude-3-5-sonnet-20241022-v2:0") // Should be preserved as-is
+				expect(result.modelId).toBe("ap.anthropic.claude-sonnet-4-5-20250929-v1:0") // Should be preserved as-is
 			})
 		})
 
@@ -409,7 +409,7 @@ describe("AwsBedrockHandler", () => {
 				const parseArn = (handler as any).parseArn.bind(handler)
 
 				const result = parseArn(
-					"arn:aws-cn:bedrock:cn-north-1:123456789012:inference-profile/anthropic.claude-3-sonnet-20240229-v1:0",
+					"arn:aws-cn:bedrock:cn-north-1:123456789012:inference-profile/anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 
 				expect(result.isValid).toBe(true)
@@ -419,7 +419,7 @@ describe("AwsBedrockHandler", () => {
 
 			it("should accept GovCloud custom ARN in handler constructor", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test-access-key",
 					awsSecretKey: "test-secret-key",
 					awsRegion: "us-gov-west-1",
@@ -437,18 +437,18 @@ describe("AwsBedrockHandler", () => {
 
 			it("should accept China region custom ARN in handler constructor", () => {
 				const handler = new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test-access-key",
 					awsSecretKey: "test-secret-key",
 					awsRegion: "cn-north-1",
 					awsCustomArn:
-						"arn:aws-cn:bedrock:cn-north-1:123456789012:inference-profile/anthropic.claude-3-sonnet-20240229-v1:0",
+						"arn:aws-cn:bedrock:cn-north-1:123456789012:inference-profile/anthropic.claude-sonnet-4-5-20250929-v1:0",
 				})
 
 				// Should not throw and should return valid model info
 				const modelInfo = handler.getModel()
 				expect(modelInfo.id).toBe(
-					"arn:aws-cn:bedrock:cn-north-1:123456789012:inference-profile/anthropic.claude-3-sonnet-20240229-v1:0",
+					"arn:aws-cn:bedrock:cn-north-1:123456789012:inference-profile/anthropic.claude-sonnet-4-5-20250929-v1:0",
 				)
 				expect(modelInfo.info).toBeDefined()
 			})
@@ -596,7 +596,7 @@ describe("AwsBedrockHandler", () => {
 		it("should handle invalid regions gracefully", () => {
 			expect(() => {
 				new AwsBedrockHandler({
-					apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					awsAccessKey: "test",
 					awsSecretKey: "test",
 					awsRegion: "", // Empty region
@@ -632,7 +632,7 @@ describe("AwsBedrockHandler", () => {
 	describe("model information and configuration", () => {
 		it("should preserve model information after applying cross-region prefixes", () => {
 			const handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test",
 				awsSecretKey: "test",
 				awsRegion: "us-east-1",
@@ -642,7 +642,7 @@ describe("AwsBedrockHandler", () => {
 			const model = handler.getModel()
 
 			// Model ID should have prefix
-			expect(model.id).toBe("us.anthropic.claude-3-5-sonnet-20241022-v2:0")
+			expect(model.id).toBe("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 			// But model info should remain the same
 			expect(model.info.maxTokens).toBe(8192)
@@ -653,7 +653,7 @@ describe("AwsBedrockHandler", () => {
 
 		it("should handle model configuration overrides correctly", () => {
 			const handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test",
 				awsSecretKey: "test",
 				awsRegion: "us-east-1",
@@ -765,7 +765,7 @@ describe("AwsBedrockHandler", () => {
 
 		it("should not affect context window for non-Claude Sonnet 4 models", () => {
 			const handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-opus-4-20250514-v1:0",
 				awsAccessKey: "test",
 				awsSecretKey: "test",
 				awsRegion: "us-east-1",
@@ -845,7 +845,7 @@ describe("AwsBedrockHandler", () => {
 
 		it("should not include 1M context beta for non-Claude Sonnet 4 models but still include fine-grained-tool-streaming", async () => {
 			const handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-opus-4-20250514-v1:0",
 				awsAccessKey: "test",
 				awsSecretKey: "test",
 				awsRegion: "us-east-1",
@@ -1001,7 +1001,7 @@ describe("AwsBedrockHandler", () => {
 			})
 
 			it("should not apply service tier pricing for unsupported models", () => {
-				const unsupportedModelId = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+				const unsupportedModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 				const handler = new AwsBedrockHandler({
 					apiModelId: unsupportedModelId,
 					awsAccessKey: "test",
@@ -1087,7 +1087,7 @@ describe("AwsBedrockHandler", () => {
 			})
 
 			it("should NOT include service_tier for unsupported models", async () => {
-				const unsupportedModelId = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+				const unsupportedModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 				const handler = new AwsBedrockHandler({
 					apiModelId: unsupportedModelId,
 					awsAccessKey: "test",
@@ -1181,7 +1181,7 @@ describe("AwsBedrockHandler", () => {
 		it("should capture telemetry on createMessage error", async () => {
 			// Create a handler with a fresh mock
 			const errorHandler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -1218,7 +1218,7 @@ describe("AwsBedrockHandler", () => {
 				expect.objectContaining({
 					message: "Bedrock API error",
 					provider: "Bedrock",
-					modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					modelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					operation: "createMessage",
 				}),
 			)
@@ -1231,7 +1231,7 @@ describe("AwsBedrockHandler", () => {
 		it("should capture telemetry on completePrompt error", async () => {
 			// Create a handler with a fresh mock
 			const errorHandler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -1255,7 +1255,7 @@ describe("AwsBedrockHandler", () => {
 				expect.objectContaining({
 					message: "Bedrock completion error",
 					provider: "Bedrock",
-					modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+					modelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 					operation: "completePrompt",
 				}),
 			)
@@ -1268,7 +1268,7 @@ describe("AwsBedrockHandler", () => {
 		it("should still throw the error after capturing telemetry", async () => {
 			// Create a handler with a fresh mock
 			const errorHandler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -1315,7 +1315,7 @@ describe("AwsBedrockHandler", () => {
 
 		it("should enable prompt caching by default when awsUsePromptCache is undefined", async () => {
 			const defaultHandler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -1336,7 +1336,7 @@ describe("AwsBedrockHandler", () => {
 
 		it("should disable prompt caching when awsUsePromptCache is explicitly false", async () => {
 			const disabledHandler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test-access-key",
 				awsSecretKey: "test-secret-key",
 				awsRegion: "us-east-1",
@@ -1378,7 +1378,7 @@ describe("AwsBedrockHandler", () => {
 			expect(mockConverseStreamCommand).toHaveBeenCalled()
 			const commandArg = mockConverseStreamCommand.mock.calls[0][0] as any
 
-			// Adaptive thinking — no budget_tokens, must use effort levels.
+			// Adaptive thinking, no budget_tokens, must use effort levels.
 			expect(commandArg.additionalModelRequestFields?.thinking).toEqual({
 				type: "adaptive",
 				display: "summarized",
@@ -1403,13 +1403,13 @@ describe("AwsBedrockHandler", () => {
 			expect(mockConverseStreamCommand).toHaveBeenCalled()
 			const commandArg = mockConverseStreamCommand.mock.calls[0][0] as any
 
-			// 4.8 inherits the 4.7 adaptive-thinking contract — no breaking API changes.
+			// 4.8 inherits the 4.7 adaptive-thinking contract, no breaking API changes.
 			expect(commandArg.additionalModelRequestFields?.thinking).toEqual({
 				type: "adaptive",
 				display: "summarized",
 			})
 			expect(commandArg.additionalModelRequestFields?.output_config).toEqual({ effort: "xhigh" })
-			// Sampling parameters are still rejected on 4.8 — temperature must be absent.
+			// Sampling parameters are still rejected on 4.8, temperature must be absent.
 			expect(commandArg.inferenceConfig?.temperature).toBeUndefined()
 		})
 
@@ -1531,10 +1531,10 @@ describe("AwsBedrockHandler", () => {
 		describe("isAdaptiveThinkingModel detection", () => {
 			// Unit-cover the private guard directly (same pattern the suite uses for
 			// parseBaseModelId / getPrefixForRegion). This exercises all four model
-			// patterns — including the future-proof sonnet-4-7 / sonnet-4-8 branches
-			// that have no registry entry yet — plus negative cases and prefix stripping.
+			// patterns, including the future-proof sonnet-4-7 / sonnet-4-8 branches
+			// that have no registry entry yet, plus negative cases and prefix stripping.
 			const handler = new AwsBedrockHandler({
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsAccessKey: "test",
 				awsSecretKey: "test",
 				awsRegion: "us-east-1",
@@ -1545,7 +1545,7 @@ describe("AwsBedrockHandler", () => {
 				expect(isAdaptiveThinkingModel("anthropic.claude-opus-4-7")).toBe(true)
 				expect(isAdaptiveThinkingModel("anthropic.claude-opus-4-8")).toBe(true)
 				expect(isAdaptiveThinkingModel("anthropic.claude-fable-5")).toBe(true)
-				// Future-proof Sonnet patterns — guarded even before a registry entry exists.
+				// Future-proof Sonnet patterns, guarded even before a registry entry exists.
 				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-4-7")).toBe(true)
 				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-4-8")).toBe(true)
 			})
@@ -1568,7 +1568,7 @@ describe("AwsBedrockHandler", () => {
 			it("returns false for older / non-adaptive models", () => {
 				expect(isAdaptiveThinkingModel("anthropic.claude-opus-4-6-v1")).toBe(false)
 				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-4-6")).toBe(false)
-				expect(isAdaptiveThinkingModel("anthropic.claude-3-5-sonnet-20241022-v2:0")).toBe(false)
+				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-4-5-20250929-v1:0")).toBe(false)
 				expect(isAdaptiveThinkingModel("amazon.nova-lite-v1:0")).toBe(false)
 			})
 		})

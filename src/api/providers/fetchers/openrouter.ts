@@ -237,28 +237,9 @@ export const parseOpenRouterModel = ({
 		modelInfo.requiredReasoningBudget = true
 	}
 
-	// For backwards compatibility with the old model definitions we will
-	// continue to disable extending thinking for anthropic/claude-3.7-sonnet
-	// and force it for anthropic/claude-3.7-sonnet:thinking.
-
-	if (id === "anthropic/claude-3.7-sonnet") {
-		modelInfo.maxTokens = anthropicModels["claude-3-7-sonnet-20250219"].maxTokens
-		modelInfo.supportsReasoningBudget = false
-		modelInfo.supportsReasoningEffort = false
-	}
-
-	if (id === "anthropic/claude-3.7-sonnet:thinking") {
-		modelInfo.maxTokens = anthropicModels["claude-3-7-sonnet-20250219:thinking"].maxTokens
-	}
-
 	// Set claude-sonnet-4.6 model to use the correct configuration
 	if (id === "anthropic/claude-sonnet-4.6") {
 		modelInfo.maxTokens = anthropicModels["claude-sonnet-4-6"].maxTokens
-	}
-
-	// Set claude-opus-4.1 model to use the correct configuration
-	if (id === "anthropic/claude-opus-4.1") {
-		modelInfo.maxTokens = anthropicModels["claude-opus-4-1-20250805"].maxTokens
 	}
 
 	// Set claude-opus-4.5 model to use the correct configuration

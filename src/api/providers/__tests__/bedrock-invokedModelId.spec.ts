@@ -128,7 +128,7 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 						trace: {
 							promptRouter: {
 								invokedModelId:
-									"arn:aws:bedrock:us-west-2:699475926481:inference-profile/us.anthropic.claude-3-opus-20240229-v1:0",
+									"arn:aws:bedrock:us-west-2:699475926481:inference-profile/us.anthropic.claude-opus-4-20250514-v1:0",
 								usage: {
 									inputTokens: 150,
 									outputTokens: 250,
@@ -168,11 +168,11 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 		}
 
 		// Verify that getModelById was called with the id, not the full arn
-		expect(getModelByIdSpy).toHaveBeenCalledWith("anthropic.claude-3-opus-20240229-v1:0", "inference-profile")
+		expect(getModelByIdSpy).toHaveBeenCalledWith("anthropic.claude-opus-4-20250514-v1:0", "inference-profile")
 
 		// Verify that getModel returns the updated model info
 		const costModel = handler.getModel()
-		//expect(costModel.id).toBe("anthropic.claude-3-5-sonnet-20240620-v1:0")
+		//expect(costModel.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 		expect(costModel.info.inputPrice).toBe(15)
 
 		// Verify that a usage event was emitted after updating the costModelConfig
@@ -195,7 +195,7 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 	it("should not update costModelConfig when invokedModelId is not present", async () => {
 		// Create a handler with default settings
 		const mockOptions: ApiHandlerOptions = {
-			apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",
@@ -205,7 +205,7 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 
 		// Store the initial model configuration
 		const initialModelConfig = handler.getModel()
-		expect(initialModelConfig.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+		expect(initialModelConfig.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 		// Mock the stream without an invokedModelId event
 		mockSend.mockImplementationOnce(async () => {
@@ -242,14 +242,14 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 
 		// Verify that getModel returns the original model info (unchanged)
 		const costModel = handler.getModel()
-		expect(costModel.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+		expect(costModel.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 		expect(costModel).toEqual(initialModelConfig)
 	})
 
 	it("should handle invalid invokedModelId format gracefully", async () => {
 		// Create a handler with default settings
 		const mockOptions: ApiHandlerOptions = {
-			apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",
@@ -292,13 +292,13 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 
 		// Verify that getModel returns the original model info
 		const costModel = handler.getModel()
-		expect(costModel.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+		expect(costModel.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 	})
 
 	it("should handle errors during invokedModelId processing", async () => {
 		// Create a handler with default settings
 		const mockOptions: ApiHandlerOptions = {
-			apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsAccessKey: "test-access-key",
 			awsSecretKey: "test-secret-key",
 			awsRegion: "us-east-1",
@@ -315,7 +315,7 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 						trace: {
 							promptRouter: {
 								invokedModelId:
-									"arn:aws:bedrock:us-east-1:123456789:foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
+									"arn:aws:bedrock:us-east-1:123456789:foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
 							},
 						},
 					},
@@ -325,13 +325,13 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 
 		// Mock getModel to throw an error when called with the model name
 		vitest.spyOn(handler, "getModel").mockImplementation((modelName?: string) => {
-			if (modelName === "anthropic.claude-3-sonnet-20240229-v1:0") {
+			if (modelName === "anthropic.claude-sonnet-4-5-20250929-v1:0") {
 				throw new Error("Test error during model lookup")
 			}
 
 			// Default return value for initial call
 			return {
-				id: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				id: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				info: {
 					maxTokens: 4096,
 					contextWindow: 128_000,
@@ -351,6 +351,6 @@ describe("AwsBedrockHandler with invokedModelId", () => {
 
 		// Verify that getModel returns the original model info
 		const costModel = handler.getModel()
-		expect(costModel.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+		expect(costModel.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 	})
 })

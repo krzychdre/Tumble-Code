@@ -450,14 +450,14 @@ describe("useSelectedModel", () => {
 		it("should not affect context window for non-Claude Sonnet 4 Bedrock models", () => {
 			const apiConfiguration: ProviderSettings = {
 				apiProvider: "bedrock",
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-opus-4-20250514-v1:0",
 				awsBedrock1MContext: true,
 			}
 
 			const wrapper = createWrapper()
 			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
 
-			expect(result.current.id).toBe("anthropic.claude-3-5-sonnet-20241022-v2:0")
+			expect(result.current.id).toBe("anthropic.claude-opus-4-20250514-v1:0")
 			expect(result.current.info?.contextWindow).toBe(200_000)
 		})
 	})

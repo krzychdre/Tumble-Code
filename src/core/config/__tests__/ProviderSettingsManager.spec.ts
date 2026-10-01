@@ -887,12 +887,12 @@ describe("ProviderSettingsManager", () => {
 
 		it("should strip both token fields for models that support neither reasoning budgets nor a configurable max", async () => {
 			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "anthropic",
+				currentApiConfigName: "bedrock",
 				apiConfigs: {
-					anthropic: {
-						id: "anthropic-id",
-						apiProvider: "anthropic",
-						apiModelId: "claude-3-5-haiku-20241022",
+					bedrock: {
+						id: "bedrock-id",
+						apiProvider: "bedrock",
+						apiModelId: "amazon.nova-pro-v1:0",
 						modelMaxTokens: 8192,
 						modelMaxThinkingTokens: 2048,
 					},
@@ -902,11 +902,10 @@ describe("ProviderSettingsManager", () => {
 			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
 
 			const exported = await providerSettingsManager.export()
-			const anthropic = exported.data.apiConfigs.anthropic
-			expect(anthropic && "shared" in anthropic ? anthropic.shared?.modelMaxTokens : undefined).toBeUndefined()
-			expect(
-				anthropic && "shared" in anthropic ? anthropic.shared?.modelMaxThinkingTokens : undefined,
-			).toBeUndefined()
+			const bedrock = exported.data.apiConfigs.bedrock
+			expect(bedrock && "shared" in bedrock).toBe(true)
+			expect(bedrock && "shared" in bedrock ? bedrock.shared?.modelMaxTokens : undefined).toBeUndefined()
+			expect(bedrock && "shared" in bedrock ? bedrock.shared?.modelMaxThinkingTokens : undefined).toBeUndefined()
 		})
 	})
 

@@ -85,7 +85,7 @@ describe("AnthropicHandler", () => {
 	beforeEach(() => {
 		mockOptions = {
 			apiKey: "test-api-key",
-			apiModelId: "claude-3-5-sonnet-20241022",
+			apiModelId: "claude-sonnet-4-5",
 		}
 		handler = new AnthropicHandler(mockOptions)
 		vitest.clearAllMocks()
@@ -469,16 +469,17 @@ describe("AnthropicHandler", () => {
 			const model = handler.getModel()
 			expect(model.id).toBe(mockOptions.apiModelId)
 			expect(model.info).toBeDefined()
-			expect(model.info.maxTokens).toBe(8192)
+			expect(model.info.maxTokens).toBe(64_000)
 			expect(model.info.contextWindow).toBe(200_000)
 			expect(model.info.supportsImages).toBe(true)
 			expect(model.info.supportsPromptCache).toBe(true)
 		})
 
-		it("honors custom maxTokens for thinking models", () => {
+		it("honors custom maxTokens when the reasoning budget is on", () => {
 			const handler = new AnthropicHandler({
 				apiKey: "test-api-key",
-				apiModelId: "claude-3-7-sonnet-20250219:thinking",
+				apiModelId: "claude-sonnet-4-5",
+				enableReasoningEffort: true,
 				modelMaxTokens: 32_768,
 				modelMaxThinkingTokens: 16_384,
 			})
@@ -489,10 +490,10 @@ describe("AnthropicHandler", () => {
 			expect(result.temperature).toBe(1.0)
 		})
 
-		it("does not honor custom maxTokens for non-thinking models", () => {
+		it("does not honor custom maxTokens when the reasoning budget is off", () => {
 			const handler = new AnthropicHandler({
 				apiKey: "test-api-key",
-				apiModelId: "claude-3-7-sonnet-20250219",
+				apiModelId: "claude-sonnet-4-5",
 				modelMaxTokens: 32_768,
 				modelMaxThinkingTokens: 16_384,
 			})
@@ -663,7 +664,7 @@ describe("AnthropicHandler", () => {
 		it("should filter out internal reasoning blocks before sending to API", async () => {
 			handler = new AnthropicHandler({
 				apiKey: "test-api-key",
-				apiModelId: "claude-3-5-sonnet-20241022",
+				apiModelId: "claude-sonnet-4-5",
 			})
 
 			// Messages with internal reasoning blocks (from stored conversation history)
@@ -714,7 +715,7 @@ describe("AnthropicHandler", () => {
 		it("should filter empty messages after removing all reasoning blocks", async () => {
 			handler = new AnthropicHandler({
 				apiKey: "test-api-key",
-				apiModelId: "claude-3-5-sonnet-20241022",
+				apiModelId: "claude-sonnet-4-5",
 			})
 
 			// Message with only reasoning content (should be completely filtered)
@@ -1136,7 +1137,7 @@ describe("AnthropicHandler cost accounting", () => {
 
 	beforeEach(() => {
 		vitest.clearAllMocks()
-		handler = new AnthropicHandler({ apiKey: "test-api-key", apiModelId: "claude-3-5-sonnet-20241022" })
+		handler = new AnthropicHandler({ apiKey: "test-api-key", apiModelId: "claude-sonnet-4-5" })
 	})
 
 	it("bills the output tokens reported in message_delta", async () => {

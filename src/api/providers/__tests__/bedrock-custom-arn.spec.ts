@@ -58,7 +58,7 @@ describe("Bedrock ARN Handling", () => {
 	// Helper function to create a handler with specific options
 	const createHandler = (options: Partial<ApiHandlerOptions> = {}) => {
 		const defaultOptions: ApiHandlerOptions = {
-			apiModelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+			apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 			awsRegion: "us-east-1",
 			...options,
 		}
@@ -70,7 +70,7 @@ describe("Bedrock ARN Handling", () => {
 		it("should correctly extract modelType and modelId from foundation-model ARN", () => {
 			const handler = createHandler()
 			//note: properly formatted foundation-model ARNs don't have an account id.
-			const arn = "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
+			const arn = "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 			// Access the private method using type casting
 			const result = (handler as any).parseArn(arn, "us-east-1")
@@ -80,7 +80,7 @@ describe("Bedrock ARN Handling", () => {
 			expect(result.modelType).toBe("foundation-model")
 
 			//verify the id is not the ARN for foundation models, but the ID
-			expect(result.modelId).toBe("anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(result.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			expect(result.crossRegionInference).toBe(false)
 		})
 
@@ -117,14 +117,14 @@ describe("Bedrock ARN Handling", () => {
 		it("should set crossRegionInference to true when a known region prefix is found in the model ID", () => {
 			const handler = createHandler()
 			const arn =
-				"arn:aws:bedrock:us-east-1:123456789012:foundation-model/us.anthropic.claude-3-sonnet-20240229-v1:0"
+				"arn:aws:bedrock:us-east-1:123456789012:foundation-model/us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 			// Access the private method using type casting
 			const result = (handler as any).parseArn(arn, "us-east-1")
 
 			// Verify crossRegionInference is true
 			expect(result.crossRegionInference).toBe(true)
-			expect(result.modelId).toBe("anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(result.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			expect(result.region).toBe("us-east-1")
 		})
 
@@ -135,7 +135,7 @@ describe("Bedrock ARN Handling", () => {
 
 			// Use a model ID with eu. prefix which should be detected
 			const arn =
-				"arn:aws:bedrock:ap-east-1:123456789012:foundation-model/apac.anthropic.claude-3-sonnet-20240229-v1:0"
+				"arn:aws:bedrock:ap-east-1:123456789012:foundation-model/apac.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 			// Access the private method using type casting
 			const result = (handler as any).parseArn(arn, "us-east-1")
@@ -143,12 +143,12 @@ describe("Bedrock ARN Handling", () => {
 			// Verify crossRegionInference is true
 			expect(result.crossRegionInference).toBe(true)
 			// The eu. prefix should be removed from the model ID
-			expect(result.modelId).toBe("anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(result.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 		})
 
 		it("should include region mismatch warning but still extract modelType and modelId", () => {
 			const handler = createHandler()
-			const arn = "arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
+			const arn = "arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 			// Access the private method using type casting with mismatched region
 			const result = (handler as any).parseArn(arn, "us-east-1")
@@ -158,7 +158,7 @@ describe("Bedrock ARN Handling", () => {
 			// In case of region mismatch, the region is set to the ARN region
 			expect(result.region).toBe("eu-west-1")
 			expect(result.modelType).toBe("foundation-model")
-			expect(result.modelId).toBe("anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(result.modelId).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			expect(result.errorMessage).toContain("Region mismatch")
 			expect(result.crossRegionInference).toBe(false)
 		})
@@ -202,7 +202,7 @@ describe("Bedrock ARN Handling", () => {
 			const mockOptions: ApiHandlerOptions = {
 				apiModelId: "custom-arn",
 				//properly formatted foundation-model ARNs don't have an account id
-				awsCustomArn: "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0",
+				awsCustomArn: "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsRegion: "us-east-1",
 			}
 
@@ -210,7 +210,7 @@ describe("Bedrock ARN Handling", () => {
 			const model = handler.getModel()
 
 			// For foundation-model ARNs, the model ID is extracted from the ARN
-			expect(model.id).toBe("anthropic.claude-3-sonnet-20240229-v1:0")
+			expect(model.id).toBe("anthropic.claude-sonnet-4-5-20250929-v1:0")
 			expect(model.info).toHaveProperty("maxTokens")
 			expect(model.info).toHaveProperty("contextWindow")
 			expect(model.info).toHaveProperty("supportsPromptCache")
@@ -221,7 +221,7 @@ describe("Bedrock ARN Handling", () => {
 			const handler = createHandler({
 				awsRegion: "us-east-1",
 				awsCustomArn:
-					"arn:aws:bedrock:eu-west-1:123456789012:inference-profile/anthropic.claude-3-sonnet-20240229-v1:0",
+					"arn:aws:bedrock:eu-west-1:123456789012:inference-profile/anthropic.claude-sonnet-4-5-20250929-v1:0",
 			})
 
 			// Verify the client was created with the ARN region, not the provided region
@@ -234,7 +234,7 @@ describe("Bedrock ARN Handling", () => {
 
 			// Create handler with ARN region different from provided region
 			const arn =
-				"arn:aws:bedrock:eu-west-1:123456789012:inference-profile/anthropic.claude-3-sonnet-20240229-v1:0"
+				"arn:aws:bedrock:eu-west-1:123456789012:inference-profile/anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 			createHandler({
 				awsCustomArn: arn,

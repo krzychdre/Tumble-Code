@@ -112,7 +112,7 @@ describe("AwsBedrockHandler - Extended Thinking", () => {
 		it("should pass thinking parameters from metadata", async () => {
 			handler = new AwsBedrockHandler({
 				apiProvider: "bedrock",
-				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsRegion: "us-east-1",
 			})
 
@@ -187,7 +187,7 @@ describe("AwsBedrockHandler - Extended Thinking", () => {
 		it("should not include topP when thinking is disabled (global removal)", async () => {
 			handler = new AwsBedrockHandler({
 				apiProvider: "bedrock",
-				apiModelId: "anthropic.claude-3-7-sonnet-20250219-v1:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsRegion: "us-east-1",
 				// Note: no enableReasoningEffort = true, so thinking is disabled
 			})
@@ -287,7 +287,7 @@ describe("AwsBedrockHandler - Extended Thinking", () => {
 		it("should support API key authentication", async () => {
 			handler = new AwsBedrockHandler({
 				apiProvider: "bedrock",
-				apiModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				apiModelId: "anthropic.claude-sonnet-4-5-20250929-v1:0",
 				awsRegion: "us-east-1",
 				awsUseApiKey: true,
 				awsApiKey: "test-api-key-token",
