@@ -55,7 +55,7 @@ export const FILE_DETAILS_UNCHANGED_NOTE =
 	"(Unchanged since the listing earlier in this conversation. Use list_files if you need a fresh view.)"
 
 export async function getEnvironmentDetails(
-	cline: Task,
+	task: Task,
 	includeFileDetails: boolean = false,
 	/**
 	 * The caller's state snapshot (P5). Provided by the request cycle, which
@@ -67,25 +67,25 @@ export async function getEnvironmentDetails(
 ) {
 	let details = ""
 
-	const state = cycleState ?? (await cline.providerRef.deref()?.getState())
+	const state = cycleState ?? (await task.providerRef.deref()?.getState())
 	const { maxWorkspaceFiles = SETTINGS_DEFAULTS.maxWorkspaceFiles } = state ?? {}
 
 	// includeFileDetails marks task/resume/subtask starts — always emit the full
 	// block there so the model's baseline never depends on dedup state.
-	const prevSnapshot = includeFileDetails ? undefined : lastEnvSnapshot.get(cline)
+	const prevSnapshot = includeFileDetails ? undefined : lastEnvSnapshot.get(task)
 
-	// It could be useful for cline to know if the user went from one or no
+	// It could be useful for the model to know if the user went from one or no
 	// file to another between messages, so we include this context whenever
 	// it changed since the previous turn.
 	const visibleFilePaths = vscode.window.visibleTextEditors
 		?.map((editor) => editor.document?.uri?.fsPath)
 		.filter(Boolean)
-		.map((absolutePath) => path.relative(cline.cwd, absolutePath))
+		.map((absolutePath) => path.relative(task.cwd, absolutePath))
 		.slice(0, maxWorkspaceFiles)
 
 	// Filter paths through rooIgnoreController
-	const allowedVisibleFiles = cline.rooIgnoreController
-		? cline.rooIgnoreController.filterPaths(visibleFilePaths)
+	const allowedVisibleFiles = task.rooIgnoreController
+		? task.rooIgnoreController.filterPaths(visibleFilePaths)
 		: visibleFilePaths.map((p) => p.toPosix()).join("\n")
 
 	const visibleFilesText = Array.isArray(allowedVisibleFiles)
@@ -108,12 +108,12 @@ export async function getEnvironmentDetails(
 		.filter((tab) => tab.input instanceof vscode.TabInputText)
 		.map((tab) => (tab.input as vscode.TabInputText).uri.fsPath)
 		.filter(Boolean)
-		.map((absolutePath) => path.relative(cline.cwd, absolutePath).toPosix())
+		.map((absolutePath) => path.relative(task.cwd, absolutePath).toPosix())
 		.slice(0, maxTabs)
 
 	// Filter paths through rooIgnoreController
-	const allowedOpenTabs = cline.rooIgnoreController
-		? cline.rooIgnoreController.filterPaths(openTabPaths)
+	const allowedOpenTabs = task.rooIgnoreController
+		? task.rooIgnoreController.filterPaths(openTabPaths)
 		: openTabPaths.map((p) => p.toPosix()).join("\n")
 
 	const openTabsText = Array.isArray(allowedOpenTabs) ? allowedOpenTabs.join("\n") : allowedOpenTabs || ""
@@ -129,17 +129,17 @@ export async function getEnvironmentDetails(
 
 	// Get task-specific and background terminals.
 	const busyTerminals = [
-		...TerminalRegistry.getTerminals(true, cline.taskId),
+		...TerminalRegistry.getTerminals(true, task.taskId),
 		...TerminalRegistry.getBackgroundTerminals(true),
 	]
 
 	const inactiveTerminals = [
-		...TerminalRegistry.getTerminals(false, cline.taskId),
+		...TerminalRegistry.getTerminals(false, task.taskId),
 		...TerminalRegistry.getBackgroundTerminals(false),
 	]
 
 	if (busyTerminals.length > 0) {
-		if (cline.didEditFile) {
+		if (task.didEditFile) {
 			await delay(300) // Delay after saving file to let terminals catch up.
 		}
 
@@ -153,7 +153,7 @@ export async function getEnvironmentDetails(
 	}
 
 	// Reset, this lets us know when to wait for saved files to update terminals.
-	cline.didEditFile = false
+	task.didEditFile = false
 
 	// Waiting for updated diagnostics lets terminal output be the most
 	// up-to-date possible.
@@ -222,7 +222,7 @@ export async function getEnvironmentDetails(
 	// console.log(`[Task#getEnvironmentDetails] terminalDetails: ${terminalDetails}`)
 
 	// Add recently modified files section.
-	const recentlyModifiedFiles = cline.fileContextTracker.getAndClearRecentlyModifiedFiles()
+	const recentlyModifiedFiles = task.fileContextTracker.getAndClearRecentlyModifiedFiles()
 
 	if (recentlyModifiedFiles.length > 0) {
 		details +=
@@ -261,7 +261,7 @@ export async function getEnvironmentDetails(
 
 	// Add git status information (if enabled with maxGitStatusFiles > 0).
 	if (maxGitStatusFiles > 0) {
-		const gitStatus = await getGitStatus(cline.cwd, maxGitStatusFiles)
+		const gitStatus = await getGitStatus(task.cwd, maxGitStatusFiles)
 		if (gitStatus) {
 			details += `\n\n# Git Status\n${gitStatus}`
 		}
@@ -269,11 +269,11 @@ export async function getEnvironmentDetails(
 
 	// Add context tokens information (if enabled).
 	if (includeCurrentCost) {
-		const { totalCost } = getApiMetrics(cline.clineMessages)
+		const { totalCost } = getApiMetrics(task.clineMessages)
 		details += `\n\n# Current Cost\n${totalCost !== null ? `$${totalCost.toFixed(2)}` : "(Not available)"}`
 	}
 
-	const { id: modelId } = cline.api.getModel()
+	const { id: modelId } = task.api.getModel()
 
 	// Add current mode and any mode-specific warnings.
 	const {
@@ -286,10 +286,10 @@ export async function getEnvironmentDetails(
 
 	// The task's own mode, not the one in provider state: that is the focused task's mode,
 	// and a background subagent or a delegated child may run in another one.
-	const currentMode = await cline.getTaskMode()
+	const currentMode = await task.getTaskMode()
 
 	const modeDetails = await getFullModeDetails(currentMode, customModes, customModePrompts, {
-		cwd: cline.cwd,
+		cwd: task.cwd,
 		globalCustomInstructions,
 		language: language ?? formatLanguage(vscode.env.language),
 	})
@@ -305,15 +305,15 @@ export async function getEnvironmentDetails(
 		details += modeSection
 	}
 
-	lastEnvSnapshot.set(cline, {
+	lastEnvSnapshot.set(task, {
 		visibleFiles: visibleFilesText,
 		openTabs: openTabsText,
 		mode: modeSection,
 	})
 
 	if (includeFileDetails) {
-		details += `\n\n# Current Workspace Directory (${cline.cwd.toPosix()}) Files\n`
-		const isDesktop = arePathsEqual(cline.cwd, path.join(os.homedir(), "Desktop"))
+		details += `\n\n# Current Workspace Directory (${task.cwd.toPosix()}) Files\n`
+		const isDesktop = arePathsEqual(task.cwd, path.join(os.homedir(), "Desktop"))
 
 		if (isDesktop) {
 			// Don't want to immediately access desktop since it would show
@@ -330,7 +330,7 @@ export async function getEnvironmentDetails(
 				// context, so report it as unavailable instead of failing the whole request.
 				let listing: Awaited<ReturnType<typeof listFiles>> | undefined
 				try {
-					listing = await listFiles(cline.cwd, true, maxFiles)
+					listing = await listFiles(task.cwd, true, maxFiles)
 				} catch (error) {
 					details += `(File listing unavailable: ${error instanceof Error ? error.message : String(error)})`
 				}
@@ -340,10 +340,10 @@ export async function getEnvironmentDetails(
 					const { showRooIgnoredFiles = SETTINGS_DEFAULTS.showRooIgnoredFiles } = state ?? {}
 
 					const result = formatResponse.formatFilesList(
-						cline.cwd,
+						task.cwd,
 						files,
 						didHitLimit,
-						cline.rooIgnoreController,
+						task.rooIgnoreController,
 						showRooIgnoredFiles,
 					)
 
@@ -351,10 +351,10 @@ export async function getEnvironmentDetails(
 					// instead of repeating it. Comparing content rather than counting
 					// emissions means a subtask that actually created files still gets a
 					// fresh listing, which is the only reason to re-emit at all.
-					if (lastFileDetails.get(cline) === result) {
+					if (lastFileDetails.get(task) === result) {
 						details += FILE_DETAILS_UNCHANGED_NOTE
 					} else {
-						lastFileDetails.set(cline, result)
+						lastFileDetails.set(task, result)
 						details += result
 					}
 				}
@@ -366,6 +366,6 @@ export async function getEnvironmentDetails(
 		state && typeof state.apiConfiguration?.todoListEnabled === "boolean"
 			? state.apiConfiguration.todoListEnabled
 			: true
-	const reminderSection = todoListEnabled ? formatReminderSection(cline.todoList) : ""
+	const reminderSection = todoListEnabled ? formatReminderSection(task.todoList) : ""
 	return `<environment_details>\n${details.trim()}\n${reminderSection}\n</environment_details>`
 }

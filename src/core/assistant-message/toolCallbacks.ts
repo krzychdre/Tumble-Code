@@ -47,19 +47,19 @@ import { sanitizeToolUseId } from "../../utils/tool-id"
  *   a duplicate anyway, so the model never even learns why it was charged.
  */
 function recordToolFailureAsMistake(
-	cline: Task,
+	task: Task,
 	error: Error,
 	toolName: string | undefined,
 	resultAlreadyDelivered: boolean,
 ): void {
-	if (!toolName || resultAlreadyDelivered || error instanceof AskIgnoredError || cline.abort || cline.abandoned) {
+	if (!toolName || resultAlreadyDelivered || error instanceof AskIgnoredError || task.abort || task.abandoned) {
 		return
 	}
 
-	cline.consecutiveMistakeCount++
+	task.consecutiveMistakeCount++
 	// The cast is safe for every caller: `toolName` originates either from a tool class's
 	// own `name` (typed `ToolName`) or from a static literal in `presentAssistantMessage`.
-	cline.recordToolError(toolName as ToolName, error.message)
+	task.recordToolError(toolName as ToolName, error.message)
 }
 
 /**
@@ -132,10 +132,7 @@ export interface ToolCallbackSet {
  * Every call returns a fresh set with its own state (the one-result-per-block flag and the
  * approval feedback waiting to be merged into the result), so two blocks never share it.
  */
-export function createToolCallbacks(
-	cline: Task,
-	{ block, toolCallId, toolName }: ToolCallbackOptions,
-): ToolCallbackSet {
+export function createToolCallbacks(task: Task, { block, toolCallId, toolName }: ToolCallbackOptions): ToolCallbackSet {
 	// Track if we've already pushed a tool result for this tool call: only ONE per call.
 	let hasToolResult = false
 
@@ -178,7 +175,7 @@ export function createToolCallbacks(
 		}
 
 		if (toolCallId) {
-			cline.pushToolResultToUserContent(
+			task.pushToolResultToUserContent(
 				{
 					type: "tool_result",
 					tool_use_id: sanitizeToolUseId(toolCallId),
@@ -188,7 +185,7 @@ export function createToolCallbacks(
 			)
 
 			if (imageBlocks.length > 0) {
-				cline.userMessageContent.push(...imageBlocks)
+				task.userMessageContent.push(...imageBlocks)
 			}
 		}
 
@@ -201,7 +198,7 @@ export function createToolCallbacks(
 		progressStatus?: ToolProgressStatus,
 		isProtected?: boolean,
 	) => {
-		const { response, text, images } = await cline.askSay.ask(
+		const { response, text, images } = await task.askSay.ask(
 			type,
 			partialMessage,
 			false,
@@ -212,12 +209,12 @@ export function createToolCallbacks(
 		if (response !== "yesButtonClicked") {
 			// Handle both messageResponse and noButtonClicked with text.
 			if (text) {
-				await cline.askSay.say("user_feedback", text, images)
+				await task.askSay.say("user_feedback", text, images)
 				pushToolResult(formatResponse.toolResult(formatResponse.toolDeniedWithFeedback(text), images))
 			} else {
 				pushToolResult(formatResponse.toolDenied())
 			}
-			cline.didRejectTool = true
+			task.didRejectTool = true
 			return false
 		}
 
@@ -225,7 +222,7 @@ export function createToolCallbacks(
 		// Don't push it as a separate tool_result here - that would create duplicates.
 		// The tool will call pushToolResult, which will merge the feedback into the actual result.
 		if (text) {
-			await cline.askSay.say("user_feedback", text, images)
+			await task.askSay.say("user_feedback", text, images)
 			approvalFeedback = { text, images }
 		}
 
@@ -253,14 +250,14 @@ export function createToolCallbacks(
 		// this error comes from its trailing cleanup, which is not a model mistake
 		// (and whose envelope `pushToolResult` drops as a duplicate anyway).
 		// On an aborting task this call is already a no-op: the helper returns early
-		// when `cline.abort` is set, so the guard below cannot lose any accounting.
-		recordToolFailureAsMistake(cline, error, failedToolName, hasToolResult)
+		// when `task.abort` is set, so the guard below cannot lose any accounting.
+		recordToolFailureAsMistake(task, error, failedToolName, hasToolResult)
 
 		// Silently ignore errors raised while the task is aborting. ask()/say()
 		// throw a plain abort Error when access.abort is set; reporting it via
 		// say() would re-throw (say() is itself abort-gated) and crash the
 		// process. The abort is intentional, so there is nothing to surface.
-		if (cline.abort) {
+		if (task.abort) {
 			return
 		}
 
@@ -270,7 +267,7 @@ export function createToolCallbacks(
 
 		const errorString = `Error ${action}: ${describeToolErrorForModel(error)}`
 
-		await cline.askSay.say(
+		await task.askSay.say(
 			"error",
 			`Error ${action}:\n${error.message ?? JSON.stringify(serializeError(error), null, 2)}`,
 		)
