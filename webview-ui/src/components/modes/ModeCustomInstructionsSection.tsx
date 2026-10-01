@@ -43,7 +43,7 @@ export const ModeCustomInstructionsSection = ({
 	const prompt = customModePrompts?.[visualMode] as PromptComponent
 
 	return (
-		<div className="mb-2">
+		<div className="mb-row">
 			<PromptFieldHeader
 				title={t("prompts:customInstructions.title")}
 				resetTooltip={t("prompts:customInstructions.resetToDefault")}
@@ -51,7 +51,7 @@ export const ModeCustomInstructionsSection = ({
 				isCustomMode={Boolean(customMode)}
 				onReset={onReset}
 			/>
-			<div className="text-base text-vscode-descriptionForeground mb-2">
+			<div className="text-base text-vscode-descriptionForeground mb-row">
 				{t("prompts:customInstructions.description", {
 					modeName: currentMode?.name || "Code",
 				})}

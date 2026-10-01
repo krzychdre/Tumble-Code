@@ -199,7 +199,7 @@ export const ContextManagementSettings = ({
 							{t("settings:contextManagement.rooignore.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
+					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
 						{t("settings:contextManagement.rooignore.description")}
 					</div>
 				</SearchableSetting>
@@ -216,7 +216,7 @@ export const ContextManagementSettings = ({
 							{t("settings:contextManagement.enableSubfolderRules.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
+					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
 						{t("settings:contextManagement.enableSubfolderRules.description")}
 					</div>
 				</SearchableSetting>
@@ -295,7 +295,7 @@ export const ContextManagementSettings = ({
 							{t("settings:contextManagement.diagnostics.includeMessages.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
+					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
 						{t("settings:contextManagement.diagnostics.includeMessages.description")}
 					</div>
 				</SearchableSetting>
@@ -393,7 +393,7 @@ export const ContextManagementSettings = ({
 							{t("settings:contextManagement.includeCurrentTime.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
+					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
 						{t("settings:contextManagement.includeCurrentTime.description")}
 					</div>
 				</SearchableSetting>
@@ -410,7 +410,7 @@ export const ContextManagementSettings = ({
 							{t("settings:contextManagement.includeCurrentCost.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
+					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
 						{t("settings:contextManagement.includeCurrentCost.description")}
 					</div>
 				</SearchableSetting>
@@ -464,7 +464,7 @@ export const ContextManagementSettings = ({
 					</LabeledCheckbox>
 				</SearchableSetting>
 				{autoCondenseContext && (
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
 							<FoldVertical size={16} />
 							<div>{t("settings:contextManagement.condensingThreshold.label")}</div>
@@ -540,7 +540,7 @@ export const ContextManagementSettings = ({
 							settingId="context-condense-profile"
 							section="contextManagement"
 							label={t("settings:contextManagement.condenseProfile.label")}
-							className="mt-4">
+							className="mt-section">
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:contextManagement.condenseProfile.label")}
 							</label>

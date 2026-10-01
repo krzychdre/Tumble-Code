@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "Densidade do chat",
-			"description": "Controla o espaçamento entre linhas e blocos do chat",
+			"label": "Densidade da interface",
+			"description": "Controla o espaçamento do chat, das configurações e das páginas MCP e Modos",
 			"comfortable": "Confortável",
 			"compact": "Compacta"
 		},

@@ -42,7 +42,7 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 							settingId="web-searxng-url"
 							section="web"
 							label={t("settings:web.searxngBaseUrl.label")}
-							className="mt-4">
+							className="mt-section">
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:web.searxngBaseUrl.label")}
 							</label>
@@ -64,7 +64,7 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 							settingId="web-max-results"
 							section="web"
 							label={t("settings:web.maxResults.label")}
-							className="mt-4">
+							className="mt-section">
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:web.maxResults.label")}
 							</label>

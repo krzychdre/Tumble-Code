@@ -14,8 +14,8 @@ export const SystemPromptActions = ({ currentModeSlug }: SystemPromptActionsProp
 	const { t } = useAppTranslation()
 
 	return (
-		<div className="pb-4 border-b border-vscode-input-border">
-			<div className="flex gap-2 mb-4">
+		<div className="pb-section border-b border-vscode-input-border">
+			<div className="flex gap-2 mb-section">
 				<Button
 					variant="primary"
 					onClick={() => {

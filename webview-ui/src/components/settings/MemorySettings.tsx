@@ -70,7 +70,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							settingId="memory-recall"
 							section="memory"
 							label={t("settings:memory.recall.label")}
-							className="mt-4">
+							className="mt-section">
 							<LabeledCheckbox
 								checked={memoryRecallEnabled ?? true}
 								onChange={(e: any) => {
@@ -87,7 +87,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							settingId="memory-directory"
 							section="memory"
 							label={t("settings:memory.directory.label")}
-							className="mt-4">
+							className="mt-section">
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:memory.directory.label")}
 							</label>
@@ -110,7 +110,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							settingId="memory-share-claude-code"
 							section="memory"
 							label={t("settings:memory.shareWithClaudeCode.label")}
-							className="mt-4">
+							className="mt-section">
 							<LabeledCheckbox
 								checked={autoMemoryShareWithClaudeCode ?? false}
 								disabled={!!autoMemoryDirectory}
@@ -131,7 +131,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							settingId="memory-writer-profile"
 							section="memory"
 							label={t("settings:memory.writerProfile.label")}
-							className="mt-4">
+							className="mt-section">
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:memory.writerProfile.label")}
 							</label>
@@ -165,7 +165,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							settingId="memory-dream-enable"
 							section="memory"
 							label={t("settings:memory.dream.enable.label")}
-							className="mt-4">
+							className="mt-section">
 							<LabeledCheckbox
 								checked={autoDreamEnabled ?? true}
 								onChange={(e: any) => {
@@ -184,7 +184,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 									settingId="memory-dream-hours"
 									section="memory"
 									label={t("settings:memory.dream.minHours.label")}
-									className="mt-4">
+									className="mt-section">
 									<label className="block text-sm font-medium mb-2">
 										{t("settings:memory.dream.minHours.label")}
 									</label>
@@ -213,7 +213,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 									settingId="memory-dream-sessions"
 									section="memory"
 									label={t("settings:memory.dream.minSessions.label")}
-									className="mt-4">
+									className="mt-section">
 									<label className="block text-sm font-medium mb-2">
 										{t("settings:memory.dream.minSessions.label")}
 									</label>

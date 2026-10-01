@@ -199,7 +199,7 @@ export const SkillsSettings: React.FC = () => {
 			{/* Fixed Header */}
 			<div className="flex-shrink-0">
 				<SectionHeader>{t("settings:sections.skills")}</SectionHeader>
-				<div className="flex flex-col gap-2 px-5 py-2">
+				<div className="flex flex-col gap-row px-5 py-row">
 					<p className="text-vscode-descriptionForeground text-sm m-0">{t("settings:skills.description")}</p>
 
 					{/* Add Skill button */}
@@ -223,7 +223,7 @@ export const SkillsSettings: React.FC = () => {
 							{projectSkills.length > 0 ? (
 								projectSkills.map(renderSkillItem)
 							) : (
-								<div className="px-2 pb-4 text-sm text-vscode-descriptionForeground cursor-default">
+								<div className="px-2 pb-section text-sm text-vscode-descriptionForeground cursor-default">
 									{t("settings:skills.noWorkspaceSkills")}
 								</div>
 							)}
@@ -238,7 +238,7 @@ export const SkillsSettings: React.FC = () => {
 					{globalSkills.length > 0 ? (
 						globalSkills.map(renderSkillItem)
 					) : (
-						<div className="px-2 pb-4 text-sm text-vscode-descriptionForeground cursor-default">
+						<div className="px-2 pb-section text-sm text-vscode-descriptionForeground cursor-default">
 							{t("settings:skills.noGlobalSkills")}
 						</div>
 					)}

@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "채팅 밀도",
-			"description": "채팅 행과 블록 사이의 간격을 조절합니다",
+			"label": "인터페이스 밀도",
+			"description": "채팅, 설정, MCP 및 모드 페이지의 간격을 조절합니다",
 			"comfortable": "넓게",
 			"compact": "컴팩트"
 		},

@@ -149,7 +149,7 @@ export const SlashCommandsSettings: React.FC = () => {
 			{/* Fixed Header */}
 			<div className="flex-shrink-0">
 				<SectionHeader>{t("settings:sections.slashCommands")}</SectionHeader>
-				<div className="flex flex-col gap-2 px-5 py-2">
+				<div className="flex flex-col gap-row px-5 py-row">
 					<p className="text-vscode-descriptionForeground text-sm m-0">
 						{t("settings:slashCommands.description")}
 					</p>
@@ -177,7 +177,7 @@ export const SlashCommandsSettings: React.FC = () => {
 							{projectCommands.length > 0 ? (
 								projectCommands.map(renderCommandItem)
 							) : (
-								<div className="px-2 pb-4 text-sm text-vscode-descriptionForeground cursor-default">
+								<div className="px-2 pb-section text-sm text-vscode-descriptionForeground cursor-default">
 									{t("settings:slashCommands.noWorkspaceCommands")}
 								</div>
 							)}
@@ -192,7 +192,7 @@ export const SlashCommandsSettings: React.FC = () => {
 					{globalCommands.length > 0 ? (
 						globalCommands.map(renderCommandItem)
 					) : (
-						<div className="px-2 pb-4 text-sm text-vscode-descriptionForeground cursor-default">
+						<div className="px-2 pb-section text-sm text-vscode-descriptionForeground cursor-default">
 							{t("settings:slashCommands.noGlobalCommands")}
 						</div>
 					)}

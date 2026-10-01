@@ -32,7 +32,9 @@
 	   `py-row` / `px-gutter` utilities work and read the runtime value, which
 	   `[data-density="compact"]` overrides. */
 	--spacing-row: 8px; /* between rows inside a block */
-	--spacing-block: 12px; /* between chat blocks */
+	--spacing-block: 12px; /* between chat blocks, between list items */
+	--spacing-section: 16px; /* between the settings of a page */
+	--spacing-page: 24px; /* above a page or section title */
 	--spacing-gutter: 12px; /* panel side padding */
 
 	/* Timestamps, counters, hint rows. */
@@ -270,12 +272,15 @@
 
 /*
 	* Density (§2.1, ai_plans/2026-09-27_ui-modernization.md): the compact choice
-	* tightens the two chat spacing tokens. `[data-density]` sits on the document
-	* root (App.tsx), so every spacing-token consumer follows it.
+	* tightens the vertical spacing tokens (the gutter stays). `[data-density]`
+	* sits on the document root (App.tsx), so the chat, the settings pages, the
+	* MCP and Modes pages all follow it.
 	*/
 [data-density="compact"] {
 	--spacing-row: 4px;
 	--spacing-block: 8px;
+	--spacing-section: 12px;
+	--spacing-page: 16px;
 }
 
 /*

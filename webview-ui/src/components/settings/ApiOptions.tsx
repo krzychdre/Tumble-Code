@@ -279,7 +279,7 @@ const ApiOptions = ({
 	}, [organizationAllowList, apiConfiguration.apiProvider])
 
 	return (
-		<div className="flex flex-col gap-3">
+		<div className="flex flex-col gap-block">
 			<div className="flex flex-col gap-1 relative">
 				<label className="block font-medium">{t("settings:providers.apiProvider")}</label>
 				<SearchableSelect

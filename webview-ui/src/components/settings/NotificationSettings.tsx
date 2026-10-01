@@ -171,7 +171,7 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 				</SearchableSetting>
 
 				{soundEnabled && (
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						<SearchableSetting
 							settingId="notifications-sound-volume"
 							section="notifications"

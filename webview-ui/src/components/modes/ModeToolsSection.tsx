@@ -60,7 +60,7 @@ export const ModeToolsSection = ({
 		}
 
 	return (
-		<div className="mb-4">
+		<div className="mb-section">
 			<div className="flex justify-between items-center mb-1">
 				<div className="font-bold">{t("prompts:tools.title")}</div>
 				{customMode && (
@@ -77,7 +77,7 @@ export const ModeToolsSection = ({
 				)}
 			</div>
 			{!customMode && (
-				<div className="text-sm text-vscode-descriptionForeground mb-2">
+				<div className="text-sm text-vscode-descriptionForeground mb-row">
 					{t("prompts:tools.builtInModesText")}
 				</div>
 			)}
@@ -129,7 +129,7 @@ export const ModeToolsSection = ({
 				</>
 			) : (
 				<>
-					<div className="text-sm text-vscode-foreground mb-2 leading-relaxed">
+					<div className="text-sm text-vscode-foreground mb-row leading-relaxed">
 						{(() => {
 							const enabledGroups = currentMode?.groups || []
 

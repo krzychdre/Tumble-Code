@@ -4,6 +4,5 @@
 	"src/components/code-index/useCodeIndexSettings.ts": ["useCodeIndexSettings"],
 	"src/components/common/DiffView.tsx": ["DiffView"],
 	"src/components/common/MermaidButton.tsx": ["MermaidButton"],
-	"src/components/mcp/McpView.tsx": ["ServerRow"],
 	"src/hooks/useScrollLifecycle.ts": ["useScrollLifecycle"]
 }
