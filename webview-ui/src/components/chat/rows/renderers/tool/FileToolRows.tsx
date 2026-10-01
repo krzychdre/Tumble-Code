@@ -3,7 +3,7 @@ import { Eye, FileCode2, FolderTree, ListTree, SquareArrowOutUpRight } from "luc
 
 import { vscode } from "@src/utils/vscode"
 import { formatPathTooltip } from "@src/utils/formatPathTooltip"
-import { ToolUseBlock, ToolUseBlockHeader } from "@src/components/common/ToolUseBlock"
+import { ToolUseBlock } from "@src/components/common/ToolUseBlock"
 import CodeAccordion from "@src/components/common/CodeAccordion"
 import { PathTooltip } from "@src/components/ui/PathTooltip"
 import { BatchFilePermission } from "@src/components/chat/BatchFilePermission"
@@ -55,8 +55,10 @@ export const ReadFileToolRow = ({ message, tool, onBatchFileResponse }: ToolRend
 			</div>
 			<div className="pl-6">
 				<ToolUseBlock>
-					<ToolUseBlockHeader
-						className="group"
+					{/* Opens the file: a real button so Tab reaches it. */}
+					<button
+						type="button"
+						className="group flex w-full items-center p-0 text-left font-mono text-sm text-vscode-descriptionForeground select-none bg-transparent border-none cursor-pointer focus-ring"
 						onClick={() =>
 							vscode.postMessage({
 								type: "openFile",
@@ -70,12 +72,12 @@ export const ReadFileToolRow = ({ message, tool, onBatchFileResponse }: ToolRend
 								{formatPathTooltip(tool.path, tool.reason)}
 							</span>
 						</PathTooltip>
-						<div style={{ flexGrow: 1 }}></div>
+						<span className="flex-grow" />
 						<SquareArrowOutUpRight
-							className="w-4 shrink-0 codicon codicon-link-external opacity-0 group-hover:opacity-100 transition-opacity"
+							className="w-4 shrink-0 codicon codicon-link-external opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity"
 							style={{ fontSize: 13.5, margin: "1px 0" }}
 						/>
-					</ToolUseBlockHeader>
+					</button>
 				</ToolUseBlock>
 			</div>
 		</>
