@@ -1,6 +1,9 @@
 import { getWorkspacePath } from "../../utils/path"
 import { RooDirectoryResolver } from "../../services/roo-config/RooDirectoryResolver"
 
+/** The project file of custom modes, in the workspace root. */
+export const ROOMODES_FILENAME = ".roomodes"
+
 /**
  * The `rules-<slug>` directory of a mode: `~/.roo/rules-<slug>` for a global
  * mode, `<workspace>/.roo/rules-<slug>` for a project mode. Returns undefined
