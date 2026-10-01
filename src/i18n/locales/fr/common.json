@@ -79,7 +79,6 @@
 		"share_task_not_found": "Tâche non trouvée ou accès refusé.",
 		"task_show_failed": "Échec de l'ouverture de la tâche. Elle a peut-être été supprimée ou corrompue.",
 		"mode_import_failed": "Échec de l'importation du mode : {{error}}",
-		"delete_rules_folder_failed": "Échec de la suppression du dossier de règles : {{rulesFolderPath}}. Erreur : {{error}}",
 		"command_not_found": "Commande '{{name}}' introuvable",
 		"open_command_file": "Échec de l'ouverture du fichier de commande",
 		"delete_command": "Échec de la suppression de la commande",

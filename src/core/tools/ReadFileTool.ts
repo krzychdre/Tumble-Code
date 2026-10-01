@@ -356,7 +356,12 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	
 	${result.content}`
 		} else if (result.returnedLines === 0) {
-			output = "Note: File is empty"
+			// No lines come back for an empty file and for an offset past the last line; the model
+			// needs to know which, or it takes a long file for an empty one.
+			output =
+				content.length === 0 || result.totalLines === 0
+					? "Note: File is empty"
+					: `Note: offset ${offset1} is past the end of the file, which has ${result.totalLines} lines. Use an offset from 1 to ${result.totalLines}.`
 		}
 
 		return output

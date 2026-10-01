@@ -117,8 +117,8 @@ type QdrantConnection =
  * Turns the Qdrant URL the user typed into the URL shown in messages and the client connection.
  *
  * - Empty or missing: `http://localhost:6333`.
- * - No scheme (`qdrant.example.com`, `localhost:6333`, `[::1]:6333`): `http://` is added. Input that starts
- *   with "http" and has a colon is taken as it is, so `httpbin.org:8080` parses with the scheme `httpbin:`.
+ * - No scheme, that is no `://` (`qdrant.example.com`, `localhost:6333`, `[::1]:6333`, `httpbin.org:8080`):
+ *   `http://` is added.
  * - A parsable URL is kept as typed (trimmed). The connection always names the port: the explicit one, else
  *   443 for https and 80 for anything else, so the client never falls back to its own default (6333). A path
  *   becomes the prefix without trailing slashes; query and fragment are ignored.
@@ -148,11 +148,9 @@ function resolveQdrantUrl(input: string | undefined): string {
 	if (!trimmed) {
 		return DEFAULT_QDRANT_URL
 	}
-	if (trimmed.includes("://") && URL.canParse(trimmed)) {
-		return trimmed
-	}
-	// A bare host name or host:port.
-	return trimmed.includes(":") && trimmed.startsWith("http") ? trimmed : `http://${trimmed}`
+	// A bare host name or host:port has no scheme. Testing for a colon alone read `httpbin.org:8080` as a URL
+	// with the scheme `httpbin:` and no host.
+	return trimmed.includes("://") ? trimmed : `http://${trimmed}`
 }
 
 /**

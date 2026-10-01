@@ -79,7 +79,6 @@
 		"share_task_not_found": "Tarea no encontrada o acceso denegado.",
 		"task_show_failed": "No se pudo abrir la tarea. Puede haber sido eliminada o corrompida.",
 		"mode_import_failed": "Error al importar el modo: {{error}}",
-		"delete_rules_folder_failed": "Error al eliminar la carpeta de reglas: {{rulesFolderPath}}. Error: {{error}}",
 		"command_not_found": "Comando '{{name}}' no encontrado",
 		"open_command_file": "Error al abrir el archivo de comandos",
 		"delete_command": "Error al eliminar el comando",

@@ -79,7 +79,6 @@
 		"share_task_not_found": "Taak niet gevonden of toegang geweigerd.",
 		"task_show_failed": "Taak kan niet worden geopend. Deze is mogelijk verwijderd of beschadigd.",
 		"mode_import_failed": "Importeren van modus mislukt: {{error}}",
-		"delete_rules_folder_failed": "Kan regelmap niet verwijderen: {{rulesFolderPath}}. Fout: {{error}}",
 		"command_not_found": "Opdracht '{{name}}' niet gevonden",
 		"open_command_file": "Kan opdrachtbestand niet openen",
 		"delete_command": "Kan opdracht niet verwijderen",

@@ -42,8 +42,9 @@ describe("normalizeQdrantUrl", () => {
 		["[::1]:6333", "http://[::1]:6333", host("[::1]", false, 6333)],
 		["invalid-url-format", "http://invalid-url-format", host("invalid-url-format", false, 80)],
 		["qdrant:6333/prefix", "http://qdrant:6333/prefix", host("qdrant", false, 6333, "/prefix")],
-		// Known quirk kept as is: a host starting with "http" plus a port is read as a URL with scheme "httpbin:".
-		["httpbin.org:8080", "httpbin.org:8080", host("", false, 80, "8080")],
+		// A host name starting with "http" plus a port is still a bare host:port, not a URL with scheme "httpbin:".
+		["httpbin.org:8080", "http://httpbin.org:8080", host("httpbin.org", false, 8080)],
+		["http-qdrant", "http://http-qdrant", host("http-qdrant", false, 80)],
 		// Not a URL even with http:// added: the client gets the raw URL.
 		["foo bar", "http://foo bar", { url: "http://foo bar" }],
 		["http://", "http://", { url: "http://" }],

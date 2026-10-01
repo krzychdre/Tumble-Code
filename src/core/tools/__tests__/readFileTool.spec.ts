@@ -581,6 +581,27 @@ describe("ReadFileTool", () => {
 
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("empty"))
 		})
+
+		it("says the offset is past the end instead of calling a non-empty file empty", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			mockedFsReadFile.mockResolvedValue(Buffer.from("line\n".repeat(9) + "line"))
+			mockedReadWithSlice.mockReturnValue({
+				content: "Error: offset 49 is beyond file end (10 lines)",
+				returnedLines: 0,
+				totalLines: 10,
+				wasTruncated: false,
+				includedRanges: [],
+			})
+
+			await readFileTool.execute({ path: "ten.ts", offset: 50 }, mockTask as any, callbacks)
+
+			const result = callbacks.pushToolResult.mock.calls[0][0] as string
+			expect(result).toContain("offset 50 is past the end of the file, which has 10 lines")
+			expect(result).toContain("Use an offset from 1 to 10")
+			expect(result).not.toContain("empty")
+		})
 	})
 
 	describe("approval flow", () => {
