@@ -1,6 +1,8 @@
 import * as fs from "fs"
 import * as path from "path"
 
+import { writeFileAtomic } from "@roo-code/core/fs"
+
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { logger } from "../../utils/logging"
 
@@ -154,21 +156,6 @@ async function pathExists(filePath: string): Promise<boolean> {
 }
 
 /**
- * Forces a file's bytes to disk before it is renamed to its final name.
- * Without this, a power loss right after the rename can leave the artifact id
- * pointing at an empty file on file systems that reorder data and metadata
- * writes (the same reasoning as `safeWriteJson` in `@roo-code/core`).
- */
-async function flushToDisk(filePath: string): Promise<void> {
-	const handle = await fs.promises.open(filePath, "r+")
-	try {
-		await handle.sync()
-	} finally {
-		await handle.close()
-	}
-}
-
-/**
  * ArtifactStore persists oversized text to a task-local file and hands back an
  * id the model can quote to `read_artifact`.
  *
@@ -253,17 +240,8 @@ export class ArtifactStore {
 			filePath = path.join(dir, fileName)
 		}
 
-		const tempPath = path.join(dir, `.${fileName}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`)
-
 		try {
-			await fs.promises.writeFile(tempPath, payload, { encoding: "utf8", flag: "wx" })
-			await flushToDisk(tempPath)
-			await fs.promises.rename(tempPath, filePath)
-		} catch (error) {
-			await fs.promises.unlink(tempPath).catch(() => {
-				// The temp file may never have been created; the write error below is what matters.
-			})
-			throw error
+			await writeFileAtomic(filePath, payload)
 		} finally {
 			claimedPaths.delete(filePath)
 		}

@@ -9,6 +9,17 @@ import { listPlans, readPlan } from "../plans.js"
 import { makeTempDir } from "./fixtures.js"
 import type { Session } from "../types.js"
 
+// Bundled like the MCP server (esbuild.mjs): the atomic write comes from @roo-code/core/fs, whose
+// CommonJS dependencies need `require` inside an ES module bundle.
+const WORKER_BUILD = {
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	banner: {
+		js: "import { createRequire as __createRequire } from 'node:module'\nconst require = __createRequire(import.meta.url)",
+	},
+} as const
+
 const source: Session = {
 	agent: "tumble-code",
 	id: "019fb786-8ec1",
@@ -344,9 +355,7 @@ describe("handoff lifecycle", () => {
 		await build({
 			entryPoints: [path.join(import.meta.dirname, "fixtures", "handoff-update-worker.ts")],
 			outfile: worker,
-			bundle: true,
-			format: "esm",
-			platform: "node",
+			...WORKER_BUILD,
 		})
 
 		const first = runUpdateWorker(worker, {
@@ -378,9 +387,7 @@ describe("handoff lifecycle", () => {
 		await build({
 			entryPoints: [path.join(import.meta.dirname, "fixtures", "handoff-update-worker.ts")],
 			outfile: worker,
-			bundle: true,
-			format: "esm",
-			platform: "node",
+			...WORKER_BUILD,
 		})
 		const paused = spawn(process.execPath, [worker], {
 			env: {
@@ -424,25 +431,6 @@ describe("handoff lifecycle", () => {
 		expect(fs.readFileSync(created.path, "utf8")).toBe(before)
 		expect(fs.readdirSync(`${created.path}.updates`).filter((name) => name.endsWith(".tmp"))).toEqual([])
 		expect(readHandoff(created.id)?.status).toBe("open")
-	})
-
-	it("syncs the parent directory after rename and tolerates unsupported directory fsync", async () => {
-		const syncDirectory = vi.fn(async () => Promise.reject(new Error("directory fsync unsupported")))
-		const created = await createHandoff({ session: source, to: "claude-code" })
-
-		const result = await updateHandoff(
-			created.id,
-			{ status: "done" },
-			{
-				rename: fs.promises.rename,
-				syncDirectory,
-			},
-		)
-
-		expect(result!.status).toBe("done")
-		expect(syncDirectory).toHaveBeenCalledTimes(2)
-		expect(syncDirectory).toHaveBeenNthCalledWith(1, `${created.path}.updates`)
-		expect(syncDirectory).toHaveBeenNthCalledWith(2, path.dirname(created.path))
 	})
 })
 

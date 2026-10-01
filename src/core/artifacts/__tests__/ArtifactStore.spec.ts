@@ -21,6 +21,16 @@ vi.mock("fs", async (importOriginal) => {
 	return { ...wrapped, default: wrapped }
 })
 
+// The atomic write itself lives in @roo-code/core/fs, which imports "fs/promises"; a write failure is
+// injected there.
+vi.mock("fs/promises", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("fs/promises")>()
+	const wrapped = { ...actual, writeFile: vi.fn(actual.writeFile) }
+	return { ...wrapped, default: wrapped }
+})
+
+import * as fsPromises from "fs/promises"
+
 import {
 	ArtifactStore,
 	MAX_ARTIFACT_BYTES,
@@ -184,7 +194,7 @@ describe("ArtifactStore", () => {
 		it("leaves no partial artifact and no temporary file when the write fails midway", async () => {
 			const store = new ArtifactStore(taskDir)
 			const realWriteFile = fs.promises.writeFile.bind(fs.promises)
-			vi.spyOn(fs.promises, "writeFile").mockImplementation(async (file, data, options) => {
+			vi.mocked(fsPromises.writeFile).mockImplementationOnce(async (file, data, options) => {
 				// Half the bytes reach the disk, then the device fills up.
 				await realWriteFile(file, String(data).slice(0, 5), options)
 				throw new Error("ENOSPC: no space left on device")
@@ -198,7 +208,7 @@ describe("ArtifactStore", () => {
 		it("never replaces an existing artifact, even when the new write fails", async () => {
 			const store = new ArtifactStore(taskDir)
 			const existing = await store.save("tool", "previous artifact", 1706119234567)
-			vi.spyOn(fs.promises, "writeFile").mockRejectedValue(new Error("EIO: i/o error"))
+			vi.mocked(fsPromises.writeFile).mockRejectedValueOnce(new Error("EIO: i/o error"))
 
 			await expect(store.save("tool", "new artifact", 1706119234567)).rejects.toThrow("EIO")
 
