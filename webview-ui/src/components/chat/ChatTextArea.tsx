@@ -39,8 +39,8 @@ interface ChatTextAreaProps {
 	// Edit mode props
 	isEditMode?: boolean
 	onCancel?: () => void
-	// Stop/Queue functionality
-	isStreaming?: boolean
+	// Stop/Queue functionality: shown while the task is busy (see isTaskBusy)
+	isTaskBusy?: boolean
 	onStop?: () => void
 	onEnqueueMessage?: () => void
 }
@@ -63,7 +63,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			modeShortcutText,
 			isEditMode = false,
 			onCancel,
-			isStreaming = false,
+			isTaskBusy = false,
 			onStop,
 			onEnqueueMessage,
 		},
@@ -607,7 +607,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 							<ComposerActionButtons
 								isEditMode={isEditMode}
-								isStreaming={isStreaming}
+								isTaskBusy={isTaskBusy}
 								hasInputContent={hasInputContent}
 								shouldDisableImages={shouldDisableImages}
 								isEnhancingPrompt={isEnhancingPrompt}

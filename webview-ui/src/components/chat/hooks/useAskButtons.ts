@@ -5,6 +5,8 @@ import type { AudioType, ClineAsk, ClineMessage, ClineSayTool, HistoryItem } fro
 
 import { findLast } from "@roo-code/core/browser"
 
+import { isTaskBusy as deriveTaskBusy } from "./taskBusy"
+
 type Translate = (key: string) => string
 
 /**
@@ -376,15 +378,40 @@ export function useAskButtons({
 		return false
 	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText])
 
+	// ts of the ask the user answered from this view (an approval button or a
+	// typed reply). Until the host sends the next message that ask is still
+	// the last one, yet the task is already working again, so it must not
+	// read as "waiting on the user".
+	const [answeredAskTs, setAnsweredAskTs] = useState<number | undefined>(undefined)
+	const lastMessageRef = useRef(lastMessage)
+	useEffect(() => {
+		lastMessageRef.current = lastMessage
+	}, [lastMessage])
+
+	const markLastAskAnswered = useCallback(() => {
+		const last = lastMessageRef.current
+		if (last?.type === "ask") {
+			setAnsweredAskTs(last.ts)
+		}
+	}, [])
+
+	// The composer's stop button follows this, not isStreaming: a running
+	// command, an MCP call or a retry countdown is work the user may stop too.
+	const isTaskBusy = useMemo(
+		() => deriveTaskBusy(lastMessage, isStreaming, answeredAskTs),
+		[lastMessage, isStreaming, answeredAskTs],
+	)
+
 	// Resets the approval button UI to its hidden/disabled state after the
 	// user answered through a button (or the host invoked one).
 	const clearApprovalButtons = useCallback(() => {
+		markLastAskAnswered()
 		setSendingDisabled(true)
 		setClineAsk(undefined)
 		setEnableButtons(false)
 		setPrimaryButton(undefined, undefined)
 		setSecondaryButton(undefined, undefined)
-	}, [setPrimaryButton, setSecondaryButton])
+	}, [markLastAskAnswered, setPrimaryButton, setSecondaryButton])
 
 	return {
 		clineAsk,
@@ -399,6 +426,8 @@ export function useAskButtons({
 		sendingDisabled,
 		setSendingDisabled,
 		isStreaming,
+		isTaskBusy,
+		markLastAskAnswered,
 		clearApprovalButtons,
 	}
 }

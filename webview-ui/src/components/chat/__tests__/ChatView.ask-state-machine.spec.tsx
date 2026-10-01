@@ -35,7 +35,7 @@ interface TextAreaProps {
 	sendingDisabled: boolean
 	selectApiConfigDisabled: boolean
 	selectedImages: string[]
-	isStreaming?: boolean
+	isTaskBusy?: boolean
 	onSend: () => void
 }
 
@@ -260,7 +260,8 @@ interface Row {
 		enabled: boolean | null
 		sendingDisabled: boolean
 		apiConfigLocked: boolean
-		streaming: boolean
+		/** The composer shows the stop button (isTaskBusy). */
+		busy: boolean
 		onPrimary: string[]
 		onSecondary: string[]
 		typingPausesFollowUp: boolean
@@ -273,8 +274,8 @@ const buttons = (
 	enabled: boolean | null,
 ): Pick<Row["expected"], "primary" | "secondary" | "enabled"> => ({ primary, secondary, enabled })
 
-const idle = { sendingDisabled: false, apiConfigLocked: false, streaming: false, typingPausesFollowUp: false }
-const partialAsk = { sendingDisabled: true, apiConfigLocked: true, streaming: true, typingPausesFollowUp: false }
+const idle = { sendingDisabled: false, apiConfigLocked: false, busy: false, typingPausesFollowUp: false }
+const partialAsk = { sendingDisabled: true, apiConfigLocked: true, busy: true, typingPausesFollowUp: false }
 
 const YES = ["askResponse:yesButtonClicked"]
 const NO = ["askResponse:noButtonClicked"]
@@ -429,6 +430,8 @@ const rows: Row[] = [
 		expected: {
 			...buttons("chat:proceedWhileRunning.title", "chat:killCommand.title", true),
 			...idle,
+			// The command is still running: the task is busy, so the stop button shows.
+			busy: true,
 			onPrimary: ["terminalOperation:continue"],
 			onSecondary: ["terminalOperation:abort"],
 		},
@@ -499,6 +502,8 @@ const rows: Row[] = [
 		expected: {
 			...buttons("chat:startNewTask.title", null, true),
 			...idle,
+			// The last message is a say: the host is still working.
+			busy: true,
 			onPrimary: NEW_TASK,
 			onSecondary: NEW_TASK,
 		},
@@ -532,7 +537,8 @@ const rows: Row[] = [
 	{
 		name: "an ask already answered by the host (isAnswered)",
 		steps: [withAsk(toolAsk({ tool: "readFile", path: "a.ts" }, { isAnswered: true }))],
-		expected: { ...buttons(null, null, null), ...idle, onPrimary: [], onSecondary: [] },
+		// Auto-approved: the tool runs, so the task is busy.
+		expected: { ...buttons(null, null, null), ...idle, busy: true, onPrimary: [], onSecondary: [] },
 	},
 	{
 		name: "say api_req_started after an ask clears the buttons",
@@ -544,7 +550,7 @@ const rows: Row[] = [
 			...buttons(null, null, null),
 			sendingDisabled: true,
 			apiConfigLocked: true,
-			streaming: true,
+			busy: true,
 			typingPausesFollowUp: false,
 			onPrimary: [],
 			onSecondary: CANCEL,
@@ -566,6 +572,8 @@ const rows: Row[] = [
 			...idle,
 			sendingDisabled: true,
 			apiConfigLocked: true,
+			// The countdown runs on the host: the task is busy.
+			busy: true,
 			onPrimary: YES,
 			onSecondary: NO,
 		},
@@ -581,6 +589,8 @@ const rows: Row[] = [
 			...idle,
 			sendingDisabled: true,
 			apiConfigLocked: true,
+			// The countdown runs on the host: the task is busy.
+			busy: true,
 			onPrimary: YES,
 			onSecondary: NO,
 		},
@@ -596,7 +606,26 @@ const rows: Row[] = [
 				{ type: "say", say: "text", ts: 4, text: "hi" },
 			],
 		],
-		expected: { ...APPROVE_REJECT, ...idle, onPrimary: YES, onSecondary: NO },
+		// The last message is a say, so it counts as work in progress.
+		expected: { ...APPROVE_REJECT, ...idle, busy: true, onPrimary: YES, onSecondary: NO },
+	},
+	{
+		name: "say mcp_server_request_started after an auto-approved use_mcp_server",
+		steps: [
+			[
+				TASK,
+				API_DONE,
+				ask("use_mcp_server", { text: "{}", isAnswered: true }),
+				{ type: "say", say: "mcp_server_request_started", ts: 4 },
+			],
+		],
+		// The MCP call runs on the host: the task is busy.
+		expected: { ...buttons(null, null, null), ...idle, busy: true, onPrimary: [], onSecondary: [] },
+	},
+	{
+		name: "only the task message (the first request has not started yet)",
+		steps: [[TASK]],
+		expected: { ...buttons(null, null, null), ...idle, busy: true, onPrimary: [], onSecondary: [] },
 	},
 	{
 		name: "an empty message list after an ask resets everything",
@@ -625,7 +654,7 @@ describe("ChatView ask state machine", () => {
 			...readButtons(first.container),
 			sendingDisabled: textArea.sendingDisabled,
 			apiConfigLocked: textArea.selectApiConfigDisabled,
-			streaming: textArea.isStreaming === true,
+			busy: textArea.isTaskBusy === true,
 		}
 		const typing = await postedDuring(() => harness.textArea!.setInputValue("typed"))
 		await act(async () => harness.textArea!.setInputValue(""))
@@ -704,6 +733,34 @@ describe("ChatView host messages", () => {
 		await act(async () => fromHost({ type: "invoke", invoke: "sendMessage", text: "later" }))
 
 		expect(postMessage).toHaveBeenCalledWith({ type: "queueMessage", text: "later", images: [] })
+	})
+
+	it("answering an ask keeps the task busy until the host asks again", async () => {
+		const COMMAND = ask("command", { text: "sleep 60" })
+		await mount([withAsk(COMMAND)])
+		expect(harness.textArea!.isTaskBusy).toBe(false)
+
+		// Approved from this view: the ask is still the last message, but the command runs.
+		await act(async () => primaryInvoke())
+		expect(harness.textArea!.isTaskBusy).toBe(true)
+
+		await act(async () => hydrate([TASK, API_DONE, COMMAND, { ...ask("command_output"), ts: 4 }]))
+		expect(harness.textArea!.isTaskBusy).toBe(true)
+
+		await act(async () =>
+			hydrate([TASK, API_DONE, COMMAND, { ...ask("command_output"), ts: 4 }, { ...ask("followup"), ts: 5 }]),
+		)
+		expect(harness.textArea!.isTaskBusy).toBe(false)
+	})
+
+	it("a typed reply to an ask keeps the task busy until the host answers", async () => {
+		await mount([withAsk(toolAsk({ tool: "readFile", path: "a.ts" }))])
+		expect(harness.textArea!.isTaskBusy).toBe(false)
+
+		await type("read b.ts instead")
+		await act(async () => harness.textArea!.onSend())
+		expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ askResponse: "messageResponse" }))
+		expect(harness.textArea!.isTaskBusy).toBe(true)
 	})
 
 	it("invoke setChatBoxMessage appends to the typed text and the images", async () => {
