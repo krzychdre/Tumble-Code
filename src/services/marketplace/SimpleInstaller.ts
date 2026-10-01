@@ -6,6 +6,7 @@ import type { MarketplaceItem, MarketplaceItemType, InstallMarketplaceItemOption
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
 import { getGlobalMcpSettingsPath } from "../mcp/mcpSettingsPath"
+import { McpConfigStore } from "../mcp/McpConfigStore"
 import type { CustomModesManager } from "../../core/config/CustomModesManager"
 
 export interface InstallOptions extends InstallMarketplaceItemOptions {
@@ -14,10 +15,22 @@ export interface InstallOptions extends InstallMarketplaceItemOptions {
 }
 
 export class SimpleInstaller {
+	/**
+	 * Reads and writes the MCP settings files. It is not McpHub's store on purpose: the hub's
+	 * write guard would hide this write from its file watcher, and the watcher is what
+	 * connects a newly installed server.
+	 */
+	private readonly mcpConfigStore: McpConfigStore
+
 	constructor(
 		private readonly context: vscode.ExtensionContext,
 		private readonly customModesManager?: CustomModesManager,
-	) {}
+	) {
+		this.mcpConfigStore = new McpConfigStore({
+			settingsDirectory: () => ensureSettingsDirectoryExists(context),
+			workspacePath: () => vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "",
+		})
+	}
 
 	async installItem(item: MarketplaceItem, options: InstallOptions): Promise<{ filePath: string; line?: number }> {
 		const { target } = options
@@ -47,111 +60,42 @@ export class SimpleInstaller {
 			throw new Error("Mode content should not be an array")
 		}
 
-		// If CustomModesManager is available, use importModeWithRules
-		if (this.customModesManager) {
-			// Transform marketplace content to import format (wrap in customModes array)
-			const importData = {
-				customModes: [yaml.parse(item.content)],
-			}
-			const importYaml = yaml.stringify(importData)
-
-			// Call customModesManager.importModeWithRules
-			const result = await this.customModesManager.importModeWithRules(importYaml, target)
-
-			if (!result.success) {
-				throw new Error(result.error || "Failed to import mode")
-			}
-
-			// Return the file path and line number for VS Code to open
-			const filePath = await this.getModeFilePath(target)
-
-			// Try to find the line number where the mode was added
-			let line: number | undefined
-			try {
-				const fileContent = await fs.readFile(filePath, "utf-8")
-				const lines = fileContent.split("\n")
-				const modeData = yaml.parse(item.content)
-
-				// Find the line containing the slug of the added mode
-				if (modeData?.slug) {
-					const slugLineIndex = lines.findIndex(
-						(l) => l.includes(`slug: ${modeData.slug}`) || l.includes(`slug: "${modeData.slug}"`),
-					)
-					if (slugLineIndex >= 0) {
-						line = slugLineIndex + 1 // Convert to 1-based line number
-					}
-				}
-			} catch (error) {
-				// If we can't find the line number, that's okay
-			}
-
-			return { filePath, line }
+		// Modes are written by CustomModesManager: its write queue keeps two writers
+		// from losing each other's update, and it refreshes the mode list afterwards.
+		if (!this.customModesManager) {
+			throw new Error("CustomModesManager is not available")
 		}
 
-		// Fallback to original implementation if CustomModesManager is not available
-		const filePath = await this.getModeFilePath(target)
+		// Transform marketplace content to import format (wrap in customModes array)
 		const modeData = yaml.parse(item.content)
+		const importYaml = yaml.stringify({ customModes: [modeData] })
 
-		// Read existing file or create new structure
-		let existingData: any = { customModes: [] }
-		try {
-			const existing = await fs.readFile(filePath, "utf-8")
-			const parsed = yaml.parse(existing)
-			// Ensure we have a valid object with customModes array
-			existingData = parsed && typeof parsed === "object" ? parsed : { customModes: [] }
-		} catch (error: any) {
-			if (error.code === "ENOENT") {
-				// File doesn't exist, use default structure - this is fine
-				existingData = { customModes: [] }
-			} else if (error.name === "YAMLParseError" || error.message?.includes("YAML")) {
-				// YAML parsing error - don't overwrite the file!
-				const fileName = target === "project" ? ".roomodes" : "custom-modes.yaml"
-				throw new Error(
-					`Cannot install mode: The ${fileName} file contains invalid YAML. ` +
-						`Please fix the syntax errors in the file before installing new modes.`,
-				)
-			} else {
-				// Other unexpected errors - re-throw
-				throw error
-			}
+		const result = await this.customModesManager.importModeWithRules(importYaml, target)
+
+		if (!result.success) {
+			throw new Error(result.error || "Failed to import mode")
 		}
 
-		// Ensure customModes array exists
-		if (!existingData.customModes) {
-			existingData.customModes = []
-		}
+		// Return the file path and line number for VS Code to open
+		const filePath = await this.getModeFilePath(target)
 
-		// The content is now a single mode object directly
-		if (!modeData.slug) {
-			throw new Error("Invalid mode content: mode missing slug")
-		}
-
-		// Remove existing mode with same slug if it exists
-		existingData.customModes = existingData.customModes.filter((mode: any) => mode.slug !== modeData.slug)
-
-		// Add the new mode
-		existingData.customModes.push(modeData)
-		const addedModeIndex = existingData.customModes.length - 1
-
-		// Write back to file
-		await fs.mkdir(path.dirname(filePath), { recursive: true })
-		const yamlContent = yaml.stringify(existingData, { lineWidth: 0 })
-		await fs.writeFile(filePath, yamlContent, "utf-8")
-
-		// Calculate approximate line number where the new mode was added
+		// Try to find the line number where the mode was added
 		let line: number | undefined
-		if (addedModeIndex >= 0) {
-			const lines = yamlContent.split("\n")
+		try {
+			const fileContent = await fs.readFile(filePath, "utf-8")
+			const lines = fileContent.split("\n")
+
 			// Find the line containing the slug of the added mode
-			const addedMode = existingData.customModes[addedModeIndex]
-			if (addedMode?.slug) {
+			if (modeData?.slug) {
 				const slugLineIndex = lines.findIndex(
-					(l) => l.includes(`slug: ${addedMode.slug}`) || l.includes(`slug: "${addedMode.slug}"`),
+					(l) => l.includes(`slug: ${modeData.slug}`) || l.includes(`slug: "${modeData.slug}"`),
 				)
 				if (slugLineIndex >= 0) {
 					line = slugLineIndex + 1 // Convert to 1-based line number
 				}
 			}
+		} catch (error) {
+			// If we can't find the line number, that's okay
 		}
 
 		return { filePath, line }
@@ -229,32 +173,7 @@ export class SimpleInstaller {
 		const filePath = await this.getMcpFilePath(target)
 		const mcpData = JSON.parse(contentToUse)
 
-		// Read existing file or create new structure
-		let existingData: any = { mcpServers: {} }
-		try {
-			const existing = await fs.readFile(filePath, "utf-8")
-			existingData = JSON.parse(existing) || { mcpServers: {} }
-		} catch (error: any) {
-			if (error.code === "ENOENT") {
-				// File doesn't exist, use default structure
-				existingData = { mcpServers: {} }
-			} else if (error instanceof SyntaxError) {
-				// JSON parsing error - don't overwrite the file!
-				const fileName = target === "project" ? ".roo/mcp.json" : "mcp-settings.json"
-				throw new Error(
-					`Cannot install MCP server: The ${fileName} file contains invalid JSON. ` +
-						`Please fix the syntax errors in the file before installing new servers.`,
-				)
-			} else {
-				// Other unexpected errors - re-throw
-				throw error
-			}
-		}
-
-		// Ensure mcpServers object exists
-		if (!existingData.mcpServers) {
-			existingData.mcpServers = {}
-		}
+		const existingData = await this.readMcpFileForUpdate(filePath, target, "install")
 
 		// Use the item id as the server name
 		const serverName = item.id
@@ -262,10 +181,9 @@ export class SimpleInstaller {
 		// Add or update the single server
 		existingData.mcpServers[serverName] = mcpData
 
-		// Write back to file
-		await fs.mkdir(path.dirname(filePath), { recursive: true })
-		const jsonContent = JSON.stringify(existingData, null, 2)
-		await fs.writeFile(filePath, jsonContent, "utf-8")
+		// McpConfigStore writes atomically, so a crash mid-write cannot leave a truncated file.
+		await this.mcpConfigStore.write(filePath, existingData)
+		const jsonContent = JSON.stringify(existingData, null, "\t")
 
 		// Calculate approximate line number where the new server was added
 		let line: number | undefined
@@ -335,30 +253,45 @@ export class SimpleInstaller {
 
 	private async removeMcp(item: MarketplaceItem, target: "project" | "global"): Promise<void> {
 		const filePath = await this.getMcpFilePath(target)
-
-		try {
-			const existing = await fs.readFile(filePath, "utf-8")
-			const existingData = JSON.parse(existing)
-
-			if (existingData?.mcpServers) {
-				// Parse the item content to get server names
-				let content: string
-				if (Array.isArray(item.content)) {
-					// Array of McpInstallationMethod objects - use first method
-					content = item.content[0].content
-				} else {
-					content = item.content
-				}
-
-				const serverName = item.id
-				delete existingData.mcpServers[serverName]
-
-				// Always write back the file, even if empty
-				await fs.writeFile(filePath, JSON.stringify(existingData, null, 2), "utf-8")
-			}
-		} catch (error) {
-			// File doesn't exist or other error, nothing to remove
+		const existingData = await this.readMcpFileForUpdate(filePath, target, "remove")
+		if (!(item.id in existingData.mcpServers)) {
+			return
 		}
+		delete existingData.mcpServers[item.id]
+		await this.mcpConfigStore.write(filePath, existingData)
+	}
+
+	/**
+	 * Reads an MCP settings file for an edit: an empty server list when the file is missing,
+	 * an error when it holds invalid JSON (so it is not overwritten with only the new entry).
+	 */
+	private async readMcpFileForUpdate(
+		filePath: string,
+		target: "project" | "global",
+		action: "install" | "remove",
+	): Promise<{ mcpServers: Record<string, unknown>; [key: string]: unknown }> {
+		let data: any
+		try {
+			data = await this.mcpConfigStore.readFile(filePath)
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+				return { mcpServers: {} }
+			}
+			if (error instanceof SyntaxError) {
+				const fileName = target === "project" ? ".roo/mcp.json" : "mcp-settings.json"
+				const fix = action === "install" ? "installing new servers" : "removing servers"
+				throw new Error(
+					`Cannot ${action} MCP server: The ${fileName} file contains invalid JSON. ` +
+						`Please fix the syntax errors in the file before ${fix}.`,
+				)
+			}
+			throw error
+		}
+		const config = data && typeof data === "object" ? data : {}
+		if (!config.mcpServers || typeof config.mcpServers !== "object") {
+			config.mcpServers = {}
+		}
+		return config
 	}
 
 	private async getModeFilePath(target: "project" | "global"): Promise<string> {

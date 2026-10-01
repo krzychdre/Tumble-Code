@@ -9,6 +9,7 @@ import type { MarketplaceItem } from "@roo-code/types"
 import type { CustomModesManager } from "../../../core/config/CustomModesManager"
 import * as path from "path"
 import { fileExistsAtPath } from "../../../utils/fs"
+import { McpConfigStore } from "../../mcp/McpConfigStore"
 
 vi.mock("fs/promises", () => ({
 	readFile: vi.fn(),
@@ -89,6 +90,8 @@ describe("SimpleInstaller", () => {
 			const importedData = yaml.parse(importedYaml)
 			expect(importedData.customModes).toHaveLength(1)
 			expect(importedData.customModes[0].slug).toBe("test")
+			// The mode file is written by CustomModesManager only, never by the installer.
+			expect(mockFs.writeFile).not.toHaveBeenCalled()
 		})
 
 		it("should handle import failure from CustomModesManager", async () => {
@@ -122,23 +125,28 @@ describe("SimpleInstaller", () => {
 			)
 		})
 
-		it("should work without CustomModesManager (fallback)", async () => {
+		it("should refuse to write the modes file itself without CustomModesManager", async () => {
 			const installerWithoutManager = new SimpleInstaller(mockContext)
 
-			// Mock file not found
-			const notFoundError = new Error("File not found") as any
-			notFoundError.code = "ENOENT"
-			mockFs.readFile.mockRejectedValueOnce(notFoundError)
-			mockFs.writeFile.mockResolvedValueOnce(undefined as any)
-
-			const result = await installerWithoutManager.installItem(mockModeItem, { target: "project" })
-
-			expect(result.filePath).toBe(path.join("/test/workspace", ".roomodes"))
-			expect(mockFs.writeFile).toHaveBeenCalled()
+			await expect(installerWithoutManager.installItem(mockModeItem, { target: "project" })).rejects.toThrow(
+				"CustomModesManager is not available",
+			)
+			expect(mockFs.writeFile).not.toHaveBeenCalled()
 		})
 	})
 
 	describe("installMcp", () => {
+		let storeWrite: ReturnType<typeof vi.spyOn>
+
+		beforeEach(() => {
+			storeWrite = vi.spyOn(McpConfigStore.prototype, "write").mockResolvedValue(undefined)
+		})
+
+		afterEach(() => {
+			storeWrite.mockRestore()
+		})
+
+		const writtenData = () => storeWrite.mock.calls[0][1] as any
 		const mockMcpItem: MarketplaceItem = {
 			id: "test-mcp",
 			name: "Test MCP",
@@ -155,17 +163,14 @@ describe("SimpleInstaller", () => {
 			const notFoundError = new Error("File not found") as any
 			notFoundError.code = "ENOENT"
 			mockFs.readFile.mockRejectedValueOnce(notFoundError)
-			mockFs.writeFile.mockResolvedValueOnce(undefined as any)
 
 			const result = await installer.installItem(mockMcpItem, { target: "project" })
 
 			expect(result.filePath).toBe(path.join("/test/workspace", ".roo", "mcp.json"))
-			expect(mockFs.writeFile).toHaveBeenCalled()
-
-			// Verify the written content contains the new server
-			const writtenContent = mockFs.writeFile.mock.calls[0][1] as string
-			const writtenData = JSON.parse(writtenContent)
-			expect(writtenData.mcpServers["test-mcp"]).toBeDefined()
+			// The write goes through McpConfigStore (atomic), not a plain fs.writeFile.
+			expect(storeWrite).toHaveBeenCalledWith(result.filePath, expect.anything())
+			expect(mockFs.writeFile).not.toHaveBeenCalled()
+			expect(writtenData().mcpServers["test-mcp"]).toBeDefined()
 		})
 
 		it("should throw error when mcp.json contains invalid JSON", async () => {
@@ -178,6 +183,7 @@ describe("SimpleInstaller", () => {
 			)
 
 			// Should NOT write to file
+			expect(storeWrite).not.toHaveBeenCalled()
 			expect(mockFs.writeFile).not.toHaveBeenCalled()
 		})
 
@@ -189,17 +195,13 @@ describe("SimpleInstaller", () => {
 			})
 
 			mockFs.readFile.mockResolvedValueOnce(existingContent)
-			mockFs.writeFile.mockResolvedValueOnce(undefined as any)
 
 			await installer.installItem(mockMcpItem, { target: "project" })
 
-			const writtenContent = mockFs.writeFile.mock.calls[0][1] as string
-			const writtenData = JSON.parse(writtenContent)
-
 			// Should contain both existing and new server
-			expect(Object.keys(writtenData.mcpServers)).toHaveLength(2)
-			expect(writtenData.mcpServers["existing-server"]).toBeDefined()
-			expect(writtenData.mcpServers["test-mcp"]).toBeDefined()
+			expect(Object.keys(writtenData().mcpServers)).toHaveLength(2)
+			expect(writtenData().mcpServers["existing-server"]).toBeDefined()
+			expect(writtenData().mcpServers["test-mcp"]).toBeDefined()
 		})
 	})
 
