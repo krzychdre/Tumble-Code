@@ -1,0 +1,254 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`code-index embedder configuration (characterization) > bedrock: configured state, embedder class and constructor arguments 1`] = `
+{
+  "BedrockEmbedder": [
+    [
+      "eu-west-1",
+      "work",
+      "some-model",
+    ],
+  ],
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > bedrock: which settings changes restart indexing 1`] = `
+{
+  "bedrock profile": true,
+  "bedrock region": true,
+  "gemini key": true,
+  "mistral key": true,
+  "nothing": false,
+  "ollama base url": true,
+  "openai key": true,
+  "openai-compatible base url": true,
+  "openai-compatible key": true,
+  "openrouter key": true,
+  "openrouter specific provider": true,
+  "qdrant key": true,
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > bedrock: without its credentials it is unconfigured and the factory refuses 1`] = `
+{
+  "configured": false,
+  "error": "serviceFactory.bedrockConfigMissing",
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > gemini: configured state, embedder class and constructor arguments 1`] = `
+{
+  "GeminiEmbedder": [
+    [
+      "gemini-key",
+      "some-model",
+    ],
+  ],
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > gemini: which settings changes restart indexing 1`] = `
+{
+  "bedrock profile": true,
+  "bedrock region": true,
+  "gemini key": true,
+  "mistral key": true,
+  "nothing": false,
+  "ollama base url": true,
+  "openai key": true,
+  "openai-compatible base url": true,
+  "openai-compatible key": true,
+  "openrouter key": true,
+  "openrouter specific provider": true,
+  "qdrant key": true,
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > gemini: without its credentials it is unconfigured and the factory refuses 1`] = `
+{
+  "configured": false,
+  "error": "serviceFactory.geminiConfigMissing",
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > mistral: configured state, embedder class and constructor arguments 1`] = `
+{
+  "MistralEmbedder": [
+    [
+      "mistral-key",
+      "some-model",
+    ],
+  ],
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > mistral: which settings changes restart indexing 1`] = `
+{
+  "bedrock profile": true,
+  "bedrock region": true,
+  "gemini key": true,
+  "mistral key": true,
+  "nothing": false,
+  "ollama base url": true,
+  "openai key": true,
+  "openai-compatible base url": true,
+  "openai-compatible key": true,
+  "openrouter key": true,
+  "openrouter specific provider": true,
+  "qdrant key": true,
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > mistral: without its credentials it is unconfigured and the factory refuses 1`] = `
+{
+  "configured": false,
+  "error": "serviceFactory.mistralConfigMissing",
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > ollama: configured state, embedder class and constructor arguments 1`] = `
+{
+  "CodeIndexOllamaEmbedder": [
+    [
+      {
+        "ollamaBaseUrl": "http://ollama:11434",
+        "ollamaModelId": "some-model",
+      },
+    ],
+  ],
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > ollama: which settings changes restart indexing 1`] = `
+{
+  "bedrock profile": true,
+  "bedrock region": true,
+  "gemini key": true,
+  "mistral key": true,
+  "nothing": false,
+  "ollama base url": true,
+  "openai key": true,
+  "openai-compatible base url": true,
+  "openai-compatible key": true,
+  "openrouter key": true,
+  "openrouter specific provider": true,
+  "qdrant key": true,
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > ollama: without its credentials it is unconfigured and the factory refuses 1`] = `
+{
+  "configured": false,
+  "error": "serviceFactory.ollamaConfigMissing",
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openai: configured state, embedder class and constructor arguments 1`] = `
+{
+  "OpenAiEmbedder": [
+    [
+      {
+        "openAiEmbeddingModelId": "some-model",
+        "openAiNativeApiKey": "sk-openai",
+      },
+    ],
+  ],
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openai: which settings changes restart indexing 1`] = `
+{
+  "bedrock profile": true,
+  "bedrock region": true,
+  "gemini key": true,
+  "mistral key": true,
+  "nothing": false,
+  "ollama base url": true,
+  "openai key": true,
+  "openai-compatible base url": true,
+  "openai-compatible key": true,
+  "openrouter key": true,
+  "openrouter specific provider": true,
+  "qdrant key": true,
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openai: without its credentials it is unconfigured and the factory refuses 1`] = `
+{
+  "configured": false,
+  "error": "serviceFactory.openAiConfigMissing",
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openai-compatible: configured state, embedder class and constructor arguments 1`] = `
+{
+  "OpenAICompatibleEmbedder": [
+    [
+      "http://compat/v1",
+      "compat-key",
+      "some-model",
+    ],
+  ],
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openai-compatible: which settings changes restart indexing 1`] = `
+{
+  "bedrock profile": true,
+  "bedrock region": true,
+  "gemini key": true,
+  "mistral key": true,
+  "nothing": false,
+  "ollama base url": true,
+  "openai key": true,
+  "openai-compatible base url": true,
+  "openai-compatible key": true,
+  "openrouter key": true,
+  "openrouter specific provider": true,
+  "qdrant key": true,
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openai-compatible: without its credentials it is unconfigured and the factory refuses 1`] = `
+{
+  "configured": false,
+  "error": "serviceFactory.openAiCompatibleConfigMissing",
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openrouter: configured state, embedder class and constructor arguments 1`] = `
+{
+  "OpenRouterEmbedder": [
+    [
+      "openrouter-key",
+      "some-model",
+      undefined,
+      "together",
+    ],
+  ],
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openrouter: which settings changes restart indexing 1`] = `
+{
+  "bedrock profile": true,
+  "bedrock region": true,
+  "gemini key": true,
+  "mistral key": true,
+  "nothing": false,
+  "ollama base url": true,
+  "openai key": true,
+  "openai-compatible base url": true,
+  "openai-compatible key": true,
+  "openrouter key": true,
+  "openrouter specific provider": true,
+  "qdrant key": true,
+}
+`;
+
+exports[`code-index embedder configuration (characterization) > openrouter: without its credentials it is unconfigured and the factory refuses 1`] = `
+{
+  "configured": false,
+  "error": "serviceFactory.openRouterConfigMissing",
+}
+`;

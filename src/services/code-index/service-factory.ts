@@ -12,13 +12,7 @@ import { Package } from "../../shared/package"
 
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 
-import { OpenAiEmbedder } from "./embedders/openai"
-import { CodeIndexOllamaEmbedder } from "./embedders/ollama"
-import { OpenAICompatibleEmbedder } from "./embedders/openai-compatible"
-import { GeminiEmbedder } from "./embedders/gemini"
-import { MistralEmbedder } from "./embedders/mistral"
-import { BedrockEmbedder } from "./embedders/bedrock"
-import { OpenRouterEmbedder } from "./embedders/openrouter"
+import { findEmbedderDescriptor } from "./embedders/descriptors"
 import { QdrantVectorStore } from "./vector-store/qdrant-client"
 import { codeParser, DirectoryScanner, FileWatcher } from "./processors"
 import { ICodeParser, IEmbedder, IFileWatcher, IVectorStore } from "./interfaces"
@@ -42,61 +36,14 @@ export class CodeIndexServiceFactory {
 	public createEmbedder(): IEmbedder {
 		const config = this.configManager.getConfig()
 
-		const provider = config.embedderProvider as EmbedderProvider
+		const descriptor = findEmbedderDescriptor(config.embedderProvider)
 
-		if (provider === "openai") {
-			const apiKey = config.openAiOptions?.openAiNativeApiKey
-
-			if (!apiKey) {
-				throw new Error(t("embeddings:serviceFactory.openAiConfigMissing"))
+		if (descriptor) {
+			const options = config[descriptor.optionsKey]
+			if (!options || !descriptor.isConfigured(options)) {
+				throw new Error(t(descriptor.missingConfigMessage))
 			}
-			return new OpenAiEmbedder({
-				...config.openAiOptions,
-				openAiEmbeddingModelId: config.modelId,
-			})
-		} else if (provider === "ollama") {
-			if (!config.ollamaOptions?.ollamaBaseUrl) {
-				throw new Error(t("embeddings:serviceFactory.ollamaConfigMissing"))
-			}
-			return new CodeIndexOllamaEmbedder({
-				...config.ollamaOptions,
-				ollamaModelId: config.modelId,
-			})
-		} else if (provider === "openai-compatible") {
-			if (!config.openAiCompatibleOptions?.baseUrl || !config.openAiCompatibleOptions?.apiKey) {
-				throw new Error(t("embeddings:serviceFactory.openAiCompatibleConfigMissing"))
-			}
-			return new OpenAICompatibleEmbedder(
-				config.openAiCompatibleOptions.baseUrl,
-				config.openAiCompatibleOptions.apiKey,
-				config.modelId,
-			)
-		} else if (provider === "gemini") {
-			if (!config.geminiOptions?.apiKey) {
-				throw new Error(t("embeddings:serviceFactory.geminiConfigMissing"))
-			}
-			return new GeminiEmbedder(config.geminiOptions.apiKey, config.modelId)
-		} else if (provider === "mistral") {
-			if (!config.mistralOptions?.apiKey) {
-				throw new Error(t("embeddings:serviceFactory.mistralConfigMissing"))
-			}
-			return new MistralEmbedder(config.mistralOptions.apiKey, config.modelId)
-		} else if (provider === "bedrock") {
-			// Only region is required for Bedrock (profile is optional)
-			if (!config.bedrockOptions?.region) {
-				throw new Error(t("embeddings:serviceFactory.bedrockConfigMissing"))
-			}
-			return new BedrockEmbedder(config.bedrockOptions.region, config.bedrockOptions.profile, config.modelId)
-		} else if (provider === "openrouter") {
-			if (!config.openRouterOptions?.apiKey) {
-				throw new Error(t("embeddings:serviceFactory.openRouterConfigMissing"))
-			}
-			return new OpenRouterEmbedder(
-				config.openRouterOptions.apiKey,
-				config.modelId,
-				undefined, // maxItemTokens
-				config.openRouterOptions.specificProvider,
-			)
+			return descriptor.create(options, config.modelId)
 		}
 
 		throw new Error(
