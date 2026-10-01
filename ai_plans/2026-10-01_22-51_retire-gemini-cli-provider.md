@@ -39,14 +39,19 @@ Retired providers' settings keys are not in the strict `providerSettingsSchema`:
 (`{ provider: { providerId, opaqueLegacyPayload } }`, all fields kept). So `geminiCliOAuthPath` and
 `geminiCliProjectId` leave the flat schema (and `GLOBAL_STATE_KEYS`), as the derivation snapshots show.
 
-The earlier providers were already retired when the v2 profile envelope was introduced, so their profiles were
-written opaque from the start. A gemini-cli profile saved since then is stored typed
+A gemini-cli profile saved since the v2 profile envelope (#126, 2026-07-19) is stored typed
 (`{ provider: { providerId: "gemini-cli", config } }`). After retiring, that shape matches neither arm of
 `persistedProviderProfileSchema`, and `parseProviderProfilesEnvelope` would throw, so `ProviderSettingsManager.load`
 (and import) would fail for every profile, not just this one. Verified with the new spec before adding the fix
 (`ZodError: invalid_union`). `persistedProviderProfileSchema` now preprocesses such a profile into the opaque form
 it would be saved in today: `opaqueLegacyPayload = { apiProvider, ...config, ...shared }`. Profiles of active and
 hidden providers are untouched. This also covers any provider retired in the future.
+
+Correction after an independent review: the seven providers retired in #154 (2026-08-26: poe, unbound, requesty,
+vercel-ai-gateway, baseten, sambanova, fireworks) were retired AFTER the v2 envelope, without a conversion. A user
+holding a typed profile of one of them has had an unreadable profile store since #154 ("Failed to read provider
+profiles from secrets"). The preprocess keys on `classifyProvider(providerId) === "retired"`, so it repairs those
+profiles too (checked with a typed `requesty` profile).
 
 ## Tests
 
