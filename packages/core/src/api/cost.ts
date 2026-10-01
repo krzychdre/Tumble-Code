@@ -39,85 +39,99 @@ function applyLongContextPricing(modelInfo: ModelInfo, totalInputTokens: number,
 	}
 }
 
-function calculateApiCostInternal(
+/**
+ * How a provider counts input tokens:
+ * - "anthropic": `inputTokens` is the uncached input only; cache writes and reads come on top.
+ * - "openai": `inputTokens` is the whole prompt, cache writes and reads included.
+ */
+export type CostProtocol = "anthropic" | "openai"
+
+export interface CostUsage {
+	inputTokens: number
+	outputTokens: number
+	cacheWriteTokens?: number
+	cacheReadTokens?: number
+}
+
+export interface CostOptions {
+	/**
+	 * The OpenAI service tier the request ran on. The tier of that name in `tiers` replaces the
+	 * prices, and `longContextPricing.appliesToServiceTiers` is checked against it.
+	 */
+	serviceTier?: ServiceTier
+	/**
+	 * Price by prompt size (Gemini): the first unnamed tier whose `contextWindow` holds the whole
+	 * input replaces the prices. Off by default because the Claude tables use `tiers` for the
+	 * 1M-context variant, whose prices apply only when that variant is enabled.
+	 */
+	promptSizeTiers?: boolean
+}
+
+/** The model's prices after the service tier or the prompt-size tier is applied. */
+export function selectTierPrices(
 	modelInfo: ModelInfo,
-	inputTokens: number,
-	outputTokens: number,
-	cacheCreationInputTokens: number,
-	cacheReadInputTokens: number,
 	totalInputTokens: number,
-	totalOutputTokens: number,
+	{ serviceTier, promptSizeTiers }: CostOptions = {},
+): ModelInfo {
+	const tier =
+		serviceTier && serviceTier !== "default"
+			? modelInfo.tiers?.find((candidate) => candidate.name === serviceTier)
+			: promptSizeTiers
+				? modelInfo.tiers?.find((candidate) => !candidate.name && totalInputTokens <= candidate.contextWindow)
+				: undefined
+
+	if (!tier) {
+		return modelInfo
+	}
+
+	return {
+		...modelInfo,
+		inputPrice: tier.inputPrice ?? modelInfo.inputPrice,
+		outputPrice: tier.outputPrice ?? modelInfo.outputPrice,
+		cacheWritesPrice: tier.cacheWritesPrice ?? modelInfo.cacheWritesPrice,
+		cacheReadsPrice: tier.cacheReadsPrice ?? modelInfo.cacheReadsPrice,
+	}
+}
+
+/** The cost of one request in USD, with the model's prices per million tokens. */
+export function calculateApiCost(
+	protocol: CostProtocol,
+	modelInfo: ModelInfo,
+	usage: CostUsage,
+	options: CostOptions = {},
 ): ApiCostResult {
+	const cacheWriteTokens = usage.cacheWriteTokens || 0
+	const cacheReadTokens = usage.cacheReadTokens || 0
+	const { outputTokens } = usage
+
+	const totalInputTokens =
+		protocol === "anthropic" ? usage.inputTokens + cacheWriteTokens + cacheReadTokens : usage.inputTokens
+	const uncachedInputTokens =
+		protocol === "anthropic"
+			? usage.inputTokens
+			: Math.max(0, usage.inputTokens - cacheWriteTokens - cacheReadTokens)
+
+	const prices = applyLongContextPricing(
+		selectTierPrices(modelInfo, totalInputTokens, options),
+		totalInputTokens,
+		options.serviceTier,
+	)
+
 	// A model without a write price still pays for the tokens it writes: they
 	// are input the provider processed, so they cost the input price (DEF-C39).
 	// An explicit `cacheWritesPrice: 0` means the provider does not charge for
 	// writes and stays free.
-	const cacheWritesPrice = modelInfo.cacheWritesPrice ?? modelInfo.inputPrice ?? 0
-	const cacheWritesCost = (cacheWritesPrice / 1_000_000) * cacheCreationInputTokens
-	const cacheReadsCost = ((modelInfo.cacheReadsPrice || 0) / 1_000_000) * cacheReadInputTokens
-	const baseInputCost = ((modelInfo.inputPrice || 0) / 1_000_000) * inputTokens
-	const outputCost = ((modelInfo.outputPrice || 0) / 1_000_000) * outputTokens
-	const totalCost = cacheWritesCost + cacheReadsCost + baseInputCost + outputCost
+	const cacheWritesPrice = prices.cacheWritesPrice ?? prices.inputPrice ?? 0
+	const cacheWritesCost = (cacheWritesPrice / 1_000_000) * cacheWriteTokens
+	const cacheReadsCost = ((prices.cacheReadsPrice || 0) / 1_000_000) * cacheReadTokens
+	const baseInputCost = ((prices.inputPrice || 0) / 1_000_000) * uncachedInputTokens
+	const outputCost = ((prices.outputPrice || 0) / 1_000_000) * outputTokens
 
 	return {
 		totalInputTokens,
-		totalOutputTokens,
-		totalCost,
+		totalOutputTokens: outputTokens,
+		totalCost: cacheWritesCost + cacheReadsCost + baseInputCost + outputCost,
 	}
-}
-
-// For Anthropic compliant usage, the input tokens count does NOT include the
-// cached tokens.
-export function calculateApiCostAnthropic(
-	modelInfo: ModelInfo,
-	inputTokens: number,
-	outputTokens: number,
-	cacheCreationInputTokens?: number,
-	cacheReadInputTokens?: number,
-): ApiCostResult {
-	const cacheCreation = cacheCreationInputTokens || 0
-	const cacheRead = cacheReadInputTokens || 0
-
-	// For Anthropic: inputTokens does NOT include cached tokens
-	// Total input = base input + cache creation + cache reads
-	const totalInputTokens = inputTokens + cacheCreation + cacheRead
-
-	return calculateApiCostInternal(
-		modelInfo,
-		inputTokens,
-		outputTokens,
-		cacheCreation,
-		cacheRead,
-		totalInputTokens,
-		outputTokens,
-	)
-}
-
-// For OpenAI compliant usage, the input tokens count INCLUDES the cached tokens.
-export function calculateApiCostOpenAI(
-	modelInfo: ModelInfo,
-	inputTokens: number,
-	outputTokens: number,
-	cacheCreationInputTokens?: number,
-	cacheReadInputTokens?: number,
-	serviceTier?: ServiceTier,
-): ApiCostResult {
-	const cacheCreationInputTokensNum = cacheCreationInputTokens || 0
-	const cacheReadInputTokensNum = cacheReadInputTokens || 0
-	const nonCachedInputTokens = Math.max(0, inputTokens - cacheCreationInputTokensNum - cacheReadInputTokensNum)
-	const effectiveModelInfo = applyLongContextPricing(modelInfo, inputTokens, serviceTier)
-
-	// For OpenAI: inputTokens ALREADY includes all tokens (cached + non-cached)
-	// So we pass the original inputTokens as the total
-	return calculateApiCostInternal(
-		effectiveModelInfo,
-		nonCachedInputTokens,
-		outputTokens,
-		cacheCreationInputTokensNum,
-		cacheReadInputTokensNum,
-		inputTokens,
-		outputTokens,
-	)
 }
 
 export const parseApiPrice = (price: unknown) => (price ? parseFloat(price as string) * 1_000_000 : undefined)

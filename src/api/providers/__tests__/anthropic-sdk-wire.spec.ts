@@ -17,7 +17,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 import type { MockInstance } from "vitest"
 import { GoogleAuth, OAuth2Client } from "google-auth-library"
 
-import { calculateApiCostAnthropic } from "@roo-code/core/browser"
+import { calculateApiCost } from "@roo-code/core/browser"
 import type { ApiStreamChunk } from "../../transform/stream"
 import type { ApiHandler } from "../../index"
 import { AnthropicHandler } from "../anthropic"
@@ -165,7 +165,12 @@ describe("Anthropic-protocol handlers over the real SDK (DEP-6 wire)", () => {
 				chunks.push(chunk)
 			}
 
-			const { totalCost } = calculateApiCostAnthropic(handler.getModel().info, 1000, 120, 200, 300)
+			const { totalCost } = calculateApiCost("anthropic", handler.getModel().info, {
+				inputTokens: 1000,
+				outputTokens: 120,
+				cacheWriteTokens: 200,
+				cacheReadTokens: 300,
+			})
 			expect(chunks).toEqual([...TOKEN_CHUNKS, { type: "usage", inputTokens: 0, outputTokens: 0, totalCost }])
 		})
 

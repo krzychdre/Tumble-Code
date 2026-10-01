@@ -2,7 +2,7 @@
 
 import type { ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostAnthropic, calculateApiCostOpenAI } from "../cost.js"
+import { calculateApiCost, selectTierPrices } from "../cost.js"
 
 // The whole module is scanned for model tables below. It is loaded through a variable so knip
 // does not read that scan as a use of every @roo-code/types export.
@@ -10,7 +10,7 @@ const typesModule = "@roo-code/types"
 const rooTypes: Record<string, unknown> = await import(typesModule)
 
 describe("Cost Utility", () => {
-	describe("calculateApiCostAnthropic", () => {
+	describe("calculateApiCost, Anthropic protocol", () => {
 		const mockModelInfo: ModelInfo = {
 			maxTokens: 8192,
 			contextWindow: 200_000,
@@ -22,7 +22,7 @@ describe("Cost Utility", () => {
 		}
 
 		it("should calculate basic input/output costs correctly", () => {
-			const result = calculateApiCostAnthropic(mockModelInfo, 1000, 500)
+			const result = calculateApiCost("anthropic", mockModelInfo, { inputTokens: 1000, outputTokens: 500 })
 
 			// Input cost: (3.0 / 1_000_000) * 1000 = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -33,7 +33,11 @@ describe("Cost Utility", () => {
 		})
 
 		it("should handle cache writes cost", () => {
-			const result = calculateApiCostAnthropic(mockModelInfo, 1000, 500, 2000)
+			const result = calculateApiCost("anthropic", mockModelInfo, {
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+			})
 
 			// Input cost: (3.0 / 1_000_000) * 1000 = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -45,7 +49,11 @@ describe("Cost Utility", () => {
 		})
 
 		it("should handle cache reads cost", () => {
-			const result = calculateApiCostAnthropic(mockModelInfo, 1000, 500, undefined, 3000)
+			const result = calculateApiCost("anthropic", mockModelInfo, {
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheReadTokens: 3000,
+			})
 
 			// Input cost: (3.0 / 1_000_000) * 1000 = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -57,7 +65,12 @@ describe("Cost Utility", () => {
 		})
 
 		it("should handle all cost components together", () => {
-			const result = calculateApiCostAnthropic(mockModelInfo, 1000, 500, 2000, 3000)
+			const result = calculateApiCost("anthropic", mockModelInfo, {
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 
 			// Input cost: (3.0 / 1_000_000) * 1000 = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -76,21 +89,31 @@ describe("Cost Utility", () => {
 				supportsPromptCache: true,
 			}
 
-			const result = calculateApiCostAnthropic(modelWithoutPrices, 1000, 500, 2000, 3000)
+			const result = calculateApiCost("anthropic", modelWithoutPrices, {
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 			expect(result.totalCost).toBe(0)
 			expect(result.totalInputTokens).toBe(6000) // 1000 + 2000 + 3000
 			expect(result.totalOutputTokens).toBe(500)
 		})
 
 		it("should handle zero tokens", () => {
-			const result = calculateApiCostAnthropic(mockModelInfo, 0, 0, 0, 0)
+			const result = calculateApiCost("anthropic", mockModelInfo, {
+				inputTokens: 0,
+				outputTokens: 0,
+				cacheWriteTokens: 0,
+				cacheReadTokens: 0,
+			})
 			expect(result.totalCost).toBe(0)
 			expect(result.totalInputTokens).toBe(0)
 			expect(result.totalOutputTokens).toBe(0)
 		})
 
 		it("should handle undefined cache values", () => {
-			const result = calculateApiCostAnthropic(mockModelInfo, 1000, 500)
+			const result = calculateApiCost("anthropic", mockModelInfo, { inputTokens: 1000, outputTokens: 500 })
 
 			// Input cost: (3.0 / 1_000_000) * 1000 = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -107,7 +130,12 @@ describe("Cost Utility", () => {
 				cacheReadsPrice: undefined,
 			}
 
-			const result = calculateApiCostAnthropic(modelWithoutCachePrices, 1000, 500, 2000, 3000)
+			const result = calculateApiCost("anthropic", modelWithoutCachePrices, {
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 
 			// Without a write price the writes are billed at the input price (DEF-C39);
 			// reads without a read price stay free.
@@ -121,7 +149,7 @@ describe("Cost Utility", () => {
 		})
 	})
 
-	describe("calculateApiCostOpenAI", () => {
+	describe("calculateApiCost, OpenAI protocol", () => {
 		const mockModelInfo: ModelInfo = {
 			maxTokens: 8192,
 			contextWindow: 200_000,
@@ -133,7 +161,7 @@ describe("Cost Utility", () => {
 		}
 
 		it("should calculate basic input/output costs correctly", () => {
-			const result = calculateApiCostOpenAI(mockModelInfo, 1000, 500)
+			const result = calculateApiCost("openai", mockModelInfo, { inputTokens: 1000, outputTokens: 500 })
 
 			// Input cost: (3.0 / 1_000_000) * 1000 = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -144,7 +172,11 @@ describe("Cost Utility", () => {
 		})
 
 		it("should handle cache writes cost", () => {
-			const result = calculateApiCostOpenAI(mockModelInfo, 3000, 500, 2000)
+			const result = calculateApiCost("openai", mockModelInfo, {
+				inputTokens: 3000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+			})
 
 			// Input cost: (3.0 / 1_000_000) * (3000 - 2000) = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -156,7 +188,11 @@ describe("Cost Utility", () => {
 		})
 
 		it("should handle cache reads cost", () => {
-			const result = calculateApiCostOpenAI(mockModelInfo, 4000, 500, undefined, 3000)
+			const result = calculateApiCost("openai", mockModelInfo, {
+				inputTokens: 4000,
+				outputTokens: 500,
+				cacheReadTokens: 3000,
+			})
 
 			// Input cost: (3.0 / 1_000_000) * (4000 - 3000) = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -168,7 +204,12 @@ describe("Cost Utility", () => {
 		})
 
 		it("should handle all cost components together", () => {
-			const result = calculateApiCostOpenAI(mockModelInfo, 6000, 500, 2000, 3000)
+			const result = calculateApiCost("openai", mockModelInfo, {
+				inputTokens: 6000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 
 			// Input cost: (3.0 / 1_000_000) * (6000 - 2000 - 3000) = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -187,21 +228,31 @@ describe("Cost Utility", () => {
 				supportsPromptCache: true,
 			}
 
-			const result = calculateApiCostOpenAI(modelWithoutPrices, 1000, 500, 2000, 3000)
+			const result = calculateApiCost("openai", modelWithoutPrices, {
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 			expect(result.totalCost).toBe(0)
 			expect(result.totalInputTokens).toBe(1000) // Total already includes cache
 			expect(result.totalOutputTokens).toBe(500)
 		})
 
 		it("should handle zero tokens", () => {
-			const result = calculateApiCostOpenAI(mockModelInfo, 0, 0, 0, 0)
+			const result = calculateApiCost("openai", mockModelInfo, {
+				inputTokens: 0,
+				outputTokens: 0,
+				cacheWriteTokens: 0,
+				cacheReadTokens: 0,
+			})
 			expect(result.totalCost).toBe(0)
 			expect(result.totalInputTokens).toBe(0)
 			expect(result.totalOutputTokens).toBe(0)
 		})
 
 		it("should handle undefined cache values", () => {
-			const result = calculateApiCostOpenAI(mockModelInfo, 1000, 500)
+			const result = calculateApiCost("openai", mockModelInfo, { inputTokens: 1000, outputTokens: 500 })
 
 			// Input cost: (3.0 / 1_000_000) * 1000 = 0.003
 			// Output cost: (15.0 / 1_000_000) * 500 = 0.0075
@@ -218,7 +269,12 @@ describe("Cost Utility", () => {
 				cacheReadsPrice: undefined,
 			}
 
-			const result = calculateApiCostOpenAI(modelWithoutCachePrices, 6000, 500, 2000, 3000)
+			const result = calculateApiCost("openai", modelWithoutCachePrices, {
+				inputTokens: 6000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 
 			// Without a write price the writes are billed at the input price (DEF-C39);
 			// reads without a read price stay free.
@@ -243,7 +299,11 @@ describe("Cost Utility", () => {
 				},
 			}
 
-			const result = calculateApiCostOpenAI(modelWithLongContextPricing, 272_000, 1_000, undefined, 100_000)
+			const result = calculateApiCost("openai", modelWithLongContextPricing, {
+				inputTokens: 272_000,
+				outputTokens: 1_000,
+				cacheReadTokens: 100_000,
+			})
 
 			// Input cost: (3.0 / 1_000_000) * (272000 - 100000) = 0.516
 			// Output cost: (15.0 / 1_000_000) * 1000 = 0.015
@@ -270,7 +330,12 @@ describe("Cost Utility", () => {
 				},
 			}
 
-			const result = calculateApiCostOpenAI(modelWithLongContextPricing, 300_000, 1_000, 20_000, 100_000)
+			const result = calculateApiCost("openai", modelWithLongContextPricing, {
+				inputTokens: 300_000,
+				outputTokens: 1_000,
+				cacheWriteTokens: 20_000,
+				cacheReadTokens: 100_000,
+			})
 
 			// Input cost: (5.0 / 1_000_000) * (300000 - 20000 - 100000) = 0.9
 			// Output cost: (22.5 / 1_000_000) * 1000 = 0.0225
@@ -296,13 +361,11 @@ describe("Cost Utility", () => {
 				},
 			}
 
-			const result = calculateApiCostOpenAI(
+			const result = calculateApiCost(
+				"openai",
 				modelWithLongContextPricing,
-				300_000,
-				1_000,
-				undefined,
-				100_000,
-				"priority",
+				{ inputTokens: 300_000, outputTokens: 1_000, cacheReadTokens: 100_000 },
+				{ serviceTier: "priority" },
 			)
 
 			// Input cost: (5.0 / 1_000_000) * (300000 - 100000) = 1.0
@@ -324,45 +387,79 @@ describe("Cost Utility", () => {
 		}
 
 		it("bills reported writes at the input price when cacheWritesPrice is undefined (Anthropic protocol)", () => {
-			const result = calculateApiCostAnthropic(base, 1000, 500, 2000, 3000)
+			const result = calculateApiCost("anthropic", base, {
+				inputTokens: 1000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 
 			const expected = (1000 * 3.0 + 2000 * 3.0 + 3000 * 0.3 + 500 * 15.0) / 1_000_000
 			expect(result.totalCost).toBeCloseTo(expected, 12)
 		})
 
 		it("bills reported writes at the input price when cacheWritesPrice is undefined (OpenAI protocol)", () => {
-			const result = calculateApiCostOpenAI(base, 6000, 500, 2000, 3000)
+			const result = calculateApiCost("openai", base, {
+				inputTokens: 6000,
+				outputTokens: 500,
+				cacheWriteTokens: 2000,
+				cacheReadTokens: 3000,
+			})
 
 			// Same as if the provider had not split the writes out of the input.
 			const expected = (1000 * 3.0 + 2000 * 3.0 + 3000 * 0.3 + 500 * 15.0) / 1_000_000
 			expect(result.totalCost).toBeCloseTo(expected, 12)
-			expect(result.totalCost).toBeCloseTo(calculateApiCostOpenAI(base, 6000, 500, 0, 3000).totalCost, 12)
+			expect(result.totalCost).toBeCloseTo(
+				calculateApiCost("openai", base, {
+					inputTokens: 6000,
+					outputTokens: 500,
+					cacheWriteTokens: 0,
+					cacheReadTokens: 3000,
+				}).totalCost,
+				12,
+			)
 		})
 
 		it("keeps an explicit cacheWritesPrice of 0 free", () => {
 			const free = { ...base, cacheWritesPrice: 0 }
 
-			expect(calculateApiCostAnthropic(free, 1000, 500, 2000, 3000).totalCost).toBeCloseTo(
-				(1000 * 3.0 + 3000 * 0.3 + 500 * 15.0) / 1_000_000,
-				12,
-			)
-			expect(calculateApiCostOpenAI(free, 6000, 500, 2000, 3000).totalCost).toBeCloseTo(
-				(1000 * 3.0 + 3000 * 0.3 + 500 * 15.0) / 1_000_000,
-				12,
-			)
+			expect(
+				calculateApiCost("anthropic", free, {
+					inputTokens: 1000,
+					outputTokens: 500,
+					cacheWriteTokens: 2000,
+					cacheReadTokens: 3000,
+				}).totalCost,
+			).toBeCloseTo((1000 * 3.0 + 3000 * 0.3 + 500 * 15.0) / 1_000_000, 12)
+			expect(
+				calculateApiCost("openai", free, {
+					inputTokens: 6000,
+					outputTokens: 500,
+					cacheWriteTokens: 2000,
+					cacheReadTokens: 3000,
+				}).totalCost,
+			).toBeCloseTo((1000 * 3.0 + 3000 * 0.3 + 500 * 15.0) / 1_000_000, 12)
 		})
 
 		it("uses a defined cacheWritesPrice as is", () => {
 			const priced = { ...base, cacheWritesPrice: 3.75 }
 
-			expect(calculateApiCostAnthropic(priced, 1000, 500, 2000, 3000).totalCost).toBeCloseTo(
-				(1000 * 3.0 + 2000 * 3.75 + 3000 * 0.3 + 500 * 15.0) / 1_000_000,
-				12,
-			)
-			expect(calculateApiCostOpenAI(priced, 6000, 500, 2000, 3000).totalCost).toBeCloseTo(
-				(1000 * 3.0 + 2000 * 3.75 + 3000 * 0.3 + 500 * 15.0) / 1_000_000,
-				12,
-			)
+			expect(
+				calculateApiCost("anthropic", priced, {
+					inputTokens: 1000,
+					outputTokens: 500,
+					cacheWriteTokens: 2000,
+					cacheReadTokens: 3000,
+				}).totalCost,
+			).toBeCloseTo((1000 * 3.0 + 2000 * 3.75 + 3000 * 0.3 + 500 * 15.0) / 1_000_000, 12)
+			expect(
+				calculateApiCost("openai", priced, {
+					inputTokens: 6000,
+					outputTokens: 500,
+					cacheWriteTokens: 2000,
+					cacheReadTokens: 3000,
+				}).totalCost,
+			).toBeCloseTo((1000 * 3.0 + 2000 * 3.75 + 3000 * 0.3 + 500 * 15.0) / 1_000_000, 12)
 		})
 
 		it("uses the long-context input price for writes above the threshold", () => {
@@ -371,7 +468,12 @@ describe("Cost Utility", () => {
 				longContextPricing: { thresholdTokens: 272_000, inputPriceMultiplier: 2, outputPriceMultiplier: 1.5 },
 			}
 
-			const result = calculateApiCostOpenAI(longContext, 300_000, 1000, 100_000, 50_000)
+			const result = calculateApiCost("openai", longContext, {
+				inputTokens: 300_000,
+				outputTokens: 1000,
+				cacheWriteTokens: 100_000,
+				cacheReadTokens: 50_000,
+			})
 
 			const expected = (150_000 * 6.0 + 100_000 * 6.0 + 50_000 * 0.3 + 1000 * 22.5) / 1_000_000
 			expect(result.totalCost).toBeCloseTo(expected, 12)
@@ -435,8 +537,18 @@ describe("Cost Utility", () => {
 				.filter(({ info }) => info.cacheWritesPrice !== undefined)
 				.filter(({ info }) => {
 					const expected = legacyCost(info, input, output, writes, reads)
-					const anthropic = calculateApiCostAnthropic(info, input, output, writes, reads).totalCost
-					const openAi = calculateApiCostOpenAI(info, input + writes + reads, output, writes, reads).totalCost
+					const anthropic = calculateApiCost("anthropic", info, {
+						inputTokens: input,
+						outputTokens: output,
+						cacheWriteTokens: writes,
+						cacheReadTokens: reads,
+					}).totalCost
+					const openAi = calculateApiCost("openai", info, {
+						inputTokens: input + writes + reads,
+						outputTokens: output,
+						cacheWriteTokens: writes,
+						cacheReadTokens: reads,
+					}).totalCost
 					return Math.abs(anthropic - expected) > 1e-12 || Math.abs(openAi - expected) > 1e-12
 				})
 				.map(({ table, id }) => `${table}/${id}`)
@@ -486,13 +598,76 @@ describe("Cost Utility", () => {
 				.filter(({ info }) => info.cacheWritesPrice === undefined)
 				.filter(({ info }) => {
 					const expected = legacyCost(info, input, output, 0, reads)
-					const anthropic = calculateApiCostAnthropic(info, input, output, 0, reads).totalCost
-					const openAi = calculateApiCostOpenAI(info, input + reads, output, 0, reads).totalCost
+					const anthropic = calculateApiCost("anthropic", info, {
+						inputTokens: input,
+						outputTokens: output,
+						cacheWriteTokens: 0,
+						cacheReadTokens: reads,
+					}).totalCost
+					const openAi = calculateApiCost("openai", info, {
+						inputTokens: input + reads,
+						outputTokens: output,
+						cacheWriteTokens: 0,
+						cacheReadTokens: reads,
+					}).totalCost
 					return Math.abs(anthropic - expected) > 1e-12 || Math.abs(openAi - expected) > 1e-12
 				})
 				.map(({ table, id }) => `${table}/${id}`)
 
 			expect(changed).toEqual([])
+		})
+	})
+
+	describe("tier selection", () => {
+		const base: ModelInfo = {
+			contextWindow: 1_000_000,
+			supportsPromptCache: true,
+			inputPrice: 2,
+			outputPrice: 10,
+			cacheReadsPrice: 0.2,
+		}
+		const usage = { inputTokens: 100_000, outputTokens: 1_000, cacheReadTokens: 50_000 }
+
+		it("prices a named service tier only when that tier is requested", () => {
+			const info: ModelInfo = { ...base, tiers: [{ name: "flex", contextWindow: 1_000_000, inputPrice: 1 }] }
+
+			expect(selectTierPrices(info, 0, { serviceTier: "flex" }).inputPrice).toBe(1)
+			expect(selectTierPrices(info, 0, { serviceTier: "default" }).inputPrice).toBe(2)
+			expect(selectTierPrices(info, 0, { serviceTier: "priority" }).inputPrice).toBe(2)
+			expect(calculateApiCost("openai", info, usage, { serviceTier: "flex" }).totalCost).toBeCloseTo(
+				(50_000 * 1 + 50_000 * 0.2 + 1_000 * 10) / 1_000_000,
+				12,
+			)
+		})
+
+		it("prices by prompt size only when asked, and only with unnamed tiers", () => {
+			const info: ModelInfo = {
+				...base,
+				tiers: [
+					{ contextWindow: 200_000, inputPrice: 1, outputPrice: 5 },
+					{ contextWindow: Infinity, inputPrice: 4, outputPrice: 20 },
+				],
+			}
+
+			expect(selectTierPrices(info, 150_000, { promptSizeTiers: true }).inputPrice).toBe(1)
+			expect(selectTierPrices(info, 250_000, { promptSizeTiers: true }).inputPrice).toBe(4)
+			expect(selectTierPrices(info, 150_000).inputPrice).toBe(2)
+			expect(
+				selectTierPrices({ ...info, tiers: [{ name: "flex", contextWindow: Infinity, inputPrice: 9 }] }, 1, {
+					promptSizeTiers: true,
+				}).inputPrice,
+			).toBe(2)
+		})
+
+		it("leaves a Claude 1M-context tier alone unless prompt-size pricing is requested", () => {
+			const claude: ModelInfo = {
+				...base,
+				tiers: [{ contextWindow: 1_000_000, inputPrice: 6, outputPrice: 22.5 }],
+			}
+
+			expect(
+				calculateApiCost("anthropic", claude, { inputTokens: 1_000, outputTokens: 0 }).totalCost,
+			).toBeCloseTo((1_000 * 2) / 1_000_000, 12)
 		})
 	})
 })

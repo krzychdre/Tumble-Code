@@ -67,7 +67,7 @@ import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
 // shared
-import { findLastIndex, calculateApiCostAnthropic, calculateApiCostOpenAI } from "@roo-code/core/browser"
+import { findLastIndex } from "@roo-code/core/browser"
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
 import { t } from "../../i18n"

@@ -18,7 +18,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler } from "../../api"
 import { type ApiStream, type ApiStreamChunk, type GroundingSource } from "../../api/transform/stream"
 
-import { calculateApiCostAnthropic, calculateApiCostOpenAI, findLastIndex } from "@roo-code/core/browser"
+import { calculateApiCost, findLastIndex, type ApiCostResult } from "@roo-code/core/browser"
 
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { NativeToolCallParser, PARTIAL_ARGS_PARSE_INTERVAL_MS } from "../assistant-message/NativeToolCallParser"
@@ -475,6 +475,27 @@ export class TaskStreamProcessor {
 	}
 
 	/**
+	 * Token totals and cost of a request, priced the way the configured provider counts input
+	 * tokens (Anthropic-style providers report the uncached input only).
+	 */
+	private costOf(
+		modelInfo: ModelInfo,
+		tokens: { input: number; output: number; cacheWrite: number; cacheRead: number },
+	): ApiCostResult {
+		const apiProvider = this.access.apiConfiguration.apiProvider
+		const protocol = getApiProtocol(
+			apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
+			getModelId(this.access.apiConfiguration),
+		)
+		return calculateApiCost(protocol, modelInfo, {
+			inputTokens: tokens.input,
+			outputTokens: tokens.output,
+			cacheWriteTokens: tokens.cacheWrite,
+			cacheReadTokens: tokens.cacheRead,
+		})
+	}
+
+	/**
 	 * Create the updateApiReqMsg closure.
 	 * Returns a function that updates the API request message with token/cost data.
 	 */
@@ -486,30 +507,12 @@ export class TaskStreamProcessor {
 
 			const existingData = JSON.parse(this.access.clineMessages[lastApiReqIndex].text || "{}")
 
-			// Calculate total tokens and cost using provider-aware function
-			const modelId = getModelId(this.access.apiConfiguration)
-			const apiProvider = this.access.apiConfiguration.apiProvider
-			const apiProtocol = getApiProtocol(
-				apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
-				modelId,
-			)
-
-			const costResult =
-				apiProtocol === "anthropic"
-					? calculateApiCostAnthropic(
-							streamModelInfo,
-							this._inputTokens,
-							this._outputTokens,
-							this._cacheWriteTokens,
-							this._cacheReadTokens,
-						)
-					: calculateApiCostOpenAI(
-							streamModelInfo,
-							this._inputTokens,
-							this._outputTokens,
-							this._cacheWriteTokens,
-							this._cacheReadTokens,
-						)
+			const costResult = this.costOf(streamModelInfo, {
+				input: this._inputTokens,
+				output: this._outputTokens,
+				cacheWrite: this._cacheWriteTokens,
+				cacheRead: this._cacheReadTokens,
+			})
 
 			this.access.clineMessages[lastApiReqIndex].text = JSON.stringify({
 				...existingData,
@@ -652,31 +655,7 @@ export class TaskStreamProcessor {
 						await access.history.updateClineMessage(apiReqMessage)
 					}
 
-					// Capture telemetry with provider-aware cost calculation
-					const modelId = getModelId(access.apiConfiguration)
-					const apiProvider = access.apiConfiguration.apiProvider
-					const apiProtocol = getApiProtocol(
-						apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
-						modelId,
-					)
-
-					// Use the appropriate cost function based on the API protocol
-					const costResult =
-						apiProtocol === "anthropic"
-							? calculateApiCostAnthropic(
-									streamModelInfo,
-									tokens.input,
-									tokens.output,
-									tokens.cacheWrite,
-									tokens.cacheRead,
-								)
-							: calculateApiCostOpenAI(
-									streamModelInfo,
-									tokens.input,
-									tokens.output,
-									tokens.cacheWrite,
-									tokens.cacheRead,
-								)
+					const costResult = this.costOf(streamModelInfo, tokens)
 
 					TelemetryService.instance.capture(TelemetryEventName.LLM_COMPLETION, {
 						...(access.taskId && { taskId: access.taskId }),

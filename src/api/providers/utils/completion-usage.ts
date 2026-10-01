@@ -1,6 +1,6 @@
 import type { ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostOpenAI } from "@roo-code/core/browser"
+import { calculateApiCost } from "@roo-code/core/browser"
 import type { CompletionUsage } from "../../index"
 import type { ApiStreamUsageChunk } from "../../transform/stream"
 
@@ -74,8 +74,8 @@ const firstReported = (...values: unknown[]): number | undefined => {
  *
  * DeepSeek's `prompt_cache_miss_tokens` is deliberately not a write: those are
  * ordinary input tokens at the normal price. Under the OpenAI protocol both
- * figures are part of `prompt_tokens`, which is what `calculateApiCostOpenAI`
- * expects.
+ * figures are part of `prompt_tokens`, which is what `calculateApiCost` expects
+ * for the OpenAI protocol.
  */
 export function openAiCacheTokens(usage: OpenAiShapedUsage): {
 	cacheReadTokens: number | undefined
@@ -103,7 +103,7 @@ export function openAiCacheTokens(usage: OpenAiShapedUsage): {
  *
  * Per the OpenAI protocol `prompt_tokens` already includes any cached prefix,
  * so `cacheReadTokens` is reported alongside it as a subset, exactly as the
- * streaming path does — see `calculateApiCostOpenAI`.
+ * streaming path does (see `calculateApiCost`, OpenAI protocol).
  */
 export function openAiCompletionUsage(usage: OpenAiShapedUsage): CompletionUsage | undefined {
 	if (!usage) {
@@ -138,7 +138,7 @@ export function openAiCompletionUsage(usage: OpenAiShapedUsage): CompletionUsage
  * 0 are left out. The cost:
  * - `billedCost`: what the router billed (OpenRouter: `cost` plus
  *   `cost_details.upstream_inference_cost` for bring-your-own-key requests).
- * - `modelInfo`: computed from the model's prices with `calculateApiCostOpenAI`,
+ * - `modelInfo`: computed from the model's prices with `calculateApiCost` (OpenAI protocol),
  *   the same rule the task applies when a chunk carries no cost. It is set on
  *   the chunk because condensing and the background-model fallback read the
  *   cost from the chunk only.
@@ -158,8 +158,12 @@ export function openAiUsageChunk(
 	const totalCost = options.billedCost
 		? (numberOrUndefined(usage.cost_details?.upstream_inference_cost) ?? 0) + (numberOrUndefined(usage.cost) ?? 0)
 		: options.modelInfo
-			? calculateApiCostOpenAI(options.modelInfo, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
-					.totalCost
+			? calculateApiCost("openai", options.modelInfo, {
+					inputTokens,
+					outputTokens,
+					cacheWriteTokens,
+					cacheReadTokens,
+				}).totalCost
 			: undefined
 
 	return {
@@ -187,7 +191,7 @@ type AnthropicShapedUsage =
  * Map an Anthropic-shaped `usage` block.
  *
  * Here `input_tokens` excludes the cached portions, which is why the cache
- * figures are reported separately and summed by `calculateApiCostAnthropic`
+ * figures are reported separately and summed by `calculateApiCost` (Anthropic protocol)
  * rather than treated as a subset.
  */
 export function anthropicCompletionUsage(usage: AnthropicShapedUsage): CompletionUsage | undefined {
