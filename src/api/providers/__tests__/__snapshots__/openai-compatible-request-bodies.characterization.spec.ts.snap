@@ -1,0 +1,1415 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`OpenAI-compatible request bodies (characterization) > base, binary reasoning off: one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "binary",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > base, binary reasoning off: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": [
+          {
+            "text": "<environment_details>x</environment_details>",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+    ],
+    "model": "binary",
+    "parallel_tool_calls": true,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.6,
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > base, binary reasoning on, user temperature, no parallel tools: one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "binary",
+    "thinking": {
+      "type": "enabled",
+    },
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > base, binary reasoning on, user temperature, no parallel tools: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": [
+          {
+            "text": "<environment_details>x</environment_details>",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+    ],
+    "model": "binary",
+    "parallel_tool_calls": false,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.9,
+    "thinking": {
+      "type": "enabled",
+    },
+    "tool_choice": "required",
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > base, plain model: one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "plain",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > base, plain model: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": [
+          {
+            "text": "<environment_details>x</environment_details>",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+    ],
+    "model": "plain",
+    "parallel_tool_calls": true,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.3,
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-chat via Azure AI Inference: one-shot request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 2000,
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "deepseek-chat",
+  },
+  "path": "/models/chat/completions",
+  "requestOptions": [
+    "path",
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-chat via Azure AI Inference: stream request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 2000,
+    "messages": [
+      {
+        "content": "system prompt
+first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": "<environment_details>x</environment_details>",
+        "role": "user",
+      },
+    ],
+    "model": "deepseek-chat",
+    "parallel_tool_calls": true,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.3,
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": "/models/chat/completions",
+  "requestOptions": [
+    "path",
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-flash default (thinking): one-shot request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 393216,
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "deepseek-flash",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-flash default (thinking): stream request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 209716,
+    "messages": [
+      {
+        "content": "system prompt
+first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body
+
+<environment_details>x</environment_details>",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+    ],
+    "model": "deepseek-flash",
+    "parallel_tool_calls": true,
+    "reasoning_effort": "high",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "thinking": {
+      "type": "enabled",
+    },
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-flash thinking off: one-shot request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 393216,
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "deepseek-flash",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-flash thinking off: stream request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 209716,
+    "messages": [
+      {
+        "content": "system prompt
+first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": "<environment_details>x</environment_details>",
+        "role": "user",
+      },
+    ],
+    "model": "deepseek-flash",
+    "parallel_tool_calls": true,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.3,
+    "thinking": {
+      "type": "disabled",
+    },
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-reasoner effort xhigh: one-shot request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 393216,
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "deepseek-reasoner",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > deepseek-reasoner effort xhigh: stream request 1`] = `
+{
+  "body": {
+    "max_completion_tokens": 209716,
+    "messages": [
+      {
+        "content": "system prompt
+first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body
+
+<environment_details>x</environment_details>",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+    ],
+    "model": "deepseek-reasoner",
+    "parallel_tool_calls": true,
+    "reasoning_effort": "max",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "thinking": {
+      "type": "enabled",
+    },
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.5: one-shot request 1`] = `
+{
+  "body": {
+    "max_tokens": 16384,
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "kimi-k2.5",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.5: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 16384,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": "<environment_details>x</environment_details>",
+        "role": "user",
+      },
+    ],
+    "model": "kimi-k2.5",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 1,
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2-0905-preview, user temperature and max tokens: one-shot request 1`] = `
+{
+  "body": {
+    "max_tokens": 16384,
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "kimi-k2-0905-preview",
+    "temperature": 0.5,
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2-0905-preview, user temperature and max tokens: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 16384,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": "<environment_details>x</environment_details>",
+        "role": "user",
+      },
+    ],
+    "model": "kimi-k2-0905-preview",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.5,
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > moonshot unknown model: one-shot request 1`] = `
+{
+  "body": {
+    "max_tokens": 16384,
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "kimi-custom",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > moonshot unknown model: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 16384,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": "<environment_details>x</environment_details>",
+        "role": "user",
+      },
+    ],
+    "model": "kimi-custom",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0,
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-4.6 (no thinking toggle), reasoning on: one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "glm-4.6",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-4.6 (no thinking toggle), reasoning on: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 40000,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+      {
+        "content": [
+          {
+            "text": "<environment_details>x</environment_details>",
+            "type": "text",
+          },
+        ],
+        "role": "user",
+      },
+    ],
+    "model": "glm-4.6",
+    "parallel_tool_calls": true,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.6,
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5 default: one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "glm-5",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5 default: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 40551,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body
+
+<environment_details>x</environment_details>",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+    ],
+    "model": "glm-5",
+    "parallel_tool_calls": true,
+    "reasoning_effort": "medium",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.6,
+    "thinking": {
+      "type": "enabled",
+    },
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5 reasoning off, user temperature: one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "glm-5",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5 reasoning off, user temperature: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 40551,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body
+
+<environment_details>x</environment_details>",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+    ],
+    "model": "glm-5",
+    "parallel_tool_calls": true,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.2,
+    "thinking": {
+      "type": "disabled",
+    },
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5.2 effort max, max tokens override: one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "glm-5.2",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5.2 effort max, max tokens override: stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 50000,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body
+
+<environment_details>x</environment_details>",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+    ],
+    "model": "glm-5.2",
+    "parallel_tool_calls": false,
+    "reasoning_effort": "max",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.6,
+    "thinking": {
+      "type": "enabled",
+    },
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5.3 reasoning off (cannot disable): one-shot request 1`] = `
+{
+  "body": {
+    "messages": [
+      {
+        "content": "one shot",
+        "role": "user",
+      },
+    ],
+    "model": "glm-5.3",
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
+
+exports[`OpenAI-compatible request bodies (characterization) > zai glm-5.3 reasoning off (cannot disable): stream request 1`] = `
+{
+  "body": {
+    "max_tokens": 131072,
+    "messages": [
+      {
+        "content": "system prompt",
+        "role": "system",
+      },
+      {
+        "content": "first question",
+        "role": "user",
+      },
+      {
+        "content": "let me look",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{"path":"a.ts"}",
+              "name": "read_file",
+            },
+            "id": "call_1",
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "content": "file body
+
+<environment_details>x</environment_details>",
+        "role": "tool",
+        "tool_call_id": "call_1",
+      },
+    ],
+    "model": "glm-5.3",
+    "parallel_tool_calls": true,
+    "reasoning_effort": "max",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true,
+    },
+    "temperature": 0.6,
+    "thinking": {
+      "type": "enabled",
+    },
+    "tools": [
+      {
+        "function": {
+          "description": "Read a file",
+          "name": "read_file",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+          "strict": true,
+        },
+        "type": "function",
+      },
+    ],
+  },
+  "path": undefined,
+  "requestOptions": [
+    "signal",
+  ],
+}
+`;
