@@ -1,5 +1,4 @@
 import React, { memo, useState, useMemo } from "react"
-import { ArrowLeft } from "lucide-react"
 import { DeleteTaskDialog } from "./DeleteTaskDialog"
 import { BatchDeleteTaskDialog } from "./BatchDeleteTaskDialog"
 import { Virtuoso } from "react-virtuoso"
@@ -17,7 +16,7 @@ import {
 } from "@/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import { Tab, TabContent, TabHeader } from "../common/Tab"
+import { Tab, TabContent, TabHeader, TabTitle } from "../common/Tab"
 import { useTaskSearch } from "./useTaskSearch"
 import { useGroupedTasks, toDayRows } from "./useGroupedTasks"
 import { countAllSubtasks } from "./types"
@@ -110,18 +109,12 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 		<Tab>
 			<TabHeader className="flex flex-col gap-2">
 				<div className="flex items-center justify-between gap-2">
-					<div className="flex items-center gap-2">
-						<Button
-							variant="ghost"
-							className="px-1.5 -ml-2"
-							onClick={onDone}
-							aria-label={t("history:done")}
-							data-testid="history-done-button">
-							<ArrowLeft />
-							<span className="sr-only">{t("history:done")}</span>
-						</Button>
-						<h3 className="text-vscode-foreground m-0">{t("history:history")}</h3>
-					</div>
+					<TabTitle
+						title={t("history:history")}
+						backLabel={t("history:done")}
+						onBack={onDone}
+						backTestId="history-done-button"
+					/>
 					<StandardTooltip
 						content={
 							isSelectionMode ? `${t("history:exitSelectionMode")}` : `${t("history:enterSelectionMode")}`

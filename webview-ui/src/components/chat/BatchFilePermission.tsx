@@ -28,7 +28,7 @@ export const BatchFilePermission = memo(({ files = [], onPermissionResponse, ts 
 	return (
 		<div className="pt-[5px]">
 			{/* Individual files */}
-			<div className="flex flex-col gap-0 border border-border rounded-md p-1">
+			<div className="flex flex-col gap-0 border border-border p-1">
 				{files.map((file, index) => {
 					return (
 						<div key={`${file.path}-${index}-${ts}`} className="flex items-center gap-2">

@@ -203,9 +203,9 @@ describe("ChatTextArea", () => {
 			const enhanceButton = getEnhancePromptButton()
 			fireEvent.click(enhanceButton)
 
-			// Check if the WandSparkles icon has the animate-spin class
-			const animatingIcon = enhanceButton.querySelector(".animate-spin")
-			expect(animatingIcon).toBeInTheDocument()
+			// While the prompt is enhanced the wand gives way to the spinner.
+			expect(enhanceButton.querySelector(".ui-progress-ring")).toBeInTheDocument()
+			expect(enhanceButton.querySelector(".lucide-wand-sparkles")).toBeNull()
 		})
 	})
 

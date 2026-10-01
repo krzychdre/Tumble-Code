@@ -226,7 +226,7 @@ export const ErrorRow = memo(
 						</div>
 					</div>
 					{isExpanded && (
-						<div className="px-2 py-1 mt-2 bg-vscode-editor-background ml-6 rounded-lg">
+						<div className="px-2 py-1 mt-2 bg-vscode-editor-background ml-6">
 							<CodeBlock source={message} language="text" />
 						</div>
 					)}
@@ -298,7 +298,7 @@ export const ErrorRow = memo(
 							<DialogHeader>
 								<DialogTitle>{t("chat:errorDetails.title")}</DialogTitle>
 							</DialogHeader>
-							<div className="max-h-96 overflow-auto bg-vscode-editor-background rounded-xl border border-vscode-editorGroup-border">
+							<div className="max-h-96 overflow-auto bg-vscode-editor-background border border-vscode-editorGroup-border">
 								<pre className="font-mono text-sm whitespace-pre-wrap break-words bg-transparent px-3">
 									{formattedErrorDetails}
 								</pre>

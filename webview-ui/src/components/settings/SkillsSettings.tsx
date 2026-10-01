@@ -139,7 +139,7 @@ export const SkillsSettings: React.FC = () => {
 			return (
 				<div
 					key={`${skill.source}-${skill.name}-${skill.modeSlugs?.join(",") || "any"}`}
-					className="p-2.5 px-2 rounded-xl border border-transparent">
+					className="p-2.5 px-2 border border-transparent">
 					<div className="flex items-start justify-between gap-2 flex-col min-[400px]:flex-row overflow-hidden">
 						<div className="flex-1 min-w-0">
 							{/* Skill name */}
@@ -310,7 +310,7 @@ export const SkillsSettings: React.FC = () => {
 						<p className="text-vscode-descriptionForeground">{t("settings:skills.modeDialog.intro")}</p>
 
 						{/* Any mode option */}
-						<div className="flex items-center gap-3 px-1 rounded-lg hover:bg-vscode-list-hoverBackground">
+						<div className="flex items-center gap-3 px-1 hover:bg-vscode-list-hoverBackground">
 							<LabeledCheckbox
 								id="mode-any"
 								checked={isAnyMode}
@@ -329,7 +329,7 @@ export const SkillsSettings: React.FC = () => {
 							{availableModes.map((mode) => (
 								<div
 									key={mode.slug}
-									className="flex items-center gap-3 p-1 rounded-lg hover:bg-vscode-list-hoverBackground">
+									className="flex items-center gap-3 p-1 hover:bg-vscode-list-hoverBackground">
 									<LabeledCheckbox
 										id={`mode-${mode.slug}`}
 										checked={selectedModes.includes(mode.slug)}

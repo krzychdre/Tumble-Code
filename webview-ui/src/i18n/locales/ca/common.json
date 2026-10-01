@@ -21,6 +21,7 @@
 		"no_results": "No s'han trobat resultats",
 		"close": "Tanca"
 	},
+	"loading": "Carregant",
 	"mermaid": {
 		"loading": "Generant diagrama mermaid...",
 		"render_error": "No es pot renderitzar el diagrama",

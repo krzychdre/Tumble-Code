@@ -81,7 +81,7 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 			</div>
 			<div
 				className={cn(
-					"ml-6 border rounded-sm overflow-hidden whitespace-pre-wrap",
+					"ml-6 border overflow-hidden whitespace-pre-wrap",
 					isEditing
 						? "bg-vscode-editor-background text-vscode-editor-foreground"
 						: "cursor-text p-1 bg-vscode-editor-foreground/70 text-vscode-editor-background",
@@ -109,7 +109,7 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 				) : (
 					<div className="flex justify-between">
 						<div
-							className="flex-grow px-2 py-1 wrap-anywhere rounded-lg transition-colors"
+							className="flex-grow px-2 py-1 wrap-anywhere transition-colors"
 							onClick={(e) => {
 								e.stopPropagation()
 								if (!isStreaming) {

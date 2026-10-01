@@ -12,7 +12,7 @@ export const CommandExecutionError = () => {
 	}, [])
 
 	return (
-		<div className="text-sm bg-vscode-editor-background border border-vscode-border rounded-lg p-3 ml-6">
+		<div className="text-sm bg-vscode-editor-background border border-vscode-border p-3 ml-6">
 			<div className="flex flex-col gap-2">
 				<div className="flex items-center">
 					<i

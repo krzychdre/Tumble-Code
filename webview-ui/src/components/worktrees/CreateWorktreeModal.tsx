@@ -5,7 +5,7 @@ import type { WorktreeDefaultsResponse, BranchInfo, WorktreeIncludeStatus, Exten
 
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button, Input } from "@/components/ui"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button, Input, Spinner } from "@/components/ui"
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
 import { CornerDownRight, Folder, FolderSearch, Info } from "lucide-react"
 import { onExtensionMessage } from "@src/utils/extensionBus"
@@ -169,7 +169,7 @@ export const CreateWorktreeModal = ({
 				<div className="flex flex-col gap-3">
 					{/* No .worktreeinclude warning - shows when the current worktree doesn't have .worktreeinclude */}
 					{includeStatus?.exists === false && (
-						<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vscode-inputValidation-warningBackground border border-vscode-inputValidation-warningBorder text-sm">
+						<div className="flex items-center gap-2 px-3 py-2 bg-vscode-inputValidation-warningBackground border border-vscode-inputValidation-warningBorder text-sm">
 							<Info />
 							<span className="text-vscode-foreground">
 								<span className="font-medium">{t("worktrees:noIncludeFileWarning")}</span>
@@ -186,7 +186,7 @@ export const CreateWorktreeModal = ({
 						<label className="text-sm text-vscode-foreground">{t("worktrees:baseBranch")}</label>
 						{!branches ? (
 							<div className="flex items-center gap-2 h-8 px-2 text-sm text-vscode-descriptionForeground">
-								<span className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true" />
+								<Spinner className="size-4" />
 								<span>{t("worktrees:loadingBranches")}</span>
 							</div>
 						) : (
@@ -209,7 +209,6 @@ export const CreateWorktreeModal = ({
 							value={branchName}
 							onChange={(e) => setBranchName(e.target.value)}
 							placeholder={defaults?.suggestedBranch || "worktree/feature-name"}
-							className="rounded-full"
 						/>
 					</div>
 
@@ -221,7 +220,7 @@ export const CreateWorktreeModal = ({
 							value={worktreePath}
 							onChange={(e) => setWorktreePath(e.target.value)}
 							placeholder={defaults?.suggestedPath || "/path/to/worktree"}
-							className="rounded-full flex-1 pr-9"
+							className="flex-1 pr-9"
 						/>
 						<FolderSearch
 							className="size-4 shrink-0 absolute right-3 cursor-pointer hover:opacity-75 transition-opacity"
@@ -231,7 +230,7 @@ export const CreateWorktreeModal = ({
 
 					{/* Error message */}
 					{error && (
-						<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
+						<div className="flex items-center gap-2 px-3 py-2 bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
 							<span
 								className="codicon codicon-error text-vscode-errorForeground flex-shrink-0"
 								aria-hidden="true"
@@ -242,12 +241,9 @@ export const CreateWorktreeModal = ({
 
 					{/* Progress section - appears during file copying */}
 					{copyProgress && (
-						<div className="flex flex-col gap-2 px-3 py-3 rounded-lg bg-vscode-editor-background border border-vscode-panel-border">
+						<div className="flex flex-col gap-2 px-3 py-3 bg-vscode-editor-background border border-vscode-panel-border">
 							<div className="flex items-center gap-2 text-sm">
-								<span
-									className="codicon codicon-loading codicon-modifier-spin text-vscode-button-background"
-									aria-hidden="true"
-								/>
+								<Spinner className="size-4" />
 								<span className="text-vscode-foreground font-medium">
 									{t("worktrees:copyingFiles")}
 								</span>
@@ -269,10 +265,7 @@ export const CreateWorktreeModal = ({
 					<Button variant="primary" onClick={handleCreate} disabled={!isValid || isCreating}>
 						{isCreating ? (
 							<>
-								<span
-									className="codicon codicon-loading codicon-modifier-spin mr-2"
-									aria-hidden="true"
-								/>
+								<Spinner className="size-4 mr-2" />
 								{t("worktrees:creating")}
 							</>
 						) : (

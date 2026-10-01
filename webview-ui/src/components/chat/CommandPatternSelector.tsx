@@ -108,14 +108,14 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 													setEditState(item.pattern, false, item.pattern)
 												}
 											}}
-											className="font-mono text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded px-2 py-1.5 w-full focus:outline-0 focus:ring-1 focus:ring-vscode-focusBorder"
+											className="font-mono text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border px-2 py-1.5 w-full focus:outline-0 focus:ring-1 focus:ring-vscode-focusBorder"
 											placeholder={item.pattern}
 											autoFocus
 										/>
 									) : (
 										<div
 											onClick={() => setEditState(item.pattern, true)}
-											className="font-mono text-xs text-vscode-foreground cursor-pointer hover:bg-vscode-list-hoverBackground px-2 py-1.5 rounded transition-colors border border-transparent break-all"
+											className="font-mono text-xs text-vscode-foreground cursor-pointer hover:bg-vscode-list-hoverBackground px-2 py-1.5 transition-colors border border-transparent break-all"
 											title={t("chat:commandExecution.clickToEditPattern")}>
 											<span className="break-all">{editState.value}</span>
 											{item.description && (
@@ -134,7 +134,7 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 												: "chat:commandExecution.addToAllowed",
 										)}>
 										<button
-											className={cn("p-1 rounded transition-all cursor-pointer", {
+											className={cn("p-1 transition-all cursor-pointer", {
 												"bg-vscode-charts-green/20 text-vscode-charts-green hover:bg-vscode-charts-green/30":
 													status === "allowed",
 												"text-vscode-descriptionForeground hover:text-vscode-charts-green hover:bg-vscode-charts-green/10":
@@ -156,7 +156,7 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 												: "chat:commandExecution.addToDenied",
 										)}>
 										<button
-											className={cn("p-1 rounded transition-all cursor-pointer", {
+											className={cn("p-1 transition-all cursor-pointer", {
 												"bg-vscode-errorForeground/20 text-vscode-errorForeground hover:bg-vscode-errorForeground/30":
 													status === "denied",
 												"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-vscode-errorForeground/10":

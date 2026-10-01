@@ -46,7 +46,7 @@ export function PruneResultRow({ data }: PruneResultRowProps) {
 			</div>
 
 			{isExpanded && (
-				<div className="mt-2 ml-0 p-4 bg-vscode-editor-background rounded text-vscode-foreground text-sm">
+				<div className="mt-2 ml-0 p-4 bg-vscode-editor-background text-vscode-foreground text-sm">
 					<div className="flex flex-col gap-2">
 						<div className="flex items-center gap-2">
 							<span className="text-vscode-descriptionForeground">

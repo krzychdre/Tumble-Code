@@ -87,7 +87,7 @@ const TodoStatusDot = ({ status }: { status?: string }) => {
 const TodoText = ({ todo }: { todo: TodoItem }) => (
 	<span
 		className={cn(
-			"flex-1 min-w-0 font-medium text-[13px] leading-[1.4] mr-1.5 px-[3px] py-px",
+			"flex-1 min-w-0 font-medium text-base leading-[1.4] mr-1.5 px-[3px] py-px",
 			TODO_TEXT_COLOR[dotStatus(todo.status)],
 		)}>
 		{todo.content}
@@ -101,7 +101,7 @@ const PRIMARY_BUTTON =
 const SECONDARY_BUTTON =
 	"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground border-[var(--vscode-button-secondaryBorder,transparent)]"
 const TEXT_INPUT =
-	"flex-1 min-w-0 font-medium text-[13px] mr-1.5 px-[3px] py-px border-0 border-b border-solid focus-ring"
+	"flex-1 min-w-0 font-medium text-base mr-1.5 px-[3px] py-px border-0 border-b border-solid focus-ring"
 
 const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 	todos = NO_TODOS,
@@ -257,7 +257,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 								onClick={() => setIsEditing(!isEditing)}
 								aria-pressed={isEditing}
 								className={cn(
-									"ml-2 px-2 py-0.5 text-[13px] cursor-pointer border border-solid focus-ring",
+									"ml-2 px-2 py-0.5 text-base cursor-pointer border border-solid focus-ring",
 									isEditing ? PRIMARY_BUTTON : SECONDARY_BUTTON,
 								)}>
 								{isEditing ? t("chat:todo.done") : t("chat:todo.edit")}

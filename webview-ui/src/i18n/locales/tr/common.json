@@ -21,6 +21,7 @@
 		"no_results": "Sonuç bulunamadı",
 		"close": "Kapat"
 	},
+	"loading": "Yükleniyor",
 	"mermaid": {
 		"loading": "Mermaid diyagramı oluşturuluyor...",
 		"render_error": "Diyagram render edilemiyor",

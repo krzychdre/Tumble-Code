@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { ThemedProgressRing } from "@src/components/ui"
+import { Spinner } from "@src/components/ui"
 import { type ToolProgressStatus } from "@roo-code/types"
 import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
 import { formatPathTooltip } from "@src/utils/formatPathTooltip"
@@ -75,7 +75,7 @@ const CodeAccordion = ({
 
 	const title = (
 		<>
-			{isLoading && <ThemedProgressRing className="size-3 mr-2" />}
+			{isLoading && <Spinner label={t("common:loading")} className="size-3 mr-2" />}
 			{header ? (
 				<div className="flex items-center min-w-0">
 					<span className="codicon codicon-server mr-1.5" aria-hidden="true"></span>

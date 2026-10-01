@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { type ExtensionMessage, TelemetryEventName } from "@roo-code/types"
 
-import { TranslationProvider } from "./i18n/TranslationContext"
+import { TranslationProvider, useAppTranslation } from "./i18n/TranslationContext"
 import { MarketplaceViewStateManager } from "./components/marketplace/MarketplaceViewStateManager"
 
 import { vscode } from "./utils/vscode"
@@ -18,7 +18,7 @@ import WelcomeView from "./components/welcome/WelcomeViewProvider"
 import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDialog"
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
-import { ThemedProgressRing } from "./components/ui"
+import { Spinner } from "./components/ui"
 import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useAddNonInteractiveClickListener"
 import { useAutoApproveFrameAccent } from "./hooks/useAutoApproveFrameAccent"
 import { TooltipProvider } from "./components/ui/tooltip"
@@ -32,12 +32,15 @@ const MarketplaceView = lazy(() =>
 )
 const CloudView = lazy(() => import("./components/cloud/CloudView").then((module) => ({ default: module.CloudView })))
 
-// Subtle fallback while a lazy tab's chunk arrives: the standard progress ring.
-const TabLoadingFallback = () => (
-	<div className="flex flex-1 items-center justify-center" data-testid="tab-loading">
-		<ThemedProgressRing />
-	</div>
-)
+// Subtle fallback while a lazy tab's chunk arrives: the standard spinner.
+const TabLoadingFallback = () => {
+	const { t } = useAppTranslation()
+	return (
+		<div className="flex flex-1 items-center justify-center" data-testid="tab-loading">
+			<Spinner label={t("common:loading")} />
+		</div>
+	)
+}
 
 type Tab = "settings" | "history" | "chat" | "marketplace" | "cloud"
 

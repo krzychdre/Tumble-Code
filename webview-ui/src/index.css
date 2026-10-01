@@ -48,10 +48,14 @@
 		var(--vscode-editor-font-family), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
 		"Courier New", monospace;
 
+	/* The type scale follows the VS Code font size: use these classes rather
+	   than px literals, so the UI scales with the user's setting.
+	   `text-title` is the heading of a settings section. */
 	--text-xs: calc(var(--vscode-font-size) * 0.85);
 	--text-sm: calc(var(--vscode-font-size) * 0.9);
 	--text-base: var(--vscode-font-size);
 	--text-lg: calc(var(--vscode-font-size) * 1.1);
+	--text-title: calc(var(--vscode-font-size) * 1.25);
 
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -79,8 +83,10 @@
 	--color-chart-5: var(--chart-5);
 
 	/**
-	 * Rectangular corners: every Tailwind radius token is collapsed to 0 so all
-	 * `rounded-*` utilities render square corners from a single location.
+	 * Rectangular corners: every Tailwind radius token is collapsed to 0. The
+	 * `rounded` and `rounded-full` utilities do not read these tokens, so
+	 * `scripts/check-webview-radius.mjs` (part of the webview lint) keeps every
+	 * `rounded*` class out of the source instead of flattening them here.
 	 */
 	--radius-xs: 0;
 	--radius-sm: 0;
@@ -238,13 +244,6 @@
 }
 
 @layer utilities {
-	/*
-	 * Rectangular corners: Tailwind v4 maps `rounded` (no suffix) to a fixed
-	 * default and `rounded-full` to `calc(infinity * 1px)`; neither reads the
-	 * `@theme` radius scale. Flatten the static utilities and their directional
-	 * variants here so the entire webview renders square corners from one place.
-	 */
-
 	/* One focus ring for the whole webview: the theme's own focusBorder
 	   (§1.4, ai_plans/2026-09-27_ui-modernization.md). Custom code must use
 	   this token instead of re-deriving it from --vscode-input-border, which
@@ -266,30 +265,6 @@
 		border: 1px solid var(--vscode-contrastBorder, transparent);
 		cursor: default;
 		pointer-events: none;
-	}
-	.rounded,
-	.rounded-full,
-	.rounded-s,
-	.rounded-e,
-	.rounded-t,
-	.rounded-r,
-	.rounded-b,
-	.rounded-l,
-	.rounded-ss,
-	.rounded-se,
-	.rounded-ee,
-	.rounded-es,
-	.rounded-tl,
-	.rounded-tr,
-	.rounded-br,
-	.rounded-bl,
-	.rounded-s-full,
-	.rounded-e-full,
-	.rounded-t-full,
-	.rounded-r-full,
-	.rounded-b-full,
-	.rounded-l-full {
-		border-radius: 0;
 	}
 }
 
@@ -750,7 +725,7 @@
 	}
 
 	/*
-	 * Progress ring (components/ui/themed-progress-ring.tsx), the same look and
+	 * Spinner (components/ui/spinner.tsx), the same look and
 	 * animation as the deprecated toolkit's <vscode-progress-ring>.
 	 */
 	.ui-progress-ring {

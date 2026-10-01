@@ -13,7 +13,7 @@ export function TabButton({ icon, label, isActive, onClick }: TabButtonProps) {
 
 	return (
 		<button
-			className={`px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-[13px] transition-all duration-200 ease-in-out ${
+			className={`px-4 py-2 border-none cursor-pointer flex items-center gap-1.5 text-base transition-all duration-200 ease-in-out ${
 				isActive ? activeClasses : inactiveClasses
 			}`}
 			onClick={onClick}>

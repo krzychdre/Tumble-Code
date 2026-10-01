@@ -51,7 +51,7 @@ export const ModeCustomInstructionsSection = ({
 				isCustomMode={Boolean(customMode)}
 				onReset={onReset}
 			/>
-			<div className="text-[13px] text-vscode-descriptionForeground mb-2">
+			<div className="text-base text-vscode-descriptionForeground mb-2">
 				{t("prompts:customInstructions.description", {
 					modeName: currentMode?.name || "Code",
 				})}

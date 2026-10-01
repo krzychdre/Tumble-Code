@@ -208,7 +208,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 					data-testid="auto-approve-dropdown-trigger"
 					className={cn(
 						"inline-flex items-center gap-1.5 relative whitespace-nowrap px-1.5 py-1 text-xs",
-						"bg-transparent border rounded-md text-vscode-foreground",
+						"bg-transparent border text-vscode-foreground",
 						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
 						"max-[300px]:shrink-0",
 						isModeActive ? "!border-orange-600 text-orange-500" : "border-[rgba(255,255,255,0.08)]",

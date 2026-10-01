@@ -130,13 +130,13 @@ export const ImageGenerationSettings = ({
 
 					{/* Status Message */}
 					{enabled && !isConfigured && (
-						<div className="p-2 bg-vscode-editorWarning-background text-vscode-editorWarning-foreground rounded text-sm">
+						<div className="p-2 bg-vscode-editorWarning-background text-vscode-editorWarning-foreground text-sm">
 							{t("settings:experimental.IMAGE_GENERATION.warningMissingKey")}
 						</div>
 					)}
 
 					{enabled && isConfigured && (
-						<div className="p-2 bg-vscode-editorInfo-background text-vscode-editorInfo-foreground rounded text-sm">
+						<div className="p-2 bg-vscode-editorInfo-background text-vscode-editorInfo-foreground text-sm">
 							{t("settings:experimental.IMAGE_GENERATION.successConfigured")}
 						</div>
 					)}

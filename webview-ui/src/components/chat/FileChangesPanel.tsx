@@ -109,7 +109,7 @@ const FileChangesPanel = memo(({ clineMessages, className }: FileChangesPanelPro
 		<Collapsible open={panelExpanded} onOpenChange={setPanelExpanded} className={cn("px-3", className)}>
 			<CollapsibleTrigger
 				className={cn(
-					"flex items-center gap-2 w-full py-2 rounded-md text-left text-vscode-foreground",
+					"flex items-center gap-2 w-full py-2 text-left text-vscode-foreground",
 					"hover:bg-vscode-list-hoverBackground",
 				)}>
 				{panelExpanded ? (

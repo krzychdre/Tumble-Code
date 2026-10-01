@@ -1,4 +1,4 @@
-import { Link } from "@src/components/ui"
+import { Link, Spinner } from "@src/components/ui"
 import { Trans } from "react-i18next"
 
 interface CheckpointWarningProps {
@@ -32,8 +32,8 @@ export const CheckpointWarning = ({ warning }: CheckpointWarningProps) => {
 		warning.type === "WAIT_TIMEOUT" ? "errors.wait_checkpoint_long_time" : "errors.init_checkpoint_fail_long_time"
 
 	return (
-		<div className="flex items-center p-3 my-3 bg-vscode-inputValidation-warningBackground border border-vscode-inputValidation-warningBorder rounded">
-			<span className="codicon codicon-loading codicon-modifier-spin mr-2" aria-hidden="true" />
+		<div className="flex items-center p-3 my-3 bg-vscode-inputValidation-warningBackground border border-vscode-inputValidation-warningBorder">
+			<Spinner className="size-4 mr-2 shrink-0" />
 			<span className="text-vscode-foreground">
 				<Trans
 					i18nKey={i18nKey}

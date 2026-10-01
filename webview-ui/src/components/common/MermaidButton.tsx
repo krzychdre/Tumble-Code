@@ -95,7 +95,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 			<div className="relative w-full" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
 				{children}
 				{!isLoading && isHovering && (
-					<div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 rounded p-0.5 z-10 opacity-100 transition-opacity duration-200 ease-in-out">
+					<div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 p-0.5 z-10 opacity-100 transition-opacity duration-200 ease-in-out">
 						<MermaidActionButtons
 							onZoom={handleZoom}
 							onCopy={handleCopy}
@@ -169,7 +169,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 					)
 				) : (
 					<textarea
-						className="w-full min-h-[200px] bg-vscode-editor-background text-vscode-editor-foreground border border-vscode-editorGroup-border rounded p-2 font-mono resize-y focus-ring"
+						className="w-full min-h-[200px] bg-vscode-editor-background text-vscode-editor-foreground border border-vscode-editorGroup-border p-2 font-mono resize-y focus-ring"
 						readOnly
 						value={code}
 						style={{ height: "100%", minHeight: "unset", fontSize: "var(--vscode-editor-font-size)" }}

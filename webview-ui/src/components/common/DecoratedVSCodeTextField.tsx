@@ -47,7 +47,6 @@ function VSCodeTextFieldWithNodesInner(
 				`group`,
 				`relative flex items-center cursor-text`,
 				`bg-vscode-input-background text-vscode-input-foreground`,
-				`rounded`,
 				className,
 			)}
 			style={style}
@@ -76,7 +75,7 @@ function VSCodeTextFieldWithNodesInner(
 			)}
 
 			{/* Absolutely positioned focus border overlay */}
-			<div className="absolute top-0 left-0 size-full border border-vscode-input-border group-focus-within:border-vscode-focusBorder rounded"></div>
+			<div className="absolute top-0 left-0 size-full border border-vscode-input-border group-focus-within:border-vscode-focusBorder"></div>
 		</div>
 	)
 }

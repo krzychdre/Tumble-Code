@@ -29,7 +29,7 @@ export const CloudAccountSwitcher = () => {
 				<img
 					src={currentOrg.organization.image_url}
 					alt={currentOrg.organization.name}
-					className="w-5 h-5 rounded object-cover"
+					className="w-5 h-5 object-cover"
 				/>
 			)
 		} else if (selectedOrgId) {
@@ -41,14 +41,14 @@ export const CloudAccountSwitcher = () => {
 				<img
 					src={cloudUserInfo.picture}
 					alt={cloudUserInfo.name || cloudUserInfo.email}
-					className="w-5 h-5 rounded-full object-cover"
+					className="w-5 h-5 object-cover"
 				/>
 			)
 		} else {
 			// Personal account without avatar - show initials
 			const initial = cloudUserInfo.name?.charAt(0) || cloudUserInfo.email?.charAt(0) || "?"
 			return (
-				<div className="w-5 h-5 rounded-full flex items-center justify-center bg-vscode-button-background text-vscode-button-foreground text-xs">
+				<div className="w-5 h-5 flex items-center justify-center bg-vscode-button-background text-vscode-button-foreground text-xs">
 					{initial}
 				</div>
 			)
@@ -63,7 +63,7 @@ export const CloudAccountSwitcher = () => {
 						"h-4.5 w-4.5 p-0 gap-0",
 						"bg-transparent opacity-90 hover:opacity-50",
 						"flex items-center justify-center",
-						"rounded-lg overflow-clip",
+						"overflow-clip",
 						"border border-vscode-dropdown-border",
 						"[&>svg]:hidden", // Hide the default chevron/caret
 						isLoading && "opacity-50",
@@ -80,10 +80,10 @@ export const CloudAccountSwitcher = () => {
 								<img
 									src={cloudUserInfo.picture}
 									alt={cloudUserInfo.name || cloudUserInfo.email}
-									className="w-4.5 h-4.5 rounded-full object-cover overflow-clip"
+									className="w-4.5 h-4.5 object-cover overflow-clip"
 								/>
 							) : (
-								<div className="w-4.5 h-4.5 rounded-full flex items-center justify-center bg-vscode-button-background text-vscode-button-foreground text-xs">
+								<div className="w-4.5 h-4.5 flex items-center justify-center bg-vscode-button-background text-vscode-button-foreground text-xs">
 									{cloudUserInfo.name?.charAt(0) || cloudUserInfo.email?.charAt(0) || "?"}
 								</div>
 							)}
@@ -101,7 +101,7 @@ export const CloudAccountSwitcher = () => {
 									<img
 										src={org.organization.image_url}
 										alt=""
-										className="w-4.5 h-4.5 rounded-full object-cover overflow-clip"
+										className="w-4.5 h-4.5 object-cover overflow-clip"
 									/>
 								) : (
 									<Building2 className="w-4.5 h-4.5" />

@@ -317,9 +317,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					<p className="text-sm text-vscode-descriptionForeground p-2">{t("chat:planReview.emptyState")}</p>
 				) : (
 					annotations.map((ann) => (
-						<div
-							key={ann.id}
-							className="border border-vscode-editorWidget-border rounded p-2 flex flex-col gap-1">
+						<div key={ann.id} className="border border-vscode-editorWidget-border p-2 flex flex-col gap-1">
 							<blockquote
 								className="border-l-2 border-vscode-textLink-foreground pl-2 text-xs text-vscode-descriptionForeground line-clamp-3"
 								style={{
@@ -333,7 +331,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 							{editingId === ann.id ? (
 								<div className="flex flex-col gap-1">
 									<textarea
-										className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded p-1"
+										className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border p-1"
 										rows={2}
 										value={editingText}
 										onChange={(e) => setEditingText(e.target.value)}
@@ -354,7 +352,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 									<div className="flex gap-1">
 										<StandardTooltip content={t("chat:planReview.editNote")}>
 											<button
-												className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground rounded"
+												className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground"
 												onClick={() => handleStartEdit(ann.id, ann.note)}
 												aria-label={t("chat:planReview.editNote")}>
 												<Pencil className="w-3.5 h-3.5" />
@@ -362,7 +360,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 										</StandardTooltip>
 										<StandardTooltip content={t("chat:planReview.deleteNote")}>
 											<button
-												className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground rounded"
+												className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground"
 												onClick={() => handleDelete(ann.id)}
 												aria-label={t("chat:planReview.deleteNote")}>
 												<Trash2 className="w-3.5 h-3.5" />
@@ -397,7 +395,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					{hasChanges && (
 						<span
 							data-testid="plan-diff-badge"
-							className="text-xs px-1.5 py-0.5 rounded shrink-0"
+							className="text-xs px-1.5 py-0.5 shrink-0"
 							style={{
 								background: "var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.15))",
 								color: "var(--vscode-foreground)",
@@ -407,7 +405,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					)}
 				</div>
 				<button
-					className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground rounded shrink-0"
+					className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground shrink-0"
 					onClick={onClose}
 					aria-label={t("chat:planReview.cancel")}>
 					<X className="w-5 h-5" />
@@ -428,7 +426,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 								key={i}
 								data-testid="plan-diff-removed"
 								title={t("chat:planReview.removedContent")}
-								className="my-2 px-2 py-1 rounded text-xs text-vscode-descriptionForeground whitespace-pre-wrap line-through"
+								className="my-2 px-2 py-1 text-xs text-vscode-descriptionForeground whitespace-pre-wrap line-through"
 								style={{
 									background: "var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.15))",
 									borderLeft: "3px solid var(--vscode-editorGutter-deletedBackground, #f14c4c)",
@@ -439,7 +437,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 							<div
 								key={i}
 								data-testid="plan-diff-changed"
-								className="my-1 px-2 rounded"
+								className="my-1 px-2"
 								style={{
 									background:
 										"var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.15))",
@@ -455,7 +453,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					{/* Floating "Add note" chip */}
 					{chipPos && !showNoteEditor && (
 						<button
-							className="absolute z-10 flex items-center gap-1 px-2 py-1 text-xs rounded shadow-lg cursor-pointer"
+							className="absolute z-10 flex items-center gap-1 px-2 py-1 text-xs shadow-lg cursor-pointer"
 							style={{
 								left: chipPos.x,
 								top: chipPos.y,
@@ -473,7 +471,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					{/* Inline note editor */}
 					{showNoteEditor && editorPos && (
 						<div
-							className="absolute z-20 flex flex-col gap-1 p-2 rounded shadow-xl"
+							className="absolute z-20 flex flex-col gap-1 p-2 shadow-xl"
 							style={{
 								left: editorPos.x,
 								top: editorPos.y,
@@ -482,7 +480,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 								minWidth: 240,
 							}}>
 							<textarea
-								className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded p-1"
+								className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border p-1"
 								rows={3}
 								placeholder={t("chat:planReview.notePlaceholder")}
 								value={noteEditorText}

@@ -78,14 +78,14 @@ class ErrorBoundary extends Component<ErrorProps, ErrorState> {
 				<p className="mb-2">{t("errorBoundary.copyInstructions")}</p>
 
 				<div className="mb-4">
-					<h3 className="text-md font-bold mb-1">{t("errorBoundary.errorStack")}</h3>
-					<pre className="p-2 border rounded text-sm overflow-auto">{errorDisplay}</pre>
+					<h3 className="font-bold mb-1">{t("errorBoundary.errorStack")}</h3>
+					<pre className="p-2 border text-sm overflow-auto">{errorDisplay}</pre>
 				</div>
 
 				{componentStackDisplay && (
 					<div>
-						<h3 className="text-md font-bold mb-1">{t("errorBoundary.componentStack")}</h3>
-						<pre className="p-2 border rounded text-sm overflow-auto">{componentStackDisplay}</pre>
+						<h3 className="font-bold mb-1">{t("errorBoundary.componentStack")}</h3>
+						<pre className="p-2 border text-sm overflow-auto">{componentStackDisplay}</pre>
 					</div>
 				)}
 			</div>

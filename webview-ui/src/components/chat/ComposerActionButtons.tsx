@@ -3,7 +3,7 @@ import { Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"
-import { StandardTooltip } from "@src/components/ui"
+import { Spinner, StandardTooltip } from "@src/components/ui"
 
 interface ComposerActionButtonsProps {
 	isEditMode: boolean
@@ -69,7 +69,7 @@ export const ComposerActionButtons = ({
 					className={cn(
 						"relative inline-flex items-center justify-center",
 						"bg-transparent border-none p-1.5",
-						"rounded-md min-w-[28px] min-h-[28px]",
+						"min-w-[28px] min-h-[28px]",
 						"text-vscode-descriptionForeground hover:text-vscode-foreground",
 						"transition-all duration-1000",
 						"cursor-pointer",
@@ -95,7 +95,7 @@ export const ComposerActionButtons = ({
 						className={cn(
 							"relative inline-flex items-center justify-center",
 							"bg-transparent border-none p-1.5",
-							"rounded-md min-w-[28px] min-h-[28px]",
+							"min-w-[28px] min-h-[28px]",
 							"opacity-60 hover:opacity-100 text-vscode-descriptionForeground hover:text-vscode-foreground",
 							"transition-all duration-150",
 							"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
@@ -115,7 +115,7 @@ export const ComposerActionButtons = ({
 						className={cn(
 							"relative inline-flex items-center justify-center",
 							"bg-transparent border-none p-1.5",
-							"rounded-md min-w-[28px] min-h-[28px]",
+							"min-w-[28px] min-h-[28px]",
 							"text-vscode-descriptionForeground hover:text-vscode-foreground",
 							"transition-all duration-1000",
 							"cursor-pointer",
@@ -127,7 +127,7 @@ export const ComposerActionButtons = ({
 							"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
 							hasInputContent && "active:bg-[rgba(255,255,255,0.1)]",
 						)}>
-						<WandSparkles className={cn("w-4 h-4", isEnhancingPrompt && "animate-spin")} />
+						{isEnhancingPrompt ? <Spinner className="size-4" /> : <WandSparkles className="w-4 h-4" />}
 					</button>
 				</StandardTooltip>
 			)}
@@ -141,7 +141,7 @@ export const ComposerActionButtons = ({
 						className={cn(
 							"relative inline-flex items-center justify-center",
 							"bg-transparent border-none p-1.5",
-							"rounded-md min-w-[28px] min-h-[28px]",
+							"min-w-[28px] min-h-[28px]",
 							"text-vscode-descriptionForeground hover:text-vscode-foreground",
 							"transition-all duration-200",
 							"opacity-100 hover:opacity-100 pointer-events-auto",
@@ -163,7 +163,7 @@ export const ComposerActionButtons = ({
 					className={cn(
 						"relative inline-flex items-center justify-center",
 						"bg-transparent border-none p-1.5",
-						"rounded-full min-w-[28px] min-h-[28px]",
+						"min-w-[28px] min-h-[28px]",
 						"text-vscode-descriptionForeground hover:text-vscode-foreground",
 						"transition-all duration-200",
 						isEditMode || isTaskBusy || hasInputContent

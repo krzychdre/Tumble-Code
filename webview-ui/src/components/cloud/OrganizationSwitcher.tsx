@@ -47,7 +47,7 @@ export const OrganizationSwitcher = ({
 													?.organization.image_url
 											}
 											alt=""
-											className="w-4.5 h-4.5 rounded-full object-cover overflow-clip"
+											className="w-4.5 h-4.5 object-cover overflow-clip"
 										/>
 									) : (
 										<Building2 className="w-4.5 h-4.5" />
@@ -61,7 +61,7 @@ export const OrganizationSwitcher = ({
 								</>
 							) : (
 								<>
-									<div className="p-0.5 bg-vscode-button-background rounded-full flex items-center justify-center text-vscode-button-foreground text-xs">
+									<div className="p-0.5 bg-vscode-button-background flex items-center justify-center text-vscode-button-foreground text-xs">
 										<User className="w-4 h-4 text-vscode-button-foreground" />
 									</div>
 									<span>{t("cloud:personalAccount")}</span>
@@ -85,7 +85,7 @@ export const OrganizationSwitcher = ({
 									<img
 										src={org.organization.image_url}
 										alt=""
-										className="w-4.5 h-4.5 rounded-full object-cover overflow-clip"
+										className="w-4.5 h-4.5 object-cover overflow-clip"
 									/>
 								) : (
 									<Building2 className="w-4.5 h-4.5" />

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 
 import type { Worktree, WorktreeListResponse, WorktreeIncludeStatus, ExtensionMessage } from "@roo-code/types"
 
-import { Badge, Button, StandardTooltip, ToggleSwitch } from "@/components/ui"
+import { Badge, Button, Spinner, StandardTooltip, ToggleSwitch } from "@/components/ui"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
@@ -162,8 +162,7 @@ export const WorktreesView = () => {
 					<p className="text-vscode-descriptionForeground">{t("worktrees:description")}</p>
 					<p>{t("worktrees:subfolderNotSupported")}</p>
 					<p>
-						{t("worktrees:gitRoot")}:{" "}
-						<code className="bg-vscode-input-background p-1 rounded-md">{gitRootPath}</code>
+						{t("worktrees:gitRoot")}: <code className="bg-vscode-input-background p-1">{gitRootPath}</code>
 					</p>
 				</div>
 			</div>
@@ -198,7 +197,7 @@ export const WorktreesView = () => {
 			<div className="flex-1 overflow-y-auto px-4 py-2 min-h-0">
 				{isLoading ? (
 					<div className="flex items-center justify-center h-48">
-						<span className="codicon codicon-loading codicon-modifier-spin text-2xl" aria-hidden="true" />
+						<Spinner label={t("common:loading")} className="size-6" />
 					</div>
 				) : error ? (
 					<div className="flex flex-col items-center justify-center h-48 text-vscode-errorForeground">
@@ -210,7 +209,7 @@ export const WorktreesView = () => {
 						{worktrees.map((worktree) => (
 							<div
 								key={worktree.path}
-								className={`p-2.5 px-3.5 rounded-xl hover:bg-vscode-list-hoverBackground border border-transparent ${
+								className={`p-2.5 px-3.5 hover:bg-vscode-list-hoverBackground border border-transparent ${
 									worktree.isCurrent
 										? " bg-vscode-list-activeSelectionBackground border-vscode-list-activeSelectionForeground/20"
 										: "cursor-pointer"

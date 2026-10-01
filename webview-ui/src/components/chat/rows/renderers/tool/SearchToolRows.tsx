@@ -35,8 +35,7 @@ export const CodebaseSearchToolRow = ({ tool }: ToolRendererProps) => (
 )
 
 /** The pill on the right of a web row's header, styled like the API request cost. */
-const headerPill =
-	"text-xs text-vscode-descriptionForeground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
+const headerPill = "text-xs text-vscode-descriptionForeground border-vscode-dropdown-border/50 border px-1.5 py-0.5"
 
 /**
  * The header a web row shares with the API request row: icon, short title,
@@ -92,7 +91,7 @@ export const WebSearchToolRow = ({ message, tool, meta }: ToolRendererProps) => 
 			/>
 			{queries.length > 0 && (
 				<div className="pl-6">
-					<ul className="m-0 list-none rounded-md bg-vscode-editor-background py-1 px-0">
+					<ul className="m-0 list-none bg-vscode-editor-background py-1 px-0">
 						{queries.map((query, i) => (
 							<li key={i} className="flex items-start gap-2 px-2.5 py-0.5" title={query}>
 								<span
@@ -124,7 +123,7 @@ export const WebFetchToolRow = ({ message, tool, meta }: ToolRendererProps) => {
 					{parts ? (
 						<button
 							type="button"
-							className="group flex w-full min-w-0 items-center gap-2 rounded-md border-none bg-vscode-editor-background px-2.5 py-1.5 text-left text-vscode-foreground cursor-pointer focus-ring"
+							className="group flex w-full min-w-0 items-center gap-2 border-none bg-vscode-editor-background px-2.5 py-1.5 text-left text-vscode-foreground cursor-pointer focus-ring"
 							title={t("chat:webFetch.openInBrowser", { url })}
 							onClick={() => vscode.postMessage({ type: "openExternal", url })}>
 							<span
@@ -141,7 +140,7 @@ export const WebFetchToolRow = ({ message, tool, meta }: ToolRendererProps) => {
 							/>
 						</button>
 					) : (
-						<div className="rounded-md bg-vscode-editor-background px-2.5 py-1.5 font-mono text-xs break-all">
+						<div className="bg-vscode-editor-background px-2.5 py-1.5 font-mono text-xs break-all">
 							{url}
 						</div>
 					)}

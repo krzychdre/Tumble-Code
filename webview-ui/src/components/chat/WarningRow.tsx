@@ -68,7 +68,7 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 				{onDismiss && (
 					<button
 						type="button"
-						className="flex items-center justify-center shrink-0 rounded bg-transparent border-none cursor-pointer hover:opacity-50 transition-opacity duration-200 text-vscode-foreground focus:outline focus:outline-1 focus:outline-vscode-focusBorder focus:outline-offset-1"
+						className="flex items-center justify-center shrink-0 bg-transparent border-none cursor-pointer hover:opacity-50 transition-opacity duration-200 text-vscode-foreground focus:outline focus:outline-1 focus:outline-vscode-focusBorder focus:outline-offset-1"
 						onClick={onDismiss}
 						aria-label={t("common:dismiss")}
 						title={t("common:dismissAndDontShowAgain")}>

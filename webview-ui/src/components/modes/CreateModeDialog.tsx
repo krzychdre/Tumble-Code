@@ -171,7 +171,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 
 					<div className="mb-4">
 						<div className="font-bold mb-1">{t("prompts:createModeDialog.roleDefinition.label")}</div>
-						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
+						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.roleDefinition.description")}
 						</div>
 						<ThemedTextArea
@@ -186,7 +186,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 
 					<div className="mb-4">
 						<div className="font-bold mb-1">{t("prompts:createModeDialog.description.label")}</div>
-						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
+						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.description.description")}
 						</div>
 						<ThemedTextField
@@ -199,7 +199,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 
 					<div className="mb-4">
 						<div className="font-bold mb-1">{t("prompts:createModeDialog.whenToUse.label")}</div>
-						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
+						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.whenToUse.description")}
 						</div>
 						<ThemedTextArea
@@ -212,7 +212,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 					</div>
 					<div className="mb-4">
 						<div className="font-bold mb-1">{t("prompts:createModeDialog.tools.label")}</div>
-						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
+						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.tools.description")}
 						</div>
 						<div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
@@ -271,7 +271,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 					</div>
 					<div className="mb-4">
 						<div className="font-bold mb-1">{t("prompts:createModeDialog.customInstructions.label")}</div>
-						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
+						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.customInstructions.description")}
 						</div>
 						<ThemedTextArea

@@ -298,7 +298,7 @@ const ApiOptions = ({
 
 			{isUnavailableSelectedProvider ? (
 				<div
-					className="rounded-md border border-vscode-panel-border px-3 py-2 text-sm text-vscode-descriptionForeground"
+					className="border border-vscode-panel-border px-3 py-2 text-sm text-vscode-descriptionForeground"
 					data-testid="unavailable-provider-message">
 					{selectedProviderClassification === "retired"
 						? t("settings:providers.retiredProviderMessage")

@@ -1,9 +1,10 @@
 import * as React from "react"
-import { Loader2, type LucideIcon } from "lucide-react"
+import { type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
 import { Button } from "./button"
+import { Spinner } from "./spinner"
 import { StandardTooltip } from "./standard-tooltip"
 
 export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
@@ -56,7 +57,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 		const glyph = isCodicon ? (
 			<span className={cn("codicon", codiconClass(icon), isLoading && "codicon-modifier-spin")} />
 		) : isLoading ? (
-			<Loader2 className="size-2.5 animate-spin" />
+			<Spinner className="size-2.5" />
 		) : (
 			Icon && <Icon className="size-2.5" />
 		)
@@ -69,7 +70,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 					aria-label={title}
 					className={cn(
 						size === "sm" ? "w-6 h-6" : "w-7 h-7",
-						"flex items-center justify-center border-none text-vscode-editor-foreground cursor-pointer rounded",
+						"flex items-center justify-center border-none text-vscode-editor-foreground cursor-pointer",
 						"bg-transparent hover:bg-vscode-toolbar-hoverBackground",
 						className,
 					)}
@@ -86,7 +87,6 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 					className={cn(
 						"relative inline-flex items-center justify-center",
 						"bg-transparent border-none p-1.5",
-						"rounded-md",
 						// Codicons are 16.5px font glyphs and need the 28px box to centre.
 						isCodicon && "min-w-7 min-h-7",
 						"text-vscode-foreground opacity-85",

@@ -1,16 +1,4 @@
-import { ThemedProgressRing } from "@src/components/ui"
+import { Spinner } from "@src/components/ui"
 
-export const ProgressIndicator = () => (
-	<div
-		style={{
-			width: "16px",
-			height: "16px",
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-		}}>
-		<div style={{ transform: "scale(0.55)", transformOrigin: "center" }}>
-			<ThemedProgressRing />
-		</div>
-	</div>
-)
+/** The small spinner of a chat row that is still running; the row title says what runs. */
+export const ProgressIndicator = () => <Spinner className="size-4 shrink-0" />

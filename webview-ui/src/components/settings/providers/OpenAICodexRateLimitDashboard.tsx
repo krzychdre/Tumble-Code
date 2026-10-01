@@ -69,7 +69,7 @@ const UsageProgressBar: React.FC<{ usedPercent: number; label?: string }> = ({ u
 	return (
 		<div className="w-full">
 			{label ? <div className="text-xs text-vscode-descriptionForeground mb-1">{label}</div> : null}
-			<div className="w-full bg-vscode-input-background rounded-sm h-2 overflow-hidden">
+			<div className="w-full bg-vscode-input-background h-2 overflow-hidden">
 				<div
 					className={`h-full transition-all duration-300 ${
 						isCritical
@@ -128,7 +128,7 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 
 	if (isLoading && !rateLimits) {
 		return (
-			<div className="bg-vscode-editor-background border border-vscode-panel-border rounded-md p-3">
+			<div className="bg-vscode-editor-background border border-vscode-panel-border p-3">
 				<div className="text-sm text-vscode-descriptionForeground">
 					{t("settings:providers.openAiCodexRateLimits.loading")}
 				</div>
@@ -138,7 +138,7 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 
 	if (error) {
 		return (
-			<div className="bg-vscode-editor-background border border-vscode-panel-border rounded-md p-3">
+			<div className="bg-vscode-editor-background border border-vscode-panel-border p-3">
 				<div className="flex items-center justify-between">
 					<div className="text-sm text-vscode-errorForeground">
 						{t("settings:providers.openAiCodexRateLimits.loadError")}
@@ -186,7 +186,7 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 	}
 
 	return (
-		<div className="bg-vscode-editor-background border border-vscode-panel-border rounded-md p-3">
+		<div className="bg-vscode-editor-background border border-vscode-panel-border p-3">
 			<div className="mb-3">
 				<div className="text-sm font-medium text-vscode-foreground">
 					{t("settings:providers.openAiCodexRateLimits.title", { planLabel })}

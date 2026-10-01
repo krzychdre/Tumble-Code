@@ -98,9 +98,7 @@ export const SlashCommandsSettings: React.FC = () => {
 			const isBuiltIn = command.source === "built-in"
 
 			return (
-				<div
-					key={`${command.source}-${command.name}`}
-					className="p-2.5 px-2 rounded-xl border border-transparent">
+				<div key={`${command.source}-${command.name}`} className="p-2.5 px-2 border border-transparent">
 					<div className="flex items-start justify-between gap-2 flex-col min-[400px]:flex-row overflow-hidden">
 						<div className="flex-1 min-w-0">
 							{/* Command name */}

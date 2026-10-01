@@ -52,10 +52,7 @@ const TaskGroupItem = ({
 	return (
 		<div
 			data-testid={`task-group-${parent.id}`}
-			className={cn(
-				"bg-vscode-editor-background rounded-xl border border-transparent overflow-hidden",
-				className,
-			)}>
+			className={cn("bg-vscode-editor-background border border-transparent overflow-hidden", className)}>
 			{/* Parent task */}
 			<TaskItem
 				item={parent}
@@ -65,7 +62,6 @@ const TaskGroupItem = ({
 				isSelected={isSelected}
 				onToggleSelection={onToggleSelection}
 				onDelete={onDelete}
-				hasSubtasks={hasSubtasks}
 			/>
 
 			{/* Subtask collapsible row — shows total recursive count */}

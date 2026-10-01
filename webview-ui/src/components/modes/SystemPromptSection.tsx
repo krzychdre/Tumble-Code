@@ -73,7 +73,7 @@ export const SystemPromptDialog = ({ title, currentModeName, content, onClose }:
 								modeName: currentModeName || "Code",
 							})}
 					</DialogTitle>
-					<pre className="p-2 whitespace-pre-wrap break-words font-mono text-vscode-editor-font-size text-vscode-editor-foreground bg-vscode-editor-background border border-vscode-editor-lineHighlightBorder rounded overflow-y-auto">
+					<pre className="p-2 whitespace-pre-wrap break-words font-mono text-vscode-editor-font-size text-vscode-editor-foreground bg-vscode-editor-background border border-vscode-editor-lineHighlightBorder overflow-y-auto">
 						{content}
 					</pre>
 				</div>
