@@ -128,7 +128,6 @@ describe("writeToFileTool", () => {
 		mockCline.cwd = "/"
 		mockCline.consecutiveMistakeCount = 0
 		mockCline.didEditFile = false
-		mockCline.diffStrategy = undefined
 		mockCline.providerRef = {
 			deref: vi.fn().mockReturnValue({
 				getState: vi.fn().mockResolvedValue({

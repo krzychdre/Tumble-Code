@@ -15,6 +15,7 @@ import {
 	truncateConversation,
 	manageContext,
 	willManageContext,
+	resolveCondenseThreshold,
 } from "../index"
 
 // Create a mock ApiHandler for testing
@@ -1499,6 +1500,32 @@ describe("Context Management", () => {
 	/**
 	 * Tests for the willManageContext helper function
 	 */
+	describe("resolveCondenseThreshold", () => {
+		it("uses a valid profile value, otherwise the global percent", () => {
+			expect(resolveCondenseThreshold({ p: 60 }, "p", 75)).toBe(60)
+			expect(resolveCondenseThreshold({}, "p", 75)).toBe(75)
+			expect(resolveCondenseThreshold({ p: -1 }, "p", 75)).toBe(75)
+			expect(resolveCondenseThreshold({ p: 150 }, "p", 75)).toBe(75)
+		})
+
+		it("warns about an out-of-range value only when asked to", () => {
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+			try {
+				resolveCondenseThreshold({ p: 150 }, "p", 75)
+				expect(warn).not.toHaveBeenCalled()
+				resolveCondenseThreshold({ p: 150 }, "p", 75, true)
+				expect(warn).toHaveBeenCalledWith(
+					expect.stringContaining('Invalid profile threshold 150 for profile "p"'),
+				)
+				warn.mockClear()
+				resolveCondenseThreshold({ p: -1 }, "p", 75, true)
+				expect(warn).not.toHaveBeenCalled()
+			} finally {
+				warn.mockRestore()
+			}
+		})
+	})
+
 	describe("willManageContext", () => {
 		it("should return true when context percent exceeds threshold", () => {
 			const result = willManageContext({

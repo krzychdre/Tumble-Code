@@ -23,10 +23,6 @@ import {
 	type GitProperties,
 	type TelemetryProperties,
 	type TelemetryPropertiesProvider,
-	type CodeActionId,
-	type CodeActionName,
-	type TerminalActionId,
-	type TerminalActionPromptType,
 	type HistoryItem,
 	type ClineMessage,
 	type CreateTaskOptions,
@@ -45,7 +41,6 @@ import { CloudService } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { findLast } from "@roo-code/core/browser"
-import { supportPrompt } from "../../shared/support-prompt"
 import { Mode } from "../../shared/modes"
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
@@ -767,76 +762,6 @@ export class ClineProvider
 		}
 
 		return visibleProvider
-	}
-
-	public static async handleCodeAction(
-		command: CodeActionId,
-		promptType: CodeActionName,
-		params: Record<string, string | any[]>,
-	): Promise<void> {
-		// Capture telemetry for code action usage
-		TelemetryService.instance.capture(TelemetryEventName.CODE_ACTION_USED, { actionType: promptType })
-
-		const visibleProvider = await ClineProvider.getInstance()
-
-		if (!visibleProvider) {
-			return
-		}
-
-		const { customSupportPrompts } = await visibleProvider.getState()
-
-		// TODO: Improve type safety for promptType.
-		const prompt = supportPrompt.create(promptType, params, customSupportPrompts)
-
-		if (command === "addToContext") {
-			await visibleProvider.postMessageToWebview({
-				type: "invoke",
-				invoke: "setChatBoxMessage",
-				text: `${prompt}\n\n`,
-			})
-			await visibleProvider.postMessageToWebview({ type: "action", action: "focusInput" })
-			return
-		}
-
-		await visibleProvider.createTask(prompt)
-	}
-
-	public static async handleTerminalAction(
-		command: TerminalActionId,
-		promptType: TerminalActionPromptType,
-		params: Record<string, string | any[]>,
-	): Promise<void> {
-		TelemetryService.instance.capture(TelemetryEventName.CODE_ACTION_USED, { actionType: promptType })
-
-		const visibleProvider = await ClineProvider.getInstance()
-
-		if (!visibleProvider) {
-			return
-		}
-
-		const { customSupportPrompts } = await visibleProvider.getState()
-		const prompt = supportPrompt.create(promptType, params, customSupportPrompts)
-
-		if (command === "terminalAddToContext") {
-			await visibleProvider.postMessageToWebview({
-				type: "invoke",
-				invoke: "setChatBoxMessage",
-				text: `${prompt}\n\n`,
-			})
-			await visibleProvider.postMessageToWebview({ type: "action", action: "focusInput" })
-			return
-		}
-
-		try {
-			await visibleProvider.createTask(prompt)
-		} catch (error) {
-			if (error instanceof OrganizationAllowListViolationError) {
-				// Errors from terminal commands seem to get swallowed / ignored.
-				vscode.window.showErrorMessage(error.message)
-			}
-
-			throw error
-		}
 	}
 
 	async resolveWebviewView(webviewView: vscode.WebviewView | vscode.WebviewPanel) {

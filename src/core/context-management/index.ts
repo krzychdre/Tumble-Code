@@ -160,10 +160,38 @@ export type WillManageContextOptions = {
 }
 
 /**
+ * The condense threshold (percent of the context window) for one profile: its own value when
+ * it is within MIN_CONDENSE_THRESHOLD..MAX_CONDENSE_THRESHOLD, otherwise the global percent.
+ * A profile value of -1 means "inherit the global setting"; a missing value does the same.
+ * Any other value out of range is ignored, with a warning when `warnOnInvalid` is set (the
+ * request path warns once, the pre-check does not repeat it).
+ */
+export function resolveCondenseThreshold(
+	profileThresholds: Record<string, number>,
+	profileId: string,
+	globalPercent: number,
+	warnOnInvalid = false,
+): number {
+	const profileThreshold = profileThresholds[profileId]
+	if (profileThreshold === undefined || profileThreshold === -1) {
+		return globalPercent
+	}
+	if (profileThreshold >= MIN_CONDENSE_THRESHOLD && profileThreshold <= MAX_CONDENSE_THRESHOLD) {
+		return profileThreshold
+	}
+	if (warnOnInvalid) {
+		console.warn(
+			`Invalid profile threshold ${profileThreshold} for profile "${profileId}". Using global default of ${globalPercent}%`,
+		)
+	}
+	return globalPercent
+}
+
+/**
  * Checks whether context management (condensation or truncation) will likely run based on current token usage.
  *
  * This is useful for showing UI indicators before `manageContext` is actually called,
- * without duplicating the threshold calculation logic.
+ * sharing the threshold resolution with it (resolveCondenseThreshold).
  *
  * @param {WillManageContextOptions} options - The options for threshold calculation
  * @returns {boolean} True if context management will likely run, false otherwise
@@ -190,17 +218,7 @@ export function willManageContext({
 	const prevContextTokens = totalTokens + lastMessageTokens
 	const allowedTokens = contextWindow * (1 - TOKEN_BUFFER_PERCENTAGE) - reservedTokens
 
-	// Determine the effective threshold to use
-	let effectiveThreshold = autoCondenseContextPercent
-	const profileThreshold = profileThresholds[currentProfileId]
-	if (profileThreshold !== undefined) {
-		if (profileThreshold === -1) {
-			effectiveThreshold = autoCondenseContextPercent
-		} else if (profileThreshold >= MIN_CONDENSE_THRESHOLD && profileThreshold <= MAX_CONDENSE_THRESHOLD) {
-			effectiveThreshold = profileThreshold
-		}
-		// Invalid values fall back to global setting (effectiveThreshold already set)
-	}
+	const effectiveThreshold = resolveCondenseThreshold(profileThresholds, currentProfileId, autoCondenseContextPercent)
 
 	const contextPercent = (100 * prevContextTokens) / contextWindow
 	return contextPercent >= effectiveThreshold || prevContextTokens > allowedTokens
@@ -359,25 +377,12 @@ export async function manageContext({
 	// Truncate if we're within TOKEN_BUFFER_PERCENTAGE of the context window
 	const allowedTokens = contextWindow * (1 - TOKEN_BUFFER_PERCENTAGE) - reservedTokens
 
-	// Determine the effective threshold to use
-	let effectiveThreshold = autoCondenseContextPercent
-	const profileThreshold = profileThresholds[currentProfileId]
-	if (profileThreshold !== undefined) {
-		if (profileThreshold === -1) {
-			// Special case: -1 means inherit from global setting
-			effectiveThreshold = autoCondenseContextPercent
-		} else if (profileThreshold >= MIN_CONDENSE_THRESHOLD && profileThreshold <= MAX_CONDENSE_THRESHOLD) {
-			// Valid custom threshold
-			effectiveThreshold = profileThreshold
-		} else {
-			// Invalid threshold value, fall back to global setting
-			console.warn(
-				`Invalid profile threshold ${profileThreshold} for profile "${currentProfileId}". Using global default of ${autoCondenseContextPercent}%`,
-			)
-			effectiveThreshold = autoCondenseContextPercent
-		}
-	}
-	// If no specific threshold is found for the profile, fall back to global setting
+	const effectiveThreshold = resolveCondenseThreshold(
+		profileThresholds,
+		currentProfileId,
+		autoCondenseContextPercent,
+		true,
+	)
 
 	const contextPercent = (100 * prevContextTokens) / contextWindow
 	const overCondenseThreshold = autoCondenseContext && contextPercent >= effectiveThreshold

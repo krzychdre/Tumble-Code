@@ -2,6 +2,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import { resolveMaxInlineToolResultBytes } from "@roo-code/types"
+import { escapeRegExp } from "@roo-code/core/browser"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
@@ -330,7 +331,7 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 			regex = new RegExp(pattern, "i")
 		} catch {
 			// If invalid regex, treat as literal string
-			regex = new RegExp(this.escapeRegExp(pattern), "i")
+			regex = new RegExp(escapeRegExp(pattern), "i")
 		}
 
 		const fileHandle = await fs.open(artifactPath, "r")
@@ -452,17 +453,6 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 			return `${(bytes / 1024).toFixed(1)}KB`
 		}
 		return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
-	}
-
-	/**
-	 * Escape special regex characters in a string for literal matching.
-	 *
-	 * @param string - The string to escape
-	 * @returns The escaped string safe for use in a RegExp constructor
-	 * @private
-	 */
-	private escapeRegExp(string: string): string {
-		return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 	}
 
 	/**

@@ -4,7 +4,7 @@ import { CodeActionId, CodeActionName } from "@roo-code/types"
 
 import { getCodeActionCommand } from "../utils/commands"
 import { EditorUtils } from "../integrations/editor/EditorUtils"
-import { ClineProvider } from "../core/webview/ClineProvider"
+import { runPromptAction } from "./runPromptAction"
 
 export const registerCodeActions = (context: vscode.ExtensionContext) => {
 	registerCodeAction(context, "explainCode", "EXPLAIN")
@@ -44,7 +44,7 @@ const registerCodeAction = (context: vscode.ExtensionContext, command: CodeActio
 				...(diagnostics ? { diagnostics } : {}),
 			}
 
-			await ClineProvider.handleCodeAction(command, promptType, params)
+			await runPromptAction(command, promptType, params)
 		}),
 	)
 }

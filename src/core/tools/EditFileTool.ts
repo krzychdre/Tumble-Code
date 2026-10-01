@@ -2,6 +2,7 @@ import fs from "fs/promises"
 import path from "path"
 
 import { type ClineSayTool } from "@roo-code/types"
+import { escapeRegExp } from "@roo-code/core/browser"
 
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
@@ -53,10 +54,6 @@ function normalizeToLF(content: string): string {
 function restoreLineEnding(contentLF: string, eol: LineEnding): string {
 	if (eol === "\n") return contentLF
 	return contentLF.replace(/\n/g, "\r\n")
-}
-
-function escapeRegExp(input: string): string {
-	return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 function buildWhitespaceTolerantRegex(oldLF: string): RegExp {

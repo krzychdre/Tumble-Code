@@ -74,10 +74,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			// Apply the diff to the original content
 			const startLineMatch = params.diff.match(/:start_line:(\d+)/)
 			const startLine = startLineMatch ? parseInt(startLineMatch[1], 10) : undefined
-			const diffResult = (await task.diffStrategy?.applyDiff(originalContent, diffContent, startLine)) ?? {
-				success: false,
-				error: "No diff strategy available",
-			}
+			const diffResult = await task.diffStrategy.applyDiff(originalContent, diffContent, startLine)
 
 			if (!diffResult.success) {
 				task.consecutiveMistakeCount++
@@ -160,17 +157,13 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 					isProtected: isWriteProtected,
 				} satisfies ClineSayTool)
 
-				let toolProgressStatus
-
-				if (task.diffStrategy && task.diffStrategy.getProgressStatus) {
-					const block: ToolUse<"apply_diff"> = {
-						type: "tool_use",
-						name: "apply_diff",
-						params: { path: relPath, diff: diffContent },
-						partial: false,
-					}
-					toolProgressStatus = task.diffStrategy.getProgressStatus(block, diffResult)
+				const block: ToolUse<"apply_diff"> = {
+					type: "tool_use",
+					name: "apply_diff",
+					params: { path: relPath, diff: diffContent },
+					partial: false,
 				}
+				const toolProgressStatus = task.diffStrategy.getProgressStatus(block, diffResult)
 
 				const didApprove = await askApproval("tool", completeMessage, toolProgressStatus, isWriteProtected)
 
@@ -203,17 +196,13 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 					isProtected: isWriteProtected,
 				} satisfies ClineSayTool)
 
-				let toolProgressStatus
-
-				if (task.diffStrategy && task.diffStrategy.getProgressStatus) {
-					const block: ToolUse<"apply_diff"> = {
-						type: "tool_use",
-						name: "apply_diff",
-						params: { path: relPath, diff: diffContent },
-						partial: false,
-					}
-					toolProgressStatus = task.diffStrategy.getProgressStatus(block, diffResult)
+				const block: ToolUse<"apply_diff"> = {
+					type: "tool_use",
+					name: "apply_diff",
+					params: { path: relPath, diff: diffContent },
+					partial: false,
 				}
+				const toolProgressStatus = task.diffStrategy.getProgressStatus(block, diffResult)
 
 				const didApprove = await askApproval("tool", completeMessage, toolProgressStatus, isWriteProtected)
 
@@ -292,11 +281,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			toolCallId: block.id,
 		}
 
-		let toolProgressStatus
-
-		if (task.diffStrategy && task.diffStrategy.getProgressStatus) {
-			toolProgressStatus = task.diffStrategy.getProgressStatus(block)
-		}
+		const toolProgressStatus = task.diffStrategy.getProgressStatus(block)
 
 		if (toolProgressStatus && Object.keys(toolProgressStatus).length === 0) {
 			return

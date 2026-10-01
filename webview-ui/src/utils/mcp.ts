@@ -1,4 +1,5 @@
 import type { McpResource, McpResourceTemplate } from "@roo-code/types"
+import { escapeRegExp } from "@roo-code/core/browser"
 
 /**
  * Matches a URI against an array of URI templates and returns the matching template
@@ -11,11 +12,9 @@ export function findMatchingTemplate(
 	templates: McpResourceTemplate[] = [],
 ): McpResourceTemplate | undefined {
 	return templates.find((template) => {
-		// Convert template to regex pattern
-		const pattern = String(template.uriTemplate)
-			// First escape special regex characters
-			.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-			// Then replace {param} with ([^/]+) to match any non-slash characters
+		// Convert template to regex pattern: escape special regex characters first,
+		const pattern = escapeRegExp(String(template.uriTemplate))
+			// then replace {param} with ([^/]+) to match any non-slash characters
 			// We need to use \{ and \} because we just escaped them
 			.replace(/\\\{([^}]+)\\\}/g, "([^/]+)")
 

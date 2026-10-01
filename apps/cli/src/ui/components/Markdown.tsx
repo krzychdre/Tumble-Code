@@ -1,6 +1,8 @@
 import { memo, type ReactNode } from "react"
 import { Box, Text } from "ink"
 
+import { escapeRegExp } from "@roo-code/core/cli"
+
 import { figures } from "../figures.js"
 import * as theme from "../theme.js"
 
@@ -279,7 +281,7 @@ function Markdown({ children, dimColor = false }: MarkdownProps) {
 				i += 1
 				while (i < lines.length) {
 					const inner = lines[i] ?? ""
-					const closing = inner.match(new RegExp(`^\\s*(${fence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`))
+					const closing = inner.match(new RegExp(`^\\s*(${escapeRegExp(fence)})`))
 					if (closing) {
 						break
 					}

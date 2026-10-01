@@ -2,6 +2,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import type { Anthropic } from "@anthropic-ai/sdk"
+import { escapeRegExp } from "@roo-code/core/browser"
 
 import { ARTIFACT_DIRECTORIES, isValidArtifactId } from "../../artifacts/ArtifactStore"
 import type { ApiMessage } from "../../task-persistence/apiMessages"
@@ -357,11 +358,6 @@ function isUnboundedQuantifierAt(pattern: string, index: number): boolean {
 
 	// `{n,}` is unbounded; `{n}` and `{n,m}` are not.
 	return /^\d+,$/.test(pattern.slice(index + 1, close))
-}
-
-/** Escapes every regex metacharacter so a string matches itself. */
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 /**
