@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { ThemedBadge } from "@src/components/ui"
 
-import { ToolUseBlockHeader } from "@src/components/common/ToolUseBlock"
+import { ToolBlock } from "@src/components/common/ToolBlock"
 
 import { headerStyle, toolIcon } from "../shared"
 import type { ToolRendererProps } from "../types"
@@ -9,28 +9,9 @@ import type { ToolRendererProps } from "../types"
 // Skill and slash command asks: a header, then a box with the name and source
 // that expands to the description and arguments.
 
-const boxStyle = {
-	marginTop: "4px",
-	backgroundColor: "var(--vscode-editor-background)",
-	border: "1px solid var(--vscode-editorGroup-border)",
-	overflow: "hidden",
-	cursor: "pointer",
-} as const
-
-const boxHeaderStyle = {
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	padding: "10px 12px",
-} as const
-
-const boxBodyStyle = {
-	padding: "12px 16px",
-	borderTop: "1px solid var(--vscode-editorGroup-border)",
-	display: "flex",
-	flexDirection: "column",
-	gap: "8px",
-} as const
+const boxClass = "mt-1 border border-vscode-editorGroup-border overflow-hidden"
+const boxHeaderClass = "px-3 py-2.5"
+const boxBodyClass = "font-display px-4 py-3 border-t border-vscode-editorGroup-border flex flex-col gap-2"
 
 /** A skill the model wants to load. */
 export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpand }: ToolRendererProps) => {
@@ -43,8 +24,13 @@ export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpan
 					{message.type === "ask" ? t("chat:skill.wantsToLoad") : t("chat:skill.didLoad")}
 				</span>
 			</div>
-			<div style={boxStyle} onClick={toggleExpand}>
-				<ToolUseBlockHeader className="group" style={boxHeaderStyle}>
+			<ToolBlock
+				className={boxClass}
+				headerClassName={boxHeaderClass}
+				bodyClassName={boxBodyClass}
+				isExpanded={isExpanded}
+				onToggleExpand={toggleExpand}
+				title={
 					<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 						<span style={{ fontWeight: "500", fontSize: "var(--vscode-font-size)" }}>
 							{skillInfo.skill}
@@ -55,11 +41,9 @@ export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpan
 							</ThemedBadge>
 						)}
 					</div>
-					<span
-						className={`codicon codicon-chevron-${isExpanded ? "up" : "down"} opacity-0 group-hover:opacity-100 transition-opacity duration-200`}></span>
-				</ToolUseBlockHeader>
-				{isExpanded && (skillInfo.args || skillInfo.description) && (
-					<div style={boxBodyStyle}>
+				}>
+				{(skillInfo.args || skillInfo.description) && (
+					<>
 						{skillInfo.description && (
 							<div style={{ color: "var(--vscode-descriptionForeground)" }}>{skillInfo.description}</div>
 						)}
@@ -69,9 +53,9 @@ export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpan
 								<span style={{ color: "var(--vscode-descriptionForeground)" }}>{skillInfo.args}</span>
 							</div>
 						)}
-					</div>
+					</>
 				)}
-			</div>
+			</ToolBlock>
 		</>
 	)
 }
@@ -92,8 +76,13 @@ export const RunSlashCommandToolRow = ({
 					{message.type === "ask" ? t("chat:slashCommand.wantsToRun") : t("chat:slashCommand.didRun")}
 				</span>
 			</div>
-			<div style={boxStyle} onClick={toggleExpand}>
-				<ToolUseBlockHeader className="group" style={boxHeaderStyle}>
+			<ToolBlock
+				className={boxClass}
+				headerClassName={boxHeaderClass}
+				bodyClassName={boxBodyClass}
+				isExpanded={isExpanded}
+				onToggleExpand={toggleExpand}
+				title={
 					<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 						<span style={{ fontWeight: "500", fontSize: "var(--vscode-font-size)" }}>
 							/{slashCommandInfo.command}
@@ -104,11 +93,9 @@ export const RunSlashCommandToolRow = ({
 							</ThemedBadge>
 						)}
 					</div>
-					<span
-						className={`codicon codicon-chevron-${isExpanded ? "up" : "down"} opacity-0 group-hover:opacity-100 transition-opacity duration-200`}></span>
-				</ToolUseBlockHeader>
-				{isExpanded && (slashCommandInfo.args || slashCommandInfo.description) && (
-					<div style={boxBodyStyle}>
+				}>
+				{(slashCommandInfo.args || slashCommandInfo.description) && (
+					<>
 						{slashCommandInfo.args && (
 							<div>
 								<span style={{ fontWeight: "500" }}>Arguments: </span>
@@ -122,9 +109,9 @@ export const RunSlashCommandToolRow = ({
 								{slashCommandInfo.description}
 							</div>
 						)}
-					</div>
+					</>
 				)}
-			</div>
+			</ToolBlock>
 		</>
 	)
 }

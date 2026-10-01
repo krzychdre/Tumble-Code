@@ -1,4 +1,5 @@
 import React from "react"
+import userEvent from "@testing-library/user-event"
 import { render } from "@/utils/test-utils"
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -131,15 +132,39 @@ describe("ChatRow - runSlashCommand tool", () => {
 		const ask: any = { type: "ask", ask: "tool", ts: 1, text: JSON.stringify(payload), partial: false }
 		const say: any = { type: "say", say: "tool", ts: 1, text: JSON.stringify(payload), partial: false }
 
+		// The body id (and the toggle's aria-controls) is unique per mounted block.
+		const withoutIds = (html?: string) => html?.replace(/ (id|aria-controls)="[^"]*"/g, "")
+
 		const askRow = renderChatRowWithProviders(ask, true)
-		const askBox = askRow.container.querySelector(".codicon-play")?.parentElement?.nextElementSibling?.outerHTML
+		const askBox = withoutIds(
+			askRow.container.querySelector(".codicon-play")?.parentElement?.nextElementSibling?.outerHTML,
+		)
 		askRow.unmount()
 
 		const sayRow = renderChatRowWithProviders(say, true)
 		expect(sayRow.getByText("Arguments:")).toBeInTheDocument()
-		const sayBox = sayRow.container.querySelector(".codicon-play")?.parentElement?.nextElementSibling?.outerHTML
+		const sayBox = withoutIds(
+			sayRow.container.querySelector(".codicon-play")?.parentElement?.nextElementSibling?.outerHTML,
+		)
 
 		expect(askBox).toBeDefined()
 		expect(sayBox).toBe(askBox)
+	})
+
+	it("expands from the keyboard through the header button", async () => {
+		const user = userEvent.setup()
+		const message: any = {
+			type: "ask",
+			ask: "tool",
+			ts: 1,
+			text: JSON.stringify({ tool: "runSlashCommand", command: "test", args: "unit" }),
+			partial: false,
+		}
+		const { getByRole } = renderChatRowWithProviders(message)
+
+		const toggle = getByRole("button", { expanded: false })
+		toggle.focus()
+		await user.keyboard("{Enter}")
+		expect(mockOnToggleExpand).toHaveBeenCalledTimes(1)
 	})
 })

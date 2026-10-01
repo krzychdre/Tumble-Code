@@ -68,7 +68,7 @@ export const ToolBlock = ({
 	headerTestId,
 }: ToolBlockProps) => {
 	const bodyId = useId()
-	const hasBody = children !== undefined && children !== null && children !== false
+	const hasBody = children !== undefined && children !== null && children !== false && children !== ""
 	const collapsible = hasBody && Boolean(onToggleExpand)
 	const showBody = hasBody && (isExpanded || !onToggleExpand)
 
