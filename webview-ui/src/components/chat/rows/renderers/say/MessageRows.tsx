@@ -71,7 +71,7 @@ export const CompletionResultSayRow = ({ message }: RowRendererProps) => {
 				<OpenMarkdownPreviewButton markdown={message.text} />
 				{!message.partial && <AnnotateButton markdown={message.text} />}
 			</div>
-			<div className="border-l border-green-600/30 ml-2 pl-4 pb-1">
+			<div className="border-l border-[var(--status-done)]/30 ml-2 pl-4 pb-1">
 				<Markdown markdown={message.text} />
 			</div>
 		</div>

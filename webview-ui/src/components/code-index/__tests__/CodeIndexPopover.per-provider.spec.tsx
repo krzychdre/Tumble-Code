@@ -315,7 +315,7 @@ describe("CodeIndexPopover per embedder provider", () => {
 				expect(screen.queryByText(key)).not.toBeInTheDocument()
 			}
 			if (testCase.dropdownModel) {
-				expect(modelDropdown()).toHaveClass("border-red-500")
+				expect(modelDropdown()).toHaveClass("border-[var(--vscode-inputValidation-errorBorder)]")
 			}
 			expect(savedPayloads()).toHaveLength(0)
 		})

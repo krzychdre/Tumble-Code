@@ -63,7 +63,7 @@ export const SettingTextField = ({
 				onBlur={onBlur}
 				placeholder={t(placeholderKey)}
 				className={cn("w-full", {
-					"border-red-500": formErrors[field],
+					"border-[var(--vscode-inputValidation-errorBorder)]": formErrors[field],
 				})}
 			/>
 			<FieldError message={formErrors[field]} />
@@ -98,7 +98,8 @@ export const ModelDimensionField = ({ context }: FieldProps) => {
 				}}
 				placeholder={t("settings:codeIndex.modelDimensionPlaceholder")}
 				className={cn("w-full", {
-					"border-red-500": formErrors.codebaseIndexEmbedderModelDimension,
+					"border-[var(--vscode-inputValidation-errorBorder)]":
+						formErrors.codebaseIndexEmbedderModelDimension,
 				})}
 			/>
 			<FieldError message={formErrors.codebaseIndexEmbedderModelDimension} />
@@ -116,7 +117,7 @@ export const ModelDropdownField = ({ context }: FieldProps) => {
 				value={settings.codebaseIndexEmbedderModelId}
 				onChange={(e: any) => updateSetting("codebaseIndexEmbedderModelId", e.target.value)}
 				className={cn("w-full", {
-					"border-red-500": formErrors.codebaseIndexEmbedderModelId,
+					"border-[var(--vscode-inputValidation-errorBorder)]": formErrors.codebaseIndexEmbedderModelId,
 				})}>
 				<ThemedOption value="" className="p-2">
 					{t("settings:codeIndex.selectModel")}

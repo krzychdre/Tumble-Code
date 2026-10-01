@@ -221,8 +221,9 @@ export const McpExecution = ({
 						<div className="flex flex-row items-center gap-2 font-mono text-xs">
 							<div
 								className={cn("rounded-full size-1.5", {
-									"bg-lime-400": status.status === "started" || status.status === "completed",
-									"bg-red-400": status.status === "error",
+									"bg-[var(--status-running)]": status.status === "started",
+									"bg-[var(--status-done)]": status.status === "completed",
+									"bg-[var(--status-failed)]": status.status === "error",
 								})}
 							/>
 							<div

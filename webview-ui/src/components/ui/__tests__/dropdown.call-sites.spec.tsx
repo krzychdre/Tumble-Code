@@ -195,7 +195,7 @@ describe("VSCodeDropdown call site: codebase index embedding model", () => {
 		await waitFor(() =>
 			expect(selectedText()).toBe("text-embedding-3-small settings:codeIndex.modelDimensions:1536"),
 		)
-		expect(screen.getByRole("combobox")).toHaveClass("w-full", "border-red-500")
+		expect(screen.getByRole("combobox")).toHaveClass("w-full", "border-[var(--vscode-inputValidation-errorBorder)]")
 		expect(screen.getByText("required")).toBeInTheDocument()
 
 		await choose("custom-model")
