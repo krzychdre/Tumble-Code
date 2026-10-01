@@ -131,7 +131,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 
 import { deepSeekDefaultModelId, deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE, type ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostOpenAI } from "@roo-code/core/browser"
+import { calculateApiCost } from "@roo-code/core/browser"
 import type { ApiHandlerOptions } from "../../../shared/api"
 
 import { DeepSeekHandler } from "../deepseek"
@@ -558,13 +558,12 @@ describe("DeepSeekHandler", () => {
 			const info = deepSeekModels[deepSeekDefaultModelId] as ModelInfo
 			const result = new TestDeepSeekHandler(mockOptions).testProcessUsageMetrics(usage)
 
-			const { totalCost } = calculateApiCostOpenAI(
-				info,
-				result.inputTokens,
-				result.outputTokens,
-				result.cacheWriteTokens,
-				result.cacheReadTokens,
-			)
+			const { totalCost } = calculateApiCost("openai", info, {
+				inputTokens: result.inputTokens,
+				outputTokens: result.outputTokens,
+				cacheWriteTokens: result.cacheWriteTokens,
+				cacheReadTokens: result.cacheReadTokens,
+			})
 
 			const expected = (20 * info.cacheReadsPrice! + 80 * info.inputPrice! + 50 * info.outputPrice!) / 1_000_000
 			expect(totalCost).toBeCloseTo(expected, 12)

@@ -3,7 +3,6 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import {
-	type ModelInfo,
 	OPENAI_NATIVE_DEFAULT_TEMPERATURE,
 	type VerbosityLevel,
 	type ReasoningEffortExtended,
@@ -16,7 +15,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
-import { calculateApiCostOpenAI } from "@roo-code/core/browser"
+import { calculateApiCost } from "@roo-code/core/browser"
 import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
@@ -74,15 +73,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			// Prefer the tier the server used; otherwise the requested one.
 			const effectiveTier =
 				serviceTier || (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
-			// calculateApiCostOpenAI subtracts cache reads and writes from the input total itself.
-			return calculateApiCostOpenAI(
-				this.applyServiceTierPricing(info, effectiveTier),
-				tokens.inputTokens,
-				tokens.outputTokens,
-				tokens.cacheWriteTokens,
-				tokens.cacheReadTokens,
-				effectiveTier,
-			).totalCost
+			// The OpenAI protocol: the cost function subtracts cache reads and writes from the input total.
+			return calculateApiCost("openai", info, tokens, { serviceTier: effectiveTier }).totalCost
 		},
 	})
 
@@ -237,26 +229,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 
 		return undefined
-	}
-
-	/**
-	 * Returns a shallow-cloned ModelInfo with pricing overridden for the given tier, if available.
-	 * If no tier or no overrides exist, the original ModelInfo is returned.
-	 */
-	private applyServiceTierPricing(info: ModelInfo, tier?: ServiceTier): ModelInfo {
-		if (!tier || tier === "default") return info
-
-		// Find the tier with matching name in the tiers array
-		const tierInfo = info.tiers?.find((t) => t.name === tier)
-		if (!tierInfo) return info
-
-		return {
-			...info,
-			inputPrice: tierInfo.inputPrice ?? info.inputPrice,
-			outputPrice: tierInfo.outputPrice ?? info.outputPrice,
-			cacheReadsPrice: tierInfo.cacheReadsPrice ?? info.cacheReadsPrice,
-			cacheWritesPrice: tierInfo.cacheWritesPrice ?? info.cacheWritesPrice,
-		}
 	}
 
 	// Removed isResponsesApiModel method as ALL models now use the Responses API

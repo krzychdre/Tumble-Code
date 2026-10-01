@@ -10,7 +10,7 @@ import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@roo-code/types"
 
 import { ApiStreamChunk } from "../../transform/stream"
-import { calculateApiCostAnthropic } from "@roo-code/core/browser"
+import { calculateApiCost } from "@roo-code/core/browser"
 import { AnthropicVertexHandler } from "../anthropic-vertex"
 
 vitest.mock("@anthropic-ai/vertex-sdk", () => ({
@@ -173,7 +173,12 @@ describe("VertexHandler", () => {
 				type: "usage",
 				inputTokens: 0,
 				outputTokens: 0,
-				totalCost: calculateApiCostAnthropic(handler.getModel().info, 10, 5, 0, 0).totalCost,
+				totalCost: calculateApiCost("anthropic", handler.getModel().info, {
+					inputTokens: 10,
+					outputTokens: 5,
+					cacheWriteTokens: 0,
+					cacheReadTokens: 0,
+				}).totalCost,
 			})
 
 			expect(mockCreate).toHaveBeenCalledWith(
@@ -385,7 +390,12 @@ describe("VertexHandler", () => {
 				type: "usage",
 				inputTokens: 0,
 				outputTokens: 0,
-				totalCost: calculateApiCostAnthropic(handler.getModel().info, 10, 5, 3, 2).totalCost,
+				totalCost: calculateApiCost("anthropic", handler.getModel().info, {
+					inputTokens: 10,
+					outputTokens: 5,
+					cacheWriteTokens: 3,
+					cacheReadTokens: 2,
+				}).totalCost,
 			})
 
 			// Verify text content

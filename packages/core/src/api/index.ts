@@ -1,4 +1,4 @@
-export { calculateApiCostAnthropic, calculateApiCostOpenAI, parseApiPrice } from "./cost.js"
+export { calculateApiCost, selectTierPrices, parseApiPrice } from "./cost.js"
 export type { ApiCostResult } from "./cost.js"
 export {
 	shouldUseReasoningBudget,

@@ -2,7 +2,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostAnthropic } from "@roo-code/core/browser"
+import { calculateApiCost } from "@roo-code/core/browser"
 import type { ApiStream } from "./stream"
 
 /**
@@ -111,13 +111,12 @@ export async function* processAnthropicStream(
 	}
 
 	if (inputTokens > 0 || outputTokens > 0 || cacheWriteTokens > 0 || cacheReadTokens > 0) {
-		const { totalCost } = calculateApiCostAnthropic(
-			costInfo,
+		const { totalCost } = calculateApiCost("anthropic", costInfo, {
 			inputTokens,
 			outputTokens,
 			cacheWriteTokens,
 			cacheReadTokens,
-		)
+		})
 
 		yield { type: "usage", inputTokens: 0, outputTokens: 0, totalCost }
 	}

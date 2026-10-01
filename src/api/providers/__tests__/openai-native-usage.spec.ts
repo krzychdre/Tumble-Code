@@ -419,7 +419,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 	})
 
 	describe("cost calculation", () => {
-		it("should pass total input tokens to calculateApiCostOpenAI", () => {
+		it("should pass total input tokens to the OpenAI-protocol cost function", () => {
 			const usage = {
 				input_tokens: 100,
 				output_tokens: 50,
@@ -431,7 +431,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 
 			expect(result).toHaveProperty("totalCost")
 			expect(result.totalCost).toBeGreaterThan(0)
-			// calculateApiCostOpenAI handles subtracting cache tokens internally
+			// calculateApiCost (OpenAI protocol) subtracts the cache tokens itself
 			// It will compute: 100 - 30 - 20 = 50 uncached input tokens
 		})
 

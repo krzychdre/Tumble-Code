@@ -10,6 +10,7 @@ import {
 } from "@google/genai"
 import { type ModelInfo, selectGeminiModel, ApiProviderError } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
+import { calculateApiCost, selectTierPrices } from "@roo-code/core/browser"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -593,6 +594,10 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		return this.lastResponseId
 	}
 
+	/**
+	 * Gemini counts cached tokens inside the prompt (the OpenAI protocol), bills thinking tokens as
+	 * output and prices by prompt size. Undefined when the selected prices lack input or output.
+	 */
 	public calculateCost({
 		info,
 		inputTokens,
@@ -606,55 +611,17 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		cacheReadTokens?: number
 		reasoningTokens?: number
 	}) {
-		// For models with tiered pricing, prices might only be defined in tiers
-		let inputPrice = info.inputPrice
-		let outputPrice = info.outputPrice
-		let cacheReadsPrice = info.cacheReadsPrice
-
-		// If there's tiered pricing then adjust the input and output token prices
-		// based on the input tokens used.
-		if (info.tiers) {
-			const tier = info.tiers.find((tier) => inputTokens <= tier.contextWindow)
-
-			if (tier) {
-				inputPrice = tier.inputPrice ?? inputPrice
-				outputPrice = tier.outputPrice ?? outputPrice
-				cacheReadsPrice = tier.cacheReadsPrice ?? cacheReadsPrice
-			}
-		}
-
-		// Check if we have the required prices after considering tiers
-		if (!inputPrice || !outputPrice) {
+		const prices = selectTierPrices(info, inputTokens, { promptSizeTiers: true })
+		if (!prices.inputPrice || !prices.outputPrice) {
 			return undefined
 		}
 
-		// cacheReadsPrice is optional - if not defined, treat as 0
-		if (!cacheReadsPrice) {
-			cacheReadsPrice = 0
-		}
-
-		// Subtract the cached input tokens from the total input tokens.
-		const uncachedInputTokens = inputTokens - cacheReadTokens
-
-		// Bill both completion and reasoning ("thoughts") tokens as output.
-		const billedOutputTokens = outputTokens + reasoningTokens
-
-		const cacheReadCost = cacheReadTokens > 0 ? cacheReadsPrice * (cacheReadTokens / 1_000_000) : 0
-
-		const inputTokensCost = inputPrice * (uncachedInputTokens / 1_000_000)
-		const outputTokensCost = outputPrice * (billedOutputTokens / 1_000_000)
-		const totalCost = inputTokensCost + outputTokensCost + cacheReadCost
-
-		const trace: Record<string, { price: number; tokens: number; cost: number }> = {
-			input: { price: inputPrice, tokens: uncachedInputTokens, cost: inputTokensCost },
-			output: { price: outputPrice, tokens: billedOutputTokens, cost: outputTokensCost },
-		}
-
-		if (cacheReadTokens > 0) {
-			trace.cacheRead = { price: cacheReadsPrice, tokens: cacheReadTokens, cost: cacheReadCost }
-		}
-
-		return totalCost
+		return calculateApiCost(
+			"openai",
+			info,
+			{ inputTokens, outputTokens: outputTokens + reasoningTokens, cacheReadTokens },
+			{ promptSizeTiers: true },
+		).totalCost
 	}
 }
 

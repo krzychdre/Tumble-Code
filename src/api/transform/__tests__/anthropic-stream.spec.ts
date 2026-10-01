@@ -4,7 +4,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostAnthropic } from "@roo-code/core/browser"
+import { calculateApiCost } from "@roo-code/core/browser"
 import { addAnthropicCacheControl, processAnthropicStream } from "../anthropic-stream"
 import type { ApiStreamChunk } from "../stream"
 
@@ -67,7 +67,12 @@ describe("processAnthropicStream", () => {
 			),
 		)
 
-		const { totalCost } = calculateApiCostAnthropic(MODEL_INFO, 1000, 120, 200, 300)
+		const { totalCost } = calculateApiCost("anthropic", MODEL_INFO, {
+			inputTokens: 1000,
+			outputTokens: 120,
+			cacheWriteTokens: 200,
+			cacheReadTokens: 300,
+		})
 		expect(chunks).toEqual([
 			{ type: "usage", inputTokens: 1000, outputTokens: 1, cacheWriteTokens: 200, cacheReadTokens: 300 },
 			{ type: "reasoning", text: "a" },
@@ -101,7 +106,12 @@ describe("processAnthropicStream", () => {
 			type: "usage",
 			inputTokens: 0,
 			outputTokens: 0,
-			totalCost: calculateApiCostAnthropic(MODEL_INFO, 10, 500, 0, 0).totalCost,
+			totalCost: calculateApiCost("anthropic", MODEL_INFO, {
+				inputTokens: 10,
+				outputTokens: 500,
+				cacheWriteTokens: 0,
+				cacheReadTokens: 0,
+			}).totalCost,
 		})
 	})
 
