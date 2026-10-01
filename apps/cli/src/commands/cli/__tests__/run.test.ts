@@ -769,6 +769,13 @@ describe("run provider settings per mode", () => {
 		}
 	}
 
+	// The openai provider sends an effort only when its model info says so.
+	const withEffort = (reasoningEffort: string) => ({
+		...openAiModelInfoSaneDefaults,
+		supportsReasoningEffort: true,
+		reasoningEffort,
+	})
+
 	it("a mode entry changes only what it names and inherits the rest", async () => {
 		await saveSettings({
 			...globalSettings,
@@ -786,7 +793,7 @@ describe("run provider settings per mode", () => {
 				openAiApiKey: "1111",
 				enableReasoningEffort: true,
 				reasoningEffort: "max",
-				openAiCustomModelInfo: null,
+				openAiCustomModelInfo: withEffort("max"),
 			},
 			modes: {
 				architect: {
@@ -796,7 +803,7 @@ describe("run provider settings per mode", () => {
 					openAiApiKey: "1111",
 					enableReasoningEffort: true,
 					reasoningEffort: "high",
-					openAiCustomModelInfo: null,
+					openAiCustomModelInfo: withEffort("high"),
 				},
 			},
 		})
@@ -941,9 +948,11 @@ describe("run context window per model", () => {
 		expect(outcome).toBe("ran")
 		expect(mockHost.lastOptions?.contextWindow).toBe(262_144)
 		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(sized(262_144))
-		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual(
-			sized(262_144),
-		)
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual({
+			...sized(262_144),
+			supportsReasoningEffort: true,
+			reasoningEffort: "high",
+		})
 		// Another model, no entry: the provider's default applies.
 		expect(mockHost.lastOptions?.modeProviderSettings?.modes.ask?.openAiCustomModelInfo).toBeNull()
 	})

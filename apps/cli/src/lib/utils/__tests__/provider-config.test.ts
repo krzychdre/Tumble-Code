@@ -5,6 +5,8 @@ import {
 	openAiModelInfoSaneDefaults,
 } from "@roo-code/types"
 
+import { shouldUseReasoningEffort } from "@roo-code/core"
+
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 
 import {
@@ -143,6 +145,13 @@ describe("resolveProviderConfig", () => {
 
 			expect(resolved.reasoningEffort).toBe("max")
 		})
+
+		it("defaults to unspecified for the openai provider, which knows nothing about its model", () => {
+			expect(resolveProviderConfig({ layers: [{ provider: "openai" }] }).reasoningEffort).toBe("unspecified")
+			expect(resolveProviderConfig({ layers: [{ provider: "zai" }] }).reasoningEffort).toBe(
+				DEFAULT_FLAGS.reasoningEffort,
+			)
+		})
 	})
 
 	describe("API key", () => {
@@ -252,8 +261,35 @@ describe("toProviderSettings", () => {
 			openAiApiKey: "1111",
 			enableReasoningEffort: true,
 			reasoningEffort: "high",
-			openAiCustomModelInfo: null,
+			openAiCustomModelInfo: {
+				...openAiModelInfoSaneDefaults,
+				supportsReasoningEffort: true,
+				reasoningEffort: "high",
+			},
 		})
+	})
+
+	// The openai provider's model info had no supportsReasoningEffort, so the
+	// handler dropped every effort the CLI configured.
+	it("lets the openai handler send a configured effort", () => {
+		const settings = toProviderSettings({ ...connection, reasoningEffort: "low", contextWindow: 262_144 })
+
+		expect(settings.openAiCustomModelInfo).toEqual({
+			...openAiModelInfoSaneDefaults,
+			contextWindow: 262_144,
+			supportsReasoningEffort: true,
+			reasoningEffort: "low",
+		})
+		expect(shouldUseReasoningEffort({ model: settings.openAiCustomModelInfo!, settings })).toBe(true)
+	})
+
+	it("sends no effort from the openai handler for disabled or unspecified", () => {
+		for (const reasoningEffort of ["disabled", "unspecified"] as const) {
+			const settings = toProviderSettings({ ...connection, reasoningEffort })
+
+			expect(settings.openAiCustomModelInfo).toBeNull()
+			expect(shouldUseReasoningEffort({ model: openAiModelInfoSaneDefaults, settings })).toBe(false)
+		}
 	})
 
 	it("sizes an openai model from its contextWindow, keeping the provider's other defaults", () => {

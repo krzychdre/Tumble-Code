@@ -65,7 +65,7 @@ program
 	.option("--terminal-shell <path>", "Absolute path to shell executable for inline terminal commands")
 	.option(
 		"-r, --reasoning-effort <effort>",
-		`Reasoning effort level (${REASONING_EFFORTS.join(", ")}; defaults to the settings value, then ${DEFAULT_FLAGS.reasoningEffort})`,
+		`Reasoning effort level (${REASONING_EFFORTS.join(", ")}; defaults to the settings value, then ${DEFAULT_FLAGS.reasoningEffort}, or unspecified for the openai provider)`,
 	)
 	.option(
 		"--consecutive-mistake-limit <limit>",
