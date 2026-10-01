@@ -376,11 +376,14 @@ Precedence: flag > settings file > built-in default. Provider, model and base
 URL also fall back to the CLI's own extension state in
 `~/.vscode-mock/global-storage` before the built-in default.
 
-Note on `reasoningEffort`: it reaches the model only when the provider's model
-information says the model supports a reasoning effort. For the `openai`
-(OpenAI-compatible) provider that information is user-supplied in the VS Code
-settings and the CLI cannot set it yet, so there the value has no effect (GLM
-models get their thinking switch regardless).
+Note on `reasoningEffort`: for most providers it reaches the model only when the
+provider's model information says the model supports a reasoning effort. The
+`openai` (OpenAI-compatible) provider knows nothing about its model, so there
+the CLI sends exactly what you configure: a configured effort (flag, settings
+file or a `modes` entry) is sent as `reasoning_effort` (GLM models get their
+thinking switch from it), and with none configured the default is
+`unspecified` instead of `medium`, so nothing is sent. Configure an effort only
+for a model that accepts one; some servers reject the field.
 
 Note on `commandExecutionTimeout`: a shell command the agent runs is stopped
 once it has run this many seconds (default 300), and the model is told not to

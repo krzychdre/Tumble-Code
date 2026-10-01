@@ -13,7 +13,9 @@
  * layer's provider is the active provider, so a model saved for openrouter is
  * never sent to openai after `--provider openai` (decision A3 of
  * ai_plans/2026-08-04_cli-bare-run-settings-sync.md). `reasoningEffort` is not
- * provider-bound: the highest layer that sets it wins.
+ * provider-bound: the highest layer that sets it wins. With no layer setting it,
+ * the openai provider gets "unspecified" and every other provider "medium" (see
+ * defaultReasoningEffortFor).
  *
  * API key order: a layer's `apiKey`, else its `apiKeyEnv` (both only from
  * layers of the active provider, highest first), then the provider's
@@ -89,6 +91,16 @@ function defaultModelFor(provider: SupportedProvider): string {
 	return getProviderDefaultModelId(provider)
 }
 
+/**
+ * The reasoning effort a provider runs with when no layer sets one. The
+ * openai provider talks to any OpenAI-compatible server and knows nothing
+ * about its model, so it sends an effort only when one is configured: many
+ * such servers and models reject a `reasoning_effort` they do not support.
+ */
+function defaultReasoningEffortFor(provider: SupportedProvider): ReasoningEffortFlagOptions {
+	return provider === "openai" ? "unspecified" : DEFAULT_FLAGS.reasoningEffort
+}
+
 export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfigInput): ResolvedProviderConfig {
 	const present = layers.filter((layer): layer is ProviderConfigLayer => layer !== undefined)
 	// Highest precedence first from here on.
@@ -131,7 +143,7 @@ export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfi
 		apiKey,
 		missingApiKeyEnv,
 		reasoningEffort:
-			highestFirst.find((layer) => layer.reasoningEffort)?.reasoningEffort ?? DEFAULT_FLAGS.reasoningEffort,
+			highestFirst.find((layer) => layer.reasoningEffort)?.reasoningEffort ?? defaultReasoningEffortFor(provider),
 	}
 }
 
@@ -145,7 +157,8 @@ export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigL
  * The extension's provider settings for a resolved configuration: the
  * provider's own model/base-url/key fields plus the reasoning switches
  * ("unspecified" leaves reasoning to the model's default, "disabled" turns it
- * off), and for the openai provider the model's context window. Throws like
+ * off), and for the openai provider the model info that carries the model's
+ * context window and the configured reasoning effort. Throws like
  * getProviderSettings for a base URL the provider has no field for.
  */
 export function toProviderSettings(
@@ -162,22 +175,35 @@ export function toProviderSettings(
 		config.baseUrl,
 	) as ProviderSettings
 
+	const effort =
+		config.reasoningEffort === "disabled" || config.reasoningEffort === "unspecified"
+			? undefined
+			: config.reasoningEffort
 	if (config.reasoningEffort === "disabled") {
 		settings.enableReasoningEffort = false
-	} else if (config.reasoningEffort && config.reasoningEffort !== "unspecified") {
+	} else if (effort) {
 		settings.enableReasoningEffort = true
-		settings.reasoningEffort = config.reasoningEffort
+		settings.reasoningEffort = effort
 	}
 
 	// The openai provider sizes its model from openAiCustomModelInfo, else from
 	// openAiModelInfoSaneDefaults (128,000 tokens): its model list has ids
-	// only. The field is always written, because the startup settings are
-	// merged into the extension's persisted state, where a size from an earlier
-	// run would otherwise outlive the entry that set it.
+	// only. The same model info decides whether a reasoning effort is sent:
+	// without supportsReasoningEffort or an effort of its own the handler drops
+	// the configured effort, so the effort is written there as well (the
+	// settings UI's reasoning level control also stores it in this model
+	// info). The field is always written, because the startup
+	// settings are merged into the extension's persisted state, where a size or
+	// an effort from an earlier run would otherwise outlive the entry that set it.
 	if (config.provider === "openai") {
-		settings.openAiCustomModelInfo = config.contextWindow
-			? { ...openAiModelInfoSaneDefaults, contextWindow: config.contextWindow }
-			: null
+		settings.openAiCustomModelInfo =
+			config.contextWindow || effort
+				? {
+						...openAiModelInfoSaneDefaults,
+						...(config.contextWindow ? { contextWindow: config.contextWindow } : {}),
+						...(effort ? { supportsReasoningEffort: true, reasoningEffort: effort } : {}),
+					}
+				: null
 	}
 
 	return settings
