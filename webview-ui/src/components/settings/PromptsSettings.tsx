@@ -123,7 +123,7 @@ const PromptsSettings = () => {
 					</div>
 				</SearchableSetting>
 
-				<div key={activeSupportOption} className="mt-4">
+				<div key={activeSupportOption} className="mt-section">
 					<div className="flex justify-between items-center mb-1">
 						<label className="block font-medium">{t("prompts:supportPrompts.prompt")}</label>
 						<StandardTooltip
@@ -156,7 +156,7 @@ const PromptsSettings = () => {
 					/>
 
 					{activeSupportOption === "ENHANCE" && (
-						<div className="mt-4 flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+						<div className="mt-4 flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 							<div>
 								<label className="block font-medium mb-1">
 									{t("prompts:supportPrompts.enhance.apiConfiguration")}
@@ -212,7 +212,7 @@ const PromptsSettings = () => {
 										{t("prompts:supportPrompts.enhance.includeTaskHistory")}
 									</span>
 								</LabeledCheckbox>
-								<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
+								<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
 									{t("prompts:supportPrompts.enhance.includeTaskHistoryDescription")}
 								</div>
 							</div>

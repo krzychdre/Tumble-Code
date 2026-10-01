@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "Sohbet yoğunluğu",
-			"description": "Sohbet satırları ve blokları arasındaki boşluğu ayarlar",
+			"label": "Arayüz yoğunluğu",
+			"description": "Sohbet, ayarlar ve MCP ile Modlar sayfalarındaki boşlukları ayarlar",
 			"comfortable": "Rahat",
 			"compact": "Sıkı"
 		},

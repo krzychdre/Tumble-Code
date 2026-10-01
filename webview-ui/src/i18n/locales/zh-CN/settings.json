@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "聊天密度",
-			"description": "控制聊天行与块之间的间距",
+			"label": "界面密度",
+			"description": "控制聊天、设置以及 MCP 和模式页面中的间距",
 			"comfortable": "宽松",
 			"compact": "紧凑"
 		},

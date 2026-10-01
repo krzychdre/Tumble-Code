@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "Gęstość czatu",
-			"description": "Steruje odstępami między wierszami i blokami czatu",
+			"label": "Gęstość interfejsu",
+			"description": "Steruje odstępami w czacie, w ustawieniach oraz na stronach MCP i Tryby",
 			"comfortable": "Komfortowa",
 			"compact": "Kompaktowa"
 		},

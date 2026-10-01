@@ -151,8 +151,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "Chat density",
-			"description": "Controls the spacing between chat rows and blocks",
+			"label": "Density",
+			"description": "Controls the spacing in the chat, the settings and the MCP and Modes pages",
 			"comfortable": "Comfortable",
 			"compact": "Compact"
 		},

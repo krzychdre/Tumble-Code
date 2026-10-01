@@ -130,7 +130,7 @@ export const ModeSelectorRow = ({
 	}
 
 	return (
-		<div className="flex items-center gap-1 mb-3">
+		<div className="flex items-center gap-1 mb-block">
 			{isRenamingMode ? (
 				<>
 					<ThemedTextField

@@ -49,7 +49,7 @@ export const UISettings = (props: UISettingsProps) => {
 			<SectionHeader>{t("settings:sections.ui")}</SectionHeader>
 
 			<Section>
-				<div className="space-y-6">
+				<div className="space-y-page">
 					{/* Collapse Thinking Messages Setting */}
 					<SearchableSetting
 						settingId="ui-collapse-thinking"
@@ -88,7 +88,7 @@ export const UISettings = (props: UISettingsProps) => {
 						</div>
 					</SearchableSetting>
 
-					{/* Chat density setting (§2.1, ai_plans/2026-09-27_ui-modernization.md) */}
+					{/* Density setting (§2.1, ai_plans/2026-09-27_ui-modernization.md): chat, settings, MCP and Modes */}
 					<SearchableSetting settingId="ui-density" section="ui" label={t("settings:ui.density.label")}>
 						<div className="flex flex-col gap-1">
 							<div className="flex justify-between items-center">

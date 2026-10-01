@@ -97,7 +97,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 			<SectionHeader>{t("settings:sections.autoApprove")}</SectionHeader>
 
 			<Section>
-				<div className="space-y-4">
+				<div className="space-y-section">
 					<SearchableSetting
 						settingId="auto-approve-enabled"
 						section="autoApprove"
@@ -164,7 +164,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				{/* ADDITIONAL SETTINGS */}
 
 				{alwaysAllowReadOnly && (
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
 							<span className="codicon codicon-eye" aria-hidden="true" />
 							<div>{t("settings:autoApprove.readOnly.label")}</div>
@@ -189,7 +189,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				)}
 
 				{alwaysAllowWrite && (
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
 							<span className="codicon codicon-edit" aria-hidden="true" />
 							<div>{t("settings:autoApprove.write.label")}</div>
@@ -220,7 +220,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 								data-testid="always-allow-write-protected-checkbox">
 								<span className="font-medium">{t("settings:autoApprove.write.protected.label")}</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
+							<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
 								{t("settings:autoApprove.write.protected.description")}
 							</div>
 						</SearchableSetting>
@@ -228,7 +228,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				)}
 
 				{alwaysAllowFollowupQuestions && (
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
 							<span className="codicon codicon-question" aria-hidden="true" />
 							<div>{t("settings:autoApprove.followupQuestions.label")}</div>
@@ -256,7 +256,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				)}
 
 				{alwaysAllowExecute && (
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
 							<span className="codicon codicon-terminal" aria-hidden="true" />
 							<div>{t("settings:autoApprove.execute.label")}</div>
@@ -317,7 +317,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 							settingId="auto-approve-denied-commands"
 							section="autoApprove"
 							label={t("settings:autoApprove.execute.deniedCommands")}
-							className="mt-6">
+							className="mt-page">
 							<label className="block font-medium mb-1" data-testid="denied-commands-heading">
 								{t("settings:autoApprove.execute.deniedCommands")}
 							</label>

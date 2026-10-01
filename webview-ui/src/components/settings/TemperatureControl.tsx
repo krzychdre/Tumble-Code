@@ -49,7 +49,7 @@ export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue
 			</div>
 
 			{isCustomTemperature && (
-				<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+				<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 					<div>
 						<div className="flex items-center gap-2">
 							<Slider

@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "Kepadatan obrolan",
-			"description": "Mengatur jarak antara baris dan blok obrolan",
+			"label": "Kepadatan antarmuka",
+			"description": "Mengatur jarak di obrolan, pengaturan, serta halaman MCP dan Mode",
 			"comfortable": "Nyaman",
 			"compact": "Padat"
 		},

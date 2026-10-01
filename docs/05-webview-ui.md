@@ -101,6 +101,9 @@ Provider-specific forms are looked up in `settings/provider-ui-registry.tsx`.
   without extra CSS.
 - Square corners everywhere: `--radius: 0` and the Tailwind radius scale are flattened in `index.css`, and
   `scripts/check-webview-radius.mjs` (in the webview lint) rejects any `rounded*` class.
+- Vertical spacing uses the density tokens (`row`, `block`, `section`, `page`, as in `py-row`, `gap-block`,
+  `mb-section`, `pt-page`); the `uiDensity` setting puts `data-density="compact"` on the root and tightens all
+  four. The chat rows, the settings pages and the MCP and Modes pages use them.
 - One monospace font, the editor font (`--font-mono`), for tool blocks and code.
 - In-repo `Themed*` components in `components/ui/` replace the removed `@vscode/webview-ui-toolkit`.
 - No CSS-in-JS: `CodeBlock`, `MarkdownBlock`, `MermaidBlock` and the settings model description are styled by the

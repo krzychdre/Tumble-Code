@@ -135,7 +135,7 @@ const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value
 	)
 
 	return (
-		<div className="mt-3 ml-1" data-testid="mcp-server-restriction">
+		<div className="mt-block ml-1" data-testid="mcp-server-restriction">
 			<LabeledCheckbox checked={isRestricted} data-testid="restrict-mcp-servers-toggle" onChange={handleToggle}>
 				{t("prompts:mcpRestriction.restrict")}
 			</LabeledCheckbox>

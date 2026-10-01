@@ -203,12 +203,12 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 					/>
 
 					{/* API Configuration - Moved Here */}
-					<div className="mb-3">
+					<div className="mb-block">
 						<div className="font-bold mb-1">{t("prompts:apiConfiguration.title")}</div>
-						<div className="text-sm text-vscode-descriptionForeground mb-2">
+						<div className="text-sm text-vscode-descriptionForeground mb-row">
 							{t("prompts:apiConfiguration.select")}
 						</div>
-						<div className="mb-2">
+						<div className="mb-row">
 							<Select value={currentApiConfigName} onValueChange={onSelectApiConfiguration}>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder={t("settings:common.select")} />

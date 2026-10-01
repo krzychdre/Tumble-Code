@@ -73,7 +73,7 @@ export const ModePromptFields = ({
 	return (
 		<>
 			{/* Role Definition section */}
-			<div className="mb-4">
+			<div className="mb-section">
 				<PromptFieldHeader
 					title={t("prompts:roleDefinition.title")}
 					resetTooltip={t("prompts:roleDefinition.resetToDefault")}
@@ -81,7 +81,7 @@ export const ModePromptFields = ({
 					isCustomMode={Boolean(customMode)}
 					onReset={() => onReset("roleDefinition")}
 				/>
-				<div className="text-sm text-vscode-descriptionForeground mb-2">
+				<div className="text-sm text-vscode-descriptionForeground mb-row">
 					{t("prompts:roleDefinition.description")}
 				</div>
 				<ThemedTextArea
@@ -110,7 +110,7 @@ export const ModePromptFields = ({
 			</div>
 
 			{/* Description section */}
-			<div className="mb-4">
+			<div className="mb-section">
 				<PromptFieldHeader
 					title={t("prompts:description.title")}
 					resetTooltip={t("prompts:description.resetToDefault")}
@@ -118,7 +118,7 @@ export const ModePromptFields = ({
 					isCustomMode={Boolean(customMode)}
 					onReset={() => onReset("description")}
 				/>
-				<div className="text-sm text-vscode-descriptionForeground mb-2">
+				<div className="text-sm text-vscode-descriptionForeground mb-row">
 					{t("prompts:description.description")}
 				</div>
 				<ThemedTextField
@@ -145,7 +145,7 @@ export const ModePromptFields = ({
 			</div>
 
 			{/* When to Use section */}
-			<div className="mb-4">
+			<div className="mb-section">
 				<PromptFieldHeader
 					title={t("prompts:whenToUse.title")}
 					resetTooltip={t("prompts:whenToUse.resetToDefault")}
@@ -153,7 +153,7 @@ export const ModePromptFields = ({
 					isCustomMode={Boolean(customMode)}
 					onReset={() => onReset("whenToUse")}
 				/>
-				<div className="text-sm text-vscode-descriptionForeground mb-2">
+				<div className="text-sm text-vscode-descriptionForeground mb-row">
 					{t("prompts:whenToUse.description")}
 				</div>
 				<ThemedTextArea

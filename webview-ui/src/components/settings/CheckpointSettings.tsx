@@ -44,7 +44,7 @@ export const CheckpointSettings = (props: CheckpointSettingsProps) => {
 						settingId="checkpoints-timeout"
 						section="checkpoints"
 						label={t("settings:checkpoints.timeout.label")}
-						className="mt-4">
+						className="mt-section">
 						<label className="block text-sm font-medium mb-2">
 							{t("settings:checkpoints.timeout.label")}
 						</label>

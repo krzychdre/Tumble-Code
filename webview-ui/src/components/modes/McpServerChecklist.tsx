@@ -32,7 +32,7 @@ const McpServerChecklist: React.FC<McpServerChecklistProps> = ({
 }) => {
 	const { t } = useAppTranslation()
 	return (
-		<div className="ml-6 mt-2 flex flex-col gap-1" data-testid={`${testIdPrefix}-list`}>
+		<div className="ml-6 mt-row flex flex-col gap-1" data-testid={`${testIdPrefix}-list`}>
 			{mcpServers && mcpServers.length > 0 ? (
 				mcpServers.map((server) => (
 					<LabeledCheckbox

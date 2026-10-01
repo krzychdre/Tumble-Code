@@ -56,7 +56,7 @@ export const About = ({ className, ...props }: AboutProps) => {
 
 			<Section className="space-y-0">
 				<h3>{t("settings:about.contactAndCommunity")}</h3>
-				<div className="flex flex-col gap-3">
+				<div className="flex flex-col gap-block">
 					<div className="flex items-start gap-2">
 						<Bug className="size-4 text-vscode-descriptionForeground shrink-0" />
 						<span>

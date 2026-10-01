@@ -21,9 +21,9 @@ export const GlobalCustomInstructionsSection = ({
 
 	return (
 		<div className="pb-5">
-			<h3 className="text-vscode-foreground mb-3">{t("prompts:globalCustomInstructions.title")}</h3>
+			<h3 className="text-vscode-foreground mb-block">{t("prompts:globalCustomInstructions.title")}</h3>
 
-			<div className="text-sm text-vscode-descriptionForeground mb-2">
+			<div className="text-sm text-vscode-descriptionForeground mb-row">
 				{t("prompts:globalCustomInstructions.description")}
 			</div>
 			<ThemedTextArea

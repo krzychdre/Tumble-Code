@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "Chat-Dichte",
-			"description": "Steuert den Abstand zwischen Chat-Zeilen und -Blöcken",
+			"label": "Oberflächendichte",
+			"description": "Steuert die Abstände im Chat, in den Einstellungen und auf den Seiten MCP und Modi",
 			"comfortable": "Komfortabel",
 			"compact": "Kompakt"
 		},

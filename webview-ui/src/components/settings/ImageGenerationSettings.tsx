@@ -70,7 +70,7 @@ export const ImageGenerationSettings = ({
 	const isConfigured = !requiresApiKey || (requiresApiKey && openRouterImageApiKey)
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-section">
 			<div>
 				<div className="flex items-center gap-2">
 					<LabeledCheckbox checked={enabled} onChange={(e: any) => onChange(e.target.checked)}>
@@ -83,7 +83,7 @@ export const ImageGenerationSettings = ({
 			</div>
 
 			{enabled && (
-				<div className="ml-2 space-y-3">
+				<div className="ml-2 space-y-block">
 					{/* API Key Configuration (OpenRouter is the only supported provider) */}
 					<div>
 						<label className="block font-medium mb-1">

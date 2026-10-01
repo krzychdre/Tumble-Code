@@ -98,14 +98,14 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 
 			<Section>
 				{/* Basic Settings */}
-				<div className="flex flex-col gap-3">
+				<div className="flex flex-col gap-block">
 					<div className="flex flex-col gap-1">
 						<div className="flex items-center gap-2 font-bold">
 							<span className="codicon codicon-settings-gear" aria-hidden="true" />
 							<div>{t("settings:terminal.basic.label")}</div>
 						</div>
 					</div>
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						<SearchableSetting
 							settingId="terminal-output-preview-size"
 							section="terminal"
@@ -141,7 +141,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 				</div>
 
 				{/* Advanced Settings */}
-				<div className="flex flex-col gap-3">
+				<div className="flex flex-col gap-block">
 					<div className="flex flex-col gap-1">
 						<div className="flex items-center gap-2 font-bold">
 							<span className="codicon codicon-tools" aria-hidden="true" />
@@ -151,7 +151,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 							{t("settings:terminal.advanced.description")}
 						</div>
 					</div>
-					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
+					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
 						{/* Profile override — only applies when VS Code integrated terminal is active
 						    (shell integration enabled). Hidden in Execa/inline mode since getProfileShell()
 						    is not wired there. */}

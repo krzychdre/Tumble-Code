@@ -879,8 +879,8 @@
 	},
 	"ui": {
 		"density": {
-			"label": "Densitat del xat",
-			"description": "Controla l'espai entre files i blocs del xat",
+			"label": "Densitat de la interfície",
+			"description": "Controla l'espai del xat, de la configuració i de les pàgines MCP i Modes",
 			"comfortable": "Còmoda",
 			"compact": "Compacta"
 		},

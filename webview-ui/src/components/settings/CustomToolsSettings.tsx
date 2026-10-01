@@ -78,7 +78,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 	)
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-section">
 			<div>
 				<div className="flex items-center gap-2">
 					<LabeledCheckbox checked={enabled} onChange={(e: any) => onChange(e.target.checked)}>
@@ -91,7 +91,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 			</div>
 
 			{enabled && (
-				<div className="ml-2 space-y-3">
+				<div className="ml-2 space-y-block">
 					<div className="flex items-center justify-between gap-4">
 						<label className="block font-medium">
 							{t("settings:experimental.CUSTOM_TOOLS.toolsHeader")}
