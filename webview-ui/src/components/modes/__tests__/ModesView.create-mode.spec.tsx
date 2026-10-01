@@ -52,7 +52,7 @@ const hostMessage = (data: Record<string, unknown>) =>
 // Create dialog helpers: fields are found through their label, like a user would.
 const openCreateDialog = async () => {
 	fireEvent.click(screen.getByTestId("add-mode-button"))
-	return (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
+	return (await screen.findByRole("dialog")) as HTMLElement
 }
 const field = (labelKey: string) =>
 	screen.getByText(labelKey).parentElement!.querySelector("input, textarea") as HTMLInputElement
@@ -74,6 +74,17 @@ Element.prototype.scrollIntoView = vi.fn()
 describe("ModesView create-mode dialog", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+	})
+
+	it("opens as a labelled modal dialog that Escape closes without creating a mode", async () => {
+		renderModesView()
+		const dialog = await openCreateDialog()
+		expect(dialog).toHaveAccessibleName("prompts:createModeDialog.title")
+
+		fireEvent.keyDown(dialog, { key: "Escape" })
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+		expect(sent("updateCustomMode")).toHaveLength(0)
 	})
 
 	describe("validation", () => {
@@ -258,6 +269,17 @@ describe("ModesView import and export", () => {
 		fireEvent.click(screen.getByTestId("import-mode-toolbar-button"))
 
 		expect((screen.getByDisplayValue("project") as HTMLInputElement).checked).toBe(true)
+	})
+
+	it("asks for the level in a labelled modal dialog that Escape closes without importing", async () => {
+		renderModesView()
+		fireEvent.click(screen.getByTestId("import-mode-toolbar-button"))
+		const dialog = screen.getByRole("dialog", { name: "prompts:modes.importMode" })
+
+		fireEvent.keyDown(dialog, { key: "Escape" })
+
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+		expect(sent("importMode")).toHaveLength(0)
 	})
 
 	it("exports the selected mode once until the host reports the result", async () => {

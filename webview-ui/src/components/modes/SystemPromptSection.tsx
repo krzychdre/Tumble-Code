@@ -1,6 +1,8 @@
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, StandardTooltip } from "@src/components/ui"
+import { Button, Dialog, DialogContent, DialogTitle, StandardTooltip } from "@src/components/ui"
+
+import { SIDE_PANEL_CLASS } from "./sidePanelDialog"
 
 type SystemPromptActionsProps = {
 	/** Slug of the selected mode; nothing is requested when the mode does not exist. */
@@ -61,18 +63,15 @@ export const SystemPromptDialog = ({ title, currentModeName, content, onClose }:
 	const { t } = useAppTranslation()
 
 	return (
-		<div className="fixed inset-0 flex justify-end bg-black/50 z-[1000]">
-			<div className="w-[calc(100vw-100px)] h-full bg-vscode-editor-background shadow-md flex flex-col relative">
+		<Dialog open onOpenChange={(open) => !open && onClose()}>
+			<DialogContent className={SIDE_PANEL_CLASS} aria-describedby={undefined}>
 				<div className="flex-1 p-5 overflow-y-auto min-h-0">
-					<Button variant="ghost" size="icon" onClick={onClose} className="absolute top-5 right-5">
-						<span className="codicon codicon-close"></span>
-					</Button>
-					<h2 className="mb-4">
+					<DialogTitle className="mb-4">
 						{title ||
 							t("prompts:systemPrompt.title", {
 								modeName: currentModeName || "Code",
 							})}
-					</h2>
+					</DialogTitle>
 					<pre className="p-2 whitespace-pre-wrap break-words font-mono text-vscode-editor-font-size text-vscode-editor-foreground bg-vscode-editor-background border border-vscode-editor-lineHighlightBorder rounded overflow-y-auto">
 						{content}
 					</pre>
@@ -82,7 +81,7 @@ export const SystemPromptDialog = ({ title, currentModeName, content, onClose }:
 						{t("prompts:createModeDialog.close")}
 					</Button>
 				</div>
-			</div>
-		</div>
+			</DialogContent>
+		</Dialog>
 	)
 }

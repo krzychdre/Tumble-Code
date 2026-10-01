@@ -2,14 +2,15 @@ import type React from "react"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useZoomPan, WHEEL_ZOOM_STEP } from "@src/hooks/useZoomPan"
-import { IconButton, StandardTooltip } from "@/components/ui"
+import { Dialog, DialogContent, DialogTitle, IconButton, StandardTooltip } from "@/components/ui"
 
-import { Modal } from "./Modal"
 import { ZoomControls } from "./ZoomControls"
 
 export interface ZoomableModalProps {
 	isOpen: boolean
 	onClose: () => void
+	/** Accessible name of the dialog, read by screen readers only. */
+	title: string
 	/** Tab buttons shown on the left of the header; the close button is always on the right. */
 	tabs: React.ReactNode
 	/** Buttons shown in the footer after the zoom controls. */
@@ -29,11 +30,17 @@ export interface ZoomableModalProps {
  * 100% without a pan offset, because the zoom state lives in a component that
  * only exists while the modal is open.
  */
-export function ZoomableModal({ isOpen, onClose, ...rest }: ZoomableModalProps) {
+export function ZoomableModal({ isOpen, onClose, title, ...rest }: ZoomableModalProps) {
 	return (
-		<Modal isOpen={isOpen} onClose={onClose}>
-			<ZoomableModalContent onClose={onClose} {...rest} />
-		</Modal>
+		<Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+			<DialogContent
+				className="w-[90%] h-[90%] max-w-[1200px] sm:max-w-[1200px] flex flex-col gap-0 p-0 rounded border-vscode-editorGroup-border shadow-[0_5px_15px_rgba(0,0,0,0.5)]"
+				showCloseButton={false}
+				aria-describedby={undefined}>
+				<DialogTitle className="sr-only">{title}</DialogTitle>
+				<ZoomableModalContent onClose={onClose} {...rest} />
+			</DialogContent>
+		</Dialog>
 	)
 }
 
@@ -43,7 +50,7 @@ function ZoomableModalContent({
 	footerActions,
 	zoomable = true,
 	children,
-}: Omit<ZoomableModalProps, "isOpen">) {
+}: Omit<ZoomableModalProps, "isOpen" | "title">) {
 	const { t } = useAppTranslation()
 	const { zoomLevel, adjustZoom, wheelAreaRef, panLayerProps } = useZoomPan()
 
