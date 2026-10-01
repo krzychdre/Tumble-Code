@@ -28,11 +28,9 @@
 			return Array.prototype.slice.call(container.querySelectorAll(":scope > .msg[data-ts]"))
 		}
 
-		function kindOf(row, index) {
+		function kindOf(row) {
+			// The renderer already labels the task's first message as yours.
 			if (row.classList.contains("role-user")) return "user"
-			// The task itself: the first message is a plain "text" say, which the
-			// renderer sets like any other text, but it is what you asked.
-			if (index === 0 && row.getAttribute("data-kind") === "text") return "user"
 			if (
 				row.classList.contains("role-error") ||
 				row.getAttribute("data-kind") === "api_req_retry_delayed" ||
@@ -59,8 +57,8 @@
 
 		function build() {
 			var entries = rows()
-				.map(function (row, index) {
-					return { row: row, kind: kindOf(row, index), cost: parseFloat(row.getAttribute("data-cost")) }
+				.map(function (row) {
+					return { row: row, kind: kindOf(row), cost: parseFloat(row.getAttribute("data-cost")) }
 				})
 				.filter(function (e) {
 					return e.kind
@@ -127,8 +125,8 @@
 		// the top of the viewport once the reader has scrolled by hand.
 		function next(kind) {
 			var all = rows()
-			var matching = all.filter(function (row, index) {
-				return kindOf(row, index) === kind
+			var matching = all.filter(function (row) {
+				return kindOf(row) === kind
 			})
 			if (!matching.length) return
 			var from = current && current.isConnected ? all.indexOf(current) : -1

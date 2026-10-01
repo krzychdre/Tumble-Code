@@ -426,6 +426,7 @@
 		let tail = null // { ts, key, el } — last row in document order, for step duration
 		let count = 0
 		let lastCommandTs = null // owning command for trailing command_output rows
+		let firstKey = null // key of the first row: the task's own instruction
 		// Set by "expand all" / "collapse all". While set it also decides how rows
 		// arriving *afterwards* open, so a live task keeps obeying the choice
 		// instead of reverting to the per-role default on the next message.
@@ -523,12 +524,19 @@
 		function upsert(m, opts) {
 			if (!m || typeof m !== "object") return
 			if (m.partial && !m.text && !(m.images && m.images.length)) return
-			const info = classify(m)
+			let info = classify(m)
 			if (!info) return
 			info.kind = m.say || m.ask || m.type
 			clearPlaceholder()
 			const ts = m.ts
 			const key = keyOf(m)
+			if (count === 0 && (key == null || !byTs[key])) firstKey = key
+			// The task itself: the instruction is stored as a plain "text" say, the
+			// same kind as an assistant answer, so only its place as the first row
+			// tells it apart. It is what you asked, so it reads as yours.
+			if (key != null && key === firstKey && info.kind === "text") {
+				info = { role: "user", label: "You", body: info.body, kind: info.kind }
+			}
 			// A row is "running" while its message streams (partial) or, for an API
 			// request, until it reports a cost. The in-place upsert of the final
 			// message clears it automatically. Initial history replay (opts.history)
