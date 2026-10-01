@@ -72,3 +72,34 @@ def test_offscreen_rows_skip_layout_and_the_skeleton_can_be_still():
     # The shimmer is motion: the reduced-motion rule already stops animations
     # globally, and the skeleton keeps its shape without it.
     assert "@keyframes skeleton" in _CSS
+
+
+def test_the_composer_hides_the_rows_scrolling_under_it():
+    """The live controls float a little above the window's bottom edge; the
+    conversation showed through that gap, under the bar. A strip in the page
+    colour fills it, from the bar down to the edge."""
+    strip = _rule(".live-controls::after")
+    assert "top: 100%;" in strip and "background: var(--bg);" in strip
+    assert "height: calc(var(--s4) + 1px);" in strip
+    bar = _CSS[_CSS.index(".live-controls {\n\tmargin-top"):]
+    assert "bottom: var(--s4);" in bar[:bar.index("}")]
+
+
+async def test_the_timeline_says_what_its_ticks_mean(client, session_factory):
+    """A legend for the eye (each tick names itself to a screen reader)."""
+    async with session_factory() as s:
+        await _seed_user(s)
+        s.add(Task(id="t", user_id="user_test"))
+        await s.flush()
+        await _add_message(s, "t", {"ts": 1, "type": "say", "say": "text", "text": "hi"})
+        await s.commit()
+    _override_web_user(client.app)
+    try:
+        html = client.get("/app/tasks/t").text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+    nav = html[html.index('id="timeline"'):html.index("</nav>", html.index('id="timeline"'))]
+    legend = re.search(r'<ul class="tl-legend" aria-hidden="true">(.*?)</ul>', nav, re.DOTALL)
+    assert legend, nav
+    for key in ("request", "error", "user"):
+        assert f"tl-key-{key}" in legend.group(1), key

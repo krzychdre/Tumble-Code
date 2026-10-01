@@ -26,6 +26,9 @@ window.addEventListener("load", function () {
   check("toggle revealed", toggle.hidden === false)
   check("toggle names the current choice", /light/i.test(toggle.textContent) && /light/i.test(toggle.getAttribute("aria-label")))
 
+  // An icon for the choice; the word stays in the button for a screen reader.
+  check("toggle draws the choice as an icon", toggle.getAttribute("data-choice") === "light" && toggle.querySelector("svg[aria-hidden='true']") !== null)
+
   toggle.click()   // light -> auto
   check("light is followed by auto", root.getAttribute("data-theme") === null && stored() === null)
   check("auto says so", /auto/i.test(toggle.textContent))

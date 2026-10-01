@@ -124,7 +124,7 @@
   {% if metrics.unreported %}
   <p class="kind-note">
     {{ metrics.unreported }} call{{ '' if metrics.unreported == 1 else 's' }} came back with no usage figures from the
-    provider — counted here, but contributing no tokens.
+    provider: counted here, but contributing no tokens.
   </p>
   {% endif %}
 </section>
@@ -134,15 +134,17 @@
    geometry): no script, they print, and every mark is coloured by a class
    that reads the theme's tokens. Each is an image with a summary, pointing
    at the table that holds the same figures. #}
-{% macro daily_chart(c) %}
 {# Tokens and cost on one plot, each on its own axis (tokens left, cost right).
-   The legend is two checkboxes; the stylesheet hides a series and its axis
-   when its box is cleared (:has), so the toggle needs no script. #}
-<div class="chart-combo">
-  <div class="chart-legend" role="group" aria-label="Series shown">
-    <label class="legend-key key-tokens"><input type="checkbox" class="series-toggle toggle-tokens" checked><i></i>Tokens</label>
-    <label class="legend-key key-cost"><input type="checkbox" class="series-toggle toggle-cost" checked><i></i>Cost</label>
-  </div>
+   The legend is two checkboxes, on the card's heading line; the stylesheet
+   hides a series and its axis when its box is cleared (:has on the card,
+   .chart-combo), so the toggle needs no script. #}
+{% macro daily_legend() %}
+<div class="chart-legend" role="group" aria-label="Series shown">
+  <label class="legend-key key-tokens"><input type="checkbox" class="series-toggle toggle-tokens" checked><i></i>Tokens</label>
+  <label class="legend-key key-cost"><input type="checkbox" class="series-toggle toggle-cost" checked><i></i>Cost</label>
+</div>
+{% endmacro %}
+{% macro daily_chart(c) %}
   <div class="chart-plot">
     <div class="chart-yaxis axis-tokens" aria-hidden="true">{% for t in c.tokens_ticks %}<span>{{ t }}</span>{% endfor %}</div>
     <svg class="chart-svg chart-daily" viewBox="0 0 {{ c.width }} {{ c.height }}" preserveAspectRatio="none"
@@ -156,7 +158,6 @@
     <div class="chart-yaxis axis-cost" aria-hidden="true">{% for t in c.cost_ticks %}<span>{{ t }}</span>{% endfor %}</div>
     <div class="chart-days" aria-hidden="true">{% for s in c.slots %}<span>{{ s.label }}</span>{% endfor %}</div>
   </div>
-</div>
 {% endmacro %}
 {% macro ranked_chart(c, cls, table_id) %}
 <svg class="chart-svg chart-ranked {{ cls }}" width="100%" height="{{ c.height }}"
@@ -172,8 +173,11 @@
 </svg>
 {% endmacro %}
 <section class="chart-grid">
-  <div class="chart-card chart-wide">
-    <h2 class="chart-title">Tokens &amp; cost per day</h2>
+  <div class="chart-card chart-wide chart-combo">
+    <div class="card-head">
+      <h2 class="chart-title">Tokens &amp; cost per day</h2>
+      {{ daily_legend() }}
+    </div>
     {{ daily_chart(charts.daily) }}
     <details class="chart-table">
       <summary>Show as a table</summary>

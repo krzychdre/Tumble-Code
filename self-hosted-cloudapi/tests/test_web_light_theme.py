@@ -87,6 +87,8 @@ def test_text_and_data_hues_pass_aa_on_the_page_and_the_panels(theme):
                "--d-cost", "--d-error", "--d-you", "--status-run"):
         for bg in grounds:
             assert contrast(t[fg], t[bg]) >= 4.5, (theme, fg, bg, round(contrast(t[fg], t[bg]), 2))
+    # The signed-in initial in the top bar: text on the highest surface.
+    assert contrast(t["--text"], t["--surface-3"]) >= 4.5, (theme, "--text", "--surface-3")
     # Text set on a filled button.
     for ink, fill in (("--signal-ink", "--signal"), ("--d-error-ink", "--d-error"), ("--d-cache-ink", "--d-cache")):
         assert contrast(t[ink], t[fill]) >= 4.5, (theme, ink, fill)

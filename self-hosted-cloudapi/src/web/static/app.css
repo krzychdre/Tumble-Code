@@ -115,6 +115,7 @@
 	--t-label: 0.6875rem; /* 11px — panel labelling            */
 	--t-micro: 0.75rem; /* 12px — badges, meta               */
 	--t-sm: 0.8125rem; /* 13px — dense body, table cells    */
+	--t-row: 0.875rem; /* 14px, a task's title in a list   */
 	--t-body: 0.9375rem; /* 15px — prose                      */
 	--t-lead: 1.125rem;
 	--t-title: 1.375rem;
@@ -125,6 +126,15 @@
 	   a step smaller than its line (units, code). */
 	--t-tick: 0.625rem;
 	--t-inline: 0.9em;
+	/* One tracking for every uppercase mono label (panel captions, column
+	   heads, state pills), so they read as one family across pages. */
+	--track-caps: 0.08em;
+
+	/* One height for every control on a row (inputs, buttons, segmented
+	   pickers), and one for the small quiet buttons beside the data. */
+	--control-h: 30px;
+	--control-h-sm: 26px;
+	--topbar-h: 52px;
 
 	/* Widths for the two measures. The scanning one carries one more column
 	   than it used to (which model answered), and at 1180px that column could
@@ -244,8 +254,33 @@ table.breakdown th {
 	font-size: var(--t-label);
 	font-weight: 500;
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
+}
+/* A card's own heading is the same caption one step up (brighter, heavier),
+   so it heads the labels inside the card instead of matching them. Every
+   card opens with one, at one height, with whatever qualifies it (a count,
+   a legend) on the same line. */
+.chart-title {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--s2);
+	min-height: 1.375rem;
+	margin: 0 0 var(--s3);
+	font-weight: 600;
+	color: var(--text-dim);
+}
+.card-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--s2) var(--s4);
+	margin-bottom: var(--s3);
+}
+.card-head .chart-title {
+	margin: 0;
 }
 
 /* ==========================================================================
@@ -255,9 +290,9 @@ table.breakdown th {
 .topbar {
 	display: flex;
 	align-items: center;
-	gap: var(--s4);
+	gap: var(--s5);
 	padding: 0 var(--s5);
-	height: 52px;
+	height: var(--topbar-h);
 	background: color-mix(in srgb, var(--bg) 85%, transparent);
 	backdrop-filter: blur(12px);
 	border-bottom: 1px solid var(--line);
@@ -302,38 +337,99 @@ table.breakdown th {
 	flex: 1;
 }
 
+/* The sections are tabs of the bar itself, not a box inside it: the page you
+   are on is lit and underlined in the signal colour along the bar's bottom
+   edge, the way a selected channel is marked on an instrument. */
+.mainnav {
+	display: flex;
+	align-self: stretch;
+	gap: var(--s1);
+}
+.mainnav a {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 var(--s3);
+	color: var(--text-dim);
+	font-size: var(--t-sm);
+	font-weight: 550;
+}
+.mainnav a:hover {
+	color: var(--text);
+	text-decoration: none;
+}
+.mainnav a::after {
+	content: "";
+	position: absolute;
+	left: var(--s2);
+	right: var(--s2);
+	bottom: -1px;
+	height: 2px;
+	border-radius: 2px 2px 0 0;
+	background: transparent;
+}
+.mainnav a:hover::after {
+	background: var(--line-strong);
+}
+.mainnav a.active {
+	color: var(--text);
+}
+.mainnav a.active::after {
+	background: var(--signal);
+}
+
+/* Theme, account and Sign out: one cluster, every piece the same height. */
+.topbar-end {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
+}
+.topbar-end .btn {
+	min-height: var(--control-h);
+}
+/* A square button that shows an icon; its name is its aria-label. */
+.btn.icon-btn {
+	width: var(--control-h-sm);
+	padding: 0;
+}
+.topbar-end .btn.icon-btn {
+	width: var(--control-h);
+}
+.icon {
+	width: 16px;
+	height: 16px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.4;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+/* Who is signed in: an initial in a disc, then the name, set like the data. */
 .user {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--s2);
+	height: var(--control-h);
+	padding: 0 var(--s2) 0 var(--s1);
+	border-left: 1px solid var(--line);
+	margin-left: var(--s1);
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-dim);
 	white-space: nowrap;
 }
-
-.mainnav {
-	display: flex;
-	gap: 2px;
-	padding: 3px;
-	background: var(--surface-1);
-	border: 1px solid var(--line);
-	border-radius: var(--r-md);
-}
-.mainnav a {
-	color: var(--text-dim);
-	font-size: var(--t-sm);
-	font-weight: 550;
-	padding: var(--s1) var(--s3);
-	border-radius: var(--r-sm);
-	line-height: 1.6;
-}
-.mainnav a:hover {
-	background: var(--surface-2);
-	color: var(--text);
-	text-decoration: none;
-}
-.mainnav a.active {
+.user-mark {
+	display: inline-grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	margin-left: var(--s2);
+	border-radius: 50%;
 	background: var(--surface-3);
 	color: var(--text);
-	box-shadow: inset 0 1px 0 0 var(--edge-light);
+	font-size: var(--t-label);
+	font-weight: 600;
 }
 
 .content {
@@ -347,10 +443,13 @@ table.breakdown th {
 	max-width: var(--measure-read);
 }
 
+/* The one sans display line on a page; everything under it is either prose
+   (sans) or a measurement or label (mono). Heavier and tighter than the body
+   so the two faces read as a deliberate pair, not as a mix. */
 .page-title {
 	font-size: var(--t-h1);
-	font-weight: 620;
-	letter-spacing: -0.015em;
+	font-weight: 680;
+	letter-spacing: -0.022em;
 	margin: 0;
 	line-height: 1.3;
 }
@@ -385,7 +484,7 @@ form.inline {
 	justify-content: center;
 	gap: var(--s2);
 	padding: var(--s1) var(--s3);
-	min-height: 30px;
+	min-height: var(--control-h);
 	background: var(--signal);
 	color: var(--signal-ink);
 	border: 1px solid transparent;
@@ -422,7 +521,7 @@ form.inline {
    beside the data rather than lead the page (theme, delete, paging, copy,
    timeline jumps, folds). Paired with .ghost. */
 .btn.small {
-	min-height: 26px;
+	min-height: var(--control-h-sm);
 	padding: 0 var(--s2);
 	font-family: var(--mono);
 	font-size: var(--t-micro);
@@ -442,7 +541,7 @@ textarea {
 	padding: var(--s1) var(--s2);
 	font-family: var(--sans);
 	font-size: var(--t-sm);
-	min-height: 30px;
+	min-height: var(--control-h);
 }
 /* Text fields mark focus with their border and a soft ring; checkboxes keep
    the global outline (an outline: none here used to hide it). */
@@ -603,7 +702,7 @@ textarea::placeholder {
 	font-family: var(--mono);
 	font-size: var(--t-label);
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 	cursor: pointer;
 }
@@ -676,7 +775,7 @@ textarea::placeholder {
 	font-family: var(--mono);
 	font-size: var(--t-label);
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 }
 .select-all:hover {
@@ -750,25 +849,28 @@ textarea::placeholder {
 	color: var(--d-error-ink);
 }
 
-/* Columns: title | project | model | messages | duration | tokens | cost |
-   grade | when.
-   Fixed tracks (not flex) so a figure sits at the same x on every row and the
-   whole column can be read down in one pass — the reason the numbers are set
-   in a monospace with tabular figures in the first place. The model track is
-   fixed for the same reason and because it must not be elastic: local model ids
-   run long, and letting the badge take what it needs truncated titles to "a."
-   on the rows that switched model. Overflow goes to the tooltip.
+/* Columns: task (title, then project and model under it) | messages |
+   duration | tokens | cost | grade | when.
+   Fixed tracks (not flex) for the figures, so a figure sits at the same x on
+   every row and the whole column can be read down in one pass: the reason the
+   numbers are set in a monospace with tabular figures in the first place.
 
-   The project track is fixed too, and always was a defect while it was not: an
-   `auto` badge column is sized per row (each row is its own grid), so the
-   badges never lined up AND a long worktree name ate the title — "Upload the
-   readings" rendered as "U…" beside `data-products-molecular`. */
+   The title is what a reader is looking for, so it takes all the free width.
+   Project and model used to be two fixed columns of their own (17rem between
+   them), which left the title about 20 characters at 1280px ("Fix the flaky
+   TaskHistorySto..."). They now ride on a second line under the title, where
+   a long worktree name or local model id can still not eat the title: each
+   badge is capped and truncates on its own, the full value in its tooltip. */
+.task-link,
+.task-head-cells {
+	--task-cols: minmax(0, 1fr) 4rem 4rem 5.5rem 5rem 6rem 7.5rem;
+}
 .task-link {
 	position: relative;
 	flex: 1;
 	min-width: 0;
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 8rem 9rem 4.5rem 4.5rem 5.5rem 5rem 5.5rem 8.5rem;
+	grid-template-columns: var(--task-cols);
 	align-items: center;
 	gap: var(--s3);
 	padding: var(--s2) var(--s3) var(--s2) var(--s4);
@@ -793,18 +895,47 @@ textarea::placeholder {
 	background: var(--signal);
 }
 
+.cell-main {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
 .cell-title {
-	font-size: var(--t-sm);
-	font-weight: 500;
+	font-size: var(--t-row);
+	font-weight: 550;
+	line-height: 1.4;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.cell-workspace,
-.cell-model {
+/* Outside the task list (subtask rows, roughest runs) a title is one of
+   several facts on a line, so it is set a step quieter. */
+.subtask-link .cell-title,
+.rough-link .cell-title {
+	font-size: var(--t-sm);
+	font-weight: 500;
+}
+.cell-meta {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	gap: var(--s2);
 	min-width: 0;
+}
+.cell-meta:empty {
+	display: none;
+}
+.cell-meta .badge {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 18rem;
+	padding: 0 var(--s2);
+	font-size: var(--t-label);
+	line-height: 1.6;
+}
+/* The project is a place, the model an agent: the place yields first. */
+.cell-meta .badge-workspace {
+	flex-shrink: 2;
 }
 .cell-num,
 .cell-date {
@@ -813,8 +944,16 @@ textarea::placeholder {
 	color: var(--text-faint);
 	text-align: right;
 	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
 }
-.cell-cost {
+/* A figure is the data of the row, its unit and the date are labelling. */
+.task-link .cell-num,
+.subtask-link .cell-num {
+	color: var(--text-dim);
+}
+.cell-cost,
+.task-link .cell-cost,
+.subtask-link .cell-cost {
 	color: var(--d-cost);
 }
 .cell-grade {
@@ -897,8 +1036,11 @@ textarea::placeholder {
 }
 
 @media (max-width: 860px) {
+	/* The bar goes; the three figures keep one line beside the label (two
+	   columns of them wrapped calls and cost under the next row's label). */
 	.kind-row {
-		grid-template-columns: minmax(0, 1fr) 5rem;
+		grid-template-columns: minmax(0, 1fr) 4.5rem 4rem 4.5rem;
+		gap: var(--s2);
 	}
 	.kind-bar {
 		display: none;
@@ -924,7 +1066,7 @@ textarea::placeholder {
 	font-weight: 500;
 	line-height: 1.6;
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: var(--track-caps);
 	padding: 0 var(--s2);
 	border: 1px solid transparent;
 	border-radius: var(--r-pill);
@@ -995,7 +1137,7 @@ textarea::placeholder {
 	font-family: var(--mono);
 	font-size: var(--t-label);
 	text-transform: uppercase;
-	letter-spacing: 0.07em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 }
 /* A signal that did not fire is the good case, so it recedes rather than
@@ -1022,12 +1164,6 @@ a.signal-value:hover {
 .quality-overview {
 	margin-bottom: var(--s4);
 }
-.quality-overview .chart-title {
-	display: flex;
-	align-items: center;
-	gap: var(--s2);
-	margin: 0 0 var(--s3);
-}
 /* One whole divided three ways, so a stacked bar rather than a third doughnut:
    the shares are meant to be compared against each other, not read as values. */
 .grade-bar {
@@ -1046,8 +1182,9 @@ a.signal-value:hover {
 .seg-friction {
 	background: var(--signal);
 }
+/* Neutral, but visible against the empty track it sits on. */
 .seg-unfinished {
-	background: var(--surface-3);
+	background: color-mix(in srgb, var(--text-faint) 45%, transparent);
 }
 .grade-legend {
 	display: flex;
@@ -1077,7 +1214,9 @@ a.signal-value:hover {
 }
 
 .rough-title {
-	margin: var(--s4) 0 var(--s2);
+	margin: var(--s4) 0 var(--s1);
+	font-weight: 500;
+	color: var(--text-faint);
 }
 .rough-list {
 	list-style: none;
@@ -1124,7 +1263,7 @@ a.signal-value:hover {
 }
 .eff-label {
 	text-transform: uppercase;
-	letter-spacing: 0.07em;
+	letter-spacing: var(--track-caps);
 	font-size: var(--t-label);
 }
 /* Units are labelling, not data: they sit quieter than the figure and never
@@ -1294,7 +1433,7 @@ a.signal-value:hover {
 }
 .pager-jump input[type="number"] {
 	width: 4.5rem;
-	min-height: 26px;
+	min-height: var(--control-h-sm);
 	padding: 0 var(--s1);
 	font-family: var(--mono);
 	font-variant-numeric: tabular-nums;
@@ -1320,7 +1459,7 @@ a.signal-value:hover {
    scrolls. */
 .task-head {
 	position: sticky;
-	top: 52px;
+	top: var(--topbar-h);
 	z-index: 4;
 	display: flex;
 	align-items: stretch;
@@ -1335,7 +1474,7 @@ a.signal-value:hover {
 	flex: 1;
 	min-width: 0;
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 8rem 9rem 4.5rem 4.5rem 5.5rem 5rem 5.5rem 8.5rem;
+	grid-template-columns: var(--task-cols);
 	align-items: center;
 	gap: var(--s3);
 	padding: var(--s1) var(--s3) var(--s1) var(--s4);
@@ -1346,13 +1485,18 @@ a.signal-value:hover {
 	font-size: var(--t-label);
 	font-weight: 500;
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 	text-align: right;
 	white-space: nowrap;
 }
 .head-title {
 	text-align: left;
+}
+/* What the second line of a row holds, said once in the header. */
+.head-sub {
+	text-transform: none;
+	letter-spacing: 0;
 }
 .head-sort {
 	font-size: var(--t-label);
@@ -1399,6 +1543,18 @@ a.signal-value:hover {
 	padding-top: 1px;
 	padding-bottom: 1px;
 }
+/* Compact keeps a row to one line: the project and model follow the title
+   on it instead of sitting under it. */
+@media (min-width: 861px) {
+	:root[data-density="compact"] .task-link .cell-main {
+		flex-direction: row;
+		align-items: center;
+		gap: var(--s3);
+	}
+	:root[data-density="compact"] .task-link .cell-meta {
+		flex: 0 1 auto;
+	}
+}
 :root[data-density="compact"] .task-link::before {
 	top: 0.3rem;
 	bottom: 0.3rem;
@@ -1411,7 +1567,7 @@ a.signal-value:hover {
 	font-family: var(--mono);
 	font-size: var(--t-label);
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 	cursor: pointer;
 }
@@ -1436,10 +1592,16 @@ a.signal-value:hover {
 	gap: var(--s2) var(--s3);
 	margin-bottom: var(--s4);
 }
+/* Apply sits beside the Filters disclosure, so the two are set alike. */
+.filter-apply {
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	font-weight: 500;
+}
 .filter-more > summary {
 	display: inline-flex;
 	align-items: center;
-	min-height: 30px;
+	min-height: var(--control-h);
 	padding: 0 var(--s3);
 	border: 1px solid var(--line);
 	border-radius: var(--r-sm);
@@ -1470,12 +1632,18 @@ a.signal-value:hover {
 	order: 3;
 	flex: 1 0 100%;
 }
+/* Open, the fields sit in a well of their own under the disclosure, so they
+   read as one group and not as a second toolbar. */
 .filter-fields {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-end;
 	gap: var(--s3);
 	margin-top: var(--s2);
+	padding: var(--s3);
+	background: var(--surface-1);
+	border: 1px solid var(--line);
+	border-radius: var(--r-md);
 }
 /* Chrome still lays out a closed <details>' content (content-visibility),
    and its width then counts toward the page's on a phone. */
@@ -1496,7 +1664,7 @@ a.signal-value:hover {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--s2);
-	min-height: 30px;
+	min-height: var(--control-h);
 	font-size: var(--t-sm);
 	color: var(--text-dim);
 	cursor: pointer;
@@ -1559,14 +1727,38 @@ a.signal-value:hover {
 	margin: var(--s6) auto;
 	padding: var(--s4) var(--s5);
 }
+/* The steps are a real sequence, so they are numbered: mono figures in a
+   ring, the same shape as the pager's current page. */
 .connect-steps {
 	margin: var(--s3) 0 0;
-	padding-left: var(--s5);
+	padding: 0;
+	list-style: none;
+	counter-reset: step;
 	color: var(--text-dim);
 	font-size: var(--t-sm);
 }
+.connect-steps li {
+	position: relative;
+	padding-left: 2.25rem;
+	counter-increment: step;
+}
+.connect-steps li::before {
+	content: counter(step);
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: grid;
+	place-items: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	border: 1px solid var(--line-strong);
+	border-radius: 50%;
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text);
+}
 .connect-steps li + li {
-	margin-top: var(--s2);
+	margin-top: var(--s3);
 }
 .copy-row {
 	display: inline-flex;
@@ -1618,6 +1810,32 @@ a.signal-value:hover {
 }
 .empty-error .page-title {
 	color: var(--d-error);
+}
+/* The outcome of a sign-in as a mark above its title, in the state's hue:
+   readable at a glance from across the room while the editor takes over. */
+.empty-success::before,
+.empty-error::before {
+	display: grid;
+	place-items: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	margin: 0 auto var(--s4);
+	border-radius: 50%;
+	font-family: var(--mono);
+	font-size: var(--t-lead);
+	font-weight: 700;
+}
+.empty-success::before {
+	content: "\2713";
+	background: var(--d-cache-wash);
+	color: var(--d-cache);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--d-cache) 35%, transparent);
+}
+.empty-error::before {
+	content: "!";
+	background: var(--d-error-wash);
+	color: var(--d-error);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--d-error) 35%, transparent);
 }
 
 /* ==========================================================================
@@ -1673,12 +1891,6 @@ a.signal-value:hover {
 .subtasks {
 	margin-bottom: var(--s4);
 }
-.subtasks .chart-title {
-	display: flex;
-	align-items: center;
-	gap: var(--s2);
-	margin: 0 0 var(--s2);
-}
 .subtask-list {
 	list-style: none;
 	margin: 0;
@@ -1732,7 +1944,7 @@ a.signal-value:hover {
 	font-family: var(--mono);
 	font-size: var(--t-label);
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 	margin-top: var(--s2);
 }
@@ -1781,17 +1993,51 @@ a.signal-value:hover {
 	gap: var(--s2);
 	margin-bottom: var(--s3);
 }
+.tl-title {
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: var(--track-caps);
+	color: var(--text-dim);
+}
 .tl-jumps {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--s2);
 }
+/* A jump button carries the swatch of the ticks it walks to. */
+.tl-jump {
+	justify-content: flex-start;
+}
+.tl-jump-key,
+.tl-key {
+	flex: none;
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 2px;
+}
+.tl-key-request {
+	background: var(--d-cost);
+}
+.tl-key-error {
+	background: var(--d-error);
+}
+.tl-key-user {
+	background: var(--d-you);
+}
+/* The minimap sits in a sunken well, so it reads as an instrument readout
+   and not as stray bars floating beside the conversation. */
 .tl-track {
 	display: flex;
 	align-items: flex-end;
 	gap: 1px;
-	height: 2rem;
-	border-bottom: 1px solid var(--line);
+	height: 2.5rem;
+	padding: var(--s1);
+	background: var(--sunken);
+	border: 1px solid var(--line);
+	border-radius: var(--r-sm);
 }
 .tl-tick {
 	flex: 1 1 0;
@@ -1800,6 +2046,7 @@ a.signal-value:hover {
 	height: calc(var(--v, 1) * 100%);
 	padding: 0;
 	border: 0;
+	border-radius: 1px;
 	background: var(--d-cost);
 	opacity: 0.75;
 	cursor: pointer;
@@ -1814,44 +2061,64 @@ a.signal-value:hover {
 .tl-user {
 	background: var(--d-you);
 }
+.tl-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s1) var(--s3);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	color: var(--text-faint);
+}
+.tl-legend li {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--s1);
+}
 @media (min-width: 1240px) {
+	/* A rail in the gutter right of the reading column: as wide as that gutter
+	   allows, so the jump labels fit, and as tall as its ticks need. */
 	.timeline {
 		position: fixed;
-		top: calc(52px + var(--s5));
-		bottom: var(--s5);
+		top: calc(var(--topbar-h) + var(--s5));
+		max-height: calc(100vh - var(--topbar-h) - 2 * var(--s5));
 		left: calc(50% + var(--measure-read) / 2 + var(--s5));
-		width: 7.5rem;
+		width: clamp(7.5rem, calc(50% - var(--measure-read) / 2 - 2 * var(--s5)), 12rem);
 		margin: 0;
 	}
 	.tl-jumps {
 		flex-direction: column;
 		align-items: stretch;
 	}
-	/* The rail is 7.5rem wide: a jump's label wraps inside it rather than
-	   running past the window's edge. */
+	/* Labels may wrap inside a narrow rail; they stay left-aligned after
+	   their swatch, so two buttons of different lengths still line up. */
 	.tl-jumps .btn {
-		justify-content: flex-start;
 		padding-block: var(--s1);
 		white-space: normal;
 		text-align: left;
 		line-height: 1.3;
 	}
 	.tl-track {
-		flex: 1;
-		min-height: 0;
+		flex: 0 1 auto;
+		min-height: 2rem;
 		flex-direction: column;
 		align-items: flex-start;
 		height: auto;
-		border-bottom: 0;
-		border-left: 1px solid var(--line);
+		overflow: hidden;
 	}
 	.tl-tick {
+		flex: 0 1 8px;
 		width: calc(var(--v, 1) * 100%);
 		min-width: 0;
 		max-width: none;
 		height: auto;
 		min-height: 2px;
-		max-height: 10px;
+		max-height: 8px;
+	}
+	.tl-legend {
+		flex-direction: column;
 	}
 }
 
@@ -1875,6 +2142,7 @@ a.signal-value:hover {
 .convo-folds {
 	display: flex;
 	gap: var(--s1);
+	margin-left: auto;
 }
 /* A filter chip. Its dot carries the same hue as that role's tick on the spine,
    so the strip doubles as the legend for the conversation below it. */
@@ -1978,7 +2246,7 @@ a.signal-value:hover {
 	contain-intrinsic-size: auto 120px;
 	overflow-clip-margin: var(--s5);
 	/* A jump lands the row below the sticky top bar, not under it. */
-	scroll-margin-top: calc(52px + var(--s3));
+	scroll-margin-top: calc(var(--topbar-h) + var(--s3));
 }
 /* The row a timeline tick or a jump landed on. */
 .msg.tl-target {
@@ -2306,7 +2574,7 @@ details.env-details > summary {
 	font-family: var(--mono);
 	font-size: var(--t-label);
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 }
 details.env-details > pre {
@@ -2359,7 +2627,7 @@ details.env-details > pre {
 	font-size: var(--t-label);
 	font-weight: 500;
 	text-transform: uppercase;
-	letter-spacing: 0.09em;
+	letter-spacing: var(--track-caps);
 	border-bottom: 1px solid var(--line-strong);
 	padding-bottom: var(--s1);
 }
@@ -2448,6 +2716,24 @@ details.env-details > pre {
 	gap: var(--s3);
 	position: sticky;
 	bottom: var(--s4);
+	z-index: 3;
+	/* The lift casts upward, over the rows passing above the bar: a shadow
+	   below it would be cut off by the strip under it. */
+	box-shadow:
+		inset 0 1px 0 0 var(--edge-light),
+		0 -8px 24px -12px var(--shadow-ink);
+}
+/* The bar floats a little above the window's bottom edge. Without this the
+   conversation scrolling past showed through that gap, under the bar; the
+   strip paints the page ground there, from the bar down to the edge. */
+.live-controls::after {
+	content: "";
+	position: absolute;
+	left: -1px;
+	right: -1px;
+	top: 100%;
+	height: calc(var(--s4) + 1px);
+	background: var(--bg);
 }
 /* Dimmed, not see-through: the bar is sticky over the conversation, and an
    opacity on the panel itself let the rows behind it show through its text. */
@@ -2570,28 +2856,38 @@ details.env-details > pre {
 	gap: var(--s4);
 	margin-bottom: var(--s4);
 }
-.stat-card {
-	/* A hairline of the hue this card measures, along the top edge. The card
-	   stays neutral; the encoding lives in one 2px line. */
-	border-top: 2px solid var(--line-strong);
+/* The hue this card measures, as a swatch before its label (the legend key
+   of every chart that uses the hue). The card itself stays neutral. */
+.stat-card .stat-label {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
 }
-.stat-card[data-metric="tokens"] {
-	border-top-color: var(--d-in);
+.stat-card .stat-label::before {
+	content: "";
+	flex: none;
+	width: 8px;
+	height: 8px;
+	border-radius: 2px;
+	background: var(--line-strong);
 }
-.stat-card[data-metric="cache"] {
-	border-top-color: var(--d-cache);
+.stat-card[data-metric="tokens"] .stat-label::before {
+	background: var(--d-in);
 }
-.stat-card[data-metric="cost"] {
-	border-top-color: var(--d-cost);
+.stat-card[data-metric="cache"] .stat-label::before {
+	background: var(--d-cache);
 }
-.stat-card[data-metric="duration"] {
-	border-top-color: var(--d-out);
+.stat-card[data-metric="cost"] .stat-label::before {
+	background: var(--d-cost);
+}
+.stat-card[data-metric="duration"] .stat-label::before {
+	background: var(--d-out);
 }
 /* Indexing borrows the "you" hue rather than any of the four token/cost hues:
    it is the one tile on this row that is not counting the conversation, and
    reusing an encoding hue would say it was. */
-.stat-card[data-metric="indexing"] {
-	border-top-color: var(--d-you);
+.stat-card[data-metric="indexing"] .stat-label::before {
+	background: var(--d-you);
 }
 .stat-value {
 	font-family: var(--mono);
@@ -2599,7 +2895,7 @@ details.env-details > pre {
 	font-weight: 500;
 	letter-spacing: -0.02em;
 	line-height: 1.2;
-	margin: var(--s1) 0;
+	margin: var(--s2) 0 var(--s1);
 }
 .stat-sub {
 	font-family: var(--mono);
@@ -2616,16 +2912,12 @@ details.env-details > pre {
 .chart-card.chart-wide {
 	grid-column: 1 / -1;
 }
-.chart-title {
-	margin: 0 0 var(--s3);
-}
 /* --- charts: inline SVG from web/presenters/charts.py -------------------------
    Every mark is coloured here, from the tokens, so the charts follow the
    theme and print; the markup carries geometry only. */
 .chart-legend {
 	display: flex;
 	gap: var(--s4);
-	margin-bottom: var(--s2);
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-dim);
@@ -2774,6 +3066,11 @@ details.env-details > pre {
 	.chart-daily {
 		height: 160px;
 	}
+	/* Seven "09-25" labels in a phone's plot ran into each other a step up. */
+	.chart-yaxis,
+	.chart-days {
+		font-size: var(--t-label);
+	}
 }
 
 .breakdown-grid {
@@ -2843,9 +3140,6 @@ table.breakdown tr:last-child td {
 	margin-bottom: var(--s4);
 	max-width: 780px;
 }
-.settings-panel .chart-title {
-	margin: 0 0 var(--s2);
-}
 .settings-lead {
 	max-width: 80ch;
 	margin: 0 0 var(--s4);
@@ -2874,6 +3168,13 @@ table.breakdown tr:last-child td {
 .switch-row b {
 	color: var(--text);
 	font-weight: 550;
+}
+/* What the switch does, on its own line under its name. */
+.switch-hint {
+	display: block;
+	margin-top: 1px;
+	font-size: var(--t-micro);
+	color: var(--text-faint);
 }
 
 .field-grid {
@@ -2958,8 +3259,11 @@ table.breakdown tr:last-child td {
 		padding: 0 var(--s3);
 		gap: var(--s2);
 	}
-	.user {
+	.user-name {
 		display: none;
+	}
+	.user {
+		padding-right: 0;
 	}
 	/* Below the scanning width the grid stops earning its keep: the title takes
 	   a full line and the figures wrap under it as a run of values. They used to
@@ -2973,9 +3277,12 @@ table.breakdown tr:last-child td {
 		align-items: center;
 		gap: var(--s1) var(--s3);
 	}
-	.task-link .cell-title,
+	.task-link .cell-main,
 	.subtask-link .cell-title {
 		flex: 1 0 100%;
+	}
+	.task-link .cell-title,
+	.subtask-link .cell-title {
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;
@@ -2987,9 +3294,7 @@ table.breakdown tr:last-child td {
 	.subtask-link > :empty {
 		display: none;
 	}
-	.cell-workspace,
-	.cell-model {
-		justify-content: flex-start;
+	.cell-meta .badge {
 		max-width: 100%;
 	}
 	.cell-num,
@@ -3057,13 +3362,17 @@ table.breakdown tr:last-child td {
 		padding: var(--s2) var(--s3);
 		row-gap: var(--s2);
 	}
+	.topbar {
+		padding-bottom: 0;
+	}
 	.mainnav {
 		order: 1;
 		flex: 1 0 100%;
+		height: 2.5rem;
 	}
 	.mainnav a {
 		flex: 1;
-		text-align: center;
+		justify-content: center;
 	}
 	.detail-title-row {
 		flex-direction: column;
@@ -3071,6 +3380,18 @@ table.breakdown tr:last-child td {
 	}
 	.trail a {
 		max-width: 100%;
+	}
+
+	/* The search box takes the row; Filters and Apply share the next. */
+	.filters .search {
+		flex: 1 0 100%;
+	}
+	.search input {
+		width: 100%;
+		max-width: none;
+	}
+	.cell-meta {
+		flex-wrap: wrap;
 	}
 
 	/* A row's own Delete took a third of a phone row's width from the title.
@@ -3085,12 +3406,13 @@ table.breakdown tr:last-child td {
 	/* A two-line card: the title with its grade, then a wrapping line of the
 	   rest. The title leaves room for the grade beside it, so everything after
 	   the grade starts the second line. */
-	.task-link .cell-title {
+	.task-link .cell-main {
 		order: -2;
 		flex: 1 1 calc(100% - 7rem);
 	}
 	.task-link .cell-grade {
 		order: -1;
+		align-self: flex-start;
 	}
 	/* Checkboxes only in select mode. The mode is a checkbox, so :has() needs
 	   no script to act on it. */
@@ -3101,7 +3423,7 @@ table.breakdown tr:last-child td {
 		font-family: var(--mono);
 		font-size: var(--t-label);
 		text-transform: uppercase;
-		letter-spacing: 0.09em;
+		letter-spacing: var(--track-caps);
 		color: var(--text-faint);
 		cursor: pointer;
 	}
@@ -3196,6 +3518,10 @@ table.breakdown tr:last-child td {
 		grid-row: 2;
 		white-space: normal;
 	}
+	/* The friction count stays at the row's right edge, where it is a column. */
+	.rough-link .cell-num {
+		text-align: right;
+	}
 
 	/* The controls stay on screen, so they must stay small: the six
 	   auto-approval toggles fold behind one button. */
@@ -3203,6 +3529,9 @@ table.breakdown tr:last-child td {
 		padding: var(--s2) var(--s3) var(--s3);
 		gap: var(--s2);
 		bottom: var(--s2);
+	}
+	.live-controls::after {
+		height: calc(var(--s2) + 1px);
 	}
 	.auto-more {
 		display: inline-flex;
@@ -3215,7 +3544,7 @@ table.breakdown tr:last-child td {
 		font-family: var(--mono);
 		font-size: var(--t-label);
 		text-transform: uppercase;
-		letter-spacing: 0.09em;
+		letter-spacing: var(--track-caps);
 		color: var(--text-dim);
 		cursor: pointer;
 	}

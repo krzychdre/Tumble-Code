@@ -117,9 +117,7 @@
     <span class="head-check" aria-hidden="true"></span>
     {% if tree_view %}<span class="tree-gutter" aria-hidden="true"></span>{% endif %}
     <div class="task-head-cells">
-      <span class="head-label head-title">Task</span>
-      <span class="head-label">Project</span>
-      <span class="head-label">Model</span>
+      <span class="head-label head-title">Task<span class="head-sub" aria-hidden="true"> · project · model</span></span>
       {{ head_cell('messages', 'Messages') }}
       <span class="head-label">Duration</span>
       {{ head_cell('tokens', 'Tokens') }}
@@ -127,7 +125,7 @@
       <span class="head-label">Grade</span>
       {{ head_cell('updated', 'Updated') }}
     </div>
-    <span class="task-delete head-spacer" aria-hidden="true"><span class="btn ghost small btn-delete">Delete</span></span>
+    <span class="task-delete head-spacer" aria-hidden="true"><span class="btn ghost small icon-btn btn-delete"></span></span>
   </div>
 
   {# Without scripting nothing can be expanded, so the subtrees are simply shown
@@ -166,9 +164,16 @@
          bare `title="{{ … }}"` renders the string "None" for a task with no
          prompt and no figures. #}
       <a class="task-link" href="/app/tasks/{{ t.id }}"{% if t.hover_title %} title="{{ t.hover_title }}"{% endif %}>
-        <span class="cell-title">{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
-        <span class="cell-workspace">{% if t.workspace_label %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif %}</span>
-        <span class="cell-model">{% if t.models %}<span class="badge badge-model" title="{{ t.models.title }}"><span class="badge-name">{{ t.models.name }}</span>{% if t.models.more %}<span class="badge-more">{{ t.models.more }}</span>{% endif %}</span>{% endif %}</span>
+        {# The title takes the free width; where the work happened and what
+           did it ride on a second line under it, so neither costs the title
+           a column. #}
+        <span class="cell-main">
+          <span class="cell-title">{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
+          <span class="cell-meta">
+            {%- if t.workspace_label %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif -%}
+            {%- if t.models %}<span class="badge badge-model" title="{{ t.models.title }}"><span class="badge-name">{{ t.models.name }}</span>{% if t.models.more %}<span class="badge-more">{{ t.models.more }}</span>{% endif %}</span>{% endif -%}
+          </span>
+        </span>
         <span class="cell-num">{{ t.message_count }}<span class="unit">msg</span></span>
         <span class="cell-num">{{ t.duration or '' }}</span>
         {{ spend.cells(t) }}
@@ -176,9 +181,9 @@
         <span class="cell-date"{% if t.updated_at %} data-ts="{{ t.updated_at.isoformat() }}"{% endif %}>{{ t.updated_at.strftime('%Y-%m-%d %H:%M') if t.updated_at else '' }}</span>
       </a>
       <div class="task-delete">
-        <button class="btn ghost small btn-delete" type="submit" formaction="/app/tasks/{{ t.id }}/delete"
+        <button class="btn ghost small icon-btn btn-delete" type="submit" formaction="/app/tasks/{{ t.id }}/delete"
                 title="Delete task" aria-label="Delete “{{ t.title }}”"
-                data-confirm="Delete “{{ t.title }}” and its conversation permanently? This cannot be undone.">Delete</button>
+                data-confirm="Delete “{{ t.title }}” and its conversation permanently? This cannot be undone."><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.75 7v3.5M9.25 7v3.5"/></svg></button>
       </div>
     </div>
     {% if t.children %}
