@@ -32,7 +32,9 @@ P8 becomes worth doing when one of the thresholds in "When P8 becomes needed" is
 5. A simulation of the CORE-R7 `ui_messages.json` coalescer on the real message timestamps of every
    task, to count real UI writes.
 
-Script: `scripts/bench-task-persistence.ts` (in this branch, reusable). Run from the repo root:
+Script: `scripts/bench-task-persistence.ts` (removed from the tree on 2026-10-01 in simplification round 2, item
+B9; it never changed after it was added, so `git show 6a758ccf3:scripts/bench-task-persistence.ts` restores it).
+Run from the repo root:
 
 ```
 pnpm exec tsx scripts/bench-task-persistence.ts \
