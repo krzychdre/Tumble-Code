@@ -58,7 +58,7 @@ describe("MermaidBlock with the real Mermaid parser", () => {
 	// 120px minimum node widths, which re-lays out and restyles every
 	// flowchart, class and state diagram. Our dark palette was tuned for the
 	// classic dagre look, so Mermaid 11's values are requested explicitly.
-	it("configures Mermaid once with the classic dagre look, Mermaid 11 node sizes and the dark theme", () => {
+	it("configures Mermaid once per theme with the classic dagre look, Mermaid 11 node sizes and the dark theme", () => {
 		expect(calls.initialize).toHaveLength(1)
 		expect(calls.initialize[0]).toMatchObject({
 			startOnLoad: false,
@@ -91,5 +91,17 @@ describe("MermaidBlock with the real Mermaid parser", () => {
 
 		expect(await screen.findByText("common:mermaid.render_error", {}, { timeout: 5000 })).toBeInTheDocument()
 		expect(calls.render).toHaveLength(1)
+	})
+
+	it("reconfigures Mermaid for a light theme before the next diagram renders", async () => {
+		document.body.classList.add("vscode-light")
+		try {
+			render(<MermaidBlock code={"graph TD\n  A --> B"} />)
+			expect(await screen.findByTestId("mermaid-svg", {}, { timeout: 5000 })).toBeInTheDocument()
+			expect(calls.initialize).toHaveLength(2)
+			expect(calls.initialize[1]).toMatchObject({ theme: "default", themeVariables: { background: "#ffffff" } })
+		} finally {
+			document.body.classList.remove("vscode-light")
+		}
 	})
 })

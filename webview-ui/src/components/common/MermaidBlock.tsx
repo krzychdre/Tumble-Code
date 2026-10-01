@@ -1,110 +1,24 @@
 import { useEffect, useRef, useState } from "react"
-import type { MermaidConfig } from "mermaid"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useCopyToClipboard } from "@src/utils/clipboard"
 import CodeBlock from "./CodeBlock"
 import { MermaidButton } from "@/components/common/MermaidButton"
+import { buildMermaidConfig, diagramBackground, readVscodeTheme } from "./mermaidTheme"
 
 // Mermaid is imported on first use (see loadMermaid below), so its core stays
 // out of the startup bundle; its diagram types were already lazy chunks.
 
-const MERMAID_THEME = {
-	background: "#1e1e1e", // VS Code dark theme background
-	textColor: "#ffffff", // Main text color
-	mainBkg: "#2d2d2d", // Background for nodes
-	nodeBorder: "#888888", // Border color for nodes
-	lineColor: "#cccccc", // Lines connecting nodes
-	primaryColor: "#3c3c3c", // Primary color for highlights
-	primaryTextColor: "#ffffff", // Text in primary colored elements
-	primaryBorderColor: "#888888",
-	secondaryColor: "#2d2d2d", // Secondary color for alternate elements
-	tertiaryColor: "#454545", // Third color for special elements
-
-	// Class diagram specific
-	classText: "#ffffff",
-
-	// State diagram specific
-	labelColor: "#ffffff",
-
-	// Sequence diagram specific
-	actorLineColor: "#cccccc",
-	actorBkg: "#2d2d2d",
-	actorBorder: "#888888",
-	actorTextColor: "#ffffff",
-
-	// Flow diagram specific
-	fillType0: "#2d2d2d",
-	fillType1: "#3c3c3c",
-	fillType2: "#454545",
-}
-
-// Mermaid 12 lays out flowchart, state, class, ER and requirement diagrams
-// with ELK and draws them in the "neo" look with 120px minimum node and
-// wrapping widths by default. The palette above was tuned for Mermaid 11's
-// classic look, so these keep the 11 layout and sizes. The layout is set per
-// diagram type, not globally, because a global layout would also override the
-// diagrams that pick their own (mindmap's cose-bilkent, swimlane).
-const DAGRE = { layout: "dagre" }
-const CLASSIC_NODE_SIZES = { minNodeWidth: 0, wrappingWidth: 200 }
-
-const MERMAID_CONFIG: MermaidConfig = {
-	startOnLoad: false,
-	securityLevel: "loose",
-	theme: "dark",
-	look: "classic",
-	flowchart: { ...DAGRE, ...CLASSIC_NODE_SIZES },
-	state: { ...DAGRE, ...CLASSIC_NODE_SIZES },
-	class: DAGRE,
-	er: DAGRE,
-	requirement: DAGRE,
-	suppressErrorRendering: true,
-	themeVariables: {
-		...MERMAID_THEME,
-		fontSize: "16px",
-		fontFamily: "var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif)",
-
-		// Additional styling
-		noteTextColor: "#ffffff",
-		noteBkgColor: "#454545",
-		noteBorderColor: "#888888",
-
-		// Improve contrast for special elements
-		critBorderColor: "#ff9580",
-		critBkgColor: "#803d36",
-
-		// Task diagram specific
-		taskTextColor: "#ffffff",
-		taskTextOutsideColor: "#ffffff",
-		taskTextLightColor: "#ffffff",
-
-		// Numbers/sections
-		sectionBkgColor: "#2d2d2d",
-		sectionBkgColor2: "#3c3c3c",
-
-		// Alt sections in sequence diagrams
-		altBackground: "#2d2d2d",
-
-		// Links
-		linkColor: "#6cb6ff",
-
-		// Borders and lines
-		compositeBackground: "#2d2d2d",
-		compositeBorder: "#888888",
-		titleColor: "#ffffff",
-	},
-}
-
 let mermaidLoad: Promise<(typeof import("mermaid"))["default"]> | undefined
+let configuredFor: string | undefined
 
-// Imports and configures Mermaid once, the first time a diagram is rendered.
-const loadMermaid = () => {
+// Imports Mermaid once, the first time a diagram is rendered, and configures it
+// for the active VS Code theme. A theme change applies to the next diagram that
+// renders; the configuration is only rebuilt when the theme differs.
+const loadMermaid = async () => {
 	mermaidLoad ??= import("mermaid").then(
-		({ default: mermaid }) => {
-			mermaid.initialize(MERMAID_CONFIG)
-			return mermaid
-		},
+		({ default: mermaid }) => mermaid,
 		(error) => {
 			// Let the next diagram retry instead of caching the failure.
 			mermaidLoad = undefined
@@ -112,7 +26,14 @@ const loadMermaid = () => {
 		},
 	)
 
-	return mermaidLoad
+	const mermaid = await mermaidLoad
+	const { kind, colors } = readVscodeTheme()
+	const key = JSON.stringify([kind, colors])
+	if (configuredFor !== key) {
+		mermaid.initialize(buildMermaidConfig(kind, colors))
+		configuredFor = key
+	}
+	return mermaid
 }
 
 interface MermaidBlockProps {
@@ -304,8 +225,10 @@ async function svgToPng(svgEl: SVGElement): Promise<string> {
 			const ctx = canvas.getContext("2d")
 			if (!ctx) return reject("Canvas context not available")
 
-			// Fill background with Mermaid's dark theme background color
-			ctx.fillStyle = MERMAID_THEME.background
+			// Fill with the same background the diagram was drawn on (the editor
+			// background of the active theme).
+			const { kind, colors } = readVscodeTheme()
+			ctx.fillStyle = diagramBackground(kind, colors)
 			ctx.fillRect(0, 0, canvas.width, canvas.height)
 
 			ctx.imageSmoothingEnabled = true
