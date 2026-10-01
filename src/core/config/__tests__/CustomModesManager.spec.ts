@@ -15,6 +15,7 @@ import { getWorkspacePath, arePathsEqual } from "../../../utils/path"
 import { GlobalFileNames } from "../../../shared/globalFileNames"
 
 import { CustomModesManager } from "../CustomModesManager"
+import { modeRulesDir } from "../modeRulesDir"
 
 vi.mock("vscode", () => ({
 	workspace: {
@@ -790,6 +791,50 @@ describe("CustomModesManager", () => {
 			await manager.deleteCustomMode("non-existent-mode")
 
 			expect(mockShowError).toHaveBeenCalledWith("customModes.errors.deleteFailed")
+		})
+
+		// The manager is the only place that deletes a mode's rules folder; the webview handler
+		// only asks whether one exists, to name it in the confirmation dialog.
+		describe("rules folder", () => {
+			const slug = "project-mode"
+			let rulesFolderPath: string
+
+			beforeEach(async () => {
+				rulesFolderPath = (await modeRulesDir(slug, "project"))!
+				const projectMode = { slug, name: "Project", roleDefinition: "Role", groups: ["read"] }
+				;(fs.readFile as Mock).mockImplementation(async (path: string) => {
+					if (path === mockRoomodes) {
+						return yaml.stringify({ customModes: [projectMode] })
+					}
+					if (path === mockSettingsPath) {
+						return yaml.stringify({ customModes: [] })
+					}
+					throw new Error("File not found")
+				})
+				;(fileExistsAtPath as Mock).mockImplementation(
+					async (path: string) =>
+						path === mockSettingsPath || path === mockRoomodes || path === rulesFolderPath,
+				)
+			})
+
+			it("deletes the rules folder of the deleted mode once", async () => {
+				await manager.deleteCustomMode(slug)
+
+				expect(rulesFolderPath).toBe(path.join(mockWorkspacePath, ".roo", `rules-${slug}`))
+				expect(fs.rm).toHaveBeenCalledTimes(1)
+				expect(fs.rm).toHaveBeenCalledWith(rulesFolderPath, { recursive: true, force: true })
+			})
+
+			it("warns and still deletes the mode when the rules folder cannot be removed", async () => {
+				;(fs.rm as Mock).mockRejectedValue(new Error("Permission denied"))
+				const showWarning = vi.fn()
+				;(vscode.window.showWarningMessage as Mock) = showWarning
+
+				await manager.deleteCustomMode(slug)
+
+				expect(showWarning).toHaveBeenCalledWith("customModes.errors.rulesCleanupFailed")
+				expect(fs.writeFile).toHaveBeenCalledWith(mockRoomodes, expect.not.stringContaining(slug), "utf-8")
+			})
 		})
 	})
 

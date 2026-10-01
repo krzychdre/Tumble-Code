@@ -75,7 +75,6 @@ export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 	deleteCustomMode: async (ctx, message) => {
 		const { provider } = ctx
 		if (message.slug) {
-			// Get the mode details to determine source and rules folder path
 			const customModes = await provider.customModesManager.getCustomModes()
 			const modeToDelete = customModes.find((mode) => mode.slug === message.slug)
 
@@ -83,17 +82,12 @@ export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 				return
 			}
 
-			// Determine the scope based on source (project or global)
-			const scope = modeToDelete.source || "global"
-
-			// A project mode has no rules folder while no workspace is open.
-			const rulesFolderPath = await modeRulesDir(message.slug, scope)
-
-			// Check if the rules folder exists
-			const rulesFolderExists = rulesFolderPath ? await fileExistsAtPath(rulesFolderPath) : false
-
-			// If this is a check request, send back the folder info
+			// A check request comes first: the webview names the rules folder in its confirmation dialog.
 			if (message.checkOnly) {
+				// A project mode has no rules folder while no workspace is open.
+				const rulesFolderPath = await modeRulesDir(message.slug, modeToDelete.source || "global")
+				const rulesFolderExists = rulesFolderPath ? await fileExistsAtPath(rulesFolderPath) : false
+
 				await provider.postMessageToWebview({
 					type: "deleteCustomModeCheck",
 					slug: message.slug,
@@ -102,26 +96,8 @@ export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 				return
 			}
 
-			// Delete the mode
+			// Deletes the mode and its rules folder.
 			await provider.customModesManager.deleteCustomMode(message.slug)
-
-			// Delete the rules folder if it exists
-			if (rulesFolderPath && rulesFolderExists) {
-				try {
-					await fs.rm(rulesFolderPath, { recursive: true, force: true })
-					provider.log(`Deleted rules folder for mode ${message.slug}: ${rulesFolderPath}`)
-				} catch (error) {
-					provider.log(`Failed to delete rules folder for mode ${message.slug}: ${error}`)
-					// Notify the user about the failure
-					vscode.window.showErrorMessage(
-						t("common:errors.delete_rules_folder_failed", {
-							rulesFolderPath,
-							error: error instanceof Error ? error.message : String(error),
-						}),
-					)
-					// Continue with mode deletion even if folder deletion fails
-				}
-			}
 
 			// Switch back to default mode after deletion. Go through handleModeSwitch
 			// (like the mode selector) so the running task follows: it reads its own

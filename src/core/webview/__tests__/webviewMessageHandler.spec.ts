@@ -83,8 +83,6 @@ const mockClineProvider = {
 	cwd: "/mock/workspace",
 } as unknown as ClineProvider
 
-import { t } from "../../../i18n"
-
 vi.mock("vscode", () => {
 	const showInformationMessage = vi.fn()
 	const showErrorMessage = vi.fn()
@@ -148,7 +146,6 @@ vi.mock("fs/promises", () => {
 
 import * as vscode from "vscode"
 import * as fs from "fs/promises"
-import * as os from "os"
 import * as path from "path"
 import * as fsUtils from "../../../utils/fs"
 import { getWorkspacePath } from "../../../utils/path"
@@ -306,9 +303,29 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		vi.mocked(ensureSettingsDirectoryExists).mockResolvedValue("/mock/global/storage/.roo")
 	})
 
-	it("should delete a project mode and its rules folder", async () => {
-		const slug = "test-project-mode"
+	// The manager deletes the rules folder together with the mode; the handler only reports
+	// the folder for the webview's confirmation dialog.
+	it("reports an existing rules folder on a check request and deletes nothing", async () => {
+		const slug = "test-check-mode"
 		const rulesFolderPath = path.join("/mock/workspace", ".roo", `rules-${slug}`)
+		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
+			{ name: "Check", slug, roleDefinition: "Role", groups: [], source: "project" } as ModeConfig,
+		])
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true)
+
+		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug, checkOnly: true })
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "deleteCustomModeCheck",
+			slug,
+			rulesFolderPath,
+		})
+		expect(mockClineProvider.customModesManager.deleteCustomMode).not.toHaveBeenCalled()
+		expect(fs.rm).not.toHaveBeenCalled()
+	})
+
+	it("should delete a project mode through the manager, which removes its rules folder", async () => {
+		const slug = "test-project-mode"
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
@@ -327,7 +344,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		// The confirmation dialog is now handled in the webview, so we don't expect showInformationMessage to be called
 		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
 		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
-		expect(fs.rm).toHaveBeenCalledWith(rulesFolderPath, { recursive: true, force: true })
+		expect(fs.rm).not.toHaveBeenCalled()
 	})
 
 	// The running task reads its own mode, so after deleting a mode the switch to the
@@ -346,10 +363,8 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		expect(mockClineProvider.handleModeSwitch).toHaveBeenCalledWith(defaultModeSlug)
 	})
 
-	it("should delete a global mode and its rules folder", async () => {
+	it("should delete a global mode through the manager, which removes its rules folder", async () => {
 		const slug = "test-global-mode"
-		const homeDir = os.homedir()
-		const rulesFolderPath = path.join(homeDir, ".roo", `rules-${slug}`)
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
@@ -368,7 +383,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		// The confirmation dialog is now handled in the webview, so we don't expect showInformationMessage to be called
 		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
 		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
-		expect(fs.rm).toHaveBeenCalledWith(rulesFolderPath, { recursive: true, force: true })
+		expect(fs.rm).not.toHaveBeenCalled()
 	})
 
 	it("should only delete the mode when rules folder does not exist", async () => {
@@ -414,39 +429,6 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
 		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
 		expect(fs.rm).not.toHaveBeenCalled()
-	})
-
-	it("should handle errors when deleting rules folder", async () => {
-		const slug = "test-mode-error"
-		const rulesFolderPath = path.join("/mock/workspace", ".roo", `rules-${slug}`)
-		const error = new Error("Permission denied")
-
-		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
-			{
-				name: "Test Mode Error",
-				slug,
-				roleDefinition: "Test Role",
-				groups: [],
-				source: "project",
-			} as ModeConfig,
-		])
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true)
-		vi.mocked(mockClineProvider.customModesManager.deleteCustomMode).mockResolvedValue(undefined)
-		vi.mocked(fs.rm).mockRejectedValue(error)
-
-		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
-
-		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
-		expect(fs.rm).toHaveBeenCalledWith(rulesFolderPath, { recursive: true, force: true })
-		// Verify error message is shown to the user
-		expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-			t("common:errors.delete_rules_folder_failed", {
-				rulesFolderPath,
-				error: error.message,
-			}),
-		)
-		// No error response is sent anymore - we just continue with deletion
-		expect(mockClineProvider.postMessageToWebview).not.toHaveBeenCalled()
 	})
 })
 

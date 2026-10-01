@@ -608,17 +608,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteCusto
       "customModesManager.getCustomModes",
     ],
     [
-      "getWorkspacePath",
-    ],
-    [
-      "getRooDirectoriesForCwd",
-      "/workspace",
-    ],
-    [
-      "fileExistsAtPath",
-      "/workspace/.roo/rules-m1",
-    ],
-    [
       "customModesManager.deleteCustomMode",
       "m1",
     ],
