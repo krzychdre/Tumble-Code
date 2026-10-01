@@ -3040,18 +3040,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > shareCurren
 }
 `;
 
-exports[`webviewMessageHandler routing (characterization, CORE-R3) > showMdmAuthRequiredNotification 1`] = `
-{
-  "events": [
-    [
-      "vscode.window.showWarningMessage",
-      "common:mdm.info.organization_requires_auth",
-    ],
-  ],
-  "outcome": "resolved",
-}
-`;
-
 exports[`webviewMessageHandler routing (characterization, CORE-R3) > showTaskWithId 1`] = `
 {
   "events": [

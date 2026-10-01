@@ -40,7 +40,6 @@ import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
 import { disposeLanguageParsers } from "./services/tree-sitter/languageParser"
-import { MdmService } from "./services/mdm/MdmService"
 import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
 import { configureLogger, createLineLogger } from "./utils/logging"
 import { perfCounters } from "./utils/perfCounters"
@@ -195,9 +194,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Create logger for cloud services.
 	const cloudLogger = createDualLogger(createOutputChannelLogger(outputChannel))
 
-	// Initialize MDM service
-	const mdmService = await MdmService.createInstance(cloudLogger)
-
 	// Initialize i18n for internationalization support.
 	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
 
@@ -264,7 +260,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	// Initialize the provider *before* the cloud service.
-	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy, mdmService)
+	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy)
 
 	// Initialize cloud service.
 	const postStateListener = () => ClineProvider.getVisibleInstance()?.postStateToWebviewWithoutClineMessages()
@@ -329,8 +325,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 
 			// The sidebar may have been shown while the cloud was starting, with
-			// signed-out cloud facts: push the real ones (this also runs the MDM
-			// redirect that was held back while the start was pending).
+			// signed-out cloud facts: push the real ones.
 			await postStateListener()
 		},
 		(message) => outputChannel.appendLine(message),

@@ -23,11 +23,6 @@ export interface WebviewStatePusherHost {
 	 * task the view is bound to).
 	 */
 	getCurrentTask(): Task | undefined
-	/**
-	 * True when an MDM policy requires cloud auth and the user is
-	 * non-compliant (the redirect tail of every push, D4).
-	 */
-	shouldRedirectToCloudAuth(): boolean
 	/** True while a webview is resolved (a push without a view is a no-op). */
 	hasView(): boolean
 }
@@ -72,7 +67,6 @@ export class WebviewStatePusher {
 		const state = await this.host.getStateToPostToWebview({ includeTaskHistory: "whenChanged" })
 		this.rememberViewClineMessages(state.clineMessages)
 		this.host.postMessageToWebview({ type: "state", state })
-		await this.postMdmRedirectToWebview()
 	}
 
 	/**
@@ -93,7 +87,6 @@ export class WebviewStatePusher {
 		const { taskHistory: _omit, ...rest } = state
 		this.rememberViewClineMessages(rest.clineMessages)
 		this.host.postMessageToWebview({ type: "state", state: rest })
-		await this.postMdmRedirectToWebview()
 	}
 
 	/**
@@ -116,7 +109,6 @@ export class WebviewStatePusher {
 		// webview's high-water mark and make it reject an older-numbered push that has them.
 		const { clineMessages: _omitMessages, clineMessagesSeq: _omitSeq, taskHistory: _omitHistory, ...rest } = state
 		this.host.postMessageToWebview({ type: "state", state: rest })
-		await this.postMdmRedirectToWebview()
 	}
 
 	/**
@@ -165,21 +157,7 @@ export class WebviewStatePusher {
 			state: rest,
 		})
 
-		await this.postMdmRedirectToWebview()
-
 		return true
-	}
-
-	/**
-	 * The tail every `postStateToWebview*` variant shares (D4): after a state
-	 * push, a non-compliant user under an MDM policy that requires cloud auth
-	 * is redirected to the account tab. Only an actual policy can trigger it;
-	 * without `mdmService` or without `requireCloudAuth` nothing is posted.
-	 */
-	async postMdmRedirectToWebview(): Promise<void> {
-		if (this.host.shouldRedirectToCloudAuth()) {
-			await this.host.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
-		}
 	}
 
 	/**

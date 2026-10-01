@@ -193,7 +193,6 @@ type ExpectedWebviewMessageType =
 	| "openCommandFile"
 	| "deleteCommand"
 	| "createCommand"
-	| "showMdmAuthRequiredNotification"
 	| "queueMessage"
 	| "removeQueuedMessage"
 	| "editQueuedMessage"
