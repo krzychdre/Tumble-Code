@@ -743,7 +743,7 @@ describe("ReadFileTool", () => {
 
 			await readFileTool.execute({ files: [{ path: "legacy.ts" }] } as any, mockTask as any, callbacks)
 
-			// The legacy path emits "File: <path>" entries — proof the backward-compat branch ran.
+			// The legacy path emits "File: <path>" entries: proof the backward-compat branch ran.
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("File: legacy.ts"))
 		})
 
@@ -836,8 +836,14 @@ describe("ReadFileTool", () => {
 			const callbacks = createMockCallbacks()
 
 			mockTask.ask.mockResolvedValue({ response: "yesButtonClicked", text: undefined, images: undefined })
-			// fs.readFile with "utf8" encoding returns a string, not a Buffer
-			mockedFsReadFile.mockResolvedValue("line1\nline2\nline3\nline4\nline5" as any)
+			mockedFsReadFile.mockResolvedValue(Buffer.from("line1\nline2\nline3\nline4\nline5"))
+			mockedReadWithSlice.mockReturnValue({
+				content: "2 | line2\n3 | line3\n4 | line4",
+				returnedLines: 3,
+				totalLines: 5,
+				wasTruncated: true,
+				includedRanges: [[2, 4]],
+			})
 
 			await readFileTool.execute(
 				{ files: [{ path: "test.ts", lineRanges: [{ start: 2, end: 4 }] }] } as any,
@@ -845,8 +851,36 @@ describe("ReadFileTool", () => {
 				callbacks,
 			)
 
+			// Lines 2-4 are read as a slice: 0-based offset 1, three lines.
+			expect(mockedReadWithSlice).toHaveBeenCalledWith("line1\nline2\nline3\nline4\nline5", 1, 3)
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("2 | line2"))
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("4 | line4"))
+			expect(mockTask.ask).toHaveBeenCalledWith("tool", expect.stringContaining("(lines 2-4)"), false)
+		})
+
+		it("should read every line range of a legacy entry and cap each at the line limit", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			await readFileTool.execute(
+				{
+					files: [
+						{
+							path: "test.ts",
+							lineRanges: [
+								{ start: 1, end: 2 },
+								{ start: 10, end: 100000 },
+							],
+						},
+					],
+				} as any,
+				mockTask as any,
+				callbacks,
+			)
+
+			expect(mockedReadWithSlice).toHaveBeenCalledTimes(2)
+			expect(mockedReadWithSlice).toHaveBeenNthCalledWith(1, "test content", 0, 2)
+			expect(mockedReadWithSlice).toHaveBeenNthCalledWith(2, "test content", 9, 2000)
 		})
 
 		it("should handle binary image files in legacy format with image support", async () => {
@@ -870,9 +904,47 @@ describe("ReadFileTool", () => {
 
 			await readFileTool.execute({ files: [{ path: "image.png" }] } as any, mockTask as any, callbacks)
 
-			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
-				expect.stringContaining("Image file - content processed"),
+			// The image itself must reach the model, not just a note that it was processed.
+			const result = callbacks.pushToolResult.mock.calls[0][0]
+			expect(Array.isArray(result)).toBe(true)
+			expect(result).toContainEqual(
+				expect.objectContaining({
+					type: "image",
+					source: expect.objectContaining({ media_type: "image/png", data: "abc123" }),
+				}),
 			)
+			expect(result).toContainEqual(
+				expect.objectContaining({ type: "text", text: expect.stringContaining("File: image.png") }),
+			)
+		})
+
+		it("should count every legacy image against the total image memory limit", async () => {
+			const mockTask = createMockTask({ supportsImages: true })
+			const callbacks = createMockCallbacks()
+
+			mockedIsBinaryFile.mockResolvedValue(true)
+			mockedIsSupportedImageFormat.mockReturnValue(true)
+			mockedValidateImageForProcessing.mockResolvedValue({ isValid: true, sizeInMB: 0.5 })
+			mockedProcessImageFile.mockResolvedValue({
+				dataUrl: "data:image/png;base64,abc123",
+				buffer: Buffer.from("test"),
+				sizeInKB: 512,
+				sizeInMB: 0.5,
+				notice: "Image processed successfully",
+			})
+
+			await readFileTool.execute(
+				{ files: [{ path: "a.png" }, { path: "b.png" }] } as any,
+				mockTask as any,
+				callbacks,
+			)
+
+			// One tracker for the whole call, fed by both images.
+			const tracker = vi.mocked(ImageMemoryTracker).mock.results.at(-1)!.value
+			expect(tracker.addMemoryUsage).toHaveBeenCalledTimes(2)
+			expect(mockedValidateImageForProcessing).toHaveBeenCalledTimes(2)
+			const result = callbacks.pushToolResult.mock.calls[0][0]
+			expect(result.filter((block: { type: string }) => block.type === "image")).toHaveLength(2)
 		})
 
 		it("should handle binary image validation failure in legacy format", async () => {
@@ -903,7 +975,9 @@ describe("ReadFileTool", () => {
 
 			await readFileTool.execute({ files: [{ path: "program.exe" }] } as any, mockTask as any, callbacks)
 
-			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("Cannot read binary file"))
+			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
+				expect.stringContaining("Binary file (exe) - content not displayed"),
+			)
 		})
 
 		it("should handle file read errors in legacy format", async () => {
@@ -968,7 +1042,9 @@ describe("ReadFileTool", () => {
 
 			await readFileTool.execute({ files: [{ path: "large.ts" }] } as any, mockTask as any, callbacks)
 
-			expect(callbacks.pushToolResult).toHaveBeenCalledWith(expect.stringContaining("File truncated"))
+			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
+				expect.stringContaining("IMPORTANT: File content truncated."),
+			)
 		})
 
 		it("should track file context in legacy format", async () => {
