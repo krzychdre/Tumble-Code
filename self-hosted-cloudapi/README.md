@@ -1,6 +1,7 @@
-# Self-Hosted Roo Code Cloud API
+# Self-Hosted Tumble Code Cloud API
 
-A self-hosted replacement for the Roo Code Cloud API, compatible with the existing Roo Code VS Code extension.
+The cloud service for the Tumble Code extension, run on your own machine: sign-in through Authentik, task sharing,
+telemetry and cost metrics, the live remote-control bridge and a web panel for your tasks.
 
 ## Quick Start
 
@@ -167,14 +168,14 @@ back to `AUTHENTIK_BASE_URL`.
 A [`Makefile`](Makefile) wraps these commands (`make help`, `make dev`,
 `make docker-up`, …).
 
-## Configuring the Roo Code Extension
+## Configuring the Tumble Code Extension
 
-In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to configure these settings:
+In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `tumble-code` to configure these settings:
 
-| VS Code Setting          | Environment Variable | Description                                                                           |
-| ------------------------ | -------------------- | ------------------------------------------------------------------------------------- |
-| `roo-cline.cloudApiUrl`  | `ROO_CODE_API_URL`   | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
-| `roo-cline.clerkBaseUrl` | `CLERK_BASE_URL`     | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
+| VS Code Setting            | Environment Variable | Description                                                                           |
+| -------------------------- | -------------------- | ------------------------------------------------------------------------------------- |
+| `tumble-code.cloudApiUrl`  | `ROO_CODE_API_URL`   | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
+| `tumble-code.clerkBaseUrl` | `CLERK_BASE_URL`     | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
 
 > **Auto-detect:** When `clerkBaseUrl` is not explicitly configured, the extension
 > automatically uses the same URL as `cloudApiUrl` for Clerk auth requests. This means
@@ -189,7 +190,7 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to con
 > **not** to Authentik. The self-hosted API serves the Clerk-compatible endpoints
 > (`/v1/client/sign_ins`, etc.) that the extension calls after the browser-based OAuth
 > flow completes. If `clerkBaseUrl` is left pointing at the production Clerk
-> (`https://clerk.roocode.com`), the ticket exchange will fail because the production
+> (`https://auth.tumblecode.dev`), the ticket exchange will fail because the production
 > Clerk has no knowledge of users created in your self-hosted instance.
 
 ### Authentication Flow
@@ -206,9 +207,9 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to con
 
 **"Failed to handle Tumble Code Cloud callback: Error: HTTP 400: Bad Request" after Authentik login:**
 
-- This error occurs when the extension tries to validate the auth ticket against the production Clerk (`https://clerk.roocode.com`) instead of your self-hosted API
-- Ensure `roo-cline.cloudApiUrl` is set to your self-hosted API URL (e.g., `http://localhost:8085`)
-- The extension should auto-detect the Clerk base URL from `cloudApiUrl` — if it doesn't, explicitly set `roo-cline.clerkBaseUrl` to the same URL as `cloudApiUrl`
+- This error occurs when the extension tries to validate the auth ticket against the production Clerk (`https://auth.tumblecode.dev`) instead of your self-hosted API
+- Ensure `tumble-code.cloudApiUrl` is set to your self-hosted API URL (e.g., `http://localhost:8085`)
+- The extension should auto-detect the Clerk base URL from `cloudApiUrl`; if it doesn't, explicitly set `tumble-code.clerkBaseUrl` to the same URL as `cloudApiUrl`
 - Check the VS Code developer console (Help > Toggle Developer Tools) for network requests to verify the ticket is being sent to the correct URL
 
 **"Waiting for browser authentication" hangs after Authentik login:**
@@ -268,31 +269,24 @@ database is not supported.
 
 ## API Endpoints
 
-### Clerk-Compatible Auth (CLERK_BASE_URL)
+`tests/test_route_table.py` pins every path, method and route name the app serves; read it for the complete list.
+In short:
 
-- `POST /v1/client/sign_ins` - Sign in with ticket
-- `POST /v1/client/sessions/{id}/tokens` - Create session JWT
-- `GET /v1/me` - Get user profile
-- `GET /v1/me/organization_memberships` - Get org memberships
-- `POST /v1/client/sessions/{id}/remove` - Logout
-
-### Browser Auth Flow
-
-- `GET /extension/sign-in` - Redirect to Authentik OAuth
-- `GET /auth/clerk/callback` - Authentik OAuth callback
-
-### Main API (ROO_CODE_API_URL)
-
-- `GET /api/extension-settings` - Fetch org + user settings
-- `PATCH /api/user-settings` - Update user settings
-- `POST /api/extension/share` - Share a task
-- `GET /api/extension/bridge/config` - Bridge config
-- `POST /api/events` - Record telemetry event
-- `POST /api/events/backfill` - Backfill task messages
+- Clerk-compatible auth facade, called by the extension on `clerkBaseUrl`: `POST /v1/client/sign_ins`,
+  `POST /v1/client/sessions/{id}/tokens`, `GET /v1/me`, `GET /v1/me/organization_memberships`,
+  `POST /v1/client/sessions/{id}/remove`.
+- Browser sign-in: `GET /extension/sign-in` (redirects to Authentik), `GET /auth/clerk/callback`, `GET /auth/error`,
+  and `GET /app/login`, `POST /app/logout` for the web panel.
+- Extension API on `cloudApiUrl`: `GET /api/extension-settings`, `PATCH /api/user-settings`,
+  `POST /api/extension/share`, `GET /api/extension/bridge/config`, `POST /api/events`, `POST /api/events/backfill`.
+- Web panel: `/app` (task list, task pages, metrics, settings) and `/shared/{task_id}` for shared tasks.
+- Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
+- Health: `GET /health` (process alive), `GET /health/ready` (database reachable).
 
 ## Architecture
 
-See [ai_plans/self-hosted-cloud-api-architecture.md](../ai_plans/self-hosted-cloud-api-architecture.md) for the full architecture document.
+See [docs/08-cloud.md](../docs/08-cloud.md) for how the extension's cloud client and this service fit together: the
+sign-in flow, the data model, how task rows arrive, background work, the database bootstrap and the web panel.
 
 ## License
 
