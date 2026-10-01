@@ -115,6 +115,37 @@ describe("tree-sitter extension map (real WASM)", () => {
 		expect(blocks.length).toBeGreaterThan(0)
 	})
 
+	// The per-language Scala specs pass scalaQuery in by hand, so they kept
+	// passing while the production table ran the Lua query on Scala files.
+	it("lists Scala classes, objects, traits and methods through the production grammar table", async () => {
+		const file = writeSample(
+			"scala",
+			`object Greeter {
+  def greet(name: String): String = {
+    s"Hello, $name"
+  }
+}
+
+trait Shape {
+  def area: Double
+}
+
+class Circle(radius: Double) extends Shape {
+  def area: Double = {
+    math.Pi * radius * radius
+  }
+}
+`,
+		)
+
+		const result = await parseSourceCodeDefinitionsForFile(file)
+
+		expect(result).toMatch(/\d+--\d+ \| object Greeter \{/)
+		expect(result).toMatch(/\d+--\d+ \| trait Shape \{/)
+		expect(result).toMatch(/\d+--\d+ \| class Circle\(radius: Double\) extends Shape \{/)
+		expect(result).toMatch(/\d+--\d+ \| {3}def greet\(name: String\): String = \{/)
+	})
+
 	it("code index chunks .elm by length instead of dropping it", async () => {
 		const elm = "module Main exposing (main)\n\nmain : Int\nmain =\n    1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9\n"
 		expect(shouldUseFallbackChunking(".elm")).toBe(true)
