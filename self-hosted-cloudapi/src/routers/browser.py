@@ -2,8 +2,6 @@
 
 Implements the browser-based authentication routes:
 - GET /extension/sign-in
-- GET /extension/provider-sign-up
-- GET /l/{slug}
 - GET /auth/clerk/callback
 - GET /auth/error
 """
@@ -113,14 +111,12 @@ async def _start_sign_in(
     db: AsyncSession,
     state: str,
     auth_redirect: str,
-    *,
-    screen_hint: Optional[str] = None,
 ) -> Response:
-    """Shared body of the extension's sign-in routes.
+    """Body of the extension's sign-in route.
 
     Refuses a redirect that is not an editor callback (DEF-S3), stores the
     state with a fresh PKCE verifier, and sends the browser to Authentik's
-    authorize URL, with ``&screen_hint=...`` appended when given.
+    authorize URL.
     """
     if not is_allowed_auth_redirect(auth_redirect):
         return _refuse_auth_redirect()
@@ -134,8 +130,6 @@ async def _start_sign_in(
         auth_redirect=auth_redirect,
         front=front_channel(request.headers.get("host")),
     )
-    if screen_hint:
-        authorize_url += f"&screen_hint={screen_hint}"
     return RedirectResponse(url=authorize_url)
 
 
@@ -147,34 +141,6 @@ async def sign_in_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Redirect to Authentik OAuth authorize URL for sign-in."""
-    return await _start_sign_in(request, db, state, auth_redirect)
-
-
-@router.get("/extension/provider-sign-up")
-async def provider_sign_up_page(
-    request: Request,
-    state: str = Query(...),
-    auth_redirect: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-):
-    """Redirect to Authentik OAuth authorize URL for sign-up."""
-    return await _start_sign_in(request, db, state, auth_redirect, screen_hint="signup")
-
-
-@router.get("/l/{slug}")
-async def landing_page(
-    slug: str,
-    request: Request,
-    state: str = Query(...),
-    auth_redirect: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-):
-    """Redirect to Authentik OAuth authorize URL for landing page flow.
-
-    ``slug`` is not used: the route exists because the extension builds
-    ``/l/<landingPageSlug>`` URLs (packages/cloud/src/WebAuthService.ts), and
-    it behaves exactly like ``/extension/sign-in``.
-    """
     return await _start_sign_in(request, db, state, auth_redirect)
 
 

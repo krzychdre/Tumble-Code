@@ -26,7 +26,6 @@ export const handleUri = async (uri: vscode.Uri) => {
 			const code = query.get("code")
 			const state = query.get("state")
 			const organizationId = query.get("organizationId")
-			const providerModel = query.get("provider_model")
 
 			// The cloud starts in the background (P9); a sign-in callback that
 			// arrives during that start waits for it (bounded by its timeout).
@@ -36,7 +35,6 @@ export const handleUri = async (uri: vscode.Uri) => {
 				code,
 				state,
 				organizationId === "null" ? null : organizationId,
-				providerModel,
 			)
 			break
 		}

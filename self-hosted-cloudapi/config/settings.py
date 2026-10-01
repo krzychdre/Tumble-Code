@@ -237,10 +237,6 @@ class Settings(BaseSettings):
             )
         return value
 
-    # Marketplace
-    marketplace_source: str = "yaml"
-    marketplace_yaml_dir: str = "./config/marketplace"
-
     # Optional features
     # Live remote-control bridge (socket.io). When enabled the API mounts a
     # socket.io server that relays events/commands between the extension and the

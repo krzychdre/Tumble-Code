@@ -168,24 +168,3 @@ class TestSignInPageRedirect:
         assert call_args[0][1] == "test-state"
         assert call_args[0][2] == "vscode://RooVeterinaryInc.roo-cline"
         assert call_args[0][3] == "verifier"
-
-    @patch("src.routers.browser.store_oauth_state", new_callable=AsyncMock)
-    @patch("src.routers.browser.generate_pkce_pair")
-    @patch("src.routers.browser.get_authorize_url")
-    def test_provider_sign_up_stores_auth_redirect(
-        self, mock_get_authorize, mock_pkce, mock_store, client
-    ):
-        """Provider sign-up page should store the auth_redirect parameter for later use in callback."""
-        mock_pkce.return_value = ("verifier", "challenge")
-        mock_get_authorize.return_value = "https://auth.example.com/authorize?params"
-        mock_store.return_value = AsyncMock()
-
-        client.get(
-            "/extension/provider-sign-up",
-            params={"state": "test-state", "auth_redirect": "vscode://RooVeterinaryInc.roo-cline"},
-            follow_redirects=False,
-        )
-
-        mock_store.assert_called_once()
-        call_args = mock_store.call_args
-        assert call_args[0][2] == "vscode://RooVeterinaryInc.roo-cline"

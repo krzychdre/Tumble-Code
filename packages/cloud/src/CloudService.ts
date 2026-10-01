@@ -173,9 +173,9 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 
 	// AuthService
 
-	public async login(landingPageSlug?: string, useProviderSignup: boolean = false): Promise<void> {
+	public async login(): Promise<void> {
 		this.ensureInitialized()
-		return this.authService!.login(landingPageSlug, useProviderSignup)
+		return this.authService!.login()
 	}
 
 	public async logout(): Promise<void> {
@@ -240,10 +240,9 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 		code: string | null,
 		state: string | null,
 		organizationId?: string | null,
-		providerModel?: string | null,
 	): Promise<void> {
 		this.ensureInitialized()
-		return this.authService!.handleCallback(code, state, organizationId, providerModel)
+		return this.authService!.handleCallback(code, state, organizationId)
 	}
 
 	public async switchOrganization(organizationId: string | null): Promise<void> {

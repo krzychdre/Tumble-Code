@@ -62,7 +62,7 @@ export class StaticTokenAuthService extends EventEmitter<AuthServiceEvents> impl
 		this.emit("user-info", { userInfo: this.userInfo })
 	}
 
-	public async login(_landingPageSlug?: string, _useProviderSignup?: boolean): Promise<void> {
+	public async login(): Promise<void> {
 		throw new Error("Authentication methods are disabled in StaticTokenAuthService")
 	}
 
@@ -74,7 +74,6 @@ export class StaticTokenAuthService extends EventEmitter<AuthServiceEvents> impl
 		_code: string | null,
 		_state: string | null,
 		_organizationId?: string | null,
-		_providerModel?: string | null,
 	): Promise<void> {
 		throw new Error("Authentication methods are disabled in StaticTokenAuthService")
 	}

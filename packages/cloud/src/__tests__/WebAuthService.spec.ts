@@ -283,26 +283,6 @@ describe("WebAuthService", () => {
 			expect(calledUri.toString()).toBe(expectedUrl)
 		})
 
-		it("should use provider signup URL when useProviderSignup is true", async () => {
-			const mockOpenExternal = vi.fn()
-			const vscode = await import("vscode")
-			vi.mocked(vscode.env.openExternal).mockImplementation(mockOpenExternal)
-
-			await authService.login(undefined, true)
-
-			const expectedUrl =
-				"https://api.test.com/extension/provider-sign-up?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FQUB-IT.tumble-code"
-			expect(mockOpenExternal).toHaveBeenCalledWith(
-				expect.objectContaining({
-					toString: expect.any(Function),
-				}),
-			)
-
-			// Verify the actual URL
-			const calledUri = mockOpenExternal.mock.calls[0]?.[0]
-			expect(calledUri.toString()).toBe(expectedUrl)
-		})
-
 		it("should handle errors during login", async () => {
 			vi.mocked(crypto.randomBytes).mockImplementation(() => {
 				throw new Error("Crypto error")
@@ -371,62 +351,6 @@ describe("WebAuthService", () => {
 				}),
 			)
 			expect(mockShowInfo).toHaveBeenCalledWith("Successfully authenticated with Tumble Code Cloud")
-		})
-
-		it("should store provider model when provided in callback", async () => {
-			const storedState = "valid-state"
-			mockContext.globalState.get.mockReturnValue(storedState)
-
-			// Mock successful Clerk sign-in response
-			const mockResponse = {
-				ok: true,
-				json: () =>
-					Promise.resolve({
-						response: { created_session_id: "session-123" },
-					}),
-				headers: {
-					get: (header: string) => (header === "authorization" ? "Bearer token-123" : null),
-				},
-			}
-			mockFetch.mockResolvedValue(mockResponse)
-
-			const vscode = await import("vscode")
-			const mockShowInfo = vi.fn()
-			vi.mocked(vscode.window.showInformationMessage).mockImplementation(mockShowInfo)
-
-			await authService.handleCallback("auth-code", storedState, null, "xai/grok-code-fast-1")
-
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("roo-provider-model", "xai/grok-code-fast-1")
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("roo-auth-skip-model", undefined)
-			expect(mockLog).toHaveBeenCalledWith("[auth] Stored provider model: xai/grok-code-fast-1")
-		})
-
-		it("should set skip model flag when provider model is NOT provided in callback", async () => {
-			const storedState = "valid-state"
-			mockContext.globalState.get.mockReturnValue(storedState)
-
-			// Mock successful Clerk sign-in response
-			const mockResponse = {
-				ok: true,
-				json: () =>
-					Promise.resolve({
-						response: { created_session_id: "session-123" },
-					}),
-				headers: {
-					get: (header: string) => (header === "authorization" ? "Bearer token-123" : null),
-				},
-			}
-			mockFetch.mockResolvedValue(mockResponse)
-
-			const vscode = await import("vscode")
-			const mockShowInfo = vi.fn()
-			vi.mocked(vscode.window.showInformationMessage).mockImplementation(mockShowInfo)
-
-			// Call without provider model
-			await authService.handleCallback("auth-code", storedState, null)
-
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("roo-auth-skip-model", true)
-			expect(mockLog).toHaveBeenCalledWith("[auth] No provider model selected during signup")
 		})
 
 		it("should handle Clerk API errors", async () => {

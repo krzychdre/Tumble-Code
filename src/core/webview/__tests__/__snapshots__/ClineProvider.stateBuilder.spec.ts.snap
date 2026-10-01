@@ -223,7 +223,6 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a fully 
   "clineMessages": [],
   "clineMessagesSeq": 1,
   "cloudApiUrl": "http://localhost:8080",
-  "cloudAuthSkipModel": false,
   "cloudIsAuthenticated": true,
   "cloudOrganizations": [
     {
@@ -570,7 +569,6 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a missin
   "clineMessages": [],
   "clineMessagesSeq": 1,
   "cloudApiUrl": "http://localhost:8080",
-  "cloudAuthSkipModel": false,
   "cloudIsAuthenticated": false,
   "cloudOrganizations": [],
   "cloudUserInfo": null,
@@ -863,7 +861,6 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with an empty
   "clineMessages": [],
   "clineMessagesSeq": 1,
   "cloudApiUrl": "http://localhost:8080",
-  "cloudAuthSkipModel": false,
   "cloudIsAuthenticated": false,
   "cloudOrganizations": [],
   "cloudUserInfo": null,

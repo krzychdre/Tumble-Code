@@ -7,8 +7,7 @@
   schema without an alembic_version row, so a later `make migrate` classified
   the database as LEGACY and the table-creating migrations then failed on
   tables that already existed.
-- /api/extension/credit-balance keeps answering {"balance": 0} (the extension
-  calls it), without the CREDIT_SYSTEM_ENABLED switch that changed nothing.
+- The retired CREDIT_SYSTEM_ENABLED switch in an old .env is ignored.
 - alembic/env.py reads the database URL through the app settings, so it
   honours CLOUDAPI_ENV_FILE and the same .env rules as the app.
 """
@@ -120,25 +119,7 @@ async def test_startup_does_not_create_tables(empty_engine):
     assert tables == []
 
 
-# --- Credit balance ----------------------------------------------------------
-
-
-def test_credit_balance_answers_zero(client):
-    from src.dependencies import get_current_user
-    from src.main import app
-
-    app.dependency_overrides[get_current_user] = lambda: {"user_id": "user_1"}
-    try:
-        response = client.get("/api/extension/credit-balance")
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
-
-    assert response.status_code == 200
-    assert response.json() == {"balance": 0}
-
-
-def test_credit_balance_requires_a_signed_in_user(client):
-    assert client.get("/api/extension/credit-balance").status_code == 401
+# --- Retired credit switch -----------------------------------------------------
 
 
 def test_the_retired_credit_switch_is_ignored():

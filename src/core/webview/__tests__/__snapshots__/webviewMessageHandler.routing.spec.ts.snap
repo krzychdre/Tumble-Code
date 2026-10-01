@@ -2701,8 +2701,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudSig
     ],
     [
       "CloudService.login",
-      undefined,
-      true,
     ],
   ],
   "outcome": "resolved",

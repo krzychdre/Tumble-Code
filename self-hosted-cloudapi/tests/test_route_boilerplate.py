@@ -213,9 +213,6 @@ def test_the_login_page_itself_is_not_behind_the_login_check(client):
 
 SIGN_IN_ROUTES = [
     ("/extension/sign-in", ""),
-    ("/extension/provider-sign-up", "&screen_hint=signup"),
-    ("/l/any-slug", ""),
-    ("/l/another", ""),
 ]
 
 
@@ -428,7 +425,7 @@ def _jwt(claims: dict) -> str:
     ],
 )
 def test_extension_routes_refuse_a_bad_token(client, headers, status, detail):
-    resp = client.get("/api/extension/credit-balance", headers=headers)
+    resp = client.get("/api/extension/bridge/config", headers=headers)
     assert resp.status_code == status
     assert resp.json() == {"detail": detail}
 
@@ -440,16 +437,16 @@ def test_extension_routes_refuse_an_expired_token(client):
         get_jwt_key(),
         settings.jwt_algorithm,
     )
-    resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 401
     assert resp.json() == {"detail": "Invalid or expired token"}
 
 
 def test_extension_routes_accept_a_session_token(client):
     token = issue_session_token("user_x", "org_y")
-    resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert resp.json() == {"balance": 0}
+    assert resp.json()["userId"] == "user_x"
 
 
 @pytest.mark.parametrize(
@@ -485,7 +482,7 @@ FOREIGN_CLAIMS = [
 
 @pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
 def test_extension_routes_refuse_a_token_without_our_issuer_and_version(client, claims):
-    resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {_jwt(claims)}"})
+    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {_jwt(claims)}"})
     assert resp.status_code == 401
     assert resp.json() == {"detail": "Invalid or expired token"}
 
@@ -506,15 +503,15 @@ def test_extension_routes_accept_a_static_token(client):
     # The shape the retired issue_static_token gave long-lived
     # ROO_CODE_CLOUD_TOKEN values, some of which users still hold.
     token = _jwt({"iss": "rcc", "v": 1, "sub": "cj_user_static", "r": {"u": "user_static", "o": "org_s", "t": "cj"}})
-    resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    assert resp.json() == {"balance": 0}
+    assert resp.json()["userId"] == "user_static"
 
 
 def test_the_extension_token_check_opens_no_database_session(client):
     """get_current_user never reads the database, so it must not open a session.
 
-    /credit-balance depends on nothing but the token: any session opened while
+    /bridge/config depends on nothing but the token: any session opened while
     serving it is the one the dependency asked for and never used.
     """
     opened = []
@@ -525,6 +522,6 @@ def test_the_extension_token_check_opens_no_database_session(client):
 
     client.app.dependency_overrides[get_db] = counting_get_db
     token = issue_session_token("user_x")
-    resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert opened == []

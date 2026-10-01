@@ -51,7 +51,7 @@ describe("handleUri: Clerk sign-in callback (P9)", () => {
 		await done
 		await handling
 
-		expect(handleAuthCallback).toHaveBeenCalledWith("abc", "xyz", null, null)
+		expect(handleAuthCallback).toHaveBeenCalledWith("abc", "xyz", null)
 	})
 
 	it("hands the callback over at once when the cloud start has settled", async () => {

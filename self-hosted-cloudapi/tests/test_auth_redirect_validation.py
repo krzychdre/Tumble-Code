@@ -53,7 +53,7 @@ REJECTED = [
     "",
 ]
 
-ROUTES = ["/extension/sign-in", "/extension/provider-sign-up", "/l/some-slug"]
+ROUTES = ["/extension/sign-in"]
 
 
 @pytest.mark.parametrize("value", ACCEPTED)

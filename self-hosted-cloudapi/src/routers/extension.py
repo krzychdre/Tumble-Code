@@ -3,7 +3,6 @@
 Implements endpoints under /api/extension:
 - POST /api/extension/share
 - GET /api/extension/bridge/config
-- GET /api/extension/credit-balance
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -80,11 +79,3 @@ async def bridge_config_endpoint(
         org_id=current_user.get("org_id"),
     )
 
-
-@router.get("/credit-balance")
-async def credit_balance_endpoint(
-    current_user: dict = Depends(get_current_user),
-):
-    """Credit balance. The extension asks for it (CloudAPI.creditBalance);
-    a self-hosted deployment sells no credits, so it is always zero."""
-    return {"balance": 0}

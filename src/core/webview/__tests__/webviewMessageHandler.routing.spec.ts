@@ -666,7 +666,7 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["checkRulesDirectory", { slug: "code" }],
 	["telemetrySetting", { text: "disabled" }],
 	["debugSetting", { bool: true }],
-	["rooCloudSignIn", { useProviderSignup: true }],
+	["rooCloudSignIn", {}],
 	["rooCloudSignOut", {}],
 	["openAiCodexSignIn", {}],
 	["openAiCodexSignOut", {}],
