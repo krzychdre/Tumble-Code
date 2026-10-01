@@ -252,92 +252,59 @@ export class MarketplaceManager {
 	 * Check for project-level installed items
 	 */
 	private async checkProjectInstallations(metadata: Record<string, { type: string }>): Promise<void> {
-		try {
-			const workspaceFolder = vscode.workspace.workspaceFolders?.[0]
-			if (!workspaceFolder) {
-				return // No workspace, no project installations
-			}
-
-			// Check modes in .roomodes
-			const projectModesPath = path.join(workspaceFolder.uri.fsPath, ".roomodes")
-			try {
-				const content = await fs.readFile(projectModesPath, "utf-8")
-				const data = yaml.parse(content)
-				if (data?.customModes && Array.isArray(data.customModes)) {
-					for (const mode of data.customModes) {
-						if (mode.slug) {
-							metadata[mode.slug] = {
-								type: "mode",
-							}
-						}
-					}
-				}
-			} catch (error) {
-				// File doesn't exist or can't be read, skip
-			}
-
-			// Check MCPs in .roo/mcp.json
-			const projectMcpPath = path.join(workspaceFolder.uri.fsPath, ".roo", "mcp.json")
-			try {
-				const content = await fs.readFile(projectMcpPath, "utf-8")
-				const data = JSON.parse(content)
-				if (data?.mcpServers && typeof data.mcpServers === "object") {
-					for (const serverName of Object.keys(data.mcpServers)) {
-						metadata[serverName] = {
-							type: "mcp",
-						}
-					}
-				}
-			} catch (error) {
-				// File doesn't exist or can't be read, skip
-			}
-		} catch (error) {
-			console.error("Error checking project installations:", error)
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0]
+		if (!workspaceFolder) {
+			return // No workspace, no project installations
 		}
+		const workspacePath = workspaceFolder.uri.fsPath
+		await this.collectInstalled(path.join(workspacePath, ".roomodes"), "mode", metadata)
+		await this.collectInstalled(path.join(workspacePath, ".roo", "mcp.json"), "mcp", metadata)
 	}
 
 	/**
 	 * Check for global-level installed items
 	 */
 	private async checkGlobalInstallations(metadata: Record<string, { type: string }>): Promise<void> {
+		let globalSettingsPath: string
 		try {
-			const globalSettingsPath = await ensureSettingsDirectoryExists(this.context)
-
-			// Check global modes
-			const globalModesPath = path.join(globalSettingsPath, GlobalFileNames.customModes)
-			try {
-				const content = await fs.readFile(globalModesPath, "utf-8")
-				const data = yaml.parse(content)
-				if (data?.customModes && Array.isArray(data.customModes)) {
-					for (const mode of data.customModes) {
-						if (mode.slug) {
-							metadata[mode.slug] = {
-								type: "mode",
-							}
-						}
-					}
-				}
-			} catch (error) {
-				// File doesn't exist or can't be read, skip
-			}
-
-			// Check global MCPs
-			const globalMcpPath = getGlobalMcpSettingsPath(globalSettingsPath)
-			try {
-				const content = await fs.readFile(globalMcpPath, "utf-8")
-				const data = JSON.parse(content)
-				if (data?.mcpServers && typeof data.mcpServers === "object") {
-					for (const serverName of Object.keys(data.mcpServers)) {
-						metadata[serverName] = {
-							type: "mcp",
-						}
-					}
-				}
-			} catch (error) {
-				// File doesn't exist or can't be read, skip
-			}
+			globalSettingsPath = await ensureSettingsDirectoryExists(this.context)
 		} catch (error) {
 			console.error("Error checking global installations:", error)
+			return
+		}
+		await this.collectInstalled(path.join(globalSettingsPath, GlobalFileNames.customModes), "mode", metadata)
+		await this.collectInstalled(getGlobalMcpSettingsPath(globalSettingsPath), "mcp", metadata)
+	}
+
+	/**
+	 * Adds the mode slugs (a YAML modes file) or MCP server names (a JSON settings file)
+	 * found in `filePath` to `metadata`. A missing file adds nothing. A file that cannot
+	 * be read or parsed is logged, not passed off as "nothing installed", and the other
+	 * files are still checked so the marketplace view keeps working.
+	 */
+	private async collectInstalled(
+		filePath: string,
+		type: "mode" | "mcp",
+		metadata: Record<string, { type: string }>,
+	): Promise<void> {
+		let names: string[]
+		try {
+			const content = await fs.readFile(filePath, "utf-8")
+			if (type === "mode") {
+				const modes = yaml.parse(content)?.customModes
+				names = Array.isArray(modes) ? modes.map((mode) => mode?.slug).filter(Boolean) : []
+			} else {
+				const servers = JSON.parse(content)?.mcpServers
+				names = servers && typeof servers === "object" ? Object.keys(servers) : []
+			}
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
+				console.error(`Cannot read installed marketplace items from ${filePath}:`, error)
+			}
+			return
+		}
+		for (const name of names) {
+			metadata[name] = { type }
 		}
 	}
 }
