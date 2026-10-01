@@ -44,7 +44,15 @@ const baseConfig = (provider: EmbedderProvider) => ({
 	codebaseIndexOpenRouterSpecificProvider: "together",
 })
 
-const PROVIDERS: EmbedderProvider[] = ["openai", "ollama", "openai-compatible", "gemini", "mistral", "bedrock", "openrouter"]
+const PROVIDERS: EmbedderProvider[] = [
+	"openai",
+	"ollama",
+	"openai-compatible",
+	"gemini",
+	"mistral",
+	"bedrock",
+	"openrouter",
+]
 
 function makeProxy(config: Record<string, unknown>, secrets: Record<string, string>) {
 	const state = { config, secrets }
