@@ -1073,6 +1073,8 @@ describe("addCustomInstructions", () => {
 		const expectedRelativeRule2Path =
 			process.platform === "win32" ? ".roo\\rules-test-mode\\rule2.txt" : ".roo/rules-test-mode/rule2.txt"
 
+		// The directory rules are introduced by one header naming the mode's rules directories.
+		expect(result).toContain("# Rules from rules-test-mode directories:\n\n# Rules from ")
 		expect(result).toContain(`# Rules from ${expectedRelativeRule1Path}:`)
 		expect(result).toContain("mode specific rule 1")
 		expect(result).toContain(`# Rules from ${expectedRelativeRule2Path}:`)

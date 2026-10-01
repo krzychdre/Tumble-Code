@@ -483,11 +483,7 @@ export async function addCustomInstructions(
 
 	// Add mode-specific rules first if they exist
 	if (modeRuleContent && modeRuleContent.trim()) {
-		if (usedRuleFile.includes(path.join(".roo", `rules-${mode}`))) {
-			rules.push(modeRuleContent.trim())
-		} else {
-			rules.push(`# Rules from ${usedRuleFile}:\n${modeRuleContent}`)
-		}
+		rules.push(`# Rules from ${usedRuleFile}:\n${modeRuleContent}`)
 	}
 
 	if (options.rooIgnoreInstructions) {
