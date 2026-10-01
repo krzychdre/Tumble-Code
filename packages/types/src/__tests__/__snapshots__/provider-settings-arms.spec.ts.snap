@@ -153,9 +153,6 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
     "codebaseIndexOpenRouterApiKey": {
       "type": "string",
     },
-    "codebaseIndexVercelAiGatewayApiKey": {
-      "type": "string",
-    },
     "consecutiveMistakeLimit": {
       "minimum": 0,
       "type": "number",

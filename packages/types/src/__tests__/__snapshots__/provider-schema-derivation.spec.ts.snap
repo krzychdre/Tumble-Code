@@ -2016,7 +2016,6 @@ exports[`generated provider settings schemas > keeps the flat schema's keys in o
   "codebaseIndexOpenAiCompatibleModelDimension",
   "codebaseIndexGeminiApiKey",
   "codebaseIndexMistralApiKey",
-  "codebaseIndexVercelAiGatewayApiKey",
   "codebaseIndexOpenRouterApiKey",
 ]
 `;
@@ -2172,9 +2171,6 @@ exports[`generated provider settings schemas > keeps the flat schema, property o
       "type": "number",
     },
     "codebaseIndexOpenRouterApiKey": {
-      "type": "string",
-    },
-    "codebaseIndexVercelAiGatewayApiKey": {
       "type": "string",
     },
     "consecutiveMistakeLimit": {
@@ -3767,7 +3763,6 @@ exports[`secret state keys > lists the same keys (order is not significant: read
   "codebaseIndexMistralApiKey",
   "codebaseIndexOpenAiCompatibleApiKey",
   "codebaseIndexOpenRouterApiKey",
-  "codebaseIndexVercelAiGatewayApiKey",
   "deepSeekApiKey",
   "geminiApiKey",
   "litellmApiKey",

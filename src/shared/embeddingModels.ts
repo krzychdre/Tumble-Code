@@ -42,23 +42,6 @@ export const EMBEDDING_MODEL_PROFILES: EmbeddingModelProfiles = {
 	mistral: {
 		"codestral-embed-2505": { dimension: 1536, scoreThreshold: 0.4 },
 	},
-	"vercel-ai-gateway": {
-		// OpenAI models
-		"openai/text-embedding-3-small": { dimension: 1536, scoreThreshold: 0.4 },
-		"openai/text-embedding-3-large": { dimension: 3072, scoreThreshold: 0.4 },
-		"openai/text-embedding-ada-002": { dimension: 1536, scoreThreshold: 0.4 },
-		// Cohere models
-		"cohere/embed-v4.0": { dimension: 1024, scoreThreshold: 0.4 },
-		// Google models
-		"google/gemini-embedding-001": { dimension: 3072, scoreThreshold: 0.4 },
-		"google/text-embedding-005": { dimension: 768, scoreThreshold: 0.4 },
-		"google/text-multilingual-embedding-002": { dimension: 768, scoreThreshold: 0.4 },
-		// Amazon models
-		"amazon/titan-embed-text-v2": { dimension: 1024, scoreThreshold: 0.4 },
-		// Mistral models
-		"mistral/codestral-embed": { dimension: 1536, scoreThreshold: 0.4 },
-		"mistral/mistral-embed": { dimension: 1024, scoreThreshold: 0.4 },
-	},
 	bedrock: {
 		// Amazon Titan Embed models
 		"amazon.titan-embed-text-v1": { dimension: 1536, scoreThreshold: 0.4 },
@@ -176,9 +159,6 @@ export function getDefaultModelId(provider: EmbedderProvider): string {
 
 		case "mistral":
 			return "codestral-embed-2505"
-
-		case "vercel-ai-gateway":
-			return "openai/text-embedding-3-large"
 
 		case "bedrock":
 			return "amazon.titan-embed-text-v2:0"

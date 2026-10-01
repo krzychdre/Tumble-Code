@@ -191,24 +191,6 @@ export const EMBEDDER_FORMS = {
 			/>
 		),
 	},
-	"vercel-ai-gateway": {
-		labelKey: "settings:codeIndex.vercelAiGatewayProvider",
-		secret: { field: "codebaseIndexVercelAiGatewayApiKey", statusFlag: "hasVercelAiGatewayApiKey" },
-		schema: (t) => ({
-			codebaseIndexVercelAiGatewayApiKey: z
-				.string()
-				.min(1, t("settings:codeIndex.validation.vercelAiGatewayApiKeyRequired")),
-			codebaseIndexEmbedderModelId: modelSelectionRequired(t),
-		}),
-		render: (context) => (
-			<ApiKeyAndModelFields
-				context={context}
-				apiKeyField="codebaseIndexVercelAiGatewayApiKey"
-				apiKeyLabelKey="settings:codeIndex.vercelAiGatewayApiKeyLabel"
-				apiKeyPlaceholderKey="settings:codeIndex.vercelAiGatewayApiKeyPlaceholder"
-			/>
-		),
-	},
 	bedrock: {
 		labelKey: "settings:codeIndex.bedrockProvider",
 		schema: (t) => ({

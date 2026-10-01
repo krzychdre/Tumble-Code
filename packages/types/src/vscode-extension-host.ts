@@ -404,7 +404,6 @@ export interface WebviewMessage {
 			| "openai-compatible"
 			| "gemini"
 			| "mistral"
-			| "vercel-ai-gateway"
 			| "bedrock"
 			| "openrouter"
 		codebaseIndexEmbedderBaseUrl?: string
@@ -423,7 +422,6 @@ export interface WebviewMessage {
 		codebaseIndexOpenAiCompatibleApiKey?: string
 		codebaseIndexGeminiApiKey?: string
 		codebaseIndexMistralApiKey?: string
-		codebaseIndexVercelAiGatewayApiKey?: string
 		codebaseIndexOpenRouterApiKey?: string
 	}
 	updatedSettings?: RooCodeSettings

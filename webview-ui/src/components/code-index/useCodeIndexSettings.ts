@@ -32,7 +32,6 @@ const getDefaultSettings = (): LocalCodeIndexSettings => ({
 	codebaseIndexOpenAiCompatibleApiKey: "",
 	codebaseIndexGeminiApiKey: "",
 	codebaseIndexMistralApiKey: "",
-	codebaseIndexVercelAiGatewayApiKey: "",
 	codebaseIndexOpenRouterApiKey: "",
 	codebaseIndexOpenRouterSpecificProvider: "",
 })
@@ -79,7 +78,6 @@ export function useCodeIndexSettings(codebaseIndexConfig: CodebaseIndexConfig | 
 				codebaseIndexOpenAiCompatibleApiKey: "",
 				codebaseIndexGeminiApiKey: "",
 				codebaseIndexMistralApiKey: "",
-				codebaseIndexVercelAiGatewayApiKey: "",
 				codebaseIndexOpenRouterApiKey: "",
 				codebaseIndexOpenRouterSpecificProvider:
 					codebaseIndexConfig.codebaseIndexOpenRouterSpecificProvider || "",

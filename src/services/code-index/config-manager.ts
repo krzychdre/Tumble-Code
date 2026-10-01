@@ -12,6 +12,8 @@ import { getDefaultModelId, getModelDimension, getModelScoreThreshold } from "..
 export class CodeIndexConfigManager {
 	private codebaseIndexEnabled: boolean = false
 	private embedderProvider: EmbedderProvider = "openai"
+	/** A saved embedder provider this version does not have (removed, such as "vercel-ai-gateway"). */
+	private unknownEmbedderProvider?: string
 	private modelId?: string
 	private modelDimension?: number
 	private openAiOptions?: ApiHandlerOptions
@@ -19,7 +21,6 @@ export class CodeIndexConfigManager {
 	private openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 	private geminiOptions?: { apiKey: string }
 	private mistralOptions?: { apiKey: string }
-	private vercelAiGatewayOptions?: { apiKey: string }
 	private bedrockOptions?: { region: string; profile?: string }
 	private openRouterOptions?: { apiKey: string; specificProvider?: string }
 	private qdrantUrl?: string = "http://localhost:6333"
@@ -80,7 +81,6 @@ export class CodeIndexConfigManager {
 		const openAiCompatibleApiKey = this.contextProxy?.getSecret("codebaseIndexOpenAiCompatibleApiKey") ?? ""
 		const geminiApiKey = this.contextProxy?.getSecret("codebaseIndexGeminiApiKey") ?? ""
 		const mistralApiKey = this.contextProxy?.getSecret("codebaseIndexMistralApiKey") ?? ""
-		const vercelAiGatewayApiKey = this.contextProxy?.getSecret("codebaseIndexVercelAiGatewayApiKey") ?? ""
 		const bedrockRegion = codebaseIndexConfig.codebaseIndexBedrockRegion ?? "us-east-1"
 		const bedrockProfile = codebaseIndexConfig.codebaseIndexBedrockProfile ?? ""
 		const openRouterApiKey = this.contextProxy?.getSecret("codebaseIndexOpenRouterApiKey") ?? ""
@@ -112,6 +112,7 @@ export class CodeIndexConfigManager {
 		this.openAiOptions = { openAiNativeApiKey: openAiKey }
 
 		// Set embedder provider with support for openai-compatible
+		this.unknownEmbedderProvider = undefined
 		if (codebaseIndexEmbedderProvider === "ollama") {
 			this.embedderProvider = "ollama"
 		} else if (codebaseIndexEmbedderProvider === "openai-compatible") {
@@ -120,14 +121,21 @@ export class CodeIndexConfigManager {
 			this.embedderProvider = "gemini"
 		} else if (codebaseIndexEmbedderProvider === "mistral") {
 			this.embedderProvider = "mistral"
-		} else if (codebaseIndexEmbedderProvider === "vercel-ai-gateway") {
-			this.embedderProvider = "vercel-ai-gateway"
 		} else if ((codebaseIndexEmbedderProvider as string) === "bedrock") {
 			this.embedderProvider = "bedrock"
 		} else if (codebaseIndexEmbedderProvider === "openrouter") {
 			this.embedderProvider = "openrouter"
 		} else {
 			this.embedderProvider = "openai"
+			// OpenAI is the default only when no provider is saved. A saved provider this version does
+			// not know leaves the index unconfigured until the user picks another embedder, instead of
+			// silently sending the code to OpenAI.
+			if (codebaseIndexEmbedderProvider && (codebaseIndexEmbedderProvider as string) !== "openai") {
+				this.unknownEmbedderProvider = codebaseIndexEmbedderProvider
+				console.warn(
+					`[CodeIndexConfigManager] Embedder provider "${codebaseIndexEmbedderProvider}" is not available; code indexing stays unconfigured until another embedder is chosen.`,
+				)
+			}
 		}
 
 		this.modelId = codebaseIndexEmbedderModelId || undefined
@@ -146,7 +154,6 @@ export class CodeIndexConfigManager {
 
 		this.geminiOptions = geminiApiKey ? { apiKey: geminiApiKey } : undefined
 		this.mistralOptions = mistralApiKey ? { apiKey: mistralApiKey } : undefined
-		this.vercelAiGatewayOptions = vercelAiGatewayApiKey ? { apiKey: vercelAiGatewayApiKey } : undefined
 		this.openRouterOptions = openRouterApiKey
 			? { apiKey: openRouterApiKey, specificProvider: openRouterSpecificProvider || undefined }
 			: undefined
@@ -171,7 +178,6 @@ export class CodeIndexConfigManager {
 			openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 			geminiOptions?: { apiKey: string }
 			mistralOptions?: { apiKey: string }
-			vercelAiGatewayOptions?: { apiKey: string }
 			bedrockOptions?: { region: string; profile?: string }
 			openRouterOptions?: { apiKey: string }
 			qdrantUrl?: string
@@ -193,7 +199,6 @@ export class CodeIndexConfigManager {
 			openAiCompatibleApiKey: this.openAiCompatibleOptions?.apiKey ?? "",
 			geminiApiKey: this.geminiOptions?.apiKey ?? "",
 			mistralApiKey: this.mistralOptions?.apiKey ?? "",
-			vercelAiGatewayApiKey: this.vercelAiGatewayOptions?.apiKey ?? "",
 			bedrockRegion: this.bedrockOptions?.region ?? "",
 			bedrockProfile: this.bedrockOptions?.profile ?? "",
 			openRouterApiKey: this.openRouterOptions?.apiKey ?? "",
@@ -222,7 +227,6 @@ export class CodeIndexConfigManager {
 				openAiCompatibleOptions: this.openAiCompatibleOptions,
 				geminiOptions: this.geminiOptions,
 				mistralOptions: this.mistralOptions,
-				vercelAiGatewayOptions: this.vercelAiGatewayOptions,
 				bedrockOptions: this.bedrockOptions,
 				openRouterOptions: this.openRouterOptions,
 				qdrantUrl: this.qdrantUrl,
@@ -237,6 +241,9 @@ export class CodeIndexConfigManager {
 	 * Checks if the service is properly configured based on the embedder type.
 	 */
 	public isConfigured(): boolean {
+		if (this.unknownEmbedderProvider) {
+			return false
+		}
 		if (this.embedderProvider === "openai") {
 			const openAiKey = this.openAiOptions?.openAiNativeApiKey
 			const qdrantUrl = this.qdrantUrl
@@ -259,11 +266,6 @@ export class CodeIndexConfigManager {
 			return isConfigured
 		} else if (this.embedderProvider === "mistral") {
 			const apiKey = this.mistralOptions?.apiKey
-			const qdrantUrl = this.qdrantUrl
-			const isConfigured = !!(apiKey && qdrantUrl)
-			return isConfigured
-		} else if (this.embedderProvider === "vercel-ai-gateway") {
-			const apiKey = this.vercelAiGatewayOptions?.apiKey
 			const qdrantUrl = this.qdrantUrl
 			const isConfigured = !!(apiKey && qdrantUrl)
 			return isConfigured
@@ -312,7 +314,6 @@ export class CodeIndexConfigManager {
 		const prevModelDimension = prev?.modelDimension
 		const prevGeminiApiKey = prev?.geminiApiKey ?? ""
 		const prevMistralApiKey = prev?.mistralApiKey ?? ""
-		const prevVercelAiGatewayApiKey = prev?.vercelAiGatewayApiKey ?? ""
 		const prevBedrockRegion = prev?.bedrockRegion ?? ""
 		const prevBedrockProfile = prev?.bedrockProfile ?? ""
 		const prevOpenRouterApiKey = prev?.openRouterApiKey ?? ""
@@ -354,7 +355,6 @@ export class CodeIndexConfigManager {
 		const currentModelDimension = this.modelDimension
 		const currentGeminiApiKey = this.geminiOptions?.apiKey ?? ""
 		const currentMistralApiKey = this.mistralOptions?.apiKey ?? ""
-		const currentVercelAiGatewayApiKey = this.vercelAiGatewayOptions?.apiKey ?? ""
 		const currentBedrockRegion = this.bedrockOptions?.region ?? ""
 		const currentBedrockProfile = this.bedrockOptions?.profile ?? ""
 		const currentOpenRouterApiKey = this.openRouterOptions?.apiKey ?? ""
@@ -382,10 +382,6 @@ export class CodeIndexConfigManager {
 		}
 
 		if (prevMistralApiKey !== currentMistralApiKey) {
-			return true
-		}
-
-		if (prevVercelAiGatewayApiKey !== currentVercelAiGatewayApiKey) {
 			return true
 		}
 
@@ -459,7 +455,6 @@ export class CodeIndexConfigManager {
 			openAiCompatibleOptions: this.openAiCompatibleOptions,
 			geminiOptions: this.geminiOptions,
 			mistralOptions: this.mistralOptions,
-			vercelAiGatewayOptions: this.vercelAiGatewayOptions,
 			bedrockOptions: this.bedrockOptions,
 			openRouterOptions: this.openRouterOptions,
 			qdrantUrl: this.qdrantUrl,

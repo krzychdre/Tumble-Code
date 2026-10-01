@@ -62,12 +62,6 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 					settings.codebaseIndexMistralApiKey,
 				)
 			}
-			if (settings.codebaseIndexVercelAiGatewayApiKey !== undefined) {
-				await provider.contextProxy.storeSecret(
-					"codebaseIndexVercelAiGatewayApiKey",
-					settings.codebaseIndexVercelAiGatewayApiKey,
-				)
-			}
 			if (settings.codebaseIndexOpenRouterApiKey !== undefined) {
 				await provider.contextProxy.storeSecret(
 					"codebaseIndexOpenRouterApiKey",
@@ -207,7 +201,6 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 		const hasOpenAiCompatibleApiKey = !!(await provider.context.secrets.get("codebaseIndexOpenAiCompatibleApiKey"))
 		const hasGeminiApiKey = !!(await provider.context.secrets.get("codebaseIndexGeminiApiKey"))
 		const hasMistralApiKey = !!(await provider.context.secrets.get("codebaseIndexMistralApiKey"))
-		const hasVercelAiGatewayApiKey = !!(await provider.context.secrets.get("codebaseIndexVercelAiGatewayApiKey"))
 		const hasOpenRouterApiKey = !!(await provider.context.secrets.get("codebaseIndexOpenRouterApiKey"))
 
 		provider.postMessageToWebview({
@@ -218,7 +211,6 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 				hasOpenAiCompatibleApiKey,
 				hasGeminiApiKey,
 				hasMistralApiKey,
-				hasVercelAiGatewayApiKey,
 				hasOpenRouterApiKey,
 			},
 		})

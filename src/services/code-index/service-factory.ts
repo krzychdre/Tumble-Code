@@ -17,7 +17,6 @@ import { CodeIndexOllamaEmbedder } from "./embedders/ollama"
 import { OpenAICompatibleEmbedder } from "./embedders/openai-compatible"
 import { GeminiEmbedder } from "./embedders/gemini"
 import { MistralEmbedder } from "./embedders/mistral"
-import { VercelAiGatewayEmbedder } from "./embedders/vercel-ai-gateway"
 import { BedrockEmbedder } from "./embedders/bedrock"
 import { OpenRouterEmbedder } from "./embedders/openrouter"
 import { QdrantVectorStore } from "./vector-store/qdrant-client"
@@ -82,11 +81,6 @@ export class CodeIndexServiceFactory {
 				throw new Error(t("embeddings:serviceFactory.mistralConfigMissing"))
 			}
 			return new MistralEmbedder(config.mistralOptions.apiKey, config.modelId)
-		} else if (provider === "vercel-ai-gateway") {
-			if (!config.vercelAiGatewayOptions?.apiKey) {
-				throw new Error(t("embeddings:serviceFactory.vercelAiGatewayConfigMissing"))
-			}
-			return new VercelAiGatewayEmbedder(config.vercelAiGatewayOptions.apiKey, config.modelId)
 		} else if (provider === "bedrock") {
 			// Only region is required for Bedrock (profile is optional)
 			if (!config.bedrockOptions?.region) {
