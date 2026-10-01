@@ -4,6 +4,7 @@ import OpenAI from "openai"
 import * as os from "os"
 import * as path from "path"
 
+import { safeWriteJson } from "@roo-code/core/fs"
 import { type ModelInfo, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
@@ -136,7 +137,15 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 		if (!response.ok) {
 			const errorText = await response.text()
-			throw new Error(`Token refresh failed: ${response.status} ${response.statusText}. Response: ${errorText}`)
+			// Carry the HTTP status like the SDK errors do: the task retry loop reads `status` to tell an
+			// auth failure (401, 403), which no retry can fix, from a transient one. The token endpoint
+			// answers 400 for an expired or revoked refresh token (Qwen Code's own client treats 400 and
+			// 401 alike and asks the user to sign in again), so a 400 here is reported as 401.
+			const error: Error & { status?: number } = new Error(
+				`Token refresh failed: ${response.status} ${response.statusText}. Response: ${errorText}`,
+			)
+			error.status = response.status === 400 ? 401 : response.status
+			throw error
 		}
 
 		const tokenData = await response.json()
@@ -155,7 +164,9 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 		const filePath = getQwenCachedCredentialPath(this.options.qwenCodeOauthPath)
 		try {
-			await fs.writeFile(filePath, JSON.stringify(newCredentials, null, 2))
+			// Atomic (temp file + rename) so a crash cannot leave a half-written file that the Qwen CLI
+			// shares with us; the existing file mode (normally 0600) is kept.
+			await safeWriteJson(filePath, newCredentials, { prettyPrint: true })
 		} catch (error) {
 			console.error("Failed to save refreshed credentials:", error)
 			// Continue with the refreshed token in memory even if file write fails
