@@ -61,8 +61,8 @@ The CLI reads `<PROVIDER>_API_KEY` and `<PROVIDER>_BASE_URL` from the environmen
 openai-native), `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`, `LITELLM_API_KEY`, `DEEPSEEK_API_KEY`, `OLLAMA_API_KEY`
 (optional), `MISTRAL_API_KEY`, `MOONSHOT_API_KEY`, `MINIMAX_API_KEY`, `XAI_API_KEY`, `ZAI_API_KEY`. Base-URL vars:
 `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`, `OPENROUTER_BASE_URL`, `LITELLM_BASE_URL`,
-`DEEPSEEK_BASE_URL`, `OLLAMA_BASE_URL`, `LMSTUDIO_BASE_URL`, `AWS_BEDROCK_ENDPOINT`, `MISTRAL_BASE_URL`,
-`MOONSHOT_BASE_URL`, `MINIMAX_BASE_URL`. Keyless providers (codex, lmstudio, bedrock, vertex, qwen-code) resolve
+`DEEPSEEK_BASE_URL`, `OLLAMA_BASE_URL`, `LMSTUDIO_BASE_URL`, `AWS_BEDROCK_ENDPOINT`, `MOONSHOT_BASE_URL`,
+`MINIMAX_BASE_URL` (mistral has none: the extension uses its custom URL only for Codestral models). Keyless providers (codex, lmstudio, bedrock, vertex, qwen-code) resolve
 credentials through OAuth caches, the AWS SDK or gcloud instead; those SDK chains bring their own standard variables
 (`AWS_*`, `GOOGLE_APPLICATION_CREDENTIALS`, ...), which this page does not duplicate.
 

@@ -551,7 +551,7 @@ For providers whose schema has a base-url setting, the CLI also honors a
 | ollama         | `OLLAMA_API_KEY` (optional)   | `OLLAMA_BASE_URL`             |
 | lmstudio       | - (keyless)                   | `LMSTUDIO_BASE_URL`           |
 | bedrock        | - (AWS credential chain)      | `AWS_BEDROCK_ENDPOINT`        |
-| mistral        | `MISTRAL_API_KEY`             | `MISTRAL_BASE_URL`            |
+| mistral        | `MISTRAL_API_KEY`             | -                             |
 | moonshot       | `MOONSHOT_API_KEY`            | `MOONSHOT_BASE_URL`           |
 | minimax        | `MINIMAX_API_KEY`             | `MINIMAX_BASE_URL`            |
 | qwen-code      | - (OAuth credentials on disk) | -                             |

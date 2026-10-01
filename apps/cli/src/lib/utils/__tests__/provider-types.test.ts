@@ -205,9 +205,13 @@ describe("getProviderSettings", () => {
 		})
 	})
 
-	it("mistral maps base url to mistralCodestralUrl", () => {
-		const settings = getProviderSettings("mistral", undefined, "codestral-latest", "https://codestral.example")
-		expect(settings.mistralCodestralUrl).toBe("https://codestral.example")
+	// The base URL used to land in mistralCodestralUrl, which the Mistral
+	// handler reads only for codestral-* models: every other model ignored it.
+	it("rejects --base-url for mistral instead of dropping it", () => {
+		expect(getBaseUrlField("mistral")).toBeUndefined()
+		expect(() =>
+			getProviderSettings("mistral", undefined, "mistral-large-latest", "https://proxy.example"),
+		).toThrow("Provider 'mistral' does not support a base URL")
 	})
 
 	it("rejects --base-url for a provider without a base-url field", () => {
