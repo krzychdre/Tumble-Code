@@ -113,12 +113,6 @@ export const providerModelDefinitions = {
 		defaultModelId: geminiDefaultModelId,
 		unknownModelPolicy: "honor-custom",
 	},
-	// No runtime handler: the extension runs it on the Anthropic handler.
-	"gemini-cli": {
-		modelIdField: "apiModelId",
-		defaultModelId: anthropicDefaultModelId,
-		unknownModelPolicy: "honor-custom",
-	},
 	mistral: {
 		modelIdField: "apiModelId",
 		models: mistralModels,

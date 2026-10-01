@@ -34,7 +34,7 @@ describe("providerModelDefinitions", () => {
 			.filter(([, definition]) => definition.unknownModelPolicy === "honor-custom")
 			.map(([provider]) => provider)
 
-		expect(honorCustom.sort()).toEqual(["anthropic", "bedrock", "gemini", "gemini-cli"])
+		expect(honorCustom.sort()).toEqual(["anthropic", "bedrock", "gemini"])
 		expect(unknownModelPolicies).toEqual(["keep-id", "honor-custom"])
 	})
 
@@ -77,7 +77,6 @@ describe("getProviderDefaultModelId (values pinned before the table existed)", (
 		lmstudio: "",
 		"vscode-lm": vscodeLlmDefaultModelId,
 		"fake-ai": anthropicDefaultModelId,
-		"gemini-cli": anthropicDefaultModelId,
 		zai: internationalZAiDefaultModelId,
 	}
 

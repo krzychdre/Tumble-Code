@@ -33,6 +33,51 @@ describe("provider profile envelope", () => {
 		expect(parseProviderProfilesEnvelope(input).data.futureTopLevelField).toEqual({ preserved: true })
 		expect(input).toEqual(snapshot)
 	})
+
+	// A profile saved while its provider was still active or hidden is stored with a typed config.
+	// Retiring the provider later must not make the whole envelope unreadable (every profile would
+	// fail to load): the profile is read as an opaque retired profile with all its fields kept.
+	it("reads a stored typed profile of a since-retired provider as an opaque profile", () => {
+		const input = {
+			schemaVersion: PROVIDER_PROFILES_SCHEMA_VERSION,
+			data: {
+				currentApiConfigName: "main",
+				apiConfigs: {
+					main: {
+						id: "main-id",
+						provider: { providerId: "anthropic", config: { apiModelId: "claude-opus-5" } },
+					},
+					old: {
+						id: "old-id",
+						provider: {
+							providerId: "gemini-cli",
+							config: { apiModelId: "gemini-2.5-pro", geminiCliProjectId: "my-project" },
+						},
+						shared: { modelTemperature: 0.2 },
+					},
+				},
+			},
+		}
+
+		const { apiConfigs } = parseProviderProfilesEnvelope(input).data
+
+		expect(apiConfigs.main).toEqual({
+			id: "main-id",
+			provider: { providerId: "anthropic", config: { apiModelId: "claude-opus-5" } },
+		})
+		expect(apiConfigs.old).toEqual({
+			id: "old-id",
+			provider: {
+				providerId: "gemini-cli",
+				opaqueLegacyPayload: {
+					apiProvider: "gemini-cli",
+					apiModelId: "gemini-2.5-pro",
+					geminiCliProjectId: "my-project",
+					modelTemperature: 0.2,
+				},
+			},
+		})
+	})
 })
 
 // Saving a profile splits it in two: the persisted envelope keeps the fields a

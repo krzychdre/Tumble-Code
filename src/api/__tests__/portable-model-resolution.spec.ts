@@ -45,10 +45,9 @@ vi.mock("vscode", async (importOriginal) => {
 // Resolved by the handler itself (custom ARN parsing, injected fake).
 const handlerOnlyProviders = new Set<string>(["bedrock", "fake-ai"])
 
-const portableProviders = [
-	...(Object.keys(runtimeProviderRegistry) as RuntimeProviderId[]).filter((id) => !handlerOnlyProviders.has(id)),
-	"gemini-cli" as const,
-]
+const portableProviders = (Object.keys(runtimeProviderRegistry) as RuntimeProviderId[]).filter(
+	(id) => !handlerOnlyProviders.has(id),
+)
 
 const modelIdsFor = (provider: string): (string | undefined)[] => {
 	const definition = providerModelDefinitions[provider as keyof typeof providerModelDefinitions]
@@ -69,10 +68,7 @@ const modelIdsFor = (provider: string): (string | undefined)[] => {
 }
 
 const settingsFor = (provider: string, modelId: string | undefined): ProviderSettings[] => {
-	const field =
-		provider === "gemini-cli"
-			? "apiModelId"
-			: runtimeProviderRegistry[provider as RuntimeProviderId].modelIdField
+	const field = runtimeProviderRegistry[provider as RuntimeProviderId].modelIdField
 	const base: ProviderSettings = {
 		apiProvider: provider as ProviderSettings["apiProvider"],
 		...(field && field !== "vsCodeLmModelSelector" && modelId !== undefined ? { [field]: modelId } : {}),

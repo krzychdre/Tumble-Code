@@ -6,7 +6,6 @@ import {
 	bedrockConfigSchema,
 	deepSeekConfigSchema,
 	fakeAiConfigSchema,
-	geminiCliConfigSchema,
 	geminiConfigSchema,
 	litellmConfigSchema,
 	lmStudioConfigSchema,
@@ -43,7 +42,6 @@ export const providerConfigSchemas = {
 	"vscode-lm": vsCodeLmConfigSchema,
 	lmstudio: lmStudioConfigSchema,
 	gemini: geminiConfigSchema,
-	"gemini-cli": geminiCliConfigSchema,
 	"openai-codex": openAiCodexConfigSchema,
 	"openai-native": openAiNativeConfigSchema,
 	mistral: mistralConfigSchema,
@@ -83,7 +81,6 @@ export const providerCredentialFields = {
 	"vscode-lm": [],
 	lmstudio: [],
 	gemini: ["geminiApiKey"],
-	"gemini-cli": [],
 	// OpenAI Codex authenticates with OAuth, so it has no credential field.
 	"openai-codex": [],
 	"openai-native": ["openAiNativeApiKey"],

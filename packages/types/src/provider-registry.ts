@@ -76,7 +76,6 @@ export const providerRegistry = [
 	{ id: "anthropic", lifecycle: "active", label: "Anthropic", displayOrder: 1 },
 	{ id: "bedrock", lifecycle: "active", label: "Amazon Bedrock", displayOrder: 0 },
 	{ id: "gemini", lifecycle: "active", label: "Google Gemini", displayOrder: 6 },
-	{ id: "gemini-cli", lifecycle: "hidden" },
 	{ id: "mistral", lifecycle: "active", label: "Mistral", displayOrder: 10 },
 	{ id: "moonshot", lifecycle: "active", label: "Moonshot", displayOrder: 11 },
 	{ id: "minimax", lifecycle: "active", label: "MiniMax", displayOrder: 9 },
@@ -101,6 +100,7 @@ export const providerRegistry = [
 	{ id: "sambanova", lifecycle: "retired" },
 	{ id: "unbound", lifecycle: "retired" },
 	{ id: "vercel-ai-gateway", lifecycle: "retired" },
+	{ id: "gemini-cli", lifecycle: "retired" },
 ] as const satisfies readonly ProviderDefinition[]
 
 export type ProviderRegistryEntry = (typeof providerRegistry)[number]

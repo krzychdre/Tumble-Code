@@ -25,7 +25,7 @@ import {
 	providerRequiresApiKey as sharedProviderRequiresApiKey,
 } from "@roo-code/types"
 
-const EXCLUDED = ["vscode-lm", "fake-ai", "gemini-cli"]
+const EXCLUDED = ["vscode-lm", "fake-ai"]
 
 describe("supportedProviders derivation", () => {
 	it("contains every active provider except the documented exclusions", () => {

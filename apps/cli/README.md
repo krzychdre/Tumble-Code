@@ -560,10 +560,10 @@ Alias: the persisted cloud provider id `tumble` is accepted on the CLI and maps
 to the `openrouter` provider settings (`OPENROUTER_API_KEY`, models, base-url);
 `--provider tumble` behaves like `--provider openrouter`.
 
-Excluded providers: `vscode-lm` (needs the real VS Code LM API), `fake-ai`
-(hidden internal test provider), `gemini-cli` (no runtime handler). Retired providers (groq,
-huggingface, deepinfra, cerebras, chutes, doubao, featherless,
-io-intelligence) are rejected with a clear error.
+Excluded providers: `vscode-lm` (needs the real VS Code LM API) and `fake-ai`
+(hidden internal test provider). Retired providers (groq, huggingface, deepinfra,
+cerebras, chutes, doubao, featherless, io-intelligence, gemini-cli and others) are
+rejected with a clear error.
 
 **Display Environment Variables:**
 

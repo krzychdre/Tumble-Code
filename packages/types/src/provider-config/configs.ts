@@ -78,11 +78,6 @@ export const lmStudioConfigSchema = z
 
 export const geminiConfigSchema = apiModelConfigSchema.extend({ googleGeminiBaseUrl: z.string().optional() })
 
-export const geminiCliConfigSchema = apiModelConfigSchema.extend({
-	geminiCliOAuthPath: z.string().optional(),
-	geminiCliProjectId: z.string().optional(),
-})
-
 export const openAiCodexConfigSchema = apiModelConfigSchema
 
 export const openAiNativeConfigSchema = apiModelConfigSchema.extend({

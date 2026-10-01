@@ -120,17 +120,7 @@ const cases: [string, ProviderSettings, Expected][] = [
 		{ apiProvider: "anthropic", apiModelId: "" },
 		{ id: "", info: undefined, isUnknownModel: false },
 	],
-	// gemini-cli and fake-ai show the plain Anthropic list: no 1M tier, no known-model check.
-	[
-		"gemini-cli known with 1M",
-		{ apiProvider: "gemini-cli", apiModelId: "claude-sonnet-4-5", anthropicBeta1MContext: true },
-		{ id: "claude-sonnet-4-5", info: anthropicModels["claude-sonnet-4-5"], isUnknownModel: false },
-	],
-	[
-		"gemini-cli unknown",
-		{ apiProvider: "gemini-cli", apiModelId: "claude-api6" },
-		{ id: "claude-api6", info: undefined, isUnknownModel: false },
-	],
+	// fake-ai shows the plain Anthropic list: no 1M tier, no known-model check.
 	[
 		"fake-ai unset",
 		{ apiProvider: "fake-ai" },

@@ -5,7 +5,7 @@ import type { ProviderName, ProviderSettings } from "./provider-settings.js"
 /**
  * The settings field that holds a provider's API key, or null when the
  * provider has no single API key: it signs in with OAuth (openai-codex,
- * qwen-code, gemini-cli), runs locally without one (lmstudio), borrows the
+ * qwen-code), runs locally without one (lmstudio), borrows the
  * editor's models (vscode-lm), is the test provider (fake-ai), or resolves a
  * credential set from its cloud SDK (bedrock: AWS access keys, profile or API
  * key; vertex: a service-account file or JSON).
@@ -30,7 +30,6 @@ export const providerApiKeyFields = {
 	anthropic: "apiKey",
 	bedrock: null,
 	gemini: "geminiApiKey",
-	"gemini-cli": null,
 	mistral: "mistralApiKey",
 	moonshot: "moonshotApiKey",
 	minimax: "minimaxApiKey",
@@ -97,7 +96,6 @@ export const providerValidationRegistry = {
 	anthropic: apiKeyValidation("anthropic"),
 	bedrock: { kind: "required-fields", fields: ["awsRegion"], message: "settings:validation.awsRegion" },
 	gemini: apiKeyValidation("gemini"),
-	"gemini-cli": noValidation,
 	mistral: apiKeyValidation("mistral"),
 	moonshot: apiKeyValidation("moonshot"),
 	minimax: apiKeyValidation("minimax"),

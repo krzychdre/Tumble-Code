@@ -107,12 +107,6 @@ const cases: [string, ProviderSettings, { id: string; info: ModelInfo } | undefi
 		{ apiProvider: "anthropic", apiModelId: "" },
 		{ id: anthropicDefaultModelId, info: anthropicModels[anthropicDefaultModelId] },
 	],
-	// gemini-cli runs on the Anthropic handler, 1M flag included.
-	[
-		"gemini-cli known with 1M",
-		{ apiProvider: "gemini-cli", apiModelId: "claude-sonnet-4-5", anthropicBeta1MContext: true },
-		{ id: "claude-sonnet-4-5", info: firstTier(anthropicModels["claude-sonnet-4-5"]) },
-	],
 	[
 		"gemini unknown",
 		{ apiProvider: "gemini", apiModelId: "gemini-api6" },

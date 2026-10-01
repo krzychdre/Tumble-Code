@@ -55,7 +55,7 @@ export type ProviderFormDefinition = {
 
 type ProviderFormException = {
 	readonly status: "no-form"
-	readonly reason: "hidden-test-provider" | "headless-provider"
+	readonly reason: "hidden-test-provider"
 	readonly validation: ProviderValidationStrategy
 }
 
@@ -187,7 +187,6 @@ const customForms = {
 
 const noForms = {
 	"fake-ai": withValidation("fake-ai", { status: "no-form", reason: "hidden-test-provider" }),
-	"gemini-cli": withValidation("gemini-cli", { status: "no-form", reason: "headless-provider" }),
 } satisfies NoProviderForms
 
 export const providerUiRegistry = { ...descriptorForms, ...customForms, ...noForms } satisfies ProviderUiRegistry

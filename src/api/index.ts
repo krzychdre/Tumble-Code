@@ -7,8 +7,8 @@ import { ApiStream } from "./transform/stream"
 import {
 	type ResolvedModel,
 	type RuntimeProviderEntry,
+	type RuntimeProviderId,
 	defaultRuntimeProviderId,
-	getRuntimeProviderEntry,
 	runtimeProviderRegistry,
 } from "./runtime-provider-registry"
 
@@ -18,7 +18,7 @@ import {
  * Optional throughout: not every provider returns a usage block, and an absent
  * figure must stay absent rather than become a zero that quietly lands in a
  * total. `cacheReadTokens`/`cacheWriteTokens` follow the same convention as the
- * streaming path — for OpenAI-protocol providers the cached part is already
+ * streaming path: for OpenAI-protocol providers the cached part is already
  * inside `inputTokens`.
  */
 export interface CompletionUsage {
@@ -43,8 +43,8 @@ export interface SingleCompletionHandler {
 	 * The same call, reporting what it cost.
 	 *
 	 * `completePrompt` returns a bare string, so every one-shot call the
-	 * extension makes off the main task loop — enhancing a prompt, ranking
-	 * memories — threw its token usage away and appeared nowhere in the usage
+	 * extension makes off the main task loop (enhancing a prompt, ranking
+	 * memories) threw its token usage away and appeared nowhere in the usage
 	 * metrics, while still costing real prompt processing on the server.
 	 *
 	 * Providers implement this and let `completePrompt` delegate to it, so the
@@ -152,8 +152,7 @@ export interface ApiHandler {
 
 /**
  * The runtime entry that executes a profile: its provider's, or Anthropic's for
- * a missing provider and for providers without a runtime handler. Retired and
- * unknown providers cannot be executed.
+ * a missing provider. Retired and unknown providers cannot be executed.
  */
 function getExecutableProviderEntry(configuration: ProviderSettings): RuntimeProviderEntry {
 	const providerId = configuration.apiProvider ?? defaultRuntimeProviderId
@@ -163,7 +162,7 @@ function getExecutableProviderEntry(configuration: ProviderSettings): RuntimePro
 		throw new ProviderUnavailableError(providerId, classification)
 	}
 
-	return getRuntimeProviderEntry(providerId) ?? runtimeProviderRegistry[defaultRuntimeProviderId]
+	return runtimeProviderRegistry[providerId as RuntimeProviderId]
 }
 
 export function buildApiHandler(configuration: ProviderSettings): ApiHandler {

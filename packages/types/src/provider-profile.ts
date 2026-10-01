@@ -20,10 +20,43 @@ export const opaqueProviderProfileSchema = z
 	.object({ id: z.string().optional() })
 	.merge(opaqueNarrowedProviderSettingsSchema)
 	.strict()
-export const persistedProviderProfileSchema = z.union([
-	knownPersistedProviderProfileSchema,
-	opaqueProviderProfileSchema,
-])
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value)
+
+/**
+ * A profile saved while its provider was active or hidden is stored with a typed `config`. Once the
+ * provider is retired that shape no longer parses, and one such profile would make the whole envelope
+ * (every profile) unreadable. Read it as the opaque retired profile it would be saved as today, with
+ * its config and shared settings kept in the legacy payload.
+ */
+const typedProfileOfRetiredProviderAsOpaque = (value: unknown): unknown => {
+	if (!isRecord(value) || !isRecord(value.provider) || !isRecord(value.provider.config)) {
+		return value
+	}
+
+	const providerId = value.provider.providerId
+	if (classifyProvider(providerId) !== "retired") {
+		return value
+	}
+
+	const { provider, shared, ...rest } = value
+	return {
+		...rest,
+		provider: {
+			providerId,
+			opaqueLegacyPayload: {
+				apiProvider: providerId,
+				...(provider as { config: Record<string, unknown> }).config,
+				...(isRecord(shared) ? shared : {}),
+			},
+		},
+	}
+}
+
+export const persistedProviderProfileSchema = z.preprocess(
+	typedProfileOfRetiredProviderAsOpaque,
+	z.union([knownPersistedProviderProfileSchema, opaqueProviderProfileSchema]),
+)
 
 export type PersistedProviderProfile = z.infer<typeof persistedProviderProfileSchema>
 export type OpaqueProviderProfile = z.infer<typeof opaqueProviderProfileSchema>
@@ -160,9 +193,6 @@ export const createKnownPersistedProviderProfile = (profile: ProviderSettingsWit
 
 	return knownPersistedProviderProfileSchema.parse(toPersistedProviderProfile(profile))
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === "object" && value !== null && !Array.isArray(value)
 
 /** The current envelope, validated. Anything else throws {@link UnsupportedProviderProfilesVersionError}. */
 export const parseProviderProfilesEnvelope = (input: unknown): ProviderProfilesEnvelope => {

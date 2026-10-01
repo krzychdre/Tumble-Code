@@ -145,7 +145,7 @@ describe("runtime provider definitions", () => {
 			expect(lmStudioFetchers.forceFullModelDetailsLoad).toHaveBeenCalledWith("http://h:1", "qwen")
 		})
 
-		it("reports no capabilities for providers without a runtime handler", () => {
+		it("reports no capabilities for retired providers", () => {
 			expect(getRuntimeProviderCapabilities("gemini-cli")).toEqual({
 				allowedFunctionNames: false,
 				needsModelPreload: false,
@@ -182,11 +182,11 @@ describe("resolveModel matches the handler's getModel()", () => {
 
 	it("resolveProviderModel falls back like buildApiHandler", () => {
 		expect(resolveProviderModel({}).id).toBe(runtimeProviderRegistry.anthropic.resolveModel({}).id)
-		expect(resolveProviderModel({ apiProvider: "gemini-cli", apiModelId: "claude-custom-x" }).id).toBe(
-			"claude-custom-x",
-		)
 		expect(() => resolveProviderModel({ apiProvider: "groq" })).toThrow(
 			'Sorry, provider "groq" is no longer supported.',
+		)
+		expect(() => resolveProviderModel({ apiProvider: "gemini-cli", apiModelId: "claude-custom-x" })).toThrow(
+			'Sorry, provider "gemini-cli" is no longer supported.',
 		)
 	})
 })

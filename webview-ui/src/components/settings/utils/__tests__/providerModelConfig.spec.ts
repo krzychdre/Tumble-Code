@@ -22,7 +22,6 @@ describe("providerModelConfig", () => {
 			deepseek: { serviceName: "DeepSeek", serviceUrl: "https://platform.deepseek.com" },
 			"fake-ai": { serviceName: "fake-ai", serviceUrl: "" },
 			gemini: { serviceName: "Google Gemini", serviceUrl: "https://ai.google.dev" },
-			"gemini-cli": { serviceName: "gemini-cli", serviceUrl: "" },
 			litellm: { serviceName: "litellm", serviceUrl: "" },
 			lmstudio: { serviceName: "LM Studio", serviceUrl: "https://lmstudio.ai/docs" },
 			minimax: { serviceName: "MiniMax", serviceUrl: "https://minimax.chat" },
