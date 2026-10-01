@@ -239,7 +239,6 @@ interface SubtaskProvider {
 			workspacePath?: string
 			maxAgentTurns?: number
 			autoApprovalOverride?: AutoApprovalOverride
-			silentWrites?: boolean
 			subagentInfo?: { parentTaskId: string; index: number; description: string }
 		},
 	): Promise<Task>

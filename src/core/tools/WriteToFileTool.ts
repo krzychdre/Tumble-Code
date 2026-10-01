@@ -107,11 +107,10 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			const state = await provider?.getState()
 			const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
 			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-			// Background/memory tasks (`silentWrites`) reuse the focus-disruption
-			// path: it writes straight to disk without opening a diff editor tab.
-			const isPreventFocusDisruptionEnabled =
-				task.silentWrites ||
-				experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
+			const isPreventFocusDisruptionEnabled = experiments.isEnabled(
+				state?.experiments ?? {},
+				EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
+			)
 
 			if (isPreventFocusDisruptionEnabled) {
 				if (fileExists) {
@@ -252,7 +251,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			)
 		}
 
-		if (task.silentWrites || partialState.partialPreventFocusDisruption) {
+		if (partialState.partialPreventFocusDisruption) {
 			return
 		}
 

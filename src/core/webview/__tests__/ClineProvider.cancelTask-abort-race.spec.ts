@@ -357,7 +357,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 
 		it("neither waits on nor aborts a running background task", async () => {
 			const bg = makeBackgroundTaskFake()
-			await provider.createBackgroundTask("extract memories", { silentWrites: true })
+			await provider.createBackgroundTask("extract memories")
 			const task = makeMockTask({ isStreaming: true })
 			;(provider as any).taskSlot.seedForTests(task)
 

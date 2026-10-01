@@ -192,12 +192,6 @@ export interface TaskOptions extends CreateTaskOptions {
 	 * headless task run autonomously without mutating global approval settings.
 	 */
 	autoApprovalOverride?: AutoApprovalOverride
-	/**
-	 * When true, file writes bypass the diff-view editor UI (no editor tabs) and
-	 * are saved straight to disk. Used by background tasks so memory writes are
-	 * invisible.
-	 */
-	silentWrites?: boolean
 }
 
 /**
@@ -874,7 +868,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly isBackground: boolean
 	readonly maxAgentTurns?: number
 	autoApprovalOverride?: AutoApprovalOverride
-	readonly silentWrites: boolean
 	/** Assistant-turn counter used to enforce `maxAgentTurns`. */
 	agentTurnCount = 0
 
@@ -904,7 +897,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		isBackground = false,
 		maxAgentTurns,
 		autoApprovalOverride,
-		silentWrites = false,
 	}: TaskOptions) {
 		super()
 
@@ -971,7 +963,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.isBackground = isBackground
 		this.maxAgentTurns = maxAgentTurns
 		this.autoApprovalOverride = autoApprovalOverride
-		this.silentWrites = silentWrites
 
 		// Store the task's mode and API config name when it's created.
 		// For history items, use the stored values; for new tasks, we'll set them

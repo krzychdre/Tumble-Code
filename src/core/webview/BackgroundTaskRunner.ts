@@ -21,7 +21,6 @@ export interface BackgroundTaskOptions {
 	workspacePath?: string
 	maxAgentTurns?: number
 	autoApprovalOverride?: AutoApprovalOverride
-	silentWrites?: boolean
 	initialTodos?: TodoItem[]
 	apiConfiguration?: ProviderSettings
 	/**
@@ -155,7 +154,6 @@ export class BackgroundTaskRunner {
 			isBackground: true,
 			maxAgentTurns: options.maxAgentTurns,
 			autoApprovalOverride: options.autoApprovalOverride,
-			silentWrites: options.silentWrites,
 			initialTodos: options.initialTodos,
 			// Start explicitly below (after registry insert), never via the stack.
 			startTask: false,
