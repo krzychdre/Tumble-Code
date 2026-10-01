@@ -301,7 +301,6 @@ export class ClineProvider
 			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
 			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
 			getSettingsImportedAt: () => this.settingsImportedAt,
-			getCloudAuthSkipModel: () => this.context.globalState.get<boolean>("roo-auth-skip-model"),
 			getHasOpenedModeSelector: () => this.getGlobalState("hasOpenedModeSelector"),
 			getMdmCompliance: () => (this.mdmService?.requiresCloudAuth() ? this.checkMdmCompliance() : undefined),
 			latestAnnouncementId: this.latestAnnouncementId,

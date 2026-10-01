@@ -279,8 +279,6 @@ database is not supported.
 ### Browser Auth Flow
 
 - `GET /extension/sign-in` - Redirect to Authentik OAuth
-- `GET /extension/provider-sign-up` - Redirect to Authentik OAuth (signup)
-- `GET /l/{slug}` - Landing page auth flow
 - `GET /auth/clerk/callback` - Authentik OAuth callback
 
 ### Main API (ROO_CODE_API_URL)
@@ -289,11 +287,8 @@ database is not supported.
 - `PATCH /api/user-settings` - Update user settings
 - `POST /api/extension/share` - Share a task
 - `GET /api/extension/bridge/config` - Bridge config
-- `GET /api/extension/credit-balance` - Credit balance
 - `POST /api/events` - Record telemetry event
 - `POST /api/events/backfill` - Backfill task messages
-- `GET /api/marketplace/modes` - Mode marketplace
-- `GET /api/marketplace/mcps` - MCP marketplace
 
 ## Architecture
 

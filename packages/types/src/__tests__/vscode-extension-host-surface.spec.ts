@@ -183,7 +183,6 @@ type ExpectedWebviewMessageField =
 	| "upsellId"
 	| "list"
 	| "organizationId"
-	| "useProviderSignup"
 	| "codeIndexSettings"
 	| "updatedSettings"
 	| "taskConfiguration"

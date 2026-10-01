@@ -248,7 +248,6 @@ interface ProviderStateSources {
 	getExtensionVersion(): string
 	getStorageErrorMessage(): string
 	getSettingsImportedAt(): number | undefined
-	getCloudAuthSkipModel(): boolean | undefined
 	getHasOpenedModeSelector(): boolean | undefined
 	/** undefined without an MDM policy, otherwise whether the user complies with it. */
 	getMdmCompliance(): boolean | undefined
@@ -421,7 +420,6 @@ export class ProviderStateBuilder {
 			machineId: vscode.env.machineId,
 			renderContext: this.sources.renderContext,
 			settingsImportedAt: this.sources.getSettingsImportedAt(),
-			cloudAuthSkipModel: this.sources.getCloudAuthSkipModel() ?? false,
 			cloudOrganizations,
 			// No pre-filled embedding dimension: the code-index form sends every
 			// field back on save, so a view-only default would be stored as if

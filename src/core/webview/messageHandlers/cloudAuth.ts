@@ -67,12 +67,11 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 		}
 	},
 
-	rooCloudSignIn: async (ctx, message) => {
+	rooCloudSignIn: async (ctx) => {
 		const { provider } = ctx
 		try {
 			TelemetryService.instance.captureEvent(TelemetryEventName.AUTHENTICATION_INITIATED)
-			// Use provider signup flow if useProviderSignup is explicitly true
-			await CloudService.instance.login(undefined, message.useProviderSignup ?? false)
+			await CloudService.instance.login()
 		} catch (error) {
 			provider.log(`AuthService#login failed: ${error}`)
 			vscode.window.showErrorMessage("Sign in failed.")

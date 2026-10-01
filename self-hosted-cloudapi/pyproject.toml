@@ -19,7 +19,6 @@ dependencies = [
     "itsdangerous>=2.2.0",
     "slowapi>=0.1.9",
     "python-multipart>=0.0.31",
-    "pyyaml>=6.0.2",
     "starlette>=1.3.1",
     "jinja2>=3.1.4",
     "python-socketio>=5.11.0",
@@ -32,6 +31,8 @@ dev = [
     "pytest-cov>=6.0.0",
     "httpx>=0.28.0",
     "aiosqlite>=0.20.0",
+    # tests/test_compose_settings_defaults.py reads docker-compose.yml.
+    "pyyaml>=6.0.2",
 ]
 
 [build-system]

@@ -20,7 +20,7 @@ from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
-from src.routers import auth, extension, settings as settings_router, events, marketplace, browser
+from src.routers import auth, extension, settings as settings_router, events, browser
 from src.routers import shared, web_metrics, web_settings, web_tasks
 from src.web.static_files import VersionedStaticFiles
 
@@ -164,8 +164,6 @@ app.include_router(settings_router.router)
 # Events API
 app.include_router(events.router)
 
-# Marketplace API
-app.include_router(marketplace.router)
 
 # Web UI: task list and task page, metrics, retention settings, share links.
 # /app/tasks/{task_id} (GET) is registered before /app/tasks/bulk-delete (POST),

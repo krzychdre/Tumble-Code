@@ -247,14 +247,9 @@ export interface AuthService extends EventEmitter<AuthServiceEvents> {
 	broadcast(): void
 
 	// Authentication methods
-	login(landingPageSlug?: string, useProviderSignup?: boolean): Promise<void>
+	login(): Promise<void>
 	logout(): Promise<void>
-	handleCallback(
-		code: string | null,
-		state: string | null,
-		organizationId?: string | null,
-		providerModel?: string | null,
-	): Promise<void>
+	handleCallback(code: string | null, state: string | null, organizationId?: string | null): Promise<void>
 	switchOrganization(organizationId: string | null): Promise<void>
 
 	// State methods

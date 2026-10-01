@@ -34,7 +34,7 @@ a started cloud: check `CloudService.hasInstance()` (true only after `initialize
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `WebAuthService`       | `POST /v1/client/sign_ins`, `POST /v1/client/sessions/{id}/tokens`, `GET /v1/me`, `GET /v1/me/organization_memberships`, `POST /v1/client/sessions/{id}/remove` |
 | `CloudSettingsService` | `GET /api/extension-settings`, `PATCH /api/user-settings`                                                                                                       |
-| `CloudAPI`             | `POST /api/extension/share`, `GET /api/extension/bridge/config`, `GET /api/extension/credit-balance`                                                            |
+| `CloudAPI`             | `POST /api/extension/share`, `GET /api/extension/bridge/config`                                                                                                 |
 | `TelemetryClient`      | `POST /api/events`, `POST /api/events/backfill`                                                                                                                 |
 | `BridgeOrchestrator`   | socket.io at `/bridge/socket.io`                                                                                                                                |
 
@@ -84,7 +84,7 @@ graph TD
   CORS --> ROUTES{routers}
   ROUTES --> R1[auth /v1 - Clerk facade]
   ROUTES --> R2[browser - sign-in pages, callbacks]
-  ROUTES --> R3[extension, settings, events, marketplace - /api]
+  ROUTES --> R3[extension, settings, events - /api]
   ROUTES --> R4[web_tasks, web_metrics, web_settings - /app]
   ROUTES --> R5[shared - /shared/id]
   ROUTES --> SIO[socket.io /bridge]

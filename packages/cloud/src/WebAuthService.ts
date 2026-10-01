@@ -250,11 +250,8 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 	 *
 	 * This method initiates the authentication flow by generating a state parameter
 	 * and opening the browser to the authorization URL.
-	 *
-	 * @param landingPageSlug Optional slug of a specific landing page (e.g., "supernova", "special-offer", etc.)
-	 * @param useProviderSignup If true, uses provider signup flow (/extension/provider-sign-up). If false, uses standard sign-in (/extension/sign-in). Defaults to false.
 	 */
-	public async login(landingPageSlug?: string, useProviderSignup: boolean = false): Promise<void> {
+	public async login(): Promise<void> {
 		try {
 			const vscode = await importVscode()
 
@@ -273,18 +270,12 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 				auth_redirect: `${vscode.env.uriScheme}://${publisher}.${name}`,
 			})
 
-			// Use landing page URL if slug is provided, otherwise use provider sign-up or sign-in URL based on parameter
-			const url = landingPageSlug
-				? `${getRooCodeApiUrl()}/l/${landingPageSlug}?${params.toString()}`
-				: useProviderSignup
-					? `${getRooCodeApiUrl()}/extension/provider-sign-up?${params.toString()}`
-					: `${getRooCodeApiUrl()}/extension/sign-in?${params.toString()}`
+			const url = `${getRooCodeApiUrl()}/extension/sign-in?${params.toString()}`
 
 			await vscode.env.openExternal(vscode.Uri.parse(url))
 		} catch (error) {
-			const context = landingPageSlug ? ` (landing page: ${landingPageSlug})` : ""
-			this.log(`[auth] Error initiating Tumble Code Cloud auth${context}: ${error}`)
-			throw new Error(`Failed to initiate Tumble Code Cloud authentication${context}: ${error}`)
+			this.log(`[auth] Error initiating Tumble Code Cloud auth: ${error}`)
+			throw new Error(`Failed to initiate Tumble Code Cloud authentication: ${error}`)
 		}
 	}
 
@@ -297,13 +288,11 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 	 * @param code The authorization code from the callback
 	 * @param state The state parameter from the callback
 	 * @param organizationId The organization ID from the callback (null for personal accounts)
-	 * @param providerModel The model ID selected during signup (optional)
 	 */
 	public async handleCallback(
 		code: string | null,
 		state: string | null,
 		organizationId?: string | null,
-		providerModel?: string | null,
 	): Promise<void> {
 		if (!code || !state) {
 			const vscode = await importVscode()
@@ -330,17 +319,6 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 			credentials.organizationId = organizationId || null
 
 			await this.storeCredentials(credentials)
-
-			// Store the provider model if provided, or flag that no model was selected
-			if (providerModel) {
-				await this.context.globalState.update("roo-provider-model", providerModel)
-				await this.context.globalState.update("roo-auth-skip-model", undefined)
-				this.log(`[auth] Stored provider model: ${providerModel}`)
-			} else {
-				// No model was selected during signup - flag this for the webview
-				await this.context.globalState.update("roo-auth-skip-model", true)
-				this.log(`[auth] No provider model selected during signup`)
-			}
 
 			const vscode = await importVscode()
 

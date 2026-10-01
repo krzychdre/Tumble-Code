@@ -98,7 +98,6 @@ and refuses to start without `SECRET_KEY` and `JWT_SECRET`.
 | `CORS_ORIGINS`                                                        | empty                              | Extra trusted origins (comma-separated or JSON array); `*` ignored with a warning (DEF-S8).           |
 | `WEB_ALLOWED_NETWORKS`                                                | empty (open)                       | IPs/CIDRs allowed to open the web panel.                                                              |
 | `WEB_PUBLIC_URL`                                                      | empty                              | Public panel address for other machines; also registers the extra Authentik callback.                 |
-| `MARKETPLACE_SOURCE` / `MARKETPLACE_YAML_DIR`                         | `yaml` / `./config/marketplace`    | Marketplace backend and its YAML directory.                                                           |
 | `BRIDGE_ENABLED` / `BRIDGE_PATH`                                      | `true` / `/bridge/socket.io`       | Live remote-control bridge switch and socket.io mount path (min two segments).                        |
 | `TELEMETRY_ENABLED`                                                   | `true`                             | `false` = telemetry endpoints accept-and-ignore.                                                      |
 | `BACKFILL_MAX_BYTES`                                                  | 50 MiB                             | Largest accepted task backfill upload (413 above).                                                    |
