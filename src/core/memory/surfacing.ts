@@ -17,7 +17,9 @@
 
 import fs from "fs/promises"
 
-import { memoryAge, memoryFreshnessText } from "./memoryAge"
+import { parseFrontmatter } from "./frontmatter"
+import { memoryAge, memoryAgeDays, memoryFreshnessText } from "./memoryAge"
+import { findTimeBoundClauses } from "./timeBoundClaims"
 
 /** Per-file line cap when surfacing. */
 export const MAX_MEMORY_LINES = 200
@@ -52,13 +54,45 @@ export interface FileStateEntry {
 }
 export type FileStateCache = Map<string, FileStateEntry>
 
+/** At most this many time-bound clauses are quoted in a header. */
+const MAX_NOTED_CLAUSES = 3
+/** Each quoted clause is cut to this many characters (plus "..."). */
+const MAX_NOTED_CLAUSE_CHARS = 100
+
 /**
- * Build the per-memory header: the staleness caveat (for memories >1 day old)
- * plus a `Memory: <path>:` or `Memory (saved <age>): <path>:` line.
+ * A warning about the time-bound clauses ("VSIX rebuild owed", "fix/x STILL
+ * unmerged") in a memory at least a day old, or "" when there are none. The
+ * dream resolves the clauses it has evidence for; this is the second line of
+ * defence for the rest. Only the description and the body are searched, not
+ * the raw frontmatter.
  */
-export function memoryHeader(filePath: string, mtimeMs: number): string {
+function timeBoundClauseNote(content: string, mtimeMs: number): string {
+	if (memoryAgeDays(mtimeMs) < 1) return ""
+	const { data, body } = parseFrontmatter(content)
+	const clauses = findTimeBoundClauses(`${data.description ?? ""}\n${body}`).slice(0, MAX_NOTED_CLAUSES)
+	if (clauses.length === 0) return ""
+	const quoted = clauses.map((clause) => {
+		const chars = Array.from(clause)
+		const cut = chars.length > MAX_NOTED_CLAUSE_CHARS
+		return `"${cut ? chars.slice(0, MAX_NOTED_CLAUSE_CHARS).join("").trimEnd() + "..." : clause}"`
+	})
+	return (
+		`This memory also says things that were true only for a while: ${quoted.join("; ")}. ` +
+		`Check each one (git log, the files, the current state) before you rely on it or repeat it as current.`
+	)
+}
+
+/**
+ * Build the per-memory header: the staleness caveat (for memories >1 day old),
+ * the time-bound clause note when `content` is given (see
+ * {@link timeBoundClauseNote}), plus a `Memory: <path>:` or
+ * `Memory (saved <age>): <path>:` line.
+ */
+export function memoryHeader(filePath: string, mtimeMs: number, content?: string): string {
 	const staleness = memoryFreshnessText(mtimeMs)
-	return staleness ? `${staleness}\n\nMemory: ${filePath}:` : `Memory (saved ${memoryAge(mtimeMs)}): ${filePath}:`
+	const note = content === undefined ? "" : timeBoundClauseNote(content, mtimeMs)
+	const pathLine = staleness ? `Memory: ${filePath}:` : `Memory (saved ${memoryAge(mtimeMs)}): ${filePath}:`
+	return [staleness, note, pathLine].filter(Boolean).join("\n\n")
 }
 
 /**
@@ -94,7 +128,13 @@ export async function readMemoriesForSurfacing(
 						body +
 						`\n\n> This memory file was truncated (over ${MAX_MEMORY_LINES} lines or ${MAX_MEMORY_BYTES} bytes). Use the read_file tool to view the complete file at: ${filePath}`
 				}
-				return { path: filePath, content: body, mtimeMs, header: memoryHeader(filePath, mtimeMs), limit }
+				return {
+					path: filePath,
+					content: body,
+					mtimeMs,
+					header: memoryHeader(filePath, mtimeMs, content),
+					limit,
+				}
 			} catch {
 				return null
 			}

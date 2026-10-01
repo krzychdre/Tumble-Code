@@ -10,7 +10,11 @@ import {
 	type RelevantMemory,
 	type FileStateCache,
 } from "../surfacing"
-import { memoryAge } from "../memoryAge"
+import fs from "fs/promises"
+import os from "os"
+import path from "path"
+
+import { memoryAge, memoryFreshnessText } from "../memoryAge"
 
 describe("surfacing", () => {
 	describe("memoryHeader", () => {
@@ -26,6 +30,89 @@ describe("surfacing", () => {
 			const header = memoryHeader("/mem/fresh.md", fresh)
 			expect(header).toContain(`Memory (saved ${memoryAge(fresh)}): /mem/fresh.md:`)
 			expect(header).not.toContain("days old")
+		})
+	})
+
+	describe("memoryHeader time-bound clause note", () => {
+		const DAY = 86_400_000
+		const CHECK =
+			"Check each one (git log, the files, the current state) before you rely on it or repeat it as current."
+		const doc = (description: string, body: string) =>
+			`---\nname: x\ndescription: ${description}\ntype: project\n---\n${body}`
+
+		it("quotes body and description clauses of an old memory between the caveat and the path line", () => {
+			const mtime = Date.now() - 5 * DAY
+			const content = doc("Stack merged; VSIX rebuild owed", "Details.\n\nfix/x STILL unmerged on 2026-09-28.\n")
+			const header = memoryHeader("/mem/old.md", mtime, content)
+			expect(header).toBe(
+				`${memoryFreshnessText(mtime)}\n\n` +
+					`This memory also says things that were true only for a while: "VSIX rebuild owed"; "fix/x STILL unmerged on 2026-09-28.". ${CHECK}\n\n` +
+					"Memory: /mem/old.md:",
+			)
+		})
+
+		it("adds the note to a one-day-old memory, which has no staleness caveat", () => {
+			const mtime = Date.now() - DAY - 60_000
+			const header = memoryHeader("/mem/y.md", mtime, doc("plain", "Merge still pending review.\n"))
+			expect(header).toBe(
+				`This memory also says things that were true only for a while: "Merge still pending review.". ${CHECK}\n\n` +
+					"Memory (saved yesterday): /mem/y.md:",
+			)
+		})
+
+		it("adds no note to a memory younger than a day", () => {
+			const mtime = Date.now() - 1000
+			const header = memoryHeader("/mem/fresh.md", mtime, doc("VSIX rebuild owed", "fix/x STILL unmerged\n"))
+			expect(header).toBe(memoryHeader("/mem/fresh.md", mtime))
+			expect(header).toBe(`Memory (saved today): /mem/fresh.md:`)
+		})
+
+		it("keeps the header unchanged when the memory has no time-bound clauses", () => {
+			const mtime = Date.now() - 30 * DAY
+			const content = doc("Use pnpm, not npm", "The build uses turbo.\n")
+			expect(memoryHeader("/mem/old.md", mtime, content)).toBe(memoryHeader("/mem/old.md", mtime))
+			expect(memoryHeader("/mem/old.md", mtime, content)).toBe(
+				`${memoryFreshnessText(mtime)}\n\nMemory: /mem/old.md:`,
+			)
+		})
+
+		it("does not search the raw frontmatter outside the description", () => {
+			const mtime = Date.now() - 30 * DAY
+			const content = "---\nname: still pending merge\ndescription: fine\ntype: project\n---\nAll done.\n"
+			expect(memoryHeader("/mem/old.md", mtime, content)).toBe(memoryHeader("/mem/old.md", mtime))
+		})
+
+		it("quotes at most 3 clauses", () => {
+			const mtime = Date.now() - 3 * DAY
+			const body = "- one is owed\n- two is deferred\n- three not yet merged\n- four is postponed\n"
+			const header = memoryHeader("/mem/m.md", mtime, doc("plain", body))
+			expect(header).toContain('"one is owed"; "two is deferred"; "three not yet merged".')
+			expect(header).not.toContain("four")
+		})
+
+		it("cuts a long clause to 100 characters plus ...", () => {
+			const mtime = Date.now() - 3 * DAY
+			const clause = "VSIX rebuild owed " + "x".repeat(150)
+			const header = memoryHeader("/mem/m.md", mtime, doc("plain", clause + "\n"))
+			expect(header).toContain(`"${clause.slice(0, 100)}..."`)
+			expect(header).not.toContain(clause.slice(0, 101))
+		})
+
+		it("readMemoriesForSurfacing puts the note into the header of an old memory file", async () => {
+			const dir = await fs.mkdtemp(path.join(os.tmpdir(), "surfacing-note-"))
+			try {
+				const file = path.join(dir, "project_x.md")
+				await fs.writeFile(file, doc("Chart fix; api image rebuild owed", "Body.\n"))
+				const mtime = Date.now() - 10 * DAY
+				const [memory] = await readMemoriesForSurfacing([{ path: file, mtimeMs: mtime }])
+				expect(memory.header).toBe(
+					`${memoryFreshnessText(mtime)}\n\n` +
+						`This memory also says things that were true only for a while: "api image rebuild owed". ${CHECK}\n\n` +
+						`Memory: ${file}:`,
+				)
+			} finally {
+				await fs.rm(dir, { recursive: true, force: true })
+			}
 		})
 	})
 

@@ -67,5 +67,11 @@ describe("memoryTypes", () => {
 			expect(blob).toContain("function or flag")
 			expect(blob).toContain("X exists now")
 		})
+
+		it("tells the model to check time-bound lines before repeating them", () => {
+			expect(TRUSTING_RECALL_SECTION.join("\n")).toContain(
+				"owed, pending, not merged or deferred was true on the day it was written; check it before you repeat it.",
+			)
+		})
 	})
 })
