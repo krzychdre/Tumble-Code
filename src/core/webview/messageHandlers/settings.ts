@@ -1,7 +1,7 @@
 // Settings writes, VS Code settings, terminal profiles, sounds, telemetry and small UI actions.
 
 import * as vscode from "vscode"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryEventName, experimentDefault } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import type { Language, TelemetrySetting, AudioType, RooCodeSettings, ExperimentId } from "@roo-code/types"
 import { changeLanguage, t } from "../../../i18n"
@@ -13,7 +13,6 @@ import {
 } from "../../../integrations/misc/custom-sounds"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
-import { experimentDefault } from "../../../shared/experiments"
 import { Package } from "../../../shared/package"
 import { getCommand } from "../../../utils/commands"
 import { sanitizeCommandList } from "../../auto-approval/sanitizeCommandList"

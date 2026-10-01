@@ -11,7 +11,7 @@ import { stripLineNumbers, everyLineHasLineNumbers } from "../../integrations/mi
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
-import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { EXPERIMENT_IDS, experiments } from "@roo-code/types"
 import { convertNewFileToUnifiedDiff } from "../diff/stats"
 import type { ToolUse } from "../../shared/tools"
 

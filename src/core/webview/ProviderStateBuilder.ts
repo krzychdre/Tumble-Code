@@ -15,12 +15,12 @@ import {
 	SETTINGS_DEFAULT_KEYS,
 	isRetiredProvider,
 	resolveSettings,
+	experimentDefault,
 } from "@roo-code/types"
 import { CloudService, getRooCodeApiUrl } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { defaultModeSlug } from "../../shared/modes"
-import { experimentDefault } from "../../shared/experiments"
 import { formatLanguage } from "../../shared/language"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { resolveCustomSoundUri } from "../../integrations/misc/custom-sounds"

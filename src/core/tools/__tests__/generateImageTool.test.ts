@@ -6,7 +6,7 @@ import * as fs from "fs/promises"
 import * as pathUtils from "../../../utils/pathUtils"
 import * as fileUtils from "../../../utils/fs"
 import { formatResponse } from "../../prompts/responses"
-import { EXPERIMENT_IDS } from "../../../shared/experiments"
+import { EXPERIMENT_IDS } from "@roo-code/types"
 import { OpenRouterHandler } from "../../../api/providers/openrouter"
 
 // Mock dependencies

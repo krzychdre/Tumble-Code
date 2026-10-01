@@ -35,8 +35,7 @@ export type Experiments = z.infer<typeof experimentsSchema>
 type _AssertExperiments = AssertEqual<Equals<ExperimentId, Keys<Experiments>>>
 
 /**
- * Experiment flags: the ids by key, their defaults and a lookup helper
- * (moved from src/shared/experiments.ts, PKG-6).
+ * Experiment flags: the ids by key, their defaults and a lookup helper.
  */
 
 export const EXPERIMENT_IDS = {

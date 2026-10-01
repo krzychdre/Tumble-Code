@@ -1,13 +1,19 @@
 import path from "path"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS, type ToolProgressStatus } from "@roo-code/types"
+import {
+	type ClineSayTool,
+	DEFAULT_WRITE_DELAY_MS,
+	SETTINGS_DEFAULTS,
+	type ToolProgressStatus,
+	EXPERIMENT_IDS,
+	experiments,
+} from "@roo-code/types"
 
 import { getReadablePath } from "../../../utils/path"
 import { isPathOutsideWorkspace } from "../../../utils/pathUtils"
 import type { Task } from "../../task/Task"
 import { formatResponse } from "../../prompts/responses"
 import type { RecordSource } from "../../context-tracking/FileContextTrackerTypes"
-import { EXPERIMENT_IDS, experiments } from "../../../shared/experiments"
 import { sanitizeUnifiedDiff, computeDiffStats } from "../../diff/stats"
 import { pauseForPlanReviewIfNeeded } from "../../plan-review/planReviewPause"
 import type { ToolCallbacks } from "../BaseTool"
