@@ -21,8 +21,7 @@ export interface ToolWriteResultTask {
 
 /**
  * The tool_result text of a file write, returned after `saveChanges()` or
- * `saveDirectly()` by every file-writing tool (write_to_file, apply_diff and
- * the tools of `applyComputedEdit`). When the user edited the proposed
+ * `saveDirectly()` by every file-writing tool (through `applyComputedEdit`). When the user edited the proposed
  * content, it also shows the user's patch in the chat (`user_feedback_diff`).
  *
  * The JSON keys, their order and the notice sentences are what the model

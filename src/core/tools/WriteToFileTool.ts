@@ -1,26 +1,23 @@
 import path from "path"
-import delay from "delay"
 import fs from "fs/promises"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
+import type { ClineSayTool } from "@roo-code/types"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
-import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 import { stripLineNumbers, everyLineHasLineNumbers } from "../../integrations/misc/extract-text"
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
-import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
-import { convertNewFileToUnifiedDiff, computeDiffStats, sanitizeUnifiedDiff } from "../diff/stats"
+import { convertNewFileToUnifiedDiff } from "../diff/stats"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { getToolStreamState } from "./toolStreamState"
-import { pushToolWriteResult } from "./helpers/toolWriteResult"
+import { applyComputedEdit } from "./helpers/applyComputedEdit"
 
 interface WriteToFileParams {
 	path: string
@@ -31,7 +28,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	readonly name = "write_to_file" as const
 
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
+		const { pushToolResult, handleError } = callbacks
 		const relPath = params.path
 		// Coerce content to string safely: weak models can emit null/numbers.
 		let newContent = typeof params.content === "string" ? params.content : ""
@@ -61,8 +58,6 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			return
 		}
 
-		const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
-
 		const absolutePath = path.resolve(task.cwd, relPath)
 
 		const fileExists = await this.existsForEdit(task, relPath, absolutePath)
@@ -85,115 +80,61 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			newContent = unescapeHtmlEntities(newContent)
 		}
 
-		const fullPath = relPath ? path.resolve(task.cwd, relPath) : ""
-		const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
-
-		const sharedMessageProps: ClineSayTool = {
-			tool: fileExists ? "editedExistingFile" : "newFileCreated",
-			path: getReadablePath(task.cwd, relPath),
-			content: newContent,
-			isOutsideWorkspace,
-			isProtected: isWriteProtected,
-			// Stamp the native tool-call id so the finalized-duplicate dedup links
-			// this complete card to its streaming placeholder, whose content
-			// differs (raw newContent vs the unified diff shown on approval).
-			toolCallId,
+		// Content copied from read_file output keeps its line numbers.
+		if (everyLineHasLineNumbers(newContent)) {
+			newContent = stripLineNumbers(newContent)
 		}
 
 		try {
 			task.consecutiveMistakeCount = 0
 
-			const provider = task.providerRef.deref()
-			const state = await provider?.getState()
-			const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
-			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-			const isPreventFocusDisruptionEnabled = experiments.isEnabled(
-				state?.experiments ?? {},
-				EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
-			)
+			const diffViewProvider = task.diffViewProvider
+			// A session that is still open belongs to this path (any other one was
+			// dropped above): the streaming preview opened it and read the original.
+			const originalContent = !fileExists
+				? ""
+				: diffViewProvider.isEditing
+					? diffViewProvider.originalContent
+					: await fs.readFile(absolutePath, "utf-8")
 
-			if (isPreventFocusDisruptionEnabled) {
-				if (fileExists) {
-					const absolutePath = path.resolve(task.cwd, relPath)
-					task.diffViewProvider.originalContent = await fs.readFile(absolutePath, "utf-8")
-				} else {
-					task.diffViewProvider.originalContent = ""
-				}
-
-				let unified = fileExists
-					? formatResponse.createPrettyPatch(relPath, task.diffViewProvider.originalContent, newContent)
-					: convertNewFileToUnifiedDiff(newContent, relPath)
-				unified = sanitizeUnifiedDiff(unified)
-				const completeMessage = JSON.stringify({
-					...sharedMessageProps,
-					content: unified,
-					diffStats: computeDiffStats(unified) || undefined,
-				} satisfies ClineSayTool)
-
-				const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
-
-				if (!didApprove) {
-					return
-				}
-
-				await task.diffViewProvider.saveDirectly(relPath, newContent, false, diagnosticsEnabled, writeDelayMs)
-			} else {
-				if (!task.diffViewProvider.isEditing) {
-					const partialMessage = JSON.stringify(sharedMessageProps)
+			const outcome = await applyComputedEdit(task, relPath, newContent, callbacks, {
+				originalContent,
+				isNewFile: !fileExists,
+				cardTool: fileExists ? "editedExistingFile" : "newFileCreated",
+				cardPatch: fileExists ? undefined : convertNewFileToUnifiedDiff(newContent, relPath),
+				// A direct write never shows the file, not even a new one.
+				showFileOnDirectSave: false,
+				openDiffView: async () => {
+					if (diffViewProvider.isEditing) {
+						return
+					}
+					const partialMessage = JSON.stringify({
+						tool: fileExists ? "editedExistingFile" : "newFileCreated",
+						path: getReadablePath(task.cwd, relPath),
+						content: newContent,
+						isOutsideWorkspace: isPathOutsideWorkspace(absolutePath),
+						isProtected: task.rooProtectedController?.isWriteProtected(relPath) || false,
+						// Stamp the native tool-call id so the finalized-duplicate dedup links
+						// this placeholder to the complete card, whose content differs (raw
+						// newContent vs the unified diff shown on approval).
+						toolCallId: callbacks.toolCallId,
+					} satisfies ClineSayTool)
 					await task.ask("tool", partialMessage, true).catch(ignorePartialAskRejection)
-					await task.diffViewProvider.open(relPath, fileExists ? "modify" : "create")
-				}
-
-				await task.diffViewProvider.update(
-					everyLineHasLineNumbers(newContent) ? stripLineNumbers(newContent) : newContent,
-					true,
-				)
-
-				await delay(300)
-				task.diffViewProvider.scrollToFirstDiff()
-
-				let unified = fileExists
-					? formatResponse.createPrettyPatch(relPath, task.diffViewProvider.originalContent, newContent)
-					: convertNewFileToUnifiedDiff(newContent, relPath)
-				unified = sanitizeUnifiedDiff(unified)
-				const completeMessage = JSON.stringify({
-					...sharedMessageProps,
-					content: unified,
-					diffStats: computeDiffStats(unified) || undefined,
-				} satisfies ClineSayTool)
-
-				const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
-
-				if (!didApprove) {
-					await task.diffViewProvider.revertChanges()
-					return
-				}
-
-				await task.diffViewProvider.saveChanges(diagnosticsEnabled, writeDelayMs)
+					await diffViewProvider.open(relPath, fileExists ? "modify" : "create")
+				},
+			})
+			if (outcome === "rejected") {
+				return
 			}
 
-			if (relPath) {
-				await task.fileContextTracker.trackFileContext(relPath, "roo_edited" as RecordSource)
-			}
-
-			task.didEditFile = true
-
-			const message = await pushToolWriteResult(task, !fileExists)
-
-			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
-			pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
-
-			await task.diffViewProvider.reset()
+			await diffViewProvider.reset()
 			this.resetPartialState(task)
 
 			task.processQueuedMessages()
-
-			return
 		} catch (error) {
 			await handleError("writing file", error as Error, this.name)
 			await task.diffViewProvider.reset()
 			this.resetPartialState(task)
-			return
 		}
 	}
 

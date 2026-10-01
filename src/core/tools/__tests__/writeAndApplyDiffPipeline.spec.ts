@@ -1,12 +1,13 @@
 import type { Mock } from "vitest"
 /**
- * Characterization of the approval, diff view and save sequence of
- * `write_to_file` and `apply_diff`: the side-effect order in the diff editor
- * and in the direct-write mode, the rejection path, the approval card (key
- * order included), the arguments of the save and the text of the result.
+ * The approval, diff view and save sequence of `write_to_file` and
+ * `apply_diff`: the side-effect order in the diff editor and in the
+ * direct-write mode, the rejection path, the approval card (key order
+ * included), the arguments of the save and the text of the result.
  *
- * The other edit tools share this sequence through `applyComputedEdit`
- * (pinned by editPipeline.spec.ts); these two tools ran their own copy.
+ * Both tools ran their own copy of this sequence and now share
+ * `applyComputedEdit` with the other edit tools (editPipeline.spec.ts). The
+ * tests marked "Shared step:" pin where their copies had drifted from it.
  */
 
 import fs from "fs/promises"
@@ -15,6 +16,7 @@ import path from "path"
 import type { MockedFunction } from "vitest"
 
 import { fileExistsAtPath } from "../../../utils/fs"
+import { isPathOutsideWorkspace } from "../../../utils/pathUtils"
 import { pauseForPlanReviewIfNeeded } from "../../plan-review/planReviewPause"
 import { pushToolWriteResult } from "../helpers/toolWriteResult"
 import { writeToFileTool } from "../WriteToFileTool"
@@ -24,10 +26,6 @@ vi.mock("fs/promises", () => ({
 	default: {
 		readFile: vi.fn(),
 	},
-}))
-
-vi.mock("delay", () => ({
-	default: vi.fn(async () => void log.push("delay")),
 }))
 
 vi.mock("../../../utils/fs", () => ({
@@ -206,7 +204,9 @@ const rejectApproval = () =>
 	})
 
 describe("write_to_file", () => {
-	it("modify: opens the diff view, waits, scrolls, asks, saves, reports, then runs the gate", async () => {
+	// Shared step: no 300 ms sleep between the final update and the scroll
+	// (update() has applied the final content once it resolves).
+	it("modify: opens the diff view, scrolls, asks, saves, reports, then runs the gate", async () => {
 		await writeFile("src/a.ts", PATCHED)
 
 		expect(handleError).not.toHaveBeenCalled()
@@ -215,7 +215,6 @@ describe("write_to_file", () => {
 			"askPartial",
 			"open",
 			"update",
-			"delay",
 			"scrollToFirstDiff",
 			"askApproval",
 			"saveChanges",
@@ -242,7 +241,7 @@ describe("write_to_file", () => {
 
 		await writeFile("src/a.ts", PATCHED)
 
-		expect(log.slice(0, 4)).toEqual(["getState", "update", "delay", "scrollToFirstDiff"])
+		expect(log.slice(0, 3)).toEqual(["getState", "update", "scrollToFirstDiff"])
 		expect(task.diffViewProvider.open).toHaveBeenCalledTimes(1)
 		expect(task.ask).not.toHaveBeenCalled()
 	})
@@ -283,13 +282,20 @@ describe("write_to_file", () => {
 		expect(mockedPushToolWriteResult).toHaveBeenCalledWith(task, true)
 	})
 
+	// Shared step: the rejection result is pushed (a duplicate the real callback
+	// drops after askApproval's own denial result) and the diff view is reset.
 	it("reverts and stops when the user rejects in the diff view", async () => {
 		rejectApproval()
 
 		await writeFile("src/a.ts", PATCHED)
 
-		expect(log.slice(log.indexOf("askApproval"))).toEqual(["askApproval", "revertChanges"])
-		expect(pushToolResult).not.toHaveBeenCalled()
+		expect(log.slice(log.indexOf("askApproval"))).toEqual([
+			"askApproval",
+			"revertChanges",
+			"pushToolResult",
+			"reset",
+		])
+		expect(pushToolResult).toHaveBeenCalledWith("Changes were rejected by the user.")
 		expect(task.diffViewProvider.saveChanges).not.toHaveBeenCalled()
 		expect(mockedPause).not.toHaveBeenCalled()
 		expect(task.didEditFile).toBe(false)
@@ -301,11 +307,13 @@ describe("write_to_file", () => {
 
 		await writeFile("src/a.ts", PATCHED)
 
-		expect(log).toEqual(["getState", "askApproval"])
-		expect(pushToolResult).not.toHaveBeenCalled()
+		expect(log).toEqual(["getState", "askApproval", "pushToolResult", "reset"])
 		expect(task.diffViewProvider.saveDirectly).not.toHaveBeenCalled()
 	})
 
+	// Shared step: the card also carries the patch under `diff` (the files-changed
+	// panel reads `diff ?? content`, so it shows the same patch) and its keys
+	// come in the shared order.
 	it("pins the approval card of a modify and of a create (key order included)", async () => {
 		task.rooProtectedController.isWriteProtected.mockReturnValue(true)
 		await writeFile("src/a.ts", PATCHED)
@@ -318,10 +326,11 @@ describe("write_to_file", () => {
 			JSON.stringify({
 				tool: "editedExistingFile",
 				path: "readable:src/a.ts",
-				content: "sanitized(diff src/a.ts)",
+				diff: "sanitized(diff src/a.ts)",
 				isOutsideWorkspace: false,
-				isProtected: true,
 				toolCallId: "call-1",
+				content: "sanitized(diff src/a.ts)",
+				isProtected: true,
 				diffStats: { added: 1, removed: 1 },
 			}),
 		)
@@ -333,16 +342,19 @@ describe("write_to_file", () => {
 			JSON.stringify({
 				tool: "newFileCreated",
 				path: "readable:src/new.ts",
-				content: "sanitized(new-file-diff src/new.ts)",
+				diff: "sanitized(new-file-diff src/new.ts)",
 				isOutsideWorkspace: false,
-				isProtected: false,
 				toolCallId: "call-1",
+				content: "sanitized(new-file-diff src/new.ts)",
+				isProtected: false,
 				diffStats: { added: 1, removed: 1 },
 			}),
 		)
 	})
 
-	it("strips line numbers only in the diff view", async () => {
+	// Shared step: one content for the card, the diff view and the save, so a
+	// direct write no longer saves the line numbers the diff view stripped.
+	it("strips line numbers in the diff view and in a direct write", async () => {
 		await writeFile("src/a.ts", "1 | const a = 1\n2 | const b = 3")
 		expect(task.diffViewProvider.update).toHaveBeenCalledWith("const a = 1\nconst b = 3", true)
 
@@ -351,19 +363,20 @@ describe("write_to_file", () => {
 		await writeFile("src/a.ts", "1 | const a = 1\n2 | const b = 3")
 		expect(task.diffViewProvider.saveDirectly).toHaveBeenCalledWith(
 			"src/a.ts",
-			"1 | const a = 1\n2 | const b = 3",
+			"const a = 1\nconst b = 3",
 			false,
 			true,
 			50,
 		)
 	})
 
-	it("asks and saves even when the content is unchanged", async () => {
+	// Shared step: an unchanged existing file is reported without an approval.
+	it("reports an unchanged file without asking or saving", async () => {
 		await writeFile("src/a.ts", ORIGINAL)
 
-		expect(askApproval).toHaveBeenCalled()
-		expect(task.diffViewProvider.saveChanges).toHaveBeenCalled()
-		expect(pushToolResult).toHaveBeenCalledWith("WRITE_RESULT")
+		expect(askApproval).not.toHaveBeenCalled()
+		expect(task.diffViewProvider.saveChanges).not.toHaveBeenCalled()
+		expect(pushToolResult).toHaveBeenCalledWith("No changes needed for 'src/a.ts'")
 	})
 
 	it("appends the plan-review note to the result", async () => {
@@ -423,27 +436,36 @@ describe("apply_diff", () => {
 		expect(task.diffViewProvider.originalContent).toBe(ORIGINAL)
 	})
 
+	// Shared step: rejection result and reset as for write_to_file.
 	it("reverts and processes the queue when the user rejects in the diff view", async () => {
 		rejectApproval()
 
 		await applyDiff()
 
-		expect(log.slice(log.indexOf("askApproval"))).toEqual(["askApproval", "revertChanges", "processQueuedMessages"])
-		expect(pushToolResult).not.toHaveBeenCalled()
+		expect(log.slice(log.indexOf("askApproval"))).toEqual([
+			"askApproval",
+			"revertChanges",
+			"pushToolResult",
+			"reset",
+			"processQueuedMessages",
+		])
 		expect(mockedPause).not.toHaveBeenCalled()
 		expect(task.didEditFile).toBe(false)
 	})
 
+	// Shared step: a rejected direct write also processes the queue, as a
+	// rejection in the diff view always did.
 	it("stops when the user rejects a direct write", async () => {
 		experiments = { preventFocusDisruption: true }
 		rejectApproval()
 
 		await applyDiff()
 
-		expect(log).toEqual(["getState", "askApproval"])
-		expect(pushToolResult).not.toHaveBeenCalled()
+		expect(log).toEqual(["getState", "askApproval", "pushToolResult", "reset", "processQueuedMessages"])
 	})
 
+	// Shared step: the card says whether the file is outside the workspace, so
+	// auto-approval applies the outside-workspace write setting to apply_diff too.
 	it("pins the approval card (key order included)", async () => {
 		await applyDiff()
 
@@ -452,13 +474,22 @@ describe("apply_diff", () => {
 				tool: "appliedDiff",
 				path: "readable:src/a.ts",
 				diff: SEARCH_REPLACE,
+				originalContent: ORIGINAL,
+				isOutsideWorkspace: false,
 				toolCallId: "call-1",
 				content: "sanitized(diff src/a.ts)",
-				originalContent: ORIGINAL,
-				diffStats: { added: 1, removed: 1 },
 				isProtected: false,
+				diffStats: { added: 1, removed: 1 },
 			}),
 		)
+	})
+
+	it("marks a file outside the workspace in the card", async () => {
+		vi.mocked(isPathOutsideWorkspace).mockReturnValueOnce(true)
+
+		await applyDiff()
+
+		expect(JSON.parse(askApproval.mock.calls[0][1] as string).isOutsideWorkspace).toBe(true)
 	})
 
 	it("puts the part-failure hint first and the single-block notice and review note last", async () => {
