@@ -25,11 +25,11 @@
     {% endif %}
     <div class="spacer"></div>
     {# Auto, dark, light; revealed and wired by theme.js. #}
-    <button type="button" id="theme-toggle" class="theme-toggle" hidden>Theme</button>
+    <button type="button" id="theme-toggle" class="btn ghost small theme-toggle" hidden>Theme</button>
     {% if user %}
       <span class="user">{{ user.name }}</span>
       <form method="post" action="/app/logout" class="inline">
-        <button type="submit" class="btn ghost">Sign out</button>
+        <button type="submit" class="btn ghost small">Sign out</button>
       </form>
     {% elif not hide_sign_in %}
       <a class="btn" href="/app/login">Sign in</a>

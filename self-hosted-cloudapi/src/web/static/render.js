@@ -751,7 +751,7 @@
 		].forEach(function (spec) {
 			const b = document.createElement("button")
 			b.type = "button"
-			b.className = "btn ghost btn-fold"
+			b.className = "btn ghost small btn-fold"
 			b.textContent = spec[0]
 			b.addEventListener("click", function () {
 				convo.setAllFolds(spec[1])
