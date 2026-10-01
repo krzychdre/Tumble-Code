@@ -26,6 +26,7 @@ vi.mock("delay", () => ({
 }))
 
 import delay from "delay"
+import * as fsPromises from "fs/promises"
 import { logger } from "../../../utils/logging"
 
 vi.mock("uuid", async (importOriginal) => {
@@ -2134,6 +2135,21 @@ describe("pushToolResultToUserContent", () => {
 		const hugeResult = Array.from({ length: 400 }, (_, index) => `line-${index + 1}`.padEnd(80, "x")).join("\n")
 
 		const artifactsDirFor = (taskId: string) => path.join(os.tmpdir(), "test-storage", "tasks", taskId, "artifacts")
+
+		// The file-level fs/promises mock turns writeFile into a no-op, but these tests check the
+		// artifact on disk, and the atomic write goes through fs/promises: use the real writeFile.
+		beforeEach(async () => {
+			const actualFs = await vi.importActual<typeof import("fs/promises")>("fs/promises")
+			vi.mocked(fsPromises.writeFile).mockImplementation(actualFs.writeFile as any)
+		})
+
+		// Every Task in this file shares one taskId (uuid is pinned), so a failed test must not
+		// leave its artifacts directory behind for the next one.
+		afterEach(() => {
+			vi.mocked(fsPromises.writeFile).mockReset()
+			vi.mocked(fsPromises.writeFile).mockResolvedValue(undefined)
+			fs.rmSync(artifactsDirFor("00000000-0000-7000-8000-000000000000"), { recursive: true, force: true })
+		})
 
 		it("spills an oversized tool result and leaves a preview that cites the artifact", async () => {
 			const task = new Task({
