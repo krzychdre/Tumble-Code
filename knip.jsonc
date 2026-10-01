@@ -36,8 +36,6 @@
 				"proper-lockfile",
 				// Alias target "punycode/" in packages/build/src/extension.ts.
 				"punycode",
-				// Grammar .wasm files copied into dist by packages/build/src/esbuild.ts.
-				"tree-sitter-wasms",
 				// Icon files copied into assets/ by src/esbuild.mjs.
 				"vscode-material-icons",
 			],

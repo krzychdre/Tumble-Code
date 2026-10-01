@@ -12,6 +12,9 @@ import { createRequire } from "module"
 import { copyWasms, copyPdfWorker } from "../esbuild.js"
 
 const srcNodeModules = path.resolve(__dirname, "..", "..", "..", "..", "src", "node_modules")
+const treeSitterGrammars: string[] = JSON.parse(
+	fs.readFileSync(path.resolve(srcNodeModules, "..", "services", "tree-sitter", "grammar-wasms.json"), "utf8"),
+)
 
 function pdfjsVersionOf(file: string): string | undefined {
 	return /pdfjsVersion = ([0-9.]+)/.exec(fs.readFileSync(file, "utf8"))?.[1]
@@ -41,14 +44,23 @@ describe("copyPdfWorker", () => {
 		expect(pdfjsVersionOf(copied)).toBe(pdfjsVersion)
 	})
 
-	// copyWasms copies every WASM the extension ships (tiktoken, 35 tree-sitter
-	// grammars, esbuild-wasm, the pdf.js worker: about 75 MB). On the Windows CI
+	// copyWasms copies every WASM the extension ships (tiktoken, 28 tree-sitter
+	// grammars, esbuild-wasm, the pdf.js worker: about 65 MB). On the Windows CI
 	// runner, where all packages start their tests at once, this whole spec
 	// file took 0.2 to 1.9 s in most runs, but this test alone once took 6.5 s,
 	// past vitest's 5 s default.
 	it("is part of copyWasms, which the release and the nightly build both run", () => {
-		copyWasms(path.dirname(srcNodeModules), distDir)
+		copyWasms(path.dirname(srcNodeModules), distDir, treeSitterGrammars)
 
 		expect(fs.existsSync(path.join(distDir, "pdf.worker.mjs"))).toBe(true)
+
+		// The same run checks the grammar selection, to avoid a second 65 MB copy:
+		// only the grammars the extension loads are shipped.
+		const grammars = fs
+			.readdirSync(distDir)
+			.filter((file) => /^tree-sitter-.+\.wasm$/.test(file))
+			.sort()
+		expect(grammars).toEqual(treeSitterGrammars.map((name) => `tree-sitter-${name}.wasm`).sort())
+		expect(fs.existsSync(path.join(distDir, "tree-sitter.wasm"))).toBe(true)
 	}, 60_000)
 })
