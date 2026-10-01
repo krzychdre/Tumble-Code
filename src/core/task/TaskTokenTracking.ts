@@ -8,8 +8,8 @@ import {
 	hasTokenUsageChanged,
 	hasToolUsageChanged,
 	consolidateApiRequests,
+	consolidateCommands,
 } from "@roo-code/core/browser"
-import { combineCommandSequences } from "../../shared/combineCommandSequences"
 
 /**
  * Interface for Task access needed by TaskTokenTracking.
@@ -92,7 +92,7 @@ export class TaskTokenTracking {
 	 * Combine messages by applying API request and command sequence combining.
 	 */
 	public combineMessages(messages: ClineMessage[]): ClineMessage[] {
-		return consolidateApiRequests(combineCommandSequences(messages))
+		return consolidateApiRequests(consolidateCommands(messages))
 	}
 
 	/**

@@ -67,8 +67,12 @@ import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
 // shared
-import { findLastIndex, getModelMaxOutputTokens, consolidateApiRequests } from "@roo-code/core/browser"
-import { combineCommandSequences } from "../../shared/combineCommandSequences"
+import {
+	findLastIndex,
+	getModelMaxOutputTokens,
+	consolidateApiRequests,
+	consolidateCommands,
+} from "@roo-code/core/browser"
 import { t } from "../../i18n"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"

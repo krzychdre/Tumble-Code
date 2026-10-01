@@ -54,7 +54,7 @@ Side effects (the resync request, the auto-approve echo) stay in the provider co
 
 ```mermaid
 flowchart LR
-  M[clineMessages] --> CMB[combineCommandSequences<br/>combineApiRequests]
+  M[clineMessages] --> CMB[consolidateCommands<br/>consolidateApiRequests]
   CMB --> FV[filterVisible<br/>hide internal rows]
   FV --> GT[groupToolAsks<br/>batch similar asks]
   GT --> CR[withCondensingRow]

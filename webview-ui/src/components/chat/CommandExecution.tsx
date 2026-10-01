@@ -4,8 +4,7 @@ import { ChevronDown, OctagonX } from "lucide-react"
 
 import { type ExtensionMessage, type CommandExecutionStatus, commandExecutionStatusSchema } from "@roo-code/types"
 
-import { parseCommand, safeJsonParse } from "@roo-code/core/browser"
-import { COMMAND_OUTPUT_STRING } from "@roo/combineCommandSequences"
+import { parseCommand, safeJsonParse, COMMAND_OUTPUT_STRING } from "@roo-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
 import { extractPatternsFromCommand } from "@src/utils/command-parser"

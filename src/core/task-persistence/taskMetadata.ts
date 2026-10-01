@@ -3,8 +3,12 @@ import getFolderSize from "get-folder-size"
 
 import type { ClineMessage, HistoryItem } from "@roo-code/types"
 
-import { combineCommandSequences } from "../../shared/combineCommandSequences"
-import { findLastIndex, consolidateTokenUsage, consolidateApiRequests } from "@roo-code/core/browser"
+import {
+	findLastIndex,
+	consolidateTokenUsage,
+	consolidateApiRequests,
+	consolidateCommands,
+} from "@roo-code/core/browser"
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { perfCounters } from "../../utils/perfCounters"
 import { t } from "../../i18n"
@@ -89,7 +93,7 @@ export async function taskMetadata({
 
 		timestamp = lastRelevantMessage.ts
 
-		tokenUsage = consolidateTokenUsage(consolidateApiRequests(combineCommandSequences(messages.slice(1))))
+		tokenUsage = consolidateTokenUsage(consolidateApiRequests(consolidateCommands(messages.slice(1))))
 
 		// Get task directory size
 		const cachedSize = taskSizeCache.get<number>(taskDir)

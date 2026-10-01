@@ -1,10 +1,10 @@
-// npx vitest run src/shared/__tests__/combineCommandSequences.spec.ts
+// npx vitest run packages/core/src/message-utils/__tests__/consolidateCommands.cases.spec.ts
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { combineCommandSequences } from "../combineCommandSequences"
+import { consolidateCommands } from "../consolidateCommands.js"
 
-describe("combineCommandSequences", () => {
+describe("consolidateCommands", () => {
 	describe("command sequences", () => {
 		it("should combine command and command_output messages", () => {
 			const messages: ClineMessage[] = [
@@ -13,7 +13,7 @@ describe("combineCommandSequences", () => {
 				{ type: "ask", ask: "command_output", text: "file2.txt", ts: 1625097602000 },
 			]
 
-			const result = combineCommandSequences(messages)
+			const result = consolidateCommands(messages)
 
 			expect(result).toHaveLength(1)
 			expect(result[0]).toEqual({
@@ -41,7 +41,7 @@ describe("combineCommandSequences", () => {
 				{ type: "say", say: "mcp_server_response", text: "Response data", ts: 1625097601000 },
 			]
 
-			const result = combineCommandSequences(messages)
+			const result = consolidateCommands(messages)
 
 			expect(result).toHaveLength(1)
 			expect(result[0]).toEqual({
@@ -73,7 +73,7 @@ describe("combineCommandSequences", () => {
 				{ type: "say", say: "mcp_server_response", text: "Second response", ts: 1625097602000 },
 			]
 
-			const result = combineCommandSequences(messages)
+			const result = consolidateCommands(messages)
 
 			expect(result).toHaveLength(1)
 			expect(result[0]).toEqual({
@@ -115,7 +115,7 @@ describe("combineCommandSequences", () => {
 				{ type: "say", say: "mcp_server_response", text: "Response 2", ts: 1625097603000 },
 			]
 
-			const result = combineCommandSequences(messages)
+			const result = consolidateCommands(messages)
 
 			expect(result).toHaveLength(2)
 			expect(result[0]).toEqual({
@@ -161,7 +161,7 @@ describe("combineCommandSequences", () => {
 				{ type: "say", say: "mcp_server_response", text: "MCP response", ts: 1625097603000 },
 			]
 
-			const result = combineCommandSequences(messages)
+			const result = consolidateCommands(messages)
 
 			expect(result).toHaveLength(2)
 			expect(result[0]).toEqual({

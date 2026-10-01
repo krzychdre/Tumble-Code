@@ -2,8 +2,7 @@
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { consolidateApiRequests } from "@roo-code/core/browser"
-import { combineCommandSequences } from "@roo/combineCommandSequences"
+import { consolidateApiRequests, consolidateCommands } from "@roo-code/core/browser"
 
 import { checkpointFixture, toolBatchingFixture } from "../../__tests__/fixtures/rowPipelineFixtures"
 import { CONDENSING_ROW_TS, withCondensingRow } from "../condensingRow"
@@ -12,7 +11,7 @@ import { filterVisible } from "../filterVisible"
 import { groupToolAsks } from "../groupToolAsks"
 
 const rowsOf = (messages: ClineMessage[]) =>
-	groupToolAsks(filterVisible(consolidateApiRequests(combineCommandSequences(messages.slice(1))), new Map()))
+	groupToolAsks(filterVisible(consolidateApiRequests(consolidateCommands(messages.slice(1))), new Map()))
 
 const todoAsk = (ts: number, todos: unknown[]): ClineMessage => ({
 	type: "ask",
