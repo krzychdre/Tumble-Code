@@ -151,11 +151,19 @@
    Hidden until there is something on it; beside the conversation on a wide
    screen, above it on a narrow one. #}
 <nav id="timeline" class="timeline" aria-label="Conversation timeline" hidden>
+  <span class="tl-title" aria-hidden="true">Timeline</span>
   <div class="tl-jumps">
-    <button type="button" id="tl-next-error" class="btn ghost small">Next error</button>
-    <button type="button" id="tl-next-user" class="btn ghost small">Next message of yours</button>
+    <button type="button" id="tl-next-error" class="btn ghost small tl-jump"><span class="tl-jump-key tl-key-error" aria-hidden="true"></span>Next error</button>
+    <button type="button" id="tl-next-user" class="btn ghost small tl-jump"><span class="tl-jump-key tl-key-user" aria-hidden="true"></span>Next message of yours</button>
   </div>
   <div class="tl-track" id="tl-track"></div>
+  {# What the ticks mean. Each tick names itself to a screen reader, so the
+     legend is for the eye only. #}
+  <ul class="tl-legend" aria-hidden="true">
+    <li><i class="tl-key tl-key-request"></i>request (size = cost)</li>
+    <li><i class="tl-key tl-key-error"></i>error</li>
+    <li><i class="tl-key tl-key-user"></i>you</li>
+  </ul>
 </nav>
 
 <div id="conversation" class="conversation" aria-busy="true">

@@ -24,16 +24,20 @@
       </nav>
     {% endif %}
     <div class="spacer"></div>
-    {# Auto, dark, light; revealed and wired by theme.js. #}
-    <button type="button" id="theme-toggle" class="btn ghost small theme-toggle" hidden>Theme</button>
-    {% if user %}
-      <span class="user">{{ user.name }}</span>
-      <form method="post" action="/app/logout" class="inline">
-        <button type="submit" class="btn ghost small">Sign out</button>
-      </form>
-    {% elif not hide_sign_in %}
-      <a class="btn" href="/app/login">Sign in</a>
-    {% endif %}
+    {# One cluster at the right end, every control the same height: the theme
+       (an icon; its name is in aria-label), who is signed in, and Sign out. #}
+    <div class="topbar-end">
+      {# Auto, dark, light; revealed and wired by theme.js. #}
+      <button type="button" id="theme-toggle" class="btn ghost small icon-btn theme-toggle" hidden>Theme</button>
+      {% if user %}
+        <span class="user" title="Signed in as {{ user.name }}"><span class="user-mark" aria-hidden="true">{{ (user.name or '?')[:1] | upper }}</span><span class="user-name">{{ user.name }}</span></span>
+        <form method="post" action="/app/logout" class="inline">
+          <button type="submit" class="btn ghost small">Sign out</button>
+        </form>
+      {% elif not hide_sign_in %}
+        <a class="btn" href="/app/login">Sign in</a>
+      {% endif %}
+    </div>
   </header>
   {# tabindex="-1" so the skip link moves focus here, not only the scroll. #}
   <main id="main" tabindex="-1" class="content{% if read_measure %} read{% endif %}">

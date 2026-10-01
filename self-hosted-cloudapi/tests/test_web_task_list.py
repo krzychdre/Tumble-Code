@@ -7,6 +7,7 @@ pager, the filter chips and a bulk delete all carry it along.
 """
 
 import re
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from html import unescape
 
@@ -37,6 +38,9 @@ async def _seed(session_factory, *rows, user_id="user_test"):
         await s.commit()
 
 
+_STATIC = Path(__file__).resolve().parent.parent / "src" / "web" / "static"
+
+
 def _get(client, path, **params):
     _override_web_user(client.app)
     try:
@@ -58,17 +62,50 @@ def _hrefs(html: str) -> list[str]:
 
 
 async def test_every_column_has_a_header(client, db_session, session_factory):
-    """Nine columns, and today only the title and the date were labelled."""
+    """Seven columns, and once only the title and the date were labelled.
+
+    Project and model are no longer columns of their own: they ride on a second
+    line under the title (so the title gets the free width), and the title's
+    header names that line."""
     await _seed_user(db_session)
     await _seed(session_factory, {"id": "t1", "title": "One"})
 
     html = _get(client, "/app").text
 
     head = html[html.index('class="task-head"'):html.index('class="task-list"')]
-    for label in ("Task", "Project", "Model", "Messages", "Duration", "Tokens", "Cost", "Grade", "Updated"):
+    for label in ("Messages", "Duration", "Tokens", "Cost", "Grade", "Updated"):
         assert f">{label}<" in head, label
+    title_head = re.search(r'<span class="head-label head-title">(.*?)</span></span>', head).group(1)
+    assert title_head.startswith("Task<") and "project" in title_head and "model" in title_head
     # A header row, not a data row: the per-row tests count class="task-item".
     assert html.count('class="task-item"') == 1
+
+
+async def test_the_title_gets_the_free_width_and_project_and_model_ride_under_it(
+    client, db_session, session_factory
+):
+    """At 1280px the title was cut to about 20 characters while two fixed
+    badge columns (project, model) took 17rem of the row. The title's track is
+    the only elastic one, and the badges sit in the same cell, under it."""
+    await _seed_user(db_session)
+    await _seed(session_factory, {"id": "t1", "title": "One", "workspace_path": "/home/a/proj"})
+
+    html = _get(client, "/app").text
+
+    row = html[html.index('class="task-link"'):]
+    row = row[:row.index("</a>")]
+    main = re.search(r'<span class="cell-main">(.*?)</span>\s*</span>\s*<span class="cell-num">', row, re.DOTALL)
+    assert main, row
+    assert 'class="cell-title"' in main.group(1) and 'class="badge badge-workspace"' in main.group(1)
+    # No badge columns left beside the title.
+    assert "cell-workspace" not in html and "cell-model" not in html
+
+    css = (_STATIC / "app.css").read_text(encoding="utf-8")
+    cols = re.search(r"--task-cols:\s*([^;]+);", css).group(1).split()
+    assert cols[0] == "minmax(0," and cols[1] == "1fr)"
+    assert not any("fr" in c for c in cols[2:]), cols
+    # Head and rows share the one track list, so the labels stay over their columns.
+    assert css.count("grid-template-columns: var(--task-cols);") == 2
 
 
 async def test_sortable_headers_link_to_the_sorted_list(client, db_session, session_factory):

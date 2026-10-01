@@ -13,13 +13,13 @@
   <h2 class="chart-title">Data retention</h2>
   <p class="settings-lead">
     Tasks are kept forever unless you say otherwise. Retention deletes whole
-    tasks — the conversation goes with them, permanently.
+    tasks: the conversation goes with them, permanently.
   </p>
 
   <form method="post" action="/app/settings" class="settings-form">
     <label class="switch-row">
       <input type="checkbox" name="enabled" value="1" {{ 'checked' if policy.enabled }}>
-      <span><b>Run automatically</b> — apply the rules below on a schedule.</span>
+      <span><b>Run automatically</b><span class="switch-hint">Apply the rules below on a schedule.</span></span>
     </label>
 
     <div class="field-grid">
@@ -40,18 +40,18 @@
         </span>
       </label>
     </div>
-    <p class="field-hint">Empty means the rule is off — that is how a new policy starts, so nothing is ever selected until you fill something in. The greyed-out numbers are suggestions. A task goes if either rule matches.</p>
+    <p class="field-hint">Empty means the rule is off: that is how a new policy starts, so nothing is ever selected until you fill something in. The greyed-out numbers are suggestions. A task goes if either rule matches.</p>
 
     <label class="switch-row">
       <input type="checkbox" name="keep_shared" value="1" {{ 'checked' if policy.keep_shared }}>
-      <span><b>Never delete shared tasks</b> — a share link you handed out keeps working.</span>
+      <span><b>Never delete shared tasks</b><span class="switch-hint">A share link you handed out keeps working.</span></span>
     </label>
 
     <hr class="settings-rule">
 
     <label class="switch-row">
       <input type="checkbox" name="purge_telemetry" value="1" {{ 'checked' if policy.purge_telemetry }}>
-      <span><b>Also purge raw telemetry</b> — the per-message events that duplicate stored conversations.</span>
+      <span><b>Also purge raw telemetry</b><span class="switch-hint">The per-message events that duplicate stored conversations.</span></span>
     </label>
     <label class="field field-inline">
       <span class="field-label">Telemetry older than</span>
