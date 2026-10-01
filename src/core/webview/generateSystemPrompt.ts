@@ -1,4 +1,4 @@
-import { WebviewMessage } from "../../shared/WebviewMessage"
+import { WebviewMessage } from "@roo-code/types"
 import { defaultModeSlug } from "../../shared/modes"
 import { resolveProviderModel } from "../../api"
 
