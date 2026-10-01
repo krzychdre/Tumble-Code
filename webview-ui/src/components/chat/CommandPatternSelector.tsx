@@ -135,9 +135,9 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 										)}>
 										<button
 											className={cn("p-1 rounded transition-all cursor-pointer", {
-												"bg-green-500/20 text-green-500 hover:bg-green-500/30":
+												"bg-vscode-charts-green/20 text-vscode-charts-green hover:bg-vscode-charts-green/30":
 													status === "allowed",
-												"text-vscode-descriptionForeground hover:text-green-500 hover:bg-green-500/10":
+												"text-vscode-descriptionForeground hover:text-vscode-charts-green hover:bg-vscode-charts-green/10":
 													status !== "allowed",
 											})}
 											onClick={() => onAllowPatternChange(editState.value)}
@@ -157,8 +157,9 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 										)}>
 										<button
 											className={cn("p-1 rounded transition-all cursor-pointer", {
-												"bg-red-500/20 text-red-500 hover:bg-red-500/30": status === "denied",
-												"text-vscode-descriptionForeground hover:text-red-500 hover:bg-red-500/10":
+												"bg-vscode-errorForeground/20 text-vscode-errorForeground hover:bg-vscode-errorForeground/30":
+													status === "denied",
+												"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-vscode-errorForeground/10":
 													status !== "denied",
 											})}
 											onClick={() => onDenyPatternChange(editState.value)}

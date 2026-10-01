@@ -208,7 +208,7 @@ export const CommandExecution = ({
 					{title}
 					{status?.status === "started" && (
 						<StandardTooltip content={t("chat:commandExecution.running")}>
-							<div className="rounded-full size-2 bg-yellow-500 animate-pulse" />
+							<div className="rounded-full size-2 bg-[var(--status-running)] animate-pulse" />
 						</StandardTooltip>
 					)}
 					{status?.status === "exited" && (
@@ -218,7 +218,7 @@ export const CommandExecution = ({
 								<div
 									className={cn(
 										"rounded-full size-2",
-										status.exitCode === 0 ? "bg-green-600" : "bg-red-600",
+										status.exitCode === 0 ? "bg-[var(--status-done)]" : "bg-[var(--status-failed)]",
 									)}
 								/>
 							</StandardTooltip>
@@ -227,7 +227,7 @@ export const CommandExecution = ({
 					{status?.status === "error" && (
 						<div className="flex flex-row items-center gap-2 font-mono text-xs text-vscode-errorForeground">
 							<StandardTooltip content={status.message ?? t("chat:commandExecution.malformedCommand")}>
-								<div className="rounded-full size-2 bg-red-600" />
+								<div className="rounded-full size-2 bg-[var(--status-failed)]" />
 							</StandardTooltip>
 						</div>
 					)}

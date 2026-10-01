@@ -30,10 +30,10 @@ export const CodeIndexStatusSection = ({ indexingStatus }: CodeIndexStatusSectio
 			<div className="text-sm text-vscode-descriptionForeground">
 				<span
 					className={cn("inline-block w-3 h-3 rounded-full mr-2", {
-						"bg-gray-400": indexingStatus.systemStatus === "Standby",
-						"bg-yellow-500 animate-pulse": indexingStatus.systemStatus === "Indexing",
-						"bg-green-500": indexingStatus.systemStatus === "Indexed",
-						"bg-red-500": indexingStatus.systemStatus === "Error",
+						"bg-vscode-descriptionForeground": indexingStatus.systemStatus === "Standby",
+						"bg-[var(--status-running)] animate-pulse": indexingStatus.systemStatus === "Indexing",
+						"bg-[var(--status-done)]": indexingStatus.systemStatus === "Indexed",
+						"bg-[var(--status-failed)]": indexingStatus.systemStatus === "Error",
 					})}
 				/>
 				{t(`settings:codeIndex.indexingStatuses.${indexingStatus.systemStatus.toLowerCase()}`)}

@@ -94,7 +94,7 @@ export const CodeIndexSetupFields = ({
 					}}
 					placeholder={t("settings:codeIndex.qdrantUrlPlaceholder")}
 					className={cn("w-full", {
-						"border-red-500": formErrors.codebaseIndexQdrantUrl,
+						"border-[var(--vscode-inputValidation-errorBorder)]": formErrors.codebaseIndexQdrantUrl,
 					})}
 				/>
 				{formErrors.codebaseIndexQdrantUrl && (
@@ -110,7 +110,7 @@ export const CodeIndexSetupFields = ({
 					onInput={(e: any) => updateSetting("codeIndexQdrantApiKey", e.target.value)}
 					placeholder={t("settings:codeIndex.qdrantApiKeyPlaceholder")}
 					className={cn("w-full", {
-						"border-red-500": formErrors.codeIndexQdrantApiKey,
+						"border-[var(--vscode-inputValidation-errorBorder)]": formErrors.codeIndexQdrantApiKey,
 					})}
 				/>
 				{formErrors.codeIndexQdrantApiKey && (

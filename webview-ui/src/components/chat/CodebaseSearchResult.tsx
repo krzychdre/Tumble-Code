@@ -35,7 +35,7 @@ const CodebaseSearchResult: React.FC<CodebaseSearchResultProps> = ({ filePath, s
 					<span className="text-primary-300 whitespace-nowrap flex-shrink-0">
 						{filePath.split("/").at(-1)}:{startLine === endLine ? startLine : `${startLine}-${endLine}`}
 					</span>
-					<span className="text-gray-500 truncate min-w-0 flex-1">
+					<span className="text-vscode-descriptionForeground truncate min-w-0 flex-1">
 						{filePath.split("/").slice(0, -1).join("/")}
 					</span>
 					<span className="text-xs text-vscode-descriptionForeground whitespace-nowrap ml-auto opacity-60">

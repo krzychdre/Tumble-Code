@@ -166,7 +166,7 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 					<PopoverContent className="w-56 p-0" align="start">
 						{shareSuccess ? (
 							<div className="p-3">
-								<div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+								<div className="flex items-center gap-2 text-sm text-[var(--status-done)]">
 									<span className="codicon codicon-check"></span>
 									<span>
 										{shareSuccess.visibility === "public"

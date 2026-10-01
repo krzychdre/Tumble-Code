@@ -28,7 +28,7 @@ export const DiscardChangesDialog = ({ open, onOpenChange, onResult }: DiscardCh
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>
-						<AlertTriangle className="w-5 h-5 text-yellow-500" />
+						<AlertTriangle className="w-5 h-5 text-vscode-editorWarning-foreground" />
 						{t("settings:unsavedChangesDialog.title")}
 					</AlertDialogTitle>
 					<AlertDialogDescription>{t("settings:unsavedChangesDialog.description")}</AlertDialogDescription>
