@@ -5,6 +5,7 @@ import type * as vscode from "vscode"
 
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
+import { logger } from "../../utils/logging"
 
 const DEFAULT_VITE_PORT = "5173"
 const DEFAULT_OPENROUTER_ORIGIN = "https://openrouter.ai"
@@ -106,14 +107,14 @@ function readVitePort(logTag: string | undefined): string {
 		if (fs.existsSync(portFilePath)) {
 			localPort = fs.readFileSync(portFilePath, "utf8").trim()
 			if (logTag) {
-				console.log(`[${logTag}] Using Vite server port from ${portFilePath}: ${localPort}`)
+				logger.info(`[${logTag}] Using Vite server port from ${portFilePath}: ${localPort}`)
 			}
 		} else if (logTag) {
-			console.log(`[${logTag}] Port file not found at ${portFilePath}, using default port: ${localPort}`)
+			logger.info(`[${logTag}] Port file not found at ${portFilePath}, using default port: ${localPort}`)
 		}
 	} catch (err) {
 		if (logTag) {
-			console.error(`[${logTag}] Failed to read Vite port file:`, err)
+			logger.error(`[${logTag}] Failed to read Vite port file:`, err)
 		}
 	}
 

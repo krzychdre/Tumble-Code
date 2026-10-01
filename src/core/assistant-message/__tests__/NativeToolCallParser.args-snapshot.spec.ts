@@ -2,6 +2,7 @@ import { customToolRegistry } from "@roo-code/core"
 
 import { NativeToolCallParser } from "../NativeToolCallParser"
 import type { DispatchableToolName } from "../../tools/toolDescriptors"
+import { logger } from "../../../utils/logging"
 
 /**
  * Characterization snapshots of the argument parsing in NativeToolCallParser (CORE-R4 c).
@@ -286,10 +287,10 @@ describe("NativeToolCallParser argument parsing (characterization)", () => {
 	beforeEach(() => {
 		warnings = []
 		errors = []
-		vi.spyOn(console, "warn").mockImplementation((first: unknown) => {
+		vi.spyOn(logger, "warn").mockImplementation((first: unknown) => {
 			warnings.push(String(first))
 		})
-		vi.spyOn(console, "error").mockImplementation((first: unknown) => {
+		vi.spyOn(logger, "error").mockImplementation((first: unknown) => {
 			errors.push(String(first))
 		})
 	})

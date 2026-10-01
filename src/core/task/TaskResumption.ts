@@ -25,6 +25,7 @@ import { buildContextLedger } from "../context-management/ledger/buildLedger"
 import { applyExecutionSnapshot, detectStaleFileChanges, type StaleFile } from "../context-management/executionSnapshot"
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
+import { logger } from "../../utils/logging"
 
 /**
  * Interface for Task access needed by TaskResumption.
@@ -313,13 +314,13 @@ export class TaskResumption {
 			} catch (error) {
 				// A snapshot without the warning is still better than a full replay; only the
 				// staleness annotation is lost.
-				console.warn(`[TaskResumption#${this.access.taskId}] staleness check failed:`, error)
+				logger.warn(`[TaskResumption#${this.access.taskId}] staleness check failed:`, error)
 			}
 
 			const result = applyExecutionSnapshot({ messages: history, ledger, stale })
 
 			if (result.applied) {
-				console.log(
+				logger.info(
 					`[TaskResumption#${this.access.taskId}] execution snapshot applied: ` +
 						`${result.hiddenMessages} messages hidden, ${result.tailMessages} kept, ` +
 						`${result.charsBefore} -> ${result.charsAfter} chars` +
@@ -329,7 +330,7 @@ export class TaskResumption {
 
 			return result.messages
 		} catch (error) {
-			console.warn(`[TaskResumption#${this.access.taskId}] execution snapshot skipped:`, error)
+			logger.warn(`[TaskResumption#${this.access.taskId}] execution snapshot skipped:`, error)
 			return history
 		}
 	}

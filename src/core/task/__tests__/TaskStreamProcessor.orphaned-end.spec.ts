@@ -28,6 +28,7 @@ vi.mock("../../assistant-message", () => ({
 }))
 
 import { presentAssistantMessage } from "../../assistant-message"
+import { logger } from "../../../utils/logging"
 
 function makeAccess(overrides: Partial<TaskStreamProcessorAccess> = {}): TaskStreamProcessorAccess {
 	return {
@@ -115,7 +116,7 @@ describe("TaskStreamProcessor orphaned tool_call_end handling (TE-8)", () => {
 		// id. processRawChunk emits another tool_call_start for "call_dup_001".
 		// The dedup guard in handleToolCallEvents catches it (streamingToolCallIndices
 		// already has "call_dup_001") and logs a warning, ignoring the duplicate start.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		processor.processChunk(
 			{
 				type: "tool_call_partial",
@@ -184,7 +185,7 @@ describe("TaskStreamProcessor orphaned tool_call_end handling (TE-8)", () => {
 		expect((access.assistantMessageContent[0] as any).partial).toBe(true)
 
 		// Send a DUPLICATE start (different index, same id) — gets deduped.
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 		processor.processChunk(
 			{
 				type: "tool_call_partial",
@@ -260,7 +261,7 @@ describe("TaskStreamProcessor orphaned tool_call_end handling (TE-8)", () => {
 		// Now finish_reason will emit tool_call_end for "call_orphan", but
 		// streamingToolCallIndices is empty, assistantMessageContent is empty,
 		// and finalizeStreamingToolCall returns null.
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 		processor.processChunk(
 			{
 				type: "finish_reason",

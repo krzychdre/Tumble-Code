@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { logger } from "../../../utils/logging"
 
 // Mock dependencies
 vi.mock("../../task/Task")
@@ -83,7 +84,7 @@ describe("presentAssistantMessage - abort crash regression (handleError -> say r
 		mockTask.assistantMessageContent = [
 			{ type: "tool_use", id: "call-1", name: "read_file", params: {}, partial: false },
 		]
-		vi.spyOn(console, "log").mockImplementation(() => {})
+		vi.spyOn(logger, "info").mockImplementation(() => {})
 
 		await expect(presentAssistantMessage(mockTask)).resolves.toBeUndefined()
 		expect(mockTask.askSay.ask).not.toHaveBeenCalled()

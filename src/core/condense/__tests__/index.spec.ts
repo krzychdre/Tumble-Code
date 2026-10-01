@@ -22,6 +22,7 @@ import {
 	convertToolBlocksToText,
 	transformMessagesForCondensing,
 } from "../index"
+import { logger } from "../../../utils/logging"
 
 vi.mock("../../../api/transform/image-cleaning", () => ({
 	maybeRemoveImageBlocks: vi.fn((messages: ApiMessage[], _apiHandler: ApiHandler) => [...messages]),
@@ -1060,10 +1061,10 @@ describe("summarizeConversation", () => {
 			// createMessage is missing
 		} as unknown as ApiHandler
 
-		// Mock console.error to verify error message
-		const originalError = console.error
+		// Mock logger.error to verify error message
+		const originalError = logger.error
 		const mockError = vi.fn()
-		console.error = mockError
+		logger.error = mockError
 
 		const result = await summarizeConversation({
 			messages,
@@ -1082,8 +1083,8 @@ describe("summarizeConversation", () => {
 		// Verify error was logged
 		expect(mockError).toHaveBeenCalledWith(expect.stringContaining("API handler is invalid for condensing"))
 
-		// Restore console.error
-		console.error = originalError
+		// Restore logger.error
+		logger.error = originalError
 	})
 
 	it("should tag all messages with condenseParent (fresh start model)", async () => {

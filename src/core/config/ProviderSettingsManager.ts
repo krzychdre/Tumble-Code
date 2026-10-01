@@ -29,6 +29,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { Mode, modes } from "../../shared/modes"
 import { resolveProviderModel } from "../../api"
+import { logger } from "../../utils/logging"
 
 export interface SyncCloudProfilesResult {
 	hasChanges: boolean
@@ -70,7 +71,7 @@ export class ProviderSettingsManager {
 		this.context = context
 
 		// TODO: We really shouldn't have async methods in the constructor.
-		this.initialize().catch(console.error)
+		this.initialize().catch((error) => logger.error(error))
 	}
 
 	public generateId() {
@@ -462,7 +463,7 @@ export class ProviderSettingsManager {
 					} catch (error) {
 						// If we can't resolve the model info, skip filtering
 						// to avoid accidental data loss from incomplete configurations
-						console.warn(`Skipping token field filtering for config '${name}': ${error}`)
+						logger.warn(`Skipping token field filtering for config '${name}': ${error}`)
 					}
 				}
 				return createProviderProfilesEnvelope(profiles)

@@ -45,7 +45,7 @@ export class CustomModesManager {
 		private readonly onUpdate: () => Promise<void>,
 	) {
 		this.watchCustomModesFiles().catch((error) => {
-			console.error("[CustomModesManager] Failed to setup file watchers:", error)
+			logger.error("[CustomModesManager] Failed to setup file watchers:", error)
 		})
 	}
 
@@ -149,7 +149,7 @@ export class CustomModesManager {
 				} catch (jsonError) {
 					// JSON also failed, show the original YAML error
 					const errorMsg = yamlError instanceof Error ? yamlError.message : String(yamlError)
-					console.error(`[CustomModesManager] Failed to parse YAML from ${filePath}:`, errorMsg)
+					logger.error(`[CustomModesManager] Failed to parse YAML from ${filePath}:`, errorMsg)
 
 					const lineMatch = errorMsg.match(/at line (\d+)/)
 					const line = lineMatch ? lineMatch[1] : "unknown"
@@ -162,7 +162,7 @@ export class CustomModesManager {
 
 			// For non-.roomodes files, just log and return empty object
 			const errorMsg = yamlError instanceof Error ? yamlError.message : String(yamlError)
-			console.error(`[CustomModesManager] Failed to parse YAML from ${filePath}:`, errorMsg)
+			logger.error(`[CustomModesManager] Failed to parse YAML from ${filePath}:`, errorMsg)
 			return {}
 		}
 	}
@@ -180,7 +180,7 @@ export class CustomModesManager {
 			const result = customModesSettingsSchema.safeParse(settings)
 
 			if (!result.success) {
-				console.error(`[CustomModesManager] Schema validation failed for ${filePath}:`, result.error)
+				logger.error(`[CustomModesManager] Schema validation failed for ${filePath}:`, result.error)
 
 				// Show user-friendly error for .roomodes files
 				if (filePath.endsWith(ROOMODES_FILENAME)) {
@@ -205,7 +205,7 @@ export class CustomModesManager {
 			// of throwing, so anything caught here (read failure, unexpected
 			// shape) is a new error and is logged.
 			const errorMsg = `Failed to load modes from ${filePath}: ${error instanceof Error ? error.message : String(error)}`
-			console.error(`[CustomModesManager] ${errorMsg}`)
+			logger.error(`[CustomModesManager] ${errorMsg}`)
 			return []
 		}
 	}
@@ -269,7 +269,7 @@ export class CustomModesManager {
 				try {
 					config = this.parseYamlSafely(content, settingsPath)
 				} catch (error) {
-					console.error(error)
+					logger.error(error)
 					vscode.window.showErrorMessage(errorMessage)
 					return
 				}
@@ -291,7 +291,7 @@ export class CustomModesManager {
 				this.clearCache()
 				await this.onUpdate()
 			} catch (error) {
-				console.error(`[CustomModesManager] Error handling settings file change:`, error)
+				logger.error(`[CustomModesManager] Error handling settings file change:`, error)
 			}
 		}
 
@@ -317,7 +317,7 @@ export class CustomModesManager {
 					this.clearCache()
 					await this.onUpdate()
 				} catch (error) {
-					console.error(`[CustomModesManager] Error handling .roomodes file change:`, error)
+					logger.error(`[CustomModesManager] Error handling .roomodes file change:`, error)
 				}
 			}
 
@@ -332,7 +332,7 @@ export class CustomModesManager {
 						this.clearCache()
 						await this.onUpdate()
 					} catch (error) {
-						console.error(`[CustomModesManager] Error handling .roomodes file deletion:`, error)
+						logger.error(`[CustomModesManager] Error handling .roomodes file deletion:`, error)
 					}
 				}),
 			)

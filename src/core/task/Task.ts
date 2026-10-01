@@ -678,7 +678,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				try {
 					this.artifactStore = await ArtifactStore.forTask(this.globalStoragePath, this.taskId)
 				} catch (error) {
-					console.warn("[Task#getArtifactStore] Artifact store unavailable:", error)
+					logger.warn("[Task#getArtifactStore] Artifact store unavailable:", error)
 				} finally {
 					this.artifactStoreInit = undefined
 				}
@@ -734,7 +734,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				block.type === "tool_result" && block.tool_use_id === toolResult.tool_use_id,
 		)
 		if (existingResult) {
-			console.warn(
+			logger.warn(
 				`[Task#pushToolResultToUserContent] Skipping duplicate tool_result for tool_use_id: ${toolResult.tool_use_id}`,
 			)
 			return false
@@ -796,7 +796,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			.catch((error) => {
 				// applyToolResultSpill already turns a failed write into "keep
 				// inline"; anything else is a bug worth seeing, never a crash.
-				console.warn(`[Task#${this.taskId}] tool-result spill failed, keeping the result inline:`, error)
+				logger.warn(`[Task#${this.taskId}] tool-result spill failed, keeping the result inline:`, error)
 			})
 			.finally(() => {
 				this.pendingToolResultSpills.delete(pending)
@@ -941,7 +941,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.fileContextTracker = new FileContextTracker(provider, this.taskId)
 
 		this.rooIgnoreController.initialize().catch((error) => {
-			console.error("Failed to initialize RooIgnoreController:", error)
+			logger.error("Failed to initialize RooIgnoreController:", error)
 		})
 
 		this.apiConfiguration = apiConfiguration
@@ -1071,7 +1071,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			try {
 				this.lifecycle.triggerMemoryBackgroundWriters()
 			} catch (error) {
-				console.error(
+				logger.error(
 					`[Task#${this.taskId}.${this.instanceId}] memory writers on completion failed:`,
 					error instanceof Error ? error.message : String(error),
 				)
@@ -1095,7 +1095,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					if (this.abandoned || this.abort) {
 						return
 					}
-					console.error(
+					logger.error(
 						`[Task#${this.taskId}.${this.instanceId}] resumeTaskFromHistory failed:`,
 						error instanceof Error ? error.message : String(error),
 					)
@@ -1345,10 +1345,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// hydrated yet, causing it to interpret the message as a new task request.
 				this.askSay.handleWebviewAskResponse("messageResponse", text, images)
 			} else {
-				console.error("[Task#submitUserMessage] Provider reference lost")
+				logger.error("[Task#submitUserMessage] Provider reference lost")
 			}
 		} catch (error) {
-			console.error("[Task#submitUserMessage] Failed to submit user message:", error)
+			logger.error("[Task#submitUserMessage] Failed to submit user message:", error)
 		}
 	}
 
@@ -1476,7 +1476,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			try {
 				this.emit(RooCodeEventName.TaskAborted)
 			} catch (error) {
-				console.error(
+				logger.error(
 					`[Task#${this.taskId}.${this.instanceId}] Error emitting final TaskAborted during dispose:`,
 					error instanceof Error ? error.message : String(error),
 				)
@@ -1498,7 +1498,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		try {
 			this.removeAllListeners()
 		} catch (error) {
-			console.error("Error removing event listeners:", error)
+			logger.error("Error removing event listeners:", error)
 		}
 	}
 

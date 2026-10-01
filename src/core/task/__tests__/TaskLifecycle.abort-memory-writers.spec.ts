@@ -115,9 +115,16 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 			// Give the rejected fire-and-forget promises a macrotask to settle.
 			await new Promise((resolve) => setTimeout(resolve, 0))
 
-			// Both triggers rejected; both rejections must have been caught + logged.
-			expect(errorSpy).toHaveBeenCalledTimes(2)
-			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("memory paths not initialized"))
+			// Both triggers rejected; both rejections must have been caught + logged. The
+			// stubbed task logs other abort errors through the same logger, so count the
+			// memory writer lines only.
+			const writerLines = errorSpy.mock.calls
+				.map(([message]) => String(message))
+				.filter((message) => message.startsWith("[memory]"))
+			expect(writerLines).toHaveLength(2)
+			for (const line of writerLines) {
+				expect(line).toContain("memory paths not initialized")
+			}
 		} finally {
 			errorSpy.mockRestore()
 		}

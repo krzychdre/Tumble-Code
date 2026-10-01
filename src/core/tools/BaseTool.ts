@@ -3,6 +3,7 @@ import type { ToolName } from "@roo-code/types"
 import { Task } from "../task/Task"
 import type { ToolUse, HandleError, PushToolResult, AskApproval, NativeToolArgs } from "../../shared/tools"
 import { clearToolStreamState, getToolStreamState } from "./toolStreamState"
+import { logger } from "../../utils/logging"
 
 /**
  * Callbacks passed to tool execution
@@ -144,7 +145,7 @@ export abstract class BaseTool<TName extends ToolName> {
 			try {
 				await this.handlePartial(task, block)
 			} catch (error) {
-				console.error(`Error in handlePartial:`, error)
+				logger.error(`Error in handlePartial:`, error)
 				await callbacks.handleError(
 					`handling partial ${this.name}`,
 					error instanceof Error ? error : new Error(String(error)),
@@ -158,7 +159,7 @@ export abstract class BaseTool<TName extends ToolName> {
 				try {
 					await task.diffViewProvider.reset()
 				} catch (resetError) {
-					console.error(`Error resetting diffViewProvider after partial error:`, resetError)
+					logger.error(`Error resetting diffViewProvider after partial error:`, resetError)
 				}
 			}
 			return
@@ -187,7 +188,7 @@ export abstract class BaseTool<TName extends ToolName> {
 				throw new Error("Tool call is missing native arguments (nativeArgs).")
 			}
 		} catch (error) {
-			console.error(`Error parsing parameters:`, error)
+			logger.error(`Error parsing parameters:`, error)
 			// Teach, do not just complain: the tool name travels as a separate argument so
 			// `formatResponse.toolError` can attach the minimal valid example as a structured
 			// field. Embedding it in the message would put it inside a serialized Error and
@@ -220,7 +221,7 @@ export abstract class BaseTool<TName extends ToolName> {
 		try {
 			await this.execute(params, task, callbacks)
 		} catch (error) {
-			console.error(`Error executing ${this.name}:`, error)
+			logger.error(`Error executing ${this.name}:`, error)
 			await callbacks.handleError(
 				`executing ${this.name}`,
 				error instanceof Error ? error : new Error(String(error)),

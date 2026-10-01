@@ -15,6 +15,7 @@ import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckp
 import type { ContextProxy } from "../config/ContextProxy"
 import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../task-persistence"
 import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
+import { logger } from "../../utils/logging"
 
 /**
  * What the task-history gateway needs from its provider. The member names
@@ -493,14 +494,12 @@ export class TaskHistoryGateway {
 			try {
 				apiConversationHistory = JSON.parse(await fs.readFile(apiConversationHistoryFilePath, "utf8"))
 			} catch (error) {
-				console.warn(
+				logger.warn(
 					`[getTaskWithId] api_conversation_history.json corrupted for task ${id}, returning empty history: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}
 		} else {
-			console.warn(
-				`[getTaskWithId] api_conversation_history.json missing for task ${id}, returning empty history`,
-			)
+			logger.warn(`[getTaskWithId] api_conversation_history.json missing for task ${id}, returning empty history`)
 		}
 
 		return {
@@ -562,7 +561,7 @@ export class TaskHistoryGateway {
 						}
 					} catch (error) {
 						// Child task may already be deleted or not found, continue
-						console.log(`[deleteTaskWithId] child task ${taskId} not found, skipping`)
+						logger.info(`[deleteTaskWithId] child task ${taskId} not found, skipping`)
 					}
 				}
 
@@ -614,7 +613,7 @@ export class TaskHistoryGateway {
 				try {
 					await ShadowCheckpointService.deleteTask({ taskId, globalStorageDir, workspaceDir })
 				} catch (error) {
-					console.error(
+					logger.error(
 						`[deleteTaskWithId${taskId}] failed to delete associated shadow repository or branch: ${error instanceof Error ? error.message : String(error)}`,
 					)
 				}
@@ -623,9 +622,9 @@ export class TaskHistoryGateway {
 				try {
 					const dirPath = await getTaskDirectoryPath(globalStoragePath, taskId)
 					await fs.rm(dirPath, { recursive: true, force: true })
-					console.log(`[deleteTaskWithId${taskId}] removed task directory`)
+					logger.info(`[deleteTaskWithId${taskId}] removed task directory`)
 				} catch (error) {
-					console.error(
+					logger.error(
 						`[deleteTaskWithId${taskId}] failed to remove task directory: ${error instanceof Error ? error.message : String(error)}`,
 					)
 				}

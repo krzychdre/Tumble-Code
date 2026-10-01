@@ -16,6 +16,7 @@ import type { Task } from "../task/Task"
 
 import { formatResponse } from "../prompts/responses"
 import { sanitizeToolUseId } from "../../utils/tool-id"
+import { logger } from "../../utils/logging"
 
 /**
  * Mistake accounting for a tool failure reported through `handleError`.
@@ -143,9 +144,7 @@ export function createToolCallbacks(task: Task, { block, toolCallId, toolName }:
 
 	const pushToolResult = (content: ToolResponse) => {
 		if (hasToolResult) {
-			console.warn(
-				`[presentAssistantMessage] Skipping duplicate tool_result for ${duplicateLabel}: ${toolCallId}`,
-			)
+			logger.warn(`[presentAssistantMessage] Skipping duplicate tool_result for ${duplicateLabel}: ${toolCallId}`)
 			return
 		}
 
@@ -263,7 +262,7 @@ export function createToolCallbacks(task: Task, { block, toolCallId, toolName }:
 
 		// The stack is for a developer, not for the model: log it here, and send the model
 		// only the message (see `describeToolErrorForModel`).
-		console.error(`[presentAssistantMessage] Error ${action}:`, error)
+		logger.error(`[presentAssistantMessage] Error ${action}:`, error)
 
 		const errorString = `Error ${action}: ${describeToolErrorForModel(error)}`
 

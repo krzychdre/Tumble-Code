@@ -1,4 +1,5 @@
 import type { HistoryItem } from "@roo-code/types"
+import { logger } from "../../utils/logging"
 
 export interface AggregatedCosts {
 	ownCost: number // This task's own API costs
@@ -25,7 +26,7 @@ export async function aggregateTaskCostsRecursive(
 ): Promise<AggregatedCosts> {
 	// Prevent infinite loops
 	if (visited.has(taskId)) {
-		console.warn(`[aggregateTaskCostsRecursive] Circular reference detected: ${taskId}`)
+		logger.warn(`[aggregateTaskCostsRecursive] Circular reference detected: ${taskId}`)
 		return { ownCost: 0, childrenCost: 0, totalCost: 0 }
 	}
 	visited.add(taskId)
@@ -33,7 +34,7 @@ export async function aggregateTaskCostsRecursive(
 	// Load this task's history
 	const history = await getTaskHistory(taskId)
 	if (!history) {
-		console.warn(`[aggregateTaskCostsRecursive] Task ${taskId} not found`)
+		logger.warn(`[aggregateTaskCostsRecursive] Task ${taskId} not found`)
 		return { ownCost: 0, childrenCost: 0, totalCost: 0 }
 	}
 

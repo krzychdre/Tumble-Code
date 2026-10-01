@@ -10,6 +10,7 @@ import { saveTaskMessages } from "../../task-persistence"
 import { handleCheckpointRestoreOperation } from "../checkpointRestoreHandler"
 import { type HandlerContext, resolveIncomingImages } from "./context"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 type CurrentTask = NonNullable<ReturnType<HandlerContext["provider"]["getCurrentTask"]>>
 
@@ -136,7 +137,7 @@ const handleDeleteMessageConfirm = async (
 	const { provider } = ctx
 	const currentCline = provider.getCurrentTask()
 	if (!currentCline) {
-		console.error("[handleDeleteMessageConfirm] No current cline available")
+		logger.error("[handleDeleteMessageConfirm] No current cline available")
 		return
 	}
 
@@ -172,7 +173,7 @@ const handleDeleteMessageConfirm = async (
 				})
 			} else {
 				// No checkpoint found before this message
-				console.log("[handleDeleteMessageConfirm] No checkpoint found before message")
+				logger.info("[handleDeleteMessageConfirm] No checkpoint found before message")
 				vscode.window.showWarningMessage("No checkpoint found before this message")
 			}
 		} else {
@@ -181,7 +182,7 @@ const handleDeleteMessageConfirm = async (
 			await rewindKeepingCheckpoints(ctx, currentCline, messageIndex, targetMessage.ts!)
 		}
 	} catch (error) {
-		console.error("Error in delete message:", error)
+		logger.error("Error in delete message:", error)
 		vscode.window.showErrorMessage(
 			t("common:errors.message.error_deleting_message", {
 				error: error instanceof Error ? error.message : String(error),
@@ -209,10 +210,10 @@ const handleEditOperation = async (
 			// Find the last checkpoint before this message
 			hasCheckpoint = findNextCheckpoint(currentCline, messageTs) !== undefined
 		} else {
-			console.log("[webviewMessageHandler] Edit - Message not found in clineMessages!")
+			logger.info("[webviewMessageHandler] Edit - Message not found in clineMessages!")
 		}
 	} else {
-		console.log("[webviewMessageHandler] Edit - No currentCline available!")
+		logger.info("[webviewMessageHandler] Edit - No currentCline available!")
 	}
 
 	// Send message to webview to show edit confirmation dialog
@@ -238,7 +239,7 @@ const handleEditMessageConfirm = async (
 	const { provider } = ctx
 	const currentCline = provider.getCurrentTask()
 	if (!currentCline) {
-		console.error("[handleEditMessageConfirm] No current cline available")
+		logger.error("[handleEditMessageConfirm] No current cline available")
 		return
 	}
 
@@ -247,7 +248,7 @@ const handleEditMessageConfirm = async (
 
 	if (messageIndex === -1) {
 		const errorMessage = t("common:errors.message.message_not_found", { messageTs })
-		console.error("[handleEditMessageConfirm]", errorMessage)
+		logger.error("[handleEditMessageConfirm]", errorMessage)
 		await vscode.window.showErrorMessage(errorMessage)
 		return
 	}
@@ -279,7 +280,7 @@ const handleEditMessageConfirm = async (
 				return
 			} else {
 				// No checkpoint found before this message
-				console.log("[handleEditMessageConfirm] No checkpoint found before message")
+				logger.info("[handleEditMessageConfirm] No checkpoint found before message")
 				vscode.window.showWarningMessage("No checkpoint found before this message")
 				// Continue with non-checkpoint edit
 			}
@@ -325,7 +326,7 @@ const handleEditMessageConfirm = async (
 
 		await currentCline.submitUserMessage(editedContent, images)
 	} catch (error) {
-		console.error("Error in edit message:", error)
+		logger.error("Error in edit message:", error)
 		vscode.window.showErrorMessage(
 			t("common:errors.message.error_editing_message", {
 				error: error instanceof Error ? error.message : String(error),

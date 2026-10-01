@@ -3,6 +3,7 @@
 import * as vscode from "vscode"
 import type { MarketplaceItemType } from "../../../services/marketplace"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const marketplaceHandlers: DomainHandlerMap<"marketplace"> = {
 	filterMarketplaceItems: async (ctx, message) => {
@@ -16,7 +17,7 @@ export const marketplaceHandlers: DomainHandlerMap<"marketplace"> = {
 				})
 				await provider.postStateToWebview()
 			} catch (error) {
-				console.error("Marketplace: Error filtering items:", error)
+				logger.error("Marketplace: Error filtering items:", error)
 				vscode.window.showErrorMessage("Failed to filter marketplace items")
 			}
 		}
@@ -37,7 +38,7 @@ export const marketplaceHandlers: DomainHandlerMap<"marketplace"> = {
 					message.mpInstallOptions,
 				)
 				await provider.postStateToWebview()
-				console.log(`Marketplace item installed and config file opened: ${configFilePath}`)
+				logger.info(`Marketplace item installed and config file opened: ${configFilePath}`)
 
 				// Send success message to webview
 				provider.postMessageToWebview({
@@ -46,7 +47,7 @@ export const marketplaceHandlers: DomainHandlerMap<"marketplace"> = {
 					slug: message.mpItem.id,
 				})
 			} catch (error) {
-				console.error(`Error installing marketplace item: ${error}`)
+				logger.error(`Error installing marketplace item: ${error}`)
 				// Send error message to webview
 				provider.postMessageToWebview({
 					type: "marketplaceInstallResult",
@@ -72,7 +73,7 @@ export const marketplaceHandlers: DomainHandlerMap<"marketplace"> = {
 					slug: message.mpItem.id,
 				})
 			} catch (error) {
-				console.error(`Error removing marketplace item: ${error}`)
+				logger.error(`Error removing marketplace item: ${error}`)
 
 				// Show error message to user
 				vscode.window.showErrorMessage(
@@ -92,7 +93,7 @@ export const marketplaceHandlers: DomainHandlerMap<"marketplace"> = {
 			const errorMessage = !marketplaceManager
 				? "Marketplace manager is not available"
 				: "Missing required parameters for marketplace item removal"
-			console.error(errorMessage)
+			logger.error(errorMessage)
 
 			vscode.window.showErrorMessage(errorMessage)
 

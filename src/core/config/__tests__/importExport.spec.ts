@@ -20,6 +20,7 @@ import { ContextProxy } from "../ContextProxy"
 import { CustomModesManager } from "../CustomModesManager"
 import { safeWriteJson } from "@roo-code/core/fs"
 import type { Mock } from "vitest"
+import { logger } from "../../../utils/logging"
 
 vi.mock("vscode", () => ({
 	workspace: {
@@ -1150,7 +1151,7 @@ describe("importExport", () => {
 				const showInfoMessageSpy = vi
 					.spyOn(vscode.window, "showInformationMessage")
 					.mockResolvedValue(undefined)
-				const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+				const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 				await importSettingsWithFeedback(
 					{
@@ -1215,7 +1216,7 @@ describe("importExport", () => {
 				])
 				const mockProvider = { settingsImportedAt: 0, postStateToWebview: vi.fn().mockResolvedValue(undefined) }
 				const showWarningMessageSpy = vi.spyOn(vscode.window, "showWarningMessage").mockResolvedValue(undefined)
-				const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+				const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 				await importSettingsWithFeedback(
 					{
@@ -1488,7 +1489,7 @@ describe("importExport", () => {
 				}
 
 				const showWarningMessageSpy = vi.spyOn(vscode.window, "showWarningMessage").mockResolvedValue(undefined)
-				const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+				const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 				await importSettingsWithFeedback(
 					{

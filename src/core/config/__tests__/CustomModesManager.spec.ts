@@ -16,6 +16,7 @@ import { GlobalFileNames } from "../../../shared/globalFileNames"
 
 import { CustomModesManager } from "../CustomModesManager"
 import { modeRulesDir } from "../modeRulesDir"
+import { logger } from "../../../utils/logging"
 
 vi.mock("vscode", () => ({
 	workspace: {
@@ -103,7 +104,7 @@ describe("CustomModesManager", () => {
 				}
 				throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" })
 			})
-			const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+			const consoleError = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			try {
 				const modes = await manager.getCustomModes()

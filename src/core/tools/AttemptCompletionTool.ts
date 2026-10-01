@@ -12,6 +12,7 @@ import type { ToolUse } from "../../shared/tools"
 import { t } from "../../i18n"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { logger } from "../../utils/logging"
 
 interface AttemptCompletionParams {
 	result: string
@@ -145,7 +146,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 							// Unexpected status (undefined or "delegated") - log error and skip delegation
 							// undefined indicates a bug in status persistence during child creation
 							// "delegated" would mean this child has its own grandchild pending (shouldn't reach attempt_completion)
-							console.error(
+							logger.error(
 								`[AttemptCompletionTool] Unexpected child task status "${status}" for task ${task.taskId}. ` +
 									`Expected "active" or "completed". Skipping delegation to prevent data corruption.`,
 							)
@@ -153,7 +154,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 						}
 					} catch (err) {
 						// If we can't get the history, log error and skip delegation
-						console.error(
+						logger.error(
 							`[AttemptCompletionTool] Failed to get history for task ${task.taskId}: ${(err as Error)?.message ?? String(err)}. ` +
 								`Skipping delegation.`,
 						)

@@ -7,6 +7,7 @@ import { ContextProxy } from "../../config/ContextProxy"
 import { TaskHistoryStore } from "../../task-persistence"
 import { Task } from "../../task/Task"
 import type { HistoryItem, ProviderName } from "@roo-code/types"
+import { logger } from "../../../utils/logging"
 
 vi.mock("vscode", () => ({
 	ExtensionContext: vi.fn(),
@@ -918,8 +919,8 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Mock updateTaskHistory
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
 
-			// Mock console.error to suppress error output
-			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			// Mock logger.error to suppress error output
+			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Clear previous mock calls to isolate this test
 			vi.mocked(mockContext.globalState.update).mockClear()
@@ -962,8 +963,8 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Mock updateTaskHistory to throw error
 			vi.spyOn(provider, "updateTaskHistory").mockRejectedValue(new Error("Update failed"))
 
-			// Mock console.error
-			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			// Mock logger.error
+			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// The updateTaskHistory failure will cause handleModeSwitch to throw
 			// This is the actual behavior based on the test failure

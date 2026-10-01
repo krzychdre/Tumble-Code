@@ -10,6 +10,7 @@ import { sanitizeToolUseId } from "../../utils/tool-id"
 import { type AssistantMessageContent } from "../assistant-message"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskMessageLog } from "./TaskMessageLog"
+import { logger } from "../../utils/logging"
 
 /**
  * The state the assembler reads and writes on the owning task. Mutable members
@@ -99,7 +100,7 @@ export class AssistantMessageAssembler {
 						const sanitizedId = sanitizeToolUseId(mcpBlock.id)
 						// Pre-flight deduplication: Skip if we've already added this ID
 						if (seenToolUseIds.has(sanitizedId)) {
-							console.warn(
+							logger.warn(
 								`[Task#${this.access.taskId}] Pre-flight deduplication: Skipping duplicate MCP tool_use ID: ${sanitizedId} (tool: ${mcpBlock.name})`,
 							)
 							continue
@@ -120,7 +121,7 @@ export class AssistantMessageAssembler {
 						const sanitizedId = sanitizeToolUseId(toolCallId)
 						// Pre-flight deduplication: Skip if we've already added this ID
 						if (seenToolUseIds.has(sanitizedId)) {
-							console.warn(
+							logger.warn(
 								`[Task#${this.access.taskId}] Pre-flight deduplication: Skipping duplicate tool_use ID: ${sanitizedId} (tool: ${toolUse.name})`,
 							)
 							continue

@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { formatResponse } from "../../prompts/responses"
 import { BaseTool } from "../../tools/BaseTool"
 import { createToolCallbacks } from "../toolCallbacks"
+import { logger } from "../../../utils/logging"
 
 vi.mock("../../task/Task")
 
@@ -123,7 +124,7 @@ describe("createToolCallbacks", () => {
 		}
 
 		beforeEach(() => {
-			vi.spyOn(console, "error").mockImplementation(() => {})
+			vi.spyOn(logger, "error").mockImplementation(() => {})
 		})
 
 		it("sends only the message of an Error thrown inside a tool", async () => {
@@ -166,7 +167,7 @@ describe("createToolCallbacks", () => {
 
 			expect(task.askSay.say).toHaveBeenCalledWith("error", "Error reading file:\nboom")
 			const logged = vi
-				.mocked(console.error)
+				.mocked(logger.error)
 				.mock.calls.flat()
 				.map((arg) => (arg instanceof Error ? String(arg.stack) : String(arg)))
 				.join("\n")

@@ -6,6 +6,7 @@ import { RooIgnoreController } from "../RooIgnoreController"
 import * as path from "path"
 import * as fs from "fs/promises"
 import { fileExistsAtPath } from "../../../utils/fs"
+import { logger } from "../../../utils/logging"
 
 // Mock dependencies
 vi.mock("fs/promises")
@@ -307,8 +308,8 @@ build/
 				throw new Error("Test error")
 			})
 
-			// Spy on console.error
-			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			// Spy on logger.error
+			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Even with mix of allowed/ignored paths, should return empty array on error
 			const filtered = controller.filterPaths(["src/app.js", "node_modules/package.json"])

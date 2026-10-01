@@ -2,6 +2,7 @@ import { ProviderSettings, RooCodeEventName } from "@roo-code/types"
 
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
+import { logger } from "../../../utils/logging"
 
 // Mock dependencies
 vi.mock("../../webview/ClineProvider")
@@ -107,8 +108,8 @@ describe("Task dispose method", () => {
 			throw new Error("Test error")
 		})
 
-		// Spy on console.error
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		// Spy on logger.error
+		const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		// Call dispose - should not throw
 		expect(() => task.dispose()).not.toThrow()
@@ -123,7 +124,7 @@ describe("Task dispose method", () => {
 
 	test("should clean up all resources in correct order", () => {
 		const removeAllListenersSpy = vi.spyOn(task, "removeAllListeners")
-		const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+		const consoleLogSpy = vi.spyOn(logger, "debug").mockImplementation(() => {})
 
 		// Call dispose
 		task.dispose()

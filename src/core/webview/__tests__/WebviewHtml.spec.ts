@@ -4,6 +4,7 @@ import axios from "axios"
 import type * as vscode from "vscode"
 
 import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOptions } from "../WebviewHtml"
+import { logger } from "../../../utils/logging"
 
 vi.mock("vscode", () => ({
 	Uri: {
@@ -37,7 +38,7 @@ describe("WebviewHtml", () => {
 		vi.mocked(axios.get).mockReset().mockResolvedValue({})
 		spies.push(
 			vi.spyOn(realFs, "existsSync").mockReturnValue(false),
-			vi.spyOn(console, "log").mockImplementation(() => {}),
+			vi.spyOn(logger, "info").mockImplementation(() => {}),
 		)
 	})
 

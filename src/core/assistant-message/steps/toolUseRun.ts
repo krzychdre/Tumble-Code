@@ -11,6 +11,7 @@ import type { Task } from "../../task/Task"
 import { formatResponse } from "../../prompts/responses"
 import { sanitizeToolUseId } from "../../../utils/tool-id"
 import { tryAutoMaterializeDirectCall } from "../../task/deferred-tools-resolver"
+import { logger } from "../../../utils/logging"
 
 /*
  * The steps that run a tool_use block once it passed the guards in
@@ -54,7 +55,7 @@ export async function checkpointSaveAndMark(task: Task) {
 		await (task.pendingCheckpointSave ?? task.checkpointSave(true))
 		task.currentStreamingDidCheckpoint = true
 	} catch (error) {
-		console.error(`[Task#presentAssistantMessage] Error saving checkpoint: ${error.message}`, error)
+		logger.error(`[Task#presentAssistantMessage] Error saving checkpoint: ${error.message}`, error)
 	} finally {
 		task.pendingCheckpointSave = undefined
 	}
@@ -79,7 +80,7 @@ export async function runCustomTool(
 				customToolArgs = customTool.parameters.parse(block.nativeArgs || block.params || {})
 			} catch (parseParamsError) {
 				const message = `Custom tool "${block.name}" argument validation failed: ${parseParamsError.message}`
-				console.error(message)
+				logger.error(message)
 				task.consecutiveMistakeCount++
 				await task.askSay.say("error", message)
 				pushToolResult(formatResponse.toolError(message))
@@ -92,7 +93,7 @@ export async function runCustomTool(
 			task,
 		})
 
-		console.log(`${customTool.name}.execute(): ${JSON.stringify(customToolArgs)} -> ${JSON.stringify(result)}`)
+		logger.debug(`${customTool.name}.execute(): ${JSON.stringify(customToolArgs)} -> ${JSON.stringify(result)}`)
 
 		pushToolResult(result)
 		task.consecutiveMistakeCount = 0

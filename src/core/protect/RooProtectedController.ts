@@ -1,5 +1,6 @@
 import path from "path"
 import ignore, { Ignore } from "ignore"
+import { logger } from "../../utils/logging"
 
 export const SHIELD_SYMBOL = "\u{1F6E1}"
 
@@ -53,7 +54,7 @@ export class RooProtectedController {
 			return this.ignoreInstance.ignores(relativePath)
 		} catch (error) {
 			// If there's an error processing the path, err on the side of caution
-			console.error(`Error checking protection for ${filePath}:`, error)
+			logger.error(`Error checking protection for ${filePath}:`, error)
 			return false
 		}
 	}

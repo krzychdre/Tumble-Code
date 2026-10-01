@@ -8,6 +8,7 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import * as fsSync from "fs"
 import { fileExistsAtPath } from "../../../utils/fs"
+import { logger } from "../../../utils/logging"
 
 // Mock dependencies
 vi.mock("fs/promises")
@@ -150,8 +151,8 @@ describe("RooIgnoreController", () => {
 			mockFileExists.mockResolvedValue(true)
 			mockReadFile.mockRejectedValue(new Error("Test file read error"))
 
-			// Spy on console.error
-			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			// Spy on logger.error
+			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Initialize controller - shouldn't throw
 			await controller.initialize()
@@ -361,8 +362,8 @@ describe("RooIgnoreController", () => {
 				throw new Error("Test error")
 			})
 
-			// Spy on console.error
-			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+			// Spy on logger.error
+			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Should return empty array on error (fail closed)
 			const result = controller.filterPaths(["file1.txt", "file2.txt"])

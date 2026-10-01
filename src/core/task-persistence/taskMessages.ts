@@ -11,6 +11,7 @@ import { GlobalFileNames } from "../../shared/globalFileNames"
 import { getTaskDirectoryPath } from "../../utils/storage"
 
 import { quarantineCorruptFile } from "./quarantineCorruptFile"
+import { logger } from "../../utils/logging"
 
 export type ReadTaskMessagesOptions = {
 	taskId: string
@@ -34,7 +35,7 @@ export async function readTaskMessages({
 		fileContent = await fs.readFile(filePath, "utf8")
 	} catch (error) {
 		// Not a corrupt file (for example a permission error): leave it where it is.
-		console.warn(
+		logger.warn(
 			`[readTaskMessages] Failed to read ${filePath} for task ${taskId}, returning empty: ${error instanceof Error ? error.message : String(error)}`,
 		)
 		return []

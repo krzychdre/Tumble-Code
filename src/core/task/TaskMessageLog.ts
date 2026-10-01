@@ -46,6 +46,7 @@ import {
 	insertBlockAfterContent,
 	convertOrphanedToolResultsToText,
 } from "./TaskMessageLog.helpers"
+import { logger } from "../../utils/logging"
 
 export interface TaskMessageLogAccess {
 	// Core identifiers
@@ -322,7 +323,7 @@ export class TaskMessageLog {
 			timeout: 30_000, // 30 second timeout as safety net
 		}).catch(() => {
 			// If timeout or abort, log and proceed anyway to avoid hanging
-			console.warn(
+			logger.warn(
 				`[Task#${this.access.taskId}] flushPendingToolResultsToHistory: timed out waiting for assistant message to be saved`,
 			)
 		})
@@ -358,7 +359,7 @@ export class TaskMessageLog {
 	 * and log a warning.
 	 */
 	private handleFlushFailure(): void {
-		console.warn(
+		logger.warn(
 			`[Task#${this.access.taskId}] flushPendingToolResultsToHistory: save failed, retaining pending tool results in memory`,
 		)
 	}
@@ -372,7 +373,7 @@ export class TaskMessageLog {
 			})
 			return true
 		} catch (error) {
-			console.error("Failed to save API conversation history:", error)
+			logger.error("Failed to save API conversation history:", error)
 			return false
 		}
 	}
@@ -387,7 +388,7 @@ export class TaskMessageLog {
 
 		for (let attempt = 0; attempt < delays.length; attempt++) {
 			await new Promise<void>((resolve) => setTimeout(resolve, delays[attempt]))
-			console.warn(
+			logger.warn(
 				`[Task#${this.access.taskId}] retrySaveApiConversationHistory: retry attempt ${attempt + 1}/${delays.length}`,
 			)
 
@@ -631,7 +632,7 @@ export class TaskMessageLog {
 
 			return true
 		} catch (error) {
-			console.error("Failed to save Roo messages:", error)
+			logger.error("Failed to save Roo messages:", error)
 			return false
 		}
 	}

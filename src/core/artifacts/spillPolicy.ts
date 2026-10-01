@@ -4,6 +4,7 @@ import { PROTOCOL_TOOL_NAMES } from "../../shared/tools"
 import { toolNamesWhere } from "../tools/toolDescriptors"
 
 import type { ArtifactStore } from "./ArtifactStore"
+import { logger } from "../../utils/logging"
 
 /**
  * Marker that opens the notice of a spilled tool result.
@@ -243,7 +244,7 @@ export async function applyToolResultSpill(
 		const saved = await context.store.save("tool", text, context.now ? context.now() : Date.now())
 		artifactId = saved.id
 	} catch (error) {
-		console.warn(
+		logger.warn(
 			`[spillPolicy] Keeping ${bytes} byte ${toolName ?? "tool"} result inline; artifact write failed:`,
 			error,
 		)

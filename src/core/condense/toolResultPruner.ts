@@ -13,6 +13,7 @@ import {
 import { MICROCOMPACT_CLEARED_PLACEHOLDER } from "../context-management/microcompact"
 import { ApiMessage } from "../task-persistence/apiMessages"
 import { CONDENSE_KEEP_RECENT_MESSAGES } from "./index"
+import { logger } from "../../utils/logging"
 
 /**
  * Deterministic tool-result pruning.
@@ -287,7 +288,7 @@ export async function pruneToolResults(
 		try {
 			artifactId = (await store.save("prune", text, now())).id
 		} catch (error) {
-			console.warn(`[toolResultPruner] Keeping ${bytes} byte result inline; artifact write failed:`, error)
+			logger.warn(`[toolResultPruner] Keeping ${bytes} byte result inline; artifact write failed:`, error)
 			return undefined
 		}
 

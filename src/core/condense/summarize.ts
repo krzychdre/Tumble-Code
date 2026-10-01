@@ -15,6 +15,7 @@ import { generateFoldedFileContext } from "./foldedFileContext"
 import { validateSummaryFacts } from "./factValidation"
 import { transformMessagesForCondensing } from "./toolBlocksToText"
 import { computeCondenseKeepBoundary, getMessagesSinceLastSummary } from "./historyView"
+import { logger } from "../../utils/logging"
 
 const SUMMARY_PROMPT = `You are a helpful AI assistant tasked with summarizing conversations.
 
@@ -356,7 +357,7 @@ export async function summarizeConversation(options: SummarizeConversationOption
 
 	// Validate that the API handler supports message creation
 	if (!apiHandler || typeof apiHandler.createMessage !== "function") {
-		console.error("API handler is invalid for condensing. Cannot proceed.")
+		logger.error("API handler is invalid for condensing. Cannot proceed.")
 		const error = t("common:errors.condense_handler_invalid")
 		return { ...response, error }
 	}
@@ -386,7 +387,7 @@ export async function summarizeConversation(options: SummarizeConversationOption
 		const partialCost = (error as Error & { partialCost?: number })?.partialCost
 		if (typeof partialCost === "number" && partialCost > 0) cost = partialCost
 
-		console.error("Error during condensing API call:", error)
+		logger.error("Error during condensing API call:", error)
 		const errorMessage = error instanceof Error ? error.message : String(error)
 
 		const errorDetails = describeCondenseError(error)
@@ -475,7 +476,7 @@ ${commandBlocks}
 				}
 			}
 		} catch (error) {
-			console.error("[summarizeConversation] Failed to generate folded file context:", error)
+			logger.error("[summarizeConversation] Failed to generate folded file context:", error)
 			// Continue without folded context - non-critical failure
 		}
 	}

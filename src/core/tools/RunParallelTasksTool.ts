@@ -16,6 +16,7 @@ import { queuedSubagentId } from "../webview/SubagentRegistry"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
+import { logger } from "../../utils/logging"
 
 /** One requested subtask. */
 export interface ParallelSubtask {
@@ -424,7 +425,7 @@ async function persistParallelChildId(
 	} catch (error) {
 		// Non-fatal: the live fan-out and panel still work. Only rehydration
 		// from history of this specific run would lack the child relation.
-		console.warn(
+		logger.warn(
 			`[run_parallel_tasks] Failed to persist parallelChildIds for parent ${parentTaskId} (child ${childTaskId}): ${
 				error instanceof Error ? error.message : String(error)
 			}`,
@@ -446,7 +447,7 @@ async function persistSubagentSummariesSidecar(provider: SubtaskProvider, parent
 		await saveSubagentSummaries(provider.globalStoragePath, parentTaskId, summaries)
 	} catch (error) {
 		// Non-fatal: see persistParallelChildId. The live panel is unaffected.
-		console.warn(
+		logger.warn(
 			`[run_parallel_tasks] Failed to persist subagents sidecar for parent ${parentTaskId}: ${
 				error instanceof Error ? error.message : String(error)
 			}`,

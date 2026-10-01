@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ClineProvider } from "../ClineProvider"
 import { Task } from "../../task/Task"
+import { logger } from "../../../utils/logging"
 
 // Mock dependencies (mirrors ClineProvider.delegation-cancel-races.spec.ts)
 vi.mock("vscode", () => {
@@ -209,7 +210,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		const createWithHistory = vi.fn().mockResolvedValue(undefined)
 		provider.createTaskWithHistoryItem = createWithHistory as any
 
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		await provider.cancelTask()
 
@@ -243,7 +244,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		const createWithHistory = vi.fn().mockResolvedValue(undefined)
 		provider.createTaskWithHistoryItem = createWithHistory as any
 
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		// Use fake timers so the 3s pWaitFor timeout fires instantly.
 		vi.useFakeTimers()

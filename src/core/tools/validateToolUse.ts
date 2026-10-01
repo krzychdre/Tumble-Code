@@ -6,6 +6,7 @@ import { type Mode, FileRestrictionError, getModeBySlug, getGroupName } from "..
 import { EXPERIMENT_IDS } from "../../shared/experiments"
 import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS, TOOL_ALIASES } from "../../shared/tools"
 import { isAutoMemPath } from "../memory/paths"
+import { logger } from "../../utils/logging"
 
 /**
  * Checks if a tool name is a valid, known tool.
@@ -115,7 +116,7 @@ function doesFileMatchRegex(filePath: string, pattern: string): boolean {
 		const regex = new RegExp(pattern)
 		return regex.test(filePath)
 	} catch (error) {
-		console.error(`Invalid regex pattern: ${pattern}`, error)
+		logger.error(`Invalid regex pattern: ${pattern}`, error)
 		return false
 	}
 }

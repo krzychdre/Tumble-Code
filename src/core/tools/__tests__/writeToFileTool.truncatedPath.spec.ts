@@ -7,6 +7,7 @@ import { NativeToolCallParser } from "../../assistant-message/NativeToolCallPars
 import { DiffViewProvider } from "../../../integrations/editor/DiffViewProvider"
 import type { ToolUse } from "../../../shared/tools"
 import { writeToFileTool } from "../WriteToFileTool"
+import { logger } from "../../../utils/logging"
 
 /**
  * write_to_file whose `path` partial-json truncated at the moment the diff view
@@ -120,7 +121,7 @@ describe("write_to_file: diff opened for a truncated partial path (SVC-17)", () 
 
 	beforeEach(async () => {
 		vi.clearAllMocks()
-		vi.spyOn(console, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
 		cwd = await fs.mkdtemp(path.join(os.tmpdir(), "svc17-truncated-path-"))
 		workspace.workspaceFolders = [{ uri: { fsPath: cwd } }]
 		workspace.applyEdit.mockResolvedValue(true)
