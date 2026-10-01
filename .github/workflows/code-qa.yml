@@ -62,7 +62,7 @@ jobs:
             - name: Build webview (bundle boundary guard)
               run: pnpm --filter @roo-code/vscode-webview exec vite build
 
-    # The CLI's stdin stream protocol end to end (apps/cli/scripts/integration):
+    # The CLI's print mode and JSON output end to end (apps/cli/scripts/integration):
     # the real CLI and extension bundle answer the cases' prompts through the
     # hidden fake-ai provider (the scripted model in lib/fake-model.ts), so the
     # job needs no network access to a model and no API key. Linux only.

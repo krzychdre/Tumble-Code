@@ -155,18 +155,6 @@ tumble --print "Summarize this repository"
 tumble --print --create-with-session-id 018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87 "Summarize this repository"
 ```
 
-### Stdin Stream Mode (`--stdin-prompt-stream`)
-
-For programmatic control (one process, multiple prompts), use `--stdin-prompt-stream` with `--print`.
-Send NDJSON commands via stdin:
-
-```bash
-printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | tumble --print --stdin-prompt-stream --output-format stream-json
-
-# Optional: provide taskId per start command
-printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | tumble --print --stdin-prompt-stream --output-format stream-json
-```
-
 ## Terminal UI
 
 The interactive TUI uses a **print-and-forget transcript** model inspired by Claude Code. Finalized messages are written once into your terminal's native scrollback via ink's `<Static>`; only the dynamic tail (in-flight message, spinner, dialogs, input) re-renders. There is no in-app scroll viewport — use your terminal's native scrollback (mouse wheel, Shift+PgUp, tmux copy-mode) to review history.
@@ -240,7 +228,6 @@ When the agent asks a followup question, a permission-bordered dialog renders th
 | `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                       | None                    |
 | `-w, --workspace <path>`                | Workspace path to operate in                                                                 | Current directory       |
 | `-p, --print`                           | Print response and exit (non-interactive mode)                                               | `false`                 |
-| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                                 | `false`                 |
 | `-e, --extension <path>`                | Path to the extension bundle directory                                                       | Auto-detected           |
 | `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)               | `false`                 |
 | `-a, --require-approval`                | Require manual approval before actions execute                                               | `false`                 |

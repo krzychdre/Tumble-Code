@@ -4,11 +4,11 @@
  * The CLI's reading of the extension's messages and its way back to the
  * extension:
  * - `handleMessage` feeds the extension's messages in;
- * - the agent loop state (`getAgentState`, `getCurrentAsk`, `hasActiveTask`)
- *   and the task's messages (`getMessages`) can be queried at any time;
+ * - the agent loop state (`getAgentState`) and the task's messages
+ *   (`getMessages`) can be queried at any time;
  * - events (`stateChange`, `delivery`, `waitingForInput`, `taskCompleted`,
  *   `error`) report what changed;
- * - `approve`/`reject`/`respond`/`cancelTask` answer the extension.
+ * - `approve`/`reject`/`respond` answer the extension.
  *
  * ```
  *                     ┌───────────────────────────────────────────────┐
@@ -21,11 +21,11 @@
  * ```
  */
 
-import type { ExtensionMessage, WebviewMessage, ClineAskResponse, ClineMessage, ClineAsk } from "@roo-code/types"
+import type { ExtensionMessage, WebviewMessage, ClineAskResponse, ClineMessage } from "@roo-code/types"
 
 import { MessageProcessor } from "./message-processor.js"
 import { TypedEventEmitter, type ClientEventMap } from "./events.js"
-import { AgentLoopState, type AgentStateInfo } from "./agent-state.js"
+import type { AgentStateInfo } from "./agent-state.js"
 import { TranscriptReader } from "./transcript-reader.js"
 
 export interface ExtensionClientConfig {
@@ -76,19 +76,9 @@ export class ExtensionClient {
 		return this.processor.getAgentState()
 	}
 
-	/** Check if there is an active task. */
-	hasActiveTask(): boolean {
-		return this.getAgentState().state !== AgentLoopState.NO_TASK
-	}
-
 	/** All messages of the current task, as the extension last sent them. */
 	getMessages(): ClineMessage[] {
 		return this.processor.getMessages()
-	}
-
-	/** The current ask type if the agent is waiting for input. */
-	getCurrentAsk(): ClineAsk | undefined {
-		return this.getAgentState().currentAsk
 	}
 
 	/** Check if the client has received a transcript from the extension. */
@@ -136,11 +126,6 @@ export class ExtensionClient {
 
 	private sendResponse(response: ClineAskResponse, text?: string, images?: string[]): void {
 		this.sendMessage({ type: "askResponse", askResponse: response, text, images })
-	}
-
-	/** Cancel a running task. */
-	cancelTask(): void {
-		this.sendMessage({ type: "cancelTask" })
 	}
 
 	/**

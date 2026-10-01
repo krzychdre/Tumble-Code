@@ -41,21 +41,6 @@ export interface ProcessGuardsOptions {
 	 */
 	onExit?: (code: number) => void
 
-	/**
-	 * Set when the cleanup work is already being done elsewhere (print mode's
-	 * `--signal-only-exit`: the task loop finished or failed and the process
-	 * now only parks until a signal arrives). The error guards report via
-	 * `onError` but neither clean up nor exit, because exiting would tear down
-	 * a stdin harness that is waiting for further requests.
-	 */
-	keepAlive?: boolean
-
-	/**
-	 * Errors that are expected control flow, not crashes (print mode's
-	 * cancellation classifier). Classified first; expected errors are ignored.
-	 */
-	isExpectedError?: (error: unknown) => boolean
-
 	/** Process-like object to install on. Default: the real `process`. */
 	target?: ProcessLike
 }
@@ -86,8 +71,6 @@ export function installProcessGuards({
 	onError,
 	exitTimeoutMs = GUARD_EXIT_TIMEOUT_MS,
 	onExit = (code) => process.exit(code),
-	keepAlive = false,
-	isExpectedError = () => false,
 	target = process,
 }: ProcessGuardsOptions): () => Promise<void> {
 	let cleanupDone = false
@@ -138,27 +121,13 @@ export function installProcessGuards({
 	const onSigterm = () => exitAfterCleanup(SIGNAL_EXIT_CODES.SIGTERM, "SIGTERM")
 
 	const onUncaughtException = (error: unknown) => {
-		if (isExpectedError(error)) {
-			return
-		}
-
 		onError?.(error, "uncaughtException")
-
-		if (!keepAlive) {
-			exitAfterCleanup(1, "uncaughtException")
-		}
+		exitAfterCleanup(1, "uncaughtException")
 	}
 
 	const onUnhandledRejection = (reason: unknown) => {
-		if (isExpectedError(reason)) {
-			return
-		}
-
 		onError?.(reason, "unhandledRejection")
-
-		if (!keepAlive) {
-			exitAfterCleanup(1, "unhandledRejection")
-		}
+		exitAfterCleanup(1, "unhandledRejection")
 	}
 
 	target.on("SIGINT", onSigint)

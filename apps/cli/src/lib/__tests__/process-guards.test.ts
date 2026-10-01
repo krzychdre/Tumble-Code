@@ -113,29 +113,6 @@ describe("installProcessGuards", () => {
 		expect(onExit).toHaveBeenCalledWith(1)
 	})
 
-	it("expected control-flow errors are ignored, not fatal", async () => {
-		const { target, onExit, onError } = setup({
-			isExpectedError: (error) => error instanceof Error && error.message.includes("aborted"),
-		})
-
-		target.emit("uncaughtException", new Error("Request was aborted"))
-		await flush()
-
-		expect(onError).not.toHaveBeenCalled()
-		expect(onExit).not.toHaveBeenCalled()
-	})
-
-	it("keepAlive (print --signal-only-exit) reports but neither cleans up nor exits", async () => {
-		const { target, onCleanup, onExit, onError } = setup({ keepAlive: true })
-
-		target.emit("uncaughtException", new Error("boom"))
-		await flush()
-
-		expect(onError).toHaveBeenCalled()
-		expect(onCleanup).not.toHaveBeenCalled()
-		expect(onExit).not.toHaveBeenCalled()
-	})
-
 	it("cleanup that throws is reported and the process still exits", async () => {
 		const { target, onExit, onError } = setup({
 			onCleanup: async () => {

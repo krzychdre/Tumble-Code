@@ -1,6 +1,6 @@
 /**
- * The CLI integration suite: each file in cases/ drives the real CLI (from
- * source, through tsx) over the stdin stream protocol. The extension answers
+ * The CLI integration suite: each file in cases/ runs the real CLI (from
+ * source, through tsx) in print mode and checks its output. The extension answers
  * with the scripted model in lib/fake-model.ts, so no network or API key is
  * needed, but the extension bundle must be built first:
  *
