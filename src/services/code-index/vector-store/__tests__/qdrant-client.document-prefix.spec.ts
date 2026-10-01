@@ -32,6 +32,7 @@ import { v5 as uuidv5 } from "uuid"
 
 import { QdrantVectorStore } from "../qdrant-client"
 import { QDRANT_CODE_BLOCK_NAMESPACE } from "../../constants"
+import { logger } from "../../../../utils/logging"
 
 const NOMIC_CODE_QUERY_PREFIX = "Represent this query for searching relevant code: "
 const workspace = path.resolve(path.sep, "work", "repo")
@@ -69,9 +70,9 @@ const metadataPoint = (payload: Record<string, unknown>) => [
 describe("QdrantVectorStore document prefix marker", () => {
 	beforeEach(() => {
 		vitest.clearAllMocks()
-		vitest.spyOn(console, "log").mockImplementation(() => {})
-		vitest.spyOn(console, "warn").mockImplementation(() => {})
-		vitest.spyOn(console, "error").mockImplementation(() => {})
+		vitest.spyOn(logger, "info").mockImplementation(() => {})
+		vitest.spyOn(logger, "warn").mockImplementation(() => {})
+		vitest.spyOn(logger, "error").mockImplementation(() => {})
 		client.createCollection.mockResolvedValue(true)
 		client.createPayloadIndex.mockResolvedValue({})
 		client.upsert.mockResolvedValue({ status: "completed" })

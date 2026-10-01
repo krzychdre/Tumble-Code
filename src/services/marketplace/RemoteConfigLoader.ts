@@ -9,6 +9,7 @@ import {
 	mcpMarketplaceItemSchema,
 } from "@roo-code/types"
 import { backoffDelayMsNoJitter } from "@roo-code/core"
+import { logger } from "../../utils/logging"
 
 // The marketplace lives in the public GitHub repo, one YAML file per item:
 // marketplace/modes/<id>.yaml and marketplace/mcps/<id>.yaml.
@@ -73,7 +74,7 @@ export class RemoteConfigLoader {
 					return this.parseItem(type, file.name, raw)
 				} catch (error) {
 					complete = false
-					console.warn(`[Marketplace] Failed to fetch ${type} file ${file.name}:`, error)
+					logger.warn(`[Marketplace] Failed to fetch ${type} file ${file.name}:`, error)
 					return null
 				}
 			}),
@@ -122,14 +123,14 @@ export class RemoteConfigLoader {
 		try {
 			parsed = typeof raw === "string" ? yaml.parse(raw) : raw
 		} catch (error) {
-			console.warn(`[Marketplace] Skipping ${type} file ${fileName}: invalid YAML:`, error)
+			logger.warn(`[Marketplace] Skipping ${type} file ${fileName}: invalid YAML:`, error)
 			return null
 		}
 
 		if (type === "mode") {
 			const result = modeMarketplaceItemSchema.safeParse(parsed)
 			if (!result.success) {
-				console.warn(`[Marketplace] Skipping ${type} file ${fileName}: ${formatIssues(result.error)}`)
+				logger.warn(`[Marketplace] Skipping ${type} file ${fileName}: ${formatIssues(result.error)}`)
 				return null
 			}
 			return { type: "mode", ...result.data }
@@ -137,7 +138,7 @@ export class RemoteConfigLoader {
 
 		const result = mcpMarketplaceItemSchema.safeParse(parsed)
 		if (!result.success) {
-			console.warn(`[Marketplace] Skipping ${type} file ${fileName}: ${formatIssues(result.error)}`)
+			logger.warn(`[Marketplace] Skipping ${type} file ${fileName}: ${formatIssues(result.error)}`)
 			return null
 		}
 		return { type: "mcp", ...result.data }

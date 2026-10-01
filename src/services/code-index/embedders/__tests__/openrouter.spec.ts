@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 import { OpenAI } from "openai"
 import { OpenRouterEmbedder, OPENROUTER_DEFAULT_PROVIDER_NAME } from "../openrouter"
 import { getModelDimension, getDefaultModelId } from "../../../../shared/embeddingModels"
+import { logger } from "../../../../utils/logging"
 
 // Mock the OpenAI SDK
 vi.mock("openai")
@@ -43,8 +44,8 @@ describe("OpenRouterEmbedder", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		vi.spyOn(console, "warn").mockImplementation(() => {})
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		// Setup mock OpenAI instance
 		mockEmbeddingsCreate = vi.fn()

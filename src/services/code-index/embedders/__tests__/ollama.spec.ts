@@ -1,6 +1,7 @@
 import type { MockedFunction } from "vitest"
 
 import { CodeIndexOllamaEmbedder } from "../ollama"
+import { logger } from "../../../../utils/logging"
 
 // Mock fetch
 global.fetch = vitest.fn() as MockedFunction<typeof fetch>
@@ -48,7 +49,7 @@ vitest.mock("../../../../i18n", () => ({
 
 // Mock console methods
 const consoleMocks = {
-	error: vitest.spyOn(console, "error").mockImplementation(() => {}),
+	error: vitest.spyOn(logger, "error").mockImplementation(() => {}),
 }
 
 describe("CodeIndexOllamaEmbedder", () => {

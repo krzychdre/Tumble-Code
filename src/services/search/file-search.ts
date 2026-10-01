@@ -5,6 +5,7 @@ import { byLengthAsc, Fzf } from "fzf"
 import { getBinPath } from "../ripgrep"
 import { runRipgrep, RIPGREP_DEFAULT_TIMEOUT_MS } from "../ripgrep/runner"
 import { Package } from "../../shared/package"
+import { logger } from "../../utils/logging"
 
 export type FileResult = { path: string; type: "file" | "folder"; label?: string }
 
@@ -309,7 +310,7 @@ export async function searchWorkspaceFiles(
 
 		return verifiedResults
 	} catch (error) {
-		console.error("Error in searchWorkspaceFiles:", error)
+		logger.error("Error in searchWorkspaceFiles:", error)
 		return []
 	}
 }

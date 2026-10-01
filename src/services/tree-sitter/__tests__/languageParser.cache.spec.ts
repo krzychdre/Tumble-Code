@@ -12,6 +12,7 @@ import { createRequire } from "module"
 import * as path from "path"
 
 import { disposeLanguageParsers, loadRequiredLanguageParsers } from "../languageParser"
+import { logger } from "../../../utils/logging"
 
 // The product code loads web-tree-sitter with require(), which resolves the
 // package's CommonJS build. An ESM import would get a different Language class.
@@ -86,7 +87,7 @@ describe("loadRequiredLanguageParsers cache (real WASM)", () => {
 
 	it("retries a grammar whose load failed instead of caching the rejection", async () => {
 		const missing = path.resolve(WASM_DIR, "does-not-exist")
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		await expect(loadRequiredLanguageParsers(["a.ts"], missing)).rejects.toThrow()
 		const parsers = await loadRequiredLanguageParsers(["a.ts"], WASM_DIR)

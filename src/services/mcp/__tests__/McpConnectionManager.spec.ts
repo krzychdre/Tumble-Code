@@ -2,6 +2,7 @@ import type { Mock } from "vitest"
 
 import { McpConnectionManager, type McpConnectionManagerDeps } from "../McpConnectionManager"
 import type { McpServerConfig } from "../mcpConfigSchema"
+import { logger } from "../../../utils/logging"
 
 vi.mock("vscode", () => ({
 	workspace: { workspaceFolders: [] },
@@ -47,7 +48,7 @@ describe("McpConnectionManager", () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks()
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 		transport = fakeTransport()
 		constructors = {
 			stdio: (await import("@modelcontextprotocol/sdk/client/stdio.js")).StdioClientTransport as any,

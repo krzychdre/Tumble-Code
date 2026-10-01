@@ -6,6 +6,7 @@ import * as vscode from "vscode"
 import * as childProcess from "child_process"
 
 import { fakeRg } from "../../ripgrep/__tests__/fake-rg-process"
+import { logger } from "../../../utils/logging"
 
 // Mock Package
 vi.mock("../../../shared/package", () => ({
@@ -211,9 +212,7 @@ describe("searchWorkspaceFiles", () => {
 
 	it("checks result types with async fs calls, never the sync ones", async () => {
 		const { searchWorkspaceFiles } = await import("../file-search")
-		mockSpawn.mockReturnValue(
-			fakeRg({ stdout: [path.join(workspacePath, "src", "alpha.ts") + "\n"] }) as any,
-		)
+		mockSpawn.mockReturnValue(fakeRg({ stdout: [path.join(workspacePath, "src", "alpha.ts") + "\n"] }) as any)
 		vi.mocked(fs.promises.lstat).mockImplementation(async (p) => {
 			return { isDirectory: () => String(p) === path.join(workspacePath, "src") } as any
 		})
@@ -411,10 +410,8 @@ describe("searchWorkspaceFiles", () => {
 
 		it("does not keep a failed walk", async () => {
 			const { searchWorkspaceFiles } = await import("../file-search")
-			vi.spyOn(console, "error").mockImplementation(() => {})
-			mockSpawn.mockImplementationOnce(
-				() => fakeRg({ stderr: ["rg: IO error\n"], exitCode: 2 }) as any,
-			)
+			vi.spyOn(logger, "error").mockImplementation(() => {})
+			mockSpawn.mockImplementationOnce(() => fakeRg({ stderr: ["rg: IO error\n"], exitCode: 2 }) as any)
 			mockSpawn.mockImplementationOnce(() => rgListing(workspacePath, "a.ts"))
 
 			expect(await searchWorkspaceFiles("a", workspacePath)).toEqual([])

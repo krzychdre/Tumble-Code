@@ -8,6 +8,8 @@ import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 import { fileExistsAtPath } from "../../utils/fs"
 
 import { runRipgrep, RipgrepError, RunRipgrepResult } from "./runner"
+import { logger } from "../../utils/logging"
+
 /*
 This file provides functionality to perform regex searches on files using ripgrep.
 Inspired by: https://github.com/DiscreteTom/vscode-ripgrep-utils
@@ -212,7 +214,7 @@ export async function regexSearchFiles(
 				}
 			}
 		} catch (error) {
-			console.error("Error parsing ripgrep output:", error)
+			logger.error("Error parsing ripgrep output:", error)
 		}
 	})
 

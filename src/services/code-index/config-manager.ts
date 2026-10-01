@@ -10,6 +10,7 @@ import {
 	snapshotEmbedderOptions,
 	EMBEDDER_DESCRIPTORS,
 } from "./embedders/descriptors"
+import { logger } from "../../utils/logging"
 
 /**
  * Manages configuration state and validation for the code indexing feature.
@@ -91,7 +92,7 @@ export class CodeIndexConfigManager {
 			if (!isNaN(dimension) && dimension > 0) {
 				this.modelDimension = dimension
 			} else {
-				console.warn(
+				logger.warn(
 					`Invalid codebaseIndexEmbedderModelDimension value: ${rawDimension}. Must be a positive number.`,
 				)
 				this.modelDimension = undefined
@@ -112,7 +113,7 @@ export class CodeIndexConfigManager {
 			// silently sending the code to OpenAI.
 			if (codebaseIndexEmbedderProvider) {
 				this.unknownEmbedderProvider = codebaseIndexEmbedderProvider
-				console.warn(
+				logger.warn(
 					`[CodeIndexConfigManager] Embedder provider "${codebaseIndexEmbedderProvider}" is not available; code indexing stays unconfigured until another embedder is chosen.`,
 				)
 			}

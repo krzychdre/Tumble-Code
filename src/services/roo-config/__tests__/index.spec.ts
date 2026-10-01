@@ -43,6 +43,7 @@ import {
 	ROO_DIRECTORY_DISCOVERY_LIMIT,
 	ROO_DIRECTORY_CACHE_TTL_MS,
 } from "../index"
+import { logger } from "../../../utils/logging"
 
 describe("RooConfigService", () => {
 	beforeEach(() => {
@@ -457,7 +458,7 @@ describe("RooConfigService", () => {
 			const limit = ROO_DIRECTORY_DISCOVERY_LIMIT ?? 500
 			const files = Array.from({ length: limit }, (_, i) => ({ path: `.roo/memory/f${i}.md`, type: "file" }))
 			mockExecuteRipgrep.mockResolvedValue(files)
-			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+			const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 			await discoverSubfolderRooDirectories("/project/path")
 

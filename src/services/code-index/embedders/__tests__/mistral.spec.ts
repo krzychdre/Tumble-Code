@@ -3,6 +3,7 @@ import { OpenAI } from "openai"
 
 import { MistralEmbedder } from "../mistral"
 import { resetRateLimitGates } from "../rate-limit-gate"
+import { logger } from "../../../../utils/logging"
 
 // The embedder is the OpenAI-compatible embedder pointed at Mistral, so only the SDK is mocked
 vitest.mock("openai")
@@ -27,8 +28,8 @@ describe("MistralEmbedder", () => {
 	beforeEach(() => {
 		vitest.clearAllMocks()
 		resetRateLimitGates()
-		vitest.spyOn(console, "warn").mockImplementation(() => {})
-		vitest.spyOn(console, "error").mockImplementation(() => {})
+		vitest.spyOn(logger, "warn").mockImplementation(() => {})
+		vitest.spyOn(logger, "error").mockImplementation(() => {})
 		mockEmbeddingsCreate = vitest.fn().mockResolvedValue({
 			data: [{ embedding: [0.1, 0.2] }, { embedding: [0.3, 0.4] }],
 			usage: { prompt_tokens: 2, total_tokens: 2 },

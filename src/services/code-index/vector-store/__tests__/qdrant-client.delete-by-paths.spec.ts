@@ -4,6 +4,7 @@
 // Every path is built with the path implementation under test (join/resolve), never hard-coded.
 
 import * as nodePath from "path"
+import { logger } from "../../../../utils/logging"
 
 const client = vitest.hoisted(() => ({
 	getCollection: vitest.fn(),
@@ -44,8 +45,8 @@ describe.each(flavours)("QdrantVectorStore.deletePointsByMultipleFilePaths ($nam
 
 	beforeEach(async () => {
 		vitest.clearAllMocks()
-		vitest.spyOn(console, "warn").mockImplementation(() => {})
-		vitest.spyOn(console, "error").mockImplementation(() => {})
+		vitest.spyOn(logger, "warn").mockImplementation(() => {})
+		vitest.spyOn(logger, "error").mockImplementation(() => {})
 		client.getCollection.mockResolvedValue({ points_count: 3, config: { params: { vectors: { size: 4 } } } })
 		client.delete.mockResolvedValue({ status: "completed" })
 		client.upsert.mockResolvedValue({ status: "completed" })

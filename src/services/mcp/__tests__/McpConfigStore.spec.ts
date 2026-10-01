@@ -5,6 +5,7 @@ import * as os from "os"
 import * as path from "path"
 
 import { McpConfigStore } from "../McpConfigStore"
+import { logger } from "../../../utils/logging"
 
 // The existence check is what races: it can report "absent" while another window (or the CLI,
 // which shares this file) creates the file right after it. Controlling it lets the test open that
@@ -145,7 +146,7 @@ describe("McpConfigStore", () => {
 			expect(await store.readServerOrder("project")).toEqual([])
 
 			await writeProjectFile("{ half written")
-			const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+			const consoleError = vi.spyOn(logger, "error").mockImplementation(() => {})
 			try {
 				expect(await store.readServerOrder("project")).toEqual([])
 			} finally {

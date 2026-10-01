@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 
 import { invalidateRooDirectoryCache } from "./cache"
 import { getGlobalRooDirectory } from "./index"
+import { logger } from "../../utils/logging"
 
 /**
  * Keep the `.roo` lookup cache (cache.ts) in step with the disk.
@@ -44,7 +45,7 @@ export function registerRooDirectoryWatchers(): vscode.Disposable[] {
 			watch(new vscode.RelativePattern(vscode.Uri.file(getGlobalRooDirectory()), "{commands,commands/**}"))
 		}
 	} catch (error) {
-		console.warn(`[roo-config] Could not watch .roo directories; lookups refresh on a timer instead: ${error}`)
+		logger.warn(`[roo-config] Could not watch .roo directories; lookups refresh on a timer instead: ${error}`)
 	}
 
 	// Test doubles of the watcher API return undefined from the event hooks.

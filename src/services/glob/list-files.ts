@@ -8,6 +8,7 @@ import { getBinPath } from "../../services/ripgrep"
 import { runRipgrep, RipgrepError } from "../../services/ripgrep/runner"
 import { directoryExists } from "../../services/roo-config"
 import { DIRS_TO_IGNORE } from "./constants"
+import { logger } from "../../utils/logging"
 
 /**
  * Context object for directory scanning operations
@@ -106,7 +107,7 @@ async function getFirstLevelDirectories(dirPath: string, ignoreInstance: ReturnT
 			}
 		}
 	} catch (err) {
-		console.warn(`Could not read directory ${absolutePath}: ${err}`)
+		logger.warn(`Could not read directory ${absolutePath}: ${err}`)
 	}
 
 	return directories
@@ -346,7 +347,7 @@ async function createIgnoreInstance(dirPath: string): Promise<ReturnType<typeof 
 			ignoreInstance.add(content)
 		} catch (err) {
 			// Continue if we can't read a .gitignore file
-			console.warn(`Could not read .gitignore at ${gitignoreFile}: ${err}`)
+			logger.warn(`Could not read .gitignore at ${gitignoreFile}: ${err}`)
 		}
 	}
 
@@ -498,7 +499,7 @@ async function listFilteredDirectories(
 			}
 		} catch (err) {
 			// Continue if we can't read a directory
-			console.warn(`Could not read directory ${currentPath}: ${err}`)
+			logger.warn(`Could not read directory ${currentPath}: ${err}`)
 		}
 
 		return false // Limit not reached
@@ -658,7 +659,7 @@ async function execRipgrep(rgPath: string, args: string[], limit: number): Promi
 	try {
 		const run = await runRipgrep({ rgPath, args, limit, timeoutMs: LIST_FILES_TIMEOUT_MS })
 		if (run.timedOut) {
-			console.warn("ripgrep timed out, returning partial results")
+			logger.warn("ripgrep timed out, returning partial results")
 		}
 		return run.lines
 	} catch (error) {
@@ -666,7 +667,7 @@ async function execRipgrep(rgPath: string, args: string[], limit: number): Promi
 		// failure (exit code 2 with no output) degrades to "no files" as before.
 		// Spawn failures are real errors and propagate.
 		if (error instanceof RipgrepError && error.exitCode !== null) {
-			console.warn(`ripgrep failed, listing directories only: ${error.message}`)
+			logger.warn(`ripgrep failed, listing directories only: ${error.message}`)
 			return []
 		}
 		throw error

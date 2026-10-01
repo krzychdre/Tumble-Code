@@ -21,6 +21,7 @@ import {
 	HttpError,
 } from "../shared/validation-helpers"
 import { rateLimitGateFor } from "./rate-limit-gate"
+import { logger } from "../../../utils/logging"
 
 /** What one request to the embedding backend returned: one vector per input, in input order. */
 export interface EmbedBatchResult {
@@ -187,7 +188,7 @@ export abstract class BaseHttpEmbedder implements IEmbedder {
 				if (estimatedTokens <= this.maxItemTokens) {
 					return prefixed
 				}
-				console.warn(
+				logger.warn(
 					t("embeddings:textWithPrefixExceedsTokenLimit", {
 						index,
 						estimatedTokens,
@@ -200,9 +201,7 @@ export abstract class BaseHttpEmbedder implements IEmbedder {
 			if (itemTokens <= this.maxItemTokens) {
 				return text
 			}
-			console.warn(
-				t("embeddings:textTruncatedToTokenLimit", { index, itemTokens, maxTokens: this.maxItemTokens }),
-			)
+			logger.warn(t("embeddings:textTruncatedToTokenLimit", { index, itemTokens, maxTokens: this.maxItemTokens }))
 			return text.slice(0, this.maxItemTokens * 4)
 		})
 	}
@@ -255,7 +254,7 @@ export abstract class BaseHttpEmbedder implements IEmbedder {
 							}),
 							gate.remainingDelay(),
 						)
-						console.warn(
+						logger.warn(
 							t("embeddings:rateLimitRetry", {
 								delayMs,
 								attempt: attempt + 1,
@@ -268,7 +267,7 @@ export abstract class BaseHttpEmbedder implements IEmbedder {
 				}
 
 				this.captureError(error, "createEmbeddings", attempt + 1)
-				console.error(`${this.telemetryName} error (attempt ${attempt + 1}/${MAX_BATCH_RETRIES}):`, error)
+				logger.error(`${this.telemetryName} error (attempt ${attempt + 1}/${MAX_BATCH_RETRIES}):`, error)
 				throw this.formatError(error)
 			}
 		}

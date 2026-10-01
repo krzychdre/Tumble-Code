@@ -5,6 +5,7 @@ import matter from "gray-matter"
 import { memoizeRooDirectoryLookup } from "../roo-config/cache"
 import { RooDirectoryResolver } from "../roo-config/RooDirectoryResolver"
 import { getBuiltInCommands, getBuiltInCommand } from "./built-in-commands"
+import { logger } from "../../utils/logging"
 
 /**
  * Maximum depth for resolving symlinks to prevent cyclic symlink loops
@@ -357,7 +358,7 @@ async function scanCommandDirectory(
 					mode,
 				})
 			} catch (error) {
-				console.warn(`Failed to read command file ${resolvedPath}:`, error)
+				logger.warn(`Failed to read command file ${resolvedPath}:`, error)
 			}
 		}
 	} catch {

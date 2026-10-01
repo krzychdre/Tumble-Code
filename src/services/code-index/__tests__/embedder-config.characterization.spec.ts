@@ -13,6 +13,7 @@ import { GeminiEmbedder } from "../embedders/gemini"
 import { MistralEmbedder } from "../embedders/mistral"
 import { BedrockEmbedder } from "../embedders/bedrock"
 import { OpenRouterEmbedder } from "../embedders/openrouter"
+import { logger } from "../../../utils/logging"
 
 vi.mock("../embedders/openai", () => ({ OpenAiEmbedder: vi.fn() }))
 vi.mock("../embedders/ollama", () => ({ CodeIndexOllamaEmbedder: vi.fn() }))
@@ -86,7 +87,7 @@ function constructorCalls() {
 describe("code-index embedder configuration (characterization)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
-		vi.spyOn(console, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
 	})
 
 	it("exposes the options of every embedder from one saved config", () => {

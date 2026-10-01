@@ -15,6 +15,7 @@ import { injectVariables } from "../../utils/config"
 import { sanitizeMcpName, toolNamesMatch } from "../../utils/mcp-name"
 
 import { type McpConfigSource, type McpServerConfig, validateServerConfig } from "./mcpConfigSchema"
+import { logger } from "../../utils/logging"
 
 export type McpTransport = StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport
 
@@ -55,7 +56,7 @@ export interface McpConnectionManagerDeps {
 
 /** Logs an MCP failure; the hub, the manager and the catalog report errors the same way. */
 export function logMcpError(message: string, error: unknown): void {
-	console.error(`${message}:`, error)
+	logger.error(`${message}:`, error)
 }
 
 /**
@@ -380,7 +381,7 @@ export class McpConnectionManager {
 		logSuffix: string,
 	): void {
 		transport.onerror = async (error) => {
-			console.error(`Transport error for "${name}"${logSuffix}:`, error)
+			logger.error(`Transport error for "${name}"${logSuffix}:`, error)
 			const connection = this.findConnection(name, source)
 			if (connection) {
 				connection.server.status = "disconnected"
@@ -415,10 +416,10 @@ export class McpConnectionManager {
 
 				if (isInfoLog) {
 					// Log normal informational messages
-					console.log(`Server "${name}" info:`, output)
+					logger.info(`Server "${name}" info:`, output)
 				} else {
 					// Treat as error log
-					console.error(`Server "${name}" stderr:`, output)
+					logger.error(`Server "${name}" stderr:`, output)
 					const connection = this.findConnection(name, source)
 					if (connection) {
 						this.appendErrorMessage(connection, output)
@@ -429,7 +430,7 @@ export class McpConnectionManager {
 				}
 			})
 		} else {
-			console.error(`No stderr stream for ${name}`)
+			logger.error(`No stderr stream for ${name}`)
 		}
 		transport.start = async () => {}
 	}
@@ -477,7 +478,7 @@ export class McpConnectionManager {
 					await connection.client.close()
 				}
 			} catch (error) {
-				console.error(`Failed to close transport for ${name}:`, error)
+				logger.error(`Failed to close transport for ${name}:`, error)
 			}
 		}
 
@@ -656,7 +657,7 @@ export class McpConnectionManager {
 						// Pass the source from the config to restartConnection
 						await this.restartConnection(name, source)
 					} catch (error) {
-						console.error(`Failed to restart server ${name} after change in ${changedPath}:`, error)
+						logger.error(`Failed to restart server ${name} after change in ${changedPath}:`, error)
 					}
 				})
 
@@ -678,7 +679,7 @@ export class McpConnectionManager {
 						// Pass the source from the config to restartConnection
 						await this.restartConnection(name, source)
 					} catch (error) {
-						console.error(`Failed to restart server ${name} after change in ${filePath}:`, error)
+						logger.error(`Failed to restart server ${name} after change in ${filePath}:`, error)
 					}
 				})
 
@@ -719,7 +720,7 @@ export class McpConnectionManager {
 			try {
 				await this.deleteConnection(connection.server.name, connection.server.source)
 			} catch (error) {
-				console.error(`Failed to close connection for ${connection.server.name}:`, error)
+				logger.error(`Failed to close connection for ${connection.server.name}:`, error)
 			}
 		}
 

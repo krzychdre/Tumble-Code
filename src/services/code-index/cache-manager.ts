@@ -5,6 +5,7 @@ import debounce from "lodash.debounce"
 import { safeWriteJson } from "@roo-code/core/fs"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
+import { logger } from "../../utils/logging"
 
 /**
  * Manages the cache for code indexing
@@ -56,7 +57,7 @@ export class CacheManager implements ICacheManager {
 		try {
 			await safeWriteJson(this.cachePath.fsPath, this.fileHashes)
 		} catch (error) {
-			console.error("Failed to save cache:", error)
+			logger.error("Failed to save cache:", error)
 			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
 				error: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
@@ -73,7 +74,7 @@ export class CacheManager implements ICacheManager {
 			await safeWriteJson(this.cachePath.fsPath, {})
 			this.fileHashes = {}
 		} catch (error) {
-			console.error("Failed to clear cache file:", error, this.cachePath)
+			logger.error("Failed to clear cache file:", error, this.cachePath)
 			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
 				error: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,

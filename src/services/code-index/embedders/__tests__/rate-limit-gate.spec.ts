@@ -3,6 +3,7 @@ import { OpenAI } from "openai"
 
 import { OpenAICompatibleEmbedder } from "../openai-compatible"
 import { RateLimitGate, rateLimitGateFor, resetRateLimitGates } from "../rate-limit-gate"
+import { logger } from "../../../../utils/logging"
 
 // Mock the OpenAI SDK
 vi.mock("openai")
@@ -122,8 +123,8 @@ describe("OpenAICompatibleEmbedder - shared rate limiting", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		vi.useFakeTimers()
-		vi.spyOn(console, "warn").mockImplementation(() => {})
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 		resetRateLimitGates()
 
 		mockEmbeddingsCreate = vi.fn()

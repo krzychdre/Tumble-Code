@@ -5,6 +5,7 @@ import * as vscode from "vscode"
 import { arePathsEqual } from "../../utils/path"
 
 import type { McpConfigSource } from "./mcpConfigSchema"
+import { logger } from "../../utils/logging"
 
 /** Something to stop: a file watcher or an event subscription. */
 export interface McpDisposable {
@@ -114,7 +115,7 @@ export class McpConfigWatcher {
 			onChange: (filePath) => this.debounce(filePath, "project"),
 			onCreate: (filePath) => this.debounce(filePath, "project"),
 			onDelete: () => {
-				this.listener.onProjectConfigDeleted().catch(console.error)
+				this.listener.onProjectConfigDeleted().catch((error) => logger.error(error))
 			},
 		})
 	}
@@ -122,7 +123,7 @@ export class McpConfigWatcher {
 	watchWorkspaceFolders(): void {
 		this.workspaceFoldersSubscription?.dispose()
 		this.workspaceFoldersSubscription = this.factory.onDidChangeWorkspaceFolders(() => {
-			this.listener.onWorkspaceFoldersChanged().catch(console.error)
+			this.listener.onWorkspaceFoldersChanged().catch((error) => logger.error(error))
 		})
 	}
 
@@ -152,7 +153,7 @@ export class McpConfigWatcher {
 		}
 		const timer = setTimeout(() => {
 			this.debounceTimers.delete(key)
-			this.listener.onConfigFileChanged(filePath, source).catch(console.error)
+			this.listener.onConfigFileChanged(filePath, source).catch((error) => logger.error(error))
 		}, McpConfigWatcher.DEBOUNCE_MS)
 		this.debounceTimers.set(key, timer)
 	}
