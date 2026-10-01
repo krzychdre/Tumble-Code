@@ -47,6 +47,9 @@ export interface TreeSitterGrammar {
  * - vb: no Visual Basic WASM ships in tree-sitter-wasms.
  * - elm: tree-sitter-elm.wasm ships, but it is ABI 12 and web-tree-sitter
  *   0.25 only accepts ABI 13 to 15, so Parser.setLanguage rejects it.
+ *
+ * The build ships only the WASMs listed in grammar-wasms.json: add a new
+ * grammar there too (grammarWasms.spec.ts checks that both agree).
  */
 export const TREE_SITTER_GRAMMARS: Readonly<Record<string, TreeSitterGrammar>> = {
 	js: { wasm: "javascript", query: javascriptQuery },

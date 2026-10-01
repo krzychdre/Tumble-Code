@@ -151,7 +151,9 @@ async function main() {
 		{
 			name: "copyWasms",
 			setup(build) {
-				build.onEnd(() => copyWasms(srcDir, distDir))
+				// The tree-sitter grammars to ship are the ones the grammar table can load.
+				const grammarsFile = path.join(srcDir, "services", "tree-sitter", "grammar-wasms.json")
+				build.onEnd(() => copyWasms(srcDir, distDir, JSON.parse(fs.readFileSync(grammarsFile, "utf8"))))
 			},
 		},
 		{

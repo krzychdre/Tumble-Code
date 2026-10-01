@@ -110,7 +110,16 @@ export function copyPaths(copyPaths: [string, string, CopyPathOptions?][], srcDi
 	})
 }
 
-export function copyWasms(srcDir: string, distDir: string): void {
+/**
+ * Copy the WASM files the extension loads at runtime into `distDir`.
+ *
+ * `treeSitterGrammars` names the language grammars to ship (`tree-sitter-<name>.wasm`
+ * from tree-sitter-wasms). The callers read it from the extension sources
+ * (src/services/tree-sitter/grammar-wasms.json) so that this package does not
+ * depend on them; tree-sitter-wasms ships more grammars than the extension can
+ * load, and copying them all added about 10 MB to the VSIX.
+ */
+export function copyWasms(srcDir: string, distDir: string, treeSitterGrammars: readonly string[]): void {
 	const nodeModulesDir = path.join(srcDir, "node_modules")
 
 	fs.mkdirSync(distDir, { recursive: true })
@@ -142,15 +151,14 @@ export function copyWasms(srcDir: string, distDir: string): void {
 
 	console.log(`[copyWasms] Copied tree-sitter.wasm to ${distDir}`)
 
-	// Copy language-specific WASM files.
+	// Copy the language grammars the extension can load (not every grammar tree-sitter-wasms ships).
 	const languageWasmDir = path.join(nodeModulesDir, "tree-sitter-wasms", "out")
 
 	if (!fs.existsSync(languageWasmDir)) {
 		throw new Error(`Directory does not exist: ${languageWasmDir}`)
 	}
 
-	// Dynamically read all WASM files from the directory instead of using a hardcoded list.
-	const wasmFiles = fs.readdirSync(languageWasmDir).filter((file) => file.endsWith(".wasm"))
+	const wasmFiles = treeSitterGrammars.map((name) => `tree-sitter-${name}.wasm`)
 
 	wasmFiles.forEach((filename) => {
 		fs.copyFileSync(path.join(languageWasmDir, filename), path.join(distDir, filename))
