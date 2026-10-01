@@ -1,7 +1,12 @@
 import type { ModelInfo } from "./model.js"
 import type { ProviderSettings } from "./provider-settings.js"
 import { type CatalogModelResolution, providerModelDefinitions, resolveCatalogModel } from "./provider-models.js"
-import { anthropicDefaultModelId, anthropicModels, type AnthropicModelId } from "./providers/anthropic.js"
+import {
+	ANTHROPIC_1M_CONTEXT_MODEL_IDS,
+	anthropicDefaultModelId,
+	anthropicModels,
+	type AnthropicModelId,
+} from "./providers/anthropic.js"
 import { geminiDefaultModelId, geminiModels } from "./providers/gemini.js"
 import { litellmDefaultModelId, litellmDefaultModelInfo } from "./providers/lite-llm.js"
 import { openAiModelInfoSaneDefaults } from "./providers/openai.js"
@@ -117,14 +122,6 @@ function withFirstTier(info: ModelInfo): ModelInfo {
 			}
 		: info
 }
-
-/** Anthropic models that offer the 1M context beta (the settings show its checkbox for them). */
-export const ANTHROPIC_1M_CONTEXT_MODEL_IDS: readonly string[] = [
-	"claude-sonnet-4-20250514",
-	"claude-sonnet-4-5",
-	"claude-sonnet-4-6",
-	"claude-opus-4-6",
-]
 
 /**
  * The model an Anthropic profile selects, before request parameters: a listed
