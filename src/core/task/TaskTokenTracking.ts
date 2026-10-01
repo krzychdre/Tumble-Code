@@ -3,8 +3,12 @@ import EventEmitter from "events"
 
 import { type ClineMessage, type TokenUsage, type ToolUsage, type ToolName, RooCodeEventName } from "@roo-code/types"
 
-import { consolidateTokenUsage, hasTokenUsageChanged, hasToolUsageChanged } from "@roo-code/core/browser"
-import { combineApiRequests } from "../../shared/combineApiRequests"
+import {
+	consolidateTokenUsage,
+	hasTokenUsageChanged,
+	hasToolUsageChanged,
+	consolidateApiRequests,
+} from "@roo-code/core/browser"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
 
 /**
@@ -88,7 +92,7 @@ export class TaskTokenTracking {
 	 * Combine messages by applying API request and command sequence combining.
 	 */
 	public combineMessages(messages: ClineMessage[]): ClineMessage[] {
-		return combineApiRequests(combineCommandSequences(messages))
+		return consolidateApiRequests(combineCommandSequences(messages))
 	}
 
 	/**

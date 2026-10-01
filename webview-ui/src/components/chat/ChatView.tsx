@@ -7,9 +7,8 @@ import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { combineApiRequests } from "@roo/combineApiRequests"
 import { combineCommandSequences } from "@roo/combineCommandSequences"
-import { consolidateTokenUsage } from "@roo-code/core/browser"
+import { consolidateTokenUsage, consolidateApiRequests } from "@roo-code/core/browser"
 import { ProfileValidator } from "@roo/ProfileValidator"
 
 import { vscode } from "@src/utils/vscode"
@@ -111,7 +110,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const latestTodos = useMemo(() => selectLatestTodos(messages, currentTaskTodos), [messages, currentTaskTodos])
 
-	const modifiedMessages = useMemo(() => combineApiRequests(combineCommandSequences(messages.slice(1))), [messages])
+	const modifiedMessages = useMemo(
+		() => consolidateApiRequests(combineCommandSequences(messages.slice(1))),
+		[messages],
+	)
 
 	// Has to be after api_req_finished are all reduced into api_req_started messages.
 	const apiMetrics = useMemo(() => consolidateTokenUsage(modifiedMessages), [modifiedMessages])

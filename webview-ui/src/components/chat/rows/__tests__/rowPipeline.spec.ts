@@ -2,7 +2,7 @@
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { combineApiRequests } from "@roo/combineApiRequests"
+import { consolidateApiRequests } from "@roo-code/core/browser"
 import { combineCommandSequences } from "@roo/combineCommandSequences"
 
 import {
@@ -17,7 +17,7 @@ import { EVER_VISIBLE_VIEWPORT, filterVisible, markEverVisible } from "../filter
 import { groupToolAsks } from "../groupToolAsks"
 
 // What ChatView does with clineMessages before the list renders them.
-const combined = (messages: ClineMessage[]) => combineApiRequests(combineCommandSequences(messages.slice(1)))
+const combined = (messages: ClineMessage[]) => consolidateApiRequests(combineCommandSequences(messages.slice(1)))
 
 const rowsOf = (messages: ClineMessage[], everVisible = new Map<number, true>()) =>
 	groupToolAsks(filterVisible(combined(messages), everVisible)).map(describeRow)
