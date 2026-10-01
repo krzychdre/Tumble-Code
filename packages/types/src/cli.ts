@@ -30,15 +30,11 @@ export const rooCliToolUseSchema = z.object({
 	input: z.record(z.string(), z.unknown()).optional(),
 })
 
-export type RooCliToolUse = z.infer<typeof rooCliToolUseSchema>
-
 export const rooCliToolResultSchema = z.object({
 	name: z.string(),
 	output: z.string().optional(),
 	error: z.string().optional(),
 })
-
-export type RooCliToolResult = z.infer<typeof rooCliToolResultSchema>
 
 export const rooCliCostSchema = z.object({
 	totalCost: z.number().optional(),

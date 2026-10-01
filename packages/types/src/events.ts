@@ -249,5 +249,3 @@ export const taskEventSchema = z.discriminatedUnion("eventName", [
 		taskId: z.number(),
 	}),
 ])
-
-export type TaskEvent = z.infer<typeof taskEventSchema>

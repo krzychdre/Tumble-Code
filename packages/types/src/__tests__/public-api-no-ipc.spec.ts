@@ -5,13 +5,16 @@
 // package from carrying its message types and its IPC-only query-response
 // events, which nothing sends any more.
 
-import * as types from "../index.js"
 import { RooCodeEventName, rooCodeEventsSchema, taskEventSchema } from "../index.js"
+
+const indexModulePath = "../index.js"
 
 describe("@roo-code/types public API without the IPC socket", () => {
 	it.each(["IpcMessageType", "IpcOrigin", "ackSchema", "TaskCommandName", "taskCommandSchema", "ipcMessageSchema"])(
 		"does not export the IPC runtime value %s",
-		(name) => {
+		async (name) => {
+			// Loaded by path so knip does not count this spec as a use of every export.
+			const types: Record<string, unknown> = await import(indexModulePath)
 			expect(Object.keys(types)).not.toContain(name)
 		},
 	)

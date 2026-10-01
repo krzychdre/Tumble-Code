@@ -4,7 +4,7 @@
 // actually reads. The provider list comes from the runtime registry, so a new
 // provider is covered without editing this file.
 
-import * as types from "@roo-code/types"
+import { getModelIdKeyForProvider, modelIdKeys } from "@roo-code/types"
 import type { OrganizationAllowList, ProviderName, ProviderSettings } from "@roo-code/types"
 
 import { ProfileValidator } from "../../shared/ProfileValidator"
@@ -39,7 +39,10 @@ const constructorOptions: Partial<ProviderSettings> = {
 }
 
 // Handlers that silently substitute their default for unknown ids need a real
-// id from their catalog. Collect every catalog id exported by @roo-code/types.
+// id from their catalog. Collect every catalog id exported by @roo-code/types. The module is
+// loaded through a variable so knip does not read this scan as a use of every export.
+const typesModule = "@roo-code/types"
+const types: Record<string, unknown> = await import(typesModule)
 const catalogModelIds: string[] = [
 	SENTINEL_MODEL_ID,
 	...new Set(
@@ -70,10 +73,10 @@ describe("DEF-C15: model-id key per runtime provider", () => {
 	const modelIdProviders = runtimeProviders.filter((provider) => !(provider in providersWithoutModelIdField))
 
 	it.each(modelIdProviders)("maps %s to the settings field its handler reads", (provider) => {
-		const key = types.getModelIdKeyForProvider(provider)
+		const key = getModelIdKeyForProvider(provider)
 		expect(key).toBeDefined()
 
-		const otherKeys = types.modelIdKeys.filter((candidate) => candidate !== key)
+		const otherKeys = modelIdKeys.filter((candidate) => candidate !== key)
 
 		// A catalog id that the handler returns when it sits in the mapped key,
 		// and does not return when every other model-id field holds it instead.
@@ -87,7 +90,7 @@ describe("DEF-C15: model-id key per runtime provider", () => {
 	})
 
 	it.each(modelIdProviders)("lets the organization allow list resolve the %s model id", (provider) => {
-		const key = types.getModelIdKeyForProvider(provider)!
+		const key = getModelIdKeyForProvider(provider)!
 		const profile = { apiProvider: provider, [key]: SENTINEL_MODEL_ID } as ProviderSettings
 
 		expect(ProfileValidator.isProfileAllowed(profile, allowListFor(provider, [SENTINEL_MODEL_ID]))).toBe(true)

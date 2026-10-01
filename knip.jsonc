@@ -72,6 +72,9 @@
 		},
 		"packages/types": {
 			"project": ["src/**/*.ts"],
+			// The index is a package entry, so knip would skip its exports. Every consumer lives in
+			// this workspace, so an export nobody imports is dead code here.
+			"includeEntryExports": true,
 		},
 	},
 	// Every rule is an error: unused exports and types were "warn" until

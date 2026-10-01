@@ -1,10 +1,10 @@
 import { PostHog } from "posthog-node"
 import * as vscode from "vscode"
 
+import { type TelemetryProperties, type TelemetryEvent, TelemetryEventName } from "@roo-code/types"
+
+import { BaseTelemetryClient } from "./BaseTelemetryClient"
 import {
-	type TelemetryProperties,
-	type TelemetryEvent,
-	TelemetryEventName,
 	getErrorStatusCode,
 	getErrorMessage,
 	shouldReportApiErrorToTelemetry,
@@ -12,9 +12,7 @@ import {
 	extractApiProviderErrorProperties,
 	isConsecutiveMistakeError,
 	extractConsecutiveMistakeErrorProperties,
-} from "@roo-code/types"
-
-import { BaseTelemetryClient } from "./BaseTelemetryClient"
+} from "./errorReporting"
 
 /**
  * PostHogTelemetryClient handles telemetry event tracking for the Roo Code extension.

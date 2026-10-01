@@ -1,8 +1,5 @@
 import type { ModelInfo } from "../model.js"
 
-// Ollama
-// https://ollama.com/models
-export const ollamaDefaultModelId = "devstral:24b"
 export const ollamaDefaultModelInfo: ModelInfo = {
 	maxTokens: 4096,
 	contextWindow: 200_000,

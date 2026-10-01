@@ -51,8 +51,6 @@ export const modeMarketplaceItemSchema = baseMarketplaceItemSchema.extend({
 	content: z.string().min(1), // YAML content for modes
 })
 
-export type ModeMarketplaceItem = z.infer<typeof modeMarketplaceItemSchema>
-
 export const mcpMarketplaceItemSchema = baseMarketplaceItemSchema.extend({
 	url: z.string().url(), // Required url field
 	content: z.union([z.string().min(1), z.array(mcpInstallationMethodSchema)]), // Single config or array of methods

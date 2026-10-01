@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { serviceTierSchema } from "../model.js"
-import { apiModelConfigSchema, emptyProviderConfigSchema, openAiCompatibleConfigSchema } from "./shared.js"
+import { apiModelConfigSchema, openAiCompatibleConfigSchema } from "./shared.js"
 
 export const anthropicConfigSchema = apiModelConfigSchema.extend({
 	anthropicBaseUrl: z.string().optional(),
@@ -115,6 +115,3 @@ export type ZaiApiLine = z.infer<typeof zaiApiLineSchema>
 
 export const zaiConfigSchema = apiModelConfigSchema.extend({ zaiApiLine: zaiApiLineSchema.optional() })
 export const qwenCodeConfigSchema = apiModelConfigSchema.extend({ qwenCodeOauthPath: z.string().optional() })
-
-export const rooConfigSchema = apiModelConfigSchema
-export const humanRelayConfigSchema = emptyProviderConfigSchema

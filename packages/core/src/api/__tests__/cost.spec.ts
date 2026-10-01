@@ -1,9 +1,13 @@
 // npx vitest run src/api/__tests__/cost.spec.ts
 
-import * as rooTypes from "@roo-code/types"
 import type { ModelInfo } from "@roo-code/types"
 
 import { calculateApiCostAnthropic, calculateApiCostOpenAI } from "../cost.js"
+
+// The whole module is scanned for model tables below. It is loaded through a variable so knip
+// does not read that scan as a use of every @roo-code/types export.
+const typesModule = "@roo-code/types"
+const rooTypes: Record<string, unknown> = await import(typesModule)
 
 describe("Cost Utility", () => {
 	describe("calculateApiCostAnthropic", () => {
@@ -463,12 +467,14 @@ describe("Cost Utility", () => {
 			)
 
 			expect(exposed.length).toBeGreaterThan(0)
-			expect(exposed.filter(({ table }) => !neverWrites.has(table)).map(({ table, id }) => `${table}/${id}`)).toEqual(
-				[],
-			)
+			expect(
+				exposed.filter(({ table }) => !neverWrites.has(table)).map(({ table, id }) => `${table}/${id}`),
+			).toEqual([])
 			for (const table of ["bedrockModels", "mistralModels"]) {
 				expect(
-					exposed.filter((entry) => entry.table === table && entry.info.supportsPromptCache).map(({ id }) => id),
+					exposed
+						.filter((entry) => entry.table === table && entry.info.supportsPromptCache)
+						.map(({ id }) => id),
 				).toEqual([])
 			}
 			// Vertex Claude models all carry a write price.

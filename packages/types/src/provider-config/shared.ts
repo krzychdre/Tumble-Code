@@ -21,8 +21,6 @@ export const sharedProfileSettingsSchema = z
 	})
 	.strict()
 
-export type SharedProfileSettings = z.infer<typeof sharedProfileSettingsSchema>
-
 export const apiModelConfigSchema = z
 	.object({
 		apiModelId: z.string().optional(),
@@ -42,5 +40,3 @@ export const openAiCompatibleConfigSchema = z
 		openAiHeaders: z.record(z.string(), z.string()).optional(),
 	})
 	.strict()
-
-export const emptyProviderConfigSchema = z.object({}).strict()

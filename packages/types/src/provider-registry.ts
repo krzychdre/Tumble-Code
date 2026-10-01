@@ -104,7 +104,6 @@ export const providerRegistry = [
 ] as const satisfies readonly ProviderDefinition[]
 
 export type ProviderRegistryEntry = (typeof providerRegistry)[number]
-export type ProviderId = ProviderRegistryEntry["id"]
 export type ActiveProviderDefinition = Extract<ProviderRegistryEntry, { readonly lifecycle: "active" | "hidden" }>
 export type SelectableProviderRegistryEntry = Extract<ProviderRegistryEntry, { readonly lifecycle: "active" }> &
 	SelectableProviderDefinition
@@ -113,13 +112,6 @@ export type RetiredProviderRegistryEntry = Extract<ProviderRegistryEntry, { read
 export const providerClassifications = ["known-active", "known-hidden", "retired", "unknown"] as const
 
 export type ProviderClassification = (typeof providerClassifications)[number]
-
-type ProviderIds<TDefinitions extends readonly ProviderDefinition[]> = TDefinitions extends readonly [
-	infer THead extends ProviderDefinition,
-	...infer TTail extends readonly ProviderDefinition[],
-]
-	? readonly [THead["id"], ...ProviderIds<TTail>]
-	: readonly []
 
 type ProviderIdsByLifecycle<
 	TDefinitions extends readonly ProviderDefinition[],
@@ -142,10 +134,6 @@ type InsertProviderIdAfter<
 		? readonly [THead, TId, ...TTail]
 		: readonly [THead, ...InsertProviderIdAfter<TTail, TAnchor, TId>]
 	: readonly []
-
-const selectProviderIds = <const TDefinitions extends readonly ProviderDefinition[]>(
-	definitions: TDefinitions,
-): ProviderIds<TDefinitions> => definitions.map(({ id }) => id) as unknown as ProviderIds<TDefinitions>
 
 const selectProviderIdsByLifecycle = <
 	const TDefinitions extends readonly ProviderDefinition[],
@@ -183,7 +171,6 @@ const concatenateProviderIds = <const TFirst extends readonly string[], const TS
 
 export const activeProviderIds = selectProviderIdsByLifecycle(providerRegistry, ["active", "hidden"])
 export const retiredProviderIds = selectProviderIdsByLifecycle(providerRegistry, ["retired"])
-export const providerIds = selectProviderIds(providerRegistry)
 
 /**
  * Preserves the historical public array value, where `deepseek` occurred twice.

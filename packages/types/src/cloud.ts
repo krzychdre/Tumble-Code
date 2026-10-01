@@ -3,12 +3,9 @@ import type EventEmitter from "events"
 import { z } from "zod"
 
 import { RooCodeEventName } from "./events.js"
-import { TaskStatus, taskMetadataSchema } from "./task.js"
 import { globalSettingsSchema, autoApprovalModes } from "./global-settings.js"
 import { opaqueProviderProfileSchema, type PersistedProviderProfile } from "./provider-profile.js"
 import { mcpMarketplaceItemSchema } from "./marketplace.js"
-import { clineMessageSchema, queuedMessageSchema, tokenUsageSchema } from "./message.js"
-import { staticAppPropertiesSchema, gitPropertiesSchema } from "./telemetry.js"
 
 /**
  * JWTPayload
@@ -201,20 +198,6 @@ export const ORGANIZATION_ALLOW_ALL: OrganizationAllowList = {
 	providers: {},
 } as const
 
-export const ORGANIZATION_DEFAULT: OrganizationSettings = {
-	version: 0,
-	cloudSettings: {
-		recordTaskMessages: true,
-		enableTaskSharing: true,
-		allowPublicTaskSharing: true,
-		taskShareExpirationDays: 30,
-		allowMembersViewAllTasks: true,
-		llmEnhancedFeaturesEnabled: false,
-	},
-	defaultSettings: {},
-	allowList: ORGANIZATION_ALLOW_ALL,
-} as const
-
 /**
  * ShareVisibility
  */
@@ -355,74 +338,10 @@ export interface SettingsServiceEvents {
 export type CloudServiceEvents = AuthServiceEvents & SettingsServiceEvents
 
 /**
- * ConnectionState
- */
-
-export enum ConnectionState {
-	DISCONNECTED = "disconnected",
-	CONNECTING = "connecting",
-	CONNECTED = "connected",
-	RETRYING = "retrying",
-	FAILED = "failed",
-}
-
-/**
- * RetryConfig
- */
-
-export interface RetryConfig {
-	maxInitialAttempts: number
-	initialDelay: number
-	maxDelay: number
-	backoffMultiplier: number
-}
-
-/**
  * Constants
  */
 
 export const HEARTBEAT_INTERVAL_MS = 20_000
-export const INSTANCE_TTL_SECONDS = 60
-
-/**
- * ExtensionTask
- */
-
-const extensionTaskSchema = z.object({
-	taskId: z.string(),
-	taskStatus: z.nativeEnum(TaskStatus),
-	taskAsk: clineMessageSchema.optional(),
-	queuedMessages: z.array(queuedMessageSchema).optional(),
-	parentTaskId: z.string().optional(),
-	childTaskId: z.string().optional(),
-	tokenUsage: tokenUsageSchema.optional(),
-	...taskMetadataSchema.shape,
-})
-
-export type ExtensionTask = z.infer<typeof extensionTaskSchema>
-
-/**
- * ExtensionInstance
- */
-
-export const extensionInstanceSchema = z.object({
-	instanceId: z.string(),
-	userId: z.string(),
-	workspacePath: z.string(),
-	appProperties: staticAppPropertiesSchema,
-	gitProperties: gitPropertiesSchema.optional(),
-	lastHeartbeat: z.coerce.number(),
-	task: extensionTaskSchema,
-	taskAsk: clineMessageSchema.optional(),
-	taskHistory: z.array(z.string()),
-	mode: z.string().optional(),
-	modes: z.array(z.object({ slug: z.string(), name: z.string() })).optional(),
-	providerProfile: z.string().optional(),
-	providerProfiles: z.array(z.object({ name: z.string(), provider: z.string().optional() })).optional(),
-	isCloudAgent: z.boolean().optional(),
-})
-
-export type ExtensionInstance = z.infer<typeof extensionInstanceSchema>
 
 /**
  * AutoApprovalSettings
@@ -456,45 +375,6 @@ export enum TaskBridgeEventName {
 	TaskInteractive = RooCodeEventName.TaskInteractive,
 	InstanceState = "instanceState",
 }
-
-export const taskBridgeEventSchema = z.discriminatedUnion("type", [
-	z.object({
-		type: z.literal(TaskBridgeEventName.Message),
-		taskId: z.string(),
-		action: z.string(),
-		message: clineMessageSchema,
-		// Worktree root of the window that produced this message. Carried per-event
-		// so the backend attributes a live task to the project it actually ran in,
-		// rather than the user-keyed registry singleton (which holds only the most
-		// recently registered window when several share one cloud account).
-		// Optional so older extension clients still validate.
-		workspacePath: z.string().optional(),
-	}),
-	z.object({
-		type: z.literal(TaskBridgeEventName.TaskModeSwitched),
-		taskId: z.string(),
-		mode: z.string(),
-	}),
-	z.object({
-		type: z.literal(TaskBridgeEventName.TaskInteractive),
-		taskId: z.string(),
-	}),
-	// Periodic snapshot so the web cockpit can render the header + controls live:
-	// current mode, the auto-approval state, token/context usage, and the pending ask (if any).
-	z.object({
-		type: z.literal(TaskBridgeEventName.InstanceState),
-		taskId: z.string(),
-		mode: z.string().optional(),
-		isRunning: z.boolean().optional(),
-		autoApproval: autoApprovalSettingsSchema.optional(),
-		tokenUsage: tokenUsageSchema.optional(),
-		contextTokens: z.number().optional(),
-		contextWindow: z.number().optional(),
-		currentAsk: clineMessageSchema.optional(),
-	}),
-])
-
-export type TaskBridgeEvent = z.infer<typeof taskBridgeEventSchema>
 
 /**
  * TaskBridgeCommand
@@ -592,42 +472,3 @@ export enum TaskSocketEvents {
 	COMMAND = "task:command", // command from user
 	RELAYED_COMMAND = "task:relayed_command", // relay from server
 }
-
-/**
- * `emit()` Response Types
- */
-
-export type JoinResponse = {
-	success: boolean
-	error?: string
-	taskId?: string
-	timestamp?: string
-}
-
-export type LeaveResponse = {
-	success: boolean
-	taskId?: string
-	timestamp?: string
-}
-
-/**
- * UsageStats
- */
-
-export const usageStatsSchema = z.object({
-	success: z.boolean(),
-	data: z.object({
-		dates: z.array(z.string()), // Array of date strings
-		tasks: z.array(z.number()), // Array of task counts
-		tokens: z.array(z.number()), // Array of token counts
-		costs: z.array(z.number()), // Array of costs in USD
-		totals: z.object({
-			tasks: z.number(),
-			tokens: z.number(),
-			cost: z.number(), // Total cost in USD
-		}),
-	}),
-	period: z.number(), // Period in days (e.g., 30)
-})
-
-export type UsageStats = z.infer<typeof usageStatsSchema>
