@@ -3,6 +3,7 @@ import { EmbedderInfo } from "../interfaces/embedder"
 import { getDefaultModelId } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
 import { handleProviderError } from "../../../api/providers/utils/error-handler"
+import { APP_ATTRIBUTION_HEADERS } from "../../../api/providers/constants"
 import { BaseHttpEmbedder, EmbedBatchResult, decodeEmbedding } from "./base-http-embedder"
 
 // Default provider name when no specific provider is selected
@@ -61,10 +62,7 @@ export class OpenRouterEmbedder extends BaseHttpEmbedder {
 			this.embeddingsClient = new OpenAI({
 				baseURL: OPENROUTER_BASE_URL,
 				apiKey: apiKey,
-				defaultHeaders: {
-					"HTTP-Referer": "https://github.com/RooCodeInc/Roo-Code",
-					"X-Title": "Tumble Code",
-				},
+				defaultHeaders: APP_ATTRIBUTION_HEADERS,
 			})
 		} catch (error) {
 			// Use the error handler to transform ByteString conversion errors
