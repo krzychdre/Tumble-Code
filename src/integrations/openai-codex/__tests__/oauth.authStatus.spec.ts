@@ -1,6 +1,7 @@
 import type { ExtensionContext } from "vscode"
 
 import { OpenAiCodexOAuthManager, type OpenAiCodexCredentials } from "../oauth"
+import { logger } from "../../../utils/logging"
 
 const KEY = "openai-codex-oauth-credentials"
 
@@ -91,8 +92,8 @@ describe("OpenAiCodexOAuthManager.getAuthenticationStatus", () => {
 	it("a failed refresh that keeps the credentials is not cached, so the next read retries", async () => {
 		const { context } = makeContext(validCredentials({ expires: Date.now() - 1000 }))
 		const manager = new OpenAiCodexOAuthManager()
-		manager.initialize(context, () => {})
-		vi.spyOn(console, "error").mockImplementation(() => {})
+		manager.initialize(context)
+		vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		fetchMock.mockRejectedValueOnce(new Error("network down"))
 		expect(await manager.getAuthenticationStatus()).toBe(false)

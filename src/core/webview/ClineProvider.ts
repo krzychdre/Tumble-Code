@@ -1376,11 +1376,11 @@ export class ClineProvider
 		try {
 			const [marketplaceResult, marketplaceInstalledMetadata] = await Promise.all([
 				this.marketplaceManager.getMarketplaceItems().catch((error) => {
-					console.error("Failed to fetch marketplace items:", error)
+					logger.error("Failed to fetch marketplace items:", error)
 					return { organizationMcps: [], marketplaceItems: [], errors: [error.message] }
 				}),
 				this.marketplaceManager.getInstallationMetadata().catch((error) => {
-					console.error("Failed to fetch installation metadata:", error)
+					logger.error("Failed to fetch installation metadata:", error)
 					return { project: {}, global: {} } as MarketplaceInstalledMetadata
 				}),
 			])
@@ -1394,7 +1394,7 @@ export class ClineProvider
 				errors: marketplaceResult.errors,
 			})
 		} catch (error) {
-			console.error("Failed to fetch marketplace data:", error)
+			logger.error("Failed to fetch marketplace data:", error)
 
 			// Send empty data on error to prevent UI from hanging
 			this.postMessageToWebview({
@@ -1522,9 +1522,9 @@ export class ClineProvider
 
 	// logging
 
+	/** Kept for the collaborators that take a `log(message)` callback; it goes to the shared logger. */
 	public log(message: string) {
-		this.outputChannel.appendLine(message)
-		console.log(message)
+		logger.info(message)
 	}
 
 	// getters
@@ -1845,7 +1845,7 @@ export class ClineProvider
 			return
 		}
 
-		console.log(`[cancelTask] cancelling task ${task.taskId}.${task.instanceId}`)
+		logger.info(`[cancelTask] cancelling task ${task.taskId}.${task.instanceId}`)
 
 		let historyItem: HistoryItem | undefined
 		try {
@@ -2050,7 +2050,7 @@ export class ClineProvider
 		await this.resetSubagentPanel()
 		const current = this.taskSlot.current
 		if (current) {
-			console.log(`[clearTask] clearing task ${current.taskId}.${current.instanceId}`)
+			logger.info(`[clearTask] clearing task ${current.taskId}.${current.instanceId}`)
 			await this.clearCurrentTask()
 		}
 	}
@@ -2261,15 +2261,15 @@ export class ClineProvider
 
 			// Specific error for no webview available
 			const error = new Error("No webview available for URI conversion")
-			console.error(error.message)
+			logger.error(error.message)
 			// Fallback to file URI if no webview available
 			return fileUri.toString()
 		} catch (error) {
 			// More specific error handling
 			if (error instanceof TypeError) {
-				console.error("Invalid file path provided for URI conversion:", error)
+				logger.error("Invalid file path provided for URI conversion:", error)
 			} else {
-				console.error("Failed to convert to webview URI:", error)
+				logger.error("Failed to convert to webview URI:", error)
 			}
 			// Return file URI as fallback
 			return vscode.Uri.file(filePath).toString()

@@ -4,6 +4,7 @@ import { URL } from "url"
 import type { ExtensionContext } from "vscode"
 import { z } from "zod"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
+import { logger } from "../../utils/logging"
 
 /**
  * OpenAI Codex OAuth Configuration
@@ -339,7 +340,6 @@ export function isTokenExpired(credentials: OpenAiCodexCredentials): boolean {
 export class OpenAiCodexOAuthManager {
 	private context: ExtensionContext | null = null
 	private credentials: OpenAiCodexCredentials | null = null
-	private logFn: ((message: string) => void) | null = null
 	private refreshPromise: Promise<OpenAiCodexCredentials> | null = null
 	/**
 	 * Cached answer of {@link getAuthenticationStatus}; `undefined` means
@@ -354,26 +354,20 @@ export class OpenAiCodexOAuthManager {
 	} | null = null
 
 	private log(message: string): void {
-		if (this.logFn) {
-			this.logFn(message)
-		} else {
-			console.log(message)
-		}
+		logger.info(message)
 	}
 
 	private logError(message: string, error?: unknown): void {
 		const details = error instanceof Error ? error.message : error !== undefined ? String(error) : undefined
 		const full = details ? `${message} ${details}` : message
-		this.log(full)
-		console.error(full)
+		logger.error(full)
 	}
 
 	/**
 	 * Initialize the OAuth manager with VS Code extension context
 	 */
-	initialize(context: ExtensionContext, logFn?: (message: string) => void): void {
+	initialize(context: ExtensionContext): void {
 		this.context = context
-		this.logFn = logFn ?? null
 		this.authStatus = undefined
 
 		// Another window (same secret storage) may sign in or out.

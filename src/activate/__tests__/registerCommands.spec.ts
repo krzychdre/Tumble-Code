@@ -3,6 +3,7 @@ import * as vscode from "vscode"
 import { ClineProvider } from "../../core/webview/ClineProvider"
 
 import { getVisibleProviderOrLog, registerCommands, replaceOrphanedTabs } from "../registerCommands"
+import { logger } from "../../utils/logging"
 
 vi.mock("execa", () => ({
 	execa: vi.fn(),
@@ -55,39 +56,28 @@ vi.mock("../../services/ripgrep/diagnostic", () => ({
 }))
 
 describe("getVisibleProviderOrLog", () => {
-	let mockOutputChannel: vscode.OutputChannel
-
 	beforeEach(() => {
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			append: vi.fn(),
-			clear: vi.fn(),
-			hide: vi.fn(),
-			name: "mock",
-			replace: vi.fn(),
-			show: vi.fn(),
-			dispose: vi.fn(),
-		}
 		vi.clearAllMocks()
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
 	})
 
 	it("returns the visible provider if found", () => {
 		const mockProvider = {} as ClineProvider
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(mockProvider)
 
-		const result = getVisibleProviderOrLog(mockOutputChannel)
+		const result = getVisibleProviderOrLog()
 
 		expect(result).toBe(mockProvider)
-		expect(mockOutputChannel.appendLine).not.toHaveBeenCalled()
+		expect(logger.warn).not.toHaveBeenCalled()
 	})
 
 	it("logs and returns undefined if no provider found", () => {
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
 
-		const result = getVisibleProviderOrLog(mockOutputChannel)
+		const result = getVisibleProviderOrLog()
 
 		expect(result).toBeUndefined()
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("Cannot find any visible Tumble Code instances.")
+		expect(logger.warn).toHaveBeenCalledWith("Cannot find any visible Tumble Code instances.")
 	})
 })
 

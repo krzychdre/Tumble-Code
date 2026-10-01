@@ -12,6 +12,7 @@
 
 import * as vscode from "vscode"
 import { Package } from "../shared/package"
+import { logger } from "./logging"
 
 /**
  * Proxy configuration state
@@ -32,10 +33,8 @@ let proxyInitialized = false
 let undiciProxyInitialized = false
 let fetchPatched = false
 let originalFetch: typeof fetch | undefined
-let outputChannel: vscode.OutputChannel | null = null
 
 let loggingEnabled = false
-let consoleLoggingEnabled = false
 
 let tlsVerificationOverridden = false
 let originalNodeTlsRejectUnauthorized: string | undefined
@@ -125,12 +124,8 @@ function applyTlsVerificationOverride(config: ProxyConfig): void {
  * Must be called early in extension activation before any network requests.
  *
  * @param context The VS Code extension context
- * @param channel Optional output channel for logging
  */
-export async function initializeNetworkProxy(
-	context: vscode.ExtensionContext,
-	channel?: vscode.OutputChannel,
-): Promise<void> {
+export async function initializeNetworkProxy(context: vscode.ExtensionContext): Promise<void> {
 	extensionContext = context
 
 	// extensionMode is immutable for the process lifetime - exit early if not in debug mode.
@@ -140,9 +135,7 @@ export async function initializeNetworkProxy(
 		return
 	}
 
-	outputChannel = channel ?? null
 	loggingEnabled = true
-	consoleLoggingEnabled = !outputChannel
 
 	const config = getProxyConfig()
 
@@ -362,18 +355,10 @@ export function isDebugMode(): boolean {
 }
 
 /**
- * Log a message to the output channel if available.
+ * Logs a message; the module logs only in debug mode.
  */
 function log(message: string): void {
-	if (!loggingEnabled) {
-		return
-	}
-
-	const logMessage = `[NetworkProxy] ${message}`
-	if (outputChannel) {
-		outputChannel.appendLine(logMessage)
-	}
-	if (consoleLoggingEnabled) {
-		console.log(logMessage)
+	if (loggingEnabled) {
+		logger.info(`[NetworkProxy] ${message}`)
 	}
 }

@@ -25,6 +25,7 @@ import { safeWriteJson } from "@roo-code/core/fs"
 import { ClineProvider } from "../ClineProvider"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { MessageManager } from "../../message-manager"
+import { logger } from "../../../utils/logging"
 
 // Mock setup must come before imports.
 vi.mock("../../prompts/sections/custom-instructions")
@@ -393,6 +394,11 @@ afterAll(() => {
 })
 
 describe("ClineProvider", () => {
+	// provider.log writes through the shared logger.
+	beforeEach(() => {
+		vi.spyOn(logger, "info").mockImplementation(() => {})
+	})
+
 	beforeAll(() => {
 		vi.mocked(Task).mockImplementation(function (options: any) {
 			const task: any = {
@@ -641,14 +647,14 @@ describe("ClineProvider", () => {
 			// @ts-expect-error - accessing private property for testing
 			provider.view = mockWebviewView
 			await provider.resolveWebviewView(mockWebviewView)
-			;(mockOutputChannel.appendLine as ReturnType<typeof vi.fn>).mockClear()
+			vi.mocked(logger.info).mockClear()
 		})
 
 		test("does not log when no task is active", () => {
 			// view becomes hidden with no task on the stack
 			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
 			visibilityCallback()
-			expect(mockOutputChannel.appendLine).not.toHaveBeenCalled()
+			expect(logger.info).not.toHaveBeenCalled()
 		})
 
 		test("does not log when the active task is aborted", async () => {
@@ -658,7 +664,7 @@ describe("ClineProvider", () => {
 			await provider.setCurrentTask(task)
 			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
 			visibilityCallback()
-			expect(mockOutputChannel.appendLine).not.toHaveBeenCalled()
+			expect(logger.info).not.toHaveBeenCalled()
 		})
 
 		test("logs task state to output channel when an active task is running", async () => {
@@ -667,7 +673,7 @@ describe("ClineProvider", () => {
 			await provider.setCurrentTask(task)
 			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
 			visibilityCallback()
-			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("running-task"))
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("running-task"))
 		})
 	})
 
@@ -845,9 +851,9 @@ describe("ClineProvider", () => {
 		await provider.dispose()
 
 		// dispose body runs only once: log "Disposing ClineProvider..." appears once
-		const disposeCalls = (mockOutputChannel.appendLine as ReturnType<typeof vi.fn>).mock.calls.filter(
-			([msg]) => typeof msg === "string" && msg.includes("Disposing ClineProvider..."),
-		)
+		const disposeCalls = vi
+			.mocked(logger.info)
+			.mock.calls.filter(([msg]) => typeof msg === "string" && msg.includes("Disposing ClineProvider..."))
 		expect(disposeCalls).toHaveLength(1)
 	})
 
@@ -2211,9 +2217,7 @@ describe("ClineProvider", () => {
 
 			// Verify error was logged and user was notified (the toast carries
 			// the underlying cause after the generic message)
-			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-				expect.stringContaining("Error create new api configuration"),
-			)
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				expect.stringContaining(
 					"errors.create_api_config: this.providerSettingsManager.saveConfig is not a function",
@@ -2294,9 +2298,7 @@ describe("ClineProvider", () => {
 
 			// Verify error handling (the toast carries the underlying cause
 			// after the generic message)
-			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-				expect.stringContaining("Error create new api configuration"),
-			)
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				expect.stringContaining("errors.create_api_config: task.updateApiConfiguration is not a function"),
 			)
@@ -2445,7 +2447,7 @@ describe("ClineProvider", () => {
 				sync.mockRejectedValue(new Error("boom"))
 				cloud.fake.emit("settings-updated")
 				await flush()
-				expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
+				expect(logger.info).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
 			} finally {
 				cloud.restore()
 			}
@@ -2502,7 +2504,7 @@ describe("ClineProvider", () => {
 				(base: any, ...parts: string[]) => ({ path: [base?.fsPath, ...parts].join("/") }) as any,
 			)
 			mockWebviewView.webview.asWebviewUri = vi.fn((uri: any) => `vscode-resource:${uri.path}`)
-			spies.push(vi.spyOn(console, "log").mockImplementation(() => {}))
+			spies.push(vi.spyOn(logger, "info").mockImplementation(() => {}))
 			stubPortFile(undefined)
 			// Drop any queued one-shot result an earlier test left behind.
 			vi.mocked(axios.get)

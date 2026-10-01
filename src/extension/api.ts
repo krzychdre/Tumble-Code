@@ -23,6 +23,7 @@ import { ClineProvider } from "../core/webview/ClineProvider"
 import { Terminal } from "../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../integrations/terminal/TerminalRegistry"
 import { openClineInNewTab } from "../activate/registerCommands"
+import { logger } from "../utils/logging"
 
 export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	private readonly outputChannel: vscode.OutputChannel
@@ -39,10 +40,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		this.context = provider.context
 
 		if (enableLogging) {
-			this.log = (...args: unknown[]) => {
-				this.outputChannelLog(...args)
-				console.log(args)
-			}
+			this.log = (...args: unknown[]) => logger.info(...args)
 
 			this.logfile = path.join(os.tmpdir(), "roo-code-messages.log")
 		} else {
@@ -308,37 +306,6 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	}
 
 	// Logging
-
-	private outputChannelLog(...args: unknown[]) {
-		for (const arg of args) {
-			if (arg === null) {
-				this.outputChannel.appendLine("null")
-			} else if (arg === undefined) {
-				this.outputChannel.appendLine("undefined")
-			} else if (typeof arg === "string") {
-				this.outputChannel.appendLine(arg)
-			} else if (arg instanceof Error) {
-				this.outputChannel.appendLine(`Error: ${arg.message}\n${arg.stack || ""}`)
-			} else {
-				try {
-					this.outputChannel.appendLine(
-						JSON.stringify(
-							arg,
-							(key, value) => {
-								if (typeof value === "bigint") return `BigInt(${value})`
-								if (typeof value === "function") return `Function: ${value.name || "anonymous"}`
-								if (typeof value === "symbol") return value.toString()
-								return value
-							},
-							2,
-						),
-					)
-				} catch (error) {
-					this.outputChannel.appendLine(`[Non-serializable object: ${Object.prototype.toString.call(arg)}]`)
-				}
-			}
-		}
-	}
 
 	private async fileLog(message: string) {
 		if (!this.logfile) {
