@@ -1606,18 +1606,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.tokenTracking.recordToolError(toolName, error)
 	}
 
-	// Getters (delegate to TokenTracking module)
+	// Getters: status and queue live in TaskAskSay (which owns the pending asks),
+	// token usage in TaskTokenTracking.
 
 	public get taskStatus(): TaskStatus {
-		return this.tokenTracking.taskStatus
+		return this.askSay.taskStatus
 	}
 
 	public get taskAsk(): ClineMessage | undefined {
-		return this.tokenTracking.taskAsk
+		return this.askSay.taskAsk
 	}
 
 	public get queuedMessages(): QueuedMessage[] {
-		return this.tokenTracking.queuedMessages
+		return this.askSay.queuedMessages
 	}
 
 	public get tokenUsage(): TokenUsage | undefined {
@@ -1658,14 +1659,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * Process any queued messages by dequeuing and submitting them.
-	 * This ensures that queued user messages are sent when appropriate,
-	 * preventing them from getting stuck in the queue.
-	 *
-	 * @param context - Context string for logging (e.g., the calling tool name)
+	 * Submit the next queued user message, if any (see TaskAskSay.processQueuedMessages).
+	 * Tools call it after a write so a message queued meanwhile is not left waiting.
 	 */
 	public processQueuedMessages(): void {
-		this.tokenTracking.processQueuedMessages()
+		this.askSay.processQueuedMessages()
 	}
 
 	/**

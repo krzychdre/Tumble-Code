@@ -9,7 +9,9 @@ import {
 	type ContextCondense,
 	type ContextTruncation,
 	type ContextPrune,
+	type QueuedMessage,
 	RooCodeEventName,
+	TaskStatus,
 	isIdleAsk,
 	isInteractiveAsk,
 	isResumableAsk,
@@ -56,6 +58,8 @@ export interface TaskAskSayAccess {
 	history: TaskMessageLog
 	emit: EventEmitter["emit"]
 	checkpointSave: (force?: boolean, suppressMessage?: boolean) => Promise<unknown>
+	/** Sends a queued user message as if the user had just submitted it. */
+	submitUserMessage: (text: string, images?: string[]) => Promise<void>
 	/**
 	 * Optional per-task auto-approval override (headless background tasks). Checked
 	 * before the global auto-approval state; returns "approve"/"deny" to resolve an
@@ -68,6 +72,57 @@ export interface TaskAskSayAccess {
 
 export class TaskAskSay {
 	constructor(private readonly access: TaskAskSayAccess) {}
+
+	/**
+	 * The task status, derived from the pending ask: an interactive ask wins over a
+	 * resumable one, which wins over an idle one; no pending ask means running.
+	 */
+	get taskStatus(): TaskStatus {
+		if (this.access.interactiveAsk) {
+			return TaskStatus.Interactive
+		}
+
+		if (this.access.resumableAsk) {
+			return TaskStatus.Resumable
+		}
+
+		if (this.access.idleAsk) {
+			return TaskStatus.Idle
+		}
+
+		return TaskStatus.Running
+	}
+
+	/** The pending ask message (idle, resumable or interactive), if any. */
+	get taskAsk(): ClineMessage | undefined {
+		return this.access.idleAsk || this.access.resumableAsk || this.access.interactiveAsk
+	}
+
+	/** The user messages waiting in the queue. */
+	get queuedMessages(): QueuedMessage[] {
+		return this.access.messageQueueService.messages
+	}
+
+	/**
+	 * Submit the next queued user message, if there is one, on the next tick, so a
+	 * message queued while a tool was running does not stay stuck in the queue.
+	 */
+	processQueuedMessages(): void {
+		try {
+			if (!this.access.messageQueueService.isEmpty()) {
+				const queued = this.access.messageQueueService.dequeueMessage()
+				if (queued) {
+					setTimeout(() => {
+						this.access
+							.submitUserMessage(queued.text, queued.images)
+							.catch((err) => console.error(`[Task] Failed to submit queued message:`, err))
+					}, 0)
+				}
+			}
+		} catch (e) {
+			console.error(`[Task] Queue processing error:`, e)
+		}
+	}
 
 	// Note that `partial` has three valid states true (partial message),
 	// false (completion of partial message), undefined (individual complete

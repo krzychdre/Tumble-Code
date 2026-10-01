@@ -1,21 +1,11 @@
 import debounce from "lodash.debounce"
 import EventEmitter from "events"
 
-import {
-	type ClineMessage,
-	type TokenUsage,
-	type ToolUsage,
-	type ToolName,
-	type QueuedMessage,
-	TaskStatus,
-	RooCodeEventName,
-} from "@roo-code/types"
+import { type ClineMessage, type TokenUsage, type ToolUsage, type ToolName, RooCodeEventName } from "@roo-code/types"
 
 import { getApiMetrics, hasTokenUsageChanged, hasToolUsageChanged } from "../../shared/getApiMetrics"
 import { combineApiRequests } from "../../shared/combineApiRequests"
 import { combineCommandSequences } from "../../shared/combineCommandSequences"
-import { MessageQueueService } from "../message-queue/MessageQueueService"
-import { type ClineProvider } from "../webview/ClineProvider"
 
 /**
  * Interface for Task access needed by TaskTokenTracking.
@@ -30,23 +20,6 @@ export interface TaskTokenTrackingAccess {
 
 	// Tool usage tracking
 	toolUsage: ToolUsage
-
-	// Task status state
-	idleAsk?: ClineMessage
-	resumableAsk?: ClineMessage
-	interactiveAsk?: ClineMessage
-
-	// Message queue
-	messageQueueService: MessageQueueService
-
-	// Workspace path
-	workspacePath: string
-
-	// Provider reference
-	providerRef: WeakRef<ClineProvider>
-
-	// For processQueuedMessages - reference to submitUserMessage method
-	submitUserMessage: (text: string, images?: string[]) => Promise<void>
 
 	// Event emitter
 	emit: EventEmitter["emit"]
@@ -172,39 +145,6 @@ export class TaskTokenTracking {
 	// Getters
 
 	/**
-	 * Get the current task status based on ask states.
-	 */
-	public get taskStatus(): TaskStatus {
-		if (this.access.interactiveAsk) {
-			return TaskStatus.Interactive
-		}
-
-		if (this.access.resumableAsk) {
-			return TaskStatus.Resumable
-		}
-
-		if (this.access.idleAsk) {
-			return TaskStatus.Idle
-		}
-
-		return TaskStatus.Running
-	}
-
-	/**
-	 * Get the current ask message (idle, resumable, or interactive).
-	 */
-	public get taskAsk(): ClineMessage | undefined {
-		return this.access.idleAsk || this.access.resumableAsk || this.access.interactiveAsk
-	}
-
-	/**
-	 * Get queued messages from the message queue service.
-	 */
-	public get queuedMessages(): QueuedMessage[] {
-		return this.access.messageQueueService.messages
-	}
-
-	/**
 	 * Get cached token usage with snapshot optimization.
 	 */
 	public get tokenUsage(): TokenUsage | undefined {
@@ -216,29 +156,5 @@ export class TaskTokenTracking {
 		this.tokenUsageSnapshotAt = this.access.clineMessages.at(-1)?.ts
 
 		return this._tokenUsageSnapshot
-	}
-
-	/**
-	 * Process any queued messages by dequeuing and submitting them.
-	 * This ensures that queued user messages are sent when appropriate,
-	 * preventing them from getting stuck in the queue.
-	 *
-	 * @param context - Context string for logging (e.g., the calling tool name)
-	 */
-	public processQueuedMessages(): void {
-		try {
-			if (!this.access.messageQueueService.isEmpty()) {
-				const queued = this.access.messageQueueService.dequeueMessage()
-				if (queued) {
-					setTimeout(() => {
-						this.access
-							.submitUserMessage(queued.text, queued.images)
-							.catch((err) => console.error(`[Task] Failed to submit queued message:`, err))
-					}, 0)
-				}
-			}
-		} catch (e) {
-			console.error(`[Task] Queue processing error:`, e)
-		}
 	}
 }
