@@ -547,7 +547,8 @@
 	"webSearch": {
 		"title": "Cerca web",
 		"queryCount_one": "{{count}} consulta",
-		"queryCount_other": "{{count}} consultes"
+		"queryCount_other": "{{count}} consultes",
+		"queryCount_many": "{{count}} consultes"
 	},
 	"webFetch": {
 		"title": "Pàgina web",

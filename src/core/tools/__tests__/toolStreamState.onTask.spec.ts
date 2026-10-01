@@ -70,6 +70,8 @@ function makeTask(name: string): any {
 			scrollToFirstDiff: vi.fn(),
 		},
 		api: { getModel: () => ({ id: "claude-test" }) },
+		// A real task always has a diff strategy. undefined status means "no progress card yet".
+		diffStrategy: { getProgressStatus: vi.fn().mockReturnValue(undefined) },
 		fileContextTracker: { trackFileContext: vi.fn().mockResolvedValue(undefined) },
 		say: vi.fn().mockResolvedValue(undefined),
 		ask: vi.fn().mockResolvedValue(undefined),
