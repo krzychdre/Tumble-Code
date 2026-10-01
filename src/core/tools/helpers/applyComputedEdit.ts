@@ -56,7 +56,7 @@ export type ComputedEditOutcome = "saved" | "rejected" | "unchanged" | "aborted"
 /**
  * The approval, diff view and save sequence every edit tool runs once it has
  * computed the new file content (CORE-R8). One copy, so the direct-write rule
- * (`task.silentWrites` or the focus-disruption experiment), the approval card
+ * (the focus-disruption experiment), the approval card
  * and the post-save plan-review gate cannot drift between tools again.
  *
  * Order: diff view setup, empty-diff check, settings, approval card, diff
@@ -87,10 +87,8 @@ export async function applyComputedEdit(
 	const state = await task.providerRef.deref()?.getState()
 	const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
 	const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-	// Background/memory tasks (`silentWrites`) reuse the focus-disruption
-	// path: it writes straight to disk without opening a diff editor tab.
-	const writesDirectly =
-		task.silentWrites || experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
+	// The focus-disruption experiment writes straight to disk without opening a diff editor tab.
+	const writesDirectly = experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
 
 	const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
 	const sanitizedDiff = sanitizeUnifiedDiff(diff || "")

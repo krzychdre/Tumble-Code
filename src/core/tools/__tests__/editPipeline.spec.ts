@@ -114,7 +114,6 @@ function makeTask() {
 		consecutiveMistakeCountForEditFile: new Map<string, number>(),
 		didEditFile: false,
 		didToolFailInCurrentTurn: false,
-		silentWrites: false,
 		providerRef: {
 			deref: () => ({
 				getState: vi.fn(async () => {
@@ -609,59 +608,6 @@ describe("edit pipeline: `$` patterns in the replacement stay literal", () => {
 })
 
 describe("edit pipeline: drift resolutions", () => {
-	it.each([
-		[
-			"edit",
-			() =>
-				editTool.execute(
-					{ file_path: "src/a.ts", old_string: "const b = 2", new_string: "const b = 3" },
-					task,
-					callbacks(),
-				),
-		],
-		[
-			"search_replace",
-			() =>
-				searchReplaceTool.execute(
-					{ file_path: "src/a.ts", old_string: "const b = 2", new_string: "const b = 3" },
-					task,
-					callbacks(),
-				),
-		],
-		[
-			"edit_file",
-			() =>
-				editFileTool.execute(
-					{ file_path: "src/a.ts", old_string: "const b = 2", new_string: "const b = 3" },
-					task,
-					callbacks(),
-				),
-		],
-		[
-			"apply_patch",
-			() =>
-				applyPatchTool.execute(
-					{ patch: updatePatch("src/a.ts", " const a = 1\n-const b = 2\n+const b = 3") },
-					task,
-					callbacks(),
-				),
-		],
-	])("%s keeps a silent-writes (background memory) task off-screen", async (_name, run) => {
-		task.silentWrites = true
-
-		await run()
-
-		expect(task.diffViewProvider.open).not.toHaveBeenCalled()
-		expect(task.diffViewProvider.saveChanges).not.toHaveBeenCalled()
-		expect(task.diffViewProvider.saveDirectly).toHaveBeenCalledWith(
-			"src/a.ts",
-			"const a = 1\nconst b = 3\n",
-			false,
-			true,
-			50,
-		)
-	})
-
 	it("edit turns an absolute path inside the workspace into a relative one, like search_replace", async () => {
 		// `path.relative` answers with the platform separator ("src\\a.ts" on Windows).
 		const relPath = path.join("src", "a.ts")

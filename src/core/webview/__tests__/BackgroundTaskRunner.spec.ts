@@ -131,7 +131,6 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 			taskMode: "code",
 			workspacePath: "/mem",
 			maxAgentTurns: 4,
-			silentWrites: true,
 		})) as unknown as FakeTask
 
 		expect(task.options).toMatchObject({
@@ -145,7 +144,6 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 			workspacePath: "/mem",
 			isBackground: true,
 			maxAgentTurns: 4,
-			silentWrites: true,
 			startTask: false,
 			onCreated,
 		})

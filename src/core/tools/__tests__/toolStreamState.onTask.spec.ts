@@ -51,7 +51,6 @@ function makeTask(name: string): any {
 		consecutiveMistakeCount: 0,
 		consecutiveMistakeCountForEditFile: new Map<string, number>(),
 		didEditFile: false,
-		silentWrites: false,
 		providerRef: {
 			deref: () => ({
 				getState: vi.fn().mockResolvedValue({ diagnosticsEnabled: false, writeDelayMs: 0, experiments: {} }),
