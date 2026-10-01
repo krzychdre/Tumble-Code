@@ -91,4 +91,20 @@ describe("CodeAccordion diff file header", () => {
 		fireEvent.click(screen.getByRole("button", { name: "chat:diffView.openFile" }))
 		expect(onJumpToFile).toHaveBeenCalledTimes(1)
 	})
+
+	it("toggles through a real header button that reports its state", () => {
+		const onToggleExpand = vi.fn()
+		renderAccordion({ onToggleExpand })
+
+		const toggle = screen.getByRole("button", { expanded: false })
+		expect(screen.getByTestId("code-accordion-header")).toContainElement(toggle)
+		fireEvent.click(toggle)
+		expect(onToggleExpand).toHaveBeenCalledTimes(1)
+	})
+
+	it("shows the chevron next to the open-file control too", () => {
+		renderAccordion({ onJumpToFile: vi.fn() })
+
+		expect(screen.getByTestId("code-accordion-header").querySelector(".codicon-chevron-down")).not.toBeNull()
+	})
 })
