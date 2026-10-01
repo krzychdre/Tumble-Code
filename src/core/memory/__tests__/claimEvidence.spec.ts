@@ -227,6 +227,19 @@ describe.skipIf(!hasGit)("createGitClaimEvidenceLookup", () => {
 		expect(onMaster).toMatchObject({ landed: true, text: "File docs/m.md exists on master." })
 	})
 
+	it("counts only origin/main when it exists, so a local-only commit is not landed", async () => {
+		const ahead = path.join(root, "ahead")
+		fs.mkdirSync(ahead)
+		git(ahead, "init", "-q", "-b", "main")
+		const pushed = commitFile(ahead, "a.txt", "a\n", "pushed")
+		git(ahead, "update-ref", "refs/remotes/origin/main", "HEAD")
+		const local = commitFile(ahead, "b.txt", "b\n", "local only (#77)")
+		const [p, l, n] = await lookup([commit(pushed.slice(0, 9)), commit(local.slice(0, 9)), pr(77)], ahead)
+		expect(p.landed).toBe(true)
+		expect(l).toMatchObject({ landed: false, text: `Commit ${local.slice(0, 9)} exists but is not on main.` })
+		expect(n.landed).toBeUndefined()
+	})
+
 	it("answers undefined for every ref outside a git repository", async () => {
 		const plain = path.join(root, "plain")
 		fs.mkdirSync(plain, { recursive: true })

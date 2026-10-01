@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Bật gộp bộ nhớ (dream)",
-				"description": "Khi bật, tác nhân định kỳ xem xét và tổ chức lại bộ nhớ: gộp bản trùng, xoá sự thật mâu thuẫn và tỉa bớt mục cũ. Chạy tự động khi đã trôi qua đủ thời gian và phiên."
+				"description": "Khi bật, tác nhân định kỳ xem xét và tổ chức lại bộ nhớ: gộp bản trùng, xoá sự thật mâu thuẫn và tỉa bớt mục cũ. Chạy tự động khi đã trôi qua đủ thời gian và phiên. Nó cũng đối chiếu các ghi chú chỉ đúng trong một thời gian (\"chưa merge\", \"còn nợ rebuild\") với git và các ghi chú mới hơn, rồi đánh dấu những mục đã xong."
 			},
 			"minHours": {
 				"label": "Số giờ tối thiểu giữa các dream",

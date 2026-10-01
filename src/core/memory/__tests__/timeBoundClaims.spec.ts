@@ -2,9 +2,11 @@ import {
 	allRefsLanded,
 	annotateClause,
 	describeRef,
+	dropResolvedClause,
 	extractRefs,
 	findTimeBoundClauses,
 	isTimeBound,
+	refsNearMarker,
 	removeClause,
 	RESOLVED_MARKER,
 } from "../timeBoundClaims"
@@ -21,6 +23,12 @@ describe("isTimeBound", () => {
 		"deferred until the bench run",
 		"pending merge of the stack",
 		"jeszcze nie zmergowane",
+		"was not merged to main at time of writing",
+		"STILL not rebuilt",
+		"jeszcze nie zrobione",
+		"VSIX nie jest przebudowany",
+		"VSIX is STALE vs main",
+		"dopóki VSIX nie zostanie przebudowany",
 		"branch niezmergowany",
 		"wdrożenie odłożone na później",
 		"na razie tylko lokalnie",
@@ -35,7 +43,13 @@ describe("isTimeBound", () => {
 		"drain blocked abort",
 		"knip exits 1 inside .claude/worktrees",
 		"ink useInput stale closure (read via refs)",
+		"All benchmark artifacts are ephemeral and intentionally unmerged",
+		"branch zostaje celowo niezmergowany",
 		"nie mów do mnie",
+		"Never undo a temporary edit on the live tree",
+		"stable head, deferred-tools catalog LAST",
+		"MERGED as #156 (squash, branch looked unmerged)",
+		"Follow-up item from the plan, completed 2026-09-26",
 	])("does not flag %j", (clause) => {
 		expect(isTimeBound(clause)).toBe(false)
 	})
@@ -116,6 +130,13 @@ describe("extractRefs", () => {
 		).toEqual([])
 	})
 
+	it("reads a branch-like path with a file extension as a file", () => {
+		expect(extractRefs("see docs/plan.md and docs/refactor-plan-2026-09-24")).toEqual([
+			{ kind: "file", path: "docs/plan.md" },
+			{ kind: "branch", name: "docs/refactor-plan-2026-09-24" },
+		])
+	})
+
 	it("does not read a hex-looking branch suffix as a commit", () => {
 		expect(extractRefs("feat/ab12cd3 not merged")).toEqual([{ kind: "branch", name: "feat/ab12cd3" }])
 	})
@@ -189,10 +210,51 @@ describe("allRefsLanded", () => {
 		expect(allRefsLanded([], [ev(pr, true)])).toBe(false)
 	})
 
+	it("does not let an existing file alone open the gate", () => {
+		const file = { kind: "file", path: "src/a.ts" } as const
+		expect(allRefsLanded([file], [{ ref: file, landed: true, text: "t" }])).toBe(false)
+		expect(allRefsLanded([pr, file], [ev(pr, true), { ref: file, landed: true, text: "t" }])).toBe(true)
+	})
+
 	it("needs every ref landed", () => {
 		expect(allRefsLanded([pr, branch], [ev(pr, true), ev(branch, true)])).toBe(true)
 		expect(allRefsLanded([pr, branch], [ev(pr, true), ev(branch, false)])).toBe(false)
 		expect(allRefsLanded([pr, branch], [ev(pr, true), ev(branch, undefined)])).toBe(false)
 		expect(allRefsLanded([pr, branch], [ev(pr, true)])).toBe(false)
+	})
+})
+
+describe("refsNearMarker", () => {
+	it("keeps the refs a marker is about and drops the ones further away", () => {
+		expect(refsNearMarker("fix/x STILL unmerged")).toEqual([{ kind: "branch", name: "fix/x" }])
+		expect(refsNearMarker("#12 is still not merged")).toEqual([{ kind: "pr", number: 12 }])
+		expect(refsNearMarker("unmerged: main left at e9d27d10f")).toEqual([])
+		expect(refsNearMarker("branch STILL unmerged 2026-10-01 and now CONFLICTS with #654")).toEqual([])
+	})
+
+	it("with mergeOnly counts only markers git can settle, and never files", () => {
+		expect(refsNearMarker("VSIX rebuild owed for #570", true)).toEqual([])
+		expect(refsNearMarker("VSIX rebuild owed for #570")).toEqual([{ kind: "pr", number: 570 }])
+		expect(refsNearMarker("fix/x jeszcze nie zmergowane", true)).toEqual([{ kind: "branch", name: "fix/x" }])
+		expect(refsNearMarker("docs/a.md not pushed", true)).toEqual([])
+	})
+})
+
+describe("dropResolvedClause", () => {
+	it("drops only a time-bound parenthetical and keeps the still-true rest", () => {
+		const hook = "VSIX = main@059bac30c; all doc debts cleared in d55078ec7 (not pushed)."
+		expect(dropResolvedClause(hook, "all doc debts cleared in d55078ec7 (not pushed).")).toBe(
+			"VSIX = main@059bac30c; all doc debts cleared in d55078ec7.",
+		)
+		expect(
+			dropResolvedClause(
+				"DEBTS CLEARED (commit abc1234, not pushed): rows added",
+				"DEBTS CLEARED (commit abc1234, not pushed): rows added",
+			),
+		).toBe("DEBTS CLEARED: rows added")
+	})
+
+	it("drops the whole clause when the marker is outside the parenthetical", () => {
+		expect(dropResolvedClause("MERGED #5; VSIX rebuild owed (UI)", "VSIX rebuild owed (UI)")).toBe("MERGED #5")
 	})
 })

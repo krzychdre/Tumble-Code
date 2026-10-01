@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Ativar consolidação de memória (dream)",
-				"description": "Quando ativo, o agente periodicamente revisa e reorganiza a memória: funde duplicatas, remove fatos contraditórios e poda entradas obsoletas. Roda automaticamente quando tempo e sessões suficientes se passaram."
+				"description": "Quando ativo, o agente periodicamente revisa e reorganiza a memória: funde duplicatas, remove fatos contraditórios e poda entradas obsoletas. Roda automaticamente quando tempo e sessões suficientes se passaram. Também verifica notas que só eram verdadeiras por um tempo (\"ainda não mesclado\", \"rebuild pendente\") contra o git e notas mais novas, e marca as já concluídas."
 			},
 			"minHours": {
 				"label": "Horas mínimas entre dreams",

@@ -1,6 +1,6 @@
 # The dream verifies time-bound claims in project memory
 
-Status: in progress, four stacked branches (see "Branches"). `src/core/memory` is on the "do not touch without a
+Status: done, landed as PRs #657, #658, #659 and #660 (see "Branches"). `src/core/memory` is on the "do not touch without a
 dedicated item" list in `docs/architecture.md`; this document is that item.
 
 ## Problem
@@ -76,6 +76,18 @@ For each time-bound clause of the description, the MEMORY.md index line and the 
    directory's frontmatter as real YAML.
 5. STILL: only the check state is written.
 
+Implementation notes (branch 4, `claimCheck.ts`):
+
+- The cap of 40 examined clauses counts only clauses that reach the evidence stage (refs with a lookup wired, or a
+  newer statement found). Clauses nothing could settle cost no lookup and are skipped without counting, so they do
+  not use up the budget meant for the rest of the store.
+- A DONE whose edit could not drop the clause (a clause that is the whole index title) is remembered and not asked
+  again while the facts stay the same.
+- An edited memory keeps its mtime: the rest of the note is as old as before, and a fresh mtime would hide the newer
+  notes that could settle its remaining clauses.
+- The git lookup is injected (`evidence` on `AutoDreamContext` and `consolidateMemories`); `executeAutoDream`
+  defaults it to `createGitClaimEvidenceLookup(cwd)`.
+
 ### 4. Recall warns about unresolved time-bound clauses (`surfacing.ts`)
 
 When a surfaced memory is at least a day old and still contains time-bound clauses, its header lists up to 3 of
@@ -92,4 +104,40 @@ defence for clauses the dream cannot settle (no refs, no newer memory).
 
 ## Results
 
-(filled in when the branches land)
+### Worst-case dry runs on the real store
+
+`verifyTimeBoundClaims` was run against a copy of the real shared memory directory (122 files) with the real git
+lookup on this repository and a stub model that answers DONE to everything, i.e. the most credulous model possible.
+Each round found what still let a wrong edit through, and the gate was tightened until none did:
+
+1. First cut: 9 edits in 3 dreams, nearly all wrong. "Never undo a **temporary** edit" (a rule), "**deferred**-tools
+   catalog" (a feature name), "MERGED as #156 (branch looked **unmerged**)" (history) were read as claims; newer-note
+   evidence matched on plain shared words ("git", "tree", "checkout").
+   Fixes: a clause carrying an unnegated completion word ("merged", "completed", "done") reports the past and is not a
+   claim; "temporary" dropped; "deferred-" compounds ignored; feedback and user memories (rules, preferences) are never
+   checked; a newer clause must share an anchor (a ref, an upper-case identifier like VSIX or DEF-C36, or a code span)
+   and must report the claim's own action ("rebuild owed" needs "rebuilt", not any "done").
+2. 9 edits in 4 dreams, still wrong: "VSIX rebuild owed for #570" settled because PR #570 is on main (the rebuild is
+   what is owed, git knows nothing about it); "branch STILL unmerged, now CONFLICTS with #654" settled by #654 (a
+   different change); "VSIX not rebuilt" settled by "Installed VSIX is STALE".
+   Fixes: git opens the gate only for merge and push claims ("unmerged", "not pushed", "niezmergowane") and only for
+   refs at most two words from that marker (`refsNearMarker`); "is stale", "stale vs" are markers; "rebuilt" counts
+   as the rebuild action.
+3. 5 edits: "intentionally unmerged: main left at e9d27d10f", a Polish "VSIX nie jest przebudowany" read as done, a
+   "follow-up ... GLM" claim matched by an unrelated "MERGED ... GLM review".
+   Fixes: "intentionally", "by design", "celowo" mark a permanent state; Polish negation with "jest/są/został"; a
+   claim naming no action needs two shared anchors; "dopóki" is a marker. The git lookup now counts origin/main only
+   when it exists, so a commit on the local main alone does not settle "not pushed".
+4. Final: 1 edit in 8 dreams, and it is right: "all doc debts cleared in d55078ec7 (not pushed)" while d55078ec7 is
+   on origin/main. The index hook became "all doc debts cleared in d55078ec7." (`dropResolvedClause` drops only the
+   time-bound parenthetical), the body clause got `[resolved 2026-10-01: Commit d55078ec7 is on main]`, both files
+   were copied to `.archive/` first and the note kept its mtime.
+
+So the safety does not depend on the model: with the gate as it is, even an always-DONE model makes only edits the
+evidence supports. A real small model was not tried (no local chat model was running on the dev machine).
+
+### What it does not settle
+
+Most time-bound clauses in the store ("VSIX rebuild owed", "api image rebuild owed", "must run agent-bench") name
+nothing git can check and no newer note reports them done in matching words. They stay as they are; the recall note
+(section 4) tells the agent to check them before repeating them.
