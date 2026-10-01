@@ -709,7 +709,6 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["deleteCommand", { text: "deploy", values: { source: "project" } }],
 	["createCommand", { text: "/My Command.md", values: { source: "project" } }],
 	["createCommand#global-generated-name", { values: { source: "global" } }],
-	["showMdmAuthRequiredNotification", {}],
 	["queueMessage", { text: "later", images: [] }],
 	["removeQueuedMessage", { text: "queued-1" }],
 	["editQueuedMessage", { payload: { id: "queued-1", text: "changed", images: [] } }],
@@ -743,7 +742,7 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["enhancedPrompt#unhandled", {}],
 ]
 
-/** Every message type the handler routes today (139 types). */
+/** Every message type the handler routes today (138 types). */
 const ROUTED_TYPES = [...new Set(ROUTES.map(([label]) => label.split("#")[0]))].filter(
 	(type) => type !== "enhancedPrompt",
 )
@@ -766,7 +765,7 @@ describe("webviewMessageHandler routing (characterization, CORE-R3)", () => {
 	})
 
 	it("covers every routed message type exactly once in the route list", () => {
-		expect(ROUTED_TYPES).toHaveLength(139)
+		expect(ROUTED_TYPES).toHaveLength(138)
 	})
 
 	it.each(ROUTES)("%s", async (label, fields) => {

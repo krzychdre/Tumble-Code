@@ -154,12 +154,6 @@ vi.mock("../services/tree-sitter/languageParser", () => ({
 	disposeLanguageParsers: vi.fn(),
 }))
 
-vi.mock("../services/mdm/MdmService", () => ({
-	MdmService: {
-		createInstance: vi.fn().mockResolvedValue(null),
-	},
-}))
-
 vi.mock("../utils/autoImportSettings", () => ({
 	autoImportSettings: vi.fn().mockResolvedValue(undefined),
 }))

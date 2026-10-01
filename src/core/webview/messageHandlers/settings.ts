@@ -325,11 +325,6 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 		}
 	},
 
-	showMdmAuthRequiredNotification: () => {
-		// Show notification that organization requires authentication
-		vscode.window.showWarningMessage(t("common:mdm.info.organization_requires_auth"))
-	},
-
 	dismissUpsell: async (ctx, message) => {
 		const { provider, getGlobalState, updateGlobalState } = ctx
 		if (message.upsellId) {

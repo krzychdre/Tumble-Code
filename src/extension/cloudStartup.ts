@@ -18,7 +18,6 @@ export const CLOUD_START_TIMEOUT_MS = 10_000
 
 interface CloudStart {
 	settled: boolean
-	timedOut: boolean
 	/** Resolves when the start settles (success or failure); never rejects. */
 	done: Promise<void>
 	/** Resolves when the start settles or the timeout passes, whichever is first. */
@@ -43,7 +42,6 @@ export function startCloudInBackground(
 
 	const state: CloudStart = {
 		settled: false,
-		timedOut: false,
 		done: Promise.resolve(),
 		settledOrTimedOut: timeoutReached,
 	}
@@ -52,7 +50,6 @@ export function startCloudInBackground(
 		if (state.settled) {
 			return
 		}
-		state.timedOut = true
 		log(
 			`[CloudService] still starting after ${Math.round(timeoutMs / 1000)} s; ` +
 				"continuing without it, cloud features attach when it finishes",
@@ -76,11 +73,6 @@ export function startCloudInBackground(
 
 	current = state
 	return state.done
-}
-
-/** True while a background cloud start has neither settled nor passed its timeout. */
-export function isCloudStartPending(): boolean {
-	return !!current && !current.settled && !current.timedOut
 }
 
 /**

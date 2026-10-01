@@ -249,8 +249,6 @@ interface ProviderStateSources {
 	getStorageErrorMessage(): string
 	getSettingsImportedAt(): number | undefined
 	getHasOpenedModeSelector(): boolean | undefined
-	/** undefined without an MDM policy, otherwise whether the user complies with it. */
-	getMdmCompliance(): boolean | undefined
 	latestAnnouncementId: string
 	renderContext: "sidebar" | "editor"
 }
@@ -426,8 +424,6 @@ export class ProviderStateBuilder {
 			// the user had entered it (DEF-C42). Unset means "use the model's own
 			// dimension"; the form shows its placeholder instead.
 			codebaseIndexConfig: settings.codebaseIndexConfig,
-			// undefined means no MDM policy, true compliant, false non-compliant.
-			mdmCompliant: this.sources.getMdmCompliance(),
 			cloudApiUrl: getRooCodeApiUrl(),
 			hasOpenedModeSelector: this.sources.getHasOpenedModeSelector() ?? false,
 			openAiCodexIsAuthenticated: await (async () => {

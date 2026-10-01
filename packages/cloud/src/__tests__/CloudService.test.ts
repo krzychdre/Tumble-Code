@@ -312,21 +312,6 @@ describe("CloudService", () => {
 			expect(mockAuthService.handleCallback).toHaveBeenCalledWith("code", "state", "org_123")
 		})
 
-		it("should return stored organization ID from AuthService", () => {
-			mockAuthService.getStoredOrganizationId.mockReturnValue("org_456")
-
-			const result = cloudService.getStoredOrganizationId()
-			expect(mockAuthService.getStoredOrganizationId).toHaveBeenCalled()
-			expect(result).toBe("org_456")
-		})
-
-		it("should return null when no stored organization ID available", () => {
-			mockAuthService.getStoredOrganizationId.mockReturnValue(null)
-
-			const result = cloudService.getStoredOrganizationId()
-			expect(result).toBe(null)
-		})
-
 		it("should return true when stored organization ID exists", () => {
 			mockAuthService.getStoredOrganizationId.mockReturnValue("org_789")
 

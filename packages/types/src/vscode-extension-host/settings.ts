@@ -23,7 +23,6 @@ export type SettingsWebviewMessageType =
 	| "debugSetting"
 	| "focusPanelRequest"
 	| "switchTab"
-	| "showMdmAuthRequiredNotification"
 	| "dismissUpsell"
 	| "getDismissedUpsells"
 

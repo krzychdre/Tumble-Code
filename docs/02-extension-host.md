@@ -16,8 +16,7 @@ flowchart TD
   C -- no --> D[network proxy, cloud URLs, custom tool path]
   D --> E[migrateFromRooCode - background]
   E --> F[TelemetryService + PostHog client]
-  F --> G[MdmService - awaited]
-  G --> H[i18n, TerminalRegistry, Codex OAuth]
+  F --> H[i18n, TerminalRegistry, Codex OAuth]
   H --> I[ContextProxy - awaited<br/>settings + secrets cache]
   I --> J[memory paths]
   J --> K[one CodeIndexManager per workspace folder - background]
@@ -32,8 +31,7 @@ flowchart TD
 
 The cloud start runs in the background (`src/extension/cloudStartup.ts`, P9): the webview and the commands never
 wait for it, and a failed start only means local-only mode. It counts as "starting" until it settles or 10 s pass;
-in that window `CloudService.hasInstance()` is false, the MDM redirect to the account tab is held back, and a
-Clerk sign-in callback (`handleUri`) waits for it. When the start settles, activation pushes a fresh state to a
+in that window `CloudService.hasInstance()` is false and a Clerk sign-in callback (`handleUri`) waits for it. When the start settles, activation pushes a fresh state to a
 visible webview (which may have shown signed-out cloud facts) and sets up the remote-control bridge.
 
 `deactivate()` flushes pending chat-message saves, removes cloud listeners, stops MCP servers, shuts telemetry
@@ -134,5 +132,4 @@ Long-lived helpers the task and the provider use. Each folder is self-contained.
 | `services/command`                   | Slash commands                                                                        |
 | `services/roo-config`                | Resolution and watching of `.roo/` folders                                            |
 | `services/glob`, `ripgrep`, `search` | File listing, content search, fuzzy file search for `@` mentions                      |
-| `services/mdm`                       | Managed-device policy (forced cloud login, organization)                              |
 | `core/memory`                        | Auto-memory: extraction after tasks, consolidation, recall (do not touch)             |

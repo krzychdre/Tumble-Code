@@ -20,21 +20,19 @@ describe("cloudStartup (P9)", () => {
 		vi.useRealTimers()
 	})
 
-	it("is not pending and does not make anyone wait when no start was made", async () => {
-		const { isCloudStartPending, waitForCloudStart } = await freshModule()
+	it("does not make anyone wait when no start was made", async () => {
+		const { waitForCloudStart } = await freshModule()
 
-		expect(isCloudStartPending()).toBe(false)
 		await expect(waitForCloudStart()).resolves.toBeUndefined()
 	})
 
-	it("returns at once, is pending until the start settles, then releases waiters", async () => {
-		const { startCloudInBackground, isCloudStartPending, waitForCloudStart } = await freshModule()
+	it("returns at once, holds waiters until the start settles, then releases them", async () => {
+		const { startCloudInBackground, waitForCloudStart } = await freshModule()
 		const start = deferred()
 		const log = vi.fn()
 
 		const done = startCloudInBackground(() => start.promise, log)
 
-		expect(isCloudStartPending()).toBe(true)
 		let released = false
 		void waitForCloudStart().then(() => {
 			released = true
@@ -45,27 +43,26 @@ describe("cloudStartup (P9)", () => {
 		start.resolve()
 		await done
 
-		expect(isCloudStartPending()).toBe(false)
 		await waitForCloudStart()
 		expect(released).toBe(true)
 		expect(log).not.toHaveBeenCalled()
 	})
 
 	it("logs a failed start instead of rejecting", async () => {
-		const { startCloudInBackground, isCloudStartPending } = await freshModule()
+		const { startCloudInBackground, waitForCloudStart } = await freshModule()
 		const log = vi.fn()
 
 		await expect(
 			startCloudInBackground(() => Promise.reject(new Error("keyring locked")), log),
 		).resolves.toBeUndefined()
 
-		expect(isCloudStartPending()).toBe(false)
+		await expect(waitForCloudStart()).resolves.toBeUndefined()
 		expect(log).toHaveBeenCalledWith("[CloudService] background start failed: keyring locked")
 	})
 
-	it("stops counting as pending at the timeout, releases waiters, and still finishes later", async () => {
+	it("releases waiters at the timeout and still finishes later", async () => {
 		vi.useFakeTimers()
-		const { startCloudInBackground, isCloudStartPending, waitForCloudStart } = await freshModule()
+		const { startCloudInBackground, waitForCloudStart } = await freshModule()
 		const start = deferred()
 		const log = vi.fn()
 		const finishedLate = vi.fn()
@@ -78,14 +75,16 @@ describe("cloudStartup (P9)", () => {
 			log,
 			5_000,
 		)
-		const waiting = waitForCloudStart()
+		let released = false
+		void waitForCloudStart().then(() => {
+			released = true
+		})
 
 		await vi.advanceTimersByTimeAsync(4_999)
-		expect(isCloudStartPending()).toBe(true)
+		expect(released).toBe(false)
 
 		await vi.advanceTimersByTimeAsync(1)
-		await waiting
-		expect(isCloudStartPending()).toBe(false)
+		expect(released).toBe(true)
 		expect(log).toHaveBeenCalledWith(expect.stringContaining("[CloudService] still starting after 5 s"))
 		expect(finishedLate).not.toHaveBeenCalled()
 

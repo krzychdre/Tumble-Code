@@ -54,7 +54,6 @@ import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { MarketplaceManager } from "../../services/marketplace"
 import { CodeIndexManager } from "../../services/code-index/manager"
 import type { IndexProgressUpdate } from "../../services/code-index/interfaces/manager"
-import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
 import { getWorkspaceGitInfo } from "../../utils/git"
@@ -97,7 +96,6 @@ import { TaskHistoryGateway } from "./TaskHistoryGateway"
 import { BackgroundTaskRunner, type BackgroundTaskOptions, type BackgroundTaskOutcome } from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
-import { isCloudStartPending } from "../../extension/cloudStartup"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -152,7 +150,6 @@ export class ClineProvider
 	protected mcpHub?: McpHub // Change from private to protected
 	protected skillsManager?: SkillsManager
 	private marketplaceManager: MarketplaceManager
-	private mdmService?: MdmService
 	private taskCreationCallback: (task: Task) => void
 	private taskEventListeners: WeakMap<Task, Array<() => void>> = new WeakMap()
 	private currentWorkspacePath: string | undefined
@@ -229,14 +226,12 @@ export class ClineProvider
 		private readonly outputChannel: vscode.OutputChannel,
 		private readonly renderContext: "sidebar" | "editor" = "sidebar",
 		public readonly contextProxy: ContextProxy,
-		mdmService?: MdmService,
 	) {
 		super()
 		this.currentWorkspacePath = getWorkspacePath()
 
 		ClineProvider.activeInstances.add(this)
 
-		this.mdmService = mdmService
 		// Closures, not `this`: they reach private members and pick up
 		// methods that tests replace on the instance after construction.
 		const isViewLaunched = () => this.isViewLaunched
@@ -254,11 +249,6 @@ export class ClineProvider
 				this.getStateToPostToWebview(options as { includeTaskHistory: TaskHistoryInclusion }),
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
 			getCurrentTask: () => this.getCurrentTask(),
-			// Held back while the cloud is still starting in the background (P9):
-			// the session is not known yet, and activation pushes the state (and
-			// with it this redirect) again once the start has settled.
-			shouldRedirectToCloudAuth: () =>
-				!isCloudStartPending() && !!this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance(),
 			hasView: () => !!this.view,
 		})
 		this.taskHistory = new TaskHistoryGateway({
@@ -297,7 +287,6 @@ export class ClineProvider
 			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
 			getSettingsImportedAt: () => this.settingsImportedAt,
 			getHasOpenedModeSelector: () => this.getGlobalState("hasOpenedModeSelector"),
-			getMdmCompliance: () => (this.mdmService?.requiresCloudAuth() ? this.checkMdmCompliance() : undefined),
 			latestAnnouncementId: this.latestAnnouncementId,
 			renderContext: this.renderContext,
 		})
@@ -1558,24 +1547,6 @@ export class ClineProvider
 
 	public getSkillsManager(): SkillsManager | undefined {
 		return this.skillsManager
-	}
-
-	/**
-	 * Check if the current state is compliant with MDM policy
-	 * @returns true if compliant or no MDM policy exists, false if MDM policy exists and user is non-compliant
-	 */
-	public checkMdmCompliance(): boolean {
-		if (!this.mdmService) {
-			return true // No MDM service, allow operation
-		}
-
-		const compliance = this.mdmService.isCompliant()
-
-		if (!compliance.compliant) {
-			return false
-		}
-
-		return true
 	}
 
 	/**

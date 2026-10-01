@@ -193,11 +193,6 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 		return this.authService!.hasActiveSession()
 	}
 
-	public hasOrIsAcquiringActiveSession(): boolean {
-		this.ensureInitialized()
-		return this.authService!.hasOrIsAcquiringActiveSession()
-	}
-
 	public getUserInfo(): CloudUserInfo | null {
 		this.ensureInitialized()
 		return this.authService!.getUserInfo()
@@ -224,11 +219,6 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 	public hasStoredOrganizationId(): boolean {
 		this.ensureInitialized()
 		return this.authService!.getStoredOrganizationId() !== null
-	}
-
-	public getStoredOrganizationId(): string | null {
-		this.ensureInitialized()
-		return this.authService!.getStoredOrganizationId()
 	}
 
 	public getAuthState(): string {
