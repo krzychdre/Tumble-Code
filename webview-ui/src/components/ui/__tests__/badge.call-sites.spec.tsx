@@ -1,13 +1,6 @@
-// Since the last DEP-9 step the toolkit is no longer installed: these specs
-// now run on the replacement components and keep pinning the behaviour the
-// toolkit had (the toolkit-only branches in the helpers are unused).
-
-// Characterization of the webview's VSCodeBadge call sites (refactor DEP-9:
-// the deprecated `VSCodeBadge` from @vscode/webview-ui-toolkit is being
-// replaced). The toolkit is NOT mocked: in jsdom it renders a `<vscode-badge>`
-// custom element that carries the call site's className and style, with the
-// text slotted into a shadow `.control`. `badgeHost` resolves both that and
-// the replacement (class `ui-badge`), so the assertions hold before and after.
+// The badge call sites in the chat (a condensation's cost, the source of a
+// skill or slash command) use the shared `Badge` in its `count` variant, VS
+// Code's own badge colours. These specs pin what each call site passes to it.
 
 import React from "react"
 
@@ -24,9 +17,9 @@ vi.mock("react-i18next", async () => {
 })
 
 const badgeHost = (text: string) => {
-	const host = screen.getByText(text).closest("vscode-badge, .ui-badge") as HTMLElement | null
-	expect(host).not.toBeNull()
-	return host!
+	const host = screen.getByText(text)
+	expect(host).toHaveClass("bg-vscode-badge-background", "text-vscode-badge-foreground")
+	return host
 }
 
 const toolProps = (tool: Partial<ClineSayTool>) =>
@@ -40,7 +33,7 @@ const toolProps = (tool: Partial<ClineSayTool>) =>
 		meta: {} as never,
 	}) as const
 
-describe("VSCodeBadge call sites (replacement characterization)", () => {
+describe("Badge call sites", () => {
 	it("CondensationResultRow: shows the cost, visible only when it is above zero", () => {
 		const { rerender } = render(
 			<CondensationResultRow

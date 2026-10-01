@@ -238,16 +238,17 @@ function typeInto(placeholder: string, value: string) {
 	fireEvent.input(screen.getByPlaceholderText(placeholder), { target: { value } })
 }
 
-/** The embedding model dropdown (ThemedDropdown; the provider picker is a Radix select). */
+/** The embedding model field, a Radix select named by its label (the provider picker is another one). */
 function modelDropdown() {
-	const dropdown = document.querySelector<HTMLElement>(".ui-dropdown")
-	expect(dropdown).not.toBeNull()
-	return dropdown!
+	// `hidden`: while a list is open Radix hides the rest of the popover from assistive tech.
+	return screen.getByRole("combobox", { name: "settings:codeIndex.modelLabel", hidden: true })
 }
 
 function chooseModel(value: string) {
 	fireEvent.click(modelDropdown())
-	fireEvent.click(modelDropdown().querySelector(`[role="option"][data-value="${value}"]`)!)
+	const option = screen.getAllByRole("option").find((o) => o.textContent?.trim().split(" ")[0] === value)
+	expect(option).toBeDefined()
+	fireEvent.click(option!)
 }
 
 function clickSave() {
@@ -370,7 +371,7 @@ describe("CodeIndexPopover per embedder provider", () => {
 			input.getAttribute("placeholder"),
 		)
 		expect(placeholders.filter((p) => !p?.startsWith("settings:codeIndex.qdrant"))).toEqual([])
-		expect(document.querySelector(".ui-dropdown")).toBeNull()
+		expect(screen.queryByRole("combobox", { name: "settings:codeIndex.modelLabel" })).toBeNull()
 	})
 
 	describe("URL fields", () => {

@@ -2,7 +2,7 @@ import React from "react"
 
 import type { EmbeddingModelProfile } from "@roo-code/types"
 
-import { ThemedDropdown, ThemedOption, ThemedTextField } from "@src/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, ThemedTextField } from "@src/components/ui"
 import { cn } from "@src/lib/utils"
 
 import type { CodeIndexSettingKey, CodeIndexTranslate, LocalCodeIndexSettings } from "./codeIndexSettings"
@@ -110,24 +110,32 @@ export const ModelDimensionField = ({ context }: FieldProps) => {
 /** The model picked from the provider's catalog, each option showing its dimension. */
 export const ModelDropdownField = ({ context }: FieldProps) => {
 	const { settings, formErrors, updateSetting, models, t } = context
+	// An id the catalog does not list (or none) shows the "select a model" placeholder.
+	const modelId = settings.codebaseIndexEmbedderModelId
+	const value = models.some(({ id }) => id === modelId) ? modelId : ""
+	const triggerId = React.useId()
 	return (
 		<div className="space-y-2">
-			<label className="text-sm font-medium">{t("settings:codeIndex.modelLabel")}</label>
-			<ThemedDropdown
-				value={settings.codebaseIndexEmbedderModelId}
-				onChange={(e: any) => updateSetting("codebaseIndexEmbedderModelId", e.target.value)}
-				className={cn("w-full", {
-					"border-[var(--vscode-inputValidation-errorBorder)]": formErrors.codebaseIndexEmbedderModelId,
-				})}>
-				<ThemedOption value="" className="p-2">
-					{t("settings:codeIndex.selectModel")}
-				</ThemedOption>
-				{models.map(({ id, profile }) => (
-					<ThemedOption key={id} value={id} className="p-2">
-						{id} {profile ? t("settings:codeIndex.modelDimensions", { dimension: profile.dimension }) : ""}
-					</ThemedOption>
-				))}
-			</ThemedDropdown>
+			<label htmlFor={triggerId} className="text-sm font-medium">
+				{t("settings:codeIndex.modelLabel")}
+			</label>
+			<Select value={value} onValueChange={(next) => updateSetting("codebaseIndexEmbedderModelId", next)}>
+				<SelectTrigger
+					id={triggerId}
+					className={cn("w-full", {
+						"border-[var(--vscode-inputValidation-errorBorder)]": formErrors.codebaseIndexEmbedderModelId,
+					})}>
+					<SelectValue placeholder={t("settings:codeIndex.selectModel")} />
+				</SelectTrigger>
+				<SelectContent>
+					{models.map(({ id, profile }) => (
+						<SelectItem key={id} value={id}>
+							{id}{" "}
+							{profile ? t("settings:codeIndex.modelDimensions", { dimension: profile.dimension }) : ""}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
 			<FieldError message={formErrors.codebaseIndexEmbedderModelId} />
 		</div>
 	)

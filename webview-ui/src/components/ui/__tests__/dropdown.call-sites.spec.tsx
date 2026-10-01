@@ -1,18 +1,9 @@
-// Since the last DEP-9 step the toolkit is no longer installed: these specs
-// now run on the replacement components and keep pinning the behaviour the
-// toolkit had (the toolkit-only branches in the helpers are unused).
-
-// Characterization of the webview's VSCodeDropdown / VSCodeOption call sites
-// (refactor DEP-9: the deprecated toolkit dropdown is being replaced). The
-// toolkit is NOT mocked: its host has role="combobox" and its options are
-// light-DOM elements with role="option" and aria-selected, so the assertions
-// go through those roles and hold for the replacement too. Call sites: the
-// base URL / entrypoint choice of MiniMax, Moonshot and Z.ai (rendered by
-// ProviderDescriptorForm since S4), the embedding
-// model of the codebase index (ModelDropdownField) and the image generation
-// model (ImageGenerationSettings). The toolkit also puts a hidden native
-// <select> (its form proxy) into the host, so options are found through their
-// explicit role attribute rather than getAllByRole.
+// The single-choice fields that used to be the toolkit-style dropdown and are
+// now the shared Radix `Select`: the base URL / entrypoint choice of MiniMax,
+// Moonshot and Z.ai (rendered by ProviderDescriptorForm), the embedding model
+// of the codebase index (ModelDropdownField) and the image generation model
+// (ImageGenerationSettings). The trigger is a combobox named by the field's
+// label; the options exist only while the list is open.
 
 import React, { useState } from "react"
 
@@ -30,25 +21,35 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
+// While the list is open Radix hides the rest of the page from assistive tech, the trigger too.
+const trigger = () => screen.getByRole("combobox", { hidden: true })
 const text = (el: Element) => el.textContent?.replace(/\s+/g, " ").trim()
-const options = () => [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+const options = () => screen.getAllByRole("option")
 const optionTexts = () => options().map(text)
-const selectedText = () => {
-	const selected = options().find((o) => o.getAttribute("aria-selected") === "true")
-	return selected && text(selected)
+/** What the closed field shows. */
+const selectedText = () => text(trigger())
+
+/** Opens the list and returns the option texts, then closes it again with Escape. */
+const listOptions = async () => {
+	fireEvent.click(trigger())
+	await waitFor(() => expect(trigger()).toHaveAttribute("aria-expanded", "true"))
+	const texts = optionTexts()
+	fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" })
+	await waitFor(() => expect(trigger()).toHaveAttribute("aria-expanded", "false"))
+	return texts
 }
 
-/** Opens the list with a click on the dropdown and clicks the option named `name`. */
+/** Opens the list with a click on the field and clicks the option named `name`. */
 const choose = async (name: string) => {
-	fireEvent.click(screen.getByRole("combobox"))
-	await waitFor(() => expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "true"))
+	fireEvent.click(trigger())
+	await waitFor(() => expect(trigger()).toHaveAttribute("aria-expanded", "true"))
 	const option = options().find((o) => text(o) === name)
 	expect(option).toBeDefined()
 	fireEvent.click(option!)
-	await waitFor(() => expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false"))
+	await waitFor(() => expect(trigger()).toHaveAttribute("aria-expanded", "false"))
 }
 
-describe("VSCodeDropdown call sites: provider base URL", () => {
+describe("Select call sites: provider base URL", () => {
 	it("MiniMax lists both hosts, shows the stored one and saves a choice once, without echoing prop changes", async () => {
 		const set = vi.fn()
 		const config: ProviderSettings = { minimaxBaseUrl: "https://api.minimaxi.com/v1" }
@@ -57,8 +58,8 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 		)
 
 		await waitFor(() => expect(selectedText()).toBe("api.minimaxi.com"))
-		expect(optionTexts()).toEqual(["api.minimax.io", "api.minimaxi.com"])
-		expect(screen.getByRole("combobox")).toHaveAttribute("aria-haspopup", "listbox")
+		expect(await listOptions()).toEqual(["api.minimax.io", "api.minimaxi.com"])
+		expect(trigger()).toHaveAccessibleName()
 
 		await choose("api.minimax.io")
 		expect(set.mock.calls.filter(([field]) => field === "minimaxBaseUrl")).toEqual([
@@ -113,32 +114,16 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 		render(<ProviderDescriptorForm provider="zai" apiConfiguration={{}} setApiConfigurationField={set} />)
 
 		await waitFor(() => expect(selectedText()).toMatch(/^International Coding/))
-		expect(options().length).toBeGreaterThan(1)
+		const texts = await listOptions()
+		expect(texts.length).toBeGreaterThan(1)
 		expect(set).not.toHaveBeenCalled()
 
-		const china = optionTexts().find((text) => /^China Coding/.test(text ?? ""))!
+		const china = texts.find((text) => /^China Coding/.test(text ?? ""))!
 		await choose(china)
 		expect(set).toHaveBeenCalledWith("zaiApiLine", "china_coding")
 	})
 
-	it("ArrowDown on the closed dropdown saves the next host at once", async () => {
-		const set = vi.fn()
-		render(
-			<ProviderDescriptorForm
-				provider="minimax"
-				apiConfiguration={{ minimaxBaseUrl: "https://api.minimax.io/v1" }}
-				setApiConfigurationField={set}
-			/>,
-		)
-		await waitFor(() => expect(selectedText()).toBe("api.minimax.io"))
-
-		fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" })
-
-		await waitFor(() => expect(set).toHaveBeenCalledWith("minimaxBaseUrl", "https://api.minimaxi.com/v1"))
-		expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false")
-	})
-
-	it("a mouse choice followed by ArrowUp saves both hosts in turn", async () => {
+	it("two choices in a row save both hosts in turn", async () => {
 		const saved: string[] = []
 		const Harness = () => {
 			const [config, setConfig] = useState<ProviderSettings>({ minimaxBaseUrl: "https://api.minimax.io/v1" })
@@ -156,14 +141,14 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 		render(<Harness />)
 
 		await choose("api.minimaxi.com")
-		fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowUp" })
+		await choose("api.minimax.io")
 
 		await waitFor(() => expect(saved).toEqual(["https://api.minimaxi.com/v1", "https://api.minimax.io/v1"]))
 		await waitFor(() => expect(selectedText()).toBe("api.minimax.io"))
 	})
 })
 
-describe("VSCodeDropdown call site: codebase index embedding model", () => {
+describe("Select call site: codebase index embedding model", () => {
 	const context = (modelId: string, error?: string): EmbedderFormContext => ({
 		settings: { codebaseIndexEmbedderModelId: modelId } as EmbedderFormContext["settings"],
 		formErrors: error ? { codebaseIndexEmbedderModelId: error } : {},
@@ -177,15 +162,19 @@ describe("VSCodeDropdown call site: codebase index embedding model", () => {
 			options?.dimension ? `${key}:${options.dimension}` : key) as EmbedderFormContext["t"],
 	})
 
-	it("lists a placeholder plus every model with its dimension, the placeholder selected for an empty id", async () => {
-		render(<ModelDropdownField context={context("")} />)
+	it("lists every model with its dimension and shows the placeholder for an empty or unknown id", async () => {
+		const { unmount } = render(<ModelDropdownField context={context("")} />)
 
 		await waitFor(() => expect(selectedText()).toBe("settings:codeIndex.selectModel"))
-		expect(optionTexts()).toEqual([
-			"settings:codeIndex.selectModel",
+		expect(trigger()).toHaveAccessibleName("settings:codeIndex.modelLabel")
+		expect(await listOptions()).toEqual([
 			"text-embedding-3-small settings:codeIndex.modelDimensions:1536",
 			"custom-model",
 		])
+		unmount()
+
+		render(<ModelDropdownField context={context("retired-model")} />)
+		expect(selectedText()).toBe("settings:codeIndex.selectModel")
 	})
 
 	it("saves the chosen model id and carries the call site's classes, incl. the error class", async () => {
@@ -195,7 +184,7 @@ describe("VSCodeDropdown call site: codebase index embedding model", () => {
 		await waitFor(() =>
 			expect(selectedText()).toBe("text-embedding-3-small settings:codeIndex.modelDimensions:1536"),
 		)
-		expect(screen.getByRole("combobox")).toHaveClass("w-full", "border-[var(--vscode-inputValidation-errorBorder)]")
+		expect(trigger()).toHaveClass("w-full", "border-[var(--vscode-inputValidation-errorBorder)]")
 		expect(screen.getByText("required")).toBeInTheDocument()
 
 		await choose("custom-model")
@@ -204,7 +193,7 @@ describe("VSCodeDropdown call site: codebase index embedding model", () => {
 	})
 })
 
-describe("VSCodeDropdown call site: image generation model", () => {
+describe("Select call site: image generation model", () => {
 	it("shows the stored model and saves another one", async () => {
 		const setModel = vi.fn()
 		render(
@@ -221,7 +210,7 @@ describe("VSCodeDropdown call site: image generation model", () => {
 		)
 
 		await waitFor(() => expect(selectedText()).toBeTruthy())
-		const texts = optionTexts()
+		const texts = await listOptions()
 		expect(texts.length).toBeGreaterThan(1)
 		expect(selectedText()).toBe(texts[0])
 		expect(setModel).not.toHaveBeenCalled()
