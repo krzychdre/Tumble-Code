@@ -1,6 +1,6 @@
 import path from "path"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
+import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS, type ToolProgressStatus } from "@roo-code/types"
 
 import { getReadablePath } from "../../../utils/path"
 import { isPathOutsideWorkspace } from "../../../utils/pathUtils"
@@ -28,11 +28,30 @@ export interface ComputedEditOptions {
 	/** The edit creates the file. Default: false. */
 	isNewFile?: boolean
 	/** Card type of the approval message. Default: "appliedDiff". */
-	cardTool?: "appliedDiff" | "newFileCreated"
-	/** Also send the original content in the approval card (apply_patch update). */
+	cardTool?: "appliedDiff" | "newFileCreated" | "editedExistingFile"
+	/** Also send the original content in the approval card (apply_patch update, apply_diff). */
 	cardIncludesOriginalContent?: boolean
+	/**
+	 * Patch the approval card shows (its `content`, default `diff` and stats)
+	 * instead of the one computed from the original content. write_to_file
+	 * shows a created file as a patch against /dev/null.
+	 */
+	cardPatch?: string
+	/** Value of the card's `diff` key. Default: the card patch. apply_diff sends the SEARCH/REPLACE text. */
+	cardDiff?: string
+	/** Progress status shown with the approval (apply_diff's applied-block count). */
+	progressStatus?: ToolProgressStatus
+	/** Text put before the write result (apply_diff's partial-failure hint). */
+	resultPrefix?: string
 	/** Text appended to the write result, before the plan-review note. */
 	resultSuffix?: string
+	/**
+	 * Opens the diff editor instead of the default `open()`. write_to_file
+	 * keeps the session its streaming preview already opened.
+	 */
+	openDiffView?: () => Promise<void>
+	/** Show the file in an editor after a direct write. Default: `isNewFile`. */
+	showFileOnDirectSave?: boolean
 	/** Path the plan-review gate checks. Default: `relPath`. */
 	reviewRelPath?: string
 	/** Called before the "No changes needed" result when the diff is empty. */
@@ -55,9 +74,10 @@ export type ComputedEditOutcome = "saved" | "rejected" | "unchanged" | "aborted"
 
 /**
  * The approval, diff view and save sequence every edit tool runs once it has
- * computed the new file content (CORE-R8). One copy, so the direct-write rule
- * (the focus-disruption experiment), the approval card
- * and the post-save plan-review gate cannot drift between tools again.
+ * computed the new file content (CORE-R8): edit, search_replace, edit_file,
+ * apply_patch, apply_diff and write_to_file. One copy, so the direct-write
+ * rule (the focus-disruption experiment), the approval card and the
+ * post-save plan-review gate cannot drift between tools again.
  *
  * Order: diff view setup, empty-diff check, settings, approval card, diff
  * editor (unless writing directly), approval, save, file tracking, write
@@ -91,13 +111,13 @@ export async function applyComputedEdit(
 	const writesDirectly = experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
 
 	const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
-	const sanitizedDiff = sanitizeUnifiedDiff(diff || "")
+	const sanitizedDiff = sanitizeUnifiedDiff(options.cardPatch ?? diff ?? "")
 	const diffStats = computeDiffStats(sanitizedDiff) || undefined
 
 	const sharedMessageProps: ClineSayTool = {
 		tool: options.cardTool ?? "appliedDiff",
 		path: getReadablePath(task.cwd, relPath),
-		diff: sanitizedDiff,
+		diff: options.cardDiff ?? sanitizedDiff,
 		// Undefined values are dropped by JSON.stringify, so the key only
 		// appears in the card when asked for.
 		originalContent: options.cardIncludesOriginalContent ? originalContent : undefined,
@@ -115,12 +135,16 @@ export async function applyComputedEdit(
 	} satisfies ClineSayTool)
 
 	if (!writesDirectly) {
-		await task.diffViewProvider.open(relPath, isNewFile ? "create" : "modify")
+		if (options.openDiffView) {
+			await options.openDiffView()
+		} else {
+			await task.diffViewProvider.open(relPath, isNewFile ? "create" : "modify")
+		}
 		await task.diffViewProvider.update(newContent, true)
 		task.diffViewProvider.scrollToFirstDiff()
 	}
 
-	const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
+	const didApprove = await askApproval("tool", completeMessage, options.progressStatus, isWriteProtected)
 
 	if (!didApprove) {
 		if (!writesDirectly) {
@@ -138,7 +162,8 @@ export async function applyComputedEdit(
 		}
 	} else {
 		if (writesDirectly) {
-			await task.diffViewProvider.saveDirectly(relPath, newContent, isNewFile, diagnosticsEnabled, writeDelayMs)
+			const showFile = options.showFileOnDirectSave ?? isNewFile
+			await task.diffViewProvider.saveDirectly(relPath, newContent, showFile, diagnosticsEnabled, writeDelayMs)
 		} else {
 			await task.diffViewProvider.saveChanges(diagnosticsEnabled, writeDelayMs)
 		}
@@ -149,6 +174,8 @@ export async function applyComputedEdit(
 
 	const message = await pushToolWriteResult(task, isNewFile)
 	const reviewNote = await pauseForPlanReviewIfNeeded(task, options.reviewRelPath ?? relPath)
-	pushToolResult(message + (options.resultSuffix ?? "") + (reviewNote ? `\n\n${reviewNote}` : ""))
+	pushToolResult(
+		(options.resultPrefix ?? "") + message + (options.resultSuffix ?? "") + (reviewNote ? `\n\n${reviewNote}` : ""),
+	)
 	return "saved"
 }

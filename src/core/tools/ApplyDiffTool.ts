@@ -1,7 +1,7 @@
 import path from "path"
 import fs from "fs/promises"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS, TelemetryEventName } from "@roo-code/types"
+import { type ClineSayTool, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { getReadablePath } from "../../utils/path"
@@ -9,15 +9,11 @@ import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
-import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
-import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
-import { computeDiffStats, sanitizeUnifiedDiff } from "../diff/stats"
-import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
-import { pushToolWriteResult } from "./helpers/toolWriteResult"
+import { applyComputedEdit } from "./helpers/applyComputedEdit"
 
 interface ApplyDiffParams {
 	path: string
@@ -28,7 +24,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 	readonly name = "apply_diff" as const
 
 	async execute(params: ApplyDiffParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
+		const { handleError, pushToolResult } = callbacks
 		const { path: relPath } = params
 		let { diff: diffContent } = params
 
@@ -119,118 +115,12 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			task.consecutiveMistakeCount = 0
 			task.consecutiveMistakeCountForApplyDiff.delete(relPath)
 
-			// Generate backend-unified diff for display in chat/webview
-			const unifiedPatchRaw = formatResponse.createPrettyPatch(relPath, originalContent, diffResult.content)
-			const unifiedPatch = sanitizeUnifiedDiff(unifiedPatchRaw)
-			const diffStats = computeDiffStats(unifiedPatch) || undefined
-
-			// Check if preventFocusDisruption experiment is enabled
-			const provider = task.providerRef.deref()
-			const state = await provider?.getState()
-			const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
-			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-			const isPreventFocusDisruptionEnabled = experiments.isEnabled(
-				state?.experiments ?? {},
-				EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
-			)
-
-			// Check if file is write-protected
-			const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
-
-			const sharedMessageProps: ClineSayTool = {
-				tool: "appliedDiff",
-				path: getReadablePath(task.cwd, relPath),
-				diff: diffContent,
-				// Stamp the native tool-call id so the finalized-duplicate dedup
-				// links this complete card to its streaming placeholder.
-				toolCallId,
+			const block: ToolUse<"apply_diff"> = {
+				type: "tool_use",
+				name: "apply_diff",
+				params: { path: relPath, diff: diffContent },
+				partial: false,
 			}
-
-			if (isPreventFocusDisruptionEnabled) {
-				// Direct file write without diff view
-				const completeMessage = JSON.stringify({
-					...sharedMessageProps,
-					diff: diffContent,
-					content: unifiedPatch,
-					originalContent,
-					diffStats,
-					isProtected: isWriteProtected,
-				} satisfies ClineSayTool)
-
-				const block: ToolUse<"apply_diff"> = {
-					type: "tool_use",
-					name: "apply_diff",
-					params: { path: relPath, diff: diffContent },
-					partial: false,
-				}
-				const toolProgressStatus = task.diffStrategy.getProgressStatus(block, diffResult)
-
-				const didApprove = await askApproval("tool", completeMessage, toolProgressStatus, isWriteProtected)
-
-				if (!didApprove) {
-					return
-				}
-
-				// Save directly without showing diff view or opening the file
-				task.diffViewProvider.originalContent = originalContent
-				await task.diffViewProvider.saveDirectly(
-					relPath,
-					diffResult.content,
-					false,
-					diagnosticsEnabled,
-					writeDelayMs,
-				)
-			} else {
-				// Original behavior with diff view
-				// Show diff view before asking for approval
-				await task.diffViewProvider.open(relPath, "modify")
-				await task.diffViewProvider.update(diffResult.content, true)
-				task.diffViewProvider.scrollToFirstDiff()
-
-				const completeMessage = JSON.stringify({
-					...sharedMessageProps,
-					diff: diffContent,
-					content: unifiedPatch,
-					originalContent,
-					diffStats,
-					isProtected: isWriteProtected,
-				} satisfies ClineSayTool)
-
-				const block: ToolUse<"apply_diff"> = {
-					type: "tool_use",
-					name: "apply_diff",
-					params: { path: relPath, diff: diffContent },
-					partial: false,
-				}
-				const toolProgressStatus = task.diffStrategy.getProgressStatus(block, diffResult)
-
-				const didApprove = await askApproval("tool", completeMessage, toolProgressStatus, isWriteProtected)
-
-				if (!didApprove) {
-					await task.diffViewProvider.revertChanges()
-					task.processQueuedMessages()
-					return
-				}
-
-				// Call saveChanges to update the DiffViewProvider properties
-				await task.diffViewProvider.saveChanges(diagnosticsEnabled, writeDelayMs)
-			}
-
-			// Track file edit operation
-			if (relPath) {
-				await task.fileContextTracker.trackFileContext(relPath, "roo_edited" as RecordSource)
-			}
-
-			// Used to determine if we should wait for busy terminal to update before sending api request
-			task.didEditFile = true
-			let partFailHint = ""
-
-			if (diffResult.failParts && diffResult.failParts.length > 0) {
-				partFailHint = `But unable to apply all diff parts to file: ${absolutePath}. Use the read_file tool to check the newest file version and re-apply diffs.\n`
-			}
-
-			// Get the formatted response message
-			const message = await pushToolWriteResult(task, !fileExists)
 
 			// Check for single SEARCH/REPLACE block warning
 			const searchBlocks = (diffContent.match(/<<<<<<< SEARCH/g) || []).length
@@ -239,16 +129,22 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 					? "\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>"
 					: ""
 
-			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
+			const outcome = await applyComputedEdit(task, relPath, diffResult.content, callbacks, {
+				originalContent,
+				cardIncludesOriginalContent: true,
+				cardDiff: diffContent,
+				progressStatus: task.diffStrategy.getProgressStatus(block, diffResult),
+				resultPrefix:
+					diffResult.failParts && diffResult.failParts.length > 0
+						? `But unable to apply all diff parts to file: ${absolutePath}. Use the read_file tool to check the newest file version and re-apply diffs.\n`
+						: "",
+				resultSuffix: singleBlockNotice,
+			})
 
-			if (partFailHint) {
-				pushToolResult(partFailHint + message + singleBlockNotice + (reviewNote ? `\n\n${reviewNote}` : ""))
-			} else {
-				pushToolResult(message + singleBlockNotice + (reviewNote ? `\n\n${reviewNote}` : ""))
+			if (outcome !== "rejected") {
+				await task.diffViewProvider.reset()
+				this.resetPartialState(task)
 			}
-
-			await task.diffViewProvider.reset()
-			this.resetPartialState(task)
 
 			// Process any queued messages after file edit completes
 			task.processQueuedMessages()

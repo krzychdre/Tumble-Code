@@ -19,7 +19,8 @@ vi.mock("../helpers/toolWriteResult", () => ({
 	pushToolWriteResult: vi.fn().mockResolvedValue("written"),
 }))
 
-vi.mock("delay", () => ({ default: vi.fn() }))
+// write_to_file reads an existing file's original content before the diff view opens.
+vi.mock("fs/promises", () => ({ default: { readFile: vi.fn().mockResolvedValue("") } }))
 
 vi.mock("../../../utils/fs", () => ({
 	fileExistsAtPath: vi.fn().mockResolvedValue(false),

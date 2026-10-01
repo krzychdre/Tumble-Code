@@ -23,8 +23,11 @@ vi.mock("path", async () => {
 	}
 })
 
-vi.mock("delay", () => ({
-	default: vi.fn(),
+// write_to_file reads an existing file's original content before the diff view opens.
+vi.mock("fs/promises", () => ({
+	default: {
+		readFile: vi.fn().mockResolvedValue("original content"),
+	},
 }))
 
 vi.mock("../../../utils/fs", () => ({
