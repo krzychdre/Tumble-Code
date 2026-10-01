@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Activa la consolidació de memòria (somni)",
-				"description": "Quan està activat, l'agent revisa i reorganitza periòdicament la memòria: fusiona duplicats, elimina fets contradictoris i poda les entrades obsoletes. S'executa automàticament quan ha passat prou temps i sessions. També comprova les notes que només eren certes durant un temps (\"encara no fusionat\", \"recompilació pendent\") amb git i amb notes més noves, i marca les que ja estan fetes."
+				"description": "Quan està activat, l'agent revisa i reorganitza periòdicament la memòria: fusiona duplicats, elimina fets contradictoris i poda les entrades obsoletes. S'executa automàticament quan ha passat prou temps i sessions. També comprova les notes que només eren certes durant un temps (\"encara no fusionat\", \"recompilació pendent\") amb git i amb notes més noves, i marca les que ja estan fetes. També anota, a l'inici d'una nota, els fitxers, noms de codi i versions de paquets que esmenta i que han canviat al repositori des que es va escriure."
 			},
 			"minHours": {
 				"label": "Hores mínimes entre somnis",

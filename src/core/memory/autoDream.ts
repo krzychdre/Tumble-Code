@@ -18,16 +18,20 @@
  * The consolidation itself is small and mostly deterministic, so it works on
  * small local models (the earlier design ran a 10-turn agent that re-sent a
  * 25-60k token prompt on every turn):
- * 1. the claim check ({@link verifyTimeBoundClaims}) settles time-bound
+ * 1. the snapshot drift check ({@link checkSnapshotDrift}, no model) compares
+ *    the default branch on each memory's last-change day with today's and
+ *    notes, at the top of the memory, the paths, code names and stated
+ *    dependency versions it names that changed since;
+ * 2. the claim check ({@link verifyTimeBoundClaims}) settles time-bound
  *    clauses ("VSIX rebuild owed") that git or a newer memory shows finished:
  *    one-word DONE/STILL answers, at most `MAX_CLAIM_QUERIES` per dream;
- * 2. the code picks at most {@link MAX_DREAM_QUERIES} pairs of memories that
+ * 3. the code picks at most {@link MAX_DREAM_QUERIES} pairs of memories that
  *    look like the same topic (same type, overlapping name + description words);
- * 3. for each pair ONE small completion answers KEEP, DROP 1/2 or MERGE with
+ * 4. for each pair ONE small completion answers KEEP, DROP 1/2 or MERGE with
  *    the merged text; a merge that loses too much text is refused;
- * 4. the code repairs the MEMORY.md index (dead links out, unindexed files in).
+ * 5. the code repairs the MEMORY.md index (dead links out, unindexed files in).
  * A folded or dropped memory moves to `.archive/`, it is never deleted, and a
- * file the claim check edits is copied there first.
+ * file the drift or claim check edits is copied there first.
  */
 
 import fs from "fs/promises"
@@ -45,6 +49,7 @@ import { type MemoryHeader, scanMemoryFiles } from "./memoryScan"
 import { archiveMemory, rewriteMemoryBody, syncMemoryIndex } from "./memoryFiles"
 import { type SideQuery } from "./relevance"
 import { verifyTimeBoundClaims } from "./claimCheck"
+import { checkSnapshotDrift } from "./snapshotDrift"
 import { type ClaimEvidenceLookup, createGitClaimEvidenceLookup } from "./claimEvidence"
 
 /** Scan throttle: don't re-check the session gate more often than this. */
@@ -257,23 +262,29 @@ async function decidePair(
 }
 
 /**
- * One consolidation pass: the claim check, merge decisions on the candidate
- * pairs, then the index repair. Returns the memory files changed (archived
- * ones included).
+ * One consolidation pass: the snapshot drift check (when `cwd` is given), the
+ * claim check, merge decisions on the candidate pairs, then the index repair.
+ * Returns the memory files changed (archived ones included).
  */
 export async function consolidateMemories(
 	memoryDir: string,
 	query: SideQuery,
 	signal: AbortSignal,
-	evidence?: ClaimEvidenceLookup,
+	options: { evidence?: ClaimEvidenceLookup; cwd?: string } = {},
 ): Promise<string[]> {
-	const changed = await verifyTimeBoundClaims({
-		memoryDir,
-		memories: await scanMemoryFiles(memoryDir, signal),
-		query,
-		evidence,
-		signal,
-	})
+	const { evidence, cwd } = options
+	const changed = cwd
+		? await checkSnapshotDrift({ memoryDir, memories: await scanMemoryFiles(memoryDir, signal), cwd, signal })
+		: []
+	changed.push(
+		...(await verifyTimeBoundClaims({
+			memoryDir,
+			memories: await scanMemoryFiles(memoryDir, signal),
+			query,
+			evidence,
+			signal,
+		})),
+	)
 	for (const pair of findMergeCandidates(await scanMemoryFiles(memoryDir, signal))) {
 		if (signal.aborted) throw new Error("aborted")
 		changed.push(...(await decidePair(memoryDir, pair, query, signal)))
@@ -336,7 +347,10 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 	const run: Promise<void> | undefined = (async () => {
 		try {
 			const evidence = context.evidence ?? createGitClaimEvidenceLookup(context.cwd)
-			const changed = await consolidateMemories(memoryDir, context.query, controller.signal, evidence)
+			const changed = await consolidateMemories(memoryDir, context.query, controller.signal, {
+				evidence,
+				cwd: context.cwd,
+			})
 			if (changed.length > 0 && context.onImproved) {
 				context.onImproved(changed.length, changed)
 			}

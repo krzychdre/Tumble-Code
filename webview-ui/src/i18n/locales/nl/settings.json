@@ -967,7 +967,7 @@
 		"dream": {
 			"enable": {
 				"label": "Geheugenconsolidatie (droom) inschakelen",
-				"description": "Indien ingeschakeld herziet en herorganiseert de agent periodiek het geheugen: voegt duplicaten samen, verwijdert tegengestelde feiten en snoeit verouderde vermeldingen. Draait automatisch wanneer er genoeg tijd en sessies zijn verstreken. Hij controleert ook notities die maar een tijd klopten (\"nog niet gemerged\", \"rebuild nog nodig\") tegen git en nieuwere notities, en markeert de afgeronde."
+				"description": "Indien ingeschakeld herziet en herorganiseert de agent periodiek het geheugen: voegt duplicaten samen, verwijdert tegengestelde feiten en snoeit verouderde vermeldingen. Draait automatisch wanneer er genoeg tijd en sessies zijn verstreken. Hij controleert ook notities die maar een tijd klopten (\"nog niet gemerged\", \"rebuild nog nodig\") tegen git en nieuwere notities, en markeert de afgeronde. Hij noteert ook bovenaan een notitie welke genoemde bestanden, codenamen en pakketversies sinds het schrijven in de repository zijn veranderd."
 			},
 			"minHours": {
 				"label": "Minimale uren tussen dromen",

@@ -31,14 +31,14 @@ export interface CommandResult {
 export type CommandRunner = (
 	file: "git" | "gh",
 	args: string[],
-	options: { cwd: string; timeoutMs: number; signal: AbortSignal },
+	options: { cwd: string; timeoutMs: number; signal: AbortSignal; maxBytes?: number },
 ) => Promise<CommandResult>
 
 const GIT_TIMEOUT_MS = 5_000
 const GH_TIMEOUT_MS = 8_000
 const MAX_OUTPUT_BYTES = 4 * 1024 * 1024
 
-export const runCommand: CommandRunner = (file, args, { cwd, timeoutMs, signal }) =>
+export const runCommand: CommandRunner = (file, args, { cwd, timeoutMs, signal, maxBytes }) =>
 	new Promise((resolve, reject) => {
 		execFile(
 			file,
@@ -47,7 +47,7 @@ export const runCommand: CommandRunner = (file, args, { cwd, timeoutMs, signal }
 				cwd,
 				timeout: timeoutMs,
 				signal,
-				maxBuffer: MAX_OUTPUT_BYTES,
+				maxBuffer: maxBytes ?? MAX_OUTPUT_BYTES,
 				windowsHide: true,
 				encoding: "utf8",
 				env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", GH_PROMPT_DISABLED: "1" },
@@ -73,7 +73,62 @@ interface GitLookupOptions {
  * it, only origin/ counts: a commit on the local main alone is not pushed, so
  * it must not settle a "not pushed" claim.
  */
-type Repo = { ok: true; name: string; refs: string[] } | { ok: false; why: string }
+export type DefaultBranch = { ok: true; name: string; refs: string[] } | { ok: false; why: string }
+
+type Git = (args: string[], signal: AbortSignal) => Promise<CommandResult>
+
+/** Existing refs among `names`, dropping a ref whose tip equals an earlier one. */
+async function refTips(git: Git, names: string[], signal: AbortSignal): Promise<string[] | undefined> {
+	const res = await git(["for-each-ref", "--format=%(objectname) %(refname)", ...names], signal)
+	if (res.code !== 0) return undefined
+	const tips = new Map<string, string>()
+	for (const line of res.stdout.split("\n")) {
+		const [sha, name] = line.trim().split(" ")
+		if (sha && name) tips.set(name, sha)
+	}
+	const seen = new Set<string>()
+	return names.filter((name) => {
+		const sha = tips.get(name)
+		if (!sha || seen.has(sha)) return false
+		seen.add(sha)
+		return true
+	})
+}
+
+async function folderExists(cwd: string): Promise<boolean> {
+	try {
+		return (await fs.stat(cwd)).isDirectory()
+	} catch {
+		return false
+	}
+}
+
+/**
+ * The repository's default branch: the origin/HEAD target, else main, else
+ * master; origin/ when it has the branch (see {@link DefaultBranch}). Shared by
+ * the claim evidence and the snapshot drift check.
+ */
+export async function resolveDefaultBranch(cwd: string, git: Git, signal: AbortSignal): Promise<DefaultBranch> {
+	const probe = await git(["rev-parse", "--git-dir"], signal)
+	if (probe.notFound) {
+		return { ok: false, why: (await folderExists(cwd)) ? "git is not available" : "the folder does not exist" }
+	}
+	if (probe.code !== 0) return { ok: false, why: "this folder is not a git repository" }
+	const names: string[] = []
+	const head = await git(["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"], signal)
+	const target = head.code === 0 ? head.stdout.trim() : ""
+	if (target.startsWith("refs/remotes/origin/")) names.push(target.slice("refs/remotes/origin/".length))
+	for (const name of ["main", "master"]) if (!names.includes(name)) names.push(name)
+	const wanted = names.flatMap((name) => [`refs/remotes/origin/${name}`, `refs/heads/${name}`])
+	const existing = await refTips(git, wanted, signal)
+	if (!existing) return { ok: false, why: "git did not answer" }
+	for (const name of names) {
+		const remote = `refs/remotes/origin/${name}`
+		if (existing.includes(remote)) return { ok: true, name, refs: [remote] }
+		if (existing.includes(`refs/heads/${name}`)) return { ok: true, name, refs: [`refs/heads/${name}`] }
+	}
+	return { ok: false, why: "the repository has no main or master branch" }
+}
 
 /** Branch names a memory can name; anything else (options, globs, `..`) is never passed to git. */
 const SAFE_BRANCH_RE = /^(?!-)(?!.*\.\.)[\w./-]+$/
@@ -92,60 +147,12 @@ const commits = (n: number) => (n === 1 ? "1 commit that is" : `${n} commits tha
 export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOptions = {}): ClaimEvidenceLookup {
 	const run = options.run ?? runCommand
 	let ghMissing = options.gh === false
-	let repo: Repo | undefined
+	let repo: DefaultBranch | undefined
 	const cache = new Map<string, ClaimEvidence>()
 	const trees = new Map<string, string>()
 
 	const git = (args: string[], signal: AbortSignal) =>
 		run("git", ["-c", "log.showSignature=false", ...args], { cwd, timeoutMs: GIT_TIMEOUT_MS, signal })
-
-	/** Existing refs among `names`, dropping a ref whose tip equals an earlier one. */
-	async function refTips(names: string[], signal: AbortSignal): Promise<string[] | undefined> {
-		const res = await git(["for-each-ref", "--format=%(objectname) %(refname)", ...names], signal)
-		if (res.code !== 0) return undefined
-		const tips = new Map<string, string>()
-		for (const line of res.stdout.split("\n")) {
-			const [sha, name] = line.trim().split(" ")
-			if (sha && name) tips.set(name, sha)
-		}
-		const seen = new Set<string>()
-		return names.filter((name) => {
-			const sha = tips.get(name)
-			if (!sha || seen.has(sha)) return false
-			seen.add(sha)
-			return true
-		})
-	}
-
-	async function folderExists(): Promise<boolean> {
-		try {
-			return (await fs.stat(cwd)).isDirectory()
-		} catch {
-			return false
-		}
-	}
-
-	async function resolveRepo(signal: AbortSignal): Promise<Repo> {
-		const probe = await git(["rev-parse", "--git-dir"], signal)
-		if (probe.notFound) {
-			return { ok: false, why: (await folderExists()) ? "git is not available" : "the folder does not exist" }
-		}
-		if (probe.code !== 0) return { ok: false, why: "this folder is not a git repository" }
-		const names: string[] = []
-		const head = await git(["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"], signal)
-		const target = head.code === 0 ? head.stdout.trim() : ""
-		if (target.startsWith("refs/remotes/origin/")) names.push(target.slice("refs/remotes/origin/".length))
-		for (const name of ["main", "master"]) if (!names.includes(name)) names.push(name)
-		const wanted = names.flatMap((name) => [`refs/heads/${name}`, `refs/remotes/origin/${name}`])
-		const existing = await refTips(wanted, signal)
-		if (!existing) return { ok: false, why: "git did not answer" }
-		for (const name of names) {
-			const remote = `refs/remotes/origin/${name}`
-			if (existing.includes(remote)) return { ok: true, name, refs: [remote] }
-			if (existing.includes(`refs/heads/${name}`)) return { ok: true, name, refs: [`refs/heads/${name}`] }
-		}
-		return { ok: false, why: "the repository has no main or master branch" }
-	}
 
 	/** Whether `rev` is contained in the default branch (local or origin/); undefined when git fails. */
 	async function onDefault(rev: string, defaults: string[], signal: AbortSignal): Promise<boolean | undefined> {
@@ -173,7 +180,7 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 		return false
 	}
 
-	async function checkPr(ref: ClaimRef & { kind: "pr" }, r: Repo & { ok: true }, signal: AbortSignal) {
+	async function checkPr(ref: ClaimRef & { kind: "pr" }, r: DefaultBranch & { ok: true }, signal: AbortSignal) {
 		const n = ref.number
 		if (!Number.isSafeInteger(n) || n < 1) return unknown(ref, `#${n} is not a valid pull request number.`)
 		const res = await git(
@@ -195,7 +202,7 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 		)
 	}
 
-	async function checkCommit(ref: ClaimRef & { kind: "commit" }, r: Repo & { ok: true }, signal: AbortSignal) {
+	async function checkCommit(ref: ClaimRef & { kind: "commit" }, r: DefaultBranch & { ok: true }, signal: AbortSignal) {
 		const { sha } = ref
 		if (!SHA_RE.test(sha)) return unknown(ref, `Commit ${sha} is not a valid commit hash.`)
 		const res = await git(["rev-parse", "--verify", "--quiet", `${sha}^{commit}`], signal)
@@ -236,10 +243,10 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 		}
 	}
 
-	async function checkBranch(ref: ClaimRef & { kind: "branch" }, r: Repo & { ok: true }, signal: AbortSignal) {
+	async function checkBranch(ref: ClaimRef & { kind: "branch" }, r: DefaultBranch & { ok: true }, signal: AbortSignal) {
 		const { name } = ref
 		if (!SAFE_BRANCH_RE.test(name)) return unknown(ref, `${name} is not a valid branch name.`)
-		const refs = await refTips([`refs/heads/${name}`, `refs/remotes/origin/${name}`], signal)
+		const refs = await refTips(git, [`refs/heads/${name}`, `refs/remotes/origin/${name}`], signal)
 		if (!refs) return noAnswer(ref)
 		if (refs.length === 0) {
 			return (
@@ -279,7 +286,7 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 			: { ref, landed: true, text: `All commits of branch ${name} are on ${r.name}.` }
 	}
 
-	async function checkFile(ref: ClaimRef & { kind: "file" }, r: Repo & { ok: true }, signal: AbortSignal) {
+	async function checkFile(ref: ClaimRef & { kind: "file" }, r: DefaultBranch & { ok: true }, signal: AbortSignal) {
 		const path = ref.path.replace(/^\.\//, "")
 		for (const def of r.refs) {
 			const res = await git(["cat-file", "-e", `${def}:${path}`], signal)
@@ -291,7 +298,7 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 
 	async function check(ref: ClaimRef, signal: AbortSignal): Promise<ClaimEvidence> {
 		try {
-			repo ??= await resolveRepo(signal)
+			repo ??= await resolveDefaultBranch(cwd, git, signal)
 			const r = repo
 			if (!r.ok) return unknown(ref, `Cannot check ${describeRef(ref)}: ${r.why}.`)
 			switch (ref.kind) {
