@@ -170,6 +170,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		secondaryButtonKind,
 		sendingDisabled,
 		isStreaming,
+		isTaskBusy,
 	} = ask
 
 	const switchToMode = useCallback(
@@ -699,7 +700,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				mode={mode}
 				setMode={setMode}
 				modeShortcutText={modeShortcutText}
-				isStreaming={isStreaming}
+				isTaskBusy={isTaskBusy}
 				onStop={handleStopTask}
 				onEnqueueMessage={handleEnqueueCurrentMessage}
 			/>

@@ -261,15 +261,15 @@ describe("ChatTextArea action buttons (characterization)", () => {
 		expect(onCancel).not.toHaveBeenCalled()
 	})
 
-	it("the queue button appears while streaming with content and queues the message", () => {
+	it("the queue button appears while the task is busy with content and queues the message", () => {
 		const onEnqueueMessage = vi.fn()
 		const { container, rerender } = render(
-			<ChatTextArea {...defaultProps} isStreaming={true} inputValue="" onEnqueueMessage={onEnqueueMessage} />,
+			<ChatTextArea {...defaultProps} isTaskBusy={true} inputValue="" onEnqueueMessage={onEnqueueMessage} />,
 		)
 		expect(buttonWithIcon(container, "lucide-list-end")).toBeUndefined()
 
 		rerender(
-			<ChatTextArea {...defaultProps} isStreaming={true} inputValue="next" onEnqueueMessage={onEnqueueMessage} />,
+			<ChatTextArea {...defaultProps} isTaskBusy={true} inputValue="next" onEnqueueMessage={onEnqueueMessage} />,
 		)
 		const queue = buttonWithIcon(container, "lucide-list-end")!
 		expect(queue).toHaveAttribute("aria-label", "chat:enqueueMessage")
@@ -279,7 +279,7 @@ describe("ChatTextArea action buttons (characterization)", () => {
 		rerender(
 			<ChatTextArea
 				{...defaultProps}
-				isStreaming={true}
+				isTaskBusy={true}
 				isEditMode={true}
 				inputValue="next"
 				onEnqueueMessage={onEnqueueMessage}
@@ -288,11 +288,11 @@ describe("ChatTextArea action buttons (characterization)", () => {
 		expect(buttonWithIcon(container, "lucide-list-end")).toBeUndefined()
 	})
 
-	it("while streaming the send button becomes a stop button", () => {
+	it("while the task is busy the send button becomes a stop button", () => {
 		const onStop = vi.fn()
 		const onSend = vi.fn()
 		const { container } = render(
-			<ChatTextArea {...defaultProps} isStreaming={true} onStop={onStop} onSend={onSend} />,
+			<ChatTextArea {...defaultProps} isTaskBusy={true} onStop={onStop} onSend={onSend} />,
 		)
 
 		expect(buttonWithIcon(container, "lucide-send-horizontal")).toBeUndefined()

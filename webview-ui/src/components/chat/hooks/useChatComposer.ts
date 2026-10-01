@@ -53,6 +53,7 @@ export function useChatComposer({
 		sendingDisabled,
 		setSendingDisabled,
 		isStreaming,
+		markLastAskAnswered,
 		clearApprovalButtons,
 	} = ask
 
@@ -185,12 +186,15 @@ export function useChatComposer({
 					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
 				}
 
+				// A typed reply answers the pending ask: the task works again.
+				markLastAskAnswered()
 				handleChatReset()
 			}
 		},
 		[
 			handleChatReset,
 			markFollowUpAsAnswered,
+			markLastAskAnswered,
 			sendingDisabled,
 			isStreaming,
 			messageQueueLength,
