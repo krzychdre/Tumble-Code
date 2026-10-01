@@ -78,8 +78,7 @@ export type ToolUsage = z.infer<typeof toolUsageSchema>
 
 /**
  * Tool catalog: parameter names, display names, groups, aliases and the
- * always-available and protocol tool lists (moved from src/shared/tools.ts,
- * PKG-6).
+ * always-available and protocol tool lists.
  */
 
 export const toolParamNames = [

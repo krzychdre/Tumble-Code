@@ -9,7 +9,7 @@ import {
 	anthropicModels,
 } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 import { parseApiPrice } from "@roo-code/core/browser"
 import { logger } from "../../../utils/logging"
 

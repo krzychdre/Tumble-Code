@@ -1,4 +1,4 @@
-import { ApiHandlerOptions } from "../../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 import { EmbedderInfo, EmbedderValidationResult } from "../interfaces"
 import { t } from "../../../i18n"
 import { withValidationErrorHandling, HttpError } from "../shared/validation-helpers"

@@ -9,7 +9,7 @@ import {
 	zaiModelCatalog,
 } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 import { convertToR1Format } from "../transform/r1-format"
 
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"

@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObjec
 import { mentionRegex, unescapeSpaces } from "@roo-code/core/browser"
 import type { Command, ExtensionMessage, ModeConfig } from "@roo-code/types"
 
-import { WebviewMessage } from "@roo/WebviewMessage"
+import { WebviewMessage } from "@roo-code/types"
 import { Mode } from "@roo/modes"
 
 import { vscode } from "@src/utils/vscode"

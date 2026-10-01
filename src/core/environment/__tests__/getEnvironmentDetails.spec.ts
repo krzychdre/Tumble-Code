@@ -7,7 +7,7 @@ import type { Mock } from "vitest"
 import { getEnvironmentDetails, FILE_DETAILS_UNCHANGED_NOTE } from "../getEnvironmentDetails"
 import { getFullModeDetails } from "../../prompts/modeDetails"
 import { isToolAllowedForMode } from "../../tools/validateToolUse"
-import { getApiMetrics } from "../../../shared/getApiMetrics"
+import { consolidateTokenUsage } from "@roo-code/core/browser"
 import { listFiles } from "../../../services/glob/list-files"
 import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../../integrations/terminal/Terminal"
@@ -43,7 +43,10 @@ vi.mock("execa", () => ({
 }))
 
 vi.mock("../../prompts/modeDetails")
-vi.mock("../../../shared/getApiMetrics")
+vi.mock("@roo-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
+	consolidateTokenUsage: vi.fn(),
+}))
 vi.mock("../../../services/glob/list-files")
 vi.mock("../../../integrations/terminal/TerminalRegistry")
 vi.mock("../../../integrations/terminal/Terminal")
@@ -121,7 +124,7 @@ describe("getEnvironmentDetails", () => {
 		}
 
 		// Mock other dependencies.
-		;(getApiMetrics as Mock).mockReturnValue({ contextTokens: 50000, totalCost: 0.25 })
+		;(consolidateTokenUsage as Mock).mockReturnValue({ contextTokens: 50000, totalCost: 0.25 })
 		;(getFullModeDetails as Mock).mockResolvedValue({
 			name: "💻 Code",
 			roleDefinition: "You are a code assistant",
@@ -163,7 +166,7 @@ describe("getEnvironmentDetails", () => {
 
 		// includeCurrentCost defaults on (SETTINGS_DEFAULTS), so the cost
 		// section consults the metrics.
-		expect(getApiMetrics).toHaveBeenCalled()
+		expect(consolidateTokenUsage).toHaveBeenCalled()
 	})
 
 	it("should include file details when includeFileDetails is true", async () => {

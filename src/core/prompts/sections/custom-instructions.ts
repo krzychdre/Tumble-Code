@@ -3,11 +3,10 @@ import path from "path"
 import * as os from "os"
 import { Dirent } from "fs"
 
-import { isLanguage, SETTINGS_DEFAULTS } from "@roo-code/types"
+import { isLanguage, SETTINGS_DEFAULTS, LANGUAGES } from "@roo-code/types"
 
 import type { SystemPromptSettings } from "../types"
 
-import { LANGUAGES } from "../../../shared/language"
 import { RooDirectoryResolver } from "../../../services/roo-config/RooDirectoryResolver"
 
 /**

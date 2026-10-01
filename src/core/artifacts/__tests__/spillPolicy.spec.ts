@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 
-import { ARTIFACT_SPILL_DEFAULTS, resolveMaxInlineToolResultBytes } from "@roo-code/types"
+import { ARTIFACT_SPILL_DEFAULTS, resolveMaxInlineToolResultBytes, PROTOCOL_TOOL_NAMES } from "@roo-code/types"
 
-import { PROTOCOL_TOOL_NAMES } from "../../../shared/tools"
 import { COMPACTABLE_TOOL_NAMES } from "../../context-management/microcompact"
 
 import type { ArtifactStore } from "../ArtifactStore"

@@ -143,7 +143,7 @@ interface CLIState {
 	// Current mode (updated reactively when mode changes)
 	currentMode: string | null
 
-	// Token usage metrics (from getApiMetrics)
+	// Token usage metrics (from consolidateTokenUsage)
 	tokenUsage: TokenUsage | null
 
 	// Model info for context window lookup

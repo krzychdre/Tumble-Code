@@ -3,8 +3,7 @@ import { MessageCircleQuestionMark, TerminalSquare } from "lucide-react"
 
 import type { ClineAskUseMcpServer, FollowUpData } from "@roo-code/types"
 
-import { COMMAND_OUTPUT_STRING } from "@roo/combineCommandSequences"
-import { safeJsonParse } from "@roo-code/core/browser"
+import { safeJsonParse, COMMAND_OUTPUT_STRING } from "@roo-code/core/browser"
 
 import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

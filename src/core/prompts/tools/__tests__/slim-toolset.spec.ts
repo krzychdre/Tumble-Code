@@ -2,7 +2,7 @@
 
 import type OpenAI from "openai"
 
-import { TOOL_ALIASES } from "../../../../shared/tools"
+import { TOOL_ALIASES } from "@roo-code/types"
 import { getNativeTools } from "../native-tools"
 import {
 	SLIM_TOOLSET_ALLOWLIST,

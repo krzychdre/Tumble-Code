@@ -1,6 +1,6 @@
 import type { ModelRecord, ModelSourceId, ModelSourceRequest } from "@roo-code/types"
 
-import type { ApiHandlerOptions, GetModelsOptions } from "../../../shared/api"
+import type { ApiHandlerOptions, GetModelsOptions } from "@roo-code/core/browser"
 import { getOpenAiModels } from "../openai"
 import { getVsCodeLmModels } from "../vscode-lm"
 import { flushModels, getModels } from "./modelCache"

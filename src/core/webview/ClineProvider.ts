@@ -35,6 +35,7 @@ import {
 	isRetiredProvider,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
+	WebviewMessage,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService } from "@roo-code/cloud"
@@ -42,7 +43,6 @@ import { CloudService } from "@roo-code/cloud"
 import { Package } from "../../shared/package"
 import { findLast } from "@roo-code/core/browser"
 import { Mode } from "../../shared/modes"
-import { WebviewMessage } from "../../shared/WebviewMessage"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 
 import { Terminal } from "../../integrations/terminal/Terminal"

@@ -15,7 +15,7 @@ import { isDeepStrictEqual } from "util"
 import type { RooCodeSettings } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { experimentDefault } from "../../../shared/experiments"
+import { experimentDefault } from "@roo-code/types"
 import { EMBEDDING_MODEL_PROFILES } from "../../../shared/embeddingModels"
 import { ContextProxy } from "../../config/ContextProxy"
 import { TaskHistoryStore } from "../../task-persistence"

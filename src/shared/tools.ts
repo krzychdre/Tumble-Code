@@ -2,19 +2,9 @@ import { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ClineAsk, ToolProgressStatus, ToolName, GenerateImageParams, ToolParamName } from "@roo-code/types"
 
-// The tool catalog constants moved to @roo-code/types (PKG-6); these
-// re-exports keep the `@roo/tools` and `shared/tools` import paths working
-// during the migration. The rest of this file is extension-only (it depends
-// on the Anthropic SDK types and the tool execution protocol).
-export {
-	toolParamNames,
-	type ToolParamName,
-	TOOL_DISPLAY_NAMES,
-	TOOL_GROUPS,
-	ALWAYS_AVAILABLE_TOOLS,
-	PROTOCOL_TOOL_NAMES,
-	TOOL_ALIASES,
-} from "@roo-code/types"
+// The tool catalog constants (tool groups, display names, aliases) live in
+// @roo-code/types. This file holds the extension-side types: it depends on the
+// Anthropic SDK types and the tool execution protocol.
 
 export type ToolResponse = string | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam>
 

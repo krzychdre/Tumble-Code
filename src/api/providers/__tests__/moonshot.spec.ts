@@ -4,7 +4,7 @@
 
 import { moonshotDefaultModelId } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { MoonshotHandler } from "../moonshot"
 

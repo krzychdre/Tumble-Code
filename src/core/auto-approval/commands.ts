@@ -1,4 +1,4 @@
-import { type AnalyzedCommand, analyzeCommand } from "../../shared/parse-command"
+import { type AnalyzedCommand, analyzeCommand } from "@roo-code/core/browser"
 
 /**
  * Detect dangerous parameter substitutions that could lead to command execution.

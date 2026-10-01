@@ -1,6 +1,6 @@
 import { GlobalState, ClineMessage, ClineAsk } from "@roo-code/types"
 
-import { getApiMetrics } from "../../shared/getApiMetrics"
+import { consolidateTokenUsage } from "@roo-code/core/browser"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 
 export interface AutoApprovalResult {
@@ -100,7 +100,7 @@ export class AutoApprovalHandler {
 
 		// Calculate total cost from messages after the last reset point
 		const messagesAfterReset = messages.slice(this.lastResetMessageIndex)
-		this.consecutiveAutoApprovedCost = getApiMetrics(messagesAfterReset).totalCost
+		this.consecutiveAutoApprovedCost = consolidateTokenUsage(messagesAfterReset).totalCost
 
 		// Use epsilon for floating-point comparison to avoid precision issues
 		const EPSILON = 0.0001

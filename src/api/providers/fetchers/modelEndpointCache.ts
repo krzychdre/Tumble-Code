@@ -7,7 +7,7 @@ import sanitize from "sanitize-filename"
 import type { ModelRecord } from "@roo-code/types"
 
 import { ContextProxy } from "../../../core/config/ContextProxy"
-import type { FetchableModelSourceId } from "../../../shared/api"
+import type { FetchableModelSourceId } from "@roo-code/core/browser"
 import { getCacheDirectoryPath } from "../../../utils/storage"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { safeWriteJson } from "@roo-code/core/fs"

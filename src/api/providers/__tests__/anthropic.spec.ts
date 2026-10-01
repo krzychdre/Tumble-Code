@@ -3,7 +3,7 @@
 import { anthropicDefaultModelId, anthropicModels } from "@roo-code/types"
 
 import { AnthropicHandler } from "../anthropic"
-import { ApiHandlerOptions } from "../../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 
 // Mock TelemetryService
 vitest.mock("@roo-code/telemetry", () => ({

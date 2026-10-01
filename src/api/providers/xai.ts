@@ -4,7 +4,7 @@ import OpenAI from "openai"
 import { ApiProviderError, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { ApiStream } from "../transform/stream"
 import { convertToResponsesApiInput } from "../transform/responses-api-input"

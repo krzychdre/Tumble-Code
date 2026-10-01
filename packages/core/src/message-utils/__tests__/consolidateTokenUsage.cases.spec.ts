@@ -1,10 +1,10 @@
-// npx vitest run src/shared/__tests__/getApiMetrics.spec.ts
+// npx vitest run packages/core/src/message-utils/__tests__/consolidateTokenUsage.cases.spec.ts
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { getApiMetrics } from "../getApiMetrics"
+import { consolidateTokenUsage } from "../consolidateTokenUsage.js"
 
-describe("getApiMetrics", () => {
+describe("consolidateTokenUsage", () => {
 	// Helper function to create a basic api_req_started message
 	const createApiReqStartedMessage = (
 		text: string = '{"tokensIn":10,"tokensOut":20}',
@@ -54,7 +54,7 @@ describe("getApiMetrics", () => {
 				),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			expect(result.totalTokensIn).toBe(100)
 			expect(result.totalTokensOut).toBe(200)
@@ -76,7 +76,7 @@ describe("getApiMetrics", () => {
 				),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			expect(result.totalTokensIn).toBe(150) // 100 + 50
 			expect(result.totalTokensOut).toBe(350) // 200 + 150
@@ -92,7 +92,7 @@ describe("getApiMetrics", () => {
 				createCondenseContextMessage(0.003, 400, 800, 2000),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			expect(result.totalTokensIn).toBe(0)
 			expect(result.totalTokensOut).toBe(0)
@@ -116,7 +116,7 @@ describe("getApiMetrics", () => {
 				),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			expect(result.totalTokensIn).toBe(150) // 100 + 50
 			expect(result.totalTokensOut).toBe(350) // 200 + 150
@@ -129,7 +129,7 @@ describe("getApiMetrics", () => {
 
 	describe("Edge cases", () => {
 		it("should handle empty messages array", () => {
-			const result = getApiMetrics([])
+			const result = consolidateTokenUsage([])
 
 			expect(result.totalTokensIn).toBe(0)
 			expect(result.totalTokensOut).toBe(0)
@@ -145,7 +145,7 @@ describe("getApiMetrics", () => {
 				createOtherMessage("error", "Error message", 2000),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			expect(result.totalTokensIn).toBe(0)
 			expect(result.totalTokensOut).toBe(0)
@@ -169,7 +169,7 @@ describe("getApiMetrics", () => {
 				},
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Should not throw and should return default values
 			expect(result.totalTokensIn).toBe(0)
@@ -193,7 +193,7 @@ describe("getApiMetrics", () => {
 				},
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Should not throw and should return default values
 			expect(result.totalTokensIn).toBe(0)
@@ -214,7 +214,7 @@ describe("getApiMetrics", () => {
 				},
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Should not throw and should return default values
 			expect(result.totalTokensIn).toBe(0)
@@ -234,7 +234,7 @@ describe("getApiMetrics", () => {
 				createApiReqStartedMessage('{"cost":0.005}', 5000), // Only cost
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			expect(result.totalTokensIn).toBe(100)
 			expect(result.totalTokensOut).toBe(200)
@@ -255,7 +255,7 @@ describe("getApiMetrics", () => {
 				),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Non-number values should be ignored
 			expect(result.totalTokensIn).toBe(0)
@@ -276,7 +276,7 @@ describe("getApiMetrics", () => {
 				createApiReqStartedMessage('{"tokensIn":50,"tokensOut":150,"cacheWrites":3,"cacheReads":7}', 2000),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Should use the values from the last api_req_started message
 			expect(result.contextTokens).toBe(200) // 50 + 150 (OpenAI default, no cache tokens)
@@ -288,7 +288,7 @@ describe("getApiMetrics", () => {
 				createCondenseContextMessage(0.002, 500, 1000, 2000),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Should use newContextTokens from the last condense_context message
 			expect(result.contextTokens).toBe(500)
@@ -302,7 +302,7 @@ describe("getApiMetrics", () => {
 				createApiReqStartedMessage('{"tokensIn":50,"tokensOut":150,"cacheWrites":3,"cacheReads":7}', 4000),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Should use the values from the last api_req_started message
 			expect(result.contextTokens).toBe(200) // 50 + 150 (OpenAI default, no cache tokens)
@@ -317,7 +317,7 @@ describe("getApiMetrics", () => {
 				createApiReqStartedMessage('{"tokensIn":null,"cacheWrites":5,"cacheReads":10}', 1000),
 			]
 
-			const result = getApiMetrics(messages)
+			const result = consolidateTokenUsage(messages)
 
 			// Should handle missing or invalid values
 			expect(result.contextTokens).toBe(0) // 0 + 0 (OpenAI default, no cache tokens)

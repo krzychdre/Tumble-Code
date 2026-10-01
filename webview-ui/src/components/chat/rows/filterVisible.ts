@@ -27,7 +27,7 @@ const isEmptyText = (message: ClineMessage) => (message.text ?? "") === "" && (m
 
 /**
  * The messages the chat list shows, in order. `messages` is the combined
- * history without the task message (`combineApiRequests(combineCommandSequences(...))`).
+ * history without the task message (`consolidateApiRequests(consolidateCommands(...))`).
  *
  * A message whose ts is in `everVisible` stays visible unless its kind is
  * always hidden once processed; this keeps rows such as a retry notice on

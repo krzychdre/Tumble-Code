@@ -13,7 +13,7 @@ import {
 	ZAI_DEFAULT_TEMPERATURE,
 } from "@roo-code/types"
 
-import { getModelMaxOutputTokens } from "../../../shared/api"
+import { getModelMaxOutputTokens } from "@roo-code/core/browser"
 import { convertToR1Format } from "../../transform/r1-format"
 import { ZAiHandler } from "../zai"
 

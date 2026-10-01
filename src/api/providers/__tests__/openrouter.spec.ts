@@ -11,7 +11,7 @@ import OpenAI from "openai"
 
 import { OpenRouterHandler } from "../openrouter"
 import { isRetryableApiError } from "../../apiErrors"
-import { ApiHandlerOptions } from "../../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 import { Package } from "../../../shared/package"
 
 vitest.mock("openai")

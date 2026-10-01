@@ -4,7 +4,7 @@ import { Message, Ollama, Tool as OllamaTool, type Config as OllamaOptions } fro
 import { ModelInfo, openAiModelInfoSaneDefaults, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
 import { ApiStream } from "../transform/stream"
 import { BaseProvider } from "./base-provider"
-import type { ApiHandlerOptions } from "../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 import { getOllamaModels } from "./fetchers/ollama"
 import { handleProviderError } from "./utils/error-handler"
 import { getApiErrorStatus } from "../apiErrors"

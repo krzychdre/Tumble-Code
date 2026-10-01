@@ -2,17 +2,18 @@ import { GlobalState, ClineMessage } from "@roo-code/types"
 
 import { AutoApprovalHandler } from "../AutoApprovalHandler"
 
-vi.mock("../../../shared/getApiMetrics", () => ({
-	getApiMetrics: vi.fn(),
+vi.mock("@roo-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
+	consolidateTokenUsage: vi.fn(),
 }))
 
-import { getApiMetrics } from "../../../shared/getApiMetrics"
+import { consolidateTokenUsage } from "@roo-code/core/browser"
 
 describe("AutoApprovalHandler", () => {
 	let handler: AutoApprovalHandler
 	let mockAskForApproval: any
 	let mockState: GlobalState
-	const mockGetApiMetrics = getApiMetrics as any
+	const mockConsolidateTokenUsage = consolidateTokenUsage as any
 
 	beforeEach(() => {
 		handler = new AutoApprovalHandler()
@@ -20,8 +21,8 @@ describe("AutoApprovalHandler", () => {
 		mockState = {} as GlobalState
 		vi.clearAllMocks()
 
-		// Default mock for getApiMetrics
-		mockGetApiMetrics.mockReturnValue({ totalCost: 0 })
+		// Default mock for consolidateTokenUsage
+		mockConsolidateTokenUsage.mockReturnValue({ totalCost: 0 })
 	})
 
 	describe("checkAutoApprovalLimits", () => {
@@ -154,10 +155,10 @@ describe("AutoApprovalHandler", () => {
 		it("should calculate cost from messages", async () => {
 			const messages: ClineMessage[] = []
 
-			mockGetApiMetrics.mockReturnValue({ totalCost: 3.5 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 3.5 })
 			const result = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 
-			expect(mockGetApiMetrics).toHaveBeenCalledWith(messages)
+			expect(mockConsolidateTokenUsage).toHaveBeenCalledWith(messages)
 			expect(result.shouldProceed).toBe(true)
 			expect(result.requiresApproval).toBe(false)
 		})
@@ -165,7 +166,7 @@ describe("AutoApprovalHandler", () => {
 		it("should ask for approval when cost limit is exceeded", async () => {
 			const messages: ClineMessage[] = []
 
-			mockGetApiMetrics.mockReturnValue({ totalCost: 5.5 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 5.5 })
 			mockAskForApproval.mockResolvedValue({ response: "yesButtonClicked" })
 
 			const result = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
@@ -183,17 +184,17 @@ describe("AutoApprovalHandler", () => {
 			const messages: ClineMessage[] = []
 
 			// Test edge case where cost is exactly at limit (should not trigger)
-			mockGetApiMetrics.mockReturnValue({ totalCost: 5.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 5.0 })
 			const result1 = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 			expect(result1.requiresApproval).toBe(false)
 
 			// Test with slight floating-point error (should not trigger)
-			mockGetApiMetrics.mockReturnValue({ totalCost: 5.00009 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 5.00009 })
 			const result2 = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 			expect(result2.requiresApproval).toBe(false)
 
 			// Test when actually exceeded (should trigger)
-			mockGetApiMetrics.mockReturnValue({ totalCost: 5.001 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 5.001 })
 			mockAskForApproval.mockResolvedValue({ response: "yesButtonClicked" })
 			const result3 = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 			expect(result3.requiresApproval).toBe(true)
@@ -206,7 +207,7 @@ describe("AutoApprovalHandler", () => {
 			]
 
 			// First check - cost exceeds limit (6.0 > 5.0)
-			mockGetApiMetrics.mockReturnValue({ totalCost: 6.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 6.0 })
 			mockAskForApproval.mockResolvedValue({ response: "yesButtonClicked" })
 
 			const result1 = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
@@ -220,7 +221,7 @@ describe("AutoApprovalHandler", () => {
 			)
 
 			// Second check - should only count messages after reset (3.0 < 5.0)
-			mockGetApiMetrics.mockReturnValue({ totalCost: 3.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 3.0 })
 			const result2 = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 
 			// Should not require approval since cost after reset is under limit
@@ -228,7 +229,7 @@ describe("AutoApprovalHandler", () => {
 			expect(result2.requiresApproval).toBe(false)
 
 			// Verify it's only calculating cost from messages after reset point
-			expect(mockGetApiMetrics).toHaveBeenLastCalledWith(messages.slice(2))
+			expect(mockConsolidateTokenUsage).toHaveBeenLastCalledWith(messages.slice(2))
 		})
 
 		it("should track multiple cost resets correctly", async () => {
@@ -236,7 +237,7 @@ describe("AutoApprovalHandler", () => {
 
 			// First cost limit hit
 			messages.push({ type: "say", say: "api_req_started", text: '{"cost": 6.0}', ts: 1000 })
-			mockGetApiMetrics.mockReturnValue({ totalCost: 6.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 6.0 })
 			mockAskForApproval.mockResolvedValue({ response: "yesButtonClicked" })
 
 			await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
@@ -248,18 +249,18 @@ describe("AutoApprovalHandler", () => {
 			)
 
 			// Second cost limit hit (only counting from index 1)
-			mockGetApiMetrics.mockReturnValue({ totalCost: 6.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 6.0 })
 			await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 
 			// Add more messages after second reset
 			messages.push({ type: "say", say: "api_req_started", text: '{"cost": 2.0}', ts: 4000 })
 
 			// Third check - should only count from last reset
-			mockGetApiMetrics.mockReturnValue({ totalCost: 2.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 2.0 })
 			const result = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 
 			expect(result.requiresApproval).toBe(false)
-			expect(mockGetApiMetrics).toHaveBeenLastCalledWith(messages.slice(3))
+			expect(mockConsolidateTokenUsage).toHaveBeenLastCalledWith(messages.slice(3))
 		})
 	})
 
@@ -269,7 +270,7 @@ describe("AutoApprovalHandler", () => {
 			mockState.allowedMaxCost = 10.0
 			const messages: ClineMessage[] = []
 
-			mockGetApiMetrics.mockReturnValue({ totalCost: 3.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 3.0 })
 
 			// First request should pass (count = 1)
 			let result = await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
@@ -308,7 +309,7 @@ describe("AutoApprovalHandler", () => {
 				messages.push({ type: "say", say: "api_req_started", text: "{}", ts: 1000 + i })
 			}
 
-			mockGetApiMetrics.mockReturnValue({ totalCost: 5.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 5.0 })
 			await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 
 			let state = handler.getApprovalState()
@@ -324,7 +325,7 @@ describe("AutoApprovalHandler", () => {
 			expect(state.currentCost).toBe(0)
 
 			// Next check should start fresh
-			mockGetApiMetrics.mockReturnValue({ totalCost: 8.0 })
+			mockConsolidateTokenUsage.mockReturnValue({ totalCost: 8.0 })
 			await handler.checkAutoApprovalLimits(mockState, messages, mockAskForApproval)
 
 			state = handler.getApprovalState()

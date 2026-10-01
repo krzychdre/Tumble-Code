@@ -19,7 +19,7 @@ if (fs.existsSync(envPath)) {
 	}
 }
 
-import { type CloudUserInfo, type AuthState, readCliRuntimeEnv } from "@roo-code/types"
+import { type CloudUserInfo, type AuthState, readCliRuntimeEnv, formatLanguage } from "@roo-code/types"
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService, PostHogTelemetryClient } from "@roo-code/telemetry"
 import { customToolRegistry } from "@roo-code/core"
@@ -28,7 +28,6 @@ import "./utils/path" // Necessary to have access to String.prototype.toPosix.
 import { initializeNetworkProxy } from "./utils/networkProxy"
 
 import { Package } from "./shared/package"
-import { formatLanguage } from "./shared/language"
 import { syncCloudUrls, registerCloudUrlsSubscription } from "./activate/cloud-urls"
 import { ContextProxy } from "./core/config/ContextProxy"
 import { initMemoryPaths } from "./core/memory/paths"

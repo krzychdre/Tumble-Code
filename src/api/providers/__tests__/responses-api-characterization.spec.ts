@@ -43,7 +43,7 @@ vitest.mock("../../../i18n", async (importOriginal) => {
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
 
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 import type { ApiStreamChunk } from "../../transform/stream"
 import { OpenAiNativeHandler } from "../openai-native"
 import { OpenAiCodexHandler } from "../openai-codex"

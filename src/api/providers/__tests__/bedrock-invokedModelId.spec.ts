@@ -1,6 +1,6 @@
 // npx vitest run src/api/providers/__tests__/bedrock-invokedModelId.spec.ts
 
-import { ApiHandlerOptions } from "../../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { AwsBedrockHandler, StreamEvent } from "../bedrock"
 

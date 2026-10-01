@@ -4,7 +4,7 @@ import OpenAI from "openai"
 
 import { providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"

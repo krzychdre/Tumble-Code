@@ -53,7 +53,7 @@ vi.mock("@mistralai/mistralai", () => {
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
 import { MistralHandler } from "../mistral"
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 import type { ApiHandlerCreateMessageMetadata } from "../../index"
 import type { ApiStreamTextChunk, ApiStreamReasoningChunk, ApiStreamToolCallPartialChunk } from "../../transform/stream"
 

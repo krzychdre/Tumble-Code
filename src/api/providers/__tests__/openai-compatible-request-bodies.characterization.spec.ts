@@ -4,7 +4,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import type { ApiHandlerOptions } from "../../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 import { BaseOpenAiCompatibleProvider } from "../base-openai-compatible-provider"
 import { MoonshotHandler } from "../moonshot"
 import { ZAiHandler } from "../zai"

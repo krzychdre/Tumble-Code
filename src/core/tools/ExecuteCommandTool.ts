@@ -20,7 +20,7 @@ import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { ToolUse, ToolResponse } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
-import { parseCommand } from "../../shared/parse-command"
+import { parseCommand } from "@roo-code/core/browser"
 import {
 	ExitCodeDetails,
 	RooTerminalCallbacks,

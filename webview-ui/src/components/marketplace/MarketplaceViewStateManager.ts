@@ -11,10 +11,9 @@
  * 3. Using minimal state updates to avoid resetting scroll position
  */
 
-import { MarketplaceItem, MarketplaceInstalledMetadata } from "@roo-code/types"
+import { MarketplaceItem, MarketplaceInstalledMetadata, WebviewMessage } from "@roo-code/types"
 
 import { vscode } from "../../utils/vscode"
-import { WebviewMessage } from "@roo/WebviewMessage"
 
 export interface ViewState {
 	allItems: MarketplaceItem[]

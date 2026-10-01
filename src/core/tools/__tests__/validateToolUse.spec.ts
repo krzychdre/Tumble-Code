@@ -3,7 +3,7 @@
 import type { ModeConfig } from "@roo-code/types"
 
 import { modes } from "../../../shared/modes"
-import { TOOL_GROUPS } from "../../../shared/tools"
+import { TOOL_GROUPS } from "@roo-code/types"
 
 import { validateToolUse, isToolAllowedForMode } from "../validateToolUse"
 

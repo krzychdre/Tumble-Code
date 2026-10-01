@@ -1,9 +1,8 @@
 import * as vscode from "vscode"
 
-import { type PromptComponent, type CustomModePrompts } from "@roo-code/types"
+import { type PromptComponent, type CustomModePrompts, formatLanguage } from "@roo-code/types"
 
 import { Mode, modes, defaultModeSlug, getModeBySlug, getGroupName, getModeSelection } from "../../shared/modes"
-import { formatLanguage } from "../../shared/language"
 import { isEmpty } from "../../utils/object"
 
 import type { SystemPromptOptions } from "./types"

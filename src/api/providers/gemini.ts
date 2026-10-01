@@ -12,7 +12,7 @@ import { type ModelInfo, selectGeminiModel, ApiProviderError } from "@roo-code/t
 import { TelemetryService } from "@roo-code/telemetry"
 import { calculateApiCost, selectTierPrices } from "@roo-code/core/browser"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import type { ApiHandlerOptions } from "@roo-code/core/browser"
 
 import { convertAnthropicMessageToGemini } from "../transform/gemini-format"
 import { t } from "i18next"

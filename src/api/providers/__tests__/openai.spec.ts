@@ -1,7 +1,7 @@
 // npx vitest run api/providers/__tests__/openai.spec.ts
 
 import { OpenAiHandler, getOpenAiModels } from "../openai"
-import { ApiHandlerOptions } from "../../../shared/api"
+import { ApiHandlerOptions } from "@roo-code/core/browser"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"

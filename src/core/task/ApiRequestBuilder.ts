@@ -29,7 +29,7 @@ import { buildSystemPromptInput, isMcpEnabledForPrompt } from "../prompts/system
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
-import { getModelMaxOutputTokens } from "../../shared/api"
+import { getModelMaxOutputTokens } from "@roo-code/core/browser"
 import { type ClineProvider } from "../webview/ClineProvider"
 import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { type ApiMessage } from "../task-persistence"
