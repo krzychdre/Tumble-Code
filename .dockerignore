@@ -85,4 +85,3 @@ src/node_modules
 !packages/types/
 !packages/vscode-shim/
 !packages/cloud/
-!locales/
