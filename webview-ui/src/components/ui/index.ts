@@ -22,8 +22,6 @@ export { SearchableSelect, type SearchableSelectOption } from "./searchable-sele
 export { Slider } from "./slider"
 export { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "./select"
 export { Textarea } from "./textarea"
-export { ThemedBadge } from "./themed-badge"
-export { ThemedDropdown, ThemedOption } from "./themed-dropdown"
 export { ThemedPanels, ThemedPanelTab, ThemedPanelView } from "./themed-panels"
 export { Spinner } from "./spinner"
 export { ThemedRadioGroup, ThemedRadio } from "./themed-radio"

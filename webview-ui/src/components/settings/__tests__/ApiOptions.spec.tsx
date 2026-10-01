@@ -30,7 +30,6 @@ const { ExtensionStateContextProvider } = ExtensionStateContext
 import ApiOptions, { ApiOptionsProps } from "../ApiOptions"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
-import { ThemedDropdown as RealThemedDropdown, ThemedOption as RealThemedOption } from "@/components/ui/themed-dropdown"
 
 // Mock VSCode components
 // Mock other components
@@ -57,13 +56,6 @@ vi.mock("@/components/ui", () => ({
 	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
-	// The real dropdown, for the provider forms that pick an endpoint.
-	get ThemedDropdown() {
-		return RealThemedDropdown
-	},
-	get ThemedOption() {
-		return RealThemedOption
-	},
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange }: any) => (
 		<div className="select-mock">

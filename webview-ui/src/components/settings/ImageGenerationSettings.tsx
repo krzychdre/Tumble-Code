@@ -1,5 +1,13 @@
-import React, { useEffect, useMemo } from "react"
-import { LabeledCheckbox, ThemedDropdown, ThemedOption, ThemedTextField } from "@src/components/ui"
+import React, { useEffect, useId, useMemo } from "react"
+import {
+	LabeledCheckbox,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	ThemedTextField,
+} from "@src/components/ui"
 import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider } from "@roo-code/types"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -25,6 +33,7 @@ export const ImageGenerationSettings = ({
 	setImageGenerationSelectedModel,
 }: ImageGenerationSettingsProps) => {
 	const { t } = useAppTranslation()
+	const modelTriggerId = useId()
 
 	// Only OpenRouter remains as an image-generation provider; coerce any legacy "roo" value.
 	const currentProvider: ImageGenerationProvider = "openrouter"
@@ -110,19 +119,21 @@ export const ImageGenerationSettings = ({
 
 					{/* Model Selection */}
 					<div>
-						<label className="block font-medium mb-1">
+						<label htmlFor={modelTriggerId} className="block font-medium mb-1">
 							{t("settings:experimental.IMAGE_GENERATION.modelSelectionLabel")}
 						</label>
-						<ThemedDropdown
-							value={currentModel}
-							onChange={(e: any) => handleModelChange(e.target.value)}
-							className="w-full">
-							{availableModels.map((model) => (
-								<ThemedOption key={model.value} value={model.value} className="py-2 px-3">
-									{model.label}
-								</ThemedOption>
-							))}
-						</ThemedDropdown>
+						<Select value={currentModel} onValueChange={handleModelChange}>
+							<SelectTrigger id={modelTriggerId} className="w-full">
+								<SelectValue placeholder={t("settings:common.select")} />
+							</SelectTrigger>
+							<SelectContent>
+								{availableModels.map((model) => (
+									<SelectItem key={model.value} value={model.value}>
+										{model.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 						<p className="text-vscode-descriptionForeground text-xs mt-1">
 							{t("settings:experimental.IMAGE_GENERATION.modelSelectionDescription")}
 						</p>

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { ThemedBadge } from "@src/components/ui"
+import { Badge } from "@src/components/ui"
 
 import { ToolBlock } from "@src/components/common/ToolBlock"
 
@@ -36,9 +36,9 @@ export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpan
 							{skillInfo.skill}
 						</span>
 						{skillInfo.source && (
-							<ThemedBadge style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
+							<Badge variant="count" style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
 								{skillInfo.source}
-							</ThemedBadge>
+							</Badge>
 						)}
 					</div>
 				}>
@@ -88,9 +88,9 @@ export const RunSlashCommandToolRow = ({
 							/{slashCommandInfo.command}
 						</span>
 						{slashCommandInfo.source && (
-							<ThemedBadge style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
+							<Badge variant="count" style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
 								{slashCommandInfo.source}
-							</ThemedBadge>
+							</Badge>
 						)}
 					</div>
 				}>

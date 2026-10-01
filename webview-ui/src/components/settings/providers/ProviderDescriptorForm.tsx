@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useId, useState } from "react"
 import { Trans } from "react-i18next"
 
 import {
@@ -35,8 +35,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 	StandardTooltip,
-	ThemedDropdown,
-	ThemedOption,
 	ThemedTextField,
 } from "@src/components/ui"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
@@ -210,21 +208,32 @@ const SelectField = ({
 	setApiConfigurationField,
 }: ProviderFormProps & { field: ProviderSelectFieldDescriptor }) => {
 	const { t } = useAppTranslation()
-	const handleInputChange = useProviderField(setApiConfigurationField)
+	const stored = apiConfiguration[field.key] || field.defaultValue
+	// A stored value the list does not offer shows the first option, as the field always has one.
+	const value = field.options.some((option) => option.value === stored) ? stored : field.options[0]?.value
+	const triggerId = useId()
 
 	return (
 		<div>
-			<label className="block font-medium mb-1">{t(field.labelKey)}</label>
-			<ThemedDropdown
-				value={apiConfiguration[field.key] || field.defaultValue}
-				onChange={handleInputChange(field.key)}
-				className="w-full">
-				{field.options.map((option) => (
-					<ThemedOption key={option.value} value={option.value} className="p-2">
-						{option.label}
-					</ThemedOption>
-				))}
-			</ThemedDropdown>
+			<label htmlFor={triggerId} className="block font-medium mb-1">
+				{t(field.labelKey)}
+			</label>
+			<Select
+				value={value}
+				onValueChange={(next) =>
+					setApiConfigurationField(field.key, next as ProviderSettings[typeof field.key])
+				}>
+				<SelectTrigger id={triggerId} className="w-full">
+					<SelectValue placeholder={t("settings:common.select")} />
+				</SelectTrigger>
+				<SelectContent>
+					{field.options.map((option) => (
+						<SelectItem key={option.value} value={option.value}>
+							{option.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
 			{field.descriptionKey && (
 				<div className="text-xs text-vscode-descriptionForeground mt-1">{t(field.descriptionKey)}</div>
 			)}

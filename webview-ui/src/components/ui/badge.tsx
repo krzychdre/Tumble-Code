@@ -12,6 +12,8 @@ const badgeVariants = cva(
 				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
 				destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/80",
 				outline: "text-muted-foreground border-vscode-input-border",
+				// VS Code's own badge: a compact 18px pill for a count, a cost or a short source label.
+				count: "h-[18px] min-w-[18px] justify-center px-1.5 py-0 text-[11px] leading-4 font-normal border-[var(--vscode-button-border,transparent)] bg-vscode-badge-background text-vscode-badge-foreground",
 			},
 		},
 		defaultVariants: {
@@ -20,10 +22,10 @@ const badgeVariants = cva(
 	},
 )
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
-	return <div className={cn(badgeVariants({ variant }), className)} {...props} />
+	return <span className={cn(badgeVariants({ variant }), className)} {...props} />
 }
 
 export { Badge, badgeVariants }
