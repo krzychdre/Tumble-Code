@@ -4,6 +4,8 @@ import * as path from "path"
 import * as lockfile from "proper-lockfile"
 import { JsonStreamStringify } from "json-stream-stringify"
 
+import { replaceFileAtomically } from "./writeFileAtomic.js"
+
 /**
  * Options for safeWriteJson function
  */
@@ -45,60 +47,10 @@ const LOCK_OPTIONS = {
 	},
 } as const
 
-async function getExistingFileMode(filePath: string): Promise<number | undefined> {
-	try {
-		return (await fs.stat(filePath)).mode & 0o7777
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-			return undefined
-		}
-		throw error
-	}
-}
-
-async function streamJsonToTemporaryFile(
-	targetPath: string,
-	data: unknown,
-	prettyPrint: boolean | undefined,
-	mode: number | undefined,
-): Promise<void> {
-	await _streamDataToFile(targetPath, data, prettyPrint, mode)
-	if (mode !== undefined) {
-		await fs.chmod(targetPath, mode)
-	}
-	await flushToDisk(targetPath)
-}
-
-/**
- * Force the file's bytes to disk before it is renamed over the target. Without this, a power loss right after the
- * rename can leave the target name pointing at an empty file on file systems that reorder metadata and data writes.
- */
-async function flushToDisk(filePath: string): Promise<void> {
-	const handle = await fs.open(filePath, "r+")
-	try {
-		await handle.sync()
-	} finally {
-		await handle.close()
-	}
-}
-
 async function writeJsonAtomically(filePath: string, data: unknown, options?: SafeWriteJsonOptions): Promise<void> {
-	const absoluteFilePath = path.resolve(filePath)
-	const existingMode = await getExistingFileMode(absoluteFilePath)
-	let tempPath = path.join(
-		path.dirname(absoluteFilePath),
-		`.${path.basename(absoluteFilePath)}.new_${Date.now()}_${Math.random().toString(36).substring(2)}.tmp`,
+	await replaceFileAtomically(filePath, (temporaryPath, mode) =>
+		_streamDataToFile(temporaryPath, data, options?.prettyPrint, mode),
 	)
-
-	try {
-		await streamJsonToTemporaryFile(tempPath, data, options?.prettyPrint, existingMode)
-		await fs.rename(tempPath, absoluteFilePath)
-		tempPath = ""
-	} finally {
-		if (tempPath) {
-			await fs.unlink(tempPath).catch(() => {})
-		}
-	}
 }
 
 /**
@@ -199,9 +151,7 @@ export async function withLockedJsonTransaction<T>(
  * Safely writes JSON data to a file.
  * - Creates parent directories if they don't exist
  * - Uses 'proper-lockfile' for inter-process advisory locking to prevent concurrent writes to the same path.
- * - Writes to a temporary file first.
- * - If the target file exists, it's backed up before being replaced.
- * - Attempts to roll back and clean up in case of errors.
+ * - Replaces the file atomically (see writeFileAtomic): a failure leaves the old content and no temporary file.
  * - Supports pretty-printing with indentation while maintaining streaming efficiency.
  *
  * @param {string} filePath - The absolute path to the target file.

@@ -3,6 +3,8 @@ import * as fs from "node:fs"
 import * as fsPromises from "node:fs/promises"
 import * as path from "node:path"
 
+import { writeFileAtomic } from "@roo-code/core/fs"
+
 import { renderBriefing } from "./briefing.js"
 import { handoffDir, samePath } from "./locate.js"
 import { escapeMarkdownTableCell } from "./markdown.js"
@@ -65,7 +67,6 @@ interface HandoffIo {
 	rename(source: string, destination: string): Promise<void>
 	now?: () => Date
 	randomUUID?: () => string
-	syncDirectory?: (directory: string) => Promise<void>
 }
 
 interface HandoffUpdateOperation {
@@ -128,7 +129,6 @@ const REGISTER_KEYS = ["status", "pickedUpBy", "pickedUpSessionId"] as const
 // runs. The getter reads the live module binding on first use instead.
 const defaultIo: HandoffIo = {
 	rename: (source, destination) => fsPromises.rename(source, destination),
-	syncDirectory,
 }
 
 /** How many times a read restarts because a compaction replaced the base under it. */
@@ -703,35 +703,5 @@ function unquote(value: string): string {
 
 async function atomicWrite(file: string, content: string, io: HandoffIo = defaultIo): Promise<void> {
 	await fsPromises.mkdir(path.dirname(file), { recursive: true })
-	const temporary = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.${randomUUID()}.tmp`)
-	let handle: fsPromises.FileHandle | undefined
-
-	try {
-		handle = await fsPromises.open(temporary, "wx", 0o600)
-		await handle.writeFile(content, "utf8")
-		await handle.sync()
-		await handle.close()
-		handle = undefined
-		await io.rename(temporary, file)
-		// The file fsync makes the bytes durable; syncing the containing directory
-		// makes the rename durable on Linux filesystems that support it. macOS may
-		// accept the directory handle but does not promise Linux-equivalent metadata
-		// durability from fsync; Node cannot open directories on Windows. Some
-		// filesystems reject directory fsync altogether, so this is best effort.
-		await (io.syncDirectory ?? syncDirectory)(path.dirname(file)).catch(() => undefined)
-	} finally {
-		await handle?.close().catch(() => undefined)
-		await fsPromises.rm(temporary, { force: true }).catch(() => undefined)
-	}
-}
-
-async function syncDirectory(directory: string): Promise<void> {
-	let handle: fsPromises.FileHandle | undefined
-
-	try {
-		handle = await fsPromises.open(directory, fs.constants.O_RDONLY)
-		await handle.sync()
-	} finally {
-		await handle?.close().catch(() => undefined)
-	}
+	await writeFileAtomic(file, content, { mode: 0o600, rename: io.rename })
 }

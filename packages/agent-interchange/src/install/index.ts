@@ -4,6 +4,8 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
+import { writeFileAtomic } from "@roo-code/core/fs"
+
 import {
 	addRegistration,
 	claudeConfigPath,
@@ -120,19 +122,7 @@ async function copyAtomically(source: string, destination: string): Promise<void
 
 async function writeAtomically(destination: string, content: Buffer, mode: number): Promise<void> {
 	await fs.mkdir(path.dirname(destination), { recursive: true })
-	const temporary = `${destination}.new-${process.pid}-${Date.now()}`
-	try {
-		const handle = await fs.open(temporary, "wx", mode)
-		try {
-			await handle.writeFile(content)
-			await handle.sync()
-		} finally {
-			await handle.close()
-		}
-		await fs.rename(temporary, destination)
-	} finally {
-		await fs.rm(temporary, { force: true })
-	}
+	await writeFileAtomic(destination, content, { mode })
 }
 
 async function preflight(args: Args, source: string): Promise<FileSnapshot[]> {
