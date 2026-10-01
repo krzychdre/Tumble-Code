@@ -177,7 +177,7 @@ export const ApiConfigSelector = ({
 					<div className="flex items-center gap-1">
 						{isCurrentConfig && (
 							<div className="size-5 p-1 flex items-center justify-center">
-								<span className="codicon codicon-check text-xs" />
+								<span className="codicon codicon-check text-xs" aria-hidden="true" />
 							</div>
 						)}
 						<StandardTooltip content={isPinned ? t("chat:unpin") : t("chat:pin")}>
@@ -263,7 +263,10 @@ export const ApiConfigSelector = ({
 							</div>
 
 							{/* Mode checklist */}
-							<div className="max-h-[300px] overflow-y-auto py-1" aria-label="Mode list">
+							<div
+								className="max-h-[300px] overflow-y-auto py-1"
+								role="group"
+								aria-label={t("chat:applyConfigToModes.modeList")}>
 								{availableModes.map((mode) => {
 									const alreadyAssigned = modeApiConfigs?.[mode.slug] === value
 									return (
@@ -324,7 +327,7 @@ export const ApiConfigSelector = ({
 										value={searchValue}
 										onChange={(e) => setSearchValue(e.target.value)}
 										placeholder={t("common:ui.search_placeholder")}
-										className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded focus:outline-0"
+										className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded focus-ring"
 										autoFocus
 									/>
 									{searchValue.length > 0 && (
@@ -359,14 +362,15 @@ export const ApiConfigSelector = ({
 												unpinnedConfigs.length > 0 &&
 													"border-b border-vscode-dropdown-foreground/10",
 											)}
-											aria-label="Pinned configurations">
+											role="group"
+											aria-label={t("chat:apiConfigGroups.pinned")}>
 											{pinnedConfigs.map((config) => renderConfigItem(config, true))}
 										</div>
 									)}
 
 									{/* Unpinned configs */}
 									{unpinnedConfigs.length > 0 && (
-										<div className="py-1" aria-label="All configurations">
+										<div className="py-1" role="group" aria-label={t("chat:apiConfigGroups.all")}>
 											{unpinnedConfigs.map((config) => renderConfigItem(config, false))}
 										</div>
 									)}
@@ -406,7 +410,10 @@ export const ApiConfigSelector = ({
 								<div className="flex items-center gap-1 pr-1">
 									{listApiConfigMeta.length > 6 && (
 										<StandardTooltip content={t("prompts:apiConfiguration.select")}>
-											<span className="codicon codicon-info text-xs text-vscode-descriptionForeground opacity-70 hover:opacity-100 cursor-help" />
+											<span
+												className="codicon codicon-info text-xs text-vscode-descriptionForeground opacity-70 hover:opacity-100 cursor-help"
+												aria-hidden="true"
+											/>
 										</StandardTooltip>
 									)}
 									<h4 className="m-0 font-medium text-sm text-vscode-descriptionForeground">

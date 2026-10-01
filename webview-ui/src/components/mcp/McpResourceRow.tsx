@@ -20,7 +20,7 @@ const McpResourceRow = ({ item }: McpResourceRowProps) => {
 					alignItems: "center",
 					marginBottom: "4px",
 				}}>
-				<span className={`codicon codicon-symbol-file`} style={{ marginRight: "6px" }} />
+				<span className={`codicon codicon-symbol-file`} style={{ marginRight: "6px" }} aria-hidden="true" />
 				<span style={{ fontWeight: 500, wordBreak: "break-all" }}>{uri}</span>
 			</div>
 			<div
@@ -47,7 +47,7 @@ const McpResourceRow = ({ item }: McpResourceRowProps) => {
 						color: "var(--vscode-textPreformat-foreground)",
 						background: "var(--vscode-textPreformat-background)",
 						padding: "1px 4px",
-						}}>
+					}}>
 					{item.mimeType || "Unknown"}
 				</code>
 			</div>

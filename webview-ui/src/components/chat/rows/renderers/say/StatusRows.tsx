@@ -132,6 +132,7 @@ export const ContextPrunedRow = ({ message }: RowRendererProps) => {
 
 /** The results of a code index search. */
 export const CodebaseSearchResultRow = ({ message }: RowRendererProps) => {
+	const { t } = useTranslation()
 	let parsed: {
 		content: {
 			query: string
@@ -155,7 +156,7 @@ export const CodebaseSearchResultRow = ({ message }: RowRendererProps) => {
 
 	if (parsed && !parsed?.content) {
 		console.error("Invalid codebaseSearch content structure:", parsed.content)
-		return <div>Error displaying search results.</div>
+		return <div>{t("chat:codebaseSearch.displayError")}</div>
 	}
 
 	const { results = [] } = parsed?.content || {}

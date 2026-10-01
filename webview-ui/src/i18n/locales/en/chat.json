@@ -172,7 +172,8 @@
 		"back": "Back",
 		"apply": "Apply",
 		"confirm": "Confirm",
-		"confirmPrompt": "Apply to {{count}} modes?"
+		"confirmPrompt": "Apply to {{count}} modes?",
+		"modeList": "Modes"
 	},
 	"enhancePrompt": "Enhance prompt with additional context",
 	"modeSelector": {
@@ -259,7 +260,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble wants to load a skill",
-		"didLoad": "Tumble loaded a skill"
+		"didLoad": "Tumble loaded a skill",
+		"arguments": "Arguments:"
 	},
 	"fileOperations": {
 		"wantsToRead": "Tumble wants to read this file",
@@ -276,7 +278,8 @@
 		"wantsToGenerateImageProtected": "Tumble wants to generate an image in a protected location",
 		"didGenerateImage": "Tumble generated an image",
 		"wantsToInsertWithLineNumber": "Tumble wants to insert content into this file at line {{lineNumber}}",
-		"wantsToInsertAtEnd": "Tumble wants to append content to the end of this file"
+		"wantsToInsertAtEnd": "Tumble wants to append content to the end of this file",
+		"userEdits": "User Edits"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble wants to view the top level files in this directory",
@@ -297,7 +300,8 @@
 		"wantsToSearchWithPath": "Tumble wants to search the codebase for <code>{{query}}</code> in <code>{{path}}</code>",
 		"didSearch_one": "Found 1 result",
 		"didSearch_other": "Found {{count}} results",
-		"resultTooltip": "Similarity score: {{score}} (click to open file)"
+		"resultTooltip": "Similarity score: {{score}} (click to open file)",
+		"displayError": "Error displaying search results."
 	},
 	"commandExecution": {
 		"abort": "Abort",
@@ -310,7 +314,8 @@
 		"addToDenied": "Add to denied list",
 		"removeFromDenied": "Remove from denied list",
 		"expandCommand": "Expand command",
-		"collapseCommand": "Collapse command"
+		"collapseCommand": "Collapse command",
+		"clickToEditPattern": "Click to edit pattern"
 	},
 	"text": {
 		"rooSaid": "Tumble said"
@@ -390,7 +395,8 @@
 				"label": "Autonomous",
 				"description": "Full auto: everything Bypass does, plus follow-up questions are answered automatically so the agent runs until it finishes."
 			}
-		}
+		},
+		"enabled": "Enabled"
 	},
 	"announcement": {
 		"title": "Tumble Code {{version}} Released",
@@ -491,12 +497,31 @@
 		"problems": "Problems",
 		"terminal": "Terminal",
 		"url": "Paste URL to fetch contents",
-		"menuLabel": "Context menu"
+		"menuLabel": "Context menu",
+		"gitCommits": "Git Commits"
 	},
 	"todo": {
 		"partial": "{{completed}} of {{total}} to-dos done",
 		"complete": "{{total}} to-dos done",
-		"updated": "Updated the to-do list"
+		"updated": "Updated the to-do list",
+		"userEdit": "User Edit",
+		"userEdits": "User Edits",
+		"listUpdated": "Todo List Updated",
+		"edit": "Edit",
+		"done": "Done",
+		"add": "Add",
+		"addTodo": "Add Todo",
+		"cancel": "Cancel",
+		"delete": "Delete",
+		"remove": "Remove",
+		"itemPlaceholder": "Enter todo item",
+		"newItemPlaceholder": "Enter todo item, press Enter to add",
+		"deleteConfirm": "Are you sure you want to delete this todo item?",
+		"status": {
+			"notStarted": "Not Started",
+			"inProgress": "In Progress",
+			"completed": "Completed"
+		}
 	},
 	"tooManyTools": {
 		"title": "Too many tools enabled",
@@ -546,5 +571,14 @@
 		"loading": "Loading plan…"
 	},
 	"thumbnailAlt": "Thumbnail {{index}}",
-	"removeImage": "Remove image {{index}}"
+	"removeImage": "Remove image {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Pinned configurations",
+		"all": "All configurations"
+	},
+	"markdownPreview": {
+		"open": "Open in preview",
+		"openAriaLabel": "Open markdown in preview",
+		"copyAsMarkdown": "Copy as markdown"
+	}
 }

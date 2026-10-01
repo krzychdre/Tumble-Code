@@ -44,7 +44,7 @@ const OpenRouterProviderRouting = ({ context }: { context: EmbedderFormContext }
 					rel="noopener noreferrer"
 					className="flex items-center gap-1 hover:underline">
 					{t("settings:codeIndex.openRouterProviderRoutingLabel")}
-					<span className="codicon codicon-link-external text-xs" />
+					<span className="codicon codicon-link-external text-xs" aria-hidden="true" />
 				</a>
 			</label>
 			<Select

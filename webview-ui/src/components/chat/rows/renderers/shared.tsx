@@ -22,7 +22,8 @@ export const headerStyle: React.CSSProperties = {
 export const toolIcon = (name: string) => (
 	<span
 		className={`codicon codicon-${name}`}
-		style={{ color: "var(--vscode-foreground)", marginBottom: "-1.5px" }}></span>
+		style={{ color: "var(--vscode-foreground)", marginBottom: "-1.5px" }}
+		aria-hidden="true"></span>
 )
 
 /** The lock icon a row shows instead of its tool icon when the target file is protected. */
@@ -30,5 +31,6 @@ export const protectedIcon = () => (
 	<span
 		className="codicon codicon-lock"
 		style={{ color: "var(--vscode-editorWarning-foreground)", marginBottom: "-1.5px" }}
+		aria-hidden="true"
 	/>
 )

@@ -132,6 +132,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 							data-testid="toggle-selection-mode-button">
 							<span
 								className={`codicon ${isSelectionMode ? "codicon-check-all" : "codicon-checklist"} mr-1`}
+								aria-hidden="true"
 							/>
 							{isSelectionMode ? t("history:exitSelection") : t("history:selectionMode")}
 						</Button>
@@ -155,7 +156,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 						{searchQuery && (
 							<div
 								className="input-icon-button codicon codicon-close flex justify-center items-center h-full"
-								aria-label="Clear search"
+								aria-label={t("history:clearSearch")}
 								onClick={() => setSearchQuery("")}
 								slot="end"
 							/>
@@ -174,13 +175,13 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 							<SelectContent>
 								<SelectItem value="current">
 									<div className="flex items-center gap-2">
-										<span className="codicon codicon-folder" />
+										<span className="codicon codicon-folder" aria-hidden="true" />
 										{t("history:workspace.current")}
 									</div>
 								</SelectItem>
 								<SelectItem value="all">
 									<div className="flex items-center gap-2">
-										<span className="codicon codicon-folder-opened" />
+										<span className="codicon codicon-folder-opened" aria-hidden="true" />
 										{t("history:workspace.all")}
 									</div>
 								</SelectItem>
@@ -195,25 +196,25 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 							<SelectContent>
 								<SelectItem value="newest" data-testid="select-newest">
 									<div className="flex items-center gap-2">
-										<span className="codicon codicon-arrow-down" />
+										<span className="codicon codicon-arrow-down" aria-hidden="true" />
 										{t("history:newest")}
 									</div>
 								</SelectItem>
 								<SelectItem value="oldest" data-testid="select-oldest">
 									<div className="flex items-center gap-2">
-										<span className="codicon codicon-arrow-up" />
+										<span className="codicon codicon-arrow-up" aria-hidden="true" />
 										{t("history:oldest")}
 									</div>
 								</SelectItem>
 								<SelectItem value="mostExpensive" data-testid="select-most-expensive">
 									<div className="flex items-center gap-2">
-										<span className="codicon codicon-credit-card" />
+										<span className="codicon codicon-credit-card" aria-hidden="true" />
 										{t("history:mostExpensive")}
 									</div>
 								</SelectItem>
 								<SelectItem value="mostTokens" data-testid="select-most-tokens">
 									<div className="flex items-center gap-2">
-										<span className="codicon codicon-symbol-numeric" />
+										<span className="codicon codicon-symbol-numeric" aria-hidden="true" />
 										{t("history:mostTokens")}
 									</div>
 								</SelectItem>
@@ -222,7 +223,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 									disabled={!searchQuery}
 									data-testid="select-most-relevant">
 									<div className="flex items-center gap-2">
-										<span className="codicon codicon-search" />
+										<span className="codicon codicon-search" aria-hidden="true" />
 										{t("history:mostRelevant")}
 									</div>
 								</SelectItem>
@@ -262,14 +263,14 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 					<div
 						data-testid="history-empty-search"
 						className="flex flex-col items-center justify-center gap-2 py-16 text-vscode-descriptionForeground">
-						<span className="codicon codicon-search size-6 text-base" />
+						<span className="codicon codicon-search size-6 text-base" aria-hidden="true" />
 						<p>{t("history:noSearchResults")}</p>
 					</div>
 				) : hasNoTasks ? (
 					<div
 						data-testid="history-empty-state"
 						className="flex flex-col items-center justify-center gap-2 py-16 text-vscode-descriptionForeground">
-						<span className="codicon codicon-history size-6 text-base" />
+						<span className="codicon codicon-history size-6 text-base" aria-hidden="true" />
 						<p>{t("history:noHistory")}</p>
 					</div>
 				) : isSearchMode && flatTasks ? (

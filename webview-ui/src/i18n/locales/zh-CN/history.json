@@ -51,5 +51,6 @@
 	"today": "今天",
 	"yesterday": "昨天",
 	"noHistory": "还没有任务。开始一段对话来建立历史记录。",
-	"noSearchResults": "没有任务匹配此搜索。"
+	"noSearchResults": "没有任务匹配此搜索。",
+	"clearSearch": "清除搜索"
 }

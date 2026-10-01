@@ -366,7 +366,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 						className={cn(
 							"grow text-sm px-2 py-1 rounded border",
 							"bg-vscode-input-background text-vscode-input-foreground border-vscode-input-border",
-							"placeholder:text-vscode-input-placeholderForeground focus:outline-none",
+							"placeholder:text-vscode-input-placeholderForeground focus-ring",
 						)}
 					/>
 					<StandardTooltip content={t("chat:subagents.send")}>

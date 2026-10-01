@@ -48,7 +48,8 @@
 		"title": "Instructions personnalisées spécifiques au mode (optionnel)",
 		"resetToDefault": "Réinitialiser aux valeurs par défaut",
 		"description": "Ajoutez des directives comportementales spécifiques au mode {{modeName}}.",
-		"loadFromFile": "Les instructions personnalisées spécifiques au mode {{mode}} peuvent également être chargées depuis le dossier <span>.roo/rules-{{slug}}/</span> dans votre espace de travail ou depuis le global <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} et .clinerules-{{slug}} sont obsolètes et cesseront de fonctionner bientôt)."
+		"loadFromFile": "Les instructions personnalisées spécifiques au mode {{mode}} peuvent également être chargées depuis le dossier <span>.roo/rules-{{slug}}/</span> dans votre espace de travail ou depuis le global <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} et .clinerules-{{slug}} sont obsolètes et cesseront de fonctionner bientôt).",
+		"docsLinkAriaLabel": "En savoir plus sur les instructions personnalisées globales pour les modes"
 	},
 	"exportMode": {
 		"title": "Exporter le mode",
@@ -71,7 +72,8 @@
 	"globalCustomInstructions": {
 		"title": "Instructions personnalisées pour tous les modes",
 		"description": "Ces instructions s'appliquent à tous les modes. Elles fournissent un ensemble de comportements de base qui peuvent être améliorés par des instructions spécifiques au mode ci-dessous.",
-		"loadFromFile": "Les instructions peuvent également être chargées depuis le dossier <span>.roo/rules/</span> dans votre espace de travail ou depuis le global <0>.roo/rules/</0> (.roorules et .clinerules sont obsolètes et cesseront de fonctionner bientôt)."
+		"loadFromFile": "Les instructions peuvent également être chargées depuis le dossier <span>.roo/rules/</span> dans votre espace de travail ou depuis le global <0>.roo/rules/</0> (.roorules et .clinerules sont obsolètes et cesseront de fonctionner bientôt).",
+		"docsLinkAriaLabel": "En savoir plus sur la configuration des instructions personnalisées globales"
 	},
 	"systemPrompt": {
 		"preview": "Aperçu du prompt système",
@@ -190,5 +192,10 @@
 		"rulesFolder": "Ce mode a un dossier de règles à {{folderPath}} qui sera également supprimé.",
 		"confirm": "Supprimer",
 		"cancel": "Annuler"
+	},
+	"mcpRestriction": {
+		"restrict": "Limiter à certains serveurs MCP",
+		"noServers": "Aucun serveur MCP connecté",
+		"notConnected": "{{server}} (non connecté)"
 	}
 }

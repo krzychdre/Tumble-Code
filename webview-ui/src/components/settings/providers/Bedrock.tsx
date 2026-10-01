@@ -56,7 +56,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 	return (
 		<>
 			<div>
-				<label className="block font-medium mb-1">Authentication Method</label>
+				<label className="block font-medium mb-1">{t("settings:providers.awsAuthMethod")}</label>
 				<Select
 					value={
 						apiConfiguration?.awsUseApiKey
@@ -202,6 +202,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 								<i
 									className="codicon codicon-info text-vscode-descriptionForeground"
 									style={{ fontSize: "12px" }}
+									aria-hidden="true"
 								/>
 							</StandardTooltip>
 						</div>

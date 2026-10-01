@@ -27,7 +27,9 @@ const CodebaseSearchResultsDisplay: React.FC<CodebaseSearchResultsDisplayProps> 
 						values={{ count: results.length }}
 					/>
 				</span>
-				<span className={`codicon codicon-chevron-${codebaseSearchResultsExpanded ? "up" : "down"}`}></span>
+				<span
+					className={`codicon codicon-chevron-${codebaseSearchResultsExpanded ? "up" : "down"}`}
+					aria-hidden="true"></span>
 			</div>
 
 			{codebaseSearchResultsExpanded && (

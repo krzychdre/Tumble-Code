@@ -49,7 +49,10 @@ export const BatchFilePermission = memo(({ files = [], onPermissionResponse, ts 
 										</span>
 									</PathTooltip>
 									<div className="flex-grow"></div>
-									<span className="codicon codicon-link-external text-[13.5px] my-[1px]" />
+									<span
+										className="codicon codicon-link-external text-[13.5px] my-[1px]"
+										aria-hidden="true"
+									/>
 								</ToolUseBlockHeader>
 							</ToolUseBlock>
 						</div>

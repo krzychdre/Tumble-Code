@@ -350,7 +350,7 @@ export const ContextManagementSettings = ({
 							title={t("settings:contextManagement.diagnostics.maxMessages.resetTooltip")}
 							className="p-1 h-6 w-6"
 							disabled={maxDiagnosticMessages === 50}>
-							<span className="codicon codicon-discard" />
+							<span className="codicon codicon-discard" aria-hidden="true" />
 						</Button>
 					</div>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">

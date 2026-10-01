@@ -13,7 +13,7 @@ export function MaxRequestsInput({ allowedMaxRequests, onValueChange }: MaxReque
 	return (
 		<>
 			<label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
-				<span className="codicon codicon-pulse" />
+				<span className="codicon codicon-pulse" aria-hidden="true" />
 				{t("settings:autoApprove.apiRequestLimit.title")}:
 			</label>
 			<FormattedTextField

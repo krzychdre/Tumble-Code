@@ -129,7 +129,8 @@
 		"back": "Назад",
 		"apply": "Применить",
 		"confirm": "Подтвердить",
-		"confirmPrompt": "Применить к {{count}} режимам?"
+		"confirmPrompt": "Применить к {{count}} режимам?",
+		"modeList": "Режимы"
 	},
 	"enhancePrompt": "Улучшить запрос с дополнительным контекстом",
 	"enhancePromptDescription": "Кнопка 'Улучшить запрос' помогает сделать ваш запрос лучше, предоставляя дополнительный контекст, уточнения или переформулировку. Попробуйте ввести запрос и снова нажать кнопку, чтобы увидеть, как это работает.",
@@ -213,7 +214,8 @@
 		"wantsToGenerateImage": "Tumble хочет сгенерировать изображение",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble хочет сгенерировать изображение вне рабочего пространства",
 		"wantsToGenerateImageProtected": "Tumble хочет сгенерировать изображение в защищённом месте",
-		"didGenerateImage": "Tumble сгенерировал изображение"
+		"didGenerateImage": "Tumble сгенерировал изображение",
+		"userEdits": "Правки пользователя"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble хочет просмотреть файлы верхнего уровня в этой директории",
@@ -241,7 +243,8 @@
 		"addToDenied": "Добавить в список запрещенных",
 		"removeFromDenied": "Удалить из списка запрещенных",
 		"expandCommand": "Развернуть команду",
-		"collapseCommand": "Свернуть команду"
+		"collapseCommand": "Свернуть команду",
+		"clickToEditPattern": "Нажмите, чтобы изменить шаблон"
 	},
 	"text": {
 		"rooSaid": "Ру сказал"
@@ -325,7 +328,8 @@
 				"label": "Автономный",
 				"description": "Полный авто: всё, что делает Обход, плюс уточняющие вопросы отвечаются автоматически, чтобы агент работал до завершения."
 			}
-		}
+		},
+		"enabled": "Включено"
 	},
 	"announcement": {
 		"title": "Выпущен Tumble Code {{version}}",
@@ -374,7 +378,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble хочет загрузить навык",
-		"didLoad": "Tumble загрузил навык"
+		"didLoad": "Tumble загрузил навык",
+		"arguments": "Аргументы:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Скопировать во ввод (то же, что shift + клик)",
@@ -417,7 +422,8 @@
 		"didSearch_few": "Найдено {{count}} результата",
 		"didSearch_many": "Найдено {{count}} результатов",
 		"didSearch_other": "Найдено {{count}} результата",
-		"resultTooltip": "Оценка схожести: {{score}} (нажмите, чтобы открыть файл)"
+		"resultTooltip": "Оценка схожести: {{score}} (нажмите, чтобы открыть файл)",
+		"displayError": "Ошибка при отображении результатов поиска."
 	},
 	"read-batch": {
 		"approve": {
@@ -481,7 +487,8 @@
 		"problems": "Проблемы",
 		"terminal": "Терминал",
 		"url": "Вставьте URL для получения содержимого",
-		"menuLabel": "Контекстное меню"
+		"menuLabel": "Контекстное меню",
+		"gitCommits": "Коммиты Git"
 	},
 	"queuedMessages": {
 		"title": "Сообщения в очереди",
@@ -494,7 +501,25 @@
 	"todo": {
 		"partial": "{{completed}} из {{total}} задач выполнено",
 		"complete": "{{total}} задач выполнено",
-		"updated": "Список задач обновлен"
+		"updated": "Список задач обновлен",
+		"userEdit": "Правка пользователя",
+		"userEdits": "Правки пользователя",
+		"listUpdated": "Список задач обновлён",
+		"edit": "Изменить",
+		"done": "Готово",
+		"add": "Добавить",
+		"addTodo": "Добавить задачу",
+		"cancel": "Отмена",
+		"delete": "Удалить",
+		"remove": "Убрать",
+		"itemPlaceholder": "Введите задачу",
+		"newItemPlaceholder": "Введите задачу и нажмите Enter, чтобы добавить",
+		"deleteConfirm": "Удалить эту задачу?",
+		"status": {
+			"notStarted": "Не начата",
+			"inProgress": "В работе",
+			"completed": "Завершена"
+		}
 	},
 	"tooManyTools": {
 		"title": "Включено слишком много инструментов",
@@ -579,5 +604,14 @@
 		"idle": "Память включена"
 	},
 	"thumbnailAlt": "Миниатюра {{index}}",
-	"removeImage": "Удалить изображение {{index}}"
+	"removeImage": "Удалить изображение {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Закреплённые конфигурации",
+		"all": "Все конфигурации"
+	},
+	"markdownPreview": {
+		"open": "Открыть в предпросмотре",
+		"openAriaLabel": "Открыть markdown в предпросмотре",
+		"copyAsMarkdown": "Копировать как markdown"
+	}
 }

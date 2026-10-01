@@ -2,10 +2,12 @@ import { memo, useState } from "react"
 
 import { useCopyToClipboard } from "@src/utils/clipboard"
 import { Button, StandardTooltip } from "@src/components/ui"
+import { useAppTranslation } from "@src/i18n/TranslationContext"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 
 export const Markdown = memo(({ markdown, partial }: { markdown?: string; partial?: boolean }) => {
+	const { t } = useAppTranslation()
 	const [isHovering, setIsHovering] = useState(false)
 
 	// Shorter feedback duration for copy button flash.
@@ -33,10 +35,11 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 						animation: "fadeIn 0.2s ease-in-out forwards",
 					}}>
 					<style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1.0; } }`}</style>
-					<StandardTooltip content="Copy as markdown">
+					<StandardTooltip content={t("chat:markdownPreview.copyAsMarkdown")}>
 						<Button
 							className="copy-button"
 							variant="icon"
+							aria-label={t("chat:markdownPreview.copyAsMarkdown")}
 							style={{
 								height: "24px",
 								border: "none",
@@ -55,7 +58,7 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 									}
 								}
 							}}>
-							<span className="codicon codicon-copy" />
+							<span className="codicon codicon-copy" aria-hidden="true" />
 						</Button>
 					</StandardTooltip>
 				</div>

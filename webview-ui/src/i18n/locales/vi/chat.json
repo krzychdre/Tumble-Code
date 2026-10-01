@@ -125,7 +125,8 @@
 		"back": "Quay lại",
 		"apply": "Áp dụng",
 		"confirm": "Xác nhận",
-		"confirmPrompt": "Áp dụng cho {{count}} chế độ?"
+		"confirmPrompt": "Áp dụng cho {{count}} chế độ?",
+		"modeList": "Chế độ"
 	},
 	"enhancePrompt": "Nâng cao yêu cầu với ngữ cảnh bổ sung",
 	"addImages": "Thêm hình ảnh vào tin nhắn",
@@ -214,7 +215,8 @@
 		"wantsToGenerateImage": "Tumble muốn tạo một hình ảnh",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble muốn tạo hình ảnh bên ngoài không gian làm việc",
 		"wantsToGenerateImageProtected": "Tumble muốn tạo hình ảnh ở vị trí được bảo vệ",
-		"didGenerateImage": "Tumble đã tạo một hình ảnh"
+		"didGenerateImage": "Tumble đã tạo một hình ảnh",
+		"userEdits": "Các chỉnh sửa của người dùng"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble muốn xem các tệp cấp cao nhất trong thư mục này",
@@ -242,7 +244,8 @@
 		"addToDenied": "Thêm vào danh sách từ chối",
 		"removeFromDenied": "Xóa khỏi danh sách từ chối",
 		"expandCommand": "Mở rộng lệnh",
-		"collapseCommand": "Thu gọn lệnh"
+		"collapseCommand": "Thu gọn lệnh",
+		"clickToEditPattern": "Nhấp để chỉnh sửa mẫu"
 	},
 	"text": {
 		"rooSaid": "Tumble đã nói"
@@ -319,7 +322,8 @@
 				"label": "Tự chủ",
 				"description": "Tự động hoàn toàn: mọi thứ Bỏ qua làm, cộng với câu hỏi tiếp theo được trả lời tự động để tác nhân chạy đến khi xong."
 			}
-		}
+		},
+		"enabled": "Đã bật"
 	},
 	"reasoning": {
 		"thinking": "Đang suy nghĩ"
@@ -347,7 +351,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble muốn tải một kỹ năng",
-		"didLoad": "Tumble đã tải một kỹ năng"
+		"didLoad": "Tumble đã tải một kỹ năng",
+		"arguments": "Đối số:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Sao chép vào ô nhập liệu (hoặc Shift + nhấp chuột)",
@@ -403,7 +408,8 @@
 		"wantsToSearchWithPath": "Tumble muốn tìm kiếm trong cơ sở mã cho <code>{{query}}</code> trong <code>{{path}}</code>",
 		"didSearch_one": "Đã tìm thấy 1 kết quả",
 		"didSearch_other": "Đã tìm thấy {{count}} kết quả",
-		"resultTooltip": "Điểm tương tự: {{score}} (nhấp để mở tệp)"
+		"resultTooltip": "Điểm tương tự: {{score}} (nhấp để mở tệp)",
+		"displayError": "Lỗi khi hiển thị kết quả tìm kiếm."
 	},
 	"read-batch": {
 		"approve": {
@@ -467,7 +473,8 @@
 		"problems": "Vấn đề",
 		"terminal": "Terminal",
 		"url": "Dán URL để lấy nội dung",
-		"menuLabel": "Menu ngữ cảnh"
+		"menuLabel": "Menu ngữ cảnh",
+		"gitCommits": "Commit Git"
 	},
 	"queuedMessages": {
 		"title": "Tin nhắn trong hàng đợi",
@@ -480,7 +487,25 @@
 	"todo": {
 		"partial": "{{completed}} trong tổng số {{total}} công việc đã hoàn thành",
 		"complete": "{{total}} công việc đã hoàn thành",
-		"updated": "Đã cập nhật danh sách công việc"
+		"updated": "Đã cập nhật danh sách công việc",
+		"userEdit": "Chỉnh sửa của người dùng",
+		"userEdits": "Các chỉnh sửa của người dùng",
+		"listUpdated": "Đã cập nhật danh sách công việc",
+		"edit": "Chỉnh sửa",
+		"done": "Xong",
+		"add": "Thêm",
+		"addTodo": "Thêm công việc",
+		"cancel": "Hủy",
+		"delete": "Xóa",
+		"remove": "Gỡ bỏ",
+		"itemPlaceholder": "Nhập công việc",
+		"newItemPlaceholder": "Nhập công việc, nhấn Enter để thêm",
+		"deleteConfirm": "Bạn có chắc muốn xóa công việc này không?",
+		"status": {
+			"notStarted": "Chưa bắt đầu",
+			"inProgress": "Đang thực hiện",
+			"completed": "Hoàn thành"
+		}
 	},
 	"tooManyTools": {
 		"title": "Đã bật quá nhiều công cụ",
@@ -559,5 +584,14 @@
 		"idle": "Bộ nhớ đang bật"
 	},
 	"thumbnailAlt": "Hình thu nhỏ {{index}}",
-	"removeImage": "Xóa hình ảnh {{index}}"
+	"removeImage": "Xóa hình ảnh {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Cấu hình đã ghim",
+		"all": "Tất cả cấu hình"
+	},
+	"markdownPreview": {
+		"open": "Mở trong bản xem trước",
+		"openAriaLabel": "Mở markdown trong bản xem trước",
+		"copyAsMarkdown": "Sao chép dưới dạng markdown"
+	}
 }

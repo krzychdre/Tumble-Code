@@ -125,7 +125,8 @@
 		"back": "Terug",
 		"apply": "Toepassen",
 		"confirm": "Bevestigen",
-		"confirmPrompt": "Toepassen op {{count}} modi?"
+		"confirmPrompt": "Toepassen op {{count}} modi?",
+		"modeList": "Modi"
 	},
 	"enhancePrompt": "Prompt verbeteren met extra context",
 	"enhancePromptDescription": "De knop 'Prompt verbeteren' helpt je prompt te verbeteren door extra context, verduidelijking of herformulering te bieden. Probeer hier een prompt te typen en klik opnieuw op de knop om te zien hoe het werkt.",
@@ -209,7 +210,8 @@
 		"wantsToGenerateImage": "Tumble wil een afbeelding genereren",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble wil een afbeelding genereren buiten de werkruimte",
 		"wantsToGenerateImageProtected": "Tumble wil een afbeelding genereren op een beschermde locatie",
-		"didGenerateImage": "Tumble heeft een afbeelding gegenereerd"
+		"didGenerateImage": "Tumble heeft een afbeelding gegenereerd",
+		"userEdits": "Gebruikersbewerkingen"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble wil de bovenliggende bestanden in deze map bekijken",
@@ -236,7 +238,8 @@
 		"addToDenied": "Toevoegen aan geweigerde lijst",
 		"removeFromDenied": "Verwijderen van geweigerde lijst",
 		"expandCommand": "Commando uitvouwen",
-		"collapseCommand": "Commando samenvouwen"
+		"collapseCommand": "Commando samenvouwen",
+		"clickToEditPattern": "Klik om het patroon te bewerken"
 	},
 	"text": {
 		"rooSaid": "Tumble zei"
@@ -318,7 +321,8 @@
 				"label": "Autonoom",
 				"description": "Volautomatisch: alles uit Omzeilen, plus vervolgvragen worden automatisch beantwoord zodat de agent doorloopt tot hij klaar is."
 			}
-		}
+		},
+		"enabled": "Ingeschakeld"
 	},
 	"announcement": {
 		"title": "Tumble Code {{version}} uitgebracht",
@@ -361,7 +365,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble wil een vaardigheid laden",
-		"didLoad": "Tumble heeft een vaardigheid geladen"
+		"didLoad": "Tumble heeft een vaardigheid geladen",
+		"arguments": "Argumenten:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Kopiëren naar invoer (zelfde als shift + klik)",
@@ -402,7 +407,8 @@
 		"wantsToSearchWithPath": "Tumble wil de codebase doorzoeken op <code>{{query}}</code> in <code>{{path}}</code>",
 		"didSearch_one": "1 resultaat gevonden",
 		"didSearch_other": "{{count}} resultaten gevonden",
-		"resultTooltip": "Gelijkenisscore: {{score}} (klik om bestand te openen)"
+		"resultTooltip": "Gelijkenisscore: {{score}} (klik om bestand te openen)",
+		"displayError": "Fout bij het weergeven van de zoekresultaten."
 	},
 	"read-batch": {
 		"approve": {
@@ -466,7 +472,8 @@
 		"problems": "Problemen",
 		"terminal": "Terminal",
 		"url": "Plak URL om inhoud op te halen",
-		"menuLabel": "Contextmenu"
+		"menuLabel": "Contextmenu",
+		"gitCommits": "Git-commits"
 	},
 	"queuedMessages": {
 		"title": "Berichten in wachtrij",
@@ -479,7 +486,25 @@
 	"todo": {
 		"partial": "{{completed}} van {{total}} to-do's voltooid",
 		"complete": "{{total}} to-do's voltooid",
-		"updated": "De to-do-lijst is bijgewerkt"
+		"updated": "De to-do-lijst is bijgewerkt",
+		"userEdit": "Gebruikersbewerking",
+		"userEdits": "Gebruikersbewerkingen",
+		"listUpdated": "To-do-lijst bijgewerkt",
+		"edit": "Bewerken",
+		"done": "Klaar",
+		"add": "Toevoegen",
+		"addTodo": "To-do toevoegen",
+		"cancel": "Annuleren",
+		"delete": "Verwijderen",
+		"remove": "Verwijderen",
+		"itemPlaceholder": "Voer een to-do in",
+		"newItemPlaceholder": "Voer een to-do in en druk op Enter om toe te voegen",
+		"deleteConfirm": "Weet je zeker dat je deze to-do wilt verwijderen?",
+		"status": {
+			"notStarted": "Niet gestart",
+			"inProgress": "Bezig",
+			"completed": "Voltooid"
+		}
 	},
 	"tooManyTools": {
 		"title": "Te veel tools ingeschakeld",
@@ -558,5 +583,14 @@
 		"idle": "Geheugen staat aan"
 	},
 	"thumbnailAlt": "Miniatuur {{index}}",
-	"removeImage": "Afbeelding {{index}} verwijderen"
+	"removeImage": "Afbeelding {{index}} verwijderen",
+	"apiConfigGroups": {
+		"pinned": "Vastgezette configuraties",
+		"all": "Alle configuraties"
+	},
+	"markdownPreview": {
+		"open": "Openen in voorbeeld",
+		"openAriaLabel": "Markdown openen in voorbeeld",
+		"copyAsMarkdown": "Kopiëren als markdown"
+	}
 }

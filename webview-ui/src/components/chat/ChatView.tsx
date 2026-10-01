@@ -601,7 +601,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 												className="flex-1 ml-[6px]"
 												onClick={handleScrollToLatestCheckpoint}
 												aria-label={t("chat:scrollToLatestCheckpoint")}>
-												<span className="codicon codicon-history"></span>
+												<span className="codicon codicon-history" aria-hidden="true"></span>
 											</Button>
 										</StandardTooltip>
 									)}

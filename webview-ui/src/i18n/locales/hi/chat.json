@@ -125,7 +125,8 @@
 		"back": "वापस",
 		"apply": "लागू करें",
 		"confirm": "पुष्टि करें",
-		"confirmPrompt": "{{count}} मोड पर लागू करें?"
+		"confirmPrompt": "{{count}} मोड पर लागू करें?",
+		"modeList": "मोड"
 	},
 	"enhancePrompt": "अतिरिक्त संदर्भ के साथ प्रॉम्प्ट बढ़ाएँ",
 	"addImages": "संदेश में चित्र जोड़ें",
@@ -214,7 +215,8 @@
 		"wantsToGenerateImage": "Tumble एक छवि बनाना चाहता है",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble कार्यक्षेत्र के बाहर एक छवि बनाना चाहता है",
 		"wantsToGenerateImageProtected": "Tumble एक संरक्षित स्थान पर छवि बनाना चाहता है",
-		"didGenerateImage": "Tumble ने एक छवि बनाई"
+		"didGenerateImage": "Tumble ने एक छवि बनाई",
+		"userEdits": "उपयोगकर्ता संपादन"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble इस निर्देशिका में शीर्ष स्तर की फ़ाइलें देखना चाहता है",
@@ -241,7 +243,8 @@
 		"addToDenied": "अस्वीकृत सूची में जोड़ें",
 		"removeFromDenied": "अस्वीकृत सूची से हटाएँ",
 		"expandCommand": "कमांड का विस्तार करें",
-		"collapseCommand": "कमांड संक्षिप्त करें"
+		"collapseCommand": "कमांड संक्षिप्त करें",
+		"clickToEditPattern": "पैटर्न संपादित करने के लिए क्लिक करें"
 	},
 	"text": {
 		"rooSaid": "रू ने कहा"
@@ -318,7 +321,8 @@
 				"label": "स्वायत्त",
 				"description": "पूर्ण स्वचालित: बायपास का सब कुछ, साथ ही फ़ॉलो-अप प्रश्न स्वतः उत्तरित होते हैं ताकि एजेंट समाप्त होने तक चले।"
 			}
-		}
+		},
+		"enabled": "सक्षम"
 	},
 	"reasoning": {
 		"thinking": "विचार कर रहा है"
@@ -346,7 +350,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble एक कौशल लोड करना चाहता है",
-		"didLoad": "Tumble ने एक कौशल लोड किया"
+		"didLoad": "Tumble ने एक कौशल लोड किया",
+		"arguments": "तर्क:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "इनपुट में कॉपी करें (या Shift + क्लिक)",
@@ -402,7 +407,8 @@
 		"wantsToSearchWithPath": "Tumble <code>{{path}}</code> में कोडबेस में <code>{{query}}</code> खोजना चाहता है",
 		"didSearch_one": "{{count}} परिणाम मिला",
 		"didSearch_other": "{{count}} परिणाम मिले",
-		"resultTooltip": "समानता स्कोर: {{score}} (फ़ाइल खोलने के लिए क्लिक करें)"
+		"resultTooltip": "समानता स्कोर: {{score}} (फ़ाइल खोलने के लिए क्लिक करें)",
+		"displayError": "खोज परिणाम दिखाने में त्रुटि।"
 	},
 	"read-batch": {
 		"approve": {
@@ -466,7 +472,8 @@
 		"problems": "समस्याएँ",
 		"terminal": "टर्मिनल",
 		"url": "सामग्री लाने के लिए URL पेस्ट करें",
-		"menuLabel": "संदर्भ मेनू"
+		"menuLabel": "संदर्भ मेनू",
+		"gitCommits": "Git कमिट"
 	},
 	"queuedMessages": {
 		"title": "कतार में संदेश",
@@ -479,7 +486,25 @@
 	"todo": {
 		"partial": "{{total}} में से {{completed}} टू-डू हो गए",
 		"complete": "{{total}} टू-डू हो गए",
-		"updated": "टू-डू सूची अपडेट की गई"
+		"updated": "टू-डू सूची अपडेट की गई",
+		"userEdit": "उपयोगकर्ता संपादन",
+		"userEdits": "उपयोगकर्ता संपादन",
+		"listUpdated": "टू-डू सूची अपडेट हुई",
+		"edit": "संपादित करें",
+		"done": "हो गया",
+		"add": "जोड़ें",
+		"addTodo": "टू-डू जोड़ें",
+		"cancel": "रद्द करें",
+		"delete": "हटाएं",
+		"remove": "हटाएं",
+		"itemPlaceholder": "टू-डू आइटम दर्ज करें",
+		"newItemPlaceholder": "टू-डू आइटम दर्ज करें, जोड़ने के लिए Enter दबाएं",
+		"deleteConfirm": "क्या आप वाकई इस टू-डू आइटम को हटाना चाहते हैं?",
+		"status": {
+			"notStarted": "शुरू नहीं हुआ",
+			"inProgress": "प्रगति में",
+			"completed": "पूर्ण"
+		}
 	},
 	"tooManyTools": {
 		"title": "बहुत सारे उपकरण सक्षम हैं",
@@ -558,5 +583,14 @@
 		"idle": "मेमोरी चालू है"
 	},
 	"thumbnailAlt": "थंबनेल {{index}}",
-	"removeImage": "चित्र {{index}} हटाएँ"
+	"removeImage": "चित्र {{index}} हटाएँ",
+	"apiConfigGroups": {
+		"pinned": "पिन किए गए कॉन्फ़िगरेशन",
+		"all": "सभी कॉन्फ़िगरेशन"
+	},
+	"markdownPreview": {
+		"open": "पूर्वावलोकन में खोलें",
+		"openAriaLabel": "मार्कडाउन को पूर्वावलोकन में खोलें",
+		"copyAsMarkdown": "मार्कडाउन के रूप में कॉपी करें"
+	}
 }

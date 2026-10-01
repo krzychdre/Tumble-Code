@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "설정 검색...",
-		"noResults": "설정을 찾을 수 없습니다"
+		"noResults": "설정을 찾을 수 없습니다",
+		"clear": "검색 지우기"
 	},
 	"header": {
 		"title": "설정",
@@ -500,7 +501,8 @@
 			"low": "낮음",
 			"description": "모델 응답의 상세도를 제어합니다. 낮은 상세도는 간결한 답변을 생성하고, 높은 상세도는 상세한 설명을 제공합니다."
 		},
-		"setReasoningLevel": "추론 노력 활성화"
+		"setReasoningLevel": "추론 노력 활성화",
+		"awsAuthMethod": "인증 방법"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "기본값: http://localhost:11434",
 		"lmStudioUrl": "기본값: http://localhost:1234",
-		"geminiUrl": "기본값: https://generativelanguage.googleapis.com"
+		"geminiUrl": "기본값: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "기본값: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "사용자 지정 ARN",

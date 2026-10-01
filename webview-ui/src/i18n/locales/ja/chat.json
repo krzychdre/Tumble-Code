@@ -125,7 +125,8 @@
 		"back": "戻る",
 		"apply": "適用",
 		"confirm": "確認",
-		"confirmPrompt": "{{count}} 個のモードに適用しますか？"
+		"confirmPrompt": "{{count}} 個のモードに適用しますか？",
+		"modeList": "モード"
 	},
 	"enhancePrompt": "追加コンテキストでプロンプトを強化",
 	"addImages": "メッセージに画像を追加",
@@ -214,7 +215,8 @@
 		"wantsToGenerateImage": "Tumbleは画像を生成したい",
 		"wantsToGenerateImageOutsideWorkspace": "Tumbleはワークスペース外で画像を生成したい",
 		"wantsToGenerateImageProtected": "Tumbleは保護された場所で画像を生成したい",
-		"didGenerateImage": "Tumbleは画像を生成しました"
+		"didGenerateImage": "Tumbleは画像を生成しました",
+		"userEdits": "ユーザーによる編集"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumbleはこのディレクトリのトップレベルファイルを表示したい",
@@ -241,7 +243,8 @@
 		"addToDenied": "拒否リストに追加",
 		"removeFromDenied": "拒否リストから削除",
 		"expandCommand": "コマンドを展開",
-		"collapseCommand": "コマンドを折りたたむ"
+		"collapseCommand": "コマンドを折りたたむ",
+		"clickToEditPattern": "クリックしてパターンを編集"
 	},
 	"text": {
 		"rooSaid": "Tumbleの発言"
@@ -318,7 +321,8 @@
 				"label": "自律",
 				"description": "完全自動: バイパスのすべてに加え、追跡質問も自動応答され、エージェントが完了するまで実行されます。"
 			}
-		}
+		},
+		"enabled": "有効"
 	},
 	"reasoning": {
 		"thinking": "考え中"
@@ -346,7 +350,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumbleはスキルを読み込もうとしています",
-		"didLoad": "Tumbleはスキルを読み込みました"
+		"didLoad": "Tumbleはスキルを読み込みました",
+		"arguments": "引数:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "入力欄にコピー（またはShift + クリック）",
@@ -402,7 +407,8 @@
 		"wantsToSearchWithPath": "Tumbleは <code>{{path}}</code> 内のコードベースで <code>{{query}}</code> を検索したい",
 		"didSearch_one": "1件の結果が見つかりました",
 		"didSearch_other": "{{count}}件の結果が見つかりました",
-		"resultTooltip": "類似度スコア: {{score}} (クリックしてファイルを開く)"
+		"resultTooltip": "類似度スコア: {{score}} (クリックしてファイルを開く)",
+		"displayError": "検索結果の表示中にエラーが発生しました。"
 	},
 	"read-batch": {
 		"approve": {
@@ -466,7 +472,8 @@
 		"problems": "問題",
 		"terminal": "ターミナル",
 		"url": "URLを貼り付けてコンテンツを取得",
-		"menuLabel": "コンテキストメニュー"
+		"menuLabel": "コンテキストメニュー",
+		"gitCommits": "Gitコミット"
 	},
 	"queuedMessages": {
 		"title": "キューメッセージ",
@@ -479,7 +486,25 @@
 	"todo": {
 		"partial": "{{total}}件中{{completed}}件のTo-Doが完了",
 		"complete": "{{total}}件のTo-Doが完了",
-		"updated": "To-Doリストを更新しました"
+		"updated": "To-Doリストを更新しました",
+		"userEdit": "ユーザーによる編集",
+		"userEdits": "ユーザーによる編集",
+		"listUpdated": "To-Doリストを更新",
+		"edit": "編集",
+		"done": "完了",
+		"add": "追加",
+		"addTodo": "To-Doを追加",
+		"cancel": "キャンセル",
+		"delete": "削除",
+		"remove": "削除",
+		"itemPlaceholder": "To-Do項目を入力",
+		"newItemPlaceholder": "To-Do項目を入力し、Enterで追加",
+		"deleteConfirm": "このTo-Do項目を削除してもよろしいですか？",
+		"status": {
+			"notStarted": "未着手",
+			"inProgress": "進行中",
+			"completed": "完了"
+		}
 	},
 	"tooManyTools": {
 		"title": "有効になっているツールが多すぎます",
@@ -558,5 +583,14 @@
 		"idle": "メモリは有効です"
 	},
 	"thumbnailAlt": "サムネイル {{index}}",
-	"removeImage": "画像 {{index}} を削除"
+	"removeImage": "画像 {{index}} を削除",
+	"apiConfigGroups": {
+		"pinned": "ピン留めされた構成",
+		"all": "すべての構成"
+	},
+	"markdownPreview": {
+		"open": "プレビューで開く",
+		"openAriaLabel": "Markdownをプレビューで開く",
+		"copyAsMarkdown": "Markdownとしてコピー"
+	}
 }

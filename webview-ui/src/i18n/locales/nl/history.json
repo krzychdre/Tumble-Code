@@ -51,5 +51,6 @@
 	"today": "Vandaag",
 	"yesterday": "Gisteren",
 	"noHistory": "Nog geen taken. Start een gesprek om je geschiedenis op te bouwen.",
-	"noSearchResults": "Geen taken komen overeen met deze zoekopdracht."
+	"noSearchResults": "Geen taken komen overeen met deze zoekopdracht.",
+	"clearSearch": "Zoekopdracht wissen"
 }

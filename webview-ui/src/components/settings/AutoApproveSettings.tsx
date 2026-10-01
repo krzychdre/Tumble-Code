@@ -166,7 +166,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				{alwaysAllowReadOnly && (
 					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-eye" />
+							<span className="codicon codicon-eye" aria-hidden="true" />
 							<div>{t("settings:autoApprove.readOnly.label")}</div>
 						</div>
 						<SearchableSetting
@@ -191,7 +191,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				{alwaysAllowWrite && (
 					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-edit" />
+							<span className="codicon codicon-edit" aria-hidden="true" />
 							<div>{t("settings:autoApprove.write.label")}</div>
 						</div>
 						<SearchableSetting
@@ -230,7 +230,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				{alwaysAllowFollowupQuestions && (
 					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-question" />
+							<span className="codicon codicon-question" aria-hidden="true" />
 							<div>{t("settings:autoApprove.followupQuestions.label")}</div>
 						</div>
 						<SearchableSetting
@@ -258,7 +258,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 				{alwaysAllowExecute && (
 					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
 						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-terminal" />
+							<span className="codicon codicon-terminal" aria-hidden="true" />
 							<div>{t("settings:autoApprove.execute.label")}</div>
 						</div>
 

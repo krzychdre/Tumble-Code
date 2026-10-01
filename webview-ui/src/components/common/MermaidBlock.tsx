@@ -140,7 +140,8 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 									opacity: 0.8,
 									fontSize: 16,
 									marginBottom: "-1.5px",
-								}}></span>
+								}}
+								aria-hidden="true"></span>
 							<span style={{ fontWeight: "bold" }}>{t("common:mermaid.render_error")}</span>
 						</div>
 						<div style={{ display: "flex", alignItems: "center" }}>
@@ -153,7 +154,9 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 								}}>
 								<span className={`codicon codicon-${showCopyFeedback ? "check" : "copy"}`}></span>
 							</button>
-							<span className={`codicon codicon-chevron-${isErrorExpanded ? "up" : "down"}`}></span>
+							<span
+								className={`codicon codicon-chevron-${isErrorExpanded ? "up" : "down"}`}
+								aria-hidden="true"></span>
 						</div>
 					</div>
 					{isErrorExpanded && (

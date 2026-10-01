@@ -18,7 +18,10 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 				<div className="flex items-center gap-2">
 					<label className="text-sm font-medium">{t("settings:codeIndex.searchMinScoreLabel")}</label>
 					<StandardTooltip content={t("settings:codeIndex.searchMinScoreDescription")}>
-						<span className="codicon codicon-info text-xs text-vscode-descriptionForeground cursor-help" />
+						<span
+							className="codicon codicon-info text-xs text-vscode-descriptionForeground cursor-help"
+							aria-hidden="true"
+						/>
 					</StandardTooltip>
 				</div>
 				<div className="flex items-center gap-2">
@@ -49,7 +52,7 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 								CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_MIN_SCORE,
 							)
 						}>
-						<span className="codicon codicon-discard" />
+						<span className="codicon codicon-discard" aria-hidden="true" />
 					</Button>
 				</div>
 			</div>
@@ -59,7 +62,10 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 				<div className="flex items-center gap-2">
 					<label className="text-sm font-medium">{t("settings:codeIndex.searchMaxResultsLabel")}</label>
 					<StandardTooltip content={t("settings:codeIndex.searchMaxResultsDescription")}>
-						<span className="codicon codicon-info text-xs text-vscode-descriptionForeground cursor-help" />
+						<span
+							className="codicon codicon-info text-xs text-vscode-descriptionForeground cursor-help"
+							aria-hidden="true"
+						/>
 					</StandardTooltip>
 				</div>
 				<div className="flex items-center gap-2">
@@ -88,7 +94,7 @@ export const CodeIndexAdvancedFields = ({ settings: currentSettings, updateSetti
 								CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_RESULTS,
 							)
 						}>
-						<span className="codicon codicon-discard" />
+						<span className="codicon codicon-discard" aria-hidden="true" />
 					</Button>
 				</div>
 			</div>

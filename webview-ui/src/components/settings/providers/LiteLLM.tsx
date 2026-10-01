@@ -92,9 +92,9 @@ export const LiteLLM = ({
 				className="w-full">
 				<div className="flex items-center gap-2">
 					{refreshStatus === "loading" ? (
-						<span className="codicon codicon-loading codicon-modifier-spin" />
+						<span className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true" />
 					) : (
-						<span className="codicon codicon-refresh" />
+						<span className="codicon codicon-refresh" aria-hidden="true" />
 					)}
 					{t("settings:providers.refreshModels.label")}
 				</div>

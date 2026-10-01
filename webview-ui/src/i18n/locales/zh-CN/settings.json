@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "搜索设置...",
-		"noResults": "未找到设置"
+		"noResults": "未找到设置",
+		"clear": "清除搜索"
 	},
 	"header": {
 		"title": "设置",
@@ -500,7 +501,8 @@
 			"low": "低",
 			"description": "控制模型响应的详细程度。低详细度产生简洁的回答，而高详细度提供详尽的解释。"
 		},
-		"setReasoningLevel": "启用推理工作量"
+		"setReasoningLevel": "启用推理工作量",
+		"awsAuthMethod": "身份验证方式"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "默认值：http://localhost:11434",
 		"lmStudioUrl": "默认值：http://localhost:1234",
-		"geminiUrl": "默认值：https://generativelanguage.googleapis.com"
+		"geminiUrl": "默认值：https://generativelanguage.googleapis.com",
+		"openRouterUrl": "默认：https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "自定义 ARN",

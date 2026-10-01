@@ -125,7 +125,8 @@
 		"back": "Geri",
 		"apply": "Uygula",
 		"confirm": "Onayla",
-		"confirmPrompt": "{{count}} moda uygulansın mı?"
+		"confirmPrompt": "{{count}} moda uygulansın mı?",
+		"modeList": "Modlar"
 	},
 	"enhancePrompt": "Ek bağlamla istemi geliştir",
 	"addImages": "Mesaja resim ekle",
@@ -214,7 +215,8 @@
 		"wantsToGenerateImage": "Tumble bir görsel oluşturmak istiyor",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble çalışma alanının dışında bir görsel oluşturmak istiyor",
 		"wantsToGenerateImageProtected": "Tumble korumalı bir konumda görsel oluşturmak istiyor",
-		"didGenerateImage": "Tumble bir görsel oluşturdu"
+		"didGenerateImage": "Tumble bir görsel oluşturdu",
+		"userEdits": "Kullanıcı düzenlemeleri"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble bu dizindeki üst düzey dosyaları görüntülemek istiyor",
@@ -242,7 +244,8 @@
 		"addToDenied": "Reddedilenler listesine ekle",
 		"removeFromDenied": "Reddedilenler listesinden kaldır",
 		"expandCommand": "Komutu genişlet",
-		"collapseCommand": "Komutu daralt"
+		"collapseCommand": "Komutu daralt",
+		"clickToEditPattern": "Kalıbı düzenlemek için tıklayın"
 	},
 	"text": {
 		"rooSaid": "Tumble dedi"
@@ -319,7 +322,8 @@
 				"label": "Otonom",
 				"description": "Tam otomatik: Atla'nın yaptığı her şey, ayrıca takip soruları otomatik yanıtlanır böylece araç bitene kadar çalışır."
 			}
-		}
+		},
+		"enabled": "Etkin"
 	},
 	"reasoning": {
 		"thinking": "Düşünüyor"
@@ -347,7 +351,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble bir beceri yüklemek istiyor",
-		"didLoad": "Tumble bir beceri yükledi"
+		"didLoad": "Tumble bir beceri yükledi",
+		"arguments": "Argümanlar:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Giriş alanına kopyala (veya Shift + tıklama)",
@@ -403,7 +408,8 @@
 		"wantsToSearchWithPath": "Tumble <code>{{path}}</code> içinde kod tabanında <code>{{query}}</code> aramak istiyor",
 		"didSearch_one": "1 sonuç bulundu",
 		"didSearch_other": "{{count}} sonuç bulundu",
-		"resultTooltip": "Benzerlik puanı: {{score}} (dosyayı açmak için tıklayın)"
+		"resultTooltip": "Benzerlik puanı: {{score}} (dosyayı açmak için tıklayın)",
+		"displayError": "Arama sonuçları görüntülenirken hata oluştu."
 	},
 	"read-batch": {
 		"approve": {
@@ -467,7 +473,8 @@
 		"problems": "Sorunlar",
 		"terminal": "Terminal",
 		"url": "İçeriği getirmek için URL'yi yapıştırın",
-		"menuLabel": "Bağlam menüsü"
+		"menuLabel": "Bağlam menüsü",
+		"gitCommits": "Git commit'leri"
 	},
 	"queuedMessages": {
 		"title": "Sıradaki Mesajlar",
@@ -480,7 +487,25 @@
 	"todo": {
 		"partial": "{{total}} yapılacaklar listesinden {{completed}} tanesi tamamlandı",
 		"complete": "{{total}} yapılacaklar listesi tamamlandı",
-		"updated": "Yapılacaklar listesi güncellendi"
+		"updated": "Yapılacaklar listesi güncellendi",
+		"userEdit": "Kullanıcı düzenlemesi",
+		"userEdits": "Kullanıcı düzenlemeleri",
+		"listUpdated": "Yapılacaklar listesi güncellendi",
+		"edit": "Düzenle",
+		"done": "Bitti",
+		"add": "Ekle",
+		"addTodo": "Yapılacak ekle",
+		"cancel": "İptal",
+		"delete": "Sil",
+		"remove": "Kaldır",
+		"itemPlaceholder": "Yapılacak öğeyi girin",
+		"newItemPlaceholder": "Yapılacak öğeyi girin, eklemek için Enter'a basın",
+		"deleteConfirm": "Bu yapılacak öğeyi silmek istediğinizden emin misiniz?",
+		"status": {
+			"notStarted": "Başlanmadı",
+			"inProgress": "Devam ediyor",
+			"completed": "Tamamlandı"
+		}
 	},
 	"tooManyTools": {
 		"title": "Çok fazla araç etkinleştirildi",
@@ -559,5 +584,14 @@
 		"idle": "Bellek açık"
 	},
 	"thumbnailAlt": "Küçük resim {{index}}",
-	"removeImage": "Görseli kaldır {{index}}"
+	"removeImage": "Görseli kaldır {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Sabitlenmiş yapılandırmalar",
+		"all": "Tüm yapılandırmalar"
+	},
+	"markdownPreview": {
+		"open": "Önizlemede aç",
+		"openAriaLabel": "Markdown'ı önizlemede aç",
+		"copyAsMarkdown": "Markdown olarak kopyala"
+	}
 }

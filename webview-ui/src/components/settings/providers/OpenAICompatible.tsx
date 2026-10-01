@@ -360,6 +360,7 @@ export const OpenAICompatible = ({
 							<i
 								className="codicon codicon-info text-vscode-descriptionForeground"
 								style={{ fontSize: "12px" }}
+								aria-hidden="true"
 							/>
 						</StandardTooltip>
 					</div>
@@ -384,6 +385,7 @@ export const OpenAICompatible = ({
 							<i
 								className="codicon codicon-info text-vscode-descriptionForeground"
 								style={{ fontSize: "12px" }}
+								aria-hidden="true"
 							/>
 						</StandardTooltip>
 					</div>
@@ -430,6 +432,7 @@ export const OpenAICompatible = ({
 								<i
 									className="codicon codicon-info text-vscode-descriptionForeground"
 									style={{ fontSize: "12px" }}
+									aria-hidden="true"
 								/>
 							</StandardTooltip>
 						</div>
@@ -474,6 +477,7 @@ export const OpenAICompatible = ({
 								<i
 									className="codicon codicon-info text-vscode-descriptionForeground"
 									style={{ fontSize: "12px" }}
+									aria-hidden="true"
 								/>
 							</StandardTooltip>
 						</div>
@@ -519,6 +523,7 @@ export const OpenAICompatible = ({
 										<i
 											className="codicon codicon-info text-vscode-descriptionForeground"
 											style={{ fontSize: "12px" }}
+											aria-hidden="true"
 										/>
 									</StandardTooltip>
 								</div>
@@ -561,6 +566,7 @@ export const OpenAICompatible = ({
 										<i
 											className="codicon codicon-info text-vscode-descriptionForeground"
 											style={{ fontSize: "12px" }}
+											aria-hidden="true"
 										/>
 									</StandardTooltip>
 								</div>

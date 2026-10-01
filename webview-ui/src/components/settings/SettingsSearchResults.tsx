@@ -132,7 +132,7 @@ export function SettingsSearchResults({
 									onMouseDown={(event) => event.preventDefault()}
 									onClick={() => onSelectResult(result)}
 									className={cn(
-										"w-full cursor-pointer text-left px-3 py-2 hover:bg-vscode-list-hoverBackground focus:bg-vscode-list-hoverBackground focus:outline-none",
+										"w-full cursor-pointer text-left px-3 py-2 hover:bg-vscode-list-hoverBackground focus:bg-vscode-list-hoverBackground focus-ring",
 										isHighlighted &&
 											"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
 									)}>

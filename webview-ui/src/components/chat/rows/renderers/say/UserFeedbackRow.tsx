@@ -76,7 +76,7 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 	return (
 		<div className="group">
 			<div style={headerStyle}>
-				<User className="w-4 shrink-0" aria-label="User icon" />
+				<User className="w-4 shrink-0" aria-hidden="true" />
 				<span style={{ fontWeight: "bold" }}>{t("chat:feedback.youSaid")}</span>
 			</div>
 			<div
@@ -120,24 +120,30 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 							<Mention text={message.text} withShadow />
 						</div>
 						<div className="flex gap-2 pr-1">
-							<div
-								className="cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+							<button
+								type="button"
+								className="block p-0 bg-transparent border-none text-inherit cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity focus-ring"
 								style={{ visibility: isStreaming ? "hidden" : "visible" }}
+								aria-label={t("common:confirmation.editMessage")}
+								title={t("common:confirmation.editMessage")}
 								onClick={(e) => {
 									e.stopPropagation()
 									handleEditClick()
 								}}>
-								<Edit className="w-4 shrink-0" aria-label="Edit message icon" />
-							</div>
-							<div
-								className="cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+								<Edit className="w-4 shrink-0" aria-hidden="true" />
+							</button>
+							<button
+								type="button"
+								className="block p-0 bg-transparent border-none text-inherit cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity focus-ring"
 								style={{ visibility: isStreaming ? "hidden" : "visible" }}
+								aria-label={t("common:confirmation.deleteMessage")}
+								title={t("common:confirmation.deleteMessage")}
 								onClick={(e) => {
 									e.stopPropagation()
 									vscode.postMessage({ type: "deleteMessage", value: message.ts })
 								}}>
-								<Trash2 className="w-4 shrink-0" aria-label="Delete message icon" />
-							</div>
+								<Trash2 className="w-4 shrink-0" aria-hidden="true" />
+							</button>
 						</div>
 					</div>
 				)}

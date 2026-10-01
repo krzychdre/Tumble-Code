@@ -125,7 +125,8 @@
 		"back": "返回",
 		"apply": "应用",
 		"confirm": "确认",
-		"confirmPrompt": "应用到 {{count}} 个模式？"
+		"confirmPrompt": "应用到 {{count}} 个模式？",
+		"modeList": "模式"
 	},
 	"enhancePrompt": "增强提示词",
 	"addImages": "添加图片到消息",
@@ -214,7 +215,8 @@
 		"wantsToGenerateImage": "需要生成图片",
 		"wantsToGenerateImageOutsideWorkspace": "需要在工作区外生成图片",
 		"wantsToGenerateImageProtected": "需要在受保护位置生成图片",
-		"didGenerateImage": "已生成图片"
+		"didGenerateImage": "已生成图片",
+		"userEdits": "用户编辑"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "需要查看目录文件列表",
@@ -242,7 +244,8 @@
 		"addToDenied": "添加到拒绝列表",
 		"removeFromDenied": "从拒绝列表中删除",
 		"expandCommand": "展开命令",
-		"collapseCommand": "折叠命令"
+		"collapseCommand": "折叠命令",
+		"clickToEditPattern": "点击编辑模式"
 	},
 	"text": {
 		"rooSaid": "Tumble 说"
@@ -319,7 +322,8 @@
 				"label": "自主",
 				"description": "全自动:包含绕过的全部功能,且后续问题自动作答,使代理一直运行直到完成。"
 			}
-		}
+		},
+		"enabled": "已启用"
 	},
 	"reasoning": {
 		"thinking": "思考中"
@@ -347,7 +351,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble 想要加载技能",
-		"didLoad": "Tumble 加载了技能"
+		"didLoad": "Tumble 加载了技能",
+		"arguments": "参数："
 	},
 	"followUpSuggest": {
 		"copyToInput": "复制到输入框（或按住Shift点击）",
@@ -403,7 +408,8 @@
 		"wantsToSearchWithPath": "Tumble 需要在 <code>{{path}}</code> 中搜索: <code>{{query}}</code>",
 		"didSearch_one": "找到 1 个结果",
 		"didSearch_other": "找到 {{count}} 个结果",
-		"resultTooltip": "相似度评分: {{score}} (点击打开文件)"
+		"resultTooltip": "相似度评分: {{score}} (点击打开文件)",
+		"displayError": "显示搜索结果时出错。"
 	},
 	"read-batch": {
 		"approve": {
@@ -467,7 +473,8 @@
 		"problems": "问题",
 		"terminal": "终端",
 		"url": "粘贴URL以获取内容",
-		"menuLabel": "上下文菜单"
+		"menuLabel": "上下文菜单",
+		"gitCommits": "Git 提交"
 	},
 	"queuedMessages": {
 		"title": "队列消息",
@@ -480,7 +487,25 @@
 	"todo": {
 		"partial": "已完成 {{completed}} / {{total}} 个待办事项",
 		"complete": "已完成 {{total}} 个待办事项",
-		"updated": "已更新待办事项列表"
+		"updated": "已更新待办事项列表",
+		"userEdit": "用户编辑",
+		"userEdits": "用户编辑",
+		"listUpdated": "待办事项列表已更新",
+		"edit": "编辑",
+		"done": "完成",
+		"add": "添加",
+		"addTodo": "添加待办事项",
+		"cancel": "取消",
+		"delete": "删除",
+		"remove": "移除",
+		"itemPlaceholder": "输入待办事项",
+		"newItemPlaceholder": "输入待办事项，按 Enter 添加",
+		"deleteConfirm": "确定要删除此待办事项吗？",
+		"status": {
+			"notStarted": "未开始",
+			"inProgress": "进行中",
+			"completed": "已完成"
+		}
 	},
 	"tooManyTools": {
 		"title": "启用的工具过多",
@@ -559,5 +584,14 @@
 		"idle": "记忆已开启"
 	},
 	"thumbnailAlt": "缩略图 {{index}}",
-	"removeImage": "删除图片 {{index}}"
+	"removeImage": "删除图片 {{index}}",
+	"apiConfigGroups": {
+		"pinned": "已固定的配置",
+		"all": "所有配置"
+	},
+	"markdownPreview": {
+		"open": "在预览中打开",
+		"openAriaLabel": "在预览中打开 Markdown",
+		"copyAsMarkdown": "复制为 Markdown"
+	}
 }

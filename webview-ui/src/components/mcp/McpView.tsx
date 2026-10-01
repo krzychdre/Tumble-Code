@@ -74,7 +74,7 @@ const McpView = () => {
 										color: "var(--vscode-editorWarning-foreground)",
 										marginBottom: "5px",
 									}}>
-									<span className="codicon codicon-warning" />
+									<span className="codicon codicon-warning" aria-hidden="true" />
 									{title}
 								</div>
 								<div
@@ -115,7 +115,10 @@ const McpView = () => {
 								onClick={() => {
 									vscode.postMessage({ type: "openMcpSettings" })
 								}}>
-								<span className="codicon codicon-edit" style={{ marginRight: "6px" }}></span>
+								<span
+									className="codicon codicon-edit"
+									style={{ marginRight: "6px" }}
+									aria-hidden="true"></span>
 								{t("mcp:editGlobalMCP")}
 							</Button>
 							<Button
@@ -124,7 +127,10 @@ const McpView = () => {
 								onClick={() => {
 									vscode.postMessage({ type: "openProjectMcpSettings" })
 								}}>
-								<span className="codicon codicon-edit" style={{ marginRight: "6px" }}></span>
+								<span
+									className="codicon codicon-edit"
+									style={{ marginRight: "6px" }}
+									aria-hidden="true"></span>
 								{t("mcp:editProjectMCP")}
 							</Button>
 							<Button
@@ -133,7 +139,10 @@ const McpView = () => {
 								onClick={() => {
 									vscode.postMessage({ type: "refreshAllMcpServers" })
 								}}>
-								<span className="codicon codicon-refresh" style={{ marginRight: "6px" }}></span>
+								<span
+									className="codicon codicon-refresh"
+									style={{ marginRight: "6px" }}
+									aria-hidden="true"></span>
 								{t("mcp:refreshMCP")}
 							</Button>
 							<StandardTooltip content={t("mcp:marketplace")}>
@@ -150,7 +159,10 @@ const McpView = () => {
 											"*",
 										)
 									}}>
-									<span className="codicon codicon-extensions" style={{ marginRight: "6px" }}></span>
+									<span
+										className="codicon codicon-extensions"
+										style={{ marginRight: "6px" }}
+										aria-hidden="true"></span>
 									{t("mcp:marketplace")}
 								</Button>
 							</StandardTooltip>
@@ -267,6 +279,7 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 					<span
 						className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`}
 						style={{ marginRight: "8px" }}
+						aria-hidden="true"
 					/>
 				)}
 				<span style={{ flex: 1 }}>

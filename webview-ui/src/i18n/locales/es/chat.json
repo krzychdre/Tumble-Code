@@ -127,7 +127,8 @@
 		"back": "Atrás",
 		"apply": "Aplicar",
 		"confirm": "Confirmar",
-		"confirmPrompt": "¿Aplicar a {{count}} modos?"
+		"confirmPrompt": "¿Aplicar a {{count}} modos?",
+		"modeList": "Modos"
 	},
 	"enhancePrompt": "Mejorar el mensaje con contexto adicional",
 	"addImages": "Agregar imágenes al mensaje",
@@ -216,7 +217,8 @@
 		"wantsToGenerateImage": "Tumble quiere generar una imagen",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble quiere generar una imagen fuera del espacio de trabajo",
 		"wantsToGenerateImageProtected": "Tumble quiere generar una imagen en una ubicación protegida",
-		"didGenerateImage": "Tumble generó una imagen"
+		"didGenerateImage": "Tumble generó una imagen",
+		"userEdits": "Ediciones del usuario"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble quiere ver los archivos de nivel superior en este directorio",
@@ -243,7 +245,8 @@
 		"addToDenied": "Agregar a la lista de denegados",
 		"removeFromDenied": "Eliminar de la lista de denegados",
 		"expandCommand": "Expandir comando",
-		"collapseCommand": "Colapsar comando"
+		"collapseCommand": "Colapsar comando",
+		"clickToEditPattern": "Haz clic para editar el patrón"
 	},
 	"text": {
 		"rooSaid": "Tumble ha dicho"
@@ -321,7 +324,8 @@
 				"label": "Autónomo",
 				"description": "Automático completo: todo lo que hace Omitir, y además las preguntas de seguimiento se responden automáticamente para que el agente funcione hasta terminar."
 			}
-		}
+		},
+		"enabled": "Activado"
 	},
 	"reasoning": {
 		"thinking": "Pensando"
@@ -351,7 +355,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble quiere cargar una habilidad",
-		"didLoad": "Tumble cargó una habilidad"
+		"didLoad": "Tumble cargó una habilidad",
+		"arguments": "Argumentos:"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Copiar a la entrada (o Shift + clic)",
@@ -408,7 +413,8 @@
 		"didSearch_one": "Se encontró 1 resultado",
 		"didSearch_many": "Se encontraron {{count}} resultados",
 		"didSearch_other": "Se encontraron {{count}} resultados",
-		"resultTooltip": "Puntuación de similitud: {{score}} (haz clic para abrir el archivo)"
+		"resultTooltip": "Puntuación de similitud: {{score}} (haz clic para abrir el archivo)",
+		"displayError": "Error al mostrar los resultados de la búsqueda."
 	},
 	"read-batch": {
 		"approve": {
@@ -472,7 +478,8 @@
 		"problems": "Problemas",
 		"terminal": "Terminal",
 		"url": "Pega la URL para obtener el contenido",
-		"menuLabel": "Menú contextual"
+		"menuLabel": "Menú contextual",
+		"gitCommits": "Commits de Git"
 	},
 	"queuedMessages": {
 		"title": "Mensajes en cola",
@@ -485,7 +492,25 @@
 	"todo": {
 		"partial": "{{completed}} de {{total}} tareas pendientes realizadas",
 		"complete": "{{total}} tareas pendientes realizadas",
-		"updated": "Se actualizó la lista de tareas pendientes"
+		"updated": "Se actualizó la lista de tareas pendientes",
+		"userEdit": "Edición del usuario",
+		"userEdits": "Ediciones del usuario",
+		"listUpdated": "Lista de tareas actualizada",
+		"edit": "Editar",
+		"done": "Listo",
+		"add": "Añadir",
+		"addTodo": "Añadir tarea",
+		"cancel": "Cancelar",
+		"delete": "Eliminar",
+		"remove": "Quitar",
+		"itemPlaceholder": "Escribe una tarea",
+		"newItemPlaceholder": "Escribe una tarea y pulsa Intro para añadirla",
+		"deleteConfirm": "¿Seguro que quieres eliminar esta tarea?",
+		"status": {
+			"notStarted": "No iniciada",
+			"inProgress": "En curso",
+			"completed": "Completada"
+		}
 	},
 	"tooManyTools": {
 		"title": "Demasiadas herramientas habilitadas",
@@ -567,5 +592,14 @@
 		"idle": "La memoria está activada"
 	},
 	"thumbnailAlt": "Miniatura {{index}}",
-	"removeImage": "Eliminar imagen {{index}}"
+	"removeImage": "Eliminar imagen {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Configuraciones fijadas",
+		"all": "Todas las configuraciones"
+	},
+	"markdownPreview": {
+		"open": "Abrir en vista previa",
+		"openAriaLabel": "Abrir markdown en vista previa",
+		"copyAsMarkdown": "Copiar como markdown"
+	}
 }

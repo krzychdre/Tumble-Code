@@ -52,5 +52,6 @@
 	"today": "Oggi",
 	"yesterday": "Ieri",
 	"noHistory": "Nessuna attività. Avvia una conversazione per creare la cronologia.",
-	"noSearchResults": "Nessuna attività corrisponde a questa ricerca."
+	"noSearchResults": "Nessuna attività corrisponde a questa ricerca.",
+	"clearSearch": "Cancella ricerca"
 }

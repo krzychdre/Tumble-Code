@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "設定を検索...",
-		"noResults": "設定が見つかりません"
+		"noResults": "設定が見つかりません",
+		"clear": "検索をクリア"
 	},
 	"header": {
 		"title": "設定",
@@ -500,7 +501,8 @@
 			"low": "低",
 			"description": "モデルの応答の詳細度を制御します。冗長性が低いと簡潔な回答が生成され、高いと詳細な説明が提供されます。"
 		},
-		"setReasoningLevel": "推論労力を有効にする"
+		"setReasoningLevel": "推論労力を有効にする",
+		"awsAuthMethod": "認証方法"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "デフォルト：http://localhost:11434",
 		"lmStudioUrl": "デフォルト：http://localhost:1234",
-		"geminiUrl": "デフォルト：https://generativelanguage.googleapis.com"
+		"geminiUrl": "デフォルト：https://generativelanguage.googleapis.com",
+		"openRouterUrl": "デフォルト: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "カスタム ARN",

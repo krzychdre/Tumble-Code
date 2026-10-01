@@ -113,7 +113,7 @@ export const CreateSlashCommandDialog: React.FC<CreateSlashCommandDialogProps> =
 							onChange={handleNameChange}
 							placeholder={t("settings:slashCommands.createDialog.namePlaceholder")}
 							maxLength={64}
-							className="w-full bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-vscode-focusBorder"
+							className="w-full bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded-xl px-3 py-2 text-sm focus:border-vscode-focusBorder focus-ring"
 						/>
 						<span className="text-xs text-vscode-descriptionForeground">
 							{t("settings:slashCommands.createDialog.nameHint")}

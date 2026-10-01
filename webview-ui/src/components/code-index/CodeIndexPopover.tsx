@@ -158,7 +158,10 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 									<span className="font-medium">{t("settings:codeIndex.enableLabel")}</span>
 								</LabeledCheckbox>
 								<StandardTooltip content={t("settings:codeIndex.enableDescription")}>
-									<span className="codicon codicon-info text-xs text-vscode-descriptionForeground cursor-help" />
+									<span
+										className="codicon codicon-info text-xs text-vscode-descriptionForeground cursor-help"
+										aria-hidden="true"
+									/>
 								</StandardTooltip>
 							</div>
 						</div>

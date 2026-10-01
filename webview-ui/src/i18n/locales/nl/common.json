@@ -18,7 +18,8 @@
 	},
 	"ui": {
 		"search_placeholder": "Zoeken...",
-		"no_results": "Geen resultaten gevonden"
+		"no_results": "Geen resultaten gevonden",
+		"close": "Sluiten"
 	},
 	"mermaid": {
 		"loading": "Mermaid-diagram genereren...",
@@ -41,7 +42,8 @@
 		"tabs": {
 			"view": "Afbeelding"
 		},
-		"noData": "Geen afbeeldingsgegevens"
+		"noData": "Geen afbeeldingsgegevens",
+		"generatedAlt": "Door AI gegenereerde afbeelding"
 	},
 	"confirmation": {
 		"deleteMessage": "Bericht Verwijderen",

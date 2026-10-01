@@ -480,7 +480,7 @@ describe("ApiConfigSelector", () => {
 		// Check for pinned configs sticky header
 		const pinnedStickyHeader = scrollContainer?.querySelector(".sticky.top-0.z-10.bg-vscode-dropdown-background")
 		expect(pinnedStickyHeader).toBeInTheDocument()
-		expect(pinnedStickyHeader).toHaveAttribute("aria-label", "Pinned configurations")
+		expect(pinnedStickyHeader).toHaveAttribute("aria-label", "chat:apiConfigGroups.pinned")
 
 		// Check for Config 1, 2, 3 being visible in the sticky header (pinned)
 		expect(screen.getAllByText("Config 1").length).toBeGreaterThan(0)
@@ -500,7 +500,7 @@ describe("ApiConfigSelector", () => {
 		}
 
 		// Check for unpinned configs section
-		const unpinnedSection = scrollContainer?.querySelector('[aria-label="All configurations"]')
+		const unpinnedSection = scrollContainer?.querySelector('[aria-label="chat:apiConfigGroups.all"]')
 		expect(unpinnedSection).toBeInTheDocument()
 
 		// Verify separator exists as border on pinned section when unpinned configs exist
@@ -536,7 +536,7 @@ describe("ApiConfigSelector", () => {
 		expect(pinnedSection).not.toBeInTheDocument()
 
 		// Should have unpinned configs section with all configs
-		const unpinnedSection = scrollContainer?.querySelector('[aria-label="All configurations"]')
+		const unpinnedSection = scrollContainer?.querySelector('[aria-label="chat:apiConfigGroups.all"]')
 		expect(unpinnedSection).toBeInTheDocument()
 
 		// All configs should be in the unpinned section

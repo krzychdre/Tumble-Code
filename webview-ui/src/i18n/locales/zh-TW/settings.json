@@ -17,7 +17,8 @@
 	},
 	"search": {
 		"placeholder": "搜尋設定...",
-		"noResults": "找不到設定"
+		"noResults": "找不到設定",
+		"clear": "清除搜尋"
 	},
 	"unsavedChangesDialog": {
 		"title": "未儲存的變更",
@@ -516,7 +517,8 @@
 			"low": "低",
 			"description": "控制模型回應的詳細程度。低詳細度產生簡潔的回答，而高詳細度提供詳盡的解釋。"
 		},
-		"setReasoningLevel": "啟用推理強度"
+		"setReasoningLevel": "啟用推理強度",
+		"awsAuthMethod": "驗證方式"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -868,7 +870,8 @@
 	"defaults": {
 		"ollamaUrl": "預設：http://localhost:11434",
 		"lmStudioUrl": "預設：http://localhost:1234",
-		"geminiUrl": "預設：https://generativelanguage.googleapis.com"
+		"geminiUrl": "預設：https://generativelanguage.googleapis.com",
+		"openRouterUrl": "預設：https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "自訂 ARN",

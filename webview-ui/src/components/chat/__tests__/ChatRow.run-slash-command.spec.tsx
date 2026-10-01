@@ -95,7 +95,7 @@ describe("ChatRow - runSlashCommand tool", () => {
 
 		expect(getByText("Roo wants to run slash command:")).toBeInTheDocument()
 		expect(getByText("/test")).toBeInTheDocument()
-		expect(getByText("Arguments:")).toBeInTheDocument()
+		expect(getByText("chat:skill.arguments")).toBeInTheDocument()
 		expect(getByText("focus on unit tests")).toBeInTheDocument()
 		expect(getByText("Run project tests")).toBeInTheDocument()
 		expect(getByText("project")).toBeInTheDocument()
@@ -142,7 +142,7 @@ describe("ChatRow - runSlashCommand tool", () => {
 		askRow.unmount()
 
 		const sayRow = renderChatRowWithProviders(say, true)
-		expect(sayRow.getByText("Arguments:")).toBeInTheDocument()
+		expect(sayRow.getByText("chat:skill.arguments")).toBeInTheDocument()
 		const sayBox = withoutIds(
 			sayRow.container.querySelector(".codicon-play")?.parentElement?.nextElementSibling?.outerHTML,
 		)

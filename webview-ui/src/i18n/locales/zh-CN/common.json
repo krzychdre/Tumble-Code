@@ -18,7 +18,8 @@
 	},
 	"ui": {
 		"search_placeholder": "搜索...",
-		"no_results": "未找到结果"
+		"no_results": "未找到结果",
+		"close": "关闭"
 	},
 	"mermaid": {
 		"loading": "生成 Mermaid 图表中...",
@@ -41,7 +42,8 @@
 		"tabs": {
 			"view": "图像"
 		},
-		"noData": "无图片数据"
+		"noData": "无图片数据",
+		"generatedAlt": "AI 生成的图像"
 	},
 	"confirmation": {
 		"deleteMessage": "删除消息",

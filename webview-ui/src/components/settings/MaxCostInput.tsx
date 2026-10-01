@@ -13,7 +13,7 @@ export function MaxCostInput({ allowedMaxCost, onValueChange }: MaxCostInputProp
 	return (
 		<>
 			<label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
-				<span className="codicon codicon-credit-card" />
+				<span className="codicon codicon-credit-card" aria-hidden="true" />
 				{t("settings:autoApprove.apiCostLimit.title")}:
 			</label>
 			<FormattedTextField

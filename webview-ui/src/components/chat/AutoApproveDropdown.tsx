@@ -279,7 +279,10 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 										)}
 										disabled={!effectiveAutoApprovalEnabled || forced}
 										data-testid={`auto-approve-${key}`}>
-										<span className={`codicon codicon-${icon} text-sm flex-shrink-0`} />
+										<span
+											className={`codicon codicon-${icon} text-sm flex-shrink-0`}
+											aria-hidden="true"
+										/>
 										<span className="flex-1 truncate">{t(labelKey)}</span>
 									</Button>
 								</StandardTooltip>
@@ -330,10 +333,10 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 							}}>
 							<ToggleSwitch
 								checked={effectiveAutoApprovalEnabled}
-								aria-label="Toggle auto-approval"
+								aria-label={t("chat:autoApprove.toggleAriaLabel")}
 								onChange={handleAutoApprovalToggle}
 							/>
-							<span className={cn("text-sm font-bold select-none")}>Enabled</span>
+							<span className={cn("text-sm font-bold select-none")}>{t("chat:autoApprove.enabled")}</span>
 						</label>
 					</div>
 				</div>

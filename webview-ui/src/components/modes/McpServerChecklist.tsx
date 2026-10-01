@@ -1,5 +1,6 @@
 import React from "react"
 import { LabeledCheckbox } from "@src/components/ui"
+import { useAppTranslation } from "@src/i18n/TranslationContext"
 import type { McpServer } from "@roo-code/types"
 
 export interface McpServerChecklistProps {
@@ -29,6 +30,7 @@ const McpServerChecklist: React.FC<McpServerChecklistProps> = ({
 	onServerToggle,
 	testIdPrefix,
 }) => {
+	const { t } = useAppTranslation()
 	return (
 		<div className="ml-6 mt-2 flex flex-col gap-1" data-testid={`${testIdPrefix}-list`}>
 			{mcpServers && mcpServers.length > 0 ? (
@@ -42,15 +44,15 @@ const McpServerChecklist: React.FC<McpServerChecklistProps> = ({
 					</LabeledCheckbox>
 				))
 			) : (
-				<div className="text-xs text-vscode-descriptionForeground">No MCP servers connected</div>
+				<div className="text-xs text-vscode-descriptionForeground">{t("prompts:mcpRestriction.noServers")}</div>
 			)}
 			{/* Warning for servers in the allowlist that aren't currently connected */}
 			{allowedMcpServers
 				.filter((s) => !mcpServers?.some((ms) => ms.name === s))
 				.map((missingServer) => (
 					<div key={missingServer} className="text-xs text-vscode-errorForeground flex items-center gap-1">
-						<span className="codicon codicon-warning" />
-						{missingServer} (not connected)
+						<span className="codicon codicon-warning" aria-hidden="true" />
+						{t("prompts:mcpRestriction.notConnected", { server: missingServer })}
 					</div>
 				))}
 		</div>

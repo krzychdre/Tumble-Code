@@ -18,7 +18,8 @@
 	},
 	"ui": {
 		"search_placeholder": "Buscar...",
-		"no_results": "No se encontraron resultados"
+		"no_results": "No se encontraron resultados",
+		"close": "Cerrar"
 	},
 	"mermaid": {
 		"loading": "Generando diagrama mermaid...",
@@ -41,7 +42,8 @@
 		"tabs": {
 			"view": "Imagen"
 		},
-		"noData": "Sin datos de imagen"
+		"noData": "Sin datos de imagen",
+		"generatedAlt": "Imagen generada por IA"
 	},
 	"confirmation": {
 		"deleteMessage": "Eliminar mensaje",

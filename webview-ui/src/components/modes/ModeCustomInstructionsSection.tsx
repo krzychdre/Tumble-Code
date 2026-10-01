@@ -118,7 +118,7 @@ export const ModeCustomInstructionsSection = ({
 									"prompts_mode_specific_global_rules",
 								)}
 								style={{ display: "inline" }}
-								aria-label="Learn about global custom instructions for modes"
+								aria-label={t("prompts:customInstructions.docsLinkAriaLabel")}
 							/>
 						),
 					}}

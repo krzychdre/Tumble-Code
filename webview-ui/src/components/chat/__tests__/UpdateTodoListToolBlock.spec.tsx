@@ -91,11 +91,11 @@ describe("UpdateTodoListToolBlock user-edit variant", () => {
 				]}
 			/>,
 		)
-		expect(getByText("User Edit")).toBeInTheDocument()
+		expect(getByText("chat:todo.userEdit")).toBeInTheDocument()
 		expect(getByText("Renamed by the user")).toBeInTheDocument()
 		expect(getByText("Added by the user")).toBeInTheDocument()
 		// Read-only: the approval is over, so there is nothing to edit here.
-		expect(queryByRole("button", { name: "Edit" })).toBeNull()
+		expect(queryByRole("button", { name: "chat:todo.edit" })).toBeNull()
 		expect(queryByRole("textbox")).toBeNull()
 	})
 })
@@ -125,14 +125,14 @@ describe("UpdateTodoListToolBlock styling", () => {
 	it("renders editing, adding and the delete confirmation without inline styles", () => {
 		const { container } = render(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} />)
 
-		fireEvent.click(screen.getByRole("button", { name: "Edit" }))
+		fireEvent.click(screen.getByRole("button", { name: "chat:todo.edit" }))
 		expect(inlineStyled(container)).toEqual([])
 
-		fireEvent.click(screen.getByRole("button", { name: "+ Add Todo" }))
+		fireEvent.click(screen.getByRole("button", { name: "+ chat:todo.addTodo" }))
 		expect(inlineStyled(container)).toEqual([])
 
-		fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0])
-		expect(screen.getByText("Are you sure you want to delete this todo item?")).toBeInTheDocument()
+		fireEvent.click(screen.getAllByRole("button", { name: "chat:todo.remove" })[0])
+		expect(screen.getByText("chat:todo.deleteConfirm")).toBeInTheDocument()
 		expect(inlineStyled(container)).toEqual([])
 	})
 
@@ -149,9 +149,9 @@ describe("UpdateTodoListToolBlock styling", () => {
 		const onChange = vi.fn()
 		render(<UpdateTodoListToolBlock todos={mixed} onChange={onChange} />)
 
-		fireEvent.click(screen.getByRole("button", { name: "Edit" }))
-		fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0])
-		fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+		fireEvent.click(screen.getByRole("button", { name: "chat:todo.edit" }))
+		fireEvent.click(screen.getAllByRole("button", { name: "chat:todo.remove" })[0])
+		fireEvent.click(screen.getByRole("button", { name: "chat:todo.delete" }))
 
 		expect(onChange).toHaveBeenLastCalledWith([
 			expect.objectContaining({ id: "b" }),

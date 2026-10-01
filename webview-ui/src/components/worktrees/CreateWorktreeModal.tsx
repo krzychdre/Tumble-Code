@@ -142,13 +142,18 @@ export const CreateWorktreeModal = ({
 		const localOptions: SearchableSelectOption[] = branches.localBranches.map((branch) => ({
 			value: branch,
 			label: branch,
-			icon: <span className="codicon codicon-git-branch mr-2 text-vscode-descriptionForeground" />,
+			icon: (
+				<span
+					className="codicon codicon-git-branch mr-2 text-vscode-descriptionForeground"
+					aria-hidden="true"
+				/>
+			),
 		}))
 
 		const remoteOptions: SearchableSelectOption[] = branches.remoteBranches.map((branch) => ({
 			value: branch,
 			label: branch,
-			icon: <span className="codicon codicon-cloud mr-2 text-vscode-descriptionForeground" />,
+			icon: <span className="codicon codicon-cloud mr-2 text-vscode-descriptionForeground" aria-hidden="true" />,
 		}))
 
 		return [...localOptions, ...remoteOptions]
@@ -181,7 +186,7 @@ export const CreateWorktreeModal = ({
 						<label className="text-sm text-vscode-foreground">{t("worktrees:baseBranch")}</label>
 						{!branches ? (
 							<div className="flex items-center gap-2 h-8 px-2 text-sm text-vscode-descriptionForeground">
-								<span className="codicon codicon-loading codicon-modifier-spin" />
+								<span className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true" />
 								<span>{t("worktrees:loadingBranches")}</span>
 							</div>
 						) : (
@@ -227,7 +232,10 @@ export const CreateWorktreeModal = ({
 					{/* Error message */}
 					{error && (
 						<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
-							<span className="codicon codicon-error text-vscode-errorForeground flex-shrink-0" />
+							<span
+								className="codicon codicon-error text-vscode-errorForeground flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<p className="text-vscode-errorForeground">{error}</p>
 						</div>
 					)}
@@ -236,7 +244,10 @@ export const CreateWorktreeModal = ({
 					{copyProgress && (
 						<div className="flex flex-col gap-2 px-3 py-3 rounded-lg bg-vscode-editor-background border border-vscode-panel-border">
 							<div className="flex items-center gap-2 text-sm">
-								<span className="codicon codicon-loading codicon-modifier-spin text-vscode-button-background" />
+								<span
+									className="codicon codicon-loading codicon-modifier-spin text-vscode-button-background"
+									aria-hidden="true"
+								/>
 								<span className="text-vscode-foreground font-medium">
 									{t("worktrees:copyingFiles")}
 								</span>
@@ -258,7 +269,10 @@ export const CreateWorktreeModal = ({
 					<Button variant="primary" onClick={handleCreate} disabled={!isValid || isCreating}>
 						{isCreating ? (
 							<>
-								<span className="codicon codicon-loading codicon-modifier-spin mr-2" />
+								<span
+									className="codicon codicon-loading codicon-modifier-spin mr-2"
+									aria-hidden="true"
+								/>
 								{t("worktrees:creating")}
 							</>
 						) : (

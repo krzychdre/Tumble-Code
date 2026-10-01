@@ -127,7 +127,8 @@
 		"back": "Retour",
 		"apply": "Appliquer",
 		"confirm": "Confirmer",
-		"confirmPrompt": "Appliquer à {{count}} modes ?"
+		"confirmPrompt": "Appliquer à {{count}} modes ?",
+		"modeList": "Modes"
 	},
 	"enhancePrompt": "Améliorer la requête avec un contexte supplémentaire",
 	"addImages": "Ajouter des images au message",
@@ -213,7 +214,8 @@
 		"wantsToGenerateImage": "Tumble veut générer une image",
 		"wantsToGenerateImageOutsideWorkspace": "Tumble veut générer une image en dehors de l'espace de travail",
 		"wantsToGenerateImageProtected": "Tumble veut générer une image dans un emplacement protégé",
-		"didGenerateImage": "Tumble a généré une image"
+		"didGenerateImage": "Tumble a généré une image",
+		"userEdits": "Modifications de l'utilisateur"
 	},
 	"instructions": {
 		"wantsToFetch": "Tumble veut récupérer des instructions détaillées pour aider à la tâche actuelle"
@@ -243,7 +245,8 @@
 		"addToDenied": "Ajouter à la liste refusée",
 		"removeFromDenied": "Retirer de la liste refusée",
 		"expandCommand": "Développer la commande",
-		"collapseCommand": "Réduire la commande"
+		"collapseCommand": "Réduire la commande",
+		"clickToEditPattern": "Cliquez pour modifier le motif"
 	},
 	"text": {
 		"rooSaid": "Tumble a dit"
@@ -321,7 +324,8 @@
 				"label": "Autonome",
 				"description": "Plein auto : tout ce que fait Contournement, plus les questions de suivi sont répondues automatiquement pour que l'agent fonctionne jusqu'à la fin."
 			}
-		}
+		},
+		"enabled": "Activé"
 	},
 	"reasoning": {
 		"thinking": "Réflexion"
@@ -351,7 +355,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble veut charger une compétence",
-		"didLoad": "Tumble a chargé une compétence"
+		"didLoad": "Tumble a chargé une compétence",
+		"arguments": "Arguments :"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Copier vers l'entrée (ou Shift + clic)",
@@ -408,7 +413,8 @@
 		"didSearch_one": "{{count}} résultat trouvé",
 		"didSearch_many": "{{count}} résultats trouvés",
 		"didSearch_other": "{{count}} résultats trouvés",
-		"resultTooltip": "Score de similarité : {{score}} (cliquer pour ouvrir le fichier)"
+		"resultTooltip": "Score de similarité : {{score}} (cliquer pour ouvrir le fichier)",
+		"displayError": "Erreur lors de l'affichage des résultats de recherche."
 	},
 	"read-batch": {
 		"approve": {
@@ -472,7 +478,8 @@
 		"problems": "Problèmes",
 		"terminal": "Terminal",
 		"url": "Coller l'URL pour récupérer le contenu",
-		"menuLabel": "Menu contextuel"
+		"menuLabel": "Menu contextuel",
+		"gitCommits": "Commits Git"
 	},
 	"queuedMessages": {
 		"title": "Messages en file d'attente",
@@ -485,7 +492,25 @@
 	"todo": {
 		"partial": "{{completed}} sur {{total}} tâches terminées",
 		"complete": "{{total}} tâches terminées",
-		"updated": "La liste des tâches a été mise à jour"
+		"updated": "La liste des tâches a été mise à jour",
+		"userEdit": "Modification de l'utilisateur",
+		"userEdits": "Modifications de l'utilisateur",
+		"listUpdated": "Liste des tâches mise à jour",
+		"edit": "Modifier",
+		"done": "Terminé",
+		"add": "Ajouter",
+		"addTodo": "Ajouter une tâche",
+		"cancel": "Annuler",
+		"delete": "Supprimer",
+		"remove": "Retirer",
+		"itemPlaceholder": "Saisissez une tâche",
+		"newItemPlaceholder": "Saisissez une tâche, appuyez sur Entrée pour l'ajouter",
+		"deleteConfirm": "Voulez-vous vraiment supprimer cette tâche ?",
+		"status": {
+			"notStarted": "Non commencée",
+			"inProgress": "En cours",
+			"completed": "Terminée"
+		}
 	},
 	"tooManyTools": {
 		"title": "Trop d'outils activés",
@@ -567,5 +592,14 @@
 		"idle": "La mémoire est activée"
 	},
 	"thumbnailAlt": "Miniature {{index}}",
-	"removeImage": "Supprimer l'image {{index}}"
+	"removeImage": "Supprimer l'image {{index}}",
+	"apiConfigGroups": {
+		"pinned": "Configurations épinglées",
+		"all": "Toutes les configurations"
+	},
+	"markdownPreview": {
+		"open": "Ouvrir dans l'aperçu",
+		"openAriaLabel": "Ouvrir le markdown dans l'aperçu",
+		"copyAsMarkdown": "Copier en markdown"
+	}
 }

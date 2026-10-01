@@ -34,7 +34,7 @@ const TelemetryBanner = () => {
 			<button
 				onClick={handleClose}
 				className="absolute top-1.5 right-2 bg-transparent border-none text-vscode-foreground cursor-pointer text-2xl p-1 opacity-70 hover:opacity-100 transition-opacity duration-200 leading-none"
-				aria-label="Close">
+				aria-label={t("common:ui.close")}>
 				×
 			</button>
 

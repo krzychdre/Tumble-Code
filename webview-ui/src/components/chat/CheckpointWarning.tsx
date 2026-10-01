@@ -33,7 +33,7 @@ export const CheckpointWarning = ({ warning }: CheckpointWarningProps) => {
 
 	return (
 		<div className="flex items-center p-3 my-3 bg-vscode-inputValidation-warningBackground border border-vscode-inputValidation-warningBorder rounded">
-			<span className="codicon codicon-loading codicon-modifier-spin mr-2" />
+			<span className="codicon codicon-loading codicon-modifier-spin mr-2" aria-hidden="true" />
 			<span className="text-vscode-foreground">
 				<Trans
 					i18nKey={i18nKey}

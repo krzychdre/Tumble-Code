@@ -152,7 +152,8 @@
 		"back": "返回",
 		"apply": "套用",
 		"confirm": "確認",
-		"confirmPrompt": "套用到 {{count}} 個模式？"
+		"confirmPrompt": "套用到 {{count}} 個模式？",
+		"modeList": "模式"
 	},
 	"enhancePrompt": "使用額外內容強化提示詞",
 	"modeSelector": {
@@ -239,7 +240,8 @@
 	},
 	"skill": {
 		"wantsToLoad": "Tumble 想要載入技能",
-		"didLoad": "Tumble 載入了技能"
+		"didLoad": "Tumble 載入了技能",
+		"arguments": "參數："
 	},
 	"instructions": {
 		"wantsToFetch": "Tumble 想要取得詳細指示以協助目前工作"
@@ -259,7 +261,8 @@
 		"wantsToGenerateImageProtected": "Tumble 想要在受保護位置產生圖片",
 		"didGenerateImage": "Tumble 已產生圖片",
 		"wantsToInsertWithLineNumber": "Tumble 想要在此檔案第 {{lineNumber}} 行插入內容",
-		"wantsToInsertAtEnd": "Tumble 想要在此檔案尾端新增內容"
+		"wantsToInsertAtEnd": "Tumble 想要在此檔案尾端新增內容",
+		"userEdits": "使用者編輯"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Tumble 想要檢視此目錄中最上層的檔案",
@@ -280,7 +283,8 @@
 		"wantsToSearchWithPath": "Tumble 想要在 <code>{{path}}</code> 中搜尋程式碼庫 <code>{{query}}</code>",
 		"didSearch_one": "找到 1 個結果",
 		"didSearch_other": "找到 {{count}} 個結果",
-		"resultTooltip": "相似度評分：{{score}}（點選以開啟檔案）"
+		"resultTooltip": "相似度評分：{{score}}（點選以開啟檔案）",
+		"displayError": "顯示搜尋結果時發生錯誤。"
 	},
 	"commandExecution": {
 		"abort": "中止",
@@ -293,7 +297,8 @@
 		"addToDenied": "新增至拒絕清單",
 		"removeFromDenied": "從拒絕清單中移除",
 		"expandCommand": "展開命令",
-		"collapseCommand": "摺疊命令"
+		"collapseCommand": "摺疊命令",
+		"clickToEditPattern": "點擊以編輯模式"
 	},
 	"text": {
 		"rooSaid": "Tumble 說"
@@ -373,7 +378,8 @@
 				"label": "自主",
 				"description": "全自動:包含繞過的全部功能,且後續問題自動作答,使代理一直執行直到完成。"
 			}
-		}
+		},
+		"enabled": "已啟用"
 	},
 	"announcement": {
 		"title": "Tumble Code {{version}} 已發布",
@@ -465,12 +471,31 @@
 		"problems": "問題",
 		"terminal": "終端機",
 		"url": "貼上 URL 以擷取內容",
-		"menuLabel": "內容功能表"
+		"menuLabel": "內容功能表",
+		"gitCommits": "Git 提交"
 	},
 	"todo": {
 		"partial": "已完成 {{completed}}／{{total}} 個待辦事項",
 		"complete": "已完成 {{total}} 個待辦事項",
-		"updated": "已更新待辦事項清單"
+		"updated": "已更新待辦事項清單",
+		"userEdit": "使用者編輯",
+		"userEdits": "使用者編輯",
+		"listUpdated": "待辦事項清單已更新",
+		"edit": "編輯",
+		"done": "完成",
+		"add": "新增",
+		"addTodo": "新增待辦事項",
+		"cancel": "取消",
+		"delete": "刪除",
+		"remove": "移除",
+		"itemPlaceholder": "輸入待辦事項",
+		"newItemPlaceholder": "輸入待辦事項，按 Enter 新增",
+		"deleteConfirm": "確定要刪除此待辦事項嗎？",
+		"status": {
+			"notStarted": "未開始",
+			"inProgress": "進行中",
+			"completed": "已完成"
+		}
 	},
 	"tooManyTools": {
 		"title": "啟用的工具過多",
@@ -549,5 +574,14 @@
 		"idle": "記憶已開啟"
 	},
 	"thumbnailAlt": "縮圖 {{index}}",
-	"removeImage": "刪除圖片 {{index}}"
+	"removeImage": "刪除圖片 {{index}}",
+	"apiConfigGroups": {
+		"pinned": "已釘選的設定",
+		"all": "所有設定"
+	},
+	"markdownPreview": {
+		"open": "在預覽中開啟",
+		"openAriaLabel": "在預覽中開啟 Markdown",
+		"copyAsMarkdown": "複製為 Markdown"
+	}
 }

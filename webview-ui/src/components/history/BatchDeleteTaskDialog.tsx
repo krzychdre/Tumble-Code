@@ -47,7 +47,7 @@ export const BatchDeleteTaskDialog = ({ taskIds, ...props }: BatchDeleteTaskDial
 					</AlertDialogCancel>
 					<AlertDialogAction asChild>
 						<Button variant="destructive" onClick={onDelete}>
-							<span className="codicon codicon-trash mr-1"></span>
+							<span className="codicon codicon-trash mr-1" aria-hidden="true"></span>
 							{t("history:deleteItems", { count: taskIds.length })}
 						</Button>
 					</AlertDialogAction>

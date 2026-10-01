@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "Instellingen zoeken...",
-		"noResults": "Geen instellingen gevonden"
+		"noResults": "Geen instellingen gevonden",
+		"clear": "Zoekopdracht wissen"
 	},
 	"header": {
 		"title": "Instellingen",
@@ -500,7 +501,8 @@
 			"low": "Laag",
 			"description": "Bepaalt hoe gedetailleerd de reacties van het model zijn. Lage uitvoerbaarheid levert beknopte antwoorden op, terwijl hoge uitvoerbaarheid uitgebreide uitleg geeft."
 		},
-		"setReasoningLevel": "Redeneervermogen inschakelen"
+		"setReasoningLevel": "Redeneervermogen inschakelen",
+		"awsAuthMethod": "Authenticatiemethode"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "Standaard: http://localhost:11434",
 		"lmStudioUrl": "Standaard: http://localhost:1234",
-		"geminiUrl": "Standaard: https://generativelanguage.googleapis.com"
+		"geminiUrl": "Standaard: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "Standaard: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "Aangepaste ARN",

@@ -58,5 +58,6 @@
 	"today": "Heute",
 	"yesterday": "Gestern",
 	"noHistory": "Noch keine Aufgaben. Beginne eine Unterhaltung, um deinen Verlauf aufzubauen.",
-	"noSearchResults": "Keine Aufgaben entsprechen dieser Suche."
+	"noSearchResults": "Keine Aufgaben entsprechen dieser Suche.",
+	"clearSearch": "Suche löschen"
 }

@@ -10,7 +10,8 @@
 	},
 	"search": {
 		"placeholder": "Cari pengaturan...",
-		"noResults": "Tidak ada pengaturan yang ditemukan"
+		"noResults": "Tidak ada pengaturan yang ditemukan",
+		"clear": "Hapus pencarian"
 	},
 	"header": {
 		"title": "Pengaturan",
@@ -500,7 +501,8 @@
 			"low": "Rendah",
 			"description": "Mengontrol seberapa detail respons model. Verbositas rendah menghasilkan jawaban singkat, sedangkan verbositas tinggi memberikan penjelasan menyeluruh."
 		},
-		"setReasoningLevel": "Aktifkan Upaya Reasoning"
+		"setReasoningLevel": "Aktifkan Upaya Reasoning",
+		"awsAuthMethod": "Metode autentikasi"
 	},
 	"checkpoints": {
 		"timeout": {
@@ -852,7 +854,8 @@
 	"defaults": {
 		"ollamaUrl": "Default: http://localhost:11434",
 		"lmStudioUrl": "Default: http://localhost:1234",
-		"geminiUrl": "Default: https://generativelanguage.googleapis.com"
+		"geminiUrl": "Default: https://generativelanguage.googleapis.com",
+		"openRouterUrl": "Default: https://openrouter.ai/api/v1"
 	},
 	"labels": {
 		"customArn": "ARN Kustom",

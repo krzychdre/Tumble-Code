@@ -144,7 +144,11 @@ export const FollowUpSuggest = ({
 						)}
 						{suggestion.mode && (
 							<div className="absolute bottom-0 right-0 text-[10px] text-vscode-badge-foreground pl-1 pr-2.5 pt-0.5 pb-1.5 flex items-center gap-0.5 bg-transparent rounded-xl">
-								<span className="codicon codicon-arrow-right" style={{ fontSize: "8px" }} />
+								<span
+									className="codicon codicon-arrow-right"
+									style={{ fontSize: "8px" }}
+									aria-hidden="true"
+								/>
 								{suggestion.mode}
 							</div>
 						)}

@@ -211,7 +211,7 @@ const ModelInfoSupportsItem = ({
 	doesNotSupportLabel: string
 }) => (
 	<div className="flex items-center gap-1 font-medium">
-		<span className={cn("codicon", isSupported ? "codicon-check" : "codicon-x")} />
+		<span className={cn("codicon", isSupported ? "codicon-check" : "codicon-x")} aria-hidden="true" />
 		{isSupported ? supportsLabel : doesNotSupportLabel}
 	</div>
 )

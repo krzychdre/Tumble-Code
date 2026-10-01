@@ -51,7 +51,8 @@ const McpToolRow = ({ tool, serverName, serverSource, alwaysAllowMcp, isInChatCo
 							isToolEnabled
 								? "text-vscode-symbolIcon-methodForeground"
 								: "text-vscode-descriptionForeground opacity-60"
-						}`}></span>
+						}`}
+						aria-hidden="true"></span>
 					<StandardTooltip content={tool.name}>
 						<span
 							className={`font-medium truncate ${
