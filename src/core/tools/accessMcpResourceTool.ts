@@ -7,6 +7,7 @@ import { formatResponse } from "../prompts/responses"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { ensureMcpServerAllowed } from "./mcpServerRestriction"
+import { runWithTaskAbortSignal } from "./taskAbortSignal"
 
 interface AccessMcpResourceParams {
 	server_name: string
@@ -63,7 +64,10 @@ export class AccessMcpResourceTool extends BaseTool<"access_mcp_resource"> {
 
 			// Now execute the tool
 			await task.say("mcp_server_request_started")
-			const resourceResult = await task.providerRef.deref()?.getMcpHub()?.readResource(server_name, uri)
+			// Stop cancels the read instead of waiting for the server to answer.
+			const resourceResult = await runWithTaskAbortSignal(task, (signal) =>
+				task.providerRef.deref()?.getMcpHub()?.readResource(server_name, uri, undefined, { signal }),
+			)
 
 			const resourceResultPretty =
 				resourceResult?.contents

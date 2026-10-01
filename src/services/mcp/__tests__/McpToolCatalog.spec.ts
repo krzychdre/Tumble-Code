@@ -1,4 +1,8 @@
 import type { Mock } from "vitest"
+import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
+import { Server } from "@modelcontextprotocol/sdk/server/index.js"
+import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 
 import type { McpConnection } from "../McpConnectionManager"
 import { McpToolCatalog } from "../McpToolCatalog"
@@ -183,6 +187,57 @@ describe("McpToolCatalog", () => {
 				expect.anything(),
 				{ timeout: 5000 },
 			)
+		})
+
+		it("passes the caller's abort signal to the tool call and the resource read", async () => {
+			const request = vi.fn().mockResolvedValue({ content: [], contents: [] })
+			connections.push(connected(request))
+			const { signal } = new AbortController()
+
+			await catalog.callTool("srv", "t", {}, undefined, { signal })
+			await catalog.readResource("srv", "r://1", undefined, { signal })
+
+			expect(request.mock.calls[0][2]).toEqual({ timeout: 60_000, signal })
+			expect(request.mock.calls[1][2]).toEqual({ signal })
+		})
+
+		it("aborting cancels a slow call on the server and rejects at once (real SDK)", async () => {
+			// A real MCP server whose tool only ends when the client cancels it.
+			const server = new Server({ name: "slow", version: "1.0.0" }, { capabilities: { tools: {} } })
+			let serverSawCancel!: () => void
+			const cancelledOnServer = new Promise<void>((resolve) => (serverSawCancel = resolve))
+			let toolStarted!: () => void
+			const started = new Promise<void>((resolve) => (toolStarted = resolve))
+			server.setRequestHandler(CallToolRequestSchema, (_req, extra) => {
+				toolStarted()
+				return new Promise((resolve) => {
+					extra.signal.addEventListener("abort", () => {
+						serverSawCancel()
+						resolve({ content: [{ type: "text", text: "late result" }] })
+					})
+				})
+			})
+			const client = new Client({ name: "test", version: "1.0.0" })
+			const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+			await Promise.all([server.connect(serverTransport), client.connect(clientTransport)])
+			connections.push(connected(vi.fn(), { client }))
+
+			try {
+				const controller = new AbortController()
+				const call = catalog.callTool("srv", "slow", {}, undefined, { signal: controller.signal })
+				await started
+				const abortedAt = Date.now()
+				controller.abort(new Error("Task aborted"))
+
+				await expect(call).rejects.toThrow("Task aborted")
+				// Rejected right away, not after the 60 s server timeout.
+				expect(Date.now() - abortedAt).toBeLessThan(1000)
+				// The server was told (notifications/cancelled) and stopped its work.
+				await cancelledOnServer
+			} finally {
+				await client.close()
+				await server.close()
+			}
 		})
 
 		it("refuses a disabled server and an unknown one", async () => {

@@ -12,7 +12,7 @@ import { type McpConfigSource, type McpServerConfig, validateServerConfig } from
 import { McpConfigStore } from "./McpConfigStore"
 import { McpConfigWatcher, type McpWatcherFactory, vscodeWatcherFactory } from "./McpConfigWatcher"
 import { logMcpError, type McpConnection, McpConnectionManager } from "./McpConnectionManager"
-import { McpToolCatalog } from "./McpToolCatalog"
+import { McpToolCatalog, type McpRequestOptions } from "./McpToolCatalog"
 
 export { type ConnectedMcpConnection, type DisconnectedMcpConnection, type McpConnection } from "./McpConnectionManager"
 
@@ -598,8 +598,13 @@ export class McpHub {
 		}
 	}
 
-	async readResource(serverName: string, uri: string, source?: McpConfigSource): Promise<McpResourceResponse> {
-		return this.toolCatalog.readResource(serverName, uri, source)
+	async readResource(
+		serverName: string,
+		uri: string,
+		source?: McpConfigSource,
+		options?: McpRequestOptions,
+	): Promise<McpResourceResponse> {
+		return this.toolCatalog.readResource(serverName, uri, source, options)
 	}
 
 	async callTool(
@@ -607,8 +612,9 @@ export class McpHub {
 		toolName: string,
 		toolArguments?: Record<string, unknown>,
 		source?: McpConfigSource,
+		options?: McpRequestOptions,
 	): Promise<McpToolCallResponse> {
-		return this.toolCatalog.callTool(serverName, toolName, toolArguments, source)
+		return this.toolCatalog.callTool(serverName, toolName, toolArguments, source, options)
 	}
 
 	async toggleToolAlwaysAllow(

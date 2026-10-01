@@ -26,6 +26,16 @@ export interface McpToolCatalogDeps {
 }
 
 /**
+ * Options for a single server request made on behalf of a task.
+ * `signal`: aborting it cancels the request. The SDK then sends
+ * `notifications/cancelled` to the server (so it can stop the work) and
+ * rejects the pending promise at once instead of waiting for the timeout.
+ */
+export interface McpRequestOptions {
+	signal?: AbortSignal
+}
+
+/**
  * What the connected servers offer: listing tools, resources and resource
  * templates, the per-tool alwaysAllow and disabledTools settings, and calling
  * a tool or reading a resource.
@@ -110,7 +120,12 @@ export class McpToolCatalog {
 		}
 	}
 
-	async readResource(serverName: string, uri: string, source?: McpConfigSource): Promise<McpResourceResponse> {
+	async readResource(
+		serverName: string,
+		uri: string,
+		source?: McpConfigSource,
+		options?: McpRequestOptions,
+	): Promise<McpResourceResponse> {
 		const connection = this.deps.findConnection(serverName, source)
 		if (!connection || connection.type !== "connected") {
 			throw new Error(`No connection found for server: ${serverName}${source ? ` with source ${source}` : ""}`)
@@ -126,6 +141,7 @@ export class McpToolCatalog {
 				},
 			},
 			ReadResourceResultSchema,
+			{ signal: options?.signal },
 		)
 	}
 
@@ -134,6 +150,7 @@ export class McpToolCatalog {
 		toolName: string,
 		toolArguments?: Record<string, unknown>,
 		source?: McpConfigSource,
+		options?: McpRequestOptions,
 	): Promise<McpToolCallResponse> {
 		const connection = this.deps.findConnection(serverName, source)
 		if (!connection || connection.type !== "connected") {
@@ -166,6 +183,7 @@ export class McpToolCatalog {
 			CallToolResultSchema,
 			{
 				timeout,
+				signal: options?.signal,
 			},
 		)
 	}

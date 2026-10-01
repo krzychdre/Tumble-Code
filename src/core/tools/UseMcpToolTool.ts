@@ -9,6 +9,7 @@ import { toolNamesMatch } from "../../utils/mcp-name"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { ensureMcpServerAllowed } from "./mcpServerRestriction"
+import { runWithTaskAbortSignal } from "./taskAbortSignal"
 
 interface UseMcpToolParams {
 	server_name: string
@@ -332,7 +333,26 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 			toolName,
 		})
 
-		const toolResult = await task.providerRef.deref()?.getMcpHub()?.callTool(serverName, toolName, parsedArguments)
+		// Stop cancels the call: the server is told to drop the request and the
+		// await rejects at once, instead of the work running on until the
+		// server's timeout (60 s by default) and its result arriving after the
+		// task was already stopped.
+		let toolResult
+		try {
+			toolResult = await runWithTaskAbortSignal(task, (signal) =>
+				task.providerRef
+					.deref()
+					?.getMcpHub()
+					?.callTool(serverName, toolName, parsedArguments, undefined, { signal }),
+			)
+		} catch (error) {
+			if (task.abort) {
+				// The rejection is the cancellation itself; handleError stays
+				// silent for an aborting task, so only end the "running" row.
+				await this.sendExecutionStatus(task, { executionId, status: "error", error: "Cancelled" })
+			}
+			throw error
+		}
 
 		let toolResultPretty = "(No response)"
 		let images: string[] = []
