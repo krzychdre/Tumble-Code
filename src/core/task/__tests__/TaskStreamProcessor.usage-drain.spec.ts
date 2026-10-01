@@ -8,7 +8,7 @@
 // leaving freshly-written files as dirty buffers ("agreed to save but not
 // saved" / "newer version on disk").
 //
-// See ai_plans/2026-06-04_fix-diff-view-already-open-dirty-save.md.
+// See ai_plans/archive/2026-06/2026-06-04_fix-diff-view-already-open-dirty-save.md.
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
@@ -147,7 +147,7 @@ describe("TaskStreamProcessor background usage drain", () => {
 // clobbering the "delegated" metadata and making the child finalize the whole task.
 // The guard must suppress the persist once the owning task is aborted/abandoned, while
 // still leaving the in-memory message update + telemetry intact.
-// See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+// See ai_plans/archive/2026-06/2026-06-08_delegated-subtask-no-return.md.
 describe("TaskStreamProcessor usage drain — abort/abandon persist guard", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()

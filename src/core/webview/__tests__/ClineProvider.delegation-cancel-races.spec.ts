@@ -213,7 +213,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 	// save can clobber the parent status "delegated" -> "active" while leaving awaitingChildId
 	// pointing at this child. reopenParentFromDelegation must NOT treat that drift as a detach;
 	// otherwise delegateToParent receives didReopen === false and the child finalizes the whole
-	// task. See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+	// task. See ai_plans/archive/2026-06/2026-06-08_delegated-subtask-no-return.md.
 	it("reopenParentFromDelegation proceeds when status drifted to 'active' but awaitingChildId still points here", async () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {

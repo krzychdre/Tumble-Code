@@ -94,7 +94,7 @@ export interface ApiRequestBuilderAccess {
 	// Methods
 	emit: (event: any, ...args: any[]) => boolean
 
-	// Deferred-tool loading state (Phase 4 of ai_plans/deferred-tool-loading.md).
+	// Deferred-tool loading state (Phase 4 of ai_plans/archive/undated/deferred-tool-loading.md).
 	// These come straight off the Task instance; the apiRequestBuilder reads
 	// `materializedDeferredTools` to re-promote loaded schemas and writes back
 	// the per-request `deferredToolDirectory` so `tools_load` can resolve names.
@@ -108,7 +108,7 @@ export interface ApiRequestBuilderAccess {
 export interface ToolsArrayResult {
 	allTools: OpenAI.Chat.ChatCompletionTool[]
 	allowedFunctionNames: string[] | undefined
-	/** Catalog of deferred (withheld) tools. See ai_plans/deferred-tool-loading.md. */
+	/** Catalog of deferred (withheld) tools. See ai_plans/archive/undated/deferred-tool-loading.md. */
 	deferredCatalog?: import("./deferred-tools").DeferredCatalog
 }
 

@@ -1,5 +1,5 @@
 // Conciseness steering for the agent loop. Decode time dominates per-turn
-// latency on slow endpoints (see ai_plans/2026-07-12_glm-agent-loop-efficiency.md),
+// latency on slow endpoints (see ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency.md),
 // so every generated character costs wall-clock. Rules are short imperatives so
 // weak models follow them reliably.
 export function getOutputEfficiencySection(): string {

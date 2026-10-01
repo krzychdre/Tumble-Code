@@ -32,7 +32,7 @@ const MAX_GUIDANCE_NAMES = 30
  * array.
  *
  * This is Roo Code's userland port of Claude Code's `ToolSearch` tool.
- * See `ai_plans/deferred-tool-loading.md` §2 for the design contract and
+ * See `ai_plans/archive/undated/deferred-tool-loading.md` §2 for the design contract and
  * §8 (Hardening for weak models) for the tolerance layer below.
  */
 export class ToolsLoadTool extends BaseTool<"tools_load"> {

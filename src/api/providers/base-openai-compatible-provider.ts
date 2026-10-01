@@ -176,7 +176,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		// Spike instrumentation: dump the provider's raw usage object so cache
 		// reporting can be verified endpoint-by-endpoint (e.g. whether Z.ai's
 		// coding plan returns prompt_tokens_details.cached_tokens). See
-		// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-6).
+		// ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-6).
 		if (process.env.ROO_LOG_RAW_USAGE === "1") {
 			console.log(`[${this.providerName}] raw usage: ${JSON.stringify(usage)}`)
 		}

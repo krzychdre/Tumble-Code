@@ -159,7 +159,7 @@ export interface TaskApiLoopAccess {
 	abortTask(isAbandoned?: boolean): Promise<void>
 	combineMessages(messages: ClineMessage[]): ClineMessage[]
 
-	// Deferred-tool loading state (Phase 4 of ai_plans/deferred-tool-loading.md)
+	// Deferred-tool loading state (Phase 4 of ai_plans/archive/undated/deferred-tool-loading.md)
 	materializedDeferredTools: Set<string>
 	deferredToolDirectory: Map<string, import("openai").default.Chat.ChatCompletionTool>
 }
@@ -825,7 +825,7 @@ export class TaskApiLoop {
 		// Passing `abortStream` here caused `captureUsageData` to abort the stream
 		// (reverting any in-progress diff edit) after every successful request,
 		// which stranded freshly-written files as dirty buffers. See
-		// ai_plans/2026-06-04_fix-diff-view-already-open-dirty-save.md.
+		// ai_plans/archive/2026-06/2026-06-04_fix-diff-view-already-open-dirty-save.md.
 		updateApiReqMsg: UpdateApiReqMsgFn,
 	): Promise<void> {
 		// Create a copy of current token values to avoid race conditions
@@ -903,8 +903,8 @@ export class TaskApiLoop {
 				// the same answer. With pending todos the retry stays, a weak
 				// model narrating mid-task must not complete the task by
 				// accident. See
-				// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5)
-				// and ai_plans/2026-09-10_text-completion-single-result.md.
+				// ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5)
+				// and ai_plans/archive/2026-09/2026-09-10_text-completion-single-result.md.
 				const fallback = await this.tryTextCompletionFallback()
 
 				if (fallback === "completed") {
@@ -986,7 +986,7 @@ export class TaskApiLoop {
 		// the summary to the user") un-ticked while the text IS that delivery,
 		// and the retry only makes them regenerate the same answer through
 		// attempt_completion (measured over 956 stored tasks, see
-		// ai_plans/2026-09-10_text-completion-single-result.md).
+		// ai_plans/archive/2026-09/2026-09-10_text-completion-single-result.md).
 		const todoList = task.todoList
 		if (Array.isArray(todoList) && todoList.some((todo) => todo?.status === "pending")) {
 			return "skipped"

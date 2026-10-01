@@ -5,10 +5,10 @@
 # Copy the `customModes:` entry below into that file to apply it.
 #
 # History:
-# - 2026-07-27 (ai_plans/2026-07-27_verbosity-and-turn-economics.md): explicit
+# - 2026-07-27 (ai_plans/archive/2026-07/2026-07-27_verbosity-and-turn-economics.md): explicit
 #   procedure + flat 25-call budget, questions banned — reviewer/GLM measured
 #   54 turns per task; the cost driver is turn COUNT, not thinking length.
-# - 2026-08-12 (ai_plans/2026-08-12_reviewer-mode-full-code-review.md): full
+# - 2026-08-12 (ai_plans/archive/2026-08/2026-08-12_reviewer-mode-full-code-review.md): full
 #   code-review mechanism — intent-first review, memory-decision awareness,
 #   reuse-with-boundaries, anti-primitive/anti-magic rules, mutation
 #   thought-test for tests, noise gate, fixed report skeleton with verdict,

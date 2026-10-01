@@ -467,7 +467,7 @@ describe("NativeToolCallParser", () => {
 	// codebase but no `case "..."` is added to `parseToolCall`'s switch.
 	// Symptom: model emits correct args → parser throws → catch returns null →
 	// downstream paths construct an empty ToolUse → tool handler sees no args.
-	// This bit `tools_load` (see ai_plans/2026-05-25_fix-tools-load-parser-omission.md).
+	// This bit `tools_load` (see ai_plans/archive/2026-05/2026-05-25_fix-tools-load-parser-omission.md).
 	describe("parseToolCall — every registered native tool has a parser case", () => {
 		const fixtureNames = Object.keys(MINIMAL_VALID_ARGS) as Array<keyof typeof MINIMAL_VALID_ARGS>
 

@@ -3,7 +3,7 @@
 Covers the bug where POST /v1/client/sign_ins returned the ticket's session id
 in the body but a Bearer token bound to a *different* (freshly-created) session,
 causing the subsequent POST /v1/client/sessions/{id}/tokens to 404.
-See ai_plans/2026-05-16_fix-self-hosted-auth-404.md.
+See ai_plans/archive/2026-05/2026-05-16_fix-self-hosted-auth-404.md.
 """
 
 from datetime import datetime, timedelta, timezone

@@ -656,7 +656,7 @@ describe("attemptCompletionTool", () => {
 	// result to the parent (reopenParentFromDelegation) rather than finalize the whole task
 	// (ask("completion_result")). The gate keys on the durable `awaitingChildId` signal so a
 	// background-drain save that clobbers the parent status "delegated" -> "active" does not
-	// break the return. See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+	// break the return. See ai_plans/archive/2026-06/2026-06-08_delegated-subtask-no-return.md.
 	describe("subtask delegation gate", () => {
 		const CHILD_ID = "task_1"
 		const PARENT_ID = "parent_1"
