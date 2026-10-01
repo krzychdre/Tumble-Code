@@ -20,6 +20,12 @@ jobs:
       github.actor != 'R00-B0T' ) ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    # Two merges in quick succession start two runs that both push
+    # changeset-release/main; the second one failed with "cannot lock ref".
+    # Run them one after another instead.
+    concurrency:
+      group: changeset-version-bump
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write

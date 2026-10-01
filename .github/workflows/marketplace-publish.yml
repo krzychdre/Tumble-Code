@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required for pushing tags.
+    env:
+      HAS_VSCE_PAT: ${{ secrets.VSCE_PAT != '' }}
     if: >
         ( github.event_name == 'pull_request' &&
         github.event.pull_request.base.ref == 'main' &&
@@ -57,7 +59,10 @@ jobs:
           git tag -a "v${current_package_version}" -m "Release v${current_package_version}"
           git push origin "v${current_package_version}" --no-verify
           echo "Successfully created and pushed git tag v${current_package_version}"
+      # The fork has no Marketplace token: skip this step instead of failing the
+      # job, so the tag and the GitHub release below are still created.
       - name: Publish Extension
+        if: env.HAS_VSCE_PAT == 'true'
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
