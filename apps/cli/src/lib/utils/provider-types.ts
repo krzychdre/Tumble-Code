@@ -158,9 +158,10 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		baseUrlEnvVar: "AWS_BEDROCK_ENDPOINT",
 	},
 	mistral: {
+		// No base-url field: the schema's mistralCodestralUrl is read only for
+		// codestral-* models (src/api/providers/mistral.ts), so a base URL
+		// mapped there was silently ignored for every other Mistral model.
 		keyEnvVar: "MISTRAL_API_KEY",
-		baseUrlField: "mistralCodestralUrl",
-		baseUrlEnvVar: "MISTRAL_BASE_URL",
 	},
 	moonshot: {
 		keyEnvVar: "MOONSHOT_API_KEY",
