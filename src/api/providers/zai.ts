@@ -9,13 +9,10 @@ import {
 	zaiModelCatalog,
 } from "@roo-code/types"
 
-import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
+import type { ApiHandlerOptions } from "../../shared/api"
 import { convertToR1Format } from "../transform/r1-format"
 
-import type { ApiHandlerCreateMessageMetadata } from "../index"
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
-import { handleProviderError } from "./utils/error-handler"
-import { createRequestAbortController } from "./utils/request-abort"
 
 // Custom interface for Z.ai params to support thinking mode and reasoning effort tiers.
 // Z.ai accepts the standard `reasoning_effort` ladder (none/minimal/low/medium/high/xhigh/max)
@@ -49,41 +46,41 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 		})
 	}
 
-	/**
-	 * Override createStream to handle GLM thinking mode.
-	 * GLM-4.7 and the GLM-5 family have thinking enabled by default in the API, so we
-	 * need to explicitly send { type: "disabled" } when the user turns off reasoning.
-	 * GLM-5.3 is the exception: it cannot be turned off at all.
-	 */
-	protected override createStream(
-		systemPrompt: string,
-		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata,
-		requestOptions?: OpenAI.RequestOptions,
-	) {
-		const { info } = this.getModel()
-
-		// Check if this is a model with thinking support (e.g. GLM-4.7, GLM-5)
-		const isThinkingModel = Array.isArray(info.supportsReasoningEffort)
-
-		if (isThinkingModel) {
-			// Create the stream with our custom thinking parameter
-			return this.createStreamWithThinking(systemPrompt, messages, metadata)
-		}
-
-		// For non-thinking models, use the default behavior
-		return super.createStream(systemPrompt, messages, metadata, requestOptions)
+	/** GLM-4.7 and the GLM-5 family take the `thinking` toggle and a reasoning effort. */
+	private isThinkingModel(): boolean {
+		return Array.isArray(this.getModel().info.supportsReasoningEffort)
 	}
 
 	/**
-	 * Creates a stream with explicit thinking control for the GLM thinking models.
+	 * The thinking models preserve reasoning_content and merge post-tool text into tool
+	 * messages. Z.ai's interleaved thinking has the same contract as DeepSeek's, so both use
+	 * the shared R1 converter.
 	 */
-	private createStreamWithThinking(
+	protected override convertMessages(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata,
-	) {
-		const { id: model, info } = this.getModel()
+	): OpenAI.Chat.ChatCompletionMessageParam[] {
+		if (!this.isThinkingModel()) {
+			return super.convertMessages(systemPrompt, messages)
+		}
+		return [
+			{ role: "system", content: systemPrompt },
+			...convertToR1Format(messages, { mergeToolResultText: true }),
+		]
+	}
+
+	/**
+	 * GLM thinking mode. GLM-4.7 and the GLM-5 family have thinking enabled by default in the
+	 * API, so we need to explicitly send { type: "disabled" } when the user turns off reasoning.
+	 * GLM-5.3 is the exception: it cannot be turned off at all. Other models keep the base
+	 * binary switch.
+	 */
+	protected override getExtraStreamParams(): Pick<ZAiChatCompletionParams, "thinking" | "reasoning_effort"> {
+		if (!this.isThinkingModel()) {
+			return super.getExtraStreamParams()
+		}
+
+		const { info } = this.getModel()
 
 		// Some models always reason and reject `thinking: { type: "disabled" }` outright
 		// (GLM-5.3). We detect them by the absence of "disable" in the supported effort
@@ -108,53 +105,11 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 		const reasoningEffort = canDisableReasoning ? resolvedEffort : (resolvedEffort ?? info.reasoningEffort)
 		const useReasoning = !canDisableReasoning || reasoningEffort !== undefined
 
-		// Shared rule, the same one the task uses to reserve output space: the max-output
-		// slider override is honored only on models that have the slider (supportsMaxTokens)
-		// and is capped at the model's own limit; otherwise the 20% context-window clamp
-		// applies. A stale override left over from another model never reaches the request.
-		const max_tokens =
-			getModelMaxOutputTokens({
-				modelId: model,
-				model: info,
-				settings: this.options,
-				format: "openai",
-			}) ?? undefined
-
-		const temperature = this.options.modelTemperature ?? this.defaultTemperature
-
-		// Preserve reasoning_content and merge post-tool text into tool messages. Z.ai's interleaved
-		// thinking has the same contract as DeepSeek's, so both use the shared R1 converter.
-		const convertedMessages = convertToR1Format(messages, { mergeToolResultText: true })
-
-		const params: ZAiChatCompletionParams = {
-			model,
-			max_tokens,
-			temperature,
-			messages: [{ role: "system", content: systemPrompt }, ...convertedMessages],
-			stream: true,
-			stream_options: { include_usage: true },
+		return {
 			// Thinking is ON by default for these models, so we explicitly disable when the
 			// user asked for it and the model actually allows it.
 			thinking: useReasoning ? { type: "enabled" } : { type: "disabled" },
-			reasoning_effort: reasoningEffort,
-			tools: this.convertToolsForOpenAI(metadata?.tools),
-			tool_choice: metadata?.tool_choice,
-			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
-		}
-
-		// Same contract as the base createStream: the task's signal (the Stop button) or
-		// cancelRequest() aborts this controller, and the base createMessage clears it once the
-		// stream ends.
-		this.abortController = createRequestAbortController(metadata?.signal)
-
-		try {
-			return this.getClient().chat.completions.create(
-				params as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
-				{ signal: this.abortController.signal },
-			)
-		} catch (error) {
-			this.abortController = undefined
-			throw handleProviderError(error, this.providerName)
+			reasoning_effort: reasoningEffort as ZAiChatCompletionParams["reasoning_effort"],
 		}
 	}
 }

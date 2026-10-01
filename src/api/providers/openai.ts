@@ -15,7 +15,7 @@ import { type ApiHandlerOptions, shouldUseReasoningEffort } from "../../shared/a
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
-import { streamChatCompletion } from "../transform/chat-completions-stream"
+import { type ChatCompletionStreamOptions, streamChatCompletion } from "../transform/chat-completions-stream"
 import { getModelParams } from "../transform/model-params"
 
 import { DEFAULT_HEADERS } from "./constants"
@@ -170,10 +170,8 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
 		const { info: modelInfo, reasoning } = this.getModel()
-		const modelUrl = this.options.openAiBaseUrl ?? ""
 		const modelId = this.options.openAiModelId ?? ""
 		const enabledR1Format = this.options.openAiR1FormatEnabled ?? false
-		const isAzureAiInference = this._isAzureAiInference(modelUrl)
 		const deepseekReasoner = modelId.includes("deepseek-reasoner") || enabledR1Format
 
 		if (modelId.includes("o1") || modelId.includes("o3") || modelId.includes("o4")) {
@@ -264,26 +262,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// when reasoning is enabled via settings
 			this.addGLMThinkingIfNeeded(requestOptions as GLMChatCompletionParams, modelId, modelInfo)
 
-			this.abortController = createRequestAbortController(metadata?.signal)
-			let stream
-			try {
-				stream = await this.getClient().chat.completions.create(requestOptions, {
-					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-					signal: this.abortController.signal,
-				})
-			} catch (error) {
-				this.abortController = undefined
-				throw handleProviderError(error, this.providerName)
-			}
+			const stream = await this.openChatStream(requestOptions, metadata?.signal)
 
-			try {
-				yield* streamChatCompletion(stream, {
-					thinkTags: true,
-					mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
-				})
-			} finally {
-				this.abortController = undefined
-			}
+			yield* this.streamUntilDone(stream, {
+				thinkTags: true,
+				mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
+			})
 		} else {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: modelId,
@@ -303,19 +287,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// when reasoning is enabled via settings
 			this.addGLMThinkingIfNeeded(requestOptions as unknown as GLMChatCompletionParams, modelId, modelInfo)
 
-			this.abortController = createRequestAbortController(metadata?.signal)
-			let response
-			try {
-				response = await this.getClient().chat.completions.create(requestOptions, {
-					...(this._isAzureAiInference(modelUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-					signal: this.abortController.signal,
-				})
-			} catch (error) {
-				this.abortController = undefined
-				throw handleProviderError(error, this.providerName)
-			} finally {
-				this.abortController = undefined
-			}
+			const response = await this.sendChatCompletion(requestOptions, metadata?.signal)
 
 			const message = response.choices?.[0]?.message
 
@@ -375,7 +347,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
 		try {
-			const isAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
 			const model = this.getModel()
 			const modelInfo = model.info
 
@@ -390,10 +361,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.getClient().chat.completions.create(requestOptions, {
-					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-					signal: this.abortController.signal,
-				})
+				response = await this.getClient().chat.completions.create(
+					requestOptions,
+					this.chatRequestOptions(this.abortController),
+				)
 			} finally {
 				this.abortController = undefined
 			}
@@ -417,7 +388,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
 		const modelInfo = this.getModel().info
-		const methodIsAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
 
 		if (this.options.openAiStreamingEnabled ?? true) {
 			const isGrokXAI = this._isGrokXAI(this.options.openAiBaseUrl)
@@ -446,27 +416,13 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-			this.abortController = createRequestAbortController(metadata?.signal)
-			let stream
-			try {
-				stream = await this.getClient().chat.completions.create(requestOptions, {
-					...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-					signal: this.abortController.signal,
-				})
-			} catch (error) {
-				this.abortController = undefined
-				throw handleProviderError(error, this.providerName)
-			}
+			const stream = await this.openChatStream(requestOptions, metadata?.signal)
 
-			try {
-				// Reasoning-capable servers routed through this branch (DeepSeek-R1
-				// distills, QwQ behind adapters) send reasoning_content (AP-8).
-				yield* streamChatCompletion(stream, {
-					mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
-				})
-			} finally {
-				this.abortController = undefined
-			}
+			// Reasoning-capable servers routed through this branch (DeepSeek-R1
+			// distills, QwQ behind adapters) send reasoning_content (AP-8).
+			yield* this.streamUntilDone(stream, {
+				mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
+			})
 		} else {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: modelId,
@@ -490,19 +446,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-			this.abortController = createRequestAbortController(metadata?.signal)
-			let response
-			try {
-				response = await this.getClient().chat.completions.create(requestOptions, {
-					...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-					signal: this.abortController.signal,
-				})
-			} catch (error) {
-				this.abortController = undefined
-				throw handleProviderError(error, this.providerName)
-			} finally {
-				this.abortController = undefined
-			}
+			const response = await this.sendChatCompletion(requestOptions, metadata?.signal)
 
 			const message = response.choices?.[0]?.message
 			if (message?.tool_calls) {
@@ -523,6 +467,60 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				text: message?.content || "",
 			}
 			yield this.processUsageMetrics(response.usage, modelInfo)
+		}
+	}
+
+	/**
+	 * Opens a streamed Chat Completions request that the task's signal (the Stop button) or
+	 * cancelRequest() aborts, on the Azure AI Inference path when the base URL is one. A request
+	 * that fails to start is rethrown through handleProviderError; streamUntilDone clears the
+	 * controller once the stream ends.
+	 */
+	protected async openChatStream(
+		params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
+		taskSignal: AbortSignal | undefined,
+		providerName: string = this.providerName,
+	) {
+		this.abortController = createRequestAbortController(taskSignal)
+		try {
+			return await this.getClient().chat.completions.create(params, this.chatRequestOptions(this.abortController))
+		} catch (error) {
+			this.abortController = undefined
+			throw handleProviderError(error, providerName)
+		}
+	}
+
+	/** Streams a response opened by openChatStream and releases its abort controller at the end. */
+	protected async *streamUntilDone(
+		stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
+		options: ChatCompletionStreamOptions,
+	): ApiStream {
+		try {
+			yield* streamChatCompletion(stream, options)
+		} finally {
+			this.abortController = undefined
+		}
+	}
+
+	/** Same as openChatStream for a non-streamed request; the controller is released on return. */
+	private async sendChatCompletion(
+		params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+		taskSignal: AbortSignal | undefined,
+	) {
+		this.abortController = createRequestAbortController(taskSignal)
+		try {
+			return await this.getClient().chat.completions.create(params, this.chatRequestOptions(this.abortController))
+		} catch (error) {
+			throw handleProviderError(error, this.providerName)
+		} finally {
+			this.abortController = undefined
+		}
+	}
+
+	private chatRequestOptions(controller: AbortController): OpenAI.RequestOptions {
+		return {
+			...(this._isAzureAiInference(this.options.openAiBaseUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+			signal: controller.signal,
 		}
 	}
 
