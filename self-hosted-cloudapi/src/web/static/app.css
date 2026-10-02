@@ -1967,6 +1967,10 @@ a.signal-value:hover {
 	gap: 1px;
 	height: 2.5rem;
 	padding: var(--s1);
+	/* A long run has more ticks than fit: the track scrolls rather than
+	   cutting the end of the run off. */
+	overflow: auto;
+	scrollbar-width: thin;
 	background: var(--sunken);
 	border: 1px solid var(--line);
 	border-radius: var(--r-sm);
@@ -2038,7 +2042,6 @@ a.signal-value:hover {
 		flex-direction: column;
 		align-items: flex-start;
 		height: auto;
-		overflow: hidden;
 	}
 	.tl-tick {
 		flex: 0 1 8px;

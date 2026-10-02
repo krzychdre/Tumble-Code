@@ -85,6 +85,16 @@ def test_the_composer_hides_the_rows_scrolling_under_it():
     assert "bottom: var(--s4);" in bar[:bar.index("}")]
 
 
+def test_a_long_run_scrolls_the_timeline_track_instead_of_cutting_it_off():
+    """A run with more ticks than the track has room for (ticks shrink to 2px
+    and no further) lost its end: the rail clipped the track. Both the strip
+    and the rail scroll it now."""
+    assert "overflow: auto;" in _rule(".tl-track")
+    rail = _CSS[_CSS.index("@media (min-width: 1240px) {\n\t/* A rail"):]
+    rail_track = rail[rail.index(".tl-track {"):]
+    assert "overflow: hidden" not in rail_track[: rail_track.index("}")]
+
+
 async def test_the_timeline_says_what_its_ticks_mean(client, session_factory):
     """A legend for the eye (each tick names itself to a screen reader)."""
     async with session_factory() as s:
