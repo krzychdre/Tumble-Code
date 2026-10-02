@@ -397,16 +397,22 @@ def _jwt(claims: dict) -> str:
     return jwt.encode({"exp": now + 60, "iat": now, "nbf": now, **claims}, get_jwt_key(), settings.jwt_algorithm)
 
 
+# The JWT case is a callable, so the token is minted when the test runs. Built
+# in the parametrize list it was minted at collection, valid for 60 s, and a
+# full run that reached it after a minute (a loaded machine) got "Invalid or
+# expired token" instead.
 @pytest.mark.parametrize(
     "headers,status,detail",
     [
         ({}, 401, "Missing authentication token"),
         ({"Authorization": "Basic abc"}, 401, "Missing authentication token"),
         ({"Authorization": "Bearer garbage"}, 401, "Invalid or expired token"),
-        ({"Authorization": "Bearer " + _jwt({"iss": "rcc", "v": 1})}, 401, "Invalid token: missing user ID"),
+        (lambda: {"Authorization": "Bearer " + _jwt({"iss": "rcc", "v": 1})}, 401, "Invalid token: missing user ID"),
     ],
 )
 def test_extension_routes_refuse_a_bad_token(client, headers, status, detail):
+    if callable(headers):
+        headers = headers()
     resp = client.get("/api/extension/bridge/config", headers=headers)
     assert resp.status_code == status
     assert resp.json() == {"detail": detail}
