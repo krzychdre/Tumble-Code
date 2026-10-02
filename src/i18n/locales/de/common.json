@@ -1,19 +1,8 @@
 {
 	"extension": {
-		"name": "Tumble Code",
 		"description": "Ein komplettes Entwicklerteam mit KI in deinem Editor."
 	},
-	"number_format": {
-		"thousand_suffix": "k",
-		"million_suffix": "m",
-		"billion_suffix": "b"
-	},
 	"welcome": "Willkommen, {{name}}! Du hast {{count}} Benachrichtigungen.",
-	"items": {
-		"zero": "Keine Elemente",
-		"one": "Ein Element",
-		"other": "{{count}} Elemente"
-	},
 	"confirmation": {
 		"reset_state": "Möchtest du wirklich alle Zustände und geheimen Speicher in der Erweiterung zurücksetzen? Dies kann nicht rückgängig gemacht werden.",
 		"delete_config_profile": "Möchtest du dieses Konfigurationsprofil wirklich löschen?",
@@ -37,22 +26,16 @@
 		"checkpoint_diff_to_current": "Änderungen am aktuellen Arbeitsbereich",
 		"nested_git_repos_warning": "Checkpoints sind deaktiviert, da ein verschachteltes Git-Repository erkannt wurde unter: {{path}}. Um Checkpoints zu verwenden, entferne oder verschiebe bitte dieses verschachtelte Git-Repository.",
 		"no_workspace": "Bitte öffne zuerst einen Projektordner",
-		"update_support_prompt": "Fehler beim Aktualisieren der Support-Nachricht",
-		"reset_support_prompt": "Fehler beim Zurücksetzen der Support-Nachricht",
 		"enhance_prompt": "Fehler beim Verbessern der Nachricht",
 		"get_system_prompt": "Fehler beim Abrufen der Systemnachricht",
 		"search_commits": "Fehler beim Suchen von Commits",
-		"save_api_config": "Fehler beim Speichern der API-Konfiguration",
 		"create_api_config": "Fehler beim Erstellen der API-Konfiguration",
 		"rename_api_config": "Fehler beim Umbenennen der API-Konfiguration",
 		"load_api_config": "Fehler beim Laden der API-Konfiguration",
 		"delete_api_config": "Fehler beim Löschen der API-Konfiguration",
-		"list_api_config": "Fehler beim Abrufen der API-Konfigurationsliste",
 		"update_server_timeout": "Fehler beim Aktualisieren des Server-Timeouts",
 		"hmr_not_running": "Der lokale Entwicklungsserver läuft nicht, HMR wird nicht funktionieren. Bitte führen Sie 'npm run dev' vor dem Start der Erweiterung aus, um HMR zu aktivieren.",
 		"retrieve_current_mode": "Fehler beim Abrufen des aktuellen Modus aus dem Zustand.",
-		"failed_delete_repo": "Fehler beim Löschen des zugehörigen Shadow-Repositorys oder -Zweigs: {{error}}",
-		"failed_remove_directory": "Fehler beim Entfernen des Aufgabenverzeichnisses: {{error}}",
 		"custom_storage_path_unusable": "Benutzerdefinierter Speicherpfad \"{{path}}\" ist nicht verwendbar, Standardpfad wird verwendet",
 		"cannot_access_path": "Zugriff auf Pfad {{path}} nicht möglich: {{error}}",
 		"settings_import_failed": "Fehler beim Importieren der Einstellungen: {{error}}.",
@@ -63,15 +46,6 @@
 		"condensed_recently": "Kontext wurde kürzlich verdichtet; dieser Versuch wird übersprungen",
 		"condense_handler_invalid": "API-Handler zum Verdichten des Kontexts ist ungültig",
 		"condense_api_failed": "Verdichtungs-API-Aufruf fehlgeschlagen: {{message}}",
-		"url_timeout": "Die Website hat zu lange zum Laden gebraucht (Timeout). Das könnte an einer langsamen Verbindung, einer schweren Website oder vorübergehender Nichtverfügbarkeit liegen. Du kannst es später nochmal versuchen oder prüfen, ob die URL korrekt ist.",
-		"url_not_found": "Die Website-Adresse konnte nicht gefunden werden. Bitte prüfe, ob die URL korrekt ist und versuche es erneut.",
-		"no_internet": "Keine Internetverbindung. Bitte prüfe deine Netzwerkverbindung und versuche es erneut.",
-		"url_forbidden": "Zugriff auf diese Website ist verboten. Die Seite könnte automatisierten Zugriff blockieren oder eine Authentifizierung erfordern.",
-		"url_page_not_found": "Die Seite wurde nicht gefunden. Bitte prüfe, ob die URL korrekt ist.",
-		"url_request_aborted": "Die Anfrage zum Abrufen der URL wurde abgebrochen. Dies kann passieren, wenn die Seite automatisierten Zugriff blockiert, eine Authentifizierung erfordert oder wenn es ein Netzwerkproblem gibt. Bitte versuche es erneut oder prüfe, ob die URL in einem normalen Browser zugänglich ist.",
-		"url_fetch_failed": "Fehler beim Abrufen des URL-Inhalts: {{error}}",
-		"url_fetch_error_with_url": "Fehler beim Abrufen des Inhalts für {{url}}: {{error}}",
-		"command_timeout": "Zeitüberschreitung bei der Befehlsausführung nach {{seconds}} Sekunden",
 		"share_task_failed": "Teilen der Aufgabe fehlgeschlagen. Bitte versuche es erneut.",
 		"share_no_active_task": "Keine aktive Aufgabe zum Teilen",
 		"share_auth_required": "Authentifizierung erforderlich. Bitte melde dich an, um Aufgaben zu teilen.",
@@ -86,13 +60,6 @@
 		"command_already_exists": "Befehl \"{{commandName}}\" existiert bereits",
 		"create_command_failed": "Fehler beim Erstellen des Befehls",
 		"command_template_content": "---\ndescription: \"Kurze Beschreibung dessen, was dieser Befehl macht\"\n---\n\nDies ist ein neuer Slash-Befehl. Bearbeite diese Datei, um das Befehlsverhalten anzupassen.",
-		"claudeCode": {
-			"processExited": "Claude Code Prozess wurde mit Code {{exitCode}} beendet.",
-			"errorOutput": "Fehlerausgabe: {{output}}",
-			"processExitedWithError": "Claude Code Prozess wurde mit Code {{exitCode}} beendet. Fehlerausgabe: {{output}}",
-			"stoppedWithReason": "Claude Code wurde mit Grund gestoppt: {{reason}}",
-			"apiKeyModelPlanMismatch": "API-Schlüssel und Abonnement-Pläne erlauben verschiedene Modelle. Stelle sicher, dass das ausgewählte Modell in deinem Plan enthalten ist."
-		},
 		"message": {
 			"no_active_task_to_delete": "Keine aktive Aufgabe, aus der Nachrichten gelöscht werden können",
 			"invalid_timestamp_for_deletion": "Ungültiger Nachrichten-Zeitstempel zum Löschen",
@@ -105,14 +72,7 @@
 		"gemini": {
 			"generate_stream": "Fehler beim Generieren des Kontext-Streams von Gemini: {{error}}",
 			"generate_complete_prompt": "Fehler bei der Vervollständigung durch Gemini: {{error}}",
-			"sources": "Quellen:",
-			"thinking_complete_no_output": "(Denken abgeschlossen, aber es wurde keine Ausgabe generiert.)",
-			"thinking_complete_truncated": "(Denken abgeschlossen, aber die Ausgabe wurde aufgrund des Token-Limits gekürzt.)",
-			"thinking_complete_safety": "(Denken abgeschlossen, aber die Ausgabe wurde aufgrund von Sicherheitseinstellungen blockiert.)",
-			"thinking_complete_recitation": "(Denken abgeschlossen, aber die Ausgabe wurde aufgrund der Rezitationsprüfung blockiert.)"
-		},
-		"roo": {
-			"authenticationRequired": "Tumble-Anbieter erfordert Cloud-Authentifizierung. Bitte melde dich bei Tumble Code Cloud an."
+			"sources": "Quellen:"
 		},
 		"openAiCodex": {
 			"notAuthenticated": "Nicht bei OpenAI Codex authentifiziert. Bitte melde dich über den OpenAI Codex OAuth-Flow an.",
@@ -133,8 +93,7 @@
 			"completionError": "OpenAI Codex Vervollständigungsfehler: {{message}}"
 		},
 		"api": {
-			"invalidKeyInvalidChars": "API-Schlüssel enthält ungültige Zeichen.",
-			"apiRequestFailed": "API-Anfrage fehlgeschlagen ({{status}})"
+			"invalidKeyInvalidChars": "API-Schlüssel enthält ungültige Zeichen."
 		},
 		"manual_url_empty": "Bitte gib eine gültige Callback-URL ein",
 		"manual_url_no_query": "Ungültige Callback-URL: Query-Parameter fehlen",
@@ -144,18 +103,14 @@
 	},
 	"warnings": {
 		"no_terminal_content": "Kein Terminal-Inhalt ausgewählt",
-		"missing_task_files": "Die Dateien dieser Aufgabe fehlen. Möchtest du sie aus der Aufgabenliste entfernen?",
 		"auto_import_failed": "Fehler beim automatischen Import der Tumble Code-Einstellungen: {{error}}"
 	},
 	"info": {
-		"no_changes": "Keine Änderungen gefunden.",
 		"clipboard_copy": "Systemnachricht erfolgreich in die Zwischenablage kopiert",
-		"history_cleanup": "{{count}} Aufgabe(n) mit fehlenden Dateien aus dem Verlauf bereinigt.",
 		"custom_storage_path_set": "Benutzerdefinierter Speicherpfad festgelegt: {{path}}",
 		"default_storage_path": "Auf Standardspeicherpfad zurückgesetzt",
 		"settings_imported": "Einstellungen erfolgreich importiert.",
 		"auto_import_success": "Tumble Code-Einstellungen automatisch importiert aus {{filename}}",
-		"share_link_copied": "Share-Link in die Zwischenablage kopiert",
 		"image_copied_to_clipboard": "Bild-Daten-URI in die Zwischenablage kopiert",
 		"image_saved": "Bild gespeichert unter {{path}}",
 		"organization_share_link_copied": "Organisations-Freigabelink in die Zwischenablage kopiert!",
@@ -166,25 +121,16 @@
 		"memory_consolidated": "Gedächtnis: {{count}} Erinnerungen konsolidiert"
 	},
 	"answers": {
-		"yes": "Ja",
-		"no": "Nein",
-		"remove": "Entfernen",
-		"keep": "Behalten"
+		"yes": "Ja"
 	},
 	"buttons": {
-		"save": "Speichern",
-		"edit": "Bearbeiten",
 		"learn_more": "Mehr erfahren"
 	},
 	"tasks": {
-		"canceled": "Aufgabenfehler: Die Aufgabe wurde vom Benutzer gestoppt und abgebrochen.",
-		"deleted": "Aufgabenfehler: Die Aufgabe wurde vom Benutzer gestoppt und gelöscht.",
 		"incomplete": "Aufgabe #{{taskNumber}} (Unvollständig)",
 		"no_messages": "Aufgabe #{{taskNumber}} (Keine Nachrichten)"
 	},
 	"interruption": {
-		"responseInterruptedByUser": "Antwort vom Benutzer unterbrochen",
-		"responseInterruptedByApiError": "Antwort durch API-Fehler unterbrochen",
 		"streamTerminatedByProvider": "Der Anbieter hat die Anfrage beendet"
 	},
 	"storage": {
@@ -211,10 +157,6 @@
 			"modeNotFound": "Schreibfehler: Modus nicht gefunden",
 			"noWorkspaceForProject": "Kein Arbeitsbereich-Ordner für projektspezifischen Modus gefunden",
 			"rulesCleanupFailed": "Der Modus wurde erfolgreich gelöscht, aber der Regelordner unter {{rulesFolderPath}} konnte nicht gelöscht werden. Möglicherweise musst du ihn manuell löschen."
-		},
-		"scope": {
-			"project": "projekt",
-			"global": "global"
 		}
 	},
 	"marketplace": {
@@ -222,22 +164,10 @@
 			"rulesCleanupFailed": "Der Modus wurde erfolgreich entfernt, aber der Regelordner unter {{rulesFolderPath}} konnte nicht gelöscht werden. Möglicherweise musst du ihn manuell löschen."
 		}
 	},
-	"prompts": {
-		"deleteMode": {
-			"title": "Benutzerdefinierten Modus löschen",
-			"description": "Bist du sicher, dass du diesen {{scope}}-Modus löschen möchtest? Dadurch wird auch der zugehörige Regelordner unter {{rulesFolderPath}} gelöscht",
-			"descriptionNoRules": "Bist du sicher, dass du diesen benutzerdefinierten Modus löschen möchtest?",
-			"confirm": "Löschen"
-		}
-	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Aufgabenabschluss verhindern, wenn unvollständige Todos in der Todo-Liste vorhanden sind"
 		}
-	},
-	"docsLink": {
-		"label": "Docs",
-		"url": "https://docs.tumblecode.dev"
 	},
 	"agentInterchange": {
 		"pick_up_title": "Arbeit eines anderen Agenten übernehmen",

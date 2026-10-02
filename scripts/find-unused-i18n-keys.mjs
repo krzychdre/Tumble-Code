@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Lists webview translation keys (webview-ui/src/i18n/locales/en/*.json) that no source file references.
+ * Lists translation keys that no source file references, for each i18n tree: the webview locales
+ * (webview-ui/src/i18n/locales/en/*.json) and the extension-host locales (src/i18n/locales/en/*.json).
  *
  * Usage:
- *   node scripts/find-unused-i18n-keys.mjs            list the candidates, grouped by namespace
+ *   node scripts/find-unused-i18n-keys.mjs            list the candidates, grouped by tree and namespace
  *   node scripts/find-unused-i18n-keys.mjs --patterns also print every dynamic key pattern and what it covers
  *   node scripts/find-unused-i18n-keys.mjs --check    exit 1 when there is at least one candidate
  *   node scripts/find-unused-i18n-keys.mjs --write    delete the candidates from every locale
@@ -15,6 +16,10 @@
  *   - its dotted path (or its plural base, "count" for "count_one") appears anywhere in the searched sources,
  *     not only inside t(...), so keys passed as props, stored in tables, sent from the extension host or read by
  *     tests all count;
+ * The webview tree searches the whole repository (a webview key may be named by extension-host or CLI code,
+ * for example a label sent to the webview). The src tree searches only src, apps and packages: the host runs
+ * its own i18next instance, so the webview's identically-named namespaces (marketplace, common, mcp,
+ * worktrees) must not keep host keys alive (R3-10).
  *   - a one-segment key appears as "ns:key", or as a quoted "key" in a file bound to that namespace
  *     (useTranslation("ns"), ns: "ns" or ns="ns");
  *   - it matches a dynamic pattern: a key-shaped template literal such as `settings:providers.${id}.label`,
@@ -283,7 +288,6 @@ export function isWebviewProductFile(relativeFile) {
 	)
 }
 
-const SOURCE_ROOTS = ["webview-ui/src", "src", "apps", "packages"]
 const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|json|ya?ml|html|snap)$/
 const SKIP_DIRS = new Set(["node_modules", "dist", "out", "build", "coverage", ".turbo", ".vite"])
 
@@ -311,11 +315,14 @@ function walk(dir, out) {
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
 /**
- * Reads the English webview locales and every searched source file of the repository.
+ * Reads the English locale files of one i18n tree and the source files that tree's keys are searched in.
+ * The webview tree searches the whole repository (its keys may be named by extension-host or CLI code);
+ * the src tree searches only src, apps and packages, because the extension host runs its own i18next
+ * instance and the webview's identically-named namespaces must not keep host keys alive (R3-10).
  * @returns {{ localesDir: string, locales: Record<string, object>, sources: { file: string, text: string }[] }}
  */
-export function loadRepo(root = REPO_ROOT) {
-	const localesDir = path.join(root, "webview-ui/src/i18n/locales")
+export function loadTree(tree, root = REPO_ROOT) {
+	const localesDir = path.join(root, ...I18N_TREES[tree].localesDir)
 	const enDir = path.join(localesDir, "en")
 
 	const locales = {}
@@ -327,12 +334,21 @@ export function loadRepo(root = REPO_ROOT) {
 	}
 
 	const files = []
-	for (const r of SOURCE_ROOTS) walk(path.join(root, r), files)
+	for (const r of I18N_TREES[tree].sourceRoots) walk(path.join(root, r), files)
 	const sources = [...new Set(files)].map((file) => ({
 		file: path.relative(root, file),
 		text: fs.readFileSync(file, "utf8"),
 	}))
 	return { localesDir, locales, sources }
+}
+
+/**
+ * The two i18n trees and where each one's keys are searched. `localesDir` is relative to the repository
+ * root; `sourceRoots` lists the directories whose files form the usage corpus.
+ */
+export const I18N_TREES = {
+	webview: { localesDir: ["webview-ui/src/i18n/locales"], sourceRoots: ["webview-ui/src", "src", "apps", "packages"] },
+	src: { localesDir: ["src/i18n/locales"], sourceRoots: ["src", "apps", "packages"] },
 }
 
 /**
@@ -350,17 +366,8 @@ export function findMissingWebviewKeys({ locales, sources }) {
 	})
 }
 
-function main() {
-	const args = new Set(process.argv.slice(2))
-	const { localesDir, locales, sources } = loadRepo()
-
-	if (args.has("--missing")) {
-		const missing = findMissingWebviewKeys({ locales, sources })
-		console.log(`${missing.length} literal webview key(s) missing from the English locale.`)
-		for (const m of missing) console.log(`  ${m.key}  (${m.file})`)
-		if (missing.length > 0) process.exit(1)
-		return
-	}
+function reportTree(tree) {
+	const { localesDir, locales, sources } = loadTree(tree)
 
 	const { unused, patterns } = findUnusedKeys({ locales, sources })
 
@@ -368,20 +375,20 @@ function main() {
 	const byNs = new Map()
 	for (const u of unused) byNs.set(u.ns, [...(byNs.get(u.ns) ?? []), u.key])
 
-	console.log(`Scanned ${sources.length} source files, ${total} English keys, ${unused.length} unused.`)
+	console.log(`\n[${tree}] Scanned ${sources.length} source files, ${total} English keys, ${unused.length} unused.`)
 	for (const [ns, keys] of byNs) {
 		console.log(`\n${ns} (${keys.length})`)
 		for (const k of keys) console.log(`  ${ns}:${k}`)
 	}
 
-	if (args.has("--patterns")) {
+	if (process.argv.includes("--patterns")) {
 		console.log("\nDynamic patterns that keep at least one key:")
 		for (const p of patterns.filter((p) => p.covers.length > 0)) {
 			console.log(`  ${p.source}  covers ${p.covers.length}  (${[...p.files].slice(0, 3).join(", ")})`)
 		}
 	}
 
-	if (args.has("--write")) {
+	if (process.argv.includes("--write")) {
 		const bases = new Map()
 		for (const u of unused) bases.set(u.ns, new Set([...(bases.get(u.ns) ?? []), pluralBase(u.key)]))
 		let entries = 0
@@ -401,7 +408,25 @@ function main() {
 		console.log(`\nRemoved ${entries} entries across all locales.`)
 	}
 
-	if (args.has("--check") && unused.length > 0) process.exit(1)
+	return unused.length
+}
+
+function main() {
+	const args = new Set(process.argv.slice(2))
+
+	if (args.has("--missing")) {
+		const { locales, sources } = loadTree("webview")
+		const missing = findMissingWebviewKeys({ locales, sources })
+		console.log(`${missing.length} literal webview key(s) missing from the English locale.`)
+		for (const m of missing) console.log(`  ${m.key}  (${m.file})`)
+		if (missing.length > 0) process.exit(1)
+		return
+	}
+
+	let unusedTotal = 0
+	for (const tree of Object.keys(I18N_TREES)) unusedTotal += reportTree(tree)
+
+	if (args.has("--check") && unusedTotal > 0) process.exit(1)
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

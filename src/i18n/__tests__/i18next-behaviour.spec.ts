@@ -43,13 +43,22 @@ describe("i18next behaviour used by the extension", () => {
 	})
 
 	it("returns nested objects only when asked, and the key path otherwise", () => {
-		expect(t("common:items")).toBe("key 'items (en)' returned an object instead of string.")
-		expect(t("common:items", { returnObjects: true })).toEqual({
+		// The extension's locales are product data policed by the unused-key gate, so this uses its
+		// own resource instead of a real plural family (R3-10 deleted the last one, common:items).
+		i18next.addResourceBundle(
+			"en",
+			"common",
+			{ __plural_fixture: { zero: "No items", one: "One item", other: "{{count}} items" } },
+			true,
+			true,
+		)
+		expect(t("common:__plural_fixture")).toBe("key '__plural_fixture (en)' returned an object instead of string.")
+		expect(t("common:__plural_fixture", { returnObjects: true })).toEqual({
 			zero: "No items",
 			one: "One item",
 			other: "{{count}} items",
 		})
-		expect(t("common:items.other", { count: 4 })).toBe("4 items")
+		expect(t("common:__plural_fixture.other", { count: 4 })).toBe("4 items")
 	})
 
 	it("returns the key without its namespace for a missing key, or the default value", () => {
