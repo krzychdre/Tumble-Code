@@ -53,7 +53,7 @@ describe("CloudTelemetryClient.sendErrorReport", () => {
 		await client.sendErrorReport(REPORT)
 
 		expect(mockFetch).toHaveBeenCalledTimes(1)
-		const [url, options] = mockFetch.mock.calls[0]
+		const [url, options] = mockFetch.mock.calls[0]!
 		expect(url).toBe("https://cloud.example/api/error-reports")
 		expect(options.method).toBe("POST")
 		expect(options.headers).toEqual({ Authorization: "Bearer session-token", "Content-Type": "application/json" })
@@ -70,16 +70,13 @@ describe("CloudTelemetryClient.sendErrorReport", () => {
 		expect(authService.getSessionToken).not.toHaveBeenCalled()
 	})
 
-	it.each(["TUMBLE_CODE_DISABLE_TELEMETRY", "ROO_CODE_DISABLE_TELEMETRY"])(
-		"does nothing when %s=1",
-		async (name) => {
-			process.env[name] = "1"
+	it.each(["TUMBLE_CODE_DISABLE_TELEMETRY", "ROO_CODE_DISABLE_TELEMETRY"])("does nothing when %s=1", async (name) => {
+		process.env[name] = "1"
 
-			await client.sendErrorReport(REPORT)
+		await client.sendErrorReport(REPORT)
 
-			expect(mockFetch).not.toHaveBeenCalled()
-		},
-	)
+		expect(mockFetch).not.toHaveBeenCalled()
+	})
 
 	it("drops a report that does not match the wire schema", async () => {
 		await client.sendErrorReport({ ...REPORT, category: "nonsense" } as any)
