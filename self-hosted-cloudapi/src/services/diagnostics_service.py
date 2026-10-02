@@ -91,6 +91,13 @@ TELEMETRY_CATEGORIES: dict[str, str] = {
 _WHERE_KEYS = ("location", "schemaName", "operation", "context")
 _MESSAGE_KEYS = ("errorMessage", "error")
 
+# Problems that are not about the chat model: an embedder or Qdrant failing,
+# the terminal, a settings file, the model list. They stay on the problem list
+# but are left out of the model fit table, where they would read as the chat
+# model's fault (1743 code-index errors against "openai (unknown)" on the live
+# deployment).
+NOT_MODEL_CATEGORIES = frozenset({"code_index", "shell_integration", "settings_invalid", "model_list_empty"})
+
 UNKNOWN_MODEL = "(unknown)"
 MAX_GROUPS = 60
 # Report ids listed under a group, newest first.
@@ -440,6 +447,8 @@ def model_fit(occurrences: Sequence[Occurrence], groups: Sequence[dict], request
     for (provider, model), count in requests.items():
         slot(provider, model)["requests"] += count
     for o in occurrences:
+        if o.category in NOT_MODEL_CATEGORIES:
+            continue
         row = slot(o.provider or "", o.model or UNKNOWN_MODEL)
         row["problems"] += 1
         row["categories"][o.category] += 1

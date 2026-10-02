@@ -196,6 +196,8 @@ def test_model_fit_counts_requests_problems_and_the_rate():
         # No provider recorded: folded into glm's only provider.
         _occ(MISSING_PATH, provider=None),
         _occ("Odd", category="tool_error", tool=None, model=None, provider=None),
+        # Not the chat model's: left out of the table.
+        _occ("Code index", category="code_index", tool=None, model=None, provider="openai"),
     ]
     requests = Counter({("openai", "glm"): 200, ("lmstudio", "qwen"): 10, ("anthropic", "claude"): 50})
     rows = {(r["provider"], r["model"]): r for r in model_fit(occurrences, group_occurrences(occurrences), requests)}
@@ -208,6 +210,8 @@ def test_model_fit_counts_requests_problems_and_the_rate():
     assert rows[("lmstudio", "qwen")]["per_100"] == 10.0
     assert rows[("anthropic", "claude")]["problems"] == 0
     assert rows[("", UNKNOWN_MODEL)]["per_100"] is None
+    assert rows[("", UNKNOWN_MODEL)]["problems"] == 1
+    assert ("openai", UNKNOWN_MODEL) not in rows
 
 
 # --- reading the database --------------------------------------------------------

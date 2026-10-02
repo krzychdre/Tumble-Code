@@ -84,7 +84,7 @@ graph TD
   CORS --> ROUTES{routers}
   ROUTES --> R1[auth /v1 - Clerk facade]
   ROUTES --> R2[browser - sign-in pages, callbacks]
-  ROUTES --> R3[extension, settings, events - /api]
+  ROUTES --> R3[extension, settings, events, error_reports - /api]
   ROUTES --> R4[web_tasks, web_metrics, web_diagnostics, web_settings - /app]
   ROUTES --> R5[shared - /shared/id]
   ROUTES --> SIO[socket.io /bridge]
@@ -112,6 +112,7 @@ erDiagram
   TASK ||--o{ TASK_MESSAGE : contains
   TASK ||--o{ TASK_SHARE : "shared as"
   USER ||--o{ TELEMETRY_EVENT : sends
+  USER ||--o{ ERROR_REPORT : sends
   USER ||--o| RETENTION_POLICY : sets
 ```
 
@@ -126,6 +127,11 @@ erDiagram
 - Backfill: on share, or when the bridge was down, the extension posts the whole conversation to
   `/api/events/backfill`; the server replaces the task's rows.
 - Telemetry: `POST /api/events` stores events and links child tasks to parents (`TaskRelation`).
+- Error reports: `POST /api/error-reports` (same Bearer token) stores one problem the extension ran into, with its
+  model, provider, context size and the tail of the request and response (`ERROR_REPORT`, schema in
+  `schemas/error_report.py`). The extension sends them only while signed in. The insert ignores an id it already
+  has, so a retried upload is stored once; bodies above 1 MB get 413. Reports are swept with telemetry by the
+  retention policy, deleted with their task, and cascade with their user.
 
 ### Background work
 
@@ -151,11 +157,25 @@ failed sweep is rolled back whole without affecting the others. The loop starts 
 Server-rendered Jinja templates in `src/web/templates/` with one stylesheet (`static/app.css`, design tokens on
 `:root`) and small plain-JavaScript files, no build step:
 
-| Page        | Template                      | Script                                                                   |
-| ----------- | ----------------------------- | ------------------------------------------------------------------------ |
-| Every page  | `base.html`                   | `theme.js` (theme, in `<head>`), `app.js` (`data-confirm`, copy buttons) |
-| Task list   | `tasks_list.html`             | `tasklist.js` (selection, bulk delete, tree fold, live filters, density) |
-| Task detail | `task_detail.html`            | `render.js` (conversation), `timeline.js`, `live.js` (bridge client)     |
-| Metrics     | `metrics.html`                | none (charts are server-rendered SVG)                                    |
-| Settings    | `settings.html`               | none                                                                     |
-| Shared task | `task_detail.html`, read-only | `render.js`, `timeline.js`                                               |
+| Page        | Template                                      | Script                                                                   |
+| ----------- | --------------------------------------------- | ------------------------------------------------------------------------ |
+| Every page  | `base.html`                                   | `theme.js` (theme, in `<head>`), `app.js` (`data-confirm`, copy buttons) |
+| Task list   | `tasks_list.html`                             | `tasklist.js` (selection, bulk delete, tree fold, live filters, density) |
+| Task detail | `task_detail.html`                            | `render.js` (conversation), `timeline.js`, `live.js` (bridge client)     |
+| Metrics     | `metrics.html`                                | none (charts are server-rendered SVG)                                    |
+| Problems    | `diagnostics.html`, `diagnostics_report.html` | none                                                                     |
+| Settings    | `settings.html`                               | none                                                                     |
+| Shared task | `task_detail.html`, read-only                 | `render.js`, `timeline.js`                                               |
+
+### The problem report
+
+`/app/diagnostics` (the "Problems" tab) answers what goes wrong, whose fault it is and what to try
+(`services/diagnostics_service.py`). It reads three sources into one occurrence shape: error reports, and for the
+time before the user's first report the error messages of synced conversations (`task_messages.q_kind` error or
+retry, model attributed from the request before the message) and the error telemetry events. Occurrences are
+grouped by a signature (category, tool and the message's first line with paths, ids and digits blanked), ranked by
+the tasks they hit, and looked up in `services/problem_catalogue.py`, an ordered list of rules that gives each
+group a class (software defect, model mismatch, provider or network, configuration) and a mitigation. Groups no
+rule matches are shown as Unclassified. A model fit table puts problems next to the period's LLM Completion
+requests per model. `/app/diagnostics/reports/{id}` shows one report in full to its owner (404 for anyone else),
+and `/app/diagnostics/report.md` exports the report as Markdown for a coding agent.
