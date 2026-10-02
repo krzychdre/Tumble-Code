@@ -3221,20 +3221,32 @@ table.breakdown tr:last-child td {
 	font-size: var(--t-sm);
 	overflow-wrap: anywhere;
 }
-.diag-export {
-	font-weight: 500;
-	white-space: nowrap;
-}
 .diag-export-hint {
+	min-width: 0;
 	color: var(--text-faint);
+	font-size: var(--t-micro);
+	overflow-wrap: anywhere;
 }
 /* Five small figures: they share a row wherever they fit, two to a row on a
    phone, instead of five full-width cards. */
 .stat-grid.diag-classes {
 	grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
 }
+/* Each tile is a link that filters the list to its class; the one shown is
+   outlined in its hue, and clicking it again shows every class. */
 .diag-class-card {
+	display: block;
 	min-width: 0;
+	color: inherit;
+	transition: border-color 0.12s ease;
+}
+.diag-class-card:hover {
+	border-color: var(--diag-hue);
+	text-decoration: none;
+}
+.diag-class-card.is-active {
+	border-color: var(--diag-hue);
+	box-shadow: inset 0 0 0 1px var(--diag-hue);
 }
 .diag-class-card .stat-label {
 	overflow-wrap: anywhere;
@@ -3263,17 +3275,119 @@ table.breakdown tr:last-child td {
 .diag-group:last-child {
 	border-bottom: none;
 }
-/* Row: badge, title, impact on the first line; the signature and the models
-   below, each on its own full-width line. */
-.diag-group summary {
+/* The filter form: the search box and one list per filter, side by side
+   where they fit. A list is as wide as its longest option at most and never
+   wider than its column, so a 90-character model id cannot widen the page. */
+.diag-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--s2) var(--s3);
+	margin: 0 0 var(--s3);
+}
+.diag-field {
+	display: flex;
+	flex: 1 1 9rem;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	max-width: 15rem;
+}
+.diag-field-q {
+	flex-basis: 14rem;
+	max-width: 22rem;
+}
+.diag-field select,
+.diag-field input {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	text-overflow: ellipsis;
+}
+.diag-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--s2) var(--s4);
+	min-width: 0;
+	margin: 0 0 var(--s3);
+}
+.diag-toolbar .filter-chips {
+	min-width: 0;
+	margin: 0;
+}
+.diag-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--s2);
+	min-width: 0;
+	margin: 0;
+}
+.diag-body .diag-actions {
+	margin: var(--s3) 0 0;
+}
+.diag-filter-note {
+	color: var(--text);
+}
+.diag-list-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--s2) var(--s3);
+	margin-bottom: var(--s2);
+}
+.diag-list-head .chart-title {
+	margin: 0;
+}
+.diag-sort {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px;
+}
+.diag-sort-label {
+	margin-right: var(--s2);
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	text-transform: uppercase;
+	letter-spacing: var(--track-caps);
+	color: var(--text-faint);
+}
+/* One row per problem, closed: class, title, tool, top model, count, tasks,
+   last seen. Every row is its own grid with the same tracks (fixed widths
+   and fractions of the same width), so the columns line up down the list
+   and under the header row. */
+.diag-row {
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr) auto;
+	grid-template-columns:
+		10.5rem minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 1.5fr)
+		4.5rem 5rem 8.5rem;
 	gap: var(--s1) var(--s3);
 	align-items: baseline;
 	padding: var(--s2) var(--s1);
+	font-size: var(--t-sm);
+}
+.diag-row > * {
+	min-width: 0;
+}
+.diag-row-head {
+	padding-top: 0;
+	border-bottom: 1px solid var(--line);
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	text-transform: uppercase;
+	letter-spacing: var(--track-caps);
+	color: var(--text-faint);
+}
+.diag-num {
+	text-align: right;
+}
+.diag-group summary {
 	cursor: pointer;
 	list-style: none;
-	font-size: var(--t-sm);
 }
 .diag-group summary::-webkit-details-marker {
 	display: none;
@@ -3281,18 +3395,24 @@ table.breakdown tr:last-child td {
 .diag-group summary:hover {
 	background: var(--surface-2);
 }
+.diag-group details[open] > summary {
+	background: var(--surface-2);
+}
 .diag-badge {
 	display: inline-block;
+	max-width: 100%;
 	padding: 0 var(--s2);
 	border: 1px solid var(--diag-hue);
 	border-radius: var(--r-sm);
 	color: var(--diag-hue);
 	font-family: var(--mono);
 	font-size: var(--t-micro);
-	white-space: nowrap;
+	overflow-wrap: anywhere;
+}
+.diag-row .diag-badge {
+	justify-self: start;
 }
 .diag-title {
-	min-width: 0;
 	font-weight: 500;
 	overflow-wrap: anywhere;
 }
@@ -3303,34 +3423,27 @@ table.breakdown tr:last-child td {
 .diag-group details[open] .diag-title::before {
 	content: "▾ ";
 }
-.diag-impact {
+.diag-tool,
+.diag-top-model,
+.diag-count,
+.diag-tasks,
+.diag-last {
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-dim);
+	overflow-wrap: anywhere;
+}
+.diag-count {
+	color: var(--text);
+	font-weight: 500;
+}
+.diag-more {
+	color: var(--text-faint);
 	white-space: nowrap;
 }
-.diag-sig,
-.diag-models {
-	grid-column: 1 / -1;
-	min-width: 0;
-	font-family: var(--mono);
-	font-size: var(--t-micro);
-	color: var(--text-dim);
-	overflow-wrap: anywhere;
-}
-.diag-models {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--s1) var(--s3);
-	color: var(--text-faint);
-}
-.diag-model {
-	min-width: 0;
-	overflow-wrap: anywhere;
-}
-.diag-model b {
-	color: var(--text-dim);
-	font-weight: 500;
+/* "last" is said by the header row on a wide screen, by the cell on a phone. */
+.diag-last-label {
+	display: none;
 }
 .diag-body {
 	min-width: 0;
@@ -3500,12 +3613,36 @@ table.diag-table th.diag-num {
 	.stat-grid.diag-classes {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
-	.diag-group summary {
-		grid-template-columns: minmax(0, 1fr) auto;
+	/* A row becomes a short card: the class and the title, then the figures
+	   on one wrapping line, each saying what it is. */
+	.diag-row-head {
+		display: none;
 	}
-	.diag-badge {
-		grid-column: 1 / -1;
-		justify-self: start;
+	.diag-group summary.diag-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--s1) var(--s3);
+	}
+	.diag-row .diag-title {
+		flex: 1 1 100%;
+	}
+	.diag-row .diag-num {
+		text-align: left;
+	}
+	.diag-last-label {
+		display: inline;
+	}
+	/* No tool: the dash only holds the column, which a phone does not have. */
+	.diag-tool.is-none {
+		display: none;
+	}
+	.diag-field {
+		flex-basis: calc(50% - var(--s3));
+		max-width: none;
+	}
+	.diag-field-q {
+		flex-basis: 100%;
 	}
 	.diag-facts {
 		grid-template-columns: minmax(0, 1fr);

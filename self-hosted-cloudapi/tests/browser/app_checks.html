@@ -10,10 +10,28 @@
 <form id="plain" method="post" action="/elsewhere">
   <button type="submit" id="plain-btn">Go</button>
 </form>
+<form id="filters" method="get" action="/app/diagnostics" data-autosubmit>
+  <select name="class" id="class-select"><option value="">Any</option><option value="model">Model mismatch</option></select>
+</form>
+<form id="plain-filters" method="get" action="/elsewhere">
+  <select name="x" id="plain-select"><option value="">Any</option><option value="y">Y</option></select>
+</form>
+<button type="button" id="copy-brief" data-copy-url="/brief.md?period=all" hidden>Copy for agent</button>
+<button type="button" id="copy-missing" data-copy-url="/missing.md" hidden>Copy for agent</button>
+<p id="copy-status" role="status"></p>
 <p><code id="api-url">https://cloud.example.test</code>
   <button type="button" class="btn ghost copy-btn" data-copy="#api-url" hidden>Copy</button></p>
 
 <script>
+  window.__fetched = []
+  window.fetch = function (url, opts) {
+    window.__fetched.push([url, opts && opts.credentials])
+    var ok = url.indexOf("missing") < 0
+    return Promise.resolve({ ok: ok, status: ok ? 200 : 404, text: function () { return Promise.resolve("# Brief\n" + url) } })
+  }
+  // The plain path: no ClipboardItem, so the text is fetched, then written.
+  try { delete window.ClipboardItem } catch (e) {}
+  window.ClipboardItem = undefined
   window.__copied = []
   try {
     Object.defineProperty(navigator, "clipboard", {
@@ -46,12 +64,34 @@ window.addEventListener("load", function () {
   document.getElementById("plain-btn").click()
   check("a form without data-confirm is not asked about", asked.length === 0 && submitted.join() === "del,plain")
 
+  var autoSubmitted = []
+  document.addEventListener("submit", function (e) { autoSubmitted.push(e.target.id) }, true)
+  var sel = document.getElementById("class-select")
+  sel.value = "model"
+  sel.dispatchEvent(new Event("change", { bubbles: true }))
+  check("a list in a data-autosubmit form submits it", autoSubmitted.indexOf("filters") >= 0)
+  var plainSel = document.getElementById("plain-select")
+  plainSel.value = "y"
+  plainSel.dispatchEvent(new Event("change", { bubbles: true }))
+  check("a form without data-autosubmit does not submit on change", autoSubmitted.indexOf("plain-filters") < 0)
+
+  var brief = document.getElementById("copy-brief")
+  var missing = document.getElementById("copy-missing")
+  check("copy-for-agent button revealed by the script", brief.hidden === false)
+  brief.click()
+  missing.click()
+
   var copy = document.querySelector(".copy-btn")
   check("copy button revealed by the script", copy.hidden === false)
   copy.click()
   setTimeout(function () {
     check("copies the referenced text", window.__copied[0] === "https://cloud.example.test")
     check("says it did", copy.textContent === "Copied")
+    check("fetches the brief with the session cookie", window.__fetched.some(function (f) { return f[0] === "/brief.md?period=all" && f[1] === "same-origin" }))
+    check("copies the fetched brief", window.__copied.indexOf("# Brief\n/brief.md?period=all") >= 0)
+    check("the brief button says it copied", brief.textContent === "Copied")
+    check("a failed fetch says so and points at the download", missing.textContent === "Copy failed, use Download")
+    check("the result is announced", /copied|failed/i.test(document.getElementById("copy-status").textContent))
     var pre = document.createElement("pre")
     pre.id = "results"
     pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
