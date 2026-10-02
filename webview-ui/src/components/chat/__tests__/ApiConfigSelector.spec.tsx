@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
+import { render, screen, fireEvent, waitFor, within } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
 
 import { ApiConfigSelector } from "../ApiConfigSelector"
@@ -438,14 +438,27 @@ describe("ApiConfigSelector", () => {
 		fireEvent.change(searchInput, { target: { value: "Config" } })
 
 		// Pin a config
-		const config2Row = screen.getByText("Config 2").closest("div")
-		const pinButton = config2Row?.querySelector("button")
-		if (pinButton) {
-			fireEvent.click(pinButton)
-		}
+		const config2Row = screen.getByText("Config 2").closest(".group") as HTMLElement
+		fireEvent.click(within(config2Row).getByRole("button", { name: "chat:pin" }))
+		expect(mockTogglePinnedApiConfig).toHaveBeenCalledWith("config2")
 
 		// Search value should be maintained
 		expect(searchInput.value).toBe("Config")
+	})
+
+	test("each config row is a real button and its pin button is reachable with Tab", () => {
+		render(<ApiConfigSelector {...defaultProps} />)
+		fireEvent.click(screen.getByTestId("dropdown-trigger"))
+
+		const config2Row = screen.getByText("Config 2").closest(".group") as HTMLElement
+		const pinButton = within(config2Row).getByRole("button", { name: "chat:pin" })
+		expect(pinButton).not.toHaveAttribute("tabindex", "-1")
+		// Shown on hover and when anything in the row has keyboard focus.
+		expect(pinButton).toHaveClass("opacity-0", "group-hover:opacity-100", "group-has-focus-visible:opacity-100")
+
+		const selectButton = within(config2Row).getByRole("button", { name: /Config 2/ })
+		fireEvent.click(selectButton)
+		expect(defaultProps.onChange).toHaveBeenCalledWith("config2")
 	})
 
 	test("pinned configs remain fixed at top while unpinned configs scroll", () => {

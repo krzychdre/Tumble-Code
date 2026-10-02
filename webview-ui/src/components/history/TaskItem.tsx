@@ -21,8 +21,8 @@ interface TaskItemProps {
 }
 
 /**
- * One history row. §2.9: the row is a real <button> — keyboard-focusable,
- * Enter/Space activate it natively — instead of a div with onClick.
+ * One history row. §2.9: the row is a real <button> (keyboard-focusable,
+ * Enter/Space activate it natively) instead of a div with onClick.
  */
 const TaskItem = ({
 	item,
@@ -104,7 +104,7 @@ const TaskItem = ({
 							</div>
 						)}
 						{/* Arrow icon that appears on hover */}
-						<ArrowRight className="size-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+						<ArrowRight className="size-4 shrink-0 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-has-focus-visible:opacity-100 transition-opacity" />
 					</div>
 
 					{showWorkspace && item.workspace && (

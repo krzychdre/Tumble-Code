@@ -31,8 +31,9 @@ export const OpenMarkdownPreviewButton = memo(({ markdown, className }: OpenMark
 	return (
 		<StandardTooltip content={t("chat:markdownPreview.open")}>
 			<button
+				type="button"
 				onClick={handleClick}
-				className={`opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer ${className ?? ""}`}
+				className={`opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 transition-opacity cursor-pointer focus-ring ${className ?? ""}`}
 				aria-label={t("chat:markdownPreview.openAriaLabel")}>
 				<SquareArrowOutUpRight className="w-4 h-4" />
 			</button>

@@ -48,6 +48,18 @@ describe("TaskItemFooter", () => {
 		expect(screen.getByTestId("export")).toBeInTheDocument()
 	})
 
+	it("the hover-only action buttons also show while the row or a button has keyboard focus", () => {
+		render(<TaskItemFooter item={mockItem} variant="full" />)
+
+		const actions = screen.getByTestId("copy-prompt-button").parentElement
+		expect(actions).toHaveClass(
+			"opacity-0",
+			"group-hover:opacity-100",
+			"group-focus-visible:opacity-100",
+			"group-has-focus-visible:opacity-100",
+		)
+	})
+
 	it("hides export button in compact variant", () => {
 		render(<TaskItemFooter item={mockItem} variant="compact" />)
 

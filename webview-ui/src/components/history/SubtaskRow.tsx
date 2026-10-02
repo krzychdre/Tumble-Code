@@ -49,7 +49,7 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 				<StandardTooltip content={item.task} delay={600}>
 					<span className="text-sm line-clamp-1">{item.task}</span>
 				</StandardTooltip>
-				<ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+				<ArrowRight className="size-3 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
 			</button>
 
 			{/* Nested subtask collapsible section */}

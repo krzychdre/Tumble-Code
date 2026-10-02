@@ -12,7 +12,7 @@ interface ReasoningBlockProps {
 	/** Epoch-ms timestamp marking when the thinking block started. */
 	ts: number
 	/**
-	 * Epoch-ms timestamp marking when the thinking block finished — the `ts` of
+	 * Epoch-ms timestamp marking when the thinking block finished: the `ts` of
 	 * the next message in the conversation. Undefined while thinking is still
 	 * the latest message, in which case no duration is shown yet. Using the
 	 * next message's timestamp keeps the duration consistent with every other
@@ -40,23 +40,28 @@ export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 
 	return (
 		<div className="group">
-			<div
-				className="flex items-center justify-between mb-2.5 pr-2 cursor-pointer select-none"
+			{/* A real button, so the header is reachable with Tab; the chevron shows on
+			    hover and while the header has keyboard focus. */}
+			<button
+				type="button"
+				aria-expanded={!isCollapsed}
+				className="flex w-full items-center justify-between mb-2.5 pr-2 cursor-pointer select-none text-left focus-ring"
 				onClick={handleToggle}>
-				<div className="flex items-center gap-2">
+				<span className="flex items-center gap-2">
 					<Lightbulb className="w-4" />
 					<span className="font-bold text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
 					<BlockTimestamp startTs={ts} endTs={endTs} live />
-				</div>
-				<div className="flex items-center gap-2">
+				</span>
+				<span className="flex items-center gap-2">
 					<ChevronUp
 						className={cn(
-							"w-4 transition-all opacity-0 group-hover:opacity-100",
+							"w-4 transition-all opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100",
 							isCollapsed && "-rotate-180",
 						)}
+						aria-hidden="true"
 					/>
-				</div>
-			</div>
+				</span>
+			</button>
 			{(content?.trim()?.length ?? 0) > 0 && !isCollapsed && (
 				<div
 					ref={contentRef}

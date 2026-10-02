@@ -200,16 +200,21 @@ export const ErrorRow = memo(
 		if (type === "diff_error" && expandable) {
 			return (
 				<div className="mt-0 overflow-hidden mb-2 pr-1 group">
+					{/* The title is a real button for keyboard users; its click bubbles to the
+					    header, so a click anywhere on the header still toggles. */}
 					<div
 						className="font-sm text-vscode-editor-foreground flex items-center justify-between cursor-pointer"
 						onClick={handleToggleExpand}>
-						<div className="flex items-center gap-2 flex-grow  text-vscode-errorForeground">
+						<button
+							type="button"
+							aria-expanded={isExpanded}
+							className="flex items-center gap-2 flex-grow text-left cursor-pointer text-vscode-errorForeground focus-ring">
 							<MessageCircleWarning className="w-4" />
 							<span className="text-vscode-errorForeground font-bold grow cursor-pointer">
 								{errorTitle}
 							</span>
-						</div>
-						<div className="flex items-center transition-opacity opacity-0 group-hover:opacity-100">
+						</button>
+						<div className="flex items-center transition-opacity opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100">
 							{showCopyButton && (
 								<Button
 									variant="icon"
@@ -246,7 +251,7 @@ export const ErrorRow = memo(
 								{docsURL && (
 									<a
 										href={docsURL}
-										className="text-sm flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100"
+										className="text-sm flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100"
 										onClick={(e) => {
 											e.preventDefault()
 											// Handle internal navigation to settings
