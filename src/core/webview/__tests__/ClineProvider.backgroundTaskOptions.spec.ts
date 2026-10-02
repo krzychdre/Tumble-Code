@@ -60,7 +60,6 @@ function makeProvider(opts: {
 		})),
 		getApiConfigurationForMode: vi.fn(async () => opts.modeProfile),
 		subagentRegistry: { register },
-		log: vi.fn(),
 		taskCreationCallback: vi.fn(),
 	}
 	const provider = new BackgroundTaskRunner(host as unknown as BackgroundTaskHost)

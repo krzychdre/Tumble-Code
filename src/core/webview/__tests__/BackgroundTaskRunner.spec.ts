@@ -7,6 +7,7 @@ import { RooCodeEventName, type OrganizationAllowList, type ProviderSettings } f
 
 import { Task } from "../../task/Task"
 import { OrganizationAllowListViolationError } from "../../../utils/errors"
+import { logger } from "../../../utils/logging"
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
 
 /**
@@ -84,7 +85,8 @@ const ACTIVE: ProviderSettings = { apiProvider: "anthropic", apiModelId: "claude
 function makeHost(overrides: Partial<BackgroundTaskHost> = {}) {
 	const register = vi.fn((summary: { taskId: string }) => events.push(`register:${summary.taskId}`))
 	const postMessageToWebview = vi.fn(async () => {})
-	const log = vi.fn()
+	const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+	loggerWarnSpy.mockClear()
 	const provider = { name: "provider" }
 	const onCreated = vi.fn()
 	const host: BackgroundTaskHost = {
@@ -103,10 +105,9 @@ function makeHost(overrides: Partial<BackgroundTaskHost> = {}) {
 		getMemoryWriterApiConfigId: vi.fn(() => undefined),
 		getProfile: vi.fn(),
 		postMessageToWebview,
-		log,
 		...overrides,
 	}
-	return { host, register, postMessageToWebview, log, provider, onCreated }
+	return { host, register, postMessageToWebview, loggerWarnSpy, provider, onCreated }
 }
 
 function lastTask(): FakeTask {
@@ -308,7 +309,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 	})
 
 	it("a failing directory cleanup is logged, never thrown", async () => {
-		const { host, log } = makeHost()
+		const { host, loggerWarnSpy } = makeHost()
 		const runner = new BackgroundTaskRunner(host)
 		rm.mockRejectedValueOnce(new Error("EBUSY"))
 		const task = await started(runner)
@@ -318,7 +319,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 
 		await expect(pending).resolves.toMatchObject({ completed: true })
 		await vi.waitFor(() =>
-			expect(log).toHaveBeenCalledWith(
+			expect(loggerWarnSpy).toHaveBeenCalledWith(
 				`[cleanupBackgroundTaskFiles] failed to remove task directory for ${task.taskId}: EBUSY`,
 			),
 		)
@@ -337,7 +338,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 		answerFor: (config: ProviderSettings) => Promise<string>
 		noSingleCompletion?: boolean
 	}) {
-		const { host, postMessageToWebview, log } = makeHost({
+		const { host, postMessageToWebview, loggerWarnSpy } = makeHost({
 			getMemoryWriterApiConfigId: vi.fn(() => (opts.writerProfile ? "writer" : undefined)),
 			getProfile: vi.fn(async () => ({ name: "writer", ...opts.writerProfile! })),
 		})
@@ -362,7 +363,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 			configs,
 			disposed,
 			postMessageToWebview,
-			log,
+			loggerWarnSpy,
 		}
 	}
 
@@ -381,7 +382,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 	})
 
 	it("a failing writer profile is retried once on the foreground profile, and logged", async () => {
-		const { query, configs, log } = queryWith({
+		const { query, configs, loggerWarnSpy } = queryWith({
 			writerProfile: WRITER,
 			answerFor: async (config) => {
 				if (config.apiModelId === WRITER.apiModelId) throw new Error("connection refused")
@@ -390,7 +391,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 		})
 		await expect(query("S", "U", new AbortController().signal)).resolves.toBe("KEEP")
 		expect(configs).toEqual([WRITER, ACTIVE])
-		expect(log).toHaveBeenCalledWith(
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			"[memoryWriterQuery] memory writer profile failed, retrying on foreground: connection refused",
 		)
 	})
@@ -428,7 +429,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 	})
 
 	it("a stale writer profile falls back to the foreground profile and logs why", async () => {
-		const { host, log } = makeHost({
+		const { host, loggerWarnSpy } = makeHost({
 			getMemoryWriterApiConfigId: vi.fn(() => "stale"),
 			getProfile: vi.fn(async () => {
 				throw new Error("not found")
@@ -442,7 +443,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 		})
 		await new BackgroundTaskRunner(host).memoryWriterQuery(ACTIVE)("S", "U", new AbortController().signal)
 		expect(configs).toEqual([ACTIVE])
-		expect(log).toHaveBeenCalledWith(
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			"[memoryWriterQuery] failed to load writer profile stale, falling back to foreground: not found",
 		)
 	})

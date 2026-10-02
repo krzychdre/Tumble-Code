@@ -3,6 +3,7 @@
 import type { HistoryItem } from "@roo-code/types"
 
 import { ClineProvider } from "../ClineProvider"
+import { logger } from "../../../utils/logging"
 
 const loadSubagentSummaries = vi.fn()
 
@@ -27,7 +28,6 @@ describe("ClineProvider.rehydrateSubagents", () => {
 			},
 			getCurrentTask: vi.fn().mockReturnValue({ taskId: "parent-1" }),
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
-			log: vi.fn(),
 			...overrides,
 		}
 	}
@@ -89,9 +89,11 @@ describe("ClineProvider.rehydrateSubagents", () => {
 	it("survives an unreadable sidecar — restoring the parent must not depend on it", async () => {
 		loadSubagentSummaries.mockRejectedValue(new Error("ENOENT"))
 		const fakeThis = makeFakeThis()
+		const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 		await expect(rehydrate(fakeThis, historyItem(["child-a"]))).resolves.toBeUndefined()
-		expect(fakeThis.log).toHaveBeenCalledWith(expect.stringContaining("[rehydrateSubagents]"))
+		expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringContaining("[rehydrateSubagents]"))
 		expect(fakeThis.postMessageToWebview).not.toHaveBeenCalled()
+		loggerWarnSpy.mockRestore()
 	})
 })

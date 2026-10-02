@@ -20,6 +20,7 @@ import type { ContextProxy } from "../config/ContextProxy"
 import type { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import type { Task } from "../task/Task"
 import type { TaskHistoryStore } from "../task-persistence"
+import { logger } from "../../utils/logging"
 
 /**
  * What the mode and profile binding needs from its provider. The member names
@@ -52,7 +53,6 @@ export interface ModeProfileBindingHost {
 	clearStorageError(): void
 	/** A profile save failed: show the persistent storage-error banner. */
 	reportStorageError(error: unknown): void
-	log(message: string): void
 }
 
 /**
@@ -187,7 +187,7 @@ export class ModeProfileBinding {
 				task.setTaskMode(newMode)
 			} catch (error) {
 				// If persistence fails, log the error but don't update the in-memory state.
-				this.host.log(
+				logger.warn(
 					`Failed to persist mode switch for task ${task.taskId}: ${error instanceof Error ? error.message : String(error)}`,
 				)
 
@@ -270,7 +270,7 @@ export class ModeProfileBinding {
 
 			if (!modeExists) {
 				// Mode no longer exists, fall back to default mode.
-				this.host.log(
+				logger.warn(
 					`Mode '${historyItem.mode}' from history no longer exists. Falling back to default mode '${defaultModeSlug}'.`,
 				)
 				historyItem.mode = defaultModeSlug
@@ -300,7 +300,7 @@ export class ModeProfileBinding {
 							await this.host.activateProviderProfile({ name: binding.name })
 						} catch (error) {
 							// Log the error but continue with task restoration.
-							this.host.log(
+							logger.warn(
 								`Failed to restore API configuration for mode '${historyItem.mode}': ${
 									error instanceof Error ? error.message : String(error)
 								}. Continuing with default configuration.`,
@@ -329,7 +329,7 @@ export class ModeProfileBinding {
 					)
 				} catch (error) {
 					// Log the error but continue with task restoration.
-					this.host.log(
+					logger.warn(
 						`Failed to restore API configuration '${historyItem.apiConfigName}' for task: ${
 							error instanceof Error ? error.message : String(error)
 						}. Continuing with current configuration.`,
@@ -337,12 +337,12 @@ export class ModeProfileBinding {
 				}
 			} else {
 				// Profile no longer exists, log warning but continue
-				this.host.log(
+				logger.warn(
 					`Provider profile '${historyItem.apiConfigName}' from history no longer exists. Using current configuration.`,
 				)
 			}
 		} else if (historyItem.apiConfigName && skipProfileRestoreFromHistory) {
-			this.host.log(
+			logger.info(
 				`Skipping restore of provider profile '${historyItem.apiConfigName}' for task ${historyItem.id} in CLI runtime.`,
 			)
 		}
@@ -392,7 +392,7 @@ export class ModeProfileBinding {
 			})
 			return { apiConfiguration: profile, name }
 		} catch (error) {
-			this.host.log(
+			logger.warn(
 				`[getApiConfigurationForMode] failed for mode "${mode}": ${
 					error instanceof Error ? error.message : String(error)
 				}`,
@@ -489,7 +489,7 @@ export class ModeProfileBinding {
 			this.host.clearStorageError()
 			return id
 		} catch (error) {
-			this.host.log(
+			logger.error(
 				`Error create new api configuration: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 			)
 
@@ -519,7 +519,7 @@ export class ModeProfileBinding {
 			}
 		} catch (error) {
 			// If persistence fails, log the error but don't fail the profile switch.
-			this.host.log(
+			logger.warn(
 				`Failed to persist provider profile switch for task ${task.taskId}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,

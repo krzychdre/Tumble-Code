@@ -8,6 +8,7 @@ import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../../task-persis
 import { ShadowCheckpointService } from "../../../services/checkpoints/ShadowCheckpointService"
 import { TaskHistoryGateway, type TaskHistoryGatewayHost } from "../TaskHistoryGateway"
 import type { MockInstance } from "vitest"
+import { logger } from "../../../utils/logging"
 
 vi.mock("fs/promises", () => {
 	const mocks = {
@@ -93,7 +94,6 @@ const makeHost = () => {
 		},
 		contextProxy,
 		cwd: "/workspace",
-		log: vi.fn(),
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		postStateToWebviewWithoutClineMessages: vi.fn().mockResolvedValue(undefined),
@@ -305,6 +305,7 @@ describe("TaskHistoryGateway", () => {
 		it("posts once per distinct error and clears only when an error was set", async () => {
 			const { gateway, host } = await ready()
 			host.postStateToWebviewWithoutClineMessages.mockClear()
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			gateway.clearStorageError()
 			expect(host.postStateToWebviewWithoutClineMessages).not.toHaveBeenCalled()
@@ -313,16 +314,18 @@ describe("TaskHistoryGateway", () => {
 			gateway.reportStorageError("Ctx", new Error("full"))
 			expect(gateway.storageErrorMessage).toBe("Ctx: full")
 			expect(host.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
-			expect(host.log).toHaveBeenCalledWith("[storage error] Ctx: full")
+			expect(loggerErrorSpy).toHaveBeenCalledWith("[storage error] Ctx: full")
 
 			gateway.clearStorageError()
 			expect(gateway.storageErrorMessage).toBe("")
 			expect(host.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(2)
+			loggerErrorSpy.mockRestore()
 		})
 
 		it("falls back to a partial state push when the full push rejects", async () => {
 			const { gateway, host } = await ready()
 			host.postStateToWebviewWithoutClineMessages.mockRejectedValue(new Error("store down"))
+			const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 			gateway.reportStorageError("Ctx", "plain string")
 
@@ -332,7 +335,8 @@ describe("TaskHistoryGateway", () => {
 					state: { storageErrorMessage: "Ctx: plain string" },
 				}),
 			)
-			expect(host.log).toHaveBeenCalledWith("[storage error] Failed to post full state: store down")
+			expect(loggerWarnSpy).toHaveBeenCalledWith("[storage error] Failed to post full state: store down")
+			loggerWarnSpy.mockRestore()
 		})
 	})
 

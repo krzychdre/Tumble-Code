@@ -194,7 +194,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			log: vi.fn(),
 			updateTaskHistory,
 			getHistoryItem: vi.fn().mockResolvedValue({ id: "parent-1", status: "active", awaitingChildId: undefined }),
 		}
@@ -218,7 +217,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			log: vi.fn(),
 			updateTaskHistory,
 			getCurrentTask: vi.fn().mockReturnValue(undefined),
 			clearCurrentTask: vi.fn().mockResolvedValue(undefined),
@@ -257,7 +255,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			log: vi.fn(),
 			updateTaskHistory,
 			getHistoryItem: vi
 				.fn()
@@ -278,7 +275,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			log: vi.fn(),
 			updateTaskHistory,
 			getHistoryItem: vi
 				.fn()
@@ -305,7 +301,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 			const fakeProvider: any = {
 				contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-				log: vi.fn(),
 				updateTaskHistory,
 				getHistoryItem: vi.fn().mockResolvedValue({
 					id: "parent-1",

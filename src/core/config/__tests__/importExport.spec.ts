@@ -1151,7 +1151,7 @@ describe("importExport", () => {
 				const showInfoMessageSpy = vi
 					.spyOn(vscode.window, "showInformationMessage")
 					.mockResolvedValue(undefined)
-				const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+				const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 				await importSettingsWithFeedback(
 					{
@@ -1171,7 +1171,7 @@ describe("importExport", () => {
 					expect.stringContaining("See Developer Tools console for details."),
 				)
 				// Should log full details to console
-				expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect(loggerWarnSpy).toHaveBeenCalledWith(
 					"Settings import completed with warnings:",
 					expect.arrayContaining([expect.stringContaining("problematic-profile")]),
 				)
@@ -1185,7 +1185,7 @@ describe("importExport", () => {
 
 				showWarningMessageSpy.mockRestore()
 				showInfoMessageSpy.mockRestore()
-				consoleWarnSpy.mockRestore()
+				loggerWarnSpy.mockRestore()
 			})
 
 			it("uses generic 'item' wording when only global settings have issues", async () => {
@@ -1216,7 +1216,7 @@ describe("importExport", () => {
 				])
 				const mockProvider = { settingsImportedAt: 0, postStateToWebview: vi.fn().mockResolvedValue(undefined) }
 				const showWarningMessageSpy = vi.spyOn(vscode.window, "showWarningMessage").mockResolvedValue(undefined)
-				const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+				const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 				await importSettingsWithFeedback(
 					{
@@ -1232,12 +1232,12 @@ describe("importExport", () => {
 					expect.stringContaining("1 item had issues during import."),
 				)
 				expect(showWarningMessageSpy).not.toHaveBeenCalledWith(expect.stringContaining("profile had issues"))
-				expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect(loggerWarnSpy).toHaveBeenCalledWith(
 					"Settings import completed with warnings:",
 					expect.arrayContaining([expect.stringContaining("globalSettings.requestDelaySeconds")]),
 				)
 				showWarningMessageSpy.mockRestore()
-				consoleWarnSpy.mockRestore()
+				loggerWarnSpy.mockRestore()
 			})
 
 			it("clears settingsImportedAt after posting the imported state so later launches do not replay it", async () => {
@@ -1489,7 +1489,7 @@ describe("importExport", () => {
 				}
 
 				const showWarningMessageSpy = vi.spyOn(vscode.window, "showWarningMessage").mockResolvedValue(undefined)
-				const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+				const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 				await importSettingsWithFeedback(
 					{
@@ -1506,7 +1506,7 @@ describe("importExport", () => {
 					expect.stringContaining("2 items had issues during import."),
 				)
 				// Should log full details to console
-				expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect(loggerWarnSpy).toHaveBeenCalledWith(
 					"Settings import completed with warnings:",
 					expect.arrayContaining([
 						expect.stringContaining("problematic-profile-1"),
@@ -1515,7 +1515,7 @@ describe("importExport", () => {
 				)
 
 				showWarningMessageSpy.mockRestore()
-				consoleWarnSpy.mockRestore()
+				loggerWarnSpy.mockRestore()
 			})
 		})
 	})

@@ -1,13 +1,23 @@
 // npx vitest run __tests__/clear-current-task-delegation.spec.ts
 
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { DelegationService } from "../core/webview/DelegationService"
 import { TaskSlot } from "../core/webview/TaskSlot"
+import { logger } from "../utils/logging"
 
 // The delegation-repair half of the old removeClineFromStack (S1: TaskSlot.clear).
 // The repair transition itself lives in DelegationService (CORE-R2); these
 // tests drive it through the slot exactly like the provider does.
 describe("TaskSlot.clear() delegation awareness", () => {
+	beforeEach(() => {
+		vi.spyOn(logger, "info").mockImplementation(() => {})
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
 	/**
 	 * Helper to build a minimal slot host mock with a single task in the slot.
 	 * The task's parentTaskId and taskId are configurable.
@@ -39,7 +49,6 @@ describe("TaskSlot.clear() delegation awareness", () => {
 		const provider = {
 			currentTask: childTask as any,
 			taskEventListeners: new Map(),
-			log: vi.fn(),
 			getHistoryItem,
 			updateTaskHistory,
 			// The repair transition lives in DelegationService (CORE-R2); it
@@ -49,7 +58,6 @@ describe("TaskSlot.clear() delegation awareness", () => {
 		provider.delegation = new DelegationService(provider as any)
 
 		const slot = new TaskSlot({
-			log: (message) => provider.log(message),
 			getState: vi.fn().mockResolvedValue({ mode: "code" }),
 			performPreparationTasks: vi.fn().mockResolvedValue(undefined),
 			removeTaskEventListeners: (task) => {
@@ -105,7 +113,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 		)
 
 		// Log the repair
-		expect(provider.log).toHaveBeenCalledWith(expect.stringContaining("Repaired parent parent-1 metadata"))
+		expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("Repaired parent parent-1 metadata"))
 	})
 
 	it("does NOT modify parent metadata when the task has no parentTaskId (non-delegated)", async () => {
@@ -191,7 +199,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 		expect(childTask.abortTask).toHaveBeenCalledWith(true)
 
 		// Error should be logged as non-fatal
-		expect(provider.log).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith(
 			expect.stringContaining("Failed to repair parent metadata for parent-1 (non-fatal)"),
 		)
 
@@ -200,9 +208,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 	})
 
 	it("handles an empty slot gracefully", async () => {
-		const log = vi.fn()
 		const slot = new TaskSlot({
-			log,
 			getState: vi.fn().mockResolvedValue({ mode: "code" }),
 			performPreparationTasks: vi.fn(),
 			removeTaskEventListeners: vi.fn(),
@@ -282,13 +288,11 @@ describe("TaskSlot.clear() delegation awareness", () => {
 		const provider = {
 			currentTask: taskB as any,
 			taskEventListeners: new Map(),
-			log: vi.fn(),
 			getHistoryItem,
 			updateTaskHistory,
 		}
 
 		const slot = new TaskSlot({
-			log: (message) => provider.log(message),
 			getState: vi.fn().mockResolvedValue({ mode: "code" }),
 			performPreparationTasks: vi.fn(),
 			removeTaskEventListeners: vi.fn(),

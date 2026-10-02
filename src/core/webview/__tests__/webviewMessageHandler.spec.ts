@@ -74,7 +74,6 @@ const mockClineProvider = {
 		setValue: vi.fn(),
 		getValue: vi.fn(),
 	},
-	log: vi.fn(),
 	postStateToWebview: vi.fn(),
 	getCurrentTask: vi.fn(),
 	getTaskWithId: vi.fn(),
@@ -879,7 +878,6 @@ describe("webviewMessageHandler - downloadErrorDiagnostics", () => {
 				model: "test-model",
 				details: "Sample error details",
 			},
-			log: expect.any(Function),
 		})
 	})
 

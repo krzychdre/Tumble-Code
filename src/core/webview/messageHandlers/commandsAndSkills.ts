@@ -20,6 +20,7 @@ import {
 } from "../skillsMessageHandler"
 import { type HandlerContext, serializeError, logAndToast } from "./context"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 const getCurrentMode = async (ctx: HandlerContext): Promise<string> => {
 	const { provider } = ctx
@@ -29,7 +30,7 @@ const getCurrentMode = async (ctx: HandlerContext): Promise<string> => {
 		try {
 			return await currentTask.getTaskMode()
 		} catch (error) {
-			provider.log(`Error resolving current task mode for command discovery: ${serializeError(error)}`)
+			logger.warn(`Error resolving current task mode for command discovery: ${serializeError(error)}`)
 		}
 	}
 
@@ -39,7 +40,7 @@ const getCurrentMode = async (ctx: HandlerContext): Promise<string> => {
 			return state.mode
 		}
 	} catch (error) {
-		provider.log(`Error resolving global mode for command discovery: ${serializeError(error)}`)
+		logger.warn(`Error resolving global mode for command discovery: ${serializeError(error)}`)
 	}
 
 	return defaultModeSlug
@@ -117,7 +118,7 @@ export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = 
 			const commandList = await getDiscoveredCommands(ctx)
 			await provider.postMessageToWebview({ type: "commands", commands: commandList })
 		} catch (error) {
-			provider.log(`Error fetching commands: ${serializeError(error)}`)
+			logger.error(`Error fetching commands: ${serializeError(error)}`)
 			await provider.postMessageToWebview({ type: "commands", commands: [] })
 		}
 	},
@@ -176,7 +177,7 @@ export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = 
 					// Delete the command file
 					await fs.unlink(command.filePath)
 					invalidateRooDirectoryCache("commands")
-					provider.log(`Deleted command file: ${command.filePath}`)
+					logger.info(`Deleted command file: ${command.filePath}`)
 				} else {
 					vscode.window.showErrorMessage(t("common:errors.command_not_found", { name: message.text }))
 				}
@@ -193,7 +194,7 @@ export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = 
 			const fileName = message.text // Custom filename from user input
 
 			if (!source) {
-				provider.log("Missing source for createCommand")
+				logger.warn("Missing source for createCommand")
 				return
 			}
 
@@ -283,7 +284,7 @@ export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = 
 			await fs.writeFile(filePath, templateContent, "utf8")
 			// The list below must include the new file even if the watcher has not reported it yet.
 			invalidateRooDirectoryCache("commands")
-			provider.log(`Created new command file: ${filePath}`)
+			logger.info(`Created new command file: ${filePath}`)
 
 			// Open the new file in the editor
 			openFile(filePath)

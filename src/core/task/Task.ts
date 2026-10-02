@@ -513,7 +513,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			fallback: this.api,
 			onFallback: ({ error }) => {
 				const message = error instanceof Error ? error.message : String(error)
-				this.providerRef.deref()?.log(`[condense] background model failed, falling back to main: ${message}`)
+				logger.warn(`[condense] background model failed, falling back to main: ${message}`)
 			},
 		})
 		this._condenseApiHandlerConfigId = configId
@@ -566,7 +566,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const fgWindow = this.api.getModel().info.contextWindow
 				if (typeof bgWindow === "number" && typeof fgWindow === "number" && bgWindow > 0 && fgWindow > 0) {
 					if (bgWindow < fgWindow * 0.25) {
-						provider?.log(
+						logger.warn(
 							`[condense] background profile "${_name ?? id}" has a context window of ${bgWindow} ` +
 								`tokens vs the foreground model's ${fgWindow}. Condense fires near the ` +
 								`foreground window, so this background model will routinely reject the ` +
@@ -585,7 +585,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 			return handler
 		} catch (error) {
-			provider?.log(
+			logger.warn(
 				`[condense] failed to load background profile ${id}, falling back to foreground: ${
 					error instanceof Error ? error.message : String(error)
 				}`,

@@ -70,7 +70,6 @@ describe("webviewMessageHandler - Edit Message with Timestamp Fallback", () => {
 				setValue: vi.fn(),
 				globalStorageUri: { fsPath: "/mock/storage" },
 			},
-			log: vi.fn(),
 			getState: vi.fn().mockResolvedValue({
 				maxImageFileSize: 5,
 				maxTotalImageSize: 20,

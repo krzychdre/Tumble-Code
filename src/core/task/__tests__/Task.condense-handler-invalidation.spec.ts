@@ -189,7 +189,6 @@ describe("Task — condenseApiHandler (background model + fallback)", () => {
 			getValue: vi.fn((key: string) =>
 				key === "autoCondenseContextApiConfigId" ? opts.condenseProfileId : undefined,
 			),
-			log: vi.fn(),
 			on: vi.fn(),
 			off: vi.fn(),
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),

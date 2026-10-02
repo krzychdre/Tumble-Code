@@ -5,6 +5,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import type { Mode } from "../../../shared/modes"
 import { serializeError } from "./context"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const promptsAndModesHandlers: DomainHandlerMap<"promptsAndModes"> = {
 	customInstructions: async (ctx, message) => {
@@ -63,7 +64,7 @@ export const promptsAndModesHandlers: DomainHandlerMap<"promptsAndModes"> = {
 			const modes = await provider.getModes()
 			await provider.postMessageToWebview({ type: "modes", modes })
 		} catch (error) {
-			provider.log(`Error fetching modes: ${serializeError(error)}`)
+			logger.error(`Error fetching modes: ${serializeError(error)}`)
 			await provider.postMessageToWebview({ type: "modes", modes: [] })
 		}
 	},

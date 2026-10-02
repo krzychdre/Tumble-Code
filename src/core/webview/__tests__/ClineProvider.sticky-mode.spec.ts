@@ -920,7 +920,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
 
 			// Mock logger.error to suppress error output
-			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Clear previous mock calls to isolate this test
 			vi.mocked(mockContext.globalState.update).mockClear()
@@ -937,7 +937,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			// The task's mode should NOT have been updated since the error occurred first
 			expect(mockTask._taskMode).toBe("code")
 
-			consoleErrorSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 
 		it("should handle updateTaskHistory failures", async () => {
@@ -964,13 +964,13 @@ describe("ClineProvider - Sticky Mode", () => {
 			vi.spyOn(provider, "updateTaskHistory").mockRejectedValue(new Error("Update failed"))
 
 			// Mock logger.error
-			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// The updateTaskHistory failure will cause handleModeSwitch to throw
 			// This is the actual behavior based on the test failure
 			await expect(provider.handleModeSwitch("architect")).rejects.toThrow("Update failed")
 
-			consoleErrorSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 	})
 

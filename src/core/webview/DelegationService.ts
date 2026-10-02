@@ -35,7 +35,6 @@ export interface DelegationHost {
 	/** Persists the item and broadcasts it to the webview. */
 	updateTaskHistory(item: HistoryItem): Promise<void>
 	postMessageToWebview(message: ExtensionMessage): Promise<void>
-	log(message: string): void
 	getCurrentTask(): Task | undefined
 	getCurrentTaskStack(): string[]
 	clearCurrentTask(options?: { skipDelegationRepair?: boolean }): Promise<void>
@@ -141,7 +140,7 @@ export class DelegationService {
 				}
 			}
 		} catch (error) {
-			this.host.log(
+			logger.warn(
 				`[delegateParentAndOpenChild] Error flushing pending tool results (non-fatal): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
@@ -154,7 +153,7 @@ export class DelegationService {
 		try {
 			await this.host.clearCurrentTask({ skipDelegationRepair: true })
 		} catch (error) {
-			this.host.log(
+			logger.warn(
 				`[delegateParentAndOpenChild] Error during parent disposal (non-fatal): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
@@ -169,7 +168,7 @@ export class DelegationService {
 		try {
 			await this.host.handleModeSwitch(mode)
 		} catch (e) {
-			this.host.log(
+			logger.warn(
 				`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
 					(e as Error)?.message ?? String(e)
 				}`,
@@ -229,7 +228,7 @@ export class DelegationService {
 				}
 			}
 		} catch (err) {
-			this.host.log(
+			logger.error(
 				`[delegateParentAndOpenChild] Failed to persist parent metadata for ${parentTaskId} -> ${child.taskId}: ${
 					(err as Error)?.message ?? String(err)
 				}`,
@@ -292,7 +291,7 @@ export class DelegationService {
 				return { dropLineage: false, childHistory }
 			}
 
-			this.host.log(
+			logger.info(
 				`[cancelTask] Detached delegated parent ${parentTaskId}: delegated → active (child ${childTaskId} cancelled)`,
 			)
 			// Clear any stale fail-closed entry from a prior failed cancel attempt.
@@ -308,14 +307,14 @@ export class DelegationService {
 			try {
 				await this.host.updateTaskHistory(standalone)
 			} catch (historyError) {
-				this.host.log(
+				logger.error(
 					`[cancelTask] Failed to persist standalone child state for ${childTaskId}: ${
 						historyError instanceof Error ? historyError.message : String(historyError)
 					}`,
 				)
 				throw historyError
 			}
-			this.host.log(
+			logger.error(
 				`[cancelTask] Failed to detach delegated parent for ${childTaskId}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
@@ -351,21 +350,21 @@ export class DelegationService {
 			const parentHistory = await this.host.getHistoryItem(parentTaskId)
 
 			if (parentHistory.status !== "active") {
-				this.host.log(
+				logger.debug(
 					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} status is "${parentHistory.status}", not "active"`,
 				)
 				return false
 			}
 
 			if (parentHistory.awaitingChildId !== undefined) {
-				this.host.log(
+				logger.debug(
 					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has awaitingChildId="${parentHistory.awaitingChildId}"`,
 				)
 				return false
 			}
 
 			if (parentHistory.delegatedToId !== childTaskId) {
-				this.host.log(
+				logger.debug(
 					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} delegatedToId="${parentHistory.delegatedToId}" !== child "${childTaskId}"`,
 				)
 				return false
@@ -374,7 +373,7 @@ export class DelegationService {
 			// 4: Parent must not be currently open in the task stack.
 			const stackIds = this.host.getCurrentTaskStack()
 			if (stackIds.includes(parentTaskId)) {
-				this.host.log(
+				logger.debug(
 					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} is currently open in the task stack [${stackIds.join(", ")}]`,
 				)
 				return false
@@ -390,7 +389,7 @@ export class DelegationService {
 					globalStoragePath: this.host.contextProxy.globalStorageUri.fsPath,
 				})
 			} catch (readErr) {
-				this.host.log(
+				logger.warn(
 					`[tryReattachDelegatedParent] Rejecting: failed to read parent API messages for ${parentTaskId}: ${
 						readErr instanceof Error ? readErr.message : String(readErr)
 					}`,
@@ -399,7 +398,7 @@ export class DelegationService {
 			}
 
 			if (!Array.isArray(parentApiMessages)) {
-				this.host.log(
+				logger.warn(
 					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} API messages is not an array`,
 				)
 				return false
@@ -409,7 +408,7 @@ export class DelegationService {
 			const lastNewTask = findLastNewTaskToolUse(parentApiMessages)
 
 			if (!lastNewTask) {
-				this.host.log(
+				logger.debug(
 					`[tryReattachDelegatedParent] Rejecting: no new_task tool_use found in parent ${parentTaskId} API history (cannot prove frozen state)`,
 				)
 				return false
@@ -418,7 +417,7 @@ export class DelegationService {
 			// Scan ALL messages AFTER the tool_use for a matching tool_result.
 			const { toolUseId, messageIndex } = lastNewTask
 			if (hasToolResultFor(parentApiMessages, toolUseId, messageIndex)) {
-				this.host.log(
+				logger.debug(
 					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
 				)
 				return false
@@ -431,12 +430,12 @@ export class DelegationService {
 				awaitingChildId: childTaskId,
 			})
 
-			this.host.log(
+			logger.info(
 				`[tryReattachDelegatedParent] Re-attached parent ${parentTaskId} to child ${childTaskId} (status: active → delegated, awaitingChildId: undefined → ${childTaskId})`,
 			)
 			return true
 		} catch (err) {
-			this.host.log(
+			logger.error(
 				`[tryReattachDelegatedParent] Error re-attaching parent ${parentTaskId} to child ${childTaskId}: ${
 					err instanceof Error ? err.message : String(err)
 				}`,
@@ -469,7 +468,7 @@ export class DelegationService {
 		// unrelated task. The same gate as AttemptCompletionTool (parentAwaitsChild),
 		// so delegateToParent does not get a false `didReopen === false`.
 		if (this.cancelledChildIds.has(childTaskId) || !parentAwaitsChild(historyItem, childTaskId)) {
-			this.host.log(
+			logger.info(
 				`[reopenParentFromDelegation] Aborting: parent ${parentTaskId} is no longer delegated to child ${childTaskId} ` +
 					`(status=${historyItem.status}, awaitingChildId=${historyItem.awaitingChildId})`,
 			)
@@ -614,7 +613,7 @@ export class DelegationService {
 				status: "completed",
 			})
 		} catch (err) {
-			this.host.log(
+			logger.error(
 				`[reopenParentFromDelegation] Failed to persist child completed status for ${childTaskId}: ${
 					(err as Error)?.message ?? String(err)
 				}`,
@@ -654,9 +653,7 @@ export class DelegationService {
 			if (!this.host.showAllowListViolation(error)) {
 				throw error
 			}
-			this.host.log(
-				`[reopenParentFromDelegation] Parent ${parentTaskId} not reopened: ${(error as Error).message}`,
-			)
+			logger.warn(`[reopenParentFromDelegation] Parent ${parentTaskId} not reopened: ${(error as Error).message}`)
 			this.cancelledChildIds.delete(childTaskId)
 			return true
 		}

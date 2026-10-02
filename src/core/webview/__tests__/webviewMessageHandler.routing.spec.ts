@@ -373,6 +373,7 @@ vi.mock("../PlanReviewPanel", () => ({
 vi.mock("../ClineProvider", () => ({ ClineProvider: class {} }))
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
+import { logger } from "../../../utils/logging"
 
 const TS_USER = 1000
 const TS_REPLY = 1500
@@ -507,7 +508,6 @@ function createProvider() {
 		postStateToWebviewWithoutTaskHistory: async () => undefined,
 		postMessageToWebview: async () => undefined,
 		postStateToWebview: async () => undefined,
-		log: () => undefined,
 		createTask: async () => currentTask,
 		updateCustomInstructions: async () => undefined,
 		clearTask: async () => undefined,
@@ -758,10 +758,16 @@ describe("webviewMessageHandler routing (characterization, CORE-R3)", () => {
 
 	beforeEach(() => {
 		dateNow = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000)
+		// Log lines are side effects too: record them with their level.
+		for (const level of ["debug", "info", "warn", "error"] as const) {
+			vi.spyOn(logger, level).mockImplementation((...args: unknown[]) => {
+				h.events.push([`logger.${level}`, ...args.map((arg) => h.sanitize(arg))])
+			})
+		}
 	})
 
 	afterEach(() => {
-		dateNow.mockRestore()
+		vi.restoreAllMocks()
 	})
 
 	it("covers every routed message type exactly once in the route list", () => {

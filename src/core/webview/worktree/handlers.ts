@@ -19,6 +19,7 @@ import type {
 import { worktreeService, worktreeIncludeService, type CopyProgressCallback } from "@roo-code/core"
 
 import type { ClineProvider } from "../ClineProvider"
+import { logger } from "../../../utils/logging"
 
 /**
  * Generate a random alphanumeric suffix for branch/folder names.
@@ -164,7 +165,7 @@ export async function handleCreateWorktree(
 			}
 		} catch (error) {
 			// Log but don't fail the worktree creation.
-			provider.log(`Warning: Failed to copy .worktreeinclude files: ${error}`)
+			logger.warn(`Warning: Failed to copy .worktreeinclude files: ${error}`)
 		}
 	}
 

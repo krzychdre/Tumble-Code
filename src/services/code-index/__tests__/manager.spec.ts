@@ -749,13 +749,13 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			;(manager as any)._searchService = {}
 
 			// Spy on logger.error
-			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Act - should not throw despite setSystemState error
 			await expect(manager.recoverFromError()).resolves.not.toThrow()
 
 			// Assert - error should be logged
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				"Failed to clear error state during recovery:",
 				expect.any(Error),
 			)
@@ -767,7 +767,7 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			expect((manager as any)._searchService).toBeUndefined()
 
 			// Cleanup
-			consoleErrorSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 	})
 

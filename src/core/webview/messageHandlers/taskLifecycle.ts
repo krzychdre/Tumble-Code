@@ -81,7 +81,7 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 					await provider.postMessageToWebview({ type: "listApiConfig", listApiConfig }),
 				])
 			})
-			.catch((error) => provider.log(`Error list api configuration: ${serializeError(error)}`))
+			.catch((error) => logger.error(`Error list api configuration: ${serializeError(error)}`))
 
 		// Enable telemetry by default (when unset) or when explicitly enabled
 		TelemetryService.instance.updateTelemetryState(getGlobalState("telemetrySetting") !== "disabled")
@@ -167,7 +167,7 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 		const { provider } = ctx
 		provider.showTaskWithId(message.text!).catch((error) => {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			provider.log(`[showTaskWithId] Failed to show task ${message.text}: ${errorMessage}`)
+			logger.error(`[showTaskWithId] Failed to show task ${message.text}: ${errorMessage}`)
 			// Append the cause: "Task not found" and an I/O failure need
 			// very different reactions from the user.
 			vscode.window.showErrorMessage(t("common:errors.task_show_failed") + ": " + errorMessage)
@@ -181,7 +181,7 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 		// dismissed even on throw. This .catch prevents an unhandled
 		// rejection (e.g. task-not-found) from surfacing as a stray error.
 		provider.condenseTaskContext(message.text!).catch((error) => {
-			provider.log(
+			logger.error(
 				`[condenseTaskContext] Failed for task ${message.text}: ${
 					error instanceof Error ? error.message : String(error)
 				}`,

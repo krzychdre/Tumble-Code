@@ -6,6 +6,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { type UserSettingsConfig, TelemetryEventName } from "@roo-code/types"
 import { t } from "../../../i18n"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 	shareCurrentTask: async (ctx, message) => {
@@ -50,7 +51,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 				}
 			}
 		} catch (error) {
-			provider.log(`[shareCurrentTask] Unexpected error: ${error}`)
+			logger.error(`[shareCurrentTask] Unexpected error: ${error}`)
 			vscode.window.showErrorMessage(t("common:errors.share_task_failed"))
 		}
 	},
@@ -63,7 +64,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 		try {
 			await CloudService.instance.updateUserSettings(updatedSettings)
 		} catch (error) {
-			provider.log(`Failed to update cloud settings for task sync: ${error}`)
+			logger.error(`Failed to update cloud settings for task sync: ${error}`)
 		}
 	},
 
@@ -73,7 +74,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 			TelemetryService.instance.captureEvent(TelemetryEventName.AUTHENTICATION_INITIATED)
 			await CloudService.instance.login()
 		} catch (error) {
-			provider.log(`AuthService#login failed: ${error}`)
+			logger.error(`AuthService#login failed: ${error}`)
 			vscode.window.showErrorMessage("Sign in failed.")
 		}
 	},
@@ -84,7 +85,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 			await CloudService.instance.logout()
 			await provider.postStateToWebview()
 		} catch (error) {
-			provider.log(`AuthService#logout failed: ${error}`)
+			logger.error(`AuthService#logout failed: ${error}`)
 			vscode.window.showErrorMessage("Sign out failed.")
 		}
 	},
@@ -106,13 +107,13 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 					await provider.postStateToWebview()
 				})
 				.catch((error) => {
-					provider.log(`OpenAI Codex OAuth callback failed: ${error}`)
+					logger.error(`OpenAI Codex OAuth callback failed: ${error}`)
 					if (!String(error).includes("timed out")) {
 						vscode.window.showErrorMessage(`OpenAI Codex sign in failed: ${error.message || error}`)
 					}
 				})
 		} catch (error) {
-			provider.log(`OpenAI Codex OAuth failed: ${error}`)
+			logger.error(`OpenAI Codex OAuth failed: ${error}`)
 			vscode.window.showErrorMessage("OpenAI Codex sign in failed.")
 		}
 	},
@@ -125,7 +126,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 			vscode.window.showInformationMessage("Signed out from OpenAI Codex")
 			await provider.postStateToWebview()
 		} catch (error) {
-			provider.log(`OpenAI Codex sign out failed: ${error}`)
+			logger.error(`OpenAI Codex sign out failed: ${error}`)
 			vscode.window.showErrorMessage("OpenAI Codex sign out failed.")
 		}
 	},
@@ -164,7 +165,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 
 			await provider.postStateToWebview()
 		} catch (error) {
-			provider.log(`ManualUrl#handleAuthCallback failed: ${error}`)
+			logger.error(`ManualUrl#handleAuthCallback failed: ${error}`)
 			const errorMessage = error instanceof Error ? error.message : t("common:errors.manual_url_auth_failed")
 
 			// Show error message through VS Code UI
@@ -190,7 +191,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 				organizationId: organizationId,
 			})
 		} catch (error) {
-			provider.log(`Organization switch failed: ${error}`)
+			logger.error(`Organization switch failed: ${error}`)
 			const errorMessage = error instanceof Error ? error.message : String(error)
 
 			// Send error response back to webview
@@ -229,7 +230,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 			})
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			provider.log(`Error fetching OpenAI Codex rate limits: ${errorMessage}`)
+			logger.error(`Error fetching OpenAI Codex rate limits: ${errorMessage}`)
 			provider.postMessageToWebview({
 				type: "openAiCodexRateLimits",
 				error: errorMessage,

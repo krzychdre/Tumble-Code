@@ -289,7 +289,7 @@ export async function checkpointRestore(
 		// `Task` instance.
 		provider?.cancelTask()
 	} catch (err) {
-		provider?.log("[checkpointRestore] disabling checkpoints for this task")
+		logger.warn("[checkpointRestore] disabling checkpoints for this task")
 		task.enableCheckpoints = false
 	}
 }
@@ -379,7 +379,7 @@ export async function checkpointDiff(task: Task, { ts, previousCommitHash, commi
 		)
 	} catch (err) {
 		const provider = task.providerRef.deref()
-		provider?.log("[checkpointDiff] disabling checkpoints for this task")
+		logger.warn("[checkpointDiff] disabling checkpoints for this task")
 		task.enableCheckpoints = false
 	}
 }

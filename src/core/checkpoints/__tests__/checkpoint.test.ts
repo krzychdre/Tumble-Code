@@ -4,6 +4,7 @@ import { ClineProvider } from "../../webview/ClineProvider"
 import { checkpointSave, checkpointRestore, checkpointDiff, getCheckpointService } from "../index"
 import { MessageManager } from "../../message-manager"
 import * as vscode from "vscode"
+import { logger } from "../../../utils/logging"
 
 // Mock vscode
 vi.mock("vscode", () => ({
@@ -78,7 +79,6 @@ describe("Checkpoint functionality", () => {
 			context: {
 				globalStorageUri: { fsPath: "/test/storage" },
 			},
-			log: vi.fn(),
 			postMessageToWebview: vi.fn(),
 			postStateToWebview: vi.fn(),
 			cancelTask: vi.fn(),
@@ -282,6 +282,7 @@ describe("Checkpoint functionality", () => {
 
 		it("should disable checkpoints on error", async () => {
 			mockCheckpointService.restoreCheckpoint.mockRejectedValue(new Error("Restore failed"))
+			const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 			await checkpointRestore(mockTask, {
 				ts: 2,
@@ -290,7 +291,7 @@ describe("Checkpoint functionality", () => {
 			})
 
 			expect(mockTask.enableCheckpoints).toBe(false)
-			expect(mockProvider.log).toHaveBeenCalledWith("[checkpointRestore] disabling checkpoints for this task")
+			expect(loggerWarnSpy).toHaveBeenCalledWith("[checkpointRestore] disabling checkpoints for this task")
 		})
 	})
 
@@ -391,6 +392,7 @@ describe("Checkpoint functionality", () => {
 
 		it("should disable checkpoints on error", async () => {
 			mockCheckpointService.getDiff.mockRejectedValue(new Error("Diff failed"))
+			const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 			await checkpointDiff(mockTask, {
 				ts: 4,
@@ -399,7 +401,7 @@ describe("Checkpoint functionality", () => {
 			})
 
 			expect(mockTask.enableCheckpoints).toBe(false)
-			expect(mockProvider.log).toHaveBeenCalledWith("[checkpointDiff] disabling checkpoints for this task")
+			expect(loggerWarnSpy).toHaveBeenCalledWith("[checkpointDiff] disabling checkpoints for this task")
 		})
 	})
 

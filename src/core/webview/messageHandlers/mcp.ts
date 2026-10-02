@@ -9,6 +9,7 @@ import { fileExistsAtPath } from "../../../utils/fs"
 import { safeWriteJson } from "@roo-code/core/fs"
 import { logAndToast, serializeError } from "./context"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const mcpHandlers: DomainHandlerMap<"mcp"> = {
 	openMcpSettings: async (ctx) => {
@@ -52,15 +53,15 @@ export const mcpHandlers: DomainHandlerMap<"mcp"> = {
 		}
 
 		try {
-			provider.log(`Attempting to delete MCP server: ${message.serverName}`)
+			logger.info(`Attempting to delete MCP server: ${message.serverName}`)
 			await provider.getMcpHub()?.deleteServer(message.serverName, message.source as "global" | "project")
-			provider.log(`Successfully deleted MCP server: ${message.serverName}`)
+			logger.info(`Successfully deleted MCP server: ${message.serverName}`)
 
 			// Refresh the webview state
 			await provider.postStateToWebview()
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			provider.log(`Failed to delete MCP server: ${errorMessage}`)
+			logger.error(`Failed to delete MCP server: ${errorMessage}`)
 			// Error messages are already handled by McpHub.deleteServer
 		}
 	},
@@ -70,7 +71,7 @@ export const mcpHandlers: DomainHandlerMap<"mcp"> = {
 		try {
 			await provider.getMcpHub()?.restartConnection(message.text!, message.source as "global" | "project")
 		} catch (error) {
-			provider.log(`Failed to retry connection for ${message.text}: ${serializeError(error)}`)
+			logger.error(`Failed to retry connection for ${message.text}: ${serializeError(error)}`)
 		}
 	},
 
@@ -86,7 +87,7 @@ export const mcpHandlers: DomainHandlerMap<"mcp"> = {
 					Boolean(message.alwaysAllow),
 				)
 		} catch (error) {
-			provider.log(`Failed to toggle auto-approve for tool ${message.toolName}: ${serializeError(error)}`)
+			logger.error(`Failed to toggle auto-approve for tool ${message.toolName}: ${serializeError(error)}`)
 		}
 	},
 
@@ -102,7 +103,7 @@ export const mcpHandlers: DomainHandlerMap<"mcp"> = {
 					Boolean(message.isEnabled),
 				)
 		} catch (error) {
-			provider.log(`Failed to toggle enabled for prompt for tool ${message.toolName}: ${serializeError(error)}`)
+			logger.error(`Failed to toggle enabled for prompt for tool ${message.toolName}: ${serializeError(error)}`)
 		}
 	},
 
@@ -113,7 +114,7 @@ export const mcpHandlers: DomainHandlerMap<"mcp"> = {
 				.getMcpHub()
 				?.toggleServerDisabled(message.serverName!, message.disabled!, message.source as "global" | "project")
 		} catch (error) {
-			provider.log(`Failed to toggle MCP server ${message.serverName}: ${serializeError(error)}`)
+			logger.error(`Failed to toggle MCP server ${message.serverName}: ${serializeError(error)}`)
 		}
 	},
 

@@ -169,7 +169,6 @@ describe("Task grounding sources handling", () => {
 				globalStorageUri: { fsPath: "/test/storage" },
 				extensionPath: "/test/extension",
 			} as any,
-			log: vi.fn(),
 			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		}

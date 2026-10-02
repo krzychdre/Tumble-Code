@@ -238,7 +238,6 @@ export class ClineProvider
 		const isDisposed = () => this._disposed
 		const getCwd = () => this.cwd
 		this.taskSlot = new TaskSlot({
-			log: (message) => this.log(message),
 			getState: () => this.getState(),
 			performPreparationTasks: (task) => this.performPreparationTasks(task),
 			removeTaskEventListeners: (task) => this.removeTaskEventListeners(task),
@@ -262,7 +261,6 @@ export class ClineProvider
 				return getCwd()
 			},
 			contextProxy,
-			log: (message) => this.log(message),
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
 			postStateToWebview: () => this.postStateToWebview(),
 			postStateToWebviewWithoutClineMessages: () => this.postStateToWebviewWithoutClineMessages(),
@@ -277,7 +275,6 @@ export class ClineProvider
 			isApiConfigLockedAcrossModes: () => this.context.workspaceState.get("lockApiConfigAcrossModes", false),
 			getState: () => this.getState(),
 			getTaskHistoryStore: () => this.getTaskHistoryStore(),
-			log: (message) => this.log(message),
 			getCurrentTask: () => this.getCurrentTask(),
 			nextClineMessagesSeq: () => ++this.clineMessagesSeq,
 			listSubagents: () => this.subagentRegistry.list(),
@@ -300,7 +297,6 @@ export class ClineProvider
 			getHistoryItem: (id) => this.getHistoryItem(id),
 			updateTaskHistory: (item) => this.updateTaskHistory(item),
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
-			log: (message) => this.log(message),
 			getCurrentTask: () => this.getCurrentTask(),
 			getCurrentTaskStack: () => this.getCurrentTaskStack(),
 			clearCurrentTask: (options) => this.clearCurrentTask(options),
@@ -330,7 +326,6 @@ export class ClineProvider
 			emitProviderProfileChanged: (profile) => this.emit(RooCodeEventName.ProviderProfileChanged, profile),
 			clearStorageError: () => this.taskHistory.clearStorageError(),
 			reportStorageError: (error) => this.taskHistory.reportStorageError("ProviderProfile", error),
-			log: (message) => this.log(message),
 		})
 		this.updateGlobalState("codebaseIndexModels", EMBEDDING_MODEL_PROFILES)
 
@@ -365,7 +360,6 @@ export class ClineProvider
 			},
 			activateProviderProfile: (args) => this.activateProviderProfile(args),
 			postStateToWebviewWithoutClineMessages: () => this.postStateToWebviewWithoutClineMessages(),
-			log: (message) => this.log(message),
 		})
 		const getTaskCreationCallback = () => this.taskCreationCallback
 		const getGlobalStoragePath = () => this.globalStoragePath
@@ -383,7 +377,6 @@ export class ClineProvider
 			getMemoryWriterApiConfigId: () => this.getValue("memoryWriterApiConfigId"),
 			getProfile: (params) => this.providerSettingsManager.getProfile(params),
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
-			log: (message) => this.log(message),
 		})
 
 		this.customModesManager = new CustomModesManager(this.context, async () => {
@@ -397,13 +390,13 @@ export class ClineProvider
 				this.mcpHub.registerClient()
 			})
 			.catch((error) => {
-				this.log(`Failed to initialize MCP Hub: ${error}`)
+				logger.error(`Failed to initialize MCP Hub: ${error}`)
 			})
 
 		// Initialize Skills Manager for skill discovery
 		this.skillsManager = new SkillsManager(this)
 		this.skillsManager.initialize().catch((error) => {
-			this.log(`Failed to initialize Skills Manager: ${error}`)
+			logger.error(`Failed to initialize Skills Manager: ${error}`)
 		})
 
 		this.marketplaceManager = new MarketplaceManager(this.context, this.customModesManager)
@@ -432,7 +425,7 @@ export class ClineProvider
 		if (CloudService.hasInstance()) {
 			void this.initializeCloudProfileSyncWhenReady()
 		} else {
-			this.log("CloudService not ready, deferring cloud profile sync")
+			logger.info("CloudService not ready, deferring cloud profile sync")
 		}
 	}
 
@@ -499,7 +492,7 @@ export class ClineProvider
 				// Defensive safeguard: if another path already replaced this instance, skip
 				const current = this.getCurrentTask()
 				if (current && current.instanceId !== instance.instanceId) {
-					this.log(
+					logger.debug(
 						`[onTaskAborted] Skipping rehydrate: current instance ${current.instanceId} != aborted ${instance.instanceId}`,
 					)
 					return
@@ -512,7 +505,7 @@ export class ClineProvider
 			}
 		} catch (error) {
 			this.showAllowListViolation(error)
-			this.log(
+			logger.error(
 				`[onTaskAborted] Failed to rehydrate after streaming failure: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
@@ -552,7 +545,7 @@ export class ClineProvider
 			try {
 				await providerEntry.preloadModel(cline.apiConfiguration)
 			} catch (error) {
-				this.log(`Failed to load full model details for ${cline.apiConfiguration.apiProvider}: ${error}`)
+				logger.error(`Failed to load full model details for ${cline.apiConfiguration.apiProvider}: ${error}`)
 				vscode.window.showErrorMessage(error.message)
 			}
 		}
@@ -616,7 +609,7 @@ export class ClineProvider
 		// Create timeout for automatic cleanup
 		const timeoutId = setTimeout(() => {
 			this.clearPendingEditOperation(operationId)
-			this.log(`[setPendingEditOperation] Automatically cleared stale pending operation: ${operationId}`)
+			logger.warn(`[setPendingEditOperation] Automatically cleared stale pending operation: ${operationId}`)
 		}, ClineProvider.PENDING_OPERATION_TIMEOUT_MS)
 
 		// Store the operation
@@ -626,7 +619,7 @@ export class ClineProvider
 			createdAt: Date.now(),
 		})
 
-		this.log(`[setPendingEditOperation] Set pending operation: ${operationId}`)
+		logger.debug(`[setPendingEditOperation] Set pending operation: ${operationId}`)
 	}
 
 	/**
@@ -644,7 +637,7 @@ export class ClineProvider
 		if (operation) {
 			clearTimeout(operation.timeoutId)
 			this.pendingOperations.delete(operationId)
-			this.log(`[clearPendingEditOperation] Cleared pending operation: ${operationId}`)
+			logger.debug(`[clearPendingEditOperation] Cleared pending operation: ${operationId}`)
 			return true
 		}
 		return false
@@ -658,7 +651,7 @@ export class ClineProvider
 			clearTimeout(operation.timeoutId)
 		}
 		this.pendingOperations.clear()
-		this.log(`[clearAllPendingEditOperations] Cleared all pending operations`)
+		logger.debug(`[clearAllPendingEditOperations] Cleared all pending operations`)
 	}
 
 	/*
@@ -681,22 +674,22 @@ export class ClineProvider
 		}
 
 		this._disposed = true
-		this.log("Disposing ClineProvider...")
+		logger.info("Disposing ClineProvider...")
 
 		// Clear the current task (if any).
 		if (this.taskSlot.current) {
 			await this.clearCurrentTask()
 		}
 
-		this.log("Cleared all tasks")
+		logger.debug("Cleared all tasks")
 
 		// Clear all pending edit operations to prevent memory leaks
 		this.clearAllPendingEditOperations()
-		this.log("Cleared pending operations")
+		logger.debug("Cleared pending operations")
 
 		if (this.view && "dispose" in this.view) {
 			this.view.dispose()
-			this.log("Disposed webview")
+			logger.debug("Disposed webview")
 		}
 
 		this.clearWebviewResources()
@@ -723,7 +716,7 @@ export class ClineProvider
 		// Unsubscribe and release the shared store handle. The final
 		// consumer's release disposes the underlying watcher/timers.
 		this.taskHistory.dispose()
-		this.log("Disposed all disposables")
+		logger.debug("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 
 		// Clean up any event listeners attached to this provider
@@ -872,10 +865,10 @@ export class ClineProvider
 		webviewView.onDidDispose(
 			async () => {
 				if (inTabMode) {
-					this.log("Disposing ClineProvider instance for tab view")
+					logger.info("Disposing ClineProvider instance for tab view")
 					await this.dispose()
 				} else {
-					this.log("Clearing webview resources for sidebar view")
+					logger.info("Clearing webview resources for sidebar view")
 					this.clearWebviewResources()
 					// Reset current workspace manager reference when view is disposed
 					this.codeIndexManager = undefined
@@ -967,13 +960,13 @@ export class ClineProvider
 			// removes its listeners and installs the new one atomically).
 			await this.taskSlot.replaceInPlace(task)
 
-			this.log(
+			logger.info(
 				`[createTaskWithHistoryItem] rehydrated task ${task.taskId}.${task.instanceId} in-place (flicker-free)`,
 			)
 		} else {
 			await this.setCurrentTask(task)
 
-			this.log(
+			logger.info(
 				`[createTaskWithHistoryItem] ${task.parentTask ? "child" : "parent"} task ${task.taskId}.${task.instanceId} instantiated`,
 			)
 		}
@@ -998,7 +991,7 @@ export class ClineProvider
 		if (pendingEdit) {
 			this.clearPendingEditOperation(operationId) // Clear the pending edit
 
-			this.log(`[createTaskWithHistoryItem] Processing pending edit after checkpoint restoration`)
+			logger.debug(`[createTaskWithHistoryItem] Processing pending edit after checkpoint restoration`)
 
 			// Process the pending edit after a short delay to ensure the task is fully initialized
 			setTimeout(async () => {
@@ -1030,7 +1023,7 @@ export class ClineProvider
 						)
 					}
 				} catch (error) {
-					this.log(`[createTaskWithHistoryItem] Error processing pending edit: ${error}`)
+					logger.error(`[createTaskWithHistoryItem] Error processing pending edit: ${error}`)
 				}
 			}, 100) // Small delay to ensure task is fully ready
 		}
@@ -1219,7 +1212,7 @@ export class ClineProvider
 				throw new Error("Invalid response from OpenRouter API")
 			}
 		} catch (error) {
-			this.log(
+			logger.error(
 				`Error exchanging code for API key: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 			)
 
@@ -1505,7 +1498,7 @@ export class ClineProvider
 			try {
 				await CloudService.instance.logout()
 			} catch (error) {
-				this.log(
+				logger.warn(
 					`Failed to logout from cloud during reset: ${error instanceof Error ? error.message : String(error)}`,
 				)
 				// Continue with reset even if logout fails
@@ -1518,13 +1511,6 @@ export class ClineProvider
 		await this.clearCurrentTask()
 		await this.postStateToWebview()
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
-	}
-
-	// logging
-
-	/** Kept for the collaborators that take a `log(message)` callback; it goes to the shared logger. */
-	public log(message: string) {
-		logger.info(message)
 	}
 
 	// getters
@@ -1617,7 +1603,7 @@ export class ClineProvider
 		if (!task || task.abort || task.abandoned) {
 			return
 		}
-		this.log(
+		logger.info(
 			`[Tumble Code] Webview hidden during active task.\n` +
 				`  taskId:       ${task.taskId}\n` +
 				`  messageCount: ${task.clineMessages.length}\n` +
@@ -1739,7 +1725,7 @@ export class ClineProvider
 			task.start()
 		}
 
-		this.log(
+		logger.info(
 			`[createTask] ${task.parentTask ? "child" : "parent"} task ${task.taskId}.${task.instanceId} instantiated`,
 		)
 
@@ -1855,7 +1841,7 @@ export class ClineProvider
 			// but task history has not been persisted yet. Cancelling should still
 			// abort safely; we just skip post-cancel rehydration in that case.
 			if (error instanceof Error && error.message === "Task not found") {
-				this.log(`[cancelTask] task history missing for ${task.taskId}; skipping rehydrate`)
+				logger.warn(`[cancelTask] task history missing for ${task.taskId}; skipping rehydrate`)
 			} else {
 				throw error
 			}
@@ -1904,7 +1890,7 @@ export class ClineProvider
 			// a failure — the abort was initiated and will complete in the
 			// background.  We log a warning instead of an error so the
 			// task is not spuriously marked as failed.
-			this.log("[cancelTask] abort still in progress after 3s bound — continuing")
+			logger.warn("[cancelTask] abort still in progress after 3s bound, continuing")
 		})
 
 		// Mark the original instance as abandoned NOW — after the bounded
@@ -1916,7 +1902,7 @@ export class ClineProvider
 		// Defensive safeguard: if current instance already changed, skip rehydrate
 		const current = this.getCurrentTask()
 		if (current && current.instanceId !== originalInstanceId) {
-			this.log(
+			logger.debug(
 				`[cancelTask] Skipping rehydrate: current instance ${current.instanceId} != original ${originalInstanceId}`,
 			)
 			return
@@ -1946,7 +1932,7 @@ export class ClineProvider
 			if (!this.showAllowListViolation(error)) {
 				throw error
 			}
-			this.log(`[cancelTask] Not rehydrating ${task.taskId}: ${(error as Error).message}`)
+			logger.warn(`[cancelTask] Not rehydrating ${task.taskId}: ${(error as Error).message}`)
 		}
 	}
 
@@ -2032,7 +2018,7 @@ export class ClineProvider
 		} catch (error) {
 			// Sidecar loading is best-effort. A missing/corrupt sidecar must
 			// never break rehydration of the parent task itself.
-			this.log(
+			logger.warn(
 				`[rehydrateSubagents] Failed to restore subagents for task ${historyItem.id} (non-fatal): ${
 					error instanceof Error ? error.message : String(error)
 				}`,
@@ -2059,7 +2045,7 @@ export class ClineProvider
 		// Use the existing showTaskWithId method which handles both current and
 		// historical tasks.
 		this.showTaskWithId(taskId).catch((error) => {
-			this.log(`Failed to resume task ${taskId}: ${error.message}`)
+			logger.error(`Failed to resume task ${taskId}: ${error.message}`)
 		})
 	}
 
@@ -2133,7 +2119,7 @@ export class ClineProvider
 			}
 		} catch (error) {
 			// Silently handle errors to avoid breaking telemetry collection.
-			this.log(`[getTelemetryProperties] Failed to get cloud auth state: ${error}`)
+			logger.warn(`[getTelemetryProperties] Failed to get cloud auth state: ${error}`)
 		}
 
 		return {

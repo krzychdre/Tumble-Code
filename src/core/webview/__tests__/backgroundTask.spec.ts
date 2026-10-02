@@ -3,6 +3,7 @@ import { EventEmitter } from "events"
 
 import { RooCodeEventName } from "@roo-code/types"
 
+import { logger } from "../../../utils/logging"
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
 
 /**
@@ -14,7 +15,7 @@ import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTask
  */
 
 function makeRunner(host: Partial<BackgroundTaskHost> = {}): BackgroundTaskRunner {
-	return new BackgroundTaskRunner({ log: vi.fn(), ...host } as unknown as BackgroundTaskHost)
+	return new BackgroundTaskRunner(host as unknown as BackgroundTaskHost)
 }
 
 /** The runner's private members these tests reach into. */
@@ -167,11 +168,10 @@ describe("BackgroundTaskRunner.resolveMemoryWriterApiConfiguration", () => {
 
 	// It must READ the writer profile: it used to call activateProfile, which
 	// also stores the writer profile as the user's current profile.
-	function makeFakeThis(opts: { configId?: string; getProfile?: Mock; log?: Mock }) {
+	function makeFakeThis(opts: { configId?: string; getProfile?: Mock }) {
 		return makeRunner({
 			getMemoryWriterApiConfigId: vi.fn().mockReturnValue(opts.configId),
 			getProfile: opts.getProfile ?? vi.fn(),
-			log: opts.log ?? vi.fn(),
 		}) as unknown as RunnerInternals
 	}
 
@@ -223,13 +223,14 @@ describe("BackgroundTaskRunner.resolveMemoryWriterApiConfiguration", () => {
 
 	it("falls back to undefined and logs when getProfile throws", async () => {
 		const getProfile = vi.fn().mockRejectedValue(new Error("not found"))
-		const log = vi.fn()
-		const fakeThis = makeFakeThis({ configId: "stale-id", getProfile, log })
+		const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+		const fakeThis = makeFakeThis({ configId: "stale-id", getProfile })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
 		expect(getProfile).toHaveBeenCalledWith({ id: "stale-id" })
-		expect(log).toHaveBeenCalledWith(
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			expect.stringContaining("[memoryWriterQuery] failed to load writer profile stale-id"),
 		)
+		loggerWarnSpy.mockRestore()
 	})
 })

@@ -249,7 +249,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > clearIndexD
       "provider.getCurrentWorkspaceCodeIndexManager",
     ],
     [
-      "provider.log",
+      "logger.warn",
       "Cannot clear index data: No workspace folder open",
     ],
     [
@@ -357,7 +357,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > createComma
       "utf8",
     ],
     [
-      "provider.log",
+      "logger.info",
       "Created new command file: /workspace/.roo/commands/my-command.md",
     ],
     [
@@ -416,7 +416,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > createComma
       "utf8",
     ],
     [
-      "provider.log",
+      "logger.info",
       "Created new command file: /home/user/.roo/commands/new-command.md",
     ],
     [
@@ -593,7 +593,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteComma
       "/workspace/.roo/commands/deploy.md",
     ],
     [
-      "provider.log",
+      "logger.info",
       "Deleted command file: /workspace/.roo/commands/deploy.md",
     ],
   ],
@@ -654,7 +654,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMcpSe
 {
   "events": [
     [
-      "provider.log",
+      "logger.info",
       "Attempting to delete MCP server: srv",
     ],
     [
@@ -666,7 +666,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMcpSe
       "global",
     ],
     [
-      "provider.log",
+      "logger.info",
       "Successfully deleted MCP server: srv",
     ],
     [
@@ -784,6 +784,10 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMulti
 {
   "events": [
     [
+      "logger.info",
+      "Batch deletion started: 2 tasks total",
+    ],
+    [
       "provider.deleteTaskWithId",
       "a",
     ],
@@ -793,6 +797,10 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMulti
     ],
     [
       "provider.postStateToWebview",
+    ],
+    [
+      "logger.info",
+      "Batch deletion completed: 2/2 tasks successful, 0 tasks failed",
     ],
   ],
   "outcome": "resolved",
@@ -906,7 +914,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > downloadErr
       "generateErrorDiagnostics",
       {
         "globalStoragePath": "/storage",
-        "log": "[Function]",
         "taskId": "task-1",
         "values": {
           "note": "n",
@@ -1599,6 +1606,10 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > installMark
     ],
     [
       "provider.postStateToWebview",
+    ],
+    [
+      "logger.info",
+      "Marketplace item installed and config file opened: /workspace/.roo/mcp.json",
     ],
     [
       "provider.postMessageToWebview",
@@ -2772,7 +2783,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > saveCodeInd
       "provider.getCurrentWorkspaceCodeIndexManager",
     ],
     [
-      "provider.log",
+      "logger.warn",
       "Cannot save code index settings: No workspace folder open",
     ],
     [
@@ -2961,7 +2972,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > setAutoEnab
       "provider.getCurrentWorkspaceCodeIndexManager",
     ],
     [
-      "provider.log",
+      "logger.warn",
       "Cannot set auto-enable default: No workspace folder open",
     ],
   ],
@@ -3061,7 +3072,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > startIndexi
       },
     ],
     [
-      "provider.log",
+      "logger.warn",
       "Cannot start indexing: No workspace folder open",
     ],
   ],
@@ -3076,7 +3087,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > stopIndexin
       "provider.getCurrentWorkspaceCodeIndexManager",
     ],
     [
-      "provider.log",
+      "logger.warn",
       "Cannot stop indexing: No workspace folder open",
     ],
   ],
@@ -3372,7 +3383,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > toggleWorks
       "provider.getCurrentWorkspaceCodeIndexManager",
     ],
     [
-      "provider.log",
+      "logger.warn",
       "Cannot toggle workspace indexing: No workspace folder open",
     ],
   ],

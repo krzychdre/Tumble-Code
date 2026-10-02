@@ -3,6 +3,7 @@
 import { EventEmitter } from "events"
 
 import { CloudProfileSync, type CloudProfileSyncHost } from "../CloudProfileSync"
+import { logger } from "../../../utils/logging"
 
 const cloud = vi.hoisted(() => ({ hasInstance: true, instance: undefined as any }))
 
@@ -44,7 +45,6 @@ const makeHost = (
 		},
 		activateProviderProfile: vi.fn().mockResolvedValue(undefined),
 		postStateToWebviewWithoutClineMessages: vi.fn().mockResolvedValue(undefined),
-		log: vi.fn(),
 	}
 	return { host, values, typed: host as unknown as CloudProfileSyncHost }
 }
@@ -53,6 +53,11 @@ describe("CloudProfileSync", () => {
 	beforeEach(() => {
 		cloud.hasInstance = true
 		cloud.instance = makeCloud(false, { p: { apiProvider: "anthropic" } })
+		vi.spyOn(logger, "error").mockImplementation(() => {})
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
 	})
 
 	describe("initializeWhenReady", () => {
@@ -79,17 +84,17 @@ describe("CloudProfileSync", () => {
 
 		it("does nothing without a CloudService", async () => {
 			cloud.hasInstance = false
-			const { host, typed } = makeHost()
+			const { typed } = makeHost()
 			await new CloudProfileSync(typed).initializeWhenReady()
 			expect(cloud.instance.listenerCount("settings-updated")).toBe(0)
-			expect(host.log).not.toHaveBeenCalled()
+			expect(logger.error).not.toHaveBeenCalled()
 		})
 
 		it("logs instead of throwing when the CloudService misbehaves", async () => {
 			cloud.instance = { isAuthenticated: () => false }
-			const { host, typed } = makeHost()
+			const { typed } = makeHost()
 			await expect(new CloudProfileSync(typed).initializeWhenReady()).resolves.toBeUndefined()
-			expect(host.log).toHaveBeenCalledWith(
+			expect(logger.error).toHaveBeenCalledWith(
 				expect.stringContaining("Failed to initialize cloud profile sync when ready: TypeError"),
 			)
 		})
@@ -128,7 +133,7 @@ describe("CloudProfileSync", () => {
 			const { host, typed } = makeHost()
 			host.providerSettingsManager.syncCloudProfiles.mockRejectedValue(new Error("boom"))
 			await expect(new CloudProfileSync(typed).sync()).resolves.toBeUndefined()
-			expect(host.log).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
+			expect(logger.error).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
 		})
 	})
 

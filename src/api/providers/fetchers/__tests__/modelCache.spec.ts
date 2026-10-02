@@ -233,28 +233,28 @@ describe("getModelsFromCache disk fallback", () => {
 			throw new Error("Disk read failed")
 		})
 
-		const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+		const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		const result = getModelsFromCache("openrouter")
 
 		expect(result).toBeUndefined()
-		expect(consoleErrorSpy).toHaveBeenCalled()
+		expect(loggerErrorSpy).toHaveBeenCalled()
 
-		consoleErrorSpy.mockRestore()
+		loggerErrorSpy.mockRestore()
 	})
 
 	it("handles invalid JSON in disk cache gracefully", () => {
 		vi.mocked(fsSync.existsSync).mockReturnValue(true)
 		vi.mocked(fsSync.readFileSync).mockReturnValue("invalid json{")
 
-		const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+		const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		const result = getModelsFromCache("openrouter")
 
 		expect(result).toBeUndefined()
-		expect(consoleErrorSpy).toHaveBeenCalled()
+		expect(loggerErrorSpy).toHaveBeenCalled()
 
-		consoleErrorSpy.mockRestore()
+		loggerErrorSpy.mockRestore()
 	})
 })
 

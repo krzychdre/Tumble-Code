@@ -5,6 +5,7 @@ import type { SkillMetadata, WebviewMessage } from "@roo-code/types"
 import type { ClineProvider } from "./ClineProvider"
 import { openFile } from "../../integrations/misc/open-file"
 import { t } from "../../i18n"
+import { logger } from "../../utils/logging"
 
 type SkillSource = SkillMetadata["source"]
 
@@ -26,7 +27,7 @@ export async function handleRequestSkills(provider: ClineProvider): Promise<Skil
 			return []
 		}
 	} catch (error) {
-		provider.log(`Error fetching skills: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
+		logger.error(`Error fetching skills: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`)
 		await provider.postMessageToWebview({ type: "skills", skills: [] })
 		return []
 	}
@@ -66,7 +67,7 @@ export async function handleCreateSkill(
 		return skills
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		provider.log(`Error creating skill: ${errorMessage}`)
+		logger.error(`Error creating skill: ${errorMessage}`)
 		vscode.window.showErrorMessage(`Failed to create skill: ${errorMessage}`)
 		return undefined
 	}
@@ -102,7 +103,7 @@ export async function handleDeleteSkill(
 		return skills
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		provider.log(`Error deleting skill: ${errorMessage}`)
+		logger.error(`Error deleting skill: ${errorMessage}`)
 		vscode.window.showErrorMessage(`Failed to delete skill: ${errorMessage}`)
 		return undefined
 	}
@@ -137,7 +138,7 @@ export async function handleUpdateSkillModes(
 		return skills
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		provider.log(`Error updating skill modes: ${errorMessage}`)
+		logger.error(`Error updating skill modes: ${errorMessage}`)
 		vscode.window.showErrorMessage(`Failed to update skill modes: ${errorMessage}`)
 		return undefined
 	}
@@ -169,7 +170,7 @@ export async function handleOpenSkillFile(provider: ClineProvider, message: Webv
 		openFile(skill.path)
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		provider.log(`Error opening skill file: ${errorMessage}`)
+		logger.error(`Error opening skill file: ${errorMessage}`)
 		vscode.window.showErrorMessage(`Failed to open skill file: ${errorMessage}`)
 	}
 }

@@ -251,7 +251,7 @@ describe("Ollama Fetcher", () => {
 
 		it("should log an info message and return an empty object on ECONNREFUSED", async () => {
 			const baseUrl = "http://localhost:11434"
-			const consoleInfoSpy = vi.spyOn(logger, "warn").mockImplementation(() => {}) // Spy and suppress output
+			const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {}) // Spy and suppress output
 
 			const econnrefusedError = new Error("Connection refused") as any
 			econnrefusedError.code = "ECONNREFUSED"
@@ -262,10 +262,10 @@ describe("Ollama Fetcher", () => {
 			expect(mockedAxios.get).toHaveBeenCalledTimes(1)
 			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/api/tags`, { headers: {} })
 			expect(mockedAxios.post).not.toHaveBeenCalled()
-			expect(consoleInfoSpy).toHaveBeenCalledWith(`Failed connecting to Ollama at ${baseUrl}`)
+			expect(loggerWarnSpy).toHaveBeenCalledWith(`Failed connecting to Ollama at ${baseUrl}`)
 			expect(result).toEqual({})
 
-			consoleInfoSpy.mockRestore() // Restore original logger.info
+			loggerWarnSpy.mockRestore() // Restore original logger.info
 		})
 
 		it("should handle models with null families field in API response", async () => {

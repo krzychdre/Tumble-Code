@@ -5,6 +5,7 @@ import { PlanReviewPanel } from "../webview/PlanReviewPanel"
 import { isPlanReviewFileOpen } from "../webview/planReviewRegistry"
 import { isPlanFilePath } from "../../shared/planFiles"
 import { arePathsEqual } from "../../utils/path"
+import { logger } from "../../utils/logging"
 
 /**
  * After a write tool successfully saves a plan file, block the task until the
@@ -113,10 +114,7 @@ export async function pauseForPlanReviewIfNeeded(task: Task, toolRelPath: string
 		return result
 	} catch (error) {
 		// The pause must never crash a write tool — log and continue.
-		const provider = task.providerRef.deref()
-		if (provider?.log) {
-			provider.log(`[planReviewPause] error: ${error instanceof Error ? error.message : String(error)}`)
-		}
+		logger.error(`[planReviewPause] error: ${error instanceof Error ? error.message : String(error)}`)
 		return undefined
 	}
 }

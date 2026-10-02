@@ -183,9 +183,9 @@ export class TaskLifecycle {
 		} catch (error) {
 			// If there's an error getting state, use the default mode
 			this.access._taskMode = defaultModeSlug
-			// Use the provider's log method for better error visibility
+			// Log the fallback so it shows in the output panel
 			const errorMessage = `Failed to initialize task mode: ${error instanceof Error ? error.message : String(error)}`
-			provider.log(errorMessage)
+			logger.warn(errorMessage)
 		}
 	}
 
@@ -223,9 +223,9 @@ export class TaskLifecycle {
 			if (this.access._taskApiConfigName === undefined) {
 				this.access._taskApiConfigName = "default"
 			}
-			// Use the provider's log method for better error visibility
+			// Log the fallback so it shows in the output panel
 			const errorMessage = `Failed to initialize task API config name: ${error instanceof Error ? error.message : String(error)}`
-			provider.log(errorMessage)
+			logger.warn(errorMessage)
 		}
 	}
 

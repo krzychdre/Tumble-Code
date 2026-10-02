@@ -5,6 +5,7 @@ import { fetchModelSource } from "../../../api/providers/fetchers/modelSourceReg
 import { t } from "../../../i18n"
 import { logAndToast, serializeError } from "./context"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 	requestProviderModels: async (ctx, message) => {
@@ -116,7 +117,7 @@ export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 				// currently activated provider profile.
 				await provider.activateProviderProfile({ name: newName })
 			} catch (error) {
-				provider.log(`Error rename api configuration: ${serializeError(error)}`)
+				logger.error(`Error rename api configuration: ${serializeError(error)}`)
 
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				vscode.window.showErrorMessage(t("common:errors.rename_api_config") + ": " + errorMessage)
@@ -130,7 +131,7 @@ export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 			try {
 				await provider.activateProviderProfile({ name: message.text })
 			} catch (error) {
-				provider.log(`Error load api configuration: ${serializeError(error)}`)
+				logger.error(`Error load api configuration: ${serializeError(error)}`)
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				vscode.window.showErrorMessage(t("common:errors.load_api_config") + ": " + errorMessage)
 			}
@@ -143,7 +144,7 @@ export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 			try {
 				await provider.activateProviderProfile({ id: message.text })
 			} catch (error) {
-				provider.log(`Error load api configuration by ID: ${serializeError(error)}`)
+				logger.error(`Error load api configuration by ID: ${serializeError(error)}`)
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				vscode.window.showErrorMessage(t("common:errors.load_api_config") + ": " + errorMessage)
 			}

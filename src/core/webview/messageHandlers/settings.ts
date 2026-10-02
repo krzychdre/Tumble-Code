@@ -346,7 +346,7 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 				})
 			} catch (error) {
 				// Fail silently as per Bruno's comment - it's OK to fail silently in this case
-				provider.log(`Failed to dismiss upsell: ${error instanceof Error ? error.message : String(error)}`)
+				logger.warn(`Failed to dismiss upsell: ${error instanceof Error ? error.message : String(error)}`)
 			}
 		}
 	},

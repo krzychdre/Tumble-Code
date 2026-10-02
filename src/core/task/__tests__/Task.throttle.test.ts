@@ -75,7 +75,6 @@ describe("Task token usage throttling", () => {
 				globalStorageUri: { fsPath: "/test/path" },
 			},
 			getState: vi.fn().mockResolvedValue({ mode: "code" }),
-			log: vi.fn(),
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),
 			postStateToWebviewWithoutTaskHistory: vi.fn().mockResolvedValue(undefined),
 			updateTaskHistory: vi.fn().mockResolvedValue(undefined),

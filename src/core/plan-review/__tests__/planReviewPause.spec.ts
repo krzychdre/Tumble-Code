@@ -43,7 +43,6 @@ function makeTask(overrides: TaskOverrides = {}) {
 	const provider = {
 		getState: vi.fn().mockResolvedValue(state),
 		context: {},
-		log: vi.fn(),
 	}
 	return {
 		cwd: "/ws",

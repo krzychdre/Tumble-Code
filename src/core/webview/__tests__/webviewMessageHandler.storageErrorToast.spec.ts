@@ -34,7 +34,6 @@ const showErrorMessage = vi.mocked(vscode.window.showErrorMessage)
 
 const makeProvider = (overrides: Partial<Record<string, any>> = {}): ClineProvider => {
 	return {
-		log: vi.fn(),
 		postMessageToWebview: vi.fn(),
 		postStateToWebview: vi.fn(),
 		providerSettingsManager: {
