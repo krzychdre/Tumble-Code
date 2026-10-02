@@ -273,6 +273,24 @@ async def _seed_a_phone_sized_problem(session_factory):
         await s.commit()
 
 
+async def _seed_a_phone_sized_recording(session_factory):
+    """A recorded exchange whose model, workspace and task id are as long as they get."""
+    from datetime import datetime, timezone
+
+    from src.models.llm_exchange import LlmExchange
+
+    async with session_factory() as s:
+        s.add(LlmExchange(
+            id="phone-exchange", user_id="user_test", task_id="0f6c2a1e-1111-4a5b-9c8d-" + "e" * 12,
+            sequence=0, occurred_at=datetime.now(timezone.utc), status="completed",
+            model_id="hf.co/unsloth/GLM-5.3-Flash-NVFP4-A8-with-an-even-longer-local-quantization-suffix:latest",
+            provider="openai", issues="missing_parameter,tool_call_in_text",
+            workspace_path="/home/someone/Projekty/a-client-with-a-very-long-name/monorepo-with-many-packages/apps/web",
+            payload="{}",
+        ))
+        await s.commit()
+
+
 @pytest.mark.parametrize(
     "path, rendered",
     [
@@ -286,6 +304,7 @@ async def _seed_a_phone_sized_problem(session_factory):
         ("/app/diagnostics?period=all&tool=read_file&sort=recent", None),
         ("/app/diagnostics/reports/phone-report", None),
         ("/app/settings", None),
+        ("/app/dataset", None),
     ],
 )
 async def test_every_page_fits_a_phone(path, rendered, client, session_factory, monkeypatch, tmp_path):
@@ -294,6 +313,8 @@ async def test_every_page_fits_a_phone(path, rendered, client, session_factory, 
     # The owner's live controls are part of the task page a phone shows.
     monkeypatch.setattr(app_settings, "bridge_enabled", True)
     await _seed_a_phone_sized_problem(session_factory)
+    if path.startswith("/app/dataset"):
+        await _seed_a_phone_sized_recording(session_factory)
 
     _override_web_user(client.app)
     try:

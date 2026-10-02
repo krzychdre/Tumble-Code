@@ -78,7 +78,9 @@ def _js_number(value: float) -> str:
     if value == 0:
         return "0"
     if value.is_integer() and abs(value) < 1e21:
-        return str(int(value))
+        # Past 2**53 JavaScript writes the shortest digits padded with zeros,
+        # not the exact binary value.
+        return str(int(value)) if abs(value) < 2**53 else format(Decimal(repr(value)), "f")
     text = repr(value)
     if "e" not in text:
         return text

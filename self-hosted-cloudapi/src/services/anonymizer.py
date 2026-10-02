@@ -55,6 +55,9 @@ _COMMON_WORDS = {
     "project", "projects", "repo", "temp", "tmp", "build", "dist", "server", "client", "backend", "frontend",
 }
 
+# Account names that are placeholders, not a person (a "Test User" account).
+_NOT_NAMES = _GENERIC_USERS | {"test", "tester", "owner", "dev", "developer", "unknown", "none", "null"}
+
 _PRIVATE_KEY_RE = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----")
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}")
 _BEARER_RE = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}")
@@ -78,9 +81,11 @@ _QUOTED_PAIR_RE = re.compile(
 # key: value / key=value without quotes: only a value that looks like a secret.
 _BARE_PAIR_RE = re.compile(rf"""(\b{_SECRET_KEY_NAME}\s*[:=]\s*)([A-Za-z0-9_\-+/=.~]{{8,}})""", re.IGNORECASE)
 # .env and shell lines: FOO_TOKEN=..., export DB_PASSWORD="..."
+# Upper-case names only (the .env convention), and a literal value: an
+# expression such as $(cat f), os.environ[...] or ${X} is code, not a secret.
 _ENV_LINE_RE = re.compile(
-    r"""(?im)^(\s*(?:export\s+)?[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIALS?)"""
-    r"""[A-Z0-9_]*\s*=\s*)(["']?)([^\s"'#]+)(\2)"""
+    r"""(?m)^(\s*(?:export\s+)?[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIALS?)"""
+    r"""[A-Z0-9_]*\s*=\s*)(["']?)([^\s"'#()\[\]{}$]+)(\2)(?=\s|$)"""
 )
 _URL_CREDENTIALS_RE = re.compile(r"\b([a-z][a-z0-9+.-]*://)([^/\s:@\"']+):([^/\s@\"']+)@", re.IGNORECASE)
 _URL_KEY_PARAM_RE = re.compile(
@@ -140,7 +145,7 @@ def _luhn_valid(digits: str) -> bool:
     return total % 10 == 0
 
 
-def _bounded(term: str) -> re.Pattern:
+def _bounded(term: str, proper_noun: bool = False) -> re.Pattern:
     """``term`` as a whole token: not inside a longer word (letters or digits), any case.
 
     Underscores, dots and dashes are boundaries, so ``acme`` is found in
@@ -148,6 +153,11 @@ def _bounded(term: str) -> re.Pattern:
     with any of those separators or none between them: ``QUB-IT`` also finds
     ``QUB_IT``, ``qub it`` and ``qubit``.
     """
+    if proper_noun:
+        # A person's name: only as a name is written (Alice, ALICE), so that
+        # "Will" or "Mark" in an account does not rewrite "will" and "mark".
+        forms = sorted({term, term.title(), term.upper()}, key=len, reverse=True)
+        return re.compile(rf"(?<![^\W_])(?:{'|'.join(re.escape(f) for f in forms)})(?![^\W_])")
     parts = [re.escape(part) for part in re.split(r"[-_. ]+", term) if part]
     body = r"[-_. ]?".join(parts) if parts else re.escape(term)
     return re.compile(rf"(?<![^\W_]){body}(?![^\W_])", re.IGNORECASE)
@@ -191,8 +201,8 @@ class Anonymizer:
                 local = value.split("@", 1)[0]
                 if len(local) >= 3 and local.lower() not in _COMMON_WORDS:
                     self._add_token(local, "identity", "person", fixed="person1")
-            elif kind == "name" and len(value) >= 3:
-                self._add_token(value, "identity", "person", fixed="person1")
+            elif kind == "name" and len(value) >= 3 and value.lower() not in _NOT_NAMES:
+                self._add_token(value, "identity", "person", fixed="person1", proper_noun=True)
         for term in terms:
             term = term.strip()
             if len(term) >= 3:
@@ -213,15 +223,18 @@ class Anonymizer:
     def _count(self, category: str, original: str, replacement: str) -> None:
         self.audit[(category, original, replacement)] += 1
 
-    def _add_token(self, value: str, category: str, base: str, fixed: Optional[str] = None) -> None:
+    def _add_token(
+        self, value: str, category: str, base: str, fixed: Optional[str] = None, proper_noun: bool = False
+    ) -> None:
         key = value.lower()
-        if any(pattern.pattern == _bounded(value).pattern for pattern, _, _ in self._token_rules):
+        pattern = _bounded(value, proper_noun)
+        if any(existing.pattern == pattern.pattern for existing, _, _ in self._token_rules):
             return
         if fixed:
             pseudonym = self._remember(category, key, fixed)
         else:
             pseudonym = self._pseudonym(category, key, lambda n: f"{base}{n}")
-        self._token_rules.append((_bounded(value), category, pseudonym))
+        self._token_rules.append((pattern, category, pseudonym))
         # Longest first, so "Acme Corp" goes before "Acme".
         self._token_rules.sort(key=lambda rule: len(rule[0].pattern), reverse=True)
         self._cache.clear()
