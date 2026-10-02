@@ -61,8 +61,6 @@ export const errorReportRequestSchema = z.object({
 	messages: z.array(errorReportMessageSchema).optional(),
 })
 
-export type ErrorReportRequest = z.infer<typeof errorReportRequestSchema>
-
 export const errorReportResponseSchema = z.object({
 	text: z.string().optional(),
 	reasoning: z.string().optional(),
@@ -71,8 +69,6 @@ export const errorReportResponseSchema = z.object({
 	errorBody: z.string().optional(),
 	usage: z.record(z.string(), z.unknown()).optional(),
 })
-
-export type ErrorReportResponse = z.infer<typeof errorReportResponseSchema>
 
 export const errorReportSchema = z.object({
 	/** A uuid v4 made by the extension; the server ignores a duplicate. */
