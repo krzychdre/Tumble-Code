@@ -3,9 +3,10 @@ import type { ModeConfig, PromptComponent, CustomModePrompts } from "@roo-code/t
 import { getRoleDefinition, getWhenToUse, getDescription } from "@roo/modes"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, StandardTooltip, ThemedTextArea, ThemedTextField } from "@src/components/ui"
+import { Button, Input, StandardTooltip, Textarea } from "@src/components/ui"
+import { useTextDraft } from "@src/components/ui/hooks"
 
-import { readTextEventValue, type ResettablePromptField } from "./modePromptUpdates"
+import type { ResettablePromptField } from "./modePromptUpdates"
 
 type PromptFieldHeaderProps = {
 	title: string
@@ -70,6 +71,56 @@ export const ModePromptFields = ({
 	const prompt = customModePrompts?.[visualMode] as PromptComponent
 	const testIdPrefix = currentModeSlug || "code"
 
+	// Each field saves when it is left after an edit (a custom mode rewrites its file), not on
+	// every keystroke; the draft keeps the typed text until then.
+	const roleDefinition = useTextDraft(
+		customMode?.roleDefinition ?? prompt?.roleDefinition ?? getRoleDefinition(visualMode),
+		(value) => {
+			if (customMode) {
+				// For custom modes, update the JSON file
+				onUpdateCustomMode({
+					...customMode,
+					roleDefinition: value.trim() || "",
+					source: customMode.source || "global",
+				})
+			} else {
+				// For built-in modes, update the prompts
+				onUpdateAgentPrompt({
+					roleDefinition: value.trim() || undefined,
+				})
+			}
+		},
+	)
+	const description = useTextDraft(
+		customMode?.description ?? prompt?.description ?? getDescription(visualMode),
+		(value) => {
+			if (customMode) {
+				onUpdateCustomMode({
+					...customMode,
+					description: value.trim() || undefined,
+					source: customMode.source || "global",
+				})
+			} else {
+				onUpdateAgentPrompt({
+					description: value.trim() || undefined,
+				})
+			}
+		},
+	)
+	const whenToUse = useTextDraft(customMode?.whenToUse ?? prompt?.whenToUse ?? getWhenToUse(visualMode), (value) => {
+		if (customMode) {
+			onUpdateCustomMode({
+				...customMode,
+				whenToUse: value.trim() || undefined,
+				source: customMode.source || "global",
+			})
+		} else {
+			onUpdateAgentPrompt({
+				whenToUse: value.trim() || undefined,
+			})
+		}
+	})
+
 	return (
 		<>
 			{/* Role Definition section */}
@@ -84,26 +135,9 @@ export const ModePromptFields = ({
 				<div className="text-sm text-vscode-descriptionForeground mb-row">
 					{t("prompts:roleDefinition.description")}
 				</div>
-				<ThemedTextArea
-					resize="vertical"
-					value={customMode?.roleDefinition ?? prompt?.roleDefinition ?? getRoleDefinition(visualMode)}
-					onChange={(e) => {
-						const value = readTextEventValue(e)
-						if (customMode) {
-							// For custom modes, update the JSON file
-							onUpdateCustomMode({
-								...customMode,
-								roleDefinition: value.trim() || "",
-								source: customMode.source || "global",
-							})
-						} else {
-							// For built-in modes, update the prompts
-							onUpdateAgentPrompt({
-								roleDefinition: value.trim() || undefined,
-							})
-						}
-					}}
-					className="w-full"
+				<Textarea
+					{...roleDefinition}
+					className="w-full resize-y"
 					rows={5}
 					data-testid={`${testIdPrefix}-prompt-textarea`}
 				/>
@@ -121,27 +155,7 @@ export const ModePromptFields = ({
 				<div className="text-sm text-vscode-descriptionForeground mb-row">
 					{t("prompts:description.description")}
 				</div>
-				<ThemedTextField
-					value={customMode?.description ?? prompt?.description ?? getDescription(visualMode)}
-					onChange={(e) => {
-						const value = readTextEventValue(e)
-						if (customMode) {
-							// For custom modes, update the JSON file
-							onUpdateCustomMode({
-								...customMode,
-								description: value.trim() || undefined,
-								source: customMode.source || "global",
-							})
-						} else {
-							// For built-in modes, update the prompts
-							onUpdateAgentPrompt({
-								description: value.trim() || undefined,
-							})
-						}
-					}}
-					className="w-full"
-					data-testid={`${testIdPrefix}-description-textfield`}
-				/>
+				<Input {...description} className="w-full" data-testid={`${testIdPrefix}-description-textfield`} />
 			</div>
 
 			{/* When to Use section */}
@@ -156,26 +170,9 @@ export const ModePromptFields = ({
 				<div className="text-sm text-vscode-descriptionForeground mb-row">
 					{t("prompts:whenToUse.description")}
 				</div>
-				<ThemedTextArea
-					resize="vertical"
-					value={customMode?.whenToUse ?? prompt?.whenToUse ?? getWhenToUse(visualMode)}
-					onChange={(e) => {
-						const value = readTextEventValue(e)
-						if (customMode) {
-							// For custom modes, update the JSON file
-							onUpdateCustomMode({
-								...customMode,
-								whenToUse: value.trim() || undefined,
-								source: customMode.source || "global",
-							})
-						} else {
-							// For built-in modes, update the prompts
-							onUpdateAgentPrompt({
-								whenToUse: value.trim() || undefined,
-							})
-						}
-					}}
-					className="w-full"
+				<Textarea
+					{...whenToUse}
+					className="w-full resize-y"
 					rows={4}
 					data-testid={`${testIdPrefix}-when-to-use-textarea`}
 				/>

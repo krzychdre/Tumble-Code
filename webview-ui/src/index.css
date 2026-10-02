@@ -255,7 +255,7 @@
 		outline-offset: 1px;
 	}
 
-	/* §2.6: a real disabled style for the chat action-bar buttons — not just
+	/* §2.6: a real disabled style for the chat action-bar buttons, not just
 	   a cursor and 50% opacity. The button keeps its place and shape but reads
 	   as inert: desaturated fill, no hover, and the theme's own
 	   button-foreground/disabledForeground mix. */
@@ -751,6 +751,28 @@
 		}
 	}
 
+	/* Scrollbar of the multi-line text field (components/ui/textarea.tsx). */
+	.ui-textarea::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	.ui-textarea::-webkit-scrollbar-corner {
+		background: var(--vscode-input-background, #3c3c3c);
+	}
+
+	.ui-textarea::-webkit-scrollbar-thumb {
+		background: var(--vscode-scrollbarSlider-background, #79797966);
+	}
+
+	.ui-textarea::-webkit-scrollbar-thumb:hover {
+		background: var(--vscode-scrollbarSlider-hoverBackground, #646464b3);
+	}
+
+	.ui-textarea::-webkit-scrollbar-thumb:active {
+		background: var(--vscode-scrollbarSlider-activeBackground, #bfbfbf66);
+	}
+
 	/*
 	 * Text area (components/ui/themed-text-area.tsx), the same look as the
 	 * deprecated toolkit's <vscode-text-area>. Fallbacks are the toolkit's
@@ -966,6 +988,7 @@ a.ui-link {
 /* Same for VS Code's unlayered `input:focus` outline before 1.104. */
 input.ui-checkbox-input,
 input.ui-radio-input,
+input.ui-input,
 input.ui-text-field-control {
 	outline: revert-layer;
 	outline-offset: revert-layer;
@@ -976,6 +999,8 @@ input.ui-text-field-control {
  * before 1.104 and the `textarea:focus` rule below add an unlayered outline;
  * hand the outline back to the layers.
  */
+textarea.ui-textarea,
+textarea.ui-textarea:focus,
 textarea.ui-text-area-control,
 textarea.ui-text-area-control:focus {
 	outline: revert-layer;

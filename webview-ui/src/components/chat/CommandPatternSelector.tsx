@@ -3,6 +3,7 @@ import { Check, CheckCheck, ChevronUp, X } from "lucide-react"
 import { cn } from "../../lib/utils"
 import { useTranslation } from "react-i18next"
 import { StandardTooltip } from "../ui/standard-tooltip"
+import { Input } from "../ui/input"
 
 interface CommandPattern {
 	pattern: string
@@ -95,7 +96,7 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 							<div key={item.pattern} className="flex items-center gap-2">
 								<div className="flex-1">
 									{editState.isEditing ? (
-										<input
+										<Input
 											type="text"
 											value={editState.value}
 											onChange={(e) => setEditState(item.pattern, true, e.target.value)}
@@ -108,7 +109,7 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 													setEditState(item.pattern, false, item.pattern)
 												}
 											}}
-											className="font-mono text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border px-2 py-1.5 w-full focus:outline-0 focus:ring-1 focus:ring-vscode-focusBorder"
+											className="h-auto font-mono text-xs border-vscode-input-border px-2 py-1.5"
 											placeholder={item.pattern}
 											autoFocus
 										/>

@@ -72,8 +72,11 @@ const type = (el: HTMLTextAreaElement, text: string) =>
 		el.dispatchEvent(new Event("input", { bubbles: true, composed: true }))
 	})
 
-/** Leaves the field after editing: the native `change` event. */
-const leave = (el: HTMLTextAreaElement) => fireEvent.change(el)
+/** Leaves the field after editing: the native `change` event, then `blur`. */
+const leave = (el: HTMLTextAreaElement) => {
+	fireEvent.change(el)
+	fireEvent.blur(el)
+}
 
 const posted = (type: string) =>
 	vi

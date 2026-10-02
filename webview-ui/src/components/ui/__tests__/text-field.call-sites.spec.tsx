@@ -44,7 +44,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 const control = (el: Element) => (el.shadowRoot?.querySelector("input") ?? el) as HTMLInputElement
 
 /** Every text field on the page, in document order (toolkit hosts or replacement inputs). */
-const fields = () => [...document.querySelectorAll("vscode-text-field, input.ui-text-field-control")].map(control)
+const fields = () =>
+	[...document.querySelectorAll("vscode-text-field, input.ui-text-field-control, input.ui-input")].map(control)
 
 /** Types like a user whose caret stays in the field: sets the text and fires `input`. */
 const type = (el: HTMLInputElement, text: string) =>
@@ -159,8 +160,11 @@ describe("VSCodeTextField call sites: modes", () => {
 		await ready()
 		const textarea = document.querySelector("textarea")!
 		fireEvent.change(textarea, { target: { value: "You are a tester." } })
-		const [description] = fields()
-		expect(fields()).toHaveLength(1)
+		// Name, slug and description are the dialog's three text fields.
+		expect(fields()).toHaveLength(3)
+		const description = screen
+			.getByText("prompts:createModeDialog.description.label")
+			.parentElement!.querySelector("input")!
 
 		fireEvent.change(
 			screen.getByText("prompts:createModeDialog.name.label").parentElement!.querySelector("input")!,

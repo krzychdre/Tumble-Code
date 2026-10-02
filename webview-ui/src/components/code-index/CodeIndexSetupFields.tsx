@@ -2,7 +2,7 @@ import type { EmbedderProvider, CodebaseIndexModels, ProviderSettings } from "@r
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, ThemedTextField } from "@src/components/ui"
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 
 import { DEFAULT_QDRANT_URL } from "./codeIndexSettings"
 import { EMBEDDER_PROVIDERS, getEmbedderForm } from "./embedderForms"
@@ -83,10 +83,10 @@ export const CodeIndexSetupFields = ({
 			{/* Qdrant Settings */}
 			<div className="space-y-2">
 				<label className="text-sm font-medium">{t("settings:codeIndex.qdrantUrlLabel")}</label>
-				<ThemedTextField
+				<Input
 					value={currentSettings.codebaseIndexQdrantUrl || ""}
-					onInput={(e: any) => updateSetting("codebaseIndexQdrantUrl", e.target.value)}
-					onBlur={(e: any) => {
+					onChange={(e) => updateSetting("codebaseIndexQdrantUrl", e.target.value)}
+					onBlur={(e) => {
 						// Set default Qdrant URL if field is empty
 						if (!e.target.value.trim()) {
 							updateSetting("codebaseIndexQdrantUrl", DEFAULT_QDRANT_URL)
@@ -104,10 +104,10 @@ export const CodeIndexSetupFields = ({
 
 			<div className="space-y-2">
 				<label className="text-sm font-medium">{t("settings:codeIndex.qdrantApiKeyLabel")}</label>
-				<ThemedTextField
+				<Input
 					type="password"
 					value={currentSettings.codeIndexQdrantApiKey || ""}
-					onInput={(e: any) => updateSetting("codeIndexQdrantApiKey", e.target.value)}
+					onChange={(e) => updateSetting("codeIndexQdrantApiKey", e.target.value)}
 					placeholder={t("settings:codeIndex.qdrantApiKeyPlaceholder")}
 					className={cn("w-full", {
 						"border-[var(--vscode-inputValidation-errorBorder)]": formErrors.codeIndexQdrantApiKey,

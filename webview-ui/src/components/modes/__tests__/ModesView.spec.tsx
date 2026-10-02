@@ -97,16 +97,9 @@ describe("PromptsView", () => {
 		// Get the textarea
 		const textarea = await waitFor(() => screen.getByTestId("code-prompt-textarea"))
 
-		// Simulate VSCode TextArea change event
-		const changeEvent = new CustomEvent("change", {
-			detail: {
-				target: {
-					value: "New prompt value",
-				},
-			},
-		})
-
-		fireEvent(textarea, changeEvent)
+		// Edit the text and leave the field: the prompt is saved when the field is left
+		fireEvent.change(textarea, { target: { value: "New prompt value" } })
+		fireEvent.blur(textarea)
 
 		expect(vscode.postMessage).toHaveBeenCalledWith({
 			type: "updatePrompt",
@@ -211,16 +204,9 @@ describe("PromptsView", () => {
 
 		const textarea = screen.getByTestId("global-custom-instructions-textarea")
 
-		// Simulate VSCode TextArea change event with empty value
-		// We need to simulate both the CustomEvent format and regular event format
-		// since the component handles both
-		Object.defineProperty(textarea, "value", {
-			writable: true,
-			value: "",
-		})
-
-		const changeEvent = new Event("change", { bubbles: true })
-		fireEvent(textarea, changeEvent)
+		// Clear the text and leave the field
+		fireEvent.change(textarea, { target: { value: "" } })
+		fireEvent.blur(textarea)
 
 		// The component calls setCustomInstructions with value ?? undefined
 		// With nullish coalescing, empty string is preserved (not treated as nullish)
@@ -274,9 +260,8 @@ describe("PromptsView", () => {
 		fireEvent.change(nameInput, { target: { value: "Reviewer" } })
 		expect(slugInput.value).toBe("reviewer")
 
-		const roleDefinition = dialog.querySelector("textarea") as HTMLElement & { value: string }
-		roleDefinition.value = "You review code."
-		fireEvent(roleDefinition, new Event("change", { bubbles: true }))
+		const roleDefinition = dialog.querySelector("textarea") as HTMLTextAreaElement
+		fireEvent.change(roleDefinition, { target: { value: "You review code." } })
 
 		fireEvent.click(screen.getByRole("button", { name: "prompts:createModeDialog.buttons.create" }))
 
@@ -319,9 +304,8 @@ describe("PromptsView", () => {
 
 		fireEvent.click(screen.getByTestId("add-mode-button"))
 		let dialog = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
-		const roleDefinition = dialog.querySelector("textarea") as HTMLElement & { value: string }
-		roleDefinition.value = "Leftover role"
-		fireEvent(roleDefinition, new Event("change", { bubbles: true }))
+		const roleDefinition = dialog.querySelector("textarea") as HTMLTextAreaElement
+		fireEvent.change(roleDefinition, { target: { value: "Leftover role" } })
 		fireEvent.change(dialog.querySelectorAll("input[type=text]")[0], { target: { value: "Leftover" } })
 		fireEvent.click(screen.getByRole("button", { name: "prompts:createModeDialog.buttons.cancel" }))
 		await waitFor(() => expect(dialog).not.toBeInTheDocument())

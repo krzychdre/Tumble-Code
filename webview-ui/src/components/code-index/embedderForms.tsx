@@ -110,10 +110,9 @@ export const EMBEDDER_FORMS = {
 					field="codebaseIndexEmbedderBaseUrl"
 					labelKey="settings:codeIndex.ollamaBaseUrlLabel"
 					placeholderKey="settings:codeIndex.ollamaUrlPlaceholder"
-					onBlur={(e: any) => {
+					onBlur={(e) => {
 						// Set default Ollama URL if field is empty
 						if (!e.target.value.trim()) {
-							e.target.value = DEFAULT_OLLAMA_URL
 							context.updateSetting("codebaseIndexEmbedderBaseUrl", DEFAULT_OLLAMA_URL)
 						}
 					}}

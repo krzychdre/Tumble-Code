@@ -12,8 +12,7 @@ import {
 	LabeledCheckbox,
 	ThemedRadio,
 	ThemedRadioGroup,
-	ThemedTextArea,
-	ThemedTextField,
+	Textarea,
 } from "@src/components/ui"
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 
@@ -174,12 +173,11 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.roleDefinition.description")}
 						</div>
-						<ThemedTextArea
-							resize="vertical"
+						<Textarea
 							value={roleDefinition}
-							onChange={(e) => setRoleDefinition((e.target as HTMLTextAreaElement).value)}
+							onChange={(e) => setRoleDefinition(e.target.value)}
 							rows={4}
-							className="w-full"
+							className="w-full resize-y"
 						/>
 						{fieldError("roleDefinition")}
 					</div>
@@ -189,9 +187,9 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.description.description")}
 						</div>
-						<ThemedTextField
+						<Input
 							value={description}
-							onChange={(e) => setDescription((e.target as HTMLInputElement).value)}
+							onChange={(e) => setDescription(e.target.value)}
 							className="w-full"
 						/>
 						{fieldError("description")}
@@ -202,12 +200,11 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.whenToUse.description")}
 						</div>
-						<ThemedTextArea
-							resize="vertical"
+						<Textarea
 							value={whenToUse}
-							onChange={(e) => setWhenToUse((e.target as HTMLTextAreaElement).value)}
+							onChange={(e) => setWhenToUse(e.target.value)}
 							rows={3}
-							className="w-full"
+							className="w-full resize-y"
 						/>
 					</div>
 					<div className="mb-4">
@@ -274,12 +271,11 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.customInstructions.description")}
 						</div>
-						<ThemedTextArea
-							resize="vertical"
+						<Textarea
 							value={customInstructions}
-							onChange={(e) => setCustomInstructions((e.target as HTMLTextAreaElement).value)}
+							onChange={(e) => setCustomInstructions(e.target.value)}
 							rows={4}
-							className="w-full"
+							className="w-full resize-y"
 						/>
 					</div>
 				</div>

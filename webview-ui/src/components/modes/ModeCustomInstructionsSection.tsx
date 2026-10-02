@@ -7,10 +7,10 @@ import { getCustomInstructions } from "@roo/modes"
 import { vscode } from "@src/utils/vscode"
 import { buildDocLink } from "@src/utils/docLinks"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Link, ThemedTextArea } from "@src/components/ui"
+import { Link, Textarea } from "@src/components/ui"
+import { useTextDraft } from "@src/components/ui/hooks"
 
 import { PromptFieldHeader } from "./ModePromptFields"
-import { readTextEventValue } from "./modePromptUpdates"
 
 type ModeCustomInstructionsSectionProps = {
 	visualMode: string
@@ -41,6 +41,27 @@ export const ModeCustomInstructionsSection = ({
 }: ModeCustomInstructionsSectionProps) => {
 	const { t } = useAppTranslation()
 	const prompt = customModePrompts?.[visualMode] as PromptComponent
+	// Saved when the field is left after an edit, not on every keystroke.
+	const instructions = useTextDraft(
+		customMode?.customInstructions ?? prompt?.customInstructions ?? getCustomInstructions(visualMode, customModes),
+		(value) => {
+			if (customMode) {
+				// For custom modes, update the JSON file
+				onUpdateCustomMode({
+					...customMode,
+					// Preserve empty string; only treat null/undefined as unset
+					customInstructions: value ?? undefined,
+					source: customMode.source || "global",
+				})
+			} else {
+				// For built-in modes, update the prompts
+				onUpdateAgentPrompt({
+					...prompt,
+					customInstructions: value.trim() || undefined,
+				})
+			}
+		},
+	)
 
 	return (
 		<div className="mb-row">
@@ -56,33 +77,10 @@ export const ModeCustomInstructionsSection = ({
 					modeName: currentMode?.name || "Code",
 				})}
 			</div>
-			<ThemedTextArea
-				resize="vertical"
-				value={
-					customMode?.customInstructions ??
-					prompt?.customInstructions ??
-					getCustomInstructions(visualMode, customModes)
-				}
-				onChange={(e) => {
-					const value = readTextEventValue(e)
-					if (customMode) {
-						// For custom modes, update the JSON file
-						onUpdateCustomMode({
-							...customMode,
-							// Preserve empty string; only treat null/undefined as unset
-							customInstructions: value ?? undefined,
-							source: customMode.source || "global",
-						})
-					} else {
-						// For built-in modes, update the prompts
-						onUpdateAgentPrompt({
-							...prompt,
-							customInstructions: value.trim() || undefined,
-						})
-					}
-				}}
+			<Textarea
+				{...instructions}
 				rows={10}
-				className="w-full"
+				className="w-full resize-y"
 				data-testid={`${currentMode?.slug || "code"}-custom-instructions-textarea`}
 			/>
 			<div className="text-xs text-vscode-descriptionForeground mt-1.5">

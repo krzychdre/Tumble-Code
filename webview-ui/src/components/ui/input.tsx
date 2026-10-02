@@ -2,21 +2,76 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-	({ className, type, ...props }, ref) => {
+/**
+ * The look of a single-line text field, VS Code's own: 26px high, the dropdown
+ * border, the input colours, the editor font size, the focus shown as a
+ * focusBorder-coloured border (no outline), 40% opacity when disabled.
+ * `ui-input` is a marker for the unlayered rules in `index.css`.
+ */
+const FIELD_BOX =
+	"h-[26px] w-full border border-vscode-dropdown-border bg-vscode-input-background text-vscode-input-foreground"
+const FIELD_TEXT = "text-base leading-[normal] placeholder:text-[#757575]"
+const FIELD_STATE = "disabled:cursor-not-allowed read-only:cursor-not-allowed"
+
+const hasContent = (node: React.ReactNode) => node !== undefined && node !== null && node !== false && node !== ""
+
+export interface InputProps extends React.ComponentProps<"input"> {
+	/** Shown inside the field before the text: an icon or a unit. */
+	start?: React.ReactNode
+	/** Shown inside the field after the text: a clear button, an icon. */
+	end?: React.ReactNode
+}
+
+/**
+ * The one single-line text field. A native `<input>` with React's `onChange`
+ * on every keystroke; `className`, `ref`, `id`, `data-testid` and the other
+ * props go on the `<input>`. With `start` or `end` the border moves to a
+ * wrapper that holds them around the input, and `className` goes on that
+ * wrapper (layout, width), while the props still go on the `<input>`. Passing
+ * `start` or `end` at all (even `null`) picks the wrapper, so a slot that comes
+ * and goes while typing does not remount the input.
+ */
+const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, start, end, ...props }, ref) => {
+	if (start === undefined && end === undefined) {
 		return (
 			<input
-				type={type}
+				ref={ref}
 				className={cn(
-					"flex w-full text-vscode-input-foreground border border-vscode-dropdown-border bg-vscode-input-background px-3 py-1 text-base transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-vscode-focusBorder disabled:cursor-not-allowed disabled:opacity-50",
+					"ui-input flex px-[9px] py-0 outline-none",
+					FIELD_BOX,
+					FIELD_TEXT,
+					FIELD_STATE,
+					"focus:border-vscode-focusBorder disabled:opacity-40",
 					className,
 				)}
-				ref={ref}
 				{...props}
 			/>
 		)
-	},
-)
+	}
+
+	return (
+		<div
+			className={cn(
+				"flex items-center",
+				FIELD_BOX,
+				"focus-within:border-vscode-focusBorder",
+				props.disabled && "opacity-40",
+				className,
+			)}>
+			{hasContent(start) && <span className="flex shrink-0 items-center ms-2">{start}</span>}
+			<input
+				ref={ref}
+				className={cn(
+					"ui-input h-full min-w-0 flex-1 px-[9px] py-0 border-0 bg-transparent text-inherit outline-none",
+					FIELD_TEXT,
+					FIELD_STATE,
+				)}
+				{...props}
+			/>
+			{hasContent(end) && <span className="flex shrink-0 items-center me-2">{end}</span>}
+		</div>
+	)
+})
 Input.displayName = "Input"
 
 export { Input }

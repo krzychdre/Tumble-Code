@@ -3,7 +3,7 @@ import { Fzf } from "fzf"
 
 import { cn } from "@/lib/utils"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
-import { IconButton, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
+import { IconButton, Input, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 import { Button } from "@/components/ui"
@@ -330,12 +330,12 @@ export const ApiConfigSelector = ({
 							{/* Search input or info blurb */}
 							{listApiConfigMeta.length > 6 ? (
 								<div className="relative p-2 border-b border-vscode-dropdown-border">
-									<input
+									<Input
 										aria-label={t("common:ui.search_placeholder")}
 										value={searchValue}
 										onChange={(e) => setSearchValue(e.target.value)}
 										placeholder={t("common:ui.search_placeholder")}
-										className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border focus-ring"
+										className="h-8 px-2 py-1 text-xs border-vscode-input-border"
 										autoFocus
 									/>
 									{searchValue.length > 0 && (

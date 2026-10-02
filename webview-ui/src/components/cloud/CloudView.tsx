@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react"
-import { Spinner, ThemedTextField } from "@src/components/ui"
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
+import { Input, Spinner } from "@src/components/ui"
 
 import { type CloudUserInfo, type CloudOrganizationMembership, TelemetryEventName } from "@roo-code/types"
 
@@ -86,11 +86,13 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 		setAuthInProgress(true)
 	}
 
-	const handleManualUrlChange = (e: any) => {
+	const handleManualUrlChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const url = e.target.value
 		setManualUrl(url)
 
-		// Auto-trigger authentication when a complete URL is pasted (with slight delay to ensure full paste is processed)
+		// Auto-trigger authentication when a complete URL is pasted (with slight delay to ensure full paste is
+		// processed). Only a paste: typing the URL by hand goes through Enter, so a half-typed URL is never sent.
+		if ((e.nativeEvent as InputEvent).inputType !== "insertFromPaste") return
 		setTimeout(() => {
 			if (url.trim() && url.includes("://") && url.includes("/auth/clerk/callback")) {
 				vscode.postMessage({ type: "rooCloudManualUrl", text: url.trim() })
@@ -98,7 +100,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 		}, 100)
 	}
 
-	const handleKeyDown = (e: any) => {
+	const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter") {
 			const url = manualUrl.trim()
 			if (url && url.includes("://") && url.includes("/auth/clerk/callback")) {
@@ -259,8 +261,8 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 									<p className="text-base text-vscode-descriptionForeground">
 										{t("cloud:pasteCallbackUrl")}
 									</p>
-									<ThemedTextField
-										ref={manualUrlInputRef as any}
+									<Input
+										ref={manualUrlInputRef}
 										value={manualUrl}
 										onChange={handleManualUrlChange}
 										onKeyDown={handleKeyDown}

@@ -16,8 +16,8 @@ import {
 	CommandEmpty,
 	CommandItem,
 	CommandGroup,
+	Input,
 	StandardTooltip,
-	ThemedTextField,
 } from "@src/components/ui"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
 
@@ -64,7 +64,7 @@ export const ModeSelectorRow = ({
 	// Inline rename state for the mode dropdown row
 	const [isRenamingMode, setIsRenamingMode] = useState(false)
 	const [renameInputValue, setRenameInputValue] = useState("")
-	const renameInputRef = useRef<any>(null)
+	const renameInputRef = useRef<HTMLInputElement>(null)
 
 	// Optimistic rename map so search reflects new names immediately
 	const [localRenames, setLocalRenames] = useState<Record<string, string>>({})
@@ -89,10 +89,13 @@ export const ModeSelectorRow = ({
 		searchInputRef.current?.focus()
 	}
 
-	// Focus rename input when entering rename mode
+	// Focus rename input when entering rename mode, with the name selected so typing replaces it
 	useEffect(() => {
 		if (isRenamingMode) {
-			const id = setTimeout(() => renameInputRef.current?.focus(), 0)
+			const id = setTimeout(() => {
+				renameInputRef.current?.focus()
+				renameInputRef.current?.select()
+			}, 0)
 			return () => clearTimeout(id)
 		}
 	}, [isRenamingMode])
@@ -133,13 +136,10 @@ export const ModeSelectorRow = ({
 		<div className="flex items-center gap-1 mb-block">
 			{isRenamingMode ? (
 				<>
-					<ThemedTextField
+					<Input
 						ref={renameInputRef}
 						value={renameInputValue}
-						onInput={(e: unknown) => {
-							const target = e as { target: { value: string } }
-							setRenameInputValue(target.target.value)
-						}}
+						onChange={(e) => setRenameInputValue(e.target.value)}
 						className="grow"
 						placeholder={t("prompts:createModeDialog.name.placeholder")}
 					/>

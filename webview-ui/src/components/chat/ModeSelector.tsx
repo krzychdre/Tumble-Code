@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
-import { IconButton, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
+import { IconButton, Input, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
 
 import { ModeIcon, modeLabel } from "./modeIcon"
 
@@ -249,13 +249,13 @@ export const ModeSelector = ({
 					{/* Show search bar only when there are more than SEARCH_THRESHOLD items, otherwise show info blurb */}
 					{showSearch ? (
 						<div className="relative p-2 border-b border-vscode-dropdown-border">
-							<input
+							<Input
 								aria-label={t("prompts:modes.selectMode")}
 								ref={searchInputRef}
 								value={searchValue}
 								onChange={(e) => setSearchValue(e.target.value)}
 								placeholder={t("chat:modeSelector.searchPlaceholder")}
-								className="w-full h-8 px-2 py-1 text-xs bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border focus-ring"
+								className="h-8 px-2 py-1 text-xs border-vscode-input-border"
 								data-testid="mode-search-input"
 							/>
 							{searchValue.length > 0 && (
