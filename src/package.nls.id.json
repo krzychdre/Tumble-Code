@@ -44,7 +44,7 @@
 	"settings.apiRequestTimeout.description": "Batas waktu respons API (detik, default: 600, rentang: 1-3600). Nilai lebih tinggi direkomendasikan untuk penyedia lokal. Penyedia tidak didukung: Amazon Bedrock, Google Gemini (langsung atau melalui Vertex AI), Mistral, Ollama, VS Code LM API.",
 	"settings.newTaskRequireTodos.description": "Memerlukan parameter todos saat membuat tugas baru dengan alat new_task",
 	"settings.codeIndex.embeddingBatchSize.description": "Ukuran batch untuk operasi embedding selama pengindeksan kode. Sesuaikan ini berdasarkan batas penyedia API kamu. Default adalah 60.",
-	"settings.debug.description": "Aktifkan mode debug untuk menampilkan tombol tambahan untuk melihat riwayat percakapan API dan pesan UI sebagai JSON yang diformat dalam file sementara.",
+	"settings.debug.description": "Aktifkan mode debug: menampilkan tombol tambahan untuk melihat riwayat percakapan API dan pesan UI sebagai JSON yang diformat dalam file sementara, serta menulis baris debug terperinci (termasuk penghitung kinerja setiap permintaan) ke panel output Tumble Code.",
 	"settings.debugProxy.enabled.description": "**Aktifkan Debug Proxy** — Arahkan semua permintaan jaringan keluar lewat proxy untuk debugging MITM. Hanya aktif saat kamu berjalan dalam mode debug (F5).",
 	"settings.debugProxy.serverUrl.description": "URL proxy (mis. `http://127.0.0.1:8888`). Hanya digunakan ketika **Debug Proxy** diaktifkan.",
 	"settings.debugProxy.tlsInsecure.description": "Terima sertifikat self-signed dari proxy. **Diperlukan untuk inspeksi MITM.** ⚠️ Tidak aman — gunakan hanya untuk debugging lokal.",

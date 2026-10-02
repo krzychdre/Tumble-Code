@@ -44,7 +44,7 @@
 	"settings.apiRequestTimeout.description": "Limit czasu odpowiedzi API (sekundy, domyślnie: 600, zakres: 1-3600). Wyższe wartości są zalecane dla lokalnych dostawców. Nieobsługiwani dostawcy: Amazon Bedrock, Google Gemini (bezpośrednio lub przez Vertex AI), Mistral, Ollama, VS Code LM API.",
 	"settings.newTaskRequireTodos.description": "Wymagaj parametru todos podczas tworzenia nowych zadań za pomocą narzędzia new_task",
 	"settings.codeIndex.embeddingBatchSize.description": "Rozmiar partii dla operacji osadzania podczas indeksowania kodu. Dostosuj to w oparciu o limity twojego dostawcy API. Domyślnie to 60.",
-	"settings.debug.description": "Włącz tryb debugowania, aby wyświetlić dodatkowe przyciski do przeglądania historii rozmów API i komunikatów interfejsu użytkownika jako sformatowany JSON w plikach tymczasowych.",
+	"settings.debug.description": "Włącz tryb debugowania: wyświetla dodatkowe przyciski do przeglądania historii rozmów API i komunikatów interfejsu użytkownika jako sformatowany JSON w plikach tymczasowych oraz zapisuje szczegółowe wiersze debugowania (w tym liczniki wydajności każdego żądania) w panelu danych wyjściowych Tumble Code.",
 	"settings.debugProxy.enabled.description": "**Włącz Debug Proxy** — Kieruj wszystkie wychodzące żądania sieciowe przez proxy na potrzeby debugowania MITM. Aktywne tylko wtedy, gdy uruchamiasz w trybie debugowania (F5).",
 	"settings.debugProxy.serverUrl.description": "URL proxy (np. `http://127.0.0.1:8888`). Używany tylko wtedy, gdy **Debug Proxy** jest włączony.",
 	"settings.debugProxy.tlsInsecure.description": "Akceptuj certyfikaty self-signed z proxy. **Wymagane do inspekcji MITM.** ⚠️ Niezabezpieczone — używaj tylko do lokalnego debugowania.",
