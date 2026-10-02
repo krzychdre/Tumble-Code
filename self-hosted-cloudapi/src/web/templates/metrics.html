@@ -1,6 +1,9 @@
 {% extends "base.html" %}
+{% import "_pager.html" as pager %}
 {% block title %}Usage metrics · Tumble Code{% endblock %}
 {% block content %}
+{# A page of the daily table: same period, table opened and scrolled to. #}
+{% macro day_url(n) %}/app/metrics?period={{ metrics.period }}&amp;day_page={{ n }}#daily-table{% endmacro %}
 <div class="metrics-head">
   <h1 class="page-title">Usage metrics</h1>
   <nav class="period-control" aria-label="Time period">
@@ -117,19 +120,27 @@
   <label class="legend-key key-cost"><input type="checkbox" class="series-toggle toggle-cost" checked><i></i>Cost</label>
 </div>
 {% endmacro %}
+{# Each series is an area, then its line on top; the day groups come last so
+   the hover column and the dots sit above both. The dots are zero-length
+   subpaths with round caps and a non-scaling stroke, so they stay round
+   although the plot is stretched to the card. #}
 {% macro daily_chart(c) %}
   <div class="chart-plot">
     <div class="chart-yaxis axis-tokens" aria-hidden="true">{% for t in c.tokens_ticks %}<span>{{ t }}</span>{% endfor %}</div>
-    <svg class="chart-svg chart-daily" viewBox="0 0 {{ c.width }} {{ c.height }}" preserveAspectRatio="none"
+    <svg class="chart-svg chart-daily{{ ' is-dense' if c.dense else '' }}" viewBox="0 0 {{ c.width }} {{ c.height }}" preserveAspectRatio="none"
          role="img" aria-label="{{ c.summary }}" aria-describedby="table-daily">
       {% for y in c.gridlines %}<line class="chart-grid-line" x1="0" y1="{{ y }}" x2="{{ c.width }}" y2="{{ y }}" vector-effect="non-scaling-stroke"></line>{% endfor %}
-      {% for s in c.slots %}
-      <g class="chart-mark"><title>{{ s.title }}</title><rect class="chart-hit" x="{{ s.slot_x }}" y="0" width="10" height="{{ c.height }}"></rect><rect class="chart-bar chart-bar-tokens series-tokens" x="{{ s.tokens.x }}" y="{{ s.tokens.y }}" width="{{ s.tokens.width }}" height="{{ s.tokens.height }}"></rect><rect class="chart-bar chart-bar-cost series-cost" x="{{ s.cost.x }}" y="{{ s.cost.y }}" width="{{ s.cost.width }}" height="{{ s.cost.height }}"></rect></g>
+      {% for key in ('tokens', 'cost') %}
+      {% if c[key].area %}<path class="chart-area chart-area-{{ key }} series-{{ key }}" d="{{ c[key].area }}"></path>{% endif %}
+      <path class="chart-line chart-line-{{ key }} series-{{ key }}" d="{{ c[key].line }}" vector-effect="non-scaling-stroke"></path>
       {% endfor %}
       <line class="chart-axis" x1="0" y1="{{ c.height }}" x2="{{ c.width }}" y2="{{ c.height }}" vector-effect="non-scaling-stroke"></line>
+      {% for s in c.slots %}
+      <g class="chart-mark"><title>{{ s.title }}</title><rect class="chart-hit" x="{{ s.slot_x }}" y="0" width="{{ c.slot }}" height="{{ c.height }}"></rect><path class="chart-dot chart-dot-tokens series-tokens" d="M{{ s.tokens[0] }},{{ s.tokens[1] }}h0" vector-effect="non-scaling-stroke"></path><path class="chart-dot chart-dot-cost series-cost" d="M{{ s.cost[0] }},{{ s.cost[1] }}h0" vector-effect="non-scaling-stroke"></path></g>
+      {% endfor %}
     </svg>
     <div class="chart-yaxis axis-cost" aria-hidden="true">{% for t in c.cost_ticks %}<span>{{ t }}</span>{% endfor %}</div>
-    <div class="chart-days" aria-hidden="true">{% for s in c.slots %}<span>{{ s.label }}</span>{% endfor %}</div>
+    <div class="chart-days" aria-hidden="true">{% for s in c.slots %}<span{{ ' class="day-minor"'|safe if s.minor else '' }}>{{ s.label }}</span>{% endfor %}</div>
   </div>
 {% endmacro %}
 {% macro ranked_chart(c, cls, table_id) %}
@@ -152,17 +163,24 @@
       {{ daily_legend() }}
     </div>
     {{ daily_chart(charts.daily) }}
-    <details class="chart-table">
+    {# Paged, newest day first: "All time" would otherwise list every active
+       day. The pager links reload the page with day_page set, which also
+       opens the table and scrolls back to it (#daily-table). #}
+    {% set dt = charts.day_table %}
+    <details class="chart-table" id="daily-table"{{ ' open' if day_table_open else '' }}>
       <summary>Show as a table</summary>
       <table class="breakdown" id="table-daily">
-        <caption class="sr-only">Tokens and cost per day</caption>
+        <caption class="sr-only">Tokens and cost per day{% if dt.page_count > 1 %}, page {{ dt.page }} of {{ dt.page_count }}, newest first{% endif %}</caption>
         <thead><tr><th scope="col">Day</th><th scope="col">Tokens</th><th scope="col">Cost</th></tr></thead>
         <tbody>
-          {% for d in metrics.by_day %}
+          {% for d in dt.rows %}
           <tr><td class="bd-name">{{ d.day }}</td><td class="bd-num">{{ d.tokens|fmt_int }}</td><td class="bd-num">{{ d.cost|fmt_cost }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
+      {% if dt.page_count > 1 %}
+      {{ pager.pager(dt.page, dt.page_count, dt.pages, day_url, "Daily table pages", "chart-table-pager") }}
+      {% endif %}
     </details>
   </div>
   <div class="chart-card">

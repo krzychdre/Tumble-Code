@@ -1,0 +1,37 @@
+{# The numbered pager shared by the task list and the metrics page's daily
+   table. `url(n)` builds the link to page n; a {% call %} block, if given,
+   is appended inside the nav (the task list's "Go to" form). #}
+{% macro pager(page, page_count, pages, url, label, extra_class="") %}
+<nav class="pager{{ ' ' ~ extra_class if extra_class else '' }}" aria-label="{{ label }}, page {{ page }} of {{ page_count }}">
+  {% if page > 1 %}
+  <a class="btn ghost small pager-btn" href="{{ url(page - 1) }}" rel="prev">← Newer</a>
+  {% else %}
+  <span class="btn ghost small pager-btn disabled">← Newer</span>
+  {% endif %}
+
+  {# Numbered pages: any page in the window is one click away, the two ends are
+     always reachable, and a run that had to be elided says so with an ellipsis
+     rather than pretending the pages between are not there. #}
+  <ol class="pager-pages">
+    {% for p in pages %}
+    {% if p is none %}
+    <li><span class="pager-gap" aria-hidden="true">…</span></li>
+    {% elif p == page %}
+    <li><span class="pager-num current" aria-current="page">{{ p }}</span></li>
+    {% else %}
+    <li><a class="pager-num" href="{{ url(p) }}" aria-label="Page {{ p }}">{{ p }}</a></li>
+    {% endif %}
+    {% endfor %}
+  </ol>
+  {# What a phone shows instead of the numbers: where you are, in a few
+     characters. #}
+  <span class="pager-status">{{ page }} / {{ page_count }}</span>
+
+  {% if page < page_count %}
+  <a class="btn ghost small pager-btn" href="{{ url(page + 1) }}" rel="next">Older →</a>
+  {% else %}
+  <span class="btn ghost small pager-btn disabled">Older →</span>
+  {% endif %}
+  {% if caller is defined %}{{ caller() }}{% endif %}
+</nav>
+{% endmacro %}

@@ -7,31 +7,38 @@ tokens, so no colour is ever written into the markup.
 
 Two forms:
 
-- ``daily``: tokens and cost per day on one plot, one slot per active day.
-  Each series has its own y axis (tokens on the left, cost on the right), both
-  cut into the same four intervals so they share the gridlines. The bars
-  overlap and are semi-transparent (tokens wide, cost narrower inside it), and
-  the legend's checkboxes hide either series with CSS alone.
+- ``daily``: tokens and cost per day on one plot, one slot per calendar day
+  from the first active day to the last (quiet days are zeros, so the line
+  does not skip over them). Each series is a smooth line over a faint area,
+  with its own y axis (tokens on the left, cost on the right), both cut into
+  the same four intervals so they share the gridlines. The legend's
+  checkboxes hide either series with CSS alone. Its table is paged
+  (``day_table``), newest day first, so "All time" does not list a year.
 - ``ranked``: horizontal bars, biggest first, for tokens by model or mode.
   The eight biggest rows are shown and the rest fold into one "N others"
   row, so a long tail does not push the chart off the card.
 
-Every bar carries a ``<title>`` (the hover), and every chart a one-line
+Every day or bar carries a ``<title>`` (the hover), and every chart a one-line
 summary for ``aria-label``; the same figures are in a table the chart points
 at with ``aria-describedby``.
 """
 
 import math
+from datetime import date, timedelta
 
 from src.utils.format import fmt_cost, fmt_tokens
+from src.utils.pagination import page_window
 
 # Daily chart: each day is a 10-unit slot of a 100-unit-high viewBox that
-# the stylesheet stretches to the card (preserveAspectRatio="none"). The token
-# bar is 8 units wide (a 2-unit gap), the cost bar 4 units, centred on it.
+# the stylesheet stretches to the card (preserveAspectRatio="none"); a day's
+# point sits in the middle of its slot, under its label.
 DAY_SLOT = 10
-TOKENS_BAR = 8
-COST_BAR = 4
 PLOT_HEIGHT = 100
+# Up to this many days every point is drawn as a dot; past it the dots would
+# merge into a second, thicker line, so a dot shows only under the pointer.
+DOT_LIMIT = 45
+# Rows of the daily table per page: two weeks, so "7 days" is one page.
+TABLE_PAGE = 14
 # Both y axes have this many intervals, so their gridlines coincide.
 AXIS_STEPS = 4
 # At most this many day labels under the plot; the rest are left blank.
@@ -45,13 +52,6 @@ _NICE = (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10)
 RANK_ROW = 34
 RANK_LABEL_CHARS = 40
 RANK_LIMIT = 8
-
-
-def _height(value: float, peak: float) -> float:
-    if peak <= 0 or value <= 0:
-        return 0.0
-    # A day with activity stays visible however small it is next to the peak.
-    return max(round(PLOT_HEIGHT * value / peak, 2), 1.0)
 
 
 def _axis_top(peak: float) -> float:
@@ -69,37 +69,108 @@ def _axis_cost(dollars: float) -> str:
     return "$" + f"{dollars:.4f}".rstrip("0").rstrip(".")
 
 
-def _bar(slot: int, width: int, value: float, top: float) -> dict:
-    h = _height(value, top)
-    return {"x": slot * DAY_SLOT + (DAY_SLOT - width) / 2, "width": width, "y": round(PLOT_HEIGHT - h, 2), "height": h}
-
-
 def _ticks(top: float, fmt) -> list[str]:
     """Axis labels from the top down, so they read in the order they are drawn."""
     return [fmt(top * i / AXIS_STEPS) for i in range(AXIS_STEPS, -1, -1)] if top > 0 else []
 
 
+def calendar(days: list[dict]) -> list[dict]:
+    """``by_day`` with the quiet days between the first and the last put back
+    as zeros. metrics_service lists only the days with activity; drawn side by
+    side they would slide every later point under the wrong date, and a line
+    would run straight across a week nobody worked."""
+    if not days:
+        return []
+    have = {d["day"]: d for d in days}
+    first, last = date.fromisoformat(days[0]["day"]), date.fromisoformat(days[-1]["day"])
+    out = []
+    for i in range((last - first).days + 1):
+        day = (first + timedelta(days=i)).isoformat()
+        out.append(have.get(day) or {"day": day, "tokens": 0, "cost": 0.0})
+    return out
+
+
+def _n(v: float) -> str:
+    """A coordinate for a path: two places at most, no trailing zeros."""
+    return f"{v:.2f}".rstrip("0").rstrip(".")
+
+
+def _smooth(points: list[tuple[float, float]]) -> str:
+    """A path through ``points`` (x ascending) as cubic curves that never
+    overshoot: monotone cubic interpolation, the same as d3's curveMonotoneX.
+
+    A plain spline swings below a zero day that follows a busy one, which on
+    this chart would draw negative tokens; here the tangent at a point is
+    flattened whenever its neighbours are on the same side of it, so every
+    curve stays between the two values it joins.
+    """
+    if not points:
+        return ""
+    if len(points) == 1:
+        return f"M{_n(points[0][0])},{_n(points[0][1])}"
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    n = len(points)
+    secants = [(ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) for i in range(n - 1)]
+    tangents = [0.0] * n
+    for i in range(1, n - 1):
+        s0, s1 = secants[i - 1], secants[i]
+        if s0 * s1 > 0:
+            h0, h1 = xs[i] - xs[i - 1], xs[i + 1] - xs[i]
+            p = (s0 * h1 + s1 * h0) / (h0 + h1)
+            tangents[i] = math.copysign(min(abs(s0), abs(s1), 0.5 * abs(p)), s0)
+    # The ends lean as far as the curve next to them allows (d3's slope2).
+    tangents[0] = (3 * secants[0] - tangents[1]) / 2 if n > 2 else secants[0]
+    tangents[-1] = (3 * secants[-1] - tangents[-2]) / 2 if n > 2 else secants[-1]
+    out = [f"M{_n(xs[0])},{_n(ys[0])}"]
+    for i in range(n - 1):
+        third = (xs[i + 1] - xs[i]) / 3
+        out.append(
+            f"C{_n(xs[i] + third)},{_n(ys[i] + third * tangents[i])} "
+            f"{_n(xs[i + 1] - third)},{_n(ys[i + 1] - third * tangents[i + 1])} "
+            f"{_n(xs[i + 1])},{_n(ys[i + 1])}"
+        )
+    return " ".join(out)
+
+
+def _series(values: list[float], top: float) -> dict:
+    """One series' line, the area under it, and a point per day."""
+    points = [
+        (i * DAY_SLOT + DAY_SLOT / 2, PLOT_HEIGHT - (PLOT_HEIGHT * v / top if top > 0 else 0))
+        for i, v in enumerate(values)
+    ]
+    line = _smooth(points)
+    area = f"{line} L{_n(points[-1][0])},{PLOT_HEIGHT} L{_n(points[0][0])},{PLOT_HEIGHT} Z" if len(points) > 1 else ""
+    return {"line": line, "area": area, "points": [(_n(x), _n(y)) for x, y in points]}
+
+
 def daily(days: list[dict]) -> dict:
     """Tokens and cost per day from metrics_service's ``by_day``, on one plot."""
+    days = calendar(days)
     tokens = [d["tokens"] or 0 for d in days]
     costs = [d["cost"] or 0 for d in days]
     tokens_top = _axis_top(max(tokens, default=0))
     cost_top = _axis_top(max(costs, default=0))
+    tokens_series = _series(tokens, tokens_top)
+    cost_series = _series(costs, cost_top)
     every = max(math.ceil(len(days) / DAY_LABELS), 1)
     slots = []
     for i, (d, t, c) in enumerate(zip(days, tokens, costs)):
         slots.append(
             {
                 "slot_x": i * DAY_SLOT,
-                "tokens": _bar(i, TOKENS_BAR, t, tokens_top),
-                "cost": _bar(i, COST_BAR, c, cost_top),
+                "tokens": tokens_series["points"][i],
+                "cost": cost_series["points"][i],
                 # "2026-09-28" -> "09-28": the year is in the table and the hover.
                 "label": d["day"][5:] if i % every == 0 else "",
+                # Every other label, which a phone hides: twelve dates do not
+                # fit its plot side by side.
+                "minor": i % every == 0 and (i // every) % 2 == 1,
                 "title": f"{d['day']}: {fmt_tokens(t)} tokens, {fmt_cost(c)}",
             }
         )
     if days:
-        summary = f"Tokens and cost per day, {days[0]['day']} to {days[-1]['day']}, {len(days)} active days"
+        active = sum(1 for t, c in zip(tokens, costs) if t or c)
+        summary = f"Tokens and cost per day, {days[0]['day']} to {days[-1]['day']}, {active} active days"
         for what, values, fmt in (("tokens", tokens, fmt_tokens), ("cost", costs, fmt_cost)):
             peak = max(values)
             if peak > 0:
@@ -109,11 +180,30 @@ def daily(days: list[dict]) -> dict:
     return {
         "width": max(len(days), 1) * DAY_SLOT,
         "height": PLOT_HEIGHT,
+        "slot": DAY_SLOT,
         "slots": slots,
+        "tokens": tokens_series,
+        "cost": cost_series,
+        "dense": len(days) > DOT_LIMIT,
         "gridlines": [round(PLOT_HEIGHT * i / AXIS_STEPS, 2) for i in range(AXIS_STEPS)],
         "tokens_ticks": _ticks(tokens_top, fmt_tokens),
         "cost_ticks": _ticks(cost_top, _axis_cost),
         "summary": summary,
+    }
+
+
+def day_table(days: list[dict], page: int) -> dict:
+    """One page of the daily table: the active days, newest first, TABLE_PAGE
+    to a page. An out-of-range ``page`` lands on the nearest real one, as on
+    the task list."""
+    page_count = max(1, math.ceil(len(days) / TABLE_PAGE))
+    page = min(max(page, 1), page_count)
+    newest_first = days[::-1]
+    return {
+        "rows": newest_first[(page - 1) * TABLE_PAGE : page * TABLE_PAGE],
+        "page": page,
+        "page_count": page_count,
+        "pages": page_window(page, page_count),
     }
 
 
@@ -164,9 +254,10 @@ def ranked(rows: list[dict], what: str) -> dict:
     }
 
 
-def metrics_charts(metrics: dict) -> dict:
+def metrics_charts(metrics: dict, day_page: int = 1) -> dict:
     return {
         "daily": daily(metrics["by_day"]),
+        "day_table": day_table(metrics["by_day"], day_page),
         "models": ranked(metrics["by_model"], "model"),
         "modes": ranked(metrics["by_mode"], "mode"),
     }
