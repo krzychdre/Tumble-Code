@@ -48,20 +48,6 @@
 		"subagents": "Субагенты"
 	},
 	"about": {
-		"bugReport": {
-			"label": "Нашли ошибку?",
-			"link": "Сообщить на GitHub"
-		},
-		"featureRequest": {
-			"label": "Есть идея?",
-			"link": "Поделитесь с нами"
-		},
-		"securityIssue": {
-			"label": "Обнаружили уязвимость?",
-			"link": "Следуйте нашему процессу раскрытия"
-		},
-		"community": "Хотите получить советы или просто пообщаться с другими пользователями Tumble Code? Присоединяйтесь к <redditLink>reddit.com/r/TumbleCode</redditLink> или <discordLink>discord.gg/tumblecode</discordLink>",
-		"contactAndCommunity": "Контакты и Сообщество",
 		"manageSettings": "Управление Настройками",
 		"debugMode": {
 			"label": "Включить режим отладки",

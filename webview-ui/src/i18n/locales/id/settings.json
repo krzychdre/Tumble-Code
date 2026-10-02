@@ -48,20 +48,6 @@
 		"subagents": "Subagen"
 	},
 	"about": {
-		"bugReport": {
-			"label": "Menemukan bug?",
-			"link": "Laporkan di GitHub"
-		},
-		"featureRequest": {
-			"label": "Punya ide?",
-			"link": "Bagikan dengan kami"
-		},
-		"securityIssue": {
-			"label": "Menemukan kerentanan?",
-			"link": "Ikuti proses pengungkapan kami"
-		},
-		"community": "Ingin tips atau hanya nongkrong dengan pengguna Tumble Code lainnya? Bergabunglah dengan <redditLink>reddit.com/r/TumbleCode</redditLink> atau <discordLink>discord.gg/tumblecode</discordLink>",
-		"contactAndCommunity": "Kontak & Komunitas",
 		"manageSettings": "Kelola Pengaturan",
 		"debugMode": {
 			"label": "Aktifkan mode debug",

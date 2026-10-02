@@ -48,20 +48,6 @@
 		"subagents": "Alt aracılar"
 	},
 	"about": {
-		"bugReport": {
-			"label": "Bir hata mı buldunuz?",
-			"link": "GitHub'da bildirin"
-		},
-		"featureRequest": {
-			"label": "Bir fikriniz mi var?",
-			"link": "Bizimle paylaşın"
-		},
-		"securityIssue": {
-			"label": "Bir güvenlik açığı mı keşfettiniz?",
-			"link": "Açıklama sürecimizi takip edin"
-		},
-		"community": "İpuçları mı istiyorsunuz yoksa sadece diğer Tumble Code kullanıcılarıyla takılmak mı istiyorsunuz? <redditLink>reddit.com/r/TumbleCode</redditLink> veya <discordLink>discord.gg/tumblecode</discordLink>'a katılın",
-		"contactAndCommunity": "İletişim ve Topluluk",
 		"manageSettings": "Ayarları Yönet",
 		"debugMode": {
 			"label": "Debug modunu etkinleştir",

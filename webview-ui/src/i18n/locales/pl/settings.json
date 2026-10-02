@@ -48,20 +48,6 @@
 		"web": "Narzędzia sieciowe"
 	},
 	"about": {
-		"bugReport": {
-			"label": "Znalazłeś błąd?",
-			"link": "Zgłoś na GitHub"
-		},
-		"featureRequest": {
-			"label": "Masz pomysł?",
-			"link": "Podziel się nim z nami"
-		},
-		"securityIssue": {
-			"label": "Odkryłeś lukę w zabezpieczeniach?",
-			"link": "Postępuj zgodnie z naszym procesem ujawniania"
-		},
-		"community": "Chcesz wskazówek lub po prostu porozmawiać z innymi użytkownikami Tumble Code? Dołącz do <redditLink>reddit.com/r/TumbleCode</redditLink> lub <discordLink>discord.gg/tumblecode</discordLink>",
-		"contactAndCommunity": "Kontakt i Społeczność",
 		"manageSettings": "Zarządzaj Ustawieniami",
 		"debugMode": {
 			"label": "Włącz tryb debugowania",

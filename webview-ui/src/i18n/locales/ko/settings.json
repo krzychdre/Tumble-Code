@@ -48,20 +48,6 @@
 		"subagents": "하위 에이전트"
 	},
 	"about": {
-		"bugReport": {
-			"label": "버그를 발견하셨나요?",
-			"link": "GitHub에서 보고"
-		},
-		"featureRequest": {
-			"label": "아이디어가 있으신가요?",
-			"link": "공유해 주세요"
-		},
-		"securityIssue": {
-			"label": "취약점을 발견하셨나요?",
-			"link": "공개 프로세스 따르기"
-		},
-		"community": "팁을 얻거나 다른 Tumble Code 사용자들과 교류하고 싶으신가요? <redditLink>reddit.com/r/TumbleCode</redditLink> 또는 <discordLink>discord.gg/tumblecode</discordLink>에 참여하세요",
-		"contactAndCommunity": "문의 및 커뮤니티",
 		"manageSettings": "설정 관리",
 		"debugMode": {
 			"label": "디버그 모드 활성화",

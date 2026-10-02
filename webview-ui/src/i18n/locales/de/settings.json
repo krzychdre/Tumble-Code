@@ -48,20 +48,6 @@
 		"subagents": "Subagenten"
 	},
 	"about": {
-		"bugReport": {
-			"label": "Fehler gefunden?",
-			"link": "Auf GitHub melden"
-		},
-		"featureRequest": {
-			"label": "Hast du eine Idee?",
-			"link": "Teile sie mit uns"
-		},
-		"securityIssue": {
-			"label": "Sicherheitslücke entdeckt?",
-			"link": "Folge unserem Offenlegungsprozess"
-		},
-		"community": "Möchtest du Tipps oder dich einfach mit anderen Tumble Code-Nutzern austauschen? Tritt <redditLink>reddit.com/r/TumbleCode</redditLink> oder <discordLink>discord.gg/tumblecode</discordLink> bei",
-		"contactAndCommunity": "Kontakt & Community",
 		"manageSettings": "Einstellungen verwalten",
 		"debugMode": {
 			"label": "Debug-Modus aktivieren",

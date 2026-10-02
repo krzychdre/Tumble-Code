@@ -48,20 +48,6 @@
 		"subagents": "Tác nhân con"
 	},
 	"about": {
-		"bugReport": {
-			"label": "Tìm thấy lỗi?",
-			"link": "Báo cáo trên GitHub"
-		},
-		"featureRequest": {
-			"label": "Có ý tưởng?",
-			"link": "Chia sẻ với chúng tôi"
-		},
-		"securityIssue": {
-			"label": "Phát hiện lỗ hổng bảo mật?",
-			"link": "Làm theo quy trình công bố của chúng tôi"
-		},
-		"community": "Muốn nhận mẹo hoặc chỉ muốn giao lưu với những người dùng Tumble Code khác? Tham gia <redditLink>reddit.com/r/TumbleCode</redditLink> hoặc <discordLink>discord.gg/tumblecode</discordLink>",
-		"contactAndCommunity": "Liên Hệ & Cộng Đồng",
 		"manageSettings": "Quản Lý Cài Đặt",
 		"debugMode": {
 			"label": "Bật chế độ debug",

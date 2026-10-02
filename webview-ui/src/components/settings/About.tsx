@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Trans } from "react-i18next"
-import { Download, Upload, TriangleAlert, Bug, Lightbulb, Shield, MessagesSquare } from "lucide-react"
+import { Download, Upload, TriangleAlert } from "lucide-react"
 
 import { Package } from "@roo/package"
 
@@ -47,73 +47,29 @@ export const About = ({ className, ...props }: AboutProps) => {
 						<Trans
 							i18nKey="settings:footer.telemetry.description"
 							components={{
-								privacyLink: <Link href="https://roocode.com/privacy" />,
+								privacyLink: (
+									<Link href="https://github.com/krzychdre/Tumble-Code/blob/main/PRIVACY.md" />
+								),
 							}}
 						/>
 					</p>
 				</SearchableSetting>
-			</Section>
-
-			<Section className="space-y-0">
-				<h3>{t("settings:about.contactAndCommunity")}</h3>
-				<div className="flex flex-col gap-block">
-					<div className="flex items-start gap-2">
-						<Bug className="size-4 text-vscode-descriptionForeground shrink-0" />
-						<span>
-							{t("settings:about.bugReport.label")}{" "}
-							<Link href="https://github.com/RooCodeInc/Roo-Code/issues/new?template=bug_report.yml">
-								{t("settings:about.bugReport.link")}
-							</Link>
-						</span>
-					</div>
-					<div className="flex items-start gap-2">
-						<Lightbulb className="size-4 text-vscode-descriptionForeground shrink-0" />
-						<span>
-							{t("settings:about.featureRequest.label")}{" "}
-							<Link href="https://github.com/RooCodeInc/Roo-Code/issues/new?template=feature_request.yml">
-								{t("settings:about.featureRequest.link")}
-							</Link>
-						</span>
-					</div>
-					<div className="flex items-start gap-2">
-						<Shield className="size-4 text-vscode-descriptionForeground shrink-0" />
-						<span>
-							{t("settings:about.securityIssue.label")}{" "}
-							<Link href="https://github.com/RooCodeInc/Roo-Code/security/policy">
-								{t("settings:about.securityIssue.link")}
-							</Link>
-						</span>
-					</div>
-					<div className="flex items-start gap-2">
-						<MessagesSquare className="size-4 text-vscode-descriptionForeground shrink-0" />
-						<span>
-							<Trans
-								i18nKey="settings:about.community"
-								components={{
-									redditLink: <Link href="https://reddit.com/r/RooCode" />,
-									discordLink: <Link href="https://discord.gg/roocode" />,
-								}}
-							/>
-						</span>
-					</div>
-					<SearchableSetting
-						settingId="about-debug-mode"
-						section="about"
-						label={t("settings:about.debugMode.label")}
-						className="mt-4 pt-4 border-t border-vscode-settings-headerBorder">
-						<LabeledCheckbox
-							checked={debug ?? false}
-							onChange={(e: any) => {
-								const checked = e.target.checked === true
-								setDebug(checked)
-							}}>
-							{t("settings:about.debugMode.label")}
-						</LabeledCheckbox>
-						<p className="text-vscode-descriptionForeground text-sm mt-0">
-							{t("settings:about.debugMode.description")}
-						</p>
-					</SearchableSetting>
-				</div>
+				<SearchableSetting
+					settingId="about-debug-mode"
+					section="about"
+					label={t("settings:about.debugMode.label")}>
+					<LabeledCheckbox
+						checked={debug ?? false}
+						onChange={(e: any) => {
+							const checked = e.target.checked === true
+							setDebug(checked)
+						}}>
+						{t("settings:about.debugMode.label")}
+					</LabeledCheckbox>
+					<p className="text-vscode-descriptionForeground text-sm mt-0">
+						{t("settings:about.debugMode.description")}
+					</p>
+				</SearchableSetting>
 			</Section>
 
 			<Section className="space-y-0">
