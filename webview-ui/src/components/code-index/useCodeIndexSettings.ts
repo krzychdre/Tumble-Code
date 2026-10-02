@@ -55,9 +55,21 @@ export function useCodeIndexSettings(codebaseIndexConfig: CodebaseIndexConfig | 
 	// Current settings state - tracks user changes
 	const [currentSettings, setCurrentSettings] = useState<LocalCodeIndexSettings>(getDefaultSettings())
 
+	// The saved config the form was last seeded from, as JSON. Every state push (and every
+	// messageAdded of a running task) delivers codebaseIndexConfig as a new object, mostly with the
+	// same content; reseeding on identity threw the user's unsaved edits away mid-edit (the enable
+	// box flipped back under the cursor). Only a real change of the saved config reseeds the form.
+	const seededConfigRef = useRef<string | undefined>(undefined)
+
 	// Initialize settings from global state
 	useEffect(() => {
 		if (codebaseIndexConfig) {
+			const configKey = JSON.stringify(codebaseIndexConfig)
+			if (configKey === seededConfigRef.current) {
+				return
+			}
+			seededConfigRef.current = configKey
+
 			const settings = {
 				codebaseIndexEnabled: codebaseIndexConfig.codebaseIndexEnabled ?? true,
 				codebaseIndexQdrantUrl: codebaseIndexConfig.codebaseIndexQdrantUrl || "",
