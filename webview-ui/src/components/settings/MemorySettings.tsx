@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import type { ProviderSettingsEntry } from "@tumble-code/types"
+import { SETTINGS_DEFAULTS, type ProviderSettingsEntry } from "@tumble-code/types"
 
 import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
@@ -28,11 +28,9 @@ const UNSET_PROFILE = "-"
 
 const MIN_DREAM_HOURS = 1
 const MAX_DREAM_HOURS = 168 // 1 week
-const DEFAULT_DREAM_HOURS = 24
 
 const MIN_DREAM_SESSIONS = 1
 const MAX_DREAM_SESSIONS = 100
-const DEFAULT_DREAM_SESSIONS = 5
 
 export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsProps) => {
 	const { t } = useAppTranslation()
@@ -53,7 +51,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 			<Section>
 				<SearchableSetting settingId="memory-enable" section="memory" label={t("settings:memory.enable.label")}>
 					<LabeledCheckbox
-						checked={autoMemoryEnabled ?? true}
+						checked={autoMemoryEnabled ?? SETTINGS_DEFAULTS.autoMemoryEnabled}
 						onChange={(e: any) => {
 							setAutoMemoryEnabled(e.target.checked)
 						}}>
@@ -72,7 +70,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							label={t("settings:memory.recall.label")}
 							className="mt-section">
 							<LabeledCheckbox
-								checked={memoryRecallEnabled ?? true}
+								checked={memoryRecallEnabled ?? SETTINGS_DEFAULTS.memoryRecallEnabled}
 								onChange={(e: any) => {
 									setMemoryRecallEnabled(e.target.checked)
 								}}>
@@ -167,7 +165,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							label={t("settings:memory.dream.enable.label")}
 							className="mt-section">
 							<LabeledCheckbox
-								checked={autoDreamEnabled ?? true}
+								checked={autoDreamEnabled ?? SETTINGS_DEFAULTS.autoDreamEnabled}
 								onChange={(e: any) => {
 									setAutoDreamEnabled(e.target.checked)
 								}}>
@@ -193,7 +191,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 											min={MIN_DREAM_HOURS}
 											max={MAX_DREAM_HOURS}
 											step={1}
-											defaultValue={[autoDreamMinHours ?? DEFAULT_DREAM_HOURS]}
+											defaultValue={[autoDreamMinHours ?? SETTINGS_DEFAULTS.autoDreamMinHours]}
 											onValueChange={([value]) => {
 												setAutoDreamMinHours(value)
 											}}
@@ -201,7 +199,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 											data-testid="memory-dream-hours-slider"
 										/>
 										<span className="w-12 text-center">
-											{autoDreamMinHours ?? DEFAULT_DREAM_HOURS}
+											{autoDreamMinHours ?? SETTINGS_DEFAULTS.autoDreamMinHours}
 										</span>
 									</div>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
@@ -222,7 +220,9 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 											min={MIN_DREAM_SESSIONS}
 											max={MAX_DREAM_SESSIONS}
 											step={1}
-											defaultValue={[autoDreamMinSessions ?? DEFAULT_DREAM_SESSIONS]}
+											defaultValue={[
+												autoDreamMinSessions ?? SETTINGS_DEFAULTS.autoDreamMinSessions,
+											]}
 											onValueChange={([value]) => {
 												setAutoDreamMinSessions(value)
 											}}
@@ -230,7 +230,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 											data-testid="memory-dream-sessions-slider"
 										/>
 										<span className="w-12 text-center">
-											{autoDreamMinSessions ?? DEFAULT_DREAM_SESSIONS}
+											{autoDreamMinSessions ?? SETTINGS_DEFAULTS.autoDreamMinSessions}
 										</span>
 									</div>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">

@@ -95,6 +95,23 @@ test("non-table keys may default freely", () => {
 	}
 })
 
+test("scans the webview-ui workspace too", () => {
+	const root = makeTree()
+	try {
+		mkdirSync(join(root, "webview-ui/src/components"), { recursive: true })
+		writeFileSync(
+			join(root, "webview-ui/src/components/a.ts"),
+			"export const f = (s) => s.keyA ?? true\n",
+		)
+		const { violations } = checkSettingsDefaults({ root })
+		assert.equal(violations.length, 1)
+		assert.equal(violations[0].key, "keyA")
+		assert.match(violations[0].file, /webview-ui\/src\/components\/a\.ts$/)
+	} finally {
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
 test("the real repo tree is clean", () => {
 	const { keys, violations } = checkSettingsDefaults()
 	assert.ok(keys.size > 50, "expected the real table to have dozens of keys")

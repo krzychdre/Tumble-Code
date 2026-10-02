@@ -48,6 +48,7 @@ import {
 	isResumableAsk,
 	QueuedMessage,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
+	SETTINGS_DEFAULTS,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	DEFAULT_ENABLE_CHECKPOINTS,
 	MAX_CHECKPOINT_TIMEOUT_SECONDS,
@@ -444,7 +445,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// `paths.ts` is the source of truth for the memory enable gate; if
 		// memory is off (env or setting), skip constructing the coordinator.
 		if (!isAutoMemoryEnabled()) return undefined
-		const recallEnabled = this.providerRef.deref()?.getValue("memoryRecallEnabled") ?? true
+		const recallEnabled =
+			this.providerRef.deref()?.getValue("memoryRecallEnabled") ?? SETTINGS_DEFAULTS.memoryRecallEnabled
 		this._memoryCoordinator = new MemoryCoordinator({
 			cwd: this.cwd,
 			recallEnabled,

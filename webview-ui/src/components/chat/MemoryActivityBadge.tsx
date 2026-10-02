@@ -2,6 +2,8 @@ import { memo } from "react"
 import { useTranslation } from "react-i18next"
 import { Brain } from "lucide-react"
 
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
+
 import { cn } from "@/lib/utils"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { StandardTooltip } from "@src/components/ui"
@@ -14,7 +16,7 @@ import { StandardTooltip } from "@src/components/ui"
 const MemoryActivityBadge = memo(() => {
 	const { t } = useTranslation()
 	const memoryActivity = useExtensionSelector((s) => s.memoryActivity)
-	const enabled = useExtensionSelector((s) => s.autoMemoryEnabled ?? true)
+	const enabled = useExtensionSelector((s) => s.autoMemoryEnabled ?? SETTINGS_DEFAULTS.autoMemoryEnabled)
 
 	if (!enabled) {
 		return null

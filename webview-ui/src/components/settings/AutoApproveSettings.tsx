@@ -3,6 +3,8 @@ import { X } from "lucide-react"
 import { Trans } from "react-i18next"
 import { Package } from "@shared/package"
 
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
+
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 import { Button, Input, Slider, LabeledCheckbox } from "@/components/ui"
@@ -52,7 +54,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 	const {
 		autoApprovalEnabled,
 		setAutoApprovalEnabled,
-		autoApprovalMode = "default",
+		autoApprovalMode = SETTINGS_DEFAULTS.autoApprovalMode,
 		setAutoApprovalMode,
 	} = useExtensionState()
 
@@ -106,7 +108,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 							checked={effectiveAutoApprovalEnabled}
 							aria-label={t("settings:autoApprove.toggleAriaLabel")}
 							onChange={() => {
-								const newValue = !(autoApprovalEnabled ?? false)
+								const newValue = !(autoApprovalEnabled ?? SETTINGS_DEFAULTS.autoApprovalEnabled)
 								setAutoApprovalEnabled(newValue)
 								vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
 							}}>

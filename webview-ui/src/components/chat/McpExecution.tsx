@@ -7,6 +7,7 @@ import {
 	type ClineAskUseMcpServer,
 	type McpExecutionStatus,
 	mcpExecutionStatusSchema,
+	SETTINGS_DEFAULTS,
 } from "@tumble-code/types"
 
 import { safeJsonParse } from "@tumble-code/core/browser"
@@ -46,7 +47,7 @@ export const McpExecution = ({
 	isArguments = false,
 	server,
 	useMcpServer,
-	alwaysAllowMcp = false,
+	alwaysAllowMcp = SETTINGS_DEFAULTS.alwaysAllowMcp,
 }: McpExecutionProps) => {
 	const { t } = useTranslation("mcp")
 

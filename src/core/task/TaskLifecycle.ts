@@ -810,9 +810,9 @@ export class TaskLifecycle {
 			},
 		}).catch(logWriterFailure("extractMemories"))
 		const dreamConfig: AutoDreamConfig = {
-			enabled: provider.getValue("autoDreamEnabled") ?? true,
-			minHours: provider.getValue("autoDreamMinHours") ?? 24,
-			minSessions: provider.getValue("autoDreamMinSessions") ?? 5,
+			enabled: provider.getValue("autoDreamEnabled") ?? SETTINGS_DEFAULTS.autoDreamEnabled,
+			minHours: provider.getValue("autoDreamMinHours") ?? SETTINGS_DEFAULTS.autoDreamMinHours,
+			minSessions: provider.getValue("autoDreamMinSessions") ?? SETTINGS_DEFAULTS.autoDreamMinSessions,
 		}
 		// HistoryItem uses `ts` (creation timestamp) as its time field; the
 		// dream's session gate reads `lastModified`. Map the field. `ts` is a

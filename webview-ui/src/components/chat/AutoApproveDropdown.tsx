@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, ToggleSwitch,
 import { AutoApproveSetting, autoApproveSettingsConfig, isAutoApproveForced } from "../settings/AutoApproveToggle"
 import { AutoApproveModeSelector } from "../settings/AutoApproveModeSelector"
 
-import type { AutoApprovalMode } from "@tumble-code/types"
+import { SETTINGS_DEFAULTS, type AutoApprovalMode } from "@tumble-code/types"
 
 interface AutoApproveDropdownProps {
 	disabled?: boolean
@@ -126,7 +126,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 
 	// Handle the main auto-approval toggle
 	const handleAutoApprovalToggle = React.useCallback(() => {
-		const newValue = !(autoApprovalEnabled ?? false)
+		const newValue = !(autoApprovalEnabled ?? SETTINGS_DEFAULTS.autoApprovalEnabled)
 		setAutoApprovalEnabled(newValue)
 		vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
 	}, [autoApprovalEnabled, setAutoApprovalEnabled])

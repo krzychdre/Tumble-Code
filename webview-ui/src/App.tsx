@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import type { ExtensionMessage } from "@tumble-code/types"
+import { SETTINGS_DEFAULTS, type ExtensionMessage } from "@tumble-code/types"
 
 import { TranslationProvider, useAppTranslation } from "./i18n/TranslationContext"
 import { MarketplaceViewStateManager } from "./components/marketplace/MarketplaceViewStateManager"
@@ -77,7 +77,7 @@ const App = () => {
 	const settingsImportedAt = useExtensionSelector((s) => s.settingsImportedAt)
 	// §2.1 (ai_plans/2026-09-27_ui-modernization.md): the density choice rides
 	// the root element, so the spacing tokens in index.css follow the setting.
-	const uiDensity = useExtensionSelector((s) => s.uiDensity ?? "comfortable")
+	const uiDensity = useExtensionSelector((s) => s.uiDensity ?? SETTINGS_DEFAULTS.uiDensity)
 	const shouldShowAnnouncement = useExtensionSelector((s) => s.shouldShowAnnouncement)
 	const cloudUserInfo = useExtensionSelector((s) => s.cloudUserInfo)
 	const cloudIsAuthenticated = useExtensionSelector((s) => s.cloudIsAuthenticated)

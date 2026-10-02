@@ -2,6 +2,7 @@ import * as path from "path"
 import { homedir } from "os"
 
 import { claudeConfigDir, claudeProjectCwds, claudeSlug } from "@tumble-code/agent-interchange"
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
 
 import { logger } from "../../utils/logging"
 
@@ -104,8 +105,7 @@ export function isAutoMemoryEnabled(): boolean {
 	if (isEnvTruthy(envVal)) return false
 	if (isEnvDefinedFalsy(envVal)) return true
 	const config = _state?.getConfig() ?? {}
-	if (config.autoMemoryEnabled !== undefined) return config.autoMemoryEnabled
-	return true
+	return config.autoMemoryEnabled ?? SETTINGS_DEFAULTS.autoMemoryEnabled
 }
 
 /**

@@ -7,6 +7,7 @@ import {
 	type ExtensionMessage,
 	type TerminalOutputPreviewSize,
 	DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
+	SETTINGS_DEFAULTS,
 } from "@tumble-code/types"
 
 import { cn } from "@/lib/utils"
@@ -250,7 +251,10 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 							section="terminal"
 							label={t("settings:terminal.shellIntegrationDisabled.label")}>
 							<LabeledCheckbox
-								checked={terminalShellIntegrationDisabled ?? true}
+								checked={
+									terminalShellIntegrationDisabled ??
+									SETTINGS_DEFAULTS.terminalShellIntegrationDisabled
+								}
 								onChange={(e: any) => setTerminalShellIntegrationDisabled(e.target.checked)}>
 								<span className="font-medium">
 									{t("settings:terminal.shellIntegrationDisabled.label")}
@@ -330,7 +334,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 											min={0}
 											max={1000}
 											step={10}
-											value={[terminalCommandDelay ?? 0]}
+											value={[terminalCommandDelay ?? SETTINGS_DEFAULTS.terminalCommandDelay]}
 											onValueChange={([value]) =>
 												setTerminalCommandDelay(Math.min(1000, Math.max(0, value)))
 											}
@@ -347,7 +351,9 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									section="terminal"
 									label={t("settings:terminal.powershellCounter.label")}>
 									<LabeledCheckbox
-										checked={terminalPowershellCounter ?? false}
+										checked={
+											terminalPowershellCounter ?? SETTINGS_DEFAULTS.terminalPowershellCounter
+										}
 										onChange={(e: any) => setTerminalPowershellCounter(e.target.checked)}
 										data-testid="terminal-powershell-counter-checkbox">
 										<span className="font-medium">
@@ -364,7 +370,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									section="terminal"
 									label={t("settings:terminal.zshClearEolMark.label")}>
 									<LabeledCheckbox
-										checked={terminalZshClearEolMark ?? true}
+										checked={terminalZshClearEolMark ?? SETTINGS_DEFAULTS.terminalZshClearEolMark}
 										onChange={(e: any) => setTerminalZshClearEolMark(e.target.checked)}
 										data-testid="terminal-zsh-clear-eol-mark-checkbox">
 										<span className="font-medium">
@@ -381,7 +387,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									section="terminal"
 									label={t("settings:terminal.zshOhMy.label")}>
 									<LabeledCheckbox
-										checked={terminalZshOhMy ?? false}
+										checked={terminalZshOhMy ?? SETTINGS_DEFAULTS.terminalZshOhMy}
 										onChange={(e: any) => setTerminalZshOhMy(e.target.checked)}
 										data-testid="terminal-zsh-oh-my-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshOhMy.label")}</span>
@@ -396,7 +402,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									section="terminal"
 									label={t("settings:terminal.zshP10k.label")}>
 									<LabeledCheckbox
-										checked={terminalZshP10k ?? false}
+										checked={terminalZshP10k ?? SETTINGS_DEFAULTS.terminalZshP10k}
 										onChange={(e: any) => setTerminalZshP10k(e.target.checked)}
 										data-testid="terminal-zsh-p10k-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshP10k.label")}</span>
@@ -411,7 +417,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									section="terminal"
 									label={t("settings:terminal.zdotdir.label")}>
 									<LabeledCheckbox
-										checked={terminalZdotdir ?? false}
+										checked={terminalZdotdir ?? SETTINGS_DEFAULTS.terminalZdotdir}
 										onChange={(e: any) => setTerminalZdotdir(e.target.checked)}
 										data-testid="terminal-zdotdir-checkbox">
 										<span className="font-medium">{t("settings:terminal.zdotdir.label")}</span>

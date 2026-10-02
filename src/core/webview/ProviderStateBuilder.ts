@@ -66,16 +66,13 @@ const PASSTHROUGH_SETTING_KEYS = [
 	"autoCondenseContextApiConfigId",
 	"memoryWriterApiConfigId",
 	// The Memory tab edits these. Without them in the push it showed its own
-	// defaults and Save sent those back over the stored values. The migration
-	// in ContextProxy gives the flags and thresholds their defaults; an unset
-	// or "" autoMemoryDirectory means the default folder.
-	"autoMemoryEnabled",
+	// defaults and Save sent those back over the stored values. ContextProxy
+	// only passes them through (no migration); an unset or ""
+	// autoMemoryDirectory means the default folder. The enable flags and
+	// dream thresholds are SETTINGS_DEFAULTS keys, so they are already
+	// covered by the resolved-settings pick above.
 	"autoMemoryDirectory",
 	"autoMemoryShareWithClaudeCode",
-	"memoryRecallEnabled",
-	"autoDreamEnabled",
-	"autoDreamMinHours",
-	"autoDreamMinSessions",
 	"terminalProfile",
 	"enhancementApiConfigId",
 	"disabledTools",

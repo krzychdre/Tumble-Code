@@ -1,5 +1,7 @@
 import { useMemo } from "react"
 
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
+
 interface AutoApprovalToggles {
 	alwaysAllowReadOnly?: boolean
 	alwaysAllowWrite?: boolean
@@ -17,7 +19,7 @@ export function useAutoApprovalState(toggles: AutoApprovalToggles, autoApprovalE
 	}, [toggles])
 
 	const effectiveAutoApprovalEnabled = useMemo(() => {
-		return autoApprovalEnabled ?? false
+		return autoApprovalEnabled ?? SETTINGS_DEFAULTS.autoApprovalEnabled
 	}, [autoApprovalEnabled])
 
 	return {

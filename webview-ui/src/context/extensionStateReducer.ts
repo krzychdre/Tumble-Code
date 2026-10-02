@@ -23,6 +23,7 @@ import {
 	DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
 	WEB_TOOLS_DEFAULTS,
 	PRUNE_CONDENSE_DEFAULTS,
+	SETTINGS_DEFAULTS,
 	experimentDefault,
 } from "@tumble-code/types"
 
@@ -70,11 +71,11 @@ const createInitialExtensionState = (): ExtensionState => ({
 	soundVolume: 0.5,
 	enableCheckpoints: DEFAULT_ENABLE_CHECKPOINTS,
 	checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Default to 15 seconds
-	autoMemoryEnabled: true,
-	memoryRecallEnabled: true,
-	autoDreamEnabled: true,
-	autoDreamMinHours: 24,
-	autoDreamMinSessions: 5,
+	autoMemoryEnabled: SETTINGS_DEFAULTS.autoMemoryEnabled,
+	memoryRecallEnabled: SETTINGS_DEFAULTS.memoryRecallEnabled,
+	autoDreamEnabled: SETTINGS_DEFAULTS.autoDreamEnabled,
+	autoDreamMinHours: SETTINGS_DEFAULTS.autoDreamMinHours,
+	autoDreamMinSessions: SETTINGS_DEFAULTS.autoDreamMinSessions,
 	webToolsEnabled: false,
 	webSearchBackend: "searxng",
 	searxngBaseUrl: "",
@@ -265,7 +266,7 @@ export function applyExtensionMessage(prev: ExtensionStore, message: ExtensionMe
 			// The provider echoes the new value to the host after the commit.
 			return updateExtensionState(prev, (prevState) => ({
 				...prevState,
-				autoApprovalEnabled: !(prevState.autoApprovalEnabled ?? false),
+				autoApprovalEnabled: !(prevState.autoApprovalEnabled ?? SETTINGS_DEFAULTS.autoApprovalEnabled),
 			}))
 		}
 		case "workspaceUpdated":

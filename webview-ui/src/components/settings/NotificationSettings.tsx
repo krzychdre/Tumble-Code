@@ -1,7 +1,7 @@
 import { HTMLAttributes, useEffect, useState } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import type { AudioType } from "@tumble-code/types"
+import { SETTINGS_DEFAULTS, type AudioType } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -184,11 +184,13 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 									min={0}
 									max={1}
 									step={0.01}
-									value={[soundVolume ?? 0.5]}
+									value={[soundVolume ?? SETTINGS_DEFAULTS.soundVolume]}
 									onValueChange={([value]) => setSoundVolume(value)}
 									data-testid="sound-volume-slider"
 								/>
-								<span className="w-10">{((soundVolume ?? 0.5) * 100).toFixed(0)}%</span>
+								<span className="w-10">
+									{((soundVolume ?? SETTINGS_DEFAULTS.soundVolume) * 100).toFixed(0)}%
+								</span>
 							</div>
 						</SearchableSetting>
 

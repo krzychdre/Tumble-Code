@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState, useSyncExternalStore } from "react"
 
 import {
+	SETTINGS_DEFAULTS,
 	type ProviderSettings,
 	type ModeConfig,
 	type TodoItem,
@@ -220,18 +221,19 @@ const buildContextValue = (store: ExtensionStore, client: Client): ExtensionStat
 	return {
 		...state,
 		...slices,
-		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? true,
+		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? SETTINGS_DEFAULTS.reasoningBlockCollapsed,
 		soundVolume: state.soundVolume,
 		writeDelayMs: state.writeDelayMs,
 		cloudIsAuthenticated: state.cloudIsAuthenticated ?? false,
 		cloudOrganizations: state.cloudOrganizations ?? [],
 		organizationSettingsVersion: state.organizationSettingsVersion ?? -1,
 		profileThresholds: state.profileThresholds ?? {},
-		alwaysAllowFollowupQuestions: state.alwaysAllowFollowupQuestions ?? false,
+		alwaysAllowFollowupQuestions:
+			state.alwaysAllowFollowupQuestions ?? SETTINGS_DEFAULTS.alwaysAllowFollowupQuestions,
 		taskSyncEnabled: state.taskSyncEnabled,
 		...client.actions,
-		enterBehavior: state.enterBehavior ?? "send",
-		uiDensity: state.uiDensity ?? "comfortable",
+		enterBehavior: state.enterBehavior ?? SETTINGS_DEFAULTS.enterBehavior,
+		uiDensity: state.uiDensity ?? SETTINGS_DEFAULTS.uiDensity,
 		includeDiagnosticMessages: state.includeDiagnosticMessages,
 		maxDiagnosticMessages: state.maxDiagnosticMessages,
 		showWorktreesInHomeScreen: state.showWorktreesInHomeScreen ?? true,
@@ -278,7 +280,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		autoApprovalEchoPending.current = false
 		vscode.postMessage({
 			type: "autoApprovalEnabled",
-			bool: store.extensionState.autoApprovalEnabled ?? false,
+			bool: store.extensionState.autoApprovalEnabled ?? SETTINGS_DEFAULTS.autoApprovalEnabled,
 		})
 	}, [store])
 
