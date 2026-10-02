@@ -1,6 +1,6 @@
 import type { ModeConfig, PromptComponent, CustomModePrompts } from "@tumble-code/types"
 
-import { Mode, getRoleDefinition, getWhenToUse, getDescription } from "@roo/modes"
+import { Mode, getRoleDefinition, getWhenToUse, getDescription } from "@shared/modes"
 
 import { vscode } from "@src/utils/vscode"
 

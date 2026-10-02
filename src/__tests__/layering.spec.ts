@@ -5,7 +5,7 @@
 // 1. ClineProvider must not import from src/activate: activate/registerCommands
 //    constructs ClineProvider, so the edge back is a real runtime cycle. The
 //    panel references live in core/webview/panelRegistry instead.
-// 2. src/shared is bundled into the webview (the `@roo/*` alias), so no file
+// 2. src/shared is bundled into the webview (the `@shared/*` alias), so no file
 //    in it may import `vscode` or extension code (CORE-R10 fixed shared/modes.ts,
 //    SVC-16 moved the last two vscode-bound files out and widened the check).
 // 3. Services depend on narrow provider/task interfaces, not on the

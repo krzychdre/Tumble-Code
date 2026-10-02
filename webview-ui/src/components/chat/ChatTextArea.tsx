@@ -3,7 +3,7 @@ import DynamicTextArea from "react-textarea-autosize"
 
 import type { ExtensionMessage } from "@tumble-code/types"
 
-import { Mode, getAllModes } from "@roo/modes"
+import { Mode, getAllModes } from "@shared/modes"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

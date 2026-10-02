@@ -22,7 +22,7 @@ export default [
 	},
 	{
 		// PKG-2 / SVC-16: src/shared is bundled into the webview through the
-		// `@roo/*` alias (webview-ui/tsconfig.json, vite.config.ts), where `vscode`
+		// `@shared/*` alias (webview-ui/tsconfig.json, vite.config.ts), where `vscode`
 		// and Node APIs do not exist. So no file in it may import vscode or the
 		// extension-only directories (the list mirrors webview-ui's
 		// bundleBoundaryPlugin, the build-time backstop). Keep extension-only

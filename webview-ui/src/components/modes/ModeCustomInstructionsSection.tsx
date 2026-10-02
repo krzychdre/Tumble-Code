@@ -2,7 +2,7 @@ import { Trans } from "react-i18next"
 
 import type { ModeConfig, PromptComponent, CustomModePrompts } from "@tumble-code/types"
 
-import { getCustomInstructions } from "@roo/modes"
+import { getCustomInstructions } from "@shared/modes"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"

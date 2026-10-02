@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 
 import type { ModeConfig, PromptComponent, ExtensionMessage } from "@tumble-code/types"
 
-import { Mode, getAllModes, findModeBySlug, defaultModeSlug } from "@roo/modes"
+import { Mode, getAllModes, findModeBySlug, defaultModeSlug } from "@shared/modes"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"

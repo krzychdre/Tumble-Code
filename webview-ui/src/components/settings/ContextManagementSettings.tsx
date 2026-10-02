@@ -5,7 +5,7 @@ import { FoldVertical } from "lucide-react"
 
 import { PRUNE_CONDENSE_DEFAULTS } from "@tumble-code/types"
 
-import { supportPrompt } from "@roo/support-prompt"
+import { supportPrompt } from "@shared/support-prompt"
 
 import { cn } from "@/lib/utils"
 import {

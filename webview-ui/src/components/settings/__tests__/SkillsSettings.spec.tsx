@@ -29,7 +29,7 @@ vi.mock("@/i18n/TranslationContext", () => ({
 
 // Mock the doc links utility
 // Mock modes
-vi.mock("@roo/modes", () => ({
+vi.mock("@shared/modes", () => ({
 	getAllModes: () => [
 		{ slug: "code", name: "Code" },
 		{ slug: "architect", name: "Architect" },

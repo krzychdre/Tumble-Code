@@ -2,7 +2,7 @@ import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Download, Upload, TriangleAlert } from "lucide-react"
 
-import { Package } from "@roo/package"
+import { Package } from "@shared/package"
 
 import { vscode } from "@/utils/vscode"
 import { cn } from "@/lib/utils"

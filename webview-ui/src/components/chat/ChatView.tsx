@@ -8,7 +8,7 @@ import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import type { ClineMessage } from "@tumble-code/types"
 
 import { consolidateTokenUsage, consolidateApiRequests, consolidateCommands } from "@tumble-code/core/browser"
-import { ProfileValidator } from "@roo/ProfileValidator"
+import { ProfileValidator } from "@shared/ProfileValidator"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"

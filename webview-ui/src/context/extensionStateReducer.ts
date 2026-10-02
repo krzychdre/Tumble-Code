@@ -27,8 +27,8 @@ import {
 } from "@tumble-code/types"
 
 import { findLastIndex } from "@tumble-code/core/browser"
-import { checkExistKey } from "@roo/checkExistApiConfig"
-import { defaultModeSlug, defaultPrompts } from "@roo/modes"
+import { checkExistKey } from "@shared/checkExistApiConfig"
+import { defaultModeSlug, defaultPrompts } from "@shared/modes"
 
 /**
  * Everything the context derives from host messages. `extensionState` is the

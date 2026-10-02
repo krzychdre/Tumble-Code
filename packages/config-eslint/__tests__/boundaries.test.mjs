@@ -5,7 +5,7 @@
 //    another workspace's source behind the dependency graph: pnpm, turbo and
 //    knip cannot see the edge, so caches go stale and the dependency is never
 //    declared.
-// 2. Files in src/shared are bundled into the webview through the `@roo/*`
+// 2. Files in src/shared are bundled into the webview through the `@shared/*`
 //    alias, so they must not import `vscode` or extension code under src/core,
 //    src/services, ... (the TEST-8 bundle guard is the build-time backstop).
 //

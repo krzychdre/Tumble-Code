@@ -1,6 +1,6 @@
 import type { ModeConfig, PromptComponent, CustomModePrompts } from "@tumble-code/types"
 
-import { getRoleDefinition, getWhenToUse, getDescription } from "@roo/modes"
+import { getRoleDefinition, getWhenToUse, getDescription } from "@shared/modes"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, Input, StandardTooltip, Textarea } from "@src/components/ui"

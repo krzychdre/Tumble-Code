@@ -6,7 +6,7 @@
 // The selectors are replaced by probes that record their props: their own behavior has its own specs,
 // what matters here is what ChatTextArea passes them and what it does with their callbacks.
 
-import { defaultModeSlug } from "@roo/modes"
+import { defaultModeSlug } from "@shared/modes"
 
 import { render, fireEvent, screen, act } from "@src/utils/test-utils"
 import { useExtensionState, useExtensionSelector } from "@src/context/ExtensionStateContext"
