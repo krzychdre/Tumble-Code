@@ -44,7 +44,7 @@
 	"settings.apiRequestTimeout.description": "Tempo limite de resposta da API (segundos, padrão: 600, intervalo: 1-3600). Valores mais altos são recomendados para provedores locais. Provedores não suportados: Amazon Bedrock, Google Gemini (diretamente ou via Vertex AI), Mistral, Ollama, VS Code LM API.",
 	"settings.newTaskRequireTodos.description": "Exigir parâmetro todos ao criar novas tarefas com a ferramenta new_task",
 	"settings.codeIndex.embeddingBatchSize.description": "O tamanho do lote para operações de embedding durante a indexação de código. Ajuste isso com base nos limites do seu provedor de API. O padrão é 60.",
-	"settings.debug.description": "Ativa o modo de depuração para mostrar botões adicionais para visualizar o histórico de conversas da API e mensagens da interface como JSON formatado em arquivos temporários.",
+	"settings.debug.description": "Ativa o modo de depuração: mostra botões adicionais para visualizar o histórico de conversas da API e mensagens da interface como JSON formatado em arquivos temporários e grava linhas de depuração detalhadas (incluindo os contadores de desempenho de cada solicitação) no painel de saída do Tumble Code.",
 	"settings.debugProxy.enabled.description": "**Ativar Debug Proxy** — Redireciona todas as solicitações de rede de saída por meio de um proxy para depuração MITM. Só fica ativo quando você está executando em modo de depuração (F5).",
 	"settings.debugProxy.serverUrl.description": "URL do proxy (por exemplo, `http://127.0.0.1:8888`). Só é usada quando o **Debug Proxy** está ativado.",
 	"settings.debugProxy.tlsInsecure.description": "Aceitar certificados self-signed do proxy. **Necessário para inspeção MITM.** ⚠️ Inseguro — use apenas para depuração local.",

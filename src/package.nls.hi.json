@@ -44,7 +44,7 @@
 	"settings.apiRequestTimeout.description": "API प्रतिक्रिया टाइमआउट (सेकंड, डिफ़ॉल्ट: 600, रेंज: 1-3600)। स्थानीय प्रदाताओं के लिए उच्च मान अनुशंसित हैं। असमर्थित प्रदाता: Amazon Bedrock, Google Gemini (सीधे या Vertex AI के माध्यम से), Mistral, Ollama, VS Code LM API।",
 	"settings.newTaskRequireTodos.description": "new_task टूल के साथ नए कार्य बनाते समय टूडू पैरामीटर की आवश्यकता होती है",
 	"settings.codeIndex.embeddingBatchSize.description": "कोड इंडेक्सिंग के दौरान एम्बेडिंग ऑपरेशन के लिए बैच साइज़। इसे अपने API प्रदाता की सीमाओं के अनुसार समायोजित करें। डिफ़ॉल्ट 60 है।",
-	"settings.debug.description": "API conversation history और UI messages को temporary files में prettified JSON के रूप में देखने के लिए अतिरिक्त बटन दिखाने के लिए debug mode सक्षम करें।",
+	"settings.debug.description": "debug mode सक्षम करें: API conversation history और UI messages को temporary files में prettified JSON के रूप में देखने के लिए अतिरिक्त बटन दिखाता है, और Tumble Code output panel में विस्तृत debug पंक्तियाँ (प्रत्येक request के performance counters सहित) लिखता है।",
 	"settings.debugProxy.enabled.description": "**Debug Proxy सक्षम करो** — सभी आउटबाउंड network requests को MITM debugging के लिए proxy के ज़रिए route करो। सिर्फ तब active रहेगा जब तुम debug mode (F5) में चला रहे हो।",
 	"settings.debugProxy.serverUrl.description": "Proxy URL (जैसे `http://127.0.0.1:8888`)। सिर्फ तब इस्तेमाल होती है जब **Debug Proxy** enabled हो।",
 	"settings.debugProxy.tlsInsecure.description": "Proxy से आने वाले self-signed certificates accept करो। **MITM inspection के लिए ज़रूरी।** ⚠️ Insecure — सिर्फ local debugging के लिए इस्तेमाल करो।",
