@@ -224,6 +224,9 @@ otherwise.
 - `tests/conftest.py`'s `client` fixture now restores `app.dependency_overrides` after each test: several older
   tests leave a signed-in override behind, which made a "no token, 401" test pass or fail by file order.
 - The phone layout test covers `/app/dataset`; five nav tabs needed narrower tab padding on phones.
+- The three `/api/llm-exchanges` endpoints are exempt from the global per-IP rate limit (60 a minute on the live
+  server): a fast model sends an exchange and an outcome every few seconds on top of the telemetry, and a refused
+  upload costs a full snapshot. The Bearer token still guards them.
 
 ## Tests
 
