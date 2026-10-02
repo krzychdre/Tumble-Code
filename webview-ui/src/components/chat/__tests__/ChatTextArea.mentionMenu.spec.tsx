@@ -8,7 +8,7 @@
 
 import { useState } from "react"
 
-import { defaultModeSlug } from "@roo/modes"
+import { defaultModeSlug } from "@shared/modes"
 
 import { render, fireEvent, screen, act } from "@src/utils/test-utils"
 import { useExtensionState, useExtensionSelector } from "@src/context/ExtensionStateContext"

@@ -19,7 +19,7 @@ that depend on each other by name (`"@tumble-code/types": "workspace:^"`).
 | Folder                        | Package name                                                   | What it owns                                                                                                                                                                      |
 | ----------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/`                        | `tumble-code`                                                  | The VS Code extension ("the host"): activation, `ClineProvider` (the chat panel's backend), `Task` (one agent conversation), tools, API providers, services. Built to `src/dist`. |
-| `src/shared/`                 | none (a folder, not a package)                                 | Code used by both the host and the webview. The webview imports it through the `@roo/*` path alias. It must stay browser-safe (see below).                                        |
+| `src/shared/`                 | none (a folder, not a package)                                 | Code used by both the host and the webview. The webview imports it through the `@shared/*` path alias. It must stay browser-safe (see below).                                     |
 | `webview-ui/`                 | `@tumble-code/vscode-webview`                                  | The React chat and settings UI that runs inside the VS Code webview (an embedded browser page).                                                                                   |
 | `apps/cli/`                   | `@tumble-code/cli`                                             | The terminal client. It runs the built extension inside its own Node process and renders with Ink (React for terminals).                                                          |
 | `apps/vscode-e2e/`            | `@tumble-code/vscode-e2e`                                      | End-to-end tests in a real VS Code.                                                                                                                                               |
@@ -47,7 +47,7 @@ graph TD
   src --> types
   webview[webview-ui] --> coreBrowser["core/browser"]
   webview --> types
-  webview -. "@roo/* alias" .-> shared["src/shared"]
+  webview -. "@shared/* alias" .-> shared["src/shared"]
   cli[apps/cli] --> core
   cli --> types
   cli --> shim[vscode-shim]

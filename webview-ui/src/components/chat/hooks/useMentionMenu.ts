@@ -4,7 +4,7 @@ import { mentionRegex, unescapeSpaces } from "@tumble-code/core/browser"
 import type { Command, ExtensionMessage, ModeConfig } from "@tumble-code/types"
 
 import { WebviewMessage } from "@tumble-code/types"
-import { Mode } from "@roo/modes"
+import { Mode } from "@shared/modes"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

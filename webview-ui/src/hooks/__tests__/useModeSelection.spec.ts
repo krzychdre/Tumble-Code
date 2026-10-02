@@ -4,7 +4,7 @@ import type { ModeConfig } from "@tumble-code/types"
 
 import { useModeSelection } from "../useModeSelection"
 
-vi.mock("@roo/modes", () => ({
+vi.mock("@shared/modes", () => ({
 	getAllModes: (customModes?: ModeConfig[]) => [
 		{ slug: "code", name: "Code", roleDefinition: "", groups: [] },
 		{ slug: "architect", name: "Architect", roleDefinition: "", groups: [] },

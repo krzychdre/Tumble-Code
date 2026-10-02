@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react"
 
-import { Mode, getAllModes } from "@roo/modes"
+import { Mode, getAllModes } from "@shared/modes"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

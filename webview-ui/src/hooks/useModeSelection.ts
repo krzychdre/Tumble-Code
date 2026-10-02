@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react"
 
 import type { ModeConfig } from "@tumble-code/types"
 
-import { getAllModes } from "@roo/modes"
+import { getAllModes } from "@shared/modes"
 
 /**
  * The skill mode picker shared by CreateSkillDialog and the SkillsSettings mode dialog.

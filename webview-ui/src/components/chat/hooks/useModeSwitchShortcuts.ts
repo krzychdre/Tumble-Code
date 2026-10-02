@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react"
 
 import type { ModeConfig } from "@tumble-code/types"
 
-import { getAllModes } from "@roo/modes"
+import { getAllModes } from "@shared/modes"
 
 /**
  * Cmd/Ctrl + . switches to the next mode, with Shift to the previous one.

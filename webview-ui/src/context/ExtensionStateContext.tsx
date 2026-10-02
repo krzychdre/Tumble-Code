@@ -15,7 +15,7 @@ import {
 	type McpServer,
 } from "@tumble-code/types"
 
-import { Mode } from "@roo/modes"
+import { Mode } from "@shared/modes"
 
 import { vscode } from "@src/utils/vscode"
 import { useAnyExtensionMessage } from "@src/utils/extensionBus"

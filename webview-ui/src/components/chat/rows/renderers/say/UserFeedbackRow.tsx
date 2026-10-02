@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Edit, Trash2, User } from "lucide-react"
 
-import { Mode } from "@roo/modes"
+import { Mode } from "@shared/modes"
 
 import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
