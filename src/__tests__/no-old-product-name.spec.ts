@@ -16,11 +16,11 @@ const OLD_NAME = new RegExp(["roo", "code"].join(""), "i")
 const ALLOWED = [
 	// Plan documents are the project's history and quote it as it was.
 	/^ai_plans\//,
-	// Release history and lineage/attribution of the upstream project.
+	// The upstream era of the release history.
 	/^CHANGELOG\.md$/,
+	// Attribution: the "fork of Roo Code" sentence links the upstream repository.
 	/^README\.md$/,
 	/^CONTRIBUTING\.md$/,
-	/^\.git-blame-ignore-revs$/,
 	// The globalState key that marks the one-shot import from the old extension
 	// as done. It is stored on users' machines; renaming it would run the import
 	// again and overwrite their task history.
