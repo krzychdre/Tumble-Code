@@ -3,6 +3,9 @@
   /* Tall rows, so "next" has somewhere to scroll to. */
   .msg { min-height: 400px; }
   .tl-target { outline: 2px solid red; }
+  /* A track too short for the run, as on a long session. */
+  #tl-track { display: flex; flex-direction: column; height: 40px; overflow: auto; }
+  .tl-tick { flex: none; height: 8px; padding: 0; border: 0; }
 </style>
 </head><body>
 <!--
@@ -58,6 +61,13 @@ window.addEventListener("load", function () {
   check("ticks say what they are", /API request/.test(byTs["3"].getAttribute("aria-label")) &&
         /\$0\.1/.test(byTs["3"].getAttribute("aria-label")))
 
+  var track = document.getElementById("tl-track")
+  function inTrack(t) {
+    var box = track.getBoundingClientRect(), at = t.getBoundingClientRect()
+    return at.top >= box.top - 1 && at.bottom <= box.bottom + 1
+  }
+  check("a run longer than the track scrolls instead of being cut off", track.scrollHeight > track.clientHeight)
+
   byTs["8"].click()
   check("a tick marks its row", target() === "8")
 
@@ -76,6 +86,10 @@ window.addEventListener("load", function () {
   check("next message of yours after the current one", target() === "7")
   check("focus moves to the row", document.activeElement && document.activeElement.closest(".msg") &&
         document.activeElement.closest(".msg").getAttribute("data-ts") === "7")
+  check("the track scrolls to the jump's tick", inTrack(byTs["7"]))
+
+  // A reader at the end of the track stays at the end when a live row lands.
+  track.scrollTop = track.scrollHeight
 
   // The live bridge adds a row: its tick follows.
   window.__tumbleConversation.upsert({ ts: 10, type: "say", say: "api_req_started", text: "{\"tokensIn\":5,\"cost\":0.2}" })
@@ -84,10 +98,18 @@ window.addEventListener("load", function () {
     var t10 = document.querySelector('#tl-track .tl-tick[data-ts="10"]')
     check("sizes are rescaled to the new dearest", !!t10 && size(t10) === 1 &&
           size(document.querySelector('#tl-track .tl-tick[data-ts="3"]')) === 0.5)
+    check("a reader at the end of the track stays at the end", !!t10 && inTrack(t10) &&
+          track.scrollHeight - track.clientHeight - track.scrollTop <= 1)
+    // A reader in the middle keeps their place.
+    track.scrollTop = 16
+    window.__tumbleConversation.upsert({ ts: 11, type: "say", say: "api_req_started", text: "{\"tokensIn\":5,\"cost\":0.1}" })
+    setTimeout(function () {
+    check("a reader in the middle of the track keeps their place", ticks().length === 10 && track.scrollTop === 16)
     var pre = document.createElement("pre")
     pre.id = "results"
     pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
     document.body.appendChild(pre)
+    }, 300)
   }, 300)
 })
 </script>

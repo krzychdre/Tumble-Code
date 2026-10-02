@@ -45,7 +45,7 @@ _MIN_CHECKS = {
     # The theme applied in <head> and the auto/dark/light toggle, drawn as an icon.
     "theme_checks.html": 8,
     # Ticks per request/error/message, sizes by cost, jumps that wrap, live rows.
-    "timeline_checks.html": 19,
+    "timeline_checks.html": 23,
     "tasktree_checks.html": 19,
     # escapeHtml must escape " and ' so values interpolated into double-quoted
     # src="..."/title="..." attributes cannot break out (CodeQL #8/#11).

@@ -5,6 +5,9 @@
  * error" and "Next message of yours" walk those rows from where the reader is
  * and wrap round.
  *
+ * A long run has more ticks than the track has room for, so the track
+ * scrolls; a jump brings its tick into view there too.
+ *
  * Everything is read off the rendered conversation (render.js puts data-ts,
  * data-kind, data-cost and data-failed on the rows), so there is no new
  * endpoint; a MutationObserver redraws it when the live bridge adds or
@@ -84,9 +87,31 @@
 				tick.title = label
 				fragment.appendChild(tick)
 			})
+			// Emptying the track resets its scroll, so a live row would throw the
+			// reader back to the start: keep where they were, and stay at the end
+			// when they were reading the end.
+			var top = track.scrollTop
+			var left = track.scrollLeft
+			var atEnd =
+				track.scrollHeight - track.clientHeight - top <= 1 && track.scrollWidth - track.clientWidth - left <= 1
 			track.textContent = ""
 			track.appendChild(fragment)
 			nav.hidden = entries.length === 0
+			track.scrollTop = atEnd && top > 0 ? track.scrollHeight : top
+			track.scrollLeft = atEnd && left > 0 ? track.scrollWidth : left
+		}
+
+		// Scrolls the track, and only the track (scrollIntoView would move the
+		// page as well), so the row's tick is in view.
+		function reveal(row) {
+			var tick = track.querySelector('.tl-tick[data-ts="' + row.getAttribute("data-ts") + '"]')
+			if (!tick) return
+			var box = track.getBoundingClientRect()
+			var at = tick.getBoundingClientRect()
+			if (at.top < box.top) track.scrollTop -= box.top - at.top
+			else if (at.bottom > box.bottom) track.scrollTop += at.bottom - box.bottom
+			if (at.left < box.left) track.scrollLeft -= box.left - at.left
+			else if (at.right > box.right) track.scrollLeft += at.right - box.right
 		}
 
 		function reducedMotion() {
@@ -98,6 +123,7 @@
 			if (current && current !== row) current.classList.remove("tl-target")
 			current = row
 			row.classList.add("tl-target")
+			reveal(row)
 			row.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" })
 			// Keyboard focus follows: the row's own summary when it folds, the row
 			// itself otherwise.
