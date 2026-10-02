@@ -8,11 +8,6 @@ export interface SkillMetadata {
 	path: string // Absolute path to SKILL.md
 	source: "global" | "project" // Where the skill was discovered
 	/**
-	 * @deprecated Use modeSlugs instead. Kept for backward compatibility.
-	 * If set, skill is only available in this mode.
-	 */
-	mode?: string
-	/**
 	 * Mode slugs where this skill is available.
 	 * - undefined or empty array means the skill is available in all modes ("Any mode").
 	 * - An array with one or more mode slugs restricts the skill to those modes.

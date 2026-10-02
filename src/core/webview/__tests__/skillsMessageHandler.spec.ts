@@ -77,7 +77,6 @@ describe("skillsMessageHandler", () => {
 			description: "Project skill description",
 			path: "/project/.roo/skills/project-skill/SKILL.md",
 			source: "project",
-			mode: "code",
 		},
 	]
 
