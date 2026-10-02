@@ -172,10 +172,10 @@ A [`Makefile`](Makefile) wraps these commands (`make help`, `make dev`,
 
 In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `tumble-code` to configure these settings:
 
-| VS Code Setting            | Environment Variable | Description                                                                           |
-| -------------------------- | -------------------- | ------------------------------------------------------------------------------------- |
-| `tumble-code.cloudApiUrl`  | `ROO_CODE_API_URL`   | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
-| `tumble-code.clerkBaseUrl` | `CLERK_BASE_URL`     | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
+| VS Code Setting            | Environment Variable  | Description                                                                           |
+| -------------------------- | --------------------- | ------------------------------------------------------------------------------------- |
+| `tumble-code.cloudApiUrl`  | `TUMBLE_CODE_API_URL` | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
+| `tumble-code.clerkBaseUrl` | `CLERK_BASE_URL`      | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
 
 > **Auto-detect:** When `clerkBaseUrl` is not explicitly configured, the extension
 > automatically uses the same URL as `cloudApiUrl` for Clerk auth requests. This means

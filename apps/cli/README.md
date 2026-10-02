@@ -55,7 +55,7 @@ tumble doctor
 
 `doctor` prints one line per check, `[pass]`, `[warn]` or `[fail]`: the Node.js version (22 or newer), the extension
 bundle (`--extension <dir>` checks another one), the ripgrep binary the file search uses, the global MCP servers file
-and whether the cloud API (`ROO_CODE_API_URL`, default `https://app.tumblecode.dev`) answers within 3 seconds. It exits
+and whether the cloud API (`TUMBLE_CODE_API_URL`, default `https://app.tumblecode.dev`) answers within 3 seconds. It exits
 with 1 when a check fails. An unreachable cloud is only a warning: sessions run without it.
 
 After a crash the CLI prints the error, the path of the debug log (`~/.roo/cli-debug.log`) and, when the run had no

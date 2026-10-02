@@ -156,7 +156,7 @@ export function checkMcpConfig(file: string): DoctorCheckResult {
 }
 
 export async function checkCloudReachable({
-	url = process.env.ROO_CODE_API_URL || PRODUCTION_CLOUD_API_URL,
+	url = process.env.TUMBLE_CODE_API_URL || process.env.ROO_CODE_API_URL || PRODUCTION_CLOUD_API_URL,
 	fetchImpl = fetch,
 	timeoutMs = CLOUD_TIMEOUT_MS,
 }: {

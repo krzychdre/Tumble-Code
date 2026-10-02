@@ -418,10 +418,23 @@ describe("TelemetryClient", () => {
 	})
 
 	describe("telemetry state methods", () => {
-		it("should always return true for isTelemetryEnabled", () => {
+		it("should return true for isTelemetryEnabled unless an off switch is set", () => {
 			const client = new TelemetryClient(mockAuthService, mockSettingsService)
 			expect(client.isTelemetryEnabled()).toBe(true)
 		})
+
+		it.each(["TUMBLE_CODE_DISABLE_TELEMETRY", "ROO_CODE_DISABLE_TELEMETRY"])(
+			"turns telemetry off when %s=1 (the second is the former name)",
+			(name) => {
+				vi.stubEnv(name, "1")
+				try {
+					const client = new TelemetryClient(mockAuthService, mockSettingsService)
+					expect(client.isTelemetryEnabled()).toBe(false)
+				} finally {
+					vi.unstubAllEnvs()
+				}
+			},
+		)
 
 		it("should have an empty implementation for shutdown", async () => {
 			const client = new TelemetryClient(mockAuthService, mockSettingsService)

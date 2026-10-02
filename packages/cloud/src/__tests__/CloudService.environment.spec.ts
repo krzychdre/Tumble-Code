@@ -44,8 +44,8 @@ describe("CloudService environment resolution (characterization)", () => {
 
 	beforeEach(() => {
 		CloudService.resetInstance()
-		vi.stubEnv("ROO_CODE_CLOUD_TOKEN", undefined as unknown as string)
-		vi.stubEnv("ROO_CODE_CLOUD_ORG_SETTINGS", undefined as unknown as string)
+		vi.stubEnv("TUMBLE_CODE_CLOUD_TOKEN", undefined as unknown as string)
+		vi.stubEnv("TUMBLE_CODE_CLOUD_ORG_SETTINGS", undefined as unknown as string)
 		workspaceState = { get: vi.fn(), update: vi.fn().mockResolvedValue(undefined) }
 		context = { workspaceState } as unknown as vscode.ExtensionContext
 
@@ -80,8 +80,8 @@ describe("CloudService environment resolution (characterization)", () => {
 	})
 
 	it("treats empty variables as unset", async () => {
-		vi.stubEnv("ROO_CODE_CLOUD_TOKEN", "")
-		vi.stubEnv("ROO_CODE_CLOUD_ORG_SETTINGS", "")
+		vi.stubEnv("TUMBLE_CODE_CLOUD_TOKEN", "")
+		vi.stubEnv("TUMBLE_CODE_CLOUD_ORG_SETTINGS", "")
 
 		const service = await CloudService.createInstance(context, log)
 
@@ -92,8 +92,8 @@ describe("CloudService environment resolution (characterization)", () => {
 		expect(service.isCloudAgent).toBe(false)
 	})
 
-	it("uses the static token auth and marks a cloud agent when ROO_CODE_CLOUD_TOKEN is set", async () => {
-		vi.stubEnv("ROO_CODE_CLOUD_TOKEN", "job-token")
+	it("uses the static token auth and marks a cloud agent when TUMBLE_CODE_CLOUD_TOKEN is set", async () => {
+		vi.stubEnv("TUMBLE_CODE_CLOUD_TOKEN", "job-token")
 
 		const service = await CloudService.createInstance(context, log)
 
@@ -102,8 +102,8 @@ describe("CloudService environment resolution (characterization)", () => {
 		expect(service.isCloudAgent).toBe(true)
 	})
 
-	it("uses static settings when ROO_CODE_CLOUD_ORG_SETTINGS is set", async () => {
-		vi.stubEnv("ROO_CODE_CLOUD_ORG_SETTINGS", "eyJ2ZXJzaW9uIjoxfQ==")
+	it("uses static settings when TUMBLE_CODE_CLOUD_ORG_SETTINGS is set", async () => {
+		vi.stubEnv("TUMBLE_CODE_CLOUD_ORG_SETTINGS", "eyJ2ZXJzaW9uIjoxfQ==")
 
 		await CloudService.createInstance(context, log)
 

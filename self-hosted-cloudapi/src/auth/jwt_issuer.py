@@ -9,7 +9,7 @@ from config.settings import settings
 
 
 # Every token this server issues carries these two claims: issue_session_token
-# below, and the long-lived static tokens (ROO_CODE_CLOUD_TOKEN) the retired
+# below, and the long-lived static tokens (TUMBLE_CODE_CLOUD_TOKEN) the retired
 # issue_static_token handed out, have stamped them since this file was written.
 TOKEN_ISSUER = "rcc"
 TOKEN_VERSION = 1

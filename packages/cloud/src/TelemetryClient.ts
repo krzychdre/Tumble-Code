@@ -274,7 +274,8 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 	}
 
 	public override isTelemetryEnabled(): boolean {
-		if (process.env.ROO_CODE_DISABLE_TELEMETRY === "1") {
+		// ROO_CODE_DISABLE_TELEMETRY is the former name, still honoured.
+		if (process.env.TUMBLE_CODE_DISABLE_TELEMETRY === "1" || process.env.ROO_CODE_DISABLE_TELEMETRY === "1") {
 			return false
 		}
 
