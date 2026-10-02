@@ -1,7 +1,7 @@
 import React from "react"
 import { z } from "zod"
 
-import type { EmbedderProvider } from "@roo-code/types"
+import type { EmbedderProvider } from "@tumble-code/types"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 import { OPENROUTER_DEFAULT_PROVIDER_NAME } from "@src/hooks/models/useOpenRouterModelProviders"

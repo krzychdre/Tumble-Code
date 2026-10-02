@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 
-import { ARTIFACT_SPILL_DEFAULTS, resolveMaxInlineToolResultBytes, PROTOCOL_TOOL_NAMES } from "@roo-code/types"
+import { ARTIFACT_SPILL_DEFAULTS, resolveMaxInlineToolResultBytes, PROTOCOL_TOOL_NAMES } from "@tumble-code/types"
 
 import { COMPACTABLE_TOOL_NAMES } from "../../context-management/microcompact"
 

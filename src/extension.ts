@@ -19,10 +19,10 @@ if (fs.existsSync(envPath)) {
 	}
 }
 
-import { type CloudUserInfo, type AuthState, readCliRuntimeEnv, formatLanguage } from "@roo-code/types"
-import { CloudService } from "@roo-code/cloud"
-import { TelemetryService } from "@roo-code/telemetry"
-import { customToolRegistry } from "@roo-code/core"
+import { type CloudUserInfo, type AuthState, readCliRuntimeEnv, formatLanguage } from "@tumble-code/types"
+import { CloudService } from "@tumble-code/cloud"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { customToolRegistry } from "@tumble-code/core"
 
 import "./utils/path" // Necessary to have access to String.prototype.toPosix.
 import { initializeNetworkProxy } from "./utils/networkProxy"
@@ -178,7 +178,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Only applied in debug mode (F5).
 	await initializeNetworkProxy(context)
 
-	// Sync cloud URL overrides from VS Code settings into the @roo-code/cloud package.
+	// Sync cloud URL overrides from VS Code settings into the @tumble-code/cloud package.
 	// This must happen before any cloud service initialization so that the
 	// configurable API/provider/clerk URLs take effect.
 	syncCloudUrls()
@@ -425,7 +425,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			{ path: context.extensionPath, pattern: "**/*.ts" },
 			{ path: path.join(context.extensionPath, "../packages/types"), pattern: "**/*.ts" },
 			{ path: path.join(context.extensionPath, "../packages/telemetry"), pattern: "**/*.ts" },
-			{ path: path.join(context.extensionPath, "node_modules/@roo-code/cloud"), pattern: "**/*" },
+			{ path: path.join(context.extensionPath, "node_modules/@tumble-code/cloud"), pattern: "**/*" },
 		]
 
 		logger.info(

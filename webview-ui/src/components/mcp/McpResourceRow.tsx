@@ -1,4 +1,4 @@
-import type { McpResource, McpResourceTemplate } from "@roo-code/types"
+import type { McpResource, McpResourceTemplate } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 

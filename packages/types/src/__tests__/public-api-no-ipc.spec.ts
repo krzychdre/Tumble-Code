@@ -9,7 +9,7 @@ import { TumbleCodeEventName, tumbleCodeEventsSchema, taskEventSchema } from "..
 
 const indexModulePath = "../index.js"
 
-describe("@roo-code/types public API without the IPC socket", () => {
+describe("@tumble-code/types public API without the IPC socket", () => {
 	it.each(["IpcMessageType", "IpcOrigin", "ackSchema", "TaskCommandName", "taskCommandSchema", "ipcMessageSchema"])(
 		"does not export the IPC runtime value %s",
 		async (name) => {

@@ -11,8 +11,8 @@ import {
 	readCliRuntimeEnv,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
@@ -20,7 +20,7 @@ import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { ToolUse, ToolResponse } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
-import { parseCommand } from "@roo-code/core/browser"
+import { parseCommand } from "@tumble-code/core/browser"
 import {
 	ExitCodeDetails,
 	RooTerminalCallbacks,

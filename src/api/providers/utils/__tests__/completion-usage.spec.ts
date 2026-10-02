@@ -9,7 +9,7 @@ import {
 	openAiUsageChunk,
 	responsesApiCompletionUsage,
 } from "../completion-usage"
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 /**
  * The property under test throughout: a figure the provider did not report must

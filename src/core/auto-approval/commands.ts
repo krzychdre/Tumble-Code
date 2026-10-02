@@ -1,4 +1,4 @@
-import { type AnalyzedCommand, analyzeCommand } from "@roo-code/core/browser"
+import { type AnalyzedCommand, analyzeCommand } from "@tumble-code/core/browser"
 
 /**
  * Detect dangerous parameter substitutions that could lead to command execution.

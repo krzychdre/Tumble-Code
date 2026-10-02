@@ -15,7 +15,7 @@
 // the real `ClineProvider.clearTask` / `clearCurrentTask` bodies bound to
 // a minimal provider stand-in. Only the memory writer entry points are spied.
 
-import { TumbleCodeEventName, type ProviderSettings } from "@roo-code/types"
+import { TumbleCodeEventName, type ProviderSettings } from "@tumble-code/types"
 
 const { extractSpy, dreamSpy, drainExtractionSpy, drainDreamsSpy, captureTaskCompletedSpy } = vi.hoisted(() => ({
 	captureTaskCompletedSpy: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock("../../memory", async (importOriginal) => ({
 	isAutoMemoryEnabled: vi.fn().mockReturnValue(true),
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: () => true,
 		// Every capture method is a no-op, except that a "Task Completed" event

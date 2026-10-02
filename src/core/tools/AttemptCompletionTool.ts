@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 
-import { TumbleCodeEventName, type HistoryItem, TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { TumbleCodeEventName, type HistoryItem, TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"

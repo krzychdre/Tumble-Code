@@ -1,6 +1,6 @@
 import { Trans } from "react-i18next"
 
-import type { ModeConfig, PromptComponent, CustomModePrompts } from "@roo-code/types"
+import type { ModeConfig, PromptComponent, CustomModePrompts } from "@tumble-code/types"
 
 import { getCustomInstructions } from "@roo/modes"
 

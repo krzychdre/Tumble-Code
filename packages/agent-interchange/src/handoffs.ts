@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import * as fsPromises from "node:fs/promises"
 import * as path from "node:path"
 
-import { writeFileAtomic } from "@roo-code/core/fs"
+import { writeFileAtomic } from "@tumble-code/core/fs"
 
 import { renderBriefing } from "./briefing.js"
 import { handoffDir, samePath } from "./locate.js"
@@ -122,7 +122,7 @@ interface FoldResult {
 const REGISTER_KEYS = ["status", "pickedUpBy", "pickedUpSessionId"] as const
 
 // Resolve `rename` lazily (via a getter) rather than at module load. The
-// `@roo-code/agent-interchange` entry is pulled transitively by `core/memory/paths`
+// `@tumble-code/agent-interchange` entry is pulled transitively by `core/memory/paths`
 // → `ContextProxy`, so this module loads in many unit tests that mock
 // `fs/promises` with a partial factory. Capturing `fsPromises.rename` at load
 // time reads `undefined` under those partial mocks and throws before any test

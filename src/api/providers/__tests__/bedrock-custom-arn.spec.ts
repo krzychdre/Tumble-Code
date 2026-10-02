@@ -1,7 +1,7 @@
 // npx vitest run src/api/providers/__tests__/bedrock-custom-arn.spec.ts
 
 import { AwsBedrockHandler } from "../bedrock"
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { logger } from "../../../utils/logging"
 
 // Mock the logger

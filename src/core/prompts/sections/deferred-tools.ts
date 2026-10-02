@@ -16,7 +16,7 @@ import { getMcpServerTools } from "../tools/native-tools"
  * the prompt matches the names actually withheld from the `tools` array.
  *
  * Custom-tool inclusion is handled by the caller: pass already-formatted
- * `customTools` (see `formatNative` in `@roo-code/core`) when the
+ * `customTools` (see `formatNative` in `@tumble-code/core`) when the
  * `customTools` experiment is also enabled. Pass an empty array otherwise.
  */
 export function getDeferredToolsSection(options: {

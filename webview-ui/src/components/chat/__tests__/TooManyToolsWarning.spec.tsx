@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
-import { MAX_MCP_TOOLS_THRESHOLD, MAX_MCP_TOOLS_THRESHOLD_DEFERRED } from "@roo-code/types"
+import { MAX_MCP_TOOLS_THRESHOLD, MAX_MCP_TOOLS_THRESHOLD_DEFERRED } from "@tumble-code/types"
 
 import { TooManyToolsWarning } from "../TooManyToolsWarning"
 

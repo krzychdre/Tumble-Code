@@ -7,7 +7,7 @@ import * as fs from "fs/promises"
 const hoisted = vi.hoisted(() => ({
 	safeWriteJsonMock: vi.fn().mockResolvedValue(undefined),
 }))
-vi.mock("@roo-code/core/fs", () => ({
+vi.mock("@tumble-code/core/fs", () => ({
 	safeWriteJson: hoisted.safeWriteJsonMock,
 }))
 

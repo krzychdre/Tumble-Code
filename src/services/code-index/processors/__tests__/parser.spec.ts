@@ -7,7 +7,7 @@ import { readFile } from "fs/promises"
 import { Node } from "web-tree-sitter"
 
 // Mock TelemetryService
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vi.fn(),

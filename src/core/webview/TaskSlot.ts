@@ -1,4 +1,4 @@
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { t } from "../../i18n"
 import type { Task } from "../task/Task"

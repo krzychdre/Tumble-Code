@@ -1,4 +1,4 @@
-import type { TumbleCodeSettings } from "@roo-code/types"
+import type { TumbleCodeSettings } from "@tumble-code/types"
 
 export type PermissionMode = "ask" | "allow"
 

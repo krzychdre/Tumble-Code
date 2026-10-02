@@ -2,7 +2,7 @@
 
 import * as vscode from "vscode"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { t } from "../../../i18n"
 import type { ApiMessage } from "../../task-persistence/apiMessages"

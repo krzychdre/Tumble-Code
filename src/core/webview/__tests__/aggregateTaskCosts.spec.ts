@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { aggregateTaskCostsRecursive } from "../aggregateTaskCosts.js"
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem } from "@tumble-code/types"
 import { logger } from "../../../utils/logging"
 
 describe("aggregateTaskCostsRecursive", () => {

@@ -1,7 +1,7 @@
 // npx vitest run src/__tests__/vscode-extension-host-surface.spec.ts
 //
 // Pins the public surface of the extension <-> webview channel types: every
-// name `@roo-code/types` exports for it, and the field sets of the two message
+// name `@tumble-code/types` exports for it, and the field sets of the two message
 // interfaces. Checked by tsc (the type-only part) and vitest (the runtime
 // schemas), so moving these declarations between files cannot drop an export
 // or a field without failing this package.

@@ -3,7 +3,7 @@ import React from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { FoldVertical } from "lucide-react"
 
-import { PRUNE_CONDENSE_DEFAULTS } from "@roo-code/types"
+import { PRUNE_CONDENSE_DEFAULTS } from "@tumble-code/types"
 
 import { supportPrompt } from "@roo/support-prompt"
 

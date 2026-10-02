@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi } from "vitest"
 
-import { toolNames, type ToolName } from "@roo-code/types"
+import { toolNames, type ToolName } from "@tumble-code/types"
 
 import { presentAssistantMessage } from "../../assistant-message/presentAssistantMessage"
 import { TaskStreamProcessor, type TaskStreamProcessorAccess } from "../../task/TaskStreamProcessor"
@@ -89,7 +89,7 @@ vi.mock("../../tools/validateToolUse", () => ({
 vi.mock("../../assistant-message", () => ({
 	presentAssistantMessage: vi.fn(),
 }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
 
-import { TaskBridgeCommandName, type TaskBridgeCommand } from "@roo-code/types"
+import { TaskBridgeCommandName, type TaskBridgeCommand } from "@tumble-code/types"
 
 import { dispatchBridgeCommand } from "../commandHandlers.js"
 import type { BridgeProvider, BridgeTask } from "../types.js"

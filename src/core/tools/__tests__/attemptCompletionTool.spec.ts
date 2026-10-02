@@ -1,5 +1,5 @@
 import type { Mock } from "vitest"
-import { TumbleCodeEventName, TelemetryEventName, TodoItem } from "@roo-code/types"
+import { TumbleCodeEventName, TelemetryEventName, TodoItem } from "@tumble-code/types"
 
 import type { ToolUse } from "../../../shared/tools"
 
@@ -17,7 +17,7 @@ vi.mock("../../prompts/responses", () => ({
 const { mockCapture } = vi.hoisted(() => ({
 	mockCapture: vi.fn(),
 }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: mockCapture,

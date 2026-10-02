@@ -10,7 +10,7 @@ import {
 } from "../providerModelConfig"
 import { MODELS_BY_PROVIDER } from "../../constants"
 
-import * as types from "@roo-code/types"
+import * as types from "@tumble-code/types"
 
 describe("providerModelConfig", () => {
 	// Characterization (S4): the model picker's service link for every provider, pinned before the

@@ -33,7 +33,7 @@ import {
 	vscodeLlmModels,
 	xaiDefaultModelId,
 	xaiModels,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useSelectedModel } from "../useSelectedModel"
 import { useProviderModels } from "../useProviderModels"

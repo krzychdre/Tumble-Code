@@ -3,7 +3,7 @@ import type {
 	TelemetryClient,
 	TelemetryEventName,
 	TelemetryPropertiesProvider,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 /**
  * TelemetryService wrapper class that defers initialization.
@@ -54,7 +54,7 @@ export class TelemetryService {
 	/**
 	 * Captures an event with properties typed per event.
 	 *
-	 * Events listed in `TelemetryEventPayloads` (in @roo-code/types) require
+	 * Events listed in `TelemetryEventPayloads` (in @tumble-code/types) require
 	 * their properties; any other event takes an optional free-form record.
 	 * The properties are forwarded to every client unchanged.
 	 *

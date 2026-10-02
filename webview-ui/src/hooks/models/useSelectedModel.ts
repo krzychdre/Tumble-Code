@@ -17,7 +17,7 @@ import {
 	providerModelDefinitions,
 	resolveProviderModelSelection,
 	zaiModelCatalog,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useOpenRouterModelProviders } from "./useOpenRouterModelProviders"
 import { useLmStudioModels } from "./useLmStudioModels"

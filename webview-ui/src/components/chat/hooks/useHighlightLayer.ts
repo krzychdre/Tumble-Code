@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from "react"
 
-import type { Command } from "@roo-code/types"
-import { mentionRegexGlobal, commandRegexGlobal } from "@roo-code/core/browser"
+import type { Command } from "@tumble-code/types"
+import { mentionRegexGlobal, commandRegexGlobal } from "@tumble-code/core/browser"
 
 const MARK_OPEN = '<mark class="mention-context-textarea-highlight">'
 

@@ -12,7 +12,7 @@ import {
 	DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE,
 	PRUNE_CONDENSE_DEFAULTS,
 	SETTINGS_DEFAULTS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 /** A setting the extension host stores. */
 export type SettingsKey = keyof GlobalSettings

@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 import { BaseProvider } from "../base-provider"
 import { getNativeTools } from "../../../core/prompts/tools/native-tools"

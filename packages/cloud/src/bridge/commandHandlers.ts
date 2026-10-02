@@ -1,4 +1,4 @@
-import { TaskBridgeCommandName, type TaskBridgeCommand, type AutoApprovalSettings } from "@roo-code/types"
+import { TaskBridgeCommandName, type TaskBridgeCommand, type AutoApprovalSettings } from "@tumble-code/types"
 
 import type { BridgeProvider } from "./types.js"
 

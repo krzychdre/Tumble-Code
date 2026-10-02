@@ -1,4 +1,4 @@
-import { type ModelInfo, type ProviderSettings, ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
+import { type ModelInfo, type ProviderSettings, ANTHROPIC_DEFAULT_MAX_TOKENS } from "@tumble-code/types"
 
 import { getModelMaxOutputTokens, shouldUseReasoningBudget, shouldUseReasoningEffort } from "../model-options.js"
 
@@ -571,9 +571,17 @@ describe("shouldUseReasoningEffort", () => {
 		const model: ModelInfo = {
 			contextWindow: 100_000,
 			supportsPromptCache: true,
-			supportsReasoningEffort: ["disable", "low", "medium", "high"] as unknown as ModelInfo["supportsReasoningEffort"],
+			supportsReasoningEffort: [
+				"disable",
+				"low",
+				"medium",
+				"high",
+			] as unknown as ModelInfo["supportsReasoningEffort"],
 		}
-		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "disable" as unknown as ProviderSettings["reasoningEffort"] }
+		const settings: ProviderSettings = {
+			enableReasoningEffort: true,
+			reasoningEffort: "disable" as unknown as ProviderSettings["reasoningEffort"],
+		}
 		expect(shouldUseReasoningEffort({ model, settings })).toBe(false)
 	})
 
@@ -581,9 +589,18 @@ describe("shouldUseReasoningEffort", () => {
 		const model: ModelInfo = {
 			contextWindow: 100_000,
 			supportsPromptCache: true,
-			supportsReasoningEffort: ["none", "minimal", "low", "medium", "high"] as unknown as ModelInfo["supportsReasoningEffort"],
+			supportsReasoningEffort: [
+				"none",
+				"minimal",
+				"low",
+				"medium",
+				"high",
+			] as unknown as ModelInfo["supportsReasoningEffort"],
 		}
-		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"] }
+		const settings: ProviderSettings = {
+			enableReasoningEffort: true,
+			reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"],
+		}
 		expect(shouldUseReasoningEffort({ model, settings })).toBe(true)
 	})
 
@@ -591,9 +608,18 @@ describe("shouldUseReasoningEffort", () => {
 		const model: ModelInfo = {
 			contextWindow: 100_000,
 			supportsPromptCache: true,
-			supportsReasoningEffort: ["none", "minimal", "low", "medium", "high"] as unknown as ModelInfo["supportsReasoningEffort"],
+			supportsReasoningEffort: [
+				"none",
+				"minimal",
+				"low",
+				"medium",
+				"high",
+			] as unknown as ModelInfo["supportsReasoningEffort"],
 		}
-		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"] }
+		const settings: ProviderSettings = {
+			enableReasoningEffort: true,
+			reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"],
+		}
 		expect(shouldUseReasoningEffort({ model, settings })).toBe(true)
 	})
 
@@ -603,7 +629,17 @@ describe("shouldUseReasoningEffort", () => {
 			supportsPromptCache: true,
 			supportsReasoningEffort: true,
 		}
-		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"] } })).toBe(true)
-		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"] } })).toBe(true)
+		expect(
+			shouldUseReasoningEffort({
+				model,
+				settings: { reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"] },
+			}),
+		).toBe(true)
+		expect(
+			shouldUseReasoningEffort({
+				model,
+				settings: { reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"] },
+			}),
+		).toBe(true)
 	})
 })

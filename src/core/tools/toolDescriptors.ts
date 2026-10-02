@@ -1,4 +1,4 @@
-import type { ClineSayTool, ModeConfig, ToolName, ToolParamName } from "@roo-code/types"
+import type { ClineSayTool, ModeConfig, ToolName, ToolParamName } from "@tumble-code/types"
 
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 
@@ -40,7 +40,7 @@ import {
  * lists (checkpoints, eager checkpoints, microcompact, spill policy, slim toolset, ledger,
  * the description switch) and they drifted (DEF-C7). Each of those lists is now derived
  * from this table, and the table is keyed by `DispatchableToolName`, so a tool added to
- * `toolNames` in `@roo-code/types` does not compile until it has a row here.
+ * `toolNames` in `@tumble-code/types` does not compile until it has a row here.
  *
  * What is deliberately NOT here:
  * - the tool implementation (`src/core/assistant-message/toolHandlers.ts`): the lists
@@ -127,7 +127,7 @@ export interface ToolDescriptor {
 	/**
 	 * The result never spills to an artifact, for a reason of its own (see
 	 * `SPILL_BYPASS_TOOLS` in `src/core/artifacts/spillPolicy.ts`). Protocol tools are
-	 * exempt already through `PROTOCOL_TOOL_NAMES` in `@roo-code/types`, which stays
+	 * exempt already through `PROTOCOL_TOOL_NAMES` in `@tumble-code/types`, which stays
 	 * there because the webview imports it and cannot import this file.
 	 */
 	spillExempt?: boolean

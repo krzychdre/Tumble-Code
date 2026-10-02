@@ -1,7 +1,7 @@
 // Prompt enhancement, system prompt preview and the commit and file search pickers.
 
 import * as vscode from "vscode"
-import { SETTINGS_DEFAULTS } from "@roo-code/types"
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
 import { t } from "../../../i18n"
 import { searchWorkspaceFiles } from "../../../services/search/file-search"
 import { searchCommits } from "../../../utils/git"

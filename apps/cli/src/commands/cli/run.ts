@@ -4,8 +4,8 @@ import { fileURLToPath } from "url"
 
 import { createElement } from "react"
 
-import { setLogger } from "@roo-code/vscode-shim"
-import { debugLog, getDebugLogPath } from "@roo-code/core/cli"
+import { setLogger } from "@tumble-code/vscode-shim"
+import { debugLog, getDebugLogPath } from "@tumble-code/core/cli"
 
 import {
 	FlagOptions,

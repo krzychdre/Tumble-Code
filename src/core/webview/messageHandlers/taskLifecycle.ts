@@ -1,7 +1,7 @@
 // Task lifecycle: webview launch, creating, answering, clearing, exporting and deleting tasks, the chat message queue.
 
 import * as vscode from "vscode"
-import type { EditQueuedMessagePayload } from "@roo-code/types"
+import type { EditQueuedMessagePayload } from "@tumble-code/types"
 import { t } from "../../../i18n"
 import { checkExistKey } from "../../../shared/checkExistApiConfig"
 import { setPendingTodoList } from "../../tools/UpdateTodoListTool"

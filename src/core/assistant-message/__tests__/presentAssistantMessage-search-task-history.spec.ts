@@ -13,7 +13,7 @@ vi.mock("../../tools/validateToolUse", () => ({
 vi.mock("../../tools/SearchTaskHistoryTool", () => ({
 	searchTaskHistoryTool: { handle: vi.fn().mockResolvedValue(undefined) },
 }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

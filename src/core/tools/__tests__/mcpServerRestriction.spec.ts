@@ -1,7 +1,7 @@
 // npx vitest run core/tools/__tests__/mcpServerRestriction.spec.ts
 
 import type { Task } from "../../task/Task"
-import type { ModeConfig, CustomModePrompts } from "@roo-code/types"
+import type { ModeConfig, CustomModePrompts } from "@tumble-code/types"
 import { isMcpServerAllowed, getAllowedMcpServersForTask, ensureMcpServerAllowed } from "../mcpServerRestriction"
 import { defaultModeSlug } from "../../../shared/modes"
 

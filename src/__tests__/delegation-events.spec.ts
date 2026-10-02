@@ -1,6 +1,6 @@
 // npx vitest run __tests__/delegation-events.spec.ts
 
-import { TumbleCodeEventName, tumbleCodeEventsSchema, taskEventSchema } from "@roo-code/types"
+import { TumbleCodeEventName, tumbleCodeEventsSchema, taskEventSchema } from "@tumble-code/types"
 
 describe("delegation event schemas", () => {
 	test("tumbleCodeEventsSchema validates tuples", () => {

@@ -11,8 +11,8 @@ import {
 	getModelId,
 	readCliRuntimeEnv,
 	TelemetryEventName,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { type Mode, defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import { t } from "../../i18n"

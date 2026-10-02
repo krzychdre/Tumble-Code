@@ -1,4 +1,4 @@
-import { toolNames } from "@roo-code/types"
+import { toolNames } from "@tumble-code/types"
 
 import { isValidArtifactId } from "../../../../artifacts/ArtifactStore"
 import { validateParallelParams } from "../../../../tools/RunParallelTasksTool"

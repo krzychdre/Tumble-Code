@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react"
 
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@tumble-code/types"
 
 import { getAllModes } from "@roo/modes"
 

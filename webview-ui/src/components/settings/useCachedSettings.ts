@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react"
 
-import type { ExtensionState } from "@roo-code/types"
+import type { ExtensionState } from "@tumble-code/types"
 
 import { pickCachedSettings } from "./schema"
 import { createSettingsDraftStore } from "./settingsDraftStore"

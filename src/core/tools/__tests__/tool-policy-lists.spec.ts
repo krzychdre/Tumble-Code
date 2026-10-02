@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi } from "vitest"
 
-import { toolNames, PROTOCOL_TOOL_NAMES } from "@roo-code/types"
+import { toolNames, PROTOCOL_TOOL_NAMES } from "@tumble-code/types"
 
 import { CHECKPOINTED_TOOLS } from "../../checkpoints/checkpointedTools"
 import { COMPACTABLE_TOOL_NAMES } from "../../context-management/microcompact"
@@ -21,7 +21,7 @@ vi.mock("../../task/Task")
 vi.mock("../../assistant-message", () => ({
 	presentAssistantMessage: vi.fn(),
 }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

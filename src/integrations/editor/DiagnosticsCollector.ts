@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import delay from "delay"
 
-import { DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
+import { DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@tumble-code/types"
 
 import { diagnosticsToProblemsString, getNewDiagnostics } from "../diagnostics"
 import { logger } from "../../utils/logging"

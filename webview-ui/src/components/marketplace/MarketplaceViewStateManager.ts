@@ -11,7 +11,7 @@
  * 3. Using minimal state updates to avoid resetting scroll position
  */
 
-import { MarketplaceItem, MarketplaceInstalledMetadata, WebviewMessage } from "@roo-code/types"
+import { MarketplaceItem, MarketplaceInstalledMetadata, WebviewMessage } from "@tumble-code/types"
 
 import { vscode } from "../../utils/vscode"
 

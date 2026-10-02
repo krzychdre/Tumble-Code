@@ -15,7 +15,7 @@ import { EventEmitter } from "events"
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type * as vscode from "vscode"
-import { TumbleCodeEventName, type HistoryItem } from "@roo-code/types"
+import { TumbleCodeEventName, type HistoryItem } from "@tumble-code/types"
 
 vi.mock("vscode", () => ({
 	window: { showWarningMessage: vi.fn() },

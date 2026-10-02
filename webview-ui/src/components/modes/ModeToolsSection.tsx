@@ -1,6 +1,13 @@
 import React from "react"
 
-import type { ModeConfig, GroupEntry, PromptComponent, ToolGroup, CustomModePrompts, McpServer } from "@roo-code/types"
+import type {
+	ModeConfig,
+	GroupEntry,
+	PromptComponent,
+	ToolGroup,
+	CustomModePrompts,
+	McpServer,
+} from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip, LabeledCheckbox } from "@src/components/ui"

@@ -1,8 +1,8 @@
 import OpenAI from "openai"
 
-import { type ModelInfo, type ModelRecord } from "@roo-code/types"
+import { type ModelInfo, type ModelRecord } from "@tumble-code/types"
 
-import type { ApiHandlerOptions, FetchableModelSourceId } from "@roo-code/core/browser"
+import type { ApiHandlerOptions, FetchableModelSourceId } from "@tumble-code/core/browser"
 
 import { BaseProvider } from "./base-provider"
 import { getModels, getModelsFromCache } from "./fetchers/modelCache"

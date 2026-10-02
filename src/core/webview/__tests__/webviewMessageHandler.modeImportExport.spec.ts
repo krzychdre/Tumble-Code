@@ -3,7 +3,7 @@
 //
 // Run: cd src && ./node_modules/.bin/vitest run core/webview/__tests__/webviewMessageHandler.modeImportExport.spec.ts
 
-import type { WebviewMessage } from "@roo-code/types"
+import type { WebviewMessage } from "@tumble-code/types"
 
 vi.mock("vscode", () => ({
 	window: {

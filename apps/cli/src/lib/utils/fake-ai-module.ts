@@ -1,7 +1,7 @@
 import path from "path"
 import { pathToFileURL } from "url"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 /**
  * Test seam for the CLI integration suite (apps/cli/scripts/integration).

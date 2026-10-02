@@ -1,5 +1,5 @@
-import type { McpResource, McpResourceTemplate } from "@roo-code/types"
-import { escapeRegExp } from "@roo-code/core/browser"
+import type { McpResource, McpResourceTemplate } from "@tumble-code/types"
+import { escapeRegExp } from "@tumble-code/core/browser"
 
 /**
  * Matches a URI against an array of URI templates and returns the matching template

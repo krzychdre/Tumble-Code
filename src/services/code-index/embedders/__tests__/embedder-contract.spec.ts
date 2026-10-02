@@ -109,7 +109,7 @@ vi.mock("@aws-sdk/credential-providers", () => ({
 	fromNodeProviderChain: vi.fn(() => ({})),
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureEvent: vi.fn() } },
 }))
 
@@ -118,7 +118,7 @@ vi.mock("../../../../i18n", () => ({
 	t: (key: string) => `T(${key})`,
 }))
 
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryService } from "@tumble-code/telemetry"
 import { OpenAiEmbedder } from "../openai"
 import { OpenAICompatibleEmbedder } from "../openai-compatible"
 import { OpenRouterEmbedder } from "../openrouter"

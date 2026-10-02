@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { TOOL_MINIMAL_EXAMPLES } from "../../prompts/tools/native-tools/examples"
 import { TaskApiLoop } from "../TaskApiLoop"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

@@ -8,7 +8,7 @@ import {
 	getImageGenerationProvider,
 	EXPERIMENT_IDS,
 	experiments,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"

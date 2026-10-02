@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatRow.command-expand-toggle.spec.tsx
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatRow.command-expand-toggle.spec.tsx
 
 import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"

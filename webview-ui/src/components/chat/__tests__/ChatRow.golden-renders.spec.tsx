@@ -20,7 +20,7 @@ import fs from "fs"
 import path from "path"
 import React from "react"
 import { render } from "@/utils/test-utils"
-import type { ClineMessage, HistoryItem } from "@roo-code/types"
+import type { ClineMessage, HistoryItem } from "@tumble-code/types"
 
 import { ChatRowContent } from "../ChatRow"
 import type { RowMetaEntry } from "../rows/computeRowMeta"

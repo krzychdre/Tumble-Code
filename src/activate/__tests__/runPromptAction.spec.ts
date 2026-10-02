@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ClineProvider } from "../../core/webview/ClineProvider"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
@@ -10,7 +10,7 @@ vi.mock("vscode", () => ({
 	window: { showErrorMessage: vi.fn() },
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { capture: vi.fn() } },
 }))
 

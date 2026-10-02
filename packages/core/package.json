@@ -1,5 +1,5 @@
 {
-	"name": "@roo-code/core",
+	"name": "@tumble-code/core",
 	"private": true,
 	"description": "Platform agnostic core functionality for Tumble Code.",
 	"version": "0.0.1",
@@ -19,7 +19,7 @@
 		"clean": "rimraf .turbo"
 	},
 	"dependencies": {
-		"@roo-code/types": "workspace:^",
+		"@tumble-code/types": "workspace:^",
 		"execa": "^9.5.2",
 		"ignore": "^7.0.3",
 		"json-stream-stringify": "^3.1.6",
@@ -28,9 +28,9 @@
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
-		"@roo-code/config-eslint": "workspace:^",
-		"@roo-code/config-typescript": "workspace:^",
-		"@roo-code/config-vitest": "workspace:^",
+		"@tumble-code/config-eslint": "workspace:^",
+		"@tumble-code/config-typescript": "workspace:^",
+		"@tumble-code/config-vitest": "workspace:^",
 		"@types/node": "^22.20.4",
 		"@types/proper-lockfile": "^4.1.4",
 		"vitest": "^5.0.2"

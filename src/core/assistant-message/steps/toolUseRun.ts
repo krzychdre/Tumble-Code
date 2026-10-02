@@ -1,7 +1,7 @@
-import type { ToolName, Experiments } from "@roo-code/types"
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { customToolRegistry } from "@roo-code/core"
+import type { ToolName, Experiments } from "@tumble-code/types"
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { customToolRegistry } from "@tumble-code/core"
 
 import { t } from "../../../i18n"
 

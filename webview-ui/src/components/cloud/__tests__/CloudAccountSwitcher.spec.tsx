@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@/utils/test-utils"
 
-import type { CloudOrganizationMembership, CloudUserInfo } from "@roo-code/types"
+import type { CloudOrganizationMembership, CloudUserInfo } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

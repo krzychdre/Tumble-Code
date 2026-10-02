@@ -18,9 +18,9 @@ export interface PackageManifest {
  * scheduler, yoga-layout, string-width, wrap-ansi, ...) at the lockfile versions.
  */
 export const BUNDLED_DEPENDENCIES = [
-	"@roo-code/core",
-	"@roo-code/types",
-	"@roo-code/vscode-shim",
+	"@tumble-code/core",
+	"@tumble-code/types",
+	"@tumble-code/vscode-shim",
 	"ink",
 	"react",
 	"zustand",

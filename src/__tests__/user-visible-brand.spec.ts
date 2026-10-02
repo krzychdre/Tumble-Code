@@ -9,7 +9,7 @@
 // TypeScript of the extension, the webview, the CLI and the shared packages,
 // every value of the settings descriptions (package.nls*.json) and of the
 // translation files, and the webview's index.html. Internal names are not
-// string literals that contain "Roo Code" (package ids are "@roo-code/...",
+// string literals that contain "Roo Code" (package ids are "@tumble-code/...",
 // variables ROO_*, identifiers such as getTumbleCodeApiUrl), so they are untouched by this check.
 // The old CamelCase name is guarded separately in no-old-product-name.spec.ts.
 

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react"
 
-import type { ExtensionMessage, WebviewMessage } from "@roo-code/types"
+import type { ExtensionMessage, WebviewMessage } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

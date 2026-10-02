@@ -2,9 +2,9 @@
  * Utilities for handling path-related operations in mentions
  */
 
-import { escapeSpacesForMention } from "@roo-code/core/browser"
+import { escapeSpacesForMention } from "@tumble-code/core/browser"
 
-// The mention grammar's escaper lives next to `unescapeSpaces` in @roo-code/core
+// The mention grammar's escaper lives next to `unescapeSpaces` in @tumble-code/core
 // (shared with the CLI's file mentions).
 export { escapeSpacesForMention }
 

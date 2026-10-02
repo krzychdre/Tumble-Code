@@ -17,7 +17,7 @@ import {
 	organizationSettingsSchema,
 	userSettingsDataSchema,
 	ORGANIZATION_ALLOW_ALL,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { getTumbleCodeApiUrl } from "./config.js"
 import { RefreshTimer } from "./RefreshTimer.js"

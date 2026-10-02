@@ -1,9 +1,9 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import type { Language } from "@roo-code/types"
+import type { Language } from "@tumble-code/types"
 
-import { LANGUAGES } from "@roo-code/types"
+import { LANGUAGES } from "@tumble-code/types"
 
 import { cn } from "@src/lib/utils"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"

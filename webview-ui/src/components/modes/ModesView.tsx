@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 
-import type { ModeConfig, PromptComponent, ExtensionMessage } from "@roo-code/types"
+import type { ModeConfig, PromptComponent, ExtensionMessage } from "@tumble-code/types"
 
 import { Mode, getAllModes, findModeBySlug, defaultModeSlug } from "@roo/modes"
 

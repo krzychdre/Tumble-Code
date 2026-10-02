@@ -1,8 +1,8 @@
 // npx vitest run __tests__/provider-delegation.spec.ts
 
 import { describe, it, expect, vi } from "vitest"
-import type { HistoryItem } from "@roo-code/types"
-import { TumbleCodeEventName } from "@roo-code/types"
+import type { HistoryItem } from "@tumble-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { DelegationService } from "../core/webview/DelegationService"
 

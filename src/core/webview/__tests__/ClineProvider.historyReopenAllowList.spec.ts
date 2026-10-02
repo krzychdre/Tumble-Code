@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as vscode from "vscode"
 
-import { TumbleCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@roo-code/types"
+import { TumbleCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@tumble-code/types"
 
 import { ClineProvider } from "../ClineProvider"
 import { Task } from "../../task/Task"
@@ -66,10 +66,10 @@ vi.mock("../../../integrations/workspace/WorkspaceTracker")
 vi.mock("../../config/ProviderSettingsManager")
 vi.mock("../../config/CustomModesManager")
 vi.mock("../../../utils/path", () => ({ getWorkspacePath: vi.fn().mockReturnValue("/test/workspace") }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { setProvider: vi.fn(), capture: vi.fn() } },
 }))
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: { hasInstance: vi.fn().mockReturnValue(false), instance: { isAuthenticated: vi.fn() } },
 	getTumbleCodeApiUrl: vi.fn().mockReturnValue("https://api.example.com"),
 }))

@@ -7,7 +7,7 @@ import {
 	TaskSocketEvents,
 	ExtensionSocketEvents,
 	TaskBridgeCommandName,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { BridgeOrchestrator, type BridgeEventSource } from "../BridgeOrchestrator.js"
 import type { BridgeProvider } from "../types.js"

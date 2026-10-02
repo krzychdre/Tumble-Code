@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react"
 import { z } from "zod"
 
-import { CODEBASE_INDEX_DEFAULTS, type ExtensionMessage, type CodebaseIndexConfig } from "@roo-code/types"
+import { CODEBASE_INDEX_DEFAULTS, type ExtensionMessage, type CodebaseIndexConfig } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { onExtensionMessage } from "@src/utils/extensionBus"

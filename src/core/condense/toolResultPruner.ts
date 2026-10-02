@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { PRUNE_CONDENSE_DEFAULTS } from "@roo-code/types"
+import { PRUNE_CONDENSE_DEFAULTS } from "@tumble-code/types"
 
 import type { ArtifactStore } from "../artifacts/ArtifactStore"
 import {

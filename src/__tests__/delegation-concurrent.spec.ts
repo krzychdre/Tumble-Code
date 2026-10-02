@@ -11,7 +11,7 @@
 import * as path from "path"
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem } from "@tumble-code/types"
 
 // In-memory backing store so atomicReadAndUpdate's "read from disk under lock"
 // contract can be exercised without a real filesystem. Keyed by absolute file
@@ -77,7 +77,7 @@ vi.mock("proper-lockfile", () => ({
 
 // safeWriteJson is mocked to a plain write so we don't pull in the
 // stream/stringify machinery.
-vi.mock("@roo-code/core/fs", () => {
+vi.mock("@tumble-code/core/fs", () => {
 	const write = vi.fn(async (filePath: string, data: any) => {
 		backingFiles.set(filePath, JSON.stringify(data))
 	})

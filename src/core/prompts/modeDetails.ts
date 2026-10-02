@@ -1,6 +1,6 @@
 import type * as vscode from "vscode"
 
-import type { CustomModePrompts, ModeConfig } from "@roo-code/types"
+import type { CustomModePrompts, ModeConfig } from "@tumble-code/types"
 
 import { getAllModes, getModeBySlug, modes } from "../../shared/modes"
 

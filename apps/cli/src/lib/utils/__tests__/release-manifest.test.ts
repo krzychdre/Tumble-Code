@@ -21,9 +21,9 @@ describe("createReleaseManifest", () => {
 				version: "0.1.17",
 				type: "module",
 				dependencies: {
-					"@roo-code/core": "workspace:^",
-					"@roo-code/types": "workspace:^",
-					"@roo-code/vscode-shim": "workspace:^",
+					"@tumble-code/core": "workspace:^",
+					"@tumble-code/types": "workspace:^",
+					"@tumble-code/vscode-shim": "workspace:^",
 					"@vscode/ripgrep": "^1.15.9",
 					commander: "^12.1.0",
 					execa: "^9.5.2",

@@ -1,7 +1,7 @@
 import { Box, Text } from "ink"
 import Fuzzysort from "fuzzysort"
 
-import { escapeSpacesForMention } from "@roo-code/core/cli"
+import { escapeSpacesForMention } from "@tumble-code/core/cli"
 
 import type { AutocompleteTrigger, AutocompleteItem, TriggerDetectionResult } from "../types.js"
 

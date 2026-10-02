@@ -21,7 +21,7 @@
 // Not in the table: VS Code LM (the VS Code API reports no HTTP status) and
 // fake-ai (test double).
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vi.fn() } },
 }))
 

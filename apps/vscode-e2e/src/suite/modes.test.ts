@@ -1,6 +1,6 @@
 import * as assert from "assert"
 
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { waitUntilCompleted } from "./utils"
 import { requireOpenRouterKey, setDefaultSuiteTimeout } from "./test-utils"

@@ -18,8 +18,8 @@ import {
 	isProviderName,
 	isRetiredProvider,
 	TelemetryEventName,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { logger } from "../../utils/logging"
 import { validateMemoryPath } from "../memory/paths"

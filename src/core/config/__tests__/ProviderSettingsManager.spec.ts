@@ -9,7 +9,7 @@ import {
 	type PersistedProviderProfile,
 	type ProviderSettings,
 	type ProviderSettingsWithId,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { ProviderSettingsManager, ProviderProfiles } from "../ProviderSettingsManager"
 

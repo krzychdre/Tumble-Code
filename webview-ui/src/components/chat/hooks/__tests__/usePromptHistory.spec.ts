@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react"
-import type { ClineMessage, HistoryItem } from "@roo-code/types"
+import type { ClineMessage, HistoryItem } from "@tumble-code/types"
 
 import { usePromptHistory } from "../usePromptHistory"
 
@@ -124,12 +124,7 @@ describe("usePromptHistory", () => {
 
 		rerender(baseProps([...streamingMessages("Hello"), feedback("Fourth prompt", 5000)]))
 
-		expect(result.current.promptHistory).toEqual([
-			"Fourth prompt",
-			"Third prompt",
-			"Second prompt",
-			"First prompt",
-		])
+		expect(result.current.promptHistory).toEqual(["Fourth prompt", "Third prompt", "Second prompt", "First prompt"])
 		expect(result.current.historyIndex).toBe(-1)
 		expect(result.current.tempInput).toBe("")
 	})

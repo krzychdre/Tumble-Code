@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-import type { OrganizationAllowList, ProviderSettings } from "@roo-code/types"
+import type { OrganizationAllowList, ProviderSettings } from "@tumble-code/types"
 
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
 import { Task } from "../../task/Task"

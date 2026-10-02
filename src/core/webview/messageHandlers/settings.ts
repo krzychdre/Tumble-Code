@@ -1,9 +1,9 @@
 // Settings writes, VS Code settings, terminal profiles, sounds, telemetry and small UI actions.
 
 import * as vscode from "vscode"
-import { TelemetryEventName, experimentDefault } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import type { Language, AudioType, TumbleCodeSettings, ExperimentId } from "@roo-code/types"
+import { TelemetryEventName, experimentDefault } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import type { Language, AudioType, TumbleCodeSettings, ExperimentId } from "@tumble-code/types"
 import { changeLanguage, t } from "../../../i18n"
 import {
 	deleteCustomSound,

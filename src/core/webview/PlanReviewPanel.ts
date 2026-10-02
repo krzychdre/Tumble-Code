@@ -2,7 +2,7 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import * as vscode from "vscode"
 
-import { type Language, type WebviewMessage, formatLanguage } from "@roo-code/types"
+import { type Language, type WebviewMessage, formatLanguage } from "@tumble-code/types"
 
 import { Package } from "../../shared/package"
 import { getHmrHtml, getProductionHtml, type WebviewHtmlOptions } from "./WebviewHtml"

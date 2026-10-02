@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/types exec vitest run src/__tests__/cli-runtime.spec.ts
+// pnpm --filter @tumble-code/types exec vitest run src/__tests__/cli-runtime.spec.ts
 
 import {
 	CLI_RUNTIME_ENV,

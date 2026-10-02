@@ -12,9 +12,9 @@ import {
 } from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
-import { getModelMaxOutputTokens } from "@roo-code/core/browser"
+import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 
 import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"

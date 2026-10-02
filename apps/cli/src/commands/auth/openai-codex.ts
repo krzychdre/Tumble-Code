@@ -1,7 +1,7 @@
 import { createRequire } from "module"
 import path from "path"
 
-import { CLI_RUNTIME_ENV } from "@roo-code/types"
+import { CLI_RUNTIME_ENV } from "@tumble-code/types"
 
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { openExternal } from "@/lib/utils/open-external.js"
@@ -66,7 +66,7 @@ async function withManager<T>(
 		}
 	}
 
-	const { createVSCodeAPI, setLogger } = await import("@roo-code/vscode-shim")
+	const { createVSCodeAPI, setLogger } = await import("@tumble-code/vscode-shim")
 	setLogger({
 		info: () => {},
 		warn: (message) => process.env.DEBUG && console.warn(message),

@@ -1,4 +1,4 @@
-import { type ModeConfig } from "@roo-code/types"
+import { type ModeConfig } from "@tumble-code/types"
 
 import { isToolAllowedForMode } from "../validateToolUse"
 import { FileRestrictionError } from "../../../shared/modes"

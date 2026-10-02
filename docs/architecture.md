@@ -14,25 +14,25 @@ ID in the code means is listed in [plan-ids.md](plan-ids.md).
 ## The workspaces
 
 This is a pnpm monorepo: one repository holding several packages ("workspaces", listed in `pnpm-workspace.yaml`)
-that depend on each other by name (`"@roo-code/types": "workspace:^"`).
+that depend on each other by name (`"@tumble-code/types": "workspace:^"`).
 
-| Folder                        | Package name                                             | What it owns                                                                                                                                                                      |
-| ----------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/`                        | `tumble-code`                                            | The VS Code extension ("the host"): activation, `ClineProvider` (the chat panel's backend), `Task` (one agent conversation), tools, API providers, services. Built to `src/dist`. |
-| `src/shared/`                 | none (a folder, not a package)                           | Code used by both the host and the webview. The webview imports it through the `@roo/*` path alias. It must stay browser-safe (see below).                                        |
-| `webview-ui/`                 | `@roo-code/vscode-webview`                               | The React chat and settings UI that runs inside the VS Code webview (an embedded browser page).                                                                                   |
-| `apps/cli/`                   | `@tumble-code/cli`                                       | The terminal client. It runs the built extension inside its own Node process and renders with Ink (React for terminals).                                                          |
-| `apps/vscode-e2e/`            | `@roo-code/vscode-e2e`                                   | End-to-end tests in a real VS Code.                                                                                                                                               |
-| `apps/vscode-nightly/`        | `@roo-code/vscode-nightly`                               | The nightly VSIX build.                                                                                                                                                           |
-| `packages/types/`             | `@roo-code/types`                                        | Zod schemas and TypeScript types shared by everyone: settings, providers, `ExtensionMessage` and `WebviewMessage`, the CLI runtime contract. Its only runtime dependency is zod.  |
-| `packages/core/`              | `@roo-code/core`                                         | Platform-agnostic logic (no `vscode`). Entry points: `.` (host), `./browser` (webview-safe), `./cli`, `./fs` (`safeWriteJson`, `writeFileAtomic`), `./path`.                      |
-| `packages/cloud/`             | `@roo-code/cloud`                                        | `CloudService`: login, settings sync, sharing, the bridge to the self-hosted cloud API.                                                                                           |
-| `packages/telemetry/`         | `@roo-code/telemetry`                                    | `TelemetryService` and its clients.                                                                                                                                               |
-| `packages/agent-interchange/` | `@roo-code/agent-interchange`                            | Reading and handing off sessions between Claude Code and Tumble Code (an MCP server plus readers).                                                                                |
-| `packages/vscode-shim/`       | `@roo-code/vscode-shim`                                  | A fake `vscode` module so the extension can run outside VS Code (used by the CLI).                                                                                                |
-| `packages/build/`             | `@roo-code/build`                                        | esbuild helpers and the extension's external modules list (`extensionExternals` in its `src/extension.ts`).                                                                       |
-| `packages/config-*/`          | `@roo-code/config-eslint`, `@roo-code/config-typescript` | Shared lint and compiler settings.                                                                                                                                                |
-| `self-hosted-cloudapi/`       | none (Python)                                            | The FastAPI cloud service the extension talks to. Not part of the pnpm graph.                                                                                                     |
+| Folder                        | Package name                                                   | What it owns                                                                                                                                                                      |
+| ----------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`                        | `tumble-code`                                                  | The VS Code extension ("the host"): activation, `ClineProvider` (the chat panel's backend), `Task` (one agent conversation), tools, API providers, services. Built to `src/dist`. |
+| `src/shared/`                 | none (a folder, not a package)                                 | Code used by both the host and the webview. The webview imports it through the `@roo/*` path alias. It must stay browser-safe (see below).                                        |
+| `webview-ui/`                 | `@tumble-code/vscode-webview`                                  | The React chat and settings UI that runs inside the VS Code webview (an embedded browser page).                                                                                   |
+| `apps/cli/`                   | `@tumble-code/cli`                                             | The terminal client. It runs the built extension inside its own Node process and renders with Ink (React for terminals).                                                          |
+| `apps/vscode-e2e/`            | `@tumble-code/vscode-e2e`                                      | End-to-end tests in a real VS Code.                                                                                                                                               |
+| `apps/vscode-nightly/`        | `@tumble-code/vscode-nightly`                                  | The nightly VSIX build.                                                                                                                                                           |
+| `packages/types/`             | `@tumble-code/types`                                           | Zod schemas and TypeScript types shared by everyone: settings, providers, `ExtensionMessage` and `WebviewMessage`, the CLI runtime contract. Its only runtime dependency is zod.  |
+| `packages/core/`              | `@tumble-code/core`                                            | Platform-agnostic logic (no `vscode`). Entry points: `.` (host), `./browser` (webview-safe), `./cli`, `./fs` (`safeWriteJson`, `writeFileAtomic`), `./path`.                      |
+| `packages/cloud/`             | `@tumble-code/cloud`                                           | `CloudService`: login, settings sync, sharing, the bridge to the self-hosted cloud API.                                                                                           |
+| `packages/telemetry/`         | `@tumble-code/telemetry`                                       | `TelemetryService` and its clients.                                                                                                                                               |
+| `packages/agent-interchange/` | `@tumble-code/agent-interchange`                               | Reading and handing off sessions between Claude Code and Tumble Code (an MCP server plus readers).                                                                                |
+| `packages/vscode-shim/`       | `@tumble-code/vscode-shim`                                     | A fake `vscode` module so the extension can run outside VS Code (used by the CLI).                                                                                                |
+| `packages/build/`             | `@tumble-code/build`                                           | esbuild helpers and the extension's external modules list (`extensionExternals` in its `src/extension.ts`).                                                                       |
+| `packages/config-*/`          | `@tumble-code/config-eslint`, `@tumble-code/config-typescript` | Shared lint and compiler settings.                                                                                                                                                |
+| `self-hosted-cloudapi/`       | none (Python)                                                  | The FastAPI cloud service the extension talks to. Not part of the pnpm graph.                                                                                                     |
 
 ## Allowed dependency directions
 
@@ -61,8 +61,8 @@ graph TD
   src -. dev .-> build
 ```
 
-`packages/cloud` imports `@roo-code/core` for one thing: the shared exponential-backoff helper
-(`packages/cloud/src/backoff.ts` re-exports `@roo-code/core/backoff`). `core` must therefore never import `cloud`.
+`packages/cloud` imports `@tumble-code/core` for one thing: the shared exponential-backoff helper
+(`packages/cloud/src/backoff.ts` re-exports `@tumble-code/core/backoff`). `core` must therefore never import `cloud`.
 
 Three checks enforce this (PKG-2, CORE-R10):
 

@@ -2,7 +2,7 @@
  * Legacy entry point for provider helpers.
  *
  * All provider logic now lives in ./provider-types.ts (derived from the shared
- * @roo-code/types registry). This module keeps the old import path working.
+ * @tumble-code/types registry). This module keeps the old import path working.
  */
 
 export {

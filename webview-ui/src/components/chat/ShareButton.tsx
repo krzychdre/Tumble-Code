@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Share2Icon } from "lucide-react"
 
-import type { HistoryItem, ShareVisibility, ExtensionMessage } from "@roo-code/types"
+import type { HistoryItem, ShareVisibility, ExtensionMessage } from "@tumble-code/types"
 
 import { vscode } from "@/utils/vscode"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"

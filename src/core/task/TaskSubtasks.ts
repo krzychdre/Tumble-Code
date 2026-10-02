@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { type TodoItem, type ClineMessage, type ClineApiReqCancelReason, TumbleCodeEventName } from "@roo-code/types"
+import { type TodoItem, type ClineMessage, type ClineApiReqCancelReason, TumbleCodeEventName } from "@tumble-code/types"
 
 import { type ApiMessage } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"

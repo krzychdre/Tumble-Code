@@ -5,12 +5,12 @@ import debounce from "lodash.debounce"
 import { CacheManager } from "../cache-manager"
 
 // Mock safeWriteJson utility
-vitest.mock("@roo-code/core/fs", () => ({
+vitest.mock("@tumble-code/core/fs", () => ({
 	safeWriteJson: vitest.fn().mockResolvedValue(undefined),
 }))
 
 // Import the mocked version
-import { safeWriteJson } from "@roo-code/core/fs"
+import { safeWriteJson } from "@tumble-code/core/fs"
 import { logger } from "../../../utils/logging"
 // Mock vscode
 vitest.mock("vscode", () => ({
@@ -30,7 +30,7 @@ vitest.mock("vscode", () => ({
 vitest.mock("lodash.debounce", () => ({ default: vitest.fn((fn) => fn) }))
 
 // Mock TelemetryService
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vitest.fn(),

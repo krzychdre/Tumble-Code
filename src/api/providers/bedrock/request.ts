@@ -22,10 +22,10 @@ import {
 	type BedrockServiceTier,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
 	BEDROCK_SERVICE_TIER_MODEL_IDS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { logger } from "../../../utils/logging"
-import { shouldUseReasoningBudget } from "@roo-code/core/browser"
+import { shouldUseReasoningBudget } from "@tumble-code/core/browser"
 import { normalizeToolSchema } from "../../../utils/json-schema"
 import { MultiPointStrategy } from "../../transform/cache-strategy/multi-point-strategy"
 import type { CachePointPlacement, ModelInfo as CacheModelInfo } from "../../transform/cache-strategy/types"

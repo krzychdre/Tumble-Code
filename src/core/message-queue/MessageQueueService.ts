@@ -2,7 +2,7 @@ import { EventEmitter } from "events"
 
 import { v4 as uuidv4 } from "uuid"
 
-import { QueuedMessage } from "@roo-code/types"
+import { QueuedMessage } from "@tumble-code/types"
 
 export interface QueueEvents {
 	stateChanged: [messages: QueuedMessage[]]

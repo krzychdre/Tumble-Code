@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 
-import { readCliRuntimeEnv } from "@roo-code/types"
+import { readCliRuntimeEnv } from "@tumble-code/types"
 
 /**
  * The CLI package root: the directory whose node_modules holds

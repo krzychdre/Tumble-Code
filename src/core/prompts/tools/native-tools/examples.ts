@@ -1,4 +1,4 @@
-import type { ToolName } from "@roo-code/types"
+import type { ToolName } from "@tumble-code/types"
 
 /**
  * Minimal correct invocations for every advertised static tool.

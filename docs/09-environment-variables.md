@@ -146,6 +146,6 @@ What is left of the cloud URL family: `ROO_CODE_API_URL` and `CLERK_BASE_URL` (e
 
 The extension's own configuration lives in VS Code settings (`roo-cline.*`) and profiles, not the environment; the
 cloud URLs are the one family where both exist. `src/activate/cloud-urls.ts` pushes the settings into the
-`@roo-code/cloud` runtime overrides, which win over the env vars: setting → env var → production default. The CLI
+`@tumble-code/cloud` runtime overrides, which win over the env vars: setting → env var → production default. The CLI
 keeps its config in `~/.roo/cli/cli-settings.json` and per-mode overrides; provider API keys may come from the
 environment via the table above when a profile does not carry one.

@@ -11,7 +11,7 @@ import { STANDARD_TOOLTIP_DELAY } from "@src/components/ui/standard-tooltip"
 import ErrorBoundary from "@src/components/ErrorBoundary"
 
 import { PlanReviewSurface } from "./PlanReviewSurface"
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface PlanReviewState {

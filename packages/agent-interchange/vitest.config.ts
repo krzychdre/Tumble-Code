@@ -1,4 +1,4 @@
-import { defineRooVitestConfig } from "@roo-code/config-vitest"
+import { defineRooVitestConfig } from "@tumble-code/config-vitest"
 
 export default defineRooVitestConfig({
 	test: {

@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react"
 import { Box, Text, useInput } from "ink"
 
-import { describeToolPayload, parseToolPayloadText } from "@roo-code/core/cli"
+import { describeToolPayload, parseToolPayloadText } from "@tumble-code/core/cli"
 
 import * as theme from "../../theme.js"
 import SelectList from "../primitives/SelectList.js"

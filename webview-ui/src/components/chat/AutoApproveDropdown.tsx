@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, ToggleSwitch,
 import { AutoApproveSetting, autoApproveSettingsConfig, isAutoApproveForced } from "../settings/AutoApproveToggle"
 import { AutoApproveModeSelector } from "../settings/AutoApproveModeSelector"
 
-import type { AutoApprovalMode } from "@roo-code/types"
+import type { AutoApprovalMode } from "@tumble-code/types"
 
 interface AutoApproveDropdownProps {
 	disabled?: boolean

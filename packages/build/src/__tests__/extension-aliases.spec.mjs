@@ -2,7 +2,7 @@ import * as esbuild from "esbuild"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
-import { extensionAliases } from "@roo-code/build"
+import { extensionAliases } from "@tumble-code/build"
 
 // The extension package, which depends on punycode.
 const srcDir = path.resolve(import.meta.dirname, "../../../../src")

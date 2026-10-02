@@ -1,6 +1,6 @@
 import { Box, Text, useStdout } from "ink"
 
-import { toolPayloadDiffText } from "@roo-code/core/cli"
+import { toolPayloadDiffText } from "@tumble-code/core/cli"
 
 import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"

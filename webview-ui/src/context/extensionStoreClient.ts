@@ -18,7 +18,7 @@
  * changed (the reducer returns `prev` itself otherwise), so no-op messages
  * never re-render anybody.
  */
-import type { ExtensionMessage, ExtensionState } from "@roo-code/types"
+import type { ExtensionMessage, ExtensionState } from "@tumble-code/types"
 
 import {
 	applyExtensionMessage,

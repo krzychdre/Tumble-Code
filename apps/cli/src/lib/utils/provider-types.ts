@@ -1,7 +1,7 @@
 /**
  * Provider tables for the CLI.
  *
- * All provider IDs come from the shared @roo-code/types registry; the CLI never
+ * All provider IDs come from the shared @tumble-code/types registry; the CLI never
  * hand-maintains its own provider allowlist. From the shared tables come:
  *  - the API-key settings field (`providerApiKeyFields`),
  *  - whether a run needs the key (`providerRequiresApiKey`, the rule the
@@ -22,13 +22,13 @@ import {
 	providerModelDefinitions,
 	providerRequiresApiKey as sharedProviderRequiresApiKey,
 	providerRequiresModelId as sharedProviderRequiresModelId,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 /**
  * The providers excluded from the CLI, with the reason for each exclusion.
  *
  * - "vscode-lm": requires the real VS Code LM API (vscode.lm.selectChatModels).
- *   The CLI's @roo-code/vscode-shim mock exports no `lm` property, so the
+ *   The CLI's @tumble-code/vscode-shim mock exports no `lm` property, so the
  *   handler would throw at runtime.
  * - "fake-ai": hidden internal test provider, not an inference provider.
  */
@@ -195,7 +195,7 @@ export const keylessProviders: readonly SupportedProvider[] = supportedProviders
 
 /**
  * True when a run needs the provider's API key: the rule the settings UI
- * validates profiles with (`providerValidationRegistry` in @roo-code/types).
+ * validates profiles with (`providerValidationRegistry` in @tumble-code/types).
  */
 export function providerRequiresApiKey(provider: SupportedProvider): boolean {
 	return sharedProviderRequiresApiKey(provider)

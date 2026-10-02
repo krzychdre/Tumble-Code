@@ -8,7 +8,7 @@ vitest.mock("../utils/timeout-config", () => ({
 
 vitest.mock("vscode", () => ({}))
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: vitest.fn(),
@@ -69,7 +69,7 @@ describe("parseVertexJsonCredentials", () => {
 
 	beforeEach(() => {
 		warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
-		// The JSON parse error comes from safeJsonParse in @roo-code/core, which logs to the console.
+		// The JSON parse error comes from safeJsonParse in @tumble-code/core, which logs to the console.
 		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 	})
 
@@ -147,7 +147,7 @@ describe("GeminiHandler vertex credentials wiring", () => {
 
 	beforeEach(() => {
 		warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
-		// The JSON parse error comes from safeJsonParse in @roo-code/core, which logs to the console.
+		// The JSON parse error comes from safeJsonParse in @tumble-code/core, which logs to the console.
 		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 		googleGenAICtor.mockClear()
 	})
@@ -268,7 +268,7 @@ describe("AnthropicVertexHandler vertex credentials wiring", () => {
 
 	beforeEach(() => {
 		warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
-		// The JSON parse error comes from safeJsonParse in @roo-code/core, which logs to the console.
+		// The JSON parse error comes from safeJsonParse in @tumble-code/core, which logs to the console.
 		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 		googleAuthCtor.mockClear()
 	})

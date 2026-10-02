@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event"
 import { render, screen } from "@/utils/test-utils"
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

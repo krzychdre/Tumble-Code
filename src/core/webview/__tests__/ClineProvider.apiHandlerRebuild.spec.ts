@@ -2,8 +2,8 @@
 
 import * as vscode from "vscode"
 
-import { TelemetryService } from "@roo-code/telemetry"
-import { getModelId } from "@roo-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { getModelId } from "@tumble-code/types"
 
 import { ContextProxy } from "../../config/ContextProxy"
 import { Task, TaskOptions } from "../../task/Task"
@@ -20,8 +20,8 @@ vi.mock("fs/promises", () => ({
 
 // The fs/promises mock above has no stat/open/rename, so the real atomic write
 // (used by CustomModesManager since #728) cannot run here.
-vi.mock("@roo-code/core/fs", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@roo-code/core/fs")>()),
+vi.mock("@tumble-code/core/fs", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tumble-code/core/fs")>()),
 	writeFileAtomic: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -125,7 +125,7 @@ vi.mock("../../task/Task", () => ({
 	}),
 }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		get instance() {

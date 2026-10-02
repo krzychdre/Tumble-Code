@@ -2,7 +2,7 @@
 
 import * as path from "path"
 import type * as vscode from "vscode"
-import type { AuthState } from "@roo-code/types"
+import type { AuthState } from "@tumble-code/types"
 
 vi.mock("vscode", () => ({
 	window: {
@@ -65,7 +65,7 @@ const mockCloudServiceInstance = {
 	},
 }
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		createInstance: vi.fn().mockResolvedValue(mockCloudServiceInstance),
 		hasInstance: vi.fn().mockReturnValue(true),
@@ -78,7 +78,7 @@ vi.mock("@roo-code/cloud", () => ({
 	setClerkBaseUrl: vi.fn(),
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		createInstance: vi.fn().mockReturnValue({
 			register: vi.fn(),
@@ -108,8 +108,8 @@ vi.mock("../shared/package", () => ({
 	},
 }))
 
-vi.mock("@roo-code/types", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@roo-code/types")>()),
+vi.mock("@tumble-code/types", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tumble-code/types")>()),
 	formatLanguage: vi.fn().mockReturnValue("en"),
 }))
 
@@ -308,7 +308,7 @@ describe("extension.ts", () => {
 		// CloudService.createInstance rejects — simulate bad backend URL or
 		// corrupted credentials. activate() must NOT throw; it must log the
 		// degradation and continue so the rest of the extension works.
-		const cloud = await import("@roo-code/cloud")
+		const cloud = await import("@tumble-code/cloud")
 		vi.mocked(cloud.CloudService.createInstance).mockRejectedValueOnce(
 			new Error("ECONNREFUSED — backend unreachable"),
 		)
@@ -354,7 +354,7 @@ describe("extension.ts", () => {
 			vi.resetModules()
 			vi.clearAllMocks()
 
-			const cloud = await import("@roo-code/cloud")
+			const cloud = await import("@tumble-code/cloud")
 			vi.mocked(cloud.CloudService.createInstance).mockReturnValueOnce(new Promise(() => {}))
 
 			const vscodeMock = (await import("vscode")) as any
@@ -377,7 +377,7 @@ describe("extension.ts", () => {
 			vi.resetModules()
 			vi.clearAllMocks()
 
-			const cloud = await import("@roo-code/cloud")
+			const cloud = await import("@tumble-code/cloud")
 			let finishCloudStart: (instance: unknown) => void = () => {}
 			vi.mocked(cloud.CloudService.createInstance).mockReturnValueOnce(
 				new Promise((resolve) => {

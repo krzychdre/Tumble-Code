@@ -2,7 +2,7 @@ import { EventEmitter } from "events"
 import type { Mock } from "vitest"
 // npx vitest core/tools/__tests__/useMcpToolTool.spec.ts
 
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { useMcpToolTool } from "../UseMcpToolTool"
 import { Task } from "../../task/Task"

@@ -17,7 +17,7 @@ import React from "react"
 
 import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 import { ApiKeyField } from "@src/components/settings/providers/shared"
 import { QwenCode } from "@src/components/settings/providers/QwenCode"

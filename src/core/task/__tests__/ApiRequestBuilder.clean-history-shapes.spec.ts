@@ -3,7 +3,7 @@
 import { ApiRequestBuilder, type ApiRequestBuilderAccess } from "../ApiRequestBuilder"
 import type { ApiMessage } from "../../task-persistence"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vi.fn() } },
 }))
 

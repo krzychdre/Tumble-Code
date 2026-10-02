@@ -12,7 +12,7 @@ import type {
 	McpResourceTemplate,
 	McpTool,
 	McpToolCallResponse,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { type McpConfigSource, ServerConfigSchema } from "./mcpConfigSchema"
 import type { McpConfigStore } from "./McpConfigStore"

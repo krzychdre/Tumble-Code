@@ -15,7 +15,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from "@/utils/tes
 import { PopoverTrigger } from "@/components/ui"
 import { vscode } from "@/utils/vscode"
 
-import { CODEBASE_INDEX_DEFAULTS, type IndexingStatus } from "@roo-code/types"
+import { CODEBASE_INDEX_DEFAULTS, type IndexingStatus } from "@tumble-code/types"
 
 import { CodeIndexPopover } from "../CodeIndexPopover"
 import { useCodeIndexSettings } from "../useCodeIndexSettings"

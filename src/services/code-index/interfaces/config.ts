@@ -1,4 +1,4 @@
-import { ApiHandlerOptions } from "@roo-code/core/browser" // Adjust path if needed
+import { ApiHandlerOptions } from "@tumble-code/core/browser" // Adjust path if needed
 import { EmbedderProvider } from "./manager"
 
 /**

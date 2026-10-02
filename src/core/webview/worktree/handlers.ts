@@ -15,8 +15,8 @@ import type {
 	WorktreeIncludeStatus,
 	WorktreeListResponse,
 	WorktreeDefaultsResponse,
-} from "@roo-code/types"
-import { worktreeService, worktreeIncludeService, type CopyProgressCallback } from "@roo-code/core"
+} from "@tumble-code/types"
+import { worktreeService, worktreeIncludeService, type CopyProgressCallback } from "@tumble-code/core"
 
 import type { ClineProvider } from "../ClineProvider"
 import { logger } from "../../../utils/logging"

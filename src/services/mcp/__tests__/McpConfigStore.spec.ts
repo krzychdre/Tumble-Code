@@ -21,7 +21,7 @@ vi.mock("../../../utils/fs", async (importOriginal) => {
 })
 
 // A plain write instead of the locked one, so the write-guard tests can fake the timers.
-vi.mock("@roo-code/core/fs", () => ({
+vi.mock("@tumble-code/core/fs", () => ({
 	safeWriteJson: vi.fn(async (filePath: string, data: unknown) => {
 		const fs = await import("fs/promises")
 		await fs.writeFile(filePath, JSON.stringify(data, null, "\t"))

@@ -11,7 +11,7 @@ vitest.mock("../utils/timeout-config", () => ({
 	getApiRequestTimeout: vitest.fn().mockReturnValue(600_000),
 }))
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 
@@ -31,7 +31,7 @@ vitest.mock("@anthropic-ai/vertex-sdk", () => ({
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 
-import { calculateApiCost } from "@roo-code/core/browser"
+import { calculateApiCost } from "@tumble-code/core/browser"
 import type { ApiStreamChunk } from "../../transform/stream"
 import type { ApiHandler } from "../../index"
 import { AnthropicHandler } from "../anthropic"

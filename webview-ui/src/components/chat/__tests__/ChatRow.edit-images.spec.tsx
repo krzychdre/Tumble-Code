@@ -4,7 +4,7 @@
 
 import React from "react"
 import { act, fireEvent, render, screen } from "@/utils/test-utils"
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { ChatRowContent } from "../ChatRow"
 

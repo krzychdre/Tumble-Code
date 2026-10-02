@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@/utils/test-utils"
 
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 import { McpServerRestrictionImpl as McpServerRestriction } from "../McpServerRestriction"
 

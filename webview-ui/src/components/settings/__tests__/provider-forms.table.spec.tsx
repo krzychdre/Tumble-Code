@@ -3,7 +3,7 @@
 // typing into a form's credential field writes the right ProviderSettings key,
 // and the "API key field + storage notice + get-key link" trio keeps its DOM.
 
-import type { ProviderName, ProviderSettings } from "@roo-code/types"
+import type { ProviderName, ProviderSettings } from "@tumble-code/types"
 
 import { fireEvent, render, screen } from "@/utils/test-utils"
 

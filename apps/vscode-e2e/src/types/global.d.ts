@@ -1,4 +1,4 @@
-import type { TumbleCodeAPI } from "@roo-code/types"
+import type { TumbleCodeAPI } from "@tumble-code/types"
 
 declare global {
 	var api: TumbleCodeAPI

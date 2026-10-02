@@ -23,7 +23,7 @@ import type {
 	SkillMetadata,
 	SubagentSummary,
 	WebviewMessage,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 export type ExtensionMessageView = ExtensionState & {
 	didHydrateState: boolean
@@ -456,7 +456,11 @@ export const extensionMessageCases: ExtensionMessageCase[] = [
 	// marketplaceData
 	{
 		name: "marketplaceData: sets items and installed metadata",
-		message: { type: "marketplaceData", marketplaceItems: [marketplaceItem], marketplaceInstalledMetadata: installed },
+		message: {
+			type: "marketplaceData",
+			marketplaceItems: [marketplaceItem],
+			marketplaceInstalledMetadata: installed,
+		},
 		check: (view) => {
 			expect(view.marketplaceItems).toEqual([marketplaceItem])
 			expect(view.marketplaceInstalledMetadata).toEqual(installed)

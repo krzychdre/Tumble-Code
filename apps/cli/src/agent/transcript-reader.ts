@@ -12,7 +12,7 @@
  * Without a sink the reader does nothing, so print and JSON runs pay nothing.
  */
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import {
 	createTranscriptCursor,

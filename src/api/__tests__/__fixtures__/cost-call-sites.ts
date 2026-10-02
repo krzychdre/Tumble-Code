@@ -2,7 +2,7 @@
 // 2026-10-01 (pricing fields only) and the cost each call site computed for them before the cost
 // formulas were merged. See the spec for how to regenerate EXPECTED.
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 export const MODELS: Record<string, ModelInfo> = {
 	claudeSonnet46: {

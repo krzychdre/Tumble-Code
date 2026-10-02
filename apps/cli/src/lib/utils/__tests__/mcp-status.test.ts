@@ -1,4 +1,4 @@
-import type { ExtensionMessage, McpServer } from "@roo-code/types"
+import type { ExtensionMessage, McpServer } from "@tumble-code/types"
 
 import { isFailedMcpServer, lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "../mcp-status.js"
 

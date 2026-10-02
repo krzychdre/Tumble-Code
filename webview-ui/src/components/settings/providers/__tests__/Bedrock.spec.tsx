@@ -1,7 +1,7 @@
 import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { Bedrock } from "../Bedrock"
-import { ProviderSettings } from "@roo-code/types"
+import { ProviderSettings } from "@tumble-code/types"
 import { Input as RealInput } from "@/components/ui/input"
 
 // Mock the checkbox (LabeledCheckbox)

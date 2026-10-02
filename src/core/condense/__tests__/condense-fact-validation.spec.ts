@@ -7,7 +7,7 @@ import { ApiMessage } from "../../task-persistence/apiMessages"
 import { buildContextLedger } from "../../context-management/ledger"
 import { summarizeConversation } from "../index"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		// Condensing now reports what the call cost (services/model_attribution
 		// on the backend groups it under completionKind "condense"), so the mock

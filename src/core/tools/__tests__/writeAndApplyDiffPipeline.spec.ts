@@ -66,7 +66,7 @@ vi.mock("../../plan-review/planReviewPause", () => ({
 	pauseForPlanReviewIfNeeded: vi.fn(),
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { capture: vi.fn() } },
 }))
 

@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next"
 import { FileCode2, History } from "lucide-react"
 
-import type { ClineSayTool } from "@roo-code/types"
+import type { ClineSayTool } from "@tumble-code/types"
 
-import { safeJsonParse, toolPayloadReadSummary } from "@roo-code/core/browser"
+import { safeJsonParse, toolPayloadReadSummary } from "@tumble-code/core/browser"
 
 import { RunSlashCommandToolRow } from "../tool/ExpandableToolRows"
 import { headerStyle } from "../shared"

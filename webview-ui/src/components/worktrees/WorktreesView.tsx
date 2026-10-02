@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 
-import type { Worktree, WorktreeListResponse, WorktreeIncludeStatus, ExtensionMessage } from "@roo-code/types"
+import type { Worktree, WorktreeListResponse, WorktreeIncludeStatus, ExtensionMessage } from "@tumble-code/types"
 
 import { Badge, Button, Spinner, StandardTooltip, ToggleSwitch } from "@/components/ui"
 import { useExtensionState } from "@/context/ExtensionStateContext"

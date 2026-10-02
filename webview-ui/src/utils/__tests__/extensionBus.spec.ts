@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import {
 	ExtensionRequestTimeoutError,

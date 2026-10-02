@@ -7,7 +7,7 @@ import { logger } from "../../../utils/logging"
 
 const cloud = vi.hoisted(() => ({ hasInstance: true, instance: undefined as any }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: () => cloud.hasInstance,
 		get instance() {

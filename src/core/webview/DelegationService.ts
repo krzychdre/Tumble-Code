@@ -8,7 +8,7 @@ import {
 	type TaskProviderEvents,
 	type TodoItem,
 	TumbleCodeEventName,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import type { Mode } from "../../shared/modes"
 import type { Task } from "../task/Task"

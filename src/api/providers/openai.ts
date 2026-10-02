@@ -8,9 +8,9 @@ import {
 	openAiModelInfoSaneDefaults,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
 	OPENAI_AZURE_AI_INFERENCE_PATH,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import { type ApiHandlerOptions, shouldUseReasoningEffort } from "@roo-code/core/browser"
+import { type ApiHandlerOptions, shouldUseReasoningEffort } from "@tumble-code/core/browser"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"

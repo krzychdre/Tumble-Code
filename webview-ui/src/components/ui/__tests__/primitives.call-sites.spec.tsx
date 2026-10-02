@@ -11,7 +11,7 @@ import React from "react"
 
 import { fireEvent, render, screen } from "@/utils/test-utils"
 
-import type { Worktree } from "@roo-code/types"
+import type { Worktree } from "@tumble-code/types"
 
 import TaskItem from "@src/components/history/TaskItem"
 import { DeleteWorktreeModal } from "@src/components/worktrees/DeleteWorktreeModal"

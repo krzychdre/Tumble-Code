@@ -1,4 +1,4 @@
-import { safeWriteJson } from "@roo-code/core/fs"
+import { safeWriteJson } from "@tumble-code/core/fs"
 import os from "os"
 import * as path from "path"
 import fs from "fs/promises"
@@ -13,8 +13,8 @@ import {
 	type GlobalSettings,
 	type PersistedProviderProfile,
 	TelemetryEventName,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ProviderSettingsManager } from "./ProviderSettingsManager"
 import { ContextProxy } from "./ContextProxy"

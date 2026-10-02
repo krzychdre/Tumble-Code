@@ -1,4 +1,4 @@
-import type { RemoteControlStatus } from "@roo-code/types"
+import type { RemoteControlStatus } from "@tumble-code/types"
 
 /**
  * The remote-control bridge status the state push reports (UI plan §4, the

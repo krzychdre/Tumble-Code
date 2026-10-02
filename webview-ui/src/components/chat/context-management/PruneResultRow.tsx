@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Archive } from "lucide-react"
 
-import type { ContextPrune } from "@roo-code/types"
+import type { ContextPrune } from "@tumble-code/types"
 
 interface PruneResultRowProps {
 	data: ContextPrune

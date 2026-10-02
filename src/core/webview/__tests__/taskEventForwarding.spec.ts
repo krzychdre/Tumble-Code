@@ -2,7 +2,7 @@
 
 import { EventEmitter } from "events"
 
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { TASK_EVENT_FORWARDING, forwardTaskEvents, type TaskEventForwardingHost } from "../taskEventForwarding"
 

@@ -21,7 +21,7 @@
  * ```
  */
 
-import type { ExtensionMessage, WebviewMessage, ClineAskResponse, ClineMessage } from "@roo-code/types"
+import type { ExtensionMessage, WebviewMessage, ClineAskResponse, ClineMessage } from "@tumble-code/types"
 
 import { MessageProcessor } from "./message-processor.js"
 import { TypedEventEmitter, type ClientEventMap } from "./events.js"

@@ -1,6 +1,6 @@
 // cd src && npx vitest run core/task/__tests__/TaskResumption.interrupted-tool-calls.spec.ts
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 import type { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ApiMessage } from "../../task-persistence"

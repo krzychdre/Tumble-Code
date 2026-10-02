@@ -1,4 +1,4 @@
-import type { ExtensionMessage, SubagentStatus, SubagentSummary } from "@roo-code/types"
+import type { ExtensionMessage, SubagentStatus, SubagentSummary } from "@tumble-code/types"
 
 /** Cap on the terminal-state message carried in a summary (transport size). */
 const FINAL_MESSAGE_MAX_CHARS = 4000

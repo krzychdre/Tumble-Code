@@ -1,4 +1,4 @@
-import { getToolPayloadKind } from "@roo-code/core/browser"
+import { getToolPayloadKind } from "@tumble-code/core/browser"
 
 import { TOOL_RENDERERS } from "../renderers/tool"
 import { EditFileToolRow, InsertContentToolRow } from "../renderers/tool/EditFileToolRow"
@@ -26,7 +26,7 @@ import { ReadArtifactSayRow, SAY_TOOL_RENDERERS, SearchTaskHistorySayRow } from 
 
 // Which row a tool payload renders as, by its `tool` value (CLI-5 slice 1
 // pins this before the tool names move into the shared payload table in
-// @roo-code/core, so the move cannot change a row).
+// @tumble-code/core, so the move cannot change a row).
 
 describe("tool ask rows by payload tool name", () => {
 	it("renders exactly these names", () => {
@@ -79,7 +79,7 @@ describe("say tool rows by payload tool name", () => {
 	})
 })
 
-describe("the shared payload kinds (@roo-code/core)", () => {
+describe("the shared payload kinds (@tumble-code/core)", () => {
 	it.each([
 		["tool ask", TOOL_RENDERERS],
 		["say tool", SAY_TOOL_RENDERERS],

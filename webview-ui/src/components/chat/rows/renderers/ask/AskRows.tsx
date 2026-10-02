@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next"
 import { MessageCircleQuestionMark, TerminalSquare } from "lucide-react"
 
-import type { ClineAskUseMcpServer, FollowUpData } from "@roo-code/types"
+import type { ClineAskUseMcpServer, FollowUpData } from "@tumble-code/types"
 
-import { safeJsonParse, COMMAND_OUTPUT_STRING } from "@roo-code/core/browser"
+import { safeJsonParse, COMMAND_OUTPUT_STRING } from "@tumble-code/core/browser"
 
 import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

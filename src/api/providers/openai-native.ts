@@ -10,12 +10,12 @@ import {
 	ApiProviderError,
 	providerModelDefinitions,
 	resolveCatalogModel,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
-import { calculateApiCost } from "@roo-code/core/browser"
+import { calculateApiCost } from "@tumble-code/core/browser"
 import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 

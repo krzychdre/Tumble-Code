@@ -1,8 +1,8 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/rows/__tests__/computeRowMeta.spec.ts
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/rows/__tests__/computeRowMeta.spec.ts
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
-import { consolidateApiRequests, consolidateCommands } from "@roo-code/core/browser"
+import { consolidateApiRequests, consolidateCommands } from "@tumble-code/core/browser"
 
 import { checkpointFixture, toolBatchingFixture } from "../../__tests__/fixtures/rowPipelineFixtures"
 import { CONDENSING_ROW_TS, withCondensingRow } from "../condensingRow"

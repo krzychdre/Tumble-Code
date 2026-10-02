@@ -7,9 +7,9 @@ import {
 	type BridgeEventSource,
 	type BridgeProvider,
 	type InstanceStatePayload,
-} from "@roo-code/cloud"
+} from "@tumble-code/cloud"
 
-import { TaskStatus, type RemoteControlStatus } from "@roo-code/types"
+import { TaskStatus, type RemoteControlStatus } from "@tumble-code/types"
 
 import type { ClineProvider } from "../core/webview/ClineProvider"
 import { getBridgeRetryDelayMs } from "../activate/cloud-urls"

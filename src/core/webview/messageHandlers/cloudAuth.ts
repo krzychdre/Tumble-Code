@@ -1,9 +1,9 @@
 // Cloud and OpenAI Codex sign-in, organizations, task sharing and sync.
 
 import * as vscode from "vscode"
-import { CloudService } from "@roo-code/cloud"
-import { TelemetryService } from "@roo-code/telemetry"
-import { type UserSettingsConfig, TelemetryEventName } from "@roo-code/types"
+import { CloudService } from "@tumble-code/cloud"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { type UserSettingsConfig, TelemetryEventName } from "@tumble-code/types"
 import { t } from "../../../i18n"
 import type { DomainHandlerMap } from "./types"
 import { logger } from "../../../utils/logging"

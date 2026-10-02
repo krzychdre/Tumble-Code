@@ -8,10 +8,10 @@
 		// once under "turbo test", and the two bundles raced on the same files
 		// (EBUSY copying README.md on Windows).
 		"test": {
-			"dependsOn": ["@roo-code/types#build", "bundle"]
+			"dependsOn": ["@tumble-code/types#build", "bundle"]
 		},
 		"bundle": {
-			"dependsOn": ["^build", "@roo-code/vscode-webview#build"],
+			"dependsOn": ["^build", "@tumble-code/vscode-webview#build"],
 			"outputs": ["dist/**"]
 		},
 		"vsix": {
@@ -20,7 +20,7 @@
 			"outputs": ["../bin/**"]
 		},
 		"watch:bundle": {
-			"dependsOn": ["@roo-code/build#build", "@roo-code/types#build"],
+			"dependsOn": ["@tumble-code/build#build", "@tumble-code/types#build"],
 			"cache": false
 		}
 	}

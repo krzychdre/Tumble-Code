@@ -10,7 +10,7 @@
 //
 // Run: cd src && ./node_modules/.bin/vitest run core/webview/__tests__/webviewMessageHandler.routing.spec.ts
 
-import type { WebviewMessage } from "@roo-code/types"
+import type { WebviewMessage } from "@tumble-code/types"
 
 const h = vi.hoisted(() => {
 	const events: unknown[] = []
@@ -151,7 +151,7 @@ vi.mock("os", async (importOriginal) => {
 	return { ...actual, ...overrides, default: { ...actual, ...overrides } }
 })
 
-vi.mock("@roo-code/core/fs", () => ({
+vi.mock("@tumble-code/core/fs", () => ({
 	safeWriteJson: h.fn("safeWriteJson", async () => undefined),
 	writeFileAtomic: vi.fn(async () => undefined),
 }))
@@ -159,14 +159,14 @@ vi.mock("../../../services/roo-config", () => ({
 	// Like the real function: the global .roo first, then the project one.
 	getRooDirectoriesForCwd: h.fn("getRooDirectoriesForCwd", (cwd: string) => ["/home/user/.roo", `${cwd}/.roo`]),
 }))
-vi.mock("@roo-code/core", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@roo-code/core")>()),
+vi.mock("@tumble-code/core", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tumble-code/core")>()),
 	customToolRegistry: {
 		loadFromDirectories: h.fn("customToolRegistry.loadFromDirectories", async () => undefined),
 		getAllSerialized: h.fn("customToolRegistry.getAllSerialized", () => []),
 	},
 }))
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: () => true,
 		instance: {
@@ -179,7 +179,7 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: () => true,
 		instance: {

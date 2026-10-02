@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 import { useInput, useStdout } from "ink"
-import type { WebviewMessage } from "@roo-code/types"
+import type { WebviewMessage } from "@tumble-code/types"
 
 import { matchesGlobalSequence } from "@/lib/utils/input.js"
 

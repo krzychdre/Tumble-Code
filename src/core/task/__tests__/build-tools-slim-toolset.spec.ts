@@ -2,7 +2,7 @@
 
 import type OpenAI from "openai"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 import { buildNativeToolsArrayWithRestrictions } from "../build-tools"
 import type { ClineProvider } from "../../webview/ClineProvider"
@@ -26,7 +26,7 @@ const customToolFixtures = [
 	{ name: "deploy_to_staging", description: "A user-authored deploy tool." },
 ]
 
-vi.mock("@roo-code/core", () => ({
+vi.mock("@tumble-code/core", () => ({
 	customToolRegistry: {
 		loadFromDirectoriesIfStale: vi.fn(async () => {}),
 		getAllSerialized: vi.fn(() => customToolFixtures),

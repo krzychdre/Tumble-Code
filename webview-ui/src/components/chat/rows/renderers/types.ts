@@ -1,6 +1,6 @@
 import type React from "react"
 
-import type { ClineAsk, ClineMessage, ClineSay, ClineSayTool, SuggestionItem } from "@roo-code/types"
+import type { ClineAsk, ClineMessage, ClineSay, ClineSayTool, SuggestionItem } from "@tumble-code/types"
 
 import type { RowMetaEntry } from "../computeRowMeta"
 

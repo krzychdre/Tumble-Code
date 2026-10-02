@@ -16,8 +16,8 @@
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { type ApiHandler, type SingleCompletionHandler } from "../../api"
 import { runCompletion } from "../../utils/single-completion-handler"

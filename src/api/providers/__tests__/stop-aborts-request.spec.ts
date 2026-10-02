@@ -7,7 +7,7 @@
 // The SDK mock behaves like the real one: a pending request or a pending read rejects with an
 // abort error once its signal fires, and hangs forever when it was given no signal.
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 

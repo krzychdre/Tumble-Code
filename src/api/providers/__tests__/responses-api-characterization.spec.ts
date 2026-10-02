@@ -17,7 +17,7 @@
 // The snapshots pin what each path yields, so the extraction of one shared core can
 // prove it changes nothing, and every deliberate change shows up as a snapshot diff.
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 
@@ -43,7 +43,7 @@ vitest.mock("../../../i18n", async (importOriginal) => {
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import type { ApiStreamChunk } from "../../transform/stream"
 import { OpenAiNativeHandler } from "../openai-native"
 import { OpenAiCodexHandler } from "../openai-codex"

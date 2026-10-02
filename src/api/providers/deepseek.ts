@@ -8,9 +8,9 @@ import {
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
 	providerModelDefinitions,
 	resolveCatalogModel,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"

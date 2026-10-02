@@ -1,4 +1,4 @@
-import type { IndexingStatus } from "@roo-code/types"
+import type { IndexingStatus } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"

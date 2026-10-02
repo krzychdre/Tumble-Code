@@ -24,8 +24,8 @@ import {
 	getModelId,
 	type ProviderName,
 	TelemetryEventName,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { Mode, modes } from "../../shared/modes"
 import { resolveProviderModel } from "../../api"

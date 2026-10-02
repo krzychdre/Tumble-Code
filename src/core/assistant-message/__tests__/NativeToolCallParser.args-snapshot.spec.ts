@@ -1,4 +1,4 @@
-import { customToolRegistry } from "@roo-code/core"
+import { customToolRegistry } from "@tumble-code/core"
 
 import { NativeToolCallParser } from "../NativeToolCallParser"
 import type { DispatchableToolName } from "../../tools/toolDescriptors"

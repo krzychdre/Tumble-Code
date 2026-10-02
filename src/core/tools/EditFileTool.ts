@@ -1,8 +1,8 @@
 import fs from "fs/promises"
 import path from "path"
 
-import { type ClineSayTool } from "@roo-code/types"
-import { escapeRegExp } from "@roo-code/core/browser"
+import { type ClineSayTool } from "@tumble-code/types"
+import { escapeRegExp } from "@tumble-code/core/browser"
 
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"

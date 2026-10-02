@@ -6,9 +6,9 @@ import * as path from "path"
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ModelInfo } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
 
 import { BaseProvider } from "../../../api/providers/base-provider"
 import { ArtifactStore } from "../../artifacts/ArtifactStore"
@@ -19,7 +19,7 @@ import { PRUNE_NOTICE_PREFIX } from "../../condense/toolResultPruner"
 
 import { manageContext } from "../index"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: {

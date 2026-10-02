@@ -1,5 +1,5 @@
 {
-	"name": "@roo-code/config-vitest",
+	"name": "@tumble-code/config-vitest",
 	"description": "Shared vitest settings for every workspace: each vitest.config.ts passes only what differs.",
 	"private": true,
 	"type": "module",

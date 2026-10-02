@@ -4,7 +4,7 @@
 // of the former transform/responses-api-stream.spec (the processor xAI used before it moved
 // onto the core) are kept here, adapted to the core's full usage chunk.
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 import type { ApiStreamChunk } from "../../../transform/stream"
 import { ResponsesApiCore, type ResponsesApiCoreOptions } from "../core"

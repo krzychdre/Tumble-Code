@@ -8,7 +8,7 @@
 // embeds the query. This spec runs the real BaseHttpEmbedder and the real search service and
 // records the texts handed to the backend.
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureEvent: vi.fn() }, hasInstance: () => false },
 }))
 
@@ -16,7 +16,7 @@ vi.mock("../../../../i18n", () => ({
 	t: (key: string) => key,
 }))
 
-import type { EmbedderProvider } from "@roo-code/types"
+import type { EmbedderProvider } from "@tumble-code/types"
 
 import { BaseHttpEmbedder, EmbedBatchResult } from "../base-http-embedder"
 import type { EmbedderInfo } from "../../interfaces/embedder"
@@ -30,7 +30,12 @@ class RecordingEmbedder extends BaseHttpEmbedder {
 	readonly requests: string[][] = []
 
 	constructor(provider: EmbedderProvider, modelId: string, maxItemTokens?: number) {
-		super({ defaultModelId: modelId, queryPrefixProvider: provider, rateLimitKey: `rec-${provider}`, maxItemTokens })
+		super({
+			defaultModelId: modelId,
+			queryPrefixProvider: provider,
+			rateLimitKey: `rec-${provider}`,
+			maxItemTokens,
+		})
 	}
 
 	get embedderInfo(): EmbedderInfo {

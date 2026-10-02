@@ -8,7 +8,7 @@
 // `describeRow` below. The lines were recorded from ChatView before the
 // pipeline moved into pure functions, so they pin the behavior of that code.
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 // FNV-1a over the UTF-16 code units, printed as 8 hex digits. Enough to tell
 // two texts apart in a characterization line without printing whole payloads.

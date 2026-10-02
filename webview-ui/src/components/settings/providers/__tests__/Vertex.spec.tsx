@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { Vertex } from "../Vertex"
-import type { ProviderSettings } from "@roo-code/types"
-import { VERTEX_REGIONS } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
+import { VERTEX_REGIONS } from "@tumble-code/types"
 import enSettings from "@src/i18n/locales/en/settings.json"
 import { Input as RealInput } from "@/components/ui/input"
 

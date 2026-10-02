@@ -71,7 +71,7 @@ vi.mock("../../core/config/ProviderSettingsManager", async (importOriginal) => {
 vi.mock("../../core/config/ContextProxy")
 vi.mock("../../core/config/CustomModesManager")
 
-import { createKnownPersistedProviderProfile, createProviderProfilesEnvelope } from "@roo-code/types"
+import { createKnownPersistedProviderProfile, createProviderProfilesEnvelope } from "@tumble-code/types"
 
 import { autoImportSettings } from "../autoImportSettings"
 import * as vscode from "vscode"

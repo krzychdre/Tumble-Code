@@ -1,4 +1,4 @@
-import type { ClineMessage, WebviewMessage } from "@roo-code/types"
+import type { ClineMessage, WebviewMessage } from "@tumble-code/types"
 
 import { AskDispatcher } from "../ask-dispatcher.js"
 import type { OutputManager } from "../output-manager.js"

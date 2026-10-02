@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.row-pipeline.spec.tsx
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatView.row-pipeline.spec.tsx
 
 // Characterization of the chat-row pipeline (combine, filter, batch, condensing
 // row): which rows ChatView hands to the list for a given history. It pins the
@@ -8,7 +8,7 @@ import React from "react"
 import { render, waitFor, act, screen } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { ExtensionStateContextProvider } from "@src/context/ExtensionStateContext"
 

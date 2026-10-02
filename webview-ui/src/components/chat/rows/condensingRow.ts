@@ -1,4 +1,4 @@
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 /**
  * The synthetic "condensing context" row is keyed by ts. A fixed ts keeps its

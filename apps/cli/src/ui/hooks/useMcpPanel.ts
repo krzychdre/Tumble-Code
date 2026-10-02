@@ -2,7 +2,7 @@ import path from "path"
 
 import { useCallback, useEffect, useRef } from "react"
 
-import type { McpServer, WebviewMessage } from "@roo-code/types"
+import type { McpServer, WebviewMessage } from "@tumble-code/types"
 
 import { takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import { getDefaultMcpSettingsPath } from "@/lib/storage/index.js"

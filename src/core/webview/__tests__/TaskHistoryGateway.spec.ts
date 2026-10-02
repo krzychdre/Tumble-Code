@@ -2,7 +2,7 @@
 
 import * as path from "path"
 import fs from "fs/promises"
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem } from "@tumble-code/types"
 
 import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../../task-persistence"
 import { ShadowCheckpointService } from "../../../services/checkpoints/ShadowCheckpointService"

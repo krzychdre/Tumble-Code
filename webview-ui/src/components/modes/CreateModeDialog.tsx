@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-import { type GroupEntry, type McpServer, type ModeConfig, modeConfigSchema } from "@roo-code/types"
+import { type GroupEntry, type McpServer, type ModeConfig, modeConfigSchema } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import {

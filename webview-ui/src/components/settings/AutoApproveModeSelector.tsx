@@ -1,4 +1,4 @@
-import type { AutoApprovalMode } from "@roo-code/types"
+import type { AutoApprovalMode } from "@tumble-code/types"
 import { ShieldCheck, ShieldAlert, Zap } from "lucide-react"
 
 import { cn } from "@/lib/utils"

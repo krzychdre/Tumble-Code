@@ -2,7 +2,7 @@
  * Cloud URL configuration module.
  *
  * Reads the Roo Code Cloud URL overrides from VS Code settings and applies
- * them as runtime overrides in the `@roo-code/cloud` package. This allows
+ * them as runtime overrides in the `@tumble-code/cloud` package. This allows
  * users to point the extension at a self-hosted or development Cloud API
  * and/or Clerk instance.
  *
@@ -27,13 +27,13 @@
 
 import * as vscode from "vscode"
 
-import { setTumbleCodeApiUrl, setClerkBaseUrl } from "@roo-code/cloud"
+import { setTumbleCodeApiUrl, setClerkBaseUrl } from "@tumble-code/cloud"
 
 import { Package } from "../shared/package"
 
 /**
  * Read the current VS Code configuration values and push them into the
- * `@roo-code/cloud` runtime overrides.  Call this once during activation
+ * `@tumble-code/cloud` runtime overrides.  Call this once during activation
  * and again whenever the configuration changes.
  */
 export function syncCloudUrls(): void {

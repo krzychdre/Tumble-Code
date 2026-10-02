@@ -6,14 +6,14 @@ import * as fs from "fs/promises"
 import * as pathUtils from "../../../utils/pathUtils"
 import * as fileUtils from "../../../utils/fs"
 import { formatResponse } from "../../prompts/responses"
-import { EXPERIMENT_IDS } from "@roo-code/types"
+import { EXPERIMENT_IDS } from "@tumble-code/types"
 import { OpenRouterHandler } from "../../../api/providers/openrouter"
 
 // Mock dependencies
 vi.mock("fs/promises")
 vi.mock("../../../utils/pathUtils")
 vi.mock("../../../utils/fs")
-vi.mock("@roo-code/core/fs")
+vi.mock("@tumble-code/core/fs")
 vi.mock("../../../api/providers/openrouter")
 
 describe("generateImageTool", () => {

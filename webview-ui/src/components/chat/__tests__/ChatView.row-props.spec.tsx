@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.row-props.spec.tsx
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatView.row-props.spec.tsx
 
 import React, { memo, useEffect } from "react"
 import deepEqual from "fast-deep-equal"

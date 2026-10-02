@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Badge } from "@src/components/ui"
 import { FoldVertical } from "lucide-react"
 
-import type { ContextCondense } from "@roo-code/types"
+import type { ContextCondense } from "@tumble-code/types"
 
 import { Markdown } from "../Markdown"
 

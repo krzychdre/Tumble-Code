@@ -1,4 +1,4 @@
-import type { ClineMessage, ExtensionMessage } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
 
 import type { Task } from "../task/Task"
 import type { TaskHistoryInclusion, WebviewStatePush } from "./ProviderStateBuilder"

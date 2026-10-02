@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
 import { vscode } from "@src/utils/vscode"
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 export type ImportLevel = "global" | "project"

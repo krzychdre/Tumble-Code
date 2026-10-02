@@ -26,8 +26,8 @@ import {
 	type UsableSuggestion,
 	parseFollowUpData,
 	suggestionModeToSwitch,
-} from "@roo-code/types"
-import { debugLog } from "@roo-code/core/cli"
+} from "@tumble-code/types"
+import { debugLog } from "@tumble-code/core/cli"
 
 import { FOLLOWUP_TIMEOUT_SECONDS } from "@/types/index.js"
 import { parseMcpAsk } from "@/lib/utils/mcp-ask.js"

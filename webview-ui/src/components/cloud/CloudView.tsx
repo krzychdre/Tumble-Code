@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { Input, Spinner } from "@src/components/ui"
 
-import type { CloudUserInfo, CloudOrganizationMembership } from "@roo-code/types"
+import type { CloudUserInfo, CloudOrganizationMembership } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { OrganizationSwitcher } from "./OrganizationSwitcher"
 import { StandardTooltip } from "../ui"
 
-// Mirrors PRODUCTION_ROO_CODE_API_URL in packages/cloud/src/config.ts (the webview may not import @roo-code/cloud).
+// Mirrors PRODUCTION_ROO_CODE_API_URL in packages/cloud/src/config.ts (the webview may not import @tumble-code/cloud).
 const PRODUCTION_ROO_CODE_API_URL = "https://app.tumblecode.dev"
 
 type CloudViewProps = {

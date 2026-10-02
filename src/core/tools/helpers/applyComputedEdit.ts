@@ -7,7 +7,7 @@ import {
 	type ToolProgressStatus,
 	EXPERIMENT_IDS,
 	experiments,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { getReadablePath } from "../../../utils/path"
 import { isPathOutsideWorkspace } from "../../../utils/pathUtils"

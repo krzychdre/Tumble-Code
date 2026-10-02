@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/telemetry test src/__tests__/TelemetryService.payloads.spec.ts
+// pnpm --filter @tumble-code/telemetry test src/__tests__/TelemetryService.payloads.spec.ts
 //
 // Pins the exact event name and properties (values AND key order, because
 // the payload is serialized as is) that every client receives. Each row
@@ -8,7 +8,7 @@
 
 import { ZodError, z } from "zod"
 
-import { type TelemetryClient, type TelemetryEvent, TelemetryEventName } from "@roo-code/types"
+import { type TelemetryClient, type TelemetryEvent, TelemetryEventName } from "@tumble-code/types"
 
 import { TelemetryService } from "../TelemetryService.js"
 

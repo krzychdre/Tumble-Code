@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { TerminalActionId, TerminalActionPromptType } from "@roo-code/types"
+import { TerminalActionId, TerminalActionPromptType } from "@tumble-code/types"
 
 import { getTerminalCommand } from "../utils/commands"
 import { Terminal } from "../integrations/terminal/Terminal"

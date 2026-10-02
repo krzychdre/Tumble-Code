@@ -1,8 +1,8 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/rows/__tests__/rowPipeline.spec.ts
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/rows/__tests__/rowPipeline.spec.ts
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
-import { consolidateApiRequests, consolidateCommands } from "@roo-code/core/browser"
+import { consolidateApiRequests, consolidateCommands } from "@tumble-code/core/browser"
 
 import {
 	completionAndHiddenKindsFixture,

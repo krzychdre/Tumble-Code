@@ -22,9 +22,9 @@ import {
 	getModelId,
 	getApiProtocol,
 	isRetiredProvider,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import { CloudService } from "@roo-code/cloud"
+import { CloudService } from "@tumble-code/cloud"
 
 import { type ApiHandler } from "../../api"
 

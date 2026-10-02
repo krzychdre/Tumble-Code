@@ -12,7 +12,7 @@ import fs from "fs"
 import path from "path"
 import { fileURLToPath } from "url"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { consolidateTokenUsage } from "../consolidateTokenUsage.js"
 

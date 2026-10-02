@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react"
 
-import type { IndexingStatus, ExtensionMessage } from "@roo-code/types"
+import type { IndexingStatus, ExtensionMessage } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"

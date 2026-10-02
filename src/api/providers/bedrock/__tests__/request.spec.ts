@@ -8,7 +8,7 @@ vi.mock("../../../../utils/logging", () => ({
 }))
 
 import type { Anthropic } from "@anthropic-ai/sdk"
-import type { ModelInfo, ProviderSettings } from "@roo-code/types"
+import type { ModelInfo, ProviderSettings } from "@tumble-code/types"
 
 import {
 	buildAnthropicBetas,

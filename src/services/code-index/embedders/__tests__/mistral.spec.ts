@@ -8,7 +8,7 @@ import { logger } from "../../../../utils/logging"
 // The embedder is the OpenAI-compatible embedder pointed at Mistral, so only the SDK is mocked
 vitest.mock("openai")
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vitest.fn(),

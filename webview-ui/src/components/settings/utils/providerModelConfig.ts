@@ -1,4 +1,4 @@
-import type { ProviderName, ModelInfo, ModelSource, ModelSourceOptions, ProviderSettings } from "@roo-code/types"
+import type { ProviderName, ModelInfo, ModelSource, ModelSourceOptions, ProviderSettings } from "@tumble-code/types"
 import {
 	getProviderDefinition,
 	getInFormModelPickerProviderIds,
@@ -7,7 +7,7 @@ import {
 	providerModelDefinitions,
 	resolveProviderModelSourceOptions,
 	zaiModelCatalog,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { MODELS_BY_PROVIDER } from "../constants"
 

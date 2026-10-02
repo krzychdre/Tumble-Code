@@ -1,4 +1,4 @@
-import type { WebviewMessage, WebviewMessageTypesByDomain } from "@roo-code/types"
+import type { WebviewMessage, WebviewMessageTypesByDomain } from "@tumble-code/types"
 
 import type { HandlerContext } from "./context"
 

@@ -1,7 +1,7 @@
 import * as os from "os"
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ReasoningEffortExtended } from "@roo-code/types"
+import type { ReasoningEffortExtended } from "@tumble-code/types"
 
 import { Package } from "../../../shared/package"
 import type { ApiHandlerCreateMessageMetadata } from "../../index"

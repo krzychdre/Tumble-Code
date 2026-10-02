@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import type { ProviderSettingsEntry } from "@roo-code/types"
+import type { ProviderSettingsEntry } from "@tumble-code/types"
 
 import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"

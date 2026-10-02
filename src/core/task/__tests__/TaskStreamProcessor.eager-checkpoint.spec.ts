@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { TaskStreamProcessor, type TaskStreamProcessorAccess } from "../TaskStreamProcessor"
 import type { ApiStreamChunk } from "../../../api/transform/stream"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

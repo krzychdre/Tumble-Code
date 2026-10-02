@@ -23,10 +23,15 @@ import type {
 	ReasoningEffortExtended,
 	TumbleCodeSettings,
 	WebviewMessage,
-} from "@roo-code/types"
-import { CLI_RUNTIME_ENV, clearCliRuntimeGlobals, setCliRuntimeGlobals } from "@roo-code/types"
-import { createVSCodeAPI, IExtensionHost, ExtensionHostEventMap, setRuntimeConfigValues } from "@roo-code/vscode-shim"
-import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
+} from "@tumble-code/types"
+import { CLI_RUNTIME_ENV, clearCliRuntimeGlobals, setCliRuntimeGlobals } from "@tumble-code/types"
+import {
+	createVSCodeAPI,
+	IExtensionHost,
+	ExtensionHostEventMap,
+	setRuntimeConfigValues,
+} from "@tumble-code/vscode-shim"
+import { DebugLogger, setDebugLogEnabled } from "@tumble-code/core/cli"
 
 import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import { toProviderSettings } from "@/lib/utils/provider-config.js"

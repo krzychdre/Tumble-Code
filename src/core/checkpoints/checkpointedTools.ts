@@ -1,4 +1,4 @@
-import type { ToolName } from "@roo-code/types"
+import type { ToolName } from "@tumble-code/types"
 
 import { toolNamesWhere } from "../tools/toolDescriptors"
 

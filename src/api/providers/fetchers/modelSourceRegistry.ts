@@ -1,6 +1,6 @@
-import type { ModelRecord, ModelSourceId, ModelSourceRequest } from "@roo-code/types"
+import type { ModelRecord, ModelSourceId, ModelSourceRequest } from "@tumble-code/types"
 
-import type { ApiHandlerOptions, GetModelsOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions, GetModelsOptions } from "@tumble-code/core/browser"
 import { getOpenAiModels } from "../openai"
 import { getVsCodeLmModels } from "../vscode-lm"
 import { flushModels, getModels } from "./modelCache"

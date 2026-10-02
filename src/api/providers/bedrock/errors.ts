@@ -4,8 +4,8 @@
  * retry loop, every other error yields an error text chunk and a zero usage chunk and is then
  * rethrown with the user-facing message.
  */
-import { type ModelInfo, ApiProviderError } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { type ModelInfo, ApiProviderError } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { logger } from "../../../utils/logging"
 import type { ApiStreamChunk } from "../../transform/stream"

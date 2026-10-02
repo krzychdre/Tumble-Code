@@ -1,8 +1,8 @@
 import * as vscode from "vscode"
 import delay from "delay"
 
-import type { McpResourceResponse, McpServer, McpToolCallResponse, ExtensionMessage } from "@roo-code/types"
-import { SETTINGS_DEFAULTS } from "@roo-code/types"
+import type { McpResourceResponse, McpServer, McpToolCallResponse, ExtensionMessage } from "@tumble-code/types"
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
 
 import { t } from "../../i18n"
 

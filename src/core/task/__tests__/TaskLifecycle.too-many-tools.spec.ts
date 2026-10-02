@@ -2,7 +2,7 @@
 
 import { describe, it, expect, vi } from "vitest"
 
-import { TOO_MANY_TOOLS_DISMISSAL_ID, MAX_MCP_TOOLS_THRESHOLD } from "@roo-code/types"
+import { TOO_MANY_TOOLS_DISMISSAL_ID, MAX_MCP_TOOLS_THRESHOLD } from "@tumble-code/types"
 
 import { TaskLifecycle, type TaskLifecycleAccess } from "../TaskLifecycle"
 

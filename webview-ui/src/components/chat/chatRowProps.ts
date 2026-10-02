@@ -1,4 +1,4 @@
-import type { ClineMessage, SuggestionItem } from "@roo-code/types"
+import type { ClineMessage, SuggestionItem } from "@tumble-code/types"
 
 import type { RowMetaEntry } from "./rows/computeRowMeta"
 

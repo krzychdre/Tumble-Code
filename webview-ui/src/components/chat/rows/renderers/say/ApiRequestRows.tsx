@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next"
 import { Repeat2 } from "lucide-react"
 
-import type { ClineApiReqInfo } from "@roo-code/types"
+import type { ClineApiReqInfo } from "@tumble-code/types"
 
-import { safeJsonParse } from "@roo-code/core/browser"
+import { safeJsonParse } from "@tumble-code/core/browser"
 
 import { cn } from "@/lib/utils"
 import { ErrorRow } from "@src/components/chat/ErrorRow"

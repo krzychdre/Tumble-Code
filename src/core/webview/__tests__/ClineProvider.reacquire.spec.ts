@@ -1,8 +1,8 @@
 // pnpm --filter tumble-code test core/webview/__tests__/ClineProvider.reacquire.spec.ts
 
 import * as vscode from "vscode"
-import type { ExtensionState } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { ExtensionState } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ContextProxy } from "../../config/ContextProxy"
 import { ClineProvider } from "../ClineProvider"
@@ -51,7 +51,7 @@ vi.mock("../../../utils/storage", () => ({
 	getStorageBasePath: vi.fn().mockImplementation((defaultPath: string) => defaultPath),
 }))
 
-vi.mock("@roo-code/core/fs", () => {
+vi.mock("@tumble-code/core/fs", () => {
 	const write = vi.fn().mockResolvedValue(undefined)
 	return {
 		safeWriteJson: write,
@@ -231,7 +231,7 @@ vi.mock("../diff/strategies/multi-search-replace", () => ({
 	})),
 }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		get instance() {

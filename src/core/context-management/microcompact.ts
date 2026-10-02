@@ -123,7 +123,7 @@ export function microcompactTargetChars(tokensOverBudget: number): number {
  * (`src/core/tools/toolDescriptors.ts`).
  *
  * This is an ALLOWLIST, so every other tool is preserved by construction. In
- * particular none of `PROTOCOL_TOOL_NAMES` (`@roo-code/types`) appears here,
+ * particular none of `PROTOCOL_TOOL_NAMES` (`@tumble-code/types`) appears here,
  * and the same list drives `SPILL_BYPASS_TOOLS`
  * (`src/core/artifacts/spillPolicy.ts`); a unit test asserts both policies still
  * agree with it.

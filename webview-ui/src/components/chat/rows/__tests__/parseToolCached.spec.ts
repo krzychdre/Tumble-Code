@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/rows/__tests__/parseToolCached.spec.ts
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/rows/__tests__/parseToolCached.spec.ts
 
 import { parseToolCached, TOOL_PARSE_CACHE_MAX_ENTRIES } from "../parseToolCached"
 

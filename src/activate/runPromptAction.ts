@@ -6,8 +6,8 @@ import {
 	type TerminalActionId,
 	type TerminalActionPromptType,
 	TelemetryEventName,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { supportPrompt } from "../shared/support-prompt"

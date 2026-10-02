@@ -1,4 +1,4 @@
-import { CloudService } from "@roo-code/cloud"
+import { CloudService } from "@tumble-code/cloud"
 
 import type { ContextProxy } from "../config/ContextProxy"
 import type { ProviderSettingsManager } from "../config/ProviderSettingsManager"

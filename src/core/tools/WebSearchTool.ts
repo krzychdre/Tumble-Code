@@ -1,4 +1,4 @@
-import { resolveWebToolsConfig, WEB_TOOLS_DEFAULTS } from "@roo-code/types"
+import { resolveWebToolsConfig, WEB_TOOLS_DEFAULTS } from "@tumble-code/types"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"

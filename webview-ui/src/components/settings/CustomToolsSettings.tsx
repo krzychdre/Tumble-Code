@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { RefreshCw, FileCode } from "lucide-react"
 
-import type { SerializedCustomToolDefinition } from "@roo-code/types"
+import type { SerializedCustomToolDefinition } from "@tumble-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 

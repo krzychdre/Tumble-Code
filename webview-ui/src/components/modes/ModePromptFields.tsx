@@ -1,4 +1,4 @@
-import type { ModeConfig, PromptComponent, CustomModePrompts } from "@roo-code/types"
+import type { ModeConfig, PromptComponent, CustomModePrompts } from "@tumble-code/types"
 
 import { getRoleDefinition, getWhenToUse, getDescription } from "@roo/modes"
 

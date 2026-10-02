@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react"
 import { Box, Text } from "ink"
 
-import { firstUsableSuggestion, type UsableSuggestion } from "@roo-code/types"
+import { firstUsableSuggestion, type UsableSuggestion } from "@tumble-code/types"
 
 import * as theme from "../../theme.js"
 import SelectList, { type SelectItem } from "../primitives/SelectList.js"

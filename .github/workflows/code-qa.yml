@@ -60,7 +60,7 @@ jobs:
             # src/services, ...) or import "vscode"; a Vite plugin fails the build
             # if it does. Types were checked above, so only the bundling runs here.
             - name: Build webview (bundle boundary guard)
-              run: pnpm --filter @roo-code/vscode-webview exec vite build
+              run: pnpm --filter @tumble-code/vscode-webview exec vite build
 
     # The CLI's print mode and JSON output end to end (apps/cli/scripts/integration):
     # the real CLI and extension bundle answer the cases' prompts through the

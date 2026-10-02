@@ -1,4 +1,4 @@
-import type { FileEntry } from "@roo-code/types"
+import type { FileEntry } from "@tumble-code/types"
 
 /**
  * Per-tool argument parsing for native tool calls (CORE-R4 part c).

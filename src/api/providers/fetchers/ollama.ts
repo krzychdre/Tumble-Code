@@ -1,5 +1,5 @@
 import axios from "axios"
-import { ModelInfo, ollamaDefaultModelInfo } from "@roo-code/types"
+import { ModelInfo, ollamaDefaultModelInfo } from "@tumble-code/types"
 import { z } from "zod"
 import { logger } from "../../../utils/logging"
 

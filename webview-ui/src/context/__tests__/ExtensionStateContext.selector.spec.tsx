@@ -5,7 +5,7 @@
 import React from "react"
 import { render, act } from "@/utils/test-utils"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

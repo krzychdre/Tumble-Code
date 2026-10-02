@@ -1,5 +1,5 @@
-import { type ModelInfo, type ServiceTier, ApiProviderError } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { type ModelInfo, type ServiceTier, ApiProviderError } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import type { ApiStream, ApiStreamUsageChunk } from "../../transform/stream"
 import { handleProviderError } from "../utils/error-handler"

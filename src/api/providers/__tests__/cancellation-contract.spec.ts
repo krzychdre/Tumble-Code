@@ -23,7 +23,7 @@
 // Not in the table: VS Code LM (a CancellationToken, pinned in vscode-lm.spec)
 // and fake-ai (test double that forwards the metadata unchanged).
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vi.fn() } },
 }))
 

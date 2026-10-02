@@ -1,4 +1,4 @@
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 import { fireEvent, render, screen } from "@/utils/test-utils"
 import { vscode } from "@src/utils/vscode"

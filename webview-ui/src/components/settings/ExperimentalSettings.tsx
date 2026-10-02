@@ -1,6 +1,6 @@
 import { HTMLAttributes } from "react"
 
-import { EXPERIMENT_IDS, experimentConfigsMap } from "@roo-code/types"
+import { EXPERIMENT_IDS, experimentConfigsMap } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"

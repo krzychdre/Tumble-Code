@@ -11,7 +11,7 @@ import {
 	updateHandoff,
 	type Handoff,
 	type SessionSummary,
-} from "@roo-code/agent-interchange"
+} from "@tumble-code/agent-interchange"
 
 import { ClineProvider } from "../webview/ClineProvider"
 import { getStorageBasePath } from "../../utils/storage"
@@ -20,7 +20,7 @@ import { t } from "../../i18n"
 /**
  * Picking work up from Claude Code, and handing work back to it.
  *
- * The interchange itself lives in `@roo-code/agent-interchange` and is also
+ * The interchange itself lives in `@tumble-code/agent-interchange` and is also
  * reachable over MCP; these two commands exist because only extension code can
  * start a Tumble task, and because a person switching tools wants a list to
  * click, not a tool call to compose.

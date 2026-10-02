@@ -11,9 +11,9 @@ import {
 	TOO_MANY_TOOLS_DISMISSAL_ID,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { type ClineProvider } from "../webview/ClineProvider"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"

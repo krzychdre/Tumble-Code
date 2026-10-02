@@ -13,7 +13,7 @@ import { ClineProvider } from "../ClineProvider"
 import { TaskSlot } from "../TaskSlot"
 import { DelegationService } from "../DelegationService"
 import type { Task } from "../../task/Task"
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 type ProviderStandIn = {
 	taskSlot: TaskSlot

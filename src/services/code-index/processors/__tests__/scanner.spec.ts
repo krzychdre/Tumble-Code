@@ -5,7 +5,7 @@ import { stat } from "fs/promises"
 import { RooIgnoreController } from "../../../../core/ignore/RooIgnoreController"
 
 // Mock TelemetryService
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vi.fn(),

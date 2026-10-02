@@ -3,7 +3,7 @@
  * in browser environments like `webview-ui`, and by the CLI.
  *
  * Nothing reachable from here may import a Node built-in or a package other
- * than @roo-code/types (src/__tests__/browser-entry.spec.ts checks it).
+ * than @tumble-code/types (src/__tests__/browser-entry.spec.ts checks it).
  */
 
 export * from "./message-utils/index.js"

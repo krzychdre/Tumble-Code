@@ -3,7 +3,7 @@ import path from "path"
 
 import { render } from "ink-testing-library"
 
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 import McpPanel, { type McpPanelProps } from "../McpPanel.js"
 

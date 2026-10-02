@@ -1,9 +1,9 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef } from "react"
 import { useSize } from "react-use"
 
-import type { ClineSayTool } from "@roo-code/types"
+import type { ClineSayTool } from "@tumble-code/types"
 
-import { safeJsonParse } from "@roo-code/core/browser"
+import { safeJsonParse } from "@tumble-code/core/browser"
 
 import type { RowMetaEntry } from "./rows/computeRowMeta"
 import type { RowRendererProps, ToolAskKind } from "./rows/renderers/types"

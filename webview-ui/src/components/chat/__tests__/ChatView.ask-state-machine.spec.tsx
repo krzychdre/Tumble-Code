@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.ask-state-machine.spec.tsx
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatView.ask-state-machine.spec.tsx
 
 /**
  * WEB-8 characterization: ChatView's ask state machine and the host messages

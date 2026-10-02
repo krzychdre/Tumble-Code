@@ -1,4 +1,4 @@
-import type { ClineSay, ClineSayTool } from "@roo-code/types"
+import type { ClineSay, ClineSayTool } from "@tumble-code/types"
 
 import { getReadablePath } from "../../../utils/path"
 

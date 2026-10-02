@@ -1,7 +1,7 @@
-import type { ArtifactSpillSettings } from "@roo-code/types"
-import { TelemetryEventName, resolveMaxInlineToolResultBytes } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { customToolRegistry } from "@roo-code/core"
+import type { ArtifactSpillSettings } from "@tumble-code/types"
+import { TelemetryEventName, resolveMaxInlineToolResultBytes } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { customToolRegistry } from "@tumble-code/core"
 
 import type { ToolUse, McpToolUse } from "../../shared/tools"
 

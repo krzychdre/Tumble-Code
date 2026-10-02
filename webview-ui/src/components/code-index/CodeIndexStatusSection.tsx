@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
-import type { IndexingStatus } from "@roo-code/types"
+import type { IndexingStatus } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"

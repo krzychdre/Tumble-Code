@@ -1,4 +1,4 @@
-import { providerNames, providerValidationRegistry, type ProviderName } from "@roo-code/types"
+import { providerNames, providerValidationRegistry, type ProviderName } from "@tumble-code/types"
 
 import {
 	getProviderUiDefinition,

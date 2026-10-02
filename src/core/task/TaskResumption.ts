@@ -15,10 +15,10 @@ import {
 	type ClineAskResponse,
 	type TaskEvents,
 	TumbleCodeEventName,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { type ClineProvider } from "../webview/ClineProvider"
-import { findLastIndex, getLatestTodo } from "@roo-code/core/browser"
+import { findLastIndex, getLatestTodo } from "@tumble-code/core/browser"
 import { formatResponse } from "../prompts/responses"
 import { type ApiMessage } from "../task-persistence"
 import { buildContextLedger } from "../context-management/ledger/buildLedger"

@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 
 import * as yaml from "yaml"
 
-import { type ModeConfig, type PromptComponent, modeConfigSchema } from "@roo-code/types"
+import { type ModeConfig, type PromptComponent, modeConfigSchema } from "@tumble-code/types"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { getWorkspacePath } from "../../utils/path"

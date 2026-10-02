@@ -10,7 +10,7 @@ import {
 	type ProviderSettings,
 	type ProviderValidationStrategy,
 	type RouterModels,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { Bedrock, LiteLLM, OpenAICompatible, OpenAICodex, OpenRouter, QwenCode, Vertex, VSCodeLM } from "./providers"
 import { ProviderDescriptorForm } from "./providers/ProviderDescriptorForm"

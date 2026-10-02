@@ -1,4 +1,4 @@
-import type { McpResourceTemplate } from "@roo-code/types"
+import type { McpResourceTemplate } from "@tumble-code/types"
 
 import { findMatchingTemplate } from "../mcp"
 

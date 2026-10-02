@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest"
 
-import type { ClineAsk, ExtensionState } from "@roo-code/types"
+import type { ClineAsk, ExtensionState } from "@tumble-code/types"
 
 import {
 	checkAutoApproval,

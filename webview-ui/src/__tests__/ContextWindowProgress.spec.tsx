@@ -44,8 +44,8 @@ vi.mock("@src/hooks/models/useSelectedModel", () => ({
 // Mock getModelMaxOutputTokens so the reserved-for-output slice is a known
 // 1000 tokens against the mocked 4000-token window (the real fallback of 8192
 // is larger than the window and zeroes the available input space).
-vi.mock("@roo-code/core/browser", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
+vi.mock("@tumble-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tumble-code/core/browser")>()),
 	getModelMaxOutputTokens: () => 1000,
 }))
 

@@ -7,9 +7,9 @@ import {
 	type ClineAskUseMcpServer,
 	type McpExecutionStatus,
 	mcpExecutionStatusSchema,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import { safeJsonParse } from "@roo-code/core/browser"
+import { safeJsonParse } from "@tumble-code/core/browser"
 
 import { cn } from "@src/lib/utils"
 import { Button } from "@src/components/ui"

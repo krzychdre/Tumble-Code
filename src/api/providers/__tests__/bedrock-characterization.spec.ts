@@ -5,7 +5,7 @@
 
 const mockCaptureException = vi.fn()
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: (...args: unknown[]) => mockCaptureException(...args),
@@ -37,7 +37,7 @@ vi.mock("@aws-sdk/client-bedrock-runtime", () => ({
 import { ConverseStreamCommand } from "@aws-sdk/client-bedrock-runtime"
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 import { AwsBedrockHandler } from "../bedrock"
 import type { ApiStreamChunk } from "../../transform/stream"

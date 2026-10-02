@@ -1,8 +1,8 @@
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import type { ClineMessage, ProviderNameWithRetired, SuggestionItem } from "@roo-code/types"
-import { hasUsableAnswer, isRetiredProvider, isTextResponseAsk, suggestionModeToSwitch } from "@roo-code/types"
+import type { ClineMessage, ProviderNameWithRetired, SuggestionItem } from "@tumble-code/types"
+import { hasUsableAnswer, isRetiredProvider, isTextResponseAsk, suggestionModeToSwitch } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

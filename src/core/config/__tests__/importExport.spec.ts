@@ -11,14 +11,14 @@ import {
 	type PersistedProviderProfile,
 	type ProviderName,
 	type ProviderSettingsWithId,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { importSettings, importSettingsFromFile, importSettingsWithFeedback, exportSettings } from "../importExport"
 import { ProviderSettingsManager } from "../ProviderSettingsManager"
 import { ContextProxy } from "../ContextProxy"
 import { CustomModesManager } from "../CustomModesManager"
-import { safeWriteJson } from "@roo-code/core/fs"
+import { safeWriteJson } from "@tumble-code/core/fs"
 import type { Mock } from "vitest"
 import { logger } from "../../../utils/logging"
 
@@ -68,7 +68,7 @@ vi.mock("os", () => ({
 	homedir: vi.fn(() => "/mock/home"),
 }))
 
-vi.mock("@roo-code/core/fs")
+vi.mock("@tumble-code/core/fs")
 
 // Mock the model resolution to avoid provider details in tests
 vi.mock("../../../api", () => {

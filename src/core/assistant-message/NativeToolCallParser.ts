@@ -1,7 +1,7 @@
 import { parseJSON } from "partial-json"
 
-import { type ToolName, toolNames, type ToolParamName, toolParamNames } from "@roo-code/types"
-import { customToolRegistry } from "@roo-code/core"
+import { type ToolName, toolNames, type ToolParamName, toolParamNames } from "@tumble-code/types"
+import { customToolRegistry } from "@tumble-code/core"
 
 import { type ToolUse, type McpToolUse, type NativeToolArgs } from "../../shared/tools"
 import { resolveToolAlias } from "../prompts/tools/filter-tools-for-mode"

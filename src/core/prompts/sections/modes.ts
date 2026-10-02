@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@tumble-code/types"
 
 import { getAllModesWithPrompts } from "../modeDetails"
 import { ensureSettingsDirectoryExists } from "../../../utils/globalContext"

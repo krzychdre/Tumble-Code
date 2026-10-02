@@ -20,9 +20,9 @@
 		"clean": "rimraf dist .turbo"
 	},
 	"dependencies": {
-		"@roo-code/core": "workspace:^",
-		"@roo-code/types": "workspace:^",
-		"@roo-code/vscode-shim": "workspace:^",
+		"@tumble-code/core": "workspace:^",
+		"@tumble-code/types": "workspace:^",
+		"@tumble-code/vscode-shim": "workspace:^",
 		"@vscode/ripgrep": "^1.15.9",
 		"commander": "^15.0.0",
 		"execa": "^9.5.2",
@@ -33,9 +33,9 @@
 		"zustand": "^5.0.0"
 	},
 	"devDependencies": {
-		"@roo-code/config-eslint": "workspace:^",
-		"@roo-code/config-typescript": "workspace:^",
-		"@roo-code/config-vitest": "workspace:^",
+		"@tumble-code/config-eslint": "workspace:^",
+		"@tumble-code/config-typescript": "workspace:^",
+		"@tumble-code/config-vitest": "workspace:^",
 		"@types/node": "^22.20.4",
 		"@types/react": "^19.3.0",
 		"ink-testing-library": "^4.0.0",

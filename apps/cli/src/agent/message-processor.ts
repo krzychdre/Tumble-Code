@@ -17,8 +17,8 @@
  * separate state store any more).
  */
 
-import type { ExtensionMessage, ClineMessage } from "@roo-code/types"
-import { debugLog } from "@roo-code/core/cli"
+import type { ExtensionMessage, ClineMessage } from "@tumble-code/types"
+import { debugLog } from "@tumble-code/core/cli"
 
 import type { TypedEventEmitter, WaitingForInputEvent, TaskCompletedEvent } from "./events.js"
 import { transitionedToWaiting, taskCompleted } from "./events.js"

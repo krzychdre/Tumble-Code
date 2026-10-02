@@ -11,9 +11,9 @@ import {
 	internationalZAiModels,
 	mainlandZAiModels,
 	ZAI_DEFAULT_TEMPERATURE,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import { getModelMaxOutputTokens } from "@roo-code/core/browser"
+import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { convertToR1Format } from "../../transform/r1-format"
 import { ZAiHandler } from "../zai"
 

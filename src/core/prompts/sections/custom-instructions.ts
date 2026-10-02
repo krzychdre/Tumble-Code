@@ -3,7 +3,7 @@ import path from "path"
 import * as os from "os"
 import { Dirent } from "fs"
 
-import { isLanguage, SETTINGS_DEFAULTS, LANGUAGES } from "@roo-code/types"
+import { isLanguage, SETTINGS_DEFAULTS, LANGUAGES } from "@tumble-code/types"
 
 import type { SystemPromptSettings } from "../types"
 

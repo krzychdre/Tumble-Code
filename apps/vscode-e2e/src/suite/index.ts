@@ -3,7 +3,7 @@ import Mocha from "mocha"
 import { glob } from "glob"
 import * as vscode from "vscode"
 
-import type { TumbleCodeAPI } from "@roo-code/types"
+import type { TumbleCodeAPI } from "@tumble-code/types"
 
 import { waitFor } from "./utils"
 

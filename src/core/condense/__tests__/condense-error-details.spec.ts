@@ -5,7 +5,7 @@ import type { ApiMessage } from "../../task-persistence/apiMessages"
 import { summarizeConversation } from "../index"
 import { logger } from "../../../utils/logging"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: { capture: vi.fn() },

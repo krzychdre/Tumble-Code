@@ -1,6 +1,6 @@
 // cd src && npx vitest run core/context-management/ledger/__tests__/buildLedger.spec.ts
 
-import type { TodoItem } from "@roo-code/types"
+import type { TodoItem } from "@tumble-code/types"
 
 import { ApiMessage } from "../../../task-persistence/apiMessages"
 import { formatResponse } from "../../../prompts/responses"

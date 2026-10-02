@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 
-import type { IndexingStatus, ExtensionMessage } from "@roo-code/types"
+import type { IndexingStatus, ExtensionMessage } from "@tumble-code/types"
 
 import { onExtensionMessage } from "@src/utils/extensionBus"
 

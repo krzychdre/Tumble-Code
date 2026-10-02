@@ -1,5 +1,5 @@
 import { OpenAI } from "openai"
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { EmbedderInfo } from "../interfaces"
 import { t } from "../../../i18n"
 import { handleProviderError } from "../../../api/providers/utils/error-handler"

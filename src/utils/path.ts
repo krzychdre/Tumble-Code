@@ -2,7 +2,7 @@ import * as path from "path"
 import os from "os"
 import * as vscode from "vscode"
 
-import { arePathsEqual } from "@roo-code/core/path"
+import { arePathsEqual } from "@tumble-code/core/path"
 import { logger } from "./logging"
 
 /*

@@ -1,4 +1,4 @@
-import type { GlobalSettings, AutoApprovalMode } from "@roo-code/types"
+import type { GlobalSettings, AutoApprovalMode } from "@tumble-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { cn } from "@/lib/utils"

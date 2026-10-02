@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { countEnabledMcpTools, getMaxMcpToolsThreshold } from "@roo-code/types"
+import { countEnabledMcpTools, getMaxMcpToolsThreshold } from "@tumble-code/types"
 
 export interface TooManyToolsInfo {
 	/** Number of enabled and connected MCP servers */

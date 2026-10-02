@@ -2,9 +2,9 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
 import OpenAI from "openai"
 
-import { providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
+import { providerModelDefinitions, resolveCatalogModel } from "@tumble-code/types"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"

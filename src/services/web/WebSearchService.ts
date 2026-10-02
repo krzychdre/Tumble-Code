@@ -1,4 +1,4 @@
-import { WEB_TOOLS_DEFAULTS, type ResolvedWebToolsConfig } from "@roo-code/types"
+import { WEB_TOOLS_DEFAULTS, type ResolvedWebToolsConfig } from "@tumble-code/types"
 
 /**
  * A single search hit, normalized across backends.

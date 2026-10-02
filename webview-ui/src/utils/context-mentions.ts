@@ -1,8 +1,8 @@
 import { Fzf } from "fzf"
 
-import type { ModeConfig, Command } from "@roo-code/types"
+import type { ModeConfig, Command } from "@tumble-code/types"
 
-import { mentionRegex } from "@roo-code/core/browser"
+import { mentionRegex } from "@tumble-code/core/browser"
 
 import { escapeSpacesForMention } from "./path-mentions"
 
@@ -46,7 +46,7 @@ export function insertMention(
 
 	// Process the value - escape spaces if it's a file path mention.
 	// escapeSpacesForMention is a DISPLAY/transport formatter for the @-mention
-	// grammar (see @roo-code/core/browser context-mentions), NOT a shell escaper.
+	// grammar (see @tumble-code/core/browser context-mentions), NOT a shell escaper.
 	let processedValue = value
 	if (value && value.startsWith("/")) {
 		// Only escape if the path contains spaces that aren't already escaped

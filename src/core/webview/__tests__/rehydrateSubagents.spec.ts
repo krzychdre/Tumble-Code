@@ -1,6 +1,6 @@
 // npx vitest run core/webview/__tests__/rehydrateSubagents.spec.ts
 
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem } from "@tumble-code/types"
 
 import { ClineProvider } from "../ClineProvider"
 import { logger } from "../../../utils/logging"

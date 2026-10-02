@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import * as path from "path"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { listFiles } from "../../services/glob/list-files"
 import { noteWorkspaceFileEvent } from "../../services/search/file-search"

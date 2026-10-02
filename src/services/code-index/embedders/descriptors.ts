@@ -1,4 +1,4 @@
-import type { CodebaseIndexConfig, SecretState } from "@roo-code/types"
+import type { CodebaseIndexConfig, SecretState } from "@tumble-code/types"
 
 import type { CodeIndexConfig, PreviousConfigSnapshot } from "../interfaces/config"
 import type { IEmbedder } from "../interfaces/embedder"

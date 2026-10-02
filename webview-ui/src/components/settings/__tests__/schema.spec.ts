@@ -1,4 +1,4 @@
-import { SETTINGS_DEFAULTS } from "@roo-code/types"
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
 
 import {
 	IMMEDIATE_ONLY_SETTINGS,

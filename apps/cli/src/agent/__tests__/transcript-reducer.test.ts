@@ -1,4 +1,4 @@
-import type { ExtensionMessage, McpServer, ProviderSettings, TodoItem, TokenUsage } from "@roo-code/types"
+import type { ExtensionMessage, McpServer, ProviderSettings, TodoItem, TokenUsage } from "@tumble-code/types"
 
 import type { CloudStatus, PendingAsk, TUIMessage } from "../../ui/types.js"
 import { getStaticCount } from "../../ui/transcript.js"

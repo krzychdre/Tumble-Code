@@ -1,4 +1,4 @@
-import { setInputBoxHandler, createVSCodeAPI } from "@roo-code/vscode-shim"
+import { setInputBoxHandler, createVSCodeAPI } from "@tumble-code/vscode-shim"
 
 import { useSecretPromptStore } from "../secretPromptStore.js"
 

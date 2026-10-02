@@ -3,9 +3,9 @@ import {
 	internationalZAiDefaultModelId,
 	openAiCodexDefaultModelId,
 	openAiModelInfoSaneDefaults,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import { shouldUseReasoningEffort } from "@roo-code/core"
+import { shouldUseReasoningEffort } from "@tumble-code/core"
 
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 

@@ -1,7 +1,7 @@
-import type { ToolName, ClineAsk, Experiments, ModeConfig } from "@roo-code/types"
-import { ConsecutiveMistakeError, TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { customToolRegistry } from "@roo-code/core"
+import type { ToolName, ClineAsk, Experiments, ModeConfig } from "@tumble-code/types"
+import { ConsecutiveMistakeError, TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { customToolRegistry } from "@tumble-code/core"
 
 import type { PushToolResult, ToolUse } from "../../../shared/tools"
 

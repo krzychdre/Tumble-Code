@@ -3,7 +3,7 @@ import {
 	type ProviderSettings,
 	type ModelSourceId,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 // ApiHandlerOptions
 // Extend ProviderSettings (minus apiProvider) with handler-specific toggles.
@@ -74,13 +74,7 @@ export const shouldUseReasoningEffort = ({
 
 	// Not explicitly supported: only allow when the model itself defines a default effort
 	// Ignore settings-only selections when capability is absent/false
-	const modelDefaultEffort = model.reasoningEffort as
-		| "none"
-		| "minimal"
-		| "low"
-		| "medium"
-		| "high"
-		| undefined
+	const modelDefaultEffort = model.reasoningEffort as "none" | "minimal" | "low" | "medium" | "high" | undefined
 	return !!modelDefaultEffort
 }
 
@@ -174,5 +168,6 @@ const _dynamicProviderExtras = {
 // Build the dynamic options union from the map, intersected with CommonFetchParams
 // so extra fields are always allowed while required ones are enforced.
 export type GetModelsOptions = {
-	[P in keyof typeof _dynamicProviderExtras]: ({ provider: P } & (typeof _dynamicProviderExtras)[P]) & CommonFetchParams
+	[P in keyof typeof _dynamicProviderExtras]: ({ provider: P } & (typeof _dynamicProviderExtras)[P]) &
+		CommonFetchParams
 }[FetchableModelSourceId]

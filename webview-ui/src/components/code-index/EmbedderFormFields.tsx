@@ -1,6 +1,6 @@
 import React from "react"
 
-import type { EmbeddingModelProfile } from "@roo-code/types"
+import type { EmbeddingModelProfile } from "@tumble-code/types"
 
 import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 import { useTextDraft } from "@src/components/ui/hooks"

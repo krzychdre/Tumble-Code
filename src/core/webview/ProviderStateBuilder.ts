@@ -17,8 +17,8 @@ import {
 	resolveSettings,
 	experimentDefault,
 	formatLanguage,
-} from "@roo-code/types"
-import { CloudService, getTumbleCodeApiUrl } from "@roo-code/cloud"
+} from "@tumble-code/types"
+import { CloudService, getTumbleCodeApiUrl } from "@tumble-code/cloud"
 
 import { Package } from "../../shared/package"
 import { defaultModeSlug } from "../../shared/modes"
@@ -103,7 +103,7 @@ const pick = <T extends object, K extends keyof T>(source: T, keys: readonly K[]
 
 /**
  * The settings with every default applied: the static table from
- * `@roo-code/types` plus the defaults only the extension host knows (the
+ * `@tumble-code/types` plus the defaults only the extension host knows (the
  * first built-in mode, the VS Code display language, the experiment and
  * embedding-model registries).
  */

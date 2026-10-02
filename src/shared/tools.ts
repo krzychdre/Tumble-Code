@@ -1,9 +1,9 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ClineAsk, ToolProgressStatus, ToolName, GenerateImageParams, ToolParamName } from "@roo-code/types"
+import type { ClineAsk, ToolProgressStatus, ToolName, GenerateImageParams, ToolParamName } from "@tumble-code/types"
 
 // The tool catalog constants (tool groups, display names, aliases) live in
-// @roo-code/types. This file holds the extension-side types: it depends on the
+// @tumble-code/types. This file holds the extension-side types: it depends on the
 // Anthropic SDK types and the tool execution protocol.
 
 export type ToolResponse = string | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam>
@@ -38,7 +38,7 @@ export interface TextContent {
  */
 export type NativeToolArgs = {
 	access_mcp_resource: { server_name: string; uri: string }
-	read_file: import("@roo-code/types").ReadFileToolParams
+	read_file: import("@tumble-code/types").ReadFileToolParams
 	read_artifact: { artifact_id: string; search?: string; offset?: number; limit?: number }
 	read_command_output: { artifact_id: string; search?: string; offset?: number; limit?: number }
 	attempt_completion: { result: string }

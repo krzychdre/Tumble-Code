@@ -1,7 +1,7 @@
 import { Trans, useTranslation } from "react-i18next"
 import { ArrowRight, ClipboardCheck, PocketKnife, Split } from "lucide-react"
 
-import type { TodoItem } from "@roo-code/types"
+import type { TodoItem } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

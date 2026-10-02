@@ -21,7 +21,7 @@ vi.mock("fs", async (importOriginal) => {
 	return { ...wrapped, default: wrapped }
 })
 
-// The atomic write itself lives in @roo-code/core/fs, which imports "fs/promises"; a write failure is
+// The atomic write itself lives in @tumble-code/core/fs, which imports "fs/promises"; a write failure is
 // injected there.
 vi.mock("fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("fs/promises")>()

@@ -1,7 +1,7 @@
 import { memo } from "react"
 import { Box, Text } from "ink"
 
-import type { TodoItem } from "@roo-code/types"
+import type { TodoItem } from "@tumble-code/types"
 
 import { figures } from "../figures.js"
 import * as theme from "../theme.js"

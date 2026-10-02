@@ -9,7 +9,7 @@ import {
 	isProviderName,
 	isRetiredProvider,
 	providerValidationRegistry,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { getProviderModelSource } from "@src/components/settings/utils/providerModelConfig"
 

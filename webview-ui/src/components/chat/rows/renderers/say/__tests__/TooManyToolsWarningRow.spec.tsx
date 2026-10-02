@@ -1,5 +1,5 @@
-import type { ClineMessage } from "@roo-code/types"
-import { TOO_MANY_TOOLS_DISMISSAL_ID } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
+import { TOO_MANY_TOOLS_DISMISSAL_ID } from "@tumble-code/types"
 
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { vscode } from "@src/utils/vscode"

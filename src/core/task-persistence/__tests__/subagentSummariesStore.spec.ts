@@ -4,7 +4,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as os from "os"
 
-import type { SubagentSummary } from "@roo-code/types"
+import type { SubagentSummary } from "@tumble-code/types"
 
 // We mock vscode only to satisfy the import chain in `../../utils/storage`
 // (getStorageBasePath reads vscode.workspace.getConfiguration). The actual
