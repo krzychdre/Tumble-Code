@@ -111,10 +111,16 @@ def client(session_factory):
                 await session.rollback()
                 raise
 
+    # Every override a test sets (the signed-in user, the web user) goes with
+    # the test: the app is one module-level object, and an override left
+    # behind made a later test's "no token, 401" pass or fail by file order.
+    saved = dict(app.dependency_overrides)
     app.dependency_overrides[get_db] = override_get_db
     try:
         yield TestClient(app)
     finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(saved)
         app.dependency_overrides.pop(get_db, None)
 
 

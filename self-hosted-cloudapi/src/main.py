@@ -20,8 +20,8 @@ from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
-from src.routers import auth, extension, settings as settings_router, events, error_reports, browser
-from src.routers import shared, web_diagnostics, web_metrics, web_settings, web_tasks
+from src.routers import auth, extension, settings as settings_router, events, error_reports, browser, llm_exchanges
+from src.routers import shared, web_dataset, web_diagnostics, web_metrics, web_settings, web_tasks
 from src.web.static_files import VersionedStaticFiles
 
 
@@ -167,6 +167,9 @@ app.include_router(events.router)
 # Error reports from the extension (the problem report page reads them)
 app.include_router(error_reports.router)
 
+# LLM exchange recording (the dataset page reads them)
+app.include_router(llm_exchanges.router)
+
 
 # Web UI: task list and task page, metrics, diagnostics, retention settings,
 # share links.
@@ -175,6 +178,7 @@ app.include_router(error_reports.router)
 app.include_router(web_tasks.router)
 app.include_router(web_metrics.router)
 app.include_router(web_diagnostics.router)
+app.include_router(web_dataset.router)
 app.include_router(web_settings.router)
 app.include_router(shared.router)
 

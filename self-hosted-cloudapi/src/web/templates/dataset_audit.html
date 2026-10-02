@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Anonymization audit · Tumble Code{% endblock %}
+{% block content %}
+<div class="metrics-head">
+  <h1 class="page-title">Anonymization audit</h1>
+</div>
+
+<p class="diag-lead">
+  What the export with these options would replace: every original text, the pseudonym it becomes and how often.
+  {{ samples|fmt_int }} sample{{ '' if samples == 1 else 's' }} from {{ tasks|fmt_int }} task{{ '' if tasks == 1 else 's' }}{% if truncated %} (stopped after {{ limit|fmt_int }} samples){% endif %}.
+</p>
+<p class="diag-actions">
+  <a class="btn" href="/app/dataset/export.jsonl?{{ export_query }}" download>Download this dataset</a>
+  <a class="btn ghost" href="/app/dataset">Back to the dataset</a>
+</p>
+
+{% if by_category %}
+<section class="stat-grid" aria-label="Replacements by category">
+  {% for name, count in by_category %}
+  <div class="stat-card"><div class="stat-label">{{ name }}</div><div class="stat-value">{{ count|fmt_int }}</div></div>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h2 class="chart-title">Replacements</h2>
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-audit">
+      <caption class="sr-only">Every replacement the anonymizer made</caption>
+      <thead><tr><th scope="col">Category</th><th scope="col">Original</th><th scope="col">Becomes</th><th scope="col" class="diag-num">Count</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="diag-cell">{{ r.category }}</td>
+          <td class="diag-cell"><code class="dataset-original">{{ r.original[:300] }}{% if r.original|length > 300 %}…{% endif %}</code></td>
+          <td class="diag-cell"><code>{{ r.replacement }}</code></td>
+          <td class="bd-num">{{ r.count|fmt_int }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+<div class="empty"><p class="empty-hint">Nothing to replace in these samples.</p></div>
+{% endif %}
+{% endblock %}

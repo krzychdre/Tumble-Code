@@ -55,6 +55,7 @@ _PANEL = (
     "/app/settings",
     "/app/tasks/missing",
     "/app/diagnostics?period=all&class=model&q=x",
+    "/app/dataset",
 )
 
 

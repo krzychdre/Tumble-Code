@@ -7,6 +7,7 @@ from sqlalchemy import select, delete, update
 from config.settings import settings
 from src.database import dialect_insert
 from src.models.error_report import ErrorReport
+from src.models.llm_exchange import LlmBlob, LlmExchange
 from src.models.task import Task, TaskMessage, TaskShare
 from src.models.settings import OrganizationSettings
 from src.schemas.share import ShareResponse
@@ -169,6 +170,12 @@ async def delete_tasks(
     await db.execute(
         delete(ErrorReport).where(ErrorReport.task_id.in_(owned), ErrorReport.user_id == user_id)
     )
+    # Recorded LLM exchanges and their blobs hold the whole conversation as the
+    # model saw it; they go with the task too (also not foreign keys).
+    await db.execute(
+        delete(LlmExchange).where(LlmExchange.task_id.in_(owned), LlmExchange.user_id == user_id)
+    )
+    await db.execute(delete(LlmBlob).where(LlmBlob.task_id.in_(owned), LlmBlob.user_id == user_id))
     await db.execute(delete(TaskShare).where(TaskShare.task_id.in_(owned)))
     await db.execute(delete(Task).where(Task.id.in_(owned)))
     await db.flush()

@@ -342,6 +342,8 @@ def test_migrate_script_on_a_managed_database_upgrades_to_head(migrate_env):
     assert _scalar(db_file, "SELECT message_count FROM tasks WHERE id = 'task_1'") == 2
     # A deployment that predates error reports gets their table on upgrade.
     assert "error_reports" in _tables(db_file)
+    # ...and the LLM exchange recording tables.
+    assert {"llm_exchanges", "llm_blobs", "dataset_settings"} <= set(_tables(db_file))
 
 
 # --- Drift ----------------------------------------------------------------------

@@ -3890,9 +3890,12 @@ table.diag-table th.diag-num {
 		flex: 1 0 100%;
 		height: 2.5rem;
 	}
+	/* Five tabs share a 375px row: narrow side padding, and a tab may shrink. */
 	.mainnav a {
 		flex: 1;
 		justify-content: center;
+		min-width: 0;
+		padding: 0 var(--s1);
 	}
 	.detail-title-row {
 		flex-direction: column;
@@ -4089,6 +4092,32 @@ table.diag-table th.diag-num {
 		padding: var(--s1) var(--s2);
 		white-space: nowrap;
 	}
+}
+
+/* ---- Dataset page (/app/dataset) ---------------------------------------- */
+.dataset-fieldset {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+.dataset-fieldset legend {
+	margin-bottom: var(--s1);
+}
+.dataset-terms textarea {
+	width: 100%;
+	max-width: 60ch;
+	min-height: 5rem;
+}
+/* Paths and originals are long and unbroken: they wrap inside their box. */
+.dataset-path,
+.dataset-original {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 @media (prefers-reduced-motion: reduce) {
