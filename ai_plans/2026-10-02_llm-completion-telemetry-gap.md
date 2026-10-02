@@ -49,10 +49,21 @@ metrics page shows for all models, and nearly all of that traffic came from Tumb
 - `src/core/task/__tests__/TaskStreamProcessor.usage-drain.spec.ts`: the event carries the task's
   model, provider and mode.
 
+## Second defect: embedding usage never reached the cloud
+
+Owner: "W sumie embeddingi też powinny się liczyć prawda?". The metrics page already has an
+embeddings tile (shown only when there is data), but `telemetry_events` holds zero `Embedding Usage`
+rows ever, although the event exists since 2026-07-31 (#136). The renderer logs hold 5616 rejected
+ones today, all with `apiProvider: "openai-compatible"`. The event schema took `apiProvider` from the
+shared `telemetryPropertiesSchema` (`z.enum(providerNames)`), and embedder names are not chat
+provider names. Fix: the embedding branch overrides `apiProvider` with `z.string().optional()`.
+Test: `packages/types/src/__tests__/telemetry-schema-coverage.spec.ts`. Embeddings stay a separate
+figure, not part of the completion totals.
+
 ## Not covered (known, by design)
 
 - Rows already lost (2026-09-29 .. today) are not recoverable from telemetry. `llm_exchanges` exists
   only from 2026-10-02 18:00 UTC.
-- llama-swap will still read somewhat higher: embeddings (own `Embedding Usage` event), cancelled
+- llama-swap will still read somewhat higher: cancelled
   requests without a usage block and requests from other clients are not `LLM Completion` events.
 - Takes effect after a VSIX rebuild and reload of every VS Code window.

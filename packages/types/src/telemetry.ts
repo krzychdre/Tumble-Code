@@ -351,6 +351,9 @@ export const tumbleCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 			...telemetryPropertiesSchema.shape,
 			promptTokens: z.number(),
 			totalTokens: z.number(),
+			// The embedder's name ("openai-compatible", "ollama", ...), not a chat
+			// provider: the shared enum rejected every event from those embedders.
+			apiProvider: z.string().optional(),
 			source: z.string().optional(),
 		}),
 	}),
