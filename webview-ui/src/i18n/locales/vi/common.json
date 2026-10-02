@@ -18,8 +18,7 @@
 	},
 	"ui": {
 		"search_placeholder": "Tìm kiếm...",
-		"no_results": "Không tìm thấy kết quả nào",
-		"close": "Đóng"
+		"no_results": "Không tìm thấy kết quả nào"
 	},
 	"loading": "Đang tải",
 	"mermaid": {

@@ -18,8 +18,7 @@
 	},
 	"ui": {
 		"search_placeholder": "Ara...",
-		"no_results": "Sonuç bulunamadı",
-		"close": "Kapat"
+		"no_results": "Sonuç bulunamadı"
 	},
 	"loading": "Yükleniyor",
 	"mermaid": {
