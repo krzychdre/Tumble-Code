@@ -79,8 +79,22 @@ async def _reports(session_factory):
 
 
 def test_a_report_needs_the_bearer_token(client):
-    resp = client.post("/api/error-reports", json=_report())
-    assert resp.status_code == 401
+    assert client.post("/api/error-reports", json=_report()).status_code == 401
+    bad = client.post("/api/error-reports", json=_report(), headers={"Authorization": "Bearer garbage"})
+    assert bad.status_code == 401
+
+
+async def test_a_session_token_is_accepted_like_on_the_events_endpoint(client, db_session, session_factory):
+    from src.auth.jwt_issuer import issue_session_token
+
+    await _seed_user(db_session)
+    token = issue_session_token("user_test", None)
+
+    resp = client.post("/api/error-reports", json=_report(), headers={"Authorization": f"Bearer {token}"})
+
+    assert resp.status_code == 200
+    [row] = await _reports(session_factory)
+    assert row.user_id == "user_test"
 
 
 async def test_a_report_is_stored_with_its_columns_and_payload(authed, db_session, session_factory):

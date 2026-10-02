@@ -31,7 +31,9 @@ from pathlib import Path
 import pytest
 
 from src.auth.web_session import get_web_user_optional
+from src.models.error_report import ErrorReport
 from src.models.task import Task, TaskShare
+from src.services.problem_catalogue import problem_signature
 from tests.test_browser_js import _find_browser
 from tests.web_helpers import (
     _add_message,
@@ -165,6 +167,54 @@ _LONG_TITLE = (
 )
 
 
+_REPORT_MODEL = "hf.co/unsloth/GLM-5.3-Flash-NVFP4-A8-with-an-even-longer-local-quantization-suffix:latest"
+_REPORT_PATH = "/home/someone/Projekty/ITKONTEKST/customer/lids-uniform-api-with-a-long-name/src/deeply/nested/module_file_name.ts"
+
+
+def _long_error_report() -> ErrorReport:
+    """A report with every string the problem pages must keep inside the screen:
+    a model id, a path, an unbroken token, raw JSON and a stack trace."""
+    from datetime import datetime, timezone
+
+    summary = f"Error reading file {_REPORT_PATH}: ENOENT: no such file or directory " + "x" * 120
+    payload = {
+        "summary": summary,
+        "errorMessage": "Error: ENOENT\n    at Object.stat (" + _REPORT_PATH + ":12:34)\n" * 8,
+        "modelId": _REPORT_MODEL,
+        "contextWindow": 262144,
+        "contextTokens": 250000,
+        "request": {
+            "systemPromptChars": 48211,
+            "systemPromptSha256": "ab" * 32,
+            "toolNames": ["read_file", "apply_diff", "execute_command", "search_files"] * 5,
+            "params": {"temperature": 0.2, "nested": {"long": "y" * 300}},
+            "messages": [{"role": "user", "content": json.dumps({"k" * 50: "v" * 500})}],
+        },
+        "response": {
+            "text": "z" * 600,
+            "toolCalls": [{"id": "call_" + "9" * 60, "name": "read_file", "arguments": json.dumps({"path": _REPORT_PATH * 3})}],
+            "stopReason": "tool_calls",
+            "errorBody": "{" + '"error":' * 40 + "}",
+        },
+    }
+    return ErrorReport(
+        id="phone-report",
+        user_id="user_test",
+        task_id="run",
+        category="tool_error",
+        tool_name="read_file",
+        provider="openai-compatible-provider-with-a-long-name",
+        model_id=_REPORT_MODEL,
+        mode="code",
+        app_version="1.0.0",
+        summary=summary,
+        signature=problem_signature("tool_error", "read_file", summary),
+        occurred_at=datetime.now(timezone.utc),
+        created_at=datetime.now(timezone.utc),
+        payload=json.dumps(payload),
+    )
+
+
 async def _seed_a_phone_sized_problem(session_factory):
     """A run with every element that ever overflowed on a phone: a long title,
     a long worktree path, a model badge, a subtask, request rows with figures,
@@ -210,6 +260,7 @@ async def _seed_a_phone_sized_problem(session_factory):
         figures = json.dumps({"tokensIn": 3000, "tokensOut": 50, "cost": 1.2})
         await _add_message(s, "sub", {"ts": 5, "type": "say", "say": "api_req_started", "text": figures})
         s.add(_llm_event(task_id="run", model="GLM-5.3-NVFP4-with-a-long-local-suffix", tin=16462, tout=358))
+        s.add(_long_error_report())
         await _summarize(s, "run", "sub")
         await s.commit()
 
@@ -224,6 +275,7 @@ async def _seed_a_phone_sized_problem(session_factory):
         ("/app/tasks/run", "messages"),
         ("/app/metrics", None),
         ("/app/diagnostics", None),
+        ("/app/diagnostics/reports/phone-report", None),
         ("/app/settings", None),
     ],
 )
@@ -304,6 +356,7 @@ async def _seed_hostile_text(session_factory):
                 s.add(_llm_event(task_id=task_id, model=model, mode="architect-reviewer-with-a-long-custom-slug",
                                  provider="openai-compatible-self-hosted-gateway", tin=123456789, tout=1234567, cost=1234.56))
         s.add(TaskShare(task_id="run", visibility="public", share_url="http://testserver/shared/run"))
+        s.add(_long_error_report())
         await _summarize(s, "run", "sub1", "sub2")
         await s.commit()
 
@@ -318,6 +371,8 @@ async def _seed_hostile_text(session_factory):
         "/app/tasks/run",
         "/app/tasks/sub2",
         "/app/metrics?period=all",
+        "/app/diagnostics?period=all",
+        "/app/diagnostics/reports/phone-report",
         "/shared/run",
     ],
 )

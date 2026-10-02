@@ -3191,80 +3191,228 @@ table.breakdown tr:last-child td {
 }
 
 /* ==========================================================================
-   Diagnostics
+   Problem report (/app/diagnostics and its report pages)
+   Everything the page shows is somebody else's text: model ids, paths, JSON,
+   stack traces. Every box below wraps or scrolls it inside itself, and every
+   grid or flex child may shrink (min-width: 0), so one long string never
+   widens the page.
    ========================================================================== */
 
-.stat-card[data-metric="errors"] .stat-label::before {
-	background: var(--d-error);
+/* The four classes, as data hues: a class is an encoding, like a token kind. */
+.diag-c-software {
+	--diag-hue: var(--d-error);
 }
-.diag-errors {
+.diag-c-model {
+	--diag-hue: var(--d-out);
+}
+.diag-c-provider {
+	--diag-hue: var(--d-in);
+}
+.diag-c-config {
+	--diag-hue: var(--d-cache);
+}
+.diag-c-unclassified {
+	--diag-hue: var(--text-faint);
+}
+.diag-lead {
+	max-width: 70ch;
+	margin: 0 0 var(--s4);
+	color: var(--text-dim);
+	font-size: var(--t-sm);
+	overflow-wrap: anywhere;
+}
+.diag-export {
+	font-weight: 500;
+	white-space: nowrap;
+}
+.diag-export-hint {
+	color: var(--text-faint);
+}
+/* Five small figures: they share a row wherever they fit, two to a row on a
+   phone, instead of five full-width cards. */
+.stat-grid.diag-classes {
+	grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+}
+.diag-class-card {
+	min-width: 0;
+}
+.diag-class-card .stat-label {
+	overflow-wrap: anywhere;
+}
+.diag-class-card .stat-label::before {
+	background: var(--diag-hue);
+}
+.diag-class-card.is-zero .stat-value {
+	color: var(--text-faint);
+}
+.diag-problems,
+.diag-fit,
+.diag-report {
+	min-width: 0;
 	margin-bottom: var(--s4);
 }
-/* One kind of error per row; opening it shows the latest occurrence. */
+.diag-groups {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
 .diag-group {
+	min-width: 0;
 	border-bottom: 1px solid var(--line);
 }
 .diag-group:last-child {
 	border-bottom: none;
 }
-.diag-group > summary {
+/* Row: badge, title, impact on the first line; the signature and the models
+   below, each on its own full-width line. */
+.diag-group summary {
 	display: grid;
-	grid-template-columns: 11rem minmax(0, 1fr) auto auto;
-	gap: var(--s3);
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: var(--s1) var(--s3);
 	align-items: baseline;
 	padding: var(--s2) var(--s1);
 	cursor: pointer;
 	list-style: none;
 	font-size: var(--t-sm);
 }
-.diag-group > summary::-webkit-details-marker {
+.diag-group summary::-webkit-details-marker {
 	display: none;
 }
-.diag-group > summary:hover {
+.diag-group summary:hover {
 	background: var(--surface-2);
 }
-.diag-type {
-	color: var(--text-dim);
+.diag-badge {
+	display: inline-block;
+	padding: 0 var(--s2);
+	border: 1px solid var(--diag-hue);
+	border-radius: var(--r-sm);
+	color: var(--diag-hue);
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	white-space: nowrap;
 }
-.diag-type::before {
+.diag-title {
+	min-width: 0;
+	font-weight: 500;
+	overflow-wrap: anywhere;
+}
+.diag-title::before {
 	content: "▸ ";
 	color: var(--text-faint);
 }
-.diag-group[open] .diag-type::before {
+.diag-group details[open] .diag-title::before {
 	content: "▾ ";
 }
-.diag-sig {
-	font-family: var(--mono);
-	font-size: var(--t-micro);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.diag-count,
-.diag-when {
+.diag-impact {
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-dim);
 	white-space: nowrap;
 }
+.diag-sig,
+.diag-models {
+	grid-column: 1 / -1;
+	min-width: 0;
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text-dim);
+	overflow-wrap: anywhere;
+}
+.diag-models {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s1) var(--s3);
+	color: var(--text-faint);
+}
+.diag-model {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.diag-model b {
+	color: var(--text-dim);
+	font-weight: 500;
+}
+.diag-body {
+	min-width: 0;
+	padding: 0 var(--s1) var(--s3);
+}
+.diag-h {
+	margin: var(--s3) 0 var(--s1);
+	font-size: var(--t-micro);
+	font-weight: 500;
+	color: var(--text-faint);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	overflow-wrap: anywhere;
+}
+.diag-mitigation {
+	min-width: 0;
+	padding: var(--s2) var(--s3);
+	border-left: 3px solid var(--signal);
+	background: var(--signal-wash);
+	border-radius: var(--r-sm);
+	font-size: var(--t-sm);
+	overflow-wrap: anywhere;
+}
+.diag-mitigation .diag-h {
+	margin-top: 0;
+}
+.diag-mitigation p {
+	margin: 0;
+}
 .diag-facts {
 	display: grid;
-	grid-template-columns: auto 1fr;
+	grid-template-columns: max-content minmax(0, 1fr);
 	gap: var(--s1) var(--s3);
-	margin: var(--s2) var(--s1);
+	margin: var(--s3) 0;
 	font-size: var(--t-micro);
 }
 .diag-facts dt {
 	color: var(--text-faint);
 }
 .diag-facts dd {
+	min-width: 0;
 	margin: 0;
 	font-family: var(--mono);
 	overflow-wrap: anywhere;
 }
+.diag-facts dd a {
+	margin-right: var(--s2);
+}
+/* Tables scroll sideways inside their own box when a phone is too narrow. */
+.diag-table-wrap {
+	max-width: 100%;
+	overflow-x: auto;
+}
+/* Columns sized by their content: the model id needs the room, the counts
+   do not (table.breakdown splits the width evenly). */
+table.diag-table {
+	width: 100%;
+	table-layout: auto;
+}
+table.diag-table th {
+	text-align: left;
+}
+table.diag-table th.diag-num {
+	text-align: right;
+}
+.diag-note {
+	max-width: 80ch;
+	margin: 0 0 var(--s3);
+	color: var(--text-dim);
+	font-size: var(--t-sm);
+	overflow-wrap: anywhere;
+}
+.diag-cell {
+	min-width: 8rem;
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	overflow-wrap: anywhere;
+}
 .diag-text {
-	max-height: 20rem;
-	margin: var(--s2) var(--s1);
+	max-width: 100%;
+	max-height: 24rem;
+	margin: var(--s1) 0 var(--s2);
 	padding: var(--s2);
 	overflow: auto;
 	background: var(--surface-2);
@@ -3274,24 +3422,96 @@ table.breakdown tr:last-child td {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 }
-.diag-stack {
-	color: var(--text-dim);
+.diag-links {
+	margin: var(--s2) 0 0;
+	font-size: var(--t-micro);
+	overflow-wrap: anywhere;
 }
-/* The values of one feature event (which tool, which mode) under its row. */
-.diag-sub .bd-name {
-	padding-left: var(--s4);
+.diag-back {
+	margin: 0 0 var(--s2);
+	font-size: var(--t-sm);
+}
+.diag-report-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--s2) var(--s3);
+	min-width: 0;
+}
+.diag-report-title {
+	min-width: 0;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+.diag-summary {
+	margin: var(--s2) 0 var(--s4);
+	font-family: var(--mono);
+	font-size: var(--t-sm);
+	overflow-wrap: anywhere;
+}
+/* How full the context was when the request went out. */
+.diag-meter {
+	height: 6px;
+	margin: 0 0 var(--s3);
+	background: var(--surface-3);
+	border-radius: 3px;
+	overflow: hidden;
+}
+.diag-meter span {
+	display: block;
+	height: 100%;
+	background: var(--d-in);
+}
+.diag-msg {
+	min-width: 0;
+	margin: var(--s1) 0;
+	border: 1px solid var(--line);
+	border-radius: var(--r-sm);
+}
+.diag-msg > summary {
+	padding: var(--s1) var(--s2);
+	cursor: pointer;
+	font-size: var(--t-micro);
 	color: var(--text-dim);
+	overflow-wrap: anywhere;
+}
+.diag-msg > .diag-text {
+	margin: 0;
+	border-radius: 0 0 var(--r-sm) var(--r-sm);
+}
+.diag-role {
+	font-family: var(--mono);
+	font-weight: 500;
+	color: var(--text);
+}
+.diag-role-user {
+	color: var(--d-you);
+}
+.diag-role-assistant {
+	color: var(--d-out);
+}
+.diag-dim {
+	color: var(--text-faint);
+	font-family: var(--mono);
+	font-weight: 400;
+	overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
-	.diag-group > summary {
+	.stat-grid.diag-classes {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.diag-group summary {
 		grid-template-columns: minmax(0, 1fr) auto;
 	}
-	.diag-sig {
+	.diag-badge {
 		grid-column: 1 / -1;
-		grid-row: 2;
+		justify-self: start;
 	}
-	.diag-when {
-		display: none;
+	.diag-facts {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.diag-facts dd {
+		margin-bottom: var(--s1);
 	}
 }
 
