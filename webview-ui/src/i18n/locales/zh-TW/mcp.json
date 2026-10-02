@@ -50,12 +50,18 @@
 	"serverStatus": {
 		"retrying": "重試中...",
 		"retryConnection": "重試連線",
-		"restart": "重新啟動伺服器"
+		"restart": "重新啟動伺服器",
+		"toggle": "切換 {{serverName}} 伺服器"
 	},
 	"execution": {
 		"running": "執行中",
 		"completed": "已完成",
 		"error": "錯誤",
 		"response": "回應"
+	},
+	"resource": {
+		"noDescription": "無描述",
+		"returns": "回傳",
+		"unknownType": "未知"
 	}
 }

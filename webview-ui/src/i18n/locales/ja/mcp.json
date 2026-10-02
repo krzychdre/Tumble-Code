@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "再試行中...",
 		"retryConnection": "再接続",
-		"restart": "サーバーを再起動"
+		"restart": "サーバーを再起動",
+		"toggle": "{{serverName}} サーバーのオン/オフを切り替え"
 	},
 	"refreshMCP": "MCPサーバーを更新",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "完了",
 		"error": "エラー",
 		"response": "レスポンス"
+	},
+	"resource": {
+		"noDescription": "説明なし",
+		"returns": "戻り値",
+		"unknownType": "不明"
 	}
 }

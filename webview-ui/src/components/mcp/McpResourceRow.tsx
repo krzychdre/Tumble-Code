@@ -1,10 +1,13 @@
 import type { McpResource, McpResourceTemplate } from "@roo-code/types"
 
+import { useAppTranslation } from "@src/i18n/TranslationContext"
+
 type McpResourceRowProps = {
 	item: McpResource | McpResourceTemplate
 }
 
 const McpResourceRow = ({ item }: McpResourceRowProps) => {
+	const { t } = useAppTranslation()
 	const hasUri = "uri" in item
 	const uri = hasUri ? item.uri : item.uriTemplate
 
@@ -21,12 +24,12 @@ const McpResourceRow = ({ item }: McpResourceRowProps) => {
 						? item.description
 						: !item.description && item.name
 							? item.name
-							: "No description"}
+							: t("mcp:resource.noDescription")}
 			</div>
 			<div className="text-sm">
-				<span className="opacity-80">Returns </span>
+				<span className="opacity-80">{t("mcp:resource.returns")} </span>
 				<code className="px-1 py-px text-[var(--vscode-textPreformat-foreground)] bg-[var(--vscode-textPreformat-background)]">
-					{item.mimeType || "Unknown"}
+					{item.mimeType || t("mcp:resource.unknownType")}
 				</code>
 			</div>
 		</div>

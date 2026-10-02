@@ -50,12 +50,18 @@
 	"serverStatus": {
 		"retrying": "Retrying...",
 		"retryConnection": "Retry Connection",
-		"restart": "Restart server"
+		"restart": "Restart server",
+		"toggle": "Toggle {{serverName}} server"
 	},
 	"execution": {
 		"running": "Running",
 		"completed": "Completed",
 		"error": "Error",
 		"response": "Response"
+	},
+	"resource": {
+		"noDescription": "No description",
+		"returns": "Returns",
+		"unknownType": "Unknown"
 	}
 }

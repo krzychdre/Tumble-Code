@@ -311,13 +311,13 @@ export const McpExecution = ({
 								className="flex items-center gap-1 cursor-pointer select-none mb-1"
 								onClick={onToggleResponseExpand}>
 								<span className="text-xs font-mono text-vscode-descriptionForeground">
-									{t("execution.response", "Response")}
+									{t("execution.response")}
 								</span>
 								<Button
 									variant="ghost"
 									size="icon"
 									className="size-5"
-									aria-label={t("execution.response", "Response")}
+									aria-label={t("execution.response")}
 									aria-expanded={isResponseExpanded}>
 									<ChevronDown
 										className={cn("size-3 transition-transform duration-200", {

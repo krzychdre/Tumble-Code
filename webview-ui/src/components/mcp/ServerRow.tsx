@@ -17,6 +17,11 @@ import {
 	ThemedPanels,
 	ThemedPanelTab,
 	ThemedPanelView,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@src/components/ui"
 
 import McpToolRow from "./McpToolRow"
@@ -79,8 +84,8 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 		vscode.postMessage({ type: "restartMcpServer", text: server.name, source })
 	}
 
-	const handleTimeoutChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-		const seconds = parseInt(event.target.value)
+	const handleTimeoutChange = (value: string) => {
+		const seconds = parseInt(value)
 		setTimeoutValue(seconds)
 		vscode.postMessage({ type: "updateMcpTimeout", serverName: server.name, source, timeout: seconds })
 	}
@@ -139,7 +144,7 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 						})
 					}}
 					size="medium"
-					aria-label={`Toggle ${server.name} server`}
+					aria-label={t("mcp:serverStatus.toggle", { serverName: server.name })}
 				/>
 			</div>
 
@@ -220,16 +225,18 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 							<div className="py-block px-2">
 								<div className="flex items-center gap-2.5 mb-row">
 									<span>{t("mcp:networkTimeout.label")}</span>
-									<select
-										value={timeoutValue}
-										onChange={handleTimeoutChange}
-										className="flex-1 p-1 cursor-pointer bg-vscode-dropdown-background text-vscode-dropdown-foreground border border-vscode-dropdown-border focus-ring">
-										{TIMEOUT_SECONDS.map((seconds) => (
-											<option key={seconds} value={seconds}>
-												{t(TIMEOUT_LABEL_KEYS[seconds])}
-											</option>
-										))}
-									</select>
+									<Select value={String(timeoutValue)} onValueChange={handleTimeoutChange}>
+										<SelectTrigger className="flex-1" aria-label={t("mcp:networkTimeout.label")}>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{TIMEOUT_SECONDS.map((seconds) => (
+												<SelectItem key={seconds} value={String(seconds)}>
+													{t(TIMEOUT_LABEL_KEYS[seconds])}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
 								</div>
 								<span className="block text-sm text-vscode-descriptionForeground">
 									{t("mcp:networkTimeout.description")}
