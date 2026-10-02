@@ -330,9 +330,9 @@
 	function announceCount() {
 		var status = document.getElementById("list-status")
 		if (!status) return
+		// The pill already says the number and what it counts ("3 runs").
 		var pill = document.querySelector("#list-count .count-pill")
-		var n = pill ? Number(pill.textContent) || 0 : 0
-		status.textContent = n === 0 ? "No tasks match" : n + " task" + (n === 1 ? "" : "s")
+		status.textContent = pill ? pill.textContent : "No tasks match"
 	}
 
 	function reload() {
