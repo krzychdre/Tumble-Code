@@ -156,6 +156,16 @@ export class ClineProvider
 	private _disposed = false
 
 	/**
+	 * Refreshes this webview when another panel writes a shared setting (see
+	 * {@link onSharedSettingsChanged}). Set in the constructor, disposed with
+	 * the provider.
+	 */
+	private readonly sharedSettingsSubscription: { dispose(): void }
+	private sharedSettingsPushTimer?: ReturnType<typeof setTimeout>
+	/** Coalesces a burst of writes (an import, a multi-key save) into one push. */
+	private static readonly SHARED_SETTINGS_PUSH_DELAY_MS = 50
+
+	/**
 	 * Mode-to-profile binding and profile activation (CORE-R6 c), including
 	 * the CLI's per-mode provider settings.
 	 */
@@ -427,6 +437,42 @@ export class ClineProvider
 		} else {
 			logger.info("CloudService not ready, deferring cloud profile sync")
 		}
+
+		this.sharedSettingsSubscription = contextProxy.onDidChangeValues(() => this.onSharedSettingsChanged())
+	}
+
+	/**
+	 * A setting changed in the ContextProxy this provider shares with the
+	 * other open panels (the sidebar and every editor tab). The code that wrote
+	 * it refreshes only its own webview, so this webview is pushed the new
+	 * state too; without it a switch here kept the old value, and a click sent
+	 * the inverse of that stale value. Only when another live provider uses the
+	 * same proxy: a lone panel is already refreshed by the writer.
+	 */
+	private onSharedSettingsChanged(): void {
+		if (this._disposed || !this.view || this.sharedSettingsPushTimer) {
+			return
+		}
+
+		const sharesProxy = Array.from(ClineProvider.activeInstances).some(
+			(other) => other !== this && other.contextProxy === this.contextProxy,
+		)
+
+		if (!sharesProxy) {
+			return
+		}
+
+		this.sharedSettingsPushTimer = setTimeout(() => {
+			this.sharedSettingsPushTimer = undefined
+
+			if (this._disposed) {
+				return
+			}
+
+			this.postStateToWebviewWithoutClineMessages().catch((error) =>
+				logger.debug(`[ClineProvider] shared settings push failed: ${String(error)}`),
+			)
+		}, ClineProvider.SHARED_SETTINGS_PUSH_DELAY_MS)
 	}
 
 	/**
@@ -676,6 +722,10 @@ export class ClineProvider
 		this._disposed = true
 		logger.info("Disposing ClineProvider...")
 
+		this.sharedSettingsSubscription.dispose()
+		clearTimeout(this.sharedSettingsPushTimer)
+		this.sharedSettingsPushTimer = undefined
+
 		// Clear the current task (if any).
 		if (this.taskSlot.current) {
 			await this.clearCurrentTask()
@@ -725,6 +775,21 @@ export class ClineProvider
 
 	public static getVisibleInstance(): ClineProvider | undefined {
 		return findLast(Array.from(this.activeInstances), (instance) => instance.view?.visible === true)
+	}
+
+	/**
+	 * Pushes the state (without the chat messages) to every open panel. For
+	 * changes that live outside the ContextProxy but show in every panel, such
+	 * as the cloud account and the cloud settings.
+	 */
+	public static async postStateToAllWebviewsWithoutClineMessages(): Promise<void> {
+		await Promise.all(
+			Array.from(this.activeInstances).map((instance) =>
+				instance.postStateToWebviewWithoutClineMessages().catch((error) =>
+					logger.debug(`[ClineProvider] state push to a panel failed: ${String(error)}`),
+				),
+			),
+		)
 	}
 
 	public static async getInstance(): Promise<ClineProvider | undefined> {

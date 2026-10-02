@@ -204,6 +204,47 @@ describe("ContextProxy", () => {
 		})
 	})
 
+	describe("onDidChangeValues", () => {
+		// The sidebar and the editor tabs share one proxy and refresh their
+		// webviews from this event when another panel writes a setting.
+		it("fires after every write, once the cache holds the new value", async () => {
+			const seen: unknown[] = []
+			proxy.onDidChangeValues(() => seen.push(proxy.getValue("alwaysAllowWrite")))
+
+			await proxy.setValue("alwaysAllowWrite", true)
+			await proxy.updateGlobalState("autoApprovalEnabled", true)
+			await proxy.storeSecret("apiKey", "secret")
+			await proxy.setValues({ alwaysAllowWrite: false })
+
+			expect(seen).toEqual([true, true, true, false])
+		})
+
+		it("fires for a pass-through key and for a full reset", async () => {
+			const listener = vi.fn()
+			proxy.onDidChangeValues(listener)
+
+			await proxy.setValue("autoMemoryEnabled", false)
+			await proxy.resetAllState()
+
+			expect(listener).toHaveBeenCalledTimes(2)
+		})
+
+		it("stops after dispose, and a throwing listener does not block the others", async () => {
+			const disposed = vi.fn()
+			const after = vi.fn()
+			proxy.onDidChangeValues(() => {
+				throw new Error("listener failed")
+			})
+			proxy.onDidChangeValues(disposed).dispose()
+			proxy.onDidChangeValues(after)
+
+			await proxy.setValue("alwaysAllowWrite", true)
+
+			expect(disposed).not.toHaveBeenCalled()
+			expect(after).toHaveBeenCalledTimes(1)
+		})
+	})
+
 	describe("getSecret", () => {
 		it("should return value from cache when it exists", async () => {
 			// Manually set a value in the cache

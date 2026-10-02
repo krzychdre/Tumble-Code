@@ -278,7 +278,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy)
 
 	// Initialize cloud service.
-	const postStateListener = () => ClineProvider.getVisibleInstance()?.postStateToWebviewWithoutClineMessages()
+	// Every open panel shows the cloud account and the cloud settings (the task
+	// sync switch among them), so every panel gets the push, not only the
+	// visible one: with the sidebar and an editor tab open, the other panel kept
+	// the old value.
+	const postStateListener = () => ClineProvider.postStateToAllWebviewsWithoutClineMessages()
 
 	authStateChangedHandler = async () => {
 		postStateListener()

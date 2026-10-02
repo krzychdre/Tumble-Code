@@ -49,6 +49,7 @@ export class ContextProxy {
 	private stateCache: GlobalState
 	private secretCache: SecretState
 	private _isInitialized = false
+	private readonly changeListeners = new Set<() => void>()
 
 	constructor(context: vscode.ExtensionContext) {
 		this.originalContext = context
@@ -59,6 +60,31 @@ export class ContextProxy {
 
 	public get isInitialized() {
 		return this._isInitialized
+	}
+
+	/**
+	 * Calls `listener` after every write through this proxy (a global state
+	 * value, a secret, or the whole reset), once the cache holds the new value.
+	 * The sidebar and every editor tab share one proxy, so a setting written by
+	 * one panel changes what the others show; each ClineProvider listens here to
+	 * refresh its webview (otherwise the other panel kept the old value and a
+	 * click on its switch sent the inverse of that stale value).
+	 */
+	public onDidChangeValues(listener: () => void): { dispose(): void } {
+		this.changeListeners.add(listener)
+		return { dispose: () => this.changeListeners.delete(listener) }
+	}
+
+	private notifyChange() {
+		for (const listener of this.changeListeners) {
+			try {
+				listener()
+			} catch (error) {
+				logger.error(
+					`ContextProxy change listener failed: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		}
 	}
 
 	public async initialize() {
@@ -184,11 +210,15 @@ export class ContextProxy {
 
 	updateGlobalState<K extends GlobalStateKey>(key: K, value: GlobalState[K]) {
 		if (isPassThroughStateKey(key)) {
-			return this.originalContext.globalState.update(key, value)
+			const write = this.originalContext.globalState.update(key, value)
+			this.notifyChange()
+			return write
 		}
 
 		this.stateCache[key] = value
-		return this.originalContext.globalState.update(key, value)
+		const write = this.originalContext.globalState.update(key, value)
+		this.notifyChange()
+		return write
 	}
 
 	private getAllGlobalState(): GlobalState {
@@ -209,9 +239,10 @@ export class ContextProxy {
 		this.secretCache[key] = value
 
 		// Write directly to context.
-		return value === undefined
-			? this.originalContext.secrets.delete(key)
-			: this.originalContext.secrets.store(key, value)
+		const write =
+			value === undefined ? this.originalContext.secrets.delete(key) : this.originalContext.secrets.store(key, value)
+		this.notifyChange()
+		return write
 	}
 
 	/**
@@ -442,6 +473,7 @@ export class ContextProxy {
 		])
 
 		await this.initialize()
+		this.notifyChange()
 	}
 
 	private static _instance: ContextProxy | null = null
