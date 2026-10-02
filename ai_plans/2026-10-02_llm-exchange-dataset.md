@@ -228,6 +228,22 @@ otherwise.
   server): a fast model sends an exchange and an outcome every few seconds on top of the telemetry, and a refused
   upload costs a full snapshot. The Bearer token still guards them.
 
+## Review (independent pass, 2026-10-02), all fixed
+
+1. A lone UTF-16 surrogate (an emoji cut in half) made the server's UTF-8 encode fail with 500, and every retry and
+   snapshot carried it again: the body is now cleaned to U+FFFD on arrival (Node hashes a lone half the same way, so
+   blob hashes still match; such a wire body no longer verifies byte for byte).
+2. The anonymizer renamed tool definitions but not the calls: tool names (and every dict key: schema properties,
+   argument names) are now kept; a term inside an MCP tool name stays visible.
+3. A short home-folder user name or e-mail local part ("max") rewrote `Math.max` and `max_tokens`, and an upper-case
+   name form rewrote `MAX_RETRIES`: user names and local parts are whole words (underscore included) of 5+
+   characters, names are matched as written or title-cased only.
+4. The fallback tool-failure check compared raw call ids with the sanitized ones in the history (`sanitizeToolUseId`).
+5. The anonymizer cache was bounded by entries, not size: now by characters, and cleared between tasks.
+6. and 7. A chain could build on a base the server no longer has (account switch, recordings deleted mid-task): the
+   recorder restarts the chain on an account change, and the server answers `resnapshot: true` for a delta whose
+   base it does not hold, which the client treats as "send a full snapshot next".
+
 ## Tests
 
 - types: schema accepts the recorder's output, rejects a bad hash.
