@@ -1,3 +1,7 @@
 # Vendored third-party files keep their upstream bytes, so they can be
 # checked against the published package. Replace them whole, never reformat.
 self-hosted-cloudapi/src/web/static/vendor/
+
+# Agent work packages quote source code verbatim, with its original indentation, as "find" snippets for exact
+# search and replace. Formatting them would dedent the snippets so they no longer match the source.
+ai_plans/2026-09-27_agent-fix-plan/

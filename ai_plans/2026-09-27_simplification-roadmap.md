@@ -56,6 +56,7 @@ New findings from this round, not yet done:
 | F2  | **Windows unit-test flake.** `TaskHistoryStore` spec "releases per-ID lock tails for many unique IDs" counts per-ID locks right after 100 upserts, but the `fs.watch` callback schedules `refreshTask` for each new task folder, and those refreshes take the same locks.                                                                                                                | Wait for pending targeted refreshes (or dispose the watcher) before counting.                                                                             | S      |
 | F3  | **Each chunk is shown one chunk late.** `processStream` reads the next chunk before it processes the current one, so the last visible piece of text waits for the next chunk (or the end of the stream). Found while testing R5.                                                                                                                                                         | Check whether the look-ahead is needed (for example for `didAlreadyUseTool`); if not, process before reading. Guarded by the ChatRow and streaming tests. | S-M    |
 | F4  | **Docs lacked an environment variable table (see D15) and a "how to add a setting / tool / provider" page.**                                                                                                                                                                                                                                                                             | Add both under `docs/`.                                                                                                                                   | S      |
+| F6  | **Two cloud API tests fail on `main`.** `self-hosted-cloudapi/tests/test_metrics_characterization.py`: `test_metrics_result_is_pinned_for_every_period` and `test_unknown_period_falls_back_to_the_default` (found while planning R7 to R10).                                                                                                                                            | Find which change moved the pinned metrics result; update the pin only if the new result is intended, otherwise fix the code.                             | S      |
 
 ## 2. Priority 1: resilience fixes (small, high value)
 
@@ -125,6 +126,9 @@ Do these first. Each is a few lines plus a regression test at the lowest layer t
 | S7  | `packages/types/src/vscode-extension-host.ts` (1,041): split `ExtensionMessage` and `WebviewMessage` by domain, mirroring `messageHandlers/`; remove the ~14 message names nothing handles.        | M      |
 
 ## 6. Suggested order
+
+The executable version of this order, one self-contained work package per item with exact code, tests and
+commands, is in [`2026-09-27_agent-fix-plan/`](2026-09-27_agent-fix-plan/00-README.md).
 
 1. F1 and F2 (so CI is trustworthy again), then R7 to R10 (cloud), then R6 and R11. R1 to R5 are done.
 2. D1, D2, D4, D5, D6, D14, P3, P4, P6: many small deletions, each its own pull request.
