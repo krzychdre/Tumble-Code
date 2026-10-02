@@ -66,6 +66,7 @@ EXPECTED = {
     ("/app/metrics", ("GET",), "metrics_page", "APIRoute"),
     ("/app/diagnostics", ("GET",), "diagnostics_page", "APIRoute"),
     ("/app/diagnostics/report.md", ("GET",), "diagnostics_markdown", "APIRoute"),
+    ("/app/diagnostics/problems/{key}/brief.md", ("GET",), "diagnostics_problem_brief", "APIRoute"),
     ("/app/diagnostics/reports/{report_id}", ("GET",), "diagnostics_report", "APIRoute"),
     ("/app/tasks/{task_id}", ("GET",), "task_detail", "APIRoute"),
     ("/app/tasks/{task_id}/delete", ("POST",), "delete_task", "APIRoute"),
@@ -114,6 +115,20 @@ def test_overlapping_routes_keep_their_order():
     ]
 
 
+# The problem report's period, filters and sort (routers/web_diagnostics.problem_filter).
+_PROBLEM_FILTERS = (
+    ("period", "query", False),
+    ("class", "query", False),
+    ("category", "query", False),
+    ("model", "query", False),
+    ("provider", "query", False),
+    ("tool", "query", False),
+    ("source", "query", False),
+    ("q", "query", False),
+    ("sort", "query", False),
+)
+
+
 def test_web_routes_keep_their_openapi_operations():
     """Operation id, tags, response type and parameters of every web route.
 
@@ -157,13 +172,19 @@ def test_web_routes_keep_their_openapi_operations():
             "diagnostics_page_app_diagnostics_get",
             ("web",),
             html,
-            (("period", "query", False),),
+            _PROBLEM_FILTERS,
         ),
         ("/app/diagnostics/report.md", "get"): (
             "diagnostics_markdown_app_diagnostics_report_md_get",
             ("web",),
             ("text/plain",),
-            (("period", "query", False),),
+            _PROBLEM_FILTERS,
+        ),
+        ("/app/diagnostics/problems/{key}/brief.md", "get"): (
+            "diagnostics_problem_brief_app_diagnostics_problems__key__brief_md_get",
+            ("web",),
+            ("text/plain",),
+            (("key", "path", True),) + _PROBLEM_FILTERS,
         ),
         ("/app/diagnostics/reports/{report_id}", "get"): (
             "diagnostics_report_app_diagnostics_reports__report_id__get",

@@ -48,7 +48,14 @@ def _pages(client, *paths):
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
 
-_PANEL = ("/app", "/app/tasks/run", "/app/metrics", "/app/settings", "/app/tasks/missing")
+_PANEL = (
+    "/app",
+    "/app/tasks/run",
+    "/app/metrics",
+    "/app/settings",
+    "/app/tasks/missing",
+    "/app/diagnostics?period=all&class=model&q=x",
+)
 
 
 @pytest.fixture

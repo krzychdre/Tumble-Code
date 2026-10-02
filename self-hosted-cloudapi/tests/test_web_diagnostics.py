@@ -17,12 +17,12 @@ from src.services.diagnostics_service import (
     conversation_category,
     conversation_occurrences,
     group_occurrences,
+    ProblemFilter,
     model_fit,
-    problem_report_markdown,
-    render_markdown,
     telemetry_occurrence,
 )
 from src.services.model_attribution import Completion
+from src.services.problem_brief import problem_brief_markdown, render_brief
 from src.services.problem_catalogue import MODEL, problem_signature
 
 from src.models.task import TaskMessage
@@ -429,7 +429,7 @@ async def test_the_markdown_export_has_a_sample_per_group(client, db_session):
     assert "Mitigation:" in text
     # The request's last message, fenced past the backticks inside it.
     assert "````\nDo it ``` now\n````" in text
-    assert "Stop reason: length" in text
+    assert "Response stop reason: `length`" in text
     assert "more characters cut]" in text
     # The legacy group's sample is its message text.
     assert MISSING_PATH in text
@@ -437,8 +437,10 @@ async def test_the_markdown_export_has_a_sample_per_group(client, db_session):
 
 def test_the_markdown_of_an_empty_period_says_so():
     problems = {"period_label": "7 days", "total": 0, "groups": [], "hidden_groups": 0, "tasks": 0,
-                "by_class": [], "legacy_until": None, "model_fit": [], "has_data": False}
-    assert "No problems recorded in this period." in render_markdown(problems, {}, BASE)
+                "by_class": [], "legacy_until": None, "model_fit": [], "has_data": False, "filtered": False,
+                "period_total": 0, "sources": {}}
+    text = render_brief(problems, ProblemFilter(), {"reports": {}, "context": {}}, BASE)
+    assert "No problems recorded in this period." in text
 
 
 async def test_the_export_needs_a_session(client):
@@ -448,5 +450,5 @@ async def test_the_export_needs_a_session(client):
 
 async def test_problem_report_markdown_falls_back_to_the_default_period(db_session):
     await _seed_user(db_session)
-    text = await problem_report_markdown(db_session, "user_test", period="nope")
+    text = await problem_brief_markdown(db_session, "user_test", ProblemFilter.parse({"period": "nope"}))
     assert "Period: 7 days." in text

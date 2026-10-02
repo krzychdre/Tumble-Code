@@ -5,18 +5,27 @@ The examples are the extension's own texts as they appear in the live corpus
 them is a rule that stopped matching real problems.
 """
 
+from pathlib import Path
+
 import pytest
 
 from src.services.problem_catalogue import (
     CATALOGUE,
     CLASS_KEYS,
+    CONFIGURATION,
+    MODEL,
+    PROVIDER,
+    SOFTWARE,
     UNCLASSIFIED,
     UNCLASSIFIED_RULE,
+    acceptance_for,
     classify,
+    explain,
     headline,
     mitigation_for,
     normalize_message,
     problem_signature,
+    task_for,
 )
 
 # (category, tool, text) -> the rule that must claim it.
@@ -147,3 +156,57 @@ def test_the_signature_is_category_tool_and_headline_and_bounded():
     assert problem_signature("tool_error", "read_file", "Boom 42\nstack") == "tool_error | read_file | Boom #"
     assert problem_signature("api_error", None, "x") == "api_error | - | x"
     assert len(problem_signature("api_error", None, "word " * 500)) == 300
+
+
+# --- the brief's fields: task, code hints, acceptance --------------------------
+
+# The monorepo root when the cloud API runs from its checkout; in the docker
+# image (self-hosted-cloudapi copied alone) the extension's sources are absent.
+_REPO = Path(__file__).resolve().parents[2]
+
+
+def test_every_rule_has_a_task_and_acceptance_in_plain_dashes():
+    for rule in (*CATALOGUE, UNCLASSIFIED_RULE):
+        for template in (rule.task, rule.acceptance):
+            text = template.format_map({"model": "m", "provider": "p", "tool": "t"})
+            assert len(text) > 40 and "{" not in text, rule.id
+            for banned in ("\u2014", "\u2013"):
+                assert banned not in text, rule.id
+        assert task_for(rule, None, None, None).count("the model") <= 3
+
+
+def test_tasks_start_the_way_their_class_asks():
+    starts = {SOFTWARE: ("Fix",), MODEL: ("Make the integration with",),
+              CONFIGURATION: ("Change the default",), PROVIDER: ("Handle",)}
+    for rule in CATALOGUE:
+        assert rule.task.startswith(starts[rule.classification]), rule.id
+
+
+def test_every_rule_points_at_code():
+    for rule in (*CATALOGUE, UNCLASSIFIED_RULE):
+        assert rule.code_hints, rule.id
+        for hint in rule.code_hints:
+            path = hint.split(":", 1)[0].strip()
+            assert not path.startswith("/") and ".." not in path and "\\" not in path, hint
+
+
+@pytest.mark.skipif(not (_REPO / "src" / "core").is_dir(), reason="the extension sources are not next to the cloud API")
+def test_every_code_hint_exists_in_the_repository():
+    for rule in (*CATALOGUE, UNCLASSIFIED_RULE):
+        for hint in rule.code_hints:
+            path, _, symbol = hint.partition(":")
+            target = _REPO / path.strip()
+            assert target.exists(), f"{rule.id}: {path} does not exist"
+            if symbol.strip():
+                assert target.is_file() and symbol.strip() in target.read_text(encoding="utf-8"), (
+                    f"{rule.id}: {path} does not mention {symbol.strip()}"
+                )
+
+
+def test_explain_names_the_rule_and_what_it_matched():
+    rule = classify("invalid_tool_call", "apply_diff", "Roo tried ... without value for required parameter 'path'")
+    why = explain(rule, "invalid_tool_call", "apply_diff", "Roo tried ... without value for required parameter 'path'")
+    assert "'missing_tool_parameter'" in why and "'invalid_tool_call'" in why
+    assert "'without value for required parameter'" in why
+    assert "No rule" in explain(UNCLASSIFIED_RULE, "x", None, "y")
+    assert acceptance_for(rule, "glm", None, "apply_diff").count("glm") >= 1

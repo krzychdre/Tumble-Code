@@ -40,8 +40,9 @@ _MIN_CHECKS = {
     "tasklist_checks.html": 18,
     # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter form.
     "tasklist_filter_checks.html": 19,
-    # data-confirm forms (formerly inline onsubmit) and the empty state's copy button.
-    "app_checks.html": 7,
+    # data-confirm forms (formerly inline onsubmit), the empty state's copy button,
+    # the auto-submitting filter form and the problem report's "Copy for agent".
+    "app_checks.html": 15,
     # The theme applied in <head> and the auto/dark/light toggle, drawn as an icon.
     "theme_checks.html": 8,
     # Ticks per request/error/message, sizes by cost, jumps that wrap, live rows.

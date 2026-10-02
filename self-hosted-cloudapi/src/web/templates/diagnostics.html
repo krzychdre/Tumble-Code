@@ -1,37 +1,101 @@
 {% extends "base.html" %}
 {% block title %}Problem report · Tumble Code{% endblock %}
 {% block content %}
+{# Every link and form here builds its URL from `view`
+   (web/presenters/problem_view.ProblemView), so the period, the filters and
+   the sort travel together and none of them is silently dropped. #}
 {% set p = problems %}
+{% set f = filters %}
 <div class="metrics-head">
   <h1 class="page-title">Problem report</h1>
   <nav class="period-control" aria-label="Time period">
-    {% for o in periods %}
-    <a class="period-opt{{ ' active' if o.active else '' }}" href="/app/diagnostics?period={{ o.key }}">{{ o.label }}</a>
+    {% for o in view.periods() %}
+    <a class="period-opt{{ ' active' if o.active else '' }}" href="{{ o.href }}"{% if o.active %} aria-current="true"{% endif %}>{{ o.label }}</a>
     {% endfor %}
   </nav>
 </div>
 
 <p class="diag-lead">
   What went wrong in your sessions, whose fault it most likely is, and what to try.
-  Each problem is grouped with its repeats and checked against a catalogue of known causes.
-  <a class="diag-export" href="/app/diagnostics/report.md?period={{ p.period }}" download>Download as Markdown</a>
-  <span class="diag-export-hint">(hand it to a coding agent to work on the fixes)</span>
+  Each problem is grouped with its repeats and checked against a catalogue of known causes;
+  its brief is a task a coding agent can work on without any other context.
 </p>
 
 {% if p.has_data %}
-<section class="stat-grid diag-classes" aria-label="Problems by class">
+<section class="stat-grid diag-classes" aria-label="Problems by class, each a filter">
   {% for c in p.by_class %}
-  <div class="stat-card diag-class-card diag-c-{{ c.key }}{{ ' is-zero' if not c.count }}">
+  {% set on = f.klass == c.key %}
+  <a class="stat-card diag-class-card diag-c-{{ c.key }}{{ ' is-zero' if not c.count }}{{ ' is-active' if on }}"
+     href="{{ view.class_url(c.key) }}"{% if on %} aria-current="true"{% endif %}
+     aria-label="{{ c.name }}: {{ c.count }}. {{ 'Showing only this class; select to show all classes' if on else 'Show only this class' }}">
     <div class="stat-label">{{ c.name }}</div>
     <div class="stat-value">{{ c.count|fmt_int }}</div>
-  </div>
+  </a>
   {% endfor %}
 </section>
 
+{# A plain GET form: without scripting, Apply (or Enter in the search box)
+   reloads the page filtered. app.js submits it as soon as a list changes. #}
+<form class="diag-filters" method="get" action="/app/diagnostics" role="search" aria-label="Filter problems" data-autosubmit>
+  {% for name, value in view.hidden_fields() %}
+  <input type="hidden" name="{{ name }}" value="{{ value }}">
+  {% endfor %}
+  <label class="diag-field diag-field-q"><span class="field-label">Search</span>
+    <input type="search" name="q" value="{{ f.q }}" placeholder="Title, signature or message"></label>
+  {% for name, label in (('class', 'Class'), ('category', 'Category'), ('model', 'Model'), ('provider', 'Provider'), ('tool', 'Tool'), ('source', 'Source')) %}
+  {% set current = f.value(name) %}
+  <label class="diag-field"><span class="field-label">{{ label }}</span>
+    <select name="{{ name }}">
+      <option value="">Any</option>
+      {% for o in p.options[name] %}
+      <option value="{{ o.value }}"{% if o.value == current %} selected{% endif %}>{{ o.label }} ({{ o.count|fmt_int }})</option>
+      {% endfor %}
+      {# A shared link can name a value this period has no problems for. #}
+      {% if current and current not in p.options[name]|map(attribute='value') %}
+      <option value="{{ current }}" selected>{{ f.label(name) }} (0)</option>
+      {% endif %}
+    </select></label>
+  {% endfor %}
+  <button type="submit" class="btn ghost filter-apply">Apply</button>
+</form>
+
+<div class="diag-toolbar">
+  {% if f.active %}
+  <ul class="filter-chips" aria-label="Active filters">
+    {% for c in view.chips() %}
+    <li><a class="filter-chip" href="{{ c.href }}" aria-label="Remove filter {{ c.label }}: {{ c.value }}">{{ c.label }}: <b>{{ c.value }}</b> <span class="filter-chip-x" aria-hidden="true">✕</span></a></li>
+    {% endfor %}
+    <li><a class="filter-chip-clear" href="{{ view.cleared_url() }}">Clear filters</a></li>
+  </ul>
+  {% endif %}
+  <p class="diag-actions">
+    <a class="btn ghost small" href="{{ view.report_url() }}" download>Download brief</a>
+    <button type="button" class="btn ghost small" data-copy-url="{{ view.report_url() }}" hidden>Copy for agent</button>
+    <span class="diag-export-hint">{{ 'every problem below' if f.active else 'every problem of the period' }}, as Markdown for a coding agent</span>
+  </p>
+</div>
+<p id="copy-status" class="sr-only" role="status" aria-live="polite"></p>
+
+{% if f.active %}
+<p class="diag-note diag-filter-note">
+  {{ p.total|fmt_int }} of {{ p.period_total|plural("occurrence") }} in this period match the filters; the list, the totals and the model fit count only those.
+</p>
+{% endif %}
+
 <section class="panel diag-problems">
-  <h2 class="chart-title">Problems <span class="count-pill">{{ p.total|fmt_int }}</span></h2>
+  <div class="diag-list-head">
+    <h2 class="chart-title">Problems <span class="count-pill">{{ p.total|fmt_int }}</span></h2>
+    <nav class="diag-sort" aria-label="Sort problems">
+      <span class="diag-sort-label">Sort</span>
+      {% for s in view.sorts() %}
+      <a class="period-opt{{ ' active' if s.active else '' }}" href="{{ s.href }}"{% if s.active %} aria-current="true"{% endif %}>{{ s.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+  {% if p.groups %}
   <p class="diag-note">
-    {{ p.total|plural("occurrence") }} in {{ p.tasks|plural("task") }}, ranked by how many tasks each one hit.
+    {{ p.total|plural("occurrence") }} in {{ p.tasks|plural("task") }}{% if p.sort == 'impact' %}, ranked by how many tasks each one hit{% endif %}.
+    Open a row for what to do and the evidence.
     {% set legacy = p.sources.get('conversation') or p.sources.get('telemetry') %}
     {% if p.legacy_until and legacy %}
     Before {{ p.legacy_until }} UTC they are read from synced conversations and telemetry, without the request and response;
@@ -41,28 +105,38 @@
     The extension sends full reports while you are signed in.
     {% endif %}
   </p>
+  {# The column labels of the rows below, for sighted readers; each row
+     names its cells for a screen reader itself. #}
+  <div class="diag-row diag-row-head" aria-hidden="true">
+    <span>Class</span><span>Problem</span><span>Tool</span><span>Top model</span>
+    <span class="diag-num">Count</span><span class="diag-num">Tasks</span><span>Last seen</span>
+  </div>
   <ol class="diag-groups">
     {% for g in p.groups %}
-    <li class="diag-group">
-      {# The top problem opens on its own: it is the one to read first. #}
-      <details{% if loop.first %} open{% endif %}>
-        <summary>
+    <li class="diag-group" id="problem-{{ g.key }}">
+      <details>
+        <summary class="diag-row">
           <span class="diag-badge diag-c-{{ g.class_key }}">{{ g.classification }}</span>
           <span class="diag-title">{{ g.title }}</span>
-          <span class="diag-impact">{{ g.count|fmt_int }}&times;{% if g.tasks %} · {{ g.tasks|plural("task") }}{% endif %}</span>
-          <span class="diag-sig">{{ g.signature }}</span>
-          <span class="diag-models">
-            {% for m in g.models[:3] %}<span class="diag-model">{{ m.model }}{% if m.provider %} @ {{ m.provider }}{% endif %} <b>{{ m.count }}</b></span>{% endfor %}
-            {% if g.models|length > 3 %}<span class="diag-model">+{{ g.models|length - 3 }} more</span>{% endif %}
-          </span>
+          <span class="diag-tool{{ ' is-none' if not g.tool }}"><span class="sr-only">Tool </span>{{ g.tool or "-" }}</span>
+          <span class="diag-top-model"><span class="sr-only">Model </span>{{ g.top_model or "(unknown)" }}{% if g.more_models %} <span class="diag-more">+{{ g.more_models }} more</span>{% endif %}</span>
+          <span class="diag-num diag-count">{{ g.count|fmt_int }}&times;</span>
+          <span class="diag-num diag-tasks">{{ g.tasks|plural("task") }}</span>
+          <span class="diag-last"><span class="diag-last-label">last </span>{{ g.last_seen }}</span>
         </summary>
         <div class="diag-body">
           <div class="diag-mitigation">
             <h3 class="diag-h">What to do</h3>
             <p>{{ g.mitigation }}</p>
           </div>
+          <p class="diag-actions">
+            <a class="btn ghost small" href="{{ view.brief_url(g.key) }}" download>Download brief</a>
+            <button type="button" class="btn ghost small" data-copy-url="{{ view.brief_url(g.key) }}" hidden>Copy for agent</button>
+          </p>
           <dl class="diag-facts">
             <dt>Category</dt><dd>{{ g.category }}{% if g.tool %} · {{ g.tool }}{% endif %}</dd>
+            <dt>Signature</dt><dd>{{ g.signature }}</dd>
+            <dt>Problem key</dt><dd>{{ g.key }}</dd>
             <dt>First seen</dt><dd>{{ g.first_seen }} UTC</dd>
             <dt>Last seen</dt><dd>{{ g.last_seen }} UTC</dd>
             <dt>Seen in</dt><dd>{{ g.sources|join(", ") }}</dd>
@@ -97,6 +171,12 @@
   {% if p.hidden_groups %}
   <p class="diag-note">{{ p.hidden_groups|plural("rarer problem") }} not listed.</p>
   {% endif %}
+  {% else %}
+  <div class="empty">
+    <p class="empty-lead">No problems match these filters.</p>
+    <p class="empty-hint"><a href="{{ view.cleared_url() }}">Clear filters</a> to see all {{ p.period_total|plural("occurrence") }} of this period.</p>
+  </div>
+  {% endif %}
 </section>
 
 {% if p.model_fit %}
@@ -105,6 +185,7 @@
   <p class="diag-note">
     Problems per 100 requests for each model. A model far above the others on one kind of problem does not fit
     that use; a problem spread evenly over every model is more likely ours.
+    {% if f.active %}Only the problems matching the filters are counted; requests are narrowed by a model or provider filter only.{% endif %}
   </p>
   <div class="diag-table-wrap">
     <table class="breakdown diag-table" id="table-model-fit">

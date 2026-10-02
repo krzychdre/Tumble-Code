@@ -171,6 +171,14 @@ _REPORT_MODEL = "hf.co/unsloth/GLM-5.3-Flash-NVFP4-A8-with-an-even-longer-local-
 _REPORT_PATH = "/home/someone/Projekty/ITKONTEKST/customer/lids-uniform-api-with-a-long-name/src/deeply/nested/module_file_name.ts"
 
 
+def _open_problem_rows(html: str) -> str:
+    """Every problem row of /app/diagnostics expanded: they start closed, and a
+    closed row's body is not laid out, so it would never be measured."""
+    opened = html.replace('<details>\n        <summary class="diag-row">', '<details open>\n        <summary class="diag-row">')
+    assert opened.count("<details open>") >= html.count('<summary class="diag-row">'), "problem rows not opened"
+    return opened
+
+
 def _long_error_report() -> ErrorReport:
     """A report with every string the problem pages must keep inside the screen:
     a model id, a path, an unbroken token, raw JSON and a stack trace."""
@@ -275,6 +283,7 @@ async def _seed_a_phone_sized_problem(session_factory):
         ("/app/tasks/run", "messages"),
         ("/app/metrics", None),
         ("/app/diagnostics", None),
+        ("/app/diagnostics?period=all&tool=read_file&sort=recent", None),
         ("/app/diagnostics/reports/phone-report", None),
         ("/app/settings", None),
     ],
@@ -288,7 +297,7 @@ async def test_every_page_fits_a_phone(path, rendered, client, session_factory, 
 
     _override_web_user(client.app)
     try:
-        html = client.get(path).text
+        html = _open_problem_rows(client.get(path).text)
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -372,6 +381,10 @@ async def _seed_hostile_text(session_factory):
         "/app/tasks/sub2",
         "/app/metrics?period=all",
         "/app/diagnostics?period=all",
+        # Filtered to one problem: the chips carry a long model id and search.
+        f"/app/diagnostics?period=all&tool=read_file&model={_REPORT_MODEL}&q=ENOENT",
+        # Nothing matches: the empty state and chips with unbroken values.
+        f"/app/diagnostics?period=all&model={_LONG_MODEL}&q={_NOSPACE}",
         "/app/diagnostics/reports/phone-report",
         "/shared/run",
     ],
@@ -396,7 +409,7 @@ async def test_long_text_stays_inside_its_box(path, width, client, session_facto
         client.app.dependency_overrides.pop(get_web_user_optional, None)
     assert response.status_code == 200, path
 
-    layout = _lay_out_on_a_phone(response.text, tmp_path, width)
+    layout = _lay_out_on_a_phone(_open_problem_rows(response.text), tmp_path, width)
 
     assert layout["viewport"] == width
     assert layout["wide"] == [], f"{path} at {width}px reaches past the screen: {layout['wide']}"
