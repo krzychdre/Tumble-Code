@@ -4,7 +4,9 @@ import {
 	type ClineMessage,
 	type AuthService,
 	type SettingsService,
+	type ErrorReport,
 	TelemetryEventName,
+	errorReportSchema,
 	tumbleCodeTelemetryEventSchema,
 	TelemetryPropertiesProvider,
 	TelemetryEventSubscription,
@@ -226,6 +228,35 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			event: TelemetryEventName.EXCEPTION,
 			properties: exceptionProperties(error, additionalProperties),
 		})
+	}
+
+	/**
+	 * Sends one error report (`POST /api/error-reports`) with the same session
+	 * token, timeout and retry queue as the telemetry events. Does nothing, and
+	 * builds no request, when the user is not signed in to the cloud or
+	 * telemetry is switched off by the environment.
+	 */
+	public async sendErrorReport(report: ErrorReport): Promise<void> {
+		if (!this.isTelemetryEnabled() || !this.authService.isAuthenticated()) {
+			return
+		}
+
+		const result = errorReportSchema.safeParse(report)
+
+		if (!result.success) {
+			console.error(`[TelemetryClient#sendErrorReport] Invalid error report: ${result.error.message}`)
+			return
+		}
+
+		try {
+			await this.fetch(`error-reports`, {
+				method: "POST",
+				body: JSON.stringify(result.data),
+			})
+		} catch (error) {
+			console.error(`[TelemetryClient#sendErrorReport] Error sending error report: ${error}`)
+			// A network failure is already queued for retry in the fetch method.
+		}
 	}
 
 	public async backfillMessages(messages: ClineMessage[], taskId: string): Promise<void> {
