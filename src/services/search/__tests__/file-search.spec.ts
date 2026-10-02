@@ -205,8 +205,8 @@ describe("searchWorkspaceFiles", () => {
 	})
 
 	afterEach(async () => {
-		const { clearWorkspaceFileListCache } = await import("../file-search")
-		clearWorkspaceFileListCache()
+		const { clearWorkspaceFileListCacheForTests } = await import("../file-search")
+		clearWorkspaceFileListCacheForTests()
 		vi.useRealTimers()
 	})
 

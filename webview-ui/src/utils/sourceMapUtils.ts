@@ -161,30 +161,3 @@ export function enhanceErrorWithSourceMaps(error: Error, componentStack?: string
 			})
 	})
 }
-
-/**
- * Parse a stack trace string into structured stack frames
- * This is kept for backward compatibility with tests
- */
-export async function parseStackTrace(stack: string): Promise<any[]> {
-	if (!stack) return []
-
-	try {
-		// Create a temporary Error object with the provided stack
-		const tempError = new Error()
-		tempError.stack = stack
-
-		// Use StackTrace.js to parse the stack
-		const frames = await StackTrace.fromError(tempError)
-		return frames.map((frame: StackTrace.StackFrame) => ({
-			functionName: frame.functionName || "<anonymous>",
-			fileName: frame.fileName,
-			lineNumber: frame.lineNumber,
-			columnNumber: frame.columnNumber,
-			source: `at ${frame.functionName || "<anonymous>"} (${frame.fileName}:${frame.lineNumber}:${frame.columnNumber})`,
-		}))
-	} catch (error) {
-		console.error("Error parsing stack trace with StackTrace.js:", error)
-		return [] // Return empty array if parsing fails
-	}
-}

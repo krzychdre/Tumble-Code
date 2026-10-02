@@ -18,7 +18,7 @@ import {
 	type AutoApprovalPlanState,
 	type CheckAutoApprovalResult,
 } from "../index"
-import { isReadOnlyToolAction, isWriteToolAction } from "../tools"
+import { isReadOnlyToolAction, getToolActionApprovalCategory } from "../tools"
 
 type State = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions | AutoApprovalPlanState>
 
@@ -436,9 +436,11 @@ describe("auto-approval decision matrix (CORE-R4 d characterization)", () => {
 		expect(table).toMatchSnapshot()
 	})
 
-	it("isReadOnlyToolAction and isWriteToolAction (imported by subagentApproval and memorySandbox)", () => {
+	it("isReadOnlyToolAction and the write category (imported by subagentApproval and memorySandbox)", () => {
 		const readOnly = TOOL_ACTIONS.filter((action) => isReadOnlyToolAction({ tool: action } as never))
-		const write = TOOL_ACTIONS.filter((action) => isWriteToolAction({ tool: action } as never))
+		const write = TOOL_ACTIONS.filter(
+			(action) => getToolActionApprovalCategory({ tool: action } as never) === "write",
+		)
 		expect({ readOnly, write }).toEqual({
 			readOnly: [
 				"codebaseSearch",
@@ -455,7 +457,7 @@ describe("auto-approval decision matrix (CORE-R4 d characterization)", () => {
 		})
 		for (const malformed of [{}, { tool: 5 }, { tool: ["readFile"] }, { tool: undefined }]) {
 			expect(isReadOnlyToolAction(malformed as never)).toBe(false)
-			expect(isWriteToolAction(malformed as never)).toBe(false)
+			expect(getToolActionApprovalCategory(malformed as never) === "write").toBe(false)
 		}
 	})
 })

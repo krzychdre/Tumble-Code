@@ -58,7 +58,7 @@ export const SLIM_TOOLSET_ALLOWLIST: readonly string[] = toolNamesWhere((tool) =
  * allowlisted (today: `write_file` for `write_to_file`, `read_command_output`
  * for `read_artifact`).
  *
- * This matters because callers hand us either form. `isToolAllowedInMode`
+ * This matters because callers hand us either form. `applySlimToolset`
  * checks the raw name before it resolves aliases, so an allowlist holding only
  * canonical names would answer "no" for `write_file` under a slim profile while
  * answering "yes" without one. Deriving the aliases from TOOL_ALIASES rather
@@ -441,79 +441,6 @@ function hasAnyMcpResources(mcpHub: McpHub, allowedServers?: string[]): boolean 
 		servers = servers.filter((server) => allowSet.has(server.name))
 	}
 	return servers.some((server) => server.resources && server.resources.length > 0)
-}
-
-/**
- * Checks if a specific tool is allowed in the current mode.
- * This is useful for dynamically filtering system prompt content.
- *
- * @param toolName - Name of the tool to check
- * @param mode - Current mode slug
- * @param customModes - Custom mode configurations
- * @param experiments - Experiment flags
- * @param codeIndexManager - Code index manager for codebase_search feature check
- * @param settings - Additional settings for tool filtering
- * @returns true if the tool is allowed in the mode, false otherwise
- */
-export function isToolAllowedInMode(
-	toolName: ToolName,
-	mode: string | undefined,
-	customModes: ModeConfig[] | undefined,
-	experiments: Record<string, boolean> | undefined,
-	codeIndexManager?: CodeIndexManager,
-	settings?: Record<string, any>,
-): boolean {
-	const modeSlug = mode ?? defaultModeSlug
-
-	// Same global gate as filterNativeToolsForMode: a mode may carry the `web`
-	// group, but the tools only exist when the user enabled web tools.
-	if (WEB_GROUP_TOOLS.includes(toolName) && settings?.webToolsEnabled !== true) {
-		return false
-	}
-
-	// Same slim-toolset intersection as filterNativeToolsForMode, so prompt text
-	// built from this helper never mentions a tool the model was not offered.
-	if (isSlimToolsetEnabled(settings)) {
-		const keptByMcpFlag = !slimToolsetHidesMcp(settings) && MCP_GROUP_TOOLS.includes(toolName)
-		if (!SLIM_TOOLSET_ALLOWSET.has(toolName) && !keptByMcpFlag) {
-			return false
-		}
-	}
-
-	// Check if it's an always-available tool
-	if (ALWAYS_AVAILABLE_TOOLS.includes(toolName)) {
-		// But still check for conditional exclusions
-		if (toolName === "codebase_search") {
-			return !!(
-				codeIndexManager &&
-				codeIndexManager.isFeatureEnabled &&
-				codeIndexManager.isFeatureConfigured &&
-				codeIndexManager.isInitialized
-			)
-		}
-		if (toolName === "update_todo_list") {
-			return settings?.todoListEnabled !== false
-		}
-		if (toolName === "generate_image") {
-			return experiments?.imageGeneration === true
-		}
-		if (toolName === "run_slash_command") {
-			return experiments?.runSlashCommand === true
-		}
-		return true
-	}
-
-	// Check if the tool is allowed by the mode's groups
-	// Resolve to canonical name and check that single value
-	const canonicalTool = resolveToolAlias(toolName)
-	return isToolAllowedForMode(
-		canonicalTool as ToolName,
-		modeSlug,
-		customModes ?? [],
-		undefined,
-		undefined,
-		experiments ?? {},
-	)
 }
 
 /**

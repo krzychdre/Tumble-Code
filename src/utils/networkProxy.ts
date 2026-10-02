@@ -336,15 +336,6 @@ function updateProxyEnvVars(config: ProxyConfig): void {
 }
 
 /**
- * Check if a proxy is currently configured and active.
- */
-export function isProxyEnabled(): boolean {
-	const config = getProxyConfig()
-	// Active proxy is only applied in debug mode.
-	return config.enabled && config.isDebugMode
-}
-
-/**
  * Check if we're running in debug mode.
  */
 export function isDebugMode(): boolean {

@@ -19,10 +19,6 @@ export type InjectableConfigType =
  *
  * Does not mutate original object
  */
-export async function injectEnv<C extends InjectableConfigType>(config: C, notFoundValue: any = "") {
-	return injectVariables(config, { env: process.env }, notFoundValue)
-}
-
 /**
  * Deeply injects variables into a configuration object/string/json
  *

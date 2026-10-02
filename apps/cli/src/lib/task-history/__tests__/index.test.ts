@@ -1,11 +1,6 @@
 import { readTaskSessionsFromStoragePath } from "@tumble-code/core/cli"
 
-import {
-	filterSessionsForWorkspace,
-	getDefaultCliTaskStoragePath,
-	readWorkspaceTaskSessions,
-	resolveWorkspaceResumeSessionId,
-} from "../index.js"
+import { filterSessionsForWorkspace, readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "../index.js"
 
 vi.mock("@tumble-code/core/cli", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@tumble-code/core/cli")>()
@@ -44,11 +39,6 @@ describe("task history workspace helpers", () => {
 
 		expect(readTaskSessionsFromStoragePath).toHaveBeenCalledWith("/custom/storage")
 		expect(result).toEqual([{ id: "a", task: "A", ts: 10, workspace: "/workspace/project" }])
-	})
-
-	it("returns the expected default CLI storage path", () => {
-		expect(getDefaultCliTaskStoragePath()).toContain(".vscode-mock")
-		expect(getDefaultCliTaskStoragePath()).toContain("global-storage")
 	})
 
 	it("resolves explicit session id only when it exists in current workspace sessions", () => {

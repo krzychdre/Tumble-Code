@@ -47,11 +47,3 @@ export async function singleCompletionWithUsage(
 		handler.dispose?.()
 	}
 }
-
-/**
- * Enhances a prompt using the configured API without creating a full Cline instance or task history.
- * This is a lightweight alternative that only uses the API's completion functionality.
- */
-export async function singleCompletionHandler(apiConfiguration: ProviderSettings, promptText: string): Promise<string> {
-	return (await singleCompletionWithUsage(apiConfiguration, promptText)).text
-}

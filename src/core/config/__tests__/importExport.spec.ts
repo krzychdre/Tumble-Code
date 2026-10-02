@@ -14,7 +14,7 @@ import {
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { importSettings, importSettingsFromFile, importSettingsWithFeedback, exportSettings } from "../importExport"
+import { importSettings, importSettingsFromPath, importSettingsWithFeedback, exportSettings } from "../importExport"
 import { ProviderSettingsManager } from "../ProviderSettingsManager"
 import { ContextProxy } from "../ContextProxy"
 import { CustomModesManager } from "../CustomModesManager"
@@ -843,14 +843,11 @@ describe("importExport", () => {
 			])
 			mockContextProxy.export.mockResolvedValue({ mode: "code" })
 
-			const result = await importSettingsFromFile(
-				{
-					providerSettingsManager: mockProviderSettingsManager,
-					contextProxy: mockContextProxy,
-					customModesManager: mockCustomModesManager,
-				},
-				vscode.Uri.file(filePath),
-			)
+			const result = await importSettingsFromPath(filePath, {
+				providerSettingsManager: mockProviderSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
 
 			expect(vscode.window.showOpenDialog).not.toHaveBeenCalled()
 			expect(fs.readFile).toHaveBeenCalledWith(filePath, "utf-8")

@@ -53,19 +53,6 @@ export function getToolCallId(text: string | undefined): string | undefined {
 	return typeof record.toolCallId === "string" && record.toolCallId.length > 0 ? record.toolCallId : undefined
 }
 
-/**
- * True when two `ask:"tool"` payload strings belong to the SAME tool
- * invocation - i.e. both carry a `toolCallId` and the ids are equal.
- *
- * Returns false when either side lacks a `toolCallId`, so callers fall back to
- * their exact-text comparison for tools that have not adopted id stamping.
- */
-export function isSameToolInvocation(textA: string | undefined, textB: string | undefined): boolean {
-	const idA = getToolCallId(textA)
-	const idB = getToolCallId(textB)
-	return idA !== undefined && idA === idB
-}
-
 /** Minimal shape of a clineMessage needed to match an ask:"tool" by id. */
 interface ToolAskCandidate {
 	type: "ask" | "say"

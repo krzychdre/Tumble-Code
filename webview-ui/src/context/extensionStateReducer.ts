@@ -170,16 +170,6 @@ export const createInitialExtensionStore = (): ExtensionStore => ({
 	clineMessagesResyncRequested: false,
 })
 
-/** The store as one flat object, the shape the context exposes (slices win over same-named state keys). */
-export const flattenExtensionStore = ({
-	extensionState,
-	clineMessagesResyncRequested: _resyncRequested,
-	...slices
-}: ExtensionStore) => ({
-	...extensionState,
-	...slices,
-})
-
 /** Applies `update` to `extensionState`; returns `prev` itself when `update` does. */
 export const updateExtensionState = (
 	prev: ExtensionStore,

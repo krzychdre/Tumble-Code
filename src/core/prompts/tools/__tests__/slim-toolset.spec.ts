@@ -11,7 +11,6 @@ import {
 	filterMcpToolsForMode,
 	filterNativeToolsForMode,
 	isSlimToolsetEnabled,
-	isToolAllowedInMode,
 	resolveToolAlias,
 	slimToolsetHidesMcp,
 } from "../filter-tools-for-mode"
@@ -296,31 +295,6 @@ describe("filterMcpToolsForMode - slim toolset", () => {
 			"mcp--docs--search",
 			"mcp--docs--fetch",
 		])
-	})
-})
-
-describe("isToolAllowedInMode - slim toolset", () => {
-	const check = (tool: string, settings: Record<string, any>) =>
-		isToolAllowedInMode(tool as any, "code", undefined, {}, liveCodeIndexManager, settings)
-
-	it("mirrors the intersection so prompt text never names a hidden tool", () => {
-		// Hidden by the slim allowlist, available on the same mode otherwise.
-		expect(check("run_parallel_tasks", slimSettings)).toBe(false)
-		expect(check("run_parallel_tasks", fullSettings)).toBe(true)
-		expect(check("access_mcp_resource", slimSettings)).toBe(false)
-		expect(check("access_mcp_resource", fullSettings)).toBe(true)
-		// On the allowlist: unaffected.
-		expect(check("apply_diff", slimSettings)).toBe(true)
-		expect(check("read_file", slimSettings)).toBe(true)
-		// Alias of an allowlisted tool, checked here BEFORE alias resolution runs,
-		// so it has to be in the lookup set by name.
-		expect(check("write_file", slimSettings)).toBe(true)
-		expect(check("write_file", fullSettings)).toBe(true)
-		expect(check("read_command_output", slimSettings)).toBe(true)
-		// MCP kept when the profile says so.
-		expect(check("access_mcp_resource", { ...slimSettings, slimHidesMcp: false })).toBe(true)
-		expect(check("use_mcp_tool", { ...slimSettings, slimHidesMcp: false })).toBe(true)
-		expect(check("use_mcp_tool", slimSettings)).toBe(false)
 	})
 })
 

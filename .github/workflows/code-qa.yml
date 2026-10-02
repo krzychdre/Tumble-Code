@@ -48,6 +48,13 @@ jobs:
             # keys are deleted, not silenced.
             - name: Check for unused i18n keys
               run: node scripts/find-unused-i18n-keys.mjs --check
+            # R3-3b: no export may live only for its spec. Fails on exports no
+            # production file uses whose own file does not use them either, and
+            # on whole modules only their spec keeps alive (knip cannot see
+            # these: a test import counts as usage). Deliberate seams and
+            # public API are in scripts/test-only-exports-allowlist.mjs.
+            - name: Check for test-only exports
+              run: node scripts/find-test-only-exports.mjs --check
 
     compile:
         runs-on: ubuntu-latest

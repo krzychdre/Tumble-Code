@@ -35,10 +35,3 @@ export function memoryFreshnessText(mtimeMs: number): string {
 		`Verify against current code before asserting as fact.`
 	)
 }
-
-/** The staleness caveat wrapped in a `<system-reminder>` (or "" if fresh). */
-export function memoryFreshnessNote(mtimeMs: number): string {
-	const text = memoryFreshnessText(mtimeMs)
-	if (!text) return ""
-	return `<system-reminder>${text}</system-reminder>\n`
-}

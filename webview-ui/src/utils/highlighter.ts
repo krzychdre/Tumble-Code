@@ -119,11 +119,6 @@ export const isLanguageLoaded = (language: string): boolean => {
 	return state.loadedLanguages.has(normalizeLanguage(language))
 }
 
-// Export function to check if a theme is loaded
-export const isThemeLoaded = (theme: ShikiThemeName): boolean => {
-	return state.loadedThemes.has(theme)
-}
-
 // Common languages for first-stage initialization
 const initialLanguages: BundledLanguage[] = ["shell", "log"]
 

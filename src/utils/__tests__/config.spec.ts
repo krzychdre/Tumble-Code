@@ -1,9 +1,12 @@
 // npx vitest utils/__tests__/config.spec.ts
 
-import { injectEnv, injectVariables } from "../config"
+import { injectVariables } from "../config"
 import { logger } from "../logging"
 
-describe("injectEnv", () => {
+const injectVariablesWithEnv = (config: Parameters<typeof injectVariables>[0], notFoundValue: string = "") =>
+	injectVariables(config, { env: process.env }, notFoundValue)
+
+describe("injectVariables with the process env", () => {
 	const originalEnv = process.env
 
 	beforeEach(() => {
@@ -21,7 +24,7 @@ describe("injectEnv", () => {
 		process.env.TEST_VAR = "testValue"
 		const configString = "Hello ${env:TEST_VAR}"
 		const expectedString = "Hello testValue"
-		const result = await injectEnv(configString)
+		const result = await injectVariablesWithEnv(configString)
 		expect(result).toBe(expectedString)
 	})
 
@@ -72,7 +75,7 @@ describe("injectEnv", () => {
 				},
 			},
 		}
-		const result = await injectEnv(configObject)
+		const result = await injectVariablesWithEnv(configObject)
 		expect(result).toEqual(expectedObject)
 	})
 
@@ -81,7 +84,7 @@ describe("injectEnv", () => {
 		process.env.EXISTING_VAR = "exists"
 		const configString = "Value: ${env:EXISTING_VAR}, Missing: ${env:MISSING_VAR}"
 		const expectedString = "Value: exists, Missing: NOT_FOUND"
-		const result = await injectEnv(configString, "NOT_FOUND")
+		const result = await injectVariablesWithEnv(configString, "NOT_FOUND")
 		expect(result).toBe(expectedString)
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			`[injectVariables] variable "MISSING_VAR" referenced but not found in "env"`,
@@ -93,7 +96,7 @@ describe("injectEnv", () => {
 		const loggerWarnSpy = vitest.spyOn(logger, "warn").mockImplementation(() => {})
 		const configString = "Missing: ${env:ANOTHER_MISSING}"
 		const expectedString = "Missing: "
-		const result = await injectEnv(configString)
+		const result = await injectVariablesWithEnv(configString)
 		expect(result).toBe(expectedString)
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			`[injectVariables] variable "ANOTHER_MISSING" referenced but not found in "env"`,
@@ -103,13 +106,13 @@ describe("injectEnv", () => {
 
 	it("should handle strings without env variables", async () => {
 		const configString = "Just a regular string"
-		const result = await injectEnv(configString)
+		const result = await injectVariablesWithEnv(configString)
 		expect(result).toBe(configString)
 	})
 
 	it("should handle objects without env variables", async () => {
 		const configObject = { key: "value", number: 123 }
-		const result = await injectEnv(configObject)
+		const result = await injectVariablesWithEnv(configObject)
 		expect(result).toEqual(configObject)
 	})
 
@@ -117,17 +120,17 @@ describe("injectEnv", () => {
 		process.env.MUTATE_TEST = "mutated"
 		const originalObject = { value: "${env:MUTATE_TEST}" }
 		const copyOfOriginal = { ...originalObject } // Shallow copy for comparison
-		await injectEnv(originalObject)
+		await injectVariablesWithEnv(originalObject)
 		expect(originalObject).toEqual(copyOfOriginal) // Check if the original object remains unchanged
 	})
 
 	it("should handle empty string input", async () => {
-		const result = await injectEnv("")
+		const result = await injectVariablesWithEnv("")
 		expect(result).toBe("")
 	})
 
 	it("should handle empty object input", async () => {
-		const result = await injectEnv({})
+		const result = await injectVariablesWithEnv({})
 		expect(result).toEqual({})
 	})
 })
@@ -252,5 +255,5 @@ describe("injectVariables", () => {
 		})
 	})
 
-	// Variable maps are already tested by `injectEnv` tests above.
+	// Variable maps are already tested by the injectVariables tests above.
 })

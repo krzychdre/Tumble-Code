@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { initializeNetworkProxy, getProxyConfig, isProxyEnabled, isDebugMode } from "../networkProxy"
+import { initializeNetworkProxy, getProxyConfig, isDebugMode } from "../networkProxy"
 
 // Mock global-agent
 vi.mock("global-agent", () => ({
@@ -224,8 +224,8 @@ describe("networkProxy", () => {
 		})
 	})
 
-	describe("isProxyEnabled", () => {
-		it("should return false when proxy is not enabled", () => {
+	describe("getProxyConfig active-proxy fields (enabled && isDebugMode)", () => {
+		it("reports the proxy inactive when disabled", () => {
 			mockConfig.get.mockImplementation((key: string) => {
 				if (key === "debugProxy.enabled") return false
 				return ""
@@ -233,11 +233,12 @@ describe("networkProxy", () => {
 			const context = createMockContext()
 
 			void initializeNetworkProxy(context)
+			const config = getProxyConfig()
 
-			expect(isProxyEnabled()).toBe(false)
+			expect(config.enabled && config.isDebugMode).toBe(false)
 		})
 
-		it("should return true when proxy is enabled in debug mode", () => {
+		it("reports the proxy active when enabled in debug mode", () => {
 			mockConfig.get.mockImplementation((key: string) => {
 				if (key === "debugProxy.enabled") return true
 				if (key === "debugProxy.serverUrl") return "http://localhost:8080"
@@ -247,8 +248,9 @@ describe("networkProxy", () => {
 			const context = createMockContext(vscode.ExtensionMode.Development)
 
 			void initializeNetworkProxy(context)
+			const config = getProxyConfig()
 
-			expect(isProxyEnabled()).toBe(true)
+			expect(config.enabled && config.isDebugMode).toBe(true)
 		})
 	})
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 
-import { buildStaticItems, getStaticCount, getStaticMessages, nextPromotion, type StaticItem } from "../transcript.js"
+import { buildStaticItems, getStaticCount, nextPromotion, type StaticItem } from "../transcript.js"
 import { advanceStreamCommit, tailHeads, type StreamCommits } from "../streamCommit.js"
 import type { TUIMessage } from "../types.js"
 import type { WelcomeBannerProps } from "../components/WelcomeBanner.js"
@@ -74,37 +74,6 @@ describe("getStaticCount", () => {
 	it("promotes a leading partial when idle", () => {
 		const messages = [msg("1", true), msg("2"), msg("3")]
 		expect(getStaticCount(messages, false, false)).toBe(3)
-	})
-})
-
-describe("getStaticMessages", () => {
-	it("returns the promoted prefix slice", () => {
-		const messages = [msg("1"), msg("2"), msg("3")]
-		const slice = getStaticMessages(messages, false, false)
-		expect(slice.length).toBe(3)
-		expect(slice.map((m) => m.id)).toEqual(["1", "2", "3"])
-	})
-
-	it("returns the held-back slice when loading", () => {
-		const messages = [msg("1"), msg("2"), msg("3")]
-		const slice = getStaticMessages(messages, true, false)
-		expect(slice.map((m) => m.id)).toEqual(["1", "2"])
-	})
-
-	it("clamps the slice at the first partial message while loading", () => {
-		const messages = [msg("1"), msg("2", true), msg("3")]
-		const slice = getStaticMessages(messages, true, false)
-		expect(slice.map((m) => m.id)).toEqual(["1"])
-	})
-
-	it("returns the whole slice with a stuck partial when idle", () => {
-		const messages = [msg("1"), msg("2", true), msg("3")]
-		const slice = getStaticMessages(messages, false, false)
-		expect(slice.map((m) => m.id)).toEqual(["1", "2", "3"])
-	})
-
-	it("returns an empty array for empty messages", () => {
-		expect(getStaticMessages([], false, false)).toEqual([])
 	})
 })
 

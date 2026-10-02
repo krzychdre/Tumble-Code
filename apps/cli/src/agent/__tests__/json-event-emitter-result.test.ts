@@ -4,7 +4,7 @@ import { Writable } from "stream"
 import type { TaskCompletedEvent } from "../events.js"
 import { JsonEventEmitter } from "../json-event-emitter.js"
 import { AgentLoopState, type AgentStateInfo } from "../agent-state.js"
-import { createMockClient } from "../extension-client.js"
+import { createMockClient } from "./helpers.js"
 
 function createMockStdout(): { stdout: NodeJS.WriteStream; lines: () => Record<string, unknown>[] } {
 	const chunks: string[] = []

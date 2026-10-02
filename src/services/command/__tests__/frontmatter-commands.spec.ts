@@ -13,7 +13,6 @@ vi.mock("../roo-config", () => ({
 vi.mock("../built-in-commands", () => ({
 	getBuiltInCommands: vi.fn(() => Promise.resolve([])),
 	getBuiltInCommand: vi.fn(() => Promise.resolve(undefined)),
-	getBuiltInCommandNames: vi.fn(() => Promise.resolve([])),
 }))
 
 const mockFs = vi.mocked(fs)

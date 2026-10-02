@@ -32,7 +32,3 @@ export function serializeCustomTool({
 		source,
 	}
 }
-
-export function serializeCustomTools(tools: StoredCustomTool[]): SerializedCustomToolDefinition[] {
-	return tools.map(serializeCustomTool)
-}

@@ -2,7 +2,7 @@
 
 import type OpenAI from "openai"
 
-import { filterNativeToolsForMode, isToolAllowedInMode } from "../filter-tools-for-mode"
+import { filterNativeToolsForMode } from "../filter-tools-for-mode"
 
 function makeTool(name: string): OpenAI.Chat.ChatCompletionTool {
 	return {
@@ -278,18 +278,5 @@ describe("filterNativeToolsForMode - web group", () => {
 
 		expect(names(result)).toContain("web_search")
 		expect(names(result)).not.toContain("web_fetch")
-	})
-})
-
-describe("isToolAllowedInMode - web group", () => {
-	it("returns false for web tools when webToolsEnabled is off", () => {
-		expect(isToolAllowedInMode("web_search", "code", undefined, undefined, undefined, {})).toBe(false)
-		expect(isToolAllowedInMode("web_fetch", "code", undefined, undefined, undefined, {})).toBe(false)
-	})
-
-	it("returns true for web tools in a web-capable mode when enabled", () => {
-		const settings = { webToolsEnabled: true }
-		expect(isToolAllowedInMode("web_search", "ask", undefined, undefined, undefined, settings)).toBe(true)
-		expect(isToolAllowedInMode("web_fetch", "ask", undefined, undefined, undefined, settings)).toBe(true)
 	})
 })

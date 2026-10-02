@@ -267,14 +267,6 @@ export async function applyToolResultSpill(
  * survive, and without it the full output is on disk with no name the model can
  * quote.
  */
-export function extractSpillNotice(text: string): string | undefined {
-	if (!text.startsWith(SPILL_NOTICE_PREFIX)) {
-		return undefined
-	}
-
-	const firstLine = text.split("\n", 1)[0]
-	return firstLine.includes('artifact "') ? firstLine : undefined
-}
 
 /**
  * Returns the artifact-citing notice line of a reduced tool result, whether it

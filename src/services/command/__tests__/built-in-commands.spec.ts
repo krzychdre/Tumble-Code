@@ -1,4 +1,4 @@
-import { getBuiltInCommands, getBuiltInCommand, getBuiltInCommandNames } from "../built-in-commands"
+import { getBuiltInCommands, getBuiltInCommand } from "../built-in-commands"
 
 describe("Built-in Commands", () => {
 	describe("getBuiltInCommands", () => {
@@ -56,26 +56,6 @@ describe("Built-in Commands", () => {
 		it("should handle empty string command name", async () => {
 			const emptyCommand = await getBuiltInCommand("")
 			expect(emptyCommand).toBeUndefined()
-		})
-	})
-
-	describe("getBuiltInCommandNames", () => {
-		it("should return all built-in command names", async () => {
-			const names = await getBuiltInCommandNames()
-
-			expect(names).toHaveLength(1)
-			expect(names).toEqual(expect.arrayContaining(["init"]))
-			// Order doesn't matter since it's based on filesystem order
-			expect(names.sort()).toEqual(["init"])
-		})
-
-		it("should return array of strings", async () => {
-			const names = await getBuiltInCommandNames()
-
-			names.forEach((name) => {
-				expect(typeof name).toBe("string")
-				expect(name.length).toBeGreaterThan(0)
-			})
 		})
 	})
 

@@ -11,7 +11,6 @@ import { vscode } from "@src/utils/vscode"
 import {
 	applyExtensionMessage,
 	createInitialExtensionStore,
-	flattenExtensionStore,
 	updateExtensionState,
 	type ExtensionStore,
 } from "../extensionStateReducer"
@@ -31,6 +30,16 @@ const deepFreeze = <T>(value: T): T => {
 
 const applyAll = (messages: ExtensionMessage[], start = createInitialExtensionStore()): ExtensionStore =>
 	messages.reduce(applyExtensionMessage, start)
+
+/** The store as one flat object, mirroring buildContextValue's flattening (ExtensionStateContext.tsx). */
+const flattenExtensionStore = ({
+	extensionState,
+	clineMessagesResyncRequested: _resync,
+	...slices
+}: ExtensionStore) => ({
+	...extensionState,
+	...slices,
+})
 
 describe("applyExtensionMessage", () => {
 	beforeEach(() => {
@@ -103,17 +112,5 @@ describe("updateExtensionState", () => {
 		expect(next).not.toBe(prev)
 		expect(next.extensionState.mode).toBe("architect")
 		expect(next.filePaths).toBe(prev.filePaths)
-	})
-})
-
-describe("flattenExtensionStore", () => {
-	it("lets the slices win over same-named keys of the host state", () => {
-		const store = applyAll([
-			{ type: "mcpServers", mcpServers: [] },
-			{ type: "state", state: { mcpServers: [{ name: "from-state" } as never] } },
-		])
-
-		expect(store.extensionState.mcpServers).toHaveLength(1)
-		expect(flattenExtensionStore(store).mcpServers).toEqual([])
 	})
 })
