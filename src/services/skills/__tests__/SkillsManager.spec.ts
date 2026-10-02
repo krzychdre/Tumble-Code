@@ -298,7 +298,7 @@ Instructions here...`
 			const skills = skillsManager.getAllSkills()
 			expect(skills).toHaveLength(1)
 			expect(skills[0].name).toBe("refactoring")
-			expect(skills[0].mode).toBe("code")
+			expect(skills[0].modeSlugs).toEqual(["code"])
 		})
 
 		it("should skip skills with missing required fields", async () => {
@@ -824,7 +824,7 @@ Instructions here...`
 			const skills = skillsManager.getAllSkills()
 			expect(skills).toHaveLength(1)
 			expect(skills[0].name).toBe("agent-code-skill")
-			expect(skills[0].mode).toBe("code")
+			expect(skills[0].modeSlugs).toEqual(["code"])
 		})
 	})
 
@@ -972,7 +972,7 @@ Instructions`)
 			const testSkill = skills.find((s) => s.name === "test-skill")
 
 			// Mode-specific should override generic
-			expect(testSkill?.mode).toBe("code")
+			expect(testSkill?.modeSlugs).toEqual(["code"])
 		})
 
 		it("should not include mode-specific skills for other modes", async () => {

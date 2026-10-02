@@ -209,8 +209,7 @@ export class SkillsManager {
 				description,
 				path: skillMdPath,
 				source,
-				mode: primaryMode, // Deprecated: kept for backward compatibility
-				modeSlugs, // New: array of mode slugs, undefined = any mode
+				modeSlugs, // Mode slugs, undefined = any mode
 			})
 		} catch (error) {
 			logger.error(`Failed to load skill at ${skillDir}:`, error)
