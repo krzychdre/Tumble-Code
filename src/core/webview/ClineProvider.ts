@@ -394,7 +394,7 @@ export class ClineProvider
 		McpServerManager.getInstance(this.context, this)
 			.then((hub) => {
 				this.mcpHub = hub
-				this.mcpHub.registerClient()
+				this.mcpHub.registerClient(this)
 			})
 			.catch((error) => {
 				this.log(`Failed to initialize MCP Hub: ${error}`)
@@ -714,7 +714,7 @@ export class ClineProvider
 
 		this._workspaceTracker?.dispose()
 		this._workspaceTracker = undefined
-		await this.mcpHub?.unregisterClient()
+		await this.mcpHub?.unregisterClient(this)
 		this.mcpHub = undefined
 		await this.skillsManager?.dispose()
 		this.skillsManager = undefined
