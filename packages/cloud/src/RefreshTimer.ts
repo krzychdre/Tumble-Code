@@ -1,4 +1,4 @@
-import { backoffDelayMs } from "./backoff.js"
+import { backoffDelayMs } from "@tumble-code/core/backoff"
 
 /**
  * RefreshTimer - A utility for executing a callback with configurable retry behavior
