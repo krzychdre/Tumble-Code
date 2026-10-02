@@ -1,6 +1,6 @@
 import type { ModelInfo } from "../model.js"
 
-import { OPUS_4_200K_WITH_1M_BETA, claudeModels, withoutFields } from "./claude.js"
+import { claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
 
 // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
 
@@ -21,12 +21,8 @@ const BEDROCK_CLAUDE_CACHE_POINTS = {
 // March, 12 2025 - updated prices to match US-West-2 list price shown at
 // https://aws.amazon.com/bedrock/pricing.
 export const bedrockModels = {
-	"anthropic.claude-sonnet-4-5-20250929-v1:0": {
-		...withoutFields(claudeModels["sonnet-4-5"], "tiers"),
-		maxTokens: 8192,
-		...BEDROCK_CLAUDE_CACHE_POINTS,
-	},
-	"anthropic.claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"], maxTokens: 8192, ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-sonnet-4-5-20250929-v1:0": { ...claudeModels["sonnet-4-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"amazon.nova-pro-v1:0": {
 		maxTokens: 5000,
 		contextWindow: 300_000,
@@ -91,40 +87,19 @@ export const bedrockModels = {
 		maxCachePoints: 1,
 		cachableFields: ["system"],
 	},
-	"anthropic.claude-sonnet-4-20250514-v1:0": {
-		...withoutFields(claudeModels["sonnet-4"], "tiers"),
-		maxTokens: 8192,
-		...BEDROCK_CLAUDE_CACHE_POINTS,
-	},
+	"anthropic.claude-sonnet-4-20250514-v1:0": { ...claudeModels["sonnet-4"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-4-6-v1": { ...claudeModels["opus-4-6"], ...BEDROCK_CLAUDE_CACHE_POINTS },
-	"anthropic.claude-opus-4-7": {
-		...withoutFields(claudeModels["opus-4-7"], "supportsReasoningBinary", "supportsTemperature"),
-		...OPUS_4_200K_WITH_1M_BETA,
-		...BEDROCK_CLAUDE_CACHE_POINTS,
-	},
-	"anthropic.claude-opus-4-8": {
-		...withoutFields(claudeModels["opus-4-8"], "supportsReasoningBinary", "supportsTemperature"),
-		...OPUS_4_200K_WITH_1M_BETA,
-		...BEDROCK_CLAUDE_CACHE_POINTS,
-	},
+	"anthropic.claude-opus-4-7": { ...claudeModels["opus-4-7"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-opus-4-8": { ...claudeModels["opus-4-8"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-5-5": { ...claudeModels["opus-5-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-5": { ...claudeModels["opus-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-sonnet-5": { ...claudeModels["sonnet-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-fable-5-1": { ...claudeModels["fable-5-1"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-fable-5": { ...claudeModels["fable-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
-	"anthropic.claude-opus-4-5-20251101-v1:0": {
-		...claudeModels["opus-4-5"],
-		maxTokens: 8192,
-		...BEDROCK_CLAUDE_CACHE_POINTS,
-	},
-	"anthropic.claude-opus-4-20250514-v1:0": {
-		...claudeModels["opus-4"],
-		maxTokens: 8192,
-		...BEDROCK_CLAUDE_CACHE_POINTS,
-	},
+	"anthropic.claude-opus-4-5-20251101-v1:0": { ...claudeModels["opus-4-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-opus-4-20250514-v1:0": { ...claudeModels["opus-4"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-haiku-4-5-20251001-v1:0": {
 		...withoutFields(claudeModels["haiku-4-5"], "description"),
-		maxTokens: 8192,
 		...BEDROCK_CLAUDE_CACHE_POINTS,
 		minTokensPerCachePoint: 2048,
 	},
@@ -367,16 +342,9 @@ export const BEDROCK_REGIONS = [
 	{ value: "us-gov-west-1", label: "us-gov-west-1" },
 ].sort((a, b) => a.value.localeCompare(b.value))
 
-// Listed by hand, unlike the Anthropic and Vertex lists: the Sonnet 4 and 4.5 entries above carry no
-// 1M tier, so the table alone does not say they take the beta.
-export const BEDROCK_1M_CONTEXT_MODEL_IDS = [
-	"anthropic.claude-sonnet-4-20250514-v1:0",
-	"anthropic.claude-sonnet-4-5-20250929-v1:0",
-	"anthropic.claude-sonnet-4-6",
-	"anthropic.claude-opus-4-6-v1",
-	"anthropic.claude-opus-4-7",
-	"anthropic.claude-opus-4-8",
-] as const
+// Models the 1M context beta (header 'context-1m-2025-08-07') can be enabled for: the entries that price its
+// tier, as for Anthropic and Vertex. Claude 4.6 and later serve 1M natively and are not listed.
+export const BEDROCK_1M_CONTEXT_MODEL_IDS: readonly string[] = oneMillionContextIds(bedrockModels)
 
 // Amazon Bedrock models that support Global Inference profiles
 // As of Nov 2025, AWS supports Global Inference for:

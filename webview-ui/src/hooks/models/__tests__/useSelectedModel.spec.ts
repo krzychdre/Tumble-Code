@@ -386,7 +386,7 @@ describe("useSelectedModel", () => {
 			} as any)
 		})
 
-		it("should apply 1M pricing tier for Claude Sonnet 4.6 when enabled", () => {
+		it("should keep standard prices for the native 1M window of Claude Sonnet 4.6", () => {
 			const apiConfiguration: ProviderSettings = {
 				apiProvider: "anthropic",
 				apiModelId: "claude-sonnet-4-6",
@@ -398,8 +398,8 @@ describe("useSelectedModel", () => {
 
 			expect(result.current.id).toBe("claude-sonnet-4-6")
 			expect(result.current.info?.contextWindow).toBe(1_000_000)
-			expect(result.current.info?.inputPrice).toBe(6.0)
-			expect(result.current.info?.outputPrice).toBe(22.5)
+			expect(result.current.info?.inputPrice).toBe(3.0)
+			expect(result.current.info?.outputPrice).toBe(15.0)
 		})
 	})
 
@@ -431,6 +431,8 @@ describe("useSelectedModel", () => {
 
 			expect(result.current.id).toBe(BEDROCK_1M_CONTEXT_MODEL_IDS[0])
 			expect(result.current.info?.contextWindow).toBe(1_000_000)
+			expect(result.current.info?.inputPrice).toBe(6.0)
+			expect(result.current.info?.outputPrice).toBe(22.5)
 		})
 
 		it("should use default context window for Bedrock Claude Sonnet 4 when awsBedrock1MContext is false", () => {

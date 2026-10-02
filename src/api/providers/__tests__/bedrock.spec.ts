@@ -105,7 +105,7 @@ describe("AwsBedrockHandler", () => {
 				"arn:aws:bedrock:ap-northeast-3:123456789012:default-prompt-router/my_router_arn_no_model",
 			)
 			expect(modelInfo.info).toBeDefined()
-			expect(modelInfo.info.maxTokens).toBe(8192)
+			expect(modelInfo.info.maxTokens).toBe(64_000)
 		})
 	})
 
@@ -645,7 +645,7 @@ describe("AwsBedrockHandler", () => {
 			expect(model.id).toBe("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 			// But model info should remain the same
-			expect(model.info.maxTokens).toBe(8192)
+			expect(model.info.maxTokens).toBe(64_000)
 			expect(model.info.contextWindow).toBe(200_000)
 			expect(model.info.supportsImages).toBe(true)
 			expect(model.info.supportsPromptCache).toBe(true)
@@ -733,7 +733,29 @@ describe("AwsBedrockHandler", () => {
 			expect(model.info.contextWindow).toBe(1_000_000)
 		})
 
-		it("should apply 1M tier pricing when awsBedrock1MContext is true for Claude Sonnet 4.6", () => {
+		// The Sonnet 4 and 4.5 entries carried no 1M tier, so with the beta on they were billed at the
+		// 200K prices above 200K tokens.
+		it.each(["anthropic.claude-sonnet-4-5-20250929-v1:0", "anthropic.claude-sonnet-4-20250514-v1:0"])(
+			"should apply 1M tier pricing when awsBedrock1MContext is true for %s",
+			(apiModelId) => {
+				const handler = new AwsBedrockHandler({
+					apiModelId,
+					awsAccessKey: "test",
+					awsSecretKey: "test",
+					awsRegion: "us-east-1",
+					awsBedrock1MContext: true,
+				})
+
+				const model = handler.getModel()
+				expect(model.info.contextWindow).toBe(1_000_000)
+				expect(model.info.inputPrice).toBe(6.0)
+				expect(model.info.outputPrice).toBe(22.5)
+				expect(model.info.cacheWritesPrice).toBe(7.5)
+				expect(model.info.cacheReadsPrice).toBe(0.6)
+			},
+		)
+
+		it("should keep standard prices for the native 1M window of Claude Sonnet 4.6", () => {
 			const handler = new AwsBedrockHandler({
 				apiModelId: "anthropic.claude-sonnet-4-6",
 				awsAccessKey: "test",
@@ -744,8 +766,9 @@ describe("AwsBedrockHandler", () => {
 
 			const model = handler.getModel()
 			expect(model.info.contextWindow).toBe(1_000_000)
-			expect(model.info.inputPrice).toBe(6.0)
-			expect(model.info.outputPrice).toBe(22.5)
+			expect(model.info.maxTokens).toBe(128_000)
+			expect(model.info.inputPrice).toBe(3.0)
+			expect(model.info.outputPrice).toBe(15.0)
 		})
 
 		it("should use default context window when awsBedrock1MContext is false for Claude Sonnet 4", () => {

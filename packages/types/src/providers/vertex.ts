@@ -1,6 +1,6 @@
 import type { ModelInfo } from "../model.js"
 
-import { OPUS_4_200K_WITH_1M_BETA, claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
+import { claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
 
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 export type VertexModelId = keyof typeof vertexModels
@@ -294,20 +294,20 @@ export const vertexModels = {
 		inputPrice: 1.25,
 		outputPrice: 5,
 	},
-	"claude-sonnet-4@20250514": { ...claudeModels["sonnet-4"], maxTokens: 8192 },
-	"claude-sonnet-4-5@20250929": { ...claudeModels["sonnet-4-5"], maxTokens: 8192 },
-	"claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"], maxTokens: 8192 },
-	"claude-haiku-4-5@20251001": { ...withoutFields(claudeModels["haiku-4-5"], "description"), maxTokens: 8192 },
+	"claude-sonnet-4@20250514": { ...claudeModels["sonnet-4"] },
+	"claude-sonnet-4-5@20250929": { ...claudeModels["sonnet-4-5"] },
+	"claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"] },
+	"claude-haiku-4-5@20251001": { ...withoutFields(claudeModels["haiku-4-5"], "description") },
 	"claude-opus-4-6": { ...claudeModels["opus-4-6"] },
-	"claude-opus-4-7": { ...claudeModels["opus-4-7"], ...OPUS_4_200K_WITH_1M_BETA },
-	"claude-opus-4-8": { ...claudeModels["opus-4-8"], ...OPUS_4_200K_WITH_1M_BETA },
+	"claude-opus-4-7": { ...claudeModels["opus-4-7"] },
+	"claude-opus-4-8": { ...claudeModels["opus-4-8"] },
 	"claude-opus-5-5": { ...claudeModels["opus-5-5"] },
 	"claude-opus-5": { ...claudeModels["opus-5"] },
 	"claude-sonnet-5": { ...claudeModels["sonnet-5"] },
 	"claude-fable-5-1": { ...claudeModels["fable-5-1"] },
 	"claude-fable-5": { ...claudeModels["fable-5"] },
-	"claude-opus-4-5@20251101": { ...claudeModels["opus-4-5"], maxTokens: 8192 },
-	"claude-opus-4@20250514": { ...withoutFields(claudeModels["opus-4"], "supportsReasoningBudget"), maxTokens: 8192 },
+	"claude-opus-4-5@20251101": { ...claudeModels["opus-4-5"] },
+	"claude-opus-4@20250514": { ...withoutFields(claudeModels["opus-4"], "supportsReasoningBudget") },
 	"gemini-2.5-flash-lite-preview-06-17": {
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,

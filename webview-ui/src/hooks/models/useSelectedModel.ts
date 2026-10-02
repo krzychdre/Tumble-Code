@@ -205,7 +205,7 @@ function getSelectedModel({
 		}
 		case "bedrock": {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const baseInfo = bedrockModels[id as keyof typeof bedrockModels]
+			const baseInfo: ModelInfo | undefined = bedrockModels[id as keyof typeof bedrockModels]
 
 			// Special case for custom ARN.
 			if (id === "custom-arn") {
@@ -215,12 +215,17 @@ function getSelectedModel({
 				}
 			}
 
-			// Apply 1M context for supported Claude 4 models when enabled
-			if (BEDROCK_1M_CONTEXT_MODEL_IDS.includes(id as any) && apiConfiguration.awsBedrock1MContext && baseInfo) {
-				// Create a new ModelInfo object with updated context window
+			// Apply the 1M context tier (window and long-context prices) when the beta is enabled, as the
+			// Bedrock handler does
+			if (BEDROCK_1M_CONTEXT_MODEL_IDS.includes(id) && apiConfiguration.awsBedrock1MContext && baseInfo) {
+				const tier = baseInfo.tiers?.[0]
 				const info: ModelInfo = {
 					...baseInfo,
-					contextWindow: 1_000_000,
+					contextWindow: tier?.contextWindow ?? 1_000_000,
+					inputPrice: tier?.inputPrice ?? baseInfo.inputPrice,
+					outputPrice: tier?.outputPrice ?? baseInfo.outputPrice,
+					cacheWritesPrice: tier?.cacheWritesPrice ?? baseInfo.cacheWritesPrice,
+					cacheReadsPrice: tier?.cacheReadsPrice ?? baseInfo.cacheReadsPrice,
 				}
 				return { id, info }
 			}
