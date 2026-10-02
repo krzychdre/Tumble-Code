@@ -44,11 +44,14 @@ export class MissingToolResultError extends Error {
  *
  * @param userMessage - The user message being added to history
  * @param apiConversationHistory - The conversation history to find the previous assistant message from
+ * @param onRepair - Called with the error for each kind of repair made (missing results, mismatched ids),
+ *   so the caller can file it in the task's error report; it must not throw
  * @returns The validated user message with corrected tool_use_ids and any missing tool_results added
  */
 export function validateAndFixToolResultIds(
 	userMessage: Anthropic.MessageParam,
 	apiConversationHistory: Anthropic.MessageParam[],
+	onRepair?: (error: Error) => void,
 ): Anthropic.MessageParam {
 	// Only process user messages with array content
 	if (userMessage.role !== "user" || !Array.isArray(userMessage.content)) {
@@ -131,37 +134,44 @@ export function validateAndFixToolResultIds(
 	const toolUseIdList = toolUseBlocks.map((b) => b.id)
 
 	// Report missing tool_results to telemetry error tracking
-	if (missingToolUseIds.length > 0 && TelemetryService.hasInstance()) {
-		TelemetryService.instance.captureException(
-			new MissingToolResultError(
-				`Detected missing tool_result blocks. Missing tool_use IDs: [${missingToolUseIds.join(", ")}], existing tool_result IDs: [${toolResultIdList.join(", ")}]`,
-				missingToolUseIds,
-				toolResultIdList,
-			),
-			{
-				missingToolUseIds,
-				existingToolResultIds: toolResultIdList,
-				toolUseCount: toolUseBlocks.length,
-				toolResultCount: toolResults.length,
-			},
-		)
+	const missingError =
+		missingToolUseIds.length > 0
+			? new MissingToolResultError(
+					`Detected missing tool_result blocks. Missing tool_use IDs: [${missingToolUseIds.join(", ")}], existing tool_result IDs: [${toolResultIdList.join(", ")}]`,
+					missingToolUseIds,
+					toolResultIdList,
+				)
+			: undefined
+	if (missingError) {
+		onRepair?.(missingError)
+	}
+	if (missingError && TelemetryService.hasInstance()) {
+		TelemetryService.instance.captureException(missingError, {
+			missingToolUseIds,
+			existingToolResultIds: toolResultIdList,
+			toolUseCount: toolUseBlocks.length,
+			toolResultCount: toolResults.length,
+		})
 	}
 
 	// Report ID mismatches to telemetry error tracking
-	if (hasInvalidIds && TelemetryService.hasInstance()) {
-		TelemetryService.instance.captureException(
-			new ToolResultIdMismatchError(
+	const mismatchError = hasInvalidIds
+		? new ToolResultIdMismatchError(
 				`Detected tool_result ID mismatch. tool_result IDs: [${toolResultIdList.join(", ")}], tool_use IDs: [${toolUseIdList.join(", ")}]`,
 				toolResultIdList,
 				toolUseIdList,
-			),
-			{
-				toolResultIds: toolResultIdList,
-				toolUseIds: toolUseIdList,
-				toolResultCount: toolResults.length,
-				toolUseCount: toolUseBlocks.length,
-			},
-		)
+			)
+		: undefined
+	if (mismatchError) {
+		onRepair?.(mismatchError)
+	}
+	if (mismatchError && TelemetryService.hasInstance()) {
+		TelemetryService.instance.captureException(mismatchError, {
+			toolResultIds: toolResultIdList,
+			toolUseIds: toolUseIdList,
+			toolResultCount: toolResults.length,
+			toolUseCount: toolUseBlocks.length,
+		})
 	}
 
 	// Match tool_results to tool_uses by position and fix incorrect IDs

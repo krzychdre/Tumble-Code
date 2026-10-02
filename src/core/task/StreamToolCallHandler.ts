@@ -7,6 +7,7 @@ import { toolNamesWhere } from "../tools/toolDescriptors"
 import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
 
 import type { Task } from "./Task"
+import { captureStreamedToolCall } from "../diagnostics/ErrorReporter"
 import { logger } from "../../utils/logging"
 
 // Tools that cannot mutate the workspace (the `workspaceReadOnly` column of the
@@ -177,6 +178,13 @@ export class StreamToolCallHandler {
 					}
 				}
 			} else if (event.type === "tool_call_end") {
+				// The raw arguments for an error report, read before finalizing drops them
+				// (a no-op unless error reporting is active).
+				const raw = this.toolCallParser.getStreamingToolCallRaw(event.id)
+				if (raw) {
+					captureStreamedToolCall(this._task, { id: event.id, name: raw.name, arguments: raw.arguments })
+				}
+
 				// Finalize the streaming tool call
 				const finalToolUse = this.toolCallParser.finalizeStreamingToolCall(event.id)
 
