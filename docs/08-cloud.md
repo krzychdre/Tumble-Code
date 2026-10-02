@@ -177,5 +177,15 @@ grouped by a signature (category, tool and the message's first line with paths, 
 the tasks they hit, and looked up in `services/problem_catalogue.py`, an ordered list of rules that gives each
 group a class (software defect, model mismatch, provider or network, configuration) and a mitigation. Groups no
 rule matches are shown as Unclassified. A model fit table puts problems next to the period's LLM Completion
-requests per model. `/app/diagnostics/reports/{id}` shows one report in full to its owner (404 for anyone else),
-and `/app/diagnostics/report.md` exports the report as Markdown for a coding agent.
+requests per model. `/app/diagnostics/reports/{id}` shows one report in full to its owner (404 for anyone else).
+
+The page filters by period, class, category, model, provider, tool, source and free text (title, signature,
+message), all in the query string, so a filtered view is a shareable link and works without scripting; the class
+tiles are filter links too, and `sort=impact|count|recent` orders the list. Each problem is one closed row (class,
+title, tool, top model, count, tasks, last seen) that opens to the detail. The agent brief
+(`services/problem_brief.py`) is Markdown a coding agent can act on with no other context: per problem a task
+statement, the rule that classified it and what it matched, the impact, the repository paths to start from (the
+rule's `code_hints`), up to three distinct samples with the request tail, the response, the raw tool call and the
+tool result, and acceptance criteria. `/app/diagnostics/report.md` is the brief of the filtered list and
+`/app/diagnostics/problems/{key}/brief.md` the brief of one problem (key: 12 hex digits of the signature's
+SHA-256), both reading the same filters as the page; "Copy for agent" puts either on the clipboard.
