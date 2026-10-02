@@ -42,7 +42,6 @@ describe("settings schema (WEB-3)", () => {
 	it("keeps chat messages, task history and setters out of the Save buffer", () => {
 		const picked = pickCachedSettings({
 			soundEnabled: true,
-			telemetrySetting: "enabled",
 			debug: false,
 			apiConfiguration: { apiProvider: "anthropic" },
 			clineMessages: [{ ts: 1, type: "say", say: "text" }],
@@ -52,7 +51,6 @@ describe("settings schema (WEB-3)", () => {
 
 		expect(picked).toEqual({
 			soundEnabled: true,
-			telemetrySetting: "enabled",
 			debug: false,
 			apiConfiguration: { apiProvider: "anthropic" },
 		})

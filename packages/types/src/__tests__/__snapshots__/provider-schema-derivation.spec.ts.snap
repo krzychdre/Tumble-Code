@@ -2749,7 +2749,6 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "codebaseIndexModels",
   "codebaseIndexConfig",
   "language",
-  "telemetrySetting",
   "mcpEnabled",
   "mode",
   "modeApiConfigs",

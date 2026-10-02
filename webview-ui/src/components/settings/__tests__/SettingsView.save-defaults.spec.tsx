@@ -382,7 +382,6 @@ const populatedState = () => ({
 	clineMessages: [{ ts: 1, type: "say", say: "text", text: "must not be sent" }],
 	taskHistory: [{ id: "t1", ts: 1, task: "must not be sent" }],
 	setSoundEnabled: vi.fn(),
-	telemetrySetting: "enabled",
 	debug: true,
 
 	language: "pl",
@@ -466,13 +465,12 @@ describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20
 		vi.clearAllMocks()
 	})
 
-	it("posts exactly these four messages", async () => {
+	it("posts exactly these three messages", async () => {
 		const messages = await saveWithState(populatedState())
 
 		expect(messages.map((message) => message.type)).toEqual([
 			"updateSettings",
 			"upsertApiConfiguration",
-			"telemetrySetting",
 			"debugSetting",
 		])
 		expect(messages[1]).toEqual({
@@ -480,8 +478,7 @@ describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20
 			text: "work",
 			apiConfiguration: { apiProvider: "anthropic", apiModelId: "claude-test", apiKey: "sk-test" },
 		})
-		expect(messages[2]).toEqual({ type: "telemetrySetting", text: "enabled" })
-		expect(messages[3]).toEqual({ type: "debugSetting", bool: true })
+		expect(messages[2]).toEqual({ type: "debugSetting", bool: true })
 	})
 
 	// Characterization: toStrictEqual also fails on a key that is present with

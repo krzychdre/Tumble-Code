@@ -17,14 +17,6 @@ vi.mock("@src/components/ErrorBoundary", () => ({
 	default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-// Mock the telemetry client
-vi.mock("@src/utils/TelemetryClient", () => ({
-	telemetryClient: {
-		capture: vi.fn(),
-		updateTelemetryState: vi.fn(),
-	},
-}))
-
 vi.mock("@src/components/chat/ChatView", () => ({
 	__esModule: true,
 	default: function ChatView({ isHidden }: { isHidden: boolean }) {
@@ -177,7 +169,6 @@ describe("App", () => {
 			shouldShowAnnouncement: false,
 			experiments: {},
 			language: "en",
-			telemetrySetting: "enabled",
 		})
 	})
 
@@ -202,7 +193,6 @@ describe("App", () => {
 		shouldShowAnnouncement: false,
 		experiments: {},
 		language: "en",
-		telemetrySetting: "enabled",
 	})
 
 	it("shows chat view by default", () => {
@@ -220,7 +210,6 @@ describe("App", () => {
 			shouldShowAnnouncement: false,
 			experiments: {},
 			language: "en",
-			telemetrySetting: "enabled",
 		})
 
 		render(<AppWithProviders />)
@@ -253,7 +242,6 @@ describe("App", () => {
 			shouldShowAnnouncement: false,
 			experiments: {},
 			language: "en",
-			telemetrySetting: "enabled",
 		})
 
 		render(<AppWithProviders />)
@@ -273,7 +261,6 @@ describe("App", () => {
 			shouldShowAnnouncement: false,
 			experiments: {},
 			language: "en",
-			telemetrySetting: "enabled",
 		})
 
 		render(<AppWithProviders />)

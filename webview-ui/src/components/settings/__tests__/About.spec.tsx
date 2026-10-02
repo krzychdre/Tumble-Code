@@ -27,7 +27,7 @@ vi.mock("@roo/package", () => ({
 }))
 
 describe("About", () => {
-	const defaultDraft = { telemetrySetting: "enabled" as const }
+	const defaultDraft = { debug: false }
 
 	beforeEach(() => {
 		vi.clearAllMocks()

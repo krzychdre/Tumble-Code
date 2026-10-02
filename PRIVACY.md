@@ -1,6 +1,6 @@
 # Tumble Code Privacy Policy
 
-**Last Updated: 2026-05-26**
+**Last Updated: 2026-10-02**
 
 Tumble Code respects your privacy and is committed to transparency about how we handle your data. Below is a simple breakdown of where key pieces of data go—and, importantly, where they don't.
 
@@ -10,7 +10,7 @@ Tumble Code respects your privacy and is committed to transparency about how we 
 - **Commands**: Any commands executed through Tumble Code happen on your local environment. When you use AI-powered features, the relevant code and context from your commands may be transmitted to your chosen AI model provider (e.g., OpenAI, Anthropic, OpenRouter) to generate responses. The Tumble Code project does not have access to or store this data, but AI providers may process it per their privacy policies.
 - **Prompts & AI Requests**: When you use AI-powered features, your prompts and relevant project context are sent to your chosen AI model provider (e.g., OpenAI, Anthropic, OpenRouter) to generate responses. The Tumble Code project does not store or process this data. These AI providers have their own privacy policies and may store data per their terms of service. If you configure a Tumble Code Cloud provider (proxy mode), prompts transit the backend you have configured.
 - **API Keys & Credentials**: If you enter an API key (e.g., to connect an AI model), it is stored locally on your device by VS Code's secret storage and never sent to the Tumble Code project or any third party, except the provider you have chosen.
-- **Telemetry (Usage Data)**: Tumble Code can be configured to send anonymous feature usage and error data to a telemetry endpoint of your choice (default: disabled, or pointed at the self-hosted backend). When enabled, telemetry includes your VS Code machine ID, feature usage patterns, and exception reports. This telemetry does **not** collect personally identifiable information, your code, or AI prompts. You can disable telemetry at any time through the settings or by leaving the telemetry endpoint env var unset.
+- **Telemetry (Usage Data)**: Tumble Code sends usage events only to the Tumble Code Cloud backend you sign in to (see [self-hosted-cloudapi/](./self-hosted-cloudapi/)), and only while you are signed in. Nothing is sent when you are not signed in, and no third-party analytics service is used. The events cover feature usage (tasks, tools, modes), error events and model usage (model, tokens, cost), which the backend shows on its metrics page. They carry the extension and editor version, platform, language, mode, task and model identifiers, and the git remote URL, repository name and default branch of the workspace. They do **not** contain your code or AI prompts, except the task messages uploaded when you turn on task sync or share a task. To stop them, sign out of the cloud, set `ROO_CODE_DISABLE_TELEMETRY=1` for the extension, or set `TELEMETRY_ENABLED=false` on the backend.
 - **Marketplace Requests**: When you browse or search the Marketplace for Model Configuration Profiles (MCPs) or Custom Modes, Tumble Code makes API calls to the configured backend (default: the self-hosted backend in this repo). These requests send only the query parameters (e.g., extension version, search term) necessary to fulfill the request and do not include your code, prompts, or personally identifiable information.
 
 ### **How We Use Your Data (If Collected)**
@@ -22,7 +22,7 @@ Tumble Code respects your privacy and is committed to transparency about how we 
 ### **Your Choices & Control**
 
 - You can run models locally to prevent data being sent to third-parties.
-- Telemetry collection is opt-in via configuration; the default ships with no upstream telemetry endpoint.
+- Telemetry goes only to the cloud backend you sign in to; without signing in nothing is sent.
 - You can uninstall Tumble Code to stop all data collection.
 
 ### **Security & Updates**

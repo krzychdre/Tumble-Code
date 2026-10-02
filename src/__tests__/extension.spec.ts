@@ -93,7 +93,6 @@ vi.mock("@roo-code/telemetry", () => ({
 			}
 		},
 	},
-	PostHogTelemetryClient: vi.fn(),
 }))
 
 vi.mock("../utils/outputChannelLogger", () => ({

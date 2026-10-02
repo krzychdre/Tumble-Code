@@ -6,7 +6,6 @@ import { type ProviderCredentialField, providerCredentialKeys } from "./provider
 import { artifactSpillSettingsSchema } from "./artifact-spill.js"
 import { codebaseIndexModelsSchema, codebaseIndexConfigSchema } from "./codebase-index.js"
 import { experimentsSchema } from "./experiment.js"
-import { telemetrySettingsSchema } from "./telemetry.js"
 import { modeConfigSchema } from "./mode.js"
 import { customModePromptsSchema, customSupportPromptsSchema } from "./mode.js"
 import { pruneCondenseSettingsSchema } from "./prune-condense.js"
@@ -333,8 +332,6 @@ export const globalSettingsSchema = z.object({
 	codebaseIndexConfig: codebaseIndexConfigSchema.optional(),
 
 	language: languagesSchema.optional(),
-
-	telemetrySetting: telemetrySettingsSchema.optional(),
 
 	mcpEnabled: z.boolean().optional(),
 

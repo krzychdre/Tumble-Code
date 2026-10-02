@@ -410,12 +410,8 @@ export class ProviderStateBuilder {
 			// out below when the view already holds it ("whenChanged").
 			taskHistory: history.items ?? [],
 			customSoundUris,
-			shouldShowAnnouncement:
-				settings.telemetrySetting !== "unset" &&
-				state.lastShownAnnouncementId !== this.sources.latestAnnouncementId,
+			shouldShowAnnouncement: state.lastShownAnnouncementId !== this.sources.latestAnnouncementId,
 			mcpServers: this.sources.getMcpServers(),
-			telemetryKey: process.env.POSTHOG_API_KEY,
-			machineId: vscode.env.machineId,
 			renderContext: this.sources.renderContext,
 			settingsImportedAt: this.sources.getSettingsImportedAt(),
 			cloudOrganizations,

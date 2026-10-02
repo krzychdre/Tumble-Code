@@ -100,10 +100,6 @@ exports[`SettingsView Save buffer through the real sections > about: an edit mar
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "disabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": true,
       "type": "debugSetting",
     },
@@ -222,10 +218,6 @@ exports[`SettingsView Save buffer through the real sections > autoApprove: an ed
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "enabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": false,
       "type": "debugSetting",
     },
@@ -331,10 +323,6 @@ exports[`SettingsView Save buffer through the real sections > checkpoints: an ed
       },
       "text": "default",
       "type": "upsertApiConfiguration",
-    },
-    {
-      "text": "enabled",
-      "type": "telemetrySetting",
     },
     {
       "bool": false,
@@ -444,10 +432,6 @@ exports[`SettingsView Save buffer through the real sections > contextManagement:
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "enabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": false,
       "type": "debugSetting",
     },
@@ -553,10 +537,6 @@ exports[`SettingsView Save buffer through the real sections > experimental: an e
       },
       "text": "default",
       "type": "upsertApiConfiguration",
-    },
-    {
-      "text": "enabled",
-      "type": "telemetrySetting",
     },
     {
       "bool": false,
@@ -666,10 +646,6 @@ exports[`SettingsView Save buffer through the real sections > language: an edit 
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "enabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": false,
       "type": "debugSetting",
     },
@@ -777,10 +753,6 @@ exports[`SettingsView Save buffer through the real sections > memory: an edit ma
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "enabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": false,
       "type": "debugSetting",
     },
@@ -886,10 +858,6 @@ exports[`SettingsView Save buffer through the real sections > notifications: an 
       },
       "text": "default",
       "type": "upsertApiConfiguration",
-    },
-    {
-      "text": "enabled",
-      "type": "telemetrySetting",
     },
     {
       "bool": false,
@@ -1006,10 +974,6 @@ exports[`SettingsView Save buffer through the real sections > prompts: an edit m
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "enabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": false,
       "type": "debugSetting",
     },
@@ -1115,10 +1079,6 @@ exports[`SettingsView Save buffer through the real sections > subagents: an edit
       },
       "text": "default",
       "type": "upsertApiConfiguration",
-    },
-    {
-      "text": "enabled",
-      "type": "telemetrySetting",
     },
     {
       "bool": false,
@@ -1228,10 +1188,6 @@ exports[`SettingsView Save buffer through the real sections > terminal: an edit 
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "enabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": false,
       "type": "debugSetting",
     },
@@ -1339,10 +1295,6 @@ exports[`SettingsView Save buffer through the real sections > ui: an edit marks 
       "type": "upsertApiConfiguration",
     },
     {
-      "text": "enabled",
-      "type": "telemetrySetting",
-    },
-    {
       "bool": false,
       "type": "debugSetting",
     },
@@ -1448,10 +1400,6 @@ exports[`SettingsView Save buffer through the real sections > web: an edit marks
       },
       "text": "default",
       "type": "upsertApiConfiguration",
-    },
-    {
-      "text": "enabled",
-      "type": "telemetrySetting",
     },
     {
       "bool": false,

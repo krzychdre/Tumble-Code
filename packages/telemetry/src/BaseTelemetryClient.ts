@@ -65,8 +65,6 @@ export abstract class BaseTelemetryClient implements TelemetryClient {
 		this.providerRef = new WeakRef(provider)
 	}
 
-	public abstract updateTelemetryState(didUserOptIn: boolean): void
-
 	public isTelemetryEnabled(): boolean {
 		return this.telemetryEnabled
 	}

@@ -1,7 +1,6 @@
 // Task lifecycle: webview launch, creating, answering, clearing, exporting and deleting tasks, the chat message queue.
 
 import * as vscode from "vscode"
-import { TelemetryService } from "@roo-code/telemetry"
 import type { EditQueuedMessagePayload } from "@roo-code/types"
 import { t } from "../../../i18n"
 import { checkExistKey } from "../../../shared/checkExistApiConfig"
@@ -82,9 +81,6 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 				])
 			})
 			.catch((error) => logger.error(`Error list api configuration: ${serializeError(error)}`))
-
-		// Enable telemetry by default (when unset) or when explicitly enabled
-		TelemetryService.instance.updateTelemetryState(getGlobalState("telemetrySetting") !== "disabled")
 
 		provider.isViewLaunched = true
 	},

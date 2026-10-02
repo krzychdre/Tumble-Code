@@ -63,9 +63,6 @@
 		},
 		"packages/telemetry": {
 			"project": ["src/**/*.ts"],
-			// PostHogTelemetryClient.ts imports the "vscode" module as a value; the extension
-			// host provides it at runtime (@types/vscode, a devDependency, types it).
-			"ignoreDependencies": ["vscode"],
 		},
 		"packages/build": {
 			"project": ["src/**/*.ts"],

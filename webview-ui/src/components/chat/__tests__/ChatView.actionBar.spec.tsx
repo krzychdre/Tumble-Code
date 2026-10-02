@@ -44,7 +44,10 @@ vi.mock("../TaskHeader", () => ({
 
 vi.mock("../ChatTextArea", async () => {
 	const mockReact = await import("react")
-	const MockChatTextArea = mockReact.forwardRef(function MockChatTextArea(_props: unknown, ref: Parameters<Parameters<typeof mockReact.forwardRef>[0]>[1]) {
+	const MockChatTextArea = mockReact.forwardRef(function MockChatTextArea(
+		_props: unknown,
+		ref: Parameters<Parameters<typeof mockReact.forwardRef>[0]>[1],
+	) {
 		mockReact.useImperativeHandle(ref, () => ({ focus: vi.fn() }))
 		return <div data-testid="chat-textarea" />
 	})
@@ -66,8 +69,6 @@ vi.mock("react-virtuoso", () => ({
 vi.mock("../../common/VersionIndicator", () => ({ default: () => null }))
 vi.mock("@src/components/welcome/RooTips", () => ({ default: () => null }))
 vi.mock("@src/components/welcome/RooHero", () => ({ default: () => null }))
-vi.mock("../common/TelemetryBanner", () => ({ default: () => null }))
-
 // The i18n mock returns the key itself, so labels and tooltips render as keys.
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
@@ -92,7 +93,6 @@ const hydrate = (clineMessages: ClineMessage[]) =>
 			allowedCommands: [],
 			alwaysAllowExecute: false,
 			cloudIsAuthenticated: false,
-			telemetrySetting: "enabled",
 		},
 	})
 
@@ -160,11 +160,7 @@ describe("ChatView action bar (§2.6)", () => {
 
 	it("disabled buttons carry the real disabled style class", async () => {
 		// A partial command ask keeps the buttons visible but disabled.
-		const { container } = await mount([
-			TASK,
-			API_DONE,
-			ask("command", { text: "npm test", partial: true }),
-		])
+		const { container } = await mount([TASK, API_DONE, ask("command", { text: "npm test", partial: true })])
 
 		const { primary, secondary } = readButtons(container)
 		expect(primary).not.toBeNull()
@@ -203,11 +199,7 @@ describe("ChatView action bar (§2.6)", () => {
 	})
 
 	it("the shortcuts do nothing while the buttons are disabled", async () => {
-		const { container } = await mount([
-			TASK,
-			API_DONE,
-			ask("command", { text: "npm test", partial: true }),
-		])
+		const { container } = await mount([TASK, API_DONE, ask("command", { text: "npm test", partial: true })])
 
 		const bar = container.querySelector('[data-testid="action-bar"]')!
 		postMessage.mockClear()

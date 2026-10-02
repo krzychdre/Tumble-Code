@@ -22,14 +22,6 @@ vi.mock("@src/utils/vscode", () => ({
 	},
 }))
 
-// Mock the telemetry client (imported at App.tsx module level)
-vi.mock("@src/utils/TelemetryClient", () => ({
-	telemetryClient: {
-		capture: vi.fn(),
-		updateTelemetryState: vi.fn(),
-	},
-}))
-
 // Pass-through translation provider; nothing renders before hydration anyway.
 vi.mock("@src/i18n/TranslationContext", () => {
 	const tFunction = (key: string) => key

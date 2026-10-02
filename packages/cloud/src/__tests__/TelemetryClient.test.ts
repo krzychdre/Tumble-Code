@@ -423,9 +423,8 @@ describe("TelemetryClient", () => {
 			expect(client.isTelemetryEnabled()).toBe(true)
 		})
 
-		it("should have empty implementations for updateTelemetryState and shutdown", async () => {
+		it("should have an empty implementation for shutdown", async () => {
 			const client = new TelemetryClient(mockAuthService, mockSettingsService)
-			client.updateTelemetryState(true)
 			await client.shutdown()
 		})
 	})

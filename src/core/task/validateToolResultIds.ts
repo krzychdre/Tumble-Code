@@ -3,7 +3,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { findLastIndex } from "@roo-code/core/browser"
 /**
  * Custom error class for tool result ID mismatches.
- * Used for structured error tracking via PostHog.
+ * Used for structured error tracking.
  */
 export class ToolResultIdMismatchError extends Error {
 	constructor(
@@ -18,7 +18,7 @@ export class ToolResultIdMismatchError extends Error {
 
 /**
  * Custom error class for missing tool results.
- * Used for structured error tracking via PostHog when tool_use blocks
+ * Used for structured error tracking when tool_use blocks
  * don't have corresponding tool_result blocks.
  */
 export class MissingToolResultError extends Error {
@@ -130,7 +130,7 @@ export function validateAndFixToolResultIds(
 	const toolResultIdList = toolResults.map((r) => r.tool_use_id)
 	const toolUseIdList = toolUseBlocks.map((b) => b.id)
 
-	// Report missing tool_results to PostHog error tracking
+	// Report missing tool_results to telemetry error tracking
 	if (missingToolUseIds.length > 0 && TelemetryService.hasInstance()) {
 		TelemetryService.instance.captureException(
 			new MissingToolResultError(
@@ -147,7 +147,7 @@ export function validateAndFixToolResultIds(
 		)
 	}
 
-	// Report ID mismatches to PostHog error tracking
+	// Report ID mismatches to telemetry error tracking
 	if (hasInvalidIds && TelemetryService.hasInstance()) {
 		TelemetryService.instance.captureException(
 			new ToolResultIdMismatchError(

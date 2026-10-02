@@ -89,10 +89,6 @@ vi.mock("@src/components/welcome/RooHero", () => ({
 	default: () => null,
 }))
 
-vi.mock("../common/TelemetryBanner", () => ({
-	default: () => null,
-}))
-
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string) => key,
@@ -116,7 +112,6 @@ const hydrateState = (clineMessages: ClineMessage[], extraState: Record<string, 
 				allowedCommands: [],
 				alwaysAllowExecute: false,
 				cloudIsAuthenticated: false,
-				telemetrySetting: "enabled",
 				...extraState,
 			},
 		},

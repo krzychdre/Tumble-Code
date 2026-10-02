@@ -15,7 +15,7 @@ flowchart TD
   C -- yes --> Z[return early]
   C -- no --> D[network proxy, cloud URLs, custom tool path]
   D --> E[migrateFromRooCode - background]
-  E --> F[TelemetryService + PostHog client]
+  E --> F[TelemetryService<br/>no client yet, the cloud one registers at cloud start]
   F --> H[i18n, TerminalRegistry, Codex OAuth]
   H --> I[ContextProxy - awaited<br/>settings + secrets cache]
   I --> J[memory paths]

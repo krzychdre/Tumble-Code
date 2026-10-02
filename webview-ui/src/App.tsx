@@ -1,14 +1,13 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import { type ExtensionMessage, TelemetryEventName } from "@roo-code/types"
+import type { ExtensionMessage } from "@roo-code/types"
 
 import { TranslationProvider, useAppTranslation } from "./i18n/TranslationContext"
 import { MarketplaceViewStateManager } from "./components/marketplace/MarketplaceViewStateManager"
 
 import { vscode } from "./utils/vscode"
 import { useExtensionMessage } from "./utils/extensionBus"
-import { telemetryClient } from "./utils/TelemetryClient"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionSelector } from "./context/ExtensionStateContext"
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
@@ -80,9 +79,6 @@ const App = () => {
 	// the root element, so the spacing tokens in index.css follow the setting.
 	const uiDensity = useExtensionSelector((s) => s.uiDensity ?? "comfortable")
 	const shouldShowAnnouncement = useExtensionSelector((s) => s.shouldShowAnnouncement)
-	const telemetrySetting = useExtensionSelector((s) => s.telemetrySetting)
-	const telemetryKey = useExtensionSelector((s) => s.telemetryKey)
-	const machineId = useExtensionSelector((s) => s.machineId)
 	const cloudUserInfo = useExtensionSelector((s) => s.cloudUserInfo)
 	const cloudIsAuthenticated = useExtensionSelector((s) => s.cloudIsAuthenticated)
 	const cloudApiUrl = useExtensionSelector((s) => s.cloudApiUrl)
@@ -203,12 +199,6 @@ const App = () => {
 		}
 	}, [showWelcome, settingsImportedAt, tab])
 
-	useEffect(() => {
-		if (didHydrateState) {
-			telemetryClient.updateTelemetryState(telemetrySetting, telemetryKey, machineId)
-		}
-	}, [telemetrySetting, telemetryKey, machineId, didHydrateState])
-
 	// Initialize source map support for better error reporting
 	useEffect(() => {
 		// Initialize source maps for better error reporting in production
@@ -232,13 +222,6 @@ const App = () => {
 			}
 		}, [renderContext]),
 	)
-	// Track marketplace tab views
-	useEffect(() => {
-		if (tab === "marketplace") {
-			telemetryClient.capture(TelemetryEventName.MARKETPLACE_TAB_VIEWED)
-		}
-	}, [tab])
-
 	// §2.1 (ai_plans/2026-09-27_ui-modernization.md): publish the density
 	// choice as a data attribute on the root, where the spacing tokens read it.
 	useEffect(() => {

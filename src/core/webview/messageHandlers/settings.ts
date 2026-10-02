@@ -3,7 +3,7 @@
 import * as vscode from "vscode"
 import { TelemetryEventName, experimentDefault } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
-import type { Language, TelemetrySetting, AudioType, RooCodeSettings, ExperimentId } from "@roo-code/types"
+import type { Language, AudioType, RooCodeSettings, ExperimentId } from "@roo-code/types"
 import { changeLanguage, t } from "../../../i18n"
 import {
 	deleteCustomSound,
@@ -259,39 +259,6 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 	autoApprovalEnabled: async (ctx, message) => {
 		const { provider, updateGlobalState } = ctx
 		await updateGlobalState("autoApprovalEnabled", message.bool ?? false)
-		await provider.postStateToWebview()
-	},
-
-	telemetrySetting: async (ctx, message) => {
-		const { provider, getGlobalState, updateGlobalState } = ctx
-		const telemetrySetting = message.text as TelemetrySetting
-		const previousSetting = getGlobalState("telemetrySetting") || "unset"
-		const isOptedIn = telemetrySetting !== "disabled"
-		const wasPreviouslyOptedIn = previousSetting !== "disabled"
-
-		// If turning telemetry OFF, fire event BEFORE disabling
-		if (wasPreviouslyOptedIn && !isOptedIn && TelemetryService.hasInstance()) {
-			TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
-				previousSetting,
-				newSetting: telemetrySetting,
-			})
-		}
-
-		// Update the telemetry state
-		await updateGlobalState("telemetrySetting", telemetrySetting)
-
-		if (TelemetryService.hasInstance()) {
-			TelemetryService.instance.updateTelemetryState(isOptedIn)
-		}
-
-		// If turning telemetry ON, fire event AFTER enabling
-		if (!wasPreviouslyOptedIn && isOptedIn && TelemetryService.hasInstance()) {
-			TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
-				previousSetting,
-				newSetting: telemetrySetting,
-			})
-		}
-
 		await provider.postStateToWebview()
 	},
 

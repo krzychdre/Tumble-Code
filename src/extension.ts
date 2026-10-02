@@ -21,7 +21,7 @@ if (fs.existsSync(envPath)) {
 
 import { type CloudUserInfo, type AuthState, readCliRuntimeEnv, formatLanguage } from "@roo-code/types"
 import { CloudService } from "@roo-code/cloud"
-import { TelemetryService, PostHogTelemetryClient } from "@roo-code/telemetry"
+import { TelemetryService } from "@roo-code/telemetry"
 import { customToolRegistry } from "@roo-code/core"
 
 import "./utils/path" // Necessary to have access to String.prototype.toPosix.
@@ -197,14 +197,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		logger.error(`[migrate-from-roo-code] background failure: ${message}`)
 	})
 
-	// Initialize telemetry service.
-	const telemetryService = TelemetryService.createInstance()
-
-	try {
-		telemetryService.register(new PostHogTelemetryClient())
-	} catch (error) {
-		logger.warn("Failed to register PostHogTelemetryClient:", error)
-	}
+	// Initialize telemetry service. Its only client is the cloud one, registered once
+	// CloudService has started, and it sends only while signed in to the cloud.
+	TelemetryService.createInstance()
 
 	// The cloud package logs through this function.
 	const cloudLogger = (...args: unknown[]) => logger.info(...args)

@@ -69,21 +69,18 @@ describe("WebviewHtml", () => {
 	})
 
 	describe("getHmrHtml", () => {
-		it("points at the dev server and adds the analytics origins to script-src and connect-src", async () => {
+		it("points at the dev server and adds it to script-src and connect-src", async () => {
 			const html = await getHmrHtml({
 				...base,
 				connectOrigins: ["https://openrouter.ai"],
-				hmrAnalyticsOrigins: ["https://*.posthog.com"],
 			})
 			expect(axios.get).toHaveBeenCalledWith("http://localhost:5173")
 			expect(html).toContain(`<script type="module" src="http://localhost:5173/src/index.tsx"></script>`)
 			const csp = cspOf(html)
 			expect(csp).toContain(
-				"script-src 'unsafe-eval' CSP https://* https://*.posthog.com http://localhost:5173 http://0.0.0.0:5173 'nonce-NONCE'",
+				"script-src 'unsafe-eval' CSP https://* http://localhost:5173 http://0.0.0.0:5173 'nonce-NONCE'",
 			)
-			expect(csp).toContain(
-				"connect-src CSP https://openrouter.ai https://* https://*.posthog.com ws://localhost:5173",
-			)
+			expect(csp).toContain("connect-src CSP https://openrouter.ai https://* ws://localhost:5173")
 		})
 
 		it("reads the port from the .vite-port file", async () => {

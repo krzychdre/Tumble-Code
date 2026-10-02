@@ -218,7 +218,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			// These have more complex logic so they aren't (yet) handled
 			// by the `updateSettings` message.
 			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
-			vscode.postMessage({ type: "telemetrySetting", text: settings.telemetrySetting })
 			vscode.postMessage({ type: "debugSetting", bool: settings.debug })
 
 			setChangeDetected(false)

@@ -1,7 +1,6 @@
 import { HTMLAttributes, useMemo } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { LabeledCheckbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
-import { telemetryClient } from "@/utils/TelemetryClient"
 
 import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
@@ -27,21 +26,11 @@ export const UISettings = (props: UISettingsProps) => {
 
 	const handleReasoningBlockCollapsedChange = (value: boolean) => {
 		setReasoningBlockCollapsed(value)
-
-		// Track telemetry event
-		telemetryClient.capture("ui_settings_collapse_thinking_changed", {
-			enabled: value,
-		})
 	}
 
 	const handleEnterBehaviorChange = (requireCtrlEnter: boolean) => {
 		const newBehavior = requireCtrlEnter ? "newline" : "send"
 		setEnterBehavior(newBehavior)
-
-		// Track telemetry event
-		telemetryClient.capture("ui_settings_enter_behavior_changed", {
-			behavior: newBehavior,
-		})
 	}
 
 	return (
@@ -99,11 +88,6 @@ export const UISettings = (props: UISettingsProps) => {
 								onValueChange={(value) => {
 									const newDensity = value as "comfortable" | "compact"
 									setUiDensity(newDensity)
-
-									// Track telemetry event
-									telemetryClient.capture("ui_settings_density_changed", {
-										density: newDensity,
-									})
 								}}>
 								<SelectTrigger className="w-full" data-testid="ui-density-select">
 									<SelectValue placeholder={t("settings:common.select")} />
