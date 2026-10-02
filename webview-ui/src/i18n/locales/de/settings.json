@@ -65,7 +65,7 @@
 		"manageSettings": "Einstellungen verwalten",
 		"debugMode": {
 			"label": "Debug-Modus aktivieren",
-			"description": "Aktiviere den Debug-Modus, um zusätzliche Buttons im Task-Header zum Anzeigen der API-Konversationshistorie und UI-Nachrichten als formatiertes JSON in temporären Dateien zu erhalten."
+			"description": "Aktiviere den Debug-Modus: zeigt zusätzliche Buttons im Task-Header zum Anzeigen der API-Konversationshistorie und UI-Nachrichten als formatiertes JSON in temporären Dateien an und schreibt detaillierte Debug-Zeilen (einschließlich der Leistungszähler pro Anfrage) in das Ausgabefenster von Tumble Code."
 		}
 	},
 	"slashCommands": {

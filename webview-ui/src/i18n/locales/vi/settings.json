@@ -65,7 +65,7 @@
 		"manageSettings": "Quản Lý Cài Đặt",
 		"debugMode": {
 			"label": "Bật chế độ debug",
-			"description": "Bật chế độ debug để hiển thị các nút bổ sung trong tiêu đề nhiệm vụ cho phép xem lịch sử hội thoại API và tin nhắn UI dưới dạng JSON được định dạng trong các tệp tạm thời."
+			"description": "Bật chế độ debug: hiển thị các nút bổ sung trong tiêu đề nhiệm vụ để xem lịch sử hội thoại API và tin nhắn UI dưới dạng JSON được định dạng trong các tệp tạm thời, đồng thời ghi các dòng gỡ lỗi chi tiết (bao gồm bộ đếm hiệu năng của từng yêu cầu) vào bảng đầu ra của Tumble Code."
 		}
 	},
 	"slashCommands": {

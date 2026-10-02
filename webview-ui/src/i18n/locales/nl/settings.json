@@ -65,7 +65,7 @@
 		"manageSettings": "Instellingen Beheren",
 		"debugMode": {
 			"label": "Debugmodus inschakelen",
-			"description": "Schakel de debugmodus in om extra knoppen in de taakkoptekst te tonen voor het bekijken van API-gesprekgeschiedenis en UI-berichten als opgemaakte JSON in tijdelijke bestanden."
+			"description": "Schakel de debugmodus in: toont extra knoppen in de taakkoptekst voor het bekijken van API-gesprekgeschiedenis en UI-berichten als opgemaakte JSON in tijdelijke bestanden, en schrijft gedetailleerde debugregels (inclusief prestatietellers per verzoek) naar het uitvoerpaneel van Tumble Code."
 		}
 	},
 	"slashCommands": {

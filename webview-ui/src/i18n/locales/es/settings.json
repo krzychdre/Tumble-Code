@@ -65,7 +65,7 @@
 		"manageSettings": "Gestionar Configuración",
 		"debugMode": {
 			"label": "Activar modo de depuración",
-			"description": "Activa el modo de depuración para mostrar botones adicionales en el encabezado de la tarea que permitan ver el historial de conversación de la API y los mensajes de la UI como JSON formateado en archivos temporales."
+			"description": "Activa el modo de depuración: muestra botones adicionales en el encabezado de la tarea para ver el historial de conversación de la API y los mensajes de la UI como JSON formateado en archivos temporales, y escribe líneas de depuración detalladas (incluidos los contadores de rendimiento de cada solicitud) en el panel de salida de Tumble Code."
 		}
 	},
 	"slashCommands": {
