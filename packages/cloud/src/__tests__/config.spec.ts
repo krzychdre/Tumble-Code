@@ -6,16 +6,16 @@ import {
 	PRODUCTION_CLERK_BASE_URL,
 	PRODUCTION_ROO_CODE_API_URL,
 	getClerkBaseUrl,
-	getRooCodeApiUrl,
+	getTumbleCodeApiUrl,
 	setClerkBaseUrl,
-	setRooCodeApiUrl,
+	setTumbleCodeApiUrl,
 } from "../config.js"
 
 describe("cloud config", () => {
 	beforeEach(() => {
 		// Reset runtime overrides between tests
 		setClerkBaseUrl(undefined)
-		setRooCodeApiUrl(undefined)
+		setTumbleCodeApiUrl(undefined)
 
 		// Clear any env vars set during tests
 		delete process.env.CLERK_BASE_URL
@@ -29,8 +29,8 @@ describe("cloud config", () => {
 		})
 
 		it("should return production Roo Code API URL by default", () => {
-			expect(getRooCodeApiUrl()).toBe(PRODUCTION_ROO_CODE_API_URL)
-			expect(getRooCodeApiUrl()).toBe("https://app.tumblecode.dev")
+			expect(getTumbleCodeApiUrl()).toBe(PRODUCTION_ROO_CODE_API_URL)
+			expect(getTumbleCodeApiUrl()).toBe("https://app.tumblecode.dev")
 		})
 	})
 
@@ -43,7 +43,7 @@ describe("cloud config", () => {
 
 		it("should use ROO_CODE_API_URL env var when set", () => {
 			process.env.ROO_CODE_API_URL = "https://custom-api.example.com"
-			expect(getRooCodeApiUrl()).toBe("https://custom-api.example.com")
+			expect(getTumbleCodeApiUrl()).toBe("https://custom-api.example.com")
 			delete process.env.ROO_CODE_API_URL
 		})
 	})
@@ -54,37 +54,37 @@ describe("cloud config", () => {
 			expect(getClerkBaseUrl()).toBe("https://runtime-clerk.example.com")
 		})
 
-		it("should override Roo Code API URL via setRooCodeApiUrl", () => {
-			setRooCodeApiUrl("https://runtime-api.example.com")
-			expect(getRooCodeApiUrl()).toBe("https://runtime-api.example.com")
+		it("should override Roo Code API URL via setTumbleCodeApiUrl", () => {
+			setTumbleCodeApiUrl("https://runtime-api.example.com")
+			expect(getTumbleCodeApiUrl()).toBe("https://runtime-api.example.com")
 		})
 
 		it("should take precedence over env vars when runtime override is set", () => {
 			process.env.ROO_CODE_API_URL = "https://env-api.example.com"
-			setRooCodeApiUrl("https://runtime-api.example.com")
-			expect(getRooCodeApiUrl()).toBe("https://runtime-api.example.com")
+			setTumbleCodeApiUrl("https://runtime-api.example.com")
+			expect(getTumbleCodeApiUrl()).toBe("https://runtime-api.example.com")
 			delete process.env.ROO_CODE_API_URL
 		})
 
 		it("should fall back to env var when runtime override is cleared", () => {
-			setRooCodeApiUrl("https://runtime-api.example.com")
-			setRooCodeApiUrl(undefined) // Clear runtime override
+			setTumbleCodeApiUrl("https://runtime-api.example.com")
+			setTumbleCodeApiUrl(undefined) // Clear runtime override
 			process.env.ROO_CODE_API_URL = "https://env-api.example.com"
-			expect(getRooCodeApiUrl()).toBe("https://env-api.example.com")
+			expect(getTumbleCodeApiUrl()).toBe("https://env-api.example.com")
 			delete process.env.ROO_CODE_API_URL
 		})
 
 		it("should fall back to production default when both runtime and env are cleared", () => {
-			setRooCodeApiUrl("https://runtime-api.example.com")
-			setRooCodeApiUrl(undefined) // Clear runtime override
-			expect(getRooCodeApiUrl()).toBe(PRODUCTION_ROO_CODE_API_URL)
+			setTumbleCodeApiUrl("https://runtime-api.example.com")
+			setTumbleCodeApiUrl(undefined) // Clear runtime override
+			expect(getTumbleCodeApiUrl()).toBe(PRODUCTION_ROO_CODE_API_URL)
 		})
 	})
 
 	describe("Clerk base URL auto-detect for self-hosted deployments", () => {
 		it("should auto-detect Clerk base URL from Roo Code API URL when API URL is non-production", () => {
 			// Simulate self-hosted: only cloudApiUrl is set, clerkBaseUrl is not set
-			setRooCodeApiUrl("http://localhost:8085")
+			setTumbleCodeApiUrl("http://localhost:8085")
 			expect(getClerkBaseUrl()).toBe("http://localhost:8085")
 		})
 
@@ -103,13 +103,13 @@ describe("cloud config", () => {
 		})
 
 		it("should use explicit runtime setClerkBaseUrl instead of auto-detect from API URL", () => {
-			setRooCodeApiUrl("http://localhost:8085")
+			setTumbleCodeApiUrl("http://localhost:8085")
 			setClerkBaseUrl("https://explicit-clerk.example.com")
 			expect(getClerkBaseUrl()).toBe("https://explicit-clerk.example.com")
 		})
 
 		it("should return production Clerk URL when API URL is production", () => {
-			setRooCodeApiUrl("https://app.tumblecode.dev")
+			setTumbleCodeApiUrl("https://app.tumblecode.dev")
 			expect(getClerkBaseUrl()).toBe(PRODUCTION_CLERK_BASE_URL)
 		})
 
@@ -120,7 +120,7 @@ describe("cloud config", () => {
 
 		it("should auto-detect Clerk URL from runtime API URL override even when env var for API URL is different", () => {
 			process.env.ROO_CODE_API_URL = "https://env-api.example.com"
-			setRooCodeApiUrl("http://localhost:8085")
+			setTumbleCodeApiUrl("http://localhost:8085")
 			// Runtime override takes precedence for API URL, and Clerk auto-detects from it
 			expect(getClerkBaseUrl()).toBe("http://localhost:8085")
 			delete process.env.ROO_CODE_API_URL

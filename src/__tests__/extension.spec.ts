@@ -73,8 +73,8 @@ vi.mock("@roo-code/cloud", () => ({
 			return mockCloudServiceInstance
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
-	setRooCodeApiUrl: vi.fn(),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	setTumbleCodeApiUrl: vi.fn(),
 	setClerkBaseUrl: vi.fn(),
 }))
 

@@ -8,7 +8,7 @@ import {
 	type ClineApiReqCancelReason,
 	type ClineApiReqInfo,
 	type ClineMessage,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	TelemetryEventName,
 	ConsecutiveMistakeError,
 	getApiProtocol,
@@ -328,7 +328,7 @@ export class TaskApiLoop {
 		let nextUserContent = userContent
 		let includeFileDetails = true
 
-		this.access.emit(RooCodeEventName.TaskStarted)
+		this.access.emit(TumbleCodeEventName.TaskStarted)
 
 		while (!this.access.abort) {
 			const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
@@ -384,7 +384,7 @@ export class TaskApiLoop {
 
 			if (this.access.abort) {
 				throw new Error(
-					`[RooCode#recursivelyMakeRooRequests] task ${this.access.taskId}.${this.access.instanceId} aborted`,
+					`[TumbleCode#recursivelyMakeRooRequests] task ${this.access.taskId}.${this.access.instanceId} aborted`,
 				)
 			}
 
@@ -798,7 +798,7 @@ export class TaskApiLoop {
 			// Check for abort after stream
 			if (this.access.abort || this.access.abandoned) {
 				throw new Error(
-					`[RooCode#recursivelyMakeRooRequests] task ${this.access.taskId}.${this.access.instanceId} aborted`,
+					`[TumbleCode#recursivelyMakeRooRequests] task ${this.access.taskId}.${this.access.instanceId} aborted`,
 				)
 			}
 

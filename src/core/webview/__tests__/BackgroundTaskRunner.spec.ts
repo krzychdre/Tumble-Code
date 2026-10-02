@@ -3,7 +3,7 @@ import * as path from "path"
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { RooCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@roo-code/types"
+import { TumbleCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@roo-code/types"
 
 import { Task } from "../../task/Task"
 import { OrganizationAllowListViolationError } from "../../../utils/errors"
@@ -228,7 +228,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		)
 		const pending = runner.awaitTaskCompletion(task as never)
 
-		task.emit(RooCodeEventName.TaskCompleted)
+		task.emit(TumbleCodeEventName.TaskCompleted)
 
 		await expect(pending).resolves.toEqual({
 			completed: true,
@@ -251,7 +251,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		const pending = runner.awaitTaskCompletion(task as never)
 
 		task.abortReason = "max_turns_reached"
-		task.emit(RooCodeEventName.TaskAborted)
+		task.emit(TumbleCodeEventName.TaskAborted)
 
 		await expect(pending).resolves.toMatchObject({ completed: false, abortReason: "max_turns_reached" })
 		expect(runner.getBackgroundTask(task.taskId)).toBeUndefined()
@@ -270,7 +270,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 
 		task.abortReason = "streaming_failed"
 		task.apiFailureMessage = failureMessage
-		task.emit(RooCodeEventName.TaskAborted)
+		task.emit(TumbleCodeEventName.TaskAborted)
 
 		await expect(pending).resolves.toMatchObject({
 			completed: false,
@@ -288,13 +288,13 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		controller.abort()
 		expect(task.abortTask).toHaveBeenCalledWith()
 		task.abortReason = "user_cancelled"
-		task.emit(RooCodeEventName.TaskAborted)
-		task.emit(RooCodeEventName.TaskCompleted)
+		task.emit(TumbleCodeEventName.TaskAborted)
+		task.emit(TumbleCodeEventName.TaskCompleted)
 
 		await expect(pending).resolves.toMatchObject({ completed: false, abortReason: "user_cancelled" })
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
-		expect(task.listenerCount(RooCodeEventName.TaskCompleted)).toBe(0)
-		expect(task.listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+		expect(task.listenerCount(TumbleCodeEventName.TaskCompleted)).toBe(0)
+		expect(task.listenerCount(TumbleCodeEventName.TaskAborted)).toBe(0)
 	})
 
 	it("an already aborted signal aborts the task at once", async () => {
@@ -315,7 +315,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		const task = await started(runner)
 		const pending = runner.awaitTaskCompletion(task as never)
 
-		task.emit(RooCodeEventName.TaskCompleted)
+		task.emit(TumbleCodeEventName.TaskCompleted)
 
 		await expect(pending).resolves.toMatchObject({ completed: true })
 		await vi.waitFor(() =>

@@ -2,7 +2,7 @@
 
 import { describe, it, expect, vi } from "vitest"
 import type { HistoryItem } from "@roo-code/types"
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { DelegationService } from "../core/webview/DelegationService"
 
@@ -114,7 +114,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		expect(childStart).toHaveBeenCalledTimes(1)
 
 		// Provider-level event
-		expect(providerEmit).toHaveBeenCalledWith(RooCodeEventName.TaskDelegated, "parent-1", "child-1")
+		expect(providerEmit).toHaveBeenCalledWith(TumbleCodeEventName.TaskDelegated, "parent-1", "child-1")
 
 		// Mode switch
 		expect(handleModeSwitch).toHaveBeenCalledWith("code")

@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { type TodoItem, type ClineMessage, type ClineApiReqCancelReason, RooCodeEventName } from "@roo-code/types"
+import { type TodoItem, type ClineMessage, type ClineApiReqCancelReason, TumbleCodeEventName } from "@roo-code/types"
 
 import { type ApiMessage } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
@@ -41,7 +41,7 @@ export interface TaskSubtasksAccess {
 	history: TaskMessageLog
 
 	// Event emission
-	emit: (event: RooCodeEventName.TaskActive, taskId: string) => void
+	emit: (event: TumbleCodeEventName.TaskActive, taskId: string) => void
 
 	// Callback to initiate task loop (private method on Task)
 	initiateTaskLoop: (userContent: Anthropic.Messages.ContentBlockParam[]) => Promise<void>
@@ -108,7 +108,7 @@ export class TaskSubtasks {
 
 		// Mark as initialized and active
 		this.access.isInitialized = true
-		this.access.emit(RooCodeEventName.TaskActive, this.access.taskId)
+		this.access.emit(TumbleCodeEventName.TaskActive, this.access.taskId)
 
 		// Load conversation history if not already loaded
 		if (this.access.apiConversationHistory.length === 0) {

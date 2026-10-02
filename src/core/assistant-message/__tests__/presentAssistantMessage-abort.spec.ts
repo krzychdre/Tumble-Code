@@ -106,7 +106,7 @@ describe("presentAssistantMessage - abort crash regression (handleError -> say r
 		mockTask.abort = false
 		mockTask.ask = vi.fn().mockImplementation(async () => {
 			mockTask.abort = true // abort arrives during the awaited ask
-			throw new Error(`[RooCode#ask] task ${mockTask.taskId}.${mockTask.instanceId} aborted`)
+			throw new Error(`[TumbleCode#ask] task ${mockTask.taskId}.${mockTask.instanceId} aborted`)
 		})
 		// If the guard is missing, say() would be reached and (in the real
 		// implementation) re-throw the abort. In this mock it just records the
@@ -143,7 +143,7 @@ describe("presentAssistantMessage - abort crash regression (handleError -> say r
 		mockTask.ask = vi.fn().mockResolvedValue({ response: "yesButtonClicked", text: "answer", images: [] })
 		mockTask.say = vi.fn().mockImplementation(async () => {
 			mockTask.abort = true // abort arrives during the awaited say
-			throw new Error(`[RooCode#say] task ${mockTask.taskId}.${mockTask.instanceId} aborted`)
+			throw new Error(`[TumbleCode#say] task ${mockTask.taskId}.${mockTask.instanceId} aborted`)
 		})
 		mockTask.askSay.say = vi.fn().mockResolvedValue(undefined)
 

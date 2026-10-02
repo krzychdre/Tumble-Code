@@ -1,7 +1,7 @@
 import debounce from "lodash.debounce"
 import EventEmitter from "events"
 
-import { type ClineMessage, type TokenUsage, type ToolUsage, type ToolName, RooCodeEventName } from "@roo-code/types"
+import { type ClineMessage, type TokenUsage, type ToolUsage, type ToolName, TumbleCodeEventName } from "@roo-code/types"
 
 import {
 	consolidateTokenUsage,
@@ -74,7 +74,12 @@ export class TaskTokenTracking {
 				const toolChanged = hasToolUsageChanged(toolUsage, this._toolUsageSnapshot)
 
 				if (tokenChanged || toolChanged) {
-					this.access.emit(RooCodeEventName.TaskTokenUsageUpdated, this.access.taskId, tokenUsage, toolUsage)
+					this.access.emit(
+						TumbleCodeEventName.TaskTokenUsageUpdated,
+						this.access.taskId,
+						tokenUsage,
+						toolUsage,
+					)
 					this._tokenUsageSnapshot = tokenUsage
 					this.tokenUsageSnapshotAt = this.access.clineMessages.at(-1)?.ts
 					// Deep copy tool usage for snapshot
@@ -124,7 +129,7 @@ export class TaskTokenTracking {
 		this.access.toolUsage[toolName].failures++
 
 		if (error) {
-			this.access.emit(RooCodeEventName.TaskToolFailed, this.access.taskId, toolName, error)
+			this.access.emit(TumbleCodeEventName.TaskToolFailed, this.access.taskId, toolName, error)
 		}
 	}
 

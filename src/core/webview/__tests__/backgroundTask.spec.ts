@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, type Mock } from "vitest"
 import { EventEmitter } from "events"
 
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 import { logger } from "../../../utils/logging"
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
@@ -69,7 +69,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		const task = makeFakeTask({ completionText: "saved 2 memories" })
 		const { promise, backgroundTasks } = invokeAwait(task)
 
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskCompleted, "bg-1", {}, {})
 
 		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "saved 2 memories", writtenPaths: [] })
 		// completed task is disposed and de-registered
@@ -81,7 +81,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		const task = makeFakeTask()
 		const { promise, backgroundTasks } = invokeAwait(task)
 
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
 
 		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
 		expect(task.abortTask).not.toHaveBeenCalled() // aborted tasks are already torn down
@@ -92,8 +92,8 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		const task = makeFakeTask({ completionText: "done" })
 		const { promise } = invokeAwait(task)
 
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskCompleted, "bg-1", {}, {})
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
 
 		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
@@ -107,7 +107,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		controller.abort()
 		// The task's own abortTask -> TaskAborted would normally fire; simulate it.
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
 		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
 	})
 
@@ -117,7 +117,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		controller.abort()
 		const { promise } = invokeAwait(task, { signal: controller.signal })
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
 		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
 	})
 
@@ -126,7 +126,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		const cleanupSpy = vi.fn()
 		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
 
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskCompleted, "bg-1", {}, {})
 
 		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
 		// Cleanup is chained after the dispose (abortTask) settles.
@@ -138,7 +138,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		const cleanupSpy = vi.fn()
 		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
 
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
 
 		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
 		// Flush microtasks so a wrongly-chained cleanup would have fired by now.
@@ -155,7 +155,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		const cleanupSpy = vi.fn().mockResolvedValue(undefined)
 		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
 
-		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
+		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskCompleted, "bg-1", {}, {})
 
 		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
 		await vi.waitFor(() => expect(cleanupSpy).toHaveBeenCalledWith("bg-1"))

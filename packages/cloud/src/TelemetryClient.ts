@@ -5,12 +5,12 @@ import {
 	type AuthService,
 	type SettingsService,
 	TelemetryEventName,
-	rooCodeTelemetryEventSchema,
+	tumbleCodeTelemetryEventSchema,
 	TelemetryPropertiesProvider,
 	TelemetryEventSubscription,
 } from "@roo-code/types"
 
-import { getRooCodeApiUrl } from "./config.js"
+import { getTumbleCodeApiUrl } from "./config.js"
 import type { RetryQueue } from "./retry-queue/index.js"
 
 abstract class BaseTelemetryClient implements TelemetryClient {
@@ -109,7 +109,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			return
 		}
 
-		const url = `${getRooCodeApiUrl()}/api/${path}`
+		const url = `${getTumbleCodeApiUrl()}/api/${path}`
 		const fetchOptions: RequestInit = {
 			...options,
 			headers: {
@@ -173,7 +173,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			console.info(`[TelemetryClient#capture] ${JSON.stringify(payload)}`)
 		}
 
-		const result = rooCodeTelemetryEventSchema.safeParse(payload)
+		const result = tumbleCodeTelemetryEventSchema.safeParse(payload)
 
 		if (!result.success) {
 			console.error(
@@ -244,7 +244,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 				)
 			}
 
-			const url = `${getRooCodeApiUrl()}/api/events/backfill`
+			const url = `${getTumbleCodeApiUrl()}/api/events/backfill`
 			const fetchOptions: RequestInit = {
 				method: "POST",
 				headers: {

@@ -43,7 +43,7 @@ import { disposeLanguageParsers } from "./services/tree-sitter/languageParser"
 import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
 import { configureLogger, logger, setDebugLogging } from "./utils/logging"
 import { perfCounters } from "./utils/perfCounters"
-import { migrateFromRooCode } from "./utils/migrateFromRooCode"
+import { migrateFromRooCline } from "./utils/migrateFromRooCline"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
 import { setupRemoteControlBridge } from "./extension/bridge"
@@ -192,7 +192,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Run in the background -- the prompt awaits the user's button click, and if we
 	// awaited here the rest of activate() (including registerCommands) would block
 	// until the user responds, leaving every `roo-cline.*` command unregistered.
-	void migrateFromRooCode(context).catch((error) => {
+	void migrateFromRooCline(context).catch((error) => {
 		const message = error instanceof Error ? error.message : String(error)
 		logger.error(`[migrate-from-roo-code] background failure: ${message}`)
 	})
@@ -471,7 +471,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		})
 	}
 
-	// Implements the `RooCodeAPI` interface that other extensions call. Its debug
+	// Implements the `TumbleCodeAPI` interface that other extensions call. Its debug
 	// logging stays off: it used to switch on only together with the external IPC
 	// socket, which has been removed.
 	const api = new API(outputChannel, provider)

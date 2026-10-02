@@ -5,7 +5,7 @@ import { worktreeService } from "@roo-code/core"
 import {
 	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
 	isParallelTasksEnabled,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	type HistoryItem,
 	type SubagentSummary,
 } from "@roo-code/types"
@@ -565,7 +565,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 					controller.abort()
 				}
 			}
-			task.on(RooCodeEventName.TaskAborted, onParentAborted)
+			task.on(TumbleCodeEventName.TaskAborted, onParentAborted)
 			try {
 				const results = await runWithConcurrency(subtasks, maxConcurrency, (subtask, index) =>
 					runOneSubtask({
@@ -600,7 +600,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 				// summaries either way.
 				await persistSubagentSummariesSidecar(provider, task.taskId)
 			} finally {
-				task.off(RooCodeEventName.TaskAborted, onParentAborted)
+				task.off(TumbleCodeEventName.TaskAborted, onParentAborted)
 			}
 		} catch (error) {
 			await handleError("running parallel tasks", error, this.name)

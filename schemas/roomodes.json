@@ -101,7 +101,7 @@
 	},
 	"required": ["customModes"],
 	"additionalProperties": false,
-	"$id": "https://github.com/RooCodeInc/Roo-Code/blob/main/schemas/roomodes.json",
+	"$id": "https://github.com/krzychdre/Tumble-Code/blob/main/schemas/roomodes.json",
 	"title": "Tumble Code Custom Modes",
 	"description": "Schema for .roomodes configuration files used by Tumble Code to define custom modes."
 }

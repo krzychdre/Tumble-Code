@@ -16,7 +16,7 @@ import {
 	type ProviderSettings,
 	type ToolName,
 	type ClineApiReqInfo,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	getModelId,
 	isParallelTasksEnabled,
 } from "@roo-code/types"

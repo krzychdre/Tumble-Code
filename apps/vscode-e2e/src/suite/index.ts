@@ -3,12 +3,12 @@ import Mocha from "mocha"
 import { glob } from "glob"
 import * as vscode from "vscode"
 
-import type { RooCodeAPI } from "@roo-code/types"
+import type { TumbleCodeAPI } from "@roo-code/types"
 
 import { waitFor } from "./utils"
 
 export async function run() {
-	const extension = vscode.extensions.getExtension<RooCodeAPI>("QUB-IT.tumble-code")
+	const extension = vscode.extensions.getExtension<TumbleCodeAPI>("QUB-IT.tumble-code")
 
 	if (!extension) {
 		throw new Error("Extension not found")

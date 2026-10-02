@@ -12,7 +12,7 @@ import * as vscode from "vscode"
 import * as path from "path"
 import { isDeepStrictEqual } from "util"
 
-import type { RooCodeSettings } from "@roo-code/types"
+import type { TumbleCodeSettings } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { experimentDefault } from "@roo-code/types"
@@ -240,7 +240,7 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
 /** A value for every setting the builders read, each different from its default. */
@@ -356,7 +356,7 @@ const FULL_SETTINGS = {
 	imageGenerationProvider: "openrouter",
 	openRouterImageApiKey: "sk-image",
 	openRouterImageGenerationSelectedModel: "image-model",
-} as unknown as RooCodeSettings
+} as unknown as TumbleCodeSettings
 
 /**
  * Keys whose value in the webview state is deliberately different from
@@ -394,7 +394,7 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 
 	const flush = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms))
 
-	const makeProvider = async (options: { cloudMode: CloudMode; settings?: RooCodeSettings }) => {
+	const makeProvider = async (options: { cloudMode: CloudMode; settings?: TumbleCodeSettings }) => {
 		cloud.mode = options.cloudMode
 		const provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
 		providers.push(provider)
@@ -419,7 +419,7 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 		return provider
 	}
 
-	const fixtures: Array<[string, { cloudMode: CloudMode; settings?: RooCodeSettings }]> = [
+	const fixtures: Array<[string, { cloudMode: CloudMode; settings?: TumbleCodeSettings }]> = [
 		["an empty ContextProxy", { cloudMode: "signedOut" }],
 		["a fully populated ContextProxy", { cloudMode: "signedIn", settings: FULL_SETTINGS }],
 		["a missing CloudService", { cloudMode: "missing" }],

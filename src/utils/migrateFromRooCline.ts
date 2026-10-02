@@ -52,7 +52,7 @@ const CONFIG_KEYS_TO_MIGRATE = [
  * Idempotent: once the migration runs successfully (or the user declines),
  * a flag in globalState prevents it from prompting again.
  */
-export async function migrateFromRooCode(context: vscode.ExtensionContext): Promise<void> {
+export async function migrateFromRooCline(context: vscode.ExtensionContext): Promise<void> {
 	if (context.globalState.get<boolean>(MIGRATION_COMPLETED_KEY)) {
 		return
 	}

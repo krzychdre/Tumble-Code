@@ -2,7 +2,7 @@ import type EventEmitter from "events"
 
 import { z } from "zod"
 
-import { RooCodeEventName } from "./events.js"
+import { TumbleCodeEventName } from "./events.js"
 import { globalSettingsSchema, autoApprovalModes } from "./global-settings.js"
 import { opaqueProviderProfileSchema, type PersistedProviderProfile } from "./provider-profile.js"
 import { mcpMarketplaceItemSchema } from "./marketplace.js"
@@ -370,9 +370,9 @@ export type AutoApprovalSettings = z.infer<typeof autoApprovalSettingsSchema>
  */
 
 export enum TaskBridgeEventName {
-	Message = RooCodeEventName.Message,
-	TaskModeSwitched = RooCodeEventName.TaskModeSwitched,
-	TaskInteractive = RooCodeEventName.TaskInteractive,
+	Message = TumbleCodeEventName.Message,
+	TaskModeSwitched = TumbleCodeEventName.TaskModeSwitched,
+	TaskInteractive = TumbleCodeEventName.TaskInteractive,
 	InstanceState = "instanceState",
 }
 

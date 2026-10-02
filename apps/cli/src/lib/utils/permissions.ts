@@ -1,9 +1,9 @@
-import type { RooCodeSettings } from "@roo-code/types"
+import type { TumbleCodeSettings } from "@roo-code/types"
 
 export type PermissionMode = "ask" | "allow"
 
 type AllowPermissionSettings = Pick<
-	RooCodeSettings,
+	TumbleCodeSettings,
 	| "autoApprovalEnabled"
 	| "autoApprovalMode"
 	| "alwaysAllowReadOnly"
@@ -18,7 +18,7 @@ type AllowPermissionSettings = Pick<
 	| "allowedCommands"
 >
 
-export type CliPermissionSettings = Partial<AllowPermissionSettings> & Pick<RooCodeSettings, "autoApprovalEnabled">
+export type CliPermissionSettings = Partial<AllowPermissionSettings> & Pick<TumbleCodeSettings, "autoApprovalEnabled">
 
 export const PERMISSIONS_COMMAND_USAGE = [
 	"Usage: /permissions <mode>",

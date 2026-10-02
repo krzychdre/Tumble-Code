@@ -2,7 +2,7 @@ import { EventEmitter } from "events"
 import type { Mock } from "vitest"
 // npx vitest core/tools/__tests__/useMcpToolTool.spec.ts
 
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 import { useMcpToolTool } from "../UseMcpToolTool"
 import { Task } from "../../task/Task"
@@ -1029,7 +1029,7 @@ describe("useMcpToolTool", () => {
 		function abortTask() {
 			// What TaskLifecycle.prepareAbort does: set the flag, then emit.
 			;(mockTask as any).abort = true
-			;(mockTask as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted)
+			;(mockTask as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted)
 		}
 
 		it("cancels the in-flight call when the task aborts and returns without a result", async () => {
@@ -1061,7 +1061,7 @@ describe("useMcpToolTool", () => {
 			// The "running" execution row is ended instead of spinning on.
 			const statuses = postMessageToWebview.mock.calls.map(([m]) => JSON.parse(m.text))
 			expect(statuses.at(-1)).toMatchObject({ status: "error", error: "Cancelled" })
-			expect((mockTask as unknown as EventEmitter).listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+			expect((mockTask as unknown as EventEmitter).listenerCount(TumbleCodeEventName.TaskAborted)).toBe(0)
 		})
 
 		it("hands an already aborted signal to a call that starts after the abort", async () => {
@@ -1100,7 +1100,7 @@ describe("useMcpToolTool", () => {
 
 			expect(mockPushToolResult).toHaveBeenCalledWith("Tool result: done")
 			expect(callTool.mock.calls[0][4].signal.aborted).toBe(false)
-			expect((mockTask as unknown as EventEmitter).listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+			expect((mockTask as unknown as EventEmitter).listenerCount(TumbleCodeEventName.TaskAborted)).toBe(0)
 		})
 	})
 })

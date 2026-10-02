@@ -27,7 +27,7 @@
 
 import * as vscode from "vscode"
 
-import { setRooCodeApiUrl, setClerkBaseUrl } from "@roo-code/cloud"
+import { setTumbleCodeApiUrl, setClerkBaseUrl } from "@roo-code/cloud"
 
 import { Package } from "../shared/package"
 
@@ -42,7 +42,7 @@ export function syncCloudUrls(): void {
 	const cloudApiUrl = config.get<string>("cloudApiUrl")?.trim() || undefined
 	const clerkBaseUrl = config.get<string>("clerkBaseUrl")?.trim() || undefined
 
-	setRooCodeApiUrl(cloudApiUrl)
+	setTumbleCodeApiUrl(cloudApiUrl)
 	setClerkBaseUrl(clerkBaseUrl)
 }
 

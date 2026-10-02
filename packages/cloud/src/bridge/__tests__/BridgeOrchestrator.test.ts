@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 import {
-	RooCodeEventName,
+	TumbleCodeEventName,
 	TaskBridgeEventName,
 	TaskSocketEvents,
 	ExtensionSocketEvents,
@@ -137,7 +137,7 @@ describe("BridgeOrchestrator", () => {
 	it("forwards API Message bus events to the task:event channel", async () => {
 		const orch = build()
 		await orch.start()
-		bus.fire(RooCodeEventName.Message, { taskId: "task-9", action: "created", message: { ts: 1, type: "say" } })
+		bus.fire(TumbleCodeEventName.Message, { taskId: "task-9", action: "created", message: { ts: 1, type: "say" } })
 
 		const evt = socket.emitted.find((e) => e.event === TaskSocketEvents.EVENT)
 		expect(evt).toBeTruthy()
@@ -179,7 +179,7 @@ describe("BridgeOrchestrator", () => {
 
 		// A bus event after stop must not be forwarded (listeners removed).
 		const before = socket.emitted.length
-		bus.fire(RooCodeEventName.Message, { taskId: "t", action: "x", message: {} })
+		bus.fire(TumbleCodeEventName.Message, { taskId: "t", action: "x", message: {} })
 		expect(socket.emitted.length).toBe(before)
 	})
 

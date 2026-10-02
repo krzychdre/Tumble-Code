@@ -15,7 +15,7 @@ import { EventEmitter } from "events"
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type * as vscode from "vscode"
-import { RooCodeEventName, type HistoryItem } from "@roo-code/types"
+import { TumbleCodeEventName, type HistoryItem } from "@roo-code/types"
 
 vi.mock("vscode", () => ({
 	window: { showWarningMessage: vi.fn() },
@@ -89,7 +89,7 @@ describe("API forwards the delegation events DelegationService emits on the prov
 
 		// ClineProvider creates both tasks and emits TaskCreated for each, which
 		// is where the API used to hang its (dead) per-task delegation listeners.
-		provider.emit(RooCodeEventName.TaskCreated, parent)
+		provider.emit(TumbleCodeEventName.TaskCreated, parent)
 
 		const host = {
 			isViewLaunched: false,
@@ -112,7 +112,7 @@ describe("API forwards the delegation events DelegationService emits on the prov
 				currentTask = undefined
 			}),
 			createTask: vi.fn(async () => {
-				provider.emit(RooCodeEventName.TaskCreated, child)
+				provider.emit(TumbleCodeEventName.TaskCreated, child)
 				currentTask = child
 				return child
 			}),
@@ -132,7 +132,7 @@ describe("API forwards the delegation events DelegationService emits on the prov
 
 	it("re-emits TaskDelegated with (parentTaskId, childTaskId) exactly once", async () => {
 		const delegated = vi.fn()
-		api.on(RooCodeEventName.TaskDelegated, delegated)
+		api.on(TumbleCodeEventName.TaskDelegated, delegated)
 
 		await service.delegate({ parentTaskId: "p", message: "do it", initialTodos: [], mode: "code" })
 
@@ -147,8 +147,8 @@ describe("API forwards the delegation events DelegationService emits on the prov
 		const order: string[] = []
 		const completed = vi.fn(() => order.push("completed"))
 		const resumed = vi.fn(() => order.push("resumed"))
-		api.on(RooCodeEventName.TaskDelegationCompleted, completed)
-		api.on(RooCodeEventName.TaskDelegationResumed, resumed)
+		api.on(TumbleCodeEventName.TaskDelegationCompleted, completed)
+		api.on(TumbleCodeEventName.TaskDelegationResumed, resumed)
 
 		const reopened = await service.complete({
 			parentTaskId: "p",
@@ -167,11 +167,11 @@ describe("API forwards the delegation events DelegationService emits on the prov
 	})
 
 	it("registers one provider listener per event, however many tasks are created", () => {
-		provider.emit(RooCodeEventName.TaskCreated, makeTask("t2"))
-		provider.emit(RooCodeEventName.TaskCreated, makeTask("t3"))
+		provider.emit(TumbleCodeEventName.TaskCreated, makeTask("t2"))
+		provider.emit(TumbleCodeEventName.TaskCreated, makeTask("t3"))
 
-		expect(provider.listenerCount(RooCodeEventName.TaskDelegated)).toBe(1)
-		expect(provider.listenerCount(RooCodeEventName.TaskDelegationCompleted)).toBe(1)
-		expect(provider.listenerCount(RooCodeEventName.TaskDelegationResumed)).toBe(1)
+		expect(provider.listenerCount(TumbleCodeEventName.TaskDelegated)).toBe(1)
+		expect(provider.listenerCount(TumbleCodeEventName.TaskDelegationCompleted)).toBe(1)
+		expect(provider.listenerCount(TumbleCodeEventName.TaskDelegationResumed)).toBe(1)
 	})
 })

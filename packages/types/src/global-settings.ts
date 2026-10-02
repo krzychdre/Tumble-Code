@@ -406,10 +406,10 @@ export type GlobalSettings = z.infer<typeof globalSettingsSchema>
 export const GLOBAL_SETTINGS_KEYS = globalSettingsSchema.keyof().options
 
 /**
- * RooCodeSettings
+ * TumbleCodeSettings
  */
 
-export type RooCodeSettings = GlobalSettings & ProviderSettings
+export type TumbleCodeSettings = GlobalSettings & ProviderSettings
 
 /**
  * SecretState
@@ -458,8 +458,8 @@ export const isSecretStateKey = (key: string): key is Keys<SecretState> =>
  * GlobalState
  */
 
-export type GlobalState = Omit<RooCodeSettings, Keys<SecretState>>
+export type GlobalState = Omit<TumbleCodeSettings, Keys<SecretState>>
 
 export const GLOBAL_STATE_KEYS = [...GLOBAL_SETTINGS_KEYS, ...PROVIDER_SETTINGS_KEYS].filter(
-	(key: Keys<RooCodeSettings>) => !isSecretStateKey(key),
+	(key: Keys<TumbleCodeSettings>) => !isSecretStateKey(key),
 ) as Keys<GlobalState>[]

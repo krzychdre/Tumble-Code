@@ -285,7 +285,7 @@ export type TelemetryCaptureArgs<E extends TelemetryEventName> = E extends keyof
 	: [properties?: Record<string, unknown>]
 
 /**
- * RooCodeTelemetryEvent
+ * TumbleCodeTelemetryEvent
  */
 
 /**
@@ -306,7 +306,7 @@ const genericTelemetryEventNames = Object.values(TelemetryEventName).filter(
 		!(eventsWithDedicatedSchema as readonly TelemetryEventName[]).includes(event),
 ) as [GenericTelemetryEventName, ...GenericTelemetryEventName[]]
 
-export const rooCodeTelemetryEventSchema = z.discriminatedUnion("type", [
+export const tumbleCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.enum(genericTelemetryEventNames),
 		properties: telemetryPropertiesSchema,

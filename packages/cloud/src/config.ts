@@ -3,7 +3,7 @@ export const PRODUCTION_ROO_CODE_API_URL = "https://app.tumblecode.dev"
 
 // Runtime overrides (set from VS Code configuration, take priority over env vars)
 let runtimeClerkBaseUrl: string | undefined
-let runtimeRooCodeApiUrl: string | undefined
+let runtimeTumbleCodeApiUrl: string | undefined
 
 /**
  * Set the Clerk base URL at runtime (e.g. from VS Code configuration).
@@ -37,7 +37,7 @@ export const getClerkBaseUrl = () => {
 	if (process.env.CLERK_BASE_URL) return process.env.CLERK_BASE_URL
 
 	// Auto-detect: if the API URL is non-production, the Clerk facade is on the same server
-	const apiUrl = getRooCodeApiUrl()
+	const apiUrl = getTumbleCodeApiUrl()
 	if (apiUrl !== PRODUCTION_ROO_CODE_API_URL) return apiUrl
 
 	return PRODUCTION_CLERK_BASE_URL
@@ -47,9 +47,9 @@ export const getClerkBaseUrl = () => {
  * Set the Roo Code API URL at runtime (e.g. from VS Code configuration).
  * Pass `undefined` to clear the override and fall back to env var / default.
  */
-export const setRooCodeApiUrl = (url: string | undefined) => {
-	runtimeRooCodeApiUrl = url
+export const setTumbleCodeApiUrl = (url: string | undefined) => {
+	runtimeTumbleCodeApiUrl = url
 }
 
-export const getRooCodeApiUrl = () =>
-	runtimeRooCodeApiUrl || process.env.ROO_CODE_API_URL || PRODUCTION_ROO_CODE_API_URL
+export const getTumbleCodeApiUrl = () =>
+	runtimeTumbleCodeApiUrl || process.env.ROO_CODE_API_URL || PRODUCTION_ROO_CODE_API_URL

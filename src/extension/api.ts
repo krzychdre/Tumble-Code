@@ -7,13 +7,13 @@ import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
 
 import {
-	type RooCodeAPI,
-	type RooCodeSettings,
-	type RooCodeEvents,
+	type TumbleCodeAPI,
+	type TumbleCodeSettings,
+	type TumbleCodeEvents,
 	type ProviderSettings,
 	type ProviderSettingsEntry,
 	type CreateTaskOptions,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	isSecretStateKey,
 	SETTINGS_DEFAULTS,
 } from "@roo-code/types"
@@ -25,7 +25,7 @@ import { TerminalRegistry } from "../integrations/terminal/TerminalRegistry"
 import { openClineInNewTab } from "../activate/registerCommands"
 import { logger } from "../utils/logging"
 
-export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
+export class API extends EventEmitter<TumbleCodeEvents> implements TumbleCodeAPI {
 	private readonly outputChannel: vscode.OutputChannel
 	private readonly sidebarProvider: ClineProvider
 	private readonly context: vscode.ExtensionContext
@@ -56,7 +56,7 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		images,
 		newTab,
 	}: {
-		configuration: RooCodeSettings
+		configuration: TumbleCodeSettings
 		text?: string
 		images?: string[]
 		newTab?: boolean
@@ -195,28 +195,28 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		// than per task. ClineProvider.dispose() removes all of its listeners,
 		// these included.
 
-		provider.on(RooCodeEventName.TaskDelegated, (parentTaskId, childTaskId) => {
-			this.emit(RooCodeEventName.TaskDelegated, parentTaskId, childTaskId)
+		provider.on(TumbleCodeEventName.TaskDelegated, (parentTaskId, childTaskId) => {
+			this.emit(TumbleCodeEventName.TaskDelegated, parentTaskId, childTaskId)
 		})
 
-		provider.on(RooCodeEventName.TaskDelegationCompleted, (parentTaskId, childTaskId, summary) => {
-			this.emit(RooCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, summary)
+		provider.on(TumbleCodeEventName.TaskDelegationCompleted, (parentTaskId, childTaskId, summary) => {
+			this.emit(TumbleCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, summary)
 		})
 
-		provider.on(RooCodeEventName.TaskDelegationResumed, (parentTaskId, childTaskId) => {
-			this.emit(RooCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
+		provider.on(TumbleCodeEventName.TaskDelegationResumed, (parentTaskId, childTaskId) => {
+			this.emit(TumbleCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
 		})
 
-		provider.on(RooCodeEventName.TaskCreated, (task) => {
+		provider.on(TumbleCodeEventName.TaskCreated, (task) => {
 			// Task Lifecycle
 
-			task.on(RooCodeEventName.TaskStarted, async () => {
-				this.emit(RooCodeEventName.TaskStarted, task.taskId)
+			task.on(TumbleCodeEventName.TaskStarted, async () => {
+				this.emit(TumbleCodeEventName.TaskStarted, task.taskId)
 				await this.fileLog(`[${new Date().toISOString()}] taskStarted -> ${task.taskId}\n`)
 			})
 
-			task.on(RooCodeEventName.TaskCompleted, async (_, tokenUsage, toolUsage) => {
-				this.emit(RooCodeEventName.TaskCompleted, task.taskId, tokenUsage, toolUsage, {
+			task.on(TumbleCodeEventName.TaskCompleted, async (_, tokenUsage, toolUsage) => {
+				this.emit(TumbleCodeEventName.TaskCompleted, task.taskId, tokenUsage, toolUsage, {
 					isSubtask: !!task.parentTaskId,
 				})
 
@@ -225,83 +225,83 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 				)
 			})
 
-			task.on(RooCodeEventName.TaskAborted, () => {
-				this.emit(RooCodeEventName.TaskAborted, task.taskId)
+			task.on(TumbleCodeEventName.TaskAborted, () => {
+				this.emit(TumbleCodeEventName.TaskAborted, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskFocused, () => {
-				this.emit(RooCodeEventName.TaskFocused, task.taskId)
+			task.on(TumbleCodeEventName.TaskFocused, () => {
+				this.emit(TumbleCodeEventName.TaskFocused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskUnfocused, () => {
-				this.emit(RooCodeEventName.TaskUnfocused, task.taskId)
+			task.on(TumbleCodeEventName.TaskUnfocused, () => {
+				this.emit(TumbleCodeEventName.TaskUnfocused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskActive, () => {
-				this.emit(RooCodeEventName.TaskActive, task.taskId)
+			task.on(TumbleCodeEventName.TaskActive, () => {
+				this.emit(TumbleCodeEventName.TaskActive, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskInteractive, () => {
-				this.emit(RooCodeEventName.TaskInteractive, task.taskId)
+			task.on(TumbleCodeEventName.TaskInteractive, () => {
+				this.emit(TumbleCodeEventName.TaskInteractive, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskResumable, () => {
-				this.emit(RooCodeEventName.TaskResumable, task.taskId)
+			task.on(TumbleCodeEventName.TaskResumable, () => {
+				this.emit(TumbleCodeEventName.TaskResumable, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskIdle, () => {
-				this.emit(RooCodeEventName.TaskIdle, task.taskId)
+			task.on(TumbleCodeEventName.TaskIdle, () => {
+				this.emit(TumbleCodeEventName.TaskIdle, task.taskId)
 			})
 
 			// Subtask Lifecycle
 
-			task.on(RooCodeEventName.TaskPaused, () => {
-				this.emit(RooCodeEventName.TaskPaused, task.taskId)
+			task.on(TumbleCodeEventName.TaskPaused, () => {
+				this.emit(TumbleCodeEventName.TaskPaused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskUnpaused, () => {
-				this.emit(RooCodeEventName.TaskUnpaused, task.taskId)
+			task.on(TumbleCodeEventName.TaskUnpaused, () => {
+				this.emit(TumbleCodeEventName.TaskUnpaused, task.taskId)
 			})
 
-			task.on(RooCodeEventName.TaskSpawned, (childTaskId) => {
-				this.emit(RooCodeEventName.TaskSpawned, task.taskId, childTaskId)
+			task.on(TumbleCodeEventName.TaskSpawned, (childTaskId) => {
+				this.emit(TumbleCodeEventName.TaskSpawned, task.taskId, childTaskId)
 			})
 
 			// Task Execution
 
-			task.on(RooCodeEventName.Message, async (message) => {
-				this.emit(RooCodeEventName.Message, { taskId: task.taskId, ...message })
+			task.on(TumbleCodeEventName.Message, async (message) => {
+				this.emit(TumbleCodeEventName.Message, { taskId: task.taskId, ...message })
 
 				if (message.message.partial !== true) {
 					await this.fileLog(`[${new Date().toISOString()}] ${JSON.stringify(message.message, null, 2)}\n`)
 				}
 			})
 
-			task.on(RooCodeEventName.TaskModeSwitched, (taskId, mode) => {
-				this.emit(RooCodeEventName.TaskModeSwitched, taskId, mode)
+			task.on(TumbleCodeEventName.TaskModeSwitched, (taskId, mode) => {
+				this.emit(TumbleCodeEventName.TaskModeSwitched, taskId, mode)
 			})
 
-			task.on(RooCodeEventName.TaskAskResponded, () => {
-				this.emit(RooCodeEventName.TaskAskResponded, task.taskId)
+			task.on(TumbleCodeEventName.TaskAskResponded, () => {
+				this.emit(TumbleCodeEventName.TaskAskResponded, task.taskId)
 			})
 
-			task.on(RooCodeEventName.QueuedMessagesUpdated, (taskId, messages) => {
-				this.emit(RooCodeEventName.QueuedMessagesUpdated, taskId, messages)
+			task.on(TumbleCodeEventName.QueuedMessagesUpdated, (taskId, messages) => {
+				this.emit(TumbleCodeEventName.QueuedMessagesUpdated, taskId, messages)
 			})
 
 			// Task Analytics
 
-			task.on(RooCodeEventName.TaskToolFailed, (taskId, tool, error) => {
-				this.emit(RooCodeEventName.TaskToolFailed, taskId, tool, error)
+			task.on(TumbleCodeEventName.TaskToolFailed, (taskId, tool, error) => {
+				this.emit(TumbleCodeEventName.TaskToolFailed, taskId, tool, error)
 			})
 
-			task.on(RooCodeEventName.TaskTokenUsageUpdated, (_, tokenUsage, toolUsage) => {
-				this.emit(RooCodeEventName.TaskTokenUsageUpdated, task.taskId, tokenUsage, toolUsage)
+			task.on(TumbleCodeEventName.TaskTokenUsageUpdated, (_, tokenUsage, toolUsage) => {
+				this.emit(TumbleCodeEventName.TaskTokenUsageUpdated, task.taskId, tokenUsage, toolUsage)
 			})
 
 			// Let's go!
 
-			this.emit(RooCodeEventName.TaskCreated, task.taskId)
+			this.emit(TumbleCodeEventName.TaskCreated, task.taskId)
 		})
 	}
 
@@ -321,13 +321,13 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 	// Global Settings Management
 
-	public getConfiguration(): RooCodeSettings {
+	public getConfiguration(): TumbleCodeSettings {
 		return Object.fromEntries(
 			Object.entries(this.sidebarProvider.getValues()).filter(([key]) => !isSecretStateKey(key)),
 		)
 	}
 
-	public async setConfiguration(values: RooCodeSettings) {
+	public async setConfiguration(values: TumbleCodeSettings) {
 		await this.sidebarProvider.contextProxy.setValues(values)
 		await this.sidebarProvider.providerSettingsManager.saveConfig(
 			values.currentApiConfigName || SETTINGS_DEFAULTS.currentApiConfigName,

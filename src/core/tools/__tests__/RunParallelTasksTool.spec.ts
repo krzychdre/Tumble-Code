@@ -14,7 +14,7 @@ afterAll(() => {
 	rmSync(tmpStorageRoot, { recursive: true, force: true })
 })
 
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 // Mock worktreeService before importing the tool. vi.hoisted ensures the
 // mock functions are available when the hoisted vi.mock factory runs.
@@ -561,7 +561,7 @@ describe("RunParallelTasksTool.execute", () => {
 		// An explicit user cancel: abortReason is set before the abort event
 		// (matching ClineProvider.cancelTask) — this fires the AbortController.
 		;(parent as any).abortReason = "user_cancelled"
-		parent.emit(RooCodeEventName.TaskAborted)
+		parent.emit(TumbleCodeEventName.TaskAborted)
 
 		await execPromise
 
@@ -589,7 +589,7 @@ describe("RunParallelTasksTool.execute", () => {
 
 		// Abandonment (task switch / in-place rehydrate): TaskAborted fires
 		// WITHOUT abortReason = "user_cancelled" — the fan-out must survive.
-		parent.emit(RooCodeEventName.TaskAborted)
+		parent.emit(TumbleCodeEventName.TaskAborted)
 		provider.children.forEach((c) => expect(c.abortTask).not.toHaveBeenCalled())
 
 		provider.children.forEach((c) => c.complete())
@@ -616,7 +616,7 @@ describe("RunParallelTasksTool.execute", () => {
 		await vi.waitFor(() => expect(provider.children.length).toBe(2))
 		// Parent abandoned mid-run (rehydrated elsewhere).
 		;(parent as any).abandoned = true
-		parent.emit(RooCodeEventName.TaskAborted)
+		parent.emit(TumbleCodeEventName.TaskAborted)
 		provider.children.forEach((c) => c.complete())
 		await execPromise
 
@@ -643,7 +643,7 @@ describe("RunParallelTasksTool.execute", () => {
 		await vi.waitFor(() => expect(provider.children.length).toBe(2))
 		;(parent as any).abort = true
 		;(parent as any).abortReason = "user_cancelled"
-		parent.emit(RooCodeEventName.TaskAborted)
+		parent.emit(TumbleCodeEventName.TaskAborted)
 		await execPromise
 
 		// Cancelled on purpose: no auto-resume injection.
@@ -667,7 +667,7 @@ describe("RunParallelTasksTool.execute", () => {
 
 		// Listener count for TaskAborted should be zero after execution.
 		const emitter = parent as unknown as EventEmitter
-		expect(emitter.listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+		expect(emitter.listenerCount(TumbleCodeEventName.TaskAborted)).toBe(0)
 	})
 
 	it("passes a real approval policy (not blanket approve) to createBackgroundTask", async () => {
@@ -982,7 +982,7 @@ describe("RunParallelTasksTool.execute", () => {
 			// Don't call complete() — child will resolve as not-completed when signal fires.
 			// Instead, user-cancel the parent to make the child resolve.
 			;(parent as any).abortReason = "user_cancelled"
-			parent.emit(RooCodeEventName.TaskAborted)
+			parent.emit(TumbleCodeEventName.TaskAborted)
 			await execPromise
 
 			expect(mockDeleteWorktree).not.toHaveBeenCalled()
@@ -1003,7 +1003,7 @@ describe("RunParallelTasksTool.execute", () => {
 
 			await vi.waitFor(() => expect(provider.children.length).toBe(2))
 			;(parent as any).abortReason = "user_cancelled"
-			parent.emit(RooCodeEventName.TaskAborted)
+			parent.emit(TumbleCodeEventName.TaskAborted)
 			await execPromise
 
 			expect(mockDeleteWorktree).toHaveBeenCalled()

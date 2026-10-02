@@ -1,12 +1,12 @@
 import type { EventEmitter } from "events"
 
-import type { RooCodeEvents } from "./events.js"
-import type { RooCodeSettings } from "./global-settings.js"
+import type { TumbleCodeEvents } from "./events.js"
+import type { TumbleCodeSettings } from "./global-settings.js"
 import type { ProviderSettingsEntry, ProviderSettings } from "./provider-settings.js"
 
-export type RooCodeAPIEvents = RooCodeEvents
+export type TumbleCodeAPIEvents = TumbleCodeEvents
 
-export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
+export interface TumbleCodeAPI extends EventEmitter<TumbleCodeAPIEvents> {
 	/**
 	 * Starts a new task with an optional initial message and images.
 	 * @param task Optional initial task message.
@@ -19,7 +19,7 @@ export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
 		images,
 		newTab,
 	}: {
-		configuration?: RooCodeSettings
+		configuration?: TumbleCodeSettings
 		text?: string
 		images?: string[]
 		newTab?: boolean
@@ -71,12 +71,12 @@ export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
 	 * Returns the current configuration.
 	 * @returns The current configuration.
 	 */
-	getConfiguration(): RooCodeSettings
+	getConfiguration(): TumbleCodeSettings
 	/**
 	 * Sets the configuration for the current task.
 	 * @param values An object containing key-value pairs to set.
 	 */
-	setConfiguration(values: RooCodeSettings): Promise<void>
+	setConfiguration(values: TumbleCodeSettings): Promise<void>
 	/**
 	 * Returns a list of all configured profile names
 	 * @returns Array of profile names
