@@ -40,9 +40,6 @@ const ALLOWED = {
 		'display path; || also guards the empty string ("" is not a config name)',
 	"webview-ui/src/components/chat/ComposerToolbar.tsx:53":
 		'display path; || also guards the empty string ("" is not a config name)',
-	// Stale display literal: the text shows 50ms when unset although the
-	// table default is 0; kept as-is because changing it is a UI change.
-	"webview-ui/src/components/settings/TerminalSettings.tsx:339": "stale display literal (50 vs table 0); UI change",
 }
 
 // ---------------------------------------------------------------------------
