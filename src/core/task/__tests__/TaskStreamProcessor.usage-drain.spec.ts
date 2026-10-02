@@ -12,6 +12,9 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
+import { TelemetryService } from "@tumble-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
+
 import { TaskStreamProcessor, type TaskStreamProcessorAccess } from "../TaskStreamProcessor"
 
 vi.mock("@tumble-code/telemetry", () => ({
@@ -30,6 +33,8 @@ function makeAccess(overrides: Partial<TaskStreamProcessorAccess> = {}): TaskStr
 		abort: false,
 		abandoned: false,
 		apiConfiguration: { apiProvider: "anthropic" } as any,
+		api: { getModel: () => ({ id: "claude-sonnet-4-5", info: {} }) } as any,
+		_taskMode: "code",
 		clineMessages: [apiReqMessage],
 		didFinishAbortingStream: false,
 		diffViewProvider: {
@@ -194,5 +199,57 @@ describe("TaskStreamProcessor usage drain — abort/abandon persist guard", () =
 		await runDrainWithUsage(access)
 
 		expect(access.history.saveClineMessages).not.toHaveBeenCalled()
+	})
+})
+
+// Regression: the event took its model and mode from the telemetry provider
+// (the sidebar) and its current task, so a turn of a task in an editor tab or
+// of a delegated subtask was reported without a model ("unknown" in the cloud
+// metrics) or under another task's model. The drain states its own.
+describe("TaskStreamProcessor usage drain - LLM Completion labels", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	async function drainCapture(access: TaskStreamProcessorAccess) {
+		const processor = new TaskStreamProcessor(access, {} as any)
+		const drain = processor.createBackgroundUsageDrain(
+			0,
+			{ input: 0, output: 0, cacheWrite: 0, cacheRead: 0, total: undefined },
+			makeModelInfo(),
+			doneIterator(),
+			{ done: false, value: { type: "usage", inputTokens: 100, outputTokens: 50, totalCost: 0.01 } },
+			vi.fn(),
+		)
+		await drain(0)
+		const capture = vi.mocked(TelemetryService.instance.capture)
+		expect(capture).toHaveBeenCalledTimes(1)
+		expect(capture.mock.calls[0][0]).toBe(TelemetryEventName.LLM_COMPLETION)
+		return capture.mock.calls[0][1] as Record<string, unknown>
+	}
+
+	it("states the model, the provider and the mode of the task that made the call", async () => {
+		const properties = await drainCapture(
+			makeAccess({
+				apiConfiguration: { apiProvider: "openai", openAiModelId: "GLM-5.3-Flash-NVFP4" } as any,
+				api: { getModel: () => ({ id: "GLM-5.3-Flash-NVFP4", info: {} }) } as any,
+				_taskMode: "architect",
+			}),
+		)
+
+		expect(properties).toMatchObject({
+			taskId: "task-1",
+			completionKind: "task",
+			modelId: "GLM-5.3-Flash-NVFP4",
+			apiProvider: "openai",
+			mode: "architect",
+		})
+	})
+
+	it("leaves the mode out while the task mode is not known yet", async () => {
+		const properties = await drainCapture(makeAccess({ _taskMode: undefined }))
+
+		expect(properties).not.toHaveProperty("mode")
+		expect(properties).toMatchObject({ modelId: "claude-sonnet-4-5", apiProvider: "anthropic" })
 	})
 })

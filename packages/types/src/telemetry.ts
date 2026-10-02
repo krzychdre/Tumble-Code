@@ -204,6 +204,8 @@ export type TelemetryEventPayloads = {
 		 */
 		modelId?: string
 		apiProvider?: string
+		/** The mode of the task that made the call, which the provider's current task may not be. */
+		mode?: string
 	}
 	/**
 	 * Tokens spent turning code into vectors. Its own event rather than an
@@ -349,6 +351,9 @@ export const tumbleCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 			...telemetryPropertiesSchema.shape,
 			promptTokens: z.number(),
 			totalTokens: z.number(),
+			// The embedder's name ("openai-compatible", "ollama", ...), not a chat
+			// provider: the shared enum rejected every event from those embedders.
+			apiProvider: z.string().optional(),
 			source: z.string().optional(),
 		}),
 	}),

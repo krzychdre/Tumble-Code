@@ -65,4 +65,28 @@ describe("tumbleCodeTelemetryEventSchema coverage", () => {
 		expect(result.success).toBe(true)
 		expect(result.data?.properties).toHaveProperty("tool", "read_file")
 	})
+
+	// Regression: the embedding event borrowed the chat-provider enum for
+	// apiProvider, so every event from an "openai-compatible" or other
+	// embedding-only provider was rejected and the cloud never saw one.
+	it("accepts an embedding event from an embedder that is not a chat provider", () => {
+		const result = tumbleCodeTelemetryEventSchema.safeParse({
+			type: TelemetryEventName.EMBEDDING_USAGE,
+			properties: {
+				appName: "a",
+				appVersion: "1",
+				vscodeVersion: "1",
+				platform: "linux",
+				editorName: "code",
+				language: "en",
+				mode: "code",
+				promptTokens: 1705,
+				totalTokens: 1705,
+				apiProvider: "openai-compatible",
+				source: "index-watch",
+			},
+		})
+
+		expect(result.success).toBe(true)
+	})
 })
