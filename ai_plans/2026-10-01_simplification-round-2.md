@@ -1,6 +1,6 @@
 # Simplification round 2 (2026-10-01)
 
-**Status:** done 2026-10-02 except B11 (paused, see below). Each item was one branch and one pull request, squash-merged right after opening (#664-#724).
+**Status:** done 2026-10-02. B11 cancelled by the owner (the VS Code terminal path stays). Each item was one branch and one pull request, squash-merged right after opening (#664-#724).
 **Source:** a read-only review of the whole repository at `65fdaba16` (five reviewers, one per area; the strongest
 claims re-checked by hand). Round 1 is `ai_plans/2026-09-27_simplification-roadmap.md`.
 
