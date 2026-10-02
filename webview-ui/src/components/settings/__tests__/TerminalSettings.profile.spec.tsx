@@ -187,11 +187,11 @@ describe("TerminalSettings VS Code terminal profile (#277)", () => {
 		expect(screen.queryByText("settings:terminal.inheritEnv.label")).not.toBeInTheDocument()
 	})
 
-	it("shows the command delay default as 50ms", () => {
-		// NOTE: This fork intentionally keeps the existing `terminalCommandDelay ?? 50`
-		// display default (zoo-277 critical finding #6: do not change user-facing default).
+	it("shows the command delay default from SETTINGS_DEFAULTS when unset", () => {
+		// The display default must come from SETTINGS_DEFAULTS (gate:
+		// check-settings-defaults.mjs), which the slider already used.
 		renderWithSettingsDraft(<TerminalSettings />, { terminalShellIntegrationDisabled: false })
-		expect(screen.getByText("50ms")).toBeInTheDocument()
+		expect(screen.getByText("0ms")).toBeInTheDocument()
 	})
 
 	it("disables override radio and shows hint when no profiles are available", () => {

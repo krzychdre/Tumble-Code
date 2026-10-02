@@ -339,7 +339,9 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 												setTerminalCommandDelay(Math.min(1000, Math.max(0, value)))
 											}
 										/>
-										<span className="w-10">{terminalCommandDelay ?? 50}ms</span>
+										<span className="w-10">
+											{terminalCommandDelay ?? SETTINGS_DEFAULTS.terminalCommandDelay}ms
+										</span>
 									</div>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
 										{t("settings:terminal.commandDelay.description")}
