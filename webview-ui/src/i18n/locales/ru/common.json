@@ -18,8 +18,7 @@
 	},
 	"ui": {
 		"search_placeholder": "Поиск...",
-		"no_results": "Результатов не найдено",
-		"close": "Закрыть"
+		"no_results": "Результатов не найдено"
 	},
 	"loading": "Загрузка",
 	"mermaid": {

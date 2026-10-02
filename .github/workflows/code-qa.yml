@@ -44,6 +44,10 @@ jobs:
             # place a static default may live.
             - name: Check settings defaults at call sites
               run: node scripts/check-settings-defaults.mjs
+            # R3-3a: no English webview key may be unreferenced — the unused
+            # keys are deleted, not silenced.
+            - name: Check for unused i18n keys
+              run: node scripts/find-unused-i18n-keys.mjs --check
 
     compile:
         runs-on: ubuntu-latest

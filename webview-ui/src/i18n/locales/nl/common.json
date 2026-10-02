@@ -18,8 +18,7 @@
 	},
 	"ui": {
 		"search_placeholder": "Zoeken...",
-		"no_results": "Geen resultaten gevonden",
-		"close": "Sluiten"
+		"no_results": "Geen resultaten gevonden"
 	},
 	"loading": "Laden",
 	"mermaid": {

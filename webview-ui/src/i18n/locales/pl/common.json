@@ -18,8 +18,7 @@
 	},
 	"ui": {
 		"search_placeholder": "Szukaj...",
-		"no_results": "Nie znaleziono wyników",
-		"close": "Zamknij"
+		"no_results": "Nie znaleziono wyników"
 	},
 	"loading": "Ładowanie",
 	"mermaid": {

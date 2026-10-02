@@ -18,8 +18,7 @@
 	},
 	"ui": {
 		"search_placeholder": "Cerca...",
-		"no_results": "No s'han trobat resultats",
-		"close": "Tanca"
+		"no_results": "No s'han trobat resultats"
 	},
 	"loading": "Carregant",
 	"mermaid": {
