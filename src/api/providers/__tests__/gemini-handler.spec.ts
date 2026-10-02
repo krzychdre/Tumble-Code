@@ -3,7 +3,7 @@ import { FunctionCallingConfigMode } from "@google/genai"
 
 const mockCaptureException = vi.fn()
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: (...args: unknown[]) => mockCaptureException(...args),
@@ -12,7 +12,7 @@ vi.mock("@roo-code/telemetry", () => ({
 }))
 
 import { GeminiHandler } from "../gemini"
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 describe("GeminiHandler backend support", () => {
 	beforeEach(() => {

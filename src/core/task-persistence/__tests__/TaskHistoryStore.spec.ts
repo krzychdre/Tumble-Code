@@ -4,7 +4,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as os from "os"
 
-import type { HistoryItem } from "@roo-code/types"
+import type { HistoryItem } from "@tumble-code/types"
 
 import { TaskHistoryStore } from "../TaskHistoryStore"
 import { GlobalFileNames } from "../../../shared/globalFileNames"
@@ -14,7 +14,7 @@ vi.mock("../../../utils/storage", () => ({
 }))
 
 // Mock safeWriteJson to use plain fs writes in tests (avoids proper-lockfile issues)
-vi.mock("@roo-code/core/fs", () => {
+vi.mock("@tumble-code/core/fs", () => {
 	const write = vi.fn().mockImplementation(async (filePath: string, data: any) => {
 		await fs.mkdir(path.dirname(filePath), { recursive: true })
 		await fs.writeFile(filePath, JSON.stringify(data, null, "\t"), "utf8")
@@ -486,7 +486,7 @@ describe("TaskHistoryStore", () => {
 			await fs.mkdir(path.join(tasksDir, "fail-target"), { recursive: true })
 
 			// Force safeWriteJson to fail for the target file
-			const { safeWriteJson } = await import("@roo-code/core/fs")
+			const { safeWriteJson } = await import("@tumble-code/core/fs")
 			const mock = vi.mocked(safeWriteJson)
 			mock.mockImplementationOnce(async (filePath: string) => {
 				if (filePath.endsWith(GlobalFileNames.historyItem)) {

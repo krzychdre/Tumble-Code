@@ -2,7 +2,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { listHandoffs, readHandoff } from "@roo-code/agent-interchange"
+import { listHandoffs, readHandoff } from "@tumble-code/agent-interchange"
 
 const showQuickPick = vi.fn()
 const showInputBox = vi.fn()
@@ -162,7 +162,7 @@ describe("agent interchange commands", () => {
 	it("marks a picked-up handoff and records the task that continues it", async () => {
 		writeTumbleTask("tc-1", "Port the checker")
 
-		const { createHandoff, readTumbleSession } = await import("@roo-code/agent-interchange")
+		const { createHandoff, readTumbleSession } = await import("@tumble-code/agent-interchange")
 		const session = await readTumbleSession("tc-1", { storageRoots: [storageDir] })
 		const handoff = await createHandoff({ session: session!, to: "tumble-code", nextSteps: ["Run the suite"] })
 

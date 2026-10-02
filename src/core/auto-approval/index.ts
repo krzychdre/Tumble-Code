@@ -7,7 +7,7 @@ import {
 	firstUsableSuggestion,
 	isNonBlockingAsk,
 	SETTINGS_DEFAULTS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 

@@ -7,8 +7,8 @@ import * as path from "path"
 import * as vscode from "vscode"
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { type GlobalState, type ProviderSettings, type ModelInfo, TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { type GlobalState, type ProviderSettings, type ModelInfo, TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { Task } from "../Task"
 import { resetGlobalApiRequestTime, getLastGlobalApiRequestTime } from "../RetryHandler"

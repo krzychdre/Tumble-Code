@@ -15,13 +15,13 @@ import {
 	isIdleAsk,
 	isInteractiveAsk,
 	isResumableAsk,
-} from "@roo-code/types"
-import { type ToolName } from "@roo-code/types"
+} from "@tumble-code/types"
+import { type ToolName } from "@tumble-code/types"
 
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { getToolCallId, findToolAskIndexByCallId } from "./toolAskIdentity"
 import { checkAutoApproval, type CheckAutoApprovalResult } from "../auto-approval"
-import { findLastIndex } from "@roo-code/core/browser"
+import { findLastIndex } from "@tumble-code/core/browser"
 import { formatResponse } from "../prompts/responses"
 import { AskIgnoredError } from "./AskIgnoredError"
 import { type MessageQueueService } from "../message-queue/MessageQueueService"

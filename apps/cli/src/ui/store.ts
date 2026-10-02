@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-import type { TokenUsage, ProviderSettings, TodoItem, McpServer } from "@roo-code/types"
+import type { TokenUsage, ProviderSettings, TodoItem, McpServer } from "@tumble-code/types"
 
 import type { CloudStatus, TUIMessage, PendingAsk, TaskHistoryItem } from "./types.js"
 import type { FileResult, SlashCommandResult, ModeResult } from "./components/autocomplete/index.js"

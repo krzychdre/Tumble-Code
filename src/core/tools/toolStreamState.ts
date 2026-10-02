@@ -1,4 +1,4 @@
-import type { ToolName } from "@roo-code/types"
+import type { ToolName } from "@tumble-code/types"
 
 /**
  * Partial-stream state of tool calls, kept on the task that streams them.

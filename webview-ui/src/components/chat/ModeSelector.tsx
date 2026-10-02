@@ -2,7 +2,7 @@ import React from "react"
 import { Fzf } from "fzf"
 import { Check, X } from "lucide-react"
 
-import type { ModeConfig, CustomModePrompts } from "@roo-code/types"
+import type { ModeConfig, CustomModePrompts } from "@tumble-code/types"
 
 import { type Mode, getAllModes, defaultModeSlug } from "@roo/modes"
 

@@ -15,7 +15,7 @@
 // - BaseOpenAiCompatibleProvider (Z.ai, Moonshot)
 // - DeepSeek, LM Studio, Qwen Code, OpenRouter, LiteLLM
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vi.fn() } },
 }))
 

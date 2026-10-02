@@ -4,9 +4,9 @@ import { fileURLToPath } from "url"
 
 import pWaitFor from "p-wait-for"
 
-import type { TaskSessionEntry } from "@roo-code/core/cli"
-import type { Command, WebviewMessage } from "@roo-code/types"
-import { getProviderDefaultModelId } from "@roo-code/types"
+import type { TaskSessionEntry } from "@tumble-code/core/cli"
+import type { Command, WebviewMessage } from "@tumble-code/types"
+import { getProviderDefaultModelId } from "@tumble-code/types"
 
 import { ExtensionHost, type ExtensionHostOptions } from "@/agent/index.js"
 import { readWorkspaceTaskSessions } from "@/lib/task-history/index.js"

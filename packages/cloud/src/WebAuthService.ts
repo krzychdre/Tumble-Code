@@ -10,7 +10,7 @@ import type {
 	AuthService,
 	AuthServiceEvents,
 	AuthState,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { getClerkBaseUrl, getTumbleCodeApiUrl, PRODUCTION_CLERK_BASE_URL } from "./config.js"
 import { getUserAgent } from "./utils.js"

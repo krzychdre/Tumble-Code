@@ -1,12 +1,12 @@
 // npx vitest run src/api/__tests__/cost.spec.ts
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 import { calculateApiCost, selectTierPrices } from "../cost.js"
 
 // The whole module is scanned for model tables below. It is loaded through a variable so knip
-// does not read that scan as a use of every @roo-code/types export.
-const typesModule = "@roo-code/types"
+// does not read that scan as a use of every @tumble-code/types export.
+const typesModule = "@tumble-code/types"
 const rooTypes: Record<string, unknown> = await import(typesModule)
 
 describe("Cost Utility", () => {
@@ -488,7 +488,7 @@ describe("Cost Utility", () => {
 			"contextWindow" in value &&
 			"supportsPromptCache" in value
 
-		// Every model table and every single ModelInfo exported by @roo-code/types,
+		// Every model table and every single ModelInfo exported by @tumble-code/types,
 		// with each pricing tier merged over its model.
 		const catalog: { table: string; id: string; info: ModelInfo }[] = []
 		for (const [name, value] of Object.entries(rooTypes)) {

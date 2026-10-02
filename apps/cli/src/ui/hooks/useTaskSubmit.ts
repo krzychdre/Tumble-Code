@@ -3,7 +3,7 @@ import { randomUUID } from "crypto"
 import fs from "fs/promises"
 import path from "path"
 import { useStdout } from "ink"
-import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } from "@roo-code/types"
+import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } from "@tumble-code/types"
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
 import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"

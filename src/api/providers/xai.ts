@@ -1,10 +1,10 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { ApiProviderError, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { ApiProviderError, providerModelDefinitions, resolveCatalogModel } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 import { ApiStream } from "../transform/stream"
 import { convertToResponsesApiInput } from "../transform/responses-api-input"

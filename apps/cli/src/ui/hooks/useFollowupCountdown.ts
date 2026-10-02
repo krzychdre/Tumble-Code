@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 
-import { firstUsableSuggestion, type UsableSuggestion } from "@roo-code/types"
+import { firstUsableSuggestion, type UsableSuggestion } from "@tumble-code/types"
 
 import { FOLLOWUP_TIMEOUT_SECONDS } from "../../types/constants.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"

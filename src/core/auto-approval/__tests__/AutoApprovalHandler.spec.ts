@@ -1,13 +1,13 @@
-import { GlobalState, ClineMessage } from "@roo-code/types"
+import { GlobalState, ClineMessage } from "@tumble-code/types"
 
 import { AutoApprovalHandler } from "../AutoApprovalHandler"
 
-vi.mock("@roo-code/core/browser", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
+vi.mock("@tumble-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tumble-code/core/browser")>()),
 	consolidateTokenUsage: vi.fn(),
 }))
 
-import { consolidateTokenUsage } from "@roo-code/core/browser"
+import { consolidateTokenUsage } from "@tumble-code/core/browser"
 
 describe("AutoApprovalHandler", () => {
 	let handler: AutoApprovalHandler

@@ -4,7 +4,7 @@ import {
 	resolvePortableProviderModel,
 	type ModelInfo,
 	type ProviderSettings,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import type { RouterModels } from "@/ui/store.js"
 

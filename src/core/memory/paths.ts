@@ -1,7 +1,7 @@
 import * as path from "path"
 import { homedir } from "os"
 
-import { claudeConfigDir, claudeProjectCwds, claudeSlug } from "@roo-code/agent-interchange"
+import { claudeConfigDir, claudeProjectCwds, claudeSlug } from "@tumble-code/agent-interchange"
 
 import { logger } from "../../utils/logging"
 

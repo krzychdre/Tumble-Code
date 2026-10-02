@@ -8,7 +8,7 @@ import {
 	SelectValue,
 	Input,
 } from "@src/components/ui"
-import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider } from "@roo-code/types"
+import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider } from "@tumble-code/types"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
 interface ImageGenerationSettingsProps {

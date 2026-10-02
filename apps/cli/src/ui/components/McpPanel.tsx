@@ -4,7 +4,7 @@ import path from "path"
 import { memo, useRef, useState } from "react"
 import { Box, Text, useInput } from "ink"
 
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 import { isFailedMcpServer, lastMcpErrorLine } from "@/lib/utils/mcp-status.js"
 

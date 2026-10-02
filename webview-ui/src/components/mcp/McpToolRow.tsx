@@ -1,4 +1,4 @@
-import type { McpTool } from "@roo-code/types"
+import type { McpTool } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"

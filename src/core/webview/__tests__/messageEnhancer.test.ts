@@ -1,6 +1,6 @@
 import type { Mock } from "vitest"
-import { ProviderSettings, ClineMessage } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { ProviderSettings, ClineMessage } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { MessageEnhancer } from "../messageEnhancer"
 import * as singleCompletionHandlerModule from "../../../utils/single-completion-handler"
@@ -9,7 +9,7 @@ import { logger } from "../../../utils/logging"
 
 // Mock dependencies
 vi.mock("../../../utils/single-completion-handler")
-vi.mock("@roo-code/telemetry")
+vi.mock("@tumble-code/telemetry")
 
 describe("MessageEnhancer", () => {
 	let mockProviderSettingsManager: ProviderSettingsManager

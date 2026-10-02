@@ -62,7 +62,7 @@ vi.mock("../../../utils/fs", () => ({ fileExistsAtPath: vi.fn().mockResolvedValu
 vi.mock("ignore", () => ({
 	default: vi.fn().mockReturnValue({ add: vi.fn(), ignores: vi.fn().mockReturnValue(false) }),
 }))
-vi.mock("@roo-code/telemetry", () => ({ TelemetryService: { instance: { captureEvent: vi.fn() } } }))
+vi.mock("@tumble-code/telemetry", () => ({ TelemetryService: { instance: { captureEvent: vi.fn() } } }))
 vi.mock("../service-factory")
 
 describe("CodeIndexManager - auto-retry on transient connection errors", () => {

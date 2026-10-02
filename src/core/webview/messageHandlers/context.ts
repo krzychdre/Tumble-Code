@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import type { GlobalState } from "@roo-code/types"
+import type { GlobalState } from "@tumble-code/types"
 
 import { t } from "../../../i18n"
 import { resolveImageMentions } from "../../mentions/resolveImageMentions"

@@ -39,8 +39,8 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 		} as never),
 }))
 
-// Mock the getModelId function from @roo-code/types
-vi.mock("@roo-code/types", () => ({
+// Mock the getModelId function from @tumble-code/types
+vi.mock("@tumble-code/types", () => ({
 	getModelId: (config: any) => config?.apiModelId || undefined,
 }))
 

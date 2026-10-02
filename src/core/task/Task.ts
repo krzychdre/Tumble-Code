@@ -56,9 +56,9 @@ import {
 	MAX_MCP_TOOLS_THRESHOLD,
 	type ToolParamName,
 	toolParamNames,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { CloudService } from "@roo-code/cloud"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { CloudService } from "@tumble-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
@@ -74,7 +74,7 @@ import {
 	getModelMaxOutputTokens,
 	consolidateApiRequests,
 	consolidateCommands,
-} from "@roo-code/core/browser"
+} from "@tumble-code/core/browser"
 import { t } from "../../i18n"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"

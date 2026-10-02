@@ -7,7 +7,7 @@ import chokidar, { FSWatcher } from "chokidar"
 import delay from "delay"
 import deepEqual from "fast-deep-equal"
 
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 import { t } from "../../i18n"
 

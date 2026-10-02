@@ -1,9 +1,9 @@
-import { TumbleCodeEventName, ProviderSettings, TokenUsage, ToolUsage } from "@roo-code/types"
+import { TumbleCodeEventName, ProviderSettings, TokenUsage, ToolUsage } from "@tumble-code/types"
 
 import { Task } from "../Task"
 import { CLINE_MESSAGES_SAVE_IDLE_MS } from "../TaskMessageLog"
 import { ClineProvider } from "../../webview/ClineProvider"
-import { hasToolUsageChanged, hasTokenUsageChanged } from "@roo-code/core/browser"
+import { hasToolUsageChanged, hasTokenUsageChanged } from "@tumble-code/core/browser"
 
 // Mock dependencies
 vi.mock("../../webview/ClineProvider")
@@ -24,7 +24,7 @@ vi.mock("../../../api", () => ({
 }))
 
 // Mock TelemetryService
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

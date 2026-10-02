@@ -5,9 +5,9 @@ import { LRUCache } from "lru-cache"
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
-import { consolidateTokenUsage, consolidateApiRequests, consolidateCommands } from "@roo-code/core/browser"
+import { consolidateTokenUsage, consolidateApiRequests, consolidateCommands } from "@tumble-code/core/browser"
 import { ProfileValidator } from "@roo/ProfileValidator"
 
 import { vscode } from "@src/utils/vscode"

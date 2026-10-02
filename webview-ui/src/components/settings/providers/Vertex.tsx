@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { Trans } from "react-i18next"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
-import { VERTEX_REGIONS, VERTEX_1M_CONTEXT_MODEL_IDS, looksLikeFilePath } from "@roo-code/types"
+import { VERTEX_REGIONS, VERTEX_1M_CONTEXT_MODEL_IDS, looksLikeFilePath } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Link, Input } from "@src/components/ui"

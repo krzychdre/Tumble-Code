@@ -25,7 +25,7 @@
  * provider's base-url env var (e.g. OPENAI_BASE_URL), then the fallback's.
  */
 
-import { getProviderDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@roo-code/types"
+import { getProviderDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@tumble-code/types"
 
 import type { ReasoningEffortFlagOptions } from "@/types/types.js"
 import { DEFAULT_FLAGS } from "@/types/constants.js"

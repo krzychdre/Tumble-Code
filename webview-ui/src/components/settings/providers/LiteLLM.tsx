@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from "react"
 
-import { type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/types"
+import { type OrganizationAllowList, litellmDefaultModelId } from "@tumble-code/types"
 
 import { useProviderModels } from "@src/hooks/models/useProviderModels"
 import { useAppTranslation } from "@src/i18n/TranslationContext"

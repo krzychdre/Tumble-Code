@@ -3,7 +3,7 @@ import * as path from "path"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { arePathsEqual } from "../../utils/path"
-import { safeWriteJson } from "@roo-code/core/fs"
+import { safeWriteJson } from "@tumble-code/core/fs"
 import { getProjectRooDirectoryForCwd } from "../roo-config"
 
 import { formatSchemaIssues, type McpConfigSource, type McpServerConfig, McpSettingsSchema } from "./mcpConfigSchema"

@@ -1,6 +1,6 @@
 import type { Mock } from "vitest"
 import { MarketplaceViewStateManager, ViewStateTransition } from "../MarketplaceViewStateManager"
-import { MarketplaceItem } from "@roo-code/types"
+import { MarketplaceItem } from "@tumble-code/types"
 
 // Mock vscode module
 vi.mock("@/utils/vscode", () => ({

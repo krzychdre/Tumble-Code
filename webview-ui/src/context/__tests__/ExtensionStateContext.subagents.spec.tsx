@@ -10,7 +10,7 @@
  */
 import { render, screen, act } from "@/utils/test-utils"
 
-import type { SubagentSummary } from "@roo-code/types"
+import type { SubagentSummary } from "@tumble-code/types"
 
 import { ExtensionStateContextProvider, useExtensionState } from "../ExtensionStateContext"
 

@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import crypto from "crypto"
 
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ApiHandler, ApiHandlerCreateMessageMetadata } from "../../api"
 import {
@@ -14,7 +14,7 @@ import {
 import { pruneToolResults } from "../condense/toolResultPruner"
 import type { ArtifactStore } from "../artifacts/ArtifactStore"
 import { ApiMessage } from "../task-persistence/apiMessages"
-import { ANTHROPIC_DEFAULT_MAX_TOKENS, PRUNE_CONDENSE_DEFAULTS, TelemetryEventName } from "@roo-code/types"
+import { ANTHROPIC_DEFAULT_MAX_TOKENS, PRUNE_CONDENSE_DEFAULTS, TelemetryEventName } from "@tumble-code/types"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { microcompactToolResults, microcompactTargetChars, MICROCOMPACT_PLACEHOLDER_TOKENS } from "./microcompact"
 import { buildContextLedger, type ContextLedger } from "./ledger"

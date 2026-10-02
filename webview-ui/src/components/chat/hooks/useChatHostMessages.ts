@@ -1,7 +1,7 @@
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 
-import type { AudioType, ClineMessage, HistoryItem } from "@roo-code/types"
+import type { AudioType, ClineMessage, HistoryItem } from "@tumble-code/types"
 
 import { appendImages } from "@src/utils/imageUtils"
 import { useExtensionMessage, type ExtensionMessageOf } from "@src/utils/extensionBus"

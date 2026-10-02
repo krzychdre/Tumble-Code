@@ -1,5 +1,5 @@
 import path from "path"
-import { defineRooVitestConfig, resolveVerbosity } from "@roo-code/config-vitest"
+import { defineRooVitestConfig, resolveVerbosity } from "@tumble-code/config-vitest"
 
 const isWindowsCI = process.platform === "win32" && process.env.CI === "true"
 

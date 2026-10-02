@@ -4,7 +4,7 @@ import fs from "fs/promises"
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ExtensionMessage, ExtensionState, HistoryItem } from "@roo-code/types"
+import type { ExtensionMessage, ExtensionState, HistoryItem } from "@tumble-code/types"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { downloadTask, getTaskFileName } from "../../integrations/misc/export-markdown"

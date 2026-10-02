@@ -1,6 +1,6 @@
 import path from "path"
 
-import { type ClineSayTool } from "@roo-code/types"
+import { type ClineSayTool } from "@tumble-code/types"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"

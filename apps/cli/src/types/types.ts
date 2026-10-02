@@ -1,4 +1,4 @@
-import type { ReasoningEffortExtended } from "@roo-code/types"
+import type { ReasoningEffortExtended } from "@tumble-code/types"
 import type { OutputFormat } from "./json-events.js"
 import type { SupportedProvider } from "@/lib/utils/provider-types.js"
 

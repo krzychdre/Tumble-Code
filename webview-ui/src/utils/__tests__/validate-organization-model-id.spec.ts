@@ -4,7 +4,7 @@ import {
 	type OrganizationAllowList,
 	type ProviderName,
 	type ProviderSettings,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 vi.mock("i18next", () => ({ default: { t: (key: string) => key } }))
 

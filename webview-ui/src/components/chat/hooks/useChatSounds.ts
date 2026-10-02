@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react"
 import useSound from "use-sound"
 
-import type { AudioType } from "@roo-code/types"
+import type { AudioType } from "@tumble-code/types"
 
 interface ChatSoundSettings {
 	soundEnabled?: boolean

@@ -1,7 +1,7 @@
 import { useId, useState } from "react"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
-import { type OrganizationAllowList, type RouterModels, openRouterDefaultModelId } from "@roo-code/types"
+import { type OrganizationAllowList, type RouterModels, openRouterDefaultModelId } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Input } from "@src/components/ui"

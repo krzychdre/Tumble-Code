@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { BackgroundModelHandler } from "../../../api/BackgroundModelHandler"
@@ -70,7 +70,7 @@ vi.mock("../../../api", async (importOriginal) => {
 	}
 })
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		createInstance: vi.fn(),

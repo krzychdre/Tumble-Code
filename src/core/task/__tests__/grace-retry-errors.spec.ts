@@ -4,15 +4,15 @@ import * as os from "os"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import type { GlobalState, ProviderSettings } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { GlobalState, ProviderSettings } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { ContextProxy } from "../../config/ContextProxy"
 
-// Mock @roo-code/core
-vi.mock("@roo-code/core", () => ({
+// Mock @tumble-code/core
+vi.mock("@tumble-code/core", () => ({
 	customToolRegistry: {
 		getTools: vi.fn().mockReturnValue([]),
 		hasTool: vi.fn().mockReturnValue(false),

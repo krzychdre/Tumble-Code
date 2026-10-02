@@ -1,4 +1,4 @@
-# @roo-code/agent-interchange
+# @tumble-code/agent-interchange
 
 Read, brief and hand over coding-agent work **between Claude Code and Tumble Code**.
 

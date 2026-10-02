@@ -1,4 +1,4 @@
-import type { OpenAiCodexRateLimitInfo } from "@roo-code/types"
+import type { OpenAiCodexRateLimitInfo } from "@tumble-code/types"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
 
 const WHAM_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"

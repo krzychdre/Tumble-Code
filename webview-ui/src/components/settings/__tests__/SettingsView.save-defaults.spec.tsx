@@ -9,7 +9,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
-import { SETTINGS_DEFAULTS } from "@roo-code/types"
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
 
 // vi.mock is hoisted above the imports, so the spy must be hoisted too.
 const { mockPostMessage } = vi.hoisted(() => ({ mockPostMessage: vi.fn() }))

@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { classifyProvider, type ProviderSettings, type ModelInfo } from "@roo-code/types"
+import { classifyProvider, type ProviderSettings, type ModelInfo } from "@tumble-code/types"
 
 import { ApiStream } from "./transform/stream"
 import {

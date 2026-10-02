@@ -8,11 +8,11 @@ import {
 	type GroundingMetadata,
 	FunctionCallingConfigMode,
 } from "@google/genai"
-import { type ModelInfo, selectGeminiModel, ApiProviderError } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { calculateApiCost, selectTierPrices } from "@roo-code/core/browser"
+import { type ModelInfo, selectGeminiModel, ApiProviderError } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { calculateApiCost, selectTierPrices } from "@tumble-code/core/browser"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 import { convertAnthropicMessageToGemini } from "../transform/gemini-format"
 import { t } from "i18next"

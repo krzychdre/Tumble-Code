@@ -1,6 +1,6 @@
 import type { WebviewApi } from "vscode-webview"
 
-import { WebviewMessage } from "@roo-code/types"
+import { WebviewMessage } from "@tumble-code/types"
 
 /**
  * A utility wrapper around the acquireVsCodeApi() function, which enables

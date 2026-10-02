@@ -5,7 +5,7 @@ import { Button, StandardTooltip } from "@/components/ui"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
-import { hasUsableAnswer, type SuggestionItem } from "@roo-code/types"
+import { hasUsableAnswer, type SuggestionItem } from "@tumble-code/types"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_FOLLOWUP_TIMEOUT_MS = 60000

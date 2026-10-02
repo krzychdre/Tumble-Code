@@ -2,7 +2,7 @@
 import type OpenAI from "openai"
 
 import { applyDeferralStrategy, formatDeferredCatalog, type DeferredCatalog } from "../deferred-tools"
-import { ALWAYS_AVAILABLE_TOOLS } from "@roo-code/types"
+import { ALWAYS_AVAILABLE_TOOLS } from "@tumble-code/types"
 
 const nativeTool = (name: string): OpenAI.Chat.ChatCompletionFunctionTool => ({
 	type: "function",

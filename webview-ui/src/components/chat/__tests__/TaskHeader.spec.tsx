@@ -4,7 +4,7 @@ import React from "react"
 import { act, render, screen, fireEvent } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 import TaskHeader, { TaskHeaderProps } from "../TaskHeader"
 
@@ -66,11 +66,11 @@ vi.mock("@/hooks/models/useSelectedModel", () => ({
 	}),
 }))
 
-// Mock getModelMaxOutputTokens; the rest of @roo-code/core/browser (findLastIndex,
+// Mock getModelMaxOutputTokens; the rest of @tumble-code/core/browser (findLastIndex,
 // safeJsonParse, ...) stays real.
 let mockMaxOutputTokens = 0
-vi.mock("@roo-code/core/browser", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
+vi.mock("@tumble-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tumble-code/core/browser")>()),
 	getModelMaxOutputTokens: () => mockMaxOutputTokens,
 }))
 

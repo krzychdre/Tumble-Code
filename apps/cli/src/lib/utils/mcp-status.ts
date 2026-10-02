@@ -1,4 +1,4 @@
-import type { ExtensionMessage, McpServer } from "@roo-code/types"
+import type { ExtensionMessage, McpServer } from "@tumble-code/types"
 
 /**
  * The MCP server list a message carries: `mcpServers` pushes (McpHub, after

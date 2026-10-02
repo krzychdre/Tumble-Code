@@ -9,7 +9,7 @@ import { logger } from "../../../../utils/logging"
 vi.mock("openai")
 
 // Mock TelemetryService
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vi.fn(),

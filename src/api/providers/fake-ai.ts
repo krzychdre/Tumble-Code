@@ -1,9 +1,9 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 import type { ApiHandler, CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { ApiStream } from "../transform/stream"
 
 interface FakeAI {

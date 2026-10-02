@@ -6,7 +6,7 @@ const { handleAuthCallback } = vi.hoisted(() => ({ handleAuthCallback: vi.fn().m
 
 vi.mock("vscode", () => ({}))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		get instance() {
 			return { handleAuthCallback }

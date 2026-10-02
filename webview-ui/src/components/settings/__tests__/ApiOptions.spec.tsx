@@ -3,7 +3,7 @@
 import { act, render, screen, fireEvent, within } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import { type ModelInfo, type ProviderSettings, openAiModelInfoSaneDefaults } from "@roo-code/types"
+import { type ModelInfo, type ProviderSettings, openAiModelInfoSaneDefaults } from "@tumble-code/types"
 import {
 	anthropicDefaultModelId,
 	bedrockDefaultModelId,
@@ -22,7 +22,7 @@ import {
 	qwenCodeDefaultModelId,
 	vertexDefaultModelId,
 	xaiDefaultModelId,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import * as ExtensionStateContext from "@src/context/ExtensionStateContext"
 const { ExtensionStateContextProvider } = ExtensionStateContext

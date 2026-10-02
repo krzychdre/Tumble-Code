@@ -5,7 +5,7 @@ import { vscode } from "@/utils/vscode"
 
 import { MarketplaceView } from "../MarketplaceView"
 import { MarketplaceViewStateManager } from "../MarketplaceViewStateManager"
-import { DEFAULT_CHECKPOINT_TIMEOUT_SECONDS } from "@roo-code/types"
+import { DEFAULT_CHECKPOINT_TIMEOUT_SECONDS } from "@tumble-code/types"
 
 // Tab (rendered inside the view) reads its slice through useExtensionSelector,
 // while the view itself still consumes the raw ExtensionStateContext.

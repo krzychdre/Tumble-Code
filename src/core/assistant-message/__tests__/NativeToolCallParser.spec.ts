@@ -1,6 +1,6 @@
 import { NativeToolCallParser } from "../NativeToolCallParser"
-import { TOOL_DISPLAY_NAMES } from "@roo-code/types"
-import type { ToolName } from "@roo-code/types"
+import { TOOL_DISPLAY_NAMES } from "@tumble-code/types"
+import type { ToolName } from "@tumble-code/types"
 
 /**
  * Minimal valid args payload for each native tool. The point of these

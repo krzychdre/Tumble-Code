@@ -1,8 +1,8 @@
 import path from "path"
 import fs from "fs/promises"
 
-import { type ClineSayTool, TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { type ClineSayTool, TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { getReadablePath } from "../../utils/path"
 import { Task } from "../task/Task"

@@ -1,7 +1,7 @@
-import type { EmbedderProvider } from "@roo-code/types"
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { backoffDelayMsNoJitter } from "@roo-code/core"
+import type { EmbedderProvider } from "@tumble-code/types"
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { backoffDelayMsNoJitter } from "@tumble-code/core"
 
 import {
 	IEmbedder,

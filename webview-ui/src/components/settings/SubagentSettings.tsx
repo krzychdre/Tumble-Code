@@ -6,7 +6,7 @@ import {
 	DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 	MAX_PARALLEL_TASKS_MAX_CONCURRENCY,
 	MIN_PARALLEL_TASKS_CONCURRENCY,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Slider } from "@/components/ui"

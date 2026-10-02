@@ -30,7 +30,7 @@ import {
 	internationalZAiModels,
 	mainlandZAiModels,
 	zaiModelCatalog,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useSelectedModel } from "../useSelectedModel"
 import { useProviderModels } from "../useProviderModels"

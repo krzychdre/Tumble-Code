@@ -1,6 +1,6 @@
 import TurndownService from "turndown"
 
-import { WEB_TOOLS_DEFAULTS, type ResolvedWebToolsConfig } from "@roo-code/types"
+import { WEB_TOOLS_DEFAULTS, type ResolvedWebToolsConfig } from "@tumble-code/types"
 
 import { assertPublicHttpUrl } from "./addressGuard"
 

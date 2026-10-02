@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 
-import { setInputBoxHandler } from "@roo-code/vscode-shim"
+import { setInputBoxHandler } from "@tumble-code/vscode-shim"
 
 import { useSecretPromptStore } from "../stores/secretPromptStore.js"
 

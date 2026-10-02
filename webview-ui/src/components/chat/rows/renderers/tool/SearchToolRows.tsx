@@ -1,7 +1,7 @@
 import React from "react"
 import { Trans, useTranslation } from "react-i18next"
 
-import { toolPayloadSearchScope } from "@roo-code/core/browser"
+import { toolPayloadSearchScope } from "@tumble-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
 import CodeAccordion from "@src/components/common/CodeAccordion"

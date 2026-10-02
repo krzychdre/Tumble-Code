@@ -1,4 +1,4 @@
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { batchConsecutive } from "@src/utils/batchConsecutive"
 

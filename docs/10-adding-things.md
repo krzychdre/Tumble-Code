@@ -15,7 +15,7 @@ Save buffer (the `cachedState` rule from `AGENTS.md`: controls bind to the buffe
    is the source of truth for the key name and shape.
 2. **Default**: add the value to `SETTINGS_DEFAULTS` in `packages/types/src/settings-defaults.ts`. Every reader of a
    possibly-unset value writes `?? SETTINGS_DEFAULTS.yourKey`, never a literal default such as `?? true` or `|| 5`
-   (D2). `SETTINGS_DEFAULTS` and `resolveSettings` are re-exported through `@roo-code/types`.
+   (D2). `SETTINGS_DEFAULTS` and `resolveSettings` are re-exported through `@tumble-code/types`.
 3. **Host side**: read it via the settings object `ContextProxy` returns (`getGlobalSettings` / the `Task` and
    `ClineProvider` accessors), not `globalState` directly.
 4. **Settings view**: add a row to `SETTINGS_SCHEMA` in `webview-ui/src/components/settings/schema.ts`; it says when

@@ -11,7 +11,7 @@ import {
 	clearCliRuntimeGlobals,
 	type ExtensionMessage,
 	type WebviewMessage,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { DEFAULT_FLAGS } from "@/types/index.js"
 import { getPermissionSettings } from "@/lib/utils/permissions.js"
@@ -20,15 +20,15 @@ import { type ExtensionHostOptions, ExtensionHost } from "../extension-host.js"
 import { ExtensionClient } from "../extension-client.js"
 import { AgentLoopState } from "../agent-state.js"
 
-vi.mock("@roo-code/vscode-shim", () => ({
+vi.mock("@tumble-code/vscode-shim", () => ({
 	createVSCodeAPI: vi.fn(() => ({
 		context: { extensionPath: "/test/extension" },
 	})),
 	setRuntimeConfigValues: vi.fn(),
 }))
 
-vi.mock("@roo-code/types", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@roo-code/types")>()
+vi.mock("@tumble-code/types", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@tumble-code/types")>()
 	return { ...actual, clearCliRuntimeGlobals: vi.fn(actual.clearCliRuntimeGlobals) }
 })
 

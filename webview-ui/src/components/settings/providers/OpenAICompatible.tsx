@@ -7,7 +7,7 @@ import {
 	type OrganizationAllowList,
 	azureOpenAiDefaultApiVersion,
 	openAiModelInfoSaneDefaults,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip, Input } from "@src/components/ui"

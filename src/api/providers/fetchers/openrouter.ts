@@ -7,10 +7,10 @@ import {
 	OPEN_ROUTER_REASONING_BUDGET_MODELS,
 	OPEN_ROUTER_REQUIRED_REASONING_BUDGET_MODELS,
 	anthropicModels,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
-import { parseApiPrice } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
+import { parseApiPrice } from "@tumble-code/core/browser"
 import { logger } from "../../../utils/logging"
 
 /**

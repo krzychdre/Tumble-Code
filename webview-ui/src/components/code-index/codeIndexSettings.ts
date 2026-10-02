@@ -1,4 +1,4 @@
-import type { EmbedderProvider } from "@roo-code/types"
+import type { EmbedderProvider } from "@tumble-code/types"
 
 /** Shown in a secret field when the extension reports that the secret is already stored. */
 export const SECRET_PLACEHOLDER = "••••••••••••••••"

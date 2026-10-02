@@ -1,7 +1,7 @@
 // npx vitest run api/providers/__tests__/lm-studio-timeout.spec.ts
 
 import { LmStudioHandler } from "../lm-studio"
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 // Mock the timeout config utility
 vitest.mock("../utils/timeout-config", () => ({

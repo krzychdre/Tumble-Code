@@ -12,10 +12,10 @@ import * as vscode from "vscode"
 import * as path from "path"
 import { isDeepStrictEqual } from "util"
 
-import type { TumbleCodeSettings } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { TumbleCodeSettings } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
-import { experimentDefault } from "@roo-code/types"
+import { experimentDefault } from "@tumble-code/types"
 import { EMBEDDING_MODEL_PROFILES } from "../../../shared/embeddingModels"
 import { ContextProxy } from "../../config/ContextProxy"
 import { TaskHistoryStore } from "../../task-persistence"
@@ -63,7 +63,7 @@ vi.mock("../../../utils/storage", () => ({
 	getStorageBasePath: vi.fn().mockImplementation((defaultPath: string) => defaultPath),
 }))
 
-vi.mock("@roo-code/core/fs", () => {
+vi.mock("@tumble-code/core/fs", () => {
 	const write = vi.fn().mockResolvedValue(undefined)
 	return {
 		safeWriteJson: write,
@@ -205,7 +205,7 @@ vi.mock("../../../integrations/openai-codex/oauth", () => ({
 type CloudMode = "signedOut" | "signedIn" | "missing"
 const cloud = vi.hoisted(() => ({ mode: "signedOut" as "signedOut" | "signedIn" | "missing" }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockImplementation(() => cloud.mode !== "missing"),
 		get instance() {

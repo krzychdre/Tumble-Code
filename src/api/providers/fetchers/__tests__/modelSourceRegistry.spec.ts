@@ -1,4 +1,4 @@
-import { modelSources, type ModelSourceRequest } from "@roo-code/types"
+import { modelSources, type ModelSourceRequest } from "@tumble-code/types"
 
 import { fetchModelSource, modelSourceRegistry } from "../modelSourceRegistry"
 

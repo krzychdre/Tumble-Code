@@ -1,6 +1,6 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/chatRowPropsEqual.spec.ts
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/chatRowPropsEqual.spec.ts
 
-import type { ClineMessage, TodoItem } from "@roo-code/types"
+import type { ClineMessage, TodoItem } from "@tumble-code/types"
 
 import type { RowMetaEntry } from "../rows/computeRowMeta"
 import { chatRowPropsEqual } from "../chatRowPropsEqual"

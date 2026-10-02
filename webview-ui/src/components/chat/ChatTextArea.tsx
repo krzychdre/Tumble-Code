@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import DynamicTextArea from "react-textarea-autosize"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { Mode, getAllModes } from "@roo/modes"
 

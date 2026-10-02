@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { LabeledCheckbox } from "@src/components/ui"
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import McpServerChecklist from "./McpServerChecklist"
 

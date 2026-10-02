@@ -47,8 +47,8 @@ vi.mock("vscode", () => ({
 		getConfiguration: () => ({ get: () => undefined }),
 	},
 }))
-vi.mock("@roo-code/cloud", async (importOriginal) => ({
-	bridgeRetryDelayMs: (await importOriginal<typeof import("@roo-code/cloud")>()).bridgeRetryDelayMs,
+vi.mock("@tumble-code/cloud", async (importOriginal) => ({
+	bridgeRetryDelayMs: (await importOriginal<typeof import("@tumble-code/cloud")>()).bridgeRetryDelayMs,
 	CloudService: { hasInstance: () => true, instance: cloud.instance },
 	BridgeOrchestrator: cloud.BridgeOrchestrator,
 }))

@@ -1,12 +1,12 @@
 // npx vitest run src/api/providers/__tests__/anthropic.spec.ts
 
-import { anthropicDefaultModelId, anthropicModels } from "@roo-code/types"
+import { anthropicDefaultModelId, anthropicModels } from "@tumble-code/types"
 
 import { AnthropicHandler } from "../anthropic"
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 // Mock TelemetryService
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: vitest.fn(),

@@ -1,5 +1,5 @@
-import type { ModelRecord } from "@roo-code/types"
-import { deepSeekModelAliases, deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import type { ModelRecord } from "@tumble-code/types"
+import { deepSeekModelAliases, deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@tumble-code/types"
 
 import { DEFAULT_HEADERS } from "../constants"
 import { logger } from "../../../utils/logging"

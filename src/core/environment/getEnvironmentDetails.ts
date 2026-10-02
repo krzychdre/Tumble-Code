@@ -5,10 +5,10 @@ import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
 import delay from "delay"
 
-import { type ExperimentId, SETTINGS_DEFAULTS, formatLanguage } from "@roo-code/types"
+import { type ExperimentId, SETTINGS_DEFAULTS, formatLanguage } from "@tumble-code/types"
 
 import { getFullModeDetails } from "../prompts/modeDetails"
-import { consolidateTokenUsage } from "@roo-code/core/browser"
+import { consolidateTokenUsage } from "@tumble-code/core/browser"
 import { listFiles } from "../../services/glob/list-files"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../integrations/terminal/Terminal"

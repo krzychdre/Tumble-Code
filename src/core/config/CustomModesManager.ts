@@ -5,7 +5,7 @@ import * as fs from "fs/promises"
 import * as yaml from "yaml"
 import stripBom from "strip-bom"
 
-import { writeFileAtomic } from "@roo-code/core/fs"
+import { writeFileAtomic } from "@tumble-code/core/fs"
 
 import {
 	type ModeConfig,
@@ -13,7 +13,7 @@ import {
 	customModesSettingsSchema,
 	modeConfigSchema,
 	DEFAULT_MODES,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { getWorkspacePath } from "../../utils/path"

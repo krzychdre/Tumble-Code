@@ -1,6 +1,6 @@
 // npx vitest run src/core/prompts/sections/__tests__/deferred-tools.spec.ts
 import type { McpHub } from "../../../../services/mcp/McpHub"
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 import { getDeferredToolsSection } from "../deferred-tools"
 

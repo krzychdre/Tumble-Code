@@ -1,5 +1,5 @@
 import { escapeSpacesForMention, convertToMentionPath } from "../path-mentions"
-import { mentionRegexGlobal, unescapeSpaces } from "@roo-code/core/browser"
+import { mentionRegexGlobal, unescapeSpaces } from "@tumble-code/core/browser"
 
 describe("Path Mentions Utilities", () => {
 	describe("escapeSpacesForMention", () => {
@@ -40,7 +40,7 @@ describe("Path Mentions Utilities", () => {
 
 		it("is a mention-grammar formatter, not a shell escaper (CodeQL #6 regression)", () => {
 			// The escaped value, embedded in an @-mention token, must be matched by
-			// mentionRegex (@roo-code/core/browser context-mentions) and round-trip back to the
+			// mentionRegex (@tumble-code/core/browser context-mentions) and round-trip back to the
 			// original path via unescapeSpaces. This proves the `\ ` escaping serves
 			// the mention grammar, not shell interpolation.
 			const original = "/src/file with spaces & $ HOME `cmd`.txt"

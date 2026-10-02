@@ -4,7 +4,7 @@ import os from "os"
 
 import type { MockInstance } from "vitest"
 
-import { openAiModelInfoSaneDefaults } from "@roo-code/types"
+import { openAiModelInfoSaneDefaults } from "@tumble-code/types"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
 

@@ -2,8 +2,8 @@ import path from "path"
 
 import type OpenAI from "openai"
 
-import type { ProviderSettings, ModeConfig, ModelInfo, CustomModePrompts } from "@roo-code/types"
-import { customToolRegistry, formatNative } from "@roo-code/core"
+import type { ProviderSettings, ModeConfig, ModelInfo, CustomModePrompts } from "@tumble-code/types"
+import { customToolRegistry, formatNative } from "@tumble-code/core"
 
 import type { ClineProvider } from "../webview/ClineProvider"
 import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"

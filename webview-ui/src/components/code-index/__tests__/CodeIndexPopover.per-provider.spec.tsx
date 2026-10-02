@@ -17,7 +17,7 @@ import { render, screen, fireEvent, act } from "@/utils/test-utils"
 import { PopoverTrigger } from "@/components/ui"
 import { vscode } from "@/utils/vscode"
 
-import type { EmbedderProvider } from "@roo-code/types"
+import type { EmbedderProvider } from "@tumble-code/types"
 
 import { CodeIndexPopover } from "../CodeIndexPopover"
 

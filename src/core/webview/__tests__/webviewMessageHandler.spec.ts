@@ -37,7 +37,7 @@ vi.mock("../diagnosticsHandler", () => ({
 	generateErrorDiagnostics: vi.fn().mockResolvedValue({ success: true, filePath: "/tmp/diagnostics.json" }),
 }))
 
-import type { ModelRecord } from "@roo-code/types"
+import type { ModelRecord } from "@tumble-code/types"
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import { defaultModeSlug } from "../../../shared/modes"
@@ -150,7 +150,7 @@ import * as fsUtils from "../../../utils/fs"
 import { getWorkspacePath } from "../../../utils/path"
 import { ensureSettingsDirectoryExists } from "../../../utils/globalContext"
 import { generateErrorDiagnostics } from "../diagnosticsHandler"
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@tumble-code/types"
 
 vi.mock("../../../utils/fs")
 vi.mock("../../../utils/path")

@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.row-meta.spec.tsx
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatView.row-meta.spec.tsx
 
 // Characterization of what a row shows that depends on the history around it,
 // not on the row's own message: the end time of a block (the next message's
@@ -11,7 +11,7 @@ import React from "react"
 import { render, waitFor, act, screen, within, fireEvent } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { ExtensionStateContextProvider } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"

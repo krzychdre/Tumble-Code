@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 import { TaskStreamProcessor, type TaskStreamProcessorAccess } from "../TaskStreamProcessor"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

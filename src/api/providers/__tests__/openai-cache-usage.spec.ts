@@ -2,7 +2,7 @@
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { OpenAiHandler } from "../openai"
 import { logger } from "../../../utils/logging"
 

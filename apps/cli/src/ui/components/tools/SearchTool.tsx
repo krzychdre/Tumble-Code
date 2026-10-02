@@ -1,6 +1,6 @@
 import { Box, Text } from "ink"
 
-import { toolPayloadSearchScope } from "@roo-code/core/cli"
+import { toolPayloadSearchScope } from "@tumble-code/core/cli"
 
 import * as theme from "../../theme.js"
 import Bullet from "../primitives/Bullet.js"

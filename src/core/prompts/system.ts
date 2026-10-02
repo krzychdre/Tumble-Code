@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { type PromptComponent, type CustomModePrompts, formatLanguage } from "@roo-code/types"
+import { type PromptComponent, type CustomModePrompts, formatLanguage } from "@tumble-code/types"
 
 import { Mode, modes, defaultModeSlug, getModeBySlug, getGroupName, getModeSelection } from "../../shared/modes"
 import { isEmpty } from "../../utils/object"

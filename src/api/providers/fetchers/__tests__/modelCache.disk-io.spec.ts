@@ -25,7 +25,7 @@ vi.mock("fs", async (importOriginal) => {
 	return { ...wrapped, default: wrapped }
 })
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureEvent: vi.fn() } },
 }))
 

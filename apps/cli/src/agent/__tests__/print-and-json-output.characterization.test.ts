@@ -12,12 +12,12 @@
 
 import { Writable } from "stream"
 
-import type { ClineMessage, ExtensionMessage } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
 
 import { ExtensionHost, type ExtensionHostOptions } from "../extension-host.js"
 import { JsonEventEmitter } from "../json-event-emitter.js"
 
-vi.mock("@roo-code/vscode-shim", () => ({
+vi.mock("@tumble-code/vscode-shim", () => ({
 	createVSCodeAPI: vi.fn(() => ({ context: { extensionPath: "/test/extension" } })),
 	setRuntimeConfigValues: vi.fn(),
 }))

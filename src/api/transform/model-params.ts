@@ -3,7 +3,7 @@ import {
 	type ProviderSettings,
 	type VerbosityLevel,
 	type ReasoningEffortExtended,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import {
 	DEFAULT_HYBRID_REASONING_MODEL_THINKING_TOKENS,
@@ -11,7 +11,7 @@ import {
 	shouldUseReasoningBudget,
 	shouldUseReasoningEffort,
 	getModelMaxOutputTokens,
-} from "@roo-code/core/browser"
+} from "@tumble-code/core/browser"
 
 import {
 	type AnthropicReasoningParams,

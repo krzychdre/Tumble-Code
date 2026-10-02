@@ -16,8 +16,8 @@ import {
 	isRetiredProvider,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	SETTINGS_DEFAULTS,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { type ApiStream, type ApiStreamChunk } from "../../api/transform/stream"
 import { isAutoRetryableApiError } from "../../api/apiErrors"
@@ -33,7 +33,7 @@ import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskStreamProcessor } from "./TaskStreamProcessor"
 import { type AbortStreamFn, type UpdateApiReqMsgFn } from "./StreamProcessorTypes"
 import { type TaskContextManager } from "./TaskContextManager"
-import { findLastIndex, getModelMaxOutputTokens } from "@roo-code/core/browser"
+import { findLastIndex, getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
 import { perfCounters, diffPerfCounters, formatPerfCounters } from "../../utils/perfCounters"
 import { t } from "../../i18n"

@@ -13,8 +13,8 @@ import {
 	XCircle,
 } from "lucide-react"
 
-import type { ClineMessage, ExtensionMessage, SubagentSummary } from "@roo-code/types"
-import { parseFollowUpData } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage, SubagentSummary } from "@tumble-code/types"
+import { parseFollowUpData } from "@tumble-code/types"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger, Input, StandardTooltip } from "@/components/ui"
 import { cn } from "@/lib/utils"

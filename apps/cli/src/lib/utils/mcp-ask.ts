@@ -1,4 +1,4 @@
-import type { ClineAskUseMcpServer } from "@roo-code/types"
+import type { ClineAskUseMcpServer } from "@tumble-code/types"
 
 /**
  * What a `use_mcp_server` ask asks for. The ask text is the JSON of

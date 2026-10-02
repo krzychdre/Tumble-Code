@@ -1,4 +1,4 @@
-import { type ClineApiReqCancelReason } from "@roo-code/types"
+import { type ClineApiReqCancelReason } from "@tumble-code/types"
 
 export type UpdateApiReqMsgFn = (cancelReason?: ClineApiReqCancelReason, streamingFailedMessage?: string) => void
 

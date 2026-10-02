@@ -1,12 +1,12 @@
-import type { ToolName, ModeConfig, ExperimentId, GroupOptions, GroupEntry } from "@roo-code/types"
+import type { ToolName, ModeConfig, ExperimentId, GroupOptions, GroupEntry } from "@tumble-code/types"
 import {
 	toolNames as validToolNames,
 	EXPERIMENT_IDS,
 	TOOL_GROUPS,
 	ALWAYS_AVAILABLE_TOOLS,
 	TOOL_ALIASES,
-} from "@roo-code/types"
-import { customToolRegistry } from "@roo-code/core"
+} from "@tumble-code/types"
+import { customToolRegistry } from "@tumble-code/core"
 
 import { type Mode, FileRestrictionError, getModeBySlug, getGroupName } from "../../shared/modes"
 import { isAutoMemPath } from "../memory/paths"

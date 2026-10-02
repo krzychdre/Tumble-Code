@@ -3,7 +3,7 @@ import { getIconForFilePath, getIconUrlByName, getIconForDirectoryPath } from "v
 import { t } from "i18next"
 import { Settings } from "lucide-react"
 
-import type { ModeConfig, Command } from "@roo-code/types"
+import type { ModeConfig, Command } from "@tumble-code/types"
 
 import {
 	ContextMenuOptionType,

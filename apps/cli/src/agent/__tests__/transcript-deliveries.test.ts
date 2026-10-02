@@ -1,7 +1,7 @@
 // The deliveries stage (D11 step 2): how every consumer walks what the core
 // posts, and which of those deliveries are news.
 
-import type { ClineMessage, ExtensionMessage } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
 
 import { DeliveryReader, deliveriesOf } from "../transcript-deliveries.js"
 

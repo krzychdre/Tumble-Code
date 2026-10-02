@@ -1,4 +1,4 @@
-import { activeProviderIds, type ProviderSettings } from "@roo-code/types"
+import { activeProviderIds, type ProviderSettings } from "@tumble-code/types"
 
 type MockHandlerInstance = {
 	providerClass: string

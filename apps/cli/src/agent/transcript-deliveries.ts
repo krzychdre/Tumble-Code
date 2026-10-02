@@ -33,7 +33,7 @@
  * message happened to end its history.
  */
 
-import type { ClineMessage, ExtensionMessage } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
 
 /** One message as the extension delivered it. */
 export interface Delivery {

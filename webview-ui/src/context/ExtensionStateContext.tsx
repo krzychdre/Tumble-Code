@@ -13,7 +13,7 @@ import {
 	type SkillMetadata,
 	type Command,
 	type McpServer,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { Mode } from "@roo/modes"
 

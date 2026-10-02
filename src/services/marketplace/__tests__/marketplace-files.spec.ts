@@ -9,7 +9,7 @@ import * as fs from "fs"
 import * as path from "path"
 import * as yaml from "yaml"
 
-import { mcpMarketplaceItemSchema, modeConfigSchema, modeMarketplaceItemSchema } from "@roo-code/types"
+import { mcpMarketplaceItemSchema, modeConfigSchema, modeMarketplaceItemSchema } from "@tumble-code/types"
 
 const marketplaceDir = path.resolve(__dirname, "../../../../marketplace")
 

@@ -12,7 +12,7 @@ import {
 	createBuildOptions as createSharedBuildOptions,
 	createExtensionBuildOptions,
 	isRunAsScript,
-} from "@roo-code/build"
+} from "@tumble-code/build"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

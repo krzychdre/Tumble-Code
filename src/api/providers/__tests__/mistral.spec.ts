@@ -1,6 +1,6 @@
 // Mock TelemetryService - must come before other imports
 const mockCaptureException = vi.hoisted(() => vi.fn())
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: mockCaptureException,
@@ -53,7 +53,7 @@ vi.mock("@mistralai/mistralai", () => {
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
 import { MistralHandler } from "../mistral"
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import type { ApiHandlerCreateMessageMetadata } from "../../index"
 import type { ApiStreamTextChunk, ApiStreamReasoningChunk, ApiStreamToolCallPartialChunk } from "../../transform/stream"
 

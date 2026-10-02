@@ -17,7 +17,7 @@ import { filterNonAnthropicBlocks } from "../../../api/transform/anthropic-filte
 import { convertToOpenAiMessages } from "../../../api/transform/openai-format"
 import { convertToBedrockConverseMessages } from "../../../api/transform/bedrock-converse-format"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vi.fn() } },
 }))
 

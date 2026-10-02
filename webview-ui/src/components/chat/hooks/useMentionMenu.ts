@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react"
 
-import { mentionRegex, unescapeSpaces } from "@roo-code/core/browser"
-import type { Command, ExtensionMessage, ModeConfig } from "@roo-code/types"
+import { mentionRegex, unescapeSpaces } from "@tumble-code/core/browser"
+import type { Command, ExtensionMessage, ModeConfig } from "@tumble-code/types"
 
-import { WebviewMessage } from "@roo-code/types"
+import { WebviewMessage } from "@tumble-code/types"
 import { Mode } from "@roo/modes"
 
 import { vscode } from "@src/utils/vscode"

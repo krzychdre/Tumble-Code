@@ -6,15 +6,15 @@
  * ask, fail-fast, capped-retry task end) and the exponential
  * backoff, rate limit handling, and countdown UX behind the retries.
  * The delay ladder and the countdown loops come from the shared
- * helpers in `@roo-code/core` (D1).
+ * helpers in `@tumble-code/core` (D1).
  *
  * Extracted from: TaskApiLoop.ts (Phase 2A refactoring; error
  * dispatch moved in S3, see ai_plans/2026-09-28_s3-taskapiloop-error-dispatch.md)
  */
 
 import delay from "delay"
-import { backoffDelayMsNoJitter, countdown } from "@roo-code/core"
-import { SETTINGS_DEFAULTS, type ProviderSettings, type ClineApiReqCancelReason } from "@roo-code/types"
+import { backoffDelayMsNoJitter, countdown } from "@tumble-code/core"
+import { SETTINGS_DEFAULTS, type ProviderSettings, type ClineApiReqCancelReason } from "@tumble-code/types"
 import { serializeError } from "serialize-error"
 import { type ApiHandler } from "../../api"
 import { describeBackgroundApiFailure, getApiErrorStatus, isAutoRetryableApiError } from "../../api/apiErrors"

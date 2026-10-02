@@ -5,7 +5,7 @@
 // interaction cases pin what each control writes. Both go through `renderProviderForm`,
 // the entry point `ApiOptions` uses, so they hold for either implementation.
 
-import type { ProviderName, ProviderSettings } from "@roo-code/types"
+import type { ProviderName, ProviderSettings } from "@tumble-code/types"
 
 import { fireEvent, render, screen } from "@/utils/test-utils"
 

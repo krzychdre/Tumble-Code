@@ -8,7 +8,7 @@ import {
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
 	BEDROCK_GLOBAL_INFERENCE_MODEL_IDS,
 	BEDROCK_SERVICE_TIER_MODEL_IDS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import {

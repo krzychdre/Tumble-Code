@@ -7,7 +7,7 @@ import {
 	DEFAULT_MODES,
 	TOOL_GROUPS,
 	ALWAYS_AVAILABLE_TOOLS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 export type Mode = string
 

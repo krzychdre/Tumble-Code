@@ -1,4 +1,4 @@
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 import { buildApiHandler, type CompletionResult, type SingleCompletionHandler } from "../api"
 

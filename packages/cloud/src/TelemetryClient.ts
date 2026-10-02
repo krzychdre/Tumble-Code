@@ -8,7 +8,7 @@ import {
 	tumbleCodeTelemetryEventSchema,
 	TelemetryPropertiesProvider,
 	TelemetryEventSubscription,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { getTumbleCodeApiUrl } from "./config.js"
 import type { RetryQueue } from "./retry-queue/index.js"

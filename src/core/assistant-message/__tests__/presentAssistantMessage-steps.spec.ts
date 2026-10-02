@@ -7,8 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { presentAssistantMessage } from "../presentAssistantMessage"
 import { getToolHandler } from "../toolHandlers"
@@ -22,7 +22,7 @@ vi.mock("../../tools/validateToolUse", () => ({
 	isValidToolName: vi.fn(() => true),
 }))
 vi.mock("../../task/deferred-tools-resolver", () => ({ tryAutoMaterializeDirectCall: vi.fn(() => null) }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: { capture: vi.fn(), captureEvent: vi.fn(), captureException: vi.fn() },
 	},

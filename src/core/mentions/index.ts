@@ -4,7 +4,7 @@ import * as path from "path"
 import * as vscode from "vscode"
 import { isBinaryFile } from "isbinaryfile"
 
-import { mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo-code/core/browser"
+import { mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@tumble-code/core/browser"
 import { getCommitInfo, getWorkingState } from "../../utils/git"
 
 import { openFile } from "../../integrations/misc/open-file"

@@ -1,4 +1,4 @@
-import { classifyProvider, retiredProviderIds } from "@roo-code/types"
+import { classifyProvider, retiredProviderIds } from "@tumble-code/types"
 
 import {
 	supportedProviders,
@@ -23,7 +23,7 @@ import {
 	providerConfigSchemas,
 	providerModelDefinitions,
 	providerRequiresApiKey as sharedProviderRequiresApiKey,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 const EXCLUDED = ["vscode-lm", "fake-ai"]
 

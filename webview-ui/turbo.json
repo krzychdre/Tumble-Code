@@ -2,8 +2,8 @@
 	"$schema": "https://turbo.build/schema.json",
 	"extends": ["//"],
 	// The webview compiles ../src/shared through the @roo/* alias, so those files are
-	// task inputs here. PKG-6 moved the pure modules into @roo-code/core/browser and
-	// @roo-code/types (declared dependencies); the rest (modes, package, ...) still
+	// task inputs here. PKG-6 moved the pure modules into @tumble-code/core/browser and
+	// @tumble-code/types (declared dependencies); the rest (modes, package, ...) still
 	// come through the alias.
 	"tasks": {
 		"build": {
@@ -32,7 +32,7 @@
 			// Was a "pretest" script running a nested "turbo run bundle"; as a
 			// task dependency the extension bundle is built once per run, shared
 			// with tumble-code#test (see src/turbo.json).
-			"dependsOn": ["@roo-code/types#build", "tumble-code#bundle"],
+			"dependsOn": ["@tumble-code/types#build", "tumble-code#bundle"],
 			"inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/src/shared/**"]
 		}
 	}

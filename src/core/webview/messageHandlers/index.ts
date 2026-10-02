@@ -18,7 +18,7 @@ import type { DomainHandlerMap, HandlerDomain, MessageHandlerMap } from "./types
 
 /**
  * The domain modules, each owning a disjoint set of message types. The keys
- * are the domains of `WebviewMessageTypesByDomain` in @roo-code/types (one
+ * are the domains of `WebviewMessageTypesByDomain` in @tumble-code/types (one
  * file per domain under packages/types/src/vscode-extension-host/), so a new
  * domain needs both a types file and a module here. To add a webview message,
  * add its name to its domain's types file and its handler to the module of

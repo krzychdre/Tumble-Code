@@ -62,7 +62,7 @@ vi.mock("../core/task/Task", () => {
 })
 
 vi.mock("../core/prompts/sections/custom-instructions")
-vi.mock("@roo-code/core/fs", () => {
+vi.mock("@tumble-code/core/fs", () => {
 	const write = vi.fn().mockResolvedValue(undefined)
 	return {
 		safeWriteJson: write,
@@ -103,7 +103,7 @@ vi.mock("../core/diff/strategies/multi-search-replace", () => ({
 		applyDiff: vi.fn(),
 	})),
 }))
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		get instance() {
@@ -156,7 +156,7 @@ vi.mock("../utils/storage", async (importOriginal) => {
 		getTaskDirectoryPath: vi.fn().mockResolvedValue("/test/task/path"),
 	}
 })
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		createInstance: vi.fn(),

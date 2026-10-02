@@ -2,9 +2,9 @@ import { BetaThinkingConfigParam } from "@anthropic-ai/sdk/resources/beta"
 import OpenAI from "openai"
 import type { GenerateContentConfig } from "@google/genai"
 
-import type { ModelInfo, ProviderSettings, ReasoningEffortExtended } from "@roo-code/types"
+import type { ModelInfo, ProviderSettings, ReasoningEffortExtended } from "@tumble-code/types"
 
-import { shouldUseReasoningBudget, shouldUseReasoningEffort } from "@roo-code/core/browser"
+import { shouldUseReasoningBudget, shouldUseReasoningEffort } from "@tumble-code/core/browser"
 
 export type OpenRouterReasoningParams = {
 	effort?: ReasoningEffortExtended

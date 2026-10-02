@@ -11,9 +11,9 @@
 // the messages and final posts are the same as an unthrottled stream.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { capture: vi.fn() } },
 }))
 

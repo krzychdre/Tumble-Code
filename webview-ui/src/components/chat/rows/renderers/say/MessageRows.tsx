@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next"
 import { ArrowRight, Check, MessageCircle } from "lucide-react"
 
-import type { ClineSayTool } from "@roo-code/types"
+import type { ClineSayTool } from "@tumble-code/types"
 
-import { safeJsonParse } from "@roo-code/core/browser"
+import { safeJsonParse } from "@tumble-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

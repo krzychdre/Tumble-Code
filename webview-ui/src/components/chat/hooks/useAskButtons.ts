@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDeepCompareEffect } from "react-use"
 
-import type { AudioType, ClineAsk, ClineMessage, ClineSayTool, HistoryItem } from "@roo-code/types"
+import type { AudioType, ClineAsk, ClineMessage, ClineSayTool, HistoryItem } from "@tumble-code/types"
 
-import { findLast } from "@roo-code/core/browser"
+import { findLast } from "@tumble-code/core/browser"
 
 import { isTaskBusy as deriveTaskBusy } from "./taskBusy"
 

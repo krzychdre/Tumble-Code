@@ -1,7 +1,7 @@
 import * as fs from "fs"
 import * as path from "path"
 
-import { writeFileAtomic } from "@roo-code/core/fs"
+import { writeFileAtomic } from "@tumble-code/core/fs"
 
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { logger } from "../../utils/logging"

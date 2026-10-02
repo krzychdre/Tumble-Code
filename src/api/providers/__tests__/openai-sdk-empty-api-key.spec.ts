@@ -7,7 +7,7 @@
 // key; these specs pin that the same fallback covers an empty key, with the REAL openai SDK
 // (no module mock) and a fake fetch standing in for a keyless server.
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 

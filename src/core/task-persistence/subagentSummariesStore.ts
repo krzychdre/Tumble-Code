@@ -1,9 +1,9 @@
 import * as path from "path"
 import * as fs from "fs/promises"
 
-import type { SubagentSummary } from "@roo-code/types"
+import type { SubagentSummary } from "@tumble-code/types"
 
-import { safeWriteJson } from "@roo-code/core/fs"
+import { safeWriteJson } from "@tumble-code/core/fs"
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { fileExistsAtPath } from "../../utils/fs"
 

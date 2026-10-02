@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.subagents-reset.spec.tsx
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatView.subagents-reset.spec.tsx
 //
 // Verifies the webview side of the subagent lifecycle fix (Part A): a new
 // chat (invoke: "newChat") drives `handleChatReset`, which calls

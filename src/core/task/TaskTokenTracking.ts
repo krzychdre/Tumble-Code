@@ -1,7 +1,13 @@
 import debounce from "lodash.debounce"
 import EventEmitter from "events"
 
-import { type ClineMessage, type TokenUsage, type ToolUsage, type ToolName, TumbleCodeEventName } from "@roo-code/types"
+import {
+	type ClineMessage,
+	type TokenUsage,
+	type ToolUsage,
+	type ToolName,
+	TumbleCodeEventName,
+} from "@tumble-code/types"
 
 import {
 	consolidateTokenUsage,
@@ -9,7 +15,7 @@ import {
 	hasToolUsageChanged,
 	consolidateApiRequests,
 	consolidateCommands,
-} from "@roo-code/core/browser"
+} from "@tumble-code/core/browser"
 
 /**
  * Interface for Task access needed by TaskTokenTracking.

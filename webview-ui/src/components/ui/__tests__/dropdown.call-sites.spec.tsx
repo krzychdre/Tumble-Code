@@ -9,7 +9,7 @@ import React, { useState } from "react"
 
 import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 import { ProviderDescriptorForm } from "@src/components/settings/providers/ProviderDescriptorForm"
 import { ModelDropdownField, type EmbedderFormContext } from "@src/components/code-index/EmbedderFormFields"

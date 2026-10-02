@@ -9,7 +9,7 @@ import { listPlans, readPlan } from "../plans.js"
 import { makeTempDir } from "./fixtures.js"
 import type { Session } from "../types.js"
 
-// Bundled like the MCP server (esbuild.mjs): the atomic write comes from @roo-code/core/fs, whose
+// Bundled like the MCP server (esbuild.mjs): the atomic write comes from @tumble-code/core/fs, whose
 // CommonJS dependencies need `require` inside an ES module bundle.
 const WORKER_BUILD = {
 	bundle: true,

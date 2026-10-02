@@ -7,7 +7,7 @@ import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 
-import type { MarketplaceItem } from "@roo-code/types"
+import type { MarketplaceItem } from "@tumble-code/types"
 
 import { McpConfigStore } from "../../mcp/McpConfigStore"
 import { SimpleInstaller } from "../SimpleInstaller"

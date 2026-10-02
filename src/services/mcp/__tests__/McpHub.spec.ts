@@ -3,7 +3,7 @@ import path from "path"
 
 import type { Mock } from "vitest"
 import type { ExtensionContext, Uri } from "vscode"
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 import type { ClineProvider } from "../../../core/webview/ClineProvider"
 
@@ -41,10 +41,10 @@ vi.mock("fs/promises", () => ({
 }))
 
 // Import safeWriteJson to use in mocks
-import { safeWriteJson } from "@roo-code/core/fs"
+import { safeWriteJson } from "@tumble-code/core/fs"
 import { logger } from "../../../utils/logging"
 // Mock safeWriteJson
-vi.mock("@roo-code/core/fs", () => ({
+vi.mock("@tumble-code/core/fs", () => ({
 	safeWriteJson: vi.fn(async (filePath, data) => {
 		// Instead of trying to write to the file system, just call fs.writeFile mock
 		// This avoids the complex file locking and temp file operations

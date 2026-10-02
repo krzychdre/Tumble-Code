@@ -29,7 +29,7 @@ importers:
       '@dotenvx/dotenvx':
         specifier: ^1.34.0
         version: 1.66.0
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:packages/config-typescript
       '@types/node':
@@ -74,13 +74,13 @@ importers:
 
   apps/cli:
     dependencies:
-      '@roo-code/core':
+      '@tumble-code/core':
         specifier: workspace:^
         version: link:../../packages/core
-      '@roo-code/types':
+      '@tumble-code/types':
         specifier: workspace:^
         version: link:../../packages/types
-      '@roo-code/vscode-shim':
+      '@tumble-code/vscode-shim':
         specifier: workspace:^
         version: link:../../packages/vscode-shim
       '@vscode/ripgrep':
@@ -108,13 +108,13 @@ importers:
         specifier: ^5.0.0
         version: 5.0.9(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../../packages/config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../../packages/config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../../packages/config-vitest
       '@types/node':
@@ -144,13 +144,13 @@ importers:
 
   apps/vscode-e2e:
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../../packages/config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../../packages/config-typescript
-      '@roo-code/types':
+      '@tumble-code/types':
         specifier: workspace:^
         version: link:../../packages/types
       '@types/mocha':
@@ -177,7 +177,7 @@ importers:
 
   apps/vscode-nightly:
     devDependencies:
-      '@roo-code/build':
+      '@tumble-code/build':
         specifier: workspace:^
         version: link:../../packages/build
 
@@ -186,20 +186,20 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.30.1
         version: 1.30.1(zod@4.6.5)
-      '@roo-code/core':
+      '@tumble-code/core':
         specifier: workspace:^
         version: link:../core
       zod:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
@@ -221,13 +221,13 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
@@ -239,10 +239,10 @@ importers:
 
   packages/cloud:
     dependencies:
-      '@roo-code/core':
+      '@tumble-code/core':
         specifier: workspace:^
         version: link:../core
-      '@roo-code/types':
+      '@tumble-code/types':
         specifier: workspace:^
         version: link:../types
       jwt-decode:
@@ -255,13 +255,13 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
@@ -320,7 +320,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@roo-code/types':
+      '@tumble-code/types':
         specifier: workspace:^
         version: link:../types
       execa:
@@ -342,13 +342,13 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
@@ -363,20 +363,20 @@ importers:
 
   packages/telemetry:
     dependencies:
-      '@roo-code/types':
+      '@tumble-code/types':
         specifier: workspace:^
         version: link:../types
       zod:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
@@ -392,13 +392,13 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
@@ -419,13 +419,13 @@ importers:
 
   packages/vscode-shim:
     devDependencies:
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../config-eslint
-      '@roo-code/config-typescript':
+      '@tumble-code/config-typescript':
         specifier: workspace:^
         version: link:../config-typescript
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
@@ -464,19 +464,19 @@ importers:
       '@qdrant/js-client-rest':
         specifier: ^1.19.0
         version: 1.19.0(typescript@6.0.3)
-      '@roo-code/agent-interchange':
+      '@tumble-code/agent-interchange':
         specifier: workspace:^
         version: link:../packages/agent-interchange
-      '@roo-code/cloud':
+      '@tumble-code/cloud':
         specifier: workspace:^
         version: link:../packages/cloud
-      '@roo-code/core':
+      '@tumble-code/core':
         specifier: workspace:^
         version: link:../packages/core
-      '@roo-code/telemetry':
+      '@tumble-code/telemetry':
         specifier: workspace:^
         version: link:../packages/telemetry
-      '@roo-code/types':
+      '@tumble-code/types':
         specifier: workspace:^
         version: link:../packages/types
       async-mutex:
@@ -615,13 +615,13 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@roo-code/build':
+      '@tumble-code/build':
         specifier: workspace:^
         version: link:../packages/build
-      '@roo-code/config-eslint':
+      '@tumble-code/config-eslint':
         specifier: workspace:^
         version: link:../packages/config-eslint
-      '@roo-code/config-vitest':
+      '@tumble-code/config-vitest':
         specifier: workspace:^
         version: link:../packages/config-vitest
       '@types/clone-deep':
@@ -702,15 +702,15 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.1.8
         version: 1.2.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@roo-code/core':
-        specifier: workspace:^
-        version: link:../packages/core
-      '@roo-code/types':
-        specifier: workspace:^
-        version: link:../packages/types
       '@tanstack/react-query':
         specifier: ^5.68.0
         version: 5.76.1(react@19.3.0)
+      '@tumble-code/core':
+        specifier: workspace:^
+        version: link:../packages/core
+      '@tumble-code/types':
+        specifier: workspace:^
+        version: link:../packages/types
       '@vscode/codicons':
         specifier: ^0.0.36
         version: 0.0.36
@@ -826,12 +826,6 @@ importers:
       '@rolldown/plugin-babel':
         specifier: ^0.2.4
         version: 0.2.4(@babel/core@7.29.7)(@babel/runtime@7.29.7)(rolldown@1.2.11)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
-      '@roo-code/config-eslint':
-        specifier: workspace:^
-        version: link:../packages/config-eslint
-      '@roo-code/config-vitest':
-        specifier: workspace:^
-        version: link:../packages/config-vitest
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
@@ -847,6 +841,12 @@ importers:
       '@testing-library/user-event':
         specifier: ^14.6.1
         version: 14.6.1(@testing-library/dom@10.4.2)
+      '@tumble-code/config-eslint':
+        specifier: workspace:^
+        version: link:../packages/config-eslint
+      '@tumble-code/config-vitest':
+        specifier: workspace:^
+        version: link:../packages/config-vitest
       '@types/jest':
         specifier: ^29.0.0
         version: 29.5.14

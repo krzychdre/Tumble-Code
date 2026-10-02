@@ -1,14 +1,14 @@
 import fs from "fs"
 import path from "path"
 
-import { readCliRuntimeEnv } from "@roo-code/types"
+import { readCliRuntimeEnv } from "@tumble-code/types"
 
 import { getDefaultExtensionPath } from "../extension.js"
 
 vi.mock("fs")
 
-vi.mock("@roo-code/types", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@roo-code/types")>()
+vi.mock("@tumble-code/types", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@tumble-code/types")>()
 	return { ...actual, readCliRuntimeEnv: vi.fn(actual.readCliRuntimeEnv) }
 })
 
@@ -120,9 +120,11 @@ describe("getDefaultExtensionPath", () => {
 
 	it("reads ROO_EXTENSION_PATH through the typed runtime contract", async () => {
 		const { readCliRuntimeEnv: actualRead } =
-			await vi.importActual<typeof import("@roo-code/types")>("@roo-code/types")
+			await vi.importActual<typeof import("@tumble-code/types")>("@tumble-code/types")
 		vi.mocked(readCliRuntimeEnv).mockReturnValueOnce({ ...actualRead({}), extensionPath: "/opt/cli/extension" })
-		vi.mocked(fs.existsSync).mockImplementation((p) => String(p) === path.join("/opt/cli/extension", "extension.js"))
+		vi.mocked(fs.existsSync).mockImplementation(
+			(p) => String(p) === path.join("/opt/cli/extension", "extension.js"),
+		)
 
 		expect(getDefaultExtensionPath("/test/apps/cli/dist")).toBe("/opt/cli/extension")
 		expect(readCliRuntimeEnv).toHaveBeenCalledWith(process.env)

@@ -31,13 +31,13 @@ import {
 	type TodoItem,
 	type TokenUsage,
 	type UsableSuggestion,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 import {
 	consolidateApiRequests,
 	consolidateCommands,
 	consolidateTokenUsage,
 	parseToolPayloadText,
-} from "@roo-code/core/cli"
+} from "@tumble-code/core/cli"
 
 import type { CloudStatus, PendingAsk, TaskHistoryItem, TUIMessage, ToolData } from "../ui/types.js"
 import type { FileResult, ModeResult, SlashCommandResult } from "../ui/components/autocomplete/index.js"

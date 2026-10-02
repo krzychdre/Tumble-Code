@@ -4,7 +4,7 @@ import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 import type { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ApiMessage } from "../../task-persistence"

@@ -2,7 +2,7 @@ import OpenAI from "openai"
 
 import { OpenAiHandler } from "../openai"
 import { OpenAiNativeHandler } from "../openai-native"
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 describe("OpenAiHandler native tools", () => {
 	it("includes tools in request when tools are provided via metadata (regression test)", async () => {
@@ -24,7 +24,7 @@ describe("OpenAiHandler native tools", () => {
 				maxTokens: 4096,
 				contextWindow: 128000,
 			},
-		} as unknown as import("@roo-code/core/browser").ApiHandlerOptions)
+		} as unknown as import("@tumble-code/core/browser").ApiHandlerOptions)
 
 		// Patch the OpenAI client call
 		const mockClient = {

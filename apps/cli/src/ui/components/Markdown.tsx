@@ -1,7 +1,7 @@
 import { memo, type ReactNode } from "react"
 import { Box, Text } from "ink"
 
-import { escapeRegExp } from "@roo-code/core/cli"
+import { escapeRegExp } from "@tumble-code/core/cli"
 
 import { figures } from "../figures.js"
 import * as theme from "../theme.js"

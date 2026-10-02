@@ -1,5 +1,5 @@
-import type { ModelInfo } from "@roo-code/types"
-import type { ServiceTier } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
+import type { ServiceTier } from "@tumble-code/types"
 
 export interface ApiCostResult {
 	totalInputTokens: number

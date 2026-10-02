@@ -24,9 +24,9 @@ import {
 	WEB_TOOLS_DEFAULTS,
 	PRUNE_CONDENSE_DEFAULTS,
 	experimentDefault,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import { findLastIndex } from "@roo-code/core/browser"
+import { findLastIndex } from "@tumble-code/core/browser"
 import { checkExistKey } from "@roo/checkExistApiConfig"
 import { defaultModeSlug, defaultPrompts } from "@roo/modes"
 

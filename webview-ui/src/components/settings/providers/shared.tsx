@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 
-import type { ProviderSettings } from "@roo-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Input } from "@src/components/ui"

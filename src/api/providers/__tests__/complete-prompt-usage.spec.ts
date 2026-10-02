@@ -1,6 +1,6 @@
 // npx vitest run api/providers/__tests__/complete-prompt-usage.spec.ts
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 import { BaseOpenAiCompatibleProvider } from "../base-openai-compatible-provider"
 

@@ -9,7 +9,7 @@ import {
 	taskBridgeCommandSchema,
 	type TaskBridgeCommand,
 	type RemoteControlStatus,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { backoffDelayMs } from "../backoff.js"
 import { dispatchBridgeCommand } from "./commandHandlers.js"

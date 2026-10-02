@@ -1,9 +1,9 @@
 // npx vitest run src/core/tools/__tests__/validateToolUse.spec.ts
 
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@tumble-code/types"
 
 import { modes } from "../../../shared/modes"
-import { TOOL_GROUPS } from "@roo-code/types"
+import { TOOL_GROUPS } from "@tumble-code/types"
 
 import { validateToolUse, isToolAllowedForMode } from "../validateToolUse"
 

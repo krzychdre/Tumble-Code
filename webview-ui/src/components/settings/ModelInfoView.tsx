@@ -1,6 +1,6 @@
 import { Link } from "@src/components/ui"
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
 import { formatPrice } from "@src/utils/formatPrice"
 import { cn } from "@src/lib/utils"

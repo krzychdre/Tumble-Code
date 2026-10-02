@@ -2,12 +2,12 @@
 
 import * as path from "path"
 
-import { readCliRuntimeEnv } from "@roo-code/types"
+import { readCliRuntimeEnv } from "@tumble-code/types"
 
 import { getGlobalMcpSettingsPath } from "../mcpSettingsPath"
 
-vi.mock("@roo-code/types", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@roo-code/types")>()
+vi.mock("@tumble-code/types", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@tumble-code/types")>()
 	return { ...actual, readCliRuntimeEnv: vi.fn(actual.readCliRuntimeEnv) }
 })
 
@@ -28,8 +28,6 @@ describe("getGlobalMcpSettingsPath", () => {
 		const actual = readCliRuntimeEnv({})
 		vi.mocked(readCliRuntimeEnv).mockReturnValueOnce(actual)
 
-		expect(getGlobalMcpSettingsPath("/storage/settings")).toBe(
-			path.join("/storage/settings", "mcp_settings.json"),
-		)
+		expect(getGlobalMcpSettingsPath("/storage/settings")).toBe(path.join("/storage/settings", "mcp_settings.json"))
 	})
 })

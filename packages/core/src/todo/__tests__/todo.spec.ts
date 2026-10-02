@@ -1,6 +1,6 @@
 // npx vitest run src/todo/__tests__/todo.spec.ts
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { getLatestTodo } from "../todo.js"
 
@@ -43,10 +43,7 @@ describe("getLatestTodo", () => {
 	})
 
 	it("counts a user_edit_todos say as an update", () => {
-		const messages = [
-			toolAsk(1, { tool: "updateTodoList", todos: [todo("model")] }),
-			userEdit(2, [todo("user")]),
-		]
+		const messages = [toolAsk(1, { tool: "updateTodoList", todos: [todo("model")] }), userEdit(2, [todo("user")])]
 
 		expect(getLatestTodo(messages)).toEqual([todo("user")])
 	})

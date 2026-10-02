@@ -1,7 +1,7 @@
 import React from "react"
 import { LabeledCheckbox } from "@src/components/ui"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import type { McpServer } from "@roo-code/types"
+import type { McpServer } from "@tumble-code/types"
 
 export interface McpServerChecklistProps {
 	/** The currently-allowed server names. */

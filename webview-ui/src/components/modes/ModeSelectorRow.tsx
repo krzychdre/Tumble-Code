@@ -2,7 +2,7 @@ import { ModeIcon, modeLabel } from "@src/components/chat/modeIcon"
 import { useState, useEffect, useRef } from "react"
 import { ChevronDown, X, Upload } from "lucide-react"
 
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import {

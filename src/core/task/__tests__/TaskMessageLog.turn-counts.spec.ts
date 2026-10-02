@@ -8,7 +8,7 @@
 // updates the numbers here deliberately and cannot change the contract by
 // accident.
 
-import { TumbleCodeEventName, TelemetryEventName, type ClineMessage } from "@roo-code/types"
+import { TumbleCodeEventName, TelemetryEventName, type ClineMessage } from "@tumble-code/types"
 
 const { captureEvent, savedSnapshots, metadataRuns } = vi.hoisted(() => ({
 	captureEvent: vi.fn(),
@@ -16,7 +16,7 @@ const { captureEvent, savedSnapshots, metadataRuns } = vi.hoisted(() => ({
 	metadataRuns: { count: 0 },
 }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		isEnabled: () => true,
 		hasInstance: () => true,

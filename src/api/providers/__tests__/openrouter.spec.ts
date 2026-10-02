@@ -11,7 +11,7 @@ import OpenAI from "openai"
 
 import { OpenRouterHandler } from "../openrouter"
 import { isRetryableApiError } from "../../apiErrors"
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { Package } from "../../../shared/package"
 
 vitest.mock("openai")
@@ -19,7 +19,7 @@ vitest.mock("delay", () => ({ default: vitest.fn(() => Promise.resolve()) }))
 
 const mockCaptureException = vitest.fn()
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureException: (...args: unknown[]) => mockCaptureException(...args),

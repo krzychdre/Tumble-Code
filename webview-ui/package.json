@@ -1,5 +1,5 @@
 {
-	"name": "@roo-code/vscode-webview",
+	"name": "@tumble-code/vscode-webview",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -24,8 +24,8 @@
 		"@radix-ui/react-slider": "^1.2.3",
 		"@radix-ui/react-slot": "^1.1.2",
 		"@radix-ui/react-tooltip": "^1.1.8",
-		"@roo-code/core": "workspace:^",
-		"@roo-code/types": "workspace:^",
+		"@tumble-code/core": "workspace:^",
+		"@tumble-code/types": "workspace:^",
 		"@tanstack/react-query": "^5.68.0",
 		"@vscode/codicons": "^0.0.36",
 		"ansi-to-html": "^0.7.2",
@@ -65,8 +65,8 @@
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
-		"@roo-code/config-eslint": "workspace:^",
-		"@roo-code/config-vitest": "workspace:^",
+		"@tumble-code/config-eslint": "workspace:^",
+		"@tumble-code/config-vitest": "workspace:^",
 		"@babel/core": "^7.29.0",
 		"@rolldown/plugin-babel": "^0.2.4",
 		"@tailwindcss/vite": "^4.3.3",

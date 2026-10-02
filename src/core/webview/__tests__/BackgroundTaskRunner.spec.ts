@@ -3,7 +3,7 @@ import * as path from "path"
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { TumbleCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@roo-code/types"
+import { TumbleCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@tumble-code/types"
 
 import { Task } from "../../task/Task"
 import { OrganizationAllowListViolationError } from "../../../utils/errors"

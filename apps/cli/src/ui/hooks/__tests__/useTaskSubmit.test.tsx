@@ -4,7 +4,7 @@ import path from "path"
 
 import { Text } from "ink"
 import { render } from "ink-testing-library"
-import type { WebviewMessage } from "@roo-code/types"
+import type { WebviewMessage } from "@tumble-code/types"
 
 import {
 	PERMISSIONS_COMMAND_USAGE,

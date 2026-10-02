@@ -1,4 +1,4 @@
-import type { ExperimentId, ExtensionState, ProviderSettings } from "@roo-code/types"
+import type { ExperimentId, ExtensionState, ProviderSettings } from "@tumble-code/types"
 
 import { type BufferedKey, type CachedSettings, isSettingChange, pickCachedSettings } from "./schema"
 

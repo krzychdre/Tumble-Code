@@ -5,8 +5,8 @@
 // manageContext. The second count now reuses the first when both use the same
 // handler.
 
-import { TelemetryService } from "@roo-code/telemetry"
-import type { ModelInfo } from "@roo-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import type { ModelInfo } from "@tumble-code/types"
 
 import { BaseProvider } from "../../../api/providers/base-provider"
 import type { ApiMessage } from "../../task-persistence/apiMessages"

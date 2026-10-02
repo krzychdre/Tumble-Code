@@ -1,4 +1,4 @@
-import { DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS } from "@roo-code/types"
+import { DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS } from "@tumble-code/types"
 
 import { truncateOutput, applyRunLengthEncoding } from "../misc/extract-text"
 

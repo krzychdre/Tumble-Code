@@ -2,9 +2,9 @@
 // answer is pinned at the HTTP level in moonshot-wire.spec.ts and
 // moonshot-stream-errors.spec.ts (API-4).
 
-import { moonshotDefaultModelId } from "@roo-code/types"
+import { moonshotDefaultModelId } from "@tumble-code/types"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 import { MoonshotHandler } from "../moonshot"
 

@@ -26,9 +26,9 @@ import {
 	MAX_PENDING_BATCHES,
 } from "../constants"
 import { isPathInIgnoredDirectory } from "../../glob/ignore-utils"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
-import { backoffDelayMsNoJitter } from "@roo-code/core"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
+import { backoffDelayMsNoJitter } from "@tumble-code/core"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
 import { Package } from "../../../shared/package"
 import { reportEmbeddingUsage } from "../embedding-usage"

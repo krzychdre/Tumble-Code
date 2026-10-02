@@ -4,7 +4,7 @@ Command Line Interface for Tumble Code - Run the Tumble Code agent from the term
 
 ## Overview
 
-This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the main Tumble Code extension to run in a Node.js environment.
+This CLI uses the `@tumble-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the main Tumble Code extension to run in a Node.js environment.
 
 ## Installation
 
@@ -545,7 +545,7 @@ rejected with a clear error.
 
 2. **ExtensionHost** (`extension-host.ts`):
 
-    - Creates a VSCode API mock using `@roo-code/vscode-shim`
+    - Creates a VSCode API mock using `@tumble-code/vscode-shim`
     - Intercepts `require('vscode')` to return the mock
     - Loads and activates the extension bundle
     - Manages bidirectional message flow

@@ -7,7 +7,7 @@ import type { Mock } from "vitest"
 import { getEnvironmentDetails, FILE_DETAILS_UNCHANGED_NOTE } from "../getEnvironmentDetails"
 import { getFullModeDetails } from "../../prompts/modeDetails"
 import { isToolAllowedForMode } from "../../tools/validateToolUse"
-import { consolidateTokenUsage } from "@roo-code/core/browser"
+import { consolidateTokenUsage } from "@tumble-code/core/browser"
 import { listFiles } from "../../../services/glob/list-files"
 import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../../integrations/terminal/Terminal"
@@ -43,8 +43,8 @@ vi.mock("execa", () => ({
 }))
 
 vi.mock("../../prompts/modeDetails")
-vi.mock("@roo-code/core/browser", async (importOriginal) => ({
-	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
+vi.mock("@tumble-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@tumble-code/core/browser")>()),
 	consolidateTokenUsage: vi.fn(),
 }))
 vi.mock("../../../services/glob/list-files")

@@ -1,4 +1,4 @@
-import type { ClineAsk, ClineMessage, ClineSay } from "@roo-code/types"
+import type { ClineAsk, ClineMessage, ClineSay } from "@tumble-code/types"
 
 /** The "ever visible" set: ts of rows the list has shown before. */
 export interface EverVisibleSet {

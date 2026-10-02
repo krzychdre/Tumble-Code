@@ -14,7 +14,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 
 import { execa } from "execa"
-import { readCliRuntimeEnv } from "@roo-code/types"
+import { readCliRuntimeEnv } from "@tumble-code/types"
 
 import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
@@ -39,7 +39,7 @@ const MIN_NODE_MAJOR = 22
  * The cloud API the extension talks to, with the precedence of
  * `getTumbleCodeApiUrl` in packages/cloud/src/config.ts (the CLI sets no runtime
  * override, so the environment variable or the production URL applies). The
- * CLI does not depend on @roo-code/cloud, whose entry point loads VS Code.
+ * CLI does not depend on @tumble-code/cloud, whose entry point loads VS Code.
  */
 const PRODUCTION_CLOUD_API_URL = "https://app.tumblecode.dev"
 

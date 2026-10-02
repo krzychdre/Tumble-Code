@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
 
-import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { DEFAULT_WRITE_DELAY_MS } from "@tumble-code/types"
 
 import { createDirectoriesForFile } from "../../utils/fs"
 import { arePathsEqual } from "../../utils/path"

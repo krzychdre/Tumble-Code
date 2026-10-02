@@ -1,6 +1,6 @@
 // npx vitest run services/web/__tests__/WebSearchService.spec.ts
 
-import { resolveWebToolsConfig, WEB_TOOLS_DEFAULTS } from "@roo-code/types"
+import { resolveWebToolsConfig, WEB_TOOLS_DEFAULTS } from "@tumble-code/types"
 
 import {
 	createSearchBackend,

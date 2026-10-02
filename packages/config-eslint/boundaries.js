@@ -147,7 +147,7 @@ const noRelativeImportOutsidePackage = {
 }
 
 export const boundariesPlugin = {
-	meta: { name: "@roo-code/config-eslint/boundaries" },
+	meta: { name: "@tumble-code/config-eslint/boundaries" },
 	rules: {
 		"no-relative-import-outside-package": noRelativeImportOutsidePackage,
 	},

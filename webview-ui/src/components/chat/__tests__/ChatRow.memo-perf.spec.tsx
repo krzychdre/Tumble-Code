@@ -27,7 +27,7 @@ import { render, act, waitFor } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useSize } from "react-use"
 
-import type { ClineMessage, ExtensionState } from "@roo-code/types"
+import type { ClineMessage, ExtensionState } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

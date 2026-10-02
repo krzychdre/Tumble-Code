@@ -19,8 +19,8 @@
  * resumed task's history is not emitted at all.
  */
 
-import type { ClineMessage } from "@roo-code/types"
-import { consolidateApiRequests, consolidateTokenUsage } from "@roo-code/core/cli"
+import type { ClineMessage } from "@tumble-code/types"
+import { consolidateApiRequests, consolidateTokenUsage } from "@tumble-code/core/cli"
 
 import type { JsonEvent, JsonEventCost, JsonFinalOutput } from "@/types/json-events.js"
 

@@ -1,9 +1,9 @@
-import type { AutoApprovalSettings, TokenUsage, ClineMessage } from "@roo-code/types"
+import type { AutoApprovalSettings, TokenUsage, ClineMessage } from "@tumble-code/types"
 
 /**
  * The minimal control surface the bridge needs from a live Task. Declared as a
  * structural interface (not the concrete `Task`) so the command dispatcher is
- * unit-testable with a plain mock and `@roo-code/cloud` stays free of a runtime
+ * unit-testable with a plain mock and `@tumble-code/cloud` stays free of a runtime
  * dependency on the extension host `src/` tree.
  */
 export interface BridgeTask {

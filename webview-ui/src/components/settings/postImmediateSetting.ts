@@ -1,4 +1,4 @@
-import type { GlobalSettings } from "@roo-code/types"
+import type { GlobalSettings } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

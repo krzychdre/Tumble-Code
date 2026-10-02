@@ -8,7 +8,7 @@
 // uses, and the checkbox is the real one (not mocked), so its class names and test ids are
 // part of the snapshots.
 
-import type { ProviderName, ProviderSettings } from "@roo-code/types"
+import type { ProviderName, ProviderSettings } from "@tumble-code/types"
 
 import { fireEvent, render, screen } from "@/utils/test-utils"
 

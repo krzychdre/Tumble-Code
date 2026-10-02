@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react"
 
-import type { WebviewMessage } from "@roo-code/types"
+import type { WebviewMessage } from "@tumble-code/types"
 
-import { arePathsEqual } from "@roo-code/core/cli"
+import { arePathsEqual } from "@tumble-code/core/cli"
 
 import { getGlobalCommandsForAutocomplete } from "@/lib/utils/commands.js"
 

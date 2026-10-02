@@ -15,13 +15,13 @@ import {
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	TumbleCodeEventName,
 	experimentDefault,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { defaultModeSlug } from "../../../shared/modes"
 import { ContextProxy } from "../../config/ContextProxy"
 import { Task, TaskOptions } from "../../task/Task"
-import { safeWriteJson } from "@roo-code/core/fs"
+import { safeWriteJson } from "@tumble-code/core/fs"
 import { ClineProvider } from "../ClineProvider"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { MessageManager } from "../../message-manager"
@@ -68,7 +68,7 @@ vi.mock("axios", () => ({
 	post: vi.fn(),
 }))
 
-vi.mock("@roo-code/core/fs", () => {
+vi.mock("@tumble-code/core/fs", () => {
 	const write = vi.fn().mockResolvedValue(undefined)
 	return {
 		safeWriteJson: write,
@@ -377,7 +377,7 @@ vi.mock("../../../integrations/openai-codex/oauth", () => ({
 	},
 }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		get instance() {
@@ -2314,7 +2314,7 @@ describe("ClineProvider", () => {
 	describe("cloud profile sync wiring", () => {
 		const installFakeCloudService = async (authenticated: boolean) => {
 			const { EventEmitter } = await import("events")
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@tumble-code/cloud")
 			const fake = Object.assign(new EventEmitter(), {
 				isAuthenticated: vi.fn().mockReturnValue(authenticated),
 				getOrganizationSettings: vi.fn().mockReturnValue(undefined),
@@ -2976,7 +2976,7 @@ describe("getTelemetryProperties", () => {
 
 		test("includes cloud authentication property when user is authenticated", async () => {
 			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@tumble-code/cloud")
 			const mockCloudService = {
 				isAuthenticated: vi.fn().mockReturnValue(true),
 			}
@@ -2994,7 +2994,7 @@ describe("getTelemetryProperties", () => {
 
 		test("includes cloud authentication property when user is not authenticated", async () => {
 			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@tumble-code/cloud")
 			const mockCloudService = {
 				isAuthenticated: vi.fn().mockReturnValue(false),
 			}
@@ -3012,7 +3012,7 @@ describe("getTelemetryProperties", () => {
 
 		test("handles CloudService errors gracefully", async () => {
 			// Import the CloudService mock and update it to throw an error
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@tumble-code/cloud")
 			Object.defineProperty(CloudService, "instance", {
 				get: vi.fn().mockImplementation(() => {
 					throw new Error("CloudService not available")
@@ -3033,7 +3033,7 @@ describe("getTelemetryProperties", () => {
 
 		test("handles CloudService method errors gracefully", async () => {
 			// Import the CloudService mock and update it
-			const { CloudService } = await import("@roo-code/cloud")
+			const { CloudService } = await import("@tumble-code/cloud")
 			const mockCloudService = {
 				isAuthenticated: vi.fn().mockImplementation(() => {
 					throw new Error("Authentication check error")

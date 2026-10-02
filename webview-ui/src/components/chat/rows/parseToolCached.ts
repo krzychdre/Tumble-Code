@@ -1,6 +1,6 @@
-import type { ClineMessage, ClineSayTool } from "@roo-code/types"
+import type { ClineMessage, ClineSayTool } from "@tumble-code/types"
 
-import { parseToolPayloadText } from "@roo-code/core/browser"
+import { parseToolPayloadText } from "@tumble-code/core/browser"
 
 /** A parsed tool payload. Shared between callers: read it, never mutate it. */
 export type ParsedTool = Readonly<Partial<ClineSayTool>> & Readonly<Record<string, unknown>>

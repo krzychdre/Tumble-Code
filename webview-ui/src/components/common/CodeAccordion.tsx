@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Spinner } from "@src/components/ui"
-import { type ToolProgressStatus } from "@roo-code/types"
+import { type ToolProgressStatus } from "@tumble-code/types"
 import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
 import { formatPathTooltip } from "@src/utils/formatPathTooltip"
 import { parseUnifiedDiff } from "@src/utils/parseUnifiedDiff"

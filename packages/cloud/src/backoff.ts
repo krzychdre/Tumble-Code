@@ -1,2 +1,2 @@
-export { backoffDelayMs } from "@roo-code/core/backoff"
-export type { BackoffOptions } from "@roo-code/core/backoff"
+export { backoffDelayMs } from "@tumble-code/core/backoff"
+export type { BackoffOptions } from "@tumble-code/core/backoff"

@@ -1,6 +1,6 @@
-import { GlobalState, ClineMessage, ClineAsk } from "@roo-code/types"
+import { GlobalState, ClineMessage, ClineAsk } from "@tumble-code/types"
 
-import { consolidateTokenUsage } from "@roo-code/core/browser"
+import { consolidateTokenUsage } from "@tumble-code/core/browser"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 
 export interface AutoApprovalResult {

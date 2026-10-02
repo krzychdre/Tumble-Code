@@ -4,8 +4,8 @@
 // actually reads. The provider list comes from the runtime registry, so a new
 // provider is covered without editing this file.
 
-import { getModelIdKeyForProvider, modelIdKeys } from "@roo-code/types"
-import type { OrganizationAllowList, ProviderName, ProviderSettings } from "@roo-code/types"
+import { getModelIdKeyForProvider, modelIdKeys } from "@tumble-code/types"
+import type { OrganizationAllowList, ProviderName, ProviderSettings } from "@tumble-code/types"
 
 import { ProfileValidator } from "../../shared/ProfileValidator"
 import { runtimeProviderRegistry, type RuntimeProviderId } from "../runtime-provider-registry"
@@ -39,9 +39,9 @@ const constructorOptions: Partial<ProviderSettings> = {
 }
 
 // Handlers that silently substitute their default for unknown ids need a real
-// id from their catalog. Collect every catalog id exported by @roo-code/types. The module is
+// id from their catalog. Collect every catalog id exported by @tumble-code/types. The module is
 // loaded through a variable so knip does not read this scan as a use of every export.
-const typesModule = "@roo-code/types"
+const typesModule = "@tumble-code/types"
 const types: Record<string, unknown> = await import(typesModule)
 const catalogModelIds: string[] = [
 	SENTINEL_MODEL_ID,

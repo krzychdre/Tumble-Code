@@ -1,12 +1,12 @@
 // npx vitest run core/memory/__tests__/side-query-telemetry.spec.ts
 
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
 
 import type { ApiHandler } from "../../../api"
 import { makeSideQuery } from "../memoryTaskIntegration"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: { capture: vi.fn() },

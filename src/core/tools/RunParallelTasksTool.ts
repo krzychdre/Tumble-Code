@@ -1,14 +1,14 @@
 import * as os from "os"
 import * as path from "path"
 
-import { worktreeService } from "@roo-code/core"
+import { worktreeService } from "@tumble-code/core"
 import {
 	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
 	isParallelTasksEnabled,
 	TumbleCodeEventName,
 	type HistoryItem,
 	type SubagentSummary,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"

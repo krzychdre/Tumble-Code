@@ -7,9 +7,9 @@ import {
 	getZaiApiLineConfig,
 	resolveCatalogModel,
 	zaiModelCatalog,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { convertToR1Format } from "../transform/r1-format"
 
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"

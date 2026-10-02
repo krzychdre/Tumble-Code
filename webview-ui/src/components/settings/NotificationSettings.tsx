@@ -1,7 +1,7 @@
 import { HTMLAttributes, useEffect, useState } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import type { AudioType } from "@roo-code/types"
+import type { AudioType } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"

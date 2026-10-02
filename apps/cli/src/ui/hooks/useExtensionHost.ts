@@ -9,8 +9,8 @@ import {
 	type RequestableModelSource,
 	type WebviewMessage,
 	modelSources,
-} from "@roo-code/types"
-import { arePathsEqual } from "@roo-code/core/cli"
+} from "@tumble-code/types"
+import { arePathsEqual } from "@tumble-code/core/cli"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 import type { TranscriptSink } from "@/agent/transcript-reader.js"

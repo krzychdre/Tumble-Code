@@ -7,8 +7,8 @@ import {
 	type MarketplaceItemType,
 	modeMarketplaceItemSchema,
 	mcpMarketplaceItemSchema,
-} from "@roo-code/types"
-import { backoffDelayMsNoJitter } from "@roo-code/core"
+} from "@tumble-code/types"
+import { backoffDelayMsNoJitter } from "@tumble-code/core"
 import { logger } from "../../utils/logging"
 
 // The marketplace lives in the public GitHub repo, one YAML file per item:

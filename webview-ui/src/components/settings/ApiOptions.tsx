@@ -12,7 +12,7 @@ import {
 	isRetiredProvider,
 	isZaiChinaLine,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import {
 	getProviderServiceConfig,

@@ -7,10 +7,10 @@ vitest.mock("../utils/timeout-config", () => ({
 import { Anthropic } from "@anthropic-ai/sdk"
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 
-import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@roo-code/types"
+import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@tumble-code/types"
 
 import { ApiStreamChunk } from "../../transform/stream"
-import { calculateApiCost } from "@roo-code/core/browser"
+import { calculateApiCost } from "@tumble-code/core/browser"
 import { AnthropicVertexHandler } from "../anthropic-vertex"
 
 vitest.mock("@anthropic-ai/vertex-sdk", () => ({

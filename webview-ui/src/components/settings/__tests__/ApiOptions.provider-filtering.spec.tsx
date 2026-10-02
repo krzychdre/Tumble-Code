@@ -6,7 +6,7 @@ import {
 	providerRegistry,
 	type ProviderSettings,
 	type OrganizationAllowList,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/hooks/models/useSelectedModel"

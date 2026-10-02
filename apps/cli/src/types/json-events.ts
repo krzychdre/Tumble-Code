@@ -5,13 +5,13 @@ import {
 	type RooCliFinalOutput,
 	type RooCliOutputFormat,
 	type RooCliStreamEvent,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 /**
  * JSON Event Types for Structured CLI Output
  *
  * The fields of each event are declared once, by the schemas in
- * `@roo-code/types` (packages/types/src/cli.ts). The output format is NDJSON
+ * `@tumble-code/types` (packages/types/src/cli.ts). The output format is NDJSON
  * (newline-delimited JSON) for stream-json mode, or a single JSON object for
  * json mode.
  *

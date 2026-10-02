@@ -12,7 +12,7 @@
 
 import OpenAI from "openai"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { BaseProvider } from "../base-provider"
 import { OpenAiHandler } from "../openai"
 import { OpenAiNativeHandler } from "../openai-native"

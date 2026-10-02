@@ -1,6 +1,6 @@
 import type * as vscode from "vscode"
 
-import type { CustomModePrompts, ModeConfig } from "@roo-code/types"
+import type { CustomModePrompts, ModeConfig } from "@tumble-code/types"
 
 import type { McpHub } from "../../services/mcp/McpHub"
 import type { SkillsManager } from "../../services/skills/SkillsManager"

@@ -14,7 +14,7 @@ afterAll(() => {
 	rmSync(tmpStorageRoot, { recursive: true, force: true })
 })
 
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 // Mock worktreeService before importing the tool. vi.hoisted ensures the
 // mock functions are available when the hoisted vi.mock factory runs.
@@ -26,7 +26,7 @@ const { mockCheckGitRepo, mockCreateWorktree, mockHasUncommittedChanges, mockBra
 		mockBranchHasCommits: vi.fn().mockResolvedValue(false),
 		mockDeleteWorktree: vi.fn().mockResolvedValue({ success: true, message: "removed" }),
 	}))
-vi.mock("@roo-code/core", () => ({
+vi.mock("@tumble-code/core", () => ({
 	worktreeService: {
 		checkGitRepo: mockCheckGitRepo,
 		createWorktree: mockCreateWorktree,

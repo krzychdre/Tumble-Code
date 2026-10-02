@@ -1,7 +1,7 @@
 import path from "path"
 import fs from "fs"
 
-import { readCliRuntimeEnv } from "@roo-code/types"
+import { readCliRuntimeEnv } from "@tumble-code/types"
 
 /**
  * Get the default path to the extension bundle.

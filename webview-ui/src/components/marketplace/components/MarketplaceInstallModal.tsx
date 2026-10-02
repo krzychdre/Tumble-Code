@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
-import { MarketplaceItem, McpParameter, McpInstallationMethod, type ExtensionMessage } from "@roo-code/types"
+import { MarketplaceItem, McpParameter, McpInstallationMethod, type ExtensionMessage } from "@tumble-code/types"
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import {

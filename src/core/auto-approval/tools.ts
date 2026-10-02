@@ -1,4 +1,4 @@
-import type { ClineSayTool } from "@roo-code/types"
+import type { ClineSayTool } from "@tumble-code/types"
 
 import { TOOL_DESCRIPTORS, type ToolApprovalCategory } from "../tools/toolDescriptors"
 

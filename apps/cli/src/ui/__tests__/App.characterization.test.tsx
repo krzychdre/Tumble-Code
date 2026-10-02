@@ -20,7 +20,7 @@ import { stripVTControlCharacters } from "util"
 
 import { render } from "ink-testing-library"
 
-import type { ClineMessage, ExtensionMessage, WebviewMessage } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage, WebviewMessage } from "@tumble-code/types"
 
 import type { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 import { TranscriptReader } from "@/agent/transcript-reader.js"

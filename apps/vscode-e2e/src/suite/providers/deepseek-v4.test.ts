@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { TumbleCodeEventName, type ClineMessage } from "@roo-code/types"
+import { TumbleCodeEventName, type ClineMessage } from "@tumble-code/types"
 
 import { setDefaultSuiteTimeout } from "../test-utils"
 import { sleep, waitFor, waitUntilAborted } from "../utils"

@@ -4,7 +4,7 @@
 
 import React from "react"
 
-import type { ClineMessage, ClineSayTool } from "@roo-code/types"
+import type { ClineMessage, ClineSayTool } from "@tumble-code/types"
 
 import { render, screen } from "@/utils/test-utils"
 

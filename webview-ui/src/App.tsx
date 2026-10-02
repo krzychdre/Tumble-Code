@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { TranslationProvider, useAppTranslation } from "./i18n/TranslationContext"
 import { MarketplaceViewStateManager } from "./components/marketplace/MarketplaceViewStateManager"

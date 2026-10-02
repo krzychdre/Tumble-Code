@@ -1,4 +1,4 @@
-import { getToolPayloadKind, type ToolPayloadKind } from "@roo-code/core/cli"
+import { getToolPayloadKind, type ToolPayloadKind } from "@tumble-code/core/cli"
 
 import type { BulletStatus } from "../primitives/Bullet.js"
 import type { ToolData, TUIMessage } from "../../types.js"
@@ -33,7 +33,7 @@ export function toolStatusFromMessage(message?: TUIMessage): BulletStatus {
 	return "success"
 }
 
-/** The CLI renderer of each payload row family (see ToolPayloadKind in @roo-code/core). */
+/** The CLI renderer of each payload row family (see ToolPayloadKind in @tumble-code/core). */
 const KIND_CATEGORIES: Partial<Record<ToolPayloadKind, ToolCategory>> = {
 	edit: "file-write",
 	insert: "file-write",

@@ -1,4 +1,4 @@
-import type { EmbedderProvider, CodebaseIndexModels, ProviderSettings } from "@roo-code/types"
+import type { EmbedderProvider, CodebaseIndexModels, ProviderSettings } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"

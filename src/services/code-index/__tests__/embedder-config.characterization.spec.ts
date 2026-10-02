@@ -2,7 +2,7 @@
 // exposes, whether it counts as configured, which settings changes restart indexing, and which
 // embedder class the factory builds with which arguments.
 
-import type { EmbedderProvider } from "@roo-code/types"
+import type { EmbedderProvider } from "@tumble-code/types"
 
 import { CodeIndexConfigManager } from "../config-manager"
 import { CodeIndexServiceFactory } from "../service-factory"

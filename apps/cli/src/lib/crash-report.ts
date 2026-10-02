@@ -11,7 +11,7 @@
 export interface CrashHintOptions {
 	/** Whether this run was started with --debug (the log is being written). */
 	debug: boolean
-	/** The debug log file (`getDebugLogPath()` from @roo-code/core/cli). */
+	/** The debug log file (`getDebugLogPath()` from @tumble-code/core/cli). */
 	logPath: string
 }
 

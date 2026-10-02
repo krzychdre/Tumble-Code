@@ -2,9 +2,9 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import * as vscode from "vscode"
 import OpenAI from "openai"
 
-import { type ModelInfo, openAiModelInfoSaneDefaults } from "@roo-code/types"
+import { type ModelInfo, openAiModelInfoSaneDefaults } from "@tumble-code/types"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { SELECTOR_SEPARATOR, stringifyVsCodeLmModelSelector } from "./utils/vsCodeSelectorUtils"
 import { normalizeToolSchema } from "../../utils/json-schema"
 

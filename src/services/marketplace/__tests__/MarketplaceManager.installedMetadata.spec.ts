@@ -13,11 +13,11 @@ import { logger } from "../../../utils/logging"
 
 const dirs = vi.hoisted(() => ({ workspace: "", global: "" }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: { hasInstance: vi.fn(() => false) },
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { capture: vi.fn() } },
 }))
 

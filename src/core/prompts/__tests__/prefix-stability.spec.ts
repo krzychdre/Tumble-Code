@@ -84,7 +84,7 @@ vi.mock("../../../services/code-index/manager", () => ({
 import type OpenAI from "openai"
 import type * as vscode from "vscode"
 
-import type { ModeConfig, ProviderSettings } from "@roo-code/types"
+import type { ModeConfig, ProviderSettings } from "@tumble-code/types"
 
 import type { McpHub } from "../../../services/mcp/McpHub"
 import type { ClineProvider } from "../../webview/ClineProvider"

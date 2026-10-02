@@ -1,4 +1,4 @@
-import { getToolPayloadKind, type ToolPayloadKind } from "@roo-code/core/cli"
+import { getToolPayloadKind, type ToolPayloadKind } from "@tumble-code/core/cli"
 
 /**
  * Sanitize content for terminal display
@@ -22,7 +22,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
 	use_mcp_server: "MCP",
 }
 
-/** Title of each payload row family (see ToolPayloadKind in @roo-code/core). */
+/** Title of each payload row family (see ToolPayloadKind in @tumble-code/core). */
 const KIND_DISPLAY_NAMES: Record<ToolPayloadKind, string> = {
 	edit: "Edit",
 	insert: "Insert Content",

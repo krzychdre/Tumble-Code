@@ -6,7 +6,7 @@
 // `x-stainless-*` family) are left out on purpose: they change with a dependency upgrade and
 // say nothing about what this embedder builds.
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureEvent: vi.fn() } },
 }))
 

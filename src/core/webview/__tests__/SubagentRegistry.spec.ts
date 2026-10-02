@@ -1,4 +1,4 @@
-import type { ExtensionMessage, SubagentSummary } from "@roo-code/types"
+import type { ExtensionMessage, SubagentSummary } from "@tumble-code/types"
 
 import { SubagentRegistry, queuedSubagentId } from "../SubagentRegistry"
 

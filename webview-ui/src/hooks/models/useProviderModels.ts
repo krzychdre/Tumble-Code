@@ -1,7 +1,7 @@
 import { useContext, useMemo } from "react"
 import { QueryClient, QueryClientContext, useQuery } from "@tanstack/react-query"
 
-import { type ModelRecord, type ModelSource, type ModelSourceOptions, type ModelSourceResult } from "@roo-code/types"
+import { type ModelRecord, type ModelSource, type ModelSourceOptions, type ModelSourceResult } from "@tumble-code/types"
 
 import { request } from "@src/utils/extensionBus"
 import { getProviderModelSource } from "@src/components/settings/utils/providerModelConfig"

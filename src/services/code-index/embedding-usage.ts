@@ -1,5 +1,5 @@
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import type { EmbeddingResponse, IEmbedder } from "./interfaces/embedder"
 

@@ -2,7 +2,7 @@
 
 import type * as vscode from "vscode"
 
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@tumble-code/types"
 
 vi.mock("../sections/custom-instructions", () => ({
 	addCustomInstructions: vi.fn().mockResolvedValue("Combined instructions"),

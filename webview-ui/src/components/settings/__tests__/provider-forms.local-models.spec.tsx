@@ -14,7 +14,7 @@
 
 import { cloneElement, Fragment, isValidElement, type ReactElement } from "react"
 
-import type { ModelRecord, ProviderName, ProviderSettings } from "@roo-code/types"
+import type { ModelRecord, ProviderName, ProviderSettings } from "@tumble-code/types"
 
 import { fireEvent, render, screen } from "@/utils/test-utils"
 

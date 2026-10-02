@@ -27,7 +27,7 @@
  * and its whole text), never appended in the wrong place.
  */
 
-import type { TodoItem } from "@roo-code/types"
+import type { TodoItem } from "@tumble-code/types"
 
 import type { TUIMessage } from "../ui/types.js"
 

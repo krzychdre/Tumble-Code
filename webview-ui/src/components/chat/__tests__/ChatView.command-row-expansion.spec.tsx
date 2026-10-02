@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.command-row-expansion.spec.tsx
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatView.command-row-expansion.spec.tsx
 
 import React from "react"
 import { render, waitFor, act, fireEvent } from "@/utils/test-utils"

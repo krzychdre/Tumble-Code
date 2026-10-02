@@ -13,7 +13,7 @@ import {
 	validateSkillName as validateSkillNameShared,
 	SkillNameValidationError,
 	SKILL_NAME_MAX_LENGTH,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 import { t } from "../../i18n"
 import { logger } from "../../utils/logging"
 

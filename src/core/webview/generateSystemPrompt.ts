@@ -1,4 +1,4 @@
-import { WebviewMessage } from "@roo-code/types"
+import { WebviewMessage } from "@tumble-code/types"
 import { defaultModeSlug } from "../../shared/modes"
 import { resolveProviderModel } from "../../api"
 

@@ -1,6 +1,6 @@
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
-import { calculateApiCost } from "@roo-code/core/browser"
+import { calculateApiCost } from "@tumble-code/core/browser"
 import type { CompletionUsage } from "../../index"
 import type { ApiStreamUsageChunk } from "../../transform/stream"
 

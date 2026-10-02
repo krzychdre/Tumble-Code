@@ -31,7 +31,7 @@
 
 import { resolve } from "path"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import { logger } from "../../utils/logging"
 import { isAutoMemPath, getAutoMemPath, isAutoMemoryEnabled } from "./paths"

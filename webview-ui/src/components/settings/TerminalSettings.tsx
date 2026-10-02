@@ -7,7 +7,7 @@ import {
 	type ExtensionMessage,
 	type TerminalOutputPreviewSize,
 	DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { cn } from "@/lib/utils"
 import {

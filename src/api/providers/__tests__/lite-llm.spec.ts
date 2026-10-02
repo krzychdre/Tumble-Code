@@ -5,8 +5,8 @@ vi.mock("../utils/timeout-config", () => ({
 import { Anthropic } from "@anthropic-ai/sdk"
 
 import { LiteLLMHandler } from "../lite-llm"
-import { ApiHandlerOptions } from "@roo-code/core/browser"
-import { litellmDefaultModelId, litellmDefaultModelInfo } from "@roo-code/types"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
+import { litellmDefaultModelId, litellmDefaultModelInfo } from "@tumble-code/types"
 
 // Mock vscode first to avoid import errors
 vi.mock("vscode", () => ({}))

@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { type GroundingSource } from "../../api/transform/stream"
 import { t } from "../../i18n"

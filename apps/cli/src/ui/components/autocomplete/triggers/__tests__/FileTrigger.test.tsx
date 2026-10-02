@@ -1,6 +1,6 @@
 import { render } from "ink-testing-library"
 
-import { mentionRegexGlobal, unescapeSpaces } from "@roo-code/core/cli"
+import { mentionRegexGlobal, unescapeSpaces } from "@tumble-code/core/cli"
 
 import { createFileTrigger, toFileResult, type FileResult } from "../FileTrigger.js"
 

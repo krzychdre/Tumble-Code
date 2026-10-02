@@ -1,8 +1,8 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 
-import { resolveMaxInlineToolResultBytes } from "@roo-code/types"
-import { escapeRegExp } from "@roo-code/core/browser"
+import { resolveMaxInlineToolResultBytes } from "@tumble-code/types"
+import { escapeRegExp } from "@tumble-code/core/browser"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"

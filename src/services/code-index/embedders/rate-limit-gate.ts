@@ -1,4 +1,4 @@
-import { backoffDelayMsNoJitter } from "@roo-code/core"
+import { backoffDelayMsNoJitter } from "@tumble-code/core"
 
 /** Backoff after the first 429 from an endpoint; it doubles with every further 429. */
 const BASE_BACKOFF_MS = 5_000

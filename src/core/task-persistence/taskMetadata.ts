@@ -1,14 +1,14 @@
 import NodeCache from "node-cache"
 import getFolderSize from "get-folder-size"
 
-import type { ClineMessage, HistoryItem } from "@roo-code/types"
+import type { ClineMessage, HistoryItem } from "@tumble-code/types"
 
 import {
 	findLastIndex,
 	consolidateTokenUsage,
 	consolidateApiRequests,
 	consolidateCommands,
-} from "@roo-code/core/browser"
+} from "@tumble-code/core/browser"
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { perfCounters } from "../../utils/perfCounters"
 import { t } from "../../i18n"

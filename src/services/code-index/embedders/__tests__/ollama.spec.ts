@@ -7,7 +7,7 @@ import { logger } from "../../../../utils/logging"
 global.fetch = vitest.fn() as MockedFunction<typeof fetch>
 
 // Mock TelemetryService
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vitest.fn(),

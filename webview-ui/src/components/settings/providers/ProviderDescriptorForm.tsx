@@ -23,7 +23,7 @@ import {
 	resolveProviderFormModelId,
 	resolveProviderGetKeyUrl,
 	resolveProviderModelSourceOptions,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useProviderModels } from "@src/hooks/models/useProviderModels"

@@ -1,4 +1,4 @@
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { EmbedderInfo, EmbedderValidationResult } from "../interfaces"
 import { t } from "../../../i18n"
 import { withValidationErrorHandling, HttpError } from "../shared/validation-helpers"

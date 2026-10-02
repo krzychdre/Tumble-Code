@@ -19,7 +19,7 @@ import {
 	TumbleCodeEventName,
 	getModelId,
 	isParallelTasksEnabled,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 import { type ApiHandler } from "../../api"
 import { getRuntimeProviderCapabilities } from "../../api/runtime-provider-registry"
 import { McpHub } from "../../services/mcp/McpHub"
@@ -29,7 +29,7 @@ import { buildSystemPromptInput, isMcpEnabledForPrompt } from "../prompts/system
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
-import { getModelMaxOutputTokens } from "@roo-code/core/browser"
+import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { type ClineProvider } from "../webview/ClineProvider"
 import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { type ApiMessage } from "../task-persistence"
@@ -262,7 +262,7 @@ export class ApiRequestBuilder {
 			}
 			// Also include filesystem-discovered custom tools when the experiment is on.
 			if (state?.experiments?.customTools) {
-				const { customToolRegistry, formatNative } = await import("@roo-code/core")
+				const { customToolRegistry, formatNative } = await import("@tumble-code/core")
 				const customSerialized = customToolRegistry.getAllSerialized()
 				for (const tool of customSerialized) {
 					const formatted = formatNative(tool)

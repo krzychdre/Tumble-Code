@@ -1,6 +1,6 @@
-// pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/latestTodos.spec.ts
+// pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/latestTodos.spec.ts
 
-import type { ClineMessage, TodoItem } from "@roo-code/types"
+import type { ClineMessage, TodoItem } from "@tumble-code/types"
 
 import { selectLatestTodos } from "../latestTodos"
 
@@ -35,7 +35,10 @@ describe("selectLatestTodos", () => {
 	})
 
 	it("counts a user_edit_todos say as an update", () => {
-		const messages = [toolAsk(200, { tool: "updateTodoList", todos: [todo("model")] }), userEdit(201, [todo("user")])]
+		const messages = [
+			toolAsk(200, { tool: "updateTodoList", todos: [todo("model")] }),
+			userEdit(201, [todo("user")]),
+		]
 
 		expect(selectLatestTodos(messages, undefined)).toEqual([todo("user")])
 	})

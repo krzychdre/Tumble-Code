@@ -11,7 +11,7 @@ import {
 	xaiDefaultModelId,
 	bedrockDefaultModelId,
 	deepSeekModels,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { ProfileValidator } from "../../shared/ProfileValidator"
 import { resolveProviderModel } from "../index"

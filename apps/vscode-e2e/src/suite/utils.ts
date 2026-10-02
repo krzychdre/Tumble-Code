@@ -1,4 +1,4 @@
-import { TumbleCodeEventName, type ClineMessage, type TumbleCodeAPI } from "@roo-code/types"
+import { TumbleCodeEventName, type ClineMessage, type TumbleCodeAPI } from "@tumble-code/types"
 
 type WaitForOptions = {
 	timeout?: number

@@ -1,7 +1,7 @@
 import path from "path"
 import fs from "fs/promises"
 
-import type { ClineSayTool } from "@roo-code/types"
+import type { ClineSayTool } from "@tumble-code/types"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
@@ -11,7 +11,7 @@ import { stripLineNumbers, everyLineHasLineNumbers } from "../../integrations/mi
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
-import { EXPERIMENT_IDS, experiments } from "@roo-code/types"
+import { EXPERIMENT_IDS, experiments } from "@tumble-code/types"
 import { convertNewFileToUnifiedDiff } from "../diff/stats"
 import type { ToolUse } from "../../shared/tools"
 

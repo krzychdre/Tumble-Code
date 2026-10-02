@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react"
-import { validateSkillName as validateSkillNameShared, SkillNameValidationError } from "@roo-code/types"
+import { validateSkillName as validateSkillNameShared, SkillNameValidationError } from "@tumble-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -45,7 +45,7 @@ const getSkillNameErrorTranslationKey = (error: SkillNameValidationError): strin
 }
 
 /**
- * Validate skill name using shared validation from @roo-code/types.
+ * Validate skill name using shared validation from @tumble-code/types.
  * Returns a translation key for the error, or null if valid.
  */
 const validateSkillName = (name: string): string | null => {

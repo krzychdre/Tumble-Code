@@ -19,7 +19,7 @@ export default defineConfig({
 	target: "node22",
 	platform: "node",
 	banner: {
-		// The createRequire lines give the bundled CommonJS dependencies of @roo-code/core
+		// The createRequire lines give the bundled CommonJS dependencies of @tumble-code/core
 		// (proper-lockfile and its graceful-fs) a real `require` for Node built-ins; without
 		// it esbuild's ESM output throws "Dynamic require of \"fs\" is not supported".
 		js: [
@@ -31,7 +31,7 @@ export default defineConfig({
 	// Bundle the workspace packages (they export TypeScript) and the packages the
 	// terminal UI renders with, together with everything they import, at the
 	// lockfile versions; see BUNDLED_DEPENDENCIES. A prefix also covers subpaths
-	// such as "@roo-code/core/cli" and "react/jsx-runtime".
+	// such as "@tumble-code/core/cli" and "react/jsx-runtime".
 	noExternal: BUNDLED_DEPENDENCIES,
 	external: [
 		// Keep native modules external

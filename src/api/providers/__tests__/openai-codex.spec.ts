@@ -1,11 +1,11 @@
 // npx vitest run api/providers/__tests__/openai-codex.spec.ts
 
-import { openAiCodexModels } from "@roo-code/types"
+import { openAiCodexModels } from "@tumble-code/types"
 
 import { OpenAiCodexHandler } from "../openai-codex"
 import { openAiCodexOAuthManager } from "../../../integrations/openai-codex/oauth"
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 

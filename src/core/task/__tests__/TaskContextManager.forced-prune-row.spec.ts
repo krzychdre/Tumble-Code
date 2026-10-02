@@ -2,7 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 
-import type { ClineMessage } from "@roo-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
 import type { ApiMessage } from "../../task-persistence/apiMessages"
 import { MessageManager } from "../../message-manager"

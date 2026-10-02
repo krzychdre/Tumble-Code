@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-import { writeFileAtomic } from "@roo-code/core/fs"
+import { writeFileAtomic } from "@tumble-code/core/fs"
 
 import {
 	addRegistration,

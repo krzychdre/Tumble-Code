@@ -1,6 +1,6 @@
 // npx vitest run packages/core/src/message-utils/__tests__/consolidateApiRequests.cases.spec.ts
 
-import type { ClineMessage, ClineSay } from "@roo-code/types"
+import type { ClineMessage, ClineSay } from "@tumble-code/types"
 
 import { consolidateApiRequests } from "../consolidateApiRequests.js"
 

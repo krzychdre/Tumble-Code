@@ -1,7 +1,7 @@
 // cd src && npx vitest run core/context-management/__tests__/circuit-breaker.spec.ts
 
-import type { ModelInfo } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { ModelInfo } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { BaseProvider } from "../../../api/providers/base-provider"
 import { ApiMessage } from "../../task-persistence/apiMessages"

@@ -2,7 +2,7 @@
  * Read the extension's persisted provider configuration from VS Code so the
  * CLI can reuse it (keys and provider/model config chosen in the extension).
  *
- * The CLI runs the extension bundle in-process through @roo-code/vscode-shim,
+ * The CLI runs the extension bundle in-process through @tumble-code/vscode-shim,
  * which persists extension state in `~/.vscode-mock/global-storage/`:
  *  - `secrets.json` — FileSecretStorage. Holds the provider-profiles envelope
  *    under `roo_cline_config_api_config` (v2: { schemaVersion, data } with
@@ -20,7 +20,7 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 
-import { classifyProvider } from "@roo-code/types"
+import { classifyProvider } from "@tumble-code/types"
 
 import {
 	getApiKeyField,

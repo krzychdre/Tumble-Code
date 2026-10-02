@@ -2,9 +2,9 @@ import axios from "axios"
 import { z } from "zod"
 import { useQuery, UseQueryOptions } from "@tanstack/react-query"
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
-import { parseApiPrice } from "@roo-code/core/browser"
+import { parseApiPrice } from "@tumble-code/core/browser"
 
 export const OPENROUTER_DEFAULT_PROVIDER_NAME = "[default]"
 

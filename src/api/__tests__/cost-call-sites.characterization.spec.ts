@@ -10,8 +10,8 @@ import * as fs from "fs"
 import * as path from "path"
 
 import type { Anthropic } from "@anthropic-ai/sdk"
-import type { ModelInfo, ServiceTier } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { ModelInfo, ServiceTier } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { TaskStreamProcessor, type TaskStreamProcessorAccess } from "../../core/task/TaskStreamProcessor"
 import { processAnthropicStream } from "../transform/anthropic-stream"
@@ -21,7 +21,7 @@ import { GeminiHandler } from "../providers/gemini"
 
 import { EXPECTED, MODELS } from "./__fixtures__/cost-call-sites"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { capture: vi.fn(), captureException: vi.fn() } },
 }))
 

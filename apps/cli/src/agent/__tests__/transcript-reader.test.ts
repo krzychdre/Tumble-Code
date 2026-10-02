@@ -1,11 +1,14 @@
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { ExtensionClient } from "../extension-client.js"
 import { TranscriptReader, type TranscriptSink } from "../transcript-reader.js"
 import type { TranscriptEffect, TranscriptView } from "../transcript-reducer.js"
 
 const say = (ts: number, text: string): ExtensionMessage =>
-	({ type: "messageUpdated", clineMessage: { ts, type: "say", say: "text", text, partial: false } }) as ExtensionMessage
+	({
+		type: "messageUpdated",
+		clineMessage: { ts, type: "say", say: "text", text, partial: false },
+	}) as ExtensionMessage
 
 function recordingSink(view: Partial<TranscriptView> = {}) {
 	const batches: TranscriptEffect[][] = []
@@ -28,7 +31,9 @@ describe("TranscriptReader", () => {
 		reader.handleMessage(say(2, "prompt echo"))
 		reader.handleMessage(say(3, "Hi"))
 
-		expect(batches).toEqual([[{ type: "addMessage", message: expect.objectContaining({ id: "3", content: "Hi" }) }]])
+		expect(batches).toEqual([
+			[{ type: "addMessage", message: expect.objectContaining({ id: "3", content: "Hi" }) }],
+		])
 	})
 
 	it("sends one batch per message that changes something, and none for the rest", () => {

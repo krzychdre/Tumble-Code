@@ -71,7 +71,7 @@ vi.mock("vscode", () => ({
 	},
 }))
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

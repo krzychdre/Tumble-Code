@@ -1,5 +1,5 @@
 {
-	"name": "@roo-code/telemetry",
+	"name": "@tumble-code/telemetry",
 	"private": true,
 	"description": "Tumble Code telemetry service and clients.",
 	"version": "0.0.1",
@@ -12,13 +12,13 @@
 		"clean": "rimraf .turbo"
 	},
 	"dependencies": {
-		"@roo-code/types": "workspace:^",
+		"@tumble-code/types": "workspace:^",
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
-		"@roo-code/config-eslint": "workspace:^",
-		"@roo-code/config-typescript": "workspace:^",
-		"@roo-code/config-vitest": "workspace:^",
+		"@tumble-code/config-eslint": "workspace:^",
+		"@tumble-code/config-typescript": "workspace:^",
+		"@tumble-code/config-vitest": "workspace:^",
 		"@types/node": "^22.20.4",
 		"vitest": "^5.0.2"
 	}

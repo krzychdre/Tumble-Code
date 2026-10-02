@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from "vitest"
 
-import { toolNames, PROTOCOL_TOOL_NAMES } from "@roo-code/types"
+import { toolNames, PROTOCOL_TOOL_NAMES } from "@tumble-code/types"
 
 import { TOOL_DESCRIPTORS, describeToolUse, getToolDescriptor, toolNamesWhere } from "../toolDescriptors"
 

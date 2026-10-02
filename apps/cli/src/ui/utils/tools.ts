@@ -1,11 +1,11 @@
-import type { TodoItem } from "@roo-code/types"
-import { describeToolPayload } from "@roo-code/core/cli"
+import type { TodoItem } from "@tumble-code/types"
+import { describeToolPayload } from "@tumble-code/core/cli"
 
 import type { ToolData } from "../types.js"
 
 /**
  * Extract structured ToolData from parsed tool JSON: the payload as the shared
- * reader in @roo-code/core sees it (the webview rows read it the same way),
+ * reader in @tumble-code/core sees it (the webview rows read it the same way),
  * plus the fields of the rows the CLI builds itself.
  */
 export function extractToolData(toolInfo: Record<string, unknown>): ToolData {

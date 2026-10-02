@@ -2,9 +2,9 @@ import * as vscode from "vscode"
 import { createHash } from "crypto"
 import { ICacheManager } from "./interfaces/cache"
 import debounce from "lodash.debounce"
-import { safeWriteJson } from "@roo-code/core/fs"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { safeWriteJson } from "@tumble-code/core/fs"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
 import { logger } from "../../utils/logging"
 
 /**

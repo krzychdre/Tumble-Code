@@ -1,6 +1,6 @@
-import { type ModelInfo, selectVertexModel } from "@roo-code/types"
+import { type ModelInfo, selectVertexModel } from "@tumble-code/types"
 
-import type { ApiHandlerOptions } from "@roo-code/core/browser"
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 import { getModelParams } from "../transform/model-params"
 

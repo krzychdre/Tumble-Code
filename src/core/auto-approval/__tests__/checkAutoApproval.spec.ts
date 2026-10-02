@@ -1,4 +1,4 @@
-import type { ExtensionState, ModeConfig } from "@roo-code/types"
+import type { ExtensionState, ModeConfig } from "@tumble-code/types"
 
 import {
 	checkAutoApproval,

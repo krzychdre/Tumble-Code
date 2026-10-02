@@ -2,9 +2,9 @@ import { useCallback, useState, useMemo } from "react"
 import { t } from "i18next"
 import { ChevronDown, OctagonX } from "lucide-react"
 
-import { type ExtensionMessage, type CommandExecutionStatus, commandExecutionStatusSchema } from "@roo-code/types"
+import { type ExtensionMessage, type CommandExecutionStatus, commandExecutionStatusSchema } from "@tumble-code/types"
 
-import { parseCommand, safeJsonParse, COMMAND_OUTPUT_STRING } from "@roo-code/core/browser"
+import { parseCommand, safeJsonParse, COMMAND_OUTPUT_STRING } from "@tumble-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
 import { extractPatternsFromCommand } from "@src/utils/command-parser"

@@ -1,6 +1,6 @@
 import { Building2, User, Plus } from "lucide-react"
 
-import { type CloudUserInfo, type CloudOrganizationMembership } from "@roo-code/types"
+import { type CloudUserInfo, type CloudOrganizationMembership } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { CREATE_TEAM_VALUE, PERSONAL_ACCOUNT_VALUE, useOrganizationSwitch } from "@src/hooks/useOrganizationSwitch"

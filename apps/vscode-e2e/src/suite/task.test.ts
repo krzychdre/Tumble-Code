@@ -1,6 +1,6 @@
 import * as assert from "assert"
 
-import { TumbleCodeEventName, type ClineMessage } from "@roo-code/types"
+import { TumbleCodeEventName, type ClineMessage } from "@tumble-code/types"
 
 import { waitUntilCompleted } from "./utils"
 import { requireOpenRouterKey, setDefaultSuiteTimeout } from "./test-utils"

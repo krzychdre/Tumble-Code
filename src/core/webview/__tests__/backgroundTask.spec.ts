@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, type Mock } from "vitest"
 import { EventEmitter } from "events"
 
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { logger } from "../../../utils/logging"
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"

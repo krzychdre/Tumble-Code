@@ -79,8 +79,8 @@ describe("relative imports that leave the workspace", () => {
 			[
 				'import { a } from "./a"',
 				'import { b } from "../../shared/array"',
-				'import { TelemetryService } from "@roo-code/telemetry"',
-				'vi.mock("@roo-code/telemetry", () => ({}))',
+				'import { TelemetryService } from "@tumble-code/telemetry"',
+				'vi.mock("@tumble-code/telemetry", () => ({}))',
 				"export const all = [a, b, TelemetryService]",
 				"",
 			].join("\n"),
@@ -139,7 +139,7 @@ describe("vscode and extension imports in src/shared (bundled into the webview)"
 			[
 				'import { TOOL_GROUPS } from "./tools"',
 				'import pkg from "../package.json"',
-				'import type { ModeConfig } from "@roo-code/types"',
+				'import type { ModeConfig } from "@tumble-code/types"',
 				"export const x = [TOOL_GROUPS, pkg] as unknown as ModeConfig",
 				"",
 			].join("\n"),

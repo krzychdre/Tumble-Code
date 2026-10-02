@@ -1,4 +1,4 @@
-import { TumbleCodeSettings } from "@roo-code/types"
+import { TumbleCodeSettings } from "@tumble-code/types"
 
 import { flushPendingStreamUpdates, useCLIStore } from "../store.js"
 

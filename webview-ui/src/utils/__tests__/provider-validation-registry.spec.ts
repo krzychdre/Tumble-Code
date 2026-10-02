@@ -1,4 +1,4 @@
-import type { ProviderName, ProviderSettings } from "@roo-code/types"
+import type { ProviderName, ProviderSettings } from "@tumble-code/types"
 
 vi.mock("i18next", () => ({ default: { t: (key: string) => key } }))
 

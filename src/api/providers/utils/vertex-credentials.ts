@@ -1,7 +1,7 @@
 import type { JWTInput } from "google-auth-library"
 
-import { looksLikeFilePath } from "@roo-code/types"
-import { safeJsonParse } from "@roo-code/core"
+import { looksLikeFilePath } from "@tumble-code/types"
+import { safeJsonParse } from "@tumble-code/core"
 import { logger } from "../../../utils/logging"
 
 // Detects when the "Google Cloud Credentials" field has received a filesystem
@@ -12,7 +12,7 @@ import { logger } from "../../../utils/logging"
 // undefined when the field is empty, path-shaped, or unparseable.
 //
 // The path-shape predicate is shared with the webview UI warning via
-// @roo-code/types/looksLikeFilePath so both surfaces stay in agreement.
+// @tumble-code/types/looksLikeFilePath so both surfaces stay in agreement.
 export function parseVertexJsonCredentials(value: string | undefined): JWTInput | undefined {
 	const trimmed = value?.trim()
 	if (!trimmed) {

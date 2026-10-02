@@ -20,7 +20,7 @@
 import React, { Profiler } from "react"
 import { render, act } from "@/utils/test-utils"
 
-import type { ClineMessage, ExtensionMessage, ExtensionState } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage, ExtensionState } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 

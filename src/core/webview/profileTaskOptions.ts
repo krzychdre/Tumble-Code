@@ -1,4 +1,4 @@
-import type { OrganizationAllowList, ProviderSettings } from "@roo-code/types"
+import type { OrganizationAllowList, ProviderSettings } from "@tumble-code/types"
 
 import { ProfileValidator } from "../../shared/ProfileValidator"
 import { OrganizationAllowListViolationError } from "../../utils/errors"

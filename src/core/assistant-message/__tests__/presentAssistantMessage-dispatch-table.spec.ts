@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-import { toolNames, type ToolName } from "@roo-code/types"
+import { toolNames, type ToolName } from "@tumble-code/types"
 
 import { getModeBySlug, defaultModeSlug } from "../../../shared/modes"
 import { presentAssistantMessage } from "../presentAssistantMessage"
@@ -91,7 +91,7 @@ vi.mock("../../tools/validateToolUse", () => ({
 	validateToolUse: vi.fn(),
 	isValidToolName: vi.fn(() => true),
 }))
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			capture: vi.fn(),

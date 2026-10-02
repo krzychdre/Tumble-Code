@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { TOO_MANY_TOOLS_DISMISSAL_ID, type TodoItem } from "@roo-code/types"
+import { TOO_MANY_TOOLS_DISMISSAL_ID, type TodoItem } from "@tumble-code/types"
 
-import { safeJsonParse } from "@roo-code/core/browser"
+import { safeJsonParse } from "@tumble-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"

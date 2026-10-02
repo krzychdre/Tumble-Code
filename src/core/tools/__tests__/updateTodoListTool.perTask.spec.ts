@@ -6,7 +6,7 @@
 // task was waiting for approval replaced it, so the foreground task adopted
 // the other task's list as if the user had edited it.
 
-import type { TodoItem } from "@roo-code/types"
+import type { TodoItem } from "@tumble-code/types"
 
 import { updateTodoListTool } from "../UpdateTodoListTool"
 

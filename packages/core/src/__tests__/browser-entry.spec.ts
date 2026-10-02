@@ -1,6 +1,6 @@
 // npx vitest run src/__tests__/browser-entry.spec.ts
 //
-// `@roo-code/core/browser` is bundled into the webview (a browser sandbox with
+// `@tumble-code/core/browser` is bundled into the webview (a browser sandbox with
 // no Node APIs) and into the CLI. Every module it reaches, directly or through
 // relative imports, must stay free of Node built-ins and of runtime
 // dependencies other than the ones listed below. The walk reads the import
@@ -13,7 +13,7 @@ import path from "path"
 const srcDir = path.resolve(__dirname, "..")
 
 /** Bare packages a browser-safe module may import. */
-const ALLOWED_PACKAGES = new Set(["@roo-code/types"])
+const ALLOWED_PACKAGES = new Set(["@tumble-code/types"])
 
 function importSpecifiers(file: string): string[] {
 	const text = fs.readFileSync(file, "utf8")
@@ -73,7 +73,7 @@ function walk(entry: string): { files: string[]; packages: string[] } {
 	return { files: [...seen], packages: [...packages].sort() }
 }
 
-describe("@roo-code/core/browser", () => {
+describe("@tumble-code/core/browser", () => {
 	const { files, packages } = walk(path.join(srcDir, "browser.ts"))
 
 	it("reaches its modules (guards against a vacuous pass)", () => {

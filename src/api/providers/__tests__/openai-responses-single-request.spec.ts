@@ -9,7 +9,7 @@
 // These specs drive the REAL openai SDK against one fake server (the SDK's `fetch` option and
 // the global fetch of the SSE fallback both point at it) and count what reaches the server.
 
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 

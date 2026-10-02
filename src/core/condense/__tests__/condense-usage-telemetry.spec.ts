@@ -1,13 +1,13 @@
 // npx vitest run core/condense/__tests__/condense-usage-telemetry.spec.ts
 
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
 
 import type { ApiHandler } from "../../../api"
 import type { ApiMessage } from "../../task-persistence/apiMessages"
 import { summarizeConversation } from "../index"
 
-vi.mock("@roo-code/telemetry", () => ({
+vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: {

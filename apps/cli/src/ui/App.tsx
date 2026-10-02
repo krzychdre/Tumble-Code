@@ -1,7 +1,7 @@
 import { Box, Text, useApp, useInput } from "ink"
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 
-import type { UsableSuggestion } from "@roo-code/types"
+import type { UsableSuggestion } from "@tumble-code/types"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 

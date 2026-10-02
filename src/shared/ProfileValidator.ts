@@ -1,4 +1,4 @@
-import { type ProviderSettings, type OrganizationAllowList, getProviderModelId } from "@roo-code/types"
+import { type ProviderSettings, type OrganizationAllowList, getProviderModelId } from "@tumble-code/types"
 
 export class ProfileValidator {
 	public static isProfileAllowed(profile: ProviderSettings, allowList: OrganizationAllowList): boolean {

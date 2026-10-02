@@ -2,9 +2,9 @@
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@tumble-code/types"
 
-import { calculateApiCost } from "@roo-code/core/browser"
+import { calculateApiCost } from "@tumble-code/core/browser"
 import { addAnthropicCacheControl, processAnthropicStream } from "../anthropic-stream"
 import type { ApiStreamChunk } from "../stream"
 

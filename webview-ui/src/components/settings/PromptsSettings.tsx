@@ -22,7 +22,7 @@ import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { postImmediateSetting } from "./postImmediateSetting"
 import { useSetting } from "./SettingsDraftContext"
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 const PromptsSettings = () => {

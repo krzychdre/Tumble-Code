@@ -1,7 +1,7 @@
 // Mode switching, per-mode prompts and custom instructions.
 
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 import type { Mode } from "../../../shared/modes"
 import { serializeError } from "./context"
 import type { DomainHandlerMap } from "./types"

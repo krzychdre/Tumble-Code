@@ -3,7 +3,7 @@ import {
 	type ModelInfo,
 	getSelectableProviderDefinitions,
 	providerModelDefinitions,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 /**
  * The static model list of every provider that has one, from

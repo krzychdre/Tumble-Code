@@ -5,11 +5,15 @@
  */
 import { render, act } from "@/utils/test-utils"
 
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 
-import { ExtensionStateContextProvider, useExtensionState, type ExtensionStateContextType } from "../ExtensionStateContext"
+import {
+	ExtensionStateContextProvider,
+	useExtensionState,
+	type ExtensionStateContextType,
+} from "../ExtensionStateContext"
 import { extensionMessageCases } from "./extensionMessageCases"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
@@ -59,7 +63,10 @@ describe("ExtensionStateContext message table", () => {
 
 		testCase.check(latest!)
 
-		const posts = vi.mocked(vscode.postMessage).mock.calls.slice(postsBefore).map(([message]) => message)
+		const posts = vi
+			.mocked(vscode.postMessage)
+			.mock.calls.slice(postsBefore)
+			.map(([message]) => message)
 		expect(posts).toEqual(testCase.posts ?? [])
 
 		if (testCase.noChange) {

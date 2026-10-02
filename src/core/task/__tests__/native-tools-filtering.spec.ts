@@ -1,4 +1,4 @@
-import type { ModeConfig } from "@roo-code/types"
+import type { ModeConfig } from "@tumble-code/types"
 
 describe("Native Tools Filtering by Mode", () => {
 	describe("attemptApiRequest native tool filtering", () => {
@@ -22,7 +22,7 @@ describe("Native Tools Filtering by Mode", () => {
 
 			// Import the functions we need to test
 			const { isToolAllowedForMode } = await import("../../tools/validateToolUse")
-			const { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS } = await import("@roo-code/types")
+			const { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS } = await import("@tumble-code/types")
 
 			// Test architect mode - should NOT have edit tools
 			const architectAllowedTools = new Set<string>()
@@ -111,7 +111,7 @@ describe("Native Tools Filtering by Mode", () => {
 			}
 
 			const { isToolAllowedForMode } = await import("../../tools/validateToolUse")
-			const { ALWAYS_AVAILABLE_TOOLS } = await import("@roo-code/types")
+			const { ALWAYS_AVAILABLE_TOOLS } = await import("@tumble-code/types")
 
 			// Always-available tools should work even with no groups
 			ALWAYS_AVAILABLE_TOOLS.forEach((tool) => {

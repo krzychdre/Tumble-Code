@@ -1,6 +1,6 @@
 import { Text } from "ink"
 import { render } from "ink-testing-library"
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { TranscriptReader, type TranscriptSink } from "../../../agent/transcript-reader.js"
 import { useCLIStore } from "../../store.js"
@@ -120,7 +120,13 @@ describe("useTranscriptSink", () => {
 			view.rerender(<Harness />)
 			api.handleExtensionMessage({
 				type: "messageUpdated",
-				clineMessage: { ts: 911, type: "ask", ask: "tool", text: todos("completed", "pending"), partial: false },
+				clineMessage: {
+					ts: 911,
+					type: "ask",
+					ask: "tool",
+					text: todos("completed", "pending"),
+					partial: false,
+				},
 			} as never)
 			expect(useCLIStore.getState().messages[1]?.previousTodos?.map((t) => t.status)).toEqual([
 				"pending",
@@ -129,7 +135,13 @@ describe("useTranscriptSink", () => {
 
 			api.handleExtensionMessage({
 				type: "messageUpdated",
-				clineMessage: { ts: 912, type: "ask", ask: "tool", text: todos("completed", "completed"), partial: false },
+				clineMessage: {
+					ts: 912,
+					type: "ask",
+					ask: "tool",
+					text: todos("completed", "completed"),
+					partial: false,
+				},
 			} as never)
 			expect(useCLIStore.getState().messages[2]?.previousTodos?.map((t) => t.status)).toEqual([
 				"completed",
@@ -170,9 +182,7 @@ describe("useTranscriptSink", () => {
 			sayUpdate(40, "command_output", "b\n", false)
 
 			const rows = useCLIStore.getState().messages
-			expect(rows.map((m) => [m.id, m.toolData?.command, m.toolData?.output])).toEqual([
-				["40", undefined, "b\n"],
-			])
+			expect(rows.map((m) => [m.id, m.toolData?.command, m.toolData?.output])).toEqual([["40", undefined, "b\n"]])
 		})
 	})
 
@@ -229,7 +239,6 @@ describe("useTranscriptSink", () => {
 			output: "M src/app.ts\n",
 		})
 	})
-
 
 	/**
 	 * Finalization of a streamed message (same ts, partial false).

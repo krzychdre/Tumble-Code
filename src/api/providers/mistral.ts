@@ -10,10 +10,10 @@ import {
 	ApiProviderError,
 	providerModelDefinitions,
 	resolveCatalogModel,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
-import { ApiHandlerOptions } from "@roo-code/core/browser"
+import { ApiHandlerOptions } from "@tumble-code/core/browser"
 
 import { convertToMistralMessages } from "../transform/mistral-format"
 import { ApiStream } from "../transform/stream"

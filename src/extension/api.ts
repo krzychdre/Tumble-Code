@@ -16,7 +16,7 @@ import {
 	TumbleCodeEventName,
 	isSecretStateKey,
 	SETTINGS_DEFAULTS,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"

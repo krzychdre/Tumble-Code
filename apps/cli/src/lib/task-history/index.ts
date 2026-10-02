@@ -1,7 +1,7 @@
 import os from "os"
 import path from "path"
 
-import { arePathsEqual, readTaskSessionsFromStoragePath, type TaskSessionEntry } from "@roo-code/core/cli"
+import { arePathsEqual, readTaskSessionsFromStoragePath, type TaskSessionEntry } from "@tumble-code/core/cli"
 
 const DEFAULT_CLI_TASK_STORAGE_PATH = path.join(os.homedir(), ".vscode-mock", "global-storage")
 

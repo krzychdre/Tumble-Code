@@ -6,7 +6,7 @@
 import fs from "node:fs"
 import path from "node:path"
 
-import { PROVIDER_DESCRIPTORS } from "@roo-code/types"
+import { PROVIDER_DESCRIPTORS } from "@tumble-code/types"
 
 const localesDir = path.resolve(__dirname, "../../../i18n/locales")
 const locales = fs.readdirSync(localesDir).filter((name) => !name.startsWith("__"))

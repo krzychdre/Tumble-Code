@@ -2,10 +2,10 @@ import * as fs from "fs/promises"
 import * as fsSync from "fs"
 import * as path from "path"
 
-import { historyItemSchema, type HistoryItem } from "@roo-code/types"
+import { historyItemSchema, type HistoryItem } from "@tumble-code/types"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
-import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from "@roo-code/core/fs"
+import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from "@tumble-code/core/fs"
 import { getStorageBasePath } from "../../utils/storage"
 import { logger } from "../../utils/logging"
 

@@ -2,7 +2,7 @@ import * as path from "path"
 import fs from "fs/promises"
 import * as vscode from "vscode"
 
-import { type ExtensionMessage, type ProviderSettings, type TodoItem, TumbleCodeEventName } from "@roo-code/types"
+import { type ExtensionMessage, type ProviderSettings, type TodoItem, TumbleCodeEventName } from "@tumble-code/types"
 
 import { buildApiHandler } from "../../api"
 import { Task, type AutoApprovalOverride } from "../task/Task"

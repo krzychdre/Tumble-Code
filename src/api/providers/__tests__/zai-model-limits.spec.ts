@@ -24,9 +24,9 @@
 // budget up to the documented ceiling. Models whose ceiling is already at or below the
 // clamp (glm-4.5v, glm-4-32b-0414-128k) have nothing to raise and get no slider.
 
-import { internationalZAiModels, mainlandZAiModels, type ModelInfo } from "@roo-code/types"
+import { internationalZAiModels, mainlandZAiModels, type ModelInfo } from "@tumble-code/types"
 
-import { getModelMaxOutputTokens } from "@roo-code/core/browser"
+import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 
 type Limits = {
 	maxTokens: number

@@ -8,7 +8,7 @@
 // through `renderProviderForm`, the entry point `ApiOptions` uses, with the real checkbox and
 // the real dropdown, so their class names and test ids are part of the snapshots.
 
-import type { ModelInfo, ProviderSettings } from "@roo-code/types"
+import type { ModelInfo, ProviderSettings } from "@tumble-code/types"
 
 import { fireEvent, render, screen } from "@/utils/test-utils"
 

@@ -1,11 +1,11 @@
-import type { ClineAsk, ClineSay, RemoteControlStatus, TodoItem, UsableSuggestion } from "@roo-code/types"
-import type { ToolPayload } from "@roo-code/core/cli"
+import type { ClineAsk, ClineSay, RemoteControlStatus, TodoItem, UsableSuggestion } from "@tumble-code/types"
+import type { ToolPayload } from "@tumble-code/core/cli"
 
 export type MessageRole = "system" | "user" | "assistant" | "tool" | "thinking"
 
 /**
  * Structured data a tool row renders: a tool payload as `describeToolPayload`
- * in @roo-code/core reads it (the same reading the webview rows use), plus the
+ * in @tumble-code/core reads it (the same reading the webview rows use), plus the
  * fields of the rows the CLI builds itself (`execute_command`,
  * `use_mcp_server`, `attempt_completion`).
  */

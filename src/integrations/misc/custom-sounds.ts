@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import { randomBytes } from "crypto"
 
-import type { AudioType } from "@roo-code/types"
+import type { AudioType } from "@tumble-code/types"
 
 export const CUSTOM_SOUNDS_DIR = "custom-sounds"
 

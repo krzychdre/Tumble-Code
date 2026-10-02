@@ -4,7 +4,7 @@
  * produce the state the provider exposes, without posting to the host and
  * without mutating its input.
  */
-import type { ExtensionMessage } from "@roo-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 
@@ -79,7 +79,10 @@ describe("applyExtensionMessage", () => {
 			{ type: "commands", commands: [{ name: "deploy", source: "project" }] },
 		])
 
-		const next = applyExtensionMessage(prev, { type: "messageUpdated", clineMessage: makeClineMessage(1, "edited") })
+		const next = applyExtensionMessage(prev, {
+			type: "messageUpdated",
+			clineMessage: makeClineMessage(1, "edited"),
+		})
 
 		expect(next.commands).toBe(prev.commands)
 		expect(next.extensionState.taskHistory).toBe(prev.extensionState.taskHistory)

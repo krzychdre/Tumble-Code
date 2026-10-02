@@ -1,4 +1,4 @@
-import { TumbleCodeEventName, type TaskEvents, type TaskLike } from "@roo-code/types"
+import { TumbleCodeEventName, type TaskEvents, type TaskLike } from "@tumble-code/types"
 
 import type { SubagentRegistry } from "./SubagentRegistry"
 

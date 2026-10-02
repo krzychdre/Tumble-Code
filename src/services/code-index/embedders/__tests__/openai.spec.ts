@@ -10,7 +10,7 @@ import { logger } from "../../../../utils/logging"
 vitest.mock("openai")
 
 // Mock TelemetryService
-vitest.mock("@roo-code/telemetry", () => ({
+vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vitest.fn(),

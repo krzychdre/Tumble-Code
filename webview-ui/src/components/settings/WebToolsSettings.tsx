@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import { WEB_TOOLS_DEFAULTS } from "@roo-code/types"
+import { WEB_TOOLS_DEFAULTS } from "@tumble-code/types"
 
 import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"

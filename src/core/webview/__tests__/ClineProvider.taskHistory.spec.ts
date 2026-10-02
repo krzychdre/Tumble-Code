@@ -3,8 +3,8 @@
 import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
-import type { ClineMessage, HistoryItem, ExtensionMessage } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import type { ClineMessage, HistoryItem, ExtensionMessage } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ContextProxy } from "../../config/ContextProxy"
 import { ClineProvider } from "../ClineProvider"
@@ -68,7 +68,7 @@ vi.mock("../../../utils/export", () => ({
 	saveLastExportPath: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock("@roo-code/core/fs", () => {
+vi.mock("@tumble-code/core/fs", () => {
 	const write = vi.fn().mockImplementation(async (filePath: string, data: unknown) => {
 		await fs.mkdir(path.dirname(filePath), { recursive: true })
 		await fs.writeFile(filePath, JSON.stringify(data), "utf8")
@@ -253,7 +253,7 @@ vi.mock("../diff/strategies/multi-search-replace", () => ({
 	})),
 }))
 
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@tumble-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		get instance() {
@@ -885,7 +885,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.resolveWebviewView(mockWebviewView)
 
 			// Temporarily make the store's atomic writer throw
-			const { safeWriteJson } = await import("@roo-code/core/fs")
+			const { safeWriteJson } = await import("@tumble-code/core/fs")
 			const mockSafeWriteJson = vi.mocked(safeWriteJson)
 			let callCount = 0
 			mockSafeWriteJson.mockImplementation(async () => {

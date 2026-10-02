@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { withLockedJsonTransaction } from "@roo-code/core/fs"
+import { withLockedJsonTransaction } from "@tumble-code/core/fs"
 
 export const SERVER_NAME = "agent-interchange"
 

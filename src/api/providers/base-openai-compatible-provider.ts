@@ -1,9 +1,9 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { type ModelInfo, type UnknownModelPolicy, resolveCatalogModel } from "@roo-code/types"
+import { type ModelInfo, type UnknownModelPolicy, resolveCatalogModel } from "@tumble-code/types"
 
-import { type ApiHandlerOptions, getModelMaxOutputTokens } from "@roo-code/core/browser"
+import { type ApiHandlerOptions, getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { streamChatCompletion } from "../transform/chat-completions-stream"

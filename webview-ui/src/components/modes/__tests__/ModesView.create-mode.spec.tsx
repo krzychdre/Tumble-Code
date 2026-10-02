@@ -3,8 +3,8 @@
 
 import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
-import { TOOL_GROUPS } from "@roo-code/types"
-import type { ToolGroup } from "@roo-code/types"
+import { TOOL_GROUPS } from "@tumble-code/types"
+import type { ToolGroup } from "@tumble-code/types"
 
 import ModesView from "../ModesView"
 import { ExtensionStateContext } from "@src/context/ExtensionStateContext"

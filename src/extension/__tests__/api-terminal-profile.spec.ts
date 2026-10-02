@@ -3,7 +3,7 @@ import { EventEmitter } from "events"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import * as vscode from "vscode"
 
-import { TumbleCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { API } from "../api"
 import { ClineProvider } from "../../core/webview/ClineProvider"

@@ -25,7 +25,7 @@
  *   unattended subagent must never write without permission).
  */
 
-import type { ClineAsk, ClineSayTool, ExtensionState } from "@roo-code/types"
+import type { ClineAsk, ClineSayTool, ExtensionState } from "@tumble-code/types"
 
 import {
 	checkAutoApproval,

@@ -1,6 +1,6 @@
 import React from "react"
 
-import { openAiCodexDefaultModelId, openAiCodexModels } from "@roo-code/types"
+import { openAiCodexDefaultModelId, openAiCodexModels } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button } from "@src/components/ui"

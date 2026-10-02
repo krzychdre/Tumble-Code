@@ -36,12 +36,12 @@ import {
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 	WebviewMessage,
-} from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
-import { CloudService } from "@roo-code/cloud"
+} from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+import { CloudService } from "@tumble-code/cloud"
 
 import { Package } from "../../shared/package"
-import { findLast } from "@roo-code/core/browser"
+import { findLast } from "@tumble-code/core/browser"
 import { Mode } from "../../shared/modes"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 
@@ -76,7 +76,7 @@ import { Task } from "../task/Task"
 import type { SideQuery } from "../memory"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
-import type { TodoItem } from "@roo-code/types"
+import type { TodoItem } from "@tumble-code/types"
 import type { TaskHistoryStore } from "../task-persistence"
 import { SubagentRegistry } from "./SubagentRegistry"
 import {
@@ -1487,7 +1487,7 @@ export class ClineProvider
 
 	/**
 	 * The settings accessor of the extension host: every setting with its
-	 * default applied (see SETTINGS_DEFAULTS in @roo-code/types) plus the
+	 * default applied (see SETTINGS_DEFAULTS in @tumble-code/types) plus the
 	 * cloud facts. Built by {@link ProviderStateBuilder}.
 	 */
 	getState(): Promise<ProviderState> {

@@ -1,5 +1,5 @@
 // CLI-5: the CLI sizes its context gauge with `resolvePortableProviderModel`
-// from @roo-code/types, because it cannot import the extension's handlers.
+// from @tumble-code/types, because it cannot import the extension's handlers.
 // This pins that it reports the same context window as `resolveProviderModel`
 // (the handler's getModel()) for every provider it claims, over many settings.
 
@@ -11,7 +11,7 @@ import {
 	resolvePortableProviderModel,
 	zaiApiLineSchema,
 	mainlandZAiModels,
-} from "@roo-code/types"
+} from "@tumble-code/types"
 
 import { resolveProviderModel } from "../index"
 import { runtimeProviderRegistry, type RuntimeProviderId } from "../runtime-provider-registry"
