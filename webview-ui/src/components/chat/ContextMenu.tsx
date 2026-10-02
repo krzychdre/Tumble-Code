@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { getIconForFilePath, getIconUrlByName, getIconForDirectoryPath } from "vscode-material-icons"
-import { Trans } from "react-i18next"
 import { t } from "i18next"
 import { Settings } from "lucide-react"
 
@@ -14,8 +13,6 @@ import {
 } from "@src/utils/context-mentions"
 import { removeLeadingNonAlphanumeric } from "@src/utils/removeLeadingNonAlphanumeric"
 import { vscode } from "@src/utils/vscode"
-
-import { buildDocLink } from "@/utils/docLinks"
 
 interface ContextMenuProps {
 	onSelect: (type: ContextMenuOptionType, value?: string) => void
@@ -305,24 +302,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 								<p className="font-bold text-base text-vscode-foreground mt-1 mb-0.5">
 									{t("settings:sections.slashCommands")}
 								</p>
-								<p className="text-xs mt-0.5 -mb-1">
-									<Trans
-										i18nKey="settings:slashCommands.description"
-										components={{
-											DocsLink: (
-												<a
-													href={buildDocLink(
-														"features/slash-commands",
-														"slash_commands_settings",
-													)}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-vscode-textLink-foreground hover:underline"
-												/>
-											),
-										}}
-									/>
-								</p>
+								<p className="text-xs mt-0.5 -mb-1">{t("settings:slashCommands.description")} </p>
 							</div>
 						)}
 						<button

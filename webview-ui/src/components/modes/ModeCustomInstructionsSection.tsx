@@ -5,9 +5,8 @@ import type { ModeConfig, PromptComponent, CustomModePrompts } from "@roo-code/t
 import { getCustomInstructions } from "@roo/modes"
 
 import { vscode } from "@src/utils/vscode"
-import { buildDocLink } from "@src/utils/docLinks"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Link, Textarea } from "@src/components/ui"
+import { Textarea } from "@src/components/ui"
 import { useTextDraft } from "@src/components/ui/hooks"
 
 import { PromptFieldHeader } from "./ModePromptFields"
@@ -109,16 +108,7 @@ export const ModeCustomInstructionsSection = ({
 								}}
 							/>
 						),
-						"0": (
-							<Link
-								href={buildDocLink(
-									"features/custom-instructions#global-rules-directory",
-									"prompts_mode_specific_global_rules",
-								)}
-								style={{ display: "inline" }}
-								aria-label={t("prompts:customInstructions.docsLinkAriaLabel")}
-							/>
-						),
+						"0": <code />,
 					}}
 				/>
 			</div>

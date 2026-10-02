@@ -1,7 +1,6 @@
 import { useCallback } from "react"
 import { useTranslation, Trans } from "react-i18next"
 import { Link } from "@src/components/ui"
-import { buildDocLink } from "../../utils/docLinks"
 
 export const CommandExecutionError = () => {
 	const { t } = useTranslation()
@@ -31,12 +30,6 @@ export const CommandExecutionError = () => {
 						}}
 					/>
 				</div>
-				<a
-					href={buildDocLink("troubleshooting/shell-integration/", "error_tooltip")}
-					className="underline"
-					style={{ color: "inherit" }}>
-					{t("chat:shellIntegration.troubleshooting")}
-				</a>
 			</div>
 		</div>
 	)

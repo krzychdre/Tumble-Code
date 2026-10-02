@@ -48,8 +48,7 @@
 		"title": "Modusspecifieke instructies (optioneel)",
 		"resetToDefault": "Terugzetten naar standaard",
 		"description": "Voeg gedragsrichtlijnen toe die specifiek zijn voor de modus {{modeName}}.",
-		"loadFromFile": "Aangepaste instructies specifiek voor de {{mode}} modus kunnen ook worden geladen vanuit de map <span>.roo/rules-{{slug}}/</span> in je werkruimte of vanuit de globale <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} en .clinerules-{{slug}} zijn verouderd en zullen binnenkort niet meer werken).",
-		"docsLinkAriaLabel": "Meer over globale aangepaste instructies voor modi"
+		"loadFromFile": "Aangepaste instructies specifiek voor de {{mode}} modus kunnen ook worden geladen vanuit de map <span>.roo/rules-{{slug}}/</span> in je werkruimte of vanuit de globale <0>.roo/rules-{{slug}}/</0> (.roorules-{{slug}} en .clinerules-{{slug}} zijn verouderd en zullen binnenkort niet meer werken)."
 	},
 	"exportMode": {
 		"title": "Modus exporteren",
@@ -72,8 +71,7 @@
 	"globalCustomInstructions": {
 		"title": "Aangepaste instructies voor alle modi",
 		"description": "Deze instructies gelden voor alle modi. Ze bieden een basisset aan gedragingen die kunnen worden uitgebreid met modusspecifieke instructies hieronder.",
-		"loadFromFile": "Instructies kunnen ook worden geladen vanuit de map <span>.roo/rules/</span> in je werkruimte of vanuit de globale <0>.roo/rules/</0> (.roorules en .clinerules zijn verouderd en zullen binnenkort niet meer werken).",
-		"docsLinkAriaLabel": "Meer over het instellen van globale aangepaste instructies"
+		"loadFromFile": "Instructies kunnen ook worden geladen vanuit de map <span>.roo/rules/</span> in je werkruimte of vanuit de globale <0>.roo/rules/</0> (.roorules en .clinerules zijn verouderd en zullen binnenkort niet meer werken)."
 	},
 	"systemPrompt": {
 		"preview": "Systeemprompt bekijken",

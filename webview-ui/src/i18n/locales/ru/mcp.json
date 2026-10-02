@@ -9,7 +9,6 @@
 	},
 	"editGlobalMCP": "Редактировать глобальный MCP",
 	"editProjectMCP": "Редактировать проектный MCP",
-	"learnMoreEditingSettings": "Подробнее о редактировании файлов настроек MCP",
 	"tool": {
 		"alwaysAllow": "Всегда разрешать",
 		"parameters": "Параметры",

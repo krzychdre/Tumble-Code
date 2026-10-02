@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button"
 import { OrganizationSwitcher } from "./OrganizationSwitcher"
 import { StandardTooltip } from "../ui"
 
-// Define the production URL constant locally to avoid importing from cloud package in tests
-const PRODUCTION_ROO_CODE_API_URL = "https://app.roocode.com"
+// Mirrors PRODUCTION_ROO_CODE_API_URL in packages/cloud/src/config.ts (the webview may not import @roo-code/cloud).
+const PRODUCTION_ROO_CODE_API_URL = "https://app.tumblecode.dev"
 
 type CloudViewProps = {
 	userInfo: CloudUserInfo | null
@@ -253,7 +253,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 										value={manualUrl}
 										onChange={handleManualUrlChange}
 										onKeyDown={handleKeyDown}
-										placeholder="vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?state=..."
+										placeholder="vscode://QUB-IT.tumble-code/auth/clerk/callback?state=..."
 										className="w-full"
 									/>
 									<p className="mt-1">
