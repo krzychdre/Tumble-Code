@@ -1306,7 +1306,7 @@ async def test_run_view_nests_subtasks_under_their_run(client, db_session, sessi
     assert 'aria-controls="subtree-run-b"' not in page
     assert 'aria-controls="subtree-leaf-a"' not in page
     # Still a list of runs: the count and the pill are about the runs.
-    assert '<span class="count-pill">2</span>' in page
+    assert '<span class="count-pill">2 runs</span>' in page
     assert 'class="child-count"' in page
     # "Include their subtasks" removes the whole subtree, so that is the count.
     assert 'value="run-a"\n               data-child-count="2"' in page

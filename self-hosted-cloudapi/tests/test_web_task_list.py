@@ -61,6 +61,30 @@ def _hrefs(html: str) -> list[str]:
 # --- the header row -----------------------------------------------------------
 
 
+async def test_the_count_names_what_it_counts(client, db_session, session_factory):
+    """Under "Runs" the pill once read "Your tasks 135" beside "All 247": it
+    counts runs (a subtask folds into its run), so it says so."""
+    await _seed_user(db_session)
+    await _seed(
+        session_factory,
+        {"id": "run-a", "title": "Run A"},
+        {"id": "run-b", "title": "Run B"},
+        {"id": "sub-a", "title": "Sub A", "parent_task_id": "run-a"},
+    )
+
+    def pill(html):
+        return re.search(r'<span class="count-pill">([^<]*)</span>', html).group(1)
+
+    runs = _get(client, "/app").text
+    assert pill(runs) == "2 runs"
+    assert re.search(r">All 3</a>", runs)
+    assert pill(_get(client, "/app", scope="all").text) == "3 tasks"
+    # One row, one noun.
+    assert pill(_get(client, "/app", q="Run A").text) == "1 run"
+    assert pill(_get(client, "/app", scope="all", q="Sub").text) == "1 task"
+
+
+
 async def test_every_column_has_a_header(client, db_session, session_factory):
     """Seven columns, and once only the title and the date were labelled.
 

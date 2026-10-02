@@ -20,7 +20,10 @@
 <span class="head-sort{{ ' sorted' if how else '' }}"><a class="sort-link" href="{{ view.sort_url(key) }}">{{ label }}<span class="sr-only">{% if how %}, sorted {{ how }}{% endif %}</span>{% if how %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if how == 'ascending' else '↓' }}</span>{% endif %}</a></span>
 {%- endmacro %}
 <div class="list-head">
-  <h1 class="page-title">Your tasks<span id="list-count" data-swap>{% if total %} <span class="count-pill">{{ total }}</span>{% endif %}</span></h1>
+  {# The pill counts the rows of this view, so it names them: under "Runs" a
+     run is a top-level task with its subtasks folded in, fewer than "All". #}
+  {%- set unit = ('run' if scope == 'roots' else 'task') ~ ('' if total == 1 else 's') %}
+  <h1 class="page-title">Your tasks<span id="list-count" data-swap>{% if total %} <span class="count-pill">{{ total }} {{ unit }}</span>{% endif %}</span></h1>
   <div class="list-tools">
     {# Subtasks sit under the run that spawned them, as a tree folded shut by
        default; the flat list is one click away. #}
