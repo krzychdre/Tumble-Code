@@ -25,6 +25,7 @@ import { responsesApiCompletionUsage } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
 import { ResponsesApiCore, type ResponsesApiErrorTexts } from "./responses-api/core"
 import { buildResponsesApiRequestBody, responsesApiUserAgent, toResponsesApiInput } from "./responses-api/request"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 export type OpenAiNativeModel = ReturnType<OpenAiNativeHandler["getModel"]>
 
@@ -100,6 +101,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				"User-Agent": responsesApiUserAgent(),
 			},
 			timeout: this.timeoutMs,
+			fetch: wireCaptureFetch,
 		})
 	}
 

@@ -15,6 +15,7 @@ import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { anthropicCompletionUsage } from "./utils/completion-usage"
 import { convertOpenAIToolsToAnthropic } from "../../core/prompts/tools/native-tools/converters"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 /**
  * Converts OpenAI tool_choice to Anthropic ToolChoice format
@@ -74,6 +75,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 			baseURL,
 			apiKey: options.minimaxApiKey,
 			timeout: this.timeoutMs,
+			fetch: wireCaptureFetch,
 		})
 	}
 

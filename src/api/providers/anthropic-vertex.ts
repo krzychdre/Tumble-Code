@@ -22,6 +22,7 @@ import { parseVertexJsonCredentials } from "./utils/vertex-credentials"
 import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { anthropicCompletionUsage } from "./utils/completion-usage"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 const VERTEX_AUTH_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
@@ -88,6 +89,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 					credentials: parsedVertexCredentials,
 				}),
 				timeout: this.timeoutMs,
+				fetch: wireCaptureFetch,
 			})
 		} else if (this.options.vertexKeyFile) {
 			this.client = new AnthropicVertex({
@@ -98,6 +100,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 					keyFile: this.options.vertexKeyFile,
 				}),
 				timeout: this.timeoutMs,
+				fetch: wireCaptureFetch,
 			})
 		} else {
 			// Same default the SDK would build, wrapped so a failed lookup of the
@@ -107,6 +110,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				region,
 				googleAuth: new DeferredErrorGoogleAuth({ scopes: VERTEX_AUTH_SCOPES }),
 				timeout: this.timeoutMs,
+				fetch: wireCaptureFetch,
 			})
 		}
 	}

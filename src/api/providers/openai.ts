@@ -26,6 +26,7 @@ import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "./utils/timeout-config"
 import { logger } from "../../utils/logging"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 /**
  * Custom interface for GLM params to support thinking mode.
@@ -115,6 +116,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				defaultHeaders: headers,
 				defaultQuery: { "api-version": this.options.azureApiVersion || "2024-05-01-preview" },
 				timeout,
+				fetch: wireCaptureFetch,
 			})
 		} else if (isAzureOpenAi) {
 			// Azure API shape slightly differs from the core API shape:
@@ -125,6 +127,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
 				defaultHeaders: headers,
 				timeout,
+				fetch: wireCaptureFetch,
 			})
 		} else {
 			return new OpenAI({
@@ -132,6 +135,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				apiKey,
 				defaultHeaders: headers,
 				timeout,
+				fetch: wireCaptureFetch,
 			})
 		}
 	}

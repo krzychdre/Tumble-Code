@@ -26,6 +26,7 @@ import {
 	convertOpenAIToolsToAnthropic,
 	convertOpenAIToolChoiceToAnthropic,
 } from "../../core/prompts/tools/native-tools/converters"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
@@ -43,6 +44,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			baseURL: this.options.anthropicBaseUrl || undefined,
 			[apiKeyFieldName]: this.options.apiKey,
 			timeout: this.timeoutMs,
+			fetch: wireCaptureFetch,
 		})
 	}
 

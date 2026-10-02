@@ -20,6 +20,7 @@ import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
 import { logger } from "../../utils/logging"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 /**
  * LM Studio reports most failures (model not loaded, context too small) only in its own
@@ -49,6 +50,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",
 			apiKey: apiKey,
 			timeout: getApiRequestTimeout(),
+			fetch: wireCaptureFetch,
 		})
 	}
 
@@ -61,6 +63,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",
 				apiKey: "noop",
 				timeout: getApiRequestTimeout(),
+				fetch: wireCaptureFetch,
 			})
 		}
 		return this.client

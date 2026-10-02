@@ -43,6 +43,7 @@ import { handleProviderError } from "./utils/error-handler"
 import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
 import { logger } from "../../utils/logging"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 // Add custom interface for OpenRouter params.
 type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
@@ -130,7 +131,13 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		// `||`, not `??`: openai 7 rejects an empty key before sending, openai 5 did not.
 		const apiKey = this.options.openRouterApiKey || "not-provided"
 
-		this.client = new OpenAI({ baseURL, apiKey, defaultHeaders: DEFAULT_HEADERS, timeout: this.timeoutMs })
+		this.client = new OpenAI({
+			baseURL,
+			apiKey,
+			defaultHeaders: DEFAULT_HEADERS,
+			timeout: this.timeoutMs,
+			fetch: wireCaptureFetch,
+		})
 
 		// Load models asynchronously to populate cache before getModel() is called
 		this.loadDynamicModels().catch((error) => {
