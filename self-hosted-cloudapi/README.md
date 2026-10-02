@@ -280,11 +280,14 @@ In short:
 - Extension API on `cloudApiUrl`: `GET /api/extension-settings`, `PATCH /api/user-settings`,
   `POST /api/extension/share`, `GET /api/extension/bridge/config`, `POST /api/events`, `POST /api/events/backfill`,
   `POST /api/error-reports` (one problem with its model, context size, request and response; sent only while the
-  extension is signed in, duplicates by id ignored, 1 MB limit).
+  extension is signed in, duplicates by id ignored, 1 MB limit), `GET /api/llm-exchanges/config`,
+  `POST /api/llm-exchanges` and `POST /api/llm-exchanges/outcome` (LLM exchange recording for the training
+  dataset: only when the user switched it on at `/app/dataset`; incremental, gzip, 32 MB limit).
 - Web panel: `/app` (task list, task pages, metrics, the problem report at `/app/diagnostics` with filters in the
   query string, one report at `/app/diagnostics/reports/{id}`, and the agent brief as Markdown for the filtered
   list at `/app/diagnostics/report.md` and for one problem at `/app/diagnostics/problems/{key}/brief.md`,
-  settings) and
+  the dataset page at `/app/dataset` with the anonymized JSONL export, its audit and the full reconstruction of
+  one task at `/app/dataset/tasks/{task_id}.jsonl`, settings) and
   `/shared/{task_id}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
 - Health: `GET /health` (process alive), `GET /health/ready` (database reachable).

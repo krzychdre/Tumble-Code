@@ -113,6 +113,9 @@ erDiagram
   TASK ||--o{ TASK_SHARE : "shared as"
   USER ||--o{ TELEMETRY_EVENT : sends
   USER ||--o{ ERROR_REPORT : sends
+  USER ||--o{ LLM_EXCHANGE : records
+  USER ||--o{ LLM_BLOB : stores
+  USER ||--o| DATASET_SETTINGS : sets
   USER ||--o| RETENTION_POLICY : sets
 ```
 
@@ -132,6 +135,14 @@ erDiagram
   `schemas/error_report.py`). The extension sends them only while signed in. The insert ignores an id it already
   has, so a retried upload is stored once; bodies above 1 MB get 413. Reports are swept with telemetry by the
   retention policy, deleted with their task, and cascade with their user.
+- LLM exchanges: `POST /api/llm-exchanges` stores one request the agent sent to the model and its answer, and
+  `POST /api/llm-exchanges/outcome` how its tool calls went (`LLM_EXCHANGE`, schema in `schemas/llm_exchange.py`).
+  The extension records only while signed in AND the user switched recording on at `/app/dataset`
+  (`GET /api/llm-exchanges/config`, `DATASET_SETTINGS`). Storage is incremental: an exchange is a delta of an
+  earlier one of its task (`baseId`, keep the first N messages, append the rest), and the system prompt, the tool
+  definitions and large fields of the exact HTTP body are blobs (`LLM_BLOB`, per user, task and SHA-256).
+  Bodies are gzip (32 MB compressed, 128 MB inflated at most); a duplicate id is ignored. Exchanges are deleted
+  with their task and cascade with their user; the retention sweep of telemetry does not touch them.
 
 ### Background work
 
@@ -164,6 +175,7 @@ Server-rendered Jinja templates in `src/web/templates/` with one stylesheet (`st
 | Task detail | `task_detail.html`                            | `render.js` (conversation), `timeline.js`, `live.js` (bridge client)     |
 | Metrics     | `metrics.html`                                | none (charts are server-rendered SVG)                                    |
 | Problems    | `diagnostics.html`, `diagnostics_report.html` | none                                                                     |
+| Dataset     | `dataset.html`, `dataset_audit.html`          | none                                                                     |
 | Settings    | `settings.html`                               | none                                                                     |
 | Shared task | `task_detail.html`, read-only                 | `render.js`, `timeline.js`                                               |
 
@@ -189,3 +201,28 @@ rule's `code_hints`), up to three distinct samples with the request tail, the re
 tool result, and acceptance criteria. `/app/diagnostics/report.md` is the brief of the filtered list and
 `/app/diagnostics/problems/{key}/brief.md` the brief of one problem (key: 12 hex digits of the signature's
 SHA-256), both reading the same filters as the page; "Copy for agent" puts either on the clipboard.
+
+### The dataset
+
+`/app/dataset` (the "Dataset" tab) holds the recording switch and the user's own anonymization terms, counts the
+recorded exchanges per model and per issue, and exports them (ai_plans/2026-10-02_llm-exchange-dataset.md).
+
+- `services/exchange_reconstruction.py` rebuilds every request of a task from its deltas and blobs; the exact HTTP
+  body is re-serialized like `JSON.stringify` and checked against the SHA-256 the extension recorded. A missing
+  base or blob marks the exchange, and everything built on it, `incomplete`.
+- `services/exchange_quality.py` names what keeps an exchange out of a clean dataset: failed or cancelled requests,
+  empty or truncated answers, tool arguments that are not a JSON object, a tool that was not offered, a missing
+  non-nullable required parameter, tool call markup written as text, and the extension's own verdicts (invalid
+  call, mistake limit). Strict also drops calls that ran and failed and calls the user rejected.
+- `services/dataset_export.py` writes OpenAI chat JSONL (`messages`, `tools`, `weight` on assistant messages):
+  `turns` (one sample per clean answer) or `trajectories` (one per run of requests that extend each other), with
+  filters for period, teacher models and excluded workspaces. `services/openai_messages.py` mirrors the
+  extension's `convertToOpenAiMessages`.
+- `services/anonymizer.py` runs on export (on by default) with one consistent pseudonym table per export: secrets,
+  workspace paths and names, home folders and user names, the account's name and e-mail, the user's terms,
+  e-mail and IP addresses, checksummed PESEL/IBAN/card numbers and phone numbers. `/app/dataset/audit` lists every
+  replacement the same export would make.
+- `/app/dataset/tasks/{task_id}.jsonl` is the full reconstruction of one task, not anonymized, owner only.
+- `tests/fixtures/llm_exchanges_recorder.json` is the cross-language contract: the extension's recorder produces
+  it (`src/core/dataset/__tests__/ExchangeRecorder.fixture.spec.ts`) and `tests/test_llm_exchanges.py` reconstructs
+  it.
