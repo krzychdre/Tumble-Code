@@ -29,6 +29,8 @@ export interface McpHubProvider {
 	ensureSettingsDirectoryExists(): Promise<string>
 	getState(): Promise<{ mcpEnabled?: boolean }>
 	postMessageToWebview(message: ExtensionMessage): Promise<void>
+	/** True once the provider (its webview) is closed; such a provider gets no more messages. */
+	readonly isDisposed?: boolean
 }
 
 export interface McpHubOptions {
@@ -43,9 +45,11 @@ export interface McpHubOptions {
  * servers offer in McpToolCatalog.
  */
 export class McpHub {
+	// The provider that created the hub (usually the sidebar); used until a client registers.
 	private providerRef: WeakRef<McpHubProvider>
 	private isDisposed: boolean = false
-	private refCount: number = 0 // Reference counter for active clients
+	// Every provider (sidebar, editor tabs) using the hub; the hub is disposed when the last one leaves.
+	private readonly clients = new Set<McpHubProvider>()
 	private initializationPromise: Promise<void>
 	private readonly configStore: McpConfigStore
 	private readonly configWatcher: McpConfigWatcher
@@ -56,7 +60,7 @@ export class McpHub {
 		this.providerRef = new WeakRef(provider)
 		this.configStore = new McpConfigStore({
 			settingsDirectory: async () => {
-				const provider = this.providerRef.deref()
+				const provider = this.liveProvider()
 				if (!provider) {
 					throw new Error("Provider not available")
 				}
@@ -65,7 +69,7 @@ export class McpHub {
 			workspacePath: () => this.workspacePath(),
 		})
 		this.connectionManager = new McpConnectionManager({
-			clientVersion: () => this.providerRef.deref()?.context.extension?.packageJSON?.version ?? "1.0.0",
+			clientVersion: () => this.liveProvider()?.context.extension?.packageJSON?.version ?? "1.0.0",
 			isMcpEnabled: () => this.isMcpEnabled(),
 			notifyServerChanges: () => this.notifyWebviewOfServerChanges(),
 			fetchCapabilities: (name, source) => this.toolCatalog.fetchCapabilities(name, source),
@@ -125,27 +129,50 @@ export class McpHub {
 		await this.initializationPromise
 	}
 	/**
-	 * Registers a client (e.g., ClineProvider) using this hub.
-	 * Increments the reference count.
+	 * Registers a client (e.g., ClineProvider) using this hub. Every registered
+	 * client's webview gets the server list when it changes.
 	 */
-	public registerClient(): void {
-		this.refCount++
-		// console.log(`McpHub: Client registered. Ref count: ${this.refCount}`)
+	public registerClient(provider: McpHubProvider): void {
+		this.clients.add(provider)
 	}
 
 	/**
-	 * Unregisters a client. Decrements the reference count.
-	 * If the count reaches zero, disposes the hub.
+	 * Unregisters a client. When the last client leaves, disposes the hub.
 	 */
-	public async unregisterClient(): Promise<void> {
-		this.refCount--
+	public async unregisterClient(provider: McpHubProvider): Promise<void> {
+		this.clients.delete(provider)
 
-		// console.log(`McpHub: Client unregistered. Ref count: ${this.refCount}`)
-
-		if (this.refCount <= 0) {
+		if (this.clients.size === 0) {
 			logger.info("McpHub: Last client unregistered. Disposing hub.")
 			await this.dispose()
 		}
+	}
+
+	/**
+	 * The provider to read settings and context from: the creator while it is
+	 * open, else any open registered client (the creator can be closed first).
+	 */
+	private liveProvider(): McpHubProvider | undefined {
+		const creator = this.providerRef.deref()
+		if (creator && !creator.isDisposed) {
+			return creator
+		}
+		for (const client of this.clients) {
+			if (!client.isDisposed) {
+				return client
+			}
+		}
+		return creator
+	}
+
+	/** The webviews to push the server list to: every open client, or the creator before any registered. */
+	private webviewTargets(): McpHubProvider[] {
+		const clients = [...this.clients].filter((client) => !client.isDisposed)
+		if (clients.length > 0) {
+			return clients
+		}
+		const creator = this.providerRef.deref()
+		return creator && !creator.isDisposed ? [creator] : []
 	}
 
 	/** A settings file changed on disk (debounced by McpConfigWatcher): apply it. */
@@ -204,7 +231,7 @@ export class McpHub {
 	}
 
 	private workspacePath(): string {
-		return this.providerRef.deref()?.cwd ?? getWorkspacePath()
+		return this.liveProvider()?.cwd ?? getWorkspacePath()
 	}
 
 	private async watchMcpSettingsFile(): Promise<void> {
@@ -246,7 +273,7 @@ export class McpHub {
 	}
 
 	async getMcpServersPath(): Promise<string> {
-		const provider = this.providerRef.deref()
+		const provider = this.liveProvider()
 		if (!provider) {
 			throw new Error("Provider not available")
 		}
@@ -307,7 +334,7 @@ export class McpHub {
 	 * @returns Promise<boolean> indicating if MCP is enabled
 	 */
 	private async isMcpEnabled(): Promise<boolean> {
-		const provider = this.providerRef.deref()
+		const provider = this.liveProvider()
 		if (!provider) {
 			return true // Default to enabled if provider is not available
 		}
@@ -410,27 +437,30 @@ export class McpHub {
 			return aIsGlobal ? 1 : -1
 		})
 
-		// Send sorted servers to webview
-		const targetProvider: McpHubProvider | undefined = this.providerRef.deref()
+		// Send sorted servers to every open webview (sidebar and editor tabs), not only
+		// the one that created the hub; otherwise a tab's MCP switches show stale state.
+		const targets = this.webviewTargets()
 
-		if (targetProvider) {
-			const serversToSend = sortedConnections.map((connection) => connection.server)
-
-			const message = {
-				type: "mcpServers" as const,
-				mcpServers: serversToSend,
-			}
-
-			try {
-				await targetProvider.postMessageToWebview(message)
-			} catch (error) {
-				logger.error("[McpHub] Error calling targetProvider.postMessageToWebview:", error)
-			}
-		} else {
-			logger.error(
-				"[McpHub] No target provider available (neither from getInstance nor providerRef) - cannot send mcpServers message to webview",
-			)
+		if (targets.length === 0) {
+			logger.error("[McpHub] No open provider - cannot send mcpServers message to webview")
+			return
 		}
+
+		const message = {
+			type: "mcpServers" as const,
+			mcpServers: sortedConnections.map((connection) => connection.server),
+		}
+
+		// One webview failing must not keep the others stale.
+		await Promise.all(
+			targets.map(async (target) => {
+				try {
+					await target.postMessageToWebview(message)
+				} catch (error) {
+					logger.error("[McpHub] Error calling postMessageToWebview:", error)
+				}
+			}),
+		)
 	}
 
 	public async toggleServerDisabled(serverName: string, disabled: boolean, source?: McpConfigSource): Promise<void> {

@@ -1381,6 +1381,92 @@ describe("McpHub", () => {
 		})
 	})
 
+	// The sidebar and every editor tab share one hub. The server list must reach
+	// each of their webviews, or a tab's switches keep showing the old state.
+	describe("server list pushed to every registered webview", () => {
+		type TestClient = Partial<ClineProvider> & { postMessageToWebview: Mock; isDisposed: boolean }
+		let sidebar: TestClient
+		let editorTab: TestClient
+
+		const lastServers = (client: TestClient): McpServer[] | undefined =>
+			client.postMessageToWebview.mock.calls.filter(([message]) => message.type === "mcpServers").at(-1)?.[0]
+				.mcpServers
+
+		beforeEach(async () => {
+			await mcpHub.waitUntilReady()
+			// The hub was built with mockProvider, as McpServerManager builds it with the first provider.
+			sidebar = mockProvider as TestClient
+			sidebar.isDisposed = false
+			sidebar.postMessageToWebview.mockClear()
+			editorTab = {
+				...mockProvider,
+				ensureSettingsDirectoryExists: vi.fn().mockResolvedValue("/mock/settings/path"),
+				postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+				isDisposed: false,
+			}
+			mcpHub.registerClient(sidebar as unknown as ClineProvider)
+			mcpHub.registerClient(editorTab as unknown as ClineProvider)
+			mcpHub.connections = [
+				{
+					type: "connected",
+					server: {
+						name: "test-server",
+						config: "{}",
+						status: "connected",
+						disabled: false,
+						source: "global",
+					},
+					client: {} as any,
+					transport: {} as any,
+				} as ConnectedMcpConnection,
+			]
+			vi.mocked(fs.readFile).mockResolvedValue(
+				JSON.stringify({
+					mcpServers: { "test-server": { type: "stdio", command: "node", args: ["test.js"] } },
+				}),
+			)
+		})
+
+		it("a toggle reaches the editor tab, not only the provider that created the hub", async () => {
+			mcpHub.connections[0].server.status = "disconnected"
+			await mcpHub.toggleServerDisabled("test-server", true)
+
+			expect(lastServers(sidebar)?.[0]).toMatchObject({ name: "test-server", disabled: true })
+			expect(lastServers(editorTab)?.[0]).toMatchObject({ name: "test-server", disabled: true })
+		})
+
+		it("an unregistered webview gets no more updates; the others still do", async () => {
+			await mcpHub.unregisterClient(editorTab as unknown as ClineProvider)
+			editorTab.postMessageToWebview.mockClear()
+
+			await mcpHub.toggleToolAlwaysAllow("test-server", "global", "some-tool", true)
+
+			expect(lastServers(editorTab)).toBeUndefined()
+			expect(lastServers(sidebar)).toBeDefined()
+		})
+
+		it("one webview failing does not stop the others", async () => {
+			sidebar.postMessageToWebview.mockRejectedValue(new Error("webview gone"))
+
+			await mcpHub.toggleToolEnabledForPrompt("test-server", "global", "some-tool", false)
+
+			expect(lastServers(editorTab)).toBeDefined()
+		})
+
+		it("with the creator closed, settings come from an open client and it still gets updates", async () => {
+			sidebar.isDisposed = true
+			vi.mocked(sidebar.ensureSettingsDirectoryExists!).mockClear()
+			mcpHub.connections[0].server.status = "disconnected"
+
+			await mcpHub.toggleServerDisabled("test-server", true)
+
+			expect(editorTab.ensureSettingsDirectoryExists).toHaveBeenCalled()
+			expect(sidebar.ensureSettingsDirectoryExists).not.toHaveBeenCalled()
+			expect(lastServers(editorTab)?.[0]).toMatchObject({ disabled: true })
+			expect(lastServers(sidebar)).toBeUndefined()
+		})
+	})
+
 	describe("server disabled state", () => {
 		it("should toggle server disabled state", async () => {
 			const mockConfig = {
