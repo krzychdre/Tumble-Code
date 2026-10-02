@@ -5,6 +5,7 @@ import type { ApiStream, ApiStreamUsageChunk } from "../../transform/stream"
 import { handleProviderError } from "../utils/error-handler"
 import { isSdkUnusableError } from "../utils/responses-sse-fallback"
 import { createRequestAbortController } from "../utils/request-abort"
+import { wireCaptureFetch } from "../utils/wire-capture"
 
 /**
  * The token counts of one usage report, as read from the Responses API usage block.
@@ -366,7 +367,7 @@ export class ResponsesApiCore {
 		const { texts, providerName } = this.options
 
 		try {
-			const response = await fetch(request.url, {
+			const response = await wireCaptureFetch(request.url, {
 				method: "POST",
 				headers: { "Content-Type": "application/json", ...request.headers },
 				body: JSON.stringify(request.body),

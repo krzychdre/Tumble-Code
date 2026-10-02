@@ -18,6 +18,7 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "./utils/timeout-config"
 import { logger } from "../../utils/logging"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 const QWEN_OAUTH_BASE_URL = "https://chat.qwen.ai"
 const QWEN_OAUTH_TOKEN_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/token`
@@ -79,6 +80,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 					"X-DashScope-AuthType": "qwen-oauth",
 				},
 				timeout: this.timeoutMs,
+				fetch: wireCaptureFetch,
 			})
 		}
 		return this.client

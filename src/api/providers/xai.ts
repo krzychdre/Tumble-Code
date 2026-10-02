@@ -17,6 +17,7 @@ import { responsesApiCompletionUsage } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
 import { isMcpTool } from "../../utils/mcp-name"
 import { ResponsesApiCore, type ResponsesApiErrorTexts } from "./responses-api/core"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 const XAI_DEFAULT_TEMPERATURE = 0
 
@@ -60,6 +61,7 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 			apiKey: apiKey,
 			defaultHeaders: DEFAULT_HEADERS,
 			timeout: this.timeoutMs,
+			fetch: wireCaptureFetch,
 		})
 	}
 

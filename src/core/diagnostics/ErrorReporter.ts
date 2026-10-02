@@ -6,6 +6,7 @@ import type {
 	ErrorReport,
 	ErrorReportCategory,
 	ErrorReportToolCall,
+	LlmToolOutcome,
 	ModelInfo,
 	ProviderSettings,
 	TokenUsage,
@@ -96,6 +97,8 @@ interface CaptureState {
 	toolCalls: ErrorReportToolCall[]
 	finishReason?: string
 	probe?: ToolCallProbe
+	/** How every finished tool call of the current answer went, for the LLM exchange recorder. */
+	toolOutcomes: LlmToolOutcome[]
 	sentPerCategory: Map<ErrorReportCategory, number>
 	reportedErrors: WeakSet<object>
 }
@@ -140,7 +143,7 @@ function activeState(task: object): CaptureState | undefined {
 	}
 	let state = states.get(task)
 	if (!state) {
-		state = { toolCalls: [], sentPerCategory: new Map(), reportedErrors: new WeakSet() }
+		state = { toolCalls: [], toolOutcomes: [], sentPerCategory: new Map(), reportedErrors: new WeakSet() }
 		states.set(task, state)
 	}
 	return state
@@ -169,6 +172,7 @@ export function captureApiRequest(task: object, record: () => ApiRequestRecord):
 		}
 		state.request = record()
 		state.toolCalls = []
+		state.toolOutcomes = []
 		state.finishReason = undefined
 	})
 }
@@ -199,6 +203,26 @@ export function captureFinishReason(task: object, finishReason: string): void {
 	})
 }
 
+/**
+ * What was captured about the current answer: its tool calls with the arguments exactly
+ * as streamed, the stop reason and how each finished tool call went. Read by the LLM
+ * exchange recorder (src/core/dataset), whose gate includes this module's, so the
+ * capture is always active when it asks. Undefined when nothing is captured.
+ */
+export function peekCapturedAnswer(
+	task: Pick<ErrorReportTask, "assistantMessageContent">,
+): { toolCalls: ErrorReportToolCall[]; finishReason?: string; toolOutcomes: LlmToolOutcome[] } | undefined {
+	const state = states.get(task)
+	if (!state) {
+		return undefined
+	}
+	return {
+		toolCalls: answerToolCalls(task, state),
+		finishReason: state.finishReason,
+		toolOutcomes: [...state.toolOutcomes],
+	}
+}
+
 // ---- Snapshot and sending ----------------------------------------------------------------
 
 type ReportFields = Omit<ErrorReport, "id" | "occurredAt" | "taskId">
@@ -212,31 +236,36 @@ function nonEmpty(text: string | undefined, max: number): string | undefined {
 }
 
 /** The tool calls of the current answer, raw when streamed, else rebuilt from the parsed blocks. */
+function answerToolCalls(
+	task: Pick<ErrorReportTask, "assistantMessageContent">,
+	state: CaptureState,
+): ErrorReportToolCall[] {
+	return state.toolCalls.length > 0
+		? state.toolCalls
+		: (task.assistantMessageContent ?? []).flatMap((block) => {
+				const b = block as {
+					type?: string
+					id?: string
+					name?: string
+					nativeArgs?: unknown
+					params?: unknown
+				}
+				if ((b.type !== "tool_use" && b.type !== "mcp_tool_use") || typeof b.name !== "string") {
+					return []
+				}
+				let args = ""
+				try {
+					args = JSON.stringify(b.nativeArgs ?? (b as { arguments?: unknown }).arguments ?? b.params ?? {})
+				} catch {
+					args = ""
+				}
+				return [{ ...(b.id ? { id: b.id } : {}), name: b.name, arguments: args }]
+			})
+}
+
+/** The answer's tool calls for a report, each argument string cut to the report's limit. */
 function responseToolCalls(task: ErrorReportTask, state: CaptureState): ErrorReportToolCall[] | undefined {
-	const calls =
-		state.toolCalls.length > 0
-			? state.toolCalls
-			: (task.assistantMessageContent ?? []).flatMap((block) => {
-					const b = block as {
-						type?: string
-						id?: string
-						name?: string
-						nativeArgs?: unknown
-						params?: unknown
-					}
-					if ((b.type !== "tool_use" && b.type !== "mcp_tool_use") || typeof b.name !== "string") {
-						return []
-					}
-					let args = ""
-					try {
-						args = JSON.stringify(
-							b.nativeArgs ?? (b as { arguments?: unknown }).arguments ?? b.params ?? {},
-						)
-					} catch {
-						args = ""
-					}
-					return [{ ...(b.id ? { id: b.id } : {}), name: b.name, arguments: args }]
-				})
+	const calls = answerToolCalls(task, state)
 	if (calls.length === 0) {
 		return undefined
 	}
@@ -555,6 +584,17 @@ function toolResultText(task: ErrorReportTask, toolCallId: string | undefined): 
 	return { text, isError: block.is_error === true }
 }
 
+/** The longest failure note an LLM exchange outcome carries (the schema's limit). */
+const TOOL_OUTCOME_NOTE_CHARS = 2_000
+
+/** A failed call's report category as an LLM exchange outcome status. */
+const TOOL_OUTCOME_STATUS: Partial<Record<ErrorReportCategory, LlmToolOutcome["status"]>> = {
+	invalid_tool_call: "invalid_tool_call",
+	tool_error: "tool_error",
+	diff_error: "diff_error",
+	mistake_limit: "mistake_limit",
+}
+
 /** A tool result that is an error envelope or starts with "Error". */
 const ERROR_RESULT_PATTERN = /^\s*(?:Error\b|\{"status":"error")/
 
@@ -568,18 +608,32 @@ export function finishToolCallProbe(task: ErrorReportTask, probe: ToolCallProbe 
 		if (state?.probe === probe) {
 			state.probe = undefined
 		}
-		// A cancel or a user's rejection is not a failure of the model or of the tool.
-		if (!state || task.abort || task.didRejectTool || !isErrorReportingActive()) {
+		// A cancel is nobody's failure, and an aborted call has no outcome to record.
+		if (!state || task.abort || !isErrorReportingActive()) {
+			return
+		}
+		const outcome = (status: LlmToolOutcome["status"], note?: string) =>
+			state.toolOutcomes.push({
+				...(probe.toolCallId ? { toolCallId: probe.toolCallId } : {}),
+				toolName: probe.toolName,
+				status,
+				...(note ? { note: truncateText(note, TOOL_OUTCOME_NOTE_CHARS) } : {}),
+			})
+		// A user's rejection is not a failure of the model or of the tool.
+		if (task.didRejectTool) {
+			outcome("rejected")
 			return
 		}
 		const result = toolResultText(task, probe.toolCallId)
 		const resultIsError = result.isError || ERROR_RESULT_PATTERN.test(result.text ?? "")
 		if (probe.notes.length === 0 && !probe.kind && !probe.sawDiffError && !resultIsError) {
+			outcome("ok")
 			return
 		}
 		const category: ErrorReportCategory =
 			probe.kind ?? (probe.sawDiffError || DIFF_TOOLS.has(probe.toolName) ? "diff_error" : "tool_error")
 		const errorMessage = probe.notes.length > 0 ? probe.notes.join("\n\n") : result.text
+		outcome(TOOL_OUTCOME_STATUS[category] ?? "tool_error", errorMessage)
 		dispatch(task, state, {
 			category,
 			summary: summaryLine(`${probe.toolName}: ${probe.notes[0] ?? result.text ?? category}`),

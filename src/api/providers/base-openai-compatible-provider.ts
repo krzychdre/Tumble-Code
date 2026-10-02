@@ -15,6 +15,7 @@ import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { logger } from "../../utils/logging"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 /** Binary reasoning switch some OpenAI-compatible APIs (e.g. Z.ai) accept next to the standard params. */
 type ThinkingParam = { thinking?: { type: "enabled" } }
@@ -80,6 +81,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			apiKey: this.options.apiKey,
 			defaultHeaders: DEFAULT_HEADERS,
 			timeout: this.timeoutMs,
+			fetch: wireCaptureFetch,
 		})
 	}
 
@@ -93,6 +95,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 				apiKey: this.options.apiKey,
 				defaultHeaders: DEFAULT_HEADERS,
 				timeout: this.timeoutMs,
+				fetch: wireCaptureFetch,
 			})
 		}
 		return this.client

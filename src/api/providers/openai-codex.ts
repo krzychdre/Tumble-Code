@@ -23,6 +23,7 @@ import { openAiCodexOAuthManager } from "../../integrations/openai-codex/oauth"
 import { t } from "../../i18n"
 import { REFUSAL_TEXT_PREFIX, ResponsesApiCore, type ResponsesApiErrorTexts } from "./responses-api/core"
 import { buildResponsesApiRequestBody, responsesApiUserAgent, toResponsesApiInput } from "./responses-api/request"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 export type OpenAiCodexModel = ReturnType<OpenAiCodexHandler["getModel"]>
 
@@ -204,6 +205,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 						baseURL: CODEX_API_BASE_URL,
 						defaultHeaders: headers,
 						timeout: this.timeoutMs,
+						fetch: wireCaptureFetch,
 					})
 				// The body is a plain record (fields the SDK overloads do not know), so the call is untyped on purpose.
 				return (client as any).responses.create(body, { signal, headers })

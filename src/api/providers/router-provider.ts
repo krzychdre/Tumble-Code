@@ -8,6 +8,7 @@ import { BaseProvider } from "./base-provider"
 import { getModels, getModelsFromCache } from "./fetchers/modelCache"
 
 import { DEFAULT_HEADERS } from "./constants"
+import { wireCaptureFetch } from "./utils/wire-capture"
 
 type RouterProviderOptions = {
 	name: FetchableModelSourceId
@@ -53,6 +54,7 @@ export abstract class RouterProvider extends BaseProvider {
 				...(options.openAiHeaders || {}),
 			},
 			timeout: this.timeoutMs,
+			fetch: wireCaptureFetch,
 		})
 	}
 

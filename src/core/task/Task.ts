@@ -148,6 +148,7 @@ import { TaskSubtasks } from "./TaskSubtasks"
 import { TaskApiLoop } from "./TaskApiLoop"
 import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
 import { noteToolFailure } from "../diagnostics/ErrorReporter"
+import { flushExchanges } from "../dataset/ExchangeRecorder"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -1486,6 +1487,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				)
 			}
 		}
+
+		// The last recorded LLM exchange sends what it still owes (read before the stream
+		// processor goes, since an unfinished exchange records the partial answer).
+		flushExchanges(this)
 
 		// A deferred partial reasoning post and its timer go with the task.
 		this.streamProcessor?.dispose()

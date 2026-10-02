@@ -3,6 +3,8 @@ import EventEmitter from "events"
 
 import type {
 	ErrorReport,
+	LlmExchange,
+	LlmExchangeOutcome,
 	TelemetryEvent,
 	ClineMessage,
 	CloudServiceEvents,
@@ -26,6 +28,7 @@ import { StaticSettingsService } from "./StaticSettingsService.js"
 import { CloudTelemetryClient as TelemetryClient } from "./TelemetryClient.js"
 import { CloudShareService } from "./CloudShareService.js"
 import { CloudAPI } from "./CloudAPI.js"
+import { LlmExchangeClient } from "./LlmExchangeClient.js"
 import { RetryQueue } from "./retry-queue/index.js"
 import { resolveCloudEnvironment } from "./cloudEnvironment.js"
 
@@ -72,6 +75,8 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 	public get shareService() {
 		return this._shareService
 	}
+
+	private _llmExchangeClient: LlmExchangeClient | null = null
 
 	private _cloudAPI: CloudAPI | null = null
 
@@ -164,6 +169,8 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 			this._telemetryClient = new TelemetryClient(this._authService, this._settingsService, this._retryQueue)
 
 			this._shareService = new CloudShareService(this._cloudAPI, this._settingsService, this.log)
+
+			this._llmExchangeClient = new LlmExchangeClient(this._authService, this.log)
 
 			this.isInitialized = true
 		} catch (error) {
@@ -311,6 +318,41 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 	public async sendErrorReport(report: ErrorReport): Promise<void> {
 		this.ensureInitialized()
 		await this.telemetryClient!.sendErrorReport(report)
+	}
+
+	// LLM exchange recording (the training dataset)
+
+	/**
+	 * Whether LLM exchanges are recorded: the error-report gate (signed in,
+	 * telemetry not switched off by the environment) plus the user's switch in
+	 * the cloud. `undefined` while the switch was not read yet for this session.
+	 * Never throws and never fetches.
+	 */
+	public getExchangeRecordingState(): boolean | undefined {
+		if (!this.isErrorReportingEnabled() || !this._llmExchangeClient) {
+			return false
+		}
+
+		return this._llmExchangeClient.getRecordingState()
+	}
+
+	/** The recording switch, read from the cloud when it is not known yet. */
+	public async resolveExchangeRecording(): Promise<boolean> {
+		if (!this.isErrorReportingEnabled() || !this._llmExchangeClient) {
+			return false
+		}
+
+		return this._llmExchangeClient.resolveRecordingEnabled()
+	}
+
+	public async sendLlmExchange(exchange: LlmExchange): Promise<boolean> {
+		this.ensureInitialized()
+		return this._llmExchangeClient!.sendExchange(exchange)
+	}
+
+	public async sendLlmExchangeOutcome(outcome: LlmExchangeOutcome): Promise<boolean> {
+		this.ensureInitialized()
+		return this._llmExchangeClient!.sendOutcome(outcome)
 	}
 
 	// ShareService

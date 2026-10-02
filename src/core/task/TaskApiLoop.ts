@@ -60,6 +60,8 @@ import {
 	reportEmptyResponse,
 	reportMistakeLimit,
 } from "../diagnostics/ErrorReporter"
+import { beginExchange, completeExchange, failExchange, finishExchangeTurn } from "../dataset/ExchangeRecorder"
+import { runWithWireCapture } from "../../api/providers/utils/wire-capture"
 
 /** Thrown when the user stops at the auto-approval limit; a decision, not an API failure. */
 const AUTO_APPROVAL_LIMIT_MESSAGE = "Auto-approval limit reached and user did not approve continuation"
@@ -894,6 +896,9 @@ export class TaskApiLoop {
 		// Save assistant message to API history BEFORE executing tools
 		await this.access.streamProcessor.assembleAndSaveAssistantMessage()
 
+		// The request and its complete answer; how the tool calls went follows below.
+		completeExchange(this.task)
+
 		// Present any partial blocks
 		if (this.access.streamProcessor.partialBlocks.length > 0) {
 			presentAssistantMessage(this.task)
@@ -912,6 +917,8 @@ export class TaskApiLoop {
 			if (this.access.abort) {
 				return "return_true"
 			}
+
+			finishExchangeTurn(this.task)
 
 			// An oversized result is spilled to disk asynchronously and only swaps
 			// in its preview once the artifact exists; settle that before the
@@ -1211,6 +1218,9 @@ export class TaskApiLoop {
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 		stack: StackItem[],
 	): Promise<"continue" | "return_true" | "return_false"> {
+		// Before abortStream: the exchange records the partial answer as it stood. An exchange
+		// the first-chunk path already sent is not sent again.
+		failExchange(this.task, error, this.access.abort || isLoopControlError(error))
 		if (!this.access.abandoned) {
 			// Before abortStream: the report reads the partial answer as it stood when the
 			// stream failed. An error the first-chunk path already reported is skipped there.
@@ -1451,33 +1461,46 @@ export class TaskApiLoop {
 
 		this.access.skipPrevResponseIdOnce = false
 
+		// The request parameters as the error reports and the exchange recorder describe them;
+		// built only when one of them is active.
+		const requestParams = (): Record<string, unknown> => ({
+			mode,
+			toolProtocol: getApiProtocol(
+				this.access.apiConfiguration.apiProvider && !isRetiredProvider(this.access.apiConfiguration.apiProvider)
+					? this.access.apiConfiguration.apiProvider
+					: undefined,
+				this.access.api.getModel().id,
+			),
+			temperature: this.access.apiConfiguration.modelTemperature ?? undefined,
+			maxTokens: getModelMaxOutputTokens({
+				modelId: this.access.api.getModel().id,
+				model: modelInfo,
+				settings: this.access.apiConfiguration,
+			}),
+			reasoningEffort:
+				this.access.apiConfiguration.enableReasoningEffort === false
+					? undefined
+					: this.access.apiConfiguration.reasoningEffort,
+			...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls: true } : {}),
+		})
+
 		// Kept by reference, and only while error reporting is active (signed in to the
 		// cloud): the request a failure report about this attempt describes.
 		captureApiRequest(this.task, () => ({
 			systemPrompt,
 			messages: cleanConversationHistory as unknown as { role: string; content: unknown }[],
 			toolNames: allTools.map((tool) => ("function" in tool ? tool.function.name : String(tool.type))),
-			params: {
-				mode,
-				toolProtocol: getApiProtocol(
-					this.access.apiConfiguration.apiProvider &&
-						!isRetiredProvider(this.access.apiConfiguration.apiProvider)
-						? this.access.apiConfiguration.apiProvider
-						: undefined,
-					this.access.api.getModel().id,
-				),
-				temperature: this.access.apiConfiguration.modelTemperature ?? undefined,
-				maxTokens: getModelMaxOutputTokens({
-					modelId: this.access.api.getModel().id,
-					model: modelInfo,
-					settings: this.access.apiConfiguration,
-				}),
-				reasoningEffort:
-					this.access.apiConfiguration.enableReasoningEffort === false
-						? undefined
-						: this.access.apiConfiguration.reasoningEffort,
-				...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls: true } : {}),
-			},
+			params: requestParams(),
+		}))
+
+		// Recorded in full, and only while the user records LLM exchanges in the cloud (the
+		// training dataset). The sink receives the exact HTTP body the provider sends.
+		const wireSink = beginExchange(this.task, retryAttempt, () => ({
+			systemPrompt,
+			messages: cleanConversationHistory,
+			tools: allTools,
+			mode,
+			params: requestParams(),
 		}))
 
 		// Create API stream
@@ -1508,7 +1531,10 @@ export class TaskApiLoop {
 
 			let firstChunk: IteratorResult<ApiStreamChunk>
 			try {
-				firstChunk = await raceNextChunkWithAbort(iterator, abortSignal, getApiRequestTimeout())
+				// The first next() runs the provider up to its HTTP request, so the wire capture
+				// context only needs to cover this call.
+				const firstNext = () => raceNextChunkWithAbort(iterator, abortSignal, getApiRequestTimeout())
+				firstChunk = await (wireSink ? runWithWireCapture(wireSink, firstNext) : firstNext())
 			} catch (error) {
 				if (error instanceof StreamIdleTimeoutError) {
 					// Close the HTTP request; the error then takes the normal first-chunk retry path.
@@ -1526,6 +1552,7 @@ export class TaskApiLoop {
 			if (!this.access.abort) {
 				reportApiError(this.task, error, retryAttempt)
 			}
+			failExchange(this.task, error, this.access.abort)
 
 			// Handle errors with retry logic (S3: the dispatch lives in
 			// RetryHandler; the callback re-enters this generator for the
