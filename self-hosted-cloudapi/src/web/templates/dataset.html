@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Dataset · Tumble Code{% endblock %}
+{% block content %}
+{% set o = overview %}
+{% set t = o.totals %}
+<div class="metrics-head">
+  <h1 class="page-title">Dataset</h1>
+  <nav class="period-control" aria-label="Time period">
+    {% for p in periods %}
+    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/dataset?period={{ p.key }}"{% if p.active %} aria-current="true"{% endif %}>{{ p.label }}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+<p class="diag-lead">
+  Every request the agent sends to the model, recorded exactly, and the answer it got. Export them as a clean,
+  anonymized training dataset for post-training a student model, or download one task fully reconstructed.
+</p>
+
+{% if deleted %}
+<div class="notice">Recordings deleted: {{ deleted }} exchange{{ '' if deleted == '1' else 's' }}.</div>
+{% endif %}
+
+<section class="panel settings-panel" aria-labelledby="dataset-recording">
+  <h2 class="chart-title" id="dataset-recording">Recording</h2>
+  {% if not telemetry_enabled %}
+  <p class="notice">This server does not take telemetry (TELEMETRY_ENABLED=false), so nothing is recorded whatever the switch says.</p>
+  {% endif %}
+  <form method="post" action="/app/dataset/settings" class="settings-form">
+    <label class="switch-row">
+      <input type="checkbox" name="recording" value="1" {{ 'checked' if recording }}>
+      <span><b>Record LLM exchanges</b><span class="switch-hint">The extension starts or stops within five minutes, while you are signed in.</span></span>
+    </label>
+    <p class="field-hint">
+      A recording holds the full system prompt, the tool definitions, the whole conversation as sent (with every file,
+      command output and path in it), the exact HTTP body the provider received (never its headers or API key), the
+      model's answer and how each tool call went. It stays on this server until you delete it or the task.
+    </p>
+    <label class="field dataset-terms">
+      <span class="field-label">Also anonymize these terms (one per line)</span>
+      <textarea name="terms" rows="4" placeholder="Company, client or product names">{{ terms }}</textarea>
+    </label>
+    <p class="field-hint">
+      Matched as whole words in any case and with any separator ("QUB-IT" also finds "qub_it"), and replaced with a
+      pseudonym such as <code>acme1</code>. Your account's name and e-mail are always anonymized.
+    </p>
+    <div class="settings-actions">
+      <button class="btn" type="submit">Save</button>
+    </div>
+  </form>
+</section>
+
+{% if t.exchanges %}
+<section class="stat-grid" aria-label="What is recorded">
+  <div class="stat-card"><div class="stat-label">Exchanges</div><div class="stat-value">{{ t.exchanges|fmt_int }}</div></div>
+  <div class="stat-card"><div class="stat-label">Tasks</div><div class="stat-value">{{ t.tasks|fmt_int }}</div></div>
+  <div class="stat-card"><div class="stat-label">Clean</div><div class="stat-value">{{ t.clean|fmt_int }}</div>
+    <div class="stat-sub">{{ (100 * t.clean / t.exchanges)|round|int }}% · strict {{ t.strict|fmt_int }}</div></div>
+  <div class="stat-card"><div class="stat-label">Exact request captured</div><div class="stat-value">{{ t.wire|fmt_int }}</div>
+    <div class="stat-sub">the rest: the request as handed to the provider</div></div>
+</section>
+
+<section class="panel" aria-labelledby="dataset-models">
+  <h2 class="chart-title" id="dataset-models">By model</h2>
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-dataset-models">
+      <caption class="sr-only">Recorded exchanges per model</caption>
+      <thead>
+        <tr>
+          <th scope="col">Model</th><th scope="col">Provider</th><th scope="col" class="diag-num">Exchanges</th>
+          <th scope="col" class="diag-num">Clean</th><th scope="col" class="diag-num">Clean %</th><th scope="col">Most common issue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in o.models %}
+        <tr>
+          <td class="diag-cell">{{ r.model }}</td>
+          <td class="diag-cell">{{ r.provider }}</td>
+          <td class="bd-num">{{ r.exchanges|fmt_int }}</td>
+          <td class="bd-num">{{ r.clean|fmt_int }}</td>
+          <td class="bd-num">{{ r.clean_pct }}</td>
+          <td class="diag-cell">{% if r.top_issue %}{{ r.top_issue }} ({{ r.top_issue_count|fmt_int }}){% else %}-{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if o.issues %}
+<section class="panel" aria-labelledby="dataset-issues">
+  <h2 class="chart-title" id="dataset-issues">Why exchanges are left out</h2>
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-dataset-issues">
+      <caption class="sr-only">Issues found in recorded exchanges</caption>
+      <thead><tr><th scope="col">Issue</th><th scope="col" class="diag-num">Exchanges</th></tr></thead>
+      <tbody>
+        {% for i in o.issues %}
+        <tr><td class="diag-cell">{{ i.label }} <code>{{ i.key }}</code></td><td class="bd-num">{{ i.count|fmt_int }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="field-hint">
+    Always left out: {{ drop_default|join(', ') }}. Strict also leaves out: {{ drop_strict_extra|join(', ') }}.
+  </p>
+</section>
+{% endif %}
+
+<section class="panel settings-panel" aria-labelledby="dataset-export">
+  <h2 class="chart-title" id="dataset-export">Export</h2>
+  <form method="get" action="/app/dataset/export.jsonl" class="settings-form">
+    <input type="hidden" name="period" value="{{ o.period }}">
+    <fieldset class="dataset-fieldset">
+      <legend class="field-label">Format</legend>
+      <label class="switch-row"><input type="radio" name="format" value="turns" checked>
+        <span><b>Turns</b><span class="switch-hint">One sample per clean answer, with the full request before it.</span></span></label>
+      <label class="switch-row"><input type="radio" name="format" value="trajectories">
+        <span><b>Trajectories</b><span class="switch-hint">One sample per run of requests that extend each other; broken answers kept as context with weight 0.</span></span></label>
+    </fieldset>
+    {% if o.models %}
+    <fieldset class="dataset-fieldset">
+      <legend class="field-label">Teacher models (none ticked: all)</legend>
+      {% for r in o.models %}
+      <label class="switch-row"><input type="checkbox" name="model" value="{{ r.model }}"><span>{{ r.model }} <span class="switch-hint">{{ r.clean|fmt_int }} clean</span></span></label>
+      {% endfor %}
+    </fieldset>
+    {% endif %}
+    {% if o.workspaces %}
+    <fieldset class="dataset-fieldset">
+      <legend class="field-label">Leave out projects (a client's code stays out)</legend>
+      {% for w in o.workspaces %}
+      <label class="switch-row"><input type="checkbox" name="exclude_workspace" value="{{ w.path }}"><span class="dataset-path">{{ w.path }} <span class="switch-hint">{{ w.tasks|fmt_int }} tasks, {{ w.exchanges|fmt_int }} exchanges</span></span></label>
+      {% endfor %}
+    </fieldset>
+    {% endif %}
+    <label class="switch-row"><input type="checkbox" name="strict" value="1">
+      <span><b>Strict</b><span class="switch-hint">Also leave out calls that ran and failed, and calls you rejected.</span></span></label>
+    <input type="hidden" name="reasoning" value="0">
+    <label class="switch-row"><input type="checkbox" name="reasoning" value="1" checked>
+      <span><b>Include reasoning</b><span class="switch-hint">As <code>reasoning_content</code>, when the model produced it.</span></span></label>
+    <input type="hidden" name="anonymize" value="0">
+    <label class="switch-row"><input type="checkbox" name="anonymize" value="1" checked>
+      <span><b>Anonymize</b><span class="switch-hint">Secrets, e-mail and IP addresses, home folder and user name, project paths and names, your account and terms, PESEL, IBAN, card and phone numbers.</span></span></label>
+    <label class="switch-row"><input type="checkbox" name="metadata" value="1">
+      <span><b>Add metadata</b><span class="switch-hint">Task, exchange, model and mode per sample (some trainers refuse unknown keys).</span></span></label>
+    <label class="field field-inline">
+      <span class="field-label">At most</span>
+      <span class="field-input"><input type="number" name="limit" min="0" placeholder="all"><span class="field-unit">samples</span></span>
+    </label>
+    <div class="settings-actions">
+      <button class="btn" type="submit">Download dataset</button>
+      <button class="btn ghost" type="submit" formaction="/app/dataset/audit">Check anonymization</button>
+    </div>
+    <p class="field-hint">
+      Anonymization does not make someone else's source code yours to share: leave such a project out above. A name
+      that is not in your account, your terms or a home folder path is not found; check the audit before handing a
+      dataset over.
+    </p>
+  </form>
+</section>
+
+<section class="panel" aria-labelledby="dataset-recent">
+  <h2 class="chart-title" id="dataset-recent">Full reconstruction</h2>
+  <p class="field-hint">Every request of a task exactly as it was sent, rebuilt from the incremental records, not anonymized. The exact HTTP body is checked against the hash the extension recorded (<code>wire.verified</code>).</p>
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-dataset-recent">
+      <caption class="sr-only">Recently recorded tasks</caption>
+      <thead><tr><th scope="col">Task</th><th scope="col">Model</th><th scope="col" class="diag-num">Exchanges</th><th scope="col">Download</th></tr></thead>
+      <tbody>
+        {% for r in o.recent %}
+        <tr>
+          <td class="diag-cell">{% if r.title %}<a href="/app/tasks/{{ r.task_id }}">{{ r.title }}</a>{% else %}<code>{{ r.task_id }}</code>{% endif %}</td>
+          <td class="diag-cell">{{ r.model or '-' }}</td>
+          <td class="bd-num">{{ r.exchanges|fmt_int }}</td>
+          <td class="diag-cell"><a href="/app/dataset/tasks/{{ r.task_id }}.jsonl" download>JSONL</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel settings-panel" aria-labelledby="dataset-delete">
+  <h2 class="chart-title" id="dataset-delete">Delete recordings</h2>
+  <form method="post" action="/app/dataset/delete" class="settings-actions"
+        data-confirm="Delete all {{ t.exchanges }} recorded exchange(s) permanently? This cannot be undone.">
+    <button class="btn btn-danger" type="submit">Delete all recordings</button>
+    <span class="settings-meta">Every period, every task. Deleting a task deletes its recordings too.</span>
+  </form>
+</section>
+{% else %}
+<div class="empty">
+  <p class="empty-hint">
+    {% if recording %}Nothing recorded {{ 'yet' if o.period == 'all' else 'in this period' }}. The extension records while you are signed in; run a task.
+    {% else %}Nothing recorded. Switch recording on above, then run a task in the extension while signed in.{% endif %}
+  </p>
+</div>
+{% endif %}
+{% endblock %}

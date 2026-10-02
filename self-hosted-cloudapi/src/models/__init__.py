@@ -8,6 +8,7 @@ from src.models.task import Task, TaskMessage, TaskShare
 from src.models.relation import TaskRelation
 from src.models.event import TelemetryEvent
 from src.models.error_report import ErrorReport
+from src.models.llm_exchange import DatasetSettings, LlmBlob, LlmExchange
 from src.models.oauth import AuthentikStateStore
 from src.models.retention import RetentionPolicy
 
@@ -28,6 +29,9 @@ __all__ = [
     "TaskRelation",
     "TelemetryEvent",
     "ErrorReport",
+    "LlmExchange",
+    "LlmBlob",
+    "DatasetSettings",
     "AuthentikStateStore",
     "RetentionPolicy",
     "RETIRED_TABLES",
