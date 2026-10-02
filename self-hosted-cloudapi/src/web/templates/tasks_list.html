@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_spend.html" as spend %}
+{% import "_pager.html" as pager %}
 {% block title %}Your tasks · Tumble Code{% endblock %}
 {% block content %}
 {# Every link and form on this page builds its URL from `view`
@@ -209,37 +210,7 @@
 </form>
 
 {% if page_count > 1 %}
-<nav class="pager" aria-label="Pagination, page {{ page }} of {{ page_count }}">
-  {% if has_prev %}
-  <a class="btn ghost small pager-btn" href="{{ view.url(page - 1) }}" rel="prev">← Newer</a>
-  {% else %}
-  <span class="btn ghost small pager-btn disabled">← Newer</span>
-  {% endif %}
-
-  {# Numbered pages: any page in the window is one click away, the two ends are
-     always reachable, and a run that had to be elided says so with an ellipsis
-     rather than pretending the pages between are not there. #}
-  <ol class="pager-pages">
-    {% for p in pages %}
-    {% if p is none %}
-    <li><span class="pager-gap" aria-hidden="true">…</span></li>
-    {% elif p == page %}
-    <li><span class="pager-num current" aria-current="page">{{ p }}</span></li>
-    {% else %}
-    <li><a class="pager-num" href="{{ view.url(p) }}" aria-label="Page {{ p }}">{{ p }}</a></li>
-    {% endif %}
-    {% endfor %}
-  </ol>
-  {# What a phone shows instead of the numbers: where you are, in a few
-     characters. #}
-  <span class="pager-status">{{ page }} / {{ page_count }}</span>
-
-  {% if has_next %}
-  <a class="btn ghost small pager-btn" href="{{ view.url(page + 1) }}" rel="next">Older →</a>
-  {% else %}
-  <span class="btn ghost small pager-btn disabled">Older →</span>
-  {% endif %}
-
+{% call pager.pager(page, page_count, pages, view.url, "Pagination") %}
   {# Only once the numbers stop covering the range: with 4 pages all four are
      on screen and a box to type "3" into would be noise. #}
   {% if page_count > pages|length %}
@@ -255,7 +226,7 @@
     <button class="btn ghost small" type="submit">Go</button>
   </form>
   {% endif %}
-</nav>
+{% endcall %}
 {% endif %}
 
 {% elif view.has_filters %}

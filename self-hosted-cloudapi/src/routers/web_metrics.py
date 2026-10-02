@@ -1,6 +1,6 @@
 """The usage-metrics dashboard (/app/metrics)."""
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,9 @@ router = APIRouter(tags=["web"])
 async def metrics_page(
     request: Request,
     period: str = DEFAULT_PERIOD,
+    # The daily table's page. Absent on a plain visit; present only when the
+    # reader used the table's pager, which is also when the table opens.
+    day_page: int | None = Query(None),
     user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -42,6 +45,7 @@ async def metrics_page(
             "quality": quality,
             "periods": periods,
             # Server-rendered SVG geometry (web/presenters/charts.py).
-            "charts": metrics_charts(metrics),
+            "charts": metrics_charts(metrics, day_page or 1),
+            "day_table_open": day_page is not None,
         },
     )

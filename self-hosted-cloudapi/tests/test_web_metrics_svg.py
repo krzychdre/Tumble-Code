@@ -5,8 +5,8 @@ with a dual-axis tokens-and-cost chart). Now the page itself carries them,
 like the grade and kind bars: no script, they follow the theme through CSS
 classes (no colour in the markup), they print, and each is role="img" with
 a summary, linked to the table that holds the same figures. Tokens and cost
-per day share one plot with an axis each, and the legend's checkboxes hide
-either series without a script.
+per day are two smooth lines on one plot with an axis each, the legend's
+checkboxes hide either series without a script, and the daily table is paged.
 """
 
 import re
@@ -71,8 +71,10 @@ async def test_each_chart_points_at_the_table_with_its_figures(client, session_f
         assert re.search(rf'<table[^>]*id="{table_id}"', html), table_id
 
 
-def _bar_heights(svg: str, series: str) -> list[float]:
-    return [float(h) for h in re.findall(rf'<rect class="chart-bar [^"]*{series}"[^>]*height="([\d.]+)"', svg)]
+def _dot_heights(svg: str, series: str) -> list[float]:
+    """How far up the plot each day's dot sits (0 = baseline, 100 = top)."""
+    ys = re.findall(rf'<path class="chart-dot [^"]*{series}" d="M[\d.]+,([\d.]+)h0"', svg)
+    return [round(100 - float(y), 2) for y in ys]
 
 
 async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(client, session_factory):
@@ -88,8 +90,13 @@ async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(cl
     daily = next(s for s in _svgs(html) if "chart-daily" in s)
     # Each series against the top of its own axis: 4k tokens fills the token
     # axis exactly, the busiest cost ($0.50) sits under a "nice" $0.60.
-    assert _bar_heights(daily, "series-tokens") == [25.0, 100.0, 50.0]
-    assert _bar_heights(daily, "series-cost") == [83.33, 16.67, 33.33]
+    assert _dot_heights(daily, "series-tokens") == [25.0, 100.0, 50.0]
+    assert _dot_heights(daily, "series-cost") == [83.33, 16.67, 33.33]
+    # One smooth line per series, each over its own area.
+    for series in ("tokens", "cost"):
+        assert len(re.findall(rf'<path class="chart-line chart-line-{series} series-{series}" d="M[^"]+C', daily)) == 1
+        assert len(re.findall(rf'<path class="chart-area chart-area-{series} series-{series}" d="M[^"]+Z"', daily)) == 1
+    assert "<rect class=\"chart-bar" not in daily
     titles = [unescape(t) for t in re.findall(r"<title>(.*?)</title>", daily)]
     assert titles == [
         "2026-09-20: 1k tokens, $0.5000",
@@ -108,9 +115,111 @@ async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(cl
     # The legend toggles are real checkboxes, checked by default.
     for series in ("tokens", "cost"):
         assert re.search(rf'<input type="checkbox" class="series-toggle toggle-{series}" checked>', html)
-    # The same figures as a table.
+    # The same figures as a table, newest day first, closed and unpaged.
     table = re.search(r'<table[^>]*id="table-daily".*?</table>', html, re.DOTALL).group(0)
-    assert "2026-09-21" in table and "$0.1000" in table
+    assert re.findall(r'<td class="bd-name">([\d-]+)</td>', table) == ["2026-09-22", "2026-09-21", "2026-09-20"]
+    assert "$0.1000" in table
+    assert '<details class="chart-table" id="daily-table">' in html
+    assert "chart-table-pager" not in html
+
+
+def test_quiet_days_are_zeros_on_the_chart_but_not_rows_in_the_table():
+    from src.web.presenters.charts import day_table, daily
+
+    days = [
+        {"day": "2026-09-28", "tokens": 100, "cost": 1.0},
+        {"day": "2026-10-01", "tokens": 300, "cost": 0.5},
+    ]
+    chart = daily(days)
+    assert [s["title"].split(":")[0] for s in chart["slots"]] == ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01"]
+    assert [s["tokens"][1] for s in chart["slots"]][1:3] == ["100", "100"]
+    assert "2 active days" in chart["summary"]
+    assert [r["day"] for r in day_table(days, 1)["rows"]] == ["2026-10-01", "2026-09-28"]
+
+
+def _curve_ys(path: str) -> list[tuple[float, list[float]]]:
+    """Each cubic segment's end-point y values and the y of its whole curve,
+    sampled, so a test can see where it goes between the points."""
+    nums = [float(v) for v in re.findall(r"-?[\d.]+", path)]
+    y0, rest = nums[1], nums[2:]
+    out = []
+    for i in range(0, len(rest), 6):
+        _, c1, _, c2, _, y1 = rest[i : i + 6]
+        ys = [(1 - t) ** 3 * y0 + 3 * (1 - t) ** 2 * t * c1 + 3 * (1 - t) * t**2 * c2 + t**3 * y1 for t in (k / 20 for k in range(21))]
+        out.append(((y0, y1), ys))
+        y0 = y1
+    return out
+
+
+def test_the_line_is_smooth_but_never_swings_past_its_points():
+    from src.web.presenters.charts import daily
+
+    # A busy day between quiet ones: a plain spline would dip below zero
+    # (below the baseline at y=100) next to the peak.
+    values = [0, 0, 900, 0, 50, 400, 380, 0]
+    days = [{"day": f"2026-09-{i + 10}", "tokens": v, "cost": 0} for i, v in enumerate(values)]
+    line = daily(days)["tokens"]["line"]
+    assert line.startswith("M5,100 C")
+    for (a, b), ys in _curve_ys(line):
+        assert min(a, b) - 1e-6 <= min(ys) and max(ys) <= max(a, b) + 1e-6, (a, b, ys)
+
+
+def test_a_single_day_is_a_dot_without_a_line_area():
+    from src.web.presenters.charts import daily
+
+    chart = daily([{"day": "2026-09-10", "tokens": 4, "cost": 0.1}])
+    assert chart["tokens"]["area"] == "" and chart["tokens"]["line"] == "M5,0"
+    assert chart["slots"][0]["tokens"] == ("5", "0")
+    assert chart["dense"] is False
+
+
+def test_dots_show_only_under_the_pointer_on_a_long_range():
+    from src.web.presenters.charts import DOT_LIMIT, daily
+
+    def days(n):
+        return [{"day": (datetime(2026, 1, 1) + timedelta(days=i)).date().isoformat(), "tokens": 1, "cost": 0} for i in range(n)]
+
+    assert daily(days(DOT_LIMIT))["dense"] is False
+    assert daily(days(DOT_LIMIT + 1))["dense"] is True
+
+
+def test_day_table_pages_newest_first_and_clamps_the_page():
+    from src.web.presenters.charts import TABLE_PAGE, day_table
+
+    days = [{"day": (datetime(2026, 1, 1) + timedelta(days=i)).date().isoformat(), "tokens": i, "cost": 0} for i in range(40)]
+    first = day_table(days, 1)
+    assert first["page_count"] == 3 and len(first["rows"]) == TABLE_PAGE
+    assert first["rows"][0]["day"] == "2026-02-09" and first["pages"] == [1, 2, 3]
+    last = day_table(days, 99)
+    assert last["page"] == 3 and [r["day"] for r in last["rows"]][-1] == "2026-01-01"
+    assert day_table(days, -4)["page"] == 1
+    assert day_table([], 1) == {"rows": [], "page": 1, "page_count": 1, "pages": [1]}
+
+
+async def test_the_daily_table_pager_keeps_the_period_and_opens_the_table(client, session_factory):
+    base = datetime(2026, 1, 1, 12, tzinfo=timezone.utc)
+    events = [_llm_event(created_at=base + timedelta(days=i), tin=1000, tout=0) for i in range(20)]
+    async with session_factory() as s:
+        await _seed_user(s)
+        s.add_all(events)
+        await s.commit()
+    _override_web_user(client.app)
+    try:
+        plain = client.get("/app/metrics?period=all").text
+        paged = client.get("/app/metrics?period=all&day_page=2").text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    # A plain visit: page 1, closed, the pager links to page 2 of the same period.
+    assert '<details class="chart-table" id="daily-table">' in plain
+    assert 'href="/app/metrics?period=all&amp;day_page=2#daily-table" rel="next"' in plain
+    rows = re.findall(r'<td class="bd-name">([\d-]+)</td>', plain)
+    assert rows[0] == "2026-01-20" and len(rows) == 14
+    # Following the pager: the older days, and the table opens.
+    assert '<details class="chart-table" id="daily-table" open>' in paged
+    table = re.search(r'<table[^>]*id="table-daily".*?</table>', paged, re.DOTALL).group(0)
+    assert re.findall(r'<td class="bd-name">([\d-]+)</td>', table) == [f"2026-01-{d:02d}" for d in range(6, 0, -1)]
+    assert '<span class="pager-num current" aria-current="page">2</span>' in paged
 
 
 def test_axis_top_is_a_nice_number_just_above_the_peak():
@@ -129,6 +238,9 @@ def test_day_labels_thin_out_on_a_long_period():
     labels = [s["label"] for s in daily(days)["slots"]]
     assert sum(1 for label in labels if label) <= 12
     assert labels[0] == "08-01"
+    # A phone hides every other label, so at most six remain there.
+    kept = [s["label"] for s in daily(days)["slots"] if s["label"] and not s["minor"]]
+    assert kept[0] == "08-01" and len(kept) <= 6
 
 
 async def test_ranked_bars_fold_the_tail_and_escape_names(client, session_factory):

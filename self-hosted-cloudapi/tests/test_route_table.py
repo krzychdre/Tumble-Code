@@ -146,7 +146,7 @@ def test_web_routes_keep_their_openapi_operations():
                 ("dir", "query", False),
             ),
         ),
-        ("/app/metrics", "get"): ("metrics_page_app_metrics_get", ("web",), html, (("period", "query", False),)),
+        ("/app/metrics", "get"): ("metrics_page_app_metrics_get", ("web",), html, (("period", "query", False), ("day_page", "query", False))),
         ("/app/tasks/{task_id}", "get"): (
             "task_detail_app_tasks__task_id__get",
             ("web",),

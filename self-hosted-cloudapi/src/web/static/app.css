@@ -2947,17 +2947,49 @@ details.env-details > pre {
 	height: auto;
 	font-family: var(--mono);
 }
-/* Semi-transparent, so where the bars overlap both stay readable. */
-.chart-bar-tokens {
-	fill: var(--d-in);
-	fill-opacity: 0.55;
-}
 .chart-bar-rank {
 	fill: var(--d-in);
 }
-.chart-bar-cost {
+/* Daily chart: a line per series over a faint wash of the same colour, light
+   enough that where the two areas overlap both lines stay readable. */
+.chart-line {
+	fill: none;
+	stroke-width: 2;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+.chart-line-tokens {
+	stroke: var(--d-in);
+}
+.chart-line-cost {
+	stroke: var(--d-cost);
+}
+.chart-area-tokens {
+	fill: var(--d-in);
+	fill-opacity: 0.12;
+}
+.chart-area-cost {
 	fill: var(--d-cost);
-	fill-opacity: 0.8;
+	fill-opacity: 0.1;
+}
+/* A dot is a zero-length path: its round cap is the circle. */
+.chart-dot {
+	fill: none;
+	stroke-width: 6;
+	stroke-linecap: round;
+}
+.chart-dot-tokens {
+	stroke: var(--d-in);
+}
+.chart-dot-cost {
+	stroke: var(--d-cost);
+}
+/* Past DOT_LIMIT days only the day under the pointer shows its dots. */
+.chart-daily.is-dense .chart-mark:not(:hover) .chart-dot {
+	stroke-width: 0;
+}
+.chart-daily .chart-mark:hover .chart-dot {
+	stroke-width: 9;
 }
 .chart-grid-line {
 	stroke: var(--line);
@@ -2969,6 +3001,11 @@ details.env-details > pre {
 }
 .chart-mark:hover .chart-hit {
 	fill: var(--line);
+}
+/* The daily chart's hover column is drawn over the lines, so it only tints. */
+.chart-daily .chart-mark:hover .chart-hit {
+	fill: var(--text);
+	fill-opacity: 0.06;
 }
 .chart-axis {
 	stroke: var(--line-strong);
@@ -2994,6 +3031,9 @@ details.env-details > pre {
 .chart-table > summary:hover {
 	color: var(--text);
 }
+.chart-table-pager {
+	margin-top: var(--s3);
+}
 @media (max-width: 640px) {
 	.chart-daily {
 		height: 160px;
@@ -3002,6 +3042,10 @@ details.env-details > pre {
 	.chart-yaxis,
 	.chart-days {
 		font-size: var(--t-label);
+	}
+	/* And twelve do even a step down: every other one goes. */
+	.chart-days .day-minor {
+		visibility: hidden;
 	}
 }
 

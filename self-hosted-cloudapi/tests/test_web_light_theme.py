@@ -107,7 +107,15 @@ def test_no_colour_literal_outside_the_token_blocks():
 def test_chart_colours_come_from_the_css_variables():
     """The charts are server-rendered SVG (test_web_metrics_svg); their marks
     are coloured by classes that read the tokens, so they follow the theme."""
-    for rule in (".chart-bar-tokens", ".chart-bar-cost", ".chart-bar-rank"):
+    for rule in (
+        ".chart-line-tokens",
+        ".chart-line-cost",
+        ".chart-area-tokens",
+        ".chart-area-cost",
+        ".chart-dot-tokens",
+        ".chart-dot-cost",
+        ".chart-bar-rank",
+    ):
         assert "var(--" in _block(_NO_COMMENTS, rule + " {"), rule
 
 
