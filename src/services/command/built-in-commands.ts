@@ -314,10 +314,3 @@ export async function getBuiltInCommand(name: string): Promise<Command | undefin
 		argumentHint: cmd.argumentHint,
 	}
 }
-
-/**
- * Get names of all built-in commands
- */
-export async function getBuiltInCommandNames(): Promise<string[]> {
-	return Object.keys(BUILT_IN_COMMANDS)
-}

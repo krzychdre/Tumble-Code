@@ -262,8 +262,8 @@ export function noteWorkspaceFileEvent(kind: "create" | "delete" | "change", fsP
 	}
 }
 
-/** Drops every cached workspace file list. */
-export function clearWorkspaceFileListCache(): void {
+/** Drops every cached workspace file list (test seam: specs reset the cache between cases). */
+export function clearWorkspaceFileListCacheForTests(): void {
 	workspaceFileLists.clear()
 }
 

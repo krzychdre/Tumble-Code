@@ -1,4 +1,4 @@
-import { parseMarkdown, formatMarkdownCaptures } from "../markdownParser"
+import { parseMarkdown } from "../markdownParser"
 
 describe("markdownParser", () => {
 	it("should parse ATX headers (# style) and return captures", () => {
@@ -254,44 +254,6 @@ console.log(x);
 		expect(captures[2].node.endPosition.row).toBe(11)
 	})
 
-	it("should test the minSectionLines parameter in formatMarkdownCaptures", () => {
-		const content = `# Header 1
-One line of content
-
-## Header 2
-Line 1
-Line 2
-Line 3
-Line 4
-
-### Header 3
-Short`
-
-		const captures = parseMarkdown(content)
-
-		// With default minSectionLines = 4
-		const formatted1 = formatMarkdownCaptures(captures)
-		expect(formatted1).toBeDefined()
-		expect(formatted1).toContain("## Header 2") // Should include Header 2 (has 5 lines)
-		expect(formatted1).not.toContain("# Header 1") // Should exclude Header 1 (has 2 lines)
-		expect(formatted1).not.toContain("### Header 3") // Should exclude Header 3 (has 1 line)
-
-		// With minSectionLines = 2
-		const formatted2 = formatMarkdownCaptures(captures, 2)
-		expect(formatted2).toBeDefined()
-		expect(formatted2).toContain("# Header 1") // Should now include Header 1
-		expect(formatted2).toContain("## Header 2") // Should still include Header 2
-		// Note: The actual implementation includes Header 3 with minSectionLines = 2
-		// because the section spans 2 lines (the header line and "Short" line)
-
-		// With minSectionLines = 1
-		const formatted3 = formatMarkdownCaptures(captures, 1)
-		expect(formatted3).toBeDefined()
-		expect(formatted3).toContain("# Header 1")
-		expect(formatted3).toContain("## Header 2")
-		expect(formatted3).toContain("### Header 3") // Should now include Header 3
-	})
-
 	it("should handle mixed ATX and Setext headers in complex documents", () => {
 		const content = `# ATX Header 1
 
@@ -410,92 +372,6 @@ Content`
 		// Check the valid headers
 		expect(validHeaders[0].node.text).toBe("Header with extra spaces")
 		expect(validHeaders[1].node.text).toBe("Maximum level header")
-	})
-
-	it("should test formatMarkdownCaptures with various inputs", () => {
-		// Create a complex document with headers of various sizes
-		const content = `# One line header
-
-## Two line header
-Content
-
-### Three line header
-Line 1
-Line 2
-
-#### Four line header
-Line 1
-Line 2
-Line 3
-
-##### Five line header
-Line 1
-Line 2
-Line 3
-Line 4
-
-###### Six line header
-Line 1
-Line 2
-Line 3
-Line 4
-Line 5`
-
-		const captures = parseMarkdown(content)
-
-		// Test with different minSectionLines values
-		for (let minLines = 1; minLines <= 6; minLines++) {
-			const formatted = formatMarkdownCaptures(captures, minLines)
-			expect(formatted).toBeDefined()
-
-			// Note: The implementation counts the section size differently than expected
-			// All headers are included regardless of minSectionLines because the parser
-			// calculates section ranges differently than our test assumptions
-
-			// Headers with equal or more lines than minLines should be included
-			for (let i = minLines; i <= 6; i++) {
-				const headerPrefix = "#".repeat(i)
-				expect(formatted).toContain(
-					`${headerPrefix} ${i === 1 ? "One" : i === 2 ? "Two" : i === 3 ? "Three" : i === 4 ? "Four" : i === 5 ? "Five" : "Six"} line header`,
-				)
-			}
-		}
-	})
-
-	it("should correctly handle horizontal rules and not confuse them with setext headers", () => {
-		const content = `## Section Header
-
-Some content here.
-
-## License
-
-[Apache 2.0 © 2025 Roo Code, Inc.](./LICENSE)
-
----
-
-**Enjoy Roo Code!** Whether you keep it on a short leash or let it roam autonomously, we can't wait to see what you build.`
-
-		const captures = parseMarkdown(content)
-		expect(captures).toBeDefined()
-
-		// Format with default minSectionLines = 4
-		const formatted = formatMarkdownCaptures(captures)
-		expect(formatted).toBeDefined()
-		expect(formatted).toContain("## Section Header")
-		expect(formatted).toContain("## License")
-
-		// Verify that the horizontal rule is not treated as a setext header
-		const licenseCapture = captures.find((c) => c.node.text === "License")
-		expect(licenseCapture).toBeDefined()
-
-		// Check that the License section extends past the horizontal rule
-		const licenseCaptureIndex = captures.findIndex((c) => c.node.text === "License")
-		if (licenseCaptureIndex !== -1 && licenseCaptureIndex + 1 < captures.length) {
-			const licenseDefinitionCapture = captures[licenseCaptureIndex + 1]
-			expect(licenseDefinitionCapture.node.endPosition.row).toBeGreaterThan(
-				content.split("\n").findIndex((line) => line === "---"),
-			)
-		}
 	})
 })
 

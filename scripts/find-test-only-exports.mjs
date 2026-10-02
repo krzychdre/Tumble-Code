@@ -9,13 +9,20 @@
  * production file other than its own, and every production file none of whose
  * exports production code uses (usually a whole module kept only by its spec).
  *
- * It is a heuristic for a manual review, not a gate:
- * - references are matched by identifier, not resolved through imports, so a
- *   common name that also exists elsewhere hides a real finding (it under-reports,
- *   it does not over-report);
- * - comments do not count as a reference, string literals do;
- * - `export { a, b }` lists and default exports are not scanned.
- * Before deleting anything it reports, grep the name once more by hand.
+ * References are matched by identifier, not resolved through imports, so a
+ * common name that also exists elsewhere hides a real finding (it under-reports,
+ * it does not over-report); comments do not count as a reference, string
+ * literals do; `export { a, b }` lists and default exports are not scanned.
+ *
+ * Gate scope (--check, R3-3b). What CI fails on is only the part knip cannot
+ * see by construction: an export that its OWN file does not use either (so
+ * knip's ignoreExportsUsedInFile cannot excuse it) and that no production file
+ * mentions, plus whole files kept alive only by their specs. Exports that their
+ * own file still uses are the repo's unit-test seam convention (S1-S3
+ * ...Access / *ForTests members consumed by specs) and knip's exemption covers
+ * them; --check does not fail on those, the bare list still reports them for
+ * manual review. Findings on the allowlist (scripts/test-only-exports-allowlist.mjs)
+ * are consciously kept seams and public API; every entry says why.
  *
  * With --unreferenced it also lists exports that no other file mentions at all.
  * knip reports those too, but only as warnings (knip.jsonc "exports": "warn").
@@ -23,6 +30,7 @@
  * Usage (from the repository root):
  *   node scripts/find-test-only-exports.mjs            # human-readable list
  *   node scripts/find-test-only-exports.mjs --json     # machine-readable
+ *   node scripts/find-test-only-exports.mjs --check    # exit 1 on any gate-scope finding
  *   node scripts/find-test-only-exports.mjs --unreferenced  # also exports nobody mentions
  *   node scripts/find-test-only-exports.mjs src/api    # only report under these paths
  *
@@ -32,6 +40,8 @@
 import { readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+
+import { allowlist } from "./test-only-exports-allowlist.mjs"
 
 // Where production code and its tests live. Every file under these roots counts as
 // a possible reference; only .ts/.tsx production files are scanned for exports.
@@ -196,6 +206,46 @@ export function findTestOnlyExports(files) {
 	}
 }
 
+/**
+ * The findings CI fails on (--check): exports no production file uses AND that
+ * their own file does not use either, plus whole files only their spec keeps
+ * alive. `usedInOwnFile` exports are the repo's seam convention and knip's
+ * ignoreExportsUsedInFile exemption covers them, so they stay out of the gate.
+ * @param {ReturnType<typeof findTestOnlyExports>} result
+ * @param {(file: string) => boolean} inScope
+ * @param {string[]} [entries] allowlist entries; defaults to the real one
+ * @returns {{ exports: { file: string, name: string }[], files: string[], staleAllowlist: string[] }}
+ */
+export function gateFindings(result, inScope = () => true, entries = allowlist) {
+	const allowed = new Set(entries)
+	const isAllowed = (file, name) => allowed.has(`${file}: ${name}`) || allowed.has(file)
+
+	const gateExports = result.exports.filter((e) => inScope(e.file) && !e.usedInOwnFile)
+	// A file whose every test-only export is allowlisted (or own-used, the seam
+	// convention) is a consciously kept module, not a dead one.
+	const keptAlive = new Set([
+		...gateExports.filter((e) => isAllowed(e.file, e.name)).map((e) => e.file),
+		...result.exports.filter((e) => e.usedInOwnFile).map((e) => e.file),
+	])
+	const exports = gateExports.filter((e) => !isAllowed(e.file, e.name)).map((e) => ({ file: e.file, name: e.name }))
+	const files = result.files.filter(
+		(file) => inScope(file) && !allowed.has(file) && !exports.some((e) => e.file === file) && !keptAlive.has(file),
+	)
+
+	// An allowlist entry that matches nothing anymore is stale: it hides
+	// nothing (the gate no longer reports the item) and rots the reasons.
+	const known = new Set([
+		...result.exports.map((e) => `${e.file}: ${e.name}`),
+		...result.files,
+		...result.exports.map((e) => e.file),
+	])
+	const staleAllowlist = entries.filter(
+		(entry) => !known.has(entry) && !result.files.some((f) => entry.startsWith(`${f}:`)),
+	)
+
+	return { exports, files, staleAllowlist }
+}
+
 /** @param {string} repoRoot */
 function readSources(repoRoot) {
 	const files = new Map()
@@ -222,6 +272,7 @@ function readSources(repoRoot) {
 function main() {
 	const args = process.argv.slice(2)
 	const json = args.includes("--json")
+	const check = args.includes("--check")
 	const withUnreferenced = args.includes("--unreferenced")
 	const only = args.filter((a) => !a.startsWith("--")).map((a) => a.replace(/\/+$/, "") + "/")
 	const inScope = (file) => only.length === 0 || only.some((prefix) => file.startsWith(prefix))
@@ -231,9 +282,38 @@ function main() {
 	const exports = result.exports.filter((e) => inScope(e.file))
 	const files = result.files.filter(inScope)
 	const unreferenced = withUnreferenced ? result.unreferenced.filter((e) => inScope(e.file)) : []
+	const gate = check ? gateFindings(result, inScope) : undefined
 
 	if (json) {
-		console.log(JSON.stringify(withUnreferenced ? { exports, files, unreferenced } : { exports, files }, null, 2))
+		console.log(
+			JSON.stringify(
+				withUnreferenced
+					? { exports, files, unreferenced, ...(gate ?? {}) }
+					: { exports, files, ...(gate ?? {}) },
+				null,
+				2,
+			),
+		)
+		if (gate && (gate.exports.length > 0 || gate.files.length > 0 || gate.staleAllowlist.length > 0)) process.exit(1)
+		return
+	}
+
+	if (gate) {
+		console.log(`Test-only exports outside the allowlist (${gate.exports.length}):`)
+		for (const e of gate.exports) console.log(`  ${e.file}: ${e.name}`)
+		console.log(`\nFiles only their spec keeps alive outside the allowlist (${gate.files.length}):`)
+		for (const file of gate.files) console.log(`  ${file}`)
+		if (gate.staleAllowlist.length > 0) {
+			console.log(`\nStale allowlist entries (no longer reported, remove them):`)
+			for (const entry of gate.staleAllowlist) console.log(`  ${entry}`)
+		}
+		if (gate.exports.length > 0 || gate.files.length > 0 || gate.staleAllowlist.length > 0) {
+			console.log(
+				"\nDelete the export (or its whole helper/file), or add a reasoned entry to scripts/test-only-exports-allowlist.mjs.",
+			)
+			process.exit(1)
+		}
+		console.log("No test-only exports outside the allowlist.")
 		return
 	}
 

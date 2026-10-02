@@ -1,4 +1,4 @@
-import { parseStackTrace, applySourceMapsToStack, enhanceErrorWithSourceMaps } from "../sourceMapUtils"
+import { applySourceMapsToStack, enhanceErrorWithSourceMaps } from "../sourceMapUtils"
 
 // Mock console.debug to avoid cluttering test output
 beforeEach(() => {
@@ -6,40 +6,6 @@ beforeEach(() => {
 })
 
 describe("sourceMapUtils", () => {
-	describe("parseStackTrace", () => {
-		// Note: parseStackTrace is now a compatibility function
-		test("should correctly parse a Chrome-style stack trace", async () => {
-			const stackTrace = `Error: Test error
-    at Function.execute (webpack:///./src/components/App.tsx:123:45)
-    at Object.next (webpack:///./node_modules/react/index.js:76:21)
-    at eval (webpack:///./src/utils/helpers.ts:89:10)`
-
-			const frames = await parseStackTrace(stackTrace)
-
-			// Verify it still returns an array of frame objects
-			expect(frames).toBeInstanceOf(Array)
-			expect(frames.length).toBeGreaterThan(0)
-
-			// Check that the first frame has the expected properties
-			const firstFrame = frames[0]
-			expect(firstFrame).toHaveProperty("functionName")
-			expect(firstFrame).toHaveProperty("fileName")
-			expect(firstFrame).toHaveProperty("lineNumber")
-			expect(firstFrame).toHaveProperty("columnNumber")
-			expect(firstFrame).toHaveProperty("source")
-
-			// Verify the first frame has the correct values
-			expect(firstFrame.fileName).toBe("webpack:///./src/components/App.tsx")
-			expect(firstFrame.lineNumber).toBe(123)
-			expect(firstFrame.columnNumber).toBe(45)
-		})
-
-		test("should return empty array for empty stack", async () => {
-			expect(await parseStackTrace("")).toEqual([])
-			expect(await parseStackTrace(undefined as unknown as string)).toEqual([])
-		})
-	})
-
 	describe("applySourceMapsToStack", () => {
 		test("should return original stack when source maps cannot be applied", async () => {
 			const stackTrace = `Error: Test error

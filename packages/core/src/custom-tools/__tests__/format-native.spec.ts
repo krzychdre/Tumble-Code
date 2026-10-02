@@ -2,7 +2,7 @@
 
 import { type SerializedCustomToolDefinition, parametersSchema as z, defineCustomTool } from "@tumble-code/types"
 
-import { serializeCustomTool, serializeCustomTools } from "../serialize.js"
+import { serializeCustomTool } from "../serialize.js"
 import { formatNative } from "../format-native.js"
 
 import simpleTool from "./fixtures/simple.js"
@@ -201,7 +201,7 @@ describe("formatNative", () => {
 			}),
 		]
 
-		const serialized = serializeCustomTools(tools)
+		const serialized = tools.map(serializeCustomTool)
 		const result = serialized.map(formatNative)
 
 		expect(result).toHaveLength(2)

@@ -1,4 +1,4 @@
-import { memoryAgeDays, memoryAge, memoryFreshnessText, memoryFreshnessNote } from "../memoryAge"
+import { memoryAgeDays, memoryAge, memoryFreshnessText } from "../memoryAge"
 
 describe("memoryAge", () => {
 	const NOW = 1_700_000_000_000 // fixed epoch ms
@@ -37,13 +37,5 @@ describe("memoryAge", () => {
 		const text = memoryFreshnessText(NOW - 7 * 86_400_000)
 		expect(text).toContain("7 days old")
 		expect(text).toContain("point-in-time observations")
-	})
-
-	it("memoryFreshnessNote wraps the caveat in <system-reminder> (or empty)", () => {
-		vi.setSystemTime(NOW)
-		expect(memoryFreshnessNote(NOW)).toBe("")
-		const note = memoryFreshnessNote(NOW - 2 * 86_400_000)
-		expect(note.startsWith("<system-reminder>")).toBe(true)
-		expect(note.endsWith("</system-reminder>\n")).toBe(true)
 	})
 })

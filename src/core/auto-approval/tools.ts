@@ -31,10 +31,6 @@ export function getToolActionApprovalCategory(tool: ClineSayTool | undefined): T
 	return typeof action === "string" ? TOOL_ACTION_APPROVAL_CATEGORIES.get(action) : undefined
 }
 
-export function isWriteToolAction(tool: ClineSayTool): boolean {
-	return getToolActionApprovalCategory(tool) === "write"
-}
-
 export function isReadOnlyToolAction(tool: ClineSayTool): boolean {
 	return getToolActionApprovalCategory(tool) === "readOnly"
 }

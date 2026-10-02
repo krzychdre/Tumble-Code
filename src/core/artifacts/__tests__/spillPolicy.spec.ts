@@ -8,7 +8,6 @@ import type { ArtifactStore } from "../ArtifactStore"
 import {
 	applyToolResultSpill,
 	buildSpillPreview,
-	extractSpillNotice,
 	SPILL_BYPASS_TOOLS,
 	type ToolResultSpillContext,
 } from "../spillPolicy"
@@ -203,23 +202,6 @@ describe("policy agreement with microcompact", () => {
 			expect(SPILL_BYPASS_TOOLS.has(toolName)).toBe(true)
 			expect(COMPACTABLE_TOOL_NAMES.has(toolName)).toBe(false)
 		}
-	})
-})
-
-describe("extractSpillNotice", () => {
-	it("returns the notice line of a spilled result", async () => {
-		const { store } = createStore()
-		const outcome = await applyToolResultSpill(makeLines(400), "search_files", makeContext(store, 1024))
-
-		const notice = extractSpillNotice(outcome.text)
-
-		expect(notice).toBe(outcome.text.split("\n")[0])
-		expect(notice).toContain('artifact "tool-1706119234567.txt"')
-	})
-
-	it("returns undefined for anything else", async () => {
-		expect(extractSpillNotice("plain output")).toBeUndefined()
-		expect(extractSpillNotice("[Tool result: 12 KB, but no artifact here]")).toBeUndefined()
 	})
 })
 

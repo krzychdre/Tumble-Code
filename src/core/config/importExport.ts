@@ -281,23 +281,6 @@ export const importSettings = async ({ providerSettingsManager, contextProxy, cu
 	})
 }
 
-/**
- * Import settings from a specific file
- * @param options - Import options containing managers and proxy
- * @param fileUri - URI of the file to import from
- * @returns Promise resolving to import result
- */
-export const importSettingsFromFile = async (
-	{ providerSettingsManager, contextProxy, customModesManager }: ImportOptions,
-	fileUri: vscode.Uri,
-) => {
-	return importSettingsFromPath(fileUri.fsPath, {
-		providerSettingsManager,
-		contextProxy,
-		customModesManager,
-	})
-}
-
 export const exportSettings = async ({ providerSettingsManager, contextProxy }: ExportOptions) => {
 	const defaultUri = await resolveDefaultSaveUri(contextProxy, "lastSettingsExportPath", "roo-code-settings.json", {
 		useWorkspace: false,

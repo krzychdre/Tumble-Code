@@ -65,16 +65,6 @@ export function getStaticCount(
 	return count
 }
 
-/**
- * Convenience wrapper: returns the promoted prefix slice of `messages`.
- * Useful when a caller needs both the count and the slice without slicing
- * twice. `getStaticCount` remains the canonical export.
- */
-export function getStaticMessages(messages: TUIMessage[], isLoading: boolean, hasPendingAsk: boolean): TUIMessage[] {
-	const count = getStaticCount(messages, isLoading, hasPendingAsk)
-	return messages.slice(0, Math.max(0, count))
-}
-
 export interface PromotionState {
 	/**
 	 * Remount the `<Static>` region. The transcript no longer extends what was
@@ -151,7 +141,7 @@ export type StaticItem =
 	| { id: string; kind: "chunk"; text: string; first: boolean }
 
 interface BuildStaticItemsArgs {
-	/** The promoted prefix of the transcript (see `getStaticMessages`). */
+	/** The promoted prefix of the transcript (see `getStaticCount`). */
 	messages: TUIMessage[]
 	welcomeProps: WelcomeBannerProps
 	/** Verbose rendering for every message item in this batch. */

@@ -5,10 +5,6 @@ import { arePathsEqual, readTaskSessionsFromStoragePath, type TaskSessionEntry }
 
 const DEFAULT_CLI_TASK_STORAGE_PATH = path.join(os.homedir(), ".vscode-mock", "global-storage")
 
-export function getDefaultCliTaskStoragePath(): string {
-	return DEFAULT_CLI_TASK_STORAGE_PATH
-}
-
 export function filterSessionsForWorkspace(sessions: TaskSessionEntry[], workspacePath: string): TaskSessionEntry[] {
 	return sessions
 		.filter((session) => typeof session.workspace === "string" && arePathsEqual(session.workspace, workspacePath))

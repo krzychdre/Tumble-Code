@@ -8,7 +8,7 @@ import {
 } from "@tumble-code/types"
 
 import { AgentLoopState, detectAgentState } from "../agent-state.js"
-import { createMockClient } from "../extension-client.js"
+import { createMockClient } from "./helpers.js"
 
 function createMessage(overrides: Partial<ClineMessage>): ClineMessage {
 	return { ts: Date.now() + Math.random() * 1000, type: "say", ...overrides }

@@ -2,7 +2,7 @@
 
 import type { ProviderSettings } from "@tumble-code/types"
 
-import { singleCompletionHandler } from "../single-completion-handler"
+import { singleCompletionWithUsage } from "../single-completion-handler"
 import { buildApiHandler, SingleCompletionHandler } from "../../api"
 import { supportPrompt } from "../../shared/support-prompt"
 
@@ -38,7 +38,7 @@ describe("enhancePrompt", () => {
 	})
 
 	it("enhances prompt using default enhancement prompt when no custom prompt provided", async () => {
-		const result = await singleCompletionHandler(mockApiConfig, "Test prompt")
+		const { text: result } = await singleCompletionWithUsage(mockApiConfig, "Test prompt")
 
 		expect(result).toBe("Enhanced prompt")
 		const handler = buildApiHandler(mockApiConfig)
@@ -49,7 +49,7 @@ describe("enhancePrompt", () => {
 		const customEnhancePrompt = "You are a custom prompt enhancer"
 		const customEnhancePromptWithTemplate = customEnhancePrompt + "\n\n${userInput}"
 
-		const result = await singleCompletionHandler(
+		const { text: result } = await singleCompletionWithUsage(
 			mockApiConfig,
 			supportPrompt.create(
 				"ENHANCE",
@@ -74,16 +74,16 @@ describe("enhancePrompt", () => {
 		const completePrompt = vi.fn().mockRejectedValue(new Error("boom"))
 		;(buildApiHandler as any).mockReturnValue({ completePrompt, dispose })
 
-		await expect(singleCompletionHandler(mockApiConfig, "Test prompt")).rejects.toThrow("boom")
+		await expect(singleCompletionWithUsage(mockApiConfig, "Test prompt")).rejects.toThrow("boom")
 		expect(dispose).toHaveBeenCalledTimes(1)
 	})
 
 	it("throws error for empty prompt input", async () => {
-		await expect(singleCompletionHandler(mockApiConfig, "")).rejects.toThrow("No prompt text provided")
+		await expect(singleCompletionWithUsage(mockApiConfig, "")).rejects.toThrow("No prompt text provided")
 	})
 
 	it("throws error for missing API configuration", async () => {
-		await expect(singleCompletionHandler({} as ProviderSettings, "Test prompt")).rejects.toThrow(
+		await expect(singleCompletionWithUsage({} as ProviderSettings, "Test prompt")).rejects.toThrow(
 			"No valid API configuration provided",
 		)
 	})
@@ -102,7 +102,7 @@ describe("enhancePrompt", () => {
 			}),
 		})
 
-		await expect(singleCompletionHandler(mockApiConfig, "Test prompt")).rejects.toThrow(
+		await expect(singleCompletionWithUsage(mockApiConfig, "Test prompt")).rejects.toThrow(
 			"The selected API provider does not support prompt enhancement",
 		)
 	})
@@ -129,7 +129,7 @@ describe("enhancePrompt", () => {
 			}),
 		} as unknown as SingleCompletionHandler)
 
-		const result = await singleCompletionHandler(openRouterConfig, "Test prompt")
+		const { text: result } = await singleCompletionWithUsage(openRouterConfig, "Test prompt")
 
 		expect(buildApiHandler).toHaveBeenCalledWith(openRouterConfig)
 		expect(result).toBe("Enhanced prompt")
@@ -149,6 +149,6 @@ describe("enhancePrompt", () => {
 			}),
 		} as unknown as SingleCompletionHandler)
 
-		await expect(singleCompletionHandler(mockApiConfig, "Test prompt")).rejects.toThrow("API Error")
+		await expect(singleCompletionWithUsage(mockApiConfig, "Test prompt")).rejects.toThrow("API Error")
 	})
 })

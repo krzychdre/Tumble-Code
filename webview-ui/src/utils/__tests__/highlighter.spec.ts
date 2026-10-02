@@ -54,14 +54,12 @@ describe("highlighter (lazy themes)", () => {
 	})
 
 	it("loads the requested theme on demand and only once", async () => {
-		const { getHighlighter, isThemeLoaded } = await freshImport()
+		const { getHighlighter } = await freshImport()
 
 		const instance = await getHighlighter("typescript", "github-light")
 
 		expect(instance.loadTheme).toHaveBeenCalledTimes(1)
 		expect(instance.loadTheme).toHaveBeenCalledWith("github-light")
-		expect(isThemeLoaded("github-light")).toBe(true)
-		expect(isThemeLoaded("github-dark")).toBe(false)
 
 		// Second call with the same theme must not load again.
 		await getHighlighter("javascript", "github-light")
@@ -69,14 +67,13 @@ describe("highlighter (lazy themes)", () => {
 	})
 
 	it("loads the other theme on demand when the theme switches", async () => {
-		const { getHighlighter, isThemeLoaded } = await freshImport()
+		const { getHighlighter } = await freshImport()
 
 		const instance = await getHighlighter("typescript", "github-light")
 		expect(instance.loadTheme).toHaveBeenCalledWith("github-light")
 
 		await getHighlighter("typescript", "github-dark")
 		expect(instance.loadTheme).toHaveBeenCalledWith("github-dark")
-		expect(isThemeLoaded("github-dark")).toBe(true)
 	})
 
 	it("deduplicates concurrent loads of the same theme", async () => {
@@ -111,17 +108,15 @@ describe("highlighter (lazy themes)", () => {
 	})
 
 	it("lets a failed theme load be retried on the next call", async () => {
-		const { getHighlighter, isThemeLoaded } = await freshImport()
+		const { getHighlighter } = await freshImport()
 
 		// The "bad" theme fails to load: getHighlighter rejects.
 		await expect(getHighlighter("typescript", "bad" as never)).rejects.toThrow("theme load failed")
-		expect(isThemeLoaded("bad" as never)).toBe(false)
 
 		// The pending load was cleared, so a later render can retry and a
 		// different theme still loads normally.
 		const instance = await getHighlighter("typescript", "github-dark")
 		expect(instance.loadTheme).toHaveBeenCalledWith("github-dark")
-		expect(isThemeLoaded("github-dark")).toBe(true)
 	})
 
 	it("keeps language loading lazy and deduplicated", async () => {

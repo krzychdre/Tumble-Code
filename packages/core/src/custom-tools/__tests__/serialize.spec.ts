@@ -2,7 +2,7 @@
 
 import { parametersSchema as z, defineCustomTool } from "@tumble-code/types"
 
-import { serializeCustomTool, serializeCustomTools } from "../serialize.js"
+import { serializeCustomTool } from "../serialize.js"
 
 import simpleTool from "./fixtures/simple.js"
 import cachedTool from "./fixtures/cached.js"
@@ -187,9 +187,9 @@ describe("serializeCustomTool", () => {
 	})
 })
 
-describe("serializeCustomTools", () => {
+describe("serializing multiple tools", () => {
 	it("should return empty array for empty tools array", () => {
-		expect(serializeCustomTools([])).toEqual([])
+		expect([].map(serializeCustomTool)).toEqual([])
 	})
 
 	it("should serialize multiple tools", () => {
@@ -213,7 +213,7 @@ describe("serializeCustomTools", () => {
 			}),
 		]
 
-		const result = serializeCustomTools(tools)
+		const result = tools.map(serializeCustomTool)
 
 		expect(result).toHaveLength(2)
 		expect(result[0]?.name).toBe("tool_a")
