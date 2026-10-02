@@ -13,6 +13,13 @@ at 500px the old top bar still fitted). A script in the page lists whatever
 reaches past the right edge and posts it to the frame's parent, whose DOM is
 what Chrome dumps.
 
+The second half holds every page to a stricter rule with hostile data (an
+unbroken prompt as the title, a 60-character model id, a path with no breaks,
+a long account name): no text may run past the box it sits in, at a phone's
+width and at 900px, where the top bar still shows the account name. Text may
+be cut with an ellipsis or scroll inside its own box (a code block); it may
+not be clipped without a sign, or spill over its neighbours.
+
 Skipped, like the other browser checks, when no Chrome is installed.
 """
 
@@ -24,7 +31,7 @@ from pathlib import Path
 import pytest
 
 from src.auth.web_session import get_web_user_optional
-from src.models.task import Task
+from src.models.task import Task, TaskShare
 from tests.test_browser_js import _find_browser
 from tests.web_helpers import (
     _add_message,
@@ -58,11 +65,45 @@ window.addEventListener("load", function () {
       if (cls) cls = "." + cls.split(/\\s+/).join(".")
       wide.push(el.tagName.toLowerCase() + cls + " reaches " + Math.round(r.right))
     })
+    // Text running past its own box: each text node's right edge against the
+    // boxes around it, up to the first one that clips. A scroll box or an
+    // ellipsis tells the reader there is more; a bare hidden/clip does not, so
+    // text past a box like that counts too. The sorted column's arrow hangs
+    // past its label on purpose (app.css, .head-sort.sorted).
+    var spill = []
+    function label(el) {
+      var c = typeof el.className === "string" ? el.className.trim() : ""
+      return el.tagName.toLowerCase() + (c ? "." + c.split(/\\s+/).join(".") : "")
+    }
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (var n = walker.nextNode(); n; n = walker.nextNode()) {
+      var host = n.parentElement
+      if (!n.textContent.trim() || !host || host.closest("script,style,noscript,.sr-only,svg,select,option,datalist,.head-sort")) continue
+      var range = document.createRange()
+      range.selectNodeContents(n)
+      var right = 0
+      Array.prototype.forEach.call(range.getClientRects(), function (q) { right = Math.max(right, q.right) })
+      if (!right) continue
+      for (var box = host; box && box !== document.documentElement; box = box.parentElement) {
+        var cs = getComputedStyle(box)
+        var edge = box.getBoundingClientRect().right
+        if (cs.overflowX !== "visible") {
+          var signed = cs.overflowX === "auto" || cs.overflowX === "scroll" || cs.textOverflow === "ellipsis"
+          if (!signed && right > edge + 1) spill.push("cut by " + label(box) + ": " + n.textContent.trim().slice(0, 40))
+          break
+        }
+        if (cs.display !== "inline" && cs.display !== "contents" && right > edge + 1) {
+          spill.push("past " + label(box) + ": " + n.textContent.trim().slice(0, 40))
+          break
+        }
+      }
+    }
     parent.postMessage(JSON.stringify({
       viewport: innerWidth,
       contentWidth: vw,
       scrollWidth: document.documentElement.scrollWidth,
       wide: wide.slice(0, 15),
+      spill: spill.slice(0, 15),
       rendered: {
         taskRows: document.querySelectorAll(".task-item").length,
         messages: document.querySelectorAll("#conversation .msg").length,
@@ -75,33 +116,36 @@ window.addEventListener("load", function () {
 </script>
 """
 
-_FRAME = f"""<!DOCTYPE html><html><body style="margin:0">
-<iframe src="page.html" style="border:0;width:{PHONE_WIDTH}px;height:844px"></iframe>
+_FRAME = """<!DOCTYPE html><html><body style="margin:0">
+<iframe src="page.html" style="border:0;width:WIDTHpx;height:844px"></iframe>
 <script>
-window.addEventListener("message", function (e) {{
+window.addEventListener("message", function (e) {
   var pre = document.createElement("pre")
   pre.id = "results"
   pre.textContent = e.data
   document.body.appendChild(pre)
-}})
+})
 </script>
 </body></html>"""
 
 
-def _lay_out_on_a_phone(html: str, tmp_path: Path) -> dict:
-    """Lay ``html`` out 390px wide and report what reaches past the edge."""
+def _lay_out_on_a_phone(html: str, tmp_path: Path, width: int = PHONE_WIDTH) -> dict:
+    """Lay ``html`` out ``width`` px wide (a phone by default) and report what
+    reaches past the edge and what text runs past its box."""
     browser = _find_browser()
     if browser is None:
         pytest.skip("no headless Chrome/Chromium available")
     page = html.replace('"/static/', f'"{_STATIC.as_uri()}/').replace("</body>", _MEASURE + "</body>")
     (tmp_path / "page.html").write_text(page, encoding="utf-8")
-    (tmp_path / "frame.html").write_text(_FRAME, encoding="utf-8")
+    (tmp_path / "frame.html").write_text(_FRAME.replace("WIDTH", str(width)), encoding="utf-8")
     result = subprocess.run(
         [
             browser,
             "--headless",
             "--disable-gpu",
             "--no-sandbox",
+            # Wide enough for a 900px frame; a 390px one sits at its left.
+            "--window-size=1000,900",
             "--virtual-time-budget=8000",
             "--dump-dom",
             (tmp_path / "frame.html").as_uri(),
@@ -207,3 +251,143 @@ async def test_every_page_fits_a_phone(path, rendered, client, session_factory, 
 
     assert layout["wide"] == [], f"{path} reaches past a {layout['contentWidth']}px screen: {layout['wide']}"
     assert layout["scrollWidth"] <= layout["contentWidth"], layout
+
+
+# --- Long text stays inside its box ------------------------------------------
+
+_NOSPACE = (
+    "Implement_the_changes_described_in_private_docs_prime-ingress-nosuchkey_analysis_md"
+    "_DRY_YAGNI_OCP_and_report_back_everything_you_found"
+)
+_LONG_MODEL = "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct"
+_LONG_PATH = (
+    "/home/someone/Projekty/ITKONTEKST/customer/data-products-molecular/services/ingestion"
+    "/very_long_directory_name_without_any_breaks/src/main/kotlin/IngestionController.kt"
+)
+_LONG_URL = "https://example.com/QUB-IT/Roo-Code/blob/main/app.css?very_long_query_param=" + "abcdefghij" * 6
+
+
+async def _seed_hostile_text(session_factory):
+    """A run whose every label is as long as real ones get, and longer: an
+    unbroken prompt, a long model id and mode, a path without a break, a
+    command line, a wide Markdown table, a tool with a long name, a nested
+    subtask chain, and figures in the thousands of dollars."""
+    async with session_factory() as s:
+        await _seed_user(s)
+        s.add(Task(id="run", user_id="user_test", workspace_path=_LONG_PATH))
+        await s.flush()
+        s.add(Task(id="sub1", user_id="user_test", parent_task_id="run", workspace_path=_LONG_PATH))
+        await s.flush()
+        s.add(Task(id="sub2", user_id="user_test", parent_task_id="sub1", workspace_path=_LONG_PATH))
+        await s.flush()
+        table = "| " + " | ".join(f"column_{i}_with_a_long_header" for i in range(6)) + " |\n"
+        table += "|" + "---|" * 6 + "\n| " + " | ".join(_LONG_MODEL for _ in range(6)) + " |"
+        conversation = [
+            {"ts": 1, "type": "say", "say": "text", "text": _NOSPACE + " " + _LONG_URL},
+            {"ts": 2, "type": "say", "say": "api_req_started",
+             "text": json.dumps({"tokensIn": 1234567890, "tokensOut": 987654321, "cost": 12345.6789})},
+            {"ts": 3, "type": "ask", "ask": "command", "text": "cd " + _LONG_PATH + " && uv run pytest -q -k 'a or b' 2>&1 | tail -n 200"},
+            {"ts": 4, "type": "ask", "ask": "tool",
+             "text": json.dumps({"tool": "readFileWithAVeryLongToolNameThatNeverEnds", "path": _LONG_PATH, "content": _LONG_PATH})},
+            {"ts": 5, "type": "say", "say": "some_unknown_kind_with_a_very_long_name_that_has_no_label", "text": "{}"},
+            {"ts": 6, "type": "say", "say": "error", "text": "Error: 400 " + _NOSPACE + " " + _LONG_URL},
+            {"ts": 7, "type": "say", "say": "text", "text": "A table:\n\n" + table + "\n\nInline `" + _NOSPACE + "`"},
+        ]
+        for message in conversation:
+            await _add_message(s, "run", message)
+        for i, task_id in enumerate(("sub1", "sub2")):
+            await _add_message(s, task_id, {"ts": 10 + i, "type": "say", "say": "text", "text": f"Subtask{i}_" + _NOSPACE})
+            figures = json.dumps({"tokensIn": 99999999, "tokensOut": 8888888, "cost": 2999.97})
+            await _add_message(s, task_id, {"ts": 20 + i, "type": "say", "say": "api_req_started", "text": figures})
+        for model in (_LONG_MODEL, "openrouter/anthropic/claude-opus-5.5-20261001-thinking-extended-context-1m"):
+            for task_id in ("run", "sub1"):
+                s.add(_llm_event(task_id=task_id, model=model, mode="architect-reviewer-with-a-long-custom-slug",
+                                 provider="openai-compatible-self-hosted-gateway", tin=123456789, tout=1234567, cost=1234.56))
+        s.add(TaskShare(task_id="run", visibility="public", share_url="http://testserver/shared/run"))
+        await _summarize(s, "run", "sub1", "sub2")
+        await s.commit()
+
+
+@pytest.mark.parametrize("width", [PHONE_WIDTH, 900])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/app?scope=all",
+        # Nothing matches: the empty state lists the filters as chips.
+        f"/app?q={_NOSPACE}&project={_NOSPACE}&model={_LONG_MODEL}",
+        "/app/tasks/run",
+        "/app/tasks/sub2",
+        "/app/metrics?period=all",
+        "/shared/run",
+    ],
+)
+async def test_long_text_stays_inside_its_box(path, width, client, session_factory, monkeypatch, tmp_path):
+    from config.settings import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "bridge_enabled", True)
+    await _seed_hostile_text(session_factory)
+    client.app.dependency_overrides[get_web_user_optional] = lambda: {
+        "user_id": "user_test",
+        "session_id": "sess_test",
+        "email": "t@example.com",
+        # At 900px the bar still shows the name: a long one must not push
+        # Sign out off the screen.
+        "name": "Krzysztof Drezewski-Wielkopolski von Supercalifragilistic",
+        "image_url": None,
+    }
+    try:
+        response = client.get(path)
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+    assert response.status_code == 200, path
+
+    layout = _lay_out_on_a_phone(response.text, tmp_path, width)
+
+    assert layout["viewport"] == width
+    assert layout["wide"] == [], f"{path} at {width}px reaches past the screen: {layout['wide']}"
+    assert layout["scrollWidth"] <= layout["contentWidth"], layout
+    assert layout["spill"] == [], f"{path} at {width}px: text outside its box: {layout['spill']}"
+
+
+# --- The rules that keep it there -------------------------------------------
+# Cheap, browser-free pins for the rules the layout checks above depend on, so
+# a later edit that drops one fails here with a name, even where no Chrome is
+# installed.
+
+_CSS = (_STATIC / "app.css").read_text(encoding="utf-8")
+
+
+def _rule(selector: str) -> str:
+    """The body of the first rule whose selector list is exactly ``selector``."""
+    match = re.search(r"(?:^|\})\s*" + re.escape(selector) + r"\s*\{([^}]*)\}", _CSS, re.MULTILINE)
+    assert match, f"app.css has no rule for {selector}"
+    return match.group(1)
+
+
+@pytest.mark.parametrize(
+    "selector, declaration",
+    [
+        # A title with an unbroken path breaks inside the word.
+        (".page-title", "overflow-wrap: anywhere"),
+        # ...and in the detail header it shrinks beside the Delete button.
+        (".detail-title-row .page-title", "flex: 1 1 auto"),
+        (".task-delete-detail", "flex-shrink: 0"),
+        # Empty and error states carry URLs and addresses.
+        (".empty", "overflow-wrap: anywhere"),
+        # A long account name yields in the top bar.
+        (".topbar-end", "min-width: 0"),
+        (".user-name", "text-overflow: ellipsis"),
+        # Filter chips are text, not flex rows that squeeze the label.
+        (".filter-chip", "display: inline-block"),
+        # The model ids in the detail header wrap inside their badges.
+        (".detail-models .badge-model", "overflow-wrap: anywhere"),
+        # Conversation: a long role label, commands, Markdown tables.
+        (".msg-role", "max-width: 100%"),
+        (".msg.role-command .msg-body pre", "white-space: pre-wrap"),
+        (".msg-body table", "overflow-x: auto"),
+        # Stat figures scale with their tile.
+        (".stat-card", "container-type: inline-size"),
+    ],
+)
+def test_overflow_rule_is_in_the_stylesheet(selector, declaration):
+    assert declaration in _rule(selector), f"{selector} lost `{declaration}`"
