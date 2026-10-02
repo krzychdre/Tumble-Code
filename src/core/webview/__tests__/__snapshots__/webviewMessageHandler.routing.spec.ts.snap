@@ -3256,38 +3256,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > taskSyncEna
 }
 `;
 
-exports[`webviewMessageHandler routing (characterization, CORE-R3) > telemetrySetting 1`] = `
-{
-  "events": [
-    [
-      "contextProxy.getValue",
-      "telemetrySetting",
-    ],
-    [
-      "Telemetry.capture",
-      "Telemetry Settings Changed",
-      {
-        "newSetting": "disabled",
-        "previousSetting": "enabled",
-      },
-    ],
-    [
-      "contextProxy.setValue",
-      "telemetrySetting",
-      "disabled",
-    ],
-    [
-      "Telemetry.updateTelemetryState",
-      false,
-    ],
-    [
-      "provider.postStateToWebview",
-    ],
-  ],
-  "outcome": "resolved",
-}
-`;
-
 exports[`webviewMessageHandler routing (characterization, CORE-R3) > terminalOperation 1`] = `
 {
   "events": [
@@ -3902,14 +3870,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidL
     ],
     [
       "contextProxy.getValue",
-      "telemetrySetting",
-    ],
-    [
-      "Telemetry.updateTelemetryState",
-      true,
-    ],
-    [
-      "contextProxy.getValue",
       "currentApiConfigName",
     ],
     [
@@ -4006,14 +3966,6 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidL
     ],
     [
       "providerSettingsManager.listConfig",
-    ],
-    [
-      "contextProxy.getValue",
-      "telemetrySetting",
-    ],
-    [
-      "Telemetry.updateTelemetryState",
-      true,
     ],
     [
       "contextProxy.getValue",

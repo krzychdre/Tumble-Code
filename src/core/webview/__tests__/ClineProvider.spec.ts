@@ -792,7 +792,6 @@ describe("ClineProvider", () => {
 			experiments: experimentDefault,
 			maxOpenTabsContext: 20,
 			maxWorkspaceFiles: 200,
-			telemetrySetting: "unset",
 			showRooIgnoredFiles: false,
 			enableSubfolderRules: false,
 			renderContext: "sidebar",
@@ -860,16 +859,14 @@ describe("ClineProvider", () => {
 		expect(disposeCalls).toHaveLength(1)
 	})
 
-	test("webviewDidLaunch applies the stored telemetry setting without a second full state build", async () => {
+	test("webviewDidLaunch builds the webview state only once", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-		await provider.contextProxy.setValue("telemetrySetting", "disabled")
-		const updateTelemetryState = vi.spyOn(TelemetryService.instance, "updateTelemetryState")
 		const buildState = vi.spyOn(provider, "getStateToPostToWebview")
 
 		await messageHandler({ type: "webviewDidLaunch" })
 
-		await vi.waitFor(() => expect(updateTelemetryState).toHaveBeenCalledWith(false))
+		await vi.waitFor(() => expect(provider.isViewLaunched).toBe(true))
 		// Only the state push itself builds the webview state.
 		expect(buildState).toHaveBeenCalledTimes(1)
 	})

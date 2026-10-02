@@ -19,7 +19,6 @@ export type SettingsWebviewMessageType =
 	| "getVSCodeSetting"
 	| "requestTerminalProfiles"
 	| "autoApprovalEnabled"
-	| "telemetrySetting"
 	| "debugSetting"
 	| "focusPanelRequest"
 	| "switchTab"

@@ -24,7 +24,6 @@ describe("SETTINGS_DEFAULTS", () => {
 		expect(SETTINGS_DEFAULTS.enableCheckpoints).toBe(DEFAULT_ENABLE_CHECKPOINTS)
 		expect(SETTINGS_DEFAULTS.enableCheckpoints).toBe(true)
 		expect(SETTINGS_DEFAULTS.soundVolume).toBe(0.5)
-		expect(SETTINGS_DEFAULTS.telemetrySetting).toBe("unset")
 		expect(SETTINGS_DEFAULTS.maxDiagnosticMessages).toBe(50)
 		expect(SETTINGS_DEFAULTS.customSoundCelebration).toBeNull()
 	})

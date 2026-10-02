@@ -27,8 +27,6 @@ vi.mock("react-i18next", () => ({
 	initReactI18next: { type: "3rdParty", init: () => {} },
 }))
 
-vi.mock("@src/utils/TelemetryClient", () => ({ telemetryClient: { capture: vi.fn() } }))
-
 vi.mock("../ApiConfigManager", () => ({ default: () => null }))
 vi.mock("../ApiOptions", () => ({ default: () => null }))
 vi.mock("../SettingsSearch", () => ({ SettingsSearch: () => null }))
@@ -39,7 +37,6 @@ const baseState = () => ({
 	uriScheme: "vscode",
 	settingsImportedAt: undefined,
 	apiConfiguration: { apiProvider: "anthropic" },
-	telemetrySetting: "enabled",
 	debug: false,
 	webToolsEnabled: false,
 	searxngBaseUrl: "http://searx.local",

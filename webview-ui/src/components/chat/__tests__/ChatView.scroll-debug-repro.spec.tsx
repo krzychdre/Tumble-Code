@@ -20,7 +20,6 @@ interface ExtensionStateMessage {
 		allowedCommands: string[]
 		alwaysAllowExecute: boolean
 		cloudIsAuthenticated: boolean
-		telemetrySetting: "enabled" | "disabled" | "unset"
 	}
 }
 
@@ -76,7 +75,6 @@ function nullDefaultModule() {
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 vi.mock("use-sound", () => ({ default: vi.fn().mockImplementation(() => [vi.fn()]) }))
 
-vi.mock("../common/TelemetryBanner", nullDefaultModule)
 vi.mock("../common/VersionIndicator", nullDefaultModule)
 vi.mock("../history/HistoryPreview", nullDefaultModule)
 vi.mock("@src/components/welcome/RooHero", nullDefaultModule)
@@ -243,7 +241,6 @@ const postState = (clineMessages: ClineMessage[]) => {
 			allowedCommands: [],
 			alwaysAllowExecute: false,
 			cloudIsAuthenticated: false,
-			telemetrySetting: "enabled",
 		},
 	}
 

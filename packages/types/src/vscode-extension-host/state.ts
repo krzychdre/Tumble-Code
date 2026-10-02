@@ -7,7 +7,6 @@ import type { GlobalSettings } from "../global-settings.js"
 import type { ProviderSettings } from "../provider-settings.js"
 import type { HistoryItem } from "../history.js"
 import type { ModeConfig } from "../mode.js"
-import type { TelemetrySetting } from "../telemetry.js"
 import type { Experiments } from "../experiment.js"
 import type { ClineMessage, QueuedMessage } from "../message.js"
 import type { MarketplaceItem } from "../marketplace.js"
@@ -146,9 +145,6 @@ export type ExtensionState = Pick<
 	toolRequirements?: Record<string, boolean> // Map of tool names to their requirements (e.g. {"apply_diff": true})
 
 	cwd?: string // Current working directory
-	telemetrySetting: TelemetrySetting
-	telemetryKey?: string
-	machineId?: string
 
 	renderContext: "sidebar" | "editor"
 	settingsImportedAt?: number

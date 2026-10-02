@@ -19,7 +19,6 @@ import RooHero from "@src/components/welcome/RooHero"
 import RooTips from "@src/components/welcome/RooTips"
 import { StandardTooltip, Button } from "@src/components/ui"
 
-import TelemetryBanner from "../common/TelemetryBanner"
 import StorageErrorBanner from "../common/StorageErrorBanner"
 import VersionIndicator from "../common/VersionIndicator"
 import HistoryPreview from "../history/HistoryPreview"
@@ -90,7 +89,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const setMode = useExtensionSelector((s) => s.setMode)
 	const alwaysAllowModeSwitch = useExtensionSelector((s) => s.alwaysAllowModeSwitch)
 	const customModes = useExtensionSelector((s) => s.customModes)
-	const telemetrySetting = useExtensionSelector((s) => s.telemetrySetting)
 	const soundEnabled = useExtensionSelector((s) => s.soundEnabled)
 	const soundVolume = useExtensionSelector((s) => s.soundVolume)
 	const customSoundUris = useExtensionSelector((s) => s.customSoundUris)
@@ -478,7 +476,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			data-testid="chat-view"
 			className={isHidden ? "hidden" : "fixed top-0 left-0 right-0 bottom-0 flex flex-col overflow-hidden"}>
 			<StorageErrorBanner />
-			{telemetrySetting === "unset" && <TelemetryBanner />}
 			{(showAnnouncement || showAnnouncementModal) && (
 				<Announcement
 					hideAnnouncement={() => {

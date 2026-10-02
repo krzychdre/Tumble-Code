@@ -6,9 +6,5 @@
 	"providerSignup": {
 		"finish": "Concluir"
 	},
-	"telemetry": {
-		"helpImprove": "Ajude a melhorar o Tumble Code",
-		"helpImproveMessage": "Tumble Code coleta dados de erro e uso para nos ajudar a corrigir bugs e melhorar a extensão. Esta telemetria não coleta código, prompts ou informações pessoais. Você pode desabilitar isso nas <settingsLink>configurações</settingsLink>."
-	},
 	"importSettings": "Importar configurações"
 }

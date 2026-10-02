@@ -16,9 +16,6 @@ import React from "react"
 
 import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
-import { About } from "@src/components/settings/About"
-import { renderWithSettingsDraft } from "@src/components/settings/__tests__/settingsDraftTestUtils"
-import TelemetryBanner from "@src/components/common/TelemetryBanner"
 import { CheckpointWarning } from "@src/components/chat/CheckpointWarning"
 import { Vertex } from "@src/components/settings/providers/Vertex"
 import { ModelDescriptionMarkdown } from "@src/components/settings/ModelDescriptionMarkdown"
@@ -29,10 +26,6 @@ vi.mock("@src/utils/vscode", () => ({
 
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
-}))
-
-vi.mock("@roo/package", () => ({
-	Package: { version: "1.0.0", sha: "abc12345" },
 }))
 
 // Without an i18n instance <Trans> drops its `components`; render each one with
@@ -89,39 +82,6 @@ describe("link call sites (VSCodeLink replacement characterization)", () => {
 
 	afterEach(() => {
 		postMessageSpy.mockRestore()
-	})
-
-	it("About: plain href links render as keyboard-focusable anchors to their targets", async () => {
-		renderWithSettingsDraft(<About />, { telemetrySetting: "enabled" })
-
-		const cases: Array<[string, string]> = [
-			// Link passed to <Trans components>, text supplied by the translation.
-			["privacyLink", "https://github.com/krzychdre/Tumble-Code/blob/main/PRIVACY.md"],
-		]
-
-		for (const [text, href] of cases) {
-			const { anchor } = await linkParts(text)
-			// An <a> with an href has the implicit ARIA role "link".
-			expect(anchor.tagName).toBe("A")
-			await expectHref(anchor, href)
-			// In the tab order by default.
-			expect(anchor.tabIndex).toBe(0)
-		}
-	})
-
-	it("TelemetryBanner: the settings link opens the About settings section", async () => {
-		render(<TelemetryBanner />)
-
-		const { host, anchor } = await linkParts("settingsLink")
-		await expectHref(anchor, "#")
-
-		fireEvent.click(host)
-
-		expect(postMessageSpy).toHaveBeenCalledWith({
-			type: "action",
-			action: "settingsButtonClicked",
-			values: { section: "about" },
-		})
 	})
 
 	it("CheckpointWarning: the settings link cancels navigation and opens the checkpoint settings", async () => {

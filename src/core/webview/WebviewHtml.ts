@@ -25,8 +25,6 @@ export interface WebviewHtmlOptions {
 	planReviewMode?: boolean
 	/** Extra `connect-src` origins, right after the webview's own source (the sidebar allows OpenRouter). */
 	connectOrigins?: string[]
-	/** Extra `script-src` and `connect-src` origins in development mode only (the sidebar allows PostHog). */
-	hmrAnalyticsOrigins?: string[]
 }
 
 export interface HmrHtmlOptions extends WebviewHtmlOptions {
@@ -127,7 +125,7 @@ function readVitePort(logTag: string | undefined): string {
  * server does not answer.
  */
 export async function getHmrHtml(options: HmrHtmlOptions): Promise<string> {
-	const { webview, extensionUri, title, planReviewMode, connectOrigins = [], hmrAnalyticsOrigins = [] } = options
+	const { webview, extensionUri, title, planReviewMode, connectOrigins = [] } = options
 	const localPort = readVitePort(options.logTag)
 	const localServerUrl = `localhost:${localPort}`
 
@@ -162,20 +160,12 @@ export async function getHmrHtml(options: HmrHtmlOptions): Promise<string> {
 		["style-src", webview.cspSource, "'unsafe-inline'", "https://*", ...devServer].join(" "),
 		`img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:`,
 		`media-src ${webview.cspSource}`,
-		[
-			"script-src 'unsafe-eval'",
-			webview.cspSource,
-			"https://*",
-			...hmrAnalyticsOrigins,
-			...devServer,
-			`'nonce-${nonce}'`,
-		].join(" "),
+		["script-src 'unsafe-eval'", webview.cspSource, "https://*", ...devServer, `'nonce-${nonce}'`].join(" "),
 		[
 			"connect-src",
 			webview.cspSource,
 			...connectOrigins,
 			"https://*",
-			...hmrAnalyticsOrigins,
 			`ws://${localServerUrl}`,
 			`ws://0.0.0.0:${localPort}`,
 			...devServer,

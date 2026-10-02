@@ -157,7 +157,6 @@ type ExpectedWebviewMessageType =
 	| "checkpointDiff"
 	| "checkpointRestore"
 	| "deleteMcpServer"
-	| "telemetrySetting"
 	| "searchFiles"
 	| "toggleApiConfigPin"
 	| "hasOpenedModeSelector"

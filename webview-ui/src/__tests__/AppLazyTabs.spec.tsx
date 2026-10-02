@@ -29,13 +29,6 @@ vi.mock("@src/components/ErrorBoundary", () => ({
 	default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-vi.mock("@src/utils/TelemetryClient", () => ({
-	telemetryClient: {
-		capture: vi.fn(),
-		updateTelemetryState: vi.fn(),
-	},
-}))
-
 vi.mock("@src/components/chat/ChatView", () => ({
 	__esModule: true,
 	default: function ChatView() {
@@ -113,7 +106,6 @@ const hydratedState = {
 	shouldShowAnnouncement: false,
 	experiments: {},
 	language: "en",
-	telemetrySetting: "enabled",
 }
 
 const triggerMessage = (action: string) => {

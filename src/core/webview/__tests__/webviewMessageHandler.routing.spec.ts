@@ -183,7 +183,6 @@ vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: () => true,
 		instance: {
-			updateTelemetryState: h.fn("Telemetry.updateTelemetryState"),
 			capture: h.fn("Telemetry.capture"),
 			captureEvent: h.fn("Telemetry.captureEvent"),
 		},
@@ -425,7 +424,6 @@ function createProvider() {
 		customModePrompts: { code: { roleDefinition: "old" } },
 		pinnedApiConfigs: { default: true },
 		dismissedUpsells: ["seen"],
-		telemetrySetting: "enabled",
 		codebaseIndexConfig: { codebaseIndexEnabled: false, codebaseIndexEmbedderProvider: "openai" },
 		experiments: { preventFocusDisruption: false },
 	}
@@ -668,7 +666,6 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["exportMode", { slug: "code" }],
 	["importMode", { source: "global" }],
 	["checkRulesDirectory", { slug: "code" }],
-	["telemetrySetting", { text: "disabled" }],
 	["debugSetting", { bool: true }],
 	["rooCloudSignIn", {}],
 	["rooCloudSignOut", {}],
@@ -774,7 +771,7 @@ describe("webviewMessageHandler routing (characterization, CORE-R3)", () => {
 	})
 
 	it("covers every routed message type exactly once in the route list", () => {
-		expect(ROUTED_TYPES).toHaveLength(138)
+		expect(ROUTED_TYPES).toHaveLength(137)
 	})
 
 	it.each(ROUTES)("%s", async (label, fields) => {

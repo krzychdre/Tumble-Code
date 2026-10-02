@@ -133,7 +133,6 @@ const createExtensionState = (overrides = {}) => ({
 	language: "en",
 	alwaysAllowMcp: false,
 	mcpEnabled: false,
-	telemetrySetting: "unset" as const,
 	experiments: {},
 	customSupportPrompts: {},
 	profileThresholds: {},

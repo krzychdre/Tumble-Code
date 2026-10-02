@@ -75,8 +75,6 @@ abstract class BaseTelemetryClient implements TelemetryClient {
 		this.providerRef = new WeakRef(provider)
 	}
 
-	public abstract updateTelemetryState(didUserOptIn: boolean): void
-
 	public isTelemetryEnabled(): boolean {
 		return this.telemetryEnabled
 	}
@@ -274,8 +272,6 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			console.error(`[TelemetryClient#backfillMessages] Error uploading messages: ${error}`)
 		}
 	}
-
-	public override updateTelemetryState(_didUserOptIn: boolean) {}
 
 	public override isTelemetryEnabled(): boolean {
 		if (process.env.ROO_CODE_DISABLE_TELEMETRY === "1") {

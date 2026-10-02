@@ -280,7 +280,6 @@ describe("SettingsView - Change Detection Fix", () => {
 		mcpEnabled: false,
 		soundEnabled: false,
 		soundVolume: 0.5,
-		telemetrySetting: "unset" as const,
 		terminalOutputLineLimit: 500,
 		terminalOutputCharacterLimit: 50000,
 		terminalShellIntegrationTimeout: 3000,

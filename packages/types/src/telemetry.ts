@@ -4,16 +4,6 @@ import { providerNames } from "./provider-settings.js"
 import { clineMessageSchema } from "./message.js"
 
 /**
- * TelemetrySetting
- */
-
-export const telemetrySettings = ["unset", "enabled", "disabled"] as const
-
-export const telemetrySettingsSchema = z.enum(telemetrySettings)
-
-export type TelemetrySetting = z.infer<typeof telemetrySettingsSchema>
-
-/**
  * TelemetryEventName
  */
 
@@ -75,7 +65,6 @@ export enum TelemetryEventName {
 	SHELL_INTEGRATION_ERROR = "Shell Integration Error",
 	CONSECUTIVE_MISTAKE_ERROR = "Consecutive Mistake Error",
 	CODE_INDEX_ERROR = "Code Index Error",
-	TELEMETRY_SETTINGS_CHANGED = "Telemetry Settings Changed",
 	MODEL_CACHE_EMPTY_RESPONSE = "Model Cache Empty Response",
 	READ_FILE_LEGACY_FORMAT_USED = "Read File Legacy Format Used",
 }
@@ -284,7 +273,6 @@ export type TelemetryEventPayloads = {
 		target: string
 	}
 	[TelemetryEventName.TITLE_BUTTON_CLICKED]: { button: string }
-	[TelemetryEventName.TELEMETRY_SETTINGS_CHANGED]: { previousSetting: TelemetrySetting; newSetting: TelemetrySetting }
 }
 
 /**
@@ -306,7 +294,6 @@ export type TelemetryCaptureArgs<E extends TelemetryEventName> = E extends keyof
  * so adding an event to the enum is enough for it to be accepted.
  */
 const eventsWithDedicatedSchema = [
-	TelemetryEventName.TELEMETRY_SETTINGS_CHANGED,
 	TelemetryEventName.TASK_MESSAGE,
 	TelemetryEventName.LLM_COMPLETION,
 	TelemetryEventName.EMBEDDING_USAGE,
@@ -323,14 +310,6 @@ export const rooCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.enum(genericTelemetryEventNames),
 		properties: telemetryPropertiesSchema,
-	}),
-	z.object({
-		type: z.literal(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED),
-		properties: z.object({
-			...telemetryPropertiesSchema.shape,
-			previousSetting: telemetrySettingsSchema,
-			newSetting: telemetrySettingsSchema,
-		}),
 	}),
 	z.object({
 		type: z.literal(TelemetryEventName.TASK_MESSAGE),
@@ -400,13 +379,12 @@ export interface TelemetryClient {
 	setProvider(provider: TelemetryPropertiesProvider): void
 	capture(options: TelemetryEvent): Promise<void>
 	captureException(error: Error, additionalProperties?: Record<string, unknown>): Promise<void>
-	updateTelemetryState(isOptedIn: boolean): void
 	isTelemetryEnabled(): boolean
 	shutdown(): Promise<void>
 }
 
 /**
- * Generic API provider error class for structured error tracking via PostHog.
+ * Generic API provider error class for structured error tracking.
  * Can be reused by any API provider.
  */
 export class ApiProviderError extends Error {
@@ -430,7 +408,7 @@ export type ConsecutiveMistakeReason = "no_tools_used" | "tool_repetition" | "un
 /**
  * Error class for "Roo is having trouble" consecutive mistake scenarios.
  * Triggered when the task reaches the configured consecutive mistake limit.
- * Used for structured exception tracking via PostHog.
+ * Used for structured exception tracking.
  */
 export class ConsecutiveMistakeError extends Error {
 	constructor(

@@ -171,10 +171,6 @@ vi.mock("@src/utils/extensionBus", () => ({
 	onExtensionMessage: () => () => {},
 	useExtensionMessage: () => {},
 }))
-vi.mock("@src/utils/TelemetryClient", () => ({
-	telemetryClient: { capture: vi.fn() },
-}))
-
 const createExtensionState = (overrides = {}) => ({
 	currentApiConfigName: "default",
 	listApiConfigMeta: [],
@@ -193,7 +189,6 @@ const createExtensionState = (overrides = {}) => ({
 	language: "en",
 	alwaysAllowMcp: false,
 	mcpEnabled: false,
-	telemetrySetting: "unset" as const,
 	experiments: {},
 	customSupportPrompts: {},
 	profileThresholds: {},

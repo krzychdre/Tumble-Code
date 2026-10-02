@@ -266,7 +266,7 @@ export async function stopRepeatedToolCall(
 		await task.askSay.say("user_feedback", text, images)
 	}
 
-	// Track tool repetition in telemetry via PostHog exception tracking and event.
+	// Track tool repetition in telemetry as an exception and an event.
 	TelemetryService.instance.capture(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {
 		taskId: task.taskId,
 	})

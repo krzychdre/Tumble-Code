@@ -20,7 +20,6 @@ const makeClient = () => {
 			events.push(event)
 		}),
 		captureException: vi.fn(),
-		updateTelemetryState: vi.fn(),
 		isTelemetryEnabled: vi.fn(() => true),
 		shutdown: vi.fn(),
 	}
@@ -344,11 +343,6 @@ const payloadRows: Row[] = [
 		"title button clicked",
 		(s) => s.capture(E.TITLE_BUTTON_CLICKED, { button: "plus" }),
 		{ event: E.TITLE_BUTTON_CLICKED, properties: { button: "plus" } },
-	],
-	[
-		"telemetry settings changed",
-		(s) => s.capture(E.TELEMETRY_SETTINGS_CHANGED, { previousSetting: "enabled", newSetting: "disabled" }),
-		{ event: E.TELEMETRY_SETTINGS_CHANGED, properties: { previousSetting: "enabled", newSetting: "disabled" } },
 	],
 ]
 

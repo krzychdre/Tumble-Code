@@ -38,18 +38,6 @@ export class TelemetryService {
 	}
 
 	/**
-	 * Updates the telemetry state based on user preferences and VSCode settings
-	 * @param isOptedIn Whether the user is opted into telemetry
-	 */
-	public updateTelemetryState(isOptedIn: boolean): void {
-		if (!this.isReady) {
-			return
-		}
-
-		this.clients.forEach((client) => client.updateTelemetryState(isOptedIn))
-	}
-
-	/**
 	 * Generic method to capture any type of event with specified properties
 	 * @param eventName The event name to capture
 	 * @param properties The event properties
@@ -78,7 +66,7 @@ export class TelemetryService {
 	}
 
 	/**
-	 * Captures an exception using PostHog's error tracking
+	 * Captures an exception
 	 * @param error The error to capture
 	 * @param additionalProperties Additional properties to include with the exception
 	 */

@@ -1,13 +1,12 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { Trans } from "react-i18next"
 import { Download, Upload, TriangleAlert } from "lucide-react"
 
 import { Package } from "@roo/package"
 
 import { vscode } from "@/utils/vscode"
 import { cn } from "@/lib/utils"
-import { Button, Link, LabeledCheckbox } from "@/components/ui"
+import { Button, LabeledCheckbox } from "@/components/ui"
 
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
@@ -18,7 +17,6 @@ type AboutProps = HTMLAttributes<HTMLDivElement>
 
 export const About = ({ className, ...props }: AboutProps) => {
 	const { t } = useAppTranslation()
-	const [telemetrySetting, setTelemetrySetting] = useSetting("telemetrySetting")
 	const [debug, setDebug] = useSetting("debug")
 
 	return (
@@ -31,29 +29,6 @@ export const About = ({ className, ...props }: AboutProps) => {
 						? `Version: ${Package.version} (${Package.sha.slice(0, 8)})`
 						: `Version: ${Package.version}`}
 				</p>
-				<SearchableSetting
-					settingId="about-telemetry"
-					section="about"
-					label={t("settings:footer.telemetry.label")}>
-					<LabeledCheckbox
-						checked={telemetrySetting !== "disabled"}
-						onChange={(e: any) => {
-							const checked = e.target.checked === true
-							setTelemetrySetting(checked ? "enabled" : "disabled")
-						}}>
-						{t("settings:footer.telemetry.label")}
-					</LabeledCheckbox>
-					<p className="text-vscode-descriptionForeground text-sm mt-0">
-						<Trans
-							i18nKey="settings:footer.telemetry.description"
-							components={{
-								privacyLink: (
-									<Link href="https://github.com/krzychdre/Tumble-Code/blob/main/PRIVACY.md" />
-								),
-							}}
-						/>
-					</p>
-				</SearchableSetting>
 				<SearchableSetting
 					settingId="about-debug-mode"
 					section="about"

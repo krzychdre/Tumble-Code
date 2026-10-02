@@ -235,7 +235,7 @@ describe("importExport", () => {
 						customInstructions: "Keep this setting",
 						autoApprovalEnabled: true,
 						requestDelaySeconds: "slow", // invalid: expects number
-						telemetrySetting: "maybe", // invalid: not in enum
+						enterBehavior: "maybe", // invalid: not in enum
 					},
 				}),
 			)
@@ -259,7 +259,7 @@ describe("importExport", () => {
 			expect((result as { warnings?: string[] }).warnings).toEqual(
 				expect.arrayContaining([
 					expect.stringContaining("globalSettings.requestDelaySeconds"),
-					expect.stringContaining("globalSettings.telemetrySetting"),
+					expect.stringContaining("globalSettings.enterBehavior"),
 				]),
 			)
 			expect((mockContextProxy.setValues as Mock).mock.calls[0][0]).toEqual({

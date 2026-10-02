@@ -31,7 +31,6 @@ describe("rooCodeTelemetryEventSchema coverage", () => {
 	it("keeps the dedicated property schemas for the events that have them", () => {
 		const generic = optionsMap.get(TelemetryEventName.TASK_CREATED)
 		const dedicated = [
-			TelemetryEventName.TELEMETRY_SETTINGS_CHANGED,
 			TelemetryEventName.TASK_MESSAGE,
 			TelemetryEventName.LLM_COMPLETION,
 			TelemetryEventName.EMBEDDING_USAGE,

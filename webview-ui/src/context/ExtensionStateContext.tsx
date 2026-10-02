@@ -93,7 +93,6 @@ export interface ExtensionStateContextType extends ExtensionState {
 	awsUsePromptCache?: boolean
 	maxImageFileSize: number
 	maxTotalImageSize: number
-	machineId?: string
 	pinnedApiConfigs?: Record<string, boolean>
 	togglePinnedApiConfig: (configName: string) => void
 	enterBehavior?: "send" | "newline"

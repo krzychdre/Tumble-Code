@@ -785,9 +785,9 @@ export class ClineProvider
 	public static async postStateToAllWebviewsWithoutClineMessages(): Promise<void> {
 		await Promise.all(
 			Array.from(this.activeInstances).map((instance) =>
-				instance.postStateToWebviewWithoutClineMessages().catch((error) =>
-					logger.debug(`[ClineProvider] state push to a panel failed: ${String(error)}`),
-				),
+				instance
+					.postStateToWebviewWithoutClineMessages()
+					.catch((error) => logger.debug(`[ClineProvider] state push to a panel failed: ${String(error)}`)),
 			),
 		)
 	}
@@ -1118,7 +1118,6 @@ export class ClineProvider
 			extensionUri: this.contextProxy.extensionUri,
 			title: "Tumble Code",
 			connectOrigins: [openRouterOrigin(openRouterBaseUrl)],
-			hmrAnalyticsOrigins: ["https://*.posthog.com"],
 		}
 	}
 

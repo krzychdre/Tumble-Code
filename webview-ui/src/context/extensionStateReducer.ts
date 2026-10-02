@@ -101,7 +101,6 @@ const createInitialExtensionState = (): ExtensionState => ({
 	maxOpenTabsContext: 20,
 	maxWorkspaceFiles: 200,
 	cwd: "",
-	telemetrySetting: "unset",
 	showRooIgnoredFiles: true, // Default to showing .rooignore'd files with lock symbol (current behavior).
 	enableSubfolderRules: false, // Default to disabled - must be enabled to load rules from subdirectories
 	renderContext: "sidebar",

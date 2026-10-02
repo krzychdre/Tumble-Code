@@ -41,13 +41,6 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 		} as never),
 }))
 
-// Mock telemetry client
-vi.mock("@/utils/TelemetryClient", () => ({
-	telemetryClient: {
-		capture: vi.fn(),
-	},
-}))
-
 const mockUseTranslation = vi.mocked(useTranslation)
 const mockVscode = vi.mocked(vscode)
 

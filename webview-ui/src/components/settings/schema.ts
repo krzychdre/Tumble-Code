@@ -70,7 +70,7 @@ const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringif
  * Every setting the Save button sends, in the order it sends them.
  *
  * Not here, on purpose:
- * - `telemetrySetting`, `debug` and the provider profile (`apiConfiguration`)
+ * - `debug` and the provider profile (`apiConfiguration`)
  *   are in the Save buffer but go to the host through their own messages.
  * - `mcpEnabled`, `autoApprovalMode`, `showWorktreesInHomeScreen`: their
  *   controls read the live state and post at once; Save must not echo the
@@ -193,7 +193,6 @@ export type ImmediateSettingsKey =
 /** The keys the Save buffer holds: the saved settings plus those sent by their own messages. */
 export const BUFFERED_KEYS = Object.freeze([
 	...SAVED_SETTINGS_KEYS,
-	"telemetrySetting",
 	"debug",
 	"apiConfiguration",
 ] as const satisfies readonly (keyof ExtensionState)[])

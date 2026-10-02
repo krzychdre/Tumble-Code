@@ -73,10 +73,6 @@ vi.mock("@src/components/welcome/RooHero", () => ({
 	default: () => <div data-testid="roo-hero">Hero content</div>,
 }))
 
-vi.mock("../common/TelemetryBanner", () => ({
-	default: () => null,
-}))
-
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string) => key,
