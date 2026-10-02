@@ -279,7 +279,7 @@ In short:
   and `GET /app/login`, `POST /app/logout` for the web panel.
 - Extension API on `cloudApiUrl`: `GET /api/extension-settings`, `PATCH /api/user-settings`,
   `POST /api/extension/share`, `GET /api/extension/bridge/config`, `POST /api/events`, `POST /api/events/backfill`.
-- Web panel: `/app` (task list, task pages, metrics, settings) and `/shared/{task_id}` for shared tasks.
+- Web panel: `/app` (task list, task pages, metrics, diagnostics, settings) and `/shared/{task_id}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
 - Health: `GET /health` (process alive), `GET /health/ready` (database reachable).
 

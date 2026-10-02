@@ -46,7 +46,7 @@ describe("tumbleCodeTelemetryEventSchema coverage", () => {
 		}
 	})
 
-	it("validates a generic event and strips unknown properties", () => {
+	it("validates a generic event and keeps its own properties", () => {
 		const result = tumbleCodeTelemetryEventSchema.safeParse({
 			type: TelemetryEventName.TOOL_USED,
 			properties: {
@@ -63,6 +63,6 @@ describe("tumbleCodeTelemetryEventSchema coverage", () => {
 		})
 
 		expect(result.success).toBe(true)
-		expect(result.data?.properties).not.toHaveProperty("tool")
+		expect(result.data?.properties).toHaveProperty("tool", "read_file")
 	})
 })

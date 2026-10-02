@@ -27,6 +27,27 @@ LLM_COMPLETION_EVENT = "LLM Completion"
 # conversation actually cost.
 EMBEDDING_EVENT = "Embedding Usage"
 
+# TelemetryEventName.TASK_MESSAGE and TASK_CONVERSATION_MESSAGE: copies of the
+# conversation itself, not something that happened in the extension.
+TASK_MESSAGE_EVENT = "Task Message"
+CONVERSATION_MESSAGE_EVENT = "Conversation Message"
+
+# TelemetryEventName.EXCEPTION: an Error the extension passed to
+# captureException, with its name, message, a shortened stack and its own
+# fields (provider, modelId, taskId, ...).
+EXCEPTION_EVENT = "Exception"
+
+# The events the diagnostics page counts as errors, with how each reads there.
+ERROR_EVENT_LABELS: dict[str, str] = {
+    EXCEPTION_EVENT: "Exception",
+    "Code Index Error": "Code index",
+    "Diff Application Error": "Diff not applied",
+    "Consecutive Mistake Error": "Mistake limit reached",
+    "Schema Validation Error": "Settings failed validation",
+    "Shell Integration Error": "Shell integration unavailable",
+    "Model Cache Empty Response": "Empty model list",
+}
+
 # Which part of the extension made a completion. Only ``task`` calls are turns
 # of the conversation; the rest is the machinery around it (summarising the
 # history, rewriting a prompt, ranking memories). Rows written before the

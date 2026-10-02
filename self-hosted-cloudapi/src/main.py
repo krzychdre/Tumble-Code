@@ -21,7 +21,7 @@ from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
 from src.routers import auth, extension, settings as settings_router, events, browser
-from src.routers import shared, web_metrics, web_settings, web_tasks
+from src.routers import shared, web_diagnostics, web_metrics, web_settings, web_tasks
 from src.web.static_files import VersionedStaticFiles
 
 
@@ -165,11 +165,13 @@ app.include_router(settings_router.router)
 app.include_router(events.router)
 
 
-# Web UI: task list and task page, metrics, retention settings, share links.
+# Web UI: task list and task page, metrics, diagnostics, retention settings,
+# share links.
 # /app/tasks/{task_id} (GET) is registered before /app/tasks/bulk-delete (POST),
 # as it always was; tests/test_route_table.py pins the pairs whose paths overlap.
 app.include_router(web_tasks.router)
 app.include_router(web_metrics.router)
+app.include_router(web_diagnostics.router)
 app.include_router(web_settings.router)
 app.include_router(shared.router)
 
