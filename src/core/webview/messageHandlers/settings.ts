@@ -3,7 +3,7 @@
 import * as vscode from "vscode"
 import { TelemetryEventName, experimentDefault } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
-import type { Language, AudioType, RooCodeSettings, ExperimentId } from "@roo-code/types"
+import type { Language, AudioType, TumbleCodeSettings, ExperimentId } from "@roo-code/types"
 import { changeLanguage, t } from "../../../i18n"
 import {
 	deleteCustomSound,
@@ -105,7 +105,7 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 					}
 				}
 
-				await provider.contextProxy.setValue(key as keyof RooCodeSettings, newValue)
+				await provider.contextProxy.setValue(key as keyof TumbleCodeSettings, newValue)
 			}
 
 			await provider.postStateToWebview()

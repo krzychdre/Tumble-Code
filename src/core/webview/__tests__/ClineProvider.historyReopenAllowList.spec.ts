@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@roo-code/types"
+import { TumbleCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@roo-code/types"
 
 import { ClineProvider } from "../ClineProvider"
 import { Task } from "../../task/Task"
@@ -71,7 +71,7 @@ vi.mock("@roo-code/telemetry", () => ({
 }))
 vi.mock("@roo-code/cloud", () => ({
 	CloudService: { hasInstance: vi.fn().mockReturnValue(false), instance: { isAuthenticated: vi.fn() } },
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://api.example.com"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("https://api.example.com"),
 }))
 vi.mock("../../../shared/embeddingModels", () => ({ EMBEDDING_MODEL_PROFILES: [] }))
 vi.mock("../../task-persistence", async (importOriginal) => {
@@ -291,7 +291,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		;(provider as any).install(failed)
 		provider.getHistoryItem = vi.fn().mockResolvedValue(historyItem("streaming")) as any
 		;(provider as any).taskCreationCallback(failed)
-		const onAborted = failed.on.mock.calls.find(([event]: [string]) => event === RooCodeEventName.TaskAborted)[1]
+		const onAborted = failed.on.mock.calls.find(([event]: [string]) => event === TumbleCodeEventName.TaskAborted)[1]
 		await onAborted()
 
 		expect(stack).toEqual([failed])
@@ -333,8 +333,8 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		)
 		expect(Task).not.toHaveBeenCalled()
 		expect(stack).toHaveLength(0)
-		expect(emitted).toContain(RooCodeEventName.TaskDelegationCompleted)
-		expect(emitted).not.toContain(RooCodeEventName.TaskDelegationResumed)
+		expect(emitted).toContain(TumbleCodeEventName.TaskDelegationCompleted)
+		expect(emitted).not.toContain(TumbleCodeEventName.TaskDelegationResumed)
 		expect(vscode.window.showErrorMessage).toHaveBeenCalledTimes(1)
 		expect(vi.mocked(vscode.window.showErrorMessage).mock.calls[0][0]).toMatch(/organization/i)
 	})

@@ -7,7 +7,7 @@ import {
 	type ModeConfig,
 	type ProviderSettings,
 	type ProviderSettingsEntry,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	getModelId,
 	readCliRuntimeEnv,
 	TelemetryEventName,
@@ -172,7 +172,7 @@ export class ModeProfileBinding {
 
 		if (task) {
 			TelemetryService.instance.capture(TelemetryEventName.MODE_SWITCH, { taskId: task.taskId, newMode })
-			task.emit(RooCodeEventName.TaskModeSwitched, task.taskId, newMode)
+			task.emit(TumbleCodeEventName.TaskModeSwitched, task.taskId, newMode)
 
 			try {
 				// Update the task history with the new mode first.

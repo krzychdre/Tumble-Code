@@ -36,7 +36,7 @@ import {
 	type ModelInfo,
 	type ClineApiReqCancelReason,
 	type ClineApiReqInfo,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	TelemetryEventName,
 	TaskStatus,
 	TodoItem,
@@ -998,8 +998,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.messageQueueService = new MessageQueueService()
 
 		this.messageQueueStateChangedHandler = () => {
-			this.emit(RooCodeEventName.TaskUserMessage, this.taskId)
-			this.emit(RooCodeEventName.QueuedMessagesUpdated, this.taskId, this.messageQueueService.messages)
+			this.emit(TumbleCodeEventName.TaskUserMessage, this.taskId)
+			this.emit(TumbleCodeEventName.QueuedMessagesUpdated, this.taskId, this.messageQueueService.messages)
 			this.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
 		}
 
@@ -1067,7 +1067,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// never both fire for one completion. Gated to the main agent
 		// internally. The listener is cleaned up by `removeAllListeners()` in
 		// dispose().
-		this.on(RooCodeEventName.TaskCompleted, () => {
+		this.on(TumbleCodeEventName.TaskCompleted, () => {
 			// Background tasks (the memory writer itself, parallel subagents) must
 			// not spawn their own memory writers — that would recurse.
 			if (this.isBackground) return
@@ -1341,7 +1341,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					}
 				}
 
-				this.emit(RooCodeEventName.TaskUserMessage, this.taskId)
+				this.emit(TumbleCodeEventName.TaskUserMessage, this.taskId)
 
 				// Handle the message directly instead of routing through the webview.
 				// This avoids a race condition where the webview's message state hasn't
@@ -1448,7 +1448,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * caller — through a single chokepoint.
 	 */
 	public override emit<K extends keyof TaskEvents>(event: K, ...args: TaskEvents[K]): boolean {
-		if (event === RooCodeEventName.TaskCompleted || event === RooCodeEventName.TaskAborted) {
+		if (event === TumbleCodeEventName.TaskCompleted || event === TumbleCodeEventName.TaskAborted) {
 			this.terminalEventEmitted = true
 		}
 		// Cast through unknown: Node's EventEmitter typings use a conditional
@@ -1477,7 +1477,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// are still attached and can run.
 		if (!this.terminalEventEmitted) {
 			try {
-				this.emit(RooCodeEventName.TaskAborted)
+				this.emit(TumbleCodeEventName.TaskAborted)
 			} catch (error) {
 				logger.error(
 					`[Task#${this.taskId}.${this.instanceId}] Error emitting final TaskAborted during dispose:`,

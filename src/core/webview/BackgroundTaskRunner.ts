@@ -2,7 +2,7 @@ import * as path from "path"
 import fs from "fs/promises"
 import * as vscode from "vscode"
 
-import { type ExtensionMessage, type ProviderSettings, type TodoItem, RooCodeEventName } from "@roo-code/types"
+import { type ExtensionMessage, type ProviderSettings, type TodoItem, TumbleCodeEventName } from "@roo-code/types"
 
 import { buildApiHandler } from "../../api"
 import { Task, type AutoApprovalOverride } from "../task/Task"
@@ -232,8 +232,8 @@ export class BackgroundTaskRunner {
 			}) => {
 				if (settled) return
 				settled = true
-				task.off(RooCodeEventName.TaskCompleted, onCompleted)
-				task.off(RooCodeEventName.TaskAborted, onAborted)
+				task.off(TumbleCodeEventName.TaskCompleted, onCompleted)
+				task.off(TumbleCodeEventName.TaskAborted, onAborted)
 				options.signal?.removeEventListener("abort", onSignalAbort)
 				// Capture the set of files the task wrote/edited BEFORE disposing it
 				// (dispose tears down the tracker). Resolve to absolute paths.
@@ -282,8 +282,8 @@ export class BackgroundTaskRunner {
 					...(task.apiFailureMessage ? { failureMessage: task.apiFailureMessage } : {}),
 				})
 
-			task.on(RooCodeEventName.TaskCompleted, onCompleted)
-			task.on(RooCodeEventName.TaskAborted, onAborted)
+			task.on(TumbleCodeEventName.TaskCompleted, onCompleted)
+			task.on(TumbleCodeEventName.TaskAborted, onAborted)
 
 			if (options.signal) {
 				if (options.signal.aborted) onSignalAbort()

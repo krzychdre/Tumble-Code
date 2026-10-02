@@ -1,4 +1,4 @@
-import { RooCodeEventName, type ClineMessage, type RooCodeAPI } from "@roo-code/types"
+import { TumbleCodeEventName, type ClineMessage, type TumbleCodeAPI } from "@roo-code/types"
 
 type WaitForOptions = {
 	timeout?: number
@@ -40,18 +40,18 @@ export const waitFor = (
 }
 
 type WaitUntilAbortedOptions = WaitForOptions & {
-	api: RooCodeAPI
+	api: TumbleCodeAPI
 	taskId: string
 }
 
 export const waitUntilAborted = async ({ api, taskId, ...options }: WaitUntilAbortedOptions) => {
 	const set = new Set<string>()
-	api.on(RooCodeEventName.TaskAborted, (taskId) => set.add(taskId))
+	api.on(TumbleCodeEventName.TaskAborted, (taskId) => set.add(taskId))
 	await waitFor(() => set.has(taskId), options)
 }
 
 type WaitUntilCompletedOptions = WaitForOptions & {
-	api: RooCodeAPI
+	api: TumbleCodeAPI
 	taskId: string
 }
 
@@ -75,14 +75,14 @@ export const waitUntilCompleted = async ({ api, taskId, ...options }: WaitUntilC
 		}
 	}
 
-	api.on(RooCodeEventName.TaskCompleted, onCompleted)
-	api.on(RooCodeEventName.Message, onMessage)
+	api.on(TumbleCodeEventName.TaskCompleted, onCompleted)
+	api.on(TumbleCodeEventName.Message, onMessage)
 
 	try {
 		await waitFor(() => set.has(taskId), options)
 	} finally {
-		api.off(RooCodeEventName.TaskCompleted, onCompleted)
-		api.off(RooCodeEventName.Message, onMessage)
+		api.off(TumbleCodeEventName.TaskCompleted, onCompleted)
+		api.off(TumbleCodeEventName.Message, onMessage)
 	}
 }
 

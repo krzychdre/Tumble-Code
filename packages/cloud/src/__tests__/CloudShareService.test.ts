@@ -35,7 +35,7 @@ vi.mock("vscode", () => ({
 }))
 
 vi.mock("../config", () => ({
-	getRooCodeApiUrl: () => "http://localhost:8080",
+	getTumbleCodeApiUrl: () => "http://localhost:8080",
 }))
 
 vi.mock("../utils", () => ({

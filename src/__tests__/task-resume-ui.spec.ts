@@ -110,7 +110,7 @@ vi.mock("@roo-code/cloud", () => ({
 			return { isAuthenticated: vi.fn().mockReturnValue(false) }
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 vi.mock("../shared/modes", () => ({
 	modes: [{ slug: "code", name: "Code Mode", roleDefinition: "You are a code assistant", groups: ["read", "edit"] }],

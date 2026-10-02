@@ -10,7 +10,7 @@ import {
 	type ContextTruncation,
 	type ContextPrune,
 	type QueuedMessage,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	TaskStatus,
 	isIdleAsk,
 	isInteractiveAsk,
@@ -144,7 +144,7 @@ export class TaskAskSay {
 		// simply removes the reference to this instance, but the instance is
 		// still alive until this promise resolves or rejects.)
 		if (this.access.abort) {
-			throw new Error(`[RooCode#ask] task ${this.access.taskId}.${this.access.instanceId} aborted`)
+			throw new Error(`[TumbleCode#ask] task ${this.access.taskId}.${this.access.instanceId} aborted`)
 		}
 
 		let askTs: number
@@ -401,7 +401,7 @@ export class TaskAskSay {
 
 						if (message) {
 							this.access.interactiveAsk = message
-							this.access.emit(RooCodeEventName.TaskInteractive, this.access.taskId)
+							this.access.emit(TumbleCodeEventName.TaskInteractive, this.access.taskId)
 							provider?.postMessageToWebview({ type: "interactionRequired" })
 						}
 					}, statusMutationTimeout),
@@ -413,7 +413,7 @@ export class TaskAskSay {
 
 						if (message) {
 							this.access.resumableAsk = message
-							this.access.emit(RooCodeEventName.TaskResumable, this.access.taskId)
+							this.access.emit(TumbleCodeEventName.TaskResumable, this.access.taskId)
 						}
 					}, statusMutationTimeout),
 				)
@@ -424,7 +424,7 @@ export class TaskAskSay {
 
 						if (message) {
 							this.access.idleAsk = message
-							this.access.emit(RooCodeEventName.TaskIdle, this.access.taskId)
+							this.access.emit(TumbleCodeEventName.TaskIdle, this.access.taskId)
 						}
 					}, statusMutationTimeout),
 				)
@@ -522,10 +522,10 @@ export class TaskAskSay {
 			this.access.idleAsk = undefined
 			this.access.resumableAsk = undefined
 			this.access.interactiveAsk = undefined
-			this.access.emit(RooCodeEventName.TaskActive, this.access.taskId)
+			this.access.emit(TumbleCodeEventName.TaskActive, this.access.taskId)
 		}
 
-		this.access.emit(RooCodeEventName.TaskAskResponded)
+		this.access.emit(TumbleCodeEventName.TaskAskResponded)
 		return result
 	}
 
@@ -618,7 +618,7 @@ export class TaskAskSay {
 		contextPrune?: ContextPrune,
 	): Promise<undefined> {
 		if (this.access.abort) {
-			throw new Error(`[RooCode#say] task ${this.access.taskId}.${this.access.instanceId} aborted`)
+			throw new Error(`[TumbleCode#say] task ${this.access.taskId}.${this.access.instanceId} aborted`)
 		}
 
 		if (partial !== undefined) {

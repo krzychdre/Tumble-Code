@@ -20,7 +20,7 @@ import { customModesSettingsSchema, groupEntryArraySchema, modeConfigSchema } fr
 import { organizationAllowListSchema, organizationSettingsSchema, userSettingsDataSchema } from "../cloud.js"
 import { installMarketplaceItemOptionsSchema, mcpParameterSchema } from "../marketplace.js"
 import { globalSettingsSchema } from "../global-settings.js"
-import { RooCodeEventName, taskEventSchema } from "../events.js"
+import { TumbleCodeEventName, taskEventSchema } from "../events.js"
 
 /** The exact text CustomModesManager shows for a broken .roomodes file. */
 const formatIssues = (error: z.ZodError) => error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`)
@@ -54,8 +54,8 @@ describe("zod behavior characterization (DEP-8)", () => {
 				{ execute_command: { attempts: 1, failures: 0 } },
 				{ isSubtask: false },
 			]
-			const parsed = taskEventSchema.parse({ eventName: RooCodeEventName.TaskCompleted, payload })
-			if (parsed.eventName !== RooCodeEventName.TaskCompleted) throw new Error("wrong event")
+			const parsed = taskEventSchema.parse({ eventName: TumbleCodeEventName.TaskCompleted, payload })
+			if (parsed.eventName !== TumbleCodeEventName.TaskCompleted) throw new Error("wrong event")
 			expect(parsed.payload[2]).toEqual({ execute_command: { attempts: 1, failures: 0 } })
 		})
 	})

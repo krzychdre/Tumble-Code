@@ -37,7 +37,7 @@ const MIN_NODE_MAJOR = 22
 
 /**
  * The cloud API the extension talks to, with the precedence of
- * `getRooCodeApiUrl` in packages/cloud/src/config.ts (the CLI sets no runtime
+ * `getTumbleCodeApiUrl` in packages/cloud/src/config.ts (the CLI sets no runtime
  * override, so the environment variable or the production URL applies). The
  * CLI does not depend on @roo-code/cloud, whose entry point loads VS Code.
  */

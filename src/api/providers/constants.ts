@@ -11,5 +11,5 @@ export const APP_ATTRIBUTION_HEADERS = {
 
 export const DEFAULT_HEADERS = {
 	...APP_ATTRIBUTION_HEADERS,
-	"User-Agent": `RooCode/${Package.version}`,
+	"User-Agent": `TumbleCode/${Package.version}`,
 }

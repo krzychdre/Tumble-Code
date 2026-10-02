@@ -1,7 +1,7 @@
 // npx vitest run __tests__/new-task-delegation.spec.ts
 
 import { describe, it, expect, vi } from "vitest"
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 import { Task } from "../core/task/Task"
 import { TaskSubtasks } from "../core/task/TaskSubtasks"
 
@@ -38,8 +38,8 @@ describe("TaskSubtasks.startSubtask() metadata-driven delegation", () => {
 		expect((parent as any).isPaused).not.toBe(true)
 		expect((parent as any).childTaskId).toBeUndefined()
 		const emittedEvents = (parent.emit as any).mock.calls.map((c: any[]) => c[0])
-		expect(emittedEvents).not.toContain(RooCodeEventName.TaskPaused)
-		expect(emittedEvents).not.toContain(RooCodeEventName.TaskUnpaused)
+		expect(emittedEvents).not.toContain(TumbleCodeEventName.TaskPaused)
+		expect(emittedEvents).not.toContain(TumbleCodeEventName.TaskUnpaused)
 
 		// Legacy path not used
 		expect(provider.createTask).not.toHaveBeenCalled()

@@ -9,7 +9,7 @@ import {
 	type ModeConfig,
 	type OrganizationAllowList,
 	type ProviderName,
-	type RooCodeSettings,
+	type TumbleCodeSettings,
 	type SubagentSummary,
 	ORGANIZATION_ALLOW_ALL,
 	SETTINGS_DEFAULT_KEYS,
@@ -18,7 +18,7 @@ import {
 	experimentDefault,
 	formatLanguage,
 } from "@roo-code/types"
-import { CloudService, getRooCodeApiUrl } from "@roo-code/cloud"
+import { CloudService, getTumbleCodeApiUrl } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { defaultModeSlug } from "../../shared/modes"
@@ -83,7 +83,7 @@ const PASSTHROUGH_SETTING_KEYS = [
 	"imageGenerationProvider",
 	"openRouterImageApiKey",
 	"openRouterImageGenerationSelectedModel",
-] as const satisfies readonly (keyof RooCodeSettings)[]
+] as const satisfies readonly (keyof TumbleCodeSettings)[]
 
 /**
  * Keys `getState()` carries for host code that the webview state never had.
@@ -107,7 +107,7 @@ const pick = <T extends object, K extends keyof T>(source: T, keys: readonly K[]
  * first built-in mode, the VS Code display language, the experiment and
  * embedding-model registries).
  */
-const resolveHostSettings = <T extends Partial<RooCodeSettings>>(values: T) => {
+const resolveHostSettings = <T extends Partial<TumbleCodeSettings>>(values: T) => {
 	const settings = resolveSettings(values)
 	return {
 		settings,
@@ -365,7 +365,7 @@ export class ProviderStateBuilder {
 		const state = await this.sources.getState()
 		// Resolve again: a no-op for the real getState(), and it keeps every
 		// default in place when getState() is replaced (tests, partial states).
-		const { settings, ...hostDefaults } = resolveHostSettings(state as Partial<RooCodeSettings>)
+		const { settings, ...hostDefaults } = resolveHostSettings(state as Partial<TumbleCodeSettings>)
 		const {
 			lastShownAnnouncementId: _lastShownAnnouncementId,
 			apiModelId: _apiModelId,
@@ -420,7 +420,7 @@ export class ProviderStateBuilder {
 			// the user had entered it (DEF-C42). Unset means "use the model's own
 			// dimension"; the form shows its placeholder instead.
 			codebaseIndexConfig: settings.codebaseIndexConfig,
-			cloudApiUrl: getRooCodeApiUrl(),
+			cloudApiUrl: getTumbleCodeApiUrl(),
 			hasOpenedModeSelector: this.sources.getHasOpenedModeSelector() ?? false,
 			openAiCodexIsAuthenticated: await (async () => {
 				try {
@@ -506,7 +506,7 @@ export class ProviderStateBuilder {
 	/** User-uploaded custom sound files as webview URIs (a missing entry means the built-in sound). */
 	private async resolveCustomSoundUris(
 		settings: Pick<
-			RooCodeSettings,
+			TumbleCodeSettings,
 			"customSoundCelebration" | "customSoundProgressLoop" | "customSoundNotification"
 		>,
 	): Promise<NonNullable<ExtensionState["customSoundUris"]>> {

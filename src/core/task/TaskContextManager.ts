@@ -8,7 +8,7 @@ import {
 	type ContextCondense,
 	type ContextTruncation,
 	type ContextPrune,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	countEnabledMcpTools,
 	isPruneBeforeCondenseEnabled,
 	resolvePruneToolResultBudget,

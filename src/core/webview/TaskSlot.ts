@@ -1,4 +1,4 @@
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 import { t } from "../../i18n"
 import type { Task } from "../task/Task"
@@ -65,7 +65,7 @@ export class TaskSlot {
 	 */
 	async set(task: Task): Promise<void> {
 		this.currentTask = task
-		task.emit(RooCodeEventName.TaskFocused)
+		task.emit(TumbleCodeEventName.TaskFocused)
 
 		// Perform special setup provider specific tasks.
 		await this.host.performPreparationTasks(task)
@@ -100,7 +100,7 @@ export class TaskSlot {
 		this.host.removeTaskEventListeners(oldTask)
 
 		this.currentTask = task
-		task.emit(RooCodeEventName.TaskFocused)
+		task.emit(TumbleCodeEventName.TaskFocused)
 
 		await this.host.performPreparationTasks(task)
 	}
@@ -135,7 +135,7 @@ export class TaskSlot {
 		// its semantics. For a pure abandonment (history switch), the
 		// detached children stay visible until the next task boundary.
 
-		task.emit(RooCodeEventName.TaskUnfocused)
+		task.emit(TumbleCodeEventName.TaskUnfocused)
 
 		try {
 			// Abort the running task and set isAbandoned to true so
@@ -179,7 +179,7 @@ export class TaskSlot {
 
 	/**
 	 * The legacy stack-shape view of the slot: the occupant's id alone, or
-	 * empty. Kept because `RooCodeAPI.getCurrentTaskStack` (and
+	 * empty. Kept because `TumbleCodeAPI.getCurrentTaskStack` (and
 	 * DelegationService's reattach proofs) speak this shape.
 	 */
 	getTaskIds(): string[] {

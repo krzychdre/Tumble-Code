@@ -122,7 +122,7 @@ describe("OpenAiHandler", () => {
 				defaultHeaders: {
 					"HTTP-Referer": "https://github.com/krzychdre/Tumble-Code",
 					"X-Title": "Tumble Code",
-					"User-Agent": `RooCode/${Package.version}`,
+					"User-Agent": `TumbleCode/${Package.version}`,
 				},
 				timeout: expect.any(Number),
 			})

@@ -6,7 +6,7 @@ import {
 	type ClineApiReqCancelReason,
 	type ClineMessage,
 	type TaskEvents,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	getMaxMcpToolsThreshold,
 	TOO_MANY_TOOLS_DISMISSAL_ID,
 	SETTINGS_DEFAULTS,
@@ -254,7 +254,7 @@ export class TaskLifecycle {
 			}
 		}
 
-		provider.on(RooCodeEventName.ProviderProfileChanged, this.access.providerProfileChangeListener)
+		provider.on(TumbleCodeEventName.ProviderProfileChanged, this.access.providerProfileChangeListener)
 	}
 
 	// ======================
@@ -618,7 +618,7 @@ export class TaskLifecycle {
 		// Force final token usage update before abort event
 		this.access.emitFinalTokenUsageUpdate()
 
-		this.access.emit(RooCodeEventName.TaskAborted)
+		this.access.emit(TumbleCodeEventName.TaskAborted)
 
 		// Memory background writers: fire-and-forget extraction + dream at task
 		// end. Both are gated internally (memory enabled, main agent, no direct
@@ -876,7 +876,7 @@ export class TaskLifecycle {
 			if (this.access.providerProfileChangeListener) {
 				const provider = this.access.providerRef.deref()
 				if (provider) {
-					provider.off(RooCodeEventName.ProviderProfileChanged, this.access.providerProfileChangeListener)
+					provider.off(TumbleCodeEventName.ProviderProfileChanged, this.access.providerProfileChangeListener)
 				}
 				this.access.providerProfileChangeListener = undefined
 			}

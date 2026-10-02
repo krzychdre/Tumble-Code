@@ -1,16 +1,16 @@
 // npx vitest run src/__tests__/telemetry-schema-coverage.spec.ts
 //
 // Every TelemetryEventName member must be accepted by exactly one branch of
-// rooCodeTelemetryEventSchema; an event missing from the schema is silently
+// tumbleCodeTelemetryEventSchema; an event missing from the schema is silently
 // dropped by the cloud telemetry client.
 
-import { TelemetryEventName, rooCodeTelemetryEventSchema } from "../telemetry.js"
+import { TelemetryEventName, tumbleCodeTelemetryEventSchema } from "../telemetry.js"
 
 import { discriminatorMap } from "./helpers/discriminated-union.js"
 
-const optionsMap = discriminatorMap(rooCodeTelemetryEventSchema, "type")
+const optionsMap = discriminatorMap(tumbleCodeTelemetryEventSchema, "type")
 
-describe("rooCodeTelemetryEventSchema coverage", () => {
+describe("tumbleCodeTelemetryEventSchema coverage", () => {
 	const allEvents = Object.values(TelemetryEventName)
 
 	it("has a schema entry for every enum member", () => {
@@ -47,7 +47,7 @@ describe("rooCodeTelemetryEventSchema coverage", () => {
 	})
 
 	it("validates a generic event and strips unknown properties", () => {
-		const result = rooCodeTelemetryEventSchema.safeParse({
+		const result = tumbleCodeTelemetryEventSchema.safeParse({
 			type: TelemetryEventName.TOOL_USED,
 			properties: {
 				appName: "a",

@@ -15,7 +15,7 @@
 // the real `ClineProvider.clearTask` / `clearCurrentTask` bodies bound to
 // a minimal provider stand-in. Only the memory writer entry points are spied.
 
-import { RooCodeEventName, type ProviderSettings } from "@roo-code/types"
+import { TumbleCodeEventName, type ProviderSettings } from "@roo-code/types"
 
 const { extractSpy, dreamSpy, drainExtractionSpy, drainDreamsSpy, captureTaskCompletedSpy } = vi.hoisted(() => ({
 	captureTaskCompletedSpy: vi.fn(),
@@ -253,7 +253,7 @@ describe("memory writers after a normally completed task", () => {
 		const provider = makeProvider()
 		const task = makeTask(provider)
 		const completed = vi.fn()
-		task.on(RooCodeEventName.TaskCompleted, completed)
+		task.on(TumbleCodeEventName.TaskCompleted, completed)
 
 		const { run } = await completeAndWaitForAsk(task)
 		task.handleWebviewAskResponse("yesButtonClicked")
@@ -336,8 +336,8 @@ describe("task-completed telemetry after a normally completed task", () => {
 	function trackEvents(task: Task) {
 		const completed = vi.fn()
 		const aborted = vi.fn()
-		task.on(RooCodeEventName.TaskCompleted, completed)
-		task.on(RooCodeEventName.TaskAborted, aborted)
+		task.on(TumbleCodeEventName.TaskCompleted, completed)
+		task.on(TumbleCodeEventName.TaskAborted, aborted)
 		return { completed, aborted }
 	}
 

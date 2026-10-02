@@ -118,7 +118,7 @@ describe("Built-in Commands", () => {
 			]) {
 				expect(content).not.toContain(stale)
 			}
-			expect(content).not.toMatch(/Roo Code|roo-cline|RooCode/i)
+			expect(content).not.toMatch(/Roo ?Code|roo-cline/i)
 		})
 
 		it("init examples are marked as placeholders the model must not copy", async () => {

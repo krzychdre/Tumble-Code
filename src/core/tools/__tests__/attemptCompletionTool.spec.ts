@@ -1,5 +1,5 @@
 import type { Mock } from "vitest"
-import { RooCodeEventName, TelemetryEventName, TodoItem } from "@roo-code/types"
+import { TumbleCodeEventName, TelemetryEventName, TodoItem } from "@roo-code/types"
 
 import type { ToolUse } from "../../../shared/tools"
 
@@ -511,7 +511,7 @@ describe("attemptCompletionTool", () => {
 				expect(mockHandleError).not.toHaveBeenCalled()
 				expect(mockCapture).toHaveBeenCalledWith(TelemetryEventName.TASK_COMPLETED, { taskId: "task_1" })
 				expect(mockTask.emit).toHaveBeenCalledWith(
-					RooCodeEventName.TaskCompleted,
+					TumbleCodeEventName.TaskCompleted,
 					"task_1",
 					expect.anything(),
 					expect.anything(),
@@ -642,7 +642,7 @@ describe("attemptCompletionTool", () => {
 				expect(mockHandleError).not.toHaveBeenCalled()
 				expect(mockCapture).not.toHaveBeenCalledWith(TelemetryEventName.TASK_COMPLETED, expect.anything())
 				expect(mockTask.emit).not.toHaveBeenCalledWith(
-					RooCodeEventName.TaskCompleted,
+					TumbleCodeEventName.TaskCompleted,
 					expect.anything(),
 					expect.anything(),
 					expect.anything(),

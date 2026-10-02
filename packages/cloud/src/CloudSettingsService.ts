@@ -19,7 +19,7 @@ import {
 	ORGANIZATION_ALLOW_ALL,
 } from "@roo-code/types"
 
-import { getRooCodeApiUrl } from "./config.js"
+import { getTumbleCodeApiUrl } from "./config.js"
 import { RefreshTimer } from "./RefreshTimer.js"
 
 const ORGANIZATION_SETTINGS_CACHE_KEY = "organization-settings"
@@ -112,7 +112,7 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 		}
 
 		try {
-			const response = await fetch(`${getRooCodeApiUrl()}/api/extension-settings`, {
+			const response = await fetch(`${getTumbleCodeApiUrl()}/api/extension-settings`, {
 				headers: {
 					Authorization: `Bearer ${token}`,
 				},
@@ -226,7 +226,7 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 				requestBody.version = currentVersion
 			}
 
-			const response = await fetch(`${getRooCodeApiUrl()}/api/user-settings`, {
+			const response = await fetch(`${getTumbleCodeApiUrl()}/api/user-settings`, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",

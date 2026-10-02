@@ -151,7 +151,7 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
 vi.mock("../../../shared/modes", () => {
@@ -256,7 +256,6 @@ vi.mock("@roo-code/telemetry", () => ({
 	},
 }))
 
-
 type PostMessage = ReturnType<typeof vi.fn>
 
 const makeContext = () => {
@@ -286,9 +285,11 @@ const makeContext = () => {
 			}),
 		},
 		workspaceState: {
-			get: vi.fn().mockImplementation((key: string, defaultValue?: unknown) =>
-				key in workspaceState ? workspaceState[key] : defaultValue,
-			),
+			get: vi
+				.fn()
+				.mockImplementation((key: string, defaultValue?: unknown) =>
+					key in workspaceState ? workspaceState[key] : defaultValue,
+				),
 			update: vi.fn().mockImplementation((key: string, value: unknown) => {
 				workspaceState[key] = value
 				return Promise.resolve()

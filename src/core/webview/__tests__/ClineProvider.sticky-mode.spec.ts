@@ -144,7 +144,7 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
 vi.mock("../../../shared/modes", () => ({

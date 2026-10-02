@@ -7,7 +7,7 @@ import {
 	type HistoryItem,
 	type TaskProviderEvents,
 	type TodoItem,
-	RooCodeEventName,
+	TumbleCodeEventName,
 } from "@roo-code/types"
 
 import type { Mode } from "../../shared/modes"
@@ -240,7 +240,7 @@ export class DelegationService {
 
 		// 7) Emit TaskDelegated (provider-level)
 		try {
-			this.host.emit(RooCodeEventName.TaskDelegated, parentTaskId, child.taskId)
+			this.host.emit(TumbleCodeEventName.TaskDelegated, parentTaskId, child.taskId)
 		} catch {
 			// non-fatal
 		}
@@ -634,7 +634,12 @@ export class DelegationService {
 
 		// 6) Emit TaskDelegationCompleted (provider-level)
 		try {
-			this.host.emit(RooCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, completionResultSummary)
+			this.host.emit(
+				TumbleCodeEventName.TaskDelegationCompleted,
+				parentTaskId,
+				childTaskId,
+				completionResultSummary,
+			)
 		} catch {
 			// non-fatal
 		}
@@ -677,7 +682,7 @@ export class DelegationService {
 
 		// 9) Emit TaskDelegationResumed (provider-level)
 		try {
-			this.host.emit(RooCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
+			this.host.emit(TumbleCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
 		} catch {
 			// non-fatal
 		}

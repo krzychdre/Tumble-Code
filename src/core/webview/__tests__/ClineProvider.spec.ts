@@ -13,7 +13,7 @@ import {
 	type ExtensionState,
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	experimentDefault,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -387,7 +387,7 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
 afterAll(() => {
@@ -2570,20 +2570,20 @@ describe("ClineProvider", () => {
 	// stack (a missing detach is a leak), with today's handlers and arguments.
 	describe("task event forwarding", () => {
 		const FORWARDED = [
-			RooCodeEventName.TaskStarted,
-			RooCodeEventName.TaskCompleted,
-			RooCodeEventName.TaskAborted,
-			RooCodeEventName.TaskFocused,
-			RooCodeEventName.TaskUnfocused,
-			RooCodeEventName.TaskActive,
-			RooCodeEventName.TaskInteractive,
-			RooCodeEventName.TaskResumable,
-			RooCodeEventName.TaskIdle,
-			RooCodeEventName.TaskPaused,
-			RooCodeEventName.TaskUnpaused,
-			RooCodeEventName.TaskSpawned,
-			RooCodeEventName.TaskUserMessage,
-			RooCodeEventName.TaskTokenUsageUpdated,
+			TumbleCodeEventName.TaskStarted,
+			TumbleCodeEventName.TaskCompleted,
+			TumbleCodeEventName.TaskAborted,
+			TumbleCodeEventName.TaskFocused,
+			TumbleCodeEventName.TaskUnfocused,
+			TumbleCodeEventName.TaskActive,
+			TumbleCodeEventName.TaskInteractive,
+			TumbleCodeEventName.TaskResumable,
+			TumbleCodeEventName.TaskIdle,
+			TumbleCodeEventName.TaskPaused,
+			TumbleCodeEventName.TaskUnpaused,
+			TumbleCodeEventName.TaskSpawned,
+			TumbleCodeEventName.TaskUserMessage,
+			TumbleCodeEventName.TaskTokenUsageUpdated,
 		] as const
 
 		const tokenUsage = { totalTokensIn: 10, totalTokensOut: 20, totalCost: 0.5 } as any
@@ -2605,7 +2605,7 @@ describe("ClineProvider", () => {
 			const task = await makeTask()
 			const emit = vi.spyOn(provider, "emit")
 			attach(task)
-			expect(emit).toHaveBeenCalledWith(RooCodeEventName.TaskCreated, task)
+			expect(emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskCreated, task)
 			expect(Object.fromEntries(task.eventNames().map((e: string) => [e, task.listenerCount(e)]))).toEqual(
 				Object.fromEntries(FORWARDED.map((e) => [e, 1])),
 			)
@@ -2616,37 +2616,37 @@ describe("ClineProvider", () => {
 			attach(task)
 			const emit = vi.spyOn(provider, "emit").mockClear()
 
-			task.emit(RooCodeEventName.TaskStarted)
-			task.emit(RooCodeEventName.TaskFocused)
-			task.emit(RooCodeEventName.TaskUnfocused)
-			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
-			task.emit(RooCodeEventName.TaskActive, "task-1")
-			task.emit(RooCodeEventName.TaskInteractive, "task-1")
-			task.emit(RooCodeEventName.TaskResumable, "task-1")
-			task.emit(RooCodeEventName.TaskIdle, "task-1")
-			task.emit(RooCodeEventName.TaskPaused, "task-1")
-			task.emit(RooCodeEventName.TaskUnpaused, "task-1")
-			task.emit(RooCodeEventName.TaskSpawned, "child-1")
-			task.emit(RooCodeEventName.TaskUserMessage, "task-1")
-			task.emit(RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
-			task.emit(RooCodeEventName.TaskAborted)
+			task.emit(TumbleCodeEventName.TaskStarted)
+			task.emit(TumbleCodeEventName.TaskFocused)
+			task.emit(TumbleCodeEventName.TaskUnfocused)
+			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			task.emit(TumbleCodeEventName.TaskActive, "task-1")
+			task.emit(TumbleCodeEventName.TaskInteractive, "task-1")
+			task.emit(TumbleCodeEventName.TaskResumable, "task-1")
+			task.emit(TumbleCodeEventName.TaskIdle, "task-1")
+			task.emit(TumbleCodeEventName.TaskPaused, "task-1")
+			task.emit(TumbleCodeEventName.TaskUnpaused, "task-1")
+			task.emit(TumbleCodeEventName.TaskSpawned, "child-1")
+			task.emit(TumbleCodeEventName.TaskUserMessage, "task-1")
+			task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
+			task.emit(TumbleCodeEventName.TaskAborted)
 			await new Promise((resolve) => setTimeout(resolve, 0))
 
 			expect(emit.mock.calls).toEqual([
-				[RooCodeEventName.TaskStarted, "task-1"],
-				[RooCodeEventName.TaskFocused, "task-1"],
-				[RooCodeEventName.TaskUnfocused, "task-1"],
-				[RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage],
-				[RooCodeEventName.TaskActive, "task-1"],
-				[RooCodeEventName.TaskInteractive, "task-1"],
-				[RooCodeEventName.TaskResumable, "task-1"],
-				[RooCodeEventName.TaskIdle, "task-1"],
-				[RooCodeEventName.TaskPaused, "task-1"],
-				[RooCodeEventName.TaskUnpaused, "task-1"],
-				[RooCodeEventName.TaskSpawned, "child-1"],
-				[RooCodeEventName.TaskUserMessage, "task-1"],
-				[RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage],
-				[RooCodeEventName.TaskAborted, "task-1"],
+				[TumbleCodeEventName.TaskStarted, "task-1"],
+				[TumbleCodeEventName.TaskFocused, "task-1"],
+				[TumbleCodeEventName.TaskUnfocused, "task-1"],
+				[TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage],
+				[TumbleCodeEventName.TaskActive, "task-1"],
+				[TumbleCodeEventName.TaskInteractive, "task-1"],
+				[TumbleCodeEventName.TaskResumable, "task-1"],
+				[TumbleCodeEventName.TaskIdle, "task-1"],
+				[TumbleCodeEventName.TaskPaused, "task-1"],
+				[TumbleCodeEventName.TaskUnpaused, "task-1"],
+				[TumbleCodeEventName.TaskSpawned, "child-1"],
+				[TumbleCodeEventName.TaskUserMessage, "task-1"],
+				[TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage],
+				[TumbleCodeEventName.TaskAborted, "task-1"],
 			])
 		})
 
@@ -2655,20 +2655,20 @@ describe("ClineProvider", () => {
 			attach(task)
 			const listener = vi.fn()
 
-			provider.on(RooCodeEventName.TaskCompleted, listener)
-			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
-			provider.off(RooCodeEventName.TaskCompleted, listener)
-			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			provider.on(TumbleCodeEventName.TaskCompleted, listener)
+			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			provider.off(TumbleCodeEventName.TaskCompleted, listener)
+			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
 
 			expect(listener.mock.calls).toEqual([["task-1", tokenUsage, toolUsage]])
 		})
 
 		test("the delegation host's emit reaches provider listeners with its arguments", () => {
 			const listener = vi.fn()
-			provider.on(RooCodeEventName.TaskDelegationCompleted, listener)
+			provider.on(TumbleCodeEventName.TaskDelegationCompleted, listener)
 
 			const host = (provider as any).delegation.host
-			expect(host.emit(RooCodeEventName.TaskDelegationCompleted, "parent-1", "child-1", "done")).toBe(true)
+			expect(host.emit(TumbleCodeEventName.TaskDelegationCompleted, "parent-1", "child-1", "done")).toBe(true)
 			expect(listener).toHaveBeenCalledWith("parent-1", "child-1", "done")
 		})
 
@@ -2681,13 +2681,13 @@ describe("ClineProvider", () => {
 			const has = vi.spyOn(registry, "has").mockReturnValue(true)
 			const update = vi.spyOn(registry, "update").mockImplementation(() => {})
 
-			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
-			task.emit(RooCodeEventName.TaskAborted)
-			task.emit(RooCodeEventName.TaskActive, "task-1")
-			task.emit(RooCodeEventName.TaskInteractive, "task-1")
-			task.emit(RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
+			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			task.emit(TumbleCodeEventName.TaskAborted)
+			task.emit(TumbleCodeEventName.TaskActive, "task-1")
+			task.emit(TumbleCodeEventName.TaskInteractive, "task-1")
+			task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
 			has.mockReturnValue(false)
-			task.emit(RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
+			task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
 
 			expect(markTerminal.mock.calls).toEqual([
 				["task-1", "completed"],
@@ -2712,7 +2712,7 @@ describe("ClineProvider", () => {
 			vi.spyOn(provider, "getHistoryItem").mockResolvedValue({ id: "task-1", task: "t" } as any)
 			const rehydrate = vi.spyOn(provider, "createTaskWithHistoryItem").mockResolvedValue(task)
 
-			task.emit(RooCodeEventName.TaskAborted)
+			task.emit(TumbleCodeEventName.TaskAborted)
 			await new Promise((resolve) => setTimeout(resolve, 0))
 
 			expect(rehydrate).toHaveBeenCalledWith({
@@ -2734,10 +2734,10 @@ describe("ClineProvider", () => {
 			for (const event of FORWARDED) {
 				expect(task.listenerCount(event)).toBe(0)
 			}
-			task.emit(RooCodeEventName.TaskStarted)
-			task.emit(RooCodeEventName.TaskIdle, "task-1")
-			expect(emit).not.toHaveBeenCalledWith(RooCodeEventName.TaskStarted, expect.anything())
-			expect(emit).not.toHaveBeenCalledWith(RooCodeEventName.TaskIdle, expect.anything())
+			task.emit(TumbleCodeEventName.TaskStarted)
+			task.emit(TumbleCodeEventName.TaskIdle, "task-1")
+			expect(emit).not.toHaveBeenCalledWith(TumbleCodeEventName.TaskStarted, expect.anything())
+			expect(emit).not.toHaveBeenCalledWith(TumbleCodeEventName.TaskIdle, expect.anything())
 		})
 	})
 })

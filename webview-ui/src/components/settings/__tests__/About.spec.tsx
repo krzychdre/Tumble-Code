@@ -62,7 +62,7 @@ describe("About", () => {
 		)
 		expect(screen.queryByText("settings:about.contactAndCommunity")).not.toBeInTheDocument()
 		const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href") ?? "")
-		expect(hrefs.filter((href) => /roocode|RooCodeInc|reddit\.com|discord\.gg/i.test(href))).toEqual([])
+		expect(hrefs.filter((href) => /roo-?code|reddit\.com|discord\.gg/i.test(href))).toEqual([])
 	})
 
 	it("keeps the debug mode toggle", () => {

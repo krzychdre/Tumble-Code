@@ -1,4 +1,4 @@
-import { ProviderSettings, RooCodeEventName } from "@roo-code/types"
+import { ProviderSettings, TumbleCodeEventName } from "@roo-code/types"
 
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
@@ -197,7 +197,7 @@ describe("Task dispose method", () => {
 
 	test("dispose() emits TaskAborted when no terminal event has fired", () => {
 		const abortedSpy = vi.fn()
-		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+		task.on(TumbleCodeEventName.TaskAborted, abortedSpy)
 
 		task.dispose()
 
@@ -205,18 +205,18 @@ describe("Task dispose method", () => {
 		expect(abortedSpy).toHaveBeenCalledTimes(1)
 
 		// Listeners are removed after the emit, so the spy fired exactly once.
-		expect(task.listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+		expect(task.listenerCount(TumbleCodeEventName.TaskAborted)).toBe(0)
 	})
 
 	test("dispose() does NOT emit TaskAborted when TaskCompleted already fired", () => {
 		const completedSpy = vi.fn()
 		const abortedSpy = vi.fn()
-		task.on(RooCodeEventName.TaskCompleted, completedSpy)
-		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+		task.on(TumbleCodeEventName.TaskCompleted, completedSpy)
+		task.on(TumbleCodeEventName.TaskAborted, abortedSpy)
 
 		// Simulate normal completion: emit TaskCompleted first.
 		task.emit(
-			RooCodeEventName.TaskCompleted,
+			TumbleCodeEventName.TaskCompleted,
 			task.taskId,
 			{
 				totalTokensIn: 0,
@@ -236,10 +236,10 @@ describe("Task dispose method", () => {
 
 	test("dispose() does NOT emit TaskAborted when TaskAborted already fired", () => {
 		const abortedSpy = vi.fn()
-		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+		task.on(TumbleCodeEventName.TaskAborted, abortedSpy)
 
 		// Simulate a normal abort: emit TaskAborted first.
-		task.emit(RooCodeEventName.TaskAborted)
+		task.emit(TumbleCodeEventName.TaskAborted)
 		expect(abortedSpy).toHaveBeenCalledTimes(1)
 
 		task.dispose()
@@ -250,7 +250,7 @@ describe("Task dispose method", () => {
 
 	test("dispose() emits TaskAborted BEFORE removeAllListeners so waiters still fire", () => {
 		const abortedSpy = vi.fn()
-		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+		task.on(TumbleCodeEventName.TaskAborted, abortedSpy)
 
 		// Spy on removeAllListeners to verify ordering.
 		const removeAllListenersSpy = vi.spyOn(task, "removeAllListeners")
@@ -278,7 +278,7 @@ describe("Task dispose method", () => {
 				resolved = true
 				resolve({ completed: false })
 			}
-			task.on(RooCodeEventName.TaskAborted, onAborted)
+			task.on(TumbleCodeEventName.TaskAborted, onAborted)
 		})
 
 		// Dispose without any terminal event.

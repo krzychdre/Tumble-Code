@@ -5,7 +5,7 @@
 // package from carrying its message types and its IPC-only query-response
 // events, which nothing sends any more.
 
-import { RooCodeEventName, rooCodeEventsSchema, taskEventSchema } from "../index.js"
+import { TumbleCodeEventName, tumbleCodeEventsSchema, taskEventSchema } from "../index.js"
 
 const indexModulePath = "../index.js"
 
@@ -22,16 +22,16 @@ describe("@roo-code/types public API without the IPC socket", () => {
 	it.each(["commandsResponse", "modesResponse", "modelsResponse"])(
 		"has no IPC-only query-response event %s",
 		(eventName) => {
-			expect(Object.values(RooCodeEventName)).not.toContain(eventName)
-			expect(Object.keys(rooCodeEventsSchema.shape)).not.toContain(eventName)
+			expect(Object.values(TumbleCodeEventName)).not.toContain(eventName)
+			expect(Object.keys(tumbleCodeEventsSchema.shape)).not.toContain(eventName)
 			expect(taskEventSchema.safeParse({ eventName, payload: [[]] }).success).toBe(false)
 		},
 	)
 
 	it("keeps the events the extension API still emits", () => {
-		expect(RooCodeEventName.TaskCreated).toBe("taskCreated")
-		expect(RooCodeEventName.TaskCompleted).toBe("taskCompleted")
-		expect(RooCodeEventName.ProviderProfileChanged).toBe("providerProfileChanged")
-		expect(RooCodeEventName.EvalPass).toBe("evalPass")
+		expect(TumbleCodeEventName.TaskCreated).toBe("taskCreated")
+		expect(TumbleCodeEventName.TaskCompleted).toBe("taskCompleted")
+		expect(TumbleCodeEventName.ProviderProfileChanged).toBe("providerProfileChanged")
+		expect(TumbleCodeEventName.EvalPass).toBe("evalPass")
 	})
 })

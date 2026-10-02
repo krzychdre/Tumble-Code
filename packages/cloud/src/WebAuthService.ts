@@ -12,7 +12,7 @@ import type {
 	AuthState,
 } from "@roo-code/types"
 
-import { getClerkBaseUrl, getRooCodeApiUrl, PRODUCTION_CLERK_BASE_URL } from "./config.js"
+import { getClerkBaseUrl, getTumbleCodeApiUrl, PRODUCTION_CLERK_BASE_URL } from "./config.js"
 import { getUserAgent } from "./utils.js"
 import { importVscode } from "./importVscode.js"
 import { InvalidClientTokenError } from "./errors.js"
@@ -270,7 +270,7 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 				auth_redirect: `${vscode.env.uriScheme}://${publisher}.${name}`,
 			})
 
-			const url = `${getRooCodeApiUrl()}/extension/sign-in?${params.toString()}`
+			const url = `${getTumbleCodeApiUrl()}/extension/sign-in?${params.toString()}`
 
 			await vscode.env.openExternal(vscode.Uri.parse(url))
 		} catch (error) {

@@ -1,7 +1,7 @@
 import { io, type Socket } from "socket.io-client"
 
 import {
-	RooCodeEventName,
+	TumbleCodeEventName,
 	TaskBridgeEventName,
 	TaskSocketEvents,
 	ExtensionSocketEvents,
@@ -321,17 +321,17 @@ export class BridgeOrchestrator {
 		}
 		const onState: BusListener = (...args) => void this.pushInstanceState(args[0] as string)
 
-		this.add(RooCodeEventName.Message, onMessage)
-		this.add(RooCodeEventName.TaskModeSwitched, onState)
-		this.add(RooCodeEventName.TaskTokenUsageUpdated, onState)
-		this.add(RooCodeEventName.TaskAskResponded, onState)
-		this.add(RooCodeEventName.TaskInteractive, onState)
+		this.add(TumbleCodeEventName.Message, onMessage)
+		this.add(TumbleCodeEventName.TaskModeSwitched, onState)
+		this.add(TumbleCodeEventName.TaskTokenUsageUpdated, onState)
+		this.add(TumbleCodeEventName.TaskAskResponded, onState)
+		this.add(TumbleCodeEventName.TaskInteractive, onState)
 		// Terminal/idle transitions flip isRunning false; without these the cockpit
 		// would keep showing Stop after a running task finishes.
-		this.add(RooCodeEventName.TaskIdle, onState)
-		this.add(RooCodeEventName.TaskResumable, onState)
-		this.add(RooCodeEventName.TaskCompleted, onState)
-		this.add(RooCodeEventName.TaskAborted, onState)
+		this.add(TumbleCodeEventName.TaskIdle, onState)
+		this.add(TumbleCodeEventName.TaskResumable, onState)
+		this.add(TumbleCodeEventName.TaskCompleted, onState)
+		this.add(TumbleCodeEventName.TaskAborted, onState)
 	}
 
 	private add(event: string, listener: BusListener) {

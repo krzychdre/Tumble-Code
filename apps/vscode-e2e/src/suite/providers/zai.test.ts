@@ -1,6 +1,6 @@
 import * as assert from "assert"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { TumbleCodeEventName, type ClineMessage } from "@roo-code/types"
 
 import { waitFor, waitUntilCompleted } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
@@ -184,7 +184,7 @@ suite("Z.ai GLM provider", function () {
 		const api = globalThis.api
 		const messages: ClineMessage[] = []
 
-		api.on(RooCodeEventName.Message, ({ message }) => {
+		api.on(TumbleCodeEventName.Message, ({ message }) => {
 			if (message.type === "say" && message.partial === false) {
 				messages.push(message)
 			}

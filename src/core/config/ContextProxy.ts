@@ -11,7 +11,7 @@ import {
 	type GlobalSettings,
 	type SecretState,
 	type GlobalState,
-	type RooCodeSettings,
+	type TumbleCodeSettings,
 	providerSettingsSchema,
 	globalSettingsSchema,
 	isSecretStateKey,
@@ -27,7 +27,7 @@ import { TaskHistoryStore } from "../task-persistence"
 
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
-type RooCodeSettingsKey = keyof RooCodeSettings
+type TumbleCodeSettingsKey = keyof TumbleCodeSettings
 
 const PASS_THROUGH_STATE_KEYS = [
 	"autoMemoryEnabled",
@@ -240,7 +240,9 @@ export class ContextProxy {
 
 		// Write directly to context.
 		const write =
-			value === undefined ? this.originalContext.secrets.delete(key) : this.originalContext.secrets.store(key, value)
+			value === undefined
+				? this.originalContext.secrets.delete(key)
+				: this.originalContext.secrets.store(key, value)
 		this.notifyChange()
 		return write
 	}
@@ -335,7 +337,7 @@ export class ContextProxy {
 	 * Sanitizes provider values by resetting unknown apiProvider values.
 	 * Active and retired providers are preserved.
 	 */
-	private sanitizeProviderValues(values: RooCodeSettings): RooCodeSettings {
+	private sanitizeProviderValues(values: TumbleCodeSettings): TumbleCodeSettings {
 		// Remove legacy Claude Code CLI wrapper keys that may still exist in global state.
 		// These keys were used by a removed local CLI runner and are no longer part of ProviderSettings.
 		const legacyKeys = ["claudeCodePath", "claudeCodeMaxOutputTokens"] as const
@@ -345,7 +347,7 @@ export class ContextProxy {
 			if (key in sanitizedValues) {
 				const copy = { ...sanitizedValues } as Record<string, unknown>
 				delete copy[key as string]
-				sanitizedValues = copy as RooCodeSettings
+				sanitizedValues = copy as TumbleCodeSettings
 			}
 		}
 
@@ -357,7 +359,7 @@ export class ContextProxy {
 			logger.info(`[ContextProxy] Sanitizing invalid provider "${values.apiProvider}" - resetting to undefined`)
 			// Return a new values object without the invalid apiProvider
 			const { apiProvider, ...restValues } = sanitizedValues
-			return restValues as RooCodeSettings
+			return restValues as TumbleCodeSettings
 		}
 		return sanitizedValues
 	}
@@ -387,10 +389,10 @@ export class ContextProxy {
 	}
 
 	/**
-	 * RooCodeSettings
+	 * TumbleCodeSettings
 	 */
 
-	public async setValue<K extends RooCodeSettingsKey>(key: K, value: RooCodeSettings[K]) {
+	public async setValue<K extends TumbleCodeSettingsKey>(key: K, value: TumbleCodeSettings[K]) {
 		// Trusted-source guard for the memory-directory override: validate the
 		// path before persisting. An invalid path is rejected (cleared) rather
 		// than stored, so a bad value can't redirect the write carve-out or
@@ -398,14 +400,14 @@ export class ContextProxy {
 		// handler's responsibility; here we only validate the value itself.
 		if (key === "autoMemoryDirectory" && typeof value === "string" && value.trim() !== "") {
 			try {
-				value = validateMemoryPath(value) as RooCodeSettings[K]
+				value = validateMemoryPath(value) as TumbleCodeSettings[K]
 			} catch (error) {
 				logger.error(
 					`[memory] rejected invalid autoMemoryDirectory "${value}": ${
 						error instanceof Error ? error.message : String(error)
 					}`,
 				)
-				value = undefined as RooCodeSettings[K]
+				value = undefined as TumbleCodeSettings[K]
 			}
 		}
 		return isSecretStateKey(key)
@@ -413,13 +415,13 @@ export class ContextProxy {
 			: this.updateGlobalState(key as GlobalStateKey, value)
 	}
 
-	public getValue<K extends RooCodeSettingsKey>(key: K): RooCodeSettings[K] {
+	public getValue<K extends TumbleCodeSettingsKey>(key: K): TumbleCodeSettings[K] {
 		return isSecretStateKey(key)
-			? (this.getSecret(key as SecretStateKey) as RooCodeSettings[K])
-			: (this.getGlobalState(key as GlobalStateKey) as RooCodeSettings[K])
+			? (this.getSecret(key as SecretStateKey) as TumbleCodeSettings[K])
+			: (this.getGlobalState(key as GlobalStateKey) as TumbleCodeSettings[K])
 	}
 
-	public getValues(): RooCodeSettings {
+	public getValues(): TumbleCodeSettings {
 		const globalState = this.getAllGlobalState()
 		const secretState = this.getAllSecretState()
 
@@ -427,8 +429,8 @@ export class ContextProxy {
 		return { ...globalState, ...secretState }
 	}
 
-	public async setValues(values: RooCodeSettings) {
-		const entries = Object.entries(values) as [RooCodeSettingsKey, unknown][]
+	public async setValues(values: TumbleCodeSettings) {
+		const entries = Object.entries(values) as [TumbleCodeSettingsKey, unknown][]
 		await Promise.all(entries.map(([key, value]) => this.setValue(key, value)))
 	}
 

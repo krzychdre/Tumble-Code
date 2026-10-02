@@ -7,7 +7,7 @@ import { type TelemetryPropertiesProvider, TelemetryEventName } from "@roo-code/
 import { CloudTelemetryClient as TelemetryClient } from "../TelemetryClient.js"
 
 /**
- * The payload is posted as `rooCodeTelemetryEventSchema.safeParse(...).data`, and
+ * The payload is posted as `tumbleCodeTelemetryEventSchema.safeParse(...).data`, and
  * Zod drops keys the schema does not declare. That is how 16 393 `Tool Used`
  * rows ended up with no `tool` on the live deployment. These tests pin the
  * properties the usage metrics depend on to the wire, so an undeclared field

@@ -13,7 +13,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { RooCodeEventName, type HistoryItem } from "@roo-code/types"
+import { TumbleCodeEventName, type HistoryItem } from "@roo-code/types"
 
 vi.mock("vscode", () => ({
 	window: { showWarningMessage: vi.fn() },
@@ -158,7 +158,7 @@ describe("DelegationService transition table", () => {
 			expect(delegationState(store.get("p"))).toEqual(expected)
 			expect(host.clearCurrentTask).toHaveBeenCalledWith({ skipDelegationRepair: true })
 			expect(child.start).toHaveBeenCalledTimes(1)
-			expect(host.emit).toHaveBeenCalledWith(RooCodeEventName.TaskDelegated, "p", "c1")
+			expect(host.emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskDelegated, "p", "c1")
 		})
 
 		it("refuses when the parent is not the current task", async () => {

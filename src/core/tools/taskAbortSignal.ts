@@ -1,4 +1,4 @@
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 import type { Task } from "../task/Task"
 
@@ -20,12 +20,12 @@ export async function runWithTaskAbortSignal<T>(task: Task, run: (signal: AbortS
 	if (task.abort) {
 		onAborted()
 	} else {
-		task.once(RooCodeEventName.TaskAborted, onAborted)
+		task.once(TumbleCodeEventName.TaskAborted, onAborted)
 	}
 
 	try {
 		return await run(controller.signal)
 	} finally {
-		task.off(RooCodeEventName.TaskAborted, onAborted)
+		task.off(TumbleCodeEventName.TaskAborted, onAborted)
 	}
 }

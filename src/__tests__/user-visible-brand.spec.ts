@@ -10,7 +10,8 @@
 // every value of the settings descriptions (package.nls*.json) and of the
 // translation files, and the webview's index.html. Internal names are not
 // string literals that contain "Roo Code" (package ids are "@roo-code/...",
-// variables ROO_*, identifiers RooCode*), so they are untouched by this check.
+// variables ROO_*, identifiers such as getTumbleCodeApiUrl), so they are untouched by this check.
+// The old CamelCase name is guarded separately in no-old-product-name.spec.ts.
 
 import fs from "fs"
 import path from "path"
@@ -25,7 +26,7 @@ const OLD_BRAND = "Roo Code"
 // Files that name the old product on purpose.
 const ALLOWED_FILES = new Set([
 	// The one-shot import of a previous Roo Code installation's settings.
-	"src/utils/migrateFromRooCode.ts",
+	"src/utils/migrateFromRooCline.ts",
 	// Git author of the hidden shadow repository that stores checkpoints; the
 	// user never sees it, and existing shadow repositories already carry it.
 	"src/services/checkpoints/ShadowCheckpointService.ts",

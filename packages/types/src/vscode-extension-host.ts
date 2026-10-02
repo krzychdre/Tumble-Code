@@ -8,7 +8,7 @@
  * it up.
  */
 
-import type { RooCodeSettings } from "./global-settings.js"
+import type { TumbleCodeSettings } from "./global-settings.js"
 import type { ProviderSettings, ProviderSettingsEntry } from "./provider-settings.js"
 import type { HistoryItem } from "./history.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
@@ -424,9 +424,9 @@ export interface WebviewMessage {
 		codebaseIndexMistralApiKey?: string
 		codebaseIndexOpenRouterApiKey?: string
 	}
-	updatedSettings?: RooCodeSettings
+	updatedSettings?: TumbleCodeSettings
 	/** Task configuration applied via `createTask()` when starting a cloud task. */
-	taskConfiguration?: RooCodeSettings
+	taskConfiguration?: TumbleCodeSettings
 	// Worktree properties
 	worktreePath?: string
 	worktreeBranch?: string

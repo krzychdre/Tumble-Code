@@ -21,7 +21,7 @@ import type {
 	CliModeProviderSettings,
 	ExtensionMessage,
 	ReasoningEffortExtended,
-	RooCodeSettings,
+	TumbleCodeSettings,
 	WebviewMessage,
 } from "@roo-code/types"
 import { CLI_RUNTIME_ENV, clearCliRuntimeGlobals, setCliRuntimeGlobals } from "@roo-code/types"
@@ -136,7 +136,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	private options: ExtensionHostOptions
 	private isReady = false
 	private messageListener: ((message: ExtensionMessage) => void) | null = null
-	private initialSettings: RooCodeSettings
+	private initialSettings: TumbleCodeSettings
 
 	// Console suppression.
 	private originalConsole: {
@@ -264,7 +264,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		this.on("extensionWebviewMessage", (message: ExtensionMessage) => this.client.transcript.handleMessage(message))
 
 		// Populate initial settings.
-		const baseSettings: RooCodeSettings = {
+		const baseSettings: TumbleCodeSettings = {
 			mode: this.options.mode,
 			consecutiveMistakeLimit: this.options.consecutiveMistakeLimit ?? DEFAULT_FLAGS.consecutiveMistakeLimit,
 			commandExecutionTimeout: this.options.commandExecutionTimeout ?? DEFAULT_FLAGS.commandExecutionTimeout,

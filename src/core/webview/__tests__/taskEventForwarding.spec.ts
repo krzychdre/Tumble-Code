@@ -2,25 +2,25 @@
 
 import { EventEmitter } from "events"
 
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 import { TASK_EVENT_FORWARDING, forwardTaskEvents, type TaskEventForwardingHost } from "../taskEventForwarding"
 
 const FORWARDED = [
-	RooCodeEventName.TaskStarted,
-	RooCodeEventName.TaskCompleted,
-	RooCodeEventName.TaskAborted,
-	RooCodeEventName.TaskFocused,
-	RooCodeEventName.TaskUnfocused,
-	RooCodeEventName.TaskActive,
-	RooCodeEventName.TaskInteractive,
-	RooCodeEventName.TaskResumable,
-	RooCodeEventName.TaskIdle,
-	RooCodeEventName.TaskPaused,
-	RooCodeEventName.TaskUnpaused,
-	RooCodeEventName.TaskSpawned,
-	RooCodeEventName.TaskUserMessage,
-	RooCodeEventName.TaskTokenUsageUpdated,
+	TumbleCodeEventName.TaskStarted,
+	TumbleCodeEventName.TaskCompleted,
+	TumbleCodeEventName.TaskAborted,
+	TumbleCodeEventName.TaskFocused,
+	TumbleCodeEventName.TaskUnfocused,
+	TumbleCodeEventName.TaskActive,
+	TumbleCodeEventName.TaskInteractive,
+	TumbleCodeEventName.TaskResumable,
+	TumbleCodeEventName.TaskIdle,
+	TumbleCodeEventName.TaskPaused,
+	TumbleCodeEventName.TaskUnpaused,
+	TumbleCodeEventName.TaskSpawned,
+	TumbleCodeEventName.TaskUserMessage,
+	TumbleCodeEventName.TaskTokenUsageUpdated,
 ]
 
 const tokenUsage = { totalTokensIn: 1, totalTokensOut: 2, totalCost: 3 } as any
@@ -59,17 +59,17 @@ describe("task event forwarding", () => {
 		const task = makeTask()
 		const host = makeHost()
 		forwardTaskEvents(task, host as unknown as TaskEventForwardingHost)
-		task.emit(RooCodeEventName.TaskStarted)
-		task.emit(RooCodeEventName.TaskFocused)
-		task.emit(RooCodeEventName.TaskUnfocused)
-		task.emit(RooCodeEventName.TaskSpawned, "child")
-		task.emit(RooCodeEventName.TaskCompleted, "t1", tokenUsage, toolUsage)
+		task.emit(TumbleCodeEventName.TaskStarted)
+		task.emit(TumbleCodeEventName.TaskFocused)
+		task.emit(TumbleCodeEventName.TaskUnfocused)
+		task.emit(TumbleCodeEventName.TaskSpawned, "child")
+		task.emit(TumbleCodeEventName.TaskCompleted, "t1", tokenUsage, toolUsage)
 		expect(host.emit.mock.calls).toEqual([
-			[RooCodeEventName.TaskStarted, "t1"],
-			[RooCodeEventName.TaskFocused, "t1"],
-			[RooCodeEventName.TaskUnfocused, "t1"],
-			[RooCodeEventName.TaskSpawned, "child"],
-			[RooCodeEventName.TaskCompleted, "t1", tokenUsage, toolUsage],
+			[TumbleCodeEventName.TaskStarted, "t1"],
+			[TumbleCodeEventName.TaskFocused, "t1"],
+			[TumbleCodeEventName.TaskUnfocused, "t1"],
+			[TumbleCodeEventName.TaskSpawned, "child"],
+			[TumbleCodeEventName.TaskCompleted, "t1", tokenUsage, toolUsage],
 		])
 	})
 
@@ -83,7 +83,7 @@ describe("task event forwarding", () => {
 			order.push("rehydrate")
 		})
 		forwardTaskEvents(task, host as unknown as TaskEventForwardingHost)
-		task.emit(RooCodeEventName.TaskAborted)
+		task.emit(TumbleCodeEventName.TaskAborted)
 		await new Promise((resolve) => setTimeout(resolve, 0))
 		expect(order).toEqual(["markTerminal", "emit", "rehydrate"])
 		expect(host.subagentRegistry.markTerminal).toHaveBeenCalledWith("t1", "failed")
@@ -95,8 +95,8 @@ describe("task event forwarding", () => {
 		const host = makeHost()
 		forwardTaskEvents(task, host as unknown as TaskEventForwardingHost)
 		host.subagentRegistry.has.mockReturnValue(false)
-		task.emit(RooCodeEventName.TaskTokenUsageUpdated, "t1", tokenUsage, toolUsage)
+		task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "t1", tokenUsage, toolUsage)
 		expect(host.subagentRegistry.update).not.toHaveBeenCalled()
-		expect(host.emit).toHaveBeenCalledWith(RooCodeEventName.TaskTokenUsageUpdated, "t1", tokenUsage, toolUsage)
+		expect(host.emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskTokenUsageUpdated, "t1", tokenUsage, toolUsage)
 	})
 })

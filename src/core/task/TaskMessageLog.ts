@@ -14,7 +14,7 @@ import {
 import {
 	type ClineMessage,
 	type HistoryItem,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	TelemetryEventName,
 	type ProviderSettings,
 	type TokenUsage,
@@ -431,7 +431,7 @@ export class TaskMessageLog {
 				clineMessage: message,
 			})
 		}
-		this.access.emit(RooCodeEventName.Message, { action: "created", message })
+		this.access.emit(TumbleCodeEventName.Message, { action: "created", message })
 		await this.saveClineMessages()
 
 		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
@@ -494,7 +494,7 @@ export class TaskMessageLog {
 				clineMessage: message,
 			})
 		}
-		this.access.emit(RooCodeEventName.Message, { action: "updated", message })
+		this.access.emit(TumbleCodeEventName.Message, { action: "updated", message })
 
 		// Check if we should sync to cloud and haven't already synced this message
 		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()

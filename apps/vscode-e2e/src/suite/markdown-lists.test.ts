@@ -1,6 +1,6 @@
 import * as assert from "assert"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+import { TumbleCodeEventName, type ClineMessage } from "@roo-code/types"
 
 import { waitUntilCompleted } from "./utils"
 import { requireOpenRouterKey, setDefaultSuiteTimeout } from "./test-utils"
@@ -14,7 +14,7 @@ suite("Markdown List Rendering", function () {
 
 		const messages: ClineMessage[] = []
 
-		api.on(RooCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
+		api.on(TumbleCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
 			if (message.type === "say" && message.partial === false) {
 				messages.push(message)
 			}
@@ -51,7 +51,7 @@ suite("Markdown List Rendering", function () {
 
 		const messages: ClineMessage[] = []
 
-		api.on(RooCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
+		api.on(TumbleCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
 			if (message.type === "say" && message.partial === false) {
 				messages.push(message)
 			}
@@ -88,7 +88,7 @@ suite("Markdown List Rendering", function () {
 
 		const messages: ClineMessage[] = []
 
-		api.on(RooCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
+		api.on(TumbleCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
 			if (message.type === "say" && message.partial === false) {
 				messages.push(message)
 			}
@@ -140,7 +140,7 @@ suite("Markdown List Rendering", function () {
 
 		const messages: ClineMessage[] = []
 
-		api.on(RooCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
+		api.on(TumbleCodeEventName.Message, ({ message }: { message: ClineMessage }) => {
 			if (message.type === "say" && message.partial === false) {
 				messages.push(message)
 			}

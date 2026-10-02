@@ -7,7 +7,7 @@ import type { ExtensionContext } from "vscode"
 
 import { WebAuthService } from "../WebAuthService.js"
 import { RefreshTimer } from "../RefreshTimer.js"
-import { getClerkBaseUrl, getRooCodeApiUrl } from "../config.js"
+import { getClerkBaseUrl, getTumbleCodeApiUrl } from "../config.js"
 import { getUserAgent } from "../utils.js"
 
 vi.mock("crypto")
@@ -103,7 +103,7 @@ describe("WebAuthService", () => {
 
 		// Setup config mocks - use production URL by default to maintain existing test behavior
 		vi.mocked(getClerkBaseUrl).mockReturnValue("https://auth.tumblecode.dev")
-		vi.mocked(getRooCodeApiUrl).mockReturnValue("https://api.test.com")
+		vi.mocked(getTumbleCodeApiUrl).mockReturnValue("https://api.test.com")
 
 		// Setup utils mock
 		vi.mocked(getUserAgent).mockReturnValue("Tumble-Code 1.0.0")

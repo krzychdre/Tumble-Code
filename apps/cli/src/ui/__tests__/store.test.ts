@@ -1,4 +1,4 @@
-import { RooCodeSettings } from "@roo-code/types"
+import { TumbleCodeSettings } from "@roo-code/types"
 
 import { flushPendingStreamUpdates, useCLIStore } from "../store.js"
 
@@ -171,7 +171,7 @@ describe("useCLIStore", () => {
 		})
 
 		it("should PRESERVE apiConfiguration", () => {
-			const config: RooCodeSettings = { apiProvider: "openai", apiModelId: "gpt-4" }
+			const config: TumbleCodeSettings = { apiProvider: "openai", apiModelId: "gpt-4" }
 
 			useCLIStore
 				.getState()

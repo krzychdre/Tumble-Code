@@ -13,7 +13,7 @@ import { ClineProvider } from "../ClineProvider"
 import { TaskSlot } from "../TaskSlot"
 import { DelegationService } from "../DelegationService"
 import type { Task } from "../../task/Task"
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 type ProviderStandIn = {
 	taskSlot: TaskSlot
@@ -100,7 +100,7 @@ describe("single-task slot mechanics (D7)", () => {
 		expect(provider.getCurrentTask()).toBeUndefined()
 		expect(provider.getCurrentTaskStack()).toEqual([])
 		expect(taskA.abortTask).toHaveBeenCalledWith(true)
-		expect(taskA.emit).toHaveBeenCalledWith(RooCodeEventName.TaskUnfocused)
+		expect(taskA.emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskUnfocused)
 	})
 
 	it("clearCurrentTask on an empty slot is a no-op", async () => {
@@ -116,7 +116,7 @@ describe("single-task slot mechanics (D7)", () => {
 
 		await provider.taskSlot.set(taskA)
 
-		expect(taskA.emit).toHaveBeenCalledWith(RooCodeEventName.TaskFocused)
+		expect(taskA.emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskFocused)
 	})
 
 	it("clearTask aborts and clears a resident task", async () => {

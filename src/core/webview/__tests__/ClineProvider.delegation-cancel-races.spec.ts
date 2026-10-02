@@ -74,7 +74,7 @@ vi.mock("@roo-code/cloud", () => ({
 			isAuthenticated: vi.fn().mockReturnValue(false),
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://api.example.com"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("https://api.example.com"),
 }))
 
 vi.mock("../../../shared/embeddingModels", () => ({

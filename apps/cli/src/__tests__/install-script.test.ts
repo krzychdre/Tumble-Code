@@ -49,7 +49,7 @@ function runInstaller(env: Record<string, string> = {}) {
 	return { ...result, urls }
 }
 
-// DEF-C29: the installer fetched releases from upstream RooCodeInc/Roo-Code,
+// DEF-C29: the installer fetched releases from the upstream Roo repository,
 // while the fork's release notes (cli-release.yml) tell users to run this
 // script: they got upstream's CLI, or no CLI at all.
 describe.skipIf(process.platform === "win32")("install.sh", () => {

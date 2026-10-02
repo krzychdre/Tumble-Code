@@ -8,7 +8,7 @@
 // updates the numbers here deliberately and cannot change the contract by
 // accident.
 
-import { RooCodeEventName, TelemetryEventName, type ClineMessage } from "@roo-code/types"
+import { TumbleCodeEventName, TelemetryEventName, type ClineMessage } from "@roo-code/types"
 
 const { captureEvent, savedSnapshots, metadataRuns } = vi.hoisted(() => ({
 	captureEvent: vi.fn(),
@@ -147,7 +147,7 @@ function makeTask(historyMessages: number, view: "full" | "appends" = "full") {
 		messageQueueService: { isEmpty: () => true, dequeueMessage: () => undefined, messages: [] },
 		checkpointSave: vi.fn(async () => {}),
 		emit: vi.fn((event: string, payload?: { action?: "created" | "updated" }) => {
-			if (event === RooCodeEventName.Message && payload?.action) {
+			if (event === TumbleCodeEventName.Message && payload?.action) {
 				messageEvents[payload.action]++
 			}
 			return true

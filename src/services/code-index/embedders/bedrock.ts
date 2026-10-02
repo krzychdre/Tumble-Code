@@ -35,7 +35,7 @@ export class BedrockEmbedder extends BaseHttpEmbedder {
 		const credentials = profile ? fromIni({ profile }) : fromNodeProviderChain()
 
 		this.bedrockClient = new BedrockRuntimeClient({
-			userAgentAppId: `RooCode#${Package.version}`,
+			userAgentAppId: `TumbleCode#${Package.version}`,
 			region,
 			credentials,
 		})

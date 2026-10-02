@@ -14,7 +14,7 @@ import {
 	type GlobalState,
 	type ProviderSettings,
 	type CliModeProviderSettings,
-	type RooCodeSettings,
+	type TumbleCodeSettings,
 	type ProviderSettingsEntry,
 	type StaticAppProperties,
 	type DynamicAppProperties,
@@ -29,7 +29,7 @@ import {
 	type ExtensionMessage,
 	type ExtensionState,
 	type MarketplaceInstalledMetadata,
-	RooCodeEventName,
+	TumbleCodeEventName,
 	openRouterDefaultModelId,
 	DEFAULT_MODES,
 	isRetiredProvider,
@@ -332,8 +332,8 @@ export class ClineProvider
 			updateTaskHistory: (item) => this.updateTaskHistory(item),
 			activateProviderProfile: (...args) => this.activateProviderProfile(...args),
 			postStateToWebview: () => this.postStateToWebview(),
-			emitModeChanged: (mode) => this.emit(RooCodeEventName.ModeChanged, mode),
-			emitProviderProfileChanged: (profile) => this.emit(RooCodeEventName.ProviderProfileChanged, profile),
+			emitModeChanged: (mode) => this.emit(TumbleCodeEventName.ModeChanged, mode),
+			emitProviderProfileChanged: (profile) => this.emit(TumbleCodeEventName.ProviderProfileChanged, profile),
 			clearStorageError: () => this.taskHistory.clearStorageError(),
 			reportStorageError: (error) => this.taskHistory.reportStorageError("ProviderProfile", error),
 		})
@@ -423,7 +423,7 @@ export class ClineProvider
 			rehydrateAfterStreamingFailure: (task) => this.rehydrateAfterStreamingFailure(task as Task),
 		}
 		this.taskCreationCallback = (instance: Task) => {
-			this.emit(RooCodeEventName.TaskCreated, instance)
+			this.emit(TumbleCodeEventName.TaskCreated, instance)
 
 			// Store the cleanup functions for later removal.
 			this.taskEventListeners.set(instance, forwardTaskEvents(instance, forwardingHost))
@@ -1528,11 +1528,11 @@ export class ClineProvider
 		return this.contextProxy.getValue(key)
 	}
 
-	public async setValue<K extends keyof RooCodeSettings>(key: K, value: RooCodeSettings[K]) {
+	public async setValue<K extends keyof TumbleCodeSettings>(key: K, value: TumbleCodeSettings[K]) {
 		await this.contextProxy.setValue(key, value)
 	}
 
-	public getValue<K extends keyof RooCodeSettings>(key: K) {
+	public getValue<K extends keyof TumbleCodeSettings>(key: K) {
 		return this.contextProxy.getValue(key)
 	}
 
@@ -1540,7 +1540,7 @@ export class ClineProvider
 		return this.contextProxy.getValues()
 	}
 
-	public async setValues(values: RooCodeSettings) {
+	public async setValues(values: TumbleCodeSettings) {
 		await this.contextProxy.setValues(values)
 	}
 
@@ -1688,7 +1688,7 @@ export class ClineProvider
 		images?: string[],
 		parentTask?: Task,
 		options: CreateTaskOptions = {},
-		configuration: RooCodeSettings = {},
+		configuration: TumbleCodeSettings = {},
 	): Promise<Task> {
 		if (configuration) {
 			await this.setValues(configuration)

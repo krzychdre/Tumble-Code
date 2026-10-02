@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { migrateFromRooCode } from "../migrateFromRooCode"
+import { migrateFromRooCline } from "../migrateFromRooCline"
 import { logger } from "../logging"
 
 vi.mock("vscode", () => ({
@@ -28,7 +28,7 @@ vi.mock("../fs", () => ({
 
 const MIGRATION_FLAG = "tumble-code.migrationFromRooCodeCompleted"
 
-describe("migrateFromRooCode", () => {
+describe("migrateFromRooCline", () => {
 	let context: any
 	let globalState: Map<string, unknown>
 	let legacyConfig: { inspect: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
@@ -72,14 +72,14 @@ describe("migrateFromRooCode", () => {
 	it("returns immediately when the migration flag is already set", async () => {
 		globalState.set(MIGRATION_FLAG, true)
 
-		await migrateFromRooCode(context)
+		await migrateFromRooCline(context)
 
 		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
 		expect(context.globalState.update).not.toHaveBeenCalled()
 	})
 
 	it("marks complete without prompting when no legacy config or storage exists", async () => {
-		await migrateFromRooCode(context)
+		await migrateFromRooCline(context)
 
 		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
 		expect(context.globalState.update).toHaveBeenCalledWith(MIGRATION_FLAG, true)
@@ -91,7 +91,7 @@ describe("migrateFromRooCode", () => {
 		)
 		vi.mocked(vscode.window.showInformationMessage).mockResolvedValue("Skip" as any)
 
-		await migrateFromRooCode(context)
+		await migrateFromRooCline(context)
 
 		expect(vscode.window.showInformationMessage).toHaveBeenCalledOnce()
 		expect(globalState.get(MIGRATION_FLAG)).toBe(true)
@@ -107,7 +107,7 @@ describe("migrateFromRooCode", () => {
 		})
 		vi.mocked(vscode.window.showInformationMessage).mockResolvedValue("Import" as any)
 
-		await migrateFromRooCode(context)
+		await migrateFromRooCline(context)
 
 		expect(newConfig.update).toHaveBeenCalledWith("allowedCommands", ["git status", "git diff"], 1)
 		expect(newConfig.update).toHaveBeenCalledWith("apiRequestTimeout", 1200, 2)
@@ -121,7 +121,7 @@ describe("migrateFromRooCode", () => {
 		newConfig.update.mockRejectedValueOnce(new Error("write blocked"))
 		vi.mocked(vscode.window.showInformationMessage).mockResolvedValue("Import" as any)
 
-		await migrateFromRooCode(context)
+		await migrateFromRooCline(context)
 
 		expect(globalState.get(MIGRATION_FLAG)).toBeUndefined()
 		expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Migration failed:"))

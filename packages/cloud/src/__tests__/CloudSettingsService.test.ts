@@ -9,7 +9,7 @@ import { RefreshTimer } from "../RefreshTimer.js"
 vi.mock("../RefreshTimer")
 
 vi.mock("../config", () => ({
-	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
 global.fetch = vi.fn()

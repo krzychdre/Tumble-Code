@@ -3,7 +3,7 @@ import { EventEmitter } from "events"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import * as vscode from "vscode"
 
-import { RooCodeEventName } from "@roo-code/types"
+import { TumbleCodeEventName } from "@roo-code/types"
 
 import { API } from "../api"
 import { ClineProvider } from "../../core/webview/ClineProvider"
@@ -49,7 +49,7 @@ describe("API - events without the removed IPC server", () => {
 		const provider = {
 			context: {} as vscode.ExtensionContext,
 			on: vi.fn((event: string, listener: (task: EventEmitter) => void) => {
-				if (event === RooCodeEventName.TaskCreated) {
+				if (event === TumbleCodeEventName.TaskCreated) {
 					onTaskCreated = listener
 				}
 			}),
@@ -58,12 +58,12 @@ describe("API - events without the removed IPC server", () => {
 		const api = new API({ appendLine: vi.fn() } as unknown as vscode.OutputChannel, provider)
 		const created = vi.fn()
 		const started = vi.fn()
-		api.on(RooCodeEventName.TaskCreated, created)
-		api.on(RooCodeEventName.TaskStarted, started)
+		api.on(TumbleCodeEventName.TaskCreated, created)
+		api.on(TumbleCodeEventName.TaskStarted, started)
 
 		const task = Object.assign(new EventEmitter(), { taskId: "task-1" })
 		onTaskCreated?.(task)
-		task.emit(RooCodeEventName.TaskStarted)
+		task.emit(TumbleCodeEventName.TaskStarted)
 
 		expect(created).toHaveBeenCalledWith("task-1")
 		expect(started).toHaveBeenCalledWith("task-1")

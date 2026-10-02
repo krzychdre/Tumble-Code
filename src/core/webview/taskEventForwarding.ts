@@ -1,30 +1,30 @@
-import { RooCodeEventName, type TaskEvents, type TaskLike } from "@roo-code/types"
+import { TumbleCodeEventName, type TaskEvents, type TaskLike } from "@roo-code/types"
 
 import type { SubagentRegistry } from "./SubagentRegistry"
 
 /** The task events a provider re-emits as its own (CORE-R6 f). */
 type ForwardedTaskEvent =
-	| RooCodeEventName.TaskStarted
-	| RooCodeEventName.TaskCompleted
-	| RooCodeEventName.TaskAborted
-	| RooCodeEventName.TaskFocused
-	| RooCodeEventName.TaskUnfocused
-	| RooCodeEventName.TaskActive
-	| RooCodeEventName.TaskInteractive
-	| RooCodeEventName.TaskResumable
-	| RooCodeEventName.TaskIdle
-	| RooCodeEventName.TaskPaused
-	| RooCodeEventName.TaskUnpaused
-	| RooCodeEventName.TaskSpawned
-	| RooCodeEventName.TaskUserMessage
-	| RooCodeEventName.TaskTokenUsageUpdated
+	| TumbleCodeEventName.TaskStarted
+	| TumbleCodeEventName.TaskCompleted
+	| TumbleCodeEventName.TaskAborted
+	| TumbleCodeEventName.TaskFocused
+	| TumbleCodeEventName.TaskUnfocused
+	| TumbleCodeEventName.TaskActive
+	| TumbleCodeEventName.TaskInteractive
+	| TumbleCodeEventName.TaskResumable
+	| TumbleCodeEventName.TaskIdle
+	| TumbleCodeEventName.TaskPaused
+	| TumbleCodeEventName.TaskUnpaused
+	| TumbleCodeEventName.TaskSpawned
+	| TumbleCodeEventName.TaskUserMessage
+	| TumbleCodeEventName.TaskTokenUsageUpdated
 
 /** What the forwarding needs from a task: its id and its event emitter. */
 export type TaskEventSource = Pick<TaskLike, "taskId" | "on" | "off">
 
 /** What the forwarding needs from the provider. */
 export interface TaskEventForwardingHost {
-	emit(event: RooCodeEventName, ...args: unknown[]): void
+	emit(event: TumbleCodeEventName, ...args: unknown[]): void
 	readonly subagentRegistry: Pick<SubagentRegistry, "markTerminal" | "setLiveStatus" | "has" | "update">
 	/** Runs after an abort has been forwarded; the provider decides whether to rehydrate the task. */
 	rehydrateAfterStreamingFailure(task: TaskEventSource): Promise<void>
@@ -54,35 +54,35 @@ const passThrough =
  * no longer be attached without its detach.
  */
 export const TASK_EVENT_FORWARDING: { readonly [E in ForwardedTaskEvent]: MakeListener<E> } = {
-	[RooCodeEventName.TaskStarted]: withTaskId(RooCodeEventName.TaskStarted),
-	[RooCodeEventName.TaskCompleted]: (host) => (taskId, tokenUsage, toolUsage) => {
+	[TumbleCodeEventName.TaskStarted]: withTaskId(TumbleCodeEventName.TaskStarted),
+	[TumbleCodeEventName.TaskCompleted]: (host) => (taskId, tokenUsage, toolUsage) => {
 		host.subagentRegistry.markTerminal(taskId, "completed")
-		host.emit(RooCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
+		host.emit(TumbleCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
 	},
-	[RooCodeEventName.TaskAborted]: (host, task) => async () => {
+	[TumbleCodeEventName.TaskAborted]: (host, task) => async () => {
 		// Generic "failed"; RunParallelTasksTool refines to "cancelled"
 		// when the abort turns out to be a fan-out cancellation.
 		host.subagentRegistry.markTerminal(task.taskId, "failed")
-		host.emit(RooCodeEventName.TaskAborted, task.taskId)
+		host.emit(TumbleCodeEventName.TaskAborted, task.taskId)
 		await host.rehydrateAfterStreamingFailure(task)
 	},
-	[RooCodeEventName.TaskFocused]: withTaskId(RooCodeEventName.TaskFocused),
-	[RooCodeEventName.TaskUnfocused]: withTaskId(RooCodeEventName.TaskUnfocused),
-	[RooCodeEventName.TaskActive]: (host) => (taskId) => {
+	[TumbleCodeEventName.TaskFocused]: withTaskId(TumbleCodeEventName.TaskFocused),
+	[TumbleCodeEventName.TaskUnfocused]: withTaskId(TumbleCodeEventName.TaskUnfocused),
+	[TumbleCodeEventName.TaskActive]: (host) => (taskId) => {
 		host.subagentRegistry.setLiveStatus(taskId, "running")
-		host.emit(RooCodeEventName.TaskActive, taskId)
+		host.emit(TumbleCodeEventName.TaskActive, taskId)
 	},
-	[RooCodeEventName.TaskInteractive]: (host) => (taskId) => {
+	[TumbleCodeEventName.TaskInteractive]: (host) => (taskId) => {
 		host.subagentRegistry.setLiveStatus(taskId, "awaiting_input")
-		host.emit(RooCodeEventName.TaskInteractive, taskId)
+		host.emit(TumbleCodeEventName.TaskInteractive, taskId)
 	},
-	[RooCodeEventName.TaskResumable]: passThrough(RooCodeEventName.TaskResumable),
-	[RooCodeEventName.TaskIdle]: passThrough(RooCodeEventName.TaskIdle),
-	[RooCodeEventName.TaskPaused]: passThrough(RooCodeEventName.TaskPaused),
-	[RooCodeEventName.TaskUnpaused]: passThrough(RooCodeEventName.TaskUnpaused),
-	[RooCodeEventName.TaskSpawned]: passThrough(RooCodeEventName.TaskSpawned),
-	[RooCodeEventName.TaskUserMessage]: passThrough(RooCodeEventName.TaskUserMessage),
-	[RooCodeEventName.TaskTokenUsageUpdated]: (host) => (taskId, tokenUsage, toolUsage) => {
+	[TumbleCodeEventName.TaskResumable]: passThrough(TumbleCodeEventName.TaskResumable),
+	[TumbleCodeEventName.TaskIdle]: passThrough(TumbleCodeEventName.TaskIdle),
+	[TumbleCodeEventName.TaskPaused]: passThrough(TumbleCodeEventName.TaskPaused),
+	[TumbleCodeEventName.TaskUnpaused]: passThrough(TumbleCodeEventName.TaskUnpaused),
+	[TumbleCodeEventName.TaskSpawned]: passThrough(TumbleCodeEventName.TaskSpawned),
+	[TumbleCodeEventName.TaskUserMessage]: passThrough(TumbleCodeEventName.TaskUserMessage),
+	[TumbleCodeEventName.TaskTokenUsageUpdated]: (host) => (taskId, tokenUsage, toolUsage) => {
 		if (host.subagentRegistry.has(taskId)) {
 			host.subagentRegistry.update(taskId, {
 				tokensIn: tokenUsage.totalTokensIn,
@@ -90,7 +90,7 @@ export const TASK_EVENT_FORWARDING: { readonly [E in ForwardedTaskEvent]: MakeLi
 				totalCost: tokenUsage.totalCost,
 			})
 		}
-		host.emit(RooCodeEventName.TaskTokenUsageUpdated, taskId, tokenUsage, toolUsage)
+		host.emit(TumbleCodeEventName.TaskTokenUsageUpdated, taskId, tokenUsage, toolUsage)
 	},
 }
 

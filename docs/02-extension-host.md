@@ -14,7 +14,7 @@ flowchart TD
   B --> C{CLI in codexAuthOnly mode?}
   C -- yes --> Z[return early]
   C -- no --> D[network proxy, cloud URLs, custom tool path]
-  D --> E[migrateFromRooCode - background]
+  D --> E[migrateFromRooCline - background]
   E --> F[TelemetryService<br/>no client yet, the cloud one registers at cloud start]
   F --> H[i18n, TerminalRegistry, Codex OAuth]
   H --> I[ContextProxy - awaited<br/>settings + secrets cache]

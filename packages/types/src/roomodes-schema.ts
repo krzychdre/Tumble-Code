@@ -49,7 +49,7 @@ export function generateRoomodesJsonSchema(): Record<string, unknown> {
 		reused: "inline",
 	}) as Record<string, unknown>
 
-	jsonSchema["$id"] = "https://github.com/RooCodeInc/Roo-Code/blob/main/schemas/roomodes.json"
+	jsonSchema["$id"] = "https://github.com/krzychdre/Tumble-Code/blob/main/schemas/roomodes.json"
 	jsonSchema["title"] = "Tumble Code Custom Modes"
 	jsonSchema["description"] = "Schema for .roomodes configuration files used by Tumble Code to define custom modes."
 
