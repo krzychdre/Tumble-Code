@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Problem report · {{ report.title }} · Tumble Code{% endblock %}
+{% block content %}
+{% set r = report %}
+<p class="diag-back"><a href="/app/diagnostics">&larr; Problem report</a></p>
+<div class="diag-report-head">
+  <span class="diag-badge diag-c-{{ r.class_key }}">{{ r.classification }}</span>
+  <h1 class="page-title diag-report-title">{{ r.title }}</h1>
+</div>
+<p class="diag-summary">{{ r.summary }}</p>
+
+<section class="panel diag-report">
+  <div class="diag-mitigation">
+    <h2 class="diag-h">What to do</h2>
+    <p>{{ r.mitigation }}</p>
+  </div>
+  <dl class="diag-facts">
+    <dt>Occurred</dt><dd>{{ r.occurred }} UTC</dd>
+    <dt>Category</dt><dd>{{ r.category }}</dd>
+    {% for label, value in r.facts %}
+    <dt>{{ label }}</dt><dd>{{ value }}</dd>
+    {% endfor %}
+    {% if r.task_id %}<dt>Task</dt><dd><a href="/app/tasks/{{ r.task_id }}">{{ r.task_id }}</a></dd>{% endif %}
+    <dt>Signature</dt><dd>{{ r.signature }}</dd>
+  </dl>
+  {% if r.context_percent is not none %}
+  <div class="diag-meter" role="img" aria-label="Context used: {{ r.context_percent }}%">
+    <span style="width: {{ [r.context_percent, 100]|min }}%"></span>
+  </div>
+  {% endif %}
+  {% if r.error_message %}
+  <h2 class="diag-h">Error message</h2>
+  <pre class="diag-text">{{ r.error_message }}</pre>
+  {% endif %}
+</section>
+
+<section class="panel diag-report">
+  <h2 class="chart-title">Request</h2>
+  {% if r.has_request %}
+  {% set q = r.request %}
+  <dl class="diag-facts">
+    {% if q.system_prompt_chars is not none %}<dt>System prompt</dt><dd>{{ q.system_prompt_chars|fmt_int }} characters</dd>{% endif %}
+    {% if q.system_prompt_sha256 %}<dt>Prompt SHA-256</dt><dd>{{ q.system_prompt_sha256 }}</dd>{% endif %}
+    {% if q.tool_names %}<dt>Tools offered</dt><dd>{{ q.tool_names|join(", ") }}</dd>{% endif %}
+  </dl>
+  {% if q.params %}
+  <details class="diag-msg"><summary>Parameters</summary><pre class="diag-text">{{ q.params }}</pre></details>
+  {% endif %}
+  {% for m in q.messages %}
+  <details class="diag-msg"{% if loop.last %} open{% endif %}>
+    <summary><span class="diag-role diag-role-{{ m.role }}">{{ m.role }}</span> {{ m.content|length|fmt_int }} characters</summary>
+    <pre class="diag-text">{{ m.content }}</pre>
+  </details>
+  {% endfor %}
+  {% else %}
+  <p class="empty-hint">The report carries no request.</p>
+  {% endif %}
+</section>
+
+<section class="panel diag-report">
+  <h2 class="chart-title">Response</h2>
+  {% if r.has_response %}
+  {% set a = r.response %}
+  {% if a.stop_reason %}<dl class="diag-facts"><dt>Stop reason</dt><dd>{{ a.stop_reason }}</dd></dl>{% endif %}
+  {% if a.error_body %}<h3 class="diag-h">Error body</h3><pre class="diag-text">{{ a.error_body }}</pre>{% endif %}
+  {% if a.text %}<h3 class="diag-h">Text</h3><pre class="diag-text">{{ a.text }}</pre>{% endif %}
+  {% if a.reasoning %}
+  <details class="diag-msg"><summary>Reasoning, {{ a.reasoning|length|fmt_int }} characters</summary><pre class="diag-text">{{ a.reasoning }}</pre></details>
+  {% endif %}
+  {% for c in a.tool_calls %}
+  <h3 class="diag-h">Tool call {{ c.name }}{% if c.id %} <span class="diag-dim">{{ c.id }}</span>{% endif %}</h3>
+  <pre class="diag-text">{{ c.arguments }}</pre>
+  {% endfor %}
+  {% if a.usage %}<details class="diag-msg"><summary>Usage</summary><pre class="diag-text">{{ a.usage }}</pre></details>{% endif %}
+  {% else %}
+  <p class="empty-hint">The report carries no response.</p>
+  {% endif %}
+</section>
+
+{% if r.tool_result %}
+<section class="panel diag-report">
+  <h2 class="chart-title">Tool result</h2>
+  <pre class="diag-text">{{ r.tool_result }}</pre>
+</section>
+{% endif %}
+{% endblock %}

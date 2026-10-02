@@ -59,11 +59,14 @@ EXPECTED = {
     ("/api/user-settings", ("PATCH",), "update_user_settings_endpoint", "APIRoute"),
     ("/api/events", ("POST",), "record_event_endpoint", "APIRoute"),
     ("/api/events/backfill", ("POST",), "backfill_events_endpoint", "APIRoute"),
+    ("/api/error-reports", ("POST",), "record_error_report_endpoint", "APIRoute"),
     # The web panel (routers/web.py before CAPI-M5).
     ("/", ("GET",), "root_redirect", "APIRoute"),
     ("/app", ("GET",), "task_list", "APIRoute"),
     ("/app/metrics", ("GET",), "metrics_page", "APIRoute"),
     ("/app/diagnostics", ("GET",), "diagnostics_page", "APIRoute"),
+    ("/app/diagnostics/report.md", ("GET",), "diagnostics_markdown", "APIRoute"),
+    ("/app/diagnostics/reports/{report_id}", ("GET",), "diagnostics_report", "APIRoute"),
     ("/app/tasks/{task_id}", ("GET",), "task_detail", "APIRoute"),
     ("/app/tasks/{task_id}/delete", ("POST",), "delete_task", "APIRoute"),
     ("/app/settings", ("GET",), "settings_page", "APIRoute"),
@@ -155,6 +158,18 @@ def test_web_routes_keep_their_openapi_operations():
             ("web",),
             html,
             (("period", "query", False),),
+        ),
+        ("/app/diagnostics/report.md", "get"): (
+            "diagnostics_markdown_app_diagnostics_report_md_get",
+            ("web",),
+            ("text/plain",),
+            (("period", "query", False),),
+        ),
+        ("/app/diagnostics/reports/{report_id}", "get"): (
+            "diagnostics_report_app_diagnostics_reports__report_id__get",
+            ("web",),
+            html,
+            (("report_id", "path", True),),
         ),
         ("/app/tasks/{task_id}", "get"): (
             "task_detail_app_tasks__task_id__get",

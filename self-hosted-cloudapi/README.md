@@ -278,8 +278,12 @@ In short:
 - Browser sign-in: `GET /extension/sign-in` (redirects to Authentik), `GET /auth/clerk/callback`, `GET /auth/error`,
   and `GET /app/login`, `POST /app/logout` for the web panel.
 - Extension API on `cloudApiUrl`: `GET /api/extension-settings`, `PATCH /api/user-settings`,
-  `POST /api/extension/share`, `GET /api/extension/bridge/config`, `POST /api/events`, `POST /api/events/backfill`.
-- Web panel: `/app` (task list, task pages, metrics, diagnostics, settings) and `/shared/{task_id}` for shared tasks.
+  `POST /api/extension/share`, `GET /api/extension/bridge/config`, `POST /api/events`, `POST /api/events/backfill`,
+  `POST /api/error-reports` (one problem with its model, context size, request and response; sent only while the
+  extension is signed in, duplicates by id ignored, 1 MB limit).
+- Web panel: `/app` (task list, task pages, metrics, the problem report at `/app/diagnostics` with one report at
+  `/app/diagnostics/reports/{id}` and a Markdown export at `/app/diagnostics/report.md`, settings) and
+  `/shared/{task_id}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
 - Health: `GET /health` (process alive), `GET /health/ready` (database reachable).
 

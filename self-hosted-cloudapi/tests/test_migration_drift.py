@@ -340,6 +340,8 @@ def test_migrate_script_on_a_managed_database_upgrades_to_head(migrate_env):
     # f6a7b8c9d0e1 rolled the two messages up into the task row.
     assert _scalar(db_file, "SELECT count(*) FROM task_messages") == 2
     assert _scalar(db_file, "SELECT message_count FROM tasks WHERE id = 'task_1'") == 2
+    # A deployment that predates error reports gets their table on upgrade.
+    assert "error_reports" in _tables(db_file)
 
 
 # --- Drift ----------------------------------------------------------------------

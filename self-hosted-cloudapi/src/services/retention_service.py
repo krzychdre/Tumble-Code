@@ -22,6 +22,8 @@ events carry a full copy of every stored conversation — 146 MB duplicating the
 479 MB in ``task_messages`` on this deployment. ``LLM Completion`` and
 ``Embedding Usage`` are **never** swept: the metrics page is built from them,
 and the tasks cannot reconstruct the cost and indexing history they hold.
+Error reports (``error_reports``) are swept with the telemetry, by the same
+age, and counted in the same figure.
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ from typing import Optional
 from sqlalchemy import delete, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.error_report import ErrorReport
 from src.models.event import TelemetryEvent
 from src.models.retention import RetentionPolicy
 from src.models.task import Task, TaskMessage, TaskShare
@@ -58,7 +61,11 @@ class RetentionPlan:
     # task_id -> the rule that selected it, for the preview.
     reasons: dict[str, str] = field(default_factory=dict)
     message_count: int = 0
+    # Telemetry events and error reports together: both are telemetry to the
+    # reader, and the settings page shows one figure. ``report_count`` is the
+    # error-report part of it.
     event_count: int = 0
+    report_count: int = 0
     # Approximate bytes reclaimed: the stored JSON payloads, which are the bulk
     # of both tables. Index and row overhead are not included, so this reads as
     # a floor rather than a promise.
@@ -208,6 +215,13 @@ async def plan_sweep(
             .where(*_telemetry_filters(user_id, event_cutoff))
         )
         plan.event_count, plan.event_bytes = counted.one()
+        counted = await db.execute(
+            _count_and_size(ErrorReport.id, ErrorReport.payload, measure_size)
+            .where(*_report_filters(user_id, event_cutoff))
+        )
+        plan.report_count, report_bytes = counted.one()
+        plan.event_count += plan.report_count
+        plan.event_bytes += report_bytes
 
     return plan
 
@@ -221,6 +235,16 @@ def _count_and_size(id_column, payload_column, measure_size: bool):
         else literal(0)
     )
     return select(func.count(id_column), size)
+
+
+def _report_filters(user_id: str, cutoff: datetime):
+    """Error reports a telemetry sweep may take: this user's, old enough.
+
+    Swept with the ordinary telemetry, by the same age: a report is evidence
+    for the problem report page, which reads recent periods, and it carries
+    the tail of a conversation, which should not outlive the policy.
+    """
+    return (ErrorReport.user_id == user_id, ErrorReport.created_at < cutoff)
 
 
 def _telemetry_filters(user_id: str, cutoff: datetime):
@@ -256,6 +280,7 @@ async def apply_sweep(
     if plan.event_count and policy.purge_telemetry and policy.telemetry_max_age_days:
         event_cutoff = now - timedelta(days=policy.telemetry_max_age_days)
         await db.execute(delete(TelemetryEvent).where(*_telemetry_filters(user_id, event_cutoff)))
+        await db.execute(delete(ErrorReport).where(*_report_filters(user_id, event_cutoff)))
 
     policy.last_run_at = now
     policy.last_deleted_tasks = plan.task_count

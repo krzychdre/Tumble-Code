@@ -69,6 +69,7 @@ class Completion:
     output_tokens: int
     kind: str = TASK_KIND
     cost: float = 0.0
+    provider: Optional[str] = None
 
 
 def completion_from_properties(props: dict) -> Optional[Completion]:
@@ -77,6 +78,7 @@ def completion_from_properties(props: dict) -> Optional[Completion]:
     if not model or not isinstance(model, str):
         return None
     mode = props.get("mode")
+    provider = props.get("apiProvider")
     return Completion(
         model=model,
         mode=mode if isinstance(mode, str) and mode else None,
@@ -84,6 +86,7 @@ def completion_from_properties(props: dict) -> Optional[Completion]:
         output_tokens=int(num(props.get("outputTokens"))),
         kind=completion_kind(props),
         cost=float(num(props.get("cost"))),
+        provider=provider if isinstance(provider, str) and provider else None,
     )
 
 
@@ -161,10 +164,6 @@ def attribute_requests(
     because the caller hands it to the browser as JSON (where object keys are
     strings anyway) and the renderer looks it up by the row's ``data-ts``.
     """
-    completions = task_completions(completions)
-    if not completions:
-        return {}
-
     requests: list[tuple[object, tuple[int, int]]] = []
     for msg in messages:
         ts = msg.get("ts")
@@ -174,16 +173,35 @@ def attribute_requests(
         if pair is not None:
             requests.append((ts, pair))
 
-    attributed: dict[str, dict] = {}
-    matched: set[object] = set()
+    return {
+        str(ts): {"model": c.model, "mode": c.mode}
+        for ts, c in match_requests(requests, completions).items()
+    }
+
+
+def match_requests(
+    requests: list[tuple[object, tuple[int, int]]], completions: list[Completion]
+) -> dict[object, Completion]:
+    """The completion that answered each request, by the request's ``ts``.
+
+    ``requests`` are ``(ts, (tokens_in, tokens_out))`` in conversation order,
+    the in-flight ``(0, 0)`` ones already left out. The join described in the
+    module docstring; ``attribute_requests`` reads the pairs from stored
+    messages, the problem report (services/diagnostics_service) from the
+    ``tokens_in``/``tokens_out`` columns, without decoding a message.
+    """
+    completions = task_completions(completions)
+    if not completions:
+        return {}
+
+    attributed: dict[object, Completion] = {}
     cursor = 0
     for ts, pair in requests:
         probe = cursor
         while probe < len(completions):
             candidate = completions[probe]
             if (candidate.input_tokens, candidate.output_tokens) == pair:
-                attributed[str(ts)] = {"model": candidate.model, "mode": candidate.mode}
-                matched.add(ts)
+                attributed[ts] = candidate
                 cursor = probe + 1
                 break
             probe += 1
@@ -195,8 +213,7 @@ def attribute_requests(
     if len(distinct) == 1:
         only = completions[0]
         for ts, _pair in requests:
-            if ts not in matched:
-                attributed[str(ts)] = {"model": only.model, "mode": only.mode}
+            attributed.setdefault(ts, only)
 
     return attributed
 

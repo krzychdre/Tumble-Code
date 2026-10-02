@@ -1,127 +1,140 @@
 {% extends "base.html" %}
-{% block title %}Diagnostics · Tumble Code{% endblock %}
+{% block title %}Problem report · Tumble Code{% endblock %}
 {% block content %}
+{% set p = problems %}
 <div class="metrics-head">
-  <h1 class="page-title">Diagnostics</h1>
+  <h1 class="page-title">Problem report</h1>
   <nav class="period-control" aria-label="Time period">
-    {% for p in periods %}
-    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/diagnostics?period={{ p.key }}">{{ p.label }}</a>
+    {% for o in periods %}
+    <a class="period-opt{{ ' active' if o.active else '' }}" href="/app/diagnostics?period={{ o.key }}">{{ o.label }}</a>
     {% endfor %}
   </nav>
 </div>
 
-{% if diagnostics.has_data %}
-{% set e = diagnostics.errors %}
-{% set u = diagnostics.usage %}
-<section class="stat-grid">
-  <div class="stat-card" data-metric="errors">
-    <div class="stat-label">Errors</div>
-    <div class="stat-value">{{ e.total|fmt_int }}</div>
-    <div class="stat-sub">{% for t in e.by_type %}{{ t.label }} {{ t.count|fmt_int }}{{ ' · ' if not loop.last }}{% else %}none in this period{% endfor %}</div>
+<p class="diag-lead">
+  What went wrong in your sessions, whose fault it most likely is, and what to try.
+  Each problem is grouped with its repeats and checked against a catalogue of known causes.
+  <a class="diag-export" href="/app/diagnostics/report.md?period={{ p.period }}" download>Download as Markdown</a>
+  <span class="diag-export-hint">(hand it to a coding agent to work on the fixes)</span>
+</p>
+
+{% if p.has_data %}
+<section class="stat-grid diag-classes" aria-label="Problems by class">
+  {% for c in p.by_class %}
+  <div class="stat-card diag-class-card diag-c-{{ c.key }}{{ ' is-zero' if not c.count }}">
+    <div class="stat-label">{{ c.name }}</div>
+    <div class="stat-value">{{ c.count|fmt_int }}</div>
   </div>
-  <div class="stat-card" data-metric="tools">
-    <div class="stat-label">Tool calls</div>
-    <div class="stat-value">{{ u.tool_total|fmt_int }}</div>
-    <div class="stat-sub">{{ u.tools_named|plural("tool") }}{% if u.tools_unnamed %} · {{ u.tools_unnamed|fmt_int }} calls without a name{% endif %}</div>
-  </div>
-  <div class="stat-card" data-metric="features">
-    <div class="stat-label">Other feature events</div>
-    <div class="stat-value">{{ (u.total - u.tool_total)|fmt_int }}</div>
-    <div class="stat-sub">{{ u.features|length|plural("kind") }}</div>
-  </div>
+  {% endfor %}
 </section>
 
-<section class="panel diag-errors">
-  <h2 class="chart-title">Errors <span class="count-pill">{{ e.total|fmt_int }}</span></h2>
-  {% if e.groups %}
-  {% if e.undetailed %}
-  <p class="kind-note">
-    {{ e.undetailed|fmt_int }} error{{ '' if e.undetailed == 1 else 's' }} came from an extension version that sent no details:
-    counted under its type, without a message.
+<section class="panel diag-problems">
+  <h2 class="chart-title">Problems <span class="count-pill">{{ p.total|fmt_int }}</span></h2>
+  <p class="diag-note">
+    {{ p.total|plural("occurrence") }} in {{ p.tasks|plural("task") }}, ranked by how many tasks each one hit.
+    {% set legacy = p.sources.get('conversation') or p.sources.get('telemetry') %}
+    {% if p.legacy_until and legacy %}
+    Before {{ p.legacy_until }} UTC they are read from synced conversations and telemetry, without the request and response;
+    from then on the extension sends a report for each.
+    {% elif legacy and not p.sources.get('report') %}
+    Read from synced conversations and telemetry: these have no request or response to open.
+    The extension sends full reports while you are signed in.
+    {% endif %}
   </p>
-  {% endif %}
-  {# One row per kind of error. Opening a row shows the latest occurrence in
-     full; the stack is only there for exceptions and code-index errors. #}
-  <div class="diag-groups">
-    {% for g in e.groups %}
-    <details class="diag-group">
-      <summary>
-        <span class="diag-type">{{ g.label }}</span>
-        <span class="diag-sig" title="{{ g.sample.signature }}">{{ g.sample.signature }}</span>
-        <span class="diag-count">{{ g.count|fmt_int }}&times;</span>
-        <span class="diag-when">{{ g.last_seen }}</span>
-      </summary>
-      <dl class="diag-facts">
-        <dt>First seen</dt><dd>{{ g.first_seen }} UTC</dd>
-        <dt>Last seen</dt><dd>{{ g.last_seen }} UTC</dd>
-        {% if g.sample.provider %}<dt>Provider</dt><dd>{{ g.sample.provider }}</dd>{% endif %}
-        {% if g.sample.model %}<dt>Model</dt><dd>{{ g.sample.model }}</dd>{% endif %}
-        {% if g.sample.version %}<dt>Version</dt><dd>{{ g.sample.version }}</dd>{% endif %}
-        {% if g.sample.task_id %}<dt>Task</dt><dd><a href="/app/tasks/{{ g.sample.task_id }}">{{ g.sample.task_id }}</a></dd>{% endif %}
-      </dl>
-      {% if g.sample.message %}<pre class="diag-text">{{ g.sample.message }}</pre>{% endif %}
-      {% if g.sample.stack %}<pre class="diag-text diag-stack">{{ g.sample.stack }}</pre>{% endif %}
-    </details>
+  <ol class="diag-groups">
+    {% for g in p.groups %}
+    <li class="diag-group">
+      {# The top problem opens on its own: it is the one to read first. #}
+      <details{% if loop.first %} open{% endif %}>
+        <summary>
+          <span class="diag-badge diag-c-{{ g.class_key }}">{{ g.classification }}</span>
+          <span class="diag-title">{{ g.title }}</span>
+          <span class="diag-impact">{{ g.count|fmt_int }}&times;{% if g.tasks %} · {{ g.tasks|plural("task") }}{% endif %}</span>
+          <span class="diag-sig">{{ g.signature }}</span>
+          <span class="diag-models">
+            {% for m in g.models[:3] %}<span class="diag-model">{{ m.model }}{% if m.provider %} @ {{ m.provider }}{% endif %} <b>{{ m.count }}</b></span>{% endfor %}
+            {% if g.models|length > 3 %}<span class="diag-model">+{{ g.models|length - 3 }} more</span>{% endif %}
+          </span>
+        </summary>
+        <div class="diag-body">
+          <div class="diag-mitigation">
+            <h3 class="diag-h">What to do</h3>
+            <p>{{ g.mitigation }}</p>
+          </div>
+          <dl class="diag-facts">
+            <dt>Category</dt><dd>{{ g.category }}{% if g.tool %} · {{ g.tool }}{% endif %}</dd>
+            <dt>First seen</dt><dd>{{ g.first_seen }} UTC</dd>
+            <dt>Last seen</dt><dd>{{ g.last_seen }} UTC</dd>
+            <dt>Seen in</dt><dd>{{ g.sources|join(", ") }}</dd>
+            {% if g.task_ids %}
+            <dt>Tasks</dt>
+            <dd>{% for t in g.task_ids %}<a href="/app/tasks/{{ t }}">{{ t }}</a>{{ ' ' if not loop.last }}{% endfor %}{% if g.tasks > g.task_ids|length %} and {{ g.tasks - g.task_ids|length }} more{% endif %}</dd>
+            {% endif %}
+          </dl>
+          <div class="diag-table-wrap">
+            <table class="breakdown diag-table">
+              <caption class="sr-only">Models this problem happened with</caption>
+              <thead><tr><th scope="col">Model</th><th scope="col">Provider</th><th scope="col" class="diag-num">Count</th></tr></thead>
+              <tbody>
+                {% for m in g.models %}
+                <tr><td class="diag-cell">{{ m.model }}</td><td class="diag-cell">{{ m.provider or "-" }}</td><td class="bd-num">{{ m.count|fmt_int }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <h3 class="diag-h">Latest occurrence, {{ g.sample.when }} UTC</h3>
+          <pre class="diag-text">{{ g.sample.text }}</pre>
+          {% if g.reports %}
+          <p class="diag-links">Reports:
+            {% for r in g.reports %}<a href="/app/diagnostics/reports/{{ r.id }}">{{ r.when }}</a>{{ ' · ' if not loop.last }}{% endfor %}
+          </p>
+          {% endif %}
+        </div>
+      </details>
+    </li>
     {% endfor %}
-  </div>
-  {% if e.hidden_groups %}
-  <p class="kind-note">{{ e.hidden_groups|plural("rarer kind") }} not listed.</p>
-  {% endif %}
-
-  <details class="chart-table">
-    <summary>Latest {{ e.recent|length }} errors</summary>
-    <table class="breakdown diag-recent">
-      <caption class="sr-only">The latest errors, newest first</caption>
-      <thead><tr><th scope="col">Error</th><th scope="col">When (UTC)</th></tr></thead>
-      <tbody>
-        {% for r in e.recent %}
-        <tr><td class="bd-name" title="{{ r.signature }}">{{ r.label }} · {{ r.signature }}</td><td class="bd-num">{{ r.when }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </details>
-  {% else %}
-  <p class="empty-hint">No errors recorded in this period.</p>
+  </ol>
+  {% if p.hidden_groups %}
+  <p class="diag-note">{{ p.hidden_groups|plural("rarer problem") }} not listed.</p>
   {% endif %}
 </section>
 
-<section class="breakdown-grid">
-  {% if u.tools %}
-  <div class="breakdown-card">
-    <h2 class="chart-title">Tools <span class="count-pill">{{ u.tool_total|fmt_int }}</span></h2>
-    <table class="breakdown" id="table-tools">
-      <caption class="sr-only">Tool calls by tool</caption>
-      <thead><tr><th scope="col">Tool</th><th scope="col">Calls</th></tr></thead>
+{% if p.model_fit %}
+<section class="panel diag-fit">
+  <h2 class="chart-title">Model fit</h2>
+  <p class="diag-note">
+    Problems per 100 requests for each model. A model far above the others on one kind of problem does not fit
+    that use; a problem spread evenly over every model is more likely ours.
+  </p>
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-model-fit">
+      <caption class="sr-only">Problems per model and provider</caption>
+      <thead>
+        <tr>
+          <th scope="col">Model</th><th scope="col">Provider</th><th scope="col" class="diag-num">Requests</th>
+          <th scope="col" class="diag-num">Problems</th><th scope="col" class="diag-num">Per 100</th><th scope="col">Most common</th>
+        </tr>
+      </thead>
       <tbody>
-        {% for r in u.tools %}
-        <tr><td class="bd-name" title="{{ r.name }}">{{ r.name }}</td><td class="bd-num">{{ r.count|fmt_int }}</td></tr>
+        {% for r in p.model_fit %}
+        <tr>
+          <td class="diag-cell">{{ r.model }}</td>
+          <td class="diag-cell">{{ r.provider or "-" }}</td>
+          <td class="bd-num">{{ r.requests|fmt_int }}</td>
+          <td class="bd-num">{{ r.problems|fmt_int }}</td>
+          <td class="bd-num">{{ "-" if r.per_100 is none else r.per_100 }}</td>
+          <td class="diag-cell">{% if r.top_category %}{{ r.top_category }} ({{ r.top_category_count }}){% endif %}</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  {% endif %}
-  {% if u.features %}
-  <div class="breakdown-card">
-    <h2 class="chart-title">Features</h2>
-    <table class="breakdown" id="table-features">
-      <caption class="sr-only">Feature events by kind</caption>
-      <thead><tr><th scope="col">Event</th><th scope="col">Count</th></tr></thead>
-      <tbody>
-        {% for f in u.features %}
-        <tr><td class="bd-name" title="{{ f.event }}">{{ f.event }}</td><td class="bd-num">{{ f.count|fmt_int }}</td></tr>
-        {% for b in f.breakdown %}
-        <tr class="diag-sub"><td class="bd-name" title="{{ b.name }}">{{ b.name }}</td><td class="bd-num">{{ b.count|fmt_int }}</td></tr>
-        {% endfor %}
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
 </section>
+{% endif %}
 {% else %}
 <div class="empty">
-  <p class="empty-lead">No errors or feature events recorded for this period.</p>
-  <p class="empty-hint">Use the extension while signed in and come back, or pick a longer period above.</p>
+  <p class="empty-lead">No problems recorded for this period.</p>
+  <p class="empty-hint">Problems are reported while the extension is signed in to this cloud. Pick a longer period above to see older ones.</p>
 </div>
 {% endif %}
 {% endblock %}

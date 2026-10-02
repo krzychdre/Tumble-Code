@@ -7,6 +7,7 @@ from src.models.settings import OrganizationSettings, UserSettings
 from src.models.task import Task, TaskMessage, TaskShare
 from src.models.relation import TaskRelation
 from src.models.event import TelemetryEvent
+from src.models.error_report import ErrorReport
 from src.models.oauth import AuthentikStateStore
 from src.models.retention import RetentionPolicy
 
@@ -26,6 +27,7 @@ __all__ = [
     "TaskShare",
     "TaskRelation",
     "TelemetryEvent",
+    "ErrorReport",
     "AuthentikStateStore",
     "RetentionPolicy",
     "RETIRED_TABLES",
