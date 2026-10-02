@@ -15,6 +15,7 @@ import { getWorkspacePath } from "../../../utils/path"
 import { GlobalFileNames } from "../../../shared/globalFileNames"
 
 import { CustomModesManager } from "../CustomModesManager"
+import { useMemoryFiles, type MemoryFiles } from "./memoryFiles"
 
 vi.mock("vscode", () => ({
 	workspace: {
@@ -31,6 +32,10 @@ vi.mock("fs/promises", () => ({
 	mkdir: vi.fn(),
 	readFile: vi.fn(),
 	writeFile: vi.fn(),
+	rename: vi.fn(),
+	open: vi.fn(),
+	chmod: vi.fn(),
+	unlink: vi.fn(),
 	stat: vi.fn(),
 	readdir: vi.fn(),
 	rm: vi.fn(),
@@ -44,6 +49,7 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 	let mockContext: vscode.ExtensionContext
 	let mockOnUpdate: Mock
 	let mockWorkspaceFolders: { uri: { fsPath: string } }[]
+	let files: MemoryFiles
 
 	// Use path.sep to ensure correct path separators for the current platform
 	const mockStoragePath = `${path.sep}mock${path.sep}settings`
@@ -74,17 +80,11 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 			return path === mockSettingsPath || path === mockRoomodes
 		})
 		;(fs.mkdir as Mock).mockResolvedValue(undefined)
-		;(fs.writeFile as Mock).mockResolvedValue(undefined)
 		;(fs.stat as Mock).mockResolvedValue({ isDirectory: () => true })
 		;(fs.readdir as Mock).mockResolvedValue([])
 		;(fs.rm as Mock).mockResolvedValue(undefined)
-		;(fs.readFile as Mock).mockImplementation(async (path: string) => {
-			if (path === mockSettingsPath) {
-				return yaml.stringify({ customModes: [] })
-			}
-
-			throw new Error("File not found")
-		})
+		files = useMemoryFiles(fs)
+		files.set(mockSettingsPath, yaml.stringify({ customModes: [] }))
 
 		manager = new CustomModesManager(mockContext, mockOnUpdate)
 	})
@@ -226,19 +226,8 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 				],
 			})
 
-			const writtenFiles: Record<string, string> = {}
 			const createdDirs: string[] = []
 
-			;(fs.readFile as Mock).mockImplementation(async (path: string) => {
-				if (path === mockSettingsPath) {
-					return yaml.stringify({ customModes: [] })
-				}
-				throw new Error("File not found")
-			})
-			;(fs.writeFile as Mock).mockImplementation(async (path: string, content: string) => {
-				writtenFiles[path] = content
-				return Promise.resolve()
-			})
 			;(fs.mkdir as Mock).mockImplementation(async (path: string) => {
 				createdDirs.push(path)
 				return Promise.resolve()
@@ -249,15 +238,9 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 			expect(result.success).toBe(true)
 
 			// Verify files were written to the correct new slug folder
-			const rule1Path = Object.keys(writtenFiles).find((p) => p.includes("rule1.md") && !p.includes(".roomodes"))
-			const rule2Path = Object.keys(writtenFiles).find((p) => p.includes("rule2.md") && !p.includes(".roomodes"))
-
-			expect(rule1Path).toBeDefined()
-			expect(rule2Path).toBeDefined()
-
-			// Check that files are in rules-new-slug-name folder
-			expect(rule1Path).toContain(path.join(".roo", "rules-new-slug-name", "rule1.md"))
-			expect(rule2Path).toContain(path.join(".roo", "rules-new-slug-name", "subfolder", "rule2.md"))
+			const rulesDir = path.join(mockWorkspacePath, ".roo", "rules-new-slug-name")
+			expect(files.get(path.join(rulesDir, "rule1.md"))).toBe("Rule 1 content")
+			expect(files.get(path.join(rulesDir, "subfolder", "rule2.md"))).toBe("Rule 2 content")
 
 			// Verify directories were created with new slug
 			expect(createdDirs.some((dir) => dir.includes("rules-new-slug-name"))).toBe(true)
@@ -286,37 +269,17 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 				],
 			})
 
-			const writtenFiles: Record<string, string> = {}
-
-			;(fs.readFile as Mock).mockImplementation(async (path: string) => {
-				if (path === mockSettingsPath) {
-					return yaml.stringify({ customModes: [] })
-				}
-				throw new Error("File not found")
-			})
-			;(fs.writeFile as Mock).mockImplementation(async (path: string, content: string) => {
-				writtenFiles[path] = content
-				return Promise.resolve()
-			})
-
 			const result = await manager.importModeWithRules(importYaml)
 
 			expect(result.success).toBe(true)
 
 			// Verify files were written to the NEW slug folder, not the old one
-			const rule1Path = Object.keys(writtenFiles).find((p) => p.includes("rule1.md") && !p.includes(".roomodes"))
-			const rule2Path = Object.keys(writtenFiles).find((p) => p.includes("rule2.md") && !p.includes(".roomodes"))
+			const rulesDir = path.join(mockWorkspacePath, ".roo", "rules-new-slug-name")
+			expect(files.get(path.join(rulesDir, "rule1.md"))).toBe("Rule 1 content")
+			expect(files.get(path.join(rulesDir, "subfolder", "rule2.md"))).toBe("Rule 2 content")
 
-			expect(rule1Path).toBeDefined()
-			expect(rule2Path).toBeDefined()
-
-			// Check that files are in rules-new-slug-name folder (not rules-old-slug)
-			expect(rule1Path).toContain(path.join(".roo", "rules-new-slug-name", "rule1.md"))
-			expect(rule2Path).toContain(path.join(".roo", "rules-new-slug-name", "subfolder", "rule2.md"))
-
-			// Ensure old slug folder was NOT created
-			expect(rule1Path).not.toContain("rules-old-slug")
-			expect(rule2Path).not.toContain("rules-old-slug")
+			// Ensure nothing was written under the old slug folder
+			expect(files.paths().filter((p) => p.includes("rules-old-slug"))).toEqual([])
 		})
 
 		it("should handle mixed format paths correctly", async () => {
@@ -346,31 +309,15 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 				],
 			})
 
-			const writtenFiles: Record<string, string> = {}
-
-			;(fs.readFile as Mock).mockImplementation(async (path: string) => {
-				if (path === mockSettingsPath) {
-					return yaml.stringify({ customModes: [] })
-				}
-				throw new Error("File not found")
-			})
-			;(fs.writeFile as Mock).mockImplementation(async (path: string, content: string) => {
-				writtenFiles[path] = content
-				return Promise.resolve()
-			})
-
 			const result = await manager.importModeWithRules(importYaml)
 
 			expect(result.success).toBe(true)
 
 			// All files should be in rules-mixed-mode folder
-			const oldFormatPath = Object.keys(writtenFiles).find((p) => p.includes("old-format.md"))
-			const newFormatPath = Object.keys(writtenFiles).find((p) => p.includes("new-format.md"))
-			const nestedPath = Object.keys(writtenFiles).find((p) => p.includes(path.join("nested", "file.md")))
-
-			expect(oldFormatPath).toContain(path.join(".roo", "rules-mixed-mode", "old-format.md"))
-			expect(newFormatPath).toContain(path.join(".roo", "rules-mixed-mode", "new-format.md"))
-			expect(nestedPath).toContain(path.join(".roo", "rules-mixed-mode", "nested", "file.md"))
+			const rulesDir = path.join(mockWorkspacePath, ".roo", "rules-mixed-mode")
+			expect(files.get(path.join(rulesDir, "old-format.md"))).toBe("Old format content")
+			expect(files.get(path.join(rulesDir, "new-format.md"))).toBe("New format content")
+			expect(files.get(path.join(rulesDir, "nested", "file.md"))).toBe("Nested old format")
 		})
 	})
 
@@ -387,18 +334,9 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 			;(fileExistsAtPath as Mock).mockImplementation(async (path: string) => {
 				return path === mockRoomodes
 			})
-			;(fs.readFile as Mock).mockImplementation(async (path: string) => {
-				if (path === mockRoomodes) {
-					return yaml.stringify({ customModes: [originalMode] })
-				}
-				if (path.includes("rules-original-mode") && path.includes("rule.md")) {
-					return "Original rule content"
-				}
-				if (path === mockSettingsPath) {
-					return yaml.stringify({ customModes: [] })
-				}
-				throw new Error("File not found")
-			})
+			const originalRulePath = path.join(mockWorkspacePath, ".roo", "rules-original-mode", "rule.md")
+			files.set(mockRoomodes, yaml.stringify({ customModes: [originalMode] }))
+			files.set(originalRulePath, "Original rule content")
 			;(fs.stat as Mock).mockResolvedValue({ isDirectory: () => true })
 			;(fs.readdir as Mock).mockResolvedValue([{ name: "rule.md", isFile: () => true }])
 
@@ -413,25 +351,24 @@ describe("CustomModesManager - Export/Import with Slug Changes", () => {
 			const modifiedYaml = yaml.stringify(exportData)
 
 			// Step 4: Import with the new slug
-			const writtenFiles: Record<string, string> = {}
-			;(fs.writeFile as Mock).mockImplementation(async (path: string, content: string) => {
-				writtenFiles[path] = content
-				return Promise.resolve()
-			})
-
 			const importResult = await manager.importModeWithRules(modifiedYaml)
 			expect(importResult.success).toBe(true)
 
-			// Step 5: Verify the rule file was placed in the new slug folder
-			const ruleFilePath = Object.keys(writtenFiles).find(
-				(p) => p.includes("rule.md") && !p.includes(".roomodes"),
+			// Step 5: Verify the rule file was placed in the new slug folder with its content preserved
+			const ruleFiles = files.paths().filter((p) => p.endsWith("rule.md"))
+			expect(ruleFiles.sort()).toEqual(
+				[
+					path.resolve(originalRulePath),
+					path.resolve(mockWorkspacePath, ".roo", "rules-renamed-mode", "rule.md"),
+				].sort(),
 			)
-			expect(ruleFilePath).toBeDefined()
-			expect(ruleFilePath).toContain(path.join(".roo", "rules-renamed-mode", "rule.md"))
-			expect(ruleFilePath).not.toContain("rules-original-mode")
-
-			// Verify content was preserved
-			expect(writtenFiles[ruleFilePath!]).toBe("Original rule content")
+			expect(files.get(path.join(mockWorkspacePath, ".roo", "rules-renamed-mode", "rule.md"))).toBe(
+				"Original rule content",
+			)
+			expect(yaml.parse(files.get(mockRoomodes)!).customModes.map((m: ModeConfig) => m.slug)).toEqual([
+				"original-mode",
+				"renamed-mode",
+			])
 		})
 	})
 })
