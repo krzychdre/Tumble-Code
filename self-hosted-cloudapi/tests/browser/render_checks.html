@@ -103,6 +103,26 @@ window.addEventListener("load", function () {
   check("reader's fold survives a live upsert",
         document.querySelector("#conversation .msg.role-reasoning > details").open === false)
 
+  // A streaming row is updated in place, chunk after chunk. Swapping the whole
+  // row restarted the spinner animation on every chunk and swallowed clicks on
+  // the header, so a streaming reasoning row could not be opened.
+  convo.upsert({ts:13,type:"say",say:"reasoning",text:"First",partial:true})
+  var live = document.querySelector('#conversation .msg[data-ts="13"]')
+  var spin = live.querySelector(".spinner")
+  check("a streaming row shows a spinner", !!spin && live.classList.contains("running"))
+  live.querySelector(":scope > details").open = true
+  convo.upsert({ts:13,type:"say",say:"reasoning",text:"First thoughts, longer",partial:true})
+  var again = document.querySelector('#conversation .msg[data-ts="13"]')
+  check("the next chunk keeps the same row element", again === live)
+  check("the next chunk keeps the same spinner element", again.querySelector(".spinner") === spin)
+  check("the next chunk shows the new text", /longer/.test(again.querySelector(".msg-body").textContent))
+  check("a row opened mid-stream stays open", again.querySelector(":scope > details").open === true)
+  convo.upsert({ts:13,type:"say",say:"reasoning",text:"First thoughts, longer, done"})
+  var done = document.querySelector('#conversation .msg[data-ts="13"]')
+  check("the final revision stops the spinner",
+        !done.querySelector(".spinner") && !done.classList.contains("running") &&
+          /done/.test(done.textContent))
+
   // Toolbar
   check("toolbar rendered", !!document.querySelector(".convo-toolbar"))
   var chips = document.querySelectorAll(".convo-toolbar .chip")
