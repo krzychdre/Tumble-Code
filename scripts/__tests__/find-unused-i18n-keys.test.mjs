@@ -4,6 +4,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import {
+	I18N_TREES,
 	extractDynamicPatterns,
 	extractLiteralKeys,
 	findMissingKeys,
@@ -12,7 +13,7 @@ import {
 	flattenKeys,
 	hasKey,
 	isWebviewProductFile,
-	loadRepo,
+	loadTree,
 	pluralBase,
 	removeKeys,
 } from "../find-unused-i18n-keys.mjs"
@@ -161,10 +162,31 @@ test("isWebviewProductFile keeps webview sources and drops tests and mocks", () 
 })
 
 test("every literal translation key the webview uses exists in the English locale", () => {
-	const missing = findMissingWebviewKeys(loadRepo())
+	const missing = findMissingWebviewKeys(loadTree("webview"))
 	assert.deepEqual(
 		missing.map((m) => `${m.key} (${m.file})`),
 		[],
 		"these keys would render as raw text; add them to every locale or remove the usage",
 	)
+})
+
+test("the src tree is not kept alive by webview-only usage (R3-10)", () => {
+	// The two trees share namespace names (marketplace, common, ...); the src corpus must not
+	// contain webview files, or a webview t("marketplace:filters...") would hide a dead host key.
+	const { sources } = loadTree("src")
+	assert.ok(sources.every((s) => !s.file.startsWith("webview-ui/")))
+	const webviewSources = loadTree("webview").sources
+	assert.ok(webviewSources.some((s) => s.file.startsWith("webview-ui/")))
+})
+
+test("every English key of both i18n trees is referenced (the CI gate's invariant)", () => {
+	for (const tree of Object.keys(I18N_TREES)) {
+		const { locales, sources } = loadTree(tree)
+		const { unused } = findUnusedKeys({ locales, sources })
+		assert.deepEqual(
+			unused.map((u) => `${tree} ${u.ns}:${u.key}`),
+			[],
+			"delete the key from every locale or reference it; unused keys fail code-qa",
+		)
+	}
 })

@@ -100,6 +100,25 @@ webview state; the settings form reads it through `webview-ui/src/components/set
 setting, add its default to that table. Code that reads a possibly unset value writes
 `?? SETTINGS_DEFAULTS.key`, never a literal such as `?? true` or `|| 5`.
 
+## Where a string lives
+
+User-visible text sits in one of three places, and a string belongs to exactly one of them:
+
+- `src/i18n/locales/` — strings shown by the extension host itself (VS Code notifications and quick picks,
+  error messages raised in `src/`, `apps/cli` output routed through the host). Loaded by
+  `src/i18n/setup.ts` into its own i18next instance; keys are written as `t("namespace:key")`.
+- `webview-ui/src/i18n/locales/` — strings rendered by the React UI. A separate i18next instance; the webview
+  also names keys as `t("namespace:key")`, but the two instance's namespaces are unrelated even when they share a
+  name (`marketplace`, `common`, `mcp`, `worktrees` exist in both trees with different content).
+- `src/package.nls.*.json` — VS Code contribution-point strings (command titles, configuration descriptions).
+  Flat keys, one file per locale, consumed by VS Code itself.
+
+Two CI gates police them (R3-3a, R3-10): `node scripts/find-missing-translations.js` fails when a non-English
+locale lacks a key that English has (all three areas, key-completeness), and
+`node scripts/find-unused-i18n-keys.mjs --check` fails when an English key of either i18next tree is referenced
+by no source file. The unused-key scan is per tree: a host key counts as used only when `src`, `apps` or
+`packages` names it, so a webview-only usage keeps a webview key alive but never a host key.
+
 ## From the webview to a handler
 
 1. A component calls `vscode.postMessage({ type: ..., ... })` (`webview-ui/src/utils/vscode.ts`) with a
