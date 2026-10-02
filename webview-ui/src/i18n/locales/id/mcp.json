@@ -50,12 +50,18 @@
 	"serverStatus": {
 		"retrying": "Mencoba lagi...",
 		"retryConnection": "Coba Koneksi Lagi",
-		"restart": "Mulai ulang server"
+		"restart": "Mulai ulang server",
+		"toggle": "Aktifkan atau nonaktifkan server {{serverName}}"
 	},
 	"execution": {
 		"running": "Berjalan",
 		"completed": "Selesai",
 		"error": "Error",
 		"response": "Respons"
+	},
+	"resource": {
+		"noDescription": "Tidak ada deskripsi",
+		"returns": "Mengembalikan",
+		"unknownType": "Tidak diketahui"
 	}
 }

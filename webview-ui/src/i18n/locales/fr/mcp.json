@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "Nouvelle tentative...",
 		"retryConnection": "Réessayer la connexion",
-		"restart": "Redémarrer le serveur"
+		"restart": "Redémarrer le serveur",
+		"toggle": "Activer ou désactiver le serveur {{serverName}}"
 	},
 	"refreshMCP": "Rafraîchir les serveurs MCP",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "Terminé",
 		"error": "Erreur",
 		"response": "Réponse"
+	},
+	"resource": {
+		"noDescription": "Aucune description",
+		"returns": "Renvoie",
+		"unknownType": "Inconnu"
 	}
 }

@@ -8,7 +8,24 @@ import { ServerRow } from "../ServerRow"
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
 vi.mock("@src/i18n/TranslationContext", () => ({
-	useAppTranslation: () => ({ t: (key: string) => key }),
+	useAppTranslation: () => ({
+		t: (key: string, options?: Record<string, unknown>) => (options ? `${key} ${JSON.stringify(options)}` : key),
+	}),
+}))
+
+// Radix Select needs pointer events and portals that jsdom lacks, so the shared
+// Select becomes a native <select> here (the same stub UISettings.spec.tsx uses).
+vi.mock("@src/components/ui", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@src/components/ui")>()),
+	Select: ({ children, value, onValueChange }: any) => (
+		<select value={value} onChange={(e) => onValueChange?.(e.target.value)}>
+			{children}
+		</select>
+	),
+	SelectTrigger: ({ children }: any) => <>{children}</>,
+	SelectValue: () => null,
+	SelectContent: ({ children }: any) => <>{children}</>,
+	SelectItem: ({ children, value }: any) => <option value={value}>{children}</option>,
 }))
 
 const server = (overrides: Partial<McpServer> = {}): McpServer =>
@@ -43,6 +60,18 @@ describe("ServerRow", () => {
 			serverName: "github",
 			source: "project",
 			timeout: 300,
+		})
+	})
+
+	it("the enable switch has a translated accessible name and posts the toggle", () => {
+		render(<ServerRow server={server()} />)
+
+		fireEvent.click(screen.getByRole("switch", { name: 'mcp:serverStatus.toggle {"serverName":"github"}' }))
+		expect(posted()).toContainEqual({
+			type: "toggleMcpServer",
+			serverName: "github",
+			source: "project",
+			disabled: true,
 		})
 	})
 

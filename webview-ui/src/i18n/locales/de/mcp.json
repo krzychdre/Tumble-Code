@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "Wiederhole...",
 		"retryConnection": "Verbindung wiederholen",
-		"restart": "Server neu starten"
+		"restart": "Server neu starten",
+		"toggle": "Server {{serverName}} ein- oder ausschalten"
 	},
 	"refreshMCP": "MCP-Server aktualisieren",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "Abgeschlossen",
 		"error": "Fehler",
 		"response": "Antwort"
+	},
+	"resource": {
+		"noDescription": "Keine Beschreibung",
+		"returns": "Gibt zurück",
+		"unknownType": "Unbekannt"
 	}
 }

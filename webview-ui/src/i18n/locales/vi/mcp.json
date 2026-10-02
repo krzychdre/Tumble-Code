@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "Đang thử lại...",
 		"retryConnection": "Thử kết nối lại",
-		"restart": "Khởi động lại máy chủ"
+		"restart": "Khởi động lại máy chủ",
+		"toggle": "Bật hoặc tắt máy chủ {{serverName}}"
 	},
 	"refreshMCP": "Làm mới Máy chủ MCP",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "Hoàn thành",
 		"error": "Lỗi",
 		"response": "Phản hồi"
+	},
+	"resource": {
+		"noDescription": "Không có mô tả",
+		"returns": "Trả về",
+		"unknownType": "Không xác định"
 	}
 }

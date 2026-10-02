@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "重试中...",
 		"retryConnection": "重试连接",
-		"restart": "重启服务器"
+		"restart": "重启服务器",
+		"toggle": "切换 {{serverName}} 服务器"
 	},
 	"refreshMCP": "刷新 MCP 服务器",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "已完成",
 		"error": "错误",
 		"response": "响应"
+	},
+	"resource": {
+		"noDescription": "无描述",
+		"returns": "返回",
+		"unknownType": "未知"
 	}
 }

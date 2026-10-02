@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "Повторная попытка...",
 		"retryConnection": "Повторить подключение",
-		"restart": "Перезапустить сервер"
+		"restart": "Перезапустить сервер",
+		"toggle": "Включить или выключить сервер {{serverName}}"
 	},
 	"refreshMCP": "Обновить MCP серверы",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "Завершено",
 		"error": "Ошибка",
 		"response": "Ответ"
+	},
+	"resource": {
+		"noDescription": "Нет описания",
+		"returns": "Возвращает",
+		"unknownType": "Неизвестно"
 	}
 }

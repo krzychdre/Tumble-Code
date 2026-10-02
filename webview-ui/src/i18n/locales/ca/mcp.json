@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "Tornant a intentar...",
 		"retryConnection": "Torna a intentar la connexió",
-		"restart": "Reinicia el servidor"
+		"restart": "Reinicia el servidor",
+		"toggle": "Activa o desactiva el servidor {{serverName}}"
 	},
 	"refreshMCP": "Actualitza els servidors MCP",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "Completat",
 		"error": "Error",
 		"response": "Resposta"
+	},
+	"resource": {
+		"noDescription": "Sense descripció",
+		"returns": "Retorna",
+		"unknownType": "Desconegut"
 	}
 }

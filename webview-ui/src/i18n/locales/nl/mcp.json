@@ -49,7 +49,8 @@
 	"serverStatus": {
 		"retrying": "Opnieuw proberen...",
 		"retryConnection": "Verbinding opnieuw proberen",
-		"restart": "Server herstarten"
+		"restart": "Server herstarten",
+		"toggle": "Server {{serverName}} in- of uitschakelen"
 	},
 	"refreshMCP": "MCP-servers vernieuwen",
 	"execution": {
@@ -57,5 +58,10 @@
 		"completed": "Voltooid",
 		"error": "Fout",
 		"response": "Antwoord"
+	},
+	"resource": {
+		"noDescription": "Geen beschrijving",
+		"returns": "Retourneert",
+		"unknownType": "Onbekend"
 	}
 }
