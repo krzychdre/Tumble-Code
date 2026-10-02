@@ -6801,19 +6801,40 @@ exports[`NativeToolCallParser argument parsing (characterization) > read_artifac
   },
   {
     "errors": [],
-    "label": "numbers as strings kept raw",
+    "label": "numbers as strings coerced",
     "result": {
       "name": "read_artifact",
       "nativeArgs": {
         "artifact_id": "cmd-1.txt",
-        "limit": "20",
-        "offset": "100",
+        "limit": 20,
+        "offset": 100,
         "search": undefined,
       },
       "params": {
         "artifact_id": "cmd-1.txt",
         "limit": "20",
         "offset": "100",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "warnings": [],
+  },
+  {
+    "errors": [],
+    "label": "byte units coerced",
+    "result": {
+      "name": "read_artifact",
+      "nativeArgs": {
+        "artifact_id": "cmd-1.txt",
+        "limit": 24576,
+        "offset": 2048,
+        "search": undefined,
+      },
+      "params": {
+        "artifact_id": "cmd-1.txt",
+        "limit": "24KB",
+        "offset": "2kb",
       },
       "partial": false,
       "type": "tool_use",
@@ -6966,8 +6987,8 @@ exports[`NativeToolCallParser argument parsing (characterization) > read_artifac
       "name": "read_artifact",
       "nativeArgs": {
         "artifact_id": "cmd-1.txt",
-        "limit": "20",
-        "offset": "100",
+        "limit": 20,
+        "offset": 100,
         "search": undefined,
       },
       "params": {
@@ -6978,7 +6999,7 @@ exports[`NativeToolCallParser argument parsing (characterization) > read_artifac
       "partial": false,
       "type": "tool_use",
     },
-    "label": "numbers as strings kept raw",
+    "label": "numbers as strings coerced",
     "partials": [
       {
         "received": "{"artif",
@@ -7071,6 +7092,123 @@ exports[`NativeToolCallParser argument parsing (characterization) > read_artifac
             "artifact_id": "cmd-1.txt",
             "limit": "20",
             "offset": "100",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+  {
+    "finalized": {
+      "name": "read_artifact",
+      "nativeArgs": {
+        "artifact_id": "cmd-1.txt",
+        "limit": 24576,
+        "offset": 2048,
+        "search": undefined,
+      },
+      "params": {
+        "artifact_id": "cmd-1.txt",
+        "limit": "24KB",
+        "offset": "2kb",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "label": "byte units coerced",
+    "partials": [
+      {
+        "received": "{"artifa",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"artifact_id":",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"artifact_id":"cmd-1.",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {
+            "artifact_id": "cmd-1.",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"artifact_id":"cmd-1.txt","o",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {
+            "artifact_id": "cmd-1.txt",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"artifact_id":"cmd-1.txt","offset":",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {
+            "artifact_id": "cmd-1.txt",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"artifact_id":"cmd-1.txt","offset":"2kb","",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {
+            "artifact_id": "cmd-1.txt",
+            "offset": "2kb",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"artifact_id":"cmd-1.txt","offset":"2kb","limit":",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {
+            "artifact_id": "cmd-1.txt",
+            "offset": "2kb",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"artifact_id":"cmd-1.txt","offset":"2kb","limit":"24KB"}",
+        "result": {
+          "name": "read_artifact",
+          "nativeArgs": undefined,
+          "params": {
+            "artifact_id": "cmd-1.txt",
+            "limit": "24KB",
+            "offset": "2kb",
           },
           "partial": true,
           "type": "tool_use",

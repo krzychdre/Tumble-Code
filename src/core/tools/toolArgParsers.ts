@@ -62,6 +62,40 @@ function coerceOptionalNumber(value: unknown): number | undefined {
 	return undefined
 }
 
+const BYTE_UNIT_MULTIPLIERS: Record<string, number> = {
+	"": 1,
+	b: 1,
+	byte: 1,
+	bytes: 1,
+	k: 1024,
+	kb: 1024,
+	kib: 1024,
+	m: 1024 * 1024,
+	mb: 1024 * 1024,
+	mib: 1024 * 1024,
+}
+
+/**
+ * A byte count that a weak model may send as a string, often with the unit copied from a
+ * tool description: "24576", "24KB", "24 kb", "1.5MiB". Units are case-insensitive and
+ * binary (1 KB = 1024 bytes, the same convention the artifact headers print). Fractions
+ * round down to whole bytes.
+ *
+ * A value that cannot be read as a byte count is returned unchanged, so the tool can
+ * reject it with a message the model understands instead of quietly reading something else.
+ */
+function coerceOptionalByteCount(value: unknown): unknown {
+	if (typeof value === "number") {
+		return Number.isFinite(value) ? Math.floor(value) : value
+	}
+	if (typeof value !== "string") {
+		return value
+	}
+	const match = /^(\d+(?:\.\d+)?)\s*([a-z]*)$/i.exec(value.trim())
+	const multiplier = match ? BYTE_UNIT_MULTIPLIERS[match[2].toLowerCase()] : undefined
+	return match && multiplier !== undefined ? Math.floor(Number(match[1]) * multiplier) : value
+}
+
 function built(nativeArgs: object): ParsedToolArgs {
 	return { nativeArgs }
 }
@@ -166,7 +200,12 @@ export const parseReadFileArgs: ToolArgParser = (raw) => {
 /** read_artifact and its legacy name read_command_output. No partial arguments (the progress UI reads params). */
 export const parseReadArtifactArgs: ToolArgParser = (raw, { partial }) =>
 	!partial && raw.artifact_id !== undefined
-		? built({ artifact_id: raw.artifact_id, search: raw.search, offset: raw.offset, limit: raw.limit })
+		? built({
+				artifact_id: raw.artifact_id,
+				search: raw.search,
+				offset: coerceOptionalByteCount(raw.offset),
+				limit: coerceOptionalByteCount(raw.limit),
+			})
 		: undefined
 
 export const parseAttemptCompletionArgs: ToolArgParser = (raw) =>

@@ -49,6 +49,37 @@ describe("parseArgs on the tool descriptors", () => {
 		expect(TOOL_DESCRIPTORS.read_file.parseArgs(raw, { partial: false })).toEqual(expected)
 	})
 
+	it.each([
+		["24576", 24576],
+		["24KB", 24576],
+		["24kb", 24576],
+		["24 Kb", 24576],
+		[" 24KiB ", 24576],
+		["24k", 24576],
+		["1.5MB", 1572864],
+		["2mib", 2097152],
+		["300 bytes", 300],
+		["300B", 300],
+		[100.7, 100],
+	])("read_artifact reads the byte count %j as %d", (input, expected) => {
+		const parsed = TOOL_DESCRIPTORS.read_artifact.parseArgs(
+			{ artifact_id: "cmd-1.txt", offset: input, limit: input },
+			{ partial: false },
+		)
+		expect(parsed?.nativeArgs).toMatchObject({ offset: expected, limit: expected })
+	})
+
+	it.each(["abc", "24 GB", "-5", "24KB of text", ""])(
+		"read_artifact leaves the unreadable byte count %j for the tool to reject",
+		(input) => {
+			const parsed = TOOL_DESCRIPTORS.read_artifact.parseArgs(
+				{ artifact_id: "cmd-1.txt", limit: input },
+				{ partial: false },
+			)
+			expect(parsed?.nativeArgs).toMatchObject({ limit: input })
+		},
+	)
+
 	it("read_file reports the legacy files shape for telemetry", () => {
 		const parsed = TOOL_DESCRIPTORS.read_file.parseArgs({ files: '[{"path":"a.ts"}]' }, { partial: false })
 		expect(parsed).toEqual({
