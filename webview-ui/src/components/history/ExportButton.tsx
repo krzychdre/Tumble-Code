@@ -21,7 +21,7 @@ export const ExportButton = ({ itemId }: { itemId: string }) => {
 				data-testid="export"
 				variant="ghost"
 				size="icon"
-				className="group-hover:opacity-100 opacity-50 transition-opacity"
+				className="group-hover:opacity-100 group-focus-visible:opacity-100 group-has-focus-visible:opacity-100 opacity-50 transition-opacity"
 				onClick={handleExportClick}>
 				<span className="codicon codicon-desktop-download scale-80" />
 			</Button>

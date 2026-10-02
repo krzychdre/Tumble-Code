@@ -56,7 +56,7 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 				{docsURL && (
 					<a
 						href={docsURL}
-						className="text-sm flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100"
+						className="text-sm flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100"
 						onClick={(e) => {
 							e.preventDefault()
 							vscode.postMessage({ type: "openExternal", url: docsURL })

@@ -226,6 +226,33 @@ describe("FollowUpSuggest", () => {
 		expect(screen.queryByText(/\d+s/)).not.toBeInTheDocument()
 	})
 
+	it("the copy-to-input control is a named button that shows on keyboard focus and copies with shift", () => {
+		renderWithTestProviders(
+			<FollowUpSuggest
+				suggestions={mockSuggestions}
+				onSuggestionClick={mockOnSuggestionClick}
+				ts={123}
+				onCancelAutoApproval={mockOnCancelAutoApproval}
+			/>,
+			defaultTestState,
+		)
+
+		const copyButtons = screen.getAllByRole("button", { name: "Copy to input" })
+		expect(copyButtons).toHaveLength(2)
+		expect(copyButtons[0]).toHaveClass(
+			"opacity-0",
+			"group-hover:opacity-100",
+			"group-has-focus-visible:opacity-100",
+		)
+
+		act(() => copyButtons[0].click())
+		expect(mockOnSuggestionClick).toHaveBeenCalledWith(
+			mockSuggestions[0],
+			expect.objectContaining({ shiftKey: true }),
+		)
+		expect(mockOnCancelAutoApproval).toHaveBeenCalled()
+	})
+
 	it("should not render when no suggestions are provided", () => {
 		const { container } = renderWithTestProviders(
 			<FollowUpSuggest
@@ -716,7 +743,10 @@ describe("FollowUpSuggest", () => {
 				defaultTestState,
 			)
 
-			const buttons = screen.getAllByRole("button")
+			// One answer button per usable suggestion (the copy-to-input buttons are not counted).
+			const buttons = screen
+				.getAllByRole("button")
+				.filter((button) => button.getAttribute("aria-label") !== "Copy to input")
 			expect(buttons).toHaveLength(1)
 			expect(buttons[0]).toHaveTextContent("Usable answer")
 		})

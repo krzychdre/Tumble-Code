@@ -1,4 +1,4 @@
-import { render, screen } from "@/utils/test-utils"
+import { fireEvent, render, screen } from "@/utils/test-utils"
 
 import { ReasoningBlock } from "../ReasoningBlock"
 
@@ -18,7 +18,7 @@ describe("ReasoningBlock", () => {
 	it("renders exactly one duration, derived from the endTs prop", () => {
 		render(<ReasoningBlock content="" ts={1000} endTs={7600} />)
 
-		// Exactly one duration is shown — the shared BlockTimestamp's. No second
+		// Exactly one duration is shown: the shared BlockTimestamp's. No second
 		// legacy elapsed counter.
 		expect(screen.getAllByText(/^D\(/)).toHaveLength(1)
 		expect(screen.getByText("D(6600)")).toBeInTheDocument()
@@ -49,5 +49,20 @@ describe("ReasoningBlock", () => {
 			"text-[10px]",
 			"text-vscode-descriptionForeground",
 		)
+	})
+
+	it("the header is a keyboard-reachable toggle whose chevron also shows on keyboard focus", () => {
+		const { container } = render(<ReasoningBlock content="" ts={1000} endTs={7600} />)
+
+		const toggle = screen.getByRole("button")
+		expect(toggle).toHaveAttribute("aria-expanded", "true")
+		expect(container.querySelector("svg.lucide-chevron-up")).toHaveClass(
+			"opacity-0",
+			"group-hover:opacity-100",
+			"group-has-focus-visible:opacity-100",
+		)
+
+		fireEvent.click(toggle)
+		expect(toggle).toHaveAttribute("aria-expanded", "false")
 	})
 })

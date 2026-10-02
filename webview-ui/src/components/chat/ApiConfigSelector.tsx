@@ -155,26 +155,33 @@ export const ApiConfigSelector = ({
 			return (
 				<div
 					key={config.id}
-					onClick={() => handleSelect(config.id)}
 					className={cn(
-						"px-3 py-1.5 text-sm cursor-pointer flex items-center group",
+						"relative px-3 py-1.5 text-sm cursor-pointer flex items-center group",
 						"hover:bg-vscode-list-hoverBackground",
 						isCurrentConfig &&
 							"bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground",
 					)}>
-					<div className="flex-1 min-w-0 flex items-center gap-1 overflow-hidden">
+					{/* A real button reachable with Tab; its ::before covers the whole row, so a
+					    click anywhere on the row selects, while the pin button sits above it. */}
+					<button
+						type="button"
+						aria-pressed={isCurrentConfig}
+						onClick={() => handleSelect(config.id)}
+						className={cn(
+							"flex-1 min-w-0 flex items-center gap-1 overflow-hidden text-left cursor-pointer",
+							"before:absolute before:inset-0 before:content-['']",
+							"focus-visible:outline-none focus-visible:before:outline focus-visible:before:outline-(--ring) focus-visible:before:-outline-offset-1",
+						)}>
 						<span className="flex-shrink-0">{config.name}</span>
 						{config.modelId && (
-							<>
-								<span
-									className="text-vscode-descriptionForeground opacity-70 min-w-0 overflow-hidden"
-									style={{ direction: "rtl", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-									{config.modelId}
-								</span>
-							</>
+							<span
+								className="text-vscode-descriptionForeground opacity-70 min-w-0 overflow-hidden"
+								style={{ direction: "rtl", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+								{config.modelId}
+							</span>
 						)}
-					</div>
-					<div className="flex items-center gap-1">
+					</button>
+					<div className="relative flex items-center gap-1">
 						{isCurrentConfig && (
 							<div className="size-5 p-1 flex items-center justify-center">
 								<span className="codicon codicon-check text-xs" aria-hidden="true" />
@@ -185,14 +192,14 @@ export const ApiConfigSelector = ({
 								aria-label={isPinned ? t("chat:unpin") : t("chat:pin")}
 								variant="ghost"
 								size="icon"
-								tabIndex={-1}
 								onClick={(e) => {
 									e.stopPropagation()
 									togglePinnedApiConfig(config.id)
 									vscode.postMessage({ type: "toggleApiConfigPin", text: config.id })
 								}}
 								className={cn("size-5 flex items-center justify-center", {
-									"opacity-0 group-hover:opacity-100": !isPinned && !isCurrentConfig,
+									"opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100":
+										!isPinned && !isCurrentConfig,
 									"bg-accent opacity-100": isPinned,
 								})}>
 								<span className="codicon codicon-pin text-xs opacity-50" />

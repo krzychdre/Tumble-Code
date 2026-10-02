@@ -32,7 +32,7 @@ export const DeleteButton = ({ itemId, onDelete }: DeleteButtonProps) => {
 				size="icon"
 				data-testid="delete-task-button"
 				onClick={handleDeleteClick}
-				className="group-hover:opacity-100 opacity-50 transition-opacity">
+				className="group-hover:opacity-100 group-focus-visible:opacity-100 group-has-focus-visible:opacity-100 opacity-50 transition-opacity">
 				<span className="codicon codicon-trash scale-80" />
 			</Button>
 		</StandardTooltip>
