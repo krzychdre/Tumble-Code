@@ -65,7 +65,7 @@
 		"manageSettings": "Ayarları Yönet",
 		"debugMode": {
 			"label": "Debug modunu etkinleştir",
-			"description": "Görev başlığında API konuşma geçmişini ve UI mesajlarını geçici dosyalarda biçimlendirilmiş JSON olarak görüntülemek için ek düğmeler göstermek üzere debug modunu etkinleştirin."
+			"description": "Debug modunu etkinleştirin: görev başlığında API konuşma geçmişini ve UI mesajlarını geçici dosyalarda biçimlendirilmiş JSON olarak görüntülemek için ek düğmeler gösterir ve ayrıntılı hata ayıklama satırlarını (her isteğin performans sayaçları dahil) Tumble Code çıkış paneline yazar."
 		}
 	},
 	"slashCommands": {

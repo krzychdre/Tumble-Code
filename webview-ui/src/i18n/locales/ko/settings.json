@@ -65,7 +65,7 @@
 		"manageSettings": "설정 관리",
 		"debugMode": {
 			"label": "디버그 모드 활성화",
-			"description": "디버그 모드를 활성화하여 작업 헤더에 API 대화 기록과 UI 메시지를 임시 파일에 포맷된 JSON으로 볼 수 있는 추가 버튼을 표시합니다."
+			"description": "디버그 모드를 활성화합니다. 작업 헤더에 API 대화 기록과 UI 메시지를 임시 파일에 포맷된 JSON으로 볼 수 있는 추가 버튼을 표시하고, 자세한 디버그 줄(요청별 성능 카운터 포함)을 Tumble Code 출력 패널에 기록합니다."
 		}
 	},
 	"slashCommands": {

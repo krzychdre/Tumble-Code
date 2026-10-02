@@ -65,7 +65,7 @@
 		"manageSettings": "管理设置",
 		"debugMode": {
 			"label": "启用调试模式",
-			"description": "启用调试模式以在任务标题栏显示额外按钮，用于在临时文件中查看 API 对话历史和 UI 消息的格式化 JSON。"
+			"description": "启用调试模式：在任务标题栏显示额外按钮，用于在临时文件中查看 API 对话历史和 UI 消息的格式化 JSON，并将详细的调试行（包括每个请求的性能计数器）写入 Tumble Code 输出面板。"
 		}
 	},
 	"slashCommands": {

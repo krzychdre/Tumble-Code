@@ -65,7 +65,7 @@
 		"manageSettings": "Zarządzaj Ustawieniami",
 		"debugMode": {
 			"label": "Włącz tryb debugowania",
-			"description": "Włącz tryb debugowania, aby wyświetlić dodatkowe przyciski w nagłówku zadania umożliwiające przeglądanie historii konwersacji API i komunikatów UI jako sformatowany JSON w plikach tymczasowych."
+			"description": "Włącz tryb debugowania: wyświetla dodatkowe przyciski w nagłówku zadania umożliwiające przeglądanie historii konwersacji API i komunikatów UI jako sformatowany JSON w plikach tymczasowych oraz zapisuje szczegółowe wiersze debugowania (w tym liczniki wydajności każdego żądania) w panelu danych wyjściowych Tumble Code."
 		}
 	},
 	"slashCommands": {

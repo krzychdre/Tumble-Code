@@ -65,7 +65,7 @@
 		"manageSettings": "Kelola Pengaturan",
 		"debugMode": {
 			"label": "Aktifkan mode debug",
-			"description": "Aktifkan mode debug untuk menampilkan tombol tambahan di header tugas yang memungkinkan melihat riwayat percakapan API dan pesan UI sebagai JSON yang diformat dalam file sementara."
+			"description": "Aktifkan mode debug: menampilkan tombol tambahan di header tugas untuk melihat riwayat percakapan API dan pesan UI sebagai JSON yang diformat dalam file sementara, serta menulis baris debug terperinci (termasuk penghitung kinerja setiap permintaan) ke panel output Tumble Code."
 		}
 	},
 	"slashCommands": {
