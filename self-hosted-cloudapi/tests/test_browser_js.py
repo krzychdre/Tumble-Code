@@ -35,7 +35,7 @@ _MIN_CHECKS = {
     # another task's snapshot, a snapshot without figures, this task's snapshot;
     # the run row of the spend table following this task's figures; the phone fold.
     "live_checks.html": 30,
-    "render_checks.html": 31,
+    "render_checks.html": 37,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
     # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter form.

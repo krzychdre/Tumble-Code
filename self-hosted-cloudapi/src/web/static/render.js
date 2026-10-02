@@ -399,6 +399,61 @@
 		return el
 	}
 
+	// Bring an existing row up to date from a freshly built one, keeping the
+	// existing elements. A streaming message is relayed chunk by chunk, many
+	// times a second; swapping the whole row each time restarted the spinner
+	// and the running tick (a new element starts its CSS animation from zero)
+	// and swallowed clicks on the header (the summary under the mouse on
+	// mousedown was gone by mouseup, so no click and no toggle). Only what
+	// changed is rewritten. Returns false when the shape differs (a body
+	// appeared or vanished), and the caller then swaps the row as before.
+	function patchRow(el, fresh) {
+		const head = el.querySelector(":scope > details > summary, :scope > .msg-head")
+		const freshHead = fresh.querySelector(":scope > details > summary, :scope > .msg-head")
+		if (!head || !freshHead || head.tagName !== freshHead.tagName) return false
+		// Classes the row picked up after rendering (a pending ask) are not in
+		// the fresh row; keep them.
+		const keep = el.classList.contains("ask-pending") ? " ask-pending" : ""
+		if (el.className !== fresh.className + keep) el.className = fresh.className + keep
+		;["data-ts", "data-kind", "data-cost", "data-failed"].forEach(function (name) {
+			const v = fresh.getAttribute(name)
+			if (v == null) el.removeAttribute(name)
+			else if (el.getAttribute(name) !== v) el.setAttribute(name, v)
+		})
+		// The header up to the meta block (role, badge, detail, spinner). The
+		// meta block itself carries the step duration and the ask resolution,
+		// which are filled in after rendering, so it stays as it is.
+		const lead = function (h) {
+			const out = []
+			for (let n = h.firstChild; n && !(n.classList && n.classList.contains("msg-meta")); n = n.nextSibling) {
+				out.push(n)
+			}
+			return out
+		}
+		const oldLead = lead(head)
+		const newLead = lead(freshHead)
+		const html = function (nodes) {
+			return nodes
+				.map(function (n) {
+					return n.outerHTML != null ? n.outerHTML : n.textContent
+				})
+				.join("")
+		}
+		if (html(oldLead) !== html(newLead)) {
+			const meta = head.querySelector(":scope > .msg-meta")
+			oldLead.forEach(function (n) {
+				n.remove()
+			})
+			newLead.forEach(function (n) {
+				head.insertBefore(n, meta)
+			})
+		}
+		const body = el.querySelector(":scope > details > .msg-body")
+		const freshBody = fresh.querySelector(":scope > details > .msg-body")
+		if (body && freshBody && body.innerHTML !== freshBody.innerHTML) body.innerHTML = freshBody.innerHTML
+		return true
+	}
+
 	function foldStateOf(el) {
 		const d = el && el.querySelector(":scope > details")
 		return d ? d.open : null
@@ -560,8 +615,12 @@
 			const carried = existing ? foldStateOf(existing) : null
 			const remembered = key != null && key in foldByTs ? foldByTs[key] : null
 			const openState = carried != null ? carried : remembered != null ? remembered : foldOverride
-			const fresh = rowEl(info, ts, active, openState)
-			if (existing && existing.parentNode) {
+			let fresh = rowEl(info, ts, active, openState)
+			let patched = false
+			if (existing && existing.parentNode && patchRow(existing, fresh)) {
+				fresh = existing
+				patched = true
+			} else if (existing && existing.parentNode) {
 				copyDuration(existing, fresh)
 				existing.parentNode.replaceChild(fresh, existing)
 				if (tail && tail.key === key) tail.el = fresh
@@ -579,8 +638,9 @@
 				if (resolvedByTs[key]) applyResolution(fresh, resolvedByTs[key])
 				else if (activeAsk && activeAsk.ts === key) decorateAsk(fresh)
 				// Remember a fold the reader sets, so it survives the next upsert.
+				// A patched row kept its element, and with it the listener.
 				const details = fresh.querySelector(":scope > details")
-				if (details) {
+				if (details && !patched) {
 					details.addEventListener("toggle", function () {
 						foldByTs[key] = details.open
 					})
