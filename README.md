@@ -40,7 +40,7 @@ Tumble Code adapts to how you work:
 
 ## Resources
 
-- **Documentation:** Tumble Code documentation is a work in progress. The original Roo Code docs at [docs.roocode.com](https://docs.roocode.com) still describe most behaviors, since Tumble Code is a recent fork.
+- **Documentation:** Tumble Code documentation is a work in progress; the architecture notes for contributors live in [docs/](./docs/).
 
 <!-- External community channels are intentionally hidden until they're set up.
 - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Report bugs and track development.
@@ -177,16 +177,15 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 
 - The entire codebase, Apache 2.0 licensed (see [LICENSE](./LICENSE) for the full notice including the original Roo Code copyright)
 - The agent architecture, mode system, MCP integration, provider abstractions, and webview UI
-- Internal identifiers (`roo-cline.*` command IDs, view IDs, file names, type names) so the rebrand stays additive rather than disruptive
+- Internal identifiers (`roo-cline.*` command IDs, view IDs, file names) so the rebrand stays additive rather than disruptive
 - The original release history in [CHANGELOG.md](./CHANGELOG.md), preserved verbatim with a header note distinguishing the upstream and fork eras
 - The translation work of the Roo Code community across 18 locales
-- The [original Roo Code documentation](https://docs.roocode.com) remains the best reference for most features until Tumble-Code-specific docs catch up
 
 **What's different in Tumble Code:**
 
 - New marketplace identity: `QUB-IT.tumble-code` — install path is independent from the upstream extension
 - The agent persona in chat copy is renamed from "Roo" to "Tumble"; the logo is a tumbleweed instead of a kangaroo
-- Cloud features (auth, share links, telemetry, the LLM proxy) point at a self-hosted backend (see [`self-hosted-cloudapi/`](./self-hosted-cloudapi/) in this repo) instead of `*.roocode.com`. Default URLs are configurable via env vars
+- Cloud features (auth, share links, telemetry, the LLM proxy) point at a self-hosted backend (see [`self-hosted-cloudapi/`](./self-hosted-cloudapi/) in this repo) instead of the upstream project's servers. Default URLs are configurable via env vars
 - Independent direction with a focus on **local inference**: Ollama, LM Studio, llama.cpp, and similar locally-hosted LLMs are treated as first-class providers, not afterthoughts. Cloud providers (Anthropic, OpenAI, OpenRouter, etc.) still work; they're just no longer the default expectation
 - A first-launch settings migration bridge offers to copy your existing Roo Code configuration so you don't lose work
 
