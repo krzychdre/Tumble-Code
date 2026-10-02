@@ -93,6 +93,7 @@ export const bedrockModels = {
 	"anthropic.claude-opus-4-8": { ...claudeModels["opus-4-8"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-5-5": { ...claudeModels["opus-5-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-5": { ...claudeModels["opus-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-sonnet-5-5": { ...claudeModels["sonnet-5-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-sonnet-5": { ...claudeModels["sonnet-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-fable-5-1": { ...claudeModels["fable-5-1"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-fable-5": { ...claudeModels["fable-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
@@ -355,7 +356,7 @@ export const BEDROCK_1M_CONTEXT_MODEL_IDS: readonly string[] = oneMillionContext
 // - Claude Opus 4.5
 // - Claude Opus 4.6
 // - Claude Opus 4.7
-// - Claude Sonnet 5
+// - Claude Sonnet 5 and 5.5
 // - Claude Opus 5 and 5.5
 // - Claude Fable 5 and 5.1 (cross-region inference only, can only be used through an inference profile)
 export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
@@ -367,6 +368,7 @@ export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
 	"anthropic.claude-opus-4-6-v1",
 	"anthropic.claude-opus-4-7",
 	"anthropic.claude-opus-4-8",
+	"anthropic.claude-sonnet-5-5",
 	"anthropic.claude-sonnet-5",
 	"anthropic.claude-opus-5",
 	"anthropic.claude-opus-5-5",

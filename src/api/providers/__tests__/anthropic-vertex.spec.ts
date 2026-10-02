@@ -1254,6 +1254,36 @@ describe("VertexHandler", () => {
 		})
 	})
 
+	describe("Claude Sonnet 5.5 thinking", () => {
+		it.each([
+			[true, { type: "adaptive" }],
+			[false, undefined],
+		])(
+			"with reasoning %s sends thinking %j, never disabled or a budget",
+			async (enableReasoningEffort, thinking) => {
+				const handler = new AnthropicVertexHandler({
+					apiModelId: "claude-sonnet-5-5",
+					vertexProjectId: "test-project",
+					vertexRegion: "global",
+					enableReasoningEffort,
+				})
+
+				const mockCreate = vitest.fn().mockImplementation(async () => ({
+					async *[Symbol.asyncIterator]() {
+						yield { type: "message_start", message: { usage: { input_tokens: 10, output_tokens: 5 } } }
+					},
+				}))
+				;(handler["client"].messages as any).create = mockCreate
+
+				await handler.createMessage("You are a helpful assistant", [{ role: "user", content: "Hello" }]).next()
+
+				const request = mockCreate.mock.calls[0][0]
+				expect(request.thinking).toEqual(thinking)
+				expect(request.temperature).toBeUndefined()
+			},
+		)
+	})
+
 	describe("native tool calling", () => {
 		const systemPrompt = "You are a helpful assistant"
 		const messages: Anthropic.Messages.MessageParam[] = [

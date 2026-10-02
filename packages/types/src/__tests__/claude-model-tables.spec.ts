@@ -24,6 +24,7 @@ const RETIRED_ON_CLAUDE_API = ["claude-sonnet-4-20250514", "claude-opus-4-202505
 const CLAUDE_MODEL_LIMITS = [
 	["claude-opus-5-5", "claude-opus-5-5", "anthropic.claude-opus-5-5", 128_000, 1_000_000],
 	["claude-opus-5", "claude-opus-5", "anthropic.claude-opus-5", 128_000, 1_000_000],
+	["claude-sonnet-5-5", "claude-sonnet-5-5", "anthropic.claude-sonnet-5-5", 128_000, 1_000_000],
 	["claude-sonnet-5", "claude-sonnet-5", "anthropic.claude-sonnet-5", 128_000, 1_000_000],
 	["claude-opus-4-8", "claude-opus-4-8", "anthropic.claude-opus-4-8", 128_000, 1_000_000],
 	["claude-opus-4-7", "claude-opus-4-7", "anthropic.claude-opus-4-7", 128_000, 1_000_000],
@@ -68,6 +69,24 @@ describe("Claude model tables", () => {
 		]
 
 		expect(ids.filter((id) => RETIRED_CLAUDE_ID.test(id))).toEqual([])
+	})
+
+	// OpenRouter names the Claude 5 models with a dotted version (claude-opus-5.5); each one the
+	// Anthropic table offers must get prompt caching and the reasoning toggle there too.
+	it("list every Claude 5 model of the Anthropic table in the OpenRouter capability sets", () => {
+		const openRouterIds = Object.keys(anthropicModels)
+			.filter((id) => /^claude-(opus|sonnet|fable)-5(-\d)?$/.test(id))
+			.map((id) => `anthropic/${id.replace(/-5-(\d)$/, "-5.$1")}`)
+
+		expect(openRouterIds).toContain("anthropic/claude-sonnet-5.5")
+		for (const id of openRouterIds) {
+			expect(OPEN_ROUTER_PROMPT_CACHING_MODELS.has(id)).toBe(true)
+			expect(OPEN_ROUTER_REASONING_BUDGET_MODELS.has(id)).toBe(true)
+		}
+	})
+
+	it("default LiteLLM to a model the Anthropic table offers", () => {
+		expect(anthropicModels).toHaveProperty(litellmDefaultModelId)
 	})
 
 	it("drop the models retired on the Claude API from the Anthropic table only", () => {

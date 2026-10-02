@@ -255,6 +255,7 @@ export const parseOpenRouterModel = ({
 	// The Claude 5 family uses the adaptive-thinking contract (binary toggle, no
 	// temperature). OpenRouter ids use a dotted version, unlike Anthropic's direct API.
 	const claude5AnthropicIds: Record<string, keyof typeof anthropicModels> = {
+		"anthropic/claude-sonnet-5.5": "claude-sonnet-5-5",
 		"anthropic/claude-sonnet-5": "claude-sonnet-5",
 		"anthropic/claude-opus-5": "claude-opus-5",
 		"anthropic/claude-opus-5.5": "claude-opus-5-5",

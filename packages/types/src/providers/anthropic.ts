@@ -8,6 +8,7 @@ export const anthropicDefaultModelId: AnthropicModelId = "claude-opus-5"
 export const anthropicModels = {
 	"claude-opus-5-5": { ...claudeModels["opus-5-5"] },
 	"claude-opus-5": { ...claudeModels["opus-5"] },
+	"claude-sonnet-5-5": { ...claudeModels["sonnet-5-5"] },
 	"claude-sonnet-5": { ...claudeModels["sonnet-5"] },
 	"claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"] },
 	"claude-sonnet-4-5": { ...claudeModels["sonnet-4-5"] },
