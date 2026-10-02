@@ -308,7 +308,7 @@ describe("CommandPatternSelector", () => {
 		// This simulates the user clicking the button while the input is still focused
 
 		// Find the allow button in the same row as the input
-		const patternRow = input.closest(".flex")?.parentElement
+		const patternRow = input.parentElement?.closest(".flex")?.parentElement
 		const allowButton = patternRow?.querySelector('button[aria-label*="addToAllowed"]')
 		expect(allowButton).toBeInTheDocument()
 

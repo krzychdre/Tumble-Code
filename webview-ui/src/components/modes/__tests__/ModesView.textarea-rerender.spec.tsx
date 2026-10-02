@@ -60,6 +60,7 @@ describe("ModesView prompt text areas and re-renders", () => {
 		expect(textarea.value).toBe("You are a careful reviewer.")
 
 		fireEvent.change(textarea)
+		fireEvent.blur(textarea)
 		const updates = vi
 			.mocked(vscode.postMessage)
 			.mock.calls.map(([m]) => m as any)

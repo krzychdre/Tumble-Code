@@ -5,6 +5,7 @@ import { Virtuoso } from "react-virtuoso"
 
 import {
 	Button,
+	Input,
 	LabeledCheckbox,
 	Select,
 	SelectContent,
@@ -12,7 +13,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 	StandardTooltip,
-	ThemedTextField,
 } from "@/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -47,7 +47,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 	// §2.9: day headers interleaved with the (unchanged) parent-child groups.
 	const dayRows = useMemo(() => toDayRows(groups, t), [groups, t])
 	// §2.9: `tasks` is already search-filtered, so an empty search result set
-	// also reads as tasks.length === 0 — check the search-empty state first.
+	// also reads as tasks.length === 0, so check the search-empty state first.
 	const hasNoSearchResults = isSearchMode && tasks.length === 0
 	const hasNoTasks = tasks.length === 0
 
@@ -132,29 +132,33 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 					</StandardTooltip>
 				</div>
 				<div className="flex flex-col gap-2">
-					<ThemedTextField
+					<Input
 						className="w-full"
 						placeholder={t("history:searchPlaceholder")}
 						value={searchQuery}
 						data-testid="history-search-input"
-						onInput={(e) => {
-							const newValue = (e.target as HTMLInputElement)?.value
+						onChange={(e) => {
+							const newValue = e.target.value
 							setSearchQuery(newValue)
 							if (newValue && !searchQuery && sortOption !== "mostRelevant") {
 								setLastNonRelevantSort(sortOption)
 								setSortOption("mostRelevant")
 							}
-						}}>
-						<div slot="start" className="codicon codicon-search mt-0.5 opacity-80 text-sm!" />
-						{searchQuery && (
-							<div
-								className="input-icon-button codicon codicon-close flex justify-center items-center h-full"
-								aria-label={t("history:clearSearch")}
-								onClick={() => setSearchQuery("")}
-								slot="end"
-							/>
-						)}
-					</ThemedTextField>
+						}}
+						start={
+							<span className="codicon codicon-search mt-0.5 opacity-80 text-sm!" aria-hidden="true" />
+						}
+						end={
+							searchQuery ? (
+								<button
+									type="button"
+									className="input-icon-button codicon codicon-close flex justify-center items-center h-full"
+									aria-label={t("history:clearSearch")}
+									onClick={() => setSearchQuery("")}
+								/>
+							) : null
+						}
+					/>
 					<div className="flex gap-2">
 						<Select
 							value={showAllWorkspaces ? "all" : "current"}
@@ -251,7 +255,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 
 			<TabContent className="px-2 py-0">
 				{hasNoSearchResults ? (
-					// §2.9: empty states — no search hits must be checked before the
+					// §2.9: empty states: no search hits must be checked before the
 					// plain "no history" one, because `tasks` is already filtered.
 					<div
 						data-testid="history-empty-search"

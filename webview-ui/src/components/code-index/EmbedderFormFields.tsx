@@ -2,7 +2,8 @@ import React from "react"
 
 import type { EmbeddingModelProfile } from "@roo-code/types"
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, ThemedTextField } from "@src/components/ui"
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import { useTextDraft } from "@src/components/ui/hooks"
 import { cn } from "@src/lib/utils"
 
 import type { CodeIndexSettingKey, CodeIndexTranslate, LocalCodeIndexSettings } from "./codeIndexSettings"
@@ -31,7 +32,7 @@ type SettingTextFieldProps = FieldProps & {
 	type?: "password"
 	optional?: boolean
 	descriptionKey?: string
-	onBlur?: (e: any) => void
+	onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
 }
 
 /** A labelled text field bound to one string setting, with its validation error below. */
@@ -56,10 +57,10 @@ export const SettingTextField = ({
 					</span>
 				)}
 			</label>
-			<ThemedTextField
+			<Input
 				type={type}
 				value={(settings[field] as string | undefined) || ""}
-				onInput={(e: any) => updateSetting(field, e.target.value)}
+				onChange={(e) => updateSetting(field, e.target.value)}
 				onBlur={onBlur}
 				placeholder={t(placeholderKey)}
 				className={cn("w-full", {
@@ -87,12 +88,15 @@ export const ModelIdTextField = ({ context }: FieldProps) => (
 /** The vector dimension typed by the user; an empty or non-numeric value is stored as `undefined`. */
 export const ModelDimensionField = ({ context }: FieldProps) => {
 	const { settings, formErrors, updateSetting, t } = context
+	// The typed text stays while it does not parse ("0", "abc"); the stored value is then undefined.
+	const draft = useTextDraft(settings.codebaseIndexEmbedderModelDimension?.toString() || "")
 	return (
 		<div className="space-y-2">
 			<label className="text-sm font-medium">{t("settings:codeIndex.modelDimensionLabel")}</label>
-			<ThemedTextField
-				value={settings.codebaseIndexEmbedderModelDimension?.toString() || ""}
-				onInput={(e: any) => {
+			<Input
+				value={draft.value}
+				onChange={(e) => {
+					draft.onChange(e)
 					const value = e.target.value ? parseInt(e.target.value, 10) || undefined : undefined
 					updateSetting("codebaseIndexEmbedderModelDimension", value)
 				}}

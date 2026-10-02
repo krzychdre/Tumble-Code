@@ -66,10 +66,3 @@ export function postAgentReset(
 		customPrompt: updatedPrompt,
 	})
 }
-
-/** The new value of a toolkit text field or text area change event (custom event or native). */
-export function readTextEventValue(e: unknown): string {
-	return (
-		(e as CustomEvent)?.detail?.target?.value ?? ((e as { target?: unknown }).target as HTMLTextAreaElement).value
-	)
-}

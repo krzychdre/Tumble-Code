@@ -60,6 +60,7 @@ describe("ModesView description text field and re-renders", () => {
 		expect(field.value).toBe("Reviews every change.")
 
 		fireEvent.change(field)
+		fireEvent.blur(field)
 		const updates = vi
 			.mocked(vscode.postMessage)
 			.mock.calls.map(([m]) => m as any)

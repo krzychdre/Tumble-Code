@@ -16,7 +16,7 @@ import {
 import type { ClineMessage, ExtensionMessage, SubagentSummary } from "@roo-code/types"
 import { parseFollowUpData } from "@roo-code/types"
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger, StandardTooltip } from "@/components/ui"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger, Input, StandardTooltip } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
 
@@ -130,7 +130,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 	const containerRef = useRef<HTMLDivElement>(null)
 	// Follow-output contract (same as ChatView's Virtuoso): auto-scroll only
 	// while the user is at the bottom; scrolling up pauses following, and
-	// scrolling back down re-engages it. Ref, not state — scroll position
+	// scrolling back down re-engages it. Ref, not state: scroll position
 	// tracking must not re-render the tail on every wheel tick.
 	const atBottomRef = useRef(true)
 	const taskId = summary.taskId
@@ -169,7 +169,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 		return onExtensionMessage(["subagentMessages", "messageUpdated"], handler)
 	}, [taskId])
 
-	// Pin the tail to the latest output — but only while the user is at the
+	// Pin the tail to the latest output, but only while the user is at the
 	// bottom. New content must never yank the view away from text the user
 	// scrolled up to read.
 	useEffect(() => {
@@ -254,7 +254,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 		<div>
 			{entries.length === 0 ? (
 				summary.finalMessage ? (
-					// Disposed children have no live messages — fall back to the
+					// Disposed children have no live messages; fall back to the
 					// summary's terminal payload so "what happened" survives teardown.
 					<div className="px-2 py-1 text-sm">
 						<MarkdownBlock markdown={summary.finalMessage} />
@@ -348,7 +348,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 			)}
 			{showInput && (
 				<div className="flex items-center gap-1 px-2 pb-2">
-					<input
+					<Input
 						type="text"
 						value={input}
 						onChange={(e) => setInput(e.target.value)}
@@ -363,11 +363,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 								? t("chat:subagents.answerPlaceholder")
 								: t("chat:subagents.guidancePlaceholder")
 						}
-						className={cn(
-							"grow text-sm px-2 py-1 border",
-							"bg-vscode-input-background text-vscode-input-foreground border-vscode-input-border",
-							"placeholder:text-vscode-input-placeholderForeground focus-ring",
-						)}
+						className="h-auto w-auto grow text-sm px-2 py-1 border-vscode-input-border placeholder:text-vscode-input-placeholderForeground"
 					/>
 					<StandardTooltip content={t("chat:subagents.send")}>
 						<button

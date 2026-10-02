@@ -1,4 +1,5 @@
-import { render, screen } from "@/utils/test-utils"
+import { act, fireEvent, render, screen } from "@/utils/test-utils"
+import { vscode } from "@src/utils/vscode"
 
 import { CloudView } from "../CloudView"
 
@@ -210,5 +211,36 @@ describe("CloudView", () => {
 		const taskSyncToggle = screen.getByTestId("task-sync-toggle")
 		expect(taskSyncToggle).toHaveAttribute("aria-checked", "true")
 		expect(taskSyncToggle).toHaveAttribute("tabindex", "-1")
+	})
+
+	it("the manual callback URL is sent at once when pasted, and only on Enter when typed", () => {
+		vi.useFakeTimers()
+		try {
+			const postMessage = vi.mocked(vscode.postMessage)
+			render(<CloudView userInfo={null} isAuthenticated={false} cloudApiUrl="https://app.roocode.com" />)
+			fireEvent.click(screen.getByRole("button", { name: "Get started" }))
+			fireEvent.click(screen.getByText("cloud:havingTrouble"))
+			postMessage.mockClear()
+
+			const url = "vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?state=s&code=c"
+			const input = screen.getByPlaceholderText(/auth\/clerk\/callback/) as HTMLInputElement
+			const sent = () => postMessage.mock.calls.filter(([m]) => (m as any).type === "rooCloudManualUrl")
+
+			// Typed by hand: a complete-looking URL is not sent until Enter.
+			fireEvent.input(input, { target: { value: url }, inputType: "insertText" })
+			act(() => vi.advanceTimersByTime(200))
+			expect(sent()).toEqual([])
+			fireEvent.keyDown(input, { key: "Enter" })
+			expect(sent()).toEqual([[{ type: "rooCloudManualUrl", text: url }]])
+
+			// Pasted: sent without Enter.
+			postMessage.mockClear()
+			fireEvent.input(input, { target: { value: "" } })
+			fireEvent.input(input, { target: { value: url }, inputType: "insertFromPaste" })
+			act(() => vi.advanceTimersByTime(200))
+			expect(sent()).toEqual([[{ type: "rooCloudManualUrl", text: url }]])
+		} finally {
+			vi.useRealTimers()
+		}
 	})
 })

@@ -68,9 +68,11 @@ const renderView = (state: Record<string, unknown> = {}) => render(view(state))
 const posted = () => vi.mocked(vscode.postMessage).mock.calls.map(([m]) => m as any)
 const postedOfType = (type: string) => posted().filter((m) => m.type === type)
 
-/** Fires the toolkit text area "change" event the way the existing ModesView specs do. */
-const changeTextArea = (el: HTMLElement, value: string) =>
-	fireEvent(el, new CustomEvent("change", { detail: { target: { value } } }))
+/** Edits a text area and leaves it: the prompt text areas save when they are left. */
+const changeTextArea = (el: HTMLElement, value: string) => {
+	fireEvent.change(el, { target: { value } })
+	fireEvent.blur(el)
+}
 
 /** The native input: inside the toolkit host's shadow root, or the element itself. */
 const control = (el: Element) => (el.shadowRoot?.querySelector("input") ?? el) as HTMLInputElement
@@ -82,6 +84,7 @@ const changeTextField = (el: HTMLElement, value: string) => {
 	const input = control(el)
 	setNativeValue(input, value)
 	fireEvent.change(input)
+	fireEvent.blur(input)
 }
 
 const typeInto = (el: HTMLElement, value: string) => {

@@ -3,6 +3,7 @@ import { vscode } from "@/utils/vscode"
 
 import { ApiConfigSelector } from "../ApiConfigSelector"
 import { IconButton as RealIconButton } from "@/components/ui/icon-button"
+import { Input as RealInput } from "@/components/ui/input"
 
 // Mock the dependencies
 vi.mock("@/utils/vscode", () => ({
@@ -64,6 +65,7 @@ vi.mock("@/components/ui", () => ({
 	),
 	// The real icon button (it renders the real Button and tooltip directly).
 	IconButton: (props: any) => <RealIconButton {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 }))
 
 describe("ApiConfigSelector", () => {
