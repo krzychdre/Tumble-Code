@@ -1,6 +1,6 @@
 import { EventEmitter } from "events"
 
-import { backoffDelayMs } from "../backoff.js"
+import { backoffDelayMs } from "@tumble-code/core/backoff"
 import type { QueuedRequest, QueueStats, RetryQueueConfig, RetryQueueEvents, RetryQueueStorage } from "./types.js"
 
 type AuthHeaderProvider = () => Record<string, string> | undefined

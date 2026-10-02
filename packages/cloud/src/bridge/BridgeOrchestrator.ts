@@ -11,7 +11,7 @@ import {
 	type RemoteControlStatus,
 } from "@tumble-code/types"
 
-import { backoffDelayMs } from "../backoff.js"
+import { backoffDelayMs } from "@tumble-code/core/backoff"
 import { dispatchBridgeCommand } from "./commandHandlers.js"
 import type { BridgeConfig, BridgeProvider, InstanceStatePayload } from "./types.js"
 
