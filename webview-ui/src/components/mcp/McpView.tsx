@@ -5,7 +5,6 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useTooManyTools } from "@src/hooks/useTooManyTools"
 import { Button, StandardTooltip, Link } from "@src/components/ui"
-import { buildDocLink } from "@src/utils/docLinks"
 import { Section } from "@src/components/settings/Section"
 import { SectionHeader } from "@src/components/settings/SectionHeader"
 
@@ -25,7 +24,7 @@ const McpView = () => {
 			<Section>
 				<div className="mb-row text-base text-vscode-foreground">
 					<Trans i18nKey="mcp:description">
-						<Link href={buildDocLink("features/mcp/using-mcp-in-roo", "mcp_settings")} className="inline">
+						<Link href="https://modelcontextprotocol.io" className="inline">
 							Learn More
 						</Link>
 					</Trans>
@@ -106,16 +105,6 @@ const McpView = () => {
 									{t("mcp:marketplace")}
 								</Button>
 							</StandardTooltip>
-						</div>
-						<div className="mt-block text-sm text-vscode-descriptionForeground">
-							<Link
-								href={buildDocLink(
-									"features/mcp/using-mcp-in-roo#editing-mcp-settings-files",
-									"mcp_edit_settings",
-								)}
-								className="inline">
-								{t("mcp:learnMoreEditingSettings")}
-							</Link>
 						</div>
 					</>
 				)}

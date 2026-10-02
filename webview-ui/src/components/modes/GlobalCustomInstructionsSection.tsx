@@ -1,9 +1,8 @@
 import { Trans } from "react-i18next"
 
 import { vscode } from "@src/utils/vscode"
-import { buildDocLink } from "@src/utils/docLinks"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Link, Textarea } from "@src/components/ui"
+import { Textarea } from "@src/components/ui"
 import { useTextDraft } from "@src/components/ui/hooks"
 
 type GlobalCustomInstructionsSectionProps = {
@@ -57,16 +56,7 @@ export const GlobalCustomInstructionsSection = ({
 								}
 							/>
 						),
-						"0": (
-							<Link
-								href={buildDocLink(
-									"features/custom-instructions#setting-up-global-rules",
-									"prompts_global_rules",
-								)}
-								style={{ display: "inline" }}
-								aria-label={t("prompts:globalCustomInstructions.docsLinkAriaLabel")}
-							/>
-						),
+						"0": <code />,
 					}}
 				/>
 			</div>

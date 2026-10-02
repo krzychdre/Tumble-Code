@@ -392,8 +392,7 @@
 	"profileViolationWarning": "Il profilo corrente non è compatibile con le impostazioni della tua organizzazione",
 	"shellIntegration": {
 		"title": "Avviso di esecuzione comando",
-		"description": "Il tuo comando viene eseguito senza l'integrazione shell del terminale VSCode. Per sopprimere questo avviso puoi disattivare l'integrazione shell nella sezione <strong>Terminal</strong> delle <settingsLink>impostazioni di Tumble Code</settingsLink> o risolvere i problemi di integrazione del terminale VSCode utilizzando il link qui sotto.",
-		"troubleshooting": "Clicca qui per la documentazione sull'integrazione shell."
+		"description": "Il tuo comando viene eseguito senza l'integrazione shell del terminale VSCode. Per sopprimere questo avviso puoi disattivare l'integrazione shell nella sezione <strong>Terminal</strong> delle <settingsLink>impostazioni di Tumble Code</settingsLink> o risolvere i problemi di integrazione del terminale VSCode utilizzando il link qui sotto."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {

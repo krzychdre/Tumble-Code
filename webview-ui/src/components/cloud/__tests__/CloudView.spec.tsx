@@ -57,7 +57,7 @@ Object.defineProperty(window, "IMAGES_BASE_URI", {
 
 describe("CloudView", () => {
 	it("should display benefits when user is not authenticated", () => {
-		render(<CloudView userInfo={null} isAuthenticated={false} cloudApiUrl="https://app.roocode.com" />)
+		render(<CloudView userInfo={null} isAuthenticated={false} cloudApiUrl="https://app.tumblecode.dev" />)
 
 		// Check that the benefits section is displayed
 		expect(screen.getByRole("heading", { name: "Try Roo Code Cloud" })).toBeInTheDocument()
@@ -79,7 +79,7 @@ describe("CloudView", () => {
 			email: "test@example.com",
 		}
 
-		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.roocode.com" />)
+		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.tumblecode.dev" />)
 
 		// Check that the benefits section is NOT displayed
 		expect(screen.queryByText("Access free and paid models that work great with Roo")).not.toBeInTheDocument()
@@ -106,7 +106,7 @@ describe("CloudView", () => {
 			email: "test@example.com",
 		}
 
-		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.roocode.com" />)
+		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.tumblecode.dev" />)
 
 		// Check that the cloud URL pill is NOT displayed for production URL
 		expect(screen.queryByText(/Roo Code Cloud URL:/)).not.toBeInTheDocument()
@@ -118,19 +118,21 @@ describe("CloudView", () => {
 			email: "test@example.com",
 		}
 
-		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://staging.roocode.com" />)
+		render(
+			<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://staging.tumblecode.dev" />,
+		)
 
 		// Check that the cloud URL pill is displayed with the staging URL
 		expect(screen.getByText(/Roo Code Cloud URL:/)).toBeInTheDocument()
-		expect(screen.getByText("https://staging.roocode.com")).toBeInTheDocument()
+		expect(screen.getByText("https://staging.tumblecode.dev")).toBeInTheDocument()
 	})
 
 	it("should display cloud URL pill for non-authenticated users when not pointing to production", () => {
-		render(<CloudView userInfo={null} isAuthenticated={false} cloudApiUrl="https://dev.roocode.com" />)
+		render(<CloudView userInfo={null} isAuthenticated={false} cloudApiUrl="https://dev.tumblecode.dev" />)
 
 		// Check that the cloud URL pill is displayed even when not authenticated
 		expect(screen.getByText(/Roo Code Cloud URL:/)).toBeInTheDocument()
-		expect(screen.getByText("https://dev.roocode.com")).toBeInTheDocument()
+		expect(screen.getByText("https://dev.tumblecode.dev")).toBeInTheDocument()
 	})
 
 	it("should not display cloud URL pill when cloudApiUrl is undefined", () => {
@@ -153,7 +155,7 @@ describe("CloudView", () => {
 			organizationName: "Test Organization",
 		}
 
-		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.roocode.com" />)
+		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.tumblecode.dev" />)
 
 		// Check that the task sync toggle is disabled for organization users
 		const taskSyncToggle = screen.getByTestId("task-sync-toggle")
@@ -178,7 +180,7 @@ describe("CloudView", () => {
 			// No organizationId - regular user
 		}
 
-		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.roocode.com" />)
+		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.tumblecode.dev" />)
 
 		// Check that the task sync toggle is enabled for non-organization users
 		const taskSyncToggle = screen.getByTestId("task-sync-toggle")
@@ -198,7 +200,7 @@ describe("CloudView", () => {
 		}
 
 		// Test with task sync enabled
-		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.roocode.com" />)
+		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} cloudApiUrl="https://app.tumblecode.dev" />)
 
 		// Check that the toggle shows the current state (enabled in this case)
 		const taskSyncToggle = screen.getByTestId("task-sync-toggle")
@@ -210,12 +212,12 @@ describe("CloudView", () => {
 		vi.useFakeTimers()
 		try {
 			const postMessage = vi.mocked(vscode.postMessage)
-			render(<CloudView userInfo={null} isAuthenticated={false} cloudApiUrl="https://app.roocode.com" />)
+			render(<CloudView userInfo={null} isAuthenticated={false} cloudApiUrl="https://app.tumblecode.dev" />)
 			fireEvent.click(screen.getByRole("button", { name: "Get started" }))
 			fireEvent.click(screen.getByText("cloud:havingTrouble"))
 			postMessage.mockClear()
 
-			const url = "vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?state=s&code=c"
+			const url = "vscode://QUB-IT.tumble-code/auth/clerk/callback?state=s&code=c"
 			const input = screen.getByPlaceholderText(/auth\/clerk\/callback/) as HTMLInputElement
 			const sent = () => postMessage.mock.calls.filter(([m]) => (m as any).type === "rooCloudManualUrl")
 

@@ -9,7 +9,6 @@
 	},
 	"editGlobalMCP": "グローバルMCPを編集",
 	"editProjectMCP": "プロジェクトMCPを編集",
-	"learnMoreEditingSettings": "MCP設定ファイルの編集方法を詳しく見る",
 	"tool": {
 		"alwaysAllow": "常に許可",
 		"parameters": "パラメータ",

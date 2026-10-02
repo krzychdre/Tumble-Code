@@ -14,10 +14,6 @@ vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-vi.mock("@src/utils/docLinks", () => ({
-	buildDocLink: () => "https://example.com",
-}))
-
 const postMessageMock = vi.fn()
 vi.mock("@/utils/vscode", () => ({
 	vscode: { postMessage: (...args: any[]) => postMessageMock(...args) },

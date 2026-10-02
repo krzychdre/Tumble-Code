@@ -10,7 +10,6 @@
 	"editGlobalMCP": "Edit Global MCP",
 	"editProjectMCP": "Edit Project MCP",
 	"refreshMCP": "Refresh MCP Servers",
-	"learnMoreEditingSettings": "Learn more about editing MCP settings files",
 	"tool": {
 		"alwaysAllow": "Always allow",
 		"parameters": "Parameters",
