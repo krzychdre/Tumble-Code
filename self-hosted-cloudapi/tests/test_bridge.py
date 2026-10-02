@@ -165,7 +165,7 @@ def _signed_token(claims: dict, expires_in: int = 60) -> str:
 
 def test_user_id_from_token_accepts_a_static_token():
     # The shape the retired issue_static_token gave long-lived
-    # ROO_CODE_CLOUD_TOKEN values, some of which users still hold.
+    # TUMBLE_CODE_CLOUD_TOKEN values, some of which users still hold.
     token = _signed_token(
         {"iss": "rcc", "v": 1, "sub": "cj_user_static", "r": {"u": "user_static", "t": "cj"}},
         expires_in=86400 * 365,

@@ -8,27 +8,37 @@ describe("resolveCloudEnvironment", () => {
 	})
 
 	it("treats empty strings as unset", () => {
-		expect(resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: "", ROO_CODE_CLOUD_ORG_SETTINGS: "" })).toEqual({
+		expect(resolveCloudEnvironment({ TUMBLE_CODE_CLOUD_TOKEN: "", TUMBLE_CODE_CLOUD_ORG_SETTINGS: "" })).toEqual({
 			staticToken: undefined,
 			staticOrgSettings: undefined,
 		})
 	})
 
 	it("passes both values through unchanged", () => {
-		expect(resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: " tok ", ROO_CODE_CLOUD_ORG_SETTINGS: "e30=" })).toEqual(
-			{ staticToken: " tok ", staticOrgSettings: "e30=" },
-		)
+		expect(
+			resolveCloudEnvironment({ TUMBLE_CODE_CLOUD_TOKEN: " tok ", TUMBLE_CODE_CLOUD_ORG_SETTINGS: "e30=" }),
+		).toEqual({ staticToken: " tok ", staticOrgSettings: "e30=" })
+	})
+
+	it("still reads the former ROO_CODE_* names, the new names win", () => {
+		expect(resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: "old", ROO_CODE_CLOUD_ORG_SETTINGS: "e30=" })).toEqual({
+			staticToken: "old",
+			staticOrgSettings: "e30=",
+		})
+		expect(
+			resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: "old", TUMBLE_CODE_CLOUD_TOKEN: "new" }).staticToken,
+		).toBe("new")
 	})
 
 	it("ignores unrelated variables", () => {
-		expect(resolveCloudEnvironment({ ROO_CODE_API_URL: "https://x" })).toEqual({
+		expect(resolveCloudEnvironment({ TUMBLE_CODE_API_URL: "https://x" })).toEqual({
 			staticToken: undefined,
 			staticOrgSettings: undefined,
 		})
 	})
 
 	it("reads process.env by default", () => {
-		vi.stubEnv("ROO_CODE_CLOUD_TOKEN", "from-process")
+		vi.stubEnv("TUMBLE_CODE_CLOUD_TOKEN", "from-process")
 		try {
 			expect(resolveCloudEnvironment().staticToken).toBe("from-process")
 		} finally {

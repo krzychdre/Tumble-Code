@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button"
 import { OrganizationSwitcher } from "./OrganizationSwitcher"
 import { StandardTooltip } from "../ui"
 
-// Mirrors PRODUCTION_ROO_CODE_API_URL in packages/cloud/src/config.ts (the webview may not import @tumble-code/cloud).
-const PRODUCTION_ROO_CODE_API_URL = "https://app.tumblecode.dev"
+// Mirrors PRODUCTION_TUMBLE_CODE_API_URL in packages/cloud/src/config.ts (the webview may not import @tumble-code/cloud).
+const PRODUCTION_TUMBLE_CODE_API_URL = "https://app.tumblecode.dev"
 
 type CloudViewProps = {
 	userInfo: CloudUserInfo | null
@@ -117,7 +117,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 	}
 
 	const handleVisitCloudWebsite = () => {
-		const cloudUrl = cloudApiUrl || PRODUCTION_ROO_CODE_API_URL
+		const cloudUrl = cloudApiUrl || PRODUCTION_TUMBLE_CODE_API_URL
 		vscode.postMessage({ type: "openExternal", url: cloudUrl })
 	}
 
@@ -269,7 +269,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 						</div>
 					</>
 				)}
-				{cloudApiUrl && cloudApiUrl !== PRODUCTION_ROO_CODE_API_URL && (
+				{cloudApiUrl && cloudApiUrl !== PRODUCTION_TUMBLE_CODE_API_URL && (
 					<div className="ml-4 mt-6 flex">
 						<div className="inline-flex items-center gap-2 text-xs">
 							<TriangleAlert className="size-3 text-vscode-descriptionForeground" />

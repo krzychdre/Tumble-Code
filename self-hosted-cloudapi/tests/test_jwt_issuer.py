@@ -60,7 +60,7 @@ def test_token_expiry():
 
 # A long-lived static token issued by python-jose 3.5.0 before the swap, with
 # the test-suite secret below. Static tokens live for a year in users'
-# ROO_CODE_CLOUD_TOKEN, so tokens issued by the old library must keep verifying.
+# TUMBLE_CODE_CLOUD_TOKEN, so tokens issued by the old library must keep verifying.
 LEGACY_SECRET = "test-jwt-secret-please-ignore-0123456789"
 LEGACY_TOKEN = (
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."

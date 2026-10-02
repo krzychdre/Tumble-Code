@@ -14,7 +14,7 @@ async def get_current_user(
 ) -> dict:
     """Extract and validate the current user from the Bearer token.
 
-    Supports both session JWTs and static tokens (ROO_CODE_CLOUD_TOKEN): both
+    Supports both session JWTs and static tokens (TUMBLE_CODE_CLOUD_TOKEN): both
     are JWTs signed with the same key, so one decode serves both. Returns a
     dict with user_id, org_id, and token_type.
 

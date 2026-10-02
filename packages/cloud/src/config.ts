@@ -1,5 +1,5 @@
 export const PRODUCTION_CLERK_BASE_URL = "https://auth.tumblecode.dev"
-export const PRODUCTION_ROO_CODE_API_URL = "https://app.tumblecode.dev"
+export const PRODUCTION_TUMBLE_CODE_API_URL = "https://app.tumblecode.dev"
 
 // Runtime overrides (set from VS Code configuration, take priority over env vars)
 let runtimeClerkBaseUrl: string | undefined
@@ -24,7 +24,7 @@ export const setClerkBaseUrl = (url: string | undefined) => {
  * 4. Production default (https://auth.tumblecode.dev)
  *
  * The auto-detect step (3) is critical for self-hosted deployments: when the
- * user configures ROO_CODE_API_URL (or cloudApiUrl in VS Code) to point to
+ * user configures TUMBLE_CODE_API_URL (or cloudApiUrl in VS Code) to point to
  * their self-hosted instance but does NOT explicitly set CLERK_BASE_URL,
  * the ticket created by the self-hosted backend must be validated against
  * the self-hosted Clerk facade, not the production Clerk. Without this,
@@ -38,7 +38,7 @@ export const getClerkBaseUrl = () => {
 
 	// Auto-detect: if the API URL is non-production, the Clerk facade is on the same server
 	const apiUrl = getTumbleCodeApiUrl()
-	if (apiUrl !== PRODUCTION_ROO_CODE_API_URL) return apiUrl
+	if (apiUrl !== PRODUCTION_TUMBLE_CODE_API_URL) return apiUrl
 
 	return PRODUCTION_CLERK_BASE_URL
 }
@@ -52,4 +52,8 @@ export const setTumbleCodeApiUrl = (url: string | undefined) => {
 }
 
 export const getTumbleCodeApiUrl = () =>
-	runtimeTumbleCodeApiUrl || process.env.ROO_CODE_API_URL || PRODUCTION_ROO_CODE_API_URL
+	runtimeTumbleCodeApiUrl ||
+	process.env.TUMBLE_CODE_API_URL ||
+	// The former name, still read so existing setups keep working.
+	process.env.ROO_CODE_API_URL ||
+	PRODUCTION_TUMBLE_CODE_API_URL

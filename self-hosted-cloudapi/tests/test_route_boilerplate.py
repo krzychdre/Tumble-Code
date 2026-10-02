@@ -489,7 +489,7 @@ async def test_get_current_user_refuses_a_token_without_our_issuer_and_version(c
 
 def test_extension_routes_accept_a_static_token(client):
     # The shape the retired issue_static_token gave long-lived
-    # ROO_CODE_CLOUD_TOKEN values, some of which users still hold.
+    # TUMBLE_CODE_CLOUD_TOKEN values, some of which users still hold.
     token = _jwt({"iss": "rcc", "v": 1, "sub": "cj_user_static", "r": {"u": "user_static", "o": "org_s", "t": "cj"}})
     resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200

@@ -7,7 +7,7 @@
  * and/or Clerk instance.
  *
  * The VS Code settings are:
- *   - `roo-cline.cloudApiUrl`         → overrides `ROO_CODE_API_URL`
+ *   - `roo-cline.cloudApiUrl`         → overrides `TUMBLE_CODE_API_URL`
  *   - `roo-cline.clerkBaseUrl`        → overrides `CLERK_BASE_URL`
  *   - `roo-cline.bridgeRetryDelayMs`  → re-arms the remote-control bridge
  *                                       after socket.io `reconnect_failed`
