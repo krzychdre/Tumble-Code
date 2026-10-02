@@ -85,6 +85,7 @@ vi.mock("@roo-code/core/fs", () => {
 	const write = vi.fn().mockResolvedValue(undefined)
 	return {
 		safeWriteJson: write,
+		writeFileAtomic: vi.fn().mockResolvedValue(undefined),
 		withLockedJsonTransaction: vi.fn(
 			async <T>(
 				_lockTarget: string,

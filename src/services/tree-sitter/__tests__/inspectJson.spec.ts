@@ -11,7 +11,9 @@ describe("inspectJson", () => {
 	}
 
 	it("should inspect JSON tree structure", async () => {
-		await inspectTreeStructure(sampleJsonContent, "json")
+		// Production parses .json with the JavaScript grammar (languageGrammars.ts); the
+		// JSON grammar is not shipped.
+		await inspectTreeStructure(sampleJsonContent, "javascript")
 	})
 
 	it("should parse JSON definitions", async () => {

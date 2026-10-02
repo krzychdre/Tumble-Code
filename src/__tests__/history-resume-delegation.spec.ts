@@ -39,6 +39,7 @@ import { ClineProvider } from "../core/webview/ClineProvider"
 import { DelegationService } from "../core/webview/DelegationService"
 import { readTaskMessages } from "../core/task-persistence/taskMessages"
 import { readApiMessages, saveApiMessages, saveTaskMessages } from "../core/task-persistence"
+import { logger } from "../utils/logging"
 
 describe("History resume delegation - parent metadata transitions", () => {
 	beforeEach(() => {
@@ -622,7 +623,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 	})
 
 	it("reopenParentFromDelegation logs child status persistence failure and continues reopen flow (RPD-04)", async () => {
-		const logSpy = vi.fn()
+		const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 		const emitSpy = vi.fn()
 		const parentInstance = {
 			resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
@@ -664,7 +665,6 @@ describe("History resume delegation - parent metadata transitions", () => {
 				}
 			}),
 			emit: emitSpy,
-			log: logSpy,
 			getCurrentTask: vi.fn(() => ({ taskId: "child-rpd04" })),
 			clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 			createTaskWithHistoryItem: vi.fn().mockResolvedValue(parentInstance),
@@ -682,11 +682,12 @@ describe("History resume delegation - parent metadata transitions", () => {
 			}),
 		).resolves.toBe(true)
 
-		expect(logSpy).toHaveBeenCalledWith(
+		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				"[reopenParentFromDelegation] Failed to persist child completed status for child-rpd04:",
 			),
 		)
+		loggerErrorSpy.mockRestore()
 		expect(updateTaskHistory).toHaveBeenCalledWith(
 			expect.objectContaining({
 				id: "parent-rpd04",

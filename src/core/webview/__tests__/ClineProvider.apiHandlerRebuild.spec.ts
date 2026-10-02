@@ -18,6 +18,13 @@ vi.mock("fs/promises", () => ({
 	rmdir: vi.fn().mockResolvedValue(undefined),
 }))
 
+// The fs/promises mock above has no stat/open/rename, so the real atomic write
+// (used by CustomModesManager since #728) cannot run here.
+vi.mock("@roo-code/core/fs", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@roo-code/core/fs")>()),
+	writeFileAtomic: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("../../../utils/storage", () => ({
 	getStorageBasePath: vi.fn().mockImplementation((defaultPath: string) => Promise.resolve(defaultPath)),
 	getSettingsDirectoryPath: vi.fn().mockResolvedValue("/test/settings/path"),
