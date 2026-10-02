@@ -144,6 +144,7 @@ Per exchange, a list of issues:
 | `aborted`             | status `aborted`                                                                    | drop    | drop   |
 | `empty_response`      | no text and no tool call                                                            | drop    | drop   |
 | `truncated`           | finish reason `length` / `max_tokens`                                               | drop    | drop   |
+| `interrupted`         | the extension appended "[Response interrupted by ...]" to the text                  | drop    | drop   |
 | `malformed_arguments` | a tool call's raw arguments are not a JSON object                                   | drop    | drop   |
 | `unknown_tool`        | a tool call names a tool the request did not offer                                  | drop    | drop   |
 | `missing_parameter`   | a `required` parameter of the offered schema is absent                              | drop    | drop   |
@@ -167,7 +168,12 @@ Conversion of the canonical conversation mirrors `src/api/transform/openai-forma
   or microcompact starts a new chain): the last request's messages plus its answer; every assistant message produced
   by a clean exchange of the selected models gets weight 1 (its exact answer), every other one weight 0.
 
-Filters: period, models (teacher), workspaces, strictness, reasoning, metadata, sample limit.
+Filters: period, models (teacher), excluded workspaces (an exclusion list, so exchanges without a recorded
+workspace are never dropped by accident), strictness, reasoning, metadata, sample limit. Text parts of a message
+are joined into one string ("\n\n" between them): chat templates differ on lists, every one takes a string.
+A required parameter counts as missing only when its schema does not allow null: strict-mode schemas list every
+parameter as required and mark the optional ones nullable (`execute_command`'s `cwd`, `timeout`), and weak models
+leave those out, which the extension accepts.
 
 ### Anonymization (`services/anonymizer.py`)
 
@@ -182,12 +188,18 @@ arguments parsed as JSON and re-serialized; unparsable ones as text):
 2. paths: the workspace (from the record and the system prompt's `Current Workspace Directory:`) ->
    `/workspace/projectN`; the home directory (`Home Directory:`, `/home/x`, `/Users/x`, `C:\Users\x`, also JSON-escaped)
    -> `/home/user`, and the user name found there anywhere as a word -> `user`;
-3. identity: the account's e-mail, first and last name, the e-mail's local part, plus the user's own terms
-   (company, client, product names, saved on the page) -> case-preserving pseudonyms (`acme1`, `Acme1`, `ACME1`);
+3. identity: the account's e-mail, full, first and last name and the e-mail's local part -> one pseudonym for the
+   person (`Person1`), names matched only as names are written (`Alice`, `ALICE`, not `alice`, so an account
+   named "Will" does not rewrite "will"; placeholder names such as "Test User" are skipped); the user's own terms
+   (company, client, product names, saved on the page) -> case-preserving pseudonyms (`acme1`, `Acme1`, `ACME1`),
+   matched with any separator (`QUB-IT` also finds `qub_it` and `qubit`); the workspace folder's name ->
+   `projectN`;
 4. e-mail addresses -> `userN@example.com` (`example.com/org/net` kept);
 5. IPv4 addresses (loopback, `0.0.0.0` and version-like contexts kept) -> `192.0.2.N`; IPv6 (non-loopback) ->
    `2001:db8::N`;
-6. checksummed numbers: PESEL (weights 1-3-7-9), IBAN (mod 97), payment cards (Luhn, 13-19 digits) -> placeholders;
+6. checksummed numbers: PESEL (weights 1-3-7-9 and a plausible date), IBAN (mod 97), payment cards (a Visa,
+   Mastercard, Amex or Discover prefix, 15 or 16 digits, Luhn; a 13-digit millisecond timestamp is not a card) ->
+   placeholders;
 7. phone numbers in international form (`+48 600 700 800`) -> `+00 000 000 000`.
 
 Limits, said on the page: source code itself is not anonymized (a client's code stays the client's code), so the
@@ -201,6 +213,17 @@ The audit (`/app/dataset/audit`) runs the same export pipeline without writing s
 `GET /app/dataset/tasks/{task_id}.jsonl`: every exchange of the task, fully reconstructed and NOT anonymized: the
 canonical request, the wire body (with `wireVerified`), the response, the outcome and the issues. Owner only, 404
 otherwise.
+
+## Implementation notes
+
+- The `.env` rule only takes upper-case names and literal values: `api_key=os.environ[...]` and
+  `TOKEN=$(cat f)` are code. A quoted or bare `key: value` pair is redacted only when the value looks like a
+  secret (letters and digits, 8+ characters) or is a long quoted literal, so `password: string` survives.
+- `js_json` matches Node's `JSON.stringify` number formatting (checked against Node: `1e-7`, `1e+21`, `0.000001`,
+  large integral floats as shortest digits padded with zeros).
+- `tests/conftest.py`'s `client` fixture now restores `app.dependency_overrides` after each test: several older
+  tests leave a signed-in override behind, which made a "no token, 401" test pass or fail by file order.
+- The phone layout test covers `/app/dataset`; five nav tabs needed narrower tab padding on phones.
 
 ## Tests
 
