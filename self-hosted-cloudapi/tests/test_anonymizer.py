@@ -8,8 +8,8 @@ from src.services.anonymizer import Anonymizer
 
 SYSTEM = (
     "Operating System: Linux\n"
-    "Home Directory: /home/jdoe\n"
-    "Current Workspace Directory: /home/jdoe/work/acme-portal\n"
+    "Home Directory: /home/jsmith\n"
+    "Current Workspace Directory: /home/jsmith/work/acme-portal\n"
 )
 
 
@@ -19,7 +19,7 @@ def anon():
         identity=[("email", "alice.smith@corp.io"), ("name", "Alice Smith"), ("name", "Alice"), ("name", "Smith")],
         terms=["QUB-IT", "Globex Corp"],
     )
-    a.learn(SYSTEM, "/home/jdoe/work/acme-portal")
+    a.learn(SYSTEM, "/home/jsmith/work/acme-portal")
     return a
 
 
@@ -27,10 +27,10 @@ def test_the_workspace_home_and_user_name(anon):
     assert anon.text(SYSTEM) == (
         "Operating System: Linux\nHome Directory: /home/user\nCurrent Workspace Directory: /workspace/project1\n"
     )
-    assert anon.text("cat /home/jdoe/work/acme-portal/src/a.ts ~/x /home/jdoe/.bashrc") == (
+    assert anon.text("cat /home/jsmith/work/acme-portal/src/a.ts ~/x /home/jsmith/.bashrc") == (
         "cat /workspace/project1/src/a.ts ~/x /home/user/.bashrc"
     )
-    assert anon.text("jdoe@laptop:~$ whoami\njdoe") == "user@laptop:~$ whoami\nuser"
+    assert anon.text("jsmith@laptop:~$ whoami\njsmith") == "user@laptop:~$ whoami\nuser"
     # The project folder's name, wherever it appears.
     assert anon.text('"name": "acme-portal", import "@acme-portal/ui"') == '"name": "project1", import "@project1/ui"'
 
@@ -45,7 +45,8 @@ def test_windows_and_json_escaped_paths():
 
 def test_identity_and_terms_share_a_pseudonym_and_keep_the_case(anon):
     assert anon.text("Author: Alice Smith <alice.smith@corp.io>") == "Author: Person1 <user1@example.com>"
-    assert anon.text("thanks Alice, SMITH said") == "thanks Person1, PERSON1 said"
+    # Only as a name is written: an upper-case word is more likely a constant.
+    assert anon.text("thanks Alice, SMITH said") == "thanks Person1, SMITH said"
     assert anon.text("QUB-IT, qub_it, QubIt and qub it; Globex Corp / GLOBEX-CORP") == (
         "ACME1, acme1, Acme1 and acme1; Acme2 / ACME2"
     )
@@ -123,15 +124,38 @@ def test_what_looks_similar_but_is_not_personal_survives(anon):
 def test_tool_arguments_stay_byte_exact_unless_something_changed(anon):
     untouched = '{"path": "src/a.ts",  "mode": null}'
     assert anon.arguments(untouched) == untouched
-    changed = anon.arguments('{"path": "/home/jdoe/work/acme-portal/src/a.ts"}')
+    changed = anon.arguments('{"path": "/home/jsmith/work/acme-portal/src/a.ts"}')
     assert json.loads(changed) == {"path": "/workspace/project1/src/a.ts"}
-    assert anon.arguments('{"path": "/home/jdoe/x"') == '{"path": "/home/user/x"'
+    assert anon.arguments('{"path": "/home/jsmith/x"') == '{"path": "/home/user/x"'
 
 
 def test_values_and_the_report(anon):
-    value = {"jdoe": ["/home/jdoe/work/acme-portal", 3, None]}
-    assert anon.value(value) == {"user": ["/workspace/project1", 3, None]}
+    value = {"jsmith": ["/home/jsmith/work/acme-portal", 3, None]}
+    # Keys are structure (schema properties, argument names) and stay as they are.
+    assert anon.value(value) == {"jsmith": ["/workspace/project1", 3, None]}
     categories = {row["category"] for row in anon.report()}
-    assert {"workspace", "username"} <= categories
+    assert "workspace" in categories
     row = next(r for r in anon.report() if r["category"] == "workspace")
-    assert row["original"] == "/home/jdoe/work/acme-portal" and row["replacement"] == "/workspace/project1"
+    assert row["original"] == "/home/jsmith/work/acme-portal" and row["replacement"] == "/workspace/project1"
+
+
+def test_short_user_names_and_names_leave_code_alone():
+    a = Anonymizer(identity=[("email", "max@corp.io"), ("name", "Max")])
+    a.learn("Home Directory: /home/max\nCurrent Workspace Directory: /home/max/x/shop", None)
+    code = "Math.max(a, b); params.max_tokens = MAX_RETRIES; max = 3"
+    assert a.text(code) == code
+    assert a.text("Max wrote /home/max/notes") == "Person1 wrote /home/user/notes"
+
+
+def test_tool_names_and_keys_are_never_renamed():
+    a = Anonymizer(terms=["file", "acme"])
+    tools = [{"type": "function", "function": {
+        "name": "mcp--acme_server--read_file",
+        "description": "Reads a file from acme",
+        "parameters": {"type": "object", "properties": {"acme_id": {"type": "string"}}},
+    }}]
+    cleaned = a.tools(tools)
+    assert cleaned[0]["function"]["name"] == "mcp--acme_server--read_file"
+    assert cleaned[0]["function"]["description"] == "Reads a acme1 from acme2"
+    assert list(cleaned[0]["function"]["parameters"]["properties"]) == ["acme_id"]
+    assert a.arguments('{"acme_id": "acme"}') == '{"acme_id":"acme2"}'

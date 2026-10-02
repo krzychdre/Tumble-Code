@@ -168,7 +168,7 @@ class _TaskRenderer:
         key = id(exchange.tools)
         if key not in self._tools:
             tools = exchange.tools or []
-            self._tools[key] = self.anonymizer.value(tools) if self.anonymizer else tools
+            self._tools[key] = self.anonymizer.tools(tools) if self.anonymizer else tools
         return self._tools[key]
 
     def answer(self, exchange: Exchange) -> dict:
@@ -292,6 +292,12 @@ def task_samples(
         for exchange in exchanges:
             anonymizer.learn(exchange.system, exchange.workspace_path)
     renderer = _TaskRenderer(options, anonymizer, since)
+    if anonymizer is not None:
+        # Histories repeat within a task, not across tasks: keep memory flat.
+        try:
+            return renderer.trajectories(exchanges) if options.format == "trajectories" else renderer.turns(exchanges)
+        finally:
+            anonymizer.forget_texts()
     return renderer.trajectories(exchanges) if options.format == "trajectories" else renderer.turns(exchanges)
 
 

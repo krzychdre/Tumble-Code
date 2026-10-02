@@ -109,3 +109,18 @@ def test_js_json_writes_like_json_stringify():
     )
     body = {"model": "m", "messages": [{"role": "user", "content": "zażółć"}], "temperature": 0.2}
     assert js_json(body) == json.dumps(body, ensure_ascii=False, separators=(",", ":"))
+
+
+def test_later_tool_results_match_sanitized_call_ids():
+    """The extension stores tool ids through sanitizeToolUseId (Kimi ids carry '.' and ':')."""
+    from src.services.exchange_reconstruction import Exchange
+
+    exchange = Exchange(
+        id="e", task_id="t", base_id=None, sequence=0, occurred_at=None, model_id=None, provider=None, mode=None,
+        workspace_path=None, status="completed", retry_attempt=0, system="s", tools=[], messages=[], params={},
+        response={"toolCalls": [{"id": "functions.read_file:0", "name": "read_file", "arguments": "{}"}]},
+        error=None, outcome=None, stored_issues=[], complete=True,
+    )
+    results = {"functions_read_file_0": {"type": "tool_result", "content": "Error: ENOENT"}}
+    assert exchange.tool_call_ids == ["functions_read_file_0"]
+    assert result_issues(exchange.tool_call_ids, results) == ["tool_failed"]

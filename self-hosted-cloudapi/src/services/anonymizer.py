@@ -56,6 +56,13 @@ _COMMON_WORDS = {
 }
 
 # Account names that are placeholders, not a person (a "Test User" account).
+# A user name or an e-mail local part shorter than this is too likely to be an
+# ordinary identifier (max, dev, sam) to replace outside a path.
+_MIN_WORD_TOKEN = 5
+
+# The most text the per-export cache keeps (characters of input).
+_CACHE_CHARS = 20_000_000
+
 _NOT_NAMES = _GENERIC_USERS | {"test", "tester", "owner", "dev", "developer", "unknown", "none", "null"}
 
 _PRIVATE_KEY_RE = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----")
@@ -145,7 +152,7 @@ def _luhn_valid(digits: str) -> bool:
     return total % 10 == 0
 
 
-def _bounded(term: str, proper_noun: bool = False) -> re.Pattern:
+def _bounded(term: str, proper_noun: bool = False, word: bool = False) -> re.Pattern:
     """``term`` as a whole token: not inside a longer word (letters or digits), any case.
 
     Underscores, dots and dashes are boundaries, so ``acme`` is found in
@@ -154,10 +161,15 @@ def _bounded(term: str, proper_noun: bool = False) -> re.Pattern:
     ``QUB_IT``, ``qub it`` and ``qubit``.
     """
     if proper_noun:
-        # A person's name: only as a name is written (Alice, ALICE), so that
-        # "Will" or "Mark" in an account does not rewrite "will" and "mark".
-        forms = sorted({term, term.title(), term.upper()}, key=len, reverse=True)
-        return re.compile(rf"(?<![^\W_])(?:{'|'.join(re.escape(f) for f in forms)})(?![^\W_])")
+        # A person's name: only as a name is written (Alice), as a whole word,
+        # so "Will" or "Max" in an account rewrites neither "will", "Math.max"
+        # nor MAX_RETRIES.
+        forms = sorted({term, term.title()}, key=len, reverse=True)
+        return re.compile(rf"(?<!\w)(?:{'|'.join(re.escape(f) for f in forms)})(?!\w)")
+    if word:
+        # A user name or an e-mail's local part: a whole word in any case,
+        # underscores included in the word, so "max" leaves max_tokens alone.
+        return re.compile(rf"(?<!\w){re.escape(term)}(?!\w)", re.IGNORECASE)
     parts = [re.escape(part) for part in re.split(r"[-_. ]+", term) if part]
     body = r"[-_. ]?".join(parts) if parts else re.escape(term)
     return re.compile(rf"(?<![^\W_]){body}(?![^\W_])", re.IGNORECASE)
@@ -193,14 +205,15 @@ class Anonymizer:
         self._users: set[str] = set()
         self._token_rules: list[tuple[re.Pattern, str, str]] = []  # (pattern, category, pseudonym base)
         self._cache: dict[str, str] = {}
+        self._cache_chars = 0
         # Every identity value is the same person: one pseudonym for all of them.
         for kind, value in identity:
             value = (value or "").strip()
             if kind == "email" and "@" in value:
                 self._remember("email", value.lower(), self._email_pseudonym(value.lower()))
                 local = value.split("@", 1)[0]
-                if len(local) >= 3 and local.lower() not in _COMMON_WORDS:
-                    self._add_token(local, "identity", "person", fixed="person1")
+                if len(local) >= _MIN_WORD_TOKEN and local.lower() not in _COMMON_WORDS:
+                    self._add_token(local, "identity", "person", fixed="person1", word=True)
             elif kind == "name" and len(value) >= 3 and value.lower() not in _NOT_NAMES:
                 self._add_token(value, "identity", "person", fixed="person1", proper_noun=True)
         for term in terms:
@@ -224,10 +237,16 @@ class Anonymizer:
         self.audit[(category, original, replacement)] += 1
 
     def _add_token(
-        self, value: str, category: str, base: str, fixed: Optional[str] = None, proper_noun: bool = False
+        self,
+        value: str,
+        category: str,
+        base: str,
+        fixed: Optional[str] = None,
+        proper_noun: bool = False,
+        word: bool = False,
     ) -> None:
         key = value.lower()
-        pattern = _bounded(value, proper_noun)
+        pattern = _bounded(value, proper_noun, word)
         if any(existing.pattern == pattern.pattern for existing, _, _ in self._token_rules):
             return
         if fixed:
@@ -237,7 +256,7 @@ class Anonymizer:
         self._token_rules.append((pattern, category, pseudonym))
         # Longest first, so "Acme Corp" goes before "Acme".
         self._token_rules.sort(key=lambda rule: len(rule[0].pattern), reverse=True)
-        self._cache.clear()
+        self.forget_texts()
 
     def _email_pseudonym(self, email: str) -> str:
         return self._pseudonym("email", email, lambda n: f"user{n}@example.com")
@@ -274,15 +293,15 @@ class Anonymizer:
         name = re.split(r"[\\/]", path)[-1]
         if len(name) >= 4 and name.lower() not in _COMMON_WORDS:
             self._add_token(name, "project", "project")
-        self._cache.clear()
+        self.forget_texts()
 
     def _learn_user(self, name: str) -> None:
         if len(name) >= 3 and name.lower() not in _GENERIC_USERS and name not in self._users:
             self._users.add(name)
-            if name.lower() not in _COMMON_WORDS:
-                self._token_rules.append((_bounded(name), "username", "user"))
+            if len(name) >= _MIN_WORD_TOKEN and name.lower() not in _COMMON_WORDS:
+                self._token_rules.append((_bounded(name, word=True), "username", "user"))
                 self._remember("username", name.lower(), "user")
-            self._cache.clear()
+            self.forget_texts()
 
     # --- the rules -------------------------------------------------------------------
 
@@ -356,8 +375,8 @@ class Anonymizer:
         # without dropping the cache mid-string.
         if len(name) >= 3 and name.lower() not in _GENERIC_USERS and name not in self._users:
             self._users.add(name)
-            if name.lower() not in _COMMON_WORDS:
-                self._token_rules.append((_bounded(name), "username", "user"))
+            if len(name) >= _MIN_WORD_TOKEN and name.lower() not in _COMMON_WORDS:
+                self._token_rules.append((_bounded(name, word=True), "username", "user"))
                 self._remember("username", name.lower(), "user")
 
     def _tokens(self, text: str) -> str:
@@ -444,20 +463,51 @@ class Anonymizer:
         if cached is not None:
             return cached
         result = self._numbers(self._tokens(self._paths(self._secrets(value))))
-        if len(self._cache) > 50_000:
+        # Bounded by text held, not by entries: tool results are whole files.
+        if self._cache_chars + len(value) > _CACHE_CHARS:
             self._cache.clear()
+            self._cache_chars = 0
         self._cache[value] = result
+        self._cache_chars += len(value)
         return result
 
+    def forget_texts(self) -> None:
+        """Drop the cached texts (the export calls it between tasks; pseudonyms stay)."""
+        self._cache.clear()
+        self._cache_chars = 0
+
     def value(self, value: Any) -> Any:
-        """Every string in a JSON-like value (dict keys too) anonymized; a new value."""
+        """Every string value in a JSON-like value anonymized; a new value.
+
+        Keys are structure (schema property names, argument names), not
+        content, and stay as they are: a tool's parameter and the argument a
+        call passes for it must keep matching.
+        """
         if isinstance(value, str):
             return self.text(value)
         if isinstance(value, list):
             return [self.value(item) for item in value]
         if isinstance(value, dict):
-            return {self.text(k) if isinstance(k, str) else k: self.value(v) for k, v in value.items()}
+            return {k: self.value(v) for k, v in value.items()}
         return value
+
+    def tools(self, tools: Any) -> Any:
+        """Tool definitions anonymized, every tool name kept.
+
+        The calls in the samples name the tools as the model called them; a
+        renamed definition would teach the student to call a tool that is not
+        offered. A term inside an MCP tool name therefore stays visible.
+        """
+        cleaned = self.value(tools)
+        if isinstance(tools, list) and isinstance(cleaned, list):
+            for original, copy in zip(tools, cleaned):
+                if not isinstance(original, dict):
+                    continue
+                if isinstance(original.get("function"), dict) and "name" in original["function"]:
+                    copy["function"]["name"] = original["function"]["name"]
+                if "name" in original:
+                    copy["name"] = original["name"]
+        return cleaned
 
     def arguments(self, raw: str) -> str:
         """Tool call arguments: parsed and re-serialized only when something changed.

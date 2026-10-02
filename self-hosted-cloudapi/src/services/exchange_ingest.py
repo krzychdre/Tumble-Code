@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -35,6 +36,28 @@ def _short(value: Optional[str]) -> Optional[str]:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()[:COLUMN_MAX]
+
+
+_LONE_SURROGATE = re.compile(r"[\ud800-\udfff]")
+
+
+def without_lone_surrogates(value: Any) -> Any:
+    """``value`` with every lone UTF-16 surrogate replaced by U+FFFD.
+
+    JavaScript can cut a string between the two halves of an emoji, and
+    JSON.stringify then writes the half as ``\\ud83d``; Python reads it into a
+    string that cannot be encoded as UTF-8 (nor stored in Postgres). Node
+    hashes such a string with the half as U+FFFD, so the same replacement keeps
+    the blob hashes matching. (A wire body holding one no longer verifies byte
+    for byte: the extension hashed the escape, not the character.)
+    """
+    if isinstance(value, str):
+        return _LONE_SURROGATE.sub("\ufffd", value) if _LONE_SURROGATE.search(value) else value
+    if isinstance(value, list):
+        return [without_lone_surrogates(item) for item in value]
+    if isinstance(value, dict):
+        return {without_lone_surrogates(k): without_lone_surrogates(v) for k, v in value.items()}
+    return value
 
 
 def sha256_hex(text: str) -> str:
@@ -172,6 +195,14 @@ async def record_exchange(
         "payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
     }
     return await _insert_ignoring_duplicates(db, LlmExchange, values, ["id"])
+
+
+async def base_exists(db: AsyncSession, user_id: str, base_id: str) -> bool:
+    """Whether the exchange a delta builds on is stored for this user."""
+    found = await db.scalar(
+        select(LlmExchange.id).where(LlmExchange.id == base_id, LlmExchange.user_id == user_id)
+    )
+    return found is not None
 
 
 async def record_outcome(db: AsyncSession, user_id: str, outcome: LlmExchangeOutcomeRequest) -> bool:

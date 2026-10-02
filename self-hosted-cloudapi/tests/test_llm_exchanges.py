@@ -306,3 +306,36 @@ async def test_deleting_the_user_deletes_everything(authed, db_session, session_
     assert await _count(session_factory, LlmExchange) == 0
     assert await _count(session_factory, LlmBlob) == 0
     assert await _count(session_factory, DatasetSettings) == 0
+
+
+async def test_half_an_emoji_does_not_break_the_upload(authed, db_session, session_factory):
+    """JavaScript can cut a string between the halves of a surrogate pair; JSON.stringify writes the half escaped."""
+    await _record_on(db_session)
+    system = "sys \ufffd"  # how Node hashes a lone half: as U+FFFD
+    body = json.dumps(_exchange()).replace('"hello"', '"cut \\ud83d"')
+    body = body.replace(json.dumps({"sha256": _sha("sys"), "text": "sys"}),
+                        json.dumps({"sha256": _sha(system), "text": "sys \\ud83d"}).replace("\\\\", "\\"))
+
+    resp = authed.post("/api/llm-exchanges", content=gzip.compress(body.encode()),
+                       headers={"Content-Type": "application/json", "Content-Encoding": "gzip"})
+
+    assert resp.status_code == 200, resp.text
+    async with session_factory() as s:
+        rebuilt = await load_task(s, "user_test", "task-1")
+    assert rebuilt[0].response["text"] == "cut \ufffd"
+    assert rebuilt[0].system == system
+
+
+async def test_a_delta_whose_base_is_gone_asks_for_a_full_snapshot(authed, db_session):
+    await _record_on(db_session)
+    first, second = (item["body"] for item in FIXTURE["exchanges"][:2])
+
+    assert "resnapshot" not in _post(authed, "/api/llm-exchanges", first).json()
+    assert "resnapshot" not in _post(authed, "/api/llm-exchanges", second).json()
+    authed.app.dependency_overrides.pop(get_current_user, None)
+    _override_current_user(authed.app, user_id="user_other")
+    await _record_on(db_session, user_id="user_other")
+    third = dict(FIXTURE["exchanges"][2]["body"])
+
+    # The base belongs to another account: not something this user can build on.
+    assert _post(authed, "/api/llm-exchanges", third).json()["resnapshot"] is True

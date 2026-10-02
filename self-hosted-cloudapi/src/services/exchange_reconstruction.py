@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Iterable, Optional
@@ -65,7 +66,12 @@ class Exchange:
 
     @property
     def tool_call_ids(self) -> list[str]:
-        return [c["id"] for c in self.response.get("toolCalls") or [] if isinstance(c, dict) and c.get("id")]
+        """The answer's call ids as the history spells them (the extension's sanitizeToolUseId)."""
+        return [
+            re.sub(r"[^a-zA-Z0-9_-]", "_", c["id"])
+            for c in self.response.get("toolCalls") or []
+            if isinstance(c, dict) and isinstance(c.get("id"), str) and c["id"]
+        ]
 
 
 # --- JSON.stringify ------------------------------------------------------------------

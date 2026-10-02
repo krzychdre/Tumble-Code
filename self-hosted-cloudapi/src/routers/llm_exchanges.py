@@ -25,7 +25,14 @@ from src.dependencies import get_current_user
 from src.middleware.rate_limit import limiter
 from src.routers.events import capped_request
 from src.schemas.llm_exchange import LlmExchangeOutcomeRequest, LlmExchangeRequest
-from src.services.exchange_ingest import BlobHashMismatch, record_exchange, record_outcome, recording_enabled
+from src.services.exchange_ingest import (
+    BlobHashMismatch,
+    base_exists,
+    record_exchange,
+    record_outcome,
+    recording_enabled,
+    without_lone_surrogates,
+)
 
 router = APIRouter(prefix="/api", tags=["events"])
 
@@ -71,6 +78,7 @@ def _parse(body: bytes, encoding: str, model: type[BaseModel]):
         raise HTTPException(status_code=400, detail="Body is not valid JSON")
     if not isinstance(raw, dict):
         raise HTTPException(status_code=400, detail="Body must be a JSON object")
+    raw = without_lone_surrogates(raw)
     try:
         return raw, model.model_validate(raw)
     except ValidationError as exc:
@@ -110,11 +118,19 @@ async def record_llm_exchange_endpoint(
         # Switched off since the extension last asked: nothing is read or kept.
         return {"success": True, "stored": False, "recording": False}
     raw, exchange = await _read(request, LlmExchangeRequest)
+    # A delta whose base is gone (recordings deleted while the task ran, or a
+    # chain begun on another account) cannot be rebuilt: it is stored, marked
+    # incomplete by the reconstruction, and the extension is asked to send a
+    # full snapshot next.
+    resnapshot = bool(exchange.base_id) and not await base_exists(db, user_id, exchange.base_id)
     try:
         stored = await record_exchange(db, user_id, current_user.get("org_id"), raw, exchange)
     except BlobHashMismatch as exc:
         raise HTTPException(status_code=422, detail=str(exc))
-    return {"success": True, "stored": stored, "recording": True}
+    answer = {"success": True, "stored": stored, "recording": True}
+    if resnapshot:
+        answer["resnapshot"] = True
+    return answer
 
 
 @router.post("/llm-exchanges/outcome")
