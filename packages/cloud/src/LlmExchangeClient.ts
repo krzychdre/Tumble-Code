@@ -120,7 +120,11 @@ export class LlmExchangeClient {
 		return enabled
 	}
 
-	/** Upload one exchange. True when the server took it (stored, or recording off there). */
+	/**
+	 * Upload one exchange. True when the server took it and later exchanges may build on
+	 * it; false after a failure, and also when the server asks for a full snapshot (the
+	 * delta's base is gone: recordings deleted while the task ran, or another account).
+	 */
 	public async sendExchange(exchange: LlmExchange): Promise<boolean> {
 		const parsed = llmExchangeSchema.safeParse(exchange)
 		if (!parsed.success) {
@@ -168,8 +172,7 @@ export class LlmExchangeClient {
 					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 				})
 				if (response.ok) {
-					await this.noteServerFlag(token, response)
-					return true
+					return (await this.readAnswer(token, response)).resnapshot !== true
 				}
 				this.log(`[LlmExchangeClient] POST ${path} -> ${response.status}`)
 				// A client error will not succeed on a retry; only 5xx and 429 are retried.
@@ -183,15 +186,20 @@ export class LlmExchangeClient {
 		return false
 	}
 
-	/** The server answers `recording: false` when the switch was turned off since it was read. */
-	private async noteServerFlag(token: string, response: Response): Promise<void> {
+	/**
+	 * The server answers `recording: false` when the switch was turned off since it was
+	 * read, and `resnapshot: true` when the uploaded delta's base is not stored.
+	 */
+	private async readAnswer(token: string, response: Response): Promise<{ resnapshot?: unknown }> {
 		try {
-			const body = (await response.json()) as { recording?: unknown }
+			const body = (await response.json()) as { recording?: unknown; resnapshot?: unknown }
 			if (typeof body?.recording === "boolean") {
 				this.flag = { token, enabled: body.recording, expiresAt: this.now() + RECORDING_FLAG_TTL_MS }
 			}
+			return body ?? {}
 		} catch {
 			// No JSON answer: keep the cached flag.
+			return {}
 		}
 	}
 }

@@ -13,6 +13,7 @@ const cloud = vi.hoisted(() => ({
 	sendLlmExchange: vi.fn(async (_exchange: unknown) => true),
 	sendLlmExchangeOutcome: vi.fn(async (_outcome: unknown) => true),
 	sendErrorReport: vi.fn(async (_report: unknown) => {}),
+	getUserInfo: vi.fn((): { id?: string } | null => ({ id: "user-a" })),
 }))
 
 vi.mock("@tumble-code/cloud", () => ({
@@ -252,6 +253,21 @@ describe("incremental storage", () => {
 		expect(third!.baseId).toBeUndefined()
 		expect(third!.request.messages.keep).toBe(0)
 		expect(third!.request.system.text).toBe("You are Tumble.")
+	})
+
+	it("starts a full snapshot again when another account signed in", async () => {
+		record(true)
+		const task = makeTask()
+
+		turn(task, [USER_1], "call_1")
+		await sentExchanges(1)
+		cloud.getUserInfo.mockReturnValue({ id: "user-b" })
+		turn(task, [USER_1, ASSISTANT_1], "call_2")
+		const [, second] = await sentExchanges(2)
+		cloud.getUserInfo.mockReturnValue({ id: "user-a" })
+
+		expect(second!.baseId).toBeUndefined()
+		expect(second!.request.system.text).toBe("You are Tumble.")
 	})
 
 	it(`starts a full snapshot again after ${MAX_CHAIN_LENGTH} exchanges`, async () => {

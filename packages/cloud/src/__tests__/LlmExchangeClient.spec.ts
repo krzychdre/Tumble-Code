@@ -177,6 +177,13 @@ describe("LlmExchangeClient", () => {
 			expect(mockFetch).not.toHaveBeenCalled()
 		})
 
+		it("reports an upload the server cannot build on, so the next one is a full snapshot", async () => {
+			mockFetch.mockResolvedValue(ok({ success: true, stored: true, recording: true, resnapshot: true }))
+
+			expect(await client.sendExchange(EXCHANGE)).toBe(false)
+			expect(mockFetch).toHaveBeenCalledTimes(1)
+		})
+
 		it("learns from the answer that recording was switched off", async () => {
 			mockFetch.mockResolvedValue(ok({ success: true, stored: false, recording: false }))
 
