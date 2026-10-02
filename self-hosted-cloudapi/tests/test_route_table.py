@@ -62,6 +62,7 @@ EXPECTED = {
     ("/", ("GET",), "root_redirect", "APIRoute"),
     ("/app", ("GET",), "task_list", "APIRoute"),
     ("/app/metrics", ("GET",), "metrics_page", "APIRoute"),
+    ("/app/diagnostics", ("GET",), "diagnostics_page", "APIRoute"),
     ("/app/tasks/{task_id}", ("GET",), "task_detail", "APIRoute"),
     ("/app/tasks/{task_id}/delete", ("POST",), "delete_task", "APIRoute"),
     ("/app/settings", ("GET",), "settings_page", "APIRoute"),
@@ -147,6 +148,12 @@ def test_web_routes_keep_their_openapi_operations():
             ),
         ),
         ("/app/metrics", "get"): ("metrics_page_app_metrics_get", ("web",), html, (("period", "query", False), ("day_page", "query", False))),
+        ("/app/diagnostics", "get"): (
+            "diagnostics_page_app_diagnostics_get",
+            ("web",),
+            html,
+            (("period", "query", False),),
+        ),
         ("/app/tasks/{task_id}", "get"): (
             "task_detail_app_tasks__task_id__get",
             ("web",),

@@ -417,6 +417,88 @@ describe("TelemetryClient", () => {
 		})
 	})
 
+	describe("event properties and exceptions", () => {
+		const providerProperties = {
+			appName: "tumble-code",
+			appVersion: "1.0.0",
+			vscodeVersion: "1.60.0",
+			platform: "linux",
+			editorName: "vscode",
+			language: "en",
+			mode: "code",
+		}
+
+		const sentBody = () => JSON.parse(mockFetch.mock.calls[0]![1].body)
+
+		const makeClient = () => {
+			const client = new TelemetryClient(mockAuthService, mockSettingsService)
+			client.setProvider({ getTelemetryProperties: vi.fn().mockResolvedValue(providerProperties) })
+			return client
+		}
+
+		it("keeps the event's own properties, such as the tool name", async () => {
+			await makeClient().capture({
+				event: TelemetryEventName.TOOL_USED,
+				properties: { taskId: "t1", tool: "read_file" },
+			})
+
+			expect(sentBody()).toEqual({
+				type: TelemetryEventName.TOOL_USED,
+				properties: { ...providerProperties, taskId: "t1", tool: "read_file" },
+			})
+		})
+
+		it("sends an exception with its name, message, own fields and extra properties", async () => {
+			class ProviderError extends Error {
+				constructor(
+					message: string,
+					public readonly provider: string,
+					public readonly errorCode: number,
+					public readonly details: object,
+				) {
+					super(message)
+					this.name = "ProviderError"
+				}
+			}
+
+			const error = new ProviderError("rate limited", "zai", 429, { nested: true })
+			await makeClient().captureException(error, { taskId: "t1" })
+
+			const body = sentBody()
+			expect(body.type).toBe(TelemetryEventName.EXCEPTION)
+			expect(body.properties).toMatchObject({
+				...providerProperties,
+				taskId: "t1",
+				provider: "zai",
+				errorCode: 429,
+				errorName: "ProviderError",
+				errorMessage: "rate limited",
+			})
+			expect(body.properties.stack).toContain("ProviderError")
+			// Only primitive own fields are copied; objects stay behind.
+			expect(body.properties).not.toHaveProperty("details")
+		})
+
+		it("shortens a long exception message and stack", async () => {
+			const error = new Error("x".repeat(5_000))
+			error.stack = "s".repeat(10_000)
+
+			await makeClient().captureException(error)
+
+			const { errorMessage, stack } = sentBody().properties
+			expect(errorMessage).toHaveLength(2_001)
+			expect(stack).toHaveLength(4_001)
+		})
+
+		it("sends no exception while signed out", async () => {
+			mockAuthService.isAuthenticated.mockReturnValue(false)
+
+			await makeClient().captureException(new Error("boom"))
+
+			expect(mockFetch).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("telemetry state methods", () => {
 		it("should return true for isTelemetryEnabled unless an off switch is set", () => {
 			const client = new TelemetryClient(mockAuthService, mockSettingsService)

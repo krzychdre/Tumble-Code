@@ -131,6 +131,8 @@ WEB_ROUTES = [
     ("GET", "/app?page=3&q=x&scope=all"),
     ("GET", "/app/metrics"),
     ("GET", "/app/metrics?period=7d"),
+    ("GET", "/app/diagnostics"),
+    ("GET", "/app/diagnostics?period=7d"),
     ("GET", "/app/tasks/some-task"),
     ("POST", "/app/tasks/some-task/delete"),
     ("GET", "/app/settings"),
@@ -176,6 +178,7 @@ async def _web_login(client, db_session) -> User:
     [
         ("GET", "/app", 200, None),
         ("GET", "/app/metrics", 200, None),
+        ("GET", "/app/diagnostics", 200, None),
         ("GET", "/app/tasks/some-task", 404, None),
         ("POST", "/app/tasks/some-task/delete", 303, "/app"),
         ("GET", "/app/settings", 200, None),

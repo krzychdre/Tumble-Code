@@ -179,6 +179,7 @@ async def _seed_a_phone_sized_problem(session_factory):
         ("/app?project=lids&sort=cost&dir=desc", "taskRows"),
         ("/app/tasks/run", "messages"),
         ("/app/metrics", None),
+        ("/app/diagnostics", None),
         ("/app/settings", None),
     ],
 )

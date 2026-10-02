@@ -13,6 +13,28 @@ import {
 import { getTumbleCodeApiUrl } from "./config.js"
 import type { RetryQueue } from "./retry-queue/index.js"
 
+const MAX_EXCEPTION_MESSAGE_CHARS = 2_000
+const MAX_EXCEPTION_STACK_CHARS = 4_000
+
+function truncate(text: string, max: number): string {
+	return text.length > max ? `${text.slice(0, max)}…` : text
+}
+
+/** The event properties `CloudTelemetryClient.captureException` sends for one error. */
+function exceptionProperties(error: Error, additionalProperties?: Record<string, unknown>): Record<string, unknown> {
+	const ownFields = Object.entries(error).filter(
+		([, value]) => typeof value === "string" || typeof value === "number" || typeof value === "boolean",
+	)
+
+	return {
+		...Object.fromEntries(ownFields),
+		...additionalProperties,
+		errorName: error.name,
+		errorMessage: truncate(error.message, MAX_EXCEPTION_MESSAGE_CHARS),
+		...(error.stack ? { stack: truncate(error.stack, MAX_EXCEPTION_STACK_CHARS) } : {}),
+	}
+}
+
 abstract class BaseTelemetryClient implements TelemetryClient {
 	protected providerRef: WeakRef<TelemetryPropertiesProvider> | null = null
 	protected telemetryEnabled: boolean = false
@@ -192,6 +214,18 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			console.error(`[TelemetryClient#capture] Error sending telemetry event: ${error}`)
 			// Error is already queued for retry in the fetch method
 		}
+	}
+
+	/**
+	 * Sends the error as an `Exception` event, so the cloud diagnostics page
+	 * can group it. The error's own primitive fields (provider, modelId,
+	 * taskId, ...) come along; the message and the stack are shortened.
+	 */
+	public override async captureException(error: Error, additionalProperties?: Record<string, unknown>) {
+		await this.capture({
+			event: TelemetryEventName.EXCEPTION,
+			properties: exceptionProperties(error, additionalProperties),
+		})
 	}
 
 	public async backfillMessages(messages: ClineMessage[], taskId: string): Promise<void> {

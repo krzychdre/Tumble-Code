@@ -67,6 +67,11 @@ export enum TelemetryEventName {
 	CODE_INDEX_ERROR = "Code Index Error",
 	MODEL_CACHE_EMPTY_RESPONSE = "Model Cache Empty Response",
 	READ_FILE_LEGACY_FORMAT_USED = "Read File Legacy Format Used",
+	/**
+	 * An `Error` passed to `TelemetryService.captureException`: its name,
+	 * message, a shortened stack and its own fields (provider, model, ...).
+	 */
+	EXCEPTION = "Exception",
 }
 
 /**
@@ -309,7 +314,10 @@ const genericTelemetryEventNames = Object.values(TelemetryEventName).filter(
 export const tumbleCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.enum(genericTelemetryEventNames),
-		properties: telemetryPropertiesSchema,
+		// The event's own properties (the tool name, where an error happened)
+		// ride along: without them a "Tool Used" or "Code Index Error" row in
+		// the cloud is only a count.
+		properties: telemetryPropertiesSchema.passthrough(),
 	}),
 	z.object({
 		type: z.literal(TelemetryEventName.TASK_MESSAGE),

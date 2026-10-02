@@ -3109,6 +3109,111 @@ table.breakdown tr:last-child td {
 }
 
 /* ==========================================================================
+   Diagnostics
+   ========================================================================== */
+
+.stat-card[data-metric="errors"] .stat-label::before {
+	background: var(--d-error);
+}
+.diag-errors {
+	margin-bottom: var(--s4);
+}
+/* One kind of error per row; opening it shows the latest occurrence. */
+.diag-group {
+	border-bottom: 1px solid var(--line);
+}
+.diag-group:last-child {
+	border-bottom: none;
+}
+.diag-group > summary {
+	display: grid;
+	grid-template-columns: 11rem minmax(0, 1fr) auto auto;
+	gap: var(--s3);
+	align-items: baseline;
+	padding: var(--s2) var(--s1);
+	cursor: pointer;
+	list-style: none;
+	font-size: var(--t-sm);
+}
+.diag-group > summary::-webkit-details-marker {
+	display: none;
+}
+.diag-group > summary:hover {
+	background: var(--surface-2);
+}
+.diag-type {
+	color: var(--text-dim);
+}
+.diag-type::before {
+	content: "▸ ";
+	color: var(--text-faint);
+}
+.diag-group[open] .diag-type::before {
+	content: "▾ ";
+}
+.diag-sig {
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.diag-count,
+.diag-when {
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text-dim);
+	white-space: nowrap;
+}
+.diag-facts {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--s1) var(--s3);
+	margin: var(--s2) var(--s1);
+	font-size: var(--t-micro);
+}
+.diag-facts dt {
+	color: var(--text-faint);
+}
+.diag-facts dd {
+	margin: 0;
+	font-family: var(--mono);
+	overflow-wrap: anywhere;
+}
+.diag-text {
+	max-height: 20rem;
+	margin: var(--s2) var(--s1);
+	padding: var(--s2);
+	overflow: auto;
+	background: var(--surface-2);
+	border-radius: var(--r-sm);
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.diag-stack {
+	color: var(--text-dim);
+}
+/* The values of one feature event (which tool, which mode) under its row. */
+.diag-sub .bd-name {
+	padding-left: var(--s4);
+	color: var(--text-dim);
+}
+@media (max-width: 640px) {
+	.diag-group > summary {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+	.diag-sig {
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
+	.diag-when {
+		display: none;
+	}
+}
+
+/* ==========================================================================
    Settings
    ========================================================================== */
 
