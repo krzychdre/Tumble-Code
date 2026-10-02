@@ -7,6 +7,7 @@ import OpenAI from "openai"
 import { DEEP_SEEK_DEFAULT_TEMPERATURE } from "@tumble-code/types"
 import { Package } from "../../../shared/package"
 import axios from "axios"
+import { wireCaptureFetch } from "../utils/wire-capture"
 
 const mockCreate = vitest.fn()
 
@@ -125,6 +126,7 @@ describe("OpenAiHandler", () => {
 					"User-Agent": `TumbleCode/${Package.version}`,
 				},
 				timeout: expect.any(Number),
+				fetch: wireCaptureFetch,
 			})
 		})
 	})

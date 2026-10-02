@@ -12,6 +12,7 @@ import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@tumble-code/types"
 import { ApiStreamChunk } from "../../transform/stream"
 import { calculateApiCost } from "@tumble-code/core/browser"
 import { AnthropicVertexHandler } from "../anthropic-vertex"
+import { wireCaptureFetch } from "../utils/wire-capture"
 
 vitest.mock("@anthropic-ai/vertex-sdk", () => ({
 	AnthropicVertex: vitest.fn().mockImplementation(function () {
@@ -72,6 +73,7 @@ describe("VertexHandler", () => {
 				region: "us-central1",
 				googleAuth: expect.anything(),
 				timeout: 600_000,
+				fetch: wireCaptureFetch,
 			})
 		})
 	})

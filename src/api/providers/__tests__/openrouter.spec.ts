@@ -13,6 +13,7 @@ import { OpenRouterHandler } from "../openrouter"
 import { isRetryableApiError } from "../../apiErrors"
 import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { Package } from "../../../shared/package"
+import { wireCaptureFetch } from "../utils/wire-capture"
 
 vitest.mock("openai")
 vitest.mock("delay", () => ({ default: vitest.fn(() => Promise.resolve()) }))
@@ -119,6 +120,7 @@ describe("OpenRouterHandler", () => {
 				"User-Agent": `TumbleCode/${Package.version}`,
 			},
 			timeout: 600_000,
+			fetch: wireCaptureFetch,
 		})
 	})
 
