@@ -95,19 +95,8 @@ describe("link call sites (VSCodeLink replacement characterization)", () => {
 		renderWithSettingsDraft(<About />, { telemetrySetting: "enabled" })
 
 		const cases: Array<[string, string]> = [
-			[
-				"settings:about.bugReport.link",
-				"https://github.com/RooCodeInc/Roo-Code/issues/new?template=bug_report.yml",
-			],
-			[
-				"settings:about.featureRequest.link",
-				"https://github.com/RooCodeInc/Roo-Code/issues/new?template=feature_request.yml",
-			],
-			["settings:about.securityIssue.link", "https://github.com/RooCodeInc/Roo-Code/security/policy"],
-			// Links passed to <Trans components>, text supplied by the translation.
-			["privacyLink", "https://roocode.com/privacy"],
-			["redditLink", "https://reddit.com/r/RooCode"],
-			["discordLink", "https://discord.gg/roocode"],
+			// Link passed to <Trans components>, text supplied by the translation.
+			["privacyLink", "https://github.com/krzychdre/Tumble-Code/blob/main/PRIVACY.md"],
 		]
 
 		for (const [text, href] of cases) {

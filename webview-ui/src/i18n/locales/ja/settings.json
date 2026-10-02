@@ -48,20 +48,6 @@
 		"subagents": "サブエージェント"
 	},
 	"about": {
-		"bugReport": {
-			"label": "バグを見つけましたか？",
-			"link": "GitHubで報告"
-		},
-		"featureRequest": {
-			"label": "アイデアがありますか？",
-			"link": "共有してください"
-		},
-		"securityIssue": {
-			"label": "脆弱性を発見しましたか？",
-			"link": "開示プロセスに従ってください"
-		},
-		"community": "ヒントが欲しいですか、または他のTumble Codeユーザーと交流したいですか？<redditLink>reddit.com/r/TumbleCode</redditLink>または<discordLink>discord.gg/tumblecode</discordLink>に参加してください",
-		"contactAndCommunity": "お問い合わせとコミュニティ",
 		"manageSettings": "設定を管理",
 		"debugMode": {
 			"label": "デバッグモードを有効にする",

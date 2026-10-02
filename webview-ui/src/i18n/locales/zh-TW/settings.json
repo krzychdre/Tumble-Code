@@ -48,20 +48,6 @@
 		"subagents": "子代理"
 	},
 	"about": {
-		"bugReport": {
-			"label": "發現錯誤？",
-			"link": "在 GitHub 回報"
-		},
-		"featureRequest": {
-			"label": "有想法？",
-			"link": "與我們分享"
-		},
-		"securityIssue": {
-			"label": "發現安全漏洞？",
-			"link": "遵循我們的揭露流程"
-		},
-		"community": "想要取得使用技巧或與其他 Tumble Code 使用者交流？加入 <redditLink>reddit.com/r/TumbleCode</redditLink> 或 <discordLink>discord.gg/tumblecode</discordLink>",
-		"contactAndCommunity": "聯絡與社群",
 		"manageSettings": "管理設定",
 		"debugMode": {
 			"label": "啟用偵錯模式",

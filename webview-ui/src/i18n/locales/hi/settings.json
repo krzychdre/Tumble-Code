@@ -48,20 +48,6 @@
 		"subagents": "उप-एजेंट"
 	},
 	"about": {
-		"bugReport": {
-			"label": "बग मिला?",
-			"link": "GitHub पर रिपोर्ट करें"
-		},
-		"featureRequest": {
-			"label": "कोई विचार है?",
-			"link": "हमारे साथ साझा करें"
-		},
-		"securityIssue": {
-			"label": "कोई कमजोरी खोजी?",
-			"link": "हमारी प्रकटीकरण प्रक्रिया का पालन करें"
-		},
-		"community": "सुझाव चाहिए या बस अन्य Tumble Code उपयोगकर्ताओं के साथ घूमना चाहते हैं? <redditLink>reddit.com/r/TumbleCode</redditLink> या <discordLink>discord.gg/tumblecode</discordLink> में शामिल हों",
-		"contactAndCommunity": "संपर्क और समुदाय",
 		"manageSettings": "सेटिंग्स प्रबंधित करें",
 		"debugMode": {
 			"label": "डिबग मोड सक्षम करें",
