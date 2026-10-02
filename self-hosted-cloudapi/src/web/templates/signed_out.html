@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Signed out · Tumble Code{% endblock %}
+{% set hide_sign_in = True %}
+{% block content %}
+<div class="empty">
+  <h1 class="page-title">You are signed out</h1>
+  {# The identity provider keeps its own session, so signing in again may not
+     ask for a password; saying so stops that from looking like a failed
+     sign-out. #}
+  <p class="empty-hint">Your panel session has ended. If you are still signed in to the identity provider, signing in again will not ask for your password.</p>
+  <p class="empty-actions"><a class="btn" href="/app/login">Sign in again</a></p>
+</div>
+{% endblock %}

@@ -171,23 +171,35 @@ async def web_logout(
     user: Optional[WebUser] = Depends(get_web_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
-    """Deactivate the session, clear the cookie, and return to the login page.
+    """Deactivate the session, clear the cookie, and land on the signed-out page.
 
-    A POST (R10): logout changes server state, and a GET link can be forged —
+    A POST (R10): logout changes server state, and a GET link can be forged:
     an ``<img src="/app/logout">`` on any same-site page used to be able to
     sign the reader out. The session row is deactivated too, so the logout
     ends the session everywhere (the extension's client tokens for the same
     Session stop working), not just in the browser that clicked.
 
-    Nobody signed in gets the same redirect and cookie clear: an anonymous
-    GET of the old link, a stale cookie for a session that is gone, and the
-    follow-up request after logout all land on the login page.
+    Nobody signed in gets the same redirect and cookie clear: a stale cookie
+    for a session that is gone and a second click both land on the
+    signed-out page.
+
+    The redirect goes to /app/signed-out, never /app/login: /app/login
+    redirects on to Authentik, another origin, and a browser applies the
+    panel's ``form-action 'self'`` to every redirect that follows a form
+    post, so the whole sign-out was refused. Authentik's own session also
+    outlives ours, so going straight to it signed the reader back in.
     """
     if user is not None:
         await deactivate_session(db, user["session_id"])
-    response = RedirectResponse(url="/app/login", status_code=303)
+    response = RedirectResponse(url="/app/signed-out", status_code=303)
     clear_session_cookie(response, secure=cookie_should_be_secure(request))
     return response
+
+
+@router.get("/app/signed-out", response_class=HTMLResponse)
+async def web_signed_out(request: Request):
+    """Where a sign-out ends: a same-origin page with a link to sign in again."""
+    return templates.TemplateResponse(request, "signed_out.html", {"user": None})
 
 
 @router.get("/auth/clerk/callback")

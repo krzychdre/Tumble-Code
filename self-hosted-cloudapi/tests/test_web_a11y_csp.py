@@ -59,6 +59,7 @@ async def rendered(client, session_factory, monkeypatch):
     await _seed_everything(session_factory)
     pages = _pages(client, *_PANEL)
     pages["/shared/run"] = client.get("/shared/run")
+    pages["/app/signed-out"] = client.get("/app/signed-out")
     return pages
 
 

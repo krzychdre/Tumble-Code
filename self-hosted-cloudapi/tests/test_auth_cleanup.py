@@ -280,7 +280,7 @@ async def test_post_logout_deactivates_the_session(client, db_session):
 
     resp = client.post("/app/logout", cookies=_web_cookie(user_id, session_id), follow_redirects=False)
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/app/login"
+    assert resp.headers["location"] == "/app/signed-out"
 
     # The session row is deactivated in the DB.
     db_session.expire_all()
@@ -308,11 +308,33 @@ async def test_post_logout_clears_the_cookie(client, db_session):
 
 
 async def test_post_logout_without_a_session_still_redirects(client, db_session):
-    """The old GET link, bookmarks and stale cookies must not 4xx: an
-    anonymous logout lands on the login page exactly like a signed-in one."""
+    """Stale cookies and a second click must not 4xx: an anonymous logout
+    lands on the signed-out page exactly like a signed-in one."""
     resp = client.post("/app/logout", follow_redirects=False)
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/app/login"
+    assert resp.headers["location"] == "/app/signed-out"
+
+
+async def test_logout_redirects_never_leave_the_panel_origin(client, db_session):
+    """The panel's CSP has ``form-action 'self'``, and a browser checks it on
+    every redirect that follows a form post. Logout used to redirect to
+    /app/login, which redirects on to Authentik (another origin), so the
+    browser refused the whole sign-out. Walk the chain the browser would
+    follow and require every hop to stay on the panel, ending on a page."""
+    user = await _seed_user(db_session, "ak_chain", "chain@example.com")
+    session = await _seed_session(db_session, user.id)
+    await db_session.commit()
+
+    resp = client.post("/app/logout", cookies=_web_cookie(user.id, session.id), follow_redirects=False)
+    hops = 0
+    while resp.is_redirect:
+        location = resp.headers["location"]
+        assert location.startswith("/") and not location.startswith("//"), location
+        hops += 1
+        assert hops < 5, "redirect loop"
+        resp = client.get(location, follow_redirects=False)
+    assert resp.status_code == 200
+    assert "/app/login" in resp.text
 
 
 async def test_get_logout_is_gone(client, db_session):
