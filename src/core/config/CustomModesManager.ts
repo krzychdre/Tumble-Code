@@ -5,6 +5,8 @@ import * as fs from "fs/promises"
 import * as yaml from "yaml"
 import stripBom from "strip-bom"
 
+import { writeFileAtomic } from "@roo-code/core/fs"
+
 import {
 	type ModeConfig,
 	type PromptComponent,
@@ -239,7 +241,9 @@ export class CustomModesManager {
 		const fileExists = await fileExistsAtPath(filePath)
 
 		if (!fileExists) {
-			await this.queueWrite(() => fs.writeFile(filePath, yaml.stringify({ customModes: [] }, { lineWidth: 0 })))
+			await this.queueWrite(() =>
+				writeFileAtomic(filePath, yaml.stringify({ customModes: [] }, { lineWidth: 0 })),
+			)
 		}
 
 		return filePath
@@ -528,7 +532,7 @@ export class CustomModesManager {
 		}
 
 		settings.customModes = operation(settings.customModes)
-		await fs.writeFile(filePath, yaml.stringify(settings, { lineWidth: 0 }), "utf-8")
+		await writeFileAtomic(filePath, yaml.stringify(settings, { lineWidth: 0 }))
 	}
 
 	private async refreshMergedState(): Promise<void> {
@@ -632,7 +636,7 @@ export class CustomModesManager {
 	public async resetCustomModes(): Promise<void> {
 		try {
 			const filePath = await this.getCustomModesFilePath()
-			await fs.writeFile(filePath, yaml.stringify({ customModes: [] }, { lineWidth: 0 }))
+			await writeFileAtomic(filePath, yaml.stringify({ customModes: [] }, { lineWidth: 0 }))
 			await this.context.globalState.update("customModes", [])
 			this.clearCache()
 			await this.onUpdate()
