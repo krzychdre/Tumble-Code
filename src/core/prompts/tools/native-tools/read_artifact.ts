@@ -22,7 +22,7 @@ Parameters:
 - artifact_id: (required) The artifact filename quoted in the message that created it (e.g., "cmd-1706119234567.txt" for command output, "tool-1706119234567.txt" for a spilled tool result)
 - search: (optional) Pattern to filter lines. Supports regex or literal strings. Case-insensitive. **Omit this parameter entirely if you don't need to filter - do not pass null or empty string.**
 - offset: (optional) Byte offset to start reading from. Default: 0. Use for pagination.
-- limit: (optional) Maximum bytes to return. Defaults to the inline result budget (24KB) and is capped by it; page with offset for more.
+- limit: (optional) Maximum bytes to return, as a plain number (e.g. 24576, not "24KB"). Defaults to the inline result budget (24576 bytes) and is capped by it; page with offset for more.
 
 Example: Reading truncated command output
 { "artifact_id": "cmd-1706119234567.txt" }
@@ -43,9 +43,9 @@ const ARTIFACT_ID_DESCRIPTION = `The artifact filename quoted in the message tha
 
 const SEARCH_DESCRIPTION = `Optional regex or literal pattern to filter lines (case-insensitive, like grep). Omit this parameter if not searching - do not pass null or empty string.`
 
-const OFFSET_DESCRIPTION = `Byte offset to start reading from (default: 0, for pagination)`
+const OFFSET_DESCRIPTION = `Byte offset to start reading from, as a plain number (default: 0, for pagination)`
 
-const LIMIT_DESCRIPTION = `Maximum bytes to return (default and cap: the inline result budget, 24KB by default)`
+const LIMIT_DESCRIPTION = `Maximum bytes to return as a plain number, e.g. 24576 (default and cap: the inline result budget, 24576 bytes by default)`
 
 export default {
 	type: "function",

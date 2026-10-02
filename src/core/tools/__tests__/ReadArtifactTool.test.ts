@@ -463,6 +463,26 @@ describe("ReadArtifactTool", () => {
 			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("Invalid offset"))
 		})
 
+		// Regression: a model sent `"limit": "24KB"`, the clamp turned it into NaN and the
+		// user saw Node's "The value of "size" is out of range ... Received NaN".
+		it.each([
+			["limit", "24 GB"],
+			["offset", "abc"],
+			["limit", Number.NaN],
+		])("rejects %s that is not a byte count (%s) before touching the file", async (name, value) => {
+			await tool.execute({ artifact_id: "cmd-1706119234567.txt", [name]: value } as any, mockTask, mockCallbacks)
+
+			const expected = `Invalid ${name}: ${typeof value === "string" ? `"${value}"` : "NaN"}`
+			expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining(expected))
+			const result = mockCallbacks.pushToolResult.mock.calls[0][0]
+			expect(result).toContain(expected)
+			expect(result).toContain("24576")
+			expect(result).not.toContain("out of range")
+			expect(mockTask.didToolFailInCurrentTurn).toBe(true)
+			expect(mockTask.recordToolError).toHaveBeenCalledWith("read_artifact")
+			expect(fs.open).not.toHaveBeenCalled()
+		})
+
 		it("should handle missing artifact_id parameter", async () => {
 			await tool.execute({ artifact_id: "" }, mockTask, mockCallbacks)
 

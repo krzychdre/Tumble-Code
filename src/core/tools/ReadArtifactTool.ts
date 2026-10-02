@@ -25,6 +25,11 @@ const ARTIFACT_ID_GUIDANCE =
 	"Copy the id verbatim from the message that announced it instead of constructing one. " +
 	"If no message announced an artifact, re-run the command or the tool that produced the output."
 
+/** Corrective guidance for an offset or limit that is not a byte count. */
+const BYTE_COUNT_GUIDANCE =
+	'offset and limit are byte counts: pass a plain number such as 24576 (that is 24KB), not text like "abc". ' +
+	"Omit limit to get the default window."
+
 /**
  * Parameters accepted by the read_artifact tool.
  */
@@ -142,6 +147,21 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 			await task.say("error", errorMsg)
 			pushToolResult(`Error: ${errorMsg}`)
 			return
+		}
+
+		// The parser already turns "24576" and "24KB" into numbers; anything still not a
+		// number here would surface as Node's opaque "size ... Received NaN" buffer error.
+		for (const [name, value] of [
+			["offset", params.offset],
+			["limit", params.limit],
+		] as const) {
+			if (value !== undefined && !Number.isFinite(value)) {
+				this.recordFailure(task, "read_artifact", { failTurn: true })
+				const errorMsg = `Invalid ${name}: ${typeof value === "string" ? JSON.stringify(value) : String(value)}. ${BYTE_COUNT_GUIDANCE}`
+				await task.say("error", errorMsg)
+				pushToolResult(`Error: ${errorMsg}`)
+				return
+			}
 		}
 
 		try {

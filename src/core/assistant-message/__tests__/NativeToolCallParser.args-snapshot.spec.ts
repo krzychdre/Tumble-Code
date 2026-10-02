@@ -67,7 +67,8 @@ const CASES: Record<DispatchableToolName | "write_file", Case[]> = {
 	],
 	read_artifact: [
 		{ label: "full", args: { artifact_id: "cmd-1.txt", search: "error", offset: 100, limit: 20 } },
-		{ label: "numbers as strings kept raw", args: { artifact_id: "cmd-1.txt", offset: "100", limit: "20" } },
+		{ label: "numbers as strings coerced", args: { artifact_id: "cmd-1.txt", offset: "100", limit: "20" } },
+		{ label: "byte units coerced", args: { artifact_id: "cmd-1.txt", offset: "2kb", limit: "24KB" } },
 		{ label: "missing artifact_id", args: { search: "x" } },
 	],
 	read_command_output: [{ label: "legacy name", args: { artifact_id: "cmd-2.txt", search: "warn" } }],
