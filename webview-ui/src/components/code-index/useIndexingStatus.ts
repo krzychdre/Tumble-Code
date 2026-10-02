@@ -22,7 +22,10 @@ export function useIndexingStatus(externalIndexingStatus: IndexingStatus, cwd: s
 			if (message.type === "indexingStatusUpdate") {
 				const values = message.values as NonNullable<ExtensionMessage["values"]>
 				if (!values.workspacePath || values.workspacePath === cwd) {
+					// Keep every field the host sent: the workspace switches read
+					// workspaceEnabled and autoEnableDefault from this status.
 					setIndexingStatus({
+						...values,
 						systemStatus: values.systemStatus,
 						message: values.message || "",
 						processedItems: values.processedItems,

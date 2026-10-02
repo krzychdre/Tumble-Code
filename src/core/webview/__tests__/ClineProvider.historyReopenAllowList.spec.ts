@@ -184,6 +184,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 			setValue: vi.fn().mockResolvedValue(undefined),
 			getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "anthropic" }),
 			setProviderSettings: vi.fn().mockResolvedValue(undefined),
+			onDidChangeValues: vi.fn(() => ({ dispose: vi.fn() })),
 			extensionUri: context.extensionUri,
 			globalStorageUri: context.globalStorageUri,
 		}

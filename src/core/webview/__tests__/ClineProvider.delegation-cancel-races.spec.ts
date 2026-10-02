@@ -138,6 +138,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			getValues: vi.fn().mockReturnValue({}),
 			getValue: vi.fn().mockReturnValue(undefined),
 			setValue: vi.fn().mockResolvedValue(undefined),
+			onDidChangeValues: vi.fn(() => ({ dispose: vi.fn() })),
 			getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "anthropic" }),
 			extensionUri: mockContext.extensionUri,
 			globalStorageUri: mockContext.globalStorageUri,

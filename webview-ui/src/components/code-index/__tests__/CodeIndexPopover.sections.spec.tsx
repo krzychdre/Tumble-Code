@@ -19,6 +19,7 @@ import { CODEBASE_INDEX_DEFAULTS, type IndexingStatus } from "@roo-code/types"
 
 import { CodeIndexPopover } from "../CodeIndexPopover"
 import { useCodeIndexSettings } from "../useCodeIndexSettings"
+import { useIndexingStatus } from "../useIndexingStatus"
 
 vi.mock("react-i18next", () => ({
 	Trans: ({ children }: any) => <>{children}</>,
@@ -504,6 +505,72 @@ describe("CodeIndexPopover sections", () => {
 			const key = screen.getByPlaceholderText("settings:codeIndex.qdrantApiKeyPlaceholder") as HTMLInputElement
 			expect(key.value).not.toBe("")
 			expect(saveButton()).toBeDisabled()
+		})
+	})
+
+	describe("host pushes while the form is open", () => {
+		// Every state push (and every messageAdded of a running task) carries
+		// codebaseIndexConfig as a new object with the same content. That must
+		// not reseed the form: the user's unsaved edits (the enable box, typed
+		// fields) used to flip back under the cursor.
+		const t = (key: string) => key
+
+		it("keeps an unsaved edit when the same config arrives again as a new object", () => {
+			const { result, rerender } = renderHook(({ config }) => useCodeIndexSettings(config, t), {
+				initialProps: { config: { ...savedConfig } as any },
+			})
+			expect(result.current.currentSettings.codebaseIndexEnabled).toBe(true)
+
+			act(() => result.current.updateSetting("codebaseIndexEnabled", false))
+			act(() => result.current.updateSetting("codebaseIndexQdrantUrl", "http://typed:6333"))
+			rerender({ config: { ...savedConfig } })
+
+			expect(result.current.currentSettings.codebaseIndexEnabled).toBe(false)
+			expect(result.current.currentSettings.codebaseIndexQdrantUrl).toBe("http://typed:6333")
+			expect(result.current.hasUnsavedChanges).toBe(true)
+		})
+
+		it("reseeds the form when the saved config really changed", () => {
+			const { result, rerender } = renderHook(({ config }) => useCodeIndexSettings(config, t), {
+				initialProps: { config: { ...savedConfig } as any },
+			})
+			act(() => result.current.updateSetting("codebaseIndexEnabled", false))
+			rerender({ config: { ...savedConfig, codebaseIndexQdrantUrl: "http://elsewhere:6333" } })
+
+			expect(result.current.currentSettings.codebaseIndexQdrantUrl).toBe("http://elsewhere:6333")
+			expect(result.current.currentSettings.codebaseIndexEnabled).toBe(true)
+			expect(result.current.hasUnsavedChanges).toBe(false)
+		})
+
+		it("the enable box stays unticked across a state push in the popover", () => {
+			const { rerender } = renderOpen()
+			const enable = () =>
+				screen
+					.getByText("settings:codeIndex.enableLabel")
+					.closest("label")!
+					.querySelector("input[type=checkbox]") as HTMLInputElement
+			fireEvent.click(enable())
+			expect(enable().checked).toBe(false)
+
+			// What a state push does to the context: same content, new object.
+			mockExtensionState.codebaseIndexConfig = { ...savedConfig }
+			rerender(popover(status()))
+
+			expect(enable().checked).toBe(false)
+			expect(saveButton()).toBeEnabled()
+		})
+
+		it("an indexing status update keeps the workspace switches it carries", () => {
+			// One object for every render, as the badge's state is between its own updates.
+			const external = status({ workspaceEnabled: false, autoEnableDefault: true })
+			const { result } = renderHook(() => useIndexingStatus(external, "/workspace"))
+			hostMessage({
+				type: "indexingStatusUpdate",
+				values: status({ workspacePath: "/workspace", workspaceEnabled: true, autoEnableDefault: false }),
+			})
+
+			expect(result.current.workspaceEnabled).toBe(true)
+			expect(result.current.autoEnableDefault).toBe(false)
 		})
 	})
 })

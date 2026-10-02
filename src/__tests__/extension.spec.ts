@@ -203,8 +203,12 @@ vi.mock("../core/webview/ClineProvider", async () => {
 				return mockInstance
 			}),
 			{
-				// Static method used by extension.ts
+				// Static methods used by extension.ts
 				getVisibleInstance: vi.fn().mockReturnValue(mockInstance),
+				// Every open panel gets the cloud state push (one panel here).
+				postStateToAllWebviewsWithoutClineMessages: vi.fn(() =>
+					mockInstance.postStateToWebviewWithoutClineMessages(),
+				),
 				sideBarId: "tumble-code-sidebar",
 			},
 		),
