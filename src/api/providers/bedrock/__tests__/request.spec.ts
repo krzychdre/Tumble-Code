@@ -125,11 +125,15 @@ describe("bedrock request builders", () => {
 
 	describe("betas and service tier", () => {
 		it("adds the 1M context beta only for supported models with the setting on", () => {
-			expect(buildAnthropicBetas("anthropic.claude-sonnet-4-6", true)).toEqual([
+			expect(buildAnthropicBetas("anthropic.claude-sonnet-4-5-20250929-v1:0", true)).toEqual([
 				"context-1m-2025-08-07",
 				"fine-grained-tool-streaming-2025-05-14",
 			])
-			expect(buildAnthropicBetas("anthropic.claude-sonnet-4-6", false)).toEqual([
+			expect(buildAnthropicBetas("anthropic.claude-sonnet-4-5-20250929-v1:0", false)).toEqual([
+				"fine-grained-tool-streaming-2025-05-14",
+			])
+			// Claude 4.6 and later serve 1M natively: no beta header.
+			expect(buildAnthropicBetas("anthropic.claude-sonnet-4-6", true)).toEqual([
 				"fine-grained-tool-streaming-2025-05-14",
 			])
 			expect(buildAnthropicBetas("meta.llama3-1-70b-instruct-v1:0", true)).toEqual([])

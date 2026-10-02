@@ -192,14 +192,14 @@ describe("AnthropicHandler", () => {
 			expect(mockCreate).toHaveBeenCalled()
 		})
 
-		it("should include 1M context beta header for Claude Sonnet 4.6 when enabled", async () => {
-			const sonnet46Handler = new AnthropicHandler({
+		it("should include 1M context beta header for Claude Sonnet 4.5 when enabled", async () => {
+			const sonnet45Handler = new AnthropicHandler({
 				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-6",
+				apiModelId: "claude-sonnet-4-5",
 				anthropicBeta1MContext: true,
 			})
 
-			const stream = sonnet46Handler.createMessage(systemPrompt, [
+			const stream = sonnet45Handler.createMessage(systemPrompt, [
 				{
 					role: "user",
 					content: [{ type: "text" as const, text: "Hello" }],
@@ -523,8 +523,8 @@ describe("AnthropicHandler", () => {
 			})
 			const model = handler.getModel()
 			expect(model.id).toBe("claude-sonnet-4-6")
-			expect(model.info.maxTokens).toBe(64000)
-			expect(model.info.contextWindow).toBe(200000)
+			expect(model.info.maxTokens).toBe(128000)
+			expect(model.info.contextWindow).toBe(1000000)
 			expect(model.info.supportsReasoningBudget).toBe(true)
 		})
 
@@ -590,7 +590,7 @@ describe("AnthropicHandler", () => {
 			expect(model.info.outputPrice).toBe(22.5)
 		})
 
-		it("should enable 1M context for Claude 4.6 Sonnet when beta flag is set", () => {
+		it("keeps standard prices for the native 1M window of Claude 4.6 Sonnet, even with the beta flag set", () => {
 			const handler = new AnthropicHandler({
 				apiKey: "test-api-key",
 				apiModelId: "claude-sonnet-4-6",
@@ -598,8 +598,20 @@ describe("AnthropicHandler", () => {
 			})
 			const model = handler.getModel()
 			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.info.inputPrice).toBe(6.0)
-			expect(model.info.outputPrice).toBe(22.5)
+			expect(model.info.inputPrice).toBe(3.0)
+			expect(model.info.outputPrice).toBe(15.0)
+		})
+
+		it("keeps a saved id of a model retired on the Claude API as an unknown model without prices", () => {
+			const handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "claude-sonnet-4-20250514",
+			})
+			const model = handler.getModel()
+			expect(model.id).toBe("claude-sonnet-4-20250514")
+			expect(model.info.contextWindow).toBe(anthropicModels[anthropicDefaultModelId].contextWindow)
+			expect(model.info.inputPrice).toBeUndefined()
+			expect(model.info.outputPrice).toBeUndefined()
 		})
 
 		it("honors a custom model id that contains a known id and uses that model's info", () => {

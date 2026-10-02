@@ -525,7 +525,7 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 			`)
 		})
 
-		it("adaptive thinking model with 1M context", async () => {
+		it("adaptive thinking model with native 1M context sends no 1M beta", async () => {
 			const input = await commandInputFor({
 				apiModelId: "anthropic.claude-opus-4-7",
 				awsUsePromptCache: false,
@@ -536,7 +536,6 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				{
 				  "additionalModelRequestFields": {
 				    "anthropic_beta": [
-				      "context-1m-2025-08-07",
 				      "fine-grained-tool-streaming-2025-05-14",
 				    ],
 				    "output_config": {

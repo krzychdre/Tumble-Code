@@ -901,7 +901,7 @@ describe("VertexHandler", () => {
 			const modelInfo = handler.getModel()
 			expect(modelInfo.id).toBe("claude-sonnet-4-5@20250929")
 			expect(modelInfo.info).toBeDefined()
-			expect(modelInfo.info.maxTokens).toBe(8192)
+			expect(modelInfo.info.maxTokens).toBe(64_000)
 			expect(modelInfo.info.contextWindow).toBe(200_000)
 		})
 
@@ -964,9 +964,14 @@ describe("VertexHandler", () => {
 			expect(model.betas).toContain("context-1m-2025-08-07")
 		})
 
-		it("should enable 1M context for Claude Sonnet 4.6 when beta flag is set", () => {
+		it.each([
+			["claude-sonnet-4-6", 3.0, 15.0],
+			["claude-opus-4-6", 5.0, 25.0],
+			["claude-opus-4-7", 5.0, 25.0],
+			["claude-opus-4-8", 5.0, 25.0],
+		])("serves %s with its native 1M window at standard prices, without the beta", (apiModelId, input, output) => {
 			const handler = new AnthropicVertexHandler({
-				apiModelId: "claude-sonnet-4-6",
+				apiModelId,
 				vertexProjectId: "test-project",
 				vertexRegion: "us-central1",
 				vertex1MContext: true,
@@ -974,40 +979,10 @@ describe("VertexHandler", () => {
 
 			const model = handler.getModel()
 			expect(model.info.contextWindow).toBe(1_000_000)
-			expect(model.info.inputPrice).toBe(6.0)
-			expect(model.info.outputPrice).toBe(22.5)
-			expect(model.betas).toContain("context-1m-2025-08-07")
-		})
-
-		it("should enable 1M context for Claude Opus 4.7 when beta flag is set", () => {
-			const handler = new AnthropicVertexHandler({
-				apiModelId: "claude-opus-4-7",
-				vertexProjectId: "test-project",
-				vertexRegion: "us-central1",
-				vertex1MContext: true,
-			})
-
-			const model = handler.getModel()
-			expect(model.info.contextWindow).toBe(1_000_000)
-			expect(model.info.inputPrice).toBe(10.0)
-			expect(model.info.outputPrice).toBe(37.5)
-			expect(model.betas).toContain("context-1m-2025-08-07")
-		})
-
-		it("should enable 1M context for Claude Opus 4.8 when beta flag is set", () => {
-			const handler = new AnthropicVertexHandler({
-				apiModelId: "claude-opus-4-8",
-				vertexProjectId: "test-project",
-				vertexRegion: "us-central1",
-				vertex1MContext: true,
-			})
-
-			const model = handler.getModel()
-			expect(model.info.contextWindow).toBe(1_000_000)
-			expect(model.info.inputPrice).toBe(10.0)
-			expect(model.info.outputPrice).toBe(37.5)
-			expect(model.info.supportsTemperature).toBe(false)
-			expect(model.betas).toContain("context-1m-2025-08-07")
+			expect(model.info.maxTokens).toBe(128_000)
+			expect(model.info.inputPrice).toBe(input)
+			expect(model.info.outputPrice).toBe(output)
+			expect(model.betas ?? []).not.toContain("context-1m-2025-08-07")
 		})
 
 		it("should return Claude Fable 5 model info", () => {

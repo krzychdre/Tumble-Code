@@ -71,7 +71,7 @@ const snapshotCases: [ProviderName, string, ProviderSettings][] = [
 		{ anthropicBaseUrl: "https://proxy.example", anthropicUseAuthToken: true },
 	],
 	["anthropic", "1M model, beta off", { apiModelId: "claude-sonnet-4-5" }],
-	["anthropic", "1M model, beta on", { apiModelId: "claude-opus-4-6", anthropicBeta1MContext: true }],
+	["anthropic", "1M model, beta on", { apiModelId: "claude-sonnet-4-5", anthropicBeta1MContext: true }],
 	["anthropic", "model without 1M beta", { apiModelId: "claude-opus-4-7", anthropicBeta1MContext: true }],
 ]
 
@@ -166,10 +166,10 @@ describe("Anthropic and Mistral forms (characterization)", () => {
 		it.each([
 			["no model set (default claude-opus-5)", {}, false],
 			["empty model id", { apiModelId: "" }, false],
-			["claude-sonnet-4-20250514", { apiModelId: "claude-sonnet-4-20250514" }, true],
+			["claude-sonnet-4-20250514 (retired, no longer listed)", { apiModelId: "claude-sonnet-4-20250514" }, false],
 			["claude-sonnet-4-5", { apiModelId: "claude-sonnet-4-5" }, true],
-			["claude-sonnet-4-6", { apiModelId: "claude-sonnet-4-6" }, true],
-			["claude-opus-4-6", { apiModelId: "claude-opus-4-6" }, true],
+			["claude-sonnet-4-6 (native 1M)", { apiModelId: "claude-sonnet-4-6" }, false],
+			["claude-opus-4-6 (native 1M)", { apiModelId: "claude-opus-4-6" }, false],
 			["claude-opus-4-7 (listed, no 1M tier)", { apiModelId: "claude-opus-4-7" }, false],
 			["an unlisted id", { apiModelId: "claude-sonnet-4-5-custom" }, false],
 		] as const)("%s: shown = %s", (_name, config, shown) => {
@@ -182,7 +182,7 @@ describe("Anthropic and Mistral forms (characterization)", () => {
 			[true, false],
 		])("ticking (stored %s) writes anthropicBeta1MContext = %s", (stored, written) => {
 			const { setApiConfigurationField } = renderForm("anthropic", {
-				apiModelId: "claude-sonnet-4-6",
+				apiModelId: "claude-sonnet-4-5",
 				anthropicBeta1MContext: stored,
 			})
 

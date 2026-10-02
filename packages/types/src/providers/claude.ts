@@ -15,23 +15,6 @@ const SONNET_4_1M_CONTEXT_TIER = {
 	cacheReadsPrice: 0.6, // $0.60 per million tokens (>200K context)
 } as const
 
-const OPUS_4_1M_CONTEXT_TIER = {
-	contextWindow: 1_000_000, // 1M tokens with beta flag
-	inputPrice: 10.0, // $10 per million input tokens (>200K context)
-	outputPrice: 37.5, // $37.50 per million output tokens (>200K context)
-	cacheWritesPrice: 12.5, // $12.50 per million tokens (>200K context)
-	cacheReadsPrice: 1.0, // $1.00 per million tokens (>200K context)
-} as const
-
-/**
- * Opus 4.7 and 4.8 on Vertex and Bedrock: 200K context by default, 1M with the beta at the 1M prices
- * (the direct Anthropic API serves them with 1M natively).
- */
-export const OPUS_4_200K_WITH_1M_BETA = {
-	contextWindow: 200_000,
-	tiers: [OPUS_4_1M_CONTEXT_TIER],
-} satisfies Partial<ModelInfo>
-
 /**
  * One record per Claude model as the direct Anthropic API serves it: limits, capabilities and
  * Anthropic's prices. The Anthropic, Vertex and Bedrock tables spread these records and add or
@@ -95,16 +78,15 @@ export const claudeModels = {
 			"Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
 	},
 	"sonnet-4-6": {
-		maxTokens: 64_000, // Overridden to 8k if `enableReasoningEffort` is false.
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag 'context-1m-2025-08-07'
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000, // 1M native at standard prices, no beta header.
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens (≤200K context)
-		outputPrice: 15.0, // $15 per million output tokens (≤200K context)
+		inputPrice: 3.0, // $3 per million input tokens
+		outputPrice: 15.0, // $15 per million output tokens
 		cacheWritesPrice: 3.75, // $3.75 per million tokens
 		cacheReadsPrice: 0.3, // $0.30 per million tokens
 		supportsReasoningBudget: true,
-		tiers: [SONNET_4_1M_CONTEXT_TIER],
 	},
 	"sonnet-4-5": {
 		maxTokens: 64_000, // Overridden to 8k if `enableReasoningEffort` is false.
@@ -132,15 +114,14 @@ export const claudeModels = {
 	},
 	"opus-4-6": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
-		contextWindow: 200_000, // Default 200K, extendable to 1M with beta flag
+		contextWindow: 1_000_000, // 1M native at standard prices, no beta header.
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 5.0, // $5 per million input tokens (≤200K context)
-		outputPrice: 25.0, // $25 per million output tokens (≤200K context)
+		inputPrice: 5.0, // $5 per million input tokens
+		outputPrice: 25.0, // $25 per million output tokens
 		cacheWritesPrice: 6.25, // $6.25 per million tokens
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
 		supportsReasoningBudget: true,
-		tiers: [OPUS_4_1M_CONTEXT_TIER],
 	},
 	"opus-4-7": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
@@ -161,7 +142,7 @@ export const claudeModels = {
 	},
 	"opus-4-8": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
-		contextWindow: 1_000_000, // 1M context window native (no beta header required, same as 4.7)
+		contextWindow: 1_000_000, // 1M native at standard prices, no beta header (same as 4.7)
 		supportsImages: true,
 		supportsPromptCache: true,
 		inputPrice: 5.0, // $5 per million input tokens (regular tier)
@@ -212,7 +193,7 @@ export const claudeModels = {
 			"Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
 	},
 	"opus-4-5": {
-		maxTokens: 32_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		maxTokens: 64_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 200_000,
 		supportsImages: true,
 		supportsPromptCache: true,

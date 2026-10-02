@@ -123,10 +123,10 @@ describe("getContextWindow", () => {
 		expect(
 			getContextWindow(null, {
 				apiProvider: "vertex",
-				apiModelId: "claude-sonnet-4-6",
+				apiModelId: "claude-sonnet-4-5@20250929",
 				vertex1MContext: true,
 			}),
-		).toBe(vertexModels["claude-sonnet-4-6"].tiers![0]!.contextWindow)
+		).toBe(vertexModels["claude-sonnet-4-5@20250929"].tiers![0]!.contextWindow)
 	})
 
 	it("reads fetched models only for providers whose handler reads them", () => {
