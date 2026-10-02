@@ -133,7 +133,7 @@ async def test_embeddings_respect_the_selected_period(db_session):
     assert everything["embeddings"]["tokens"] == 1_000_006
 
 
-async def test_metrics_page_shows_the_split_and_the_indexing_tile(
+async def test_metrics_page_shows_the_indexing_tile_and_no_kind_split(
     client, db_session, session_factory
 ):
     async with session_factory() as s:
@@ -154,7 +154,9 @@ async def test_metrics_page_shows_the_split_and_the_indexing_tile(
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
     assert resp.status_code == 200
-    assert "Where the tokens went" in resp.text
-    assert "Condensing" in resp.text
+    # The per-kind split was dropped from the page (2026-10-02): it said
+    # little a reader acted on. metrics_service still counts it (tests above).
+    assert "Where the tokens went" not in resp.text
+    assert "kind-split" not in resp.text
     assert "Indexing" in resp.text
     assert "250k" in resp.text

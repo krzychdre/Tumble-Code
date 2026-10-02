@@ -165,11 +165,9 @@ async def test_the_metrics_page_prints_its_figures(client, db_session, session_f
     assert "2 API completions" in body
     assert "1 task<" in body
     assert "2 embedding calls" in body
-    # The "where the tokens went" panel and the breakdown tables.
-    assert '<span class="kind-num cell-cost">$0.1234</span>' in body
-    # $0.03125 is a true tie: it rounds up now, as the browser's toFixed does
-    # (it printed "$0.0312" while Python's "%.4f" formatted it).
-    assert '<span class="kind-num cell-cost">$0.0313</span>' in body
+    # The breakdown tables. $0.03125 is a true tie: it rounds up now, as the
+    # browser's toFixed does (it printed "$0.0312" while Python's "%.4f"
+    # formatted it).
     assert '<td class="bd-num">$0.1234</td>' in body
     assert '<td class="bd-num">$0.0313</td>' in body
 
