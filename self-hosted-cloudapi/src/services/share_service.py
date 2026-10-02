@@ -6,6 +6,7 @@ from sqlalchemy import select, delete, update
 
 from config.settings import settings
 from src.database import dialect_insert
+from src.models.error_report import ErrorReport
 from src.models.task import Task, TaskMessage, TaskShare
 from src.models.settings import OrganizationSettings
 from src.schemas.share import ShareResponse
@@ -162,6 +163,12 @@ async def delete_tasks(
     )
 
     await db.execute(delete(TaskMessage).where(TaskMessage.task_id.in_(owned)))
+    # Error reports carry the tail of the task's conversation; they go with
+    # it. Not a foreign key (a report can name a task that was never stored),
+    # so it is done here, for this user's reports only.
+    await db.execute(
+        delete(ErrorReport).where(ErrorReport.task_id.in_(owned), ErrorReport.user_id == user_id)
+    )
     await db.execute(delete(TaskShare).where(TaskShare.task_id.in_(owned)))
     await db.execute(delete(Task).where(Task.id.in_(owned)))
     await db.flush()

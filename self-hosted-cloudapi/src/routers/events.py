@@ -29,7 +29,7 @@ def _too_large(limit: int) -> HTTPException:
     )
 
 
-def _capped(request: Request, limit: int) -> Request:
+def capped_request(request: Request, limit: int) -> Request:
     """The request, refused with 413 once its body passes ``limit`` bytes.
 
     A declared Content-Length above the cap is refused before a byte is read.
@@ -104,7 +104,7 @@ async def backfill_events_endpoint(
     if not settings.telemetry_enabled:
         return {"status": "ignored"}
 
-    form = await _capped(request, settings.backfill_max_bytes).form()
+    form = await capped_request(request, settings.backfill_max_bytes).form()
     task_id = form.get("taskId", "")
     file = form.get("file")
 
