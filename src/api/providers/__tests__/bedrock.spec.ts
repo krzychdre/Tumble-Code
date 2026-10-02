@@ -1575,6 +1575,7 @@ describe("AwsBedrockHandler", () => {
 
 			it("returns true for the Claude 5 family", () => {
 				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-5")).toBe(true)
+				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-5-5")).toBe(true)
 				expect(isAdaptiveThinkingModel("anthropic.claude-opus-5")).toBe(true)
 				expect(isAdaptiveThinkingModel("anthropic.claude-opus-5-5")).toBe(true)
 				expect(isAdaptiveThinkingModel("anthropic.claude-fable-5-1")).toBe(true)

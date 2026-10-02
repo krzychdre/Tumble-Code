@@ -362,35 +362,62 @@ describe("AnthropicHandler", () => {
 
 		// Opus 5 (the default model) and Sonnet 5 were missing from the hardcoded
 		// caching switch, so their requests went out with no cache breakpoints.
-		it.each(["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5", "claude-fable-5-1", "claude-fable-5"])(
-			"should send cache breakpoints and adaptive thinking for %s",
-			async (modelId) => {
-				const claude5Handler = new AnthropicHandler({
-					apiKey: "test-api-key",
-					apiModelId: modelId,
-					enableReasoningEffort: true,
-				})
+		it.each([
+			"claude-opus-5-5",
+			"claude-opus-5",
+			"claude-sonnet-5-5",
+			"claude-sonnet-5",
+			"claude-fable-5-1",
+			"claude-fable-5",
+		])("should send cache breakpoints and adaptive thinking for %s", async (modelId) => {
+			const claude5Handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: modelId,
+				enableReasoningEffort: true,
+			})
 
-				const stream = claude5Handler.createMessage(systemPrompt, [
-					{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
-				])
+			const stream = claude5Handler.createMessage(systemPrompt, [
+				{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
+			])
 
-				for await (const _chunk of stream) {
-					// Consume stream
-				}
+			for await (const _chunk of stream) {
+				// Consume stream
+			}
 
-				const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-				const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
-				expect(requestBody?.model).toBe(modelId)
-				expect(requestBody?.system).toEqual([
-					{ text: systemPrompt, type: "text", cache_control: { type: "ephemeral" } },
-				])
-				expect(requestBody?.messages[0].content[0].cache_control).toEqual({ type: "ephemeral" })
-				expect(requestBody?.thinking).toEqual({ type: "adaptive" })
-				expect(requestBody?.temperature).toBeUndefined()
-				expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
-			},
-		)
+			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
+			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
+			expect(requestBody?.model).toBe(modelId)
+			expect(requestBody?.system).toEqual([
+				{ text: systemPrompt, type: "text", cache_control: { type: "ephemeral" } },
+			])
+			expect(requestBody?.messages[0].content[0].cache_control).toEqual({ type: "ephemeral" })
+			expect(requestBody?.thinking).toEqual({ type: "adaptive" })
+			expect(requestBody?.temperature).toBeUndefined()
+			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
+		})
+
+		// Sonnet 5.5 rejects `thinking: {type: "disabled"}` (and budget_tokens): with the toggle off the
+		// parameter must be omitted, which the API runs as adaptive thinking.
+		it("omits the thinking parameter for Claude Sonnet 5.5 when reasoning is off", async () => {
+			const sonnet55Handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "claude-sonnet-5-5",
+				enableReasoningEffort: false,
+			})
+
+			const stream = sonnet55Handler.createMessage(systemPrompt, [
+				{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
+			])
+
+			for await (const _chunk of stream) {
+				// Consume stream
+			}
+
+			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
+			// undefined is dropped when the body is serialized
+			expect(requestBody?.thinking).toBeUndefined()
+			expect(requestBody?.temperature).toBeUndefined()
+		})
 
 		it("should not require the 1M context beta header for Claude Opus 4.8", async () => {
 			const opus48Handler = new AnthropicHandler({

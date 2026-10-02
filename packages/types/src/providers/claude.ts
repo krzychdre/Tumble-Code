@@ -60,6 +60,25 @@ export const claudeModels = {
 		description:
 			"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
 	},
+	"sonnet-5-5": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000, // 1M native at standard prices, no beta header.
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 2.0, // $2 per million input tokens
+		outputPrice: 10.0, // $10 per million output tokens
+		cacheWritesPrice: 2.5, // $2.50 per million tokens (5-minute TTL)
+		cacheReadsPrice: 0.2, // $0.20 per million tokens
+		// Adaptive thinking is on by default. `{type: "disabled"}` and `budget_tokens`
+		// are rejected; turning the toggle off omits the parameter, which the API runs
+		// as adaptive thinking, so no request is rejected. Non-default sampling values
+		// and forced tool_choice (`any`/`tool`) are rejected too; we only send `auto`.
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+	},
 	"sonnet-5": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 1_000_000,

@@ -245,7 +245,7 @@ describe("OpenRouter API", () => {
 				maxTokens: 8192,
 			})
 
-			expect(result.maxTokens).toBe(64000)
+			expect(result.maxTokens).toBe(128000)
 			expect(result.contextWindow).toBe(200000)
 		})
 
@@ -278,6 +278,7 @@ describe("OpenRouter API", () => {
 		})
 
 		it.each([
+			"anthropic/claude-sonnet-5.5",
 			"anthropic/claude-sonnet-5",
 			"anthropic/claude-opus-5",
 			"anthropic/claude-opus-5.5",
