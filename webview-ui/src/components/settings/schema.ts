@@ -100,14 +100,15 @@ export const SETTINGS_SCHEMA = {
 	soundVolume: { apply: "onSave", default: SETTINGS_DEFAULTS.soundVolume },
 	enableCheckpoints: { apply: "onSave", default: SETTINGS_DEFAULTS.enableCheckpoints },
 	checkpointTimeout: { apply: "onSave", default: SETTINGS_DEFAULTS.checkpointTimeout },
-	// The memory defaults live in the host's ContextProxy (first-run migration).
-	autoMemoryEnabled: { apply: "onSave", default: true },
+	// ContextProxy only passes these keys through; the defaults come from
+	// SETTINGS_DEFAULTS, the one table.
+	autoMemoryEnabled: { apply: "onSave", default: SETTINGS_DEFAULTS.autoMemoryEnabled },
 	autoMemoryDirectory: clearableString,
 	autoMemoryShareWithClaudeCode: onSave,
-	memoryRecallEnabled: { apply: "onSave", default: true },
-	autoDreamEnabled: { apply: "onSave", default: true },
-	autoDreamMinHours: { apply: "onSave", default: 24 },
-	autoDreamMinSessions: { apply: "onSave", default: 5 },
+	memoryRecallEnabled: { apply: "onSave", default: SETTINGS_DEFAULTS.memoryRecallEnabled },
+	autoDreamEnabled: { apply: "onSave", default: SETTINGS_DEFAULTS.autoDreamEnabled },
+	autoDreamMinHours: { apply: "onSave", default: SETTINGS_DEFAULTS.autoDreamMinHours },
+	autoDreamMinSessions: { apply: "onSave", default: SETTINGS_DEFAULTS.autoDreamMinSessions },
 	memoryWriterApiConfigId: clearableString,
 	autoCondenseContextApiConfigId: clearableString,
 	webToolsEnabled: { apply: "onSave", default: SETTINGS_DEFAULTS.webToolsEnabled },

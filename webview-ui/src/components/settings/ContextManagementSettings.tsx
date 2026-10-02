@@ -3,7 +3,7 @@ import React from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { FoldVertical } from "lucide-react"
 
-import { PRUNE_CONDENSE_DEFAULTS } from "@tumble-code/types"
+import { PRUNE_CONDENSE_DEFAULTS, SETTINGS_DEFAULTS } from "@tumble-code/types"
 
 import { supportPrompt } from "@shared/support-prompt"
 
@@ -130,11 +130,11 @@ export const ContextManagementSettings = ({
 							min={0}
 							max={500}
 							step={1}
-							value={[maxOpenTabsContext ?? 20]}
+							value={[maxOpenTabsContext ?? SETTINGS_DEFAULTS.maxOpenTabsContext]}
 							onValueChange={([value]) => setMaxOpenTabsContext(value)}
 							data-testid="open-tabs-limit-slider"
 						/>
-						<span className="w-10">{maxOpenTabsContext ?? 20}</span>
+						<span className="w-10">{maxOpenTabsContext ?? SETTINGS_DEFAULTS.maxOpenTabsContext}</span>
 					</div>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:contextManagement.openTabs.description")}
@@ -153,11 +153,11 @@ export const ContextManagementSettings = ({
 							min={0}
 							max={500}
 							step={1}
-							value={[maxWorkspaceFiles ?? 200]}
+							value={[maxWorkspaceFiles ?? SETTINGS_DEFAULTS.maxWorkspaceFiles]}
 							onValueChange={([value]) => setMaxWorkspaceFiles(value)}
 							data-testid="workspace-files-limit-slider"
 						/>
-						<span className="w-10">{maxWorkspaceFiles ?? 200}</span>
+						<span className="w-10">{maxWorkspaceFiles ?? SETTINGS_DEFAULTS.maxWorkspaceFiles}</span>
 					</div>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:contextManagement.workspaceFiles.description")}
@@ -176,11 +176,11 @@ export const ContextManagementSettings = ({
 							min={0}
 							max={50}
 							step={1}
-							value={[maxGitStatusFiles ?? 0]}
+							value={[maxGitStatusFiles ?? SETTINGS_DEFAULTS.maxGitStatusFiles]}
 							onValueChange={([value]) => setMaxGitStatusFiles(value)}
 							data-testid="max-git-status-files-slider"
 						/>
-						<span className="w-10">{maxGitStatusFiles ?? 0}</span>
+						<span className="w-10">{maxGitStatusFiles ?? SETTINGS_DEFAULTS.maxGitStatusFiles}</span>
 					</div>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:contextManagement.maxGitStatusFiles.description")}
@@ -232,7 +232,7 @@ export const ContextManagementSettings = ({
 								type="number"
 								pattern="[0-9]*"
 								className="w-24 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-								value={maxImageFileSize ?? 5}
+								value={maxImageFileSize ?? SETTINGS_DEFAULTS.maxImageFileSize}
 								min={1}
 								max={100}
 								onChange={(e) => {
@@ -263,7 +263,7 @@ export const ContextManagementSettings = ({
 								type="number"
 								pattern="[0-9]*"
 								className="w-24 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-								value={maxTotalImageSize ?? 20}
+								value={maxTotalImageSize ?? SETTINGS_DEFAULTS.maxTotalImageSize}
 								min={1}
 								max={500}
 								onChange={(e) => {
@@ -315,7 +315,7 @@ export const ContextManagementSettings = ({
 							value={[
 								maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0
 									? 100
-									: (maxDiagnosticMessages ?? 50),
+									: (maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages),
 							]}
 							onValueChange={([value]) => {
 								// When slider reaches 100, set to -1 (unlimited)
@@ -328,20 +328,20 @@ export const ContextManagementSettings = ({
 							aria-valuenow={
 								maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0
 									? 100
-									: (maxDiagnosticMessages ?? 50)
+									: (maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages)
 							}
 							aria-valuetext={
 								(maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0) ||
 								maxDiagnosticMessages === 100
 									? t("settings:contextManagement.diagnostics.maxMessages.unlimitedLabel")
-									: `${maxDiagnosticMessages ?? 50} ${t("settings:contextManagement.diagnostics.maxMessages.label")}`
+									: `${maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages} ${t("settings:contextManagement.diagnostics.maxMessages.label")}`
 							}
 						/>
 						<span className="w-20 text-sm font-medium">
 							{(maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0) ||
 							maxDiagnosticMessages === 100
 								? t("settings:contextManagement.diagnostics.maxMessages.unlimitedLabel")
-								: (maxDiagnosticMessages ?? 50)}
+								: (maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages)}
 						</span>
 						<Button
 							variant="ghost"

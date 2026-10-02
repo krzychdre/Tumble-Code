@@ -28,6 +28,14 @@ describe("SETTINGS_DEFAULTS", () => {
 		expect(SETTINGS_DEFAULTS.customSoundCelebration).toBeNull()
 	})
 
+	it("carries the memory/dream defaults the call sites used to inline (R3-2)", () => {
+		expect(SETTINGS_DEFAULTS.autoMemoryEnabled).toBe(true)
+		expect(SETTINGS_DEFAULTS.memoryRecallEnabled).toBe(true)
+		expect(SETTINGS_DEFAULTS.autoDreamEnabled).toBe(true)
+		expect(SETTINGS_DEFAULTS.autoDreamMinHours).toBe(24)
+		expect(SETTINGS_DEFAULTS.autoDreamMinSessions).toBe(5)
+	})
+
 	it("is frozen, including its containers", () => {
 		expect(Object.isFrozen(SETTINGS_DEFAULTS)).toBe(true)
 		expect(Object.isFrozen(SETTINGS_DEFAULTS.listApiConfigMeta)).toBe(true)

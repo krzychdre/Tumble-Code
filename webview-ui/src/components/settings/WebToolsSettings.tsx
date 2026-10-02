@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
-import { WEB_TOOLS_DEFAULTS } from "@tumble-code/types"
+import { WEB_TOOLS_DEFAULTS, SETTINGS_DEFAULTS } from "@tumble-code/types"
 
 import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
@@ -24,7 +24,7 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 			<Section>
 				<SearchableSetting settingId="web-enable" section="web" label={t("settings:web.enable.label")}>
 					<LabeledCheckbox
-						checked={webToolsEnabled ?? false}
+						checked={webToolsEnabled ?? SETTINGS_DEFAULTS.webToolsEnabled}
 						onChange={(e: any) => {
 							setWebToolsEnabled(e.target.checked)
 						}}
@@ -47,7 +47,7 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 								{t("settings:web.searxngBaseUrl.label")}
 							</label>
 							<Input
-								value={searxngBaseUrl ?? ""}
+								value={searxngBaseUrl ?? SETTINGS_DEFAULTS.searxngBaseUrl}
 								placeholder={t("settings:web.searxngBaseUrl.placeholder")}
 								onChange={(e) => {
 									setSearxngBaseUrl(e.target.value)

@@ -33,6 +33,16 @@ const ALLOWED = {
 	// Write path: `||` also guards the empty string a profile clear leaves
 	// behind; a read-side `??` would save "" as a config name.
 	"src/extension/api.ts:358": "write path; || also guards the empty string",
+	// Display-only: the empty string is not the default config name, it just
+	// renders "no profile selected" in the input.
+	"webview-ui/src/components/settings/ApiConfigManager.tsx:29": 'optional prop; "" renders the empty input',
+	"webview-ui/src/components/settings/ApiConfigManager.tsx:135":
+		'display path; || also guards the empty string ("" is not a config name)',
+	"webview-ui/src/components/chat/ComposerToolbar.tsx:53":
+		'display path; || also guards the empty string ("" is not a config name)',
+	// Stale display literal: the text shows 50ms when unset although the
+	// table default is 0; kept as-is because changing it is a UI change.
+	"webview-ui/src/components/settings/TerminalSettings.tsx:339": "stale display literal (50 vs table 0); UI change",
 }
 
 // ---------------------------------------------------------------------------
@@ -68,7 +78,7 @@ function readTableKeys(source) {
 // 2. Scan runtime code for literal fallbacks on those keys.
 //
 
-const SCAN_DIRS = ["src", "packages", "apps"]
+const SCAN_DIRS = ["src", "packages", "apps", "webview-ui"]
 const SKIP_DIRS = new Set(["node_modules", "dist", "__tests__", "__mocks__", "coverage"])
 const SKIP_FILE = (name) =>
 	name.endsWith(".spec.ts") ||
@@ -114,11 +124,11 @@ function literalFallbackRe(key) {
 	)
 }
 
-function scan(keys) {
+function scan(keys, rootDir) {
 	const violations = []
 	for (const dir of SCAN_DIRS) {
-		for (const file of walk(join(root, dir))) {
-			const rel = relative(root, file).split(sep).join("/")
+		for (const file of walk(join(rootDir, dir))) {
+			const rel = relative(rootDir, file).split(sep).join("/")
 			const source = readFileSync(file, "utf8")
 			const lines = source.split("\n")
 			for (const key of keys) {
@@ -147,32 +157,7 @@ function scan(keys) {
 export function checkSettingsDefaults({ root: rootDir = root } = {}) {
 	const tableSource = readFileSync(join(rootDir, "packages/types/src/settings-defaults.ts"), "utf8")
 	const keys = readTableKeys(tableSource)
-	return { keys, violations: scanWithRoot(keys, rootDir) }
-}
-
-function scanWithRoot(keys, rootDir) {
-	const violations = []
-	for (const dir of SCAN_DIRS) {
-		for (const file of walk(join(rootDir, dir))) {
-			const rel = relative(rootDir, file).split(sep).join("/")
-			const source = readFileSync(file, "utf8")
-			const lines = source.split("\n")
-			for (const key of keys) {
-				const re = literalFallbackRe(key)
-				for (let i = 0; i < lines.length; i++) {
-					const line = lines[i]
-					if (!line.includes(key)) continue
-					const m = line.match(re)
-					if (m) {
-						const id = `${rel}:${i + 1}`
-						if (ALLOWED[id] !== undefined) continue
-						violations.push({ file: rel, line: i + 1, key, text: line.trim() })
-					}
-				}
-			}
-		}
-	}
-	return violations
+	return { keys, violations: scan(keys, rootDir) }
 }
 
 const isMain = process.argv[1] && process.argv[1].endsWith("check-settings-defaults.mjs")

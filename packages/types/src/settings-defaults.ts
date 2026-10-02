@@ -56,6 +56,12 @@ const settingsDefaults = {
 	autoCondenseContext: true,
 	autoCondenseContextPercent: 100,
 
+	autoMemoryEnabled: true,
+	memoryRecallEnabled: true,
+	autoDreamEnabled: true,
+	autoDreamMinHours: 24,
+	autoDreamMinSessions: 5,
+
 	webToolsEnabled: false,
 	webSearchBackend: "searxng",
 	searxngBaseUrl: "",
