@@ -124,6 +124,8 @@ interface Chain {
 }
 
 interface RecorderState {
+	/** The cloud account the chain was built on; another one starts a new chain. */
+	account?: string
 	sequence: number
 	pending?: Pending
 	chain?: Chain
@@ -155,7 +157,21 @@ function recorderState(task: object): RecorderState | undefined {
 		state = { sequence: 0, queue: Promise.resolve() }
 		states.set(task, state)
 	}
+	const account = accountId()
+	if (state.account !== account) {
+		// Signed in as someone else since: their cloud has none of this chain.
+		state.account = account
+		state.chain = undefined
+	}
 	return state
+}
+
+function accountId(): string | undefined {
+	try {
+		return CloudService.instance.getUserInfo()?.id
+	} catch {
+		return undefined
+	}
 }
 
 function guard(what: string, fn: () => void): void {
