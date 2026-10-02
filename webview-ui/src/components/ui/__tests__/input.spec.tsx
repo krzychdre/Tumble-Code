@@ -103,4 +103,24 @@ describe("useTextDraft", () => {
 		rerender(<Field value="new" onCommit={onCommit} />)
 		expect(input.value).toBe("new")
 	})
+
+	it("Enter in a single-line field commits once, like the native change event", () => {
+		const onCommit = vi.fn()
+		render(<Field value="old" onCommit={onCommit} />)
+		const input = screen.getByTestId("field") as HTMLInputElement
+
+		fireEvent.change(input, { target: { value: "typed" } })
+		fireEvent.keyDown(input, { key: "Enter" })
+		expect(onCommit).toHaveBeenCalledWith("typed")
+
+		// Leaving after Enter does not commit the same edit again.
+		fireEvent.blur(input)
+		expect(onCommit).toHaveBeenCalledTimes(1)
+
+		// A new edit commits again.
+		fireEvent.change(input, { target: { value: "typed again" } })
+		fireEvent.blur(input)
+		expect(onCommit).toHaveBeenLastCalledWith("typed again")
+		expect(onCommit).toHaveBeenCalledTimes(2)
+	})
 })

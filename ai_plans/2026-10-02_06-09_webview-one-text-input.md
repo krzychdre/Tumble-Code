@@ -41,7 +41,7 @@ API but a different look (no fixed height, 12px padding, `text-base` line height
   matters: fields that parse what is typed (code-index dimension) and fields that save only when left (mode role
   definition, description, when to use, custom instructions, global custom instructions: they rewrite the mode
   file or post to the host, so per-keystroke saving would also trim away a typed trailing space). `onCommit` runs
-  on blur when the text changed, like the native `change` event.
+  once per edit, on blur or Enter in a single-line field, when the text changed: like the native `change` event.
 - The rename field in `ModeSelectorRow` selects its text after focusing (the old field selected on focus).
 - `CloudView` manual callback URL: the old native-`change` handler saw the text only on blur, so Enter read an
   empty state and the "auto-send when pasted" branch only ran on blur. Now the state follows every keystroke,
