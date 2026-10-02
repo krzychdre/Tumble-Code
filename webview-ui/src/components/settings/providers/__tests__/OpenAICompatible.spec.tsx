@@ -2,7 +2,7 @@ import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { OpenAICompatible } from "../OpenAICompatible"
 import { ProviderSettings } from "@roo-code/types"
-import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { Input as RealInput } from "@/components/ui/input"
 
 // Mock the checkbox (LabeledCheckbox)
 vi.mock("@src/components/ui/labeled-checkbox", () => ({
@@ -33,7 +33,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 // Mock the UI components
 vi.mock("@src/components/ui", () => ({
 	// The real text field (a native input), not a stub.
-	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 	Button: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
 	StandardTooltip: ({ children, content }: any) => <div title={content}>{children}</div>,
 }))

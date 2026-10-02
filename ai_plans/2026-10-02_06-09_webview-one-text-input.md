@@ -1,6 +1,6 @@
 # One text input family: shadcn Input/Textarea with the VS Code field look
 
-Status: part 1 of 2 on `refactor/webview-one-text-input` (Input/Textarea look, `start`/`end` slots, `useTextDraft`,
+Status: done in two stacked PRs. Part 1 on `refactor/webview-one-text-input` (Input/Textarea look, `start`/`end` slots, `useTextDraft`,
 every call site outside `components/settings`). Part 2 (`refactor/webview-one-text-input-settings`, stacked on
 part 1) migrates `components/settings` and `FormattedTextField`, then deletes `ThemedTextField`, `ThemedTextArea`,
 `DecoratedVSCodeTextField`, `useToolkitTextValue` and the `.ui-text-field*` / `.ui-text-area*` CSS. Round 2 plan
@@ -84,3 +84,47 @@ The chat popover inputs keep their size.
 
 - Error borders (`border-[var(--vscode-inputValidation-errorBorder)]`) on the code-index fields were set on the
   toolkit wrapper, which has no border, so they never showed. On `Input` they now show on a field with an error.
+
+## Part 2: settings and the removal (`refactor/webview-one-text-input-settings`)
+
+Touched: every `components/settings` file that used `ThemedTextField` / `ThemedTextArea` (providers: `shared`,
+`Vertex`, `OpenRouter`, `LiteLLM`, `BedrockCustomArn`, `Bedrock`, `ProviderDescriptorForm`, `OpenAICompatible`,
+`QwenCode`; `WebToolsSettings`, `MemorySettings`, `ImageGenerationSettings`, `ApiConfigManager`,
+`ContextManagementSettings`, `PromptsSettings`), the existing shadcn `Input` users there (`AutoApproveSettings`,
+`CreateSkillDialog`, `CreateSlashCommandDialog`), `MaxCostInput`, `MaxRequestsInput`, `common/FormattedTextField.tsx`.
+Deleted: `ui/themed-text-field.tsx`, `ui/themed-text-area.tsx`, `ui/hooks/useToolkitTextValue.ts`,
+`common/DecoratedVSCodeTextField.tsx`, their specs, and 186 lines of `.ui-text-field*` / `.ui-text-area*` CSS.
+
+- A field whose label was passed as children becomes `<label className="block w-full leading-[normal]"><span
+className="block font-medium mb-1">...</span><Input /></label>`: the label wraps the input (implicit
+  association, a click on the label focuses the input as before) and `leading-[normal]` keeps the old label line
+  height, so the labelled fields measure the same as on main (table below). A help text that sat between label and
+  field (descriptor text fields) stays there. OpenRouter's key label shares its row with the balance, so it names
+  the input with `htmlFor` instead.
+- `onInput` becomes `onChange`; the `(e: any)` / `(e: unknown)` casts and `as HTMLInputElement` reads on these
+  fields are gone (18 casts; the 37 left in `webview-ui/src` are on checkboxes, sliders and selects, not text).
+  `useProviderField` no longer accepts a native `Event`.
+- Fields that parse what is typed keep the typed text with `useTextDraft`: the descriptor integer fields (a value
+  below the minimum is not stored but stays shown while typing) and the OpenAI-compatible custom model numbers.
+  The four price fields still save when the field is left or on Enter (native `change` before), through
+  `useTextDraft`'s `onCommit`. They are one local `ModelInfoNumberField` with a `PriceLabel` instead of six copies.
+- The OpenAI-compatible number fields had a `style={{ borderColor }}` (green/red by value) set on the toolkit
+  wrapper, which has no border, so it never showed; it is dropped rather than switched on.
+- `FormattedTextField` (max cost / max requests) renders `Input` directly; the `$` is a `start` slot.
+  `DecoratedVSCodeTextField` drew its own `input.border` overlay (a different colour from every other field, and
+  the text colour in themes without `input.border`) and placed the text 24px from the left; the field now has the
+  standard border and the text 8px closer to the `$`.
+- Rename profile selects its text on focus, as the old field did. The command inputs next to the 32px "Add"
+  buttons in auto-approve get `h-8`: before, their auto height let the row stretch them to the button height.
+- Existing `Input` users in settings drop the classes that repeated the base look (`bg-*`, `text-*`, `border-*`,
+  `px-3 py-2`, `focus-ring`); the skill and slash command dialog name fields become the standard 26px.
+
+Visual check of part 2 (same harness, main vs branch): labelled field, field with help text, price field with
+info icon: input at the same offset (19, 35.72, 21px) and the next element at the same offset. Max cost: same
+height, standard border, text 8px further left.
+
+Tests: the provider form snapshots (`provider-forms.*.snap`, 50 entries) change only by the markup above; the
+table spec finds a field through its label (wrapping or `htmlFor`) instead of `.ui-text-field`; the Ollama context
+window cases start from a stored value so that every typed value is a real edit (React reports no change for
+typing the value already shown); the QwenCode call-site spec keeps the settings value in state because the field is
+controlled; barrel mocks use the real `Input` / `Textarea`. The DEP-9 characterization specs stay and pass.

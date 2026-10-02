@@ -5,15 +5,7 @@ import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 import { VERTEX_REGIONS, VERTEX_1M_CONTEXT_MODEL_IDS, looksLikeFilePath } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-	Link,
-	ThemedTextField,
-} from "@src/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Link, Input } from "@src/components/ui"
 
 import { type ProviderFormProps, useProviderField } from "./shared"
 
@@ -62,13 +54,14 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 					</Link>
 				</div>
 			</div>
-			<ThemedTextField
-				value={apiConfiguration?.vertexJsonCredentials || ""}
-				onInput={handleInputChange("vertexJsonCredentials")}
-				placeholder={t("settings:placeholders.credentialsJson")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.googleCloudCredentials")}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:providers.googleCloudCredentials")}</span>
+				<Input
+					value={apiConfiguration?.vertexJsonCredentials || ""}
+					onChange={handleInputChange("vertexJsonCredentials")}
+					placeholder={t("settings:placeholders.credentialsJson")}
+				/>
+			</label>
 			{credentialsLooksLikePath && (
 				<div
 					data-testid="vertex-credentials-path-warning"
@@ -83,20 +76,22 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 					/>
 				</div>
 			)}
-			<ThemedTextField
-				value={apiConfiguration?.vertexKeyFile || ""}
-				onInput={handleInputChange("vertexKeyFile")}
-				placeholder={t("settings:placeholders.keyFilePath")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.googleCloudKeyFile")}</label>
-			</ThemedTextField>
-			<ThemedTextField
-				value={apiConfiguration?.vertexProjectId || ""}
-				onInput={handleInputChange("vertexProjectId")}
-				placeholder={t("settings:placeholders.projectId")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.googleCloudProjectId")}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:providers.googleCloudKeyFile")}</span>
+				<Input
+					value={apiConfiguration?.vertexKeyFile || ""}
+					onChange={handleInputChange("vertexKeyFile")}
+					placeholder={t("settings:placeholders.keyFilePath")}
+				/>
+			</label>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:providers.googleCloudProjectId")}</span>
+				<Input
+					value={apiConfiguration?.vertexProjectId || ""}
+					onChange={handleInputChange("vertexProjectId")}
+					placeholder={t("settings:placeholders.projectId")}
+				/>
+			</label>
 			<div>
 				<label className="block font-medium mb-1">{t("settings:providers.googleCloudRegion")}</label>
 				<Select

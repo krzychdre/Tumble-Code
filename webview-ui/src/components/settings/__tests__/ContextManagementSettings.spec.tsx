@@ -6,7 +6,7 @@ import { ContextManagementSettings } from "../ContextManagementSettings"
 import type { BufferedKey } from "../schema"
 import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
+import { Textarea as RealTextarea } from "@/components/ui/textarea"
 
 // Mock the translation hook
 vi.mock("@/hooks/useAppTranslation", () => ({
@@ -26,7 +26,7 @@ vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
-	ThemedTextArea: (props: any) => <RealThemedTextArea {...props} />,
+	Textarea: (props: any) => <RealTextarea {...props} />,
 	Slider: ({ value, onValueChange, "data-testid": dataTestId, disabled, min, max }: any) => (
 		<input
 			type="range"

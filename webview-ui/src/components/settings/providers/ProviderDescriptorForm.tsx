@@ -35,9 +35,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 	StandardTooltip,
-	ThemedTextField,
+	Input,
 } from "@src/components/ui"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
+import { useTextDraft } from "@src/components/ui/hooks"
 
 import { ModelPicker } from "../ModelPicker"
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
@@ -251,14 +252,15 @@ const UrlField = ({
 
 	return (
 		<>
-			<ThemedTextField
-				value={apiConfiguration[field.key] || ""}
-				type="url"
-				onInput={handleInputChange(field.key)}
-				placeholder={field.placeholder}
-				className="w-full">
-				<label className="block font-medium mb-1">{t(field.labelKey)}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t(field.labelKey)}</span>
+				<Input
+					value={apiConfiguration[field.key] || ""}
+					type="url"
+					onChange={handleInputChange(field.key)}
+					placeholder={field.placeholder}
+				/>
+			</label>
 			{field.descriptionKey && (
 				// The negative margin compensates for the form's flex gap, as under the API key.
 				<div className="text-sm text-vscode-descriptionForeground -mt-2">{t(field.descriptionKey)}</div>
@@ -299,15 +301,18 @@ const TextField = ({
 	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	return (
-		<ThemedTextField
-			value={apiConfiguration[field.key] || ""}
-			type={field.inputType}
-			onInput={handleInputChange(field.key)}
-			placeholder={field.placeholderKey ? t(field.placeholderKey) : field.placeholder}
-			className="w-full">
-			<label className="block font-medium mb-1">{t(field.labelKey)}</label>
-			{field.helpKey && <div className="text-xs text-vscode-descriptionForeground mt-1">{t(field.helpKey)}</div>}
-		</ThemedTextField>
+		<label className="block w-full leading-[normal]">
+			<span className="block font-medium mb-1">{t(field.labelKey)}</span>
+			{field.helpKey && (
+				<span className="block text-xs text-vscode-descriptionForeground mt-1 mb-0.5">{t(field.helpKey)}</span>
+			)}
+			<Input
+				value={apiConfiguration[field.key] || ""}
+				type={field.inputType}
+				onChange={handleInputChange(field.key)}
+				placeholder={field.placeholderKey ? t(field.placeholderKey) : field.placeholder}
+			/>
+		</label>
 	)
 }
 
@@ -351,26 +356,32 @@ const IntegerField = ({
 	setApiConfigurationField,
 }: ProviderFormProps & { field: ProviderIntegerFieldDescriptor }) => {
 	const { t } = useAppTranslation()
+	// The typed text stays while it is not a valid number yet (below the minimum, "-").
+	const draft = useTextDraft(apiConfiguration[field.key]?.toString() || "")
 
 	return (
-		<ThemedTextField
-			value={apiConfiguration[field.key]?.toString() || ""}
-			onInput={(e) => {
-				const value = (e.target as HTMLInputElement)?.value
-				if (value === "") {
-					setApiConfigurationField(field.key, undefined)
-				} else {
-					const numValue = parseInt(value, 10)
-					if (!isNaN(numValue) && numValue >= (field.min ?? -Infinity)) {
-						setApiConfigurationField(field.key, numValue)
+		<label className="block w-full leading-[normal]">
+			<span className="block font-medium mb-1">{t(field.labelKey)}</span>
+			{field.helpKey && (
+				<span className="block text-xs text-vscode-descriptionForeground mt-1 mb-0.5">{t(field.helpKey)}</span>
+			)}
+			<Input
+				value={draft.value}
+				onChange={(e) => {
+					draft.onChange(e)
+					const value = e.target.value
+					if (value === "") {
+						setApiConfigurationField(field.key, undefined)
+					} else {
+						const numValue = parseInt(value, 10)
+						if (!isNaN(numValue) && numValue >= (field.min ?? -Infinity)) {
+							setApiConfigurationField(field.key, numValue)
+						}
 					}
-				}
-			}}
-			placeholder={field.placeholder}
-			className="w-full">
-			<label className="block font-medium mb-1">{t(field.labelKey)}</label>
-			{field.helpKey && <div className="text-xs text-vscode-descriptionForeground mt-1">{t(field.helpKey)}</div>}
-		</ThemedTextField>
+				}}
+				placeholder={field.placeholder}
+			/>
+		</label>
 	)
 }
 
@@ -431,10 +442,10 @@ const OptionalUrlField = ({
 			</LabeledCheckbox>
 			{selected && (
 				<>
-					<ThemedTextField
+					<Input
 						value={apiConfiguration[field.key] || ""}
 						type="url"
-						onInput={handleInputChange(field.key)}
+						onChange={handleInputChange(field.key)}
 						placeholder={field.placeholderKey ? t(field.placeholderKey) : field.placeholder}
 						className="w-full mt-1"
 					/>

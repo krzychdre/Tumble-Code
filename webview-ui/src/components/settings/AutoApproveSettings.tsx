@@ -277,15 +277,15 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 						<div className="flex gap-2">
 							<Input
 								value={commandInput}
-								onChange={(e: any) => setCommandInput(e.target.value)}
-								onKeyDown={(e: any) => {
+								onChange={(e) => setCommandInput(e.target.value)}
+								onKeyDown={(e) => {
 									if (e.key === "Enter") {
 										e.preventDefault()
 										handleAddCommand()
 									}
 								}}
 								placeholder={t("settings:autoApprove.execute.commandPlaceholder")}
-								className="grow"
+								className="grow h-8"
 								data-testid="command-input"
 							/>
 							<Button className="h-8" onClick={handleAddCommand} data-testid="add-command-button">
@@ -329,15 +329,15 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 						<div className="flex gap-2">
 							<Input
 								value={deniedCommandInput}
-								onChange={(e: any) => setDeniedCommandInput(e.target.value)}
-								onKeyDown={(e: any) => {
+								onChange={(e) => setDeniedCommandInput(e.target.value)}
+								onKeyDown={(e) => {
 									if (e.key === "Enter") {
 										e.preventDefault()
 										handleAddDeniedCommand()
 									}
 								}}
 								placeholder={t("settings:autoApprove.execute.deniedCommandPlaceholder")}
-								className="grow"
+								className="grow h-8"
 								data-testid="denied-command-input"
 							/>
 							<Button

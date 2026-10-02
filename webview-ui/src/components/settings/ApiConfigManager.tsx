@@ -13,7 +13,6 @@ import {
 	DialogTitle,
 	StandardTooltip,
 	SearchableSelect,
-	ThemedTextField,
 } from "@/components/ui"
 
 interface ApiConfigManagerProps {
@@ -42,8 +41,8 @@ const ApiConfigManager = ({
 	const [inputValue, setInputValue] = useState("")
 	const [newProfileName, setNewProfileName] = useState("")
 	const [error, setError] = useState<string | null>(null)
-	const inputRef = useRef<any>(null)
-	const newProfileInputRef = useRef<any>(null)
+	const inputRef = useRef<HTMLInputElement>(null)
+	const newProfileInputRef = useRef<HTMLInputElement>(null)
 
 	// Check if a profile is valid based on the organization allow list
 	const isProfileValid = (profile: ProviderSettingsEntry): boolean => {
@@ -96,10 +95,13 @@ const ApiConfigManager = ({
 		setError(null)
 	}
 
-	// Focus input when entering rename mode.
+	// Focus input when entering rename mode, with the name selected so typing replaces it.
 	useEffect(() => {
 		if (isRenaming) {
-			const timeoutId = setTimeout(() => inputRef.current?.focus(), 0)
+			const timeoutId = setTimeout(() => {
+				inputRef.current?.focus()
+				inputRef.current?.select()
+			}, 0)
 			return () => clearTimeout(timeoutId)
 		}
 	}, [isRenaming])
@@ -187,12 +189,11 @@ const ApiConfigManager = ({
 			{isRenaming ? (
 				<div data-testid="rename-form">
 					<div className="flex items-center gap-1">
-						<ThemedTextField
+						<Input
 							ref={inputRef}
 							value={inputValue}
-							onInput={(e: unknown) => {
-								const target = e as { target: { value: string } }
-								setInputValue(target.target.value)
+							onChange={(e) => {
+								setInputValue(e.target.value)
 								setError(null)
 							}}
 							placeholder={t("settings:providers.enterNewName")}
@@ -328,16 +329,13 @@ const ApiConfigManager = ({
 					<Input
 						ref={newProfileInputRef}
 						value={newProfileName}
-						onInput={(e: unknown) => {
-							const target = e as { target: { value: string } }
-							setNewProfileName(target.target.value)
+						onChange={(e) => {
+							setNewProfileName(e.target.value)
 							setError(null)
 						}}
 						placeholder={t("settings:providers.enterProfileName")}
 						data-testid="new-profile-input"
-						style={{ width: "100%" }}
-						onKeyDown={(e: unknown) => {
-							const event = e as { key: string }
+						onKeyDown={(event) => {
 							if (event.key === "Enter" && newProfileName.trim()) {
 								handleNewProfileSave()
 							} else if (event.key === "Escape") {

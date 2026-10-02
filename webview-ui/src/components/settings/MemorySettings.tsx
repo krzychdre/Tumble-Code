@@ -15,7 +15,7 @@ import {
 	SelectValue,
 	Slider,
 	LabeledCheckbox,
-	ThemedTextField,
+	Input,
 } from "@/components/ui"
 
 type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
@@ -91,10 +91,10 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:memory.directory.label")}
 							</label>
-							<ThemedTextField
+							<Input
 								value={autoMemoryDirectory ?? ""}
 								placeholder={t("settings:memory.directory.placeholder")}
-								onInput={(e: any) => {
+								onChange={(e) => {
 									// "" (not undefined) so Save clears the host's value.
 									setAutoMemoryDirectory(e.target.value)
 								}}

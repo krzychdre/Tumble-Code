@@ -96,7 +96,7 @@ const normalizedHtml = (container: HTMLElement) =>
 const pickerProps = () =>
 	screen.queryAllByTestId("model-picker").map((picker) => JSON.parse(picker.getAttribute("data-props")!))
 
-const textFieldLabelled = (label: string) => screen.getByText(label).closest(".ui-text-field")!.querySelector("input")!
+const textFieldLabelled = (label: string) => screen.getByText(label).closest("label")!.querySelector("input")!
 
 const snapshotCases: [ProviderName, string, ProviderSettings, ModelRecord | undefined][] = [
 	["lmstudio", "empty, nothing fetched", {}, undefined],
@@ -246,7 +246,8 @@ describe("LM Studio and Ollama forms (characterization)", () => {
 			// parseInt reads the leading digits; the form wrote them.
 			["8192tokens", [["ollamaNumCtx", 8192]]],
 		] as const)("typing %j in the context window writes %j", (value, expected) => {
-			const { setApiConfigurationField } = renderForm("ollama")
+			// Start from a stored value none of the cases types, so every case is a real edit.
+			const { setApiConfigurationField } = renderForm("ollama", { ollamaNumCtx: 2048 })
 			fireEvent.input(textFieldLabelled("settings:providers.ollama.numCtx"), { target: { value } })
 			expect(setApiConfigurationField.mock.calls).toEqual(expected)
 		})

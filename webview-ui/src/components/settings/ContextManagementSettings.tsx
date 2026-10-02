@@ -19,7 +19,7 @@ import {
 	Button,
 	StandardTooltip,
 	LabeledCheckbox,
-	ThemedTextArea,
+	Textarea,
 } from "@/components/ui"
 
 import { useSetting } from "./SettingsDraftContext"
@@ -231,7 +231,7 @@ export const ContextManagementSettings = ({
 							<Input
 								type="number"
 								pattern="[0-9]*"
-								className="w-24 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border px-2 py-1 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+								className="w-24 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 								value={maxImageFileSize ?? 5}
 								min={1}
 								max={100}
@@ -262,7 +262,7 @@ export const ContextManagementSettings = ({
 							<Input
 								type="number"
 								pattern="[0-9]*"
-								className="w-24 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border px-2 py-1 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+								className="w-24 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 								value={maxTotalImageSize ?? 20}
 								min={1}
 								max={500}
@@ -436,17 +436,11 @@ export const ContextManagementSettings = ({
 					<div className="text-sm text-vscode-descriptionForeground mb-2">
 						{t("prompts:supportPrompts.types.CONDENSE.description")}
 					</div>
-					<ThemedTextArea
-						resize="vertical"
+					<Textarea
 						value={getCondensePromptValue()}
-						onInput={(e) => {
-							const value =
-								(e as unknown as CustomEvent)?.detail?.target?.value ??
-								((e as any).target as HTMLTextAreaElement).value
-							updateCondensePrompt(value)
-						}}
+						onChange={(e) => updateCondensePrompt(e.target.value)}
 						rows={6}
-						className="w-full"
+						className="w-full resize-y"
 						data-testid="condense-prompt-textarea"
 					/>
 				</SearchableSetting>
@@ -603,7 +597,7 @@ export const ContextManagementSettings = ({
 								<Input
 									type="number"
 									pattern="[0-9]*"
-									className="w-28 bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border px-2 py-1 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+									className="w-28 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 									value={pruneToolResultBudget ?? PRUNE_CONDENSE_DEFAULTS.DEFAULT_TOOL_RESULT_BUDGET}
 									min={PRUNE_CONDENSE_DEFAULTS.MIN_TOOL_RESULT_BUDGET}
 									max={PRUNE_CONDENSE_DEFAULTS.MAX_TOOL_RESULT_BUDGET}

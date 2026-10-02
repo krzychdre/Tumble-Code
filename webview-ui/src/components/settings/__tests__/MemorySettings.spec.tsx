@@ -6,18 +6,18 @@ import type { CachedSettings } from "../schema"
 import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { MemorySettings } from "../MemorySettings"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { Input as RealInput } from "@/components/ui/input"
 
-// Mock the translation hook — return the key so assertions can match on it.
+// Mock the translation hook: return the key so assertions can match on it.
 vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-// Mock the UI components used by MemorySettings. SelectValue renders nothing —
+// Mock the UI components used by MemorySettings. SelectValue renders nothing:
 // the real Radix SelectValue is a display slot, not an option.
 vi.mock("@/components/ui", () => ({
 	// The real text field (a native input), not a stub.
-	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,

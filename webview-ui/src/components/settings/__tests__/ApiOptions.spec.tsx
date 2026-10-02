@@ -29,7 +29,7 @@ const { ExtensionStateContextProvider } = ExtensionStateContext
 
 import ApiOptions, { ApiOptionsProps } from "../ApiOptions"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { Input as RealInput } from "@/components/ui/input"
 
 // Mock VSCode components
 // Mock other components
@@ -53,7 +53,7 @@ vi.mock("@src/components/ui/labeled-checkbox", () => ({
 // Mock @shadcn/ui components
 vi.mock("@/components/ui", () => ({
 	// The real text field (a native input), not a stub.
-	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,

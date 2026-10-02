@@ -20,7 +20,7 @@ vi.mock("@src/utils/vscode", () => ({
 // Import the actual component
 import SettingsView from "../SettingsView"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { Input as RealInput } from "@/components/ui/input"
 
 // Mock the extension state context
 const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
@@ -41,7 +41,7 @@ vi.mock("@src/components/ui", () => ({
 	// P4: SettingsView lazy-tab fallback renders a progress ring; stub it.
 	Spinner: () => <span data-testid="progress-ring" />,
 	// The real text field (a native input), not a stub.
-	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
@@ -49,17 +49,6 @@ vi.mock("@src/components/ui", () => ({
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>
 			Toggle
 		</button>
-	),
-	Input: ({ value, onChange, placeholder, id, type, className, ...props }: any) => (
-		<input
-			type={type || "text"}
-			value={value}
-			onChange={onChange}
-			placeholder={placeholder}
-			id={id}
-			className={className}
-			{...props}
-		/>
 	),
 	Textarea: ({ value, onChange, placeholder, id, className, ...props }: any) => (
 		<textarea

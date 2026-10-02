@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react"
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from "react"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import {
@@ -10,7 +10,8 @@ import {
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, StandardTooltip, ThemedTextField } from "@src/components/ui"
+import { Button, StandardTooltip, Input } from "@src/components/ui"
+import { useTextDraft } from "@src/components/ui/hooks"
 import { useProviderModels } from "@src/hooks/models/useProviderModels"
 
 import { convertHeadersToObject } from "../utils/headers"
@@ -19,6 +20,51 @@ import { ModelPicker } from "../ModelPicker"
 import { R1FormatSetting } from "../R1FormatSetting"
 import { ThinkingBudget } from "../ThinkingBudget"
 import { type ProviderFormProps, useProviderField } from "./shared"
+
+/** A price label with its info tooltip. */
+const PriceLabel = ({ label, description }: { label: string; description: string }) => (
+	<span className="flex items-center gap-1 mb-0.5">
+		<span className="block font-medium mb-1">{label}</span>
+		<StandardTooltip content={description}>
+			<i className="codicon codicon-info text-vscode-descriptionForeground text-xs" aria-hidden="true" />
+		</StandardTooltip>
+	</span>
+)
+
+type ModelInfoNumberFieldProps = {
+	/** Shown above the field, inside its label. */
+	label: ReactNode
+	value: string
+	placeholder: string
+	/** Receives the typed text: on every keystroke, or once when the field is left with `saveOnLeave`. */
+	onText: (text: string) => void
+	saveOnLeave?: boolean
+}
+
+/** A number of the custom model info, typed as text: the typed text stays shown until the stored value changes. */
+const ModelInfoNumberField = ({
+	label,
+	value,
+	placeholder,
+	onText,
+	saveOnLeave = false,
+}: ModelInfoNumberFieldProps) => {
+	const draft = useTextDraft(value, saveOnLeave ? onText : undefined)
+	return (
+		<label className="block w-full leading-[normal]">
+			{label}
+			<Input
+				type="text"
+				placeholder={placeholder}
+				{...draft}
+				onChange={(e) => {
+					draft.onChange(e)
+					if (!saveOnLeave) onText(e.target.value)
+				}}
+			/>
+		</label>
+	)
+}
 
 type OpenAICompatibleProps = ProviderFormProps & {
 	organizationAllowList: OrganizationAllowList
@@ -105,22 +151,24 @@ export const OpenAICompatible = ({
 
 	return (
 		<>
-			<ThemedTextField
-				value={apiConfiguration?.openAiBaseUrl || ""}
-				type="url"
-				onInput={handleInputChange("openAiBaseUrl")}
-				placeholder={t("settings:placeholders.baseUrl")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.openAiBaseUrl")}</label>
-			</ThemedTextField>
-			<ThemedTextField
-				value={apiConfiguration?.openAiApiKey || ""}
-				type="password"
-				onInput={handleInputChange("openAiApiKey")}
-				placeholder={t("settings:placeholders.apiKey")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.apiKey")}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:providers.openAiBaseUrl")}</span>
+				<Input
+					value={apiConfiguration?.openAiBaseUrl || ""}
+					type="url"
+					onChange={handleInputChange("openAiBaseUrl")}
+					placeholder={t("settings:placeholders.baseUrl")}
+				/>
+			</label>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:providers.apiKey")}</span>
+				<Input
+					value={apiConfiguration?.openAiApiKey || ""}
+					type="password"
+					onChange={handleInputChange("openAiApiKey")}
+					placeholder={t("settings:placeholders.apiKey")}
+				/>
+			</label>
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField}
@@ -170,9 +218,9 @@ export const OpenAICompatible = ({
 					{t("settings:modelInfo.azureApiVersion")}
 				</LabeledCheckbox>
 				{azureApiVersionSelected && (
-					<ThemedTextField
+					<Input
 						value={apiConfiguration?.azureApiVersion || ""}
-						onInput={handleInputChange("azureApiVersion")}
+						onChange={handleInputChange("azureApiVersion")}
 						placeholder={`Default: ${azureOpenAiDefaultApiVersion}`}
 						className="w-full mt-1"
 					/>
@@ -196,17 +244,17 @@ export const OpenAICompatible = ({
 				) : (
 					customHeaders.map(([key, value], index) => (
 						<div key={index} className="flex items-center mb-2">
-							<ThemedTextField
+							<Input
 								value={key}
 								className="flex-1 mr-2"
 								placeholder={t("settings:providers.headerName")}
-								onInput={(e: any) => handleUpdateHeaderKey(index, e.target.value)}
+								onChange={(e) => handleUpdateHeaderKey(index, e.target.value)}
 							/>
-							<ThemedTextField
+							<Input
 								value={value}
 								className="flex-1 mr-2"
 								placeholder={t("settings:providers.headerValue")}
-								onInput={(e: any) => handleUpdateHeaderValue(index, e.target.value)}
+								onChange={(e) => handleUpdateHeaderValue(index, e.target.value)}
 							/>
 							<StandardTooltip content={t("settings:common.remove")}>
 								<Button
@@ -266,77 +314,52 @@ export const OpenAICompatible = ({
 				</div>
 
 				<div>
-					<ThemedTextField
+					<ModelInfoNumberField
+						label={
+							<span className="block font-medium mb-1">
+								{t("settings:providers.customModel.maxTokens.label")}
+							</span>
+						}
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.maxTokens?.toString() ||
 							openAiModelInfoSaneDefaults.maxTokens?.toString() ||
 							""
 						}
-						type="text"
-						style={{
-							borderColor: (() => {
-								const value = apiConfiguration?.openAiCustomModelInfo?.maxTokens
-
-								if (!value) {
-									return "var(--vscode-input-border)"
-								}
-
-								return value > 0 ? "var(--vscode-charts-green)" : "var(--vscode-errorForeground)"
-							})(),
-						}}
-						onInput={handleInputChange("openAiCustomModelInfo", (e) => {
-							const value = parseInt((e.target as HTMLInputElement).value)
-
-							return {
+						placeholder={t("settings:placeholders.numbers.maxTokens")}
+						onText={(text) => {
+							const value = parseInt(text)
+							setApiConfigurationField("openAiCustomModelInfo", {
 								...(apiConfiguration?.openAiCustomModelInfo || openAiModelInfoSaneDefaults),
 								maxTokens: isNaN(value) ? undefined : value,
-							}
-						})}
-						placeholder={t("settings:placeholders.numbers.maxTokens")}
-						className="w-full">
-						<label className="block font-medium mb-1">
-							{t("settings:providers.customModel.maxTokens.label")}
-						</label>
-					</ThemedTextField>
+							})
+						}}
+					/>
 					<div className="text-sm text-vscode-descriptionForeground">
 						{t("settings:providers.customModel.maxTokens.description")}
 					</div>
 				</div>
 
 				<div>
-					<ThemedTextField
+					<ModelInfoNumberField
+						label={
+							<span className="block font-medium mb-1">
+								{t("settings:providers.customModel.contextWindow.label")}
+							</span>
+						}
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.contextWindow?.toString() ||
 							openAiModelInfoSaneDefaults.contextWindow?.toString() ||
 							""
 						}
-						type="text"
-						style={{
-							borderColor: (() => {
-								const value = apiConfiguration?.openAiCustomModelInfo?.contextWindow
-
-								if (!value) {
-									return "var(--vscode-input-border)"
-								}
-
-								return value > 0 ? "var(--vscode-charts-green)" : "var(--vscode-errorForeground)"
-							})(),
-						}}
-						onInput={handleInputChange("openAiCustomModelInfo", (e) => {
-							const value = (e.target as HTMLInputElement).value
-							const parsed = parseInt(value)
-
-							return {
+						placeholder={t("settings:placeholders.numbers.contextWindow")}
+						onText={(text) => {
+							const parsed = parseInt(text)
+							setApiConfigurationField("openAiCustomModelInfo", {
 								...(apiConfiguration?.openAiCustomModelInfo || openAiModelInfoSaneDefaults),
 								contextWindow: isNaN(parsed) ? openAiModelInfoSaneDefaults.contextWindow : parsed,
-							}
-						})}
-						placeholder={t("settings:placeholders.numbers.contextWindow")}
-						className="w-full">
-						<label className="block font-medium mb-1">
-							{t("settings:providers.customModel.contextWindow.label")}
-						</label>
-					</ThemedTextField>
+							})
+						}}
+					/>
 					<div className="text-sm text-vscode-descriptionForeground">
 						{t("settings:providers.customModel.contextWindow.description")}
 					</div>
@@ -396,178 +419,98 @@ export const OpenAICompatible = ({
 				</div>
 
 				<div>
-					<ThemedTextField
+					<ModelInfoNumberField
+						label={
+							<PriceLabel
+								label={t("settings:providers.customModel.pricing.input.label")}
+								description={t("settings:providers.customModel.pricing.input.description")}
+							/>
+						}
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.inputPrice?.toString() ??
 							openAiModelInfoSaneDefaults.inputPrice?.toString() ??
 							""
 						}
-						type="text"
-						style={{
-							borderColor: (() => {
-								const value = apiConfiguration?.openAiCustomModelInfo?.inputPrice
-
-								if (!value && value !== 0) {
-									return "var(--vscode-input-border)"
-								}
-
-								return value >= 0 ? "var(--vscode-charts-green)" : "var(--vscode-errorForeground)"
-							})(),
-						}}
-						onChange={handleInputChange("openAiCustomModelInfo", (e) => {
-							const value = (e.target as HTMLInputElement).value
-							const parsed = parseFloat(value)
-
-							return {
+						placeholder={t("settings:placeholders.numbers.inputPrice")}
+						saveOnLeave
+						onText={(text) => {
+							const parsed = parseFloat(text)
+							setApiConfigurationField("openAiCustomModelInfo", {
 								...(apiConfiguration?.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults),
 								inputPrice: isNaN(parsed) ? openAiModelInfoSaneDefaults.inputPrice : parsed,
-							}
-						})}
-						placeholder={t("settings:placeholders.numbers.inputPrice")}
-						className="w-full">
-						<div className="flex items-center gap-1">
-							<label className="block font-medium mb-1">
-								{t("settings:providers.customModel.pricing.input.label")}
-							</label>
-							<StandardTooltip content={t("settings:providers.customModel.pricing.input.description")}>
-								<i
-									className="codicon codicon-info text-vscode-descriptionForeground text-xs"
-									aria-hidden="true"
-								/>
-							</StandardTooltip>
-						</div>
-					</ThemedTextField>
+							})
+						}}
+					/>
 				</div>
 
 				<div>
-					<ThemedTextField
+					<ModelInfoNumberField
+						label={
+							<PriceLabel
+								label={t("settings:providers.customModel.pricing.output.label")}
+								description={t("settings:providers.customModel.pricing.output.description")}
+							/>
+						}
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.outputPrice?.toString() ||
 							openAiModelInfoSaneDefaults.outputPrice?.toString() ||
 							""
 						}
-						type="text"
-						style={{
-							borderColor: (() => {
-								const value = apiConfiguration?.openAiCustomModelInfo?.outputPrice
-
-								if (!value && value !== 0) {
-									return "var(--vscode-input-border)"
-								}
-
-								return value >= 0 ? "var(--vscode-charts-green)" : "var(--vscode-errorForeground)"
-							})(),
-						}}
-						onChange={handleInputChange("openAiCustomModelInfo", (e) => {
-							const value = (e.target as HTMLInputElement).value
-							const parsed = parseFloat(value)
-
-							return {
+						placeholder={t("settings:placeholders.numbers.outputPrice")}
+						saveOnLeave
+						onText={(text) => {
+							const parsed = parseFloat(text)
+							setApiConfigurationField("openAiCustomModelInfo", {
 								...(apiConfiguration?.openAiCustomModelInfo || openAiModelInfoSaneDefaults),
 								outputPrice: isNaN(parsed) ? openAiModelInfoSaneDefaults.outputPrice : parsed,
-							}
-						})}
-						placeholder={t("settings:placeholders.numbers.outputPrice")}
-						className="w-full">
-						<div className="flex items-center gap-1">
-							<label className="block font-medium mb-1">
-								{t("settings:providers.customModel.pricing.output.label")}
-							</label>
-							<StandardTooltip content={t("settings:providers.customModel.pricing.output.description")}>
-								<i
-									className="codicon codicon-info text-vscode-descriptionForeground text-xs"
-									aria-hidden="true"
-								/>
-							</StandardTooltip>
-						</div>
-					</ThemedTextField>
+							})
+						}}
+					/>
 				</div>
 
 				{apiConfiguration?.openAiCustomModelInfo?.supportsPromptCache && (
 					<>
 						<div>
-							<ThemedTextField
+							<ModelInfoNumberField
+								label={
+									<PriceLabel
+										label={t("settings:providers.customModel.pricing.cacheReads.label")}
+										description={t("settings:providers.customModel.pricing.cacheReads.description")}
+									/>
+								}
 								value={apiConfiguration?.openAiCustomModelInfo?.cacheReadsPrice?.toString() ?? "0"}
-								type="text"
-								style={{
-									borderColor: (() => {
-										const value = apiConfiguration?.openAiCustomModelInfo?.cacheReadsPrice
-
-										if (!value && value !== 0) {
-											return "var(--vscode-input-border)"
-										}
-
-										return value >= 0
-											? "var(--vscode-charts-green)"
-											: "var(--vscode-errorForeground)"
-									})(),
-								}}
-								onChange={handleInputChange("openAiCustomModelInfo", (e) => {
-									const value = (e.target as HTMLInputElement).value
-									const parsed = parseFloat(value)
-
-									return {
+								placeholder={t("settings:placeholders.numbers.inputPrice")}
+								saveOnLeave
+								onText={(text) => {
+									const parsed = parseFloat(text)
+									setApiConfigurationField("openAiCustomModelInfo", {
 										...(apiConfiguration?.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults),
 										cacheReadsPrice: isNaN(parsed) ? 0 : parsed,
-									}
-								})}
-								placeholder={t("settings:placeholders.numbers.inputPrice")}
-								className="w-full">
-								<div className="flex items-center gap-1">
-									<span className="font-medium">
-										{t("settings:providers.customModel.pricing.cacheReads.label")}
-									</span>
-									<StandardTooltip
-										content={t("settings:providers.customModel.pricing.cacheReads.description")}>
-										<i
-											className="codicon codicon-info text-vscode-descriptionForeground text-xs"
-											aria-hidden="true"
-										/>
-									</StandardTooltip>
-								</div>
-							</ThemedTextField>
+									})
+								}}
+							/>
 						</div>
 						<div>
-							<ThemedTextField
+							<ModelInfoNumberField
+								label={
+									<PriceLabel
+										label={t("settings:providers.customModel.pricing.cacheWrites.label")}
+										description={t(
+											"settings:providers.customModel.pricing.cacheWrites.description",
+										)}
+									/>
+								}
 								value={apiConfiguration?.openAiCustomModelInfo?.cacheWritesPrice?.toString() ?? "0"}
-								type="text"
-								style={{
-									borderColor: (() => {
-										const value = apiConfiguration?.openAiCustomModelInfo?.cacheWritesPrice
-
-										if (!value && value !== 0) {
-											return "var(--vscode-input-border)"
-										}
-
-										return value >= 0
-											? "var(--vscode-charts-green)"
-											: "var(--vscode-errorForeground)"
-									})(),
-								}}
-								onChange={handleInputChange("openAiCustomModelInfo", (e) => {
-									const value = (e.target as HTMLInputElement).value
-									const parsed = parseFloat(value)
-
-									return {
+								placeholder={t("settings:placeholders.numbers.cacheWritePrice")}
+								saveOnLeave
+								onText={(text) => {
+									const parsed = parseFloat(text)
+									setApiConfigurationField("openAiCustomModelInfo", {
 										...(apiConfiguration?.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults),
 										cacheWritesPrice: isNaN(parsed) ? 0 : parsed,
-									}
-								})}
-								placeholder={t("settings:placeholders.numbers.cacheWritePrice")}
-								className="w-full">
-								<div className="flex items-center gap-1">
-									<label className="block font-medium mb-1">
-										{t("settings:providers.customModel.pricing.cacheWrites.label")}
-									</label>
-									<StandardTooltip
-										content={t("settings:providers.customModel.pricing.cacheWrites.description")}>
-										<i
-											className="codicon codicon-info text-vscode-descriptionForeground text-xs"
-											aria-hidden="true"
-										/>
-									</StandardTooltip>
-								</div>
-							</ThemedTextField>
+									})
+								}}
+							/>
 						</div>
 					</>
 				)}

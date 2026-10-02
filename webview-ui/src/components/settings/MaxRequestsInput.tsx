@@ -21,7 +21,7 @@ export function MaxRequestsInput({ allowedMaxRequests, onValueChange }: MaxReque
 				onValueChange={onValueChange}
 				formatter={unlimitedIntegerFormatter}
 				placeholder={t("settings:autoApprove.apiRequestLimit.unlimited")}
-				style={{ maxWidth: "200px" }}
+				className="max-w-[200px]"
 				data-testid="max-requests-input"
 			/>
 		</>

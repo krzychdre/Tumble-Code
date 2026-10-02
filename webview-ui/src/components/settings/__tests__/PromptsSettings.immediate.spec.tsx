@@ -6,7 +6,7 @@ import { screen, fireEvent } from "@/utils/test-utils"
 import PromptsSettings from "../PromptsSettings"
 import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
+import { Textarea as RealTextarea } from "@/components/ui/textarea"
 
 const { mockPostMessage, mockSetEnhancementApiConfigId } = vi.hoisted(() => ({
 	mockPostMessage: vi.fn(),
@@ -46,7 +46,7 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 vi.mock("@src/components/ui", () => ({
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
-	ThemedTextArea: (props: any) => <RealThemedTextArea {...props} />,
+	Textarea: (props: any) => <RealTextarea {...props} />,
 	Button: ({ children, onClick, ...props }: any) => (
 		<button onClick={onClick} {...props}>
 			{children}

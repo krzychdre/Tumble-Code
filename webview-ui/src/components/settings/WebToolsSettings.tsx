@@ -7,7 +7,7 @@ import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { Slider, LabeledCheckbox, ThemedTextField } from "@/components/ui"
+import { Slider, LabeledCheckbox, Input } from "@/components/ui"
 
 type WebToolsSettingsProps = HTMLAttributes<HTMLDivElement>
 
@@ -46,10 +46,10 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:web.searxngBaseUrl.label")}
 							</label>
-							<ThemedTextField
+							<Input
 								value={searxngBaseUrl ?? ""}
 								placeholder={t("settings:web.searxngBaseUrl.placeholder")}
-								onInput={(e: any) => {
+								onChange={(e) => {
 									setSearxngBaseUrl(e.target.value)
 								}}
 								className="w-full"
