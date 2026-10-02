@@ -204,6 +204,8 @@ export type TelemetryEventPayloads = {
 		 */
 		modelId?: string
 		apiProvider?: string
+		/** The mode of the task that made the call, which the provider's current task may not be. */
+		mode?: string
 	}
 	/**
 	 * Tokens spent turning code into vectors. Its own event rather than an

@@ -55,6 +55,7 @@ export interface TaskStreamProcessorAccess extends StreamToolCallHandlerAccess, 
 	abort: boolean
 	abandoned: boolean
 	apiConfiguration: ProviderSettings
+	_taskMode: string | undefined
 
 	// Streaming state (mutable - the processor reads and writes these)
 	currentStreamingContentIndex: number
@@ -606,6 +607,12 @@ export class TaskStreamProcessor {
 		const toolCount = (access.assistantMessageContent ?? []).filter(
 			(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
 		).length
+		// Stated on the event: the telemetry provider is the sidebar, whose
+		// current task is not this one when the task runs in an editor tab or
+		// as a delegated subtask, so its model and mode would mislabel the call.
+		const completionModelId = access.api.getModel().id
+		const completionProvider = access.apiConfiguration.apiProvider
+		const completionMode = access._taskMode
 
 		return async (apiReqIndex: number) => {
 			const timeoutMs = DEFAULT_USAGE_COLLECTION_TIMEOUT_MS
@@ -677,6 +684,10 @@ export class TaskStreamProcessor {
 						// is a claim.
 						completionKind: "task",
 						usageReported: true,
+						...(completionModelId && { modelId: completionModelId }),
+						...(completionProvider &&
+							!isRetiredProvider(completionProvider) && { apiProvider: completionProvider }),
+						...(completionMode && { mode: completionMode }),
 					})
 				}
 			}

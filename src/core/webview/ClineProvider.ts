@@ -37,7 +37,6 @@ import {
 	TelemetryEventName,
 	WebviewMessage,
 } from "@tumble-code/types"
-import { TelemetryService } from "@tumble-code/telemetry"
 import { CloudService } from "@tumble-code/cloud"
 
 import { Package } from "../../shared/package"
@@ -356,9 +355,11 @@ export class ClineProvider
 			// must not surface as an unhandled rejection.
 		})
 
-		// Register this provider with the telemetry service to enable it to add
-		// properties like mode and provider.
-		TelemetryService.instance.setProvider(this)
+		// Not registered with the telemetry service here: activation registers the
+		// sidebar provider, which lives as long as the extension. An editor tab
+		// that registered itself replaced the sidebar and, once the closed tab
+		// was garbage-collected (clients hold a WeakRef), left every event
+		// without app properties, so the cloud client dropped all of them.
 
 		this._workspaceTracker = new WorkspaceTracker(this)
 

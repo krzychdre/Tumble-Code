@@ -13,8 +13,20 @@ import type {
 export class TelemetryService {
 	constructor(private clients: TelemetryClient[]) {}
 
+	/**
+	 * Kept so a client registered after `setProvider` still gets it. The cloud
+	 * client registers only once the cloud has started in the background, which
+	 * is after activation set the provider; without the provider every event
+	 * lacks the app properties, fails the client's schema and is dropped.
+	 */
+	private provider: TelemetryPropertiesProvider | undefined
+
 	public register(client: TelemetryClient): void {
 		this.clients.push(client)
+
+		if (this.provider) {
+			client.setProvider(this.provider)
+		}
 	}
 
 	/**
@@ -22,10 +34,8 @@ export class TelemetryService {
 	 * @param provider A ClineProvider instance to use
 	 */
 	public setProvider(provider: TelemetryPropertiesProvider): void {
-		// If client is initialized, pass the provider reference.
-		if (this.isReady) {
-			this.clients.forEach((client) => client.setProvider(provider))
-		}
+		this.provider = provider
+		this.clients.forEach((client) => client.setProvider(provider))
 	}
 
 	/**
