@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils"
  * The look of a single-line text field, VS Code's own: 26px high, the dropdown
  * border, the input colours, the editor font size, the focus shown as a
  * focusBorder-coloured border (no outline), 40% opacity when disabled.
- * `ui-input` is a marker for the unlayered rules in `index.css`.
+ * `ui-input` is a marker for the unlayered rules in `index.css`. A label
+ * above a field takes `leading-[normal]`, the line height of VS Code's own
+ * field labels.
  */
 const FIELD_BOX =
 	"h-[26px] w-full border border-vscode-dropdown-border bg-vscode-input-background text-vscode-input-foreground"

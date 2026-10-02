@@ -14,7 +14,7 @@ import {
 	SelectValue,
 	StandardTooltip,
 	LabeledCheckbox,
-	ThemedTextArea,
+	Textarea,
 } from "@src/components/ui"
 
 import { SectionHeader } from "./SectionHeader"
@@ -142,17 +142,11 @@ const PromptsSettings = () => {
 						</StandardTooltip>
 					</div>
 
-					<ThemedTextArea
-						resize="vertical"
+					<Textarea
 						value={getSupportPromptValue(activeSupportOption)}
-						onInput={(e) => {
-							const value =
-								(e as unknown as CustomEvent)?.detail?.target?.value ??
-								((e as any).target as HTMLTextAreaElement).value
-							updateSupportPrompt(activeSupportOption, value)
-						}}
+						onChange={(e) => updateSupportPrompt(activeSupportOption, e.target.value)}
 						rows={6}
-						className="w-full"
+						className="w-full resize-y"
 					/>
 
 					{activeSupportOption === "ENHANCE" && (
@@ -221,13 +215,12 @@ const PromptsSettings = () => {
 								<label className="block font-medium mb-1">
 									{t("prompts:supportPrompts.enhance.testEnhancement")}
 								</label>
-								<ThemedTextArea
-									resize="vertical"
+								<Textarea
 									value={testPrompt}
-									onChange={(e) => setTestPrompt((e.target as HTMLTextAreaElement).value)}
+									onChange={(e) => setTestPrompt(e.target.value)}
 									placeholder={t("prompts:supportPrompts.enhance.testPromptPlaceholder")}
 									rows={3}
-									className="w-full"
+									className="w-full resize-y"
 									data-testid="test-prompt-textarea"
 								/>
 								<div className="mt-2 flex justify-start items-center gap-2">

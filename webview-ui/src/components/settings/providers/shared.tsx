@@ -3,7 +3,7 @@ import { useCallback } from "react"
 import type { ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { ThemedTextField } from "@src/components/ui"
+import { Input } from "@src/components/ui"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
 import { inputEventTransform } from "../transforms"
@@ -30,8 +30,8 @@ export const useProviderField = (setApiConfigurationField: SetApiConfigurationFi
 			field: K,
 			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
 		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
+			(event: E) => {
+				setApiConfigurationField(field, transform(event))
 			},
 		[setApiConfigurationField],
 	)
@@ -72,14 +72,15 @@ export const ApiKeyField = ({
 
 	const trio = (
 		<>
-			<ThemedTextField
-				value={apiKey || ""}
-				type="password"
-				onInput={handleInputChange(field)}
-				placeholder={t("settings:placeholders.apiKey")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t(labelKey)}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t(labelKey)}</span>
+				<Input
+					value={apiKey || ""}
+					type="password"
+					onChange={handleInputChange(field)}
+					placeholder={t("settings:placeholders.apiKey")}
+				/>
+			</label>
 			<div
 				className={
 					grouped

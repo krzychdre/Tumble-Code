@@ -120,7 +120,7 @@ describe("HistoryView §2.9", () => {
 
 	it("shows the empty-search state when a query matches nothing", () => {
 		renderHistory([task("1", now - 1000)])
-		// ThemedTextField spreads data-testid onto the <input> itself.
+		// Input spreads data-testid onto the <input> itself.
 		fireEvent.input(screen.getByTestId("history-search-input"), {
 			target: { value: "zzz-no-match" },
 		})

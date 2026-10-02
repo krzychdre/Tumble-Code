@@ -3,12 +3,12 @@
 import { render, screen, fireEvent, within } from "@/utils/test-utils"
 
 import ApiConfigManager from "../ApiConfigManager"
-import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { Input as RealInput } from "@/components/ui/input"
 
 // Mock VSCode components
 vitest.mock("@/components/ui", () => ({
 	// The real text field (a native input), not a stub.
-	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 	...vitest.importActual("@/components/ui"),
 	Dialog: ({ children, open }: any) => (
 		<div role="dialog" aria-modal="true" style={{ display: open ? "block" : "none" }} data-testid="dialog">
@@ -21,15 +21,6 @@ vitest.mock("@/components/ui", () => ({
 		<button onClick={onClick} disabled={disabled} data-testid={dataTestId}>
 			{children}
 		</button>
-	),
-	Input: ({ value, onInput, placeholder, onKeyDown, "data-testid": dataTestId }: any) => (
-		<input
-			value={value}
-			onChange={(e) => onInput(e)}
-			placeholder={placeholder}
-			onKeyDown={onKeyDown}
-			data-testid={dataTestId}
-		/>
 	),
 	StandardTooltip: ({ children, content }: any) => <div title={content}>{children}</div>,
 	// New components for searchable dropdown

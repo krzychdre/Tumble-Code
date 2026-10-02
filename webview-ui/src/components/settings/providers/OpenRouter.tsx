@@ -1,10 +1,10 @@
-import { useState } from "react"
+import { useId, useState } from "react"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import { type OrganizationAllowList, type RouterModels, openRouterDefaultModelId } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { ThemedTextField } from "@src/components/ui"
+import { Input } from "@src/components/ui"
 import { getOpenRouterAuthUrl } from "@src/oauth/urls"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
@@ -35,17 +35,15 @@ export const OpenRouter = ({
 	const [openRouterBaseUrlSelected, setOpenRouterBaseUrlSelected] = useState(!!apiConfiguration?.openRouterBaseUrl)
 
 	const handleInputChange = useProviderField(setApiConfigurationField)
+	const apiKeyId = useId()
 
 	return (
 		<>
-			<ThemedTextField
-				value={apiConfiguration?.openRouterApiKey || ""}
-				type="password"
-				onInput={handleInputChange("openRouterApiKey")}
-				placeholder={t("settings:placeholders.apiKey")}
-				className="w-full">
+			<div className="w-full leading-[normal]">
 				<div className="flex justify-between items-center mb-1">
-					<label className="block font-medium">{t("settings:providers.openRouterApiKey")}</label>
+					<label htmlFor={apiKeyId} className="block font-medium">
+						{t("settings:providers.openRouterApiKey")}
+					</label>
 					{apiConfiguration?.openRouterApiKey && (
 						<OpenRouterBalanceDisplay
 							apiKey={apiConfiguration.openRouterApiKey}
@@ -53,7 +51,14 @@ export const OpenRouter = ({
 						/>
 					)}
 				</div>
-			</ThemedTextField>
+				<Input
+					id={apiKeyId}
+					value={apiConfiguration?.openRouterApiKey || ""}
+					type="password"
+					onChange={handleInputChange("openRouterApiKey")}
+					placeholder={t("settings:placeholders.apiKey")}
+				/>
+			</div>
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
@@ -76,10 +81,10 @@ export const OpenRouter = ({
 						{t("settings:providers.useCustomBaseUrl")}
 					</LabeledCheckbox>
 					{openRouterBaseUrlSelected && (
-						<ThemedTextField
+						<Input
 							value={apiConfiguration?.openRouterBaseUrl || ""}
 							type="url"
-							onInput={handleInputChange("openRouterBaseUrl")}
+							onChange={handleInputChange("openRouterBaseUrl")}
 							placeholder={t("settings:defaults.openRouterUrl")}
 							className="w-full mt-1"
 						/>

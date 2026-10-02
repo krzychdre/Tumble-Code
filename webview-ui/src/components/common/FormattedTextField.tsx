@@ -1,5 +1,6 @@
 import { useCallback, forwardRef, useState, useEffect } from "react"
-import { DecoratedVSCodeTextField, VSCodeTextFieldWithNodesProps } from "./DecoratedVSCodeTextField"
+
+import { Input, type InputProps } from "@src/components/ui/input"
 
 export interface InputFormatter<T> {
 	/**
@@ -18,7 +19,7 @@ export interface InputFormatter<T> {
 	filter?: (input: string) => string
 }
 
-interface FormattedTextFieldProps<T> extends Omit<VSCodeTextFieldWithNodesProps, "value" | "onInput"> {
+interface FormattedTextFieldProps<T> extends Omit<InputProps, "value" | "onChange" | "onBlur"> {
 	value: T | undefined
 	onValueChange: (value: T | undefined) => void
 	formatter: InputFormatter<T>
@@ -38,20 +39,13 @@ function FormattedTextFieldInner<T>(
 		}
 	}, [value, formatter, isTyping])
 
-	const handleInput = useCallback(
-		(e: React.FormEvent<HTMLInputElement>) => {
-			const input = e.target as HTMLInputElement
+	const handleChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
 			setIsTyping(true)
 
-			let filteredValue = input.value
-			if (formatter.filter) {
-				filteredValue = formatter.filter(input.value)
-				input.value = filteredValue
-			}
-
+			const filteredValue = formatter.filter ? formatter.filter(e.target.value) : e.target.value
 			setRawInput(filteredValue)
-			const parsedValue = formatter.parse(filteredValue)
-			onValueChange(parsedValue)
+			onValueChange(formatter.parse(filteredValue))
 		},
 		[formatter, onValueChange],
 	)
@@ -65,10 +59,11 @@ function FormattedTextFieldInner<T>(
 	const displayValue = isTyping ? rawInput : formatter.format(value)
 
 	return (
-		<DecoratedVSCodeTextField
+		<Input
+			type="text"
 			{...restProps}
 			value={displayValue}
-			onInput={handleInput}
+			onChange={handleChange}
 			onBlur={handleBlur}
 			ref={forwardedRef}
 		/>

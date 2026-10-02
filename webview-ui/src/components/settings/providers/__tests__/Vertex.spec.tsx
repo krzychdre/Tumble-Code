@@ -3,7 +3,7 @@ import { Vertex } from "../Vertex"
 import type { ProviderSettings } from "@roo-code/types"
 import { VERTEX_REGIONS } from "@roo-code/types"
 import enSettings from "@src/i18n/locales/en/settings.json"
-import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { Input as RealInput } from "@/components/ui/input"
 
 vi.mock("@src/components/ui/labeled-checkbox", () => ({
 	LabeledCheckbox: ({ children, checked, onChange, onCheckedChange, "data-testid": testId }: any) => (
@@ -29,7 +29,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 // <strong>/<code> elements. Resolve the i18n key against the real English
 // resource so the test fails if the warning copy drops the "Google Cloud Key
 // File Path" field name or the "GOOGLE_APPLICATION_CREDENTIALS" env var
-// mention — those are the actual remediation hints users need.
+// mention: those are the actual remediation hints users need.
 vi.mock("react-i18next", () => ({
 	Trans: ({ i18nKey }: { i18nKey: string }) => {
 		// Keys are "<namespace>:<dotted.path>"; the spec only renders the
@@ -48,7 +48,7 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@src/components/ui", () => ({
 	// The real text field (a native input), not a stub.
-	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange }: any) => (
 		<div data-value={value} data-onvaluechange={onValueChange}>

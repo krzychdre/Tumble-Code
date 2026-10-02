@@ -2,7 +2,7 @@ import { useMemo } from "react"
 
 import { validateBedrockArn } from "@src/utils/validate"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { ThemedTextField } from "@src/components/ui"
+import { Input } from "@src/components/ui"
 import { type ProviderFormProps } from "./shared"
 
 type BedrockCustomArnProps = ProviderFormProps
@@ -17,13 +17,14 @@ export const BedrockCustomArn = ({ apiConfiguration, setApiConfigurationField }:
 
 	return (
 		<>
-			<ThemedTextField
-				value={apiConfiguration?.awsCustomArn || ""}
-				onInput={(e) => setApiConfigurationField("awsCustomArn", (e.target as HTMLInputElement).value)}
-				placeholder={t("settings:placeholders.customArn")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:labels.customArn")}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:labels.customArn")}</span>
+				<Input
+					value={apiConfiguration?.awsCustomArn || ""}
+					onChange={(e) => setApiConfigurationField("awsCustomArn", e.target.value)}
+					placeholder={t("settings:placeholders.customArn")}
+				/>
+			</label>
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.awsCustomArnUse")}
 				<ul className="list-disc pl-5 mt-1">

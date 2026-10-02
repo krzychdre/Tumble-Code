@@ -8,8 +8,8 @@ import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 
 import SettingsView from "../SettingsView"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
-import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { Textarea as RealTextarea } from "@/components/ui/textarea"
+import { Input as RealInput } from "@/components/ui/input"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
@@ -74,11 +74,11 @@ vi.mock("@/components/ui", () => ({
 	// P4: SettingsView lazy-tab fallback renders a progress ring; stub it.
 	Spinner: () => <span data-testid="progress-ring" />,
 	// The real text field (a native input), not a stub.
-	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
+	Input: (props: any) => <RealInput {...props} />,
 	...vi.importActual("@/components/ui"),
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
-	ThemedTextArea: (props: any) => <RealThemedTextArea {...props} />,
+	Textarea: (props: any) => <RealTextarea {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>
@@ -90,16 +90,6 @@ vi.mock("@/components/ui", () => ({
 			type="checkbox"
 			checked={checked}
 			onChange={(e) => onCheckedChange?.(e.target.checked)}
-			id={id}
-			className={className}
-			{...props}
-		/>
-	),
-	Textarea: ({ value, onChange, placeholder, id, className, ...props }: any) => (
-		<textarea
-			value={value}
-			onChange={onChange}
-			placeholder={placeholder}
 			id={id}
 			className={className}
 			{...props}
@@ -134,9 +124,6 @@ vi.mock("@/components/ui", () => ({
 		</button>
 	),
 	StandardTooltip: ({ children, content }: any) => <div title={content}>{children}</div>,
-	Input: ({ value, onChange, placeholder, "data-testid": dataTestId }: any) => (
-		<input type="text" value={value} onChange={onChange} placeholder={placeholder} data-testid={dataTestId} />
-	),
 	Select: ({ children, value, onValueChange }: any) => (
 		<div data-testid="select" data-value={value}>
 			<button onClick={() => onValueChange && onValueChange("test-change")}>{value}</button>

@@ -1,5 +1,5 @@
 import React from "react"
-import { Link, ThemedTextField } from "@src/components/ui"
+import { Link, Input } from "@src/components/ui"
 
 import { type ProviderFormProps } from "./shared"
 
@@ -10,15 +10,13 @@ type QwenCodeProps = ProviderFormProps & {
 export const QwenCode: React.FC<QwenCodeProps> = ({ apiConfiguration, setApiConfigurationField }) => {
 	const defaultPath = "~/.qwen/oauth_creds.json"
 
-	const handleInputChange = (e: Event | React.FormEvent<HTMLElement>) => {
-		const element = e.target as HTMLInputElement
-		setApiConfigurationField("qwenCodeOauthPath", element.value)
+	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setApiConfigurationField("qwenCodeOauthPath", e.target.value)
 	}
 
-	const handleBlur = (e: Event | React.FormEvent<HTMLElement>) => {
-		const element = e.target as HTMLInputElement
+	const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
 		// If the field is empty on blur, set it to the default value
-		if (!element.value || element.value.trim() === "") {
+		if (!e.target.value || e.target.value.trim() === "") {
 			setApiConfigurationField("qwenCodeOauthPath", defaultPath)
 		}
 	}
@@ -26,15 +24,16 @@ export const QwenCode: React.FC<QwenCodeProps> = ({ apiConfiguration, setApiConf
 	return (
 		<div className="flex flex-col gap-4">
 			<div>
-				<ThemedTextField
-					value={apiConfiguration?.qwenCodeOauthPath || ""}
-					className="w-full mt-1"
-					type="text"
-					onInput={handleInputChange}
-					onBlur={handleBlur}
-					placeholder={defaultPath}>
-					OAuth Credentials Path
-				</ThemedTextField>
+				<label className="block w-full mt-1 leading-[normal]">
+					<span className="block mb-0.5">OAuth Credentials Path</span>
+					<Input
+						value={apiConfiguration?.qwenCodeOauthPath || ""}
+						type="text"
+						onChange={handleInputChange}
+						onBlur={handleBlur}
+						placeholder={defaultPath}
+					/>
+				</label>
 
 				<p className="text-xs mt-1 text-vscode-descriptionForeground">
 					Path to your Qwen OAuth credentials file. Defaults to ~/.qwen/oauth_creds.json if left empty.

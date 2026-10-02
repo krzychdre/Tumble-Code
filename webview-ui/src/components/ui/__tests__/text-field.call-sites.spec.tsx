@@ -44,8 +44,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 const control = (el: Element) => (el.shadowRoot?.querySelector("input") ?? el) as HTMLInputElement
 
 /** Every text field on the page, in document order (toolkit hosts or replacement inputs). */
-const fields = () =>
-	[...document.querySelectorAll("vscode-text-field, input.ui-text-field-control, input.ui-input")].map(control)
+const fields = () => [...document.querySelectorAll("vscode-text-field, input.ui-input")].map(control)
 
 /** Types like a user whose caret stays in the field: sets the text and fires `input`. */
 const type = (el: HTMLInputElement, text: string) =>
@@ -67,7 +66,7 @@ const ready = () => waitFor(() => expect(fields().every((f) => f.tagName === "IN
 const labelText = (input: HTMLInputElement) => {
 	const host = input.getRootNode() instanceof ShadowRoot ? (input.getRootNode() as ShadowRoot).host : null
 	if (host) return host.textContent?.replace(/\s+/g, " ").trim() || null
-	const label = input.id ? document.querySelector(`label[for="${input.id}"]`) : null
+	const label = input.closest("label") ?? (input.id ? document.querySelector(`label[for="${input.id}"]`) : null)
 	return label?.textContent?.replace(/\s+/g, " ").trim() || null
 }
 
@@ -102,7 +101,20 @@ describe("VSCodeTextField call sites: provider forms", () => {
 
 	it("QwenCode: a text label, per-keystroke updates, and the default path restored when left empty", async () => {
 		const set = vi.fn()
-		render(<QwenCode apiConfiguration={{ qwenCodeOauthPath: "/x.json" }} setApiConfigurationField={set} />)
+		// The field is controlled: the settings buffer must take the typed value for it to stay shown.
+		const Harness = () => {
+			const [config, setConfig] = React.useState<ProviderSettings>({ qwenCodeOauthPath: "/x.json" })
+			return (
+				<QwenCode
+					apiConfiguration={config}
+					setApiConfigurationField={(field, value) => {
+						set(field, value)
+						setConfig((previous) => ({ ...previous, [field]: value }))
+					}}
+				/>
+			)
+		}
+		render(<Harness />)
 		await ready()
 		const [path] = fields()
 		await waitFor(() => expect(path.value).toBe("/x.json"))

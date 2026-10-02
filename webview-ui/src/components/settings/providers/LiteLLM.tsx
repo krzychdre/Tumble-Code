@@ -4,7 +4,7 @@ import { type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/typ
 
 import { useProviderModels } from "@src/hooks/models/useProviderModels"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, LabeledCheckbox, Spinner, ThemedTextField } from "@src/components/ui"
+import { Button, LabeledCheckbox, Spinner, Input } from "@src/components/ui"
 
 import { ModelPicker } from "../ModelPicker"
 import { type ProviderFormProps, useProviderField } from "./shared"
@@ -62,22 +62,24 @@ export const LiteLLM = ({
 
 	return (
 		<>
-			<ThemedTextField
-				value={apiConfiguration?.litellmBaseUrl || ""}
-				onInput={handleInputChange("litellmBaseUrl")}
-				placeholder={t("settings:placeholders.baseUrl")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.litellmBaseUrl")}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:providers.litellmBaseUrl")}</span>
+				<Input
+					value={apiConfiguration?.litellmBaseUrl || ""}
+					onChange={handleInputChange("litellmBaseUrl")}
+					placeholder={t("settings:placeholders.baseUrl")}
+				/>
+			</label>
 
-			<ThemedTextField
-				value={apiConfiguration?.litellmApiKey || ""}
-				type="password"
-				onInput={handleInputChange("litellmApiKey")}
-				placeholder={t("settings:placeholders.apiKey")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.litellmApiKey")}</label>
-			</ThemedTextField>
+			<label className="block w-full leading-[normal]">
+				<span className="block font-medium mb-1">{t("settings:providers.litellmApiKey")}</span>
+				<Input
+					value={apiConfiguration?.litellmApiKey || ""}
+					type="password"
+					onChange={handleInputChange("litellmApiKey")}
+					placeholder={t("settings:placeholders.apiKey")}
+				/>
+			</label>
 
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.apiKeyStorageNotice")}

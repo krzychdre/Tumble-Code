@@ -244,8 +244,12 @@ const renderForm = (provider: FormProvider, apiConfiguration: ProviderSettings =
 	return { ...utils, setApiConfigurationField }
 }
 
+/** The labelled field: a <label> that wraps its input, or the parent of the input its htmlFor names. */
 const textFieldByLabel = (label: string) => {
-	const field = screen.getByText(label).closest<HTMLElement>(".ui-text-field")
+	const labelElement = screen.getByText(label).closest<HTMLLabelElement>("label")
+	const field = labelElement?.querySelector("input")
+		? labelElement
+		: labelElement && document.getElementById(labelElement.htmlFor)?.parentElement
 	if (!field) {
 		throw new Error(`no text field labelled ${label}`)
 	}
@@ -281,7 +285,7 @@ describe("provider forms table", () => {
 	it.each(withoutCredential)("%s: renders without a typed credential field", (provider) => {
 		const { container } = renderForm(provider)
 		expect(container).not.toBeEmptyDOMElement()
-		expect(container.querySelector('input.ui-text-field-control[type="password"]')).toBeNull()
+		expect(container.querySelector('input.ui-input[type="password"]')).toBeNull()
 	})
 
 	const trioCases = Object.entries(keyTrios).flatMap(([provider, cases]) =>
@@ -293,12 +297,14 @@ describe("provider forms table", () => {
 
 		const field = textFieldByLabel(trio.labelKey)
 		expect(field.querySelector("input")).toHaveAttribute("type", "password")
-		expect(field).toHaveClass("ui-text-field", "w-full")
+		expect(field.tagName).toBe("LABEL")
+		expect(field).toHaveClass("block", "w-full")
 		expect(field.querySelector("input")).toHaveAttribute("placeholder", "settings:placeholders.apiKey")
 		expect(field.querySelector("input")).toHaveValue("")
 
+		// The label text sits in the <label> that wraps the input.
 		const label = screen.getByText(trio.labelKey)
-		expect(label.tagName).toBe("LABEL")
+		expect(label.tagName).toBe("SPAN")
 		expect(label).toHaveAttribute("class", "block font-medium mb-1")
 
 		const notice = field.nextElementSibling as HTMLElement

@@ -18,7 +18,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 	StandardTooltip,
-	ThemedTextField,
+	Input,
 } from "@src/components/ui"
 
 import { noTransform } from "../transforms"
@@ -91,48 +91,53 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
 			{apiConfiguration?.awsUseApiKey ? (
-				<ThemedTextField
-					value={apiConfiguration?.awsApiKey || ""}
-					type="password"
-					onInput={handleInputChange("awsApiKey")}
-					placeholder={t("settings:placeholders.apiKey")}
-					className="w-full">
-					<label className="block font-medium mb-1">{t("settings:providers.awsApiKey")}</label>
-				</ThemedTextField>
+				<label className="block w-full leading-[normal]">
+					<span className="block font-medium mb-1">{t("settings:providers.awsApiKey")}</span>
+					<Input
+						value={apiConfiguration?.awsApiKey || ""}
+						type="password"
+						onChange={handleInputChange("awsApiKey")}
+						placeholder={t("settings:placeholders.apiKey")}
+					/>
+				</label>
 			) : apiConfiguration?.awsUseProfile ? (
-				<ThemedTextField
-					value={apiConfiguration?.awsProfile || ""}
-					onInput={handleInputChange("awsProfile")}
-					placeholder={t("settings:placeholders.profileName")}
-					className="w-full">
-					<label className="block font-medium mb-1">{t("settings:providers.awsProfileName")}</label>
-				</ThemedTextField>
+				<label className="block w-full leading-[normal]">
+					<span className="block font-medium mb-1">{t("settings:providers.awsProfileName")}</span>
+					<Input
+						value={apiConfiguration?.awsProfile || ""}
+						onChange={handleInputChange("awsProfile")}
+						placeholder={t("settings:placeholders.profileName")}
+					/>
+				</label>
 			) : (
 				<>
-					<ThemedTextField
-						value={apiConfiguration?.awsAccessKey || ""}
-						type="password"
-						onInput={handleInputChange("awsAccessKey")}
-						placeholder={t("settings:placeholders.accessKey")}
-						className="w-full">
-						<label className="block font-medium mb-1">{t("settings:providers.awsAccessKey")}</label>
-					</ThemedTextField>
-					<ThemedTextField
-						value={apiConfiguration?.awsSecretKey || ""}
-						type="password"
-						onInput={handleInputChange("awsSecretKey")}
-						placeholder={t("settings:placeholders.secretKey")}
-						className="w-full">
-						<label className="block font-medium mb-1">{t("settings:providers.awsSecretKey")}</label>
-					</ThemedTextField>
-					<ThemedTextField
-						value={apiConfiguration?.awsSessionToken || ""}
-						type="password"
-						onInput={handleInputChange("awsSessionToken")}
-						placeholder={t("settings:placeholders.sessionToken")}
-						className="w-full">
-						<label className="block font-medium mb-1">{t("settings:providers.awsSessionToken")}</label>
-					</ThemedTextField>
+					<label className="block w-full leading-[normal]">
+						<span className="block font-medium mb-1">{t("settings:providers.awsAccessKey")}</span>
+						<Input
+							value={apiConfiguration?.awsAccessKey || ""}
+							type="password"
+							onChange={handleInputChange("awsAccessKey")}
+							placeholder={t("settings:placeholders.accessKey")}
+						/>
+					</label>
+					<label className="block w-full leading-[normal]">
+						<span className="block font-medium mb-1">{t("settings:providers.awsSecretKey")}</span>
+						<Input
+							value={apiConfiguration?.awsSecretKey || ""}
+							type="password"
+							onChange={handleInputChange("awsSecretKey")}
+							placeholder={t("settings:placeholders.secretKey")}
+						/>
+					</label>
+					<label className="block w-full leading-[normal]">
+						<span className="block font-medium mb-1">{t("settings:providers.awsSessionToken")}</span>
+						<Input
+							value={apiConfiguration?.awsSessionToken || ""}
+							type="password"
+							onChange={handleInputChange("awsSessionToken")}
+							placeholder={t("settings:placeholders.sessionToken")}
+						/>
+					</label>
 				</>
 			)}
 			<div>
@@ -235,11 +240,11 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 			</LabeledCheckbox>
 			{awsEndpointSelected && (
 				<>
-					<ThemedTextField
+					<Input
 						value={apiConfiguration?.awsBedrockEndpoint || ""}
 						style={{ width: "100%", marginTop: 3, marginBottom: 5 }}
 						type="url"
-						onInput={handleInputChange("awsBedrockEndpoint")}
+						onChange={handleInputChange("awsBedrockEndpoint")}
 						placeholder={t("settings:providers.awsBedrockVpc.vpcEndpointUrlPlaceholder")}
 						data-testid="vpc-endpoint-input"
 					/>
