@@ -1518,16 +1518,16 @@ describe("Cline", () => {
 				})
 
 				// Spy on logger.error to verify error is logged
-				const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+				const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 				// Should log error but not throw
 				task.submitUserMessage("test message")
 
-				expect(consoleErrorSpy).toHaveBeenCalledWith("[Task#submitUserMessage] Provider reference lost")
+				expect(loggerErrorSpy).toHaveBeenCalledWith("[Task#submitUserMessage] Provider reference lost")
 				expect(handleResponseSpy).not.toHaveBeenCalled()
 
 				// Restore logger.error
-				consoleErrorSpy.mockRestore()
+				loggerErrorSpy.mockRestore()
 			})
 		})
 	})
@@ -1615,19 +1615,19 @@ describe("Cline", () => {
 			})
 
 			// Spy on logger.error to verify error is logged
-			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// abortTask should not throw even if dispose fails
 			await expect(task.abortTask()).resolves.not.toThrow()
 
 			// Verify error was logged - the error message format changed slightly
-			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Error during task"), mockError)
+			expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Error during task"), mockError)
 
 			// Verify abort flag is still set
 			expect(task.abort).toBe(true)
 
 			// Restore logger.error
-			consoleErrorSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 		describe("Stream Failure Retry", () => {
 			it("should not abort task on stream failure, only on user cancellation", async () => {
@@ -1639,7 +1639,7 @@ describe("Cline", () => {
 				})
 
 				// Spy on logger.error to verify error logging
-				const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+				const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 				// Spy on abortTask to verify it's NOT called for stream failures
 				const abortTaskSpy = vi.spyOn(task, "abortTask").mockResolvedValue(undefined)
@@ -1660,7 +1660,7 @@ describe("Cline", () => {
 				logger.error(
 					`[Task#${task.taskId}.${task.instanceId}] Stream failed, will retry: ${streamFailureError.message}`,
 				)
-				expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Stream failed, will retry"))
+				expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Stream failed, will retry"))
 
 				// Verify abortTask was NOT called
 				expect(abortTaskSpy).not.toHaveBeenCalled()
@@ -1676,7 +1676,7 @@ describe("Cline", () => {
 				expect(abortTaskSpy).toHaveBeenCalled()
 
 				// Restore mocks
-				consoleErrorSpy.mockRestore()
+				loggerErrorSpy.mockRestore()
 			})
 		})
 
@@ -1695,7 +1695,7 @@ describe("Cline", () => {
 				task.currentRequestAbortController = mockAbortController
 
 				// Spy on logger.info
-				const consoleLogSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
+				const loggerInfoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
 
 				// Call cancelCurrentRequest
 				task.cancelCurrentRequest()
@@ -1707,10 +1707,10 @@ describe("Cline", () => {
 				expect(task.currentRequestAbortController).toBeUndefined()
 
 				// Verify logging
-				expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Aborting current HTTP request"))
+				expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringContaining("Aborting current HTTP request"))
 
 				// Restore logger.info
-				consoleLogSpy.mockRestore()
+				loggerInfoSpy.mockRestore()
 			})
 
 			it("should handle missing AbortController gracefully", () => {

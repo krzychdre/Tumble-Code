@@ -39,7 +39,6 @@ export interface TaskHistoryGatewayHost {
 	>
 	/** The workspace directory, used to delete a task's checkpoints. */
 	readonly cwd: string
-	log(message: string): void
 	postMessageToWebview(message: ExtensionMessage): Promise<void>
 	postStateToWebview(): Promise<void>
 	postStateToWebviewWithoutClineMessages(): Promise<void>
@@ -192,7 +191,7 @@ export class TaskHistoryGateway {
 					await this.migrateLegacyHistory(handle.store)
 					this.clearStorageError()
 				} catch (error) {
-					this.host.log(`Failed to initialize TaskHistoryStore: ${error}`)
+					logger.error(`Failed to initialize TaskHistoryStore: ${error}`)
 					if (!this.host.isDisposed) {
 						this.reportStorageError("TaskHistoryStore", error)
 					}
@@ -292,13 +291,13 @@ export class TaskHistoryGateway {
 		if (contextProxy.hasLegacyTaskHistory()) {
 			const legacy = contextProxy.getLegacyTaskHistory<HistoryItem>() ?? []
 			if (legacy.length > 0) {
-				this.host.log(`[initializeTaskHistoryStore] Migrating ${legacy.length} legacy entries`)
+				logger.info(`[initializeTaskHistoryStore] Migrating ${legacy.length} legacy entries`)
 				const ok = await store.migrateFromLegacyHistory(legacy)
 				if (!ok) {
-					this.host.log("[initializeTaskHistoryStore] Migration incomplete, legacy keys retained for retry")
+					logger.warn("[initializeTaskHistoryStore] Migration incomplete, legacy keys retained for retry")
 					return
 				}
-				this.host.log("[initializeTaskHistoryStore] Migration complete")
+				logger.info("[initializeTaskHistoryStore] Migration complete")
 			}
 			// Only clear after a successful migration (or when the
 			// legacy array was empty: nothing to migrate).
@@ -337,7 +336,7 @@ export class TaskHistoryGateway {
 						taskHistoryItemId: event.taskId,
 					})
 					.catch((err) => {
-						this.host.log(
+						logger.warn(
 							`[TaskHistoryStore onChange] targeted delete push failed: ${err instanceof Error ? err.message : String(err)}`,
 						)
 					})
@@ -348,13 +347,13 @@ export class TaskHistoryGateway {
 						taskHistoryItem: event.item,
 					})
 					.catch((err) => {
-						this.host.log(
+						logger.warn(
 							`[TaskHistoryStore onChange] targeted upsert push failed: ${err instanceof Error ? err.message : String(err)}`,
 						)
 					})
 			} else if (event.kind === "external") {
 				this.broadcastTaskHistoryUpdate().catch((err) => {
-					this.host.log(
+					logger.warn(
 						`[TaskHistoryStore onChange] broadcast failed: ${err instanceof Error ? err.message : String(err)}`,
 					)
 				})
@@ -400,7 +399,7 @@ export class TaskHistoryGateway {
 	reportStorageError(context: string, error: unknown): void {
 		const message = error instanceof Error ? error.message : String(error)
 		const storageErrorMessage = `${context}: ${message}`
-		this.host.log(`[storage error] ${storageErrorMessage}`)
+		logger.error(`[storage error] ${storageErrorMessage}`)
 
 		if (this._storageErrorMessage === storageErrorMessage) {
 			return
@@ -432,7 +431,7 @@ export class TaskHistoryGateway {
 	 */
 	private postStorageErrorState(): void {
 		this.host.postStateToWebviewWithoutClineMessages().catch((postError) => {
-			this.host.log(
+			logger.warn(
 				`[storage error] Failed to post full state: ${postError instanceof Error ? postError.message : String(postError)}`,
 			)
 			this.host
@@ -443,7 +442,7 @@ export class TaskHistoryGateway {
 					state: { storageErrorMessage: this._storageErrorMessage } as ExtensionState,
 				})
 				.catch((pushError) => {
-					this.host.log(
+					logger.warn(
 						`[storage error] Failed to post partial state: ${pushError instanceof Error ? pushError.message : String(pushError)}`,
 					)
 				})
@@ -596,7 +595,7 @@ export class TaskHistoryGateway {
 							taskHistoryItemId: taskId,
 						})
 						.catch((err) => {
-							this.host.log(
+							logger.warn(
 								`[deleteTaskWithId] targeted delete push failed for ${taskId}: ${err instanceof Error ? err.message : String(err)}`,
 							)
 						})
@@ -660,7 +659,7 @@ export class TaskHistoryGateway {
 					taskHistoryItemId: id,
 				})
 				.catch((err) => {
-					this.host.log(
+					logger.warn(
 						`[deleteTaskFromState] targeted delete push failed: ${err instanceof Error ? err.message : String(err)}`,
 					)
 				})

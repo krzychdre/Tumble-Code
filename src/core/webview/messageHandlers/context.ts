@@ -6,6 +6,7 @@ import { t } from "../../../i18n"
 import { resolveImageMentions } from "../../mentions/resolveImageMentions"
 import type { MarketplaceManager } from "../../../services/marketplace"
 import type { ClineProvider } from "../ClineProvider"
+import { logger } from "../../../utils/logging"
 
 /**
  * Builds the context every message handler receives. It is created once per
@@ -38,7 +39,7 @@ export function serializeError(error: unknown): string {
  * translated `i18nKey` as an error toast (not awaited, as before).
  */
 export function logAndToast(ctx: HandlerContext, logPrefix: string, error: unknown, i18nKey: string): void {
-	ctx.provider.log(`${logPrefix}${serializeError(error)}`)
+	logger.error(`${logPrefix}${serializeError(error)}`)
 	vscode.window.showErrorMessage(t(i18nKey))
 }
 

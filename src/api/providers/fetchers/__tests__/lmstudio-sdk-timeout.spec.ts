@@ -77,7 +77,7 @@ const LOAD_IDLE_MS = 300
 const HANG_MS = 3000
 
 let server: FakeLmStudioServer | undefined
-let consoleError: ReturnType<typeof vi.spyOn>
+let loggerErrorSpy: ReturnType<typeof vi.spyOn>
 
 async function serve(respond: Responder, answerHttp = true) {
 	server = await startFakeLmStudioServer({ respond, answerHttp })
@@ -110,7 +110,7 @@ beforeEach(() => {
 	Object.assign(fetcher.LM_STUDIO_TIMEOUTS, { requestMs: REQUEST_MS, loadIdleMs: LOAD_IDLE_MS })
 	vi.spyOn(logger, "warn").mockImplementation(() => {})
 	vi.spyOn(logger, "info").mockImplementation(() => {})
-	consoleError = vi.spyOn(logger, "error").mockImplementation(() => {})
+	loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 })
 
 afterEach(async () => {
@@ -121,7 +121,7 @@ afterEach(async () => {
 })
 
 function loggedErrors(): string {
-	return consoleError.mock.calls.map((call: unknown[]) => call.map(String).join(" ")).join("\n")
+	return loggerErrorSpy.mock.calls.map((call: unknown[]) => call.map(String).join(" ")).join("\n")
 }
 
 describe("LM Studio fetcher: bounded SDK calls", () => {

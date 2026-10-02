@@ -309,7 +309,7 @@ build/
 			})
 
 			// Spy on logger.error
-			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Even with mix of allowed/ignored paths, should return empty array on error
 			const filtered = controller.filterPaths(["src/app.js", "node_modules/package.json"])
@@ -318,10 +318,10 @@ build/
 			expect(filtered).toEqual([])
 
 			// Should log error
-			expect(consoleSpy).toHaveBeenCalledWith("Error filtering paths:", expect.any(Error))
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Error filtering paths:", expect.any(Error))
 
 			// Clean up
-			consoleSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 	})
 })

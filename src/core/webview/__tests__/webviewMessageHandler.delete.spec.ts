@@ -77,7 +77,6 @@ describe("webviewMessageHandler delete functionality", () => {
 				setValue: vi.fn(async () => {}),
 				globalStorageUri: { fsPath: "/test/path" },
 			},
-			log: vi.fn(),
 			cwd: "/test/cwd",
 		}
 	})

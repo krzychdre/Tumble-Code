@@ -549,7 +549,6 @@ describe("ClineProvider Task History Synchronization", () => {
 						.mockReturnValue([createHistoryItem({ id: "legacy-retained", task: "Retained" })]),
 					clearLegacyTaskHistoryKeys,
 				},
-				log: vi.fn(),
 			}
 
 			await (new TaskHistoryGateway(migrationHost as any) as any).migrateLegacyHistory(migrationStore)

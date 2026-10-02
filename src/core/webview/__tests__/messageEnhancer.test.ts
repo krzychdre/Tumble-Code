@@ -338,7 +338,7 @@ describe("MessageEnhancer", () => {
 		})
 
 		it("should handle malformed messages gracefully", () => {
-			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Create messages that will cause errors when accessed
 			const malformedMessages = [
@@ -353,13 +353,13 @@ describe("MessageEnhancer", () => {
 
 			// Should return empty string and log error
 			expect(history).toBe("")
-			expect(consoleSpy).toHaveBeenCalledWith("Failed to extract task history:", expect.any(Error))
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Failed to extract task history:", expect.any(Error))
 
-			consoleSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 
 		it("should handle messages with circular references", () => {
-			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Create a message with circular reference
 			const circularMessage: any = { type: "ask", text: "Test" }
@@ -373,7 +373,7 @@ describe("MessageEnhancer", () => {
 			// Should handle gracefully
 			expect(history).toBe("User: Test")
 
-			consoleSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 	})
 })

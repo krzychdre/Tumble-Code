@@ -5,6 +5,7 @@ import * as vscode from "vscode"
 
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { fileExistsAtPath } from "../../utils/fs"
+import { logger } from "../../utils/logging"
 
 export interface ErrorDiagnosticsValues {
 	timestamp?: string
@@ -18,7 +19,6 @@ export interface GenerateDiagnosticsParams {
 	taskId: string
 	globalStoragePath: string
 	values?: ErrorDiagnosticsValues
-	log: (message: string) => void
 }
 
 export interface GenerateDiagnosticsResult {
@@ -33,7 +33,7 @@ export interface GenerateDiagnosticsResult {
  * before sharing with support.
  */
 export async function generateErrorDiagnostics(params: GenerateDiagnosticsParams): Promise<GenerateDiagnosticsResult> {
-	const { taskId, globalStoragePath, values, log } = params
+	const { taskId, globalStoragePath, values } = params
 
 	try {
 		const taskDirPath = await getTaskDirectoryPath(globalStoragePath, taskId)
@@ -85,7 +85,7 @@ export async function generateErrorDiagnostics(params: GenerateDiagnosticsParams
 		return { success: true, filePath: tempFilePath }
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		log(`Error generating diagnostics: ${errorMessage}`)
+		logger.error(`Error generating diagnostics: ${errorMessage}`)
 		vscode.window.showErrorMessage(`Failed to generate diagnostics: ${errorMessage}`)
 		return { success: false, error: errorMessage }
 	}

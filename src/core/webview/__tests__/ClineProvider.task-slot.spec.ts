@@ -26,7 +26,6 @@ type ProviderStandIn = {
 	getCurrentTaskStack: typeof ClineProvider.prototype.getCurrentTaskStack
 	getLiveTaskInstance: typeof ClineProvider.prototype.getLiveTaskInstance
 	clearTask: typeof ClineProvider.prototype.clearTask
-	log: (message: string) => void
 	resetSubagentPanel: () => Promise<void>
 	performPreparationTasks: (task: Task) => Promise<void>
 	getState: () => Promise<{ mode: string }>
@@ -53,14 +52,12 @@ function makeProvider(): ProviderStandIn {
 		getCurrentTaskStack: ClineProvider.prototype.getCurrentTaskStack,
 		getLiveTaskInstance: ClineProvider.prototype.getLiveTaskInstance,
 		clearTask: ClineProvider.prototype.clearTask,
-		log: vi.fn(),
 		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
 		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
 		getState: vi.fn().mockResolvedValue({ mode: "code" }),
 		delegation: undefined as unknown as DelegationService,
 	}
 	provider.taskSlot = new TaskSlot({
-		log: (message) => provider.log(message),
 		getState: () => provider.getState(),
 		performPreparationTasks: (task) => provider.performPreparationTasks(task),
 		removeTaskEventListeners: (task) => {

@@ -2,6 +2,7 @@ import { CloudService } from "@roo-code/cloud"
 
 import type { ContextProxy } from "../config/ContextProxy"
 import type { ProviderSettingsManager } from "../config/ProviderSettingsManager"
+import { logger } from "../../utils/logging"
 
 /**
  * What the cloud profile sync needs from its provider. The member names match
@@ -14,7 +15,6 @@ export interface CloudProfileSyncHost {
 	readonly providerSettingsManager: Pick<ProviderSettingsManager, "syncCloudProfiles" | "listConfig" | "getProfile">
 	activateProviderProfile(args: { name: string }): Promise<unknown>
 	postStateToWebviewWithoutClineMessages(): Promise<void>
-	log(message: string): void
 }
 
 /**
@@ -33,7 +33,7 @@ export class CloudProfileSync {
 		try {
 			await this.sync()
 		} catch (error) {
-			this.host.log(`Error handling cloud settings update: ${error}`)
+			logger.error(`Error handling cloud settings update: ${error}`)
 		}
 	}
 
@@ -73,7 +73,7 @@ export class CloudProfileSync {
 				await this.host.postStateToWebviewWithoutClineMessages()
 			}
 		} catch (error) {
-			this.host.log(`Error syncing cloud profiles: ${error}`)
+			logger.error(`Error syncing cloud profiles: ${error}`)
 		}
 	}
 
@@ -94,7 +94,7 @@ export class CloudProfileSync {
 				CloudService.instance.on("settings-updated", this.handleSettingsUpdate)
 			}
 		} catch (error) {
-			this.host.log(`Failed to initialize cloud profile sync when ready: ${error}`)
+			logger.error(`Failed to initialize cloud profile sync when ready: ${error}`)
 		}
 	}
 

@@ -177,7 +177,6 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		setCurrentTask: vi.fn().mockResolvedValue(undefined),
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		updateGlobalState: vi.fn().mockResolvedValue(undefined),
-		log: vi.fn(),
 		// The mode and profile restore moved to ModeProfileBinding (CORE-R6 c).
 		modeProfiles: { restoreForHistoryItem: vi.fn().mockResolvedValue(undefined) },
 		customModesManager: { getCustomModes: vi.fn().mockResolvedValue([]) },
@@ -216,7 +215,6 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		...overrides,
 	}
 	provider.taskSlot = new TaskSlot({
-		log: (message: string) => provider.log(message),
 		getState: () => provider.getState(),
 		performPreparationTasks: (task: unknown) => provider.performPreparationTasks(task),
 		removeTaskEventListeners: (task: unknown) => {

@@ -47,11 +47,10 @@ vi.mock("fs/promises", () => {
 import * as vscode from "vscode"
 import * as fs from "fs/promises"
 import * as fsUtils from "../../../utils/fs"
+import { logger } from "../../../utils/logging"
 import { generateErrorDiagnostics } from "../diagnosticsHandler"
 
 describe("generateErrorDiagnostics", () => {
-	const mockLog = vi.fn()
-
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
@@ -70,7 +69,6 @@ describe("generateErrorDiagnostics", () => {
 				model: "test-model",
 				details: "Sample error details",
 			},
-			log: mockLog,
 		})
 
 		expect(result.success).toBe(true)
@@ -112,7 +110,6 @@ describe("generateErrorDiagnostics", () => {
 				model: "test",
 				details: "error",
 			},
-			log: mockLog,
 		})
 
 		expect(result.success).toBe(true)
@@ -131,7 +128,6 @@ describe("generateErrorDiagnostics", () => {
 		const result = await generateErrorDiagnostics({
 			taskId: "test-task-id",
 			globalStoragePath: "/mock/global/storage",
-			log: mockLog,
 		})
 
 		expect(result.success).toBe(true)
@@ -158,7 +154,6 @@ describe("generateErrorDiagnostics", () => {
 				model: "test",
 				details: "error",
 			},
-			log: mockLog,
 		})
 
 		// Should still succeed but with empty history
@@ -174,15 +169,17 @@ describe("generateErrorDiagnostics", () => {
 		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false as any)
 		vi.mocked(fs.writeFile).mockRejectedValue(new Error("Write failed"))
 
+		const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+
 		const result = await generateErrorDiagnostics({
 			taskId: "test-task-id",
 			globalStoragePath: "/mock/global/storage",
-			log: mockLog,
 		})
 
 		expect(result.success).toBe(false)
 		expect(result.error).toBe("Write failed")
-		expect(mockLog).toHaveBeenCalledWith("Error generating diagnostics: Write failed")
+		expect(loggerErrorSpy).toHaveBeenCalledWith("Error generating diagnostics: Write failed")
+		loggerErrorSpy.mockRestore()
 		expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("Failed to generate diagnostics: Write failed")
 	})
 })

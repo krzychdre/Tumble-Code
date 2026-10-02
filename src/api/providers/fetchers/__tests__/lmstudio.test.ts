@@ -467,7 +467,7 @@ describe("LMStudio Fetcher", () => {
 		})
 
 		it("should return an empty object and log error if axios.get fails with a generic error", async () => {
-			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 			const networkError = new Error("Network connection failed")
 			mockedAxios.get.mockRejectedValueOnce(networkError)
 
@@ -479,15 +479,15 @@ describe("LMStudio Fetcher", () => {
 			})
 			expect(MockedLMStudioClientConstructor).not.toHaveBeenCalled()
 			expect(mockListLoaded).not.toHaveBeenCalled()
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				`Error fetching LMStudio models: ${JSON.stringify(networkError, Object.getOwnPropertyNames(networkError), 2)}`,
 			)
 			expect(result).toEqual({})
-			consoleErrorSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 
 		it("should return an empty object and log info if axios.get fails with ECONNREFUSED", async () => {
-			const consoleInfoSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+			const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 			const econnrefusedError = new Error("Connection refused")
 			;(econnrefusedError as any).code = "ECONNREFUSED"
 			mockedAxios.get.mockRejectedValueOnce(econnrefusedError)
@@ -500,13 +500,13 @@ describe("LMStudio Fetcher", () => {
 			})
 			expect(MockedLMStudioClientConstructor).not.toHaveBeenCalled()
 			expect(mockListLoaded).not.toHaveBeenCalled()
-			expect(consoleInfoSpy).toHaveBeenCalledWith(`Error connecting to LMStudio at ${baseUrl}`)
+			expect(loggerWarnSpy).toHaveBeenCalledWith(`Error connecting to LMStudio at ${baseUrl}`)
 			expect(result).toEqual({})
-			consoleInfoSpy.mockRestore()
+			loggerWarnSpy.mockRestore()
 		})
 
 		it("should return an empty object and log error if listDownloadedModels fails", async () => {
-			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 			const listError = new Error("LMStudio SDK internal error")
 
 			mockedAxios.get.mockResolvedValueOnce({ data: {} })
@@ -518,11 +518,11 @@ describe("LMStudio Fetcher", () => {
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledTimes(1)
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledWith({ baseUrl: lmsUrl })
 			expect(mockListLoaded).toHaveBeenCalledTimes(1)
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				`Error fetching LMStudio models: ${JSON.stringify(listError, Object.getOwnPropertyNames(listError), 2)}`,
 			)
 			expect(result).toEqual({})
-			consoleErrorSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 	})
 })

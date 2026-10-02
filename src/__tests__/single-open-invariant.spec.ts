@@ -53,7 +53,6 @@ describe("Single-open-task invariant", () => {
 			clearCurrentTask,
 			setCurrentTask,
 			setProviderProfile: vi.fn(),
-			log: vi.fn(),
 			getStateToPostToWebview: vi.fn(),
 			providerSettingsManager: { getModeConfigId: vi.fn(), listConfig: vi.fn() },
 			customModesManager: { getCustomModes: vi.fn().mockResolvedValue([]) },
@@ -83,7 +82,6 @@ describe("Single-open-task invariant", () => {
 			clearCurrentTask,
 			setCurrentTask,
 			updateGlobalState,
-			log: vi.fn(),
 			// The mode and profile restore moved to ModeProfileBinding (CORE-R6 c).
 			modeProfiles: { restoreForHistoryItem: vi.fn().mockResolvedValue(undefined) },
 			customModesManager: { getCustomModes: vi.fn().mockResolvedValue([]) },

@@ -36,9 +36,10 @@ vi.mock("../../../i18n", () => ({
 import * as vscode from "vscode"
 import { openFile } from "../../../integrations/misc/open-file"
 import { handleRequestSkills, handleCreateSkill, handleDeleteSkill, handleOpenSkillFile } from "../skillsMessageHandler"
+import { logger } from "../../../utils/logging"
 
 describe("skillsMessageHandler", () => {
-	const mockLog = vi.fn()
+	const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 	const mockPostMessageToWebview = vi.fn()
 	const mockGetSkillsMetadata = vi.fn()
 	const mockCreateSkill = vi.fn()
@@ -59,7 +60,6 @@ describe("skillsMessageHandler", () => {
 			: undefined
 
 		return {
-			log: mockLog,
 			postMessageToWebview: mockPostMessageToWebview,
 			getSkillsManager: () => skillsManager,
 		} as unknown as ClineProvider
@@ -114,7 +114,7 @@ describe("skillsMessageHandler", () => {
 			const result = await handleRequestSkills(provider)
 
 			expect(result).toEqual([])
-			expect(mockLog).toHaveBeenCalled()
+			expect(loggerErrorSpy).toHaveBeenCalled()
 			expect(mockPostMessageToWebview).toHaveBeenCalledWith({ type: "skills", skills: [] })
 		})
 	})
@@ -165,7 +165,7 @@ describe("skillsMessageHandler", () => {
 			} as WebviewMessage)
 
 			expect(result).toBeUndefined()
-			expect(mockLog).toHaveBeenCalledWith(
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				"Error creating skill: Missing required fields: skillName, source, or skillDescription",
 			)
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
@@ -184,7 +184,7 @@ describe("skillsMessageHandler", () => {
 			} as WebviewMessage)
 
 			expect(result).toBeUndefined()
-			expect(mockLog).toHaveBeenCalledWith("Error creating skill: Skills manager not available")
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Error creating skill: Skills manager not available")
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				"Failed to create skill: Skills manager not available",
 			)
@@ -234,7 +234,9 @@ describe("skillsMessageHandler", () => {
 			} as WebviewMessage)
 
 			expect(result).toBeUndefined()
-			expect(mockLog).toHaveBeenCalledWith("Error deleting skill: Missing required fields: skillName or source")
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
+				"Error deleting skill: Missing required fields: skillName or source",
+			)
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				"Failed to delete skill: Missing required fields: skillName or source",
 			)
@@ -250,7 +252,7 @@ describe("skillsMessageHandler", () => {
 			} as WebviewMessage)
 
 			expect(result).toBeUndefined()
-			expect(mockLog).toHaveBeenCalledWith("Error deleting skill: Skills manager not available")
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Error deleting skill: Skills manager not available")
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				"Failed to delete skill: Skills manager not available",
 			)
@@ -296,7 +298,7 @@ describe("skillsMessageHandler", () => {
 				// missing source
 			} as WebviewMessage)
 
-			expect(mockLog).toHaveBeenCalledWith(
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				"Error opening skill file: Missing required fields: skillName or source",
 			)
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
@@ -313,7 +315,7 @@ describe("skillsMessageHandler", () => {
 				source: "global",
 			} as WebviewMessage)
 
-			expect(mockLog).toHaveBeenCalledWith("Error opening skill file: Skills manager not available")
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Error opening skill file: Skills manager not available")
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				"Failed to open skill file: Skills manager not available",
 			)
@@ -329,7 +331,7 @@ describe("skillsMessageHandler", () => {
 				source: "global",
 			} as WebviewMessage)
 
-			expect(mockLog).toHaveBeenCalledWith('Error opening skill file: Skill "nonexistent-skill" not found')
+			expect(loggerErrorSpy).toHaveBeenCalledWith('Error opening skill file: Skill "nonexistent-skill" not found')
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				'Failed to open skill file: Skill "nonexistent-skill" not found',
 			)

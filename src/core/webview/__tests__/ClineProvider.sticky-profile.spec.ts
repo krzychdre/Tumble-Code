@@ -5,6 +5,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
 import { ContextProxy } from "../../config/ContextProxy"
 import { TaskHistoryStore } from "../../task-persistence"
+import { logger } from "../../../utils/logging"
 import type { HistoryItem } from "@roo-code/types"
 
 vi.mock("vscode", () => ({
@@ -559,7 +560,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			const activateProviderProfileSpy = vi
 				.spyOn(provider, "activateProviderProfile")
 				.mockResolvedValue(undefined)
-			const logSpy = vi.spyOn(provider, "log")
+			const loggerInfoSpy = vi.spyOn(logger, "info")
 
 			vi.spyOn(provider.providerSettingsManager, "listConfig").mockResolvedValue([
 				{ name: "saved-profile", id: "saved-profile-id", apiProvider: "anthropic" },
@@ -568,7 +569,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			await provider.createTaskWithHistoryItem(historyItem)
 
 			expect(activateProviderProfileSpy).not.toHaveBeenCalledWith({ name: "saved-profile" }, expect.anything())
-			expect(logSpy).toHaveBeenCalledWith(
+			expect(loggerInfoSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Skipping restore of provider profile 'saved-profile'"),
 			)
 		})
@@ -697,14 +698,14 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			// Mock providerSettingsManager.listConfig to return empty (profile doesn't exist)
 			vi.spyOn(provider.providerSettingsManager, "listConfig").mockResolvedValue([])
 
-			// Mock log to verify warning is logged
-			const logSpy = vi.spyOn(provider, "log")
+			// Spy on the logger to verify a warning is logged
+			const loggerWarnSpy = vi.spyOn(logger, "warn")
 
 			// Initialize task with history item - should not throw
 			await expect(provider.createTaskWithHistoryItem(historyItem)).resolves.not.toThrow()
 
 			// Verify a warning was logged
-			expect(logSpy).toHaveBeenCalledWith(
+			expect(loggerWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Provider profile 'deleted-profile' from history no longer exists"),
 			)
 		})
@@ -923,14 +924,16 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				{ name: "new-profile", id: "new-profile-id", apiProvider: "anthropic" },
 			])
 
-			// Mock log to verify error is logged
-			const logSpy = vi.spyOn(provider, "log")
+			// Spy on the logger to verify the failure is logged
+			const loggerWarnSpy = vi.spyOn(logger, "warn")
 
 			// Switch provider profile - should not throw
 			await expect(provider.activateProviderProfile({ name: "new-profile" })).resolves.not.toThrow()
 
 			// Verify error was logged
-			expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to persist provider profile switch"))
+			expect(loggerWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Failed to persist provider profile switch"),
+			)
 		})
 
 		it("should handle null/undefined apiConfigName gracefully", async () => {
@@ -989,14 +992,14 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			// Mock activateProviderProfile to throw error
 			vi.spyOn(provider, "activateProviderProfile").mockRejectedValue(new Error("Activation failed"))
 
-			// Mock log to verify error is logged
-			const logSpy = vi.spyOn(provider, "log")
+			// Spy on the logger to verify the failure is logged
+			const loggerWarnSpy = vi.spyOn(logger, "warn")
 
 			// Initialize task with history item - should not throw even though activation fails
 			await expect(provider.createTaskWithHistoryItem(historyItem)).resolves.not.toThrow()
 
 			// Verify error was logged
-			expect(logSpy).toHaveBeenCalledWith(
+			expect(loggerWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Failed to restore API configuration 'failing-profile' for task"),
 			)
 		})

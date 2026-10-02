@@ -3,6 +3,7 @@
 import { t } from "../../../i18n"
 import { CodeIndexManager } from "../../../services/code-index/manager"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 	saveCodeIndexSettingsAtomic: async (ctx, message) => {
@@ -89,7 +90,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 						await currentCodeIndexManager.handleSettingsChange()
 					} catch (error) {
 						// Validation failed - the error state is already set by handleSettingsChange
-						provider.log(
+						logger.warn(
 							`Embedder validation failed after provider change: ${error instanceof Error ? error.message : String(error)}`,
 						)
 						// Send validation error to webview
@@ -106,7 +107,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 						await currentCodeIndexManager.handleSettingsChange()
 					} catch (error) {
 						// Log but don't fail - settings are saved
-						provider.log(
+						logger.error(
 							`Settings change handling error: ${error instanceof Error ? error.message : String(error)}`,
 						)
 					}
@@ -120,9 +121,9 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 					if (!currentCodeIndexManager.isInitialized) {
 						try {
 							await currentCodeIndexManager.initialize(provider.contextProxy)
-							provider.log(`Code index manager initialized after settings save`)
+							logger.info(`Code index manager initialized after settings save`)
 						} catch (error) {
-							provider.log(
+							logger.error(
 								`Code index initialization failed: ${error instanceof Error ? error.message : String(error)}`,
 							)
 							// Send error status to webview
@@ -135,7 +136,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 				}
 			} else {
 				// No workspace open - send error status
-				provider.log("Cannot save code index settings: No workspace folder open")
+				logger.warn("Cannot save code index settings: No workspace folder open")
 				await provider.postMessageToWebview({
 					type: "indexingStatusUpdate",
 					values: {
@@ -148,7 +149,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 				})
 			}
 		} catch (error) {
-			provider.log(`Error saving code index settings: ${error.message || error}`)
+			logger.error(`Error saving code index settings: ${error.message || error}`)
 			await provider.postMessageToWebview({
 				type: "codeIndexSettingsSaved",
 				success: false,
@@ -231,7 +232,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 						currentItemUnit: "items",
 					},
 				})
-				provider.log("Cannot start indexing: No workspace folder open")
+				logger.warn("Cannot start indexing: No workspace folder open")
 				return
 			}
 
@@ -254,7 +255,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 				}
 			}
 		} catch (error) {
-			provider.log(`Error starting indexing: ${error instanceof Error ? error.message : String(error)}`)
+			logger.error(`Error starting indexing: ${error instanceof Error ? error.message : String(error)}`)
 		}
 	},
 
@@ -263,7 +264,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 		try {
 			const manager = provider.getCurrentWorkspaceCodeIndexManager()
 			if (!manager) {
-				provider.log("Cannot stop indexing: No workspace folder open")
+				logger.warn("Cannot stop indexing: No workspace folder open")
 				return
 			}
 			manager.stopIndexing()
@@ -272,7 +273,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 				values: manager.getCurrentStatus(),
 			})
 		} catch (error) {
-			provider.log(`Error stopping indexing: ${error instanceof Error ? error.message : String(error)}`)
+			logger.error(`Error stopping indexing: ${error instanceof Error ? error.message : String(error)}`)
 		}
 	},
 
@@ -281,7 +282,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 		try {
 			const manager = provider.getCurrentWorkspaceCodeIndexManager()
 			if (!manager) {
-				provider.log("Cannot toggle workspace indexing: No workspace folder open")
+				logger.warn("Cannot toggle workspace indexing: No workspace folder open")
 				return
 			}
 			const enabled = message.bool ?? false
@@ -297,7 +298,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 				values: manager.getCurrentStatus(),
 			})
 		} catch (error) {
-			provider.log(`Error toggling workspace indexing: ${error instanceof Error ? error.message : String(error)}`)
+			logger.error(`Error toggling workspace indexing: ${error instanceof Error ? error.message : String(error)}`)
 		}
 	},
 
@@ -306,7 +307,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 		try {
 			const manager = provider.getCurrentWorkspaceCodeIndexManager()
 			if (!manager) {
-				provider.log("Cannot set auto-enable default: No workspace folder open")
+				logger.warn("Cannot set auto-enable default: No workspace folder open")
 				return
 			}
 			// Capture prior state for every manager before persisting the global change
@@ -329,7 +330,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 				values: manager.getCurrentStatus(),
 			})
 		} catch (error) {
-			provider.log(`Error setting auto-enable default: ${error instanceof Error ? error.message : String(error)}`)
+			logger.error(`Error setting auto-enable default: ${error instanceof Error ? error.message : String(error)}`)
 		}
 	},
 
@@ -338,7 +339,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 		try {
 			const manager = provider.getCurrentWorkspaceCodeIndexManager()
 			if (!manager) {
-				provider.log("Cannot clear index data: No workspace folder open")
+				logger.warn("Cannot clear index data: No workspace folder open")
 				provider.postMessageToWebview({
 					type: "indexCleared",
 					values: {
@@ -351,7 +352,7 @@ export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 			await manager.clearIndexData()
 			provider.postMessageToWebview({ type: "indexCleared", values: { success: true } })
 		} catch (error) {
-			provider.log(`Error clearing index data: ${error instanceof Error ? error.message : String(error)}`)
+			logger.error(`Error clearing index data: ${error instanceof Error ? error.message : String(error)}`)
 			provider.postMessageToWebview({
 				type: "indexCleared",
 				values: {

@@ -2,6 +2,7 @@ import { RooCodeEventName } from "@roo-code/types"
 
 import { t } from "../../i18n"
 import type { Task } from "../task/Task"
+import { logger } from "../../utils/logging"
 
 /**
  * The host seam of {@link TaskSlot}: everything the slot needs from the
@@ -10,7 +11,6 @@ import type { Task } from "../task/Task"
  * ai_plans/2026-09-28_s1-clineprovider-split.md).
  */
 export interface TaskSlotHost {
-	log(message: string): void
 	/** The provider's settings state; the set path validates its mode. */
 	getState(): Promise<{ mode?: unknown }>
 	/** Provider-specific setup for a starting task (e.g. the LM Studio model preload). */
@@ -92,7 +92,7 @@ export class TaskSlot {
 		try {
 			await oldTask.abortTask(true)
 		} catch (e) {
-			this.host.log(
+			logger.warn(
 				`[TaskSlot#replaceInPlace] abortTask() failed for old task ${oldTask.taskId}.${oldTask.instanceId}: ${e.message}`,
 			)
 		}
@@ -142,7 +142,7 @@ export class TaskSlot {
 			// all running promises will exit as well.
 			await task.abortTask(true)
 		} catch (e) {
-			this.host.log(`[TaskSlot#clear] abortTask() failed ${task.taskId}.${task.instanceId}: ${e.message}`)
+			logger.warn(`[TaskSlot#clear] abortTask() failed ${task.taskId}.${task.instanceId}: ${e.message}`)
 		}
 
 		// Remove event listeners before clearing the reference.
@@ -162,13 +162,13 @@ export class TaskSlot {
 		if (parentTaskId && childTaskId && !options?.skipDelegationRepair) {
 			try {
 				if (await this.host.detachDelegatedParent(parentTaskId, childTaskId)) {
-					this.host.log(
+					logger.info(
 						`[TaskSlot#clear] Repaired parent ${parentTaskId} metadata: delegated → active (child ${childTaskId} removed)`,
 					)
 				}
 			} catch (err) {
 				// Non-fatal: log but do not block the clear operation.
-				this.host.log(
+				logger.warn(
 					`[TaskSlot#clear] Failed to repair parent metadata for ${parentTaskId} (non-fatal): ${
 						err instanceof Error ? err.message : String(err)
 					}`,

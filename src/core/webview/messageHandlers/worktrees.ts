@@ -13,6 +13,7 @@ import {
 	handleCreateWorktreeInclude,
 } from "../worktree"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const worktreesHandlers: DomainHandlerMap<"worktrees"> = {
 	listWorktrees: async (ctx) => {
@@ -176,7 +177,7 @@ export const worktreesHandlers: DomainHandlerMap<"worktrees"> = {
 			await provider.postMessageToWebview({ type: "worktreeResult", success, text })
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			provider.log(`Error creating worktree include: ${errorMessage}`)
+			logger.error(`Error creating worktree include: ${errorMessage}`)
 			await provider.postMessageToWebview({ type: "worktreeResult", success: false, text: errorMessage })
 		}
 	},
@@ -204,7 +205,7 @@ export const worktreesHandlers: DomainHandlerMap<"worktrees"> = {
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			provider.log(`Error opening folder picker: ${errorMessage}`)
+			logger.error(`Error opening folder picker: ${errorMessage}`)
 		}
 	},
 }

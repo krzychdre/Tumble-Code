@@ -77,28 +77,28 @@ describe("injectEnv", () => {
 	})
 
 	it("should use notFoundValue for missing env variables", async () => {
-		const consoleWarnSpy = vitest.spyOn(logger, "warn").mockImplementation(() => {})
+		const loggerWarnSpy = vitest.spyOn(logger, "warn").mockImplementation(() => {})
 		process.env.EXISTING_VAR = "exists"
 		const configString = "Value: ${env:EXISTING_VAR}, Missing: ${env:MISSING_VAR}"
 		const expectedString = "Value: exists, Missing: NOT_FOUND"
 		const result = await injectEnv(configString, "NOT_FOUND")
 		expect(result).toBe(expectedString)
-		expect(consoleWarnSpy).toHaveBeenCalledWith(
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			`[injectVariables] variable "MISSING_VAR" referenced but not found in "env"`,
 		)
-		consoleWarnSpy.mockRestore()
+		loggerWarnSpy.mockRestore()
 	})
 
 	it("should use default empty string for missing env variables if notFoundValue is not provided", async () => {
-		const consoleWarnSpy = vitest.spyOn(logger, "warn").mockImplementation(() => {})
+		const loggerWarnSpy = vitest.spyOn(logger, "warn").mockImplementation(() => {})
 		const configString = "Missing: ${env:ANOTHER_MISSING}"
 		const expectedString = "Missing: "
 		const result = await injectEnv(configString)
 		expect(result).toBe(expectedString)
-		expect(consoleWarnSpy).toHaveBeenCalledWith(
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			`[injectVariables] variable "ANOTHER_MISSING" referenced but not found in "env"`,
 		)
-		consoleWarnSpy.mockRestore()
+		loggerWarnSpy.mockRestore()
 	})
 
 	it("should handle strings without env variables", async () => {

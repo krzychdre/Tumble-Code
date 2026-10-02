@@ -113,7 +113,6 @@ describe("Task - sticky provider profile init race", () => {
 				globalStorageUri: { fsPath: "/test/storage" },
 			},
 			getState: vi.fn().mockImplementation(() => getStatePromise),
-			log: vi.fn(),
 			on: vi.fn(),
 			off: vi.fn(),
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),

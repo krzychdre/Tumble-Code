@@ -74,7 +74,6 @@ export interface BackgroundTaskHost {
 	/** Read a stored profile without making it the active one. */
 	getProfile(params: { id: string }): Promise<ProviderSettings & { name: string }>
 	postMessageToWebview(message: ExtensionMessage): Promise<void>
-	log(message: string): void
 }
 
 /**
@@ -180,7 +179,7 @@ export class BackgroundTaskRunner {
 				lastActivityAt: now,
 			})
 		}
-		this.host.log(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
+		logger.info(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
 		task.start()
 		return task
 	}
@@ -303,9 +302,9 @@ export class BackgroundTaskRunner {
 				const { getTaskDirectoryPath } = await import("../../utils/storage")
 				const dirPath = await getTaskDirectoryPath(this.host.globalStoragePath, taskId)
 				await fs.rm(dirPath, { recursive: true, force: true })
-				this.host.log(`[cleanupBackgroundTaskFiles] removed task directory for ${taskId}`)
+				logger.debug(`[cleanupBackgroundTaskFiles] removed task directory for ${taskId}`)
 			} catch (error) {
-				this.host.log(
+				logger.warn(
 					`[cleanupBackgroundTaskFiles] failed to remove task directory for ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}
@@ -343,7 +342,7 @@ export class BackgroundTaskRunner {
 						return await this.runMemoryWriterQuery(writerConfig, taskId, system, user, signal)
 					} catch (error) {
 						if (signal.aborted) throw error
-						this.host.log(
+						logger.warn(
 							`[memoryWriterQuery] memory writer profile failed, retrying on foreground: ${error instanceof Error ? error.message : String(error)}`,
 						)
 					}
@@ -388,7 +387,7 @@ export class BackgroundTaskRunner {
 			const { name: _name, ...profile } = await this.host.getProfile({ id })
 			return profile
 		} catch (error) {
-			this.host.log(
+			logger.warn(
 				`[memoryWriterQuery] failed to load writer profile ${id}, falling back to foreground: ${error instanceof Error ? error.message : String(error)}`,
 			)
 			return undefined

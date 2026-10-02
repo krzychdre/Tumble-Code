@@ -13,6 +13,7 @@ import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export
 import { fileExistsAtPath } from "../../../utils/fs"
 import { modeRulesDir } from "../../config/modeRulesDir"
 import type { DomainHandlerMap } from "./types"
+import { logger } from "../../../utils/logging"
 
 export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 	openCustomModesSettings: async (ctx) => {
@@ -173,7 +174,7 @@ export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 				}
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
-				provider.log(`Failed to export mode ${message.slug}: ${errorMessage}`)
+				logger.error(`Failed to export mode ${message.slug}: ${errorMessage}`)
 
 				// Send error message to webview
 				provider.postMessageToWebview({
@@ -266,7 +267,7 @@ export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			provider.log(`Failed to import mode: ${errorMessage}`)
+			logger.error(`Failed to import mode: ${errorMessage}`)
 
 			// Send error message to webview
 			provider.postMessageToWebview({

@@ -394,9 +394,11 @@ afterAll(() => {
 })
 
 describe("ClineProvider", () => {
-	// provider.log writes through the shared logger.
+	// The provider and its collaborators write through the shared logger.
 	beforeEach(() => {
-		vi.spyOn(logger, "info").mockImplementation(() => {})
+		for (const level of ["debug", "info", "warn", "error"] as const) {
+			vi.spyOn(logger, level).mockImplementation(() => {})
+		}
 	})
 
 	beforeAll(() => {
@@ -1901,8 +1903,8 @@ describe("ClineProvider", () => {
 				listConfig: vi.fn().mockResolvedValue([]),
 			}
 
-			// Spy on log method to verify warning was logged
-			const logSpy = vi.spyOn(provider, "log")
+			// Spy on the logger to verify a warning was logged
+			const loggerWarnSpy = vi.spyOn(logger, "warn")
 
 			// Create history item with non-existent mode
 			const historyItem = {
@@ -1925,7 +1927,7 @@ describe("ClineProvider", () => {
 
 			// Verify fallback to default mode
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "code")
-			expect(logSpy).toHaveBeenCalledWith(
+			expect(loggerWarnSpy).toHaveBeenCalledWith(
 				"Mode 'non-existent-mode' from history no longer exists. Falling back to default mode 'code'.",
 			)
 
@@ -1970,8 +1972,8 @@ describe("ClineProvider", () => {
 					.mockResolvedValue({ name: "test-config", id: "config-id", apiProvider: "anthropic" }),
 			}
 
-			// Spy on log method to verify no warning was logged
-			const logSpy = vi.spyOn(provider, "log")
+			// Spy on the logger to verify no warning was logged
+			const loggerWarnSpy = vi.spyOn(logger, "warn")
 
 			// Create history item with existing custom mode
 			const historyItem = {
@@ -1994,7 +1996,7 @@ describe("ClineProvider", () => {
 
 			// Verify mode was preserved
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "custom-mode")
-			expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining("no longer exists"))
+			expect(loggerWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining("no longer exists"))
 
 			// Verify history item mode was not changed
 			expect(historyItem.mode).toBe("custom-mode")
@@ -2103,8 +2105,8 @@ describe("ClineProvider", () => {
 				activateProfile: vi.fn().mockRejectedValue(new Error("Failed to load config")),
 			}
 
-			// Spy on log method
-			const logSpy = vi.spyOn(provider, "log")
+			// Spy on the logger
+			const loggerWarnSpy = vi.spyOn(logger, "warn")
 
 			// Create history item
 			const historyItem = {
@@ -2122,7 +2124,7 @@ describe("ClineProvider", () => {
 			await expect(provider.createTaskWithHistoryItem(historyItem)).resolves.not.toThrow()
 
 			// Verify error was logged but task restoration continued
-			expect(logSpy).toHaveBeenCalledWith(
+			expect(loggerWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Failed to restore API configuration for mode 'code'"),
 			)
 		})
@@ -2217,7 +2219,7 @@ describe("ClineProvider", () => {
 
 			// Verify error was logged and user was notified (the toast carries
 			// the underlying cause after the generic message)
-			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				expect.stringContaining(
 					"errors.create_api_config: this.providerSettingsManager.saveConfig is not a function",
@@ -2298,7 +2300,7 @@ describe("ClineProvider", () => {
 
 			// Verify error handling (the toast carries the underlying cause
 			// after the generic message)
-			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
 				expect.stringContaining("errors.create_api_config: task.updateApiConfiguration is not a function"),
 			)
@@ -2447,7 +2449,7 @@ describe("ClineProvider", () => {
 				sync.mockRejectedValue(new Error("boom"))
 				cloud.fake.emit("settings-updated")
 				await flush()
-				expect(logger.info).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
+				expect(logger.error).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
 			} finally {
 				cloud.restore()
 			}

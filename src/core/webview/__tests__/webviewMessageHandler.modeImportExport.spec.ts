@@ -40,6 +40,7 @@ import * as os from "os"
 
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export"
 import { webviewMessageHandler } from "../webviewMessageHandler"
+import { logger } from "../../../utils/logging"
 
 function createProvider(globalState: Record<string, unknown> = {}) {
 	const state = { ...globalState }
@@ -58,7 +59,6 @@ function createProvider(globalState: Record<string, unknown> = {}) {
 		},
 		postMessageToWebview: vi.fn(),
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
-		log: vi.fn(),
 	}
 }
 
@@ -67,6 +67,11 @@ const send = (provider: unknown, message: Record<string, unknown>) =>
 
 beforeEach(() => {
 	vi.clearAllMocks()
+	vi.spyOn(logger, "error").mockImplementation(() => {})
+})
+
+afterEach(() => {
+	vi.restoreAllMocks()
 })
 
 describe("webviewMessageHandler: exportMode", () => {
@@ -151,7 +156,7 @@ describe("webviewMessageHandler: exportMode", () => {
 
 		await send(provider, { type: "exportMode", slug: "code" })
 
-		expect(provider.log).toHaveBeenCalledWith("Failed to export mode code: boom")
+		expect(logger.error).toHaveBeenCalledWith("Failed to export mode code: boom")
 		expect(provider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "exportModeResult",
 			success: false,
@@ -250,7 +255,7 @@ describe("webviewMessageHandler: importMode", () => {
 
 		await send(provider, { type: "importMode" })
 
-		expect(provider.log).toHaveBeenCalledWith("Failed to import mode: EACCES")
+		expect(logger.error).toHaveBeenCalledWith("Failed to import mode: EACCES")
 		expect(provider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "importModeResult",
 			success: false,

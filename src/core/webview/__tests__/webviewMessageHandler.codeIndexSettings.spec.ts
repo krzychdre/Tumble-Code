@@ -19,6 +19,7 @@ vi.mock("../../../i18n", () => ({
 vi.mock("../ClineProvider", () => ({ ClineProvider: class {} }))
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
+import { logger } from "../../../utils/logging"
 
 type Manager = {
 	isFeatureEnabled: boolean
@@ -54,7 +55,6 @@ function createProvider(manager: Manager | undefined, currentConfig: Record<stri
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		getCurrentWorkspaceCodeIndexManager: vi.fn(() => manager),
-		log: vi.fn(),
 	}
 	return { provider, state }
 }
@@ -80,6 +80,16 @@ const send = (provider: unknown, codeIndexSettings: unknown) =>
 	webviewMessageHandler(provider as any, { type: "saveCodeIndexSettingsAtomic", codeIndexSettings } as WebviewMessage)
 
 describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
+	beforeEach(() => {
+		for (const level of ["info", "warn", "error"] as const) {
+			vi.spyOn(logger, level).mockImplementation(() => {})
+		}
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
 	it("does nothing without codeIndexSettings", async () => {
 		const { provider } = createProvider(createManager(), {})
 		await send(provider, undefined)
@@ -151,7 +161,7 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 				currentItemUnit: "items",
 			},
 		})
-		expect(provider.log).toHaveBeenCalledWith("Cannot save code index settings: No workspace folder open")
+		expect(logger.warn).toHaveBeenCalledWith("Cannot save code index settings: No workspace folder open")
 	})
 
 	it("applies the settings and initializes an enabled, configured, uninitialized manager", async () => {
@@ -161,7 +171,7 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 
 		expect(manager.handleSettingsChange).toHaveBeenCalledTimes(1)
 		expect(manager.initialize).toHaveBeenCalledWith(provider.contextProxy)
-		expect(provider.log).toHaveBeenCalledWith("Code index manager initialized after settings save")
+		expect(logger.info).toHaveBeenCalledWith("Code index manager initialized after settings save")
 		expect(provider.postMessageToWebview).toHaveBeenCalledTimes(1)
 	})
 
@@ -180,7 +190,7 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 		const { provider } = createProvider(manager, { codebaseIndexEmbedderProvider: "openai" })
 		await send(provider, settings)
 
-		expect(provider.log).toHaveBeenCalledWith("Embedder validation failed after provider change: bad key")
+		expect(logger.warn).toHaveBeenCalledWith("Embedder validation failed after provider change: bad key")
 		expect(provider.postMessageToWebview).toHaveBeenLastCalledWith({
 			type: "indexingStatusUpdate",
 			values: { systemStatus: "Standby", message: "status" },
@@ -193,7 +203,7 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 		const { provider } = createProvider(manager, { codebaseIndexEmbedderProvider: "openai-compatible" })
 		await send(provider, settings)
 
-		expect(provider.log).toHaveBeenCalledWith("Settings change handling error: hiccup")
+		expect(logger.error).toHaveBeenCalledWith("Settings change handling error: hiccup")
 		expect(manager.initialize).toHaveBeenCalledTimes(1)
 	})
 
@@ -202,7 +212,7 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 		const { provider } = createProvider(manager, { codebaseIndexEmbedderProvider: "openai-compatible" })
 		await send(provider, settings)
 
-		expect(provider.log).toHaveBeenCalledWith("Code index initialization failed: qdrant down")
+		expect(logger.error).toHaveBeenCalledWith("Code index initialization failed: qdrant down")
 		expect(provider.postMessageToWebview).toHaveBeenLastCalledWith({
 			type: "indexingStatusUpdate",
 			values: { systemStatus: "Standby", message: "status" },
@@ -214,7 +224,7 @@ describe("webviewMessageHandler: saveCodeIndexSettingsAtomic", () => {
 		provider.contextProxy.setValue.mockRejectedValueOnce(new Error("disk full"))
 		await send(provider, settings)
 
-		expect(provider.log).toHaveBeenCalledWith("Error saving code index settings: disk full")
+		expect(logger.error).toHaveBeenCalledWith("Error saving code index settings: disk full")
 		expect(provider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "codeIndexSettingsSaved",
 			success: false,

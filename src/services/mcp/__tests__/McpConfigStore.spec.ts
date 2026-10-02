@@ -146,11 +146,11 @@ describe("McpConfigStore", () => {
 			expect(await store.readServerOrder("project")).toEqual([])
 
 			await writeProjectFile("{ half written")
-			const consoleError = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 			try {
 				expect(await store.readServerOrder("project")).toEqual([])
 			} finally {
-				consoleError.mockRestore()
+				loggerErrorSpy.mockRestore()
 			}
 		})
 	})

@@ -106,7 +106,6 @@ describe("API forwards the delegation events DelegationService emits on the prov
 				store.items.set(next.id, next)
 			}),
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
-			log: vi.fn(),
 			getCurrentTask: vi.fn(() => currentTask),
 			getCurrentTaskStack: vi.fn(() => (currentTask ? [currentTask.taskId] : [])),
 			clearCurrentTask: vi.fn(async () => {

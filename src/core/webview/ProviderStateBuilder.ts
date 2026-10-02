@@ -239,7 +239,6 @@ interface ProviderStateSources {
 	/** The provider's own `getState()`, so the webview state follows it (and test spies on it). */
 	getState(): Promise<ProviderState>
 	getTaskHistoryStore(): Promise<Pick<TaskHistoryStore, "get" | "getAll"> & { readonly revision?: number }>
-	log(message: string): void
 	getCurrentTask(): Pick<Task, "taskId" | "clineMessages" | "todoList" | "messageQueueService"> | undefined
 	/** Advances and returns the clineMessages sequence number (see ClineProvider.clineMessagesSeq). */
 	nextClineMessagesSeq(): number
@@ -358,7 +357,7 @@ export class ProviderStateBuilder {
 		try {
 			taskHistoryStore = await this.sources.getTaskHistoryStore()
 		} catch (error) {
-			this.sources.log(
+			logger.warn(
 				`[state] TaskHistoryStore unavailable, sending empty history: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		}

@@ -152,16 +152,16 @@ describe("RooIgnoreController", () => {
 			mockReadFile.mockRejectedValue(new Error("Test file read error"))
 
 			// Spy on logger.error
-			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Initialize controller - shouldn't throw
 			await controller.initialize()
 
 			// Verify error was logged
-			expect(consoleSpy).toHaveBeenCalledWith("Unexpected error loading .rooignore:", expect.any(Error))
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Unexpected error loading .rooignore:", expect.any(Error))
 
 			// Cleanup
-			consoleSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 	})
 
@@ -363,17 +363,17 @@ describe("RooIgnoreController", () => {
 			})
 
 			// Spy on logger.error
-			const consoleSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Should return empty array on error (fail closed)
 			const result = controller.filterPaths(["file1.txt", "file2.txt"])
 			expect(result).toEqual([])
 
 			// Verify error was logged
-			expect(consoleSpy).toHaveBeenCalledWith("Error filtering paths:", expect.any(Error))
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Error filtering paths:", expect.any(Error))
 
 			// Cleanup
-			consoleSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 
 		/**

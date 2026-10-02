@@ -426,9 +426,7 @@ export class TaskApiLoop {
 			} finally {
 				if (countersBefore) {
 					const delta = diffPerfCounters(countersBefore, perfCounters.snapshot())
-					this.access.providerRef
-						.deref()
-						?.log(`[perf] task ${this.access.taskId} request cycle: ${formatPerfCounters(delta)}`)
+					logger.debug(`[perf] task ${this.access.taskId} request cycle: ${formatPerfCounters(delta)}`)
 				}
 			}
 

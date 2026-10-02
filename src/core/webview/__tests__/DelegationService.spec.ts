@@ -81,7 +81,6 @@ function makeHost(store: InMemoryHistoryStore, overrides: Partial<DelegationHost
 		}),
 		updateTaskHistory: vi.fn(async (next: HistoryItem) => store.upsert(next)),
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
-		log: vi.fn(),
 		getCurrentTask: vi.fn().mockReturnValue(undefined),
 		getCurrentTaskStack: vi.fn().mockReturnValue([]),
 		clearCurrentTask: vi.fn().mockResolvedValue(undefined),

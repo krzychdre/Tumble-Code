@@ -175,7 +175,7 @@ describe("TerminalProcess", () => {
 
 		it("handles terminals without shell integration", async () => {
 			// Temporarily suppress the expected logger.warn for this test
-			const consoleWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+			const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
 			// Create a terminal without shell integration
 			const noShellTerminal = {
@@ -219,7 +219,7 @@ describe("TerminalProcess", () => {
 			expect(commandSubmitted).toBe(true)
 
 			// Restore the original logger.warn
-			consoleWarnSpy.mockRestore()
+			loggerWarnSpy.mockRestore()
 		})
 
 		it("completes without warning when the execution stream is empty after submission", async () => {

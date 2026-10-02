@@ -8,6 +8,7 @@ import { openFile } from "../../../integrations/misc/open-file"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { generateErrorDiagnostics } from "../diagnosticsHandler"
 import type { DomainHandlerMap, MessageHandler } from "./types"
+import { logger } from "../../../utils/logging"
 
 const openDebugHistory: MessageHandler = async (ctx, message) => {
 	const { provider } = ctx
@@ -58,7 +59,7 @@ const openDebugHistory: MessageHandler = async (ctx, message) => {
 		await vscode.window.showTextDocument(doc, { preview: true })
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
-		provider.log(`Error opening debug history: ${errorMessage}`)
+		logger.error(`Error opening debug history: ${errorMessage}`)
 		vscode.window.showErrorMessage(`Failed to open debug history: ${errorMessage}`)
 	}
 }
@@ -79,7 +80,7 @@ export const debugHandlers: DomainHandlerMap<"debug"> = {
 				await vscode.commands.executeCommand("markdown.showPreview", doc.uri)
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
-				provider.log(`Error opening markdown preview: ${errorMessage}`)
+				logger.error(`Error opening markdown preview: ${errorMessage}`)
 				vscode.window.showErrorMessage(`Failed to open markdown preview: ${errorMessage}`)
 			}
 		}
@@ -119,7 +120,6 @@ export const debugHandlers: DomainHandlerMap<"debug"> = {
 			taskId: currentTask.taskId,
 			globalStoragePath: provider.contextProxy.globalStorageUri.fsPath,
 			values: message.values,
-			log: (msg) => provider.log(msg),
 		})
 	},
 }

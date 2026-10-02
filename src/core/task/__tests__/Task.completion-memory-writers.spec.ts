@@ -86,7 +86,6 @@ type ProviderStandIn = {
 	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
 	clearTask: typeof ClineProvider.prototype.clearTask
 	cancelTask: typeof ClineProvider.prototype.cancelTask
-	log: (message: string) => void
 	delegation: { detach: (parentTaskId: string, childTaskId: string) => Promise<boolean> }
 	context: { globalStorageUri: { fsPath: string } }
 	getState: () => Promise<{ mode?: unknown }>
@@ -112,7 +111,6 @@ function makeProvider(): ProviderStandIn {
 		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
 		clearTask: ClineProvider.prototype.clearTask,
 		cancelTask: ClineProvider.prototype.cancelTask,
-		log: vi.fn(),
 		delegation: {
 			detach: vi.fn().mockResolvedValue(false) as unknown as (
 				parentTaskId: string,
@@ -134,7 +132,6 @@ function makeProvider(): ProviderStandIn {
 		},
 	} as ProviderStandIn
 	provider.taskSlot = new TaskSlot({
-		log: (message) => provider.log(message),
 		getState: () => provider.getState(),
 		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
 		removeTaskEventListeners: (task) => {

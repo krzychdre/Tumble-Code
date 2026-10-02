@@ -120,7 +120,7 @@ describe("CodeActionProvider", () => {
 		})
 
 		it("should handle errors gracefully", () => {
-			const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 			// Reset the workspace mock to return true for enableCodeActions
 			const mockGet = vi.fn().mockReturnValue(true)
@@ -135,9 +135,9 @@ describe("CodeActionProvider", () => {
 			const actions = provider.provideCodeActions(mockDocument, mockRange, mockContext)
 
 			expect(actions).toEqual([])
-			expect(consoleErrorSpy).toHaveBeenCalledWith("Error providing code actions:", expect.any(Error))
+			expect(loggerErrorSpy).toHaveBeenCalledWith("Error providing code actions:", expect.any(Error))
 
-			consoleErrorSpy.mockRestore()
+			loggerErrorSpy.mockRestore()
 		})
 	})
 })

@@ -46,7 +46,6 @@ describe("Task dispose method", () => {
 				globalStorageUri: { fsPath: "/test/path" },
 			},
 			getState: vi.fn().mockResolvedValue({ mode: "code" }),
-			log: vi.fn(),
 		}
 
 		// Mock API configuration
@@ -109,28 +108,28 @@ describe("Task dispose method", () => {
 		})
 
 		// Spy on logger.error
-		const consoleErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+		const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
 		// Call dispose - should not throw
 		expect(() => task.dispose()).not.toThrow()
 
 		// Verify error was logged
-		expect(consoleErrorSpy).toHaveBeenCalledWith("Error removing event listeners:", expect.any(Error))
+		expect(loggerErrorSpy).toHaveBeenCalledWith("Error removing event listeners:", expect.any(Error))
 
 		// Restore
 		task.removeAllListeners = originalRemoveAllListeners
-		consoleErrorSpy.mockRestore()
+		loggerErrorSpy.mockRestore()
 	})
 
 	test("should clean up all resources in correct order", () => {
 		const removeAllListenersSpy = vi.spyOn(task, "removeAllListeners")
-		const consoleLogSpy = vi.spyOn(logger, "debug").mockImplementation(() => {})
+		const loggerDebugSpy = vi.spyOn(logger, "debug").mockImplementation(() => {})
 
 		// Call dispose
 		task.dispose()
 
 		// Verify dispose was called and logged
-		expect(consoleLogSpy).toHaveBeenCalledWith(
+		expect(loggerDebugSpy).toHaveBeenCalledWith(
 			expect.stringContaining(`[Task#dispose] disposing task ${task.taskId}.${task.instanceId}`),
 		)
 
@@ -138,7 +137,7 @@ describe("Task dispose method", () => {
 		expect(removeAllListenersSpy).toHaveBeenCalledOnce()
 
 		// Clean up
-		consoleLogSpy.mockRestore()
+		loggerDebugSpy.mockRestore()
 	})
 
 	test("should prevent memory leaks by removing listeners before other cleanup", () => {
