@@ -29,6 +29,7 @@ import { type ClineProvider } from "../webview/ClineProvider"
 import { type AutoApprovalOverride } from "./Task"
 import pWaitFor from "p-wait-for"
 import { logger } from "../../utils/logging"
+import { noteToolCallKind, noteToolFailure } from "../diagnostics/ErrorReporter"
 
 /**
  * How long a headless subagent's interactive ask (followup question) may wait
@@ -621,6 +622,12 @@ export class TaskAskSay {
 			throw new Error(`[TumbleCode#say] task ${this.access.taskId}.${this.access.instanceId} aborted`)
 		}
 
+		// An error row shown while a tool call runs belongs to that call's error report
+		// (a no-op unless error reporting is active and a tool call is being watched).
+		if ((type === "error" || type === "diff_error") && !partial) {
+			noteToolFailure(this.access, text, type)
+		}
+
 		if (partial !== undefined) {
 			const lastMessage = this.access.clineMessages.at(-1)
 
@@ -722,6 +729,7 @@ export class TaskAskSay {
 	}
 
 	async sayAndCreateMissingParamError(toolName: ToolName, paramName: string, relPath?: string) {
+		noteToolCallKind(this.access, "invalid_tool_call")
 		await this.say(
 			"error",
 			`Roo tried to use ${toolName}${

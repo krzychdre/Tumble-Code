@@ -31,6 +31,7 @@ import { type ApiHandler } from "../../api"
 import { getEffectiveApiHistory } from "../condense"
 
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
+import { type ErrorReportTask, reportToolResultIdRepair } from "../diagnostics/ErrorReporter"
 
 import { defaultModeSlug } from "../../shared/modes"
 
@@ -247,7 +248,9 @@ export class TaskMessageLog {
 		// the user responds - the tool_use blocks get condensed away, leaving orphaned tool_results.
 		const messageToAdd = convertOrphanedToolResultsToText(message, lastEffective?.role)
 
-		const validatedMessage = validateAndFixToolResultIds(messageToAdd, historyForValidation)
+		const validatedMessage = validateAndFixToolResultIds(messageToAdd, historyForValidation, (error) =>
+			reportToolResultIdRepair(this.access as unknown as ErrorReportTask, error),
+		)
 		return { ...validatedMessage, ts: Date.now() }
 	}
 
@@ -349,7 +352,9 @@ export class TaskMessageLog {
 		const effectiveHistoryForValidation = getEffectiveApiHistory(this.access.apiConversationHistory)
 		const lastEffective = effectiveHistoryForValidation[effectiveHistoryForValidation.length - 1]
 		const historyForValidation = lastEffective?.role === "assistant" ? effectiveHistoryForValidation : []
-		const validatedMessage = validateAndFixToolResultIds(userMessage, historyForValidation)
+		const validatedMessage = validateAndFixToolResultIds(userMessage, historyForValidation, (error) =>
+			reportToolResultIdRepair(this.access as unknown as ErrorReportTask, error),
+		)
 
 		return { ...validatedMessage, ts: Date.now() }
 	}

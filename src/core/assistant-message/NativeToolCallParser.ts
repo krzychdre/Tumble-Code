@@ -321,6 +321,16 @@ export class NativeToolCallParser {
 	}
 
 	/**
+	 * The name and the arguments of a streaming tool call exactly as streamed so far, before
+	 * any parsing. Read by the error reports, which need the raw text of a call that later
+	 * fails to parse.
+	 */
+	public getStreamingToolCallRaw(id: string): { name: string; arguments: string } | undefined {
+		const toolCall = this.streamingToolCalls.get(id)
+		return toolCall ? { name: toolCall.name, arguments: toolCall.argumentsAccumulator } : undefined
+	}
+
+	/**
 	 * Finalize a streaming tool call.
 	 * Parses the complete JSON and returns the final ToolUse or McpToolUse.
 	 */

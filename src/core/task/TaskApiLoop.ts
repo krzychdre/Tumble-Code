@@ -54,6 +54,15 @@ import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
 import type { Task } from "./Task"
 import { logger } from "../../utils/logging"
+import {
+	captureApiRequest,
+	reportApiError,
+	reportEmptyResponse,
+	reportMistakeLimit,
+} from "../diagnostics/ErrorReporter"
+
+/** Thrown when the user stops at the auto-approval limit; a decision, not an API failure. */
+const AUTO_APPROVAL_LIMIT_MESSAGE = "Auto-approval limit reached and user did not approve continuation"
 
 /**
  * Interface for Task access needed by TaskApiLoop.
@@ -232,6 +241,23 @@ export class StreamIdleTimeoutError extends Error {
 		super(`The provider sent no data for ${Math.round(idleTimeoutMs / 1000)} seconds; the stream was closed.`)
 		this.name = "StreamIdleTimeoutError"
 	}
+}
+
+/**
+ * Errors that reach handleStreamError as loop control, not as an API failure: the user's
+ * stop at the auto-approval limit, a declined retry and the background-task endings
+ * RetryHandler throws after it has already seen (and the first-chunk path reported) the
+ * underlying API error.
+ */
+function isLoopControlError(error: unknown): boolean {
+	if (!(error instanceof Error)) {
+		return false
+	}
+	return (
+		error.message === AUTO_APPROVAL_LIMIT_MESSAGE ||
+		error.name === "ApiRetryDeclinedError" ||
+		error.name === "BackgroundRetriesExhaustedError"
+	)
 }
 
 /**
@@ -459,6 +485,10 @@ export class TaskApiLoop {
 			// Track consecutive mistake errors in telemetry
 			TelemetryService.instance.capture(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {
 				taskId: this.access.taskId,
+			})
+			reportMistakeLimit(this.task, {
+				limit: this.access.consecutiveMistakeLimit,
+				lastToolName: this.access.lastToolErrorName,
 			})
 			TelemetryService.instance.captureException(
 				new ConsecutiveMistakeError(
@@ -921,6 +951,7 @@ export class TaskApiLoop {
 					this.access.lastToolErrorName = undefined
 
 					if (this.access.consecutiveNoToolUseCount >= 2) {
+						reportEmptyResponse(this.task, "no_tool_call", currentItem.retryAttempt)
 						await this.access.askSay.say("error", "MODEL_NO_TOOLS_USED")
 						this.access.consecutiveMistakeCount++
 					}
@@ -1088,6 +1119,9 @@ export class TaskApiLoop {
 		stack: StackItem[],
 	): Promise<"continue" | "return_true" | "return_false"> {
 		this.access.consecutiveNoAssistantMessagesCount++
+		// Every empty answer is reported (not only the second one the user sees as an
+		// error row): the first is the one whose request explains the failure.
+		reportEmptyResponse(this.task, "no_assistant_messages", currentItem.retryAttempt)
 
 		if (this.access.consecutiveNoAssistantMessagesCount >= 2) {
 			await this.access.askSay.say("error", "MODEL_NO_ASSISTANT_MESSAGES")
@@ -1178,6 +1212,11 @@ export class TaskApiLoop {
 		stack: StackItem[],
 	): Promise<"continue" | "return_true" | "return_false"> {
 		if (!this.access.abandoned) {
+			// Before abortStream: the report reads the partial answer as it stood when the
+			// stream failed. An error the first-chunk path already reported is skipped there.
+			if (!this.access.abort && !isLoopControlError(error)) {
+				reportApiError(this.task, error, currentItem.retryAttempt ?? 0)
+			}
 			const cancelReason: ClineApiReqCancelReason = this.access.abort ? "user_cancelled" : "streaming_failed"
 			const rawErrorMessage = apiErrorDisplayText(error)
 			const streamingFailedMessage = this.access.abort
@@ -1382,7 +1421,7 @@ export class TaskApiLoop {
 		)
 
 		if (!approvalResult.shouldProceed) {
-			throw new Error("Auto-approval limit reached and user did not approve continuation")
+			throw new Error(AUTO_APPROVAL_LIMIT_MESSAGE)
 		}
 
 		// Build tools array
@@ -1411,6 +1450,35 @@ export class TaskApiLoop {
 		}
 
 		this.access.skipPrevResponseIdOnce = false
+
+		// Kept by reference, and only while error reporting is active (signed in to the
+		// cloud): the request a failure report about this attempt describes.
+		captureApiRequest(this.task, () => ({
+			systemPrompt,
+			messages: cleanConversationHistory as unknown as { role: string; content: unknown }[],
+			toolNames: allTools.map((tool) => ("function" in tool ? tool.function.name : String(tool.type))),
+			params: {
+				mode,
+				toolProtocol: getApiProtocol(
+					this.access.apiConfiguration.apiProvider &&
+						!isRetiredProvider(this.access.apiConfiguration.apiProvider)
+						? this.access.apiConfiguration.apiProvider
+						: undefined,
+					this.access.api.getModel().id,
+				),
+				temperature: this.access.apiConfiguration.modelTemperature ?? undefined,
+				maxTokens: getModelMaxOutputTokens({
+					modelId: this.access.api.getModel().id,
+					model: modelInfo,
+					settings: this.access.apiConfiguration,
+				}),
+				reasoningEffort:
+					this.access.apiConfiguration.enableReasoningEffort === false
+						? undefined
+						: this.access.apiConfiguration.reasoningEffort,
+				...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls: true } : {}),
+			},
+		}))
 
 		// Create API stream
 		const stream = this.access.api.createMessage(
@@ -1453,6 +1521,11 @@ export class TaskApiLoop {
 		} catch (error) {
 			this.access.isWaitingForFirstChunk = false
 			this.access.currentRequestAbortController = undefined
+
+			// One report per failed attempt; the stream-error path skips this error object.
+			if (!this.access.abort) {
+				reportApiError(this.task, error, retryAttempt)
+			}
 
 			// Handle errors with retry logic (S3: the dispatch lives in
 			// RetryHandler; the callback re-enters this generator for the

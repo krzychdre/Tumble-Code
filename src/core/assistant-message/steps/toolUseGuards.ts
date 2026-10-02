@@ -10,6 +10,7 @@ import { isValidToolName, validateToolUse } from "../../tools/validateToolUse"
 import { formatResponse } from "../../prompts/responses"
 import { sanitizeToolUseId } from "../../../utils/tool-id"
 import { tryAutoMaterializeDirectCall } from "../../task/deferred-tools-resolver"
+import { noteToolCallKind } from "../../diagnostics/ErrorReporter"
 
 /*
  * The checks a tool_use block passes before its tool runs, in the order
@@ -265,6 +266,9 @@ export async function stopRepeatedToolCall(
 		// Add user feedback to chat.
 		await task.askSay.say("user_feedback", text, images)
 	}
+
+	// Reported as the mistake limit, through the probe of this call.
+	noteToolCallKind(task, "mistake_limit")
 
 	// Track tool repetition in telemetry as an exception and an event.
 	TelemetryService.instance.capture(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {

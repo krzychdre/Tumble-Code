@@ -34,6 +34,7 @@ import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvide
 import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
 import { IncrementalReasoningFormatter } from "./reasoningFormatter"
 import { logger } from "../../utils/logging"
+import { captureFinishReason, captureStreamedToolCall } from "../diagnostics/ErrorReporter"
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 
@@ -272,12 +273,14 @@ export class TaskStreamProcessor {
 				// Process finish reason through the per-task parser instance
 				// This replaces direct provider calls to NativeToolCallParser.processFinishReason
 				this.toolCallHandler.processFinishReason(chunk.finishReason)
+				captureFinishReason(this._task, chunk.finishReason)
 				break
 			}
 
 			case "tool_call": {
 				// Legacy: Handle complete tool calls (for backward compatibility)
 				// Convert native tool call to ToolUse format
+				captureStreamedToolCall(this._task, { id: chunk.id, name: chunk.name, arguments: chunk.arguments })
 				const toolUse = NativeToolCallParser.parseToolCall({
 					id: chunk.id,
 					name: chunk.name as ToolName,

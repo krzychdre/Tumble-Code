@@ -4,6 +4,7 @@ import { Task } from "../task/Task"
 import type { ToolUse, HandleError, PushToolResult, AskApproval, NativeToolArgs } from "../../shared/tools"
 import { clearToolStreamState, getToolStreamState } from "./toolStreamState"
 import { logger } from "../../utils/logging"
+import { noteToolCallKind } from "../diagnostics/ErrorReporter"
 
 /**
  * Callbacks passed to tool execution
@@ -194,6 +195,7 @@ export abstract class BaseTool<TName extends ToolName> {
 			// field. Embedding it in the message would put it inside a serialized Error and
 			// the model would receive it escaped twice.
 			const errorMessage = `Failed to parse ${this.name} parameters: ${error instanceof Error ? error.message : String(error)}`
+			noteToolCallKind(task, "invalid_tool_call")
 			await callbacks.handleError(`parsing ${this.name} args`, new Error(errorMessage), this.name)
 			// Note: handleError already emits a tool_result via formatResponse.toolError in the caller.
 			// Do NOT call pushToolResult here to avoid duplicate tool_result payloads.

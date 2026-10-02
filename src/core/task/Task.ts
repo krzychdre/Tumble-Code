@@ -147,6 +147,7 @@ import { TaskLifecycle } from "./TaskLifecycle"
 import { TaskSubtasks } from "./TaskSubtasks"
 import { TaskApiLoop } from "./TaskApiLoop"
 import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
+import { noteToolFailure } from "../diagnostics/ErrorReporter"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -1598,6 +1599,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// stale name would invite a pointless re-call of a tool that had succeeded.
 		this.lastToolErrorName = toolName
 		this.tokenTracking.recordToolError(toolName, error)
+		// Attach the error to the error report of the tool call being run, if any.
+		noteToolFailure(this, error)
 	}
 
 	// Getters: status and queue live in TaskAskSay (which owns the pending asks),

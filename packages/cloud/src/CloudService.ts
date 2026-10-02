@@ -2,6 +2,7 @@ import type { Disposable, ExtensionContext } from "vscode"
 import EventEmitter from "events"
 
 import type {
+	ErrorReport,
 	TelemetryEvent,
 	ClineMessage,
 	CloudServiceEvents,
@@ -292,6 +293,24 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 	public captureEvent(event: TelemetryEvent): void {
 		this.ensureInitialized()
 		this.telemetryClient!.capture(event)
+	}
+
+	/**
+	 * Whether error reports may be sent: signed in to the cloud and telemetry
+	 * not switched off by the environment. Never throws, so a caller can use it
+	 * as a cheap gate before building anything.
+	 */
+	public isErrorReportingEnabled(): boolean {
+		if (!this.isInitialized || !this._telemetryClient) {
+			return false
+		}
+
+		return this.isAuthenticated() && this._telemetryClient.isTelemetryEnabled()
+	}
+
+	public async sendErrorReport(report: ErrorReport): Promise<void> {
+		this.ensureInitialized()
+		await this.telemetryClient!.sendErrorReport(report)
 	}
 
 	// ShareService

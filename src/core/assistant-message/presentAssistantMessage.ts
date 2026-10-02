@@ -33,6 +33,7 @@ import {
 	rejectUnknownTool,
 } from "./steps/toolUseRun"
 import { logger } from "../../utils/logging"
+import { beginToolCallProbe, finishToolCallProbe, noteToolCallKind } from "../diagnostics/ErrorReporter"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -146,16 +147,27 @@ export async function presentAssistantMessage(task: Task) {
 		return
 	}
 
-	switch (block.type) {
-		case "mcp_tool_use":
-			await presentMcpToolUse(task, block as McpToolUse)
-			break
-		case "text":
-			await presentText(task, block)
-			break
-		case "tool_use":
-			await presentToolUse(task, block as ToolUse)
-			break
+	// A complete tool call is watched while it runs, so a failure becomes one error report
+	// (only while error reporting is active; see core/diagnostics/ErrorReporter.ts).
+	const probe =
+		(block.type === "tool_use" || block.type === "mcp_tool_use") && !block.partial
+			? beginToolCallProbe(task, block)
+			: undefined
+
+	try {
+		switch (block.type) {
+			case "mcp_tool_use":
+				await presentMcpToolUse(task, block as McpToolUse)
+				break
+			case "text":
+				await presentText(task, block)
+				break
+			case "tool_use":
+				await presentToolUse(task, block as ToolUse)
+				break
+		}
+	} finally {
+		finishToolCallProbe(task, probe)
 	}
 
 	// Seeing out of bounds is fine, it means that the next too call is being
@@ -342,6 +354,7 @@ async function presentText(task: Task, block: { content?: string; partial?: bool
  */
 async function presentToolUse(task: Task, block: ToolUse): Promise<void> {
 	if (await rejectMissingToolCallId(task, block)) {
+		noteToolCallKind(task, "invalid_tool_call")
 		return
 	}
 	const toolCallId = block.id as string
@@ -370,6 +383,7 @@ async function presentToolUse(task: Task, block: ToolUse): Promise<void> {
 	}
 
 	if (!block.partial && rejectMalformedToolCall(task, block, toolCallId, stateExperiments)) {
+		noteToolCallKind(task, "invalid_tool_call")
 		return
 	}
 
@@ -392,6 +406,7 @@ async function presentToolUse(task: Task, block: ToolUse): Promise<void> {
 			stateExperiments,
 		}))
 	) {
+		noteToolCallKind(task, "invalid_tool_call")
 		return
 	}
 
@@ -448,5 +463,6 @@ async function presentToolUse(task: Task, block: ToolUse): Promise<void> {
 	}
 
 	// Not a custom tool - handle as unknown tool error
+	noteToolCallKind(task, "invalid_tool_call")
 	await rejectUnknownTool(task, block, toolCallId)
 }
