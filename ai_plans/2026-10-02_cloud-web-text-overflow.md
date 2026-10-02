@@ -39,7 +39,7 @@ The owner (translated): "Clean up the CSS, I see problems with text sliding out.
 | Task list, empty filtered state (phone) | `.filter-chip` | "Search:" squeezed to one letter per line beside a long value | The chip was `inline-flex`, so the label text and `<b>` value were flex items fighting for width | `display: inline-block; text-align: left`; the value wraps as text |
 | Sign-in error, forbidden (phone) | `.empty-lead`, `.empty-hint`, `h1` | A long reason, a URL or an IPv6 address pushed the page to 687px / 593px | No break opportunity | `.empty { overflow-wrap: anywhere }` |
 | Metrics | Daily table | "498,775,624$4938.2600": tokens and cost ran into each other | Fixed 5rem / 5.5rem columns (sized for the abbreviated figures of the breakdown cards) with full integers | `.chart-table table.breakdown` columns 2 and 3: `width: 7rem` |
-| Metrics (900px) | `.stat-value` | "$14814.7400" ran 12px past a 190px tile | Fixed stat font size | `.stat-card { container-type: inline-size; min-width: 0 }`, `.stat-value { font-size: min(var(--t-stat), 12cqi); overflow-wrap: anywhere }` |
+| Metrics (900px) | `.stat-value` | "$14814.7400" ran 12px past a 190px tile | Fixed stat font size | `.stat-card { container-type: inline-size; min-width: 0 }`, a type-scale token `--t-stat-fit: min(var(--t-stat), 12cqi)` used by `.stat-value` (every font size must come from the scale, `test_web_a11y_csp.py`) |
 | Task detail (phone) | Nested subtask row | "↳" alone on a line above the title | The arrow was followed by a normal space | `content: "↳\00a0"` (no-break space) |
 
 Not defects (reported by the probe, left as they are):
