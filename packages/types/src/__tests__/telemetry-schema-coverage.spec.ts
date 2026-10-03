@@ -89,4 +89,37 @@ describe("tumbleCodeTelemetryEventSchema coverage", () => {
 
 		expect(result.success).toBe(true)
 	})
+
+	describe("clientKind", () => {
+		const base = {
+			appName: "a",
+			appVersion: "1",
+			vscodeVersion: "1",
+			platform: "linux",
+			editorName: "wrapper|cli|",
+			language: "en",
+			mode: "code",
+		}
+
+		// The dedicated schemas strip unknown keys, so the field must be part of
+		// the shared app properties or an LLM Completion would lose it.
+		it("keeps clientKind and clientVersion on an LLM Completion", () => {
+			const result = tumbleCodeTelemetryEventSchema.safeParse({
+				type: TelemetryEventName.LLM_COMPLETION,
+				properties: { ...base, clientKind: "cli", clientVersion: "0.2.0", inputTokens: 1, outputTokens: 2 },
+			})
+
+			expect(result.success).toBe(true)
+			expect(result.data?.properties).toMatchObject({ clientKind: "cli", clientVersion: "0.2.0" })
+		})
+
+		it("still accepts an event from a producer that does not send clientKind", () => {
+			const result = tumbleCodeTelemetryEventSchema.safeParse({
+				type: TelemetryEventName.LLM_COMPLETION,
+				properties: { ...base, inputTokens: 1, outputTokens: 2 },
+			})
+
+			expect(result.success).toBe(true)
+		})
+	})
 })

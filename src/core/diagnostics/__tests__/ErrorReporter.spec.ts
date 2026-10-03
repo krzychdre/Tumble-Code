@@ -193,6 +193,20 @@ describe("signed in", () => {
 		])
 	})
 
+	it("names the client and the app from the provider's app properties", async () => {
+		const appProperties = {
+			appVersion: "1.2.3",
+			editorName: "wrapper|cli|tumble-code-cli|0.2.0",
+			platform: "linux",
+			clientKind: "cli" as const,
+			clientVersion: "0.2.0",
+		}
+		reportApiError(makeTask({ providerRef: new WeakRef({ appProperties }) }), new Error("boom"), 0)
+
+		const [report] = await sentReports()
+		expect(report).toMatchObject(appProperties)
+	})
+
 	it("reports an empty answer and the mistake limit", async () => {
 		const task = makeTask({ streamProcessor: undefined })
 		reportEmptyResponse(task, "no_assistant_messages", 1)

@@ -9,6 +9,7 @@ import type {
 	LlmToolOutcome,
 	ModelInfo,
 	ProviderSettings,
+	StaticAppProperties,
 	TokenUsage,
 } from "@tumble-code/types"
 import { ERROR_REPORT_MAX_MESSAGE_CHARS, ERROR_REPORT_MAX_TEXT_CHARS } from "@tumble-code/types"
@@ -58,7 +59,11 @@ export interface ErrorReportTask {
 	apiConversationHistory: readonly SentMessage[]
 	getTokenUsage(): TokenUsage
 	getTaskMode(): Promise<string>
-	providerRef?: WeakRef<{ appProperties?: { appVersion?: string; editorName?: string; platform?: string } }>
+	providerRef?: WeakRef<{
+		appProperties?: Partial<
+			Pick<StaticAppProperties, "appVersion" | "editorName" | "platform" | "clientKind" | "clientVersion">
+		>
+	}>
 	streamProcessor?: {
 		assistantMessage: string
 		reasoningMessage: string
@@ -300,6 +305,8 @@ function snapshot(
 		taskId: task.taskId,
 		appVersion: appProperties?.appVersion,
 		editorName: appProperties?.editorName,
+		clientKind: appProperties?.clientKind,
+		clientVersion: appProperties?.clientVersion,
 		platform: appProperties?.platform ?? process.platform,
 		provider: task.apiConfiguration?.apiProvider,
 		modelId: model.id,

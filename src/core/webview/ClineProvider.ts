@@ -36,6 +36,7 @@ import {
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 	WebviewMessage,
+	readCliRuntimeEnv,
 } from "@tumble-code/types"
 import { CloudService } from "@tumble-code/cloud"
 
@@ -2158,6 +2159,8 @@ export class ClineProvider
 	private getAppProperties(): StaticAppProperties {
 		if (!this._appProperties) {
 			const packageJSON = this.context.extension?.packageJSON
+			// The CLI hosts this same bundle; the cloud tells the clients apart by this.
+			const { isCliRuntime, cliVersion } = readCliRuntimeEnv(process.env)
 
 			this._appProperties = {
 				appName: packageJSON?.name ?? Package.name,
@@ -2165,6 +2168,8 @@ export class ClineProvider
 				vscodeVersion: vscode.version,
 				platform: process.platform,
 				editorName: vscode.env.appName,
+				clientKind: isCliRuntime ? "cli" : "vscode",
+				...(isCliRuntime && cliVersion ? { clientVersion: cliVersion } : {}),
 			}
 		}
 

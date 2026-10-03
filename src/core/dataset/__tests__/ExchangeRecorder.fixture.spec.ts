@@ -163,7 +163,12 @@ function makeTask() {
 		getTokenUsage: () => ({ contextTokens: 1 }) as any,
 		getTaskMode: async () => "code",
 		providerRef: new WeakRef({
-			appProperties: { appVersion: "1.0.0", editorName: "Visual Studio Code", platform: "linux" },
+			appProperties: {
+				appVersion: "1.0.0",
+				editorName: "Visual Studio Code",
+				platform: "linux",
+				clientKind: "vscode" as const,
+			},
 		}),
 		streamProcessor: {
 			assistantMessage: "",

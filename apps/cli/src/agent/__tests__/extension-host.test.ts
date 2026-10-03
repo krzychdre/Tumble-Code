@@ -15,6 +15,7 @@ import {
 
 import { DEFAULT_FLAGS } from "@/types/index.js"
 import { getPermissionSettings } from "@/lib/utils/permissions.js"
+import { VERSION } from "@/lib/utils/version.js"
 
 import { type ExtensionHostOptions, ExtensionHost } from "../extension-host.js"
 import { ExtensionClient } from "../extension-client.js"
@@ -183,6 +184,12 @@ describe("ExtensionHost", () => {
 			delete process.env.ROO_CLI_RUNTIME
 			createTestHost()
 			expect(process.env.ROO_CLI_RUNTIME).toBe("1")
+		})
+
+		it("should publish the CLI version for the extension's telemetry", () => {
+			delete process.env.ROO_CLI_VERSION
+			createTestHost()
+			expect(process.env.ROO_CLI_VERSION).toBe(VERSION)
 		})
 
 		it("should point the core at ~/.roo/mcp.json for global MCP servers by default", () => {

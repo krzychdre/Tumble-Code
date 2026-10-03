@@ -293,6 +293,24 @@ describe("incremental storage", () => {
 
 		expect(llmExchangeSchema.safeParse(exchange).success).toBe(true)
 	})
+
+	it("names the client and the app from the provider's app properties", async () => {
+		record(true)
+		const appProperties = {
+			appVersion: "1.2.3",
+			editorName: "wrapper|cli|tumble-code-cli|0.2.0",
+			platform: "linux",
+			clientKind: "cli" as const,
+			clientVersion: "0.2.0",
+		}
+		const task = { ...makeTask(), providerRef: new WeakRef({ appProperties }) }
+
+		turn(task, [USER_1], "call_1")
+		const [exchange] = await sentExchanges(1)
+
+		expect(exchange).toMatchObject(appProperties)
+		expect(llmExchangeSchema.safeParse(exchange).success).toBe(true)
+	})
 })
 
 describe("the exact wire request", () => {

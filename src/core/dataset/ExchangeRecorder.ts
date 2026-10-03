@@ -9,6 +9,7 @@ import type {
 	LlmUsage,
 	LlmWireField,
 	LlmWireRequest,
+	StaticAppProperties,
 } from "@tumble-code/types"
 
 import { getApiErrorStatus } from "../../api/apiErrors"
@@ -45,7 +46,11 @@ export interface ExchangeTask {
 	cwd?: string
 	api: { getModel(): { id: string } }
 	apiConfiguration?: { apiProvider?: string }
-	providerRef?: WeakRef<{ appProperties?: { appVersion?: string; editorName?: string; platform?: string } }>
+	providerRef?: WeakRef<{
+		appProperties?: Partial<
+			Pick<StaticAppProperties, "appVersion" | "editorName" | "platform" | "clientKind" | "clientVersion">
+		>
+	}>
 	streamProcessor?: {
 		assistantMessage: string
 		reasoningMessage: string
@@ -94,6 +99,8 @@ interface Capture {
 		| "modelId"
 		| "appVersion"
 		| "editorName"
+		| "clientKind"
+		| "clientVersion"
 		| "platform"
 		| "workspacePath"
 	>
@@ -239,6 +246,8 @@ export function beginExchange(
 				modelId: task.api.getModel().id,
 				appVersion: appProperties?.appVersion,
 				editorName: appProperties?.editorName,
+				clientKind: appProperties?.clientKind,
+				clientVersion: appProperties?.clientVersion,
 				platform: appProperties?.platform ?? process.platform,
 				workspacePath: task.cwd,
 			},

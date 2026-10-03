@@ -85,10 +85,12 @@ Three checks enforce this (PKG-2, CORE-R10):
 
 The CLI does not talk to the extension over a network. `apps/cli/src/agent/extension-host.ts` loads
 `src/dist/extension.js` into its own process, redirects `require("vscode")` to the shim and calls `activate()`.
-The two sides agree on six environment variables and two `globalThis` slots, all spelled in one place:
+The two sides agree on seven environment variables and two `globalThis` slots, all spelled in one place:
 `packages/types/src/cli-runtime.ts` (`CLI_RUNTIME_ENV`, `readCliRuntimeEnv`, `CLI_RUNTIME_GLOBAL_SLOTS`,
 `setCliRuntimeGlobals`). Use those names instead of string literals. `packages/vscode-shim` still reads the two
-slots by literal name, so renaming a slot means changing both.
+slots by literal name, so renaming a slot means changing both. `ClineProvider.getAppProperties` turns
+`ROO_CLI_RUNTIME` and `ROO_CLI_VERSION` (the CLI package version) into `clientKind` (`vscode` or `cli`) and
+`clientVersion`, which every telemetry event, error report and LLM exchange carries to the cloud.
 
 ## Where settings defaults live today
 

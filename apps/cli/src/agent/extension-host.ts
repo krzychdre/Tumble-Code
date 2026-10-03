@@ -38,6 +38,7 @@ import { toProviderSettings } from "@/lib/utils/provider-config.js"
 import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
+import { VERSION } from "@/lib/utils/version.js"
 import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
@@ -211,6 +212,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// Mark this process as CLI runtime so extension code can apply
 		// CLI-specific behavior without affecting VS Code desktop usage.
 		this.setProcessEnv(CLI_RUNTIME_ENV.runtime, "1")
+		// Sent as `clientVersion` with the extension's cloud telemetry.
+		this.setProcessEnv(CLI_RUNTIME_ENV.cliVersion, VERSION)
 		// Global MCP servers come from the CLI's own file; the core reads the
 		// variable in src/services/mcp/mcpSettingsPath.ts, before activation
 		// is over, which is why it cannot wait for a webview message.

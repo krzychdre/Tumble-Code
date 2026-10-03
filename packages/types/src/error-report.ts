@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { clientKindSchema } from "./telemetry.js"
+
 /**
  * Error reports: the detailed record of one failure in a task (a failed API
  * request, an empty answer, a broken tool call, a failing tool), sent to the
@@ -82,6 +84,8 @@ export const errorReportSchema = z.object({
 	mode: z.string().optional(),
 	appVersion: z.string().optional(),
 	editorName: z.string().optional(),
+	clientKind: clientKindSchema.optional(),
+	clientVersion: z.string().optional(),
 	platform: z.string().optional(),
 	provider: z.string().optional(),
 	modelId: z.string().optional(),
