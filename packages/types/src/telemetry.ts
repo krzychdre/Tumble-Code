@@ -85,8 +85,6 @@ export enum TelemetryEventName {
  */
 export const clientKindSchema = z.enum(["vscode", "cli"])
 
-export type ClientKind = z.infer<typeof clientKindSchema>
-
 export const staticAppPropertiesSchema = z.object({
 	appName: z.string(),
 	appVersion: z.string(),
