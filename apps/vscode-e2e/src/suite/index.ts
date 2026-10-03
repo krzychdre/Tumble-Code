@@ -50,7 +50,16 @@ export async function run() {
 		testFiles = await glob(`**/${specificFile}`, { cwd })
 		console.log(`Running specific test file: ${specificFile}`)
 	} else {
-		testFiles = await glob("**/**.test.js", { cwd })
+		// Provider suites (providers/**) are opt-in: they talk to real provider
+		// APIs and need credentials (see the workspace README). By default only
+		// the smoke suites run; TEST_PROVIDERS=1 adds the provider suites.
+		const includeProviders = process.env.TEST_PROVIDERS === "1"
+
+		testFiles = await glob("**/**.test.js", { cwd, ignore: includeProviders ? [] : ["**/providers/**"] })
+
+		if (!includeProviders) {
+			console.log("Provider suites excluded (opt-in). Set TEST_PROVIDERS=1 to include them.")
+		}
 	}
 
 	if (testFiles.length === 0) {
