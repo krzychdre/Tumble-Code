@@ -133,6 +133,29 @@ async def test_metrics_page_renders_dimensions(client, db_session, session_facto
     assert 'class="chart-svg' in body
 
 
+async def test_metrics_page_remembers_the_picked_period(client, db_session):
+    """A plain visit opens on the period picked last, not on the default."""
+    await _seed_user(db_session)
+    from src.main import app
+
+    def active(body):
+        return body.split('period-opt active" href="/app/metrics?period=')[1].split('"')[0]
+
+    _override_web_user(app)
+    try:
+        assert active(client.get("/app/metrics").text) == "7d"
+        picked = client.get("/app/metrics?period=90d")
+        assert active(picked.text) == "90d"
+        assert "tumble_metrics_period=90d" in picked.headers["set-cookie"]
+        assert active(client.get("/app/metrics").text) == "90d"
+        # An unknown ?period= is not a pick: the remembered one stays.
+        assert active(client.get("/app/metrics?period=bogus").text) == "90d"
+        client.get("/app/metrics?period=today")
+        assert active(client.get("/app/metrics").text) == "today"
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+
 async def test_metrics_page_empty_state(client, db_session):
     await _seed_user(db_session)
     from src.main import app
