@@ -4,12 +4,14 @@ import EventEmitter from "events"
 import type { ExtensionContext } from "vscode"
 import { z } from "zod"
 
-import type {
-	CloudUserInfo,
-	CloudOrganizationMembership,
-	AuthService,
-	AuthServiceEvents,
-	AuthState,
+import {
+	type CloudUserInfo,
+	type CloudOrganizationMembership,
+	type CloudLoginOptions,
+	type AuthService,
+	type AuthServiceEvents,
+	type AuthState,
+	isLoopbackAuthRedirect,
 } from "@tumble-code/types"
 
 import { getClerkBaseUrl, getTumbleCodeApiUrl, PRODUCTION_CLERK_BASE_URL } from "./config.js"
@@ -250,9 +252,19 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 	 *
 	 * This method initiates the authentication flow by generating a state parameter
 	 * and opening the browser to the authorization URL.
+	 *
+	 * `options.authRedirect` replaces the editor's `vscode://` deep link with a
+	 * loopback address the CLI listens on (RFC 8252); anything else is refused
+	 * before a state is stored or a browser opened.
 	 */
-	public async login(): Promise<void> {
+	public async login(options: CloudLoginOptions = {}): Promise<void> {
 		try {
+			const { authRedirect } = options
+
+			if (authRedirect !== undefined && !isLoopbackAuthRedirect(authRedirect)) {
+				throw new Error(`auth redirect must be a loopback address such as http://127.0.0.1:<port>`)
+			}
+
 			const vscode = await importVscode()
 
 			if (!vscode) {
@@ -267,7 +279,7 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 			const name = packageJSON?.name ?? "tumble-code"
 			const params = new URLSearchParams({
 				state,
-				auth_redirect: `${vscode.env.uriScheme}://${publisher}.${name}`,
+				auth_redirect: authRedirect ?? `${vscode.env.uriScheme}://${publisher}.${name}`,
 			})
 
 			const url = `${getTumbleCodeApiUrl()}/extension/sign-in?${params.toString()}`

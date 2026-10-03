@@ -409,6 +409,39 @@ describe("extension.ts", () => {
 		})
 	})
 
+	// `tumble auth cloud` activates with ROO_CLI_CLOUD_AUTH_ONLY=1: the cloud
+	// URLs are synced first (the auth service keys its credentials by them),
+	// the cloud service is awaited, and nothing else of the extension starts.
+	test("cloud-auth-only activation starts only the cloud service, after syncing the cloud URLs", async () => {
+		vi.resetModules()
+		vi.clearAllMocks()
+		vi.stubEnv("ROO_CLI_CLOUD_AUTH_ONLY", "1")
+
+		try {
+			const vscodeMock = (await import("vscode")) as any
+			const cloud = await import("@tumble-code/cloud")
+			const { TelemetryService } = await import("@tumble-code/telemetry")
+			const { registerCommands } = await import("../activate")
+			const { ClineProvider } = await import("../core/webview/ClineProvider")
+			const { activate } = await import("../extension")
+
+			const api = (await activate(mockContext)) as { getCloudAuth?: () => { getStatus(): unknown } }
+
+			expect(typeof api.getCloudAuth).toBe("function")
+			expect(cloud.setTumbleCodeApiUrl).toHaveBeenCalledTimes(1)
+			expect(cloud.CloudService.createInstance).toHaveBeenCalledTimes(1)
+			expect(vi.mocked(cloud.setTumbleCodeApiUrl).mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(cloud.CloudService.createInstance).mock.invocationCallOrder[0],
+			)
+			expect(TelemetryService.createInstance).not.toHaveBeenCalled()
+			expect(registerCommands).not.toHaveBeenCalled()
+			expect(ClineProvider).not.toHaveBeenCalled()
+			expect(vscodeMock.window.registerWebviewViewProvider).not.toHaveBeenCalled()
+		} finally {
+			vi.unstubAllEnvs()
+		}
+	})
+
 	test("deactivate releases the cached tree-sitter parsers", async () => {
 		vi.resetModules()
 		vi.clearAllMocks()

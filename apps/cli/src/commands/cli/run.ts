@@ -26,6 +26,7 @@ import {
 	loadSettings,
 	resolveMcpSettingsPath,
 } from "@/lib/storage/index.js"
+import { cloudApiUrlSetting } from "@/lib/auth/cloud-api-url.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
 import {
 	getApiKeyField,
@@ -350,6 +351,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
 		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),
+		cloudApiUrl: cloudApiUrlSetting(settings, (message) => console.error(`[CLI] Warning: ignoring ${message}`)),
 		baseUrl: effectiveBaseUrl,
 		nonInteractive: !effectiveRequireApproval,
 		exitOnError: flagOptions.exitOnError,

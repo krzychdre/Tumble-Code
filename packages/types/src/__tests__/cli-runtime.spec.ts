@@ -18,6 +18,7 @@ describe("CLI runtime contract", () => {
 			expect(CLI_RUNTIME_ENV).toEqual({
 				runtime: "ROO_CLI_RUNTIME",
 				codexAuthOnly: "ROO_CLI_CODEX_AUTH_ONLY",
+				cloudAuthOnly: "ROO_CLI_CLOUD_AUTH_ONLY",
 				mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
 				cliVersion: "ROO_CLI_VERSION",
 				cliRoot: "ROO_CLI_ROOT",
@@ -30,6 +31,7 @@ describe("CLI runtime contract", () => {
 			expectTypeOf<CliRuntimeEnvName>().toEqualTypeOf<
 				| "ROO_CLI_RUNTIME"
 				| "ROO_CLI_CODEX_AUTH_ONLY"
+				| "ROO_CLI_CLOUD_AUTH_ONLY"
 				| "ROO_MCP_SETTINGS_PATH"
 				| "ROO_CLI_VERSION"
 				| "ROO_CLI_ROOT"
@@ -44,6 +46,7 @@ describe("CLI runtime contract", () => {
 			expect(readCliRuntimeEnv({})).toEqual({
 				isCliRuntime: false,
 				codexAuthOnly: false,
+				cloudAuthOnly: false,
 				mcpSettingsPath: undefined,
 				cliVersion: undefined,
 				cliRoot: undefined,
@@ -56,6 +59,7 @@ describe("CLI runtime contract", () => {
 			const env = readCliRuntimeEnv({
 				ROO_CLI_RUNTIME: "1",
 				ROO_CLI_CODEX_AUTH_ONLY: "1",
+				ROO_CLI_CLOUD_AUTH_ONLY: "1",
 				ROO_MCP_SETTINGS_PATH: "  /home/u/.roo/mcp.json  ",
 				ROO_CLI_VERSION: "0.2.0",
 				ROO_CLI_ROOT: "/opt/cli",
@@ -66,6 +70,7 @@ describe("CLI runtime contract", () => {
 			expect(env).toEqual({
 				isCliRuntime: true,
 				codexAuthOnly: true,
+				cloudAuthOnly: true,
 				mcpSettingsPath: "/home/u/.roo/mcp.json",
 				cliVersion: "0.2.0",
 				cliRoot: "/opt/cli",
@@ -75,9 +80,16 @@ describe("CLI runtime contract", () => {
 		})
 
 		it("treats only the exact string 1 as on for the flags", () => {
-			expect(readCliRuntimeEnv({ ROO_CLI_RUNTIME: "true", ROO_CLI_CODEX_AUTH_ONLY: "yes" })).toMatchObject({
+			expect(
+				readCliRuntimeEnv({
+					ROO_CLI_RUNTIME: "true",
+					ROO_CLI_CODEX_AUTH_ONLY: "yes",
+					ROO_CLI_CLOUD_AUTH_ONLY: "on",
+				}),
+			).toMatchObject({
 				isCliRuntime: false,
 				codexAuthOnly: false,
+				cloudAuthOnly: false,
 			})
 		})
 

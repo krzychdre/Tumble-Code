@@ -1,10 +1,8 @@
-import { createRequire } from "module"
-import path from "path"
-
 import { CLI_RUNTIME_ENV } from "@tumble-code/types"
 
-import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { openExternal } from "@/lib/utils/open-external.js"
+
+import { activateHeadlessExtension } from "./headless-extension.js"
 
 export interface OpenAiCodexCredentials {
 	type: "openai-codex"
@@ -26,10 +24,6 @@ export interface OpenAiCodexOAuthManager {
 
 interface OpenAiCodexExtensionApi {
 	getOpenAiCodexOAuthManager(): OpenAiCodexOAuthManager
-}
-
-interface HeadlessExtensionModule {
-	activate(context: unknown): Promise<unknown>
 }
 
 export interface OpenAiCodexAuthDependencies {
@@ -66,70 +60,23 @@ async function withManager<T>(
 		}
 	}
 
-	const { createVSCodeAPI, setLogger } = await import("@tumble-code/vscode-shim")
-	setLogger({
-		info: () => {},
-		warn: (message) => process.env.DEBUG && console.warn(message),
-		error: (message) => process.env.DEBUG && console.error(message),
-		debug: (message) => process.env.DEBUG && console.debug(message),
+	// Kept for the life of the process (see extensionRuntime), so never disposed.
+	const { api: activated } = await activateHeadlessExtension({
+		authOnlyEnv: CLI_RUNTIME_ENV.codexAuthOnly,
+		openExternal,
 	})
-	const extensionPath = getDefaultExtensionPath(import.meta.dirname)
-	const bundlePath = path.join(extensionPath, "extension.js")
-	const vscode = createVSCodeAPI(extensionPath, process.cwd(), undefined, { openExternal })
-	const require = createRequire(import.meta.url)
-	const Module = require("module")
-	const originalResolve = Module._resolveFilename
-
-	Module._resolveFilename = function (request: string, parent: unknown, isMain: boolean, options: unknown) {
-		if (request === "vscode") return "vscode-mock-codex-auth"
-		return originalResolve.call(this, request, parent, isMain, options)
+	const api = activated as OpenAiCodexExtensionApi | undefined
+	if (!api || typeof api.getOpenAiCodexOAuthManager !== "function") {
+		throw new Error(
+			"The installed extension does not expose CLI OpenAI Codex authentication; rebuild or upgrade it.",
+		)
 	}
-	require.cache["vscode-mock-codex-auth"] = {
-		id: "vscode-mock-codex-auth",
-		filename: "vscode-mock-codex-auth",
-		loaded: true,
-		exports: vscode,
-		children: [],
-		paths: [],
-		path: "",
-		isPreloading: false,
-		parent: null,
-		require,
-	} as unknown as NodeJS.Module
-
-	let activated = false
-	let manager: OpenAiCodexOAuthManager | undefined
-	const previousAuthOnly = process.env[CLI_RUNTIME_ENV.codexAuthOnly]
-	process.env[CLI_RUNTIME_ENV.codexAuthOnly] = "1"
-	const originalConsoleLog = console.log
-	console.log = (...args: unknown[]) => {
-		if (!String(args[0] ?? "").startsWith("Loaded translations for languages:")) {
-			originalConsoleLog(...args)
-		}
-	}
-	try {
-		const extension = require(bundlePath) as HeadlessExtensionModule
-		const api = (await extension.activate(vscode.context)) as OpenAiCodexExtensionApi
-		if (!api || typeof api.getOpenAiCodexOAuthManager !== "function") {
-			throw new Error(
-				"The installed extension does not expose CLI OpenAI Codex authentication; rebuild or upgrade it.",
-			)
-		}
-		manager = api.getOpenAiCodexOAuthManager()
-		extensionRuntime = { manager }
-		activated = true
-	} finally {
-		console.log = originalConsoleLog
-		if (previousAuthOnly === undefined) delete process.env[CLI_RUNTIME_ENV.codexAuthOnly]
-		else process.env[CLI_RUNTIME_ENV.codexAuthOnly] = previousAuthOnly
-		Module._resolveFilename = originalResolve
-		delete require.cache["vscode-mock-codex-auth"]
-		if (!activated) vscode.context.dispose()
-	}
-
+	const manager = api.getOpenAiCodexOAuthManager()
 	if (!manager) {
 		throw new Error("Failed to initialize OpenAI Codex authentication")
 	}
+	extensionRuntime = { manager }
+
 	try {
 		return await callback(manager)
 	} finally {

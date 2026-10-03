@@ -11,6 +11,7 @@ import type {
 	AuthService,
 	SettingsService,
 	CloudUserInfo,
+	CloudLoginOptions,
 	CloudOrganizationMembership,
 	OrganizationAllowList,
 	OrganizationSettings,
@@ -181,9 +182,9 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 
 	// AuthService
 
-	public async login(): Promise<void> {
+	public async login(options?: CloudLoginOptions): Promise<void> {
 		this.ensureInitialized()
-		return this.authService!.login()
+		return this.authService!.login(options)
 	}
 
 	public async logout(): Promise<void> {

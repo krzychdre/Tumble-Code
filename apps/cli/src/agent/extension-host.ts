@@ -29,6 +29,7 @@ import {
 	createVSCodeAPI,
 	IExtensionHost,
 	ExtensionHostEventMap,
+	setRuntimeConfig,
 	setRuntimeConfigValues,
 } from "@tumble-code/vscode-shim"
 import { DebugLogger, setDebugLogEnabled } from "@tumble-code/core/cli"
@@ -86,6 +87,12 @@ export interface ExtensionHostOptions {
 	 * --ephemeral).
 	 */
 	mcpSettingsPath?: string
+	/**
+	 * Tumble Code Cloud API (`cloudApiUrl` in cli-settings.json), applied as the
+	 * `tumble-code.cloudApiUrl` setting before activation: the extension reads
+	 * it once, early in `activate()`, and keys the stored sign-in by it.
+	 */
+	cloudApiUrl?: string
 	nonInteractive?: boolean
 	/**
 	 * When true, uses a temporary storage directory that is cleaned up on exit.
@@ -424,6 +431,12 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			storageDir,
 		})
 		setCliRuntimeGlobals({ vscode: this.vscode, extensionHost: this })
+
+		// Before activate(): markWebviewReady's settings arrive too late for the
+		// cloud URL (the extension syncs it once and gets no change event).
+		if (this.options.cloudApiUrl) {
+			setRuntimeConfig("tumble-code", "cloudApiUrl", this.options.cloudApiUrl)
+		}
 
 		// Set up module resolution.
 		const require = createRequire(import.meta.url)

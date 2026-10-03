@@ -268,6 +268,39 @@ supported because it discards the OAuth credential store.
 | `tumble auth codex logout` | Remove stored OpenAI Codex credentials           |
 | `tumble auth codex status` | Show the OpenAI Codex subscription sign-in state |
 
+### Tumble Code Cloud
+
+Signing in to a Tumble Code Cloud is optional. While signed in, every run sends
+the same data the VS Code extension sends (`LLM Completion` events with tokens,
+cost, model and mode, exceptions, error reports and, when switched on in the
+cloud, LLM exchanges); signed out, it sends nothing. Name the cloud first, in
+`~/.roo/cli-settings.json` (or with the `TUMBLE_CODE_API_URL` environment
+variable):
+
+```json
+{ "cloudApiUrl": "https://cloud.example.com" }
+```
+
+```bash
+tumble auth cloud login
+tumble auth cloud status
+```
+
+`login` prints the sign-in URL and opens it in the browser. After you sign in,
+the browser comes back to a one-shot listener on `127.0.0.1` (a random port,
+open for at most 5 minutes; Ctrl+C cancels) and the CLI stores the session.
+When the browser runs on another machine (an SSH session), it cannot reach that
+listener: copy the address it ends on (it contains `/auth/clerk/callback?code=`)
+from its address bar and paste it into the terminal. The session lives in the
+CLI's extension storage (`~/.vscode-mock/global-storage/secrets.json`, readable
+only by you), so a `--ephemeral` run is always signed out.
+
+| Command                    | Description                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------ |
+| `tumble auth cloud login`  | Sign in to the configured Tumble Code Cloud in the browser                           |
+| `tumble auth cloud logout` | Sign out and remove the stored session                                               |
+| `tumble auth cloud status` | Show whether you are signed in, as whom, and to which cloud (exit 1 when signed out) |
+
 ## Settings File
 
 `~/.roo/cli-settings.json` holds your defaults, so a bare `tumble` needs no
@@ -303,6 +336,7 @@ and prints a one-line hint saying where to set one.
 | `modes`                   | Settings per mode, see below                                      |
 | `models`                  | Facts per model (its context window), see below                   |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
+| `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
 
 The file may hold an API key, so keep it readable only by you (`chmod 600
 ~/.roo/cli-settings.json`); the CLI warns when other users can read it. To keep

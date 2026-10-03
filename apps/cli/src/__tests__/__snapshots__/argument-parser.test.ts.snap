@@ -67,21 +67,54 @@ Commands:
   list                                   List commands, modes, or sessions
   upgrade                                Upgrade Tumble Code CLI to the latest version
   doctor [options]                       Check the extension bundle, ripgrep, Node.js, the MCP config and the cloud connection
-  auth                                   Manage provider authentication
+  auth                                   Manage provider and cloud authentication
 "
 `;
 
 exports[`CLI argument parser (commander characterization) > help output > ["auth","--help"] 1`] = `
 "Usage: tumble auth [options] [command]
 
-Manage provider authentication
+Manage provider and cloud authentication
 
 Options:
   -h, --help      display help for command
 
 Commands:
   codex           Manage ChatGPT subscription access for OpenAI Codex
+  cloud           Manage the Tumble Code Cloud sign-in (set cloudApiUrl in
+                  ~/.roo/cli-settings.json first)
   help [command]  display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["auth","cloud","--help"] 1`] = `
+"Usage: tumble auth cloud [options] [command]
+
+Manage the Tumble Code Cloud sign-in (set cloudApiUrl in
+~/.roo/cli-settings.json first)
+
+Options:
+  -h, --help      display help for command
+
+Commands:
+  login           Sign in to Tumble Code Cloud in the browser; signed-in runs
+                  send usage telemetry to it
+  logout          Sign out from Tumble Code Cloud and remove the stored
+                  credentials
+  status          Show whether the CLI is signed in to Tumble Code Cloud, as
+                  whom, and which cloud
+  help [command]  display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["auth","cloud","login","--help"] 1`] = `
+"Usage: tumble auth cloud login [options]
+
+Sign in to Tumble Code Cloud in the browser; signed-in runs send usage telemetry
+to it
+
+Options:
+  -h, --help  display help for command
 "
 `;
 
