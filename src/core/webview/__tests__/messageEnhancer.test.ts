@@ -2,7 +2,7 @@ import type { Mock } from "vitest"
 import { ProviderSettings, ClineMessage } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { MessageEnhancer } from "../messageEnhancer"
+import { MessageEnhancer, extractTaskHistory } from "../messageEnhancer"
 import * as singleCompletionHandlerModule from "../../../utils/single-completion-handler"
 import { ProviderSettingsManager } from "../../config/ProviderSettingsManager"
 import { logger } from "../../../utils/logging"
@@ -327,8 +327,7 @@ describe("MessageEnhancer", () => {
 				{ type: "ask", text: "User message 2", ts: 6000 },
 			]
 
-			// Access private method through any type assertion for testing
-			const history = (MessageEnhancer as any).extractTaskHistory(messages)
+			const history = extractTaskHistory(messages)
 
 			expect(history).toContain("User: User message 1")
 			expect(history).toContain("Assistant: Assistant message 1")
@@ -348,8 +347,7 @@ describe("MessageEnhancer", () => {
 				"not an object",
 			] as any
 
-			// Access private method through any type assertion for testing
-			const history = (MessageEnhancer as any).extractTaskHistory(malformedMessages)
+			const history = extractTaskHistory(malformedMessages)
 
 			// Should return empty string and log error
 			expect(history).toBe("")
@@ -367,8 +365,7 @@ describe("MessageEnhancer", () => {
 
 			const messages = [circularMessage] as ClineMessage[]
 
-			// Access private method through any type assertion for testing
-			const history = (MessageEnhancer as any).extractTaskHistory(messages)
+			const history = extractTaskHistory(messages)
 
 			// Should handle gracefully
 			expect(history).toBe("User: Test")
