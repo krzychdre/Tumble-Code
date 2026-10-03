@@ -153,7 +153,8 @@ erDiagram
   record's `clientKind`, or for older clients from `editorName` (`wrapper|cli...` is the CLI). A task's
   `client_kind` starts as `vscode` (a bridge message names no client) and turns `cli` with the first CLI telemetry
   event or backfill of its own user, never back. `/app/metrics` filters by it (`?client=vscode|cli`) and breaks
-  usage down by client.
+  usage down by client; the problem report, the task list (a "CLI" badge per CLI row, the client on the task
+  page) and the dataset page and export take the same `client` filter.
 
 ### Background work
 
@@ -203,8 +204,8 @@ group a class (software defect, model mismatch, provider or network, configurati
 rule matches are shown as Unclassified. A model fit table puts problems next to the period's LLM Completion
 requests per model. `/app/diagnostics/reports/{id}` shows one report in full to its owner (404 for anyone else).
 
-The page filters by period, class, category, model, provider, tool, source and free text (title, signature,
-message), all in the query string, so a filtered view is a shareable link and works without scripting; the class
+The page filters by period, class, category, model, provider, tool, source, client (VS Code or CLI) and free text
+(title, signature, message), all in the query string, so a filtered view is a shareable link and works without scripting; the class
 tiles are filter links too, and `sort=impact|count|recent` orders the list. Each problem is one closed row (class,
 title, tool, top model, count, tasks, last seen) that opens to the detail. The agent brief
 (`services/problem_brief.py`) is Markdown a coding agent can act on with no other context: per problem a task

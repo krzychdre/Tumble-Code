@@ -3,13 +3,21 @@
 {% block content %}
 {% set o = overview %}
 {% set t = o.totals %}
+{% set client_q = '&amp;client=' ~ o.client if o.client else '' %}
 <div class="metrics-head">
   <h1 class="page-title">Dataset</h1>
-  <nav class="period-control" aria-label="Time period">
-    {% for p in periods %}
-    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/dataset?period={{ p.key }}"{% if p.active %} aria-current="true"{% endif %}>{{ p.label }}</a>
+  <div class="metrics-controls">
+  <nav class="period-control" aria-label="Client">
+    {% for c in clients %}
+    <a class="period-opt{{ ' active' if c.active else '' }}" href="/app/dataset?period={{ o.period }}{% if c.key %}&amp;client={{ c.key }}{% endif %}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }}</a>
     {% endfor %}
   </nav>
+  <nav class="period-control" aria-label="Time period">
+    {% for p in periods %}
+    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/dataset?period={{ p.key }}{{ client_q|safe }}"{% if p.active %} aria-current="true"{% endif %}>{{ p.label }}</a>
+    {% endfor %}
+  </nav>
+  </div>
 </div>
 
 <p class="diag-lead">
@@ -111,6 +119,7 @@
   <h2 class="chart-title" id="dataset-export">Export</h2>
   <form method="get" action="/app/dataset/export.jsonl" class="settings-form">
     <input type="hidden" name="period" value="{{ o.period }}">
+    {% if o.client %}<input type="hidden" name="client" value="{{ o.client }}">{% endif %}
     <fieldset class="dataset-fieldset">
       <legend class="field-label">Format</legend>
       <label class="switch-row"><input type="radio" name="format" value="turns" checked>

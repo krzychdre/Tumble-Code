@@ -957,6 +957,10 @@ textarea::placeholder {
 .cell-meta .badge-workspace {
 	flex-shrink: 2;
 }
+/* "CLI" is three letters; cut, it would say nothing. */
+.cell-meta .badge-client {
+	flex-shrink: 0;
+}
 .cell-num,
 .cell-date {
 	font-family: var(--mono);

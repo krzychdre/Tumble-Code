@@ -19,6 +19,7 @@ from src.routers.web_page import (
     render_page,
     require_web_page,
 )
+from src.services.client_kind import CLIENT_LABELS
 from src.services.share_service import delete_shared_task, delete_tasks
 from src.services.task_summary import derive_title
 from src.services.task_tree import ancestors, subtree_size, subtrees
@@ -70,6 +71,7 @@ async def task_list(
     # strings and normalized there, so a bad value is dropped, never a 422.
     project: str = Query(""),
     model: str = Query(""),
+    client: str = Query(""),
     grade: str = Query(""),
     since: str = Query(""),
     until: str = Query(""),
@@ -99,6 +101,7 @@ async def task_list(
         q=q,
         project=project,
         model=model,
+        client=client,
         grade=grade,
         since=since,
         until=until,
@@ -234,6 +237,7 @@ async def task_detail(
         title=task.title or derive_title(messages),
         workspace=task.workspace_path,
         workspace_label=_workspace_label(task.workspace_path),
+        client_label=CLIENT_LABELS.get(task.client_kind),
         messages_json=await conversation_json(messages),
         **await _model_context(db, task_id, task.user_id, messages),
         share_url=None,
@@ -313,6 +317,7 @@ _VIEW_FIELDS = (
     "q",
     "project",
     "model",
+    "client",
     "grade",
     "since",
     "until",

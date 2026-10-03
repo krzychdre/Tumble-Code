@@ -30,6 +30,7 @@
     {% endif %}
   </div>
   {% if workspace %}<div class="detail-workspace" title="{{ workspace }}"><span aria-hidden="true">📁</span> {{ workspace }}</div>{% endif %}
+  {% if client_label %}<div class="detail-workspace detail-client">Client: {{ client_label }}</div>{% endif %}
   {% if models %}
   {# What answered. A run is not necessarily one model, so each is named with
      the modes it ran in and how many requests it took — the same figures the

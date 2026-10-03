@@ -8,7 +8,7 @@ link for a model that has no problems in the chosen period shows an empty
 list that says so. ``klass`` is a class key (``CLASS_KEYS``), the URL's
 ``class``.
 
-Filters (class, category, model, provider, tool, source, free text) and the
+Filters (class, category, model, provider, tool, source, client, free text) and the
 sort run after the period's occurrences are collected: they are a few
 thousand rows at most, and filtering in Python lets one filter apply to all
 three sources alike. The period stays in SQL.
@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from src.services.client_kind import CLIENT_LABELS, parse_client
 from src.services.metrics_service import DEFAULT_PERIOD, PERIODS
 from src.services.problem_catalogue import CLASS_BY_KEY, CLASS_KEYS
 from src.services.problems.base import SOURCE_LABELS, UNKNOWN_MODEL, Occurrence
@@ -32,7 +33,7 @@ SORT_RECENT = "recent"
 SORT_LABELS = {SORT_IMPACT: "Impact", SORT_COUNT: "Occurrences", SORT_RECENT: "Last seen"}
 
 # The order the filters appear in every URL and in the brief's header.
-FILTER_FIELDS = ("class", "category", "model", "provider", "tool", "source", "q")
+FILTER_FIELDS = ("class", "category", "model", "provider", "tool", "source", "client", "q")
 FILTER_LABELS = {
     "class": "Class",
     "category": "Category",
@@ -40,6 +41,7 @@ FILTER_LABELS = {
     "provider": "Provider",
     "tool": "Tool",
     "source": "Source",
+    "client": "Client",
     "q": "Search",
 }
 _FILTER_TEXT_MAX = 200
@@ -60,6 +62,7 @@ class ProblemFilter:
     provider: str = ""
     tool: str = ""
     source: str = ""
+    client: str = ""
     q: str = ""
     sort: str = SORT_IMPACT
 
@@ -79,6 +82,7 @@ class ProblemFilter:
             provider=_param(get("provider")),
             tool=_param(get("tool")),
             source=source if source in SOURCE_LABELS else "",
+            client=parse_client(get("client")) or "",
             q=_param(get("q")),
             sort=sort if sort in SORT_LABELS else SORT_IMPACT,
         )
@@ -93,6 +97,8 @@ class ProblemFilter:
             return CLASS_BY_KEY.get(value, value)
         if name == "source":
             return SOURCE_LABELS.get(value, value)
+        if name == "client":
+            return CLIENT_LABELS.get(value, value)
         return value
 
     @property
@@ -120,6 +126,8 @@ class ProblemFilter:
         if self.tool and (occurrence.tool or "") != self.tool:
             return False
         if self.source and occurrence.source != self.source:
+            return False
+        if self.client and occurrence.client != self.client:
             return False
         if self.q:
             needle = self.q.lower()

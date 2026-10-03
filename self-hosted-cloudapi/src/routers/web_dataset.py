@@ -24,6 +24,7 @@ from src.routers.web_page import (
     render_page,
     require_web_page,
 )
+from src.services.client_kind import CLIENT_LABELS, parse_client
 from src.services.dataset_export import (
     ExportOptions,
     build_anonymizer,
@@ -52,13 +53,16 @@ def _period(value: str) -> str:
 async def dataset_page(
     request: Request,
     period: str = DEFAULT_DATASET_PERIOD,
+    # "vscode" or "cli": what that client recorded; absent (or unknown) means both.
+    client: str = "",
     deleted: str = "",
     web: WebPage = Depends(require_web_page),
 ):
     """Recording switch, counts per model and issue, the export form and recent tasks."""
     db = web["db"]
     period = _period(period)
-    overview = await dataset_overview(db, web["user"]["user_id"], period)
+    picked = parse_client(client)
+    overview = await dataset_overview(db, web["user"]["user_id"], period, picked)
     settings_row = await read_dataset_settings(db, web["user"]["user_id"])
     return render_page(
         request,
@@ -69,6 +73,10 @@ async def dataset_page(
         periods=[
             {"key": key, "label": label, "active": key == period}
             for key, label in PERIOD_LABELS.items()
+        ],
+        clients=[
+            {"key": key, "label": label, "active": key == picked}
+            for key, label in [(None, "All clients"), *CLIENT_LABELS.items()]
         ],
         recording=bool(settings_row and settings_row.recording_enabled),
         terms=(settings_row.anonymize_terms or "") if settings_row else "",

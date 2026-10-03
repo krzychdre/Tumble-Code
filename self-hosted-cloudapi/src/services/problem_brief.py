@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.error_report import ErrorReport
 from src.models.task import Task, TaskMessage
+from src.services.client_kind import CLIENT_CLI
 from src.services.diagnostics_service import (
     SOURCE_CONVERSATION,
     SOURCE_REPORT,
@@ -334,6 +335,8 @@ def _sample_lines(number: int, total: int, sample: dict, group: dict, evidence: 
         for part in (
             sample["model"] and f"model {inline(sample['model'])}",
             sample["task_id"] and f"task {inline(sample['task_id'])}",
+            # Named only for the CLI: VS Code is what every older sample is.
+            sample.get("client") == CLIENT_CLI and "from the CLI",
         )
         if part
     )

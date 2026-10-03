@@ -42,7 +42,7 @@
   {% endfor %}
   <label class="diag-field diag-field-q"><span class="field-label">Search</span>
     <input type="search" name="q" value="{{ f.q }}" placeholder="Title, signature or message"></label>
-  {% for name, label in (('class', 'Class'), ('category', 'Category'), ('model', 'Model'), ('provider', 'Provider'), ('tool', 'Tool'), ('source', 'Source')) %}
+  {% for name, label in (('class', 'Class'), ('category', 'Category'), ('model', 'Model'), ('provider', 'Provider'), ('tool', 'Tool'), ('source', 'Source'), ('client', 'Client')) %}
   {% set current = f.value(name) %}
   <label class="diag-field"><span class="field-label">{{ label }}</span>
     <select name="{{ name }}">

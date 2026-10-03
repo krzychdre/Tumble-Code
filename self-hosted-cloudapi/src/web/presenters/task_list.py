@@ -9,7 +9,7 @@ them can silently drop a filter the reader is looking at.
 
 Nothing a request says reaches the query unchecked: the sort key and the
 direction are looked up in an allow-list, dates must parse, the grade must be
-one of the three, and free text is matched with LIKE wildcards escaped.
+one of the three, the client one of the two, and free text is matched with LIKE wildcards escaped.
 """
 
 from dataclasses import dataclass, replace
@@ -21,6 +21,7 @@ from sqlalchemy import and_, exists, func, literal, not_, or_, select
 from sqlalchemy.orm import aliased
 
 from src.models.task import Task
+from src.services.client_kind import CLIENT_LABELS, parse_client
 from src.services.session_quality import GRADE_CLEAN, GRADE_FRICTION, GRADE_LABELS, GRADE_UNFINISHED
 
 # Column key -> what the column header says. Only these can be sorted by;
@@ -34,7 +35,7 @@ GRADES = (GRADE_CLEAN, GRADE_FRICTION, GRADE_UNFINISHED)
 
 # The order parameters appear in every URL this module writes, so the same
 # view always has the same URL.
-_FILTER_FIELDS = ("q", "project", "model", "grade", "since", "until", "subtasks")
+_FILTER_FIELDS = ("q", "project", "model", "client", "grade", "since", "until", "subtasks")
 
 _MAX_TEXT = 200
 
@@ -58,6 +59,8 @@ class ListView:
     q: str = ""
     project: str = ""
     model: str = ""
+    # "vscode" or "cli" (services/client_kind), "" for both.
+    client: str = ""
     grade: str = ""
     since: Optional[date] = None
     until: Optional[date] = None
@@ -73,6 +76,7 @@ class ListView:
         q: Optional[str] = None,
         project: Optional[str] = None,
         model: Optional[str] = None,
+        client: Optional[str] = None,
         grade: Optional[str] = None,
         since: Optional[str] = None,
         until: Optional[str] = None,
@@ -90,6 +94,7 @@ class ListView:
             q=_text(q),
             project=_text(project),
             model=_text(model),
+            client=parse_client(client) or "",
             grade=grade if grade in GRADES else "",
             since=_day(since),
             until=_day(until),
@@ -163,7 +168,7 @@ class ListView:
     def cleared_url(self) -> str:
         """Same scope and sort, no filters."""
         return replace(
-            self, q="", project="", model="", grade="", since=None, until=None, subtasks=False
+            self, q="", project="", model="", client="", grade="", since=None, until=None, subtasks=False
         ).url()
 
     def chips(self) -> list[dict]:
@@ -173,12 +178,22 @@ class ListView:
             "q": ("Search", self.q),
             "project": ("Project", self.project),
             "model": ("Model", self.model),
+            "client": ("Client", CLIENT_LABELS.get(self.client, "")),
             "grade": ("Grade", GRADE_LABELS.get(self.grade, "")),
             "since": ("From", self._field("since")),
             "until": ("To", self._field("until")),
             "subtasks": ("Has subtasks", ""),
         }
-        empty = {"q": "", "project": "", "model": "", "grade": "", "since": None, "until": None, "subtasks": False}
+        empty = {
+            "q": "",
+            "project": "",
+            "model": "",
+            "client": "",
+            "grade": "",
+            "since": None,
+            "until": None,
+            "subtasks": False,
+        }
         chips = []
         for name in _FILTER_FIELDS:
             if not self._field(name):
@@ -213,6 +228,8 @@ class ListView:
             out.append(Task.workspace_path.icontains(self.project, autoescape=True))
         if self.model:
             out.append(Task.models.icontains(self.model, autoescape=True))
+        if self.client:
+            out.append(Task.client_kind == self.client)
         if self.grade:
             out.append(_grade_condition(self.grade))
         if self.since:
