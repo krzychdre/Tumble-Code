@@ -394,6 +394,12 @@ export interface WebviewMessage {
 	upsellId?: string // For dismissUpsell
 	list?: string[] // For dismissedUpsells response
 	organizationId?: string | null // For organization switching
+	/**
+	 * For `rooCloudSignIn`: where the cloud sends the browser instead of the
+	 * editor's deep link, a loopback address the CLI listens on
+	 * (`http://127.0.0.1:<port>`, see `isLoopbackAuthRedirect`).
+	 */
+	authRedirect?: string
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean

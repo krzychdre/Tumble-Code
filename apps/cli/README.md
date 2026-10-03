@@ -301,6 +301,12 @@ only by you), so a `--ephemeral` run is always signed out.
 | `tumble auth cloud logout` | Sign out and remove the stored session                                               |
 | `tumble auth cloud status` | Show whether you are signed in, as whom, and to which cloud (exit 1 when signed out) |
 
+In an interactive session, `/login` does the same without leaving the CLI: the
+sign-in URL and the result appear in the transcript, and the footer shows the
+cloud status. From an SSH session, copy the address the browser ends on and
+type `/login <address>`. `/logout` signs out. The cloud URL is read when the
+CLI starts, so restart it after changing `cloudApiUrl`.
+
 ## Settings File
 
 `~/.roo/cli-settings.json` holds your defaults, so a bare `tumble` needs no

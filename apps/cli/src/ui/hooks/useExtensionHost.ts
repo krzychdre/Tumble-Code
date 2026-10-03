@@ -14,6 +14,7 @@ import { arePathsEqual } from "@tumble-code/core/cli"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 import type { TranscriptSink } from "@/agent/transcript-reader.js"
+import type { CloudAuthChannel } from "@/lib/auth/tui-cloud-auth.js"
 
 import { useCLIStore } from "../store.js"
 
@@ -81,6 +82,8 @@ export interface UseExtensionHostReturn {
 	cleanup: () => Promise<void>
 	/** Forget the transcript bookkeeping of the current task (/new, /clear, switching tasks). */
 	resetTranscript: () => void
+	/** The running extension for /login and /logout. */
+	cloudAuthChannel: CloudAuthChannel
 }
 
 /**
@@ -150,6 +153,16 @@ export function useExtensionHost({
 						taskHistorySnapshot = taskHistory
 						hasReceivedTaskHistory = true
 					}
+				})
+
+				// A URL the extension opens in the browser (the cloud sign-in
+				// page): show it, for a remote shell or a browser that did not open.
+				host.on("openExternalUrl", (url) => {
+					addMessage({
+						id: randomUUID(),
+						role: "system",
+						content: `Opening your browser. If it does not open, visit:\n  ${url}`,
+					})
 				})
 
 				host.client.on("taskCompleted", async (event) => {
@@ -275,9 +288,28 @@ export function useExtensionHost({
 		hostRef.current?.client.transcript.reset()
 	}, [])
 
+	// Stable channel for /login and /logout - uses ref to always access current host.
+	const cloudAuthChannel = useMemo<CloudAuthChannel>(
+		() => ({
+			send: (message) => hostRef.current?.sendToExtension(message),
+			onMessage: (listener) => {
+				const host = hostRef.current
+				const typed = (message: unknown) => listener(message as ExtensionMessage)
+				host?.on("extensionWebviewMessage", typed)
+				return () => host?.off("extensionWebviewMessage", typed)
+			},
+			onOpenExternal: (listener) => {
+				const host = hostRef.current
+				host?.on("openExternalUrl", listener)
+				return () => host?.off("openExternalUrl", listener)
+			},
+		}),
+		[],
+	)
+
 	// Memoized return object to prevent unnecessary re-renders in consumers.
 	return useMemo(
-		() => ({ isReady: isReadyRef.current, sendToExtension, runTask, cleanup, resetTranscript }),
-		[sendToExtension, runTask, cleanup, resetTranscript],
+		() => ({ isReady: isReadyRef.current, sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel }),
+		[sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel],
 	)
 }

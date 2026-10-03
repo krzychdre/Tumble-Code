@@ -155,7 +155,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		nonInteractive: permissionMode === "allow",
 	})
 
-	const { sendToExtension, runTask, cleanup, resetTranscript } = useExtensionHost({
+	const { sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel } = useExtensionHost({
 		...hostOptions,
 		initialPrompt,
 		initialTaskId,
@@ -174,6 +174,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		onPermissionModeChange: setPermissionMode,
 		workspacePath,
 		model: activeModel,
+		cloudAuth: cloudAuthChannel,
 	})
 
 	// Initialize countdown hook for followup auto-accept
