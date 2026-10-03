@@ -35,6 +35,15 @@ import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { type ApiMessage } from "../task-persistence"
 import { type RooIgnoreController } from "../ignore/RooIgnoreController"
 import { logger } from "../../utils/logging"
+import {
+	TaskApiConfigurationAccess,
+	TaskApiConversationHistoryAccess,
+	TaskApiHandlerAccess,
+	TaskBackgroundFlagAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+	TaskWorkingDirectoryAccess,
+} from "./access-groups"
 
 /**
  * Whether the handler returns encrypted reasoning (OpenAI Native, Codex) and so can take
@@ -49,33 +58,20 @@ function roundTripsEncryptedReasoning(api: ApiHandler): boolean {
  * Interface for access needed by ApiRequestBuilder.
  * This is a narrow interface to minimize coupling.
  */
-export interface ApiRequestBuilderAccess {
-	// Core identifiers
-	taskId: string
+export interface ApiRequestBuilderAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskApiHandlerAccess,
+		TaskApiConfigurationAccess,
+		TaskApiConversationHistoryAccess,
+		TaskBackgroundFlagAccess,
+		TaskWorkingDirectoryAccess {
 	instanceId: string
-
-	// Headless background task (parallel subagent / memory writer): delegation
-	// tools are stripped from its requests — subtasks are one-shot jobs and
-	// must never spawn further subtasks.
-	isBackground: boolean
-
-	// API configuration and handler
-	apiConfiguration: ProviderSettings
-	api: ApiHandler
-
-	// Conversation history
-	apiConversationHistory: ApiMessage[]
 
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
 	// are cleared on the OUTGOING request copy (stored history stays pristine).
 	// Recomputed each request by the context manager. See applyMicrocompactCleared.
 	microcompactedToolUseIds: ReadonlySet<string>
-
-	// Provider reference
-	providerRef: WeakRef<ClineProvider>
-
-	// Workspace
-	cwd: string
 
 	// Context manager for context management
 	contextManager: TaskContextManager

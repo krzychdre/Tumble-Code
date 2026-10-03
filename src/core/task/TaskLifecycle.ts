@@ -29,6 +29,16 @@ import { TaskResumption, type TaskResumptionAccess } from "./TaskResumption"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { type MessageQueueService } from "../message-queue/MessageQueueService"
 import { logger } from "../../utils/logging"
+import {
+	TaskAbortFlagAccess,
+	TaskApiConfigurationAccess,
+	TaskApiConversationHistoryAccess,
+	TaskBackgroundFlagAccess,
+	TaskClineMessagesAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+	TaskWorkingDirectoryAccess,
+} from "./access-groups"
 import { t } from "../../i18n"
 import {
 	executeExtractMemories,
@@ -47,22 +57,26 @@ import Anthropic from "@anthropic-ai/sdk"
  * Interface for Task access needed by TaskLifecycle.
  * This is a narrow interface to minimize coupling between modules.
  */
-export interface TaskLifecycleAccess {
-	// Core identifiers
-	taskId: string
+export interface TaskLifecycleAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskApiConfigurationAccess,
+		TaskApiConversationHistoryAccess,
+		TaskClineMessagesAccess,
+		TaskBackgroundFlagAccess,
+		TaskWorkingDirectoryAccess {
 	rootTaskId?: string
 	parentTaskId?: string
 	instanceId: string
 	metadata: TaskMetadata
 	workspacePath: string
-	cwd: string
 
-	// Provider reference and storage
-	providerRef: WeakRef<ClineProvider>
+	// Provider storage
 	globalStoragePath: string
 
-	// API configuration
-	apiConfiguration: ProviderSettings
+	// API handler: TaskLifecycle deliberately narrows this to the two methods
+	// it calls (NOT TaskApiHandlerAccess).
 	api: { cancelRequest?: (destroyClient: boolean) => void; getModel?: () => { id: string } }
 	diffStrategy?: { getName: () => string }
 	// Severs an in-flight condense request on the background model. The condense
@@ -78,8 +92,6 @@ export interface TaskLifecycleAccess {
 	messageQueueService: Pick<MessageQueueService, "dispose" | "removeListener">
 
 	// Mutable state arrays (accessed directly for initialization/reset)
-	clineMessages: ClineMessage[]
-	apiConversationHistory: ApiMessage[]
 
 	// Memory system: the recall coordinator (undefined if memory/recall off)
 	// and the iteration counter shared with the API loop for consume-once.
@@ -87,7 +99,6 @@ export interface TaskLifecycleAccess {
 	apiLoopIteration?: number
 
 	// Task state flags
-	abort: boolean
 	abandoned: boolean
 	// True while attempt_completion waits on its completion_result ask (the
 	// task finished, the user has not answered yet). See Task.
@@ -97,10 +108,9 @@ export interface TaskLifecycleAccess {
 	isStreaming: boolean
 	_started: boolean
 
-	// Background task flag: true for memory writers / parallel subagents.
-	// Background tasks must not trigger their own memory writers (unbounded
-	// recursion) or drain extraction (they never start it).
-	isBackground: boolean
+	// isBackground (TaskBackgroundFlagAccess): true for memory writers /
+	// parallel subagents. Background tasks must not trigger their own memory
+	// writers (unbounded recursion) or drain extraction (they never start it).
 
 	// Abort controller for current request
 	currentRequestAbortController?: AbortController

@@ -16,18 +16,13 @@ import {
 	consolidateApiRequests,
 	consolidateCommands,
 } from "@tumble-code/core/browser"
+import { TaskClineMessagesAccess, TaskIdAccess } from "./access-groups"
 
 /**
  * Interface for Task access needed by TaskTokenTracking.
  * This is a narrow interface to minimize coupling between modules.
  */
-export interface TaskTokenTrackingAccess {
-	// Core identifiers
-	taskId: string
-
-	// Mutable state arrays
-	clineMessages: ClineMessage[]
-
+export interface TaskTokenTrackingAccess extends TaskIdAccess, TaskClineMessagesAccess {
 	// Tool usage tracking
 	toolUsage: ToolUsage
 

@@ -27,6 +27,18 @@ import {
 import { CloudService } from "@tumble-code/cloud"
 
 import { type ApiHandler } from "../../api"
+import {
+	TaskAbortFlagAccess,
+	TaskApiConfigurationAccess,
+	TaskApiConversationHistoryAccess,
+	TaskApiHandlerAccess,
+	TaskBackgroundFlagAccess,
+	TaskCloudSyncTimestampsAccess,
+	TaskClineMessagesAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+	TaskWorkingDirectoryAccess,
+} from "./access-groups"
 
 import { getEffectiveApiHistory } from "../condense"
 
@@ -49,37 +61,29 @@ import {
 } from "./TaskMessageLog.helpers"
 import { logger } from "../../utils/logging"
 
-export interface TaskMessageLogAccess {
-	// Core identifiers
-	taskId: string
+export interface TaskMessageLogAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskApiHandlerAccess,
+		TaskApiConfigurationAccess,
+		TaskApiConversationHistoryAccess,
+		TaskClineMessagesAccess,
+		TaskCloudSyncTimestampsAccess,
+		TaskBackgroundFlagAccess,
+		TaskWorkingDirectoryAccess {
 	globalStoragePath: string
-
-	// Mutable state arrays
-	apiConversationHistory: ApiMessage[]
-	clineMessages: ClineMessage[]
-
-	// API handler access (for addToApiConversationHistory)
-	api: ApiHandler
-	apiConfiguration: ProviderSettings
 
 	// Pending tool results state (for flushPendingToolResultsToHistory)
 	userMessageContent: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolResultBlockParam)[]
 	/** Swaps spilled tool results for their previews once the artifacts exist (P10). */
 	settlePendingToolResultSpills(): Promise<void>
 	assistantMessageSavedToHistory: boolean
-	abort: boolean
-
-	// Provider reference
-	providerRef: WeakRef<ClineProvider>
-
-	// Cloud sync tracking
-	cloudSyncedMessageTimestamps: Set<number>
 
 	// Task metadata (for saveClineMessages)
 	rootTaskId?: string
 	parentTaskId?: string
 	taskNumber: number
-	cwd: string
 	_taskMode: string | undefined
 	_taskApiConfigName: string | undefined
 	taskApiConfigReady: Promise<void>
@@ -95,8 +99,8 @@ export interface TaskMessageLogAccess {
 	// Callback for operations needing full Task context
 	restoreTodoListForTask: () => void
 
-	// Background tasks must not appear in or be resumable from task history.
-	isBackground: boolean
+	// isBackground (TaskBackgroundFlagAccess): background tasks must not
+	// appear in or be resumable from task history.
 
 	// Set when the task is cleared or replaced (see Task.abandoned).
 	abandoned?: boolean

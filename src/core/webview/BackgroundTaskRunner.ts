@@ -14,6 +14,7 @@ import type { ProviderState } from "./ProviderStateBuilder"
 import type { SubagentRegistry } from "./SubagentRegistry"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { logger } from "../../utils/logging"
+import type { PostMessageHostMember } from "./host-groups"
 
 /** Options of {@link BackgroundTaskRunner.createBackgroundTask}. */
 export interface BackgroundTaskOptions {
@@ -54,7 +55,7 @@ export interface MemoryActivityCounts {
  * match ClineProvider's, so the provider hands in closures over itself and a
  * test can hand in a plain object.
  */
-export interface BackgroundTaskHost {
+export interface BackgroundTaskHost extends PostMessageHostMember {
 	/** The provider every background Task is created for. */
 	readonly provider: ClineProvider
 	/** The extension global storage directory (the parent of `tasks/<id>/`). */
@@ -73,7 +74,6 @@ export interface BackgroundTaskHost {
 	getMemoryWriterApiConfigId(): string | undefined
 	/** Read a stored profile without making it the active one. */
 	getProfile(params: { id: string }): Promise<ProviderSettings & { name: string }>
-	postMessageToWebview(message: ExtensionMessage): Promise<void>
 }
 
 /**

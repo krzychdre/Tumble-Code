@@ -30,6 +30,14 @@ import { type AutoApprovalOverride } from "./Task"
 import pWaitFor from "p-wait-for"
 import { logger } from "../../utils/logging"
 import { noteToolCallKind, noteToolFailure } from "../diagnostics/ErrorReporter"
+import {
+	TaskAbortFlagAccess,
+	TaskBackgroundFlagAccess,
+	TaskClineMessagesAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+	TaskWorkingDirectoryAccess,
+} from "./access-groups"
 
 /**
  * How long a headless subagent's interactive ask (followup question) may wait
@@ -38,11 +46,14 @@ import { noteToolCallKind, noteToolFailure } from "../diagnostics/ErrorReporter"
  */
 export const SUBAGENT_ASK_FALLBACK_TIMEOUT_MS = 5 * 60 * 1000
 
-export interface TaskAskSayAccess {
-	taskId: string
+export interface TaskAskSayAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskClineMessagesAccess,
+		TaskBackgroundFlagAccess,
+		TaskWorkingDirectoryAccess {
 	instanceId: string
-	abort: boolean
-	clineMessages: ClineMessage[]
 	askResponse?: ClineAskResponse
 	askResponseText?: string
 	askResponseImages?: string[]
@@ -50,13 +61,8 @@ export interface TaskAskSayAccess {
 	idleAsk?: ClineMessage
 	resumableAsk?: ClineMessage
 	interactiveAsk?: ClineMessage
-	/** Headless background task (parallel subagent / memory writer). */
-	isBackground: boolean
-	/** Task working directory — may differ from the provider's (worktrees). */
-	cwd: string
 	autoApprovalTimeoutRef?: NodeJS.Timeout
 	messageQueueService: MessageQueueService
-	providerRef: WeakRef<ClineProvider>
 	history: TaskMessageLog
 	emit: EventEmitter["emit"]
 	checkpointSave: (force?: boolean, suppressMessage?: boolean) => Promise<unknown>

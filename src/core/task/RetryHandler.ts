@@ -25,6 +25,14 @@ import { type ClineProvider } from "../webview/ClineProvider"
 import { type ProviderState } from "../webview/ProviderStateBuilder"
 import type { ApiStream } from "../../api/transform/stream"
 import { logger } from "../../utils/logging"
+import {
+	TaskAbortFlagAccess,
+	TaskApiConfigurationAccess,
+	TaskApiHandlerAccess,
+	TaskBackgroundFlagAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+} from "./access-groups"
 
 /** The provider-state fields the backoff and rate-limit math read (a full ProviderState fits). */
 type BackoffState = Partial<Pick<ProviderState, "apiConfiguration" | "requestDelaySeconds">>
@@ -38,33 +46,28 @@ const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
  * Interface for access needed by RetryHandler.
  * This is a narrow interface to minimize coupling.
  */
-export interface RetryHandlerAccess {
-	// Core identifiers
-	taskId: string
+export interface RetryHandlerAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskApiHandlerAccess,
+		TaskApiConfigurationAccess,
+		TaskBackgroundFlagAccess {
 	instanceId: string
 
-	// Abort state
-	abort: boolean
-
-	// Headless background task (parallel subagent / memory writer). Drives the
-	// fail-fast (401/403/404) and capped-retry decisions.
-	isBackground: boolean
+	// isBackground (TaskBackgroundFlagAccess): drives the fail-fast
+	// (401/403/404) and capped-retry decisions.
 	// Why a background task ended on a non-retryable API error; written by
 	// endBackgroundTaskOnApiError (see Task#apiFailureMessage).
 	apiFailureMessage?: string
 	abortReason?: ClineApiReqCancelReason
 
-	// API configuration and handler (the handler names the model in the
-	// background failure line)
-	apiConfiguration: ProviderSettings
-	api: ApiHandler
+	// (TaskApiHandlerAccess / TaskApiConfigurationAccess): the handler names
+	// the model in the background failure line.
 
 	// Context manager for the context-window-exceeded truncation retry
 	// (structural member: only handleContextWindowExceededError is called)
 	contextManager: Pick<TaskContextManager, "handleContextWindowExceededError">
-
-	// Provider reference
-	providerRef: WeakRef<ClineProvider>
 
 	// Communication
 	askSay: TaskAskSay
