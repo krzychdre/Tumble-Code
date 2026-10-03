@@ -275,13 +275,14 @@ def _selected_columns(statement: str, table: str) -> set[str]:
 
 async def test_metrics_read_only_the_columns_they_use(seeded, captured_sql):
     """No full TelemetryEvent entity: the id, user, organization, type and
-    task columns are dead weight for the aggregation."""
+    task columns are dead weight for the aggregation. client_kind feeds the
+    "By client" breakdown."""
     await compute_user_metrics(seeded, USER, period="all", now=NOW)
 
     reads = [s for s in captured_sql if "FROM telemetry_events" in s]
     assert len(reads) == 2, reads
     completions, embeddings = reads
-    assert _selected_columns(completions, "telemetry_events") == {"properties", "created_at"}
+    assert _selected_columns(completions, "telemetry_events") == {"properties", "created_at", "client_kind"}
     assert _selected_columns(embeddings, "telemetry_events") == {"properties"}
 
 

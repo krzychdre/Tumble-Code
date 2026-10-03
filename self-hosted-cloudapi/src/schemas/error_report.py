@@ -78,6 +78,11 @@ class ErrorReportRequest(_Wire):
     mode: Optional[str] = None
     app_version: Optional[str] = None
     editor_name: Optional[str] = None
+    # "vscode" or "cli". Any other text is accepted and read as the editor name
+    # says (services/client_kind), like an unknown category.
+    client_kind: Optional[str] = None
+    # The CLI's package version (the CLI only); kept in the payload.
+    client_version: Optional[str] = None
     platform: Optional[str] = None
     provider: Optional[str] = None
     model_id: Optional[str] = None

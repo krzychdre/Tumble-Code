@@ -41,6 +41,8 @@ class ErrorReport(Base):
     model_id = Column(String, nullable=True, index=True)
     mode = Column(String, nullable=True)
     app_version = Column(String, nullable=True)
+    # "vscode" or "cli" (services/client_kind): which client sent the report.
+    client_kind = Column(String, nullable=False, default="vscode", server_default="vscode")
     tool_name = Column(String, nullable=True)
     summary = Column(Text, nullable=False)
     # The grouping key: category, tool and the first line of the message with

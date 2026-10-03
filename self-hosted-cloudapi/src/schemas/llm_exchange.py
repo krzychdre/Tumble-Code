@@ -120,6 +120,10 @@ class LlmExchangeRequest(_Wire):
     model_id: str
     app_version: Optional[str] = None
     editor_name: Optional[str] = None
+    # "vscode" or "cli"; any other text reads as the editor name says
+    # (services/client_kind). client_version: the CLI's package version.
+    client_kind: Optional[str] = None
+    client_version: Optional[str] = None
     platform: Optional[str] = None
     workspace_path: Optional[str] = None
     request: ExchangeRequest

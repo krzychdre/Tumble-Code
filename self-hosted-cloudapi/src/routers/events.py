@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_db
 from src.dependencies import get_current_user
 from src.schemas.telemetry import TelemetryEventRequest
+from src.services.client_kind import client_kind_from
 from src.services.telemetry_service import TaskNotOwnedError, record_event, backfill_messages
 from src.realtime.hub import registry
 from config.settings import settings
@@ -52,6 +53,24 @@ def capped_request(request: Request, limit: int) -> Request:
         return message
 
     return Request(request.scope, receive)
+
+
+def _backfill_client_kind(properties) -> str | None:
+    """The client a backfill's ``properties`` form field names, if any.
+
+    The field is the extension's telemetry properties as JSON text. None when
+    it is missing, not JSON, or says nothing about the client: the task's row
+    then keeps what it has (see telemetry_service.stamp_task_client).
+    """
+    if not isinstance(properties, str) or not properties:
+        return None
+    try:
+        fields = json.loads(properties)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(fields, dict) or not ("clientKind" in fields or "editorName" in fields):
+        return None
+    return client_kind_from(fields)
 
 
 def _parse_backfill_upload(content: bytes) -> list:
@@ -128,6 +147,7 @@ async def backfill_events_endpoint(
             user_id=user_id,
             messages=messages,
             workspace_path=workspace_path,
+            client_kind=_backfill_client_kind(form.get("properties")),
         )
     except TaskNotOwnedError:
         # Same answer as /api/extension/share for a task the caller does not

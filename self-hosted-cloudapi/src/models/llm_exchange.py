@@ -51,6 +51,8 @@ class LlmExchange(Base):
     model_id = Column(String, nullable=True, index=True)
     mode = Column(String, nullable=True)
     workspace_path = Column(String, nullable=True)
+    # "vscode" or "cli" (services/client_kind): which client recorded it.
+    client_kind = Column(String, nullable=False, default="vscode", server_default="vscode")
     # completed, error or aborted (an unknown value from a newer client is kept).
     status = Column(String, nullable=False)
     finish_reason = Column(String, nullable=True)

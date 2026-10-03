@@ -2,15 +2,25 @@
 {% import "_pager.html" as pager %}
 {% block title %}Usage metrics · Tumble Code{% endblock %}
 {% block content %}
+{# The client filter rides along on every link of the page; the period does
+   too, except on its own selector. #}
+{% set client_q = '&amp;client=' ~ client if client else '' %}
 {# A page of the daily table: same period, table opened and scrolled to. #}
-{% macro day_url(n) %}/app/metrics?period={{ metrics.period }}&amp;day_page={{ n }}#daily-table{% endmacro %}
+{% macro day_url(n) %}/app/metrics?period={{ metrics.period }}{{ client_q|safe }}&amp;day_page={{ n }}#daily-table{% endmacro %}
 <div class="metrics-head">
   <h1 class="page-title">Usage metrics</h1>
-  <nav class="period-control" aria-label="Time period">
-    {% for p in periods %}
-    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/metrics?period={{ p.key }}">{{ p.label }}</a>
+  <div class="metrics-controls">
+  <nav class="period-control" aria-label="Client">
+    {% for c in clients %}
+    <a class="period-opt{{ ' active' if c.active else '' }}" href="/app/metrics?period={{ metrics.period }}{% if c.key %}&amp;client={{ c.key }}{% endif %}">{{ c.label }}</a>
     {% endfor %}
   </nav>
+  <nav class="period-control" aria-label="Time period">
+    {% for p in periods %}
+    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/metrics?period={{ p.key }}{{ client_q|safe }}">{{ p.label }}</a>
+    {% endfor %}
+  </nav>
+  </div>
 </div>
 
 {% if quality.has_data %}
@@ -203,7 +213,7 @@
       <tbody>
         {% for r in rows %}
         <tr>
-          <td class="bd-name" title="{{ r.name }}">{{ r.name }}</td>
+          <td class="bd-name" title="{{ r.label or r.name }}">{{ r.label or r.name }}</td>
           <td class="bd-num">{{ r.tokens_fmt }}</td>
           <td class="bd-num">{{ r.cost|fmt_cost }}</td>
           <td class="bd-num">{{ r.count }}</td>
@@ -216,6 +226,7 @@
   {{ breakdown("By model", metrics.by_model) }}
   {{ breakdown("By mode", metrics.by_mode) }}
   {{ breakdown("By provider", metrics.by_provider) }}
+  {{ breakdown("By client", metrics.by_client) }}
 </section>
 {% else %}
 <div class="empty">

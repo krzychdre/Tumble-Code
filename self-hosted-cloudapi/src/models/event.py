@@ -27,5 +27,10 @@ class TelemetryEvent(Base):
     # blob stays authoritative — this is a key, not a second source of truth.
     # Not a FK: telemetry names tasks that may never be stored as rows.
     task_id = Column(String, nullable=True, index=True)
+    # Which client sent the event, "vscode" or "cli" (services/client_kind),
+    # lifted out of `properties` at ingest like task_id. Not indexed: the
+    # metrics reads narrow by (user_id, event_type, created_at) first, and a
+    # two-value column can only filter the rows that index already found.
+    client_kind = Column(String, nullable=False, default="vscode", server_default="vscode")
     properties = Column(Text, default="{}")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

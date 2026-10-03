@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.web_session import cookie_should_be_secure
 from src.routers.web_page import WebPage, render_page, require_web_page
+from src.services.client_kind import CLIENT_LABELS, parse_client
 from src.services.metrics_service import (
     DEFAULT_PERIOD,
     PERIOD_LABELS,
@@ -27,6 +28,9 @@ PERIOD_COOKIE_MAX_AGE = 365 * 24 * 3600
 async def metrics_page(
     request: Request,
     period: str | None = None,
+    # "vscode" or "cli": only what that client sent. Absent (or unknown) means
+    # both. Not remembered like the period: a plain visit shows everything.
+    client: str | None = None,
     # The daily table's page. Absent on a plain visit; present only when the
     # reader used the table's pager, which is also when the table opens.
     day_page: int | None = Query(None),
@@ -43,12 +47,17 @@ async def metrics_page(
     if not picked:
         remembered = request.cookies.get(PERIOD_COOKIE)
         period = remembered if remembered in PERIODS else DEFAULT_PERIOD
-    metrics = await compute_user_metrics(db, user_id, period)
+    client = parse_client(client)
+    metrics = await compute_user_metrics(db, user_id, period, client=client)
     periods = [
         {"key": key, "label": label, "active": key == metrics["period"]}
         for key, label in PERIOD_LABELS.items()
     ]
-    quality = await quality_overview(db, user_id, period)
+    clients = [
+        {"key": key, "label": label, "active": key == client}
+        for key, label in [(None, "All clients"), *CLIENT_LABELS.items()]
+    ]
+    quality = await quality_overview(db, user_id, period, client)
     response = render_page(
         request,
         web,
@@ -57,6 +66,8 @@ async def metrics_page(
         metrics=metrics,
         quality=quality,
         periods=periods,
+        clients=clients,
+        client=client,
         # Server-rendered SVG geometry (web/presenters/charts.py).
         charts=metrics_charts(metrics, day_page or 1),
         day_table_open=day_page is not None,

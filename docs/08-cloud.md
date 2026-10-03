@@ -148,6 +148,12 @@ erDiagram
   definitions and large fields of the exact HTTP body are blobs (`LLM_BLOB`, per user, task and SHA-256).
   Bodies are gzip (32 MB compressed, 128 MB inflated at most); a duplicate id is ignored. Exchanges are deleted
   with their task and cascade with their user; the retention sweep of telemetry does not touch them.
+- Client: the CLI runs the extension bundle and sends the same records. Telemetry events, error reports and LLM
+  exchanges carry `client_kind` (`vscode` or `cli`), stamped at ingest by `services/client_kind.py` from the
+  record's `clientKind`, or for older clients from `editorName` (`wrapper|cli...` is the CLI). A task's
+  `client_kind` starts as `vscode` (a bridge message names no client) and turns `cli` with the first CLI telemetry
+  event or backfill of its own user, never back. `/app/metrics` filters by it (`?client=vscode|cli`) and breaks
+  usage down by client.
 
 ### Background work
 

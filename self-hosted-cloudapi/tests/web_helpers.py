@@ -127,6 +127,7 @@ def _llm_event(
     created_at=None,
     kind=None,
     usage_reported=None,
+    client_kind=None,
 ):
     """Build an ``LLM Completion`` telemetry row mirroring the extension payload."""
     from datetime import datetime, timezone
@@ -145,6 +146,7 @@ def _llm_event(
         # which part of it made the call is a conversation turn.
         **({"completionKind": kind} if kind is not None else {}),
         **({"usageReported": usage_reported} if usage_reported is not None else {}),
+        **({"clientKind": client_kind} if client_kind is not None else {}),
     }
     return TelemetryEvent(
         user_id=user_id,
@@ -153,6 +155,7 @@ def _llm_event(
         # Stamped exactly as services/telemetry_service.record_event does: the
         # column is the indexed join key, the blob stays authoritative.
         task_id=task_id,
+        client_kind=client_kind or "vscode",
         properties=json.dumps(props),
         created_at=created_at or datetime.now(timezone.utc),
     )

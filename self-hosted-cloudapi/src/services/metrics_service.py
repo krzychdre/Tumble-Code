@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
+from src.services.client_kind import CLIENT_LABELS
 from src.services.telemetry_vocab import (
     EMBEDDING_EVENT,
     KIND_LABELS,
@@ -85,7 +86,7 @@ def _event_ts_ms(props: dict, fallback: datetime) -> float:
 
 
 async def _embedding_payloads(
-    db: AsyncSession, user_id: str, start: Optional[datetime]
+    db: AsyncSession, user_id: str, start: Optional[datetime], client: Optional[str] = None
 ) -> list:
     """The ``properties`` blobs of the user's embedding events in the period."""
     stmt = select(TelemetryEvent.properties).where(
@@ -94,6 +95,8 @@ async def _embedding_payloads(
     )
     if start is not None:
         stmt = stmt.where(TelemetryEvent.created_at >= start)
+    if client is not None:
+        stmt = stmt.where(TelemetryEvent.client_kind == client)
     return [payload for (payload,) in (await db.execute(stmt)).all()]
 
 
@@ -135,8 +138,12 @@ async def compute_user_metrics(
     user_id: str,
     period: str = DEFAULT_PERIOD,
     now: Optional[datetime] = None,
+    client: Optional[str] = None,
 ) -> dict:
     """Aggregate the user's LLM-usage metrics for the given period.
+
+    ``client`` ("vscode" or "cli", services/client_kind) keeps only the events
+    that client sent; None counts both.
 
     Returns a JSON-serializable dict:
       - period, period_label
@@ -145,6 +152,7 @@ async def compute_user_metrics(
       - duration_ms / duration (per-taskId span, summed), task_count
       - by_model / by_mode / by_provider: lists of {name, tokens, tokens_fmt,
         cost, count}, sorted desc by tokens
+      - by_client: the same, with a ``label`` ("VS Code", "CLI")
       - by_day: chronological list of {day, tokens, cost}
       - has_data
     """
@@ -152,20 +160,25 @@ async def compute_user_metrics(
         period = DEFAULT_PERIOD
     start = period_start(period, now)
 
-    # Only the two columns the aggregation reads, as plain tuples: no ORM
+    # Only the three columns the aggregation reads, as plain tuples: no ORM
     # entity per event (identity map, attribute instrumentation) and none of
     # the id/user/organization/type/task columns. The (user_id, event_type,
-    # created_at) index serves the filter, the range and the ORDER BY.
-    stmt = select(TelemetryEvent.properties, TelemetryEvent.created_at).where(
+    # created_at) index serves the filter, the range and the ORDER BY; the
+    # client condition only drops rows that index found.
+    stmt = select(
+        TelemetryEvent.properties, TelemetryEvent.created_at, TelemetryEvent.client_kind
+    ).where(
         TelemetryEvent.user_id == user_id,
         TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
     )
     if start is not None:
         stmt = stmt.where(TelemetryEvent.created_at >= start)
+    if client is not None:
+        stmt = stmt.where(TelemetryEvent.client_kind == client)
     stmt = stmt.order_by(TelemetryEvent.created_at)
 
     rows = (await db.execute(stmt)).all()
-    embedding_payloads = await _embedding_payloads(db, user_id, start)
+    embedding_payloads = await _embedding_payloads(db, user_id, start, client)
 
     # The loop below is pure Python over every completion in the period (about
     # 58 ms for all time on the live deployment); in a worker thread it no
@@ -183,8 +196,8 @@ def aggregate_user_metrics(
 ) -> dict:
     """The metrics page's figures from the fetched rows; see compute_user_metrics.
 
-    ``rows`` are ``(properties, created_at)`` pairs of the period's ``LLM
-    Completion`` events, oldest first; ``embedding_payloads`` the
+    ``rows`` are ``(properties, created_at, client_kind)`` triples of the
+    period's ``LLM Completion`` events, oldest first; ``embedding_payloads`` the
     ``properties`` of its embedding events. Pure: no database, no I/O.
     """
     totals = {
@@ -199,6 +212,7 @@ def aggregate_user_metrics(
     by_mode: dict[str, dict] = {}
     by_provider: dict[str, dict] = {}
     by_kind: dict[str, dict] = {}
+    by_client: dict[str, dict] = {}
     by_day: dict[str, dict] = {}
     # Completions whose provider could not say what they cost. Counted rather
     # than silently added in as zero, so "12 calls we have no figures for" reads
@@ -213,7 +227,7 @@ def aggregate_user_metrics(
         slot["cost"] += cost
         slot["count"] += 1
 
-    for payload, created_at in rows:
+    for payload, created_at, client_kind in rows:
         props = parse_event_props(payload)
         if props is None:
             continue
@@ -240,6 +254,7 @@ def aggregate_user_metrics(
         _bucket(by_mode, str(props.get("mode") or "unknown"), tokens, cost)
         _bucket(by_provider, str(props.get("apiProvider") or "unknown"), tokens, cost)
         _bucket(by_kind, kind, tokens, cost)
+        _bucket(by_client, client_kind or "unknown", tokens, cost)
 
         created = created_at or (now or datetime.now(timezone.utc))
         day = created.strftime("%Y-%m-%d")
@@ -268,6 +283,9 @@ def aggregate_user_metrics(
     kinds = _sorted(by_kind)
     for row in kinds:
         row["label"] = KIND_LABELS.get(row["name"], row["name"])
+    clients = _sorted(by_client)
+    for row in clients:
+        row["label"] = CLIENT_LABELS.get(row["name"], row["name"])
     days = sorted(by_day.values(), key=lambda d: d["day"])
     embeddings = _embedding_totals(embedding_payloads)
 
@@ -288,6 +306,7 @@ def aggregate_user_metrics(
         "by_mode": modes,
         "by_provider": providers,
         "by_kind": kinds,
+        "by_client": clients,
         "unreported": unreported,
         "embeddings": embeddings,
         "by_day": days,

@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import dialect_insert
 from src.models.llm_exchange import DatasetSettings, LlmBlob, LlmExchange
 from src.schemas.llm_exchange import LlmExchangeOutcomeRequest, LlmExchangeRequest
+from src.services.client_kind import client_kind_from
 from src.services.exchange_quality import join_issues, outcome_issues, split_issues, static_issues
 
 COLUMN_MAX = 200
@@ -185,6 +186,7 @@ async def record_exchange(
         "model_id": _short(exchange.model_id),
         "mode": _short(exchange.mode),
         "workspace_path": (exchange.workspace_path or None) and exchange.workspace_path[:1000],
+        "client_kind": client_kind_from({"clientKind": exchange.client_kind, "editorName": exchange.editor_name}),
         "status": exchange.status[:40],
         "finish_reason": _short(exchange.response.finish_reason),
         "input_tokens": int((usage and usage.input_tokens) or 0),
