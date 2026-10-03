@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config.settings import settings
 from src.auth.web_session import LoginRequired, WebUser, get_web_user_optional
 from src.database import get_db
+from src.routers.web_page import not_found_page
 from src.services.task_access import ShareVerdict, shared_view_access
 from src.services.task_summary import derive_title
 from src.utils.json_script import json_for_script
@@ -40,12 +41,7 @@ async def shared_task(
     if access.verdict is ShareVerdict.LOGIN_REQUIRED:
         raise LoginRequired()
     if access.verdict is ShareVerdict.NOT_FOUND:
-        return templates.TemplateResponse(
-            request,
-            "not_found.html",
-            {"user": user},
-            status_code=404,
-        )
+        return not_found_page(request, user)
     share, task, is_owner = access.share, access.task, access.is_owner
 
     live = bool(settings.bridge_enabled and is_owner)
@@ -57,7 +53,8 @@ async def shared_task(
         {
             "user": user,
             "task": {"id": task_id},
-            "title": (task.title if task is not None else None) or derive_title(messages),
+            "title": (task.title if task is not None else None)
+            or derive_title(messages),
             "messages_json": await conversation_json(messages),
             # Provenance travels with the transcript: a reader of a shared run
             # should be able to see what produced it, not just what it said.
@@ -68,7 +65,9 @@ async def shared_task(
             "live": live,
             # The live header's figures, for the owner only, as before: a
             # reader of a shared link is shown the conversation, not its bill.
-            "spend_table": _spend_summary(task, {}) if live and task is not None else None,
+            "spend_table": _spend_summary(task, {})
+            if live and task is not None
+            else None,
             "can_delete": is_owner,
             "read_measure": True,
             "live_config_json": (

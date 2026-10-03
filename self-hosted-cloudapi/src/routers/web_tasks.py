@@ -12,9 +12,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import settings
-from src.auth.web_session import WebUser, require_web_user
-from src.database import get_db
 from src.models.task import Task
+from src.routers.web_page import (
+    WebPage,
+    not_found_page,
+    render_page,
+    require_web_page,
+)
 from src.services.share_service import delete_shared_task, delete_tasks
 from src.services.task_summary import derive_title
 from src.services.task_tree import ancestors, subtree_size, subtrees
@@ -31,7 +35,6 @@ from src.web.presenters.task_detail import (
 )
 from src.web.presenters.task_list import ListView
 from src.web.presenters.task_rows import _list_row, _workspace_label
-from src.web.templating import templates
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +76,7 @@ async def task_list(
     subtasks: str = Query(""),
     sort: str = Query(""),
     dir: str = Query(""),
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """List the logged-in user's shared tasks, one page at a time.
 
@@ -93,9 +95,19 @@ async def task_list(
     GET parameters (``ListView``); the default is newest first.
     """
     view = ListView.parse(
-        scope=scope, q=q, project=project, model=model, grade=grade,
-        since=since, until=until, subtasks=subtasks, sort=sort, dir=dir,
+        scope=scope,
+        q=q,
+        project=project,
+        model=model,
+        grade=grade,
+        since=since,
+        until=until,
+        subtasks=subtasks,
+        sort=sort,
+        dir=dir,
     )
+    user = web["user"]
+    db = web["db"]
     user_id = user["user_id"]
     filters = view.conditions(user_id)
 
@@ -118,32 +130,30 @@ async def task_list(
     items = [_list_row(task, tree, nest) for task in page_tasks]
 
     # Shown on the scope toggle so the cost of switching is visible up front.
-    all_total = await db.scalar(
-        select(func.count(Task.id)).where(Task.user_id == user_id)
-    ) or 0
+    all_total = (
+        await db.scalar(select(func.count(Task.id)).where(Task.user_id == user_id)) or 0
+    )
 
-    return templates.TemplateResponse(
+    return render_page(
         request,
+        web,
         "tasks_list.html",
-        {
-            "user": user,
-            "tasks": items,
-            "nav_active": "tasks",
-            "view": view,
-            "query": view.q,
-            "scope": view.scope,
-            "tree_view": nest,
-            "page": page,
-            "page_count": page_count,
-            # Numbered links, so any page is one click away rather than N
-            # clicks of "Older"; None entries render as an ellipsis.
-            "pages": page_window(page, page_count),
-            "total": total,
-            "all_total": all_total,
-            # What the empty state tells the reader to point the extension at.
-            "api_url": settings.api_base_url,
-            **await _filter_suggestions(db, user_id),
-        },
+        "tasks",
+        tasks=items,
+        view=view,
+        query=view.q,
+        scope=view.scope,
+        tree_view=nest,
+        page=page,
+        page_count=page_count,
+        # Numbered links, so any page is one click away rather than N
+        # clicks of "Older"; None entries render as an ellipsis.
+        pages=page_window(page, page_count),
+        total=total,
+        all_total=all_total,
+        # What the empty state tells the reader to point the extension at.
+        api_url=settings.api_base_url,
+        **await _filter_suggestions(db, user_id),
     )
 
 
@@ -161,9 +171,13 @@ async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
     )
     labels = {label for label in (_workspace_label(p) for p in paths.all()) if label}
     joined = await db.scalars(
-        select(Task.models).where(Task.user_id == user_id, Task.models.is_not(None)).distinct()
+        select(Task.models)
+        .where(Task.user_id == user_id, Task.models.is_not(None))
+        .distinct()
     )
-    models = {m.strip() for value in joined.all() for m in value.split(",") if m.strip()}
+    models = {
+        m.strip() for value in joined.all() for m in value.split(",") if m.strip()
+    }
     return {
         "project_options": sorted(labels, key=str.lower),
         "model_options": sorted(models, key=str.lower),
@@ -174,19 +188,15 @@ async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
 async def task_detail(
     task_id: str,
     request: Request,
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """Read-only conversation view for a task the user owns."""
+    user = web["user"]
+    db = web["db"]
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if task is None or task.user_id != user["user_id"]:
-        return templates.TemplateResponse(
-            request,
-            "not_found.html",
-            {"user": user},
-            status_code=404,
-        )
+        return not_found_page(request, web["user"])
 
     messages = await _load_task_messages(db, task_id)
     # The owner view is live: it can drive the task through the socket.io bridge
@@ -206,41 +216,40 @@ async def task_detail(
             "tokensOut": rest.tokens_out,
             "cost": rest.cost,
         }
-    return templates.TemplateResponse(
+    return render_page(
         request,
+        web,
         "task_detail.html",
-        {
-            "user": user,
-            "task": task,
-            "ancestors": [_tree_entry(t) for t in trail],
-            "subtasks": _tree_entries(tree, task_id),
-            "subtask_count": subtree_size(tree, task_id),
-            "spend_table": spend,
-            "quality": _quality_panel(task),
-            # The stored title is authoritative; deriving it again is only a
-            # fallback for a row written before the summary columns existed and
-            # somehow missed the migration's backfill.
-            "title": task.title or derive_title(messages),
-            "workspace": task.workspace_path,
-            "workspace_label": _workspace_label(task.workspace_path),
-            "messages_json": await conversation_json(messages),
-            **await _model_context(db, task_id, task.user_id, messages),
-            "share_url": None,
-            "live": live,
-            "can_delete": True,
-            # A conversation is prose, so the page switches to the reading
-            # measure instead of the wider scanning column the list uses.
-            "read_measure": True,
-            "live_config_json": json_for_script(live_config),
-        },
+        # No nav tab: the task page is reached from the list, not from the nav.
+        "",
+        task=task,
+        ancestors=[_tree_entry(t) for t in trail],
+        subtasks=_tree_entries(tree, task_id),
+        subtask_count=subtree_size(tree, task_id),
+        spend_table=spend,
+        quality=_quality_panel(task),
+        # The stored title is authoritative; deriving it again is only a
+        # fallback for a row written before the summary columns existed and
+        # somehow missed the migration's backfill.
+        title=task.title or derive_title(messages),
+        workspace=task.workspace_path,
+        workspace_label=_workspace_label(task.workspace_path),
+        messages_json=await conversation_json(messages),
+        **await _model_context(db, task_id, task.user_id, messages),
+        share_url=None,
+        live=live,
+        can_delete=True,
+        # A conversation is prose, so the page switches to the reading
+        # measure instead of the wider scanning column the list uses.
+        read_measure=True,
+        live_config_json=json_for_script(live_config),
     )
 
 
 @router.post("/app/tasks/{task_id}/delete")
 async def delete_task(
     task_id: str,
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """Permanently delete a task the user owns (row + messages + share).
 
@@ -248,15 +257,14 @@ async def delete_task(
     ``delete_shared_task``). Always redirects back to the task list, so the
     POST is idempotent and refresh-safe.
     """
-    await delete_shared_task(db, task_id, user["user_id"])
+    await delete_shared_task(web["db"], task_id, web["user"]["user_id"])
     return RedirectResponse(url="/app", status_code=303)
 
 
 @router.post("/app/tasks/bulk-delete")
 async def bulk_delete_tasks(
     request: Request,
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """Permanently delete every selected task the user owns.
 
@@ -275,9 +283,16 @@ async def bulk_delete_tasks(
     deleted = 0
     if task_ids:
         deleted = await delete_tasks(
-            db, task_ids, user["user_id"], include_subtasks=include_subtasks
+            web["db"],
+            task_ids,
+            web["user"]["user_id"],
+            include_subtasks=include_subtasks,
         )
-        logger.info("[web] bulk delete: %s task(s) removed for %s", deleted, user["user_id"])
+        logger.info(
+            "[web] bulk delete: %s task(s) removed for %s",
+            deleted,
+            web["user"]["user_id"],
+        )
 
     # Back to the same view (scope, search, filters, sort), which the form
     # carries as hidden fields, but to its first page: selecting on page 3 and
@@ -293,4 +308,15 @@ async def bulk_delete_tasks(
     return RedirectResponse(url=view.url(), status_code=303)
 
 
-_VIEW_FIELDS = ("scope", "q", "project", "model", "grade", "since", "until", "subtasks", "sort", "dir")
+_VIEW_FIELDS = (
+    "scope",
+    "q",
+    "project",
+    "model",
+    "grade",
+    "since",
+    "until",
+    "subtasks",
+    "sort",
+    "dir",
+)
