@@ -38,6 +38,14 @@ import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import type { ArtifactStore } from "../artifacts/ArtifactStore"
 import { logger } from "../../utils/logging"
+import {
+	TaskApiConfigurationAccess,
+	TaskApiConversationHistoryAccess,
+	TaskApiHandlerAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+	TaskWorkingDirectoryAccess,
+} from "./access-groups"
 
 /**
  * Module-level constants for context management
@@ -129,13 +137,13 @@ export function nextMicrocompactStrippedTokens(result: MicrocompactOutcome, clea
  * Interface for Task access needed by TaskContextManager.
  * This is a narrow interface to minimize coupling between modules.
  */
-export interface TaskContextManagerAccess {
-	// Core identifiers
-	taskId: string
-
-	// API configuration and handler
-	apiConfiguration: ProviderSettings
-	api: ApiHandler
+export interface TaskContextManagerAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskApiHandlerAccess,
+		TaskApiConfigurationAccess,
+		TaskApiConversationHistoryAccess,
+		TaskWorkingDirectoryAccess {
 	/**
 	 * Async-resolve and cache the condense (context-compaction) handler: the
 	 * background model wrapped with a fallback to `api`. Loads the configured
@@ -144,9 +152,6 @@ export interface TaskContextManagerAccess {
 	 * configured background model is never silently bypassed.
 	 */
 	getCondenseApiHandler(): Promise<ApiHandler>
-
-	// Conversation history
-	apiConversationHistory: ApiMessage[]
 
 	// Auto-condense circuit breaker counter (read AND written by the manager).
 	consecutiveAutoCompactFailures: number
@@ -160,15 +165,9 @@ export interface TaskContextManagerAccess {
 	// context size before the next threshold check. See Task#microcompactStrippedTokens.
 	microcompactStrippedTokens: number
 
-	// Workspace path
-	cwd: string
-
 	// Controllers
 	rooIgnoreController?: RooIgnoreController
 	fileContextTracker: FileContextTracker
-
-	// Provider reference
-	providerRef: WeakRef<ClineProvider>
 
 	// Delegated modules
 	history: TaskMessageLog

@@ -6,21 +6,25 @@ import { type ApiMessage } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type ClineProvider } from "../webview/ClineProvider"
+import {
+	TaskAbortFlagAccess,
+	TaskApiConversationHistoryAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+} from "./access-groups"
 
 /**
  * Interface for Task access needed by TaskSubtasks.
  * This is a narrow interface to minimize coupling between modules.
  */
-export interface TaskSubtasksAccess {
-	// Core identifiers
-	taskId: string
+export interface TaskSubtasksAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskApiConversationHistoryAccess {
 	instanceId: string
 
-	// Provider reference for delegation
-	providerRef: WeakRef<ClineProvider>
-
 	// Mutable state flags (all need to be settable)
-	abort: boolean
 	abandoned: boolean
 	abortReason?: ClineApiReqCancelReason
 	didFinishAbortingStream: boolean
@@ -33,9 +37,6 @@ export interface TaskSubtasksAccess {
 	idleAsk?: ClineMessage
 	resumableAsk?: ClineMessage
 	interactiveAsk?: ClineMessage
-
-	// Conversation history (mutable array)
-	apiConversationHistory: ApiMessage[]
 
 	// Delegated modules
 	history: TaskMessageLog

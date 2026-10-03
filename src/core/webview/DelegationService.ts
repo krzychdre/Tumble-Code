@@ -18,13 +18,14 @@ import { readTaskMessages } from "../task-persistence/taskMessages"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 import { findLastNewTaskToolUse, formatSubtaskResult, hasToolResultFor } from "./delegationHistory"
 import { logger } from "../../utils/logging"
+import type { CurrentTaskHostMember, PostMessageHostMember, UpdateTaskHistoryHostMember } from "./host-groups"
 
 /**
  * What the delegation state machine needs from its provider. The member names
  * match ClineProvider's, so the provider hands in closures over itself and a
  * test can hand in a plain object.
  */
-export interface DelegationHost {
+export interface DelegationHost extends CurrentTaskHostMember, PostMessageHostMember, UpdateTaskHistoryHostMember {
 	readonly isViewLaunched: boolean
 	readonly contextProxy: { readonly globalStorageUri: { readonly fsPath: string } }
 	/** Marks the provider's own store writes so the store's change echo is suppressed. */
@@ -32,10 +33,6 @@ export interface DelegationHost {
 	getTaskHistoryStore(): Promise<Pick<TaskHistoryStore, "get" | "atomicReadAndUpdate">>
 	/** Throws "Task not found" for an unknown id. */
 	getHistoryItem(id: string): Promise<HistoryItem>
-	/** Persists the item and broadcasts it to the webview. */
-	updateTaskHistory(item: HistoryItem): Promise<void>
-	postMessageToWebview(message: ExtensionMessage): Promise<void>
-	getCurrentTask(): Task | undefined
 	getCurrentTaskStack(): string[]
 	clearCurrentTask(options?: { skipDelegationRepair?: boolean }): Promise<void>
 	createTask(text?: string, images?: string[], parentTask?: Task, options?: CreateTaskOptions): Promise<Task>

@@ -3,6 +3,11 @@ import { CloudService } from "@tumble-code/cloud"
 import type { ContextProxy } from "../config/ContextProxy"
 import type { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { logger } from "../../utils/logging"
+import type {
+	ActivateProfileHostMember,
+	ContextProxyHostMember,
+	ProviderSettingsManagerHostMember,
+} from "./host-groups"
 
 /**
  * What the cloud profile sync needs from its provider. The member names match
@@ -10,10 +15,12 @@ import { logger } from "../../utils/logging"
  * pick up methods that tests replace on the instance) and a test can hand in
  * a plain object.
  */
-export interface CloudProfileSyncHost {
-	readonly contextProxy: Pick<ContextProxy, "getValue" | "setValue">
-	readonly providerSettingsManager: Pick<ProviderSettingsManager, "syncCloudProfiles" | "listConfig" | "getProfile">
-	activateProviderProfile(args: { name: string }): Promise<unknown>
+export interface CloudProfileSyncHost
+	extends ContextProxyHostMember,
+		ActivateProfileHostMember,
+		ProviderSettingsManagerHostMember {
+	readonly providerSettingsManager: Pick<ProviderSettingsManager, "syncCloudProfiles"> &
+		ProviderSettingsManagerHostMember["providerSettingsManager"]
 	postStateToWebviewWithoutClineMessages(): Promise<void>
 }
 

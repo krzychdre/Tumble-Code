@@ -11,14 +11,14 @@ import { type AssistantMessageContent } from "../assistant-message"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { logger } from "../../utils/logging"
+import { TaskClineMessagesAccess, TaskIdAccess } from "./access-groups"
 
 /**
  * The state the assembler reads and writes on the owning task. Mutable members
  * stay owned by the task (via `TaskStreamProcessorAccess`); this interface is
  * the typed read/write view, the same seam pattern as `TaskApiLoopAccess` (D3).
  */
-export interface AssistantMessageAssemblerAccess {
-	taskId: string
+export interface AssistantMessageAssemblerAccess extends TaskIdAccess, TaskClineMessagesAccess {
 	assistantMessageContent: AssistantMessageContent[]
 	assistantMessageSavedToHistory: boolean
 	consecutiveNoAssistantMessagesCount: number

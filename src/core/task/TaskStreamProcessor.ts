@@ -35,6 +35,14 @@ import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "
 import { IncrementalReasoningFormatter } from "./reasoningFormatter"
 import { logger } from "../../utils/logging"
 import { captureFinishReason, captureStreamedToolCall } from "../diagnostics/ErrorReporter"
+import {
+	TaskAbortFlagAccess,
+	TaskApiConfigurationAccess,
+	TaskApiHandlerAccess,
+	TaskClineMessagesAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+} from "./access-groups"
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 
@@ -49,12 +57,17 @@ const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
  */
 export const REASONING_PARTIAL_POST_INTERVAL_MS = PARTIAL_ARGS_PARSE_INTERVAL_MS
 
-export interface TaskStreamProcessorAccess extends StreamToolCallHandlerAccess, AssistantMessageAssemblerAccess {
-	taskId: string
+export interface TaskStreamProcessorAccess
+	extends StreamToolCallHandlerAccess,
+		AssistantMessageAssemblerAccess,
+		TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskApiHandlerAccess,
+		TaskApiConfigurationAccess,
+		TaskClineMessagesAccess {
 	instanceId: string
-	abort: boolean
 	abandoned: boolean
-	apiConfiguration: ProviderSettings
 	_taskMode: string | undefined
 
 	// Streaming state (mutable - the processor reads and writes these)
@@ -73,20 +86,11 @@ export interface TaskStreamProcessorAccess extends StreamToolCallHandlerAccess, 
 	isWaitingForFirstChunk: boolean
 	cachedStreamingModel?: { id: string; info: ModelInfo }
 
-	// Cline messages (for updating api_req_started)
-	clineMessages: ClineMessage[]
-
 	// Abort stream flag
 	didFinishAbortingStream: boolean
 
-	// API handler (for caching streaming model)
-	api: ApiHandler
-
 	// Delegated modules
 	history: TaskMessageLog
-
-	// Provider reference (for postStateToWebviewWithoutTaskHistory)
-	providerRef: WeakRef<ClineProvider>
 
 	// Methods
 	emit: EventEmitter["emit"]

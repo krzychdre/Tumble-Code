@@ -21,6 +21,13 @@ import type { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import type { Task } from "../task/Task"
 import type { TaskHistoryStore } from "../task-persistence"
 import { logger } from "../../utils/logging"
+import type {
+	ActivateProfileHostMember,
+	CurrentTaskHostMember,
+	ProviderSettingsManagerHostMember,
+	TaskHistoryStoreHostMember,
+	UpdateTaskHistoryHostMember,
+} from "./host-groups"
 
 /**
  * What the mode and profile binding needs from its provider. The member names
@@ -28,20 +35,24 @@ import { logger } from "../../utils/logging"
  * also pick up methods that tests replace or spy on) and a test can hand in a
  * plain object.
  */
-export interface ModeProfileBindingHost {
+export interface ModeProfileBindingHost
+	extends CurrentTaskHostMember,
+		TaskHistoryStoreHostMember,
+		UpdateTaskHistoryHostMember,
+		ActivateProfileHostMember,
+		ProviderSettingsManagerHostMember {
 	readonly contextProxy: Pick<ContextProxy, "setValue" | "setProviderSettings">
+	/** Inherited from ProviderSettingsManagerHostMember; ModeProfileBinding additionally calls these. */
 	readonly providerSettingsManager: Pick<
 		ProviderSettingsManager,
-		"getModeConfigId" | "listConfig" | "getProfile" | "activateProfile" | "setModeConfig" | "saveConfig"
-	>
+		"getModeConfigId" | "activateProfile" | "setModeConfig" | "saveConfig"
+	> &
+		ProviderSettingsManagerHostMember["providerSettingsManager"]
 	isApiConfigLockedAcrossModes(): boolean
 	getCustomModes(): Promise<ModeConfig[] | undefined>
 	getState(): Promise<{ mode: string }>
 	updateGlobalState<K extends keyof GlobalState>(key: K, value: GlobalState[K]): Promise<void>
 	getGlobalState<K extends keyof GlobalState>(key: K): GlobalState[K]
-	getCurrentTask(): Task | undefined
-	getTaskHistoryStore(): Promise<Pick<TaskHistoryStore, "get">>
-	updateTaskHistory(item: HistoryItem): Promise<unknown>
 	activateProviderProfile(
 		args: { name: string } | { id: string },
 		options?: { persistModeConfig?: boolean; persistTaskHistory?: boolean },

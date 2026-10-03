@@ -1,7 +1,7 @@
-import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
+import type { ClineMessage } from "@tumble-code/types"
 
-import type { Task } from "../task/Task"
 import type { TaskHistoryInclusion, WebviewStatePush } from "./ProviderStateBuilder"
+import type { CurrentTaskHostMember, PostMessageHostMember } from "./host-groups"
 
 /**
  * The host seam of {@link WebviewStatePusher}: everything the state-push
@@ -9,20 +9,14 @@ import type { TaskHistoryInclusion, WebviewStatePush } from "./ProviderStateBuil
  * of a back-reference to the ClineProvider class (S1, extracted from
  * ClineProvider; see ai_plans/2026-09-28_s1-clineprovider-split.md).
  */
-export interface WebviewStatePusherHost {
+export interface WebviewStatePusherHost extends CurrentTaskHostMember, PostMessageHostMember {
 	/**
 	 * Builds the state snapshot to post (CORE-R1, ProviderStateBuilder).
 	 * The overload set of ClineProvider.getStateToPostToWebview applies.
 	 */
 	getStateToPostToWebview(options?: { includeTaskHistory?: TaskHistoryInclusion }): Promise<WebviewStatePush>
-	/** Posts one message to the webview; drops it silently when disposed. */
-	postMessageToWebview(message: ExtensionMessage): Promise<void>
-	/**
-	 * The current foreground task (the slot's occupant), if any. Only the
-	 * `messageAdded` fast path consults it (the message must belong to the
-	 * task the view is bound to).
-	 */
-	getCurrentTask(): Task | undefined
+	// getCurrentTask (CurrentTaskHostMember): only the `messageAdded` fast
+	// path consults it (the message must belong to the task the view is bound to).
 	/** True while a webview is resolved (a push without a view is a no-op). */
 	hasView(): boolean
 }

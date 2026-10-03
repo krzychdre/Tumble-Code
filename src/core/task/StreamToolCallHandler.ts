@@ -9,6 +9,7 @@ import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-mes
 import type { Task } from "./Task"
 import { captureStreamedToolCall } from "../diagnostics/ErrorReporter"
 import { logger } from "../../utils/logging"
+import { TaskIdAccess } from "./access-groups"
 
 // Tools that cannot mutate the workspace (the `workspaceReadOnly` column of the
 // tool descriptor table). An eager pre-edit checkpoint is only safe while every
@@ -25,8 +26,7 @@ const WORKSPACE_READ_ONLY_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(
  * this interface is the typed read/write view, the same seam pattern as
  * `TaskApiLoopAccess` (D3).
  */
-export interface StreamToolCallHandlerAccess {
-	taskId: string
+export interface StreamToolCallHandlerAccess extends TaskIdAccess {
 	currentStreamingDidCheckpoint: boolean
 	assistantMessageContent: AssistantMessageContent[]
 	userMessageContentReady: boolean

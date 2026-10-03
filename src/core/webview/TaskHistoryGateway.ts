@@ -16,6 +16,7 @@ import type { ContextProxy } from "../config/ContextProxy"
 import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../task-persistence"
 import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
 import { logger } from "../../utils/logging"
+import type { PostMessageHostMember } from "./host-groups"
 
 /**
  * What the task-history gateway needs from its provider. The member names
@@ -23,7 +24,7 @@ import { logger } from "../../utils/logging"
  * also pick up methods that tests replace on the instance) and a test can
  * hand in a plain object.
  */
-export interface TaskHistoryGatewayHost {
+export interface TaskHistoryGatewayHost extends PostMessageHostMember {
 	/** Webview messages are pushed only while the view is launched. */
 	readonly isViewLaunched: boolean
 	/** True from the first line of the provider's dispose on. */
@@ -39,7 +40,6 @@ export interface TaskHistoryGatewayHost {
 	>
 	/** The workspace directory, used to delete a task's checkpoints. */
 	readonly cwd: string
-	postMessageToWebview(message: ExtensionMessage): Promise<void>
 	postStateToWebview(): Promise<void>
 	postStateToWebviewWithoutClineMessages(): Promise<void>
 	getCurrentTask(): { readonly taskId: string } | undefined

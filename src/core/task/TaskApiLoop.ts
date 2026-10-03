@@ -50,6 +50,18 @@ import { ApiRequestBuilder, type ToolsArrayResult } from "./ApiRequestBuilder"
 import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 import { type ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import { RetryHandler, apiErrorDisplayText, isRateLimitError, setLastGlobalApiRequestTime } from "./RetryHandler"
+import {
+	TaskAbortFlagAccess,
+	TaskApiConfigurationAccess,
+	TaskApiConversationHistoryAccess,
+	TaskApiHandlerAccess,
+	TaskBackgroundFlagAccess,
+	TaskCloudSyncTimestampsAccess,
+	TaskClineMessagesAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+	TaskWorkingDirectoryAccess,
+} from "./access-groups"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
 import type { Task } from "./Task"
@@ -70,29 +82,24 @@ const AUTO_APPROVAL_LIMIT_MESSAGE = "Auto-approval limit reached and user did no
  * Interface for Task access needed by TaskApiLoop.
  * This is a narrow interface to minimize coupling between modules.
  */
-export interface TaskApiLoopAccess {
-	// Core identifiers
-	taskId: string
+export interface TaskApiLoopAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskApiHandlerAccess,
+		TaskApiConfigurationAccess,
+		TaskApiConversationHistoryAccess,
+		TaskClineMessagesAccess,
+		TaskCloudSyncTimestampsAccess,
+		TaskBackgroundFlagAccess,
+		TaskWorkingDirectoryAccess {
 	instanceId: string
 
 	// Abort state
-	abort: boolean
 	abandoned: boolean
 	abortReason?: ClineApiReqCancelReason
 	// Why a background task ended on a non-retryable API error (see Task#apiFailureMessage).
 	apiFailureMessage?: string
-
-	// API configuration and handler
-	apiConfiguration: ProviderSettings
-	api: ApiHandler
-
-	// Conversation history
-	apiConversationHistory: ApiMessage[]
-	clineMessages: ClineMessage[]
-	// Timestamps of cline messages already captured for the cloud; see
-	// Task#cloudSyncedMessageTimestamps. Forgetting one lets a revised message
-	// (same ts) be captured again.
-	cloudSyncedMessageTimestamps: Set<number>
 
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
 	// are cleared on the outgoing request copy (stored history stays pristine).
@@ -121,7 +128,6 @@ export interface TaskApiLoopAccess {
 	isWaitingForFirstChunk: boolean
 
 	// Workspace and controllers
-	cwd: string
 	fileContextTracker: FileContextTracker
 	rooIgnoreController?: RooIgnoreController
 
@@ -129,9 +135,6 @@ export interface TaskApiLoopAccess {
 	diffViewProvider: DiffViewProvider
 	toolRepetitionDetector: ToolRepetitionDetector
 	autoApprovalHandler: AutoApprovalHandler
-
-	// Provider reference
-	providerRef: WeakRef<ClineProvider>
 
 	// Streaming state (for presentAssistantMessage)
 	assistantMessageContent: AssistantMessageContent[]
@@ -153,9 +156,8 @@ export interface TaskApiLoopAccess {
 	// Monotonic loop iteration counter, advanced each executeApiRequestCycle
 	// entry. Used by the memory recall consume-once guard.
 	apiLoopIteration?: number
-	// Headless background task (parallel subagent / memory writer). Background
-	// tasks must not receive delegation tools (no nested fan-outs).
-	isBackground: boolean
+	// isBackground (TaskBackgroundFlagAccess): background tasks must not
+	// receive delegation tools (no nested fan-outs).
 	// Headless turn cap for background tasks (undefined = no cap / foreground).
 	maxAgentTurns?: number
 	// Assistant-turn counter enforced against `maxAgentTurns`.

@@ -26,31 +26,34 @@ import { applyExecutionSnapshot, detectStaleFileChanges, type StaleFile } from "
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 import { logger } from "../../utils/logging"
+import {
+	TaskAbortFlagAccess,
+	TaskApiConversationHistoryAccess,
+	TaskClineMessagesAccess,
+	TaskIdAccess,
+	TaskProviderRefAccess,
+	TaskWorkingDirectoryAccess,
+} from "./access-groups"
 
 /**
  * Interface for Task access needed by TaskResumption.
  * This is a narrow interface to minimize coupling.
  */
-export interface TaskResumptionAccess {
-	// Core identifiers
-	taskId: string
+export interface TaskResumptionAccess
+	extends TaskIdAccess,
+		TaskProviderRefAccess,
+		TaskAbortFlagAccess,
+		TaskApiConversationHistoryAccess,
+		TaskClineMessagesAccess,
+		TaskWorkingDirectoryAccess {
 	instanceId: string
 
-	/** Workspace root, used to resolve the ledger's file paths for the staleness check. */
-	cwd: string
+	/** Workspace root, used to resolve the ledger's file paths for the staleness check. (TaskWorkingDirectoryAccess) */
 
 	// State flags
 	isInitialized: boolean
-	abort: boolean
 	abandoned: boolean
 	abortReason?: string
-
-	// Conversation history
-	clineMessages: ClineMessage[]
-	apiConversationHistory: ApiMessage[]
-
-	// Provider reference
-	providerRef: WeakRef<ClineProvider>
 
 	// Delegated modules
 	history: TaskMessageLog
