@@ -56,6 +56,10 @@ jobs:
                   TEST_FILE: ${{ inputs.test_file }}
                   TEST_GREP: ${{ inputs.grep }}
                   VSCODE_VERSION: ${{ inputs.vscode_version }}
+                  # Provider suites are opt-in for local runs (see the
+                  # workspace README); CI opts in so the hermetic zai suite
+                  # keeps running here, as it did before the opt-in gate.
+                  TEST_PROVIDERS: "1"
               # xvfb-run gives VS Code (Electron) the X display it needs on a
               # headless runner; -a picks a free display number.
               run: xvfb-run -a pnpm test:run

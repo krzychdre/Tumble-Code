@@ -35,14 +35,17 @@ async function main() {
 		// - npm run test:e2e -- --grep "write-to-file"
 		// - TEST_GREP="apply-diff" npm run test:e2e
 		// - TEST_FILE="task.test.js" npm run test:e2e
+		// - npm run test:providers   (or --providers / TEST_PROVIDERS=1)
 		const testGrep = process.argv.find((arg, i) => process.argv[i - 1] === "--grep") || process.env.TEST_GREP
 		const testFile = process.argv.find((arg, i) => process.argv[i - 1] === "--file") || process.env.TEST_FILE
+		const testProviders = process.argv.includes("--providers") || process.env.TEST_PROVIDERS ? "1" : undefined
 
 		// Pass test filters as environment variables to the test runner
 		const extensionTestsEnv = {
 			...process.env,
 			...(testGrep && { TEST_GREP: testGrep }),
 			...(testFile && { TEST_FILE: testFile }),
+			...(testProviders && { TEST_PROVIDERS: testProviders }),
 		}
 
 		// Download VS Code, unzip it and run the integration test. The default
