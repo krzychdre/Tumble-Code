@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useRef, useState, useMemo } from "react"
+import React, { Suspense, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { SETTINGS_DEFAULTS, type ExtensionMessage } from "@tumble-code/types"
@@ -8,6 +8,7 @@ import { MarketplaceViewStateManager } from "./components/marketplace/Marketplac
 
 import { vscode } from "./utils/vscode"
 import { useExtensionMessage } from "./utils/extensionBus"
+import { lazyTab } from "./utils/lazyTab"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionSelector } from "./context/ExtensionStateContext"
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
@@ -25,11 +26,14 @@ import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
 
 // The Marketplace and Cloud views are off the chat critical path: each becomes
 // its own chunk fetched on first open (P4). The chat view itself, Settings and
-// History stay eager (Settings is the welcome-gate recovery path).
-const MarketplaceView = lazy(() =>
+// History stay eager (Settings is the welcome-gate recovery path). lazyTab
+// turns a chunk lost to a reinstall under a running window into a reload notice.
+const MarketplaceView = lazyTab(() =>
 	import("./components/marketplace/MarketplaceView").then((module) => ({ default: module.MarketplaceView })),
 )
-const CloudView = lazy(() => import("./components/cloud/CloudView").then((module) => ({ default: module.CloudView })))
+const CloudView = lazyTab(() =>
+	import("./components/cloud/CloudView").then((module) => ({ default: module.CloudView })),
+)
 
 // Subtle fallback while a lazy tab's chunk arrives: the standard spinner.
 const TabLoadingFallback = () => {

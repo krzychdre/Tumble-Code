@@ -7,6 +7,11 @@
 		"errorStack": "오류 스택:",
 		"componentStack": "컴포넌트 스택:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code가 업데이트되었습니다",
+		"description": "이 창은 아직 이전 버전으로 실행 중이어서 이 보기를 불러올 수 없습니다. 업데이트를 완료하려면 창을 다시 로드하세요.",
+		"reload": "창 다시 로드"
+	},
 	"answers": {
 		"yes": "예",
 		"cancel": "취소"

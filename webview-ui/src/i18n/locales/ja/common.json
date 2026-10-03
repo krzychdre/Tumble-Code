@@ -7,6 +7,11 @@
 		"errorStack": "エラースタック：",
 		"componentStack": "コンポーネントスタック："
 	},
+	"staleBuild": {
+		"title": "Tumble Code が更新されました",
+		"description": "このウィンドウはまだ以前のバージョンで動作しているため、このビューを読み込めません。更新を完了するにはウィンドウを再読み込みしてください。",
+		"reload": "ウィンドウを再読み込み"
+	},
 	"answers": {
 		"yes": "はい",
 		"cancel": "キャンセル"

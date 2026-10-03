@@ -203,6 +203,7 @@ type ExpectedWebviewMessageType =
 	| "openDebugApiHistory"
 	| "openDebugUiHistory"
 	| "downloadErrorDiagnostics"
+	| "reloadWindow"
 	| "requestOpenAiCodexRateLimits"
 	| "refreshCustomTools"
 	| "requestModes"

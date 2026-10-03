@@ -7,6 +7,11 @@
 		"errorStack": "錯誤堆疊：",
 		"componentStack": "元件堆疊："
 	},
+	"staleBuild": {
+		"title": "Tumble Code 已更新",
+		"description": "此視窗仍在執行舊版本，因此無法載入此檢視。請重新載入視窗以完成更新。",
+		"reload": "重新載入視窗"
+	},
 	"answers": {
 		"yes": "是",
 		"cancel": "取消"

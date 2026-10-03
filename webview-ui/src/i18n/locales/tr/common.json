@@ -7,6 +7,11 @@
 		"errorStack": "Hata Yığını:",
 		"componentStack": "Bileşen Yığını:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code güncellendi",
+		"description": "Bu pencere hâlâ önceki sürümü çalıştırıyor, bu yüzden bu görünüm yüklenemiyor. Güncellemeyi tamamlamak için pencereyi yeniden yükleyin.",
+		"reload": "Pencereyi yeniden yükle"
+	},
 	"answers": {
 		"yes": "Evet",
 		"cancel": "İptal"

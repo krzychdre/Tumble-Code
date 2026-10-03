@@ -7,6 +7,11 @@
 		"errorStack": "Pila de errores:",
 		"componentStack": "Pila de componentes:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code se ha actualizado",
+		"description": "Esta ventana aún ejecuta la versión anterior, por lo que esta vista no puede cargarse. Recarga la ventana para completar la actualización.",
+		"reload": "Recargar ventana"
+	},
 	"answers": {
 		"yes": "Sí",
 		"cancel": "Cancelar"

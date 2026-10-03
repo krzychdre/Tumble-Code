@@ -7,6 +7,11 @@
 		"errorStack": "Stos błędu:",
 		"componentStack": "Stos komponentów:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code został zaktualizowany",
+		"description": "To okno wciąż działa na poprzedniej wersji, więc ten widok nie może się wczytać. Przeładuj okno, aby dokończyć aktualizację.",
+		"reload": "Przeładuj okno"
+	},
 	"number_format": {
 		"thousand_suffix": "k",
 		"million_suffix": "m",
