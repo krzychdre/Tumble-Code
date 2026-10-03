@@ -28,7 +28,6 @@ import {
 	type MarketplaceInstalledMetadata,
 	TumbleCodeEventName,
 	openRouterDefaultModelId,
-	DEFAULT_MODES,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 	WebviewMessage,
@@ -89,6 +88,7 @@ import { forwardTaskEvents, type TaskEventForwardingHost } from "./taskEventForw
 import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOptions } from "./WebviewHtml"
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
 import { TelemetryPropertiesSource } from "./TelemetryPropertiesSource"
+import { ModeProfileQueries } from "./ModeProfileQueries"
 import { BackgroundTaskRunner, type BackgroundTaskOptions, type BackgroundTaskOutcome } from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
@@ -156,6 +156,12 @@ export class ClineProvider
 	 * the CLI's per-mode provider settings.
 	 */
 	private readonly modeProfiles: ModeProfileBinding
+	/**
+	 * The read-side mode and profile queries (R3-12 cluster 3): mode list,
+	 * current mode/profile, profile entries and profile delete. See
+	 * {@link ModeProfileQueries}.
+	 */
+	private readonly modeProfileQueries: ModeProfileQueries
 	/**
 	 * The task-history gateway (CORE-R6 a): the shared TaskHistoryStore
 	 * handle, echo suppression, the storage-error banner and the history
@@ -329,6 +335,14 @@ export class ClineProvider
 			clearStorageError: () => this.taskHistory.clearStorageError(),
 			reportStorageError: (error) => this.taskHistory.reportStorageError("ProviderProfile", error),
 		})
+		this.modeProfileQueries = new ModeProfileQueries({
+			getCustomModes: () => this.customModesManager.getCustomModes(),
+			getState: () => this.getState(),
+			setValues: (values) => this.setValues(values),
+			contextProxy,
+			postStateToWebview: () => this.postStateToWebview(),
+		})
+
 		this.updateGlobalState("codebaseIndexModels", EMBEDDING_MODEL_PROFILES)
 
 		// Acquire a shared, ref-counted TaskHistoryStore for this storage
@@ -1131,16 +1145,20 @@ export class ClineProvider
 		await this.modeProfiles.handleModeSwitch(newMode)
 	}
 
-	// Provider Profile Management
+	// Provider Profile Management (reads + delete live in ModeProfileQueries;
+	// the write side — activation/upsert — in ModeProfileBinding).
 
+	/** See {@link ModeProfileQueries.getProviderProfileEntries}. */
 	getProviderProfileEntries(): ProviderSettingsEntry[] {
-		return this.contextProxy.getValues().listApiConfigMeta || []
+		return this.modeProfileQueries.getProviderProfileEntries()
 	}
 
+	/** See {@link ModeProfileQueries.getProviderProfileEntry}. */
 	getProviderProfileEntry(name: string): ProviderSettingsEntry | undefined {
-		return this.getProviderProfileEntries().find((profile) => profile.name === name)
+		return this.modeProfileQueries.getProviderProfileEntry(name)
 	}
 
+	/** See {@link ModeProfileBinding.upsertProviderProfile}. */
 	async upsertProviderProfile(
 		name: string,
 		providerSettings: ProviderSettings,
@@ -1149,29 +1167,12 @@ export class ClineProvider
 		return this.modeProfiles.upsertProviderProfile(name, providerSettings, activate)
 	}
 
+	/** See {@link ModeProfileQueries.deleteProviderProfile}. */
 	async deleteProviderProfile(profileToDelete: ProviderSettingsEntry) {
-		const globalSettings = this.contextProxy.getValues()
-		let profileToActivate: string | undefined = globalSettings.currentApiConfigName
-
-		if (profileToDelete.name === profileToActivate) {
-			profileToActivate = this.getProviderProfileEntries().find(({ name }) => name !== profileToDelete.name)?.name
-		}
-
-		if (!profileToActivate) {
-			throw new Error("You cannot delete the last profile")
-		}
-
-		const entries = this.getProviderProfileEntries().filter(({ name }) => name !== profileToDelete.name)
-
-		await this.contextProxy.setValues({
-			...globalSettings,
-			currentApiConfigName: profileToActivate,
-			listApiConfigMeta: entries,
-		})
-
-		await this.postStateToWebview()
+		await this.modeProfileQueries.deleteProviderProfile(profileToDelete)
 	}
 
+	/** See {@link ModeProfileBinding.activateProviderProfile}. */
 	async activateProviderProfile(
 		args: { name: string } | { id: string },
 		options?: { persistModeConfig?: boolean; persistTaskHistory?: boolean },
@@ -2077,38 +2078,36 @@ export class ClineProvider
 		})
 	}
 
-	// Modes
+	// Modes and provider profiles (the queries live in ModeProfileQueries;
+	// TaskProviderLike pins these members on the provider, so the surface
+	// here delegates one-to-one).
 
+	/** See {@link ModeProfileQueries.getModes}. */
 	public async getModes(): Promise<{ slug: string; name: string }[]> {
-		try {
-			const customModes = await this.customModesManager.getCustomModes()
-			return [...DEFAULT_MODES, ...customModes].map(({ slug, name }) => ({ slug, name }))
-		} catch (error) {
-			return DEFAULT_MODES.map(({ slug, name }) => ({ slug, name }))
-		}
+		return this.modeProfileQueries.getModes()
 	}
 
+	/** See {@link ModeProfileQueries.getMode}. */
 	public async getMode(): Promise<string> {
-		const { mode } = await this.getState()
-		return mode
+		return this.modeProfileQueries.getMode()
 	}
 
+	/** See {@link ModeProfileQueries.setMode}. */
 	public async setMode(mode: string): Promise<void> {
-		await this.setValues({ mode })
+		await this.modeProfileQueries.setMode(mode)
 	}
 
-	// Provider Profiles
-
+	/** See {@link ModeProfileQueries.getProviderProfiles}. */
 	public async getProviderProfiles(): Promise<{ name: string; provider?: string }[]> {
-		const { listApiConfigMeta = [] } = await this.getState()
-		return listApiConfigMeta.map((profile) => ({ name: profile.name, provider: profile.apiProvider }))
+		return this.modeProfileQueries.getProviderProfiles()
 	}
 
+	/** See {@link ModeProfileQueries.getProviderProfile}. */
 	public async getProviderProfile(): Promise<string> {
-		const { currentApiConfigName = SETTINGS_DEFAULTS.currentApiConfigName } = await this.getState()
-		return currentApiConfigName
+		return this.modeProfileQueries.getProviderProfile()
 	}
 
+	/** Activates a profile by name (see {@link ModeProfileBinding.activateProviderProfile}). */
 	public async setProviderProfile(name: string): Promise<void> {
 		await this.activateProviderProfile({ name })
 	}
