@@ -27,7 +27,7 @@
 
 import { getProviderDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@tumble-code/types"
 
-import type { ReasoningEffortFlagOptions } from "@/types/types.js"
+import type { CliModelSettings, ReasoningEffortFlagOptions } from "@/types/types.js"
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 
 import {
@@ -164,14 +164,14 @@ export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigL
  * provider's own model/base-url/key fields plus the reasoning switches
  * ("unspecified" leaves reasoning to the model's default, "disabled" turns it
  * off), and for the openai provider the model info that carries the model's
- * context window and the configured reasoning effort. Throws like
+ * context window, its prices and the configured reasoning effort. Throws like
  * getProviderSettings for a base URL the provider has no field for.
  */
 export function toProviderSettings(
 	config: Pick<ResolvedProviderConfig, "provider" | "model" | "baseUrl" | "apiKey"> & {
 		reasoningEffort?: ReasoningEffortFlagOptions
-		/** From `models` in cli-settings.json; only the openai provider has a field for it. */
-		contextWindow?: number
+		/** The model's entry in `models` of cli-settings.json; only the openai provider has a field for it. */
+		modelSettings?: CliModelSettings
 	},
 ): ProviderSettings {
 	const settings = getProviderSettings(
@@ -192,21 +192,30 @@ export function toProviderSettings(
 		settings.reasoningEffort = effort
 	}
 
-	// The openai provider sizes its model from openAiCustomModelInfo, else from
-	// openAiModelInfoSaneDefaults (128,000 tokens): its model list has ids
-	// only. The same model info decides whether a reasoning effort is sent:
-	// without supportsReasoningEffort or an effort of its own the handler drops
+	// The openai provider sizes and prices its model from
+	// openAiCustomModelInfo, else from openAiModelInfoSaneDefaults (128,000
+	// tokens, $0): its model list has ids only. The same model info decides
+	// whether a reasoning effort is sent: without supportsReasoningEffort or an
+	// effort of its own the handler drops
 	// the configured effort, so the effort is written there as well (the
 	// settings UI's reasoning level control also stores it in this model
 	// info). The field is always written, because the startup
-	// settings are merged into the extension's persisted state, where a size or
-	// an effort from an earlier run would otherwise outlive the entry that set it.
+	// settings are merged into the extension's persisted state, where a size, a
+	// price or an effort from an earlier run would otherwise outlive the entry
+	// that set it.
 	if (config.provider === "openai") {
+		const { contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice } = config.modelSettings ?? {}
+		const configured = Object.fromEntries(
+			Object.entries({ contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice }).filter(
+				([, value]) => value !== undefined,
+			),
+		)
+
 		settings.openAiCustomModelInfo =
-			config.contextWindow || effort
+			Object.keys(configured).length > 0 || effort
 				? {
 						...openAiModelInfoSaneDefaults,
-						...(config.contextWindow ? { contextWindow: config.contextWindow } : {}),
+						...configured,
 						...(effort ? { supportsReasoningEffort: true, reasoningEffort: effort } : {}),
 					}
 				: null

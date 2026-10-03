@@ -437,6 +437,45 @@ the CLI the real size, keyed by the model id exactly as the server names it:
 - A size that is not a whole number above 0 fails at startup and names the
   model.
 
+### Prices per model
+
+The same server lists no prices either, so every request of an `openai` model
+costs $0: the task cost in `--output-format json` and the cost sent to Tumble
+Code Cloud (the metrics and cost pages) stay at zero. The same `models` entry
+takes the prices the VS Code settings set for an OpenAI-compatible model, in
+US dollars per million tokens:
+
+```json
+{
+	"models": {
+		"GLM-5.3-NVFP4": {
+			"contextWindow": 262144,
+			"inputPrice": 0.6,
+			"outputPrice": 2.2,
+			"cacheReadsPrice": 0.11
+		}
+	}
+}
+```
+
+| Key                | Charged for                                                    |
+| ------------------ | -------------------------------------------------------------- |
+| `inputPrice`       | input tokens not served from the server's prompt cache         |
+| `outputPrice`      | output tokens, reasoning included                              |
+| `cacheReadsPrice`  | input tokens the server reports as read from its prompt cache  |
+| `cacheWritesPrice` | input tokens the server reports as written to its prompt cache |
+
+- A price left out counts as 0, except `cacheWritesPrice`, which falls back to
+  `inputPrice`.
+- For a model on your own hardware there is no bill; set the prices of a
+  comparable hosted model if you want the cloud to show what the work would
+  have cost there.
+- Like the size, prices apply wherever the model runs and only with the
+  `openai` provider; other providers price their models from their own lists,
+  and an entry for one of their models is ignored with a warning at startup.
+- A price that is not a number of 0 or more fails at startup and names the
+  model and the key.
+
 ## MCP Servers
 
 The CLI connects the same MCP servers as the VS Code extension, from two files
