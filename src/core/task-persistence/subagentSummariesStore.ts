@@ -1,7 +1,7 @@
 import * as path from "path"
 import * as fs from "fs/promises"
 
-import type { SubagentSummary } from "@tumble-code/types"
+import type { ClineMessage, SubagentSummary } from "@tumble-code/types"
 
 import { safeWriteJson } from "@tumble-code/core/fs"
 import { getTaskDirectoryPath } from "../../utils/storage"
@@ -93,6 +93,67 @@ export async function loadSubagentSummaries(
 				typeof (entry as SubagentSummary).taskId === "string" &&
 				typeof (entry as SubagentSummary).parentTaskId === "string",
 		)
+	} catch {
+		return []
+	}
+}
+
+/**
+ * Directory inside the parent task's directory that holds one message
+ * transcript per subagent (`<parentTaskId>/subagents/<childTaskId>.json`).
+ *
+ * A completed subagent's own task directory is deleted as soon as it
+ * finishes (BackgroundTaskRunner), so without this copy the panel could only
+ * show the summary's `finalMessage`. Living under the parent, the transcripts
+ * go away when the parent task is deleted.
+ */
+export const SUBAGENT_TRANSCRIPTS_DIRNAME = "subagents"
+
+async function getSubagentTranscriptPath(
+	globalStoragePath: string,
+	parentTaskId: string,
+	childTaskId: string,
+): Promise<string> {
+	if (!globalStoragePath) {
+		throw new Error("getSubagentTranscriptPath: globalStoragePath is required")
+	}
+	// The id names a file: a value with a path separator or ".." must not
+	// reach outside the transcripts directory.
+	if (!childTaskId || path.basename(childTaskId) !== childTaskId || childTaskId.startsWith(".")) {
+		throw new Error(`getSubagentTranscriptPath: invalid subagent task id "${childTaskId}"`)
+	}
+	const taskDir = await getTaskDirectoryPath(globalStoragePath, parentTaskId)
+	return path.join(taskDir, SUBAGENT_TRANSCRIPTS_DIRNAME, `${childTaskId}.json`)
+}
+
+/** Persist a finished subagent's messages under its parent. Throws on I/O errors. */
+export async function saveSubagentTranscript(
+	globalStoragePath: string,
+	parentTaskId: string,
+	childTaskId: string,
+	messages: ClineMessage[],
+): Promise<void> {
+	const filePath = await getSubagentTranscriptPath(globalStoragePath, parentTaskId, childTaskId)
+	await safeWriteJson(filePath, messages)
+}
+
+/**
+ * Load a subagent's persisted messages. Returns an empty array when there is
+ * no transcript (a fan-out from before transcripts were kept) or it cannot be
+ * read; never throws.
+ */
+export async function loadSubagentTranscript(
+	globalStoragePath: string,
+	parentTaskId: string,
+	childTaskId: string,
+): Promise<ClineMessage[]> {
+	try {
+		const filePath = await getSubagentTranscriptPath(globalStoragePath, parentTaskId, childTaskId)
+		if (!(await fileExistsAtPath(filePath))) {
+			return []
+		}
+		const parsed = JSON.parse(await fs.readFile(filePath, "utf8"))
+		return Array.isArray(parsed) ? parsed : []
 	} catch {
 		return []
 	}

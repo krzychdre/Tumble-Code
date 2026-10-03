@@ -24,6 +24,8 @@ import {
 	loadSubagentSummaries,
 	getSubagentSummariesFilePath,
 	SUBAGENTS_SIDECAR_FILENAME,
+	saveSubagentTranscript,
+	loadSubagentTranscript,
 } from "../subagentSummariesStore"
 
 function makeSummary(overrides: Partial<SubagentSummary> = {}): SubagentSummary {
@@ -143,6 +145,35 @@ describe("subagentSummariesStore", () => {
 				/globalStoragePath is required/,
 			)
 			expect(await loadSubagentSummaries("", "parent-1")).toEqual([])
+		})
+	})
+
+	describe("saveSubagentTranscript + loadSubagentTranscript", () => {
+		const messages = [{ ts: 1, type: "say" as const, say: "text" as const, text: "did it" }]
+
+		it("stores the transcript under the parent and reads it back", async () => {
+			await saveSubagentTranscript(tmpRoot, "parent-1", "child-1", messages)
+
+			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "child-1")).toEqual(messages)
+			const onDisk = path.join(tmpRoot, "tasks", "parent-1", "subagents", "child-1.json")
+			expect(JSON.parse(await fs.readFile(onDisk, "utf8"))).toEqual(messages)
+		})
+
+		it("returns an empty list without a transcript or with an unreadable one", async () => {
+			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "child-1")).toEqual([])
+			await fs.mkdir(path.join(tmpRoot, "tasks", "parent-1", "subagents"), { recursive: true })
+			await fs.writeFile(path.join(tmpRoot, "tasks", "parent-1", "subagents", "child-1.json"), "{not json")
+			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "child-1")).toEqual([])
+		})
+
+		// The id arrives from the webview: it must not name a file elsewhere.
+		it("rejects a child id that leaves the transcripts directory", async () => {
+			await fs.writeFile(path.join(tmpRoot, "secret.json"), JSON.stringify([{ ts: 9 }]))
+			await expect(saveSubagentTranscript(tmpRoot, "parent-1", "../x", messages)).rejects.toThrow(
+				/invalid subagent task id/,
+			)
+			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "../../../secret")).toEqual([])
+			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "..")).toEqual([])
 		})
 	})
 })

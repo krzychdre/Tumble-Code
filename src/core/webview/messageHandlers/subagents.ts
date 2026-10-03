@@ -1,6 +1,7 @@
 // Parallel subagent panel: live tail, cancel and mid-run guidance.
 
 import { logger } from "../../../utils/logging"
+import { loadSubagentTranscript } from "../../task-persistence/subagentSummariesStore"
 
 import type { DomainHandlerMap } from "./types"
 
@@ -9,17 +10,28 @@ export const subagentsHandlers: DomainHandlerMap<"subagents"> = {
 		const { provider } = ctx
 		// Open a live tail on a parallel subagent: mark it watched (so
 		// TaskMessageLog streams its subsequent messages) and send a snapshot
-		// of everything said so far. A queued placeholder or an
-		// already-disposed child yields an empty snapshot - the panel
-		// falls back to the summary's finalMessage.
+		// of everything said so far. A finished child is no longer live: its
+		// messages come from the transcript `run_parallel_tasks` kept under
+		// the parent. A queued placeholder, or a child from a fan-out older
+		// than the transcripts, yields an empty snapshot and the panel falls
+		// back to the summary's finalMessage.
 		const subagentTaskId = message.taskId
 		if (subagentTaskId) {
 			provider.subagentRegistry.watch(subagentTaskId)
 			const subagentTask = provider.getBackgroundTask(subagentTaskId)
+			let subagentMessages = subagentTask ? [...subagentTask.clineMessages] : []
+			const parentTaskId = subagentTask ? undefined : provider.subagentRegistry.get(subagentTaskId)?.parentTaskId
+			if (parentTaskId) {
+				subagentMessages = await loadSubagentTranscript(
+					provider.globalStoragePath,
+					parentTaskId,
+					subagentTaskId,
+				)
+			}
 			await provider.postMessageToWebview({
 				type: "subagentMessages",
 				sourceTaskId: subagentTaskId,
-				subagentMessages: subagentTask ? [...subagentTask.clineMessages] : [],
+				subagentMessages,
 			})
 		}
 	},
