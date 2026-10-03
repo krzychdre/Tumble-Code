@@ -372,7 +372,13 @@ export type TelemetryEventSubscription =
  */
 
 export interface TelemetryPropertiesProvider {
-	getTelemetryProperties(): Promise<TelemetryProperties>
+	/**
+	 * @param taskId The task the event is about, when it names one. It can be
+	 *   another task than the current one (a parallel subagent runs in the
+	 *   background), and the task's lineage (`parentTaskId`, `isSubtask`) must
+	 *   then be that task's, not the current task's.
+	 */
+	getTelemetryProperties(taskId?: string): Promise<TelemetryProperties>
 	/**
 	 * Absolute path of the active workspace folder (worktree root). Sent
 	 * explicitly with backfill uploads so the cloud web view can attribute an

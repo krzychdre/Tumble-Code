@@ -38,7 +38,7 @@ export interface TaskProviderLike {
 	// Telemetry
 	readonly appProperties: StaticAppProperties
 	readonly gitProperties: GitProperties | undefined
-	getTelemetryProperties(): Promise<TelemetryProperties>
+	getTelemetryProperties(taskId?: string): Promise<TelemetryProperties>
 	readonly cwd: string
 
 	// Event Emitter

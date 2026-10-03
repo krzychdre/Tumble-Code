@@ -181,6 +181,24 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		expect(task.options.apiConfiguration).toBe(pinned)
 	})
 
+	// Telemetry links a subagent's events to its parent through this, also
+	// after the child left the live map.
+	it("remembers a subagent's parent after the subagent finished", async () => {
+		const runner = new BackgroundTaskRunner(makeHost().host)
+		const subagent = (await runner.createBackgroundTask("work", {
+			subagentInfo: { parentTaskId: "parent", index: 0, description: "part one" },
+		})) as unknown as FakeTask
+		const writer = (await runner.createBackgroundTask("memory")) as unknown as FakeTask
+
+		const pending = runner.awaitTaskCompletion(subagent as never)
+		subagent.emit(TumbleCodeEventName.TaskCompleted)
+		await pending
+
+		expect(runner.getBackgroundTask(subagent.taskId)).toBeUndefined()
+		expect(runner.subagentParentOf(subagent.taskId)).toBe("parent")
+		expect(runner.subagentParentOf(writer.taskId)).toBeUndefined()
+	})
+
 	it("skips the mode binding for an explicit profile and for tasks without subagentInfo", async () => {
 		const { host } = makeHost()
 		const runner = new BackgroundTaskRunner(host)

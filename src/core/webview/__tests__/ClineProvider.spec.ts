@@ -2968,6 +2968,48 @@ describe("getTelemetryProperties", () => {
 		expect(properties).toHaveProperty("modelId", "claude-sonnet-4-20250514")
 	})
 
+	// Regression: a subagent's events took the current task's lineage, so the
+	// cloud stored every subagent as a standalone task.
+	describe("lineage of the event's task", () => {
+		test("a subagent's event names the task that fanned it out", async () => {
+			await provider.setCurrentTask(mockCline)
+			vi.spyOn((provider as any).backgroundTaskRunner, "subagentParentOf").mockImplementation((id) =>
+				id === "sub-1" ? mockCline.taskId : undefined,
+			)
+
+			const properties = await provider.getTelemetryProperties("sub-1")
+
+			expect(properties).toMatchObject({ taskId: "sub-1", parentTaskId: mockCline.taskId, isSubtask: true })
+			// The current task's model does not describe the subagent.
+			expect(properties).not.toHaveProperty("modelId")
+		})
+
+		test("a task from history keeps its own parent, not the current task's", async () => {
+			await provider.setCurrentTask(mockCline)
+			vi.spyOn(provider as any, "getTaskHistoryStore").mockResolvedValue({
+				get: (id: string) => (id === "old-child" ? { id, parentTaskId: "old-parent" } : undefined),
+			})
+
+			expect(await provider.getTelemetryProperties("old-child")).toMatchObject({
+				taskId: "old-child",
+				parentTaskId: "old-parent",
+				isSubtask: true,
+			})
+			expect(await provider.getTelemetryProperties("old-root")).toMatchObject({
+				taskId: "old-root",
+				isSubtask: false,
+			})
+		})
+
+		test("the current task's own event keeps the current task's properties", async () => {
+			await provider.setCurrentTask(mockCline)
+
+			const properties = await provider.getTelemetryProperties(mockCline.taskId)
+
+			expect(properties).toMatchObject({ taskId: mockCline.taskId, modelId: "claude-sonnet-4-20250514" })
+		})
+	})
+
 	describe("cloud authentication telemetry", () => {
 		beforeEach(() => {
 			// Reset all mocks before each test

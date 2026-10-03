@@ -95,6 +95,10 @@ export class BackgroundTaskRunner {
 	// Headless background tasks (parallel subagents). Keyed by
 	// taskId; entries are removed on completion/abort.
 	private readonly backgroundTasks = new Map<string, Task>()
+	// Subagent id -> the task that fanned it out. Kept for the whole session
+	// (a few ids per fan-out): telemetry of a child can be sent after the
+	// child left `backgroundTasks`.
+	private readonly subagentParents = new Map<string, string>()
 	private readonly memoryActivityCounts: MemoryActivityCounts = { recall: 0, write: 0 }
 
 	constructor(private readonly host: BackgroundTaskHost) {}
@@ -161,6 +165,7 @@ export class BackgroundTaskRunner {
 
 		this.backgroundTasks.set(task.taskId, task)
 		if (options.subagentInfo) {
+			this.subagentParents.set(task.taskId, options.subagentInfo.parentTaskId)
 			// Register BEFORE start() so a tail subscribed on the queued
 			// placeholder streams the child's first messages.
 			const now = Date.now()
@@ -182,6 +187,15 @@ export class BackgroundTaskRunner {
 		logger.info(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
 		task.start()
 		return task
+	}
+
+	/**
+	 * The task that fanned out subagent `taskId`, also after the subagent
+	 * finished. A subagent is not on the task stack, so it has no
+	 * `parentTaskId` of its own.
+	 */
+	public subagentParentOf(taskId: string): string | undefined {
+		return this.subagentParents.get(taskId)
 	}
 
 	/** Look up a live headless background task (parallel subagent) by id. */
