@@ -7,7 +7,7 @@ import type { ClineProvider } from "../../core/webview/ClineProvider"
 import { getGlobalRooDirectory } from "../roo-config"
 import { RooDirectoryResolver } from "../roo-config/RooDirectoryResolver"
 import { directoryExists, fileExists } from "../roo-config"
-import { SkillMetadata, SkillContent } from "../../shared/skills"
+import { SkillMetadata, SkillContent } from "@tumble-code/types"
 import { modes, getAllModes } from "../../shared/modes"
 import {
 	validateSkillName as validateSkillNameShared,

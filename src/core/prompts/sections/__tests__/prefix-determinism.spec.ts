@@ -27,7 +27,7 @@ vi.mock("../../../../services/roo-config", () => ({
 import fs from "fs/promises"
 import type { PathLike } from "fs"
 
-import type { SkillMetadata } from "../../../../shared/skills"
+import type { SkillMetadata } from "@tumble-code/types"
 import { getSkillsSection } from "../skills"
 import { loadRuleFiles } from "../custom-instructions"
 

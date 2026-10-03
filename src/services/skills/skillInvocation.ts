@@ -1,4 +1,4 @@
-import type { SkillContent } from "../../shared/skills"
+import type { SkillContent } from "@tumble-code/types"
 
 export interface SkillLookup {
 	getSkillContent(name: string, currentMode?: string): Promise<SkillContent | null>
