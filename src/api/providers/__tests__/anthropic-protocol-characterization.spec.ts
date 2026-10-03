@@ -15,19 +15,17 @@ vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 
-const mockCreate = vitest.fn()
+const mockCreate = vi.hoisted(() => vitest.fn())
 
-vitest.mock("@anthropic-ai/sdk", () => ({
-	Anthropic: vitest.fn().mockImplementation(function () {
-		return { messages: { create: mockCreate } }
-	}),
-}))
+vitest.mock("@anthropic-ai/sdk", async () => {
+	const { anthropicModuleMock } = await import("./provider-test-helpers")
+	return anthropicModuleMock(mockCreate)
+})
 
-vitest.mock("@anthropic-ai/vertex-sdk", () => ({
-	AnthropicVertex: vitest.fn().mockImplementation(function () {
-		return { messages: { create: mockCreate } }
-	}),
-}))
+vitest.mock("@anthropic-ai/vertex-sdk", async () => {
+	const { anthropicVertexModuleMock } = await import("./provider-test-helpers")
+	return anthropicVertexModuleMock(mockCreate)
+})
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 

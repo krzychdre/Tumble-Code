@@ -14,48 +14,12 @@ import { calculateApiCost } from "@tumble-code/core/browser"
 import { AnthropicVertexHandler } from "../anthropic-vertex"
 import { wireCaptureFetch } from "../utils/wire-capture"
 
-vitest.mock("@anthropic-ai/vertex-sdk", () => ({
-	AnthropicVertex: vitest.fn().mockImplementation(function () {
-		return {
-			messages: {
-				create: vitest.fn().mockImplementation(async (options) => {
-					if (!options.stream) {
-						return {
-							id: "test-completion",
-							content: [{ type: "text", text: "Test response" }],
-							role: "assistant",
-							model: options.model,
-							usage: {
-								input_tokens: 10,
-								output_tokens: 5,
-							},
-						}
-					}
-					return {
-						async *[Symbol.asyncIterator]() {
-							yield {
-								type: "message_start",
-								message: {
-									usage: {
-										input_tokens: 10,
-										output_tokens: 5,
-									},
-								},
-							}
-							yield {
-								type: "content_block_start",
-								content_block: {
-									type: "text",
-									text: "Test response",
-								},
-							}
-						},
-					}
-				}),
-			},
-		}
-	}),
-}))
+const mockCreate = vi.hoisted(() => vitest.fn())
+
+vitest.mock("@anthropic-ai/vertex-sdk", async () => {
+	const { anthropicVertexModuleMock, defaultAnthropicCreate } = await import("./provider-test-helpers")
+	return anthropicVertexModuleMock(mockCreate.mockImplementation(defaultAnthropicCreate))
+})
 
 describe("VertexHandler", () => {
 	let handler: AnthropicVertexHandler

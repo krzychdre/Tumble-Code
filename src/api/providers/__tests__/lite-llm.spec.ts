@@ -12,20 +12,11 @@ import { litellmDefaultModelId, litellmDefaultModelInfo } from "@tumble-code/typ
 vi.mock("vscode", () => ({}))
 
 // Mock OpenAI
-const mockCreate = vi.fn()
+const mockCreate = vi.hoisted(() => vi.fn())
 
-vi.mock("openai", () => {
-	return {
-		default: vi.fn().mockImplementation(function () {
-			return {
-				chat: {
-					completions: {
-						create: mockCreate,
-					},
-				},
-			}
-		}),
-	}
+vi.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mockCreate)
 })
 
 // Mock model fetching

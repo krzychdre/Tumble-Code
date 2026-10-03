@@ -4,13 +4,11 @@ import * as fs from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
 
-const mockCreate = vi.fn()
-vi.mock("openai", () => ({
-	__esModule: true,
-	default: vi.fn().mockImplementation(function () {
-		return { apiKey: "", baseURL: "", chat: { completions: { create: mockCreate } } }
-	}),
-}))
+const mockCreate = vi.hoisted(() => vi.fn())
+vi.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mockCreate, { apiKey: "", baseURL: "" })
+})
 
 import { getApiErrorStatus, isAutoRetryableApiError } from "../../apiErrors"
 import { QwenCodeHandler } from "../qwen-code"

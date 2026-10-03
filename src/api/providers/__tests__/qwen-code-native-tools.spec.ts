@@ -8,22 +8,13 @@ vi.mock("node:fs", () => ({
 	},
 }))
 
-const mockCreate = vi.fn()
-vi.mock("openai", () => {
-	return {
-		__esModule: true,
-		default: vi.fn().mockImplementation(function () {
-			return {
-				apiKey: "test-key",
-				baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-				chat: {
-					completions: {
-						create: mockCreate,
-					},
-				},
-			}
-		}),
-	}
+const mockCreate = vi.hoisted(() => vi.fn())
+vi.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mockCreate, {
+		apiKey: "test-key",
+		baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+	})
 })
 
 import { promises as fs } from "node:fs"

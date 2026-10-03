@@ -14,63 +14,56 @@ vitest.mock("@tumble-code/telemetry", () => ({
 	},
 }))
 
-const mockCreate = vitest.fn()
+const mockCreate = vi.hoisted(() => vitest.fn())
 
-vitest.mock("@anthropic-ai/sdk", () => {
-	const mockAnthropicConstructor = vitest.fn().mockImplementation(function () {
-		return {
-			messages: {
-				create: mockCreate.mockImplementation(async (options) => {
-					if (!options.stream) {
-						return {
-							id: "test-completion",
-							content: [{ type: "text", text: "Test response" }],
-							role: "assistant",
-							model: options.model,
+vitest.mock("@anthropic-ai/sdk", async () => {
+	const { anthropicModuleMock } = await import("./provider-test-helpers")
+	return anthropicModuleMock(
+		mockCreate.mockImplementation(async (options) => {
+			if (!options.stream) {
+				return {
+					id: "test-completion",
+					content: [{ type: "text", text: "Test response" }],
+					role: "assistant",
+					model: options.model,
+					usage: {
+						input_tokens: 10,
+						output_tokens: 5,
+					},
+				}
+			}
+			return {
+				async *[Symbol.asyncIterator]() {
+					yield {
+						type: "message_start",
+						message: {
 							usage: {
-								input_tokens: 10,
-								output_tokens: 5,
+								input_tokens: 100,
+								output_tokens: 50,
+								cache_creation_input_tokens: 20,
+								cache_read_input_tokens: 10,
 							},
-						}
-					}
-					return {
-						async *[Symbol.asyncIterator]() {
-							yield {
-								type: "message_start",
-								message: {
-									usage: {
-										input_tokens: 100,
-										output_tokens: 50,
-										cache_creation_input_tokens: 20,
-										cache_read_input_tokens: 10,
-									},
-								},
-							}
-							yield {
-								type: "content_block_start",
-								index: 0,
-								content_block: {
-									type: "text",
-									text: "Hello",
-								},
-							}
-							yield {
-								type: "content_block_delta",
-								delta: {
-									type: "text_delta",
-									text: " world",
-								},
-							}
 						},
 					}
-				}),
-			},
-		}
-	})
-
-	return {
-		Anthropic: mockAnthropicConstructor,
-	}
+					yield {
+						type: "content_block_start",
+						index: 0,
+						content_block: {
+							type: "text",
+							text: "Hello",
+						},
+					}
+					yield {
+						type: "content_block_delta",
+						delta: {
+							type: "text_delta",
+							text: " world",
+						},
+					}
+				},
+			}
+		}),
+	)
 })
 
 // Import after mock
