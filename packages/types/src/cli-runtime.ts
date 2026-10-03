@@ -17,6 +17,9 @@
  *    - `ROO_MCP_SETTINGS_PATH`: set by the CLI `ExtensionHost` to the global MCP
  *      servers file (default `~/.roo/mcp.json`), read by the extension instead
  *      of `<globalStorage>/settings/mcp_settings.json`.
+ *    - `ROO_CLI_VERSION`: set by the CLI `ExtensionHost` to the CLI package
+ *      version; the extension sends it as `clientVersion` with telemetry,
+ *      error reports and LLM exchanges.
  *    - `ROO_CLI_ROOT`, `ROO_EXTENSION_PATH`, `ROO_RIPGREP_PATH`: set by the
  *      release launcher that apps/cli/scripts/build.sh writes; they point at
  *      the unpacked CLI, its extension bundle and its ripgrep binary.
@@ -37,6 +40,7 @@ export const CLI_RUNTIME_ENV = {
 	runtime: "ROO_CLI_RUNTIME",
 	codexAuthOnly: "ROO_CLI_CODEX_AUTH_ONLY",
 	mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
+	cliVersion: "ROO_CLI_VERSION",
 	cliRoot: "ROO_CLI_ROOT",
 	extensionPath: "ROO_EXTENSION_PATH",
 	ripgrepPath: "ROO_RIPGREP_PATH",
@@ -52,6 +56,8 @@ export interface CliRuntimeEnv {
 	codexAuthOnly: boolean
 	/** Global MCP settings file override, trimmed. */
 	mcpSettingsPath: string | undefined
+	/** Version of the CLI package hosting the extension. */
+	cliVersion: string | undefined
 	/** Root of the unpacked CLI release. */
 	cliRoot: string | undefined
 	/** Directory holding the extension bundle (`extension.js`). */
@@ -71,6 +77,7 @@ export function readCliRuntimeEnv(env: Readonly<Record<string, string | undefine
 		isCliRuntime: env[CLI_RUNTIME_ENV.runtime] === "1",
 		codexAuthOnly: env[CLI_RUNTIME_ENV.codexAuthOnly] === "1",
 		mcpSettingsPath: env[CLI_RUNTIME_ENV.mcpSettingsPath]?.trim() || undefined,
+		cliVersion: text(CLI_RUNTIME_ENV.cliVersion),
 		cliRoot: text(CLI_RUNTIME_ENV.cliRoot),
 		extensionPath: text(CLI_RUNTIME_ENV.extensionPath),
 		ripgrepPath: text(CLI_RUNTIME_ENV.ripgrepPath),

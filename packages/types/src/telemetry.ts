@@ -78,6 +78,15 @@ export enum TelemetryEventName {
  * TelemetryProperties
  */
 
+/**
+ * Which client produced a record: the VS Code extension or the CLI (which runs
+ * the same extension bundle on the vscode shim). Sent with every telemetry
+ * event, error report and LLM exchange so the cloud can tell the two apart.
+ */
+export const clientKindSchema = z.enum(["vscode", "cli"])
+
+export type ClientKind = z.infer<typeof clientKindSchema>
+
 export const staticAppPropertiesSchema = z.object({
 	appName: z.string(),
 	appVersion: z.string(),
@@ -85,6 +94,11 @@ export const staticAppPropertiesSchema = z.object({
 	platform: z.string(),
 	editorName: z.string(),
 	hostname: z.string().optional(),
+	// Optional so an event from a producer that predates it is still accepted;
+	// ClineProvider always sets it.
+	clientKind: clientKindSchema.optional(),
+	/** The CLI package version; set only when `clientKind` is "cli". */
+	clientVersion: z.string().optional(),
 })
 
 export type StaticAppProperties = z.infer<typeof staticAppPropertiesSchema>

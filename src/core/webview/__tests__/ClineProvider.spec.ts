@@ -2959,6 +2959,53 @@ describe("getTelemetryProperties", () => {
 		expect(properties).toHaveProperty("appVersion", "1.0.0")
 	})
 
+	describe("client kind", () => {
+		const saved = { runtime: process.env.ROO_CLI_RUNTIME, version: process.env.ROO_CLI_VERSION }
+
+		const restore = (name: string, value: string | undefined) => {
+			if (value === undefined) {
+				delete process.env[name]
+			} else {
+				process.env[name] = value
+			}
+		}
+
+		afterEach(() => {
+			restore("ROO_CLI_RUNTIME", saved.runtime)
+			restore("ROO_CLI_VERSION", saved.version)
+		})
+
+		test("names VS Code as the client outside the CLI", async () => {
+			delete process.env.ROO_CLI_RUNTIME
+			process.env.ROO_CLI_VERSION = "0.2.0"
+
+			const properties = await provider.getTelemetryProperties()
+
+			expect(properties).toHaveProperty("clientKind", "vscode")
+			expect(properties).not.toHaveProperty("clientVersion")
+		})
+
+		test("names the CLI and its version inside the CLI", async () => {
+			process.env.ROO_CLI_RUNTIME = "1"
+			process.env.ROO_CLI_VERSION = "0.2.0"
+
+			const properties = await provider.getTelemetryProperties()
+
+			expect(properties).toMatchObject({ clientKind: "cli", clientVersion: "0.2.0" })
+			expect(provider.appProperties).toMatchObject({ clientKind: "cli", clientVersion: "0.2.0" })
+		})
+
+		test("leaves clientVersion out when the CLI did not publish one", async () => {
+			process.env.ROO_CLI_RUNTIME = "1"
+			delete process.env.ROO_CLI_VERSION
+
+			const properties = await provider.getTelemetryProperties()
+
+			expect(properties).toHaveProperty("clientKind", "cli")
+			expect(properties).not.toHaveProperty("clientVersion")
+		})
+	})
+
 	test("includes model ID from current Cline instance if available", async () => {
 		// Add mock Cline to stack
 		await provider.setCurrentTask(mockCline)

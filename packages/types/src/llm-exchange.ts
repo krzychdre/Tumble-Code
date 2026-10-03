@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { clientKindSchema } from "./telemetry.js"
+
 /**
  * LLM exchanges: one request to the model and its answer, recorded so that a
  * training dataset can be built from real agent runs and every request can be
@@ -102,6 +104,8 @@ export const llmExchangeSchema = z.object({
 	modelId: z.string(),
 	appVersion: z.string().optional(),
 	editorName: z.string().optional(),
+	clientKind: clientKindSchema.optional(),
+	clientVersion: z.string().optional(),
 	platform: z.string().optional(),
 	workspacePath: z.string().optional(),
 	request: z.object({

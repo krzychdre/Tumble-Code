@@ -19,6 +19,7 @@ describe("CLI runtime contract", () => {
 				runtime: "ROO_CLI_RUNTIME",
 				codexAuthOnly: "ROO_CLI_CODEX_AUTH_ONLY",
 				mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
+				cliVersion: "ROO_CLI_VERSION",
 				cliRoot: "ROO_CLI_ROOT",
 				extensionPath: "ROO_EXTENSION_PATH",
 				ripgrepPath: "ROO_RIPGREP_PATH",
@@ -30,6 +31,7 @@ describe("CLI runtime contract", () => {
 				| "ROO_CLI_RUNTIME"
 				| "ROO_CLI_CODEX_AUTH_ONLY"
 				| "ROO_MCP_SETTINGS_PATH"
+				| "ROO_CLI_VERSION"
 				| "ROO_CLI_ROOT"
 				| "ROO_EXTENSION_PATH"
 				| "ROO_RIPGREP_PATH"
@@ -43,6 +45,7 @@ describe("CLI runtime contract", () => {
 				isCliRuntime: false,
 				codexAuthOnly: false,
 				mcpSettingsPath: undefined,
+				cliVersion: undefined,
 				cliRoot: undefined,
 				extensionPath: undefined,
 				ripgrepPath: undefined,
@@ -54,6 +57,7 @@ describe("CLI runtime contract", () => {
 				ROO_CLI_RUNTIME: "1",
 				ROO_CLI_CODEX_AUTH_ONLY: "1",
 				ROO_MCP_SETTINGS_PATH: "  /home/u/.roo/mcp.json  ",
+				ROO_CLI_VERSION: "0.2.0",
 				ROO_CLI_ROOT: "/opt/cli",
 				ROO_EXTENSION_PATH: "/opt/cli/extension",
 				ROO_RIPGREP_PATH: "/opt/cli/bin/rg",
@@ -63,6 +67,7 @@ describe("CLI runtime contract", () => {
 				isCliRuntime: true,
 				codexAuthOnly: true,
 				mcpSettingsPath: "/home/u/.roo/mcp.json",
+				cliVersion: "0.2.0",
 				cliRoot: "/opt/cli",
 				extensionPath: "/opt/cli/extension",
 				ripgrepPath: "/opt/cli/bin/rg",
@@ -80,12 +85,14 @@ describe("CLI runtime contract", () => {
 			expect(
 				readCliRuntimeEnv({
 					ROO_MCP_SETTINGS_PATH: "   ",
+					ROO_CLI_VERSION: "",
 					ROO_CLI_ROOT: "",
 					ROO_EXTENSION_PATH: "",
 					ROO_RIPGREP_PATH: "",
 				}),
 			).toMatchObject({
 				mcpSettingsPath: undefined,
+				cliVersion: undefined,
 				cliRoot: undefined,
 				extensionPath: undefined,
 				ripgrepPath: undefined,
