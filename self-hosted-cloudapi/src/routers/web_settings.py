@@ -4,18 +4,20 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.auth.web_session import WebUser, require_web_user
-from src.database import get_db
+from src.routers.web_page import WebPage, render_page, require_web_page
 from src.models.retention import (
     SUGGESTED_MAX_AGE_DAYS,
     SUGGESTED_MAX_TASKS,
     SUGGESTED_TELEMETRY_MAX_AGE_DAYS,
 )
-from src.services.retention_service import apply_sweep, get_policy, plan_sweep, read_policy
+from src.services.retention_service import (
+    apply_sweep,
+    get_policy,
+    plan_sweep,
+    read_policy,
+)
 from src.web.presenters.settings import _plan_view
-from src.web.templating import templates
 
 router = APIRouter(tags=["web"])
 
@@ -25,8 +27,7 @@ async def settings_page(
     request: Request,
     ran: str = Query(""),
     size: str = Query(""),
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """Retention settings, with a preview of exactly what a sweep would remove.
 
@@ -39,34 +40,34 @@ async def settings_page(
     (the "Calculate" link on the page), because summing it reads every
     selected conversation and event and was most of this page's cost.
     """
+    db = web["db"]
     # read_policy, not get_policy: a GET must not write, so a user who has
     # never saved a policy sees the unsaved default instead of getting a row.
-    policy = await read_policy(db, user["user_id"])
-    plan = await plan_sweep(db, user["user_id"], policy, measure_size=size == "1")
+    policy = await read_policy(db, web["user"]["user_id"])
+    plan = await plan_sweep(
+        db, web["user"]["user_id"], policy, measure_size=size == "1"
+    )
 
-    return templates.TemplateResponse(
+    return render_page(
         request,
+        web,
         "settings.html",
-        {
-            "user": user,
-            "nav_active": "settings",
-            "policy": policy,
-            "plan": _plan_view(plan),
-            "suggest": {
-                "age": SUGGESTED_MAX_AGE_DAYS,
-                "tasks": SUGGESTED_MAX_TASKS,
-                "telemetry": SUGGESTED_TELEMETRY_MAX_AGE_DAYS,
-            },
-            "ran": ran,
+        "settings",
+        policy=policy,
+        plan=_plan_view(plan),
+        suggest={
+            "age": SUGGESTED_MAX_AGE_DAYS,
+            "tasks": SUGGESTED_MAX_TASKS,
+            "telemetry": SUGGESTED_TELEMETRY_MAX_AGE_DAYS,
         },
+        ran=ran,
     )
 
 
 @router.post("/app/settings")
 async def save_settings(
     request: Request,
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """Save the retention policy. Saving never deletes anything.
 
@@ -76,7 +77,7 @@ async def save_settings(
     scheduled sweep.
     """
     form = await request.form()
-    policy = await get_policy(db, user["user_id"])
+    policy = await get_policy(web["db"], web["user"]["user_id"])
 
     policy.enabled = form.get("enabled") == "1"
     policy.keep_shared = form.get("keep_shared") == "1"
@@ -85,23 +86,22 @@ async def save_settings(
     policy.max_tasks = _positive_int(form.get("max_tasks"))
     policy.telemetry_max_age_days = _positive_int(form.get("telemetry_max_age_days"))
 
-    await db.commit()
+    await web["db"].commit()
     return RedirectResponse(url="/app/settings", status_code=303)
 
 
 @router.post("/app/settings/run")
 async def run_retention_now(
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """Apply the saved policy immediately.
 
     Runs regardless of the ``enabled`` switch: the button is an explicit
     instruction, and the switch only governs the scheduled sweep.
     """
-    policy = await get_policy(db, user["user_id"])
-    plan = await apply_sweep(db, user["user_id"], policy)
-    await db.commit()
+    policy = await get_policy(web["db"], web["user"]["user_id"])
+    plan = await apply_sweep(web["db"], web["user"]["user_id"], policy)
+    await web["db"].commit()
     return RedirectResponse(url=f"/app/settings?ran={plan.task_count}", status_code=303)
 
 

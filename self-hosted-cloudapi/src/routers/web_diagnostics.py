@@ -11,14 +11,20 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.auth.web_session import WebUser, require_web_user
-from src.database import get_db
-from src.services.diagnostics_service import ProblemFilter, compute_user_problems, load_report
+from src.routers.web_page import (
+    WebPage,
+    not_found_page,
+    render_page,
+    require_web_page,
+)
+from src.services.diagnostics_service import (
+    ProblemFilter,
+    compute_user_problems,
+    load_report,
+)
 from src.services.problem_brief import problem_brief_markdown
 from src.web.presenters.problem_view import ProblemView
-from src.web.templating import templates
 
 router = APIRouter(tags=["web"])
 
@@ -55,22 +61,6 @@ def problem_filter(
     )
 
 
-def _not_found(request: Request, user: WebUser, heading: str, hint: str):
-    # The same 404 whether the thing is unknown or someone else's.
-    return templates.TemplateResponse(
-        request,
-        "not_found.html",
-        {
-            "user": user,
-            "heading": heading,
-            "hint": hint,
-            "back_href": "/app/diagnostics",
-            "back_label": "Back to the problem report",
-        },
-        status_code=404,
-    )
-
-
 def _markdown(text: str, filename: str) -> PlainTextResponse:
     return PlainTextResponse(
         text,
@@ -83,52 +73,59 @@ def _markdown(text: str, filename: str) -> PlainTextResponse:
 async def diagnostics_page(
     request: Request,
     filters: ProblemFilter = Depends(problem_filter),
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """The logged-in user's problems over the selected period, filtered, grouped and classified."""
-    problems = await compute_user_problems(db, user["user_id"], filters=filters)
-    return templates.TemplateResponse(
+    problems = await compute_user_problems(
+        web["db"], web["user"]["user_id"], filters=filters
+    )
+    return render_page(
         request,
+        web,
         "diagnostics.html",
-        {
-            "user": user,
-            "nav_active": "diagnostics",
-            "problems": problems,
-            "filters": filters,
-            "view": ProblemView(filters),
-        },
+        "diagnostics",
+        problems=problems,
+        filters=filters,
+        view=ProblemView(filters),
     )
 
 
 @router.get("/app/diagnostics/report.md", response_class=PlainTextResponse)
 async def diagnostics_markdown(
     filters: ProblemFilter = Depends(problem_filter),
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """The agent brief of every problem the filters let through, as a file."""
-    text = await problem_brief_markdown(db, user["user_id"], filters)
+    text = await problem_brief_markdown(web["db"], web["user"]["user_id"], filters)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return _markdown(text, f"tumble-problem-report-{filters.period}-{stamp}.md")
 
 
-@router.get("/app/diagnostics/problems/{key}/brief.md", response_class=PlainTextResponse)
+@router.get(
+    "/app/diagnostics/problems/{key}/brief.md", response_class=PlainTextResponse
+)
 async def diagnostics_problem_brief(
     key: str,
     request: Request,
     filters: ProblemFilter = Depends(problem_filter),
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """The agent brief of one problem group. Its owner only."""
-    text = await problem_brief_markdown(db, user["user_id"], filters, key=key) if _GROUP_KEY.match(key) else None
+    text = (
+        await problem_brief_markdown(
+            web["db"], web["user"]["user_id"], filters, key=key
+        )
+        if _GROUP_KEY.match(key)
+        else None
+    )
     if text is None:
-        return _not_found(
+        return not_found_page(
             request,
-            user,
+            web["user"],
             "Problem not found",
             "This problem does not exist in the chosen period, or you don't have access to it.",
+            back_href="/app/diagnostics",
+            back_label="Back to the problem report",
         )
     return _markdown(text, f"tumble-problem-{key}.md")
 
@@ -137,15 +134,19 @@ async def diagnostics_problem_brief(
 async def diagnostics_report(
     report_id: str,
     request: Request,
-    user: WebUser = Depends(require_web_user),
-    db: AsyncSession = Depends(get_db),
+    web: WebPage = Depends(require_web_page),
 ):
     """One error report in full: facts, request, response. Its owner only."""
-    report = await load_report(db, user["user_id"], report_id)
+    report = await load_report(web["db"], web["user"]["user_id"], report_id)
     if report is None:
-        return _not_found(request, user, "Report not found", "This report does not exist, or you don't have access to it.")
-    return templates.TemplateResponse(
-        request,
-        "diagnostics_report.html",
-        {"user": user, "nav_active": "diagnostics", "report": report},
+        return not_found_page(
+            request,
+            web["user"],
+            "Report not found",
+            "This report does not exist, or you don't have access to it.",
+            back_href="/app/diagnostics",
+            back_label="Back to the problem report",
+        )
+    return render_page(
+        request, web, "diagnostics_report.html", "diagnostics", report=report
     )
