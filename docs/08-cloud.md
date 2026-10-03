@@ -182,7 +182,8 @@ Server-rendered Jinja templates in `src/web/templates/` with one stylesheet (`st
 ### The problem report
 
 `/app/diagnostics` (the "Problems" tab) answers what goes wrong, whose fault it is and what to try
-(`services/diagnostics_service.py`). It reads three sources into one occurrence shape: error reports, and for the
+(`services/problems/`, re-exported as `services/diagnostics_service.py` for its importers). It reads three sources
+into one occurrence shape: error reports, and for the
 time before the user's first report the error messages of synced conversations (`task_messages.q_kind` error or
 retry, model attributed from the request before the message) and the error telemetry events. Occurrences are
 grouped by a signature (category, tool and the message's first line with paths, ids and digits blanked), ranked by
