@@ -17,7 +17,7 @@ import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { getCommand, type Command } from "../../services/command/commands"
 import { buildSkillResult, resolveSkillContentForMode, type SkillLookup } from "../../services/skills/skillInvocation"
-import type { SkillContent } from "../../shared/skills"
+import type { SkillContent } from "@tumble-code/types"
 
 export async function openMention(cwd: string, mention?: string): Promise<void> {
 	if (!mention) {
