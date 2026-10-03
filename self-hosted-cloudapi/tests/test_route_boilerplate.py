@@ -276,7 +276,7 @@ def test_sign_in_routes_refuse_a_foreign_redirect_with_the_error_page(client, ro
     assert page.title == "Tumble Code - Authentication Error"
     assert page.paragraphs == [
         "Invalid sign-in request.",
-        "The sign-in link does not return to an editor. Start the sign-in again from the extension.",
+        "The sign-in link does not return to an editor or to the CLI. Start the sign-in again from the extension or the CLI.",
         # The action row: its text is the link's, collected in link_texts.
         "",
     ]
