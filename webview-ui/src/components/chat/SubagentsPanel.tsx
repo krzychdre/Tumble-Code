@@ -254,24 +254,26 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 
 	return (
 		<div>
-			{entries.length === 0 ? (
-				summary.finalMessage ? (
-					// Disposed children have no live messages; fall back to the
-					// summary's terminal payload so "what happened" survives teardown.
-					<div className="px-2 py-1 text-sm">
-						<MarkdownBlock markdown={summary.finalMessage} />
-					</div>
+			{/* Every kind of content scrolls inside the same capped box: a long
+			    final message without one ran past the panel with no scrollbar. */}
+			<div
+				ref={containerRef}
+				onScroll={handleScroll}
+				data-testid="subagent-tail"
+				className="max-h-64 overflow-y-auto px-2 py-1 flex flex-col gap-1">
+				{entries.length === 0 ? (
+					summary.finalMessage ? (
+						// A finished child is disposed. Its transcript is loaded from
+						// disk; a fan-out from before transcripts were kept has only
+						// the summary's terminal payload.
+						<div className="text-sm">
+							<MarkdownBlock markdown={summary.finalMessage} />
+						</div>
+					) : (
+						<div className="text-sm text-vscode-descriptionForeground">{t("chat:subagents.noOutput")}</div>
+					)
 				) : (
-					<div className="px-2 py-1 text-sm text-vscode-descriptionForeground">
-						{t("chat:subagents.noOutput")}
-					</div>
-				)
-			) : (
-				<div
-					ref={containerRef}
-					onScroll={handleScroll}
-					className="max-h-64 overflow-y-auto px-2 py-1 flex flex-col gap-1">
-					{entries.map(({ ts, entry }) => {
+					entries.map(({ ts, entry }) => {
 						switch (entry.kind) {
 							case "markdown":
 								return (
@@ -302,9 +304,9 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 									</div>
 								)
 						}
-					})}
-				</div>
-			)}
+					})
+				)}
+			</div>
 			{pendingPermission && (
 				<div className="flex items-center gap-1 px-2 pb-1">
 					<span className="text-xs text-vscode-descriptionForeground grow truncate">
@@ -522,7 +524,9 @@ const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: Sub
 				</span>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
-				<div className="flex flex-col gap-1 pb-2 pl-6">
+				{/* Several expanded rows must not push the chat and the composer
+				    out of view: the list scrolls once it fills half the height. */}
+				<div className="flex flex-col gap-1 pb-2 pl-6 max-h-[50vh] overflow-y-auto">
 					{subagents.map((summary) => (
 						<SubagentRow key={`${summary.parentTaskId}:${summary.index}`} summary={summary} />
 					))}

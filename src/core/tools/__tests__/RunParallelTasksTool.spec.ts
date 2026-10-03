@@ -154,6 +154,7 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 /** A stub Task-like object returned by createBackgroundTask. */
 class FakeChild {
 	taskId = `child-${Math.random().toString(36).slice(2, 8)}`
+	clineMessages: Array<{ ts: number; type: string; say?: string; text?: string }> = []
 	abortTask = vi.fn().mockResolvedValue(undefined)
 	await(options: { signal?: AbortSignal }): Promise<{
 		completed: boolean
@@ -858,6 +859,39 @@ describe("RunParallelTasksTool.execute", () => {
 			const parsed = JSON.parse(raw)
 			expect(Array.isArray(parsed)).toBe(true)
 			expect(parsed[0].taskId).toBe("child-x")
+		})
+
+		// The child's own task directory is deleted once it completes, so the
+		// panel can show what it did only from this copy under the parent.
+		it("keeps each finished child's messages under the parent", async () => {
+			const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rpt-transcript-"))
+			const provider = makeFakeProvider()
+			provider.globalStoragePath = tmpRoot
+			const parent = makeFakeParentTask(provider)
+			const callbacks = makeCallbacks()
+
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				callbacks,
+			)
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			const [first, second] = provider.children
+			first.clineMessages = [{ ts: 1, type: "say", say: "text", text: "did A" }]
+			first.complete()
+			second.failWithApiError("model gone")
+			await execPromise
+
+			const transcriptOf = async (child: FakeChild) =>
+				JSON.parse(
+					await fs.readFile(
+						path.join(tmpRoot, "tasks", "parent-12345678", "subagents", `${child.taskId}.json`),
+						"utf8",
+					),
+				)
+			expect(await transcriptOf(first)).toEqual([{ ts: 1, type: "say", say: "text", text: "did A" }])
+			// A failed child is kept too: its row is expandable like any other.
+			expect(await transcriptOf(second)).toEqual([])
 		})
 
 		it("survives a sidecar write failure (best-effort, does not throw)", async () => {
