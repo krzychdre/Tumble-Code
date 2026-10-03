@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import dialect_insert
 from src.models.error_report import ErrorReport
 from src.schemas.error_report import ErrorReportRequest
+from src.services.client_kind import client_kind_from
 from src.services.problem_catalogue import problem_signature
 
 # Longest value stored in a plain column (provider, model, mode, version,
@@ -48,6 +49,7 @@ def report_row(user_id: str, org_id: Optional[str], report: ErrorReportRequest) 
         "model_id": _short(report.model_id),
         "mode": _short(report.mode),
         "app_version": _short(report.app_version),
+        "client_kind": client_kind_from({"clientKind": report.client_kind, "editorName": report.editor_name}),
         "tool_name": tool,
         "summary": report.summary,
         "signature": problem_signature(report.category, tool, headline_source),

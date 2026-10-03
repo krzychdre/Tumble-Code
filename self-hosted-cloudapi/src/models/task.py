@@ -31,6 +31,13 @@ class Task(Base, TimestampMixin):
     # or the share/backfill payload. Nullable: legacy rows and tasks created
     # while the bridge was offline (and the client sent nothing) have no value.
     workspace_path = Column(String, nullable=True)
+    # The client that ran the task, "vscode" or "cli" (services/client_kind).
+    # "vscode" doubles as "nothing said otherwise yet": the bridge creates the
+    # row from a message, which names no client, so the row starts as
+    # "vscode" and the first record of the task from the CLI (a telemetry
+    # event, a backfill) turns it to "cli". Never back: a task lives in one
+    # client's storage only. See telemetry_service.stamp_task_client.
+    client_kind = Column(String, nullable=False, default="vscode", server_default="vscode")
 
     # The task that spawned this one, when it is a subtask. Denormalized from
     # task_relations (which is written from telemetry, often before either task

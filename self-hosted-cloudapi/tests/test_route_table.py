@@ -176,7 +176,12 @@ def test_web_routes_keep_their_openapi_operations():
                 ("dir", "query", False),
             ),
         ),
-        ("/app/metrics", "get"): ("metrics_page_app_metrics_get", ("web",), html, (("period", "query", False), ("day_page", "query", False))),
+        ("/app/metrics", "get"): (
+            "metrics_page_app_metrics_get",
+            ("web",),
+            html,
+            (("period", "query", False), ("client", "query", False), ("day_page", "query", False)),
+        ),
         ("/app/diagnostics", "get"): (
             "diagnostics_page_app_diagnostics_get",
             ("web",),

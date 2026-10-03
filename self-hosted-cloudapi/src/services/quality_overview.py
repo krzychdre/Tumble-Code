@@ -32,7 +32,7 @@ _QUALITY_COLUMNS = (
 )
 
 
-async def quality_overview(db: AsyncSession, user_id: str, period: str) -> dict:
+async def quality_overview(db: AsyncSession, user_id: str, period: str, client: str | None = None) -> dict:
     """How the user's runs went over the period, in aggregate.
 
     Reads the stored per-task counts, so this is one query over `tasks` rather
@@ -41,12 +41,15 @@ async def quality_overview(db: AsyncSession, user_id: str, period: str) -> dict:
     of work several times.
 
     The period bound is on ``updated_at`` (when the task was last written),
-    which is the only time the task row itself carries.
+    which is the only time the task row itself carries. ``client`` ("vscode"
+    or "cli") keeps the runs of that client only, as on the rest of the page.
     """
     filters = [Task.user_id == user_id, Task.parent_task_id.is_(None)]
     start = period_start(period)
     if start is not None:
         filters.append(Task.updated_at >= start)
+    if client is not None:
+        filters.append(Task.client_kind == client)
 
     # Only what quality_of() and the "roughest" list read, not the whole row
     # (prompt excerpt, workspace path, token totals, models...).

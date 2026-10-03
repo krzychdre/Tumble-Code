@@ -34,6 +34,7 @@ What SQLite cannot check (Postgres only, untested here):
   type, nullability or server default, and a new foreign key.
 """
 
+import json
 import os
 import sqlite3
 import subprocess
@@ -407,3 +408,86 @@ def test_retired_tables_are_kept_in_the_database_but_have_no_model(migrated_db):
     assert RETIRED_TABLES <= _tables(migrated_db)
     assert include_name("provider_configs", "table", {}) is False
     assert include_name("tasks", "table", {}) is True
+
+
+# --- Data migrations ------------------------------------------------------------
+
+
+def test_client_kind_backfill_marks_the_clis_records_and_tasks(migrate_env):
+    """e7f8a9b0c1d2 adds client_kind and marks what the CLI sent: an explicit
+    clientKind wins, else the CLI's editor name ("wrapper|cli|..."); everything
+    else, and every task without a CLI event of its own user, stays "vscode"."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "d6e7f8a9b0c1")
+
+    cli_editor = "wrapper|cli|cli|0.2.0"
+    events = {
+        "evt_cli_kind": {"clientKind": "cli", "taskId": "task_cli"},
+        "evt_cli_editor": {"editorName": cli_editor, "taskId": "task_old_cli"},
+        "evt_kind_wins": {"clientKind": "vscode", "editorName": cli_editor, "taskId": "task_code"},
+        "evt_code": {"editorName": "Visual Studio Code", "taskId": "task_code"},
+        # Mentions "cli" but is neither: parsed and left alone.
+        "evt_mention": {"editorName": "Visual Studio Code", "note": "clicked"},
+        "evt_foreign": {"clientKind": "cli", "taskId": "task_foreign"},
+    }
+    with sqlite3.connect(db_file) as conn:
+        conn.executemany(
+            "INSERT INTO users (id, authentik_id, email) VALUES (?, ?, ?)",
+            [("user_1", "ak_1", "a@b.c"), ("user_2", "ak_2", "d@e.f")],
+        )
+        conn.executemany(
+            "INSERT INTO tasks (id, user_id) VALUES (?, 'user_1')",
+            [("task_cli",), ("task_old_cli",), ("task_code",), ("task_foreign",)],
+        )
+        conn.executemany(
+            "INSERT INTO telemetry_events (id, user_id, event_type, task_id, properties) "
+            "VALUES (?, ?, 'LLM Completion', ?, ?)",
+            [
+                (row_id, "user_2" if row_id == "evt_foreign" else "user_1", props.get("taskId"), json.dumps(props))
+                for row_id, props in events.items()
+            ]
+            + [("evt_broken", "user_1", None, "{cli not json")],
+        )
+        conn.executemany(
+            "INSERT INTO error_reports (id, user_id, category, summary, signature, occurred_at, created_at, payload) "
+            "VALUES (?, 'user_1', 'api_error', 's', 'sig', '2026-10-01', '2026-10-01', ?)",
+            [
+                ("rep_cli", json.dumps({"editorName": cli_editor})),
+                ("rep_code", json.dumps({"editorName": "Visual Studio Code"})),
+            ],
+        )
+        conn.executemany(
+            "INSERT INTO llm_exchanges (id, user_id, task_id, sequence, occurred_at, created_at, status, issues, payload) "
+            "VALUES (?, 'user_1', 'task_cli', 0, '2026-10-01', '2026-10-01', 'completed', '', ?)",
+            [
+                ("ex_cli", json.dumps({"clientKind": "cli"})),
+                ("ex_code", json.dumps({"clientKind": "vscode"})),
+            ],
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    def kinds(table):
+        with sqlite3.connect(db_file) as conn:
+            return dict(conn.execute(f"SELECT id, client_kind FROM {table}").fetchall())
+
+    assert kinds("telemetry_events") == {
+        "evt_cli_kind": "cli",
+        "evt_cli_editor": "cli",
+        "evt_kind_wins": "vscode",
+        "evt_code": "vscode",
+        "evt_mention": "vscode",
+        "evt_foreign": "cli",
+        "evt_broken": "vscode",
+    }
+    assert kinds("error_reports") == {"rep_cli": "cli", "rep_code": "vscode"}
+    assert kinds("llm_exchanges") == {"ex_cli": "cli", "ex_code": "vscode"}
+    # task_foreign's only CLI event is another user's: not evidence.
+    assert kinds("tasks") == {
+        "task_cli": "cli",
+        "task_old_cli": "cli",
+        "task_code": "vscode",
+        "task_foreign": "vscode",
+    }

@@ -3,12 +3,13 @@
 import json
 
 import anyio
-from sqlalchemy import delete, desc, func, insert, select
+from sqlalchemy import delete, desc, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import dialect_insert
 from src.models.event import TelemetryEvent
 from src.models.task import Task, TaskMessage
+from src.services.client_kind import CLIENT_CLI, CLIENT_VSCODE, client_kind_from
 from src.services.model_attribution import note_completion_model
 from src.services.session_quality import (
     KIND_COMPLETION,
@@ -71,8 +72,13 @@ async def _link_task_tree(db, task_id: str) -> None:
     await link_pending_children(db, task_id)
 
 
-async def _get_or_create_task(db, task_id: str, user_id: str):
+async def _get_or_create_task(db, task_id: str, user_id: str, client_kind: str | None = None):
     """Return ``(task, created)``, creating the row for ``user_id`` when missing.
+
+    ``client_kind`` is the client the caller knows the task comes from (a
+    backfill says, a bridge message does not). A new row takes it, or else the
+    client of the telemetry already stored for the task: events often arrive
+    before the row exists. An existing row is left to ``stamp_task_client``.
 
     ``created`` is True only when this call inserted the row. The owner is not
     checked here: a row that already existed (or that a concurrent writer
@@ -96,22 +102,65 @@ async def _get_or_create_task(db, task_id: str, user_id: str):
     if task is not None:
         return task, False
 
+    if client_kind != CLIENT_CLI:
+        client_kind = await _telemetry_client(db, task_id, user_id)
+
     upsert_insert = dialect_insert(db)
     if upsert_insert is None:
         # No portable ON CONFLICT: keep the plain insert.
-        task = Task(id=task_id, user_id=user_id)
+        task = Task(id=task_id, user_id=user_id, client_kind=client_kind)
         db.add(task)
         await db.flush()
         return task, True
 
     result = await db.execute(
         upsert_insert(Task)
-        .values(id=task_id, user_id=user_id)
+        .values(id=task_id, user_id=user_id, client_kind=client_kind)
         .on_conflict_do_nothing(index_elements=["id"])
     )
     created = result.rowcount == 1
     task = (await db.execute(query)).scalar_one()
     return task, created
+
+
+async def _telemetry_client(db, task_id: str, user_id: str) -> str:
+    """The client of the user's telemetry stored for a task not yet stored.
+
+    One indexed lookup (telemetry_events.task_id), once per task: only when its
+    row is created.
+    """
+    cli_event = await db.scalar(
+        select(TelemetryEvent.id)
+        .where(
+            TelemetryEvent.task_id == task_id,
+            TelemetryEvent.user_id == user_id,
+            TelemetryEvent.client_kind == CLIENT_CLI,
+        )
+        .limit(1)
+    )
+    return CLIENT_CLI if cli_event is not None else CLIENT_VSCODE
+
+
+async def stamp_task_client(db, task_id: str, user_id: str, client_kind: str) -> None:
+    """Mark the user's stored task as the CLI's when a record of it says so.
+
+    The only change a task's client ever makes is "vscode" to "cli" (see
+    ``Task.client_kind``), so this is one guarded UPDATE that matches nothing
+    once the row is marked, and nothing for a VS Code record. Whatever order
+    the bridge, the backfill and the telemetry arrive in, the row ends as the
+    CLI's if any of them came from it. The owner is part of the condition: an
+    event naming another user's task id changes nothing.
+    """
+    if client_kind != CLIENT_CLI:
+        return
+    await db.execute(
+        update(Task)
+        .where(Task.id == task_id, Task.user_id == user_id, Task.client_kind != CLIENT_CLI)
+        .values(client_kind=CLIENT_CLI)
+        # Task rows loaded in this session are not refreshed; nothing on the
+        # ingest paths reads the column back.
+        .execution_options(synchronize_session=False)
+    )
 
 
 def _stamp_workspace_path(task, workspace_path) -> None:
@@ -138,6 +187,7 @@ async def record_event(
 ) -> None:
     """Record a telemetry event."""
     task_id = properties.get("taskId") if isinstance(properties, dict) else None
+    client_kind = client_kind_from(properties)
     event = TelemetryEvent(
         user_id=user_id,
         organization_id=org_id,
@@ -146,10 +196,16 @@ async def record_event(
         # happened in this task" then does an indexed lookup instead of parsing
         # JSON across the whole event corpus.
         task_id=task_id if isinstance(task_id, str) and task_id else None,
+        client_kind=client_kind,
         properties=json.dumps(properties),
     )
     db.add(event)
     await db.flush()
+
+    # Which client ran the task: the task's own messages never say, its
+    # telemetry does (services/client_kind).
+    if event.task_id and user_id:
+        await stamp_task_client(db, event.task_id, user_id, client_kind)
 
     # Telemetry is the only place a subtask states which task spawned it, and
     # it says so long before the subtask exists as a row. Capture the link here
@@ -240,6 +296,7 @@ async def backfill_messages(
     user_id: str,
     messages: list,
     workspace_path: str | None = None,
+    client_kind: str | None = None,
 ) -> None:
     """Backfill task messages.
 
@@ -251,7 +308,8 @@ async def backfill_messages(
 
     `workspace_path` is the project/worktree root (explicit client field, with a
     registry fallback resolved by the caller); stamped on the Task so offline
-    tasks show their project in the web view.
+    tasks show their project in the web view. `client_kind` is the client the
+    upload's properties name (None when they name none).
 
     Raises TaskNotOwnedError, before touching anything, when the task already
     belongs to another user: the upload names its task by id only, so without
@@ -263,10 +321,12 @@ async def backfill_messages(
     """
     # Get-or-create the parent task, owned by the uploading user. The row is
     # in the database before any message is inserted (FK on task_id).
-    task, _created = await _get_or_create_task(db, task_id, user_id)
+    task, created = await _get_or_create_task(db, task_id, user_id, client_kind)
     if task.user_id != user_id:
         raise TaskNotOwnedError(task_id)
     _stamp_workspace_path(task, workspace_path)
+    if not created and client_kind:
+        await stamp_task_client(db, task_id, user_id, client_kind)
     await _link_task_tree(db, task_id)
 
     # Replace any existing messages for this task (idempotent re-share).
