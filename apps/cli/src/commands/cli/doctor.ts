@@ -21,6 +21,7 @@ import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { isRecord } from "@/lib/utils/guards.js"
 import { loadSettings } from "@/lib/storage/settings.js"
 import { resolveMcpSettingsPath } from "@/lib/storage/mcp-settings.js"
+import { cloudApiUrlSetting } from "@/lib/auth/cloud-api-url.js"
 
 export type DoctorStatus = "pass" | "warn" | "fail"
 
@@ -37,9 +38,10 @@ const MIN_NODE_MAJOR = 22
 
 /**
  * The cloud API the extension talks to, with the precedence of
- * `getTumbleCodeApiUrl` in packages/cloud/src/config.ts (the CLI sets no runtime
- * override, so the environment variable or the production URL applies). The
- * CLI does not depend on @tumble-code/cloud, whose entry point loads VS Code.
+ * `getTumbleCodeApiUrl` in packages/cloud/src/config.ts: `cloudApiUrl` from
+ * cli-settings.json (the CLI's runtime override), then the environment
+ * variable, then the production URL. The CLI does not depend on
+ * @tumble-code/cloud, whose entry point loads VS Code.
  */
 const PRODUCTION_CLOUD_API_URL = "https://app.tumblecode.dev"
 
@@ -178,7 +180,7 @@ export async function checkCloudReachable({
 		return {
 			name: "Cloud",
 			status: "pass",
-			detail: `${url} reachable (HTTP ${response.status}, ${Date.now() - started} ms)`,
+			detail: `${url} reachable (HTTP ${response.status}, ${Date.now() - started} ms); sign-in: tumble auth cloud status`,
 		}
 	} catch (error) {
 		const reason =
@@ -250,7 +252,11 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
 					return { name: "MCP config", status: "fail", detail: `cli-settings.json: ${errorText(error)}` }
 				}
 			},
-			() => checkCloudReachable(),
+			async () => {
+				const settings = await loadSettings().catch(() => ({}))
+				const url = cloudApiUrlSetting(settings, () => {})
+				return checkCloudReachable(url ? { url } : {})
+			},
 		],
 	})
 }

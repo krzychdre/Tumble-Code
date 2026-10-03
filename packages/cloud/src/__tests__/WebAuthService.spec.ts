@@ -283,6 +283,36 @@ describe("WebAuthService", () => {
 			expect(calledUri.toString()).toBe(expectedUrl)
 		})
 
+		it("sends a loopback auth redirect instead of the deep link when given", async () => {
+			const mockOpenExternal = vi.fn()
+			const vscode = await import("vscode")
+			vi.mocked(vscode.env.openExternal).mockImplementation(mockOpenExternal)
+
+			await authService.login({ authRedirect: "http://127.0.0.1:53682" })
+
+			const calledUri = mockOpenExternal.mock.calls[0]?.[0]
+			expect(calledUri.toString()).toBe(
+				"https://api.test.com/extension/sign-in?state=746573742d72616e646f6d2d6279746573&auth_redirect=http%3A%2F%2F127.0.0.1%3A53682",
+			)
+			expect(mockContext.globalState.update).toHaveBeenCalledWith(
+				"clerk-auth-state",
+				"746573742d72616e646f6d2d6279746573",
+			)
+		})
+
+		it.each(["https://evil.example.com", "http://127.0.0.1:53682/auth/clerk/callback", "http://127.0.0.1:80"])(
+			"refuses the non-loopback auth redirect %s before storing a state or opening a browser",
+			async (authRedirect) => {
+				const vscode = await import("vscode")
+				const mockOpenExternal = vi.fn()
+				vi.mocked(vscode.env.openExternal).mockImplementation(mockOpenExternal)
+
+				await expect(authService.login({ authRedirect })).rejects.toThrow("loopback")
+				expect(mockContext.globalState.update).not.toHaveBeenCalled()
+				expect(mockOpenExternal).not.toHaveBeenCalled()
+			},
+		)
+
 		it("should handle errors during login", async () => {
 			vi.mocked(crypto.randomBytes).mockImplementation(() => {
 				throw new Error("Crypto error")

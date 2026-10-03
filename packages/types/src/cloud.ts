@@ -219,6 +219,40 @@ export const shareResponseSchema = z.object({
 export type ShareResponse = z.infer<typeof shareResponseSchema>
 
 /**
+ * Cloud sign-in options and the loopback redirect (RFC 8252)
+ */
+
+/** Options for `AuthService.login` and `CloudService.login`. */
+export interface CloudLoginOptions {
+	/**
+	 * Where the cloud sends the browser after sign-in, instead of the editor's
+	 * `vscode://` deep link. Only a loopback address is accepted (see
+	 * `isLoopbackAuthRedirect`): the CLI listens there for
+	 * `<authRedirect>/auth/clerk/callback?code=...&state=...`.
+	 */
+	authRedirect?: string
+}
+
+const LOOPBACK_AUTH_REDIRECT = /^http:\/\/(127\.0\.0\.1|localhost|\[::1\]):([1-9]\d{3,4})$/
+
+/**
+ * True for `http://127.0.0.1:<port>`, `http://localhost:<port>` or
+ * `http://[::1]:<port>` with a port from 1024 to 65535 and nothing after the
+ * port (no path, query, fragment or trailing slash). The cloud API applies the
+ * same rule before it redirects a browser there.
+ */
+export function isLoopbackAuthRedirect(value: string): boolean {
+	const match = LOOPBACK_AUTH_REDIRECT.exec(value)
+
+	if (!match) {
+		return false
+	}
+
+	const port = Number(match[2])
+	return port >= 1024 && port <= 65535
+}
+
+/**
  * AuthService
  */
 
@@ -230,7 +264,7 @@ export interface AuthService extends EventEmitter<AuthServiceEvents> {
 	broadcast(): void
 
 	// Authentication methods
-	login(): Promise<void>
+	login(options?: CloudLoginOptions): Promise<void>
 	logout(): Promise<void>
 	handleCallback(code: string | null, state: string | null, organizationId?: string | null): Promise<void>
 	switchOrganization(organizationId: string | null): Promise<void>

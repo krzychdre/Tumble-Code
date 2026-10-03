@@ -1,6 +1,7 @@
 // npx vitest run src/__tests__/cloud.test.ts
 
 import {
+	isLoopbackAuthRedirect,
 	organizationCloudSettingsSchema,
 	organizationDefaultSettingsSchema,
 	organizationFeaturesSchema,
@@ -436,5 +437,29 @@ describe("organizationDefaultSettingsSchema with disabledTools", () => {
 		}
 		const result = organizationDefaultSettingsSchema.safeParse(input)
 		expect(result.success).toBe(false)
+	})
+})
+
+describe("isLoopbackAuthRedirect", () => {
+	it.each(["http://127.0.0.1:53682", "http://localhost:1024", "http://[::1]:65535"])("accepts %s", (value) => {
+		expect(isLoopbackAuthRedirect(value)).toBe(true)
+	})
+
+	it.each([
+		"vscode://QUB-IT.tumble-code",
+		"https://127.0.0.1:53682",
+		"http://127.0.0.1",
+		"http://127.0.0.1:80",
+		"http://127.0.0.1:1023",
+		"http://127.0.0.1:65536",
+		"http://127.0.0.1:01024",
+		"http://127.0.0.1:53682/",
+		"http://127.0.0.1:53682/auth/clerk/callback",
+		"http://127.0.0.1:53682?x=1",
+		"http://127.0.0.2:53682",
+		"http://example.com:53682",
+		"http://localhost.example.com:53682",
+	])("rejects %s", (value) => {
+		expect(isLoopbackAuthRedirect(value)).toBe(false)
 	})
 })

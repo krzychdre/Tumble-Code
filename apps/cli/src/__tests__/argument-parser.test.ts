@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
 	loginToOpenAiCodex: vi.fn(async () => ({ success: true })),
 	logoutFromOpenAiCodex: vi.fn(async () => ({ success: true })),
 	getOpenAiCodexAuthStatus: vi.fn(async () => ({ authenticated: true })),
+	loginToCloud: vi.fn(async () => ({ success: true })),
+	logoutFromCloud: vi.fn(async () => ({ success: false, error: "x" })),
+	getCloudAuthStatus: vi.fn(async () => ({ authenticated: false })),
 	listCommands: vi.fn(async () => {}),
 	listModes: vi.fn(async () => {}),
 	listSessions: vi.fn(async () => {}),
@@ -106,6 +109,8 @@ describe("CLI argument parser (commander characterization)", () => {
 			[["auth", "--help"]],
 			[["auth", "codex", "--help"]],
 			[["auth", "codex", "status", "--help"]],
+			[["auth", "cloud", "--help"]],
+			[["auth", "cloud", "login", "--help"]],
 		])("%j", async (args) => {
 			const result = await parse(args)
 
@@ -311,7 +316,18 @@ describe("CLI argument parser (commander characterization)", () => {
 		expect(mocks.upgrade).toHaveBeenCalledTimes(1)
 	})
 
-	// The cloud sign-in and the always-empty model list were removed: their
+	it("routes the cloud auth subcommands and exits with their result", async () => {
+		expect((await parse(["auth", "cloud", "login"])).exitCode).toBe(0)
+		expect(mocks.loginToCloud).toHaveBeenCalledTimes(1)
+
+		expect((await parse(["auth", "cloud", "logout"])).exitCode).toBe(1)
+		expect(mocks.logoutFromCloud).toHaveBeenCalledTimes(1)
+
+		expect((await parse(["auth", "cloud", "status"])).exitCode).toBe(1)
+		expect(mocks.getCloudAuthStatus).toHaveBeenCalledTimes(1)
+	})
+
+	// The old cloud sign-in and the always-empty model list were removed: their
 	// names now fail like any unknown subcommand.
 	it("rejects the removed auth login/logout/status and list models", async () => {
 		for (const args of [

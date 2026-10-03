@@ -25,6 +25,7 @@ vi.mock("@tumble-code/vscode-shim", () => ({
 	createVSCodeAPI: vi.fn(() => ({
 		context: { extensionPath: "/test/extension" },
 	})),
+	setRuntimeConfig: vi.fn(),
 	setRuntimeConfigValues: vi.fn(),
 }))
 
@@ -123,6 +124,70 @@ describe("ExtensionHost", () => {
 
 	afterAll(() => {
 		restoreEnv()
+	})
+
+	describe("activate", () => {
+		let extensionDir: string
+
+		beforeEach(() => {
+			// A stand-in bundle: it records when it is activated and reports the
+			// webview ready, as the real sidebar registration does.
+			extensionDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-host-activate-"))
+			fs.writeFileSync(
+				path.join(extensionDir, "extension.js"),
+				[
+					"exports.activate = async () => {",
+					'\tglobalThis.__hostActivateOrder.push("activate")',
+					"\tglobalThis.__extensionHost.markWebviewReady()",
+					"}",
+				].join("\n"),
+			)
+			;(globalThis as Record<string, unknown>).__hostActivateOrder = []
+		})
+
+		afterEach(() => {
+			fs.rmSync(extensionDir, { recursive: true, force: true })
+			delete (globalThis as Record<string, unknown>).__hostActivateOrder
+		})
+
+		it("applies cloudApiUrl as the tumble-code.cloudApiUrl setting before the extension activates", async () => {
+			const shim = await import("@tumble-code/vscode-shim")
+			vi.mocked(shim.createVSCodeAPI).mockReturnValue({ context: {} } as never)
+			vi.mocked(shim.setRuntimeConfig).mockImplementation(() => {
+				;((globalThis as Record<string, unknown>).__hostActivateOrder as string[]).push("setRuntimeConfig")
+			})
+			const host = createTestHost({ extensionPath: extensionDir, cloudApiUrl: "https://cloud.example.com" })
+
+			try {
+				await host.activate()
+
+				expect(shim.setRuntimeConfig).toHaveBeenCalledWith(
+					"tumble-code",
+					"cloudApiUrl",
+					"https://cloud.example.com",
+				)
+				expect((globalThis as Record<string, unknown>).__hostActivateOrder).toEqual([
+					"setRuntimeConfig",
+					"activate",
+				])
+			} finally {
+				await host.dispose()
+			}
+		})
+
+		it("sets no cloud URL without cloudApiUrl, so TUMBLE_CODE_API_URL keeps applying", async () => {
+			const shim = await import("@tumble-code/vscode-shim")
+			vi.mocked(shim.createVSCodeAPI).mockReturnValue({ context: {} } as never)
+			const host = createTestHost({ extensionPath: extensionDir })
+
+			try {
+				await host.activate()
+
+				expect(shim.setRuntimeConfig).not.toHaveBeenCalled()
+			} finally {
+				await host.dispose()
+			}
+		})
 	})
 
 	describe("constructor", () => {

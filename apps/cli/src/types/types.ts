@@ -100,4 +100,11 @@ export interface CliSettings {
 	 * extension's mcp_settings.json to share one list with the editor.
 	 */
 	mcpSettingsPath?: string
+	/**
+	 * The Tumble Code Cloud API (for example https://cloud.example.com) that
+	 * `tumble auth cloud login` signs in to and a signed-in run sends its
+	 * telemetry to. Without it the TUMBLE_CODE_API_URL environment variable
+	 * applies.
+	 */
+	cloudApiUrl?: string
 }

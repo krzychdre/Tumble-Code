@@ -72,10 +72,16 @@ sequenceDiagram
 
 The web panel uses the same Authentik flow but ends with a signed `tumble_session` cookie instead of a ticket.
 
-The CLI signs in with a loopback redirect (RFC 8252): `auth_redirect=http://127.0.0.1:<port>` (or `localhost`,
-or `[::1]`; port 1024 to 65535, nothing after it), and the callback answers with a 303 straight to
-`http://127.0.0.1:<port>/auth/clerk/callback?code=<ticket>&state=<state>` instead of the bounce page. Every
-other http or https value is refused (`is_allowed_auth_redirect` in `routers/browser.py`).
+The CLI cannot receive a `vscode://` link, so `tumble auth cloud login` uses a loopback redirect (RFC 8252): it
+listens once on `http://127.0.0.1:<random port>` (`apps/cli/src/lib/auth/loopback-callback.ts`) and starts the same
+flow with `auth_redirect=http://127.0.0.1:<port>` (`CloudService.login({ authRedirect })`, which accepts only a
+loopback address, see `isLoopbackAuthRedirect` in `packages/types/src/cloud.ts`). The server accepts exactly
+`http://127.0.0.1:<port>`, `http://localhost:<port>` or `http://[::1]:<port>` (port 1024 to 65535, nothing after
+it; every other http or https value is refused by `is_allowed_auth_redirect` in `routers/browser.py`), and its
+callback answers with a 303 straight to `http://127.0.0.1:<port>/auth/clerk/callback?code=<ticket>&state=<state>`
+instead of the bounce page. The CLI hands code and state to the usual `handleAuthCallback`. A browser on another
+machine cannot reach that port; the user then pastes the address it ended on into the terminal. The extension runs
+headless for this, in its cloud-auth-only mode (`ROO_CLI_CLOUD_AUTH_ONLY`, `src/extension/cloudAuthOnly.ts`).
 
 ## Server side
 

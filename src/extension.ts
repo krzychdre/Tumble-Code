@@ -48,6 +48,7 @@ import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
 import { setupRemoteControlBridge } from "./extension/bridge"
 import { startCloudInBackground } from "./extension/cloudStartup"
+import { activateCloudAuthOnly } from "./extension/cloudAuthOnly"
 
 import {
 	handleUri,
@@ -141,7 +142,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		consoleLevel:
 			context.extensionMode === vscode.ExtensionMode.Development
 				? "debug"
-				: cliRuntime.isCliRuntime || cliRuntime.codexAuthOnly
+				: cliRuntime.isCliRuntime || cliRuntime.codexAuthOnly || cliRuntime.cloudAuthOnly
 					? "error"
 					: undefined,
 		debug: isDebugSettingOn(),
@@ -183,6 +184,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	// configurable API/provider/clerk URLs take effect.
 	syncCloudUrls()
 	registerCloudUrlsSubscription(context)
+
+	// `tumble auth cloud` signs in on the same SecretStorage as a normal CLI run
+	// and needs only the cloud service (awaited here, not started in the
+	// background), with the cloud URLs synced just above.
+	if (cliRuntime.cloudAuthOnly) {
+		const cloudAuth = await activateCloudAuthOnly(context, (...args: unknown[]) => logger.info(...args))
+		return { getCloudAuth: () => cloudAuth }
+	}
 
 	// Set extension path for custom tool registry to find bundled esbuild
 	customToolRegistry.setExtensionPath(context.extensionPath)

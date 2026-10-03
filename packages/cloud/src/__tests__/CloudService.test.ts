@@ -208,6 +208,11 @@ describe("CloudService", () => {
 			expect(mockAuthService.login).toHaveBeenCalled()
 		})
 
+		it("passes the login options (the CLI's loopback redirect) to AuthService", async () => {
+			await cloudService.login({ authRedirect: "http://127.0.0.1:53682" })
+			expect(mockAuthService.login).toHaveBeenCalledWith({ authRedirect: "http://127.0.0.1:53682" })
+		})
+
 		it("should delegate logout to AuthService", async () => {
 			await cloudService.logout()
 			expect(mockAuthService.logout).toHaveBeenCalled()

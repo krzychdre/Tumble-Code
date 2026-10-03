@@ -14,6 +14,9 @@
  *    - `ROO_CLI_CODEX_AUTH_ONLY`: set to "1" by `roo auth openai-codex` around a
  *      headless `activate()`; the extension then only initializes the OpenAI
  *      Codex OAuth manager and returns early.
+ *    - `ROO_CLI_CLOUD_AUTH_ONLY`: set to "1" by `tumble auth cloud` around a
+ *      headless `activate()`; the extension then only starts the cloud
+ *      service and returns a `CliCloudAuthApi` (see below).
  *    - `ROO_MCP_SETTINGS_PATH`: set by the CLI `ExtensionHost` to the global MCP
  *      servers file (default `~/.roo/mcp.json`), read by the extension instead
  *      of `<globalStorage>/settings/mcp_settings.json`.
@@ -39,6 +42,7 @@
 export const CLI_RUNTIME_ENV = {
 	runtime: "ROO_CLI_RUNTIME",
 	codexAuthOnly: "ROO_CLI_CODEX_AUTH_ONLY",
+	cloudAuthOnly: "ROO_CLI_CLOUD_AUTH_ONLY",
 	mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
 	cliVersion: "ROO_CLI_VERSION",
 	cliRoot: "ROO_CLI_ROOT",
@@ -54,6 +58,8 @@ export interface CliRuntimeEnv {
 	isCliRuntime: boolean
 	/** Activate only the OpenAI Codex OAuth manager (`ROO_CLI_CODEX_AUTH_ONLY === "1"`). */
 	codexAuthOnly: boolean
+	/** Activate only the cloud sign-in (`ROO_CLI_CLOUD_AUTH_ONLY === "1"`). */
+	cloudAuthOnly: boolean
 	/** Global MCP settings file override, trimmed. */
 	mcpSettingsPath: string | undefined
 	/** Version of the CLI package hosting the extension. */
@@ -76,6 +82,7 @@ export function readCliRuntimeEnv(env: Readonly<Record<string, string | undefine
 	return {
 		isCliRuntime: env[CLI_RUNTIME_ENV.runtime] === "1",
 		codexAuthOnly: env[CLI_RUNTIME_ENV.codexAuthOnly] === "1",
+		cloudAuthOnly: env[CLI_RUNTIME_ENV.cloudAuthOnly] === "1",
 		mcpSettingsPath: env[CLI_RUNTIME_ENV.mcpSettingsPath]?.trim() || undefined,
 		cliVersion: text(CLI_RUNTIME_ENV.cliVersion),
 		cliRoot: text(CLI_RUNTIME_ENV.cliRoot),
@@ -123,4 +130,39 @@ export function setCliRuntimeGlobals(
 export function clearCliRuntimeGlobals(target: CliRuntimeGlobals = globalThis as CliRuntimeGlobals): void {
 	delete target[CLI_RUNTIME_GLOBAL_SLOTS.vscode]
 	delete target[CLI_RUNTIME_GLOBAL_SLOTS.extensionHost]
+}
+
+/** What `CliCloudAuthApi.getStatus` reports. */
+export interface CliCloudAuthStatus {
+	/** Credentials are stored (the session may still be starting or unreachable). */
+	authenticated: boolean
+	/** The auth service's state (`AuthState` in ./cloud.ts). */
+	state: string
+	/** The signed-in user's primary email, once the cloud has answered. */
+	userEmail?: string
+	/** The cloud API the extension talks to. */
+	cloudApiUrl: string
+}
+
+/**
+ * The object `activate()` returns under `ROO_CLI_CLOUD_AUTH_ONLY`: the cloud
+ * sign-in of `tumble auth cloud`, on the same secrets as a normal run.
+ */
+export interface CliCloudAuthApi {
+	/**
+	 * Starts a sign-in whose browser lands on `<authRedirect>/auth/clerk/callback`
+	 * (a loopback address). The sign-in URL goes to `vscode.env.openExternal`.
+	 */
+	login(authRedirect: string): Promise<void>
+	/** Checks the state, exchanges the ticket and stores the credentials. */
+	handleAuthCallback(code: string, state: string, organizationId?: string | null): Promise<void>
+	logout(): Promise<void>
+	getStatus(): CliCloudAuthStatus
+	/**
+	 * Resolves once the session is settled (signed out, active with the user
+	 * known, or inactive) or after `timeoutMs`, with the status at that point.
+	 */
+	waitForSettledSession(timeoutMs: number): Promise<CliCloudAuthStatus>
+	/** Stops the cloud service. */
+	dispose(): void
 }

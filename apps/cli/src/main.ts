@@ -7,6 +7,9 @@ import {
 	loginToOpenAiCodex,
 	logoutFromOpenAiCodex,
 	getOpenAiCodexAuthStatus,
+	loginToCloud,
+	logoutFromCloud,
+	getCloudAuthStatus,
 	listCommands,
 	listModes,
 	listSessions,
@@ -131,7 +134,7 @@ program
 		process.exit(await doctor(options))
 	})
 
-const authCommand = program.command("auth").description("Manage provider authentication")
+const authCommand = program.command("auth").description("Manage provider and cloud authentication")
 
 const codexAuthCommand = authCommand.command("codex").description("Manage ChatGPT subscription access for OpenAI Codex")
 
@@ -156,6 +159,34 @@ codexAuthCommand
 	.description("Show OpenAI Codex OAuth status")
 	.action(async () => {
 		const result = await getOpenAiCodexAuthStatus()
+		process.exit(result.authenticated ? 0 : 1)
+	})
+
+const cloudAuthCommand = authCommand
+	.command("cloud")
+	.description("Manage the Tumble Code Cloud sign-in (set cloudApiUrl in ~/.roo/cli-settings.json first)")
+
+cloudAuthCommand
+	.command("login")
+	.description("Sign in to Tumble Code Cloud in the browser; signed-in runs send usage telemetry to it")
+	.action(async () => {
+		const result = await loginToCloud()
+		process.exit(result.success ? 0 : 1)
+	})
+
+cloudAuthCommand
+	.command("logout")
+	.description("Sign out from Tumble Code Cloud and remove the stored credentials")
+	.action(async () => {
+		const result = await logoutFromCloud()
+		process.exit(result.success ? 0 : 1)
+	})
+
+cloudAuthCommand
+	.command("status")
+	.description("Show whether the CLI is signed in to Tumble Code Cloud, as whom, and which cloud")
+	.action(async () => {
+		const result = await getCloudAuthStatus()
 		process.exit(result.authenticated ? 0 : 1)
 	})
 
