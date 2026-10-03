@@ -1,4 +1,5 @@
-// Debug views: raw task history files, error diagnostics, markdown preview and plan review.
+// Debug views: raw task history files, error diagnostics, markdown preview, plan review
+// and the window reload a stale webview asks for after the extension files were replaced.
 
 import * as path from "path"
 import * as os from "os"
@@ -121,5 +122,11 @@ export const debugHandlers: DomainHandlerMap<"debug"> = {
 			globalStoragePath: provider.contextProxy.globalStorageUri.fsPath,
 			values: message.values,
 		})
+	},
+
+	// The webview could not fetch a lazy chunk: the extension was reinstalled or
+	// updated on disk while this window kept running the old build.
+	reloadWindow: async () => {
+		await vscode.commands.executeCommand("workbench.action.reloadWindow")
 	},
 }

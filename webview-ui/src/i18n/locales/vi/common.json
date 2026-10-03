@@ -7,6 +7,11 @@
 		"errorStack": "Stack lỗi:",
 		"componentStack": "Stack thành phần:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code đã được cập nhật",
+		"description": "Cửa sổ này vẫn đang chạy phiên bản trước, nên không thể tải chế độ xem này. Hãy tải lại cửa sổ để hoàn tất cập nhật.",
+		"reload": "Tải lại cửa sổ"
+	},
 	"answers": {
 		"yes": "Có",
 		"cancel": "Hủy"

@@ -7,6 +7,11 @@
 		"errorStack": "Error Stack:",
 		"componentStack": "Component Stack:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code was updated",
+		"description": "This window still runs the previous version, so this view cannot load. Reload the window to finish the update.",
+		"reload": "Reload window"
+	},
 	"answers": {
 		"yes": "Yes",
 		"cancel": "Cancel"

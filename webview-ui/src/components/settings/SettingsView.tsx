@@ -1,7 +1,6 @@
 import React, {
 	Suspense,
 	forwardRef,
-	lazy,
 	memo,
 	useCallback,
 	useEffect,
@@ -35,6 +34,7 @@ import {
 } from "lucide-react"
 
 import { vscode } from "@src/utils/vscode"
+import { lazyTab } from "@src/utils/lazyTab"
 import { cn } from "@src/lib/utils"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -81,9 +81,10 @@ import { onExtensionMessage } from "@src/utils/extensionBus"
 
 // The Modes and MCP tabs are large modules off the chat critical path: each
 // becomes its own chunk fetched on first open (P4). All other settings
-// sections stay eager.
-const ModesView = lazy(() => import("../modes/ModesView"))
-const McpView = lazy(() => import("../mcp/McpView"))
+// sections stay eager. lazyTab turns a chunk lost to a reinstall under a
+// running window into a reload notice.
+const ModesView = lazyTab(() => import("../modes/ModesView"))
+const McpView = lazyTab(() => import("../mcp/McpView"))
 
 // Subtle fallback while a lazy tab's chunk arrives: the standard spinner.
 const TabLoadingFallback = () => {

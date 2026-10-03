@@ -7,6 +7,11 @@
 		"errorStack": "Stack di errore:",
 		"componentStack": "Stack dei componenti:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code è stato aggiornato",
+		"description": "Questa finestra esegue ancora la versione precedente, quindi questa vista non può essere caricata. Ricarica la finestra per completare l'aggiornamento.",
+		"reload": "Ricarica finestra"
+	},
 	"answers": {
 		"yes": "Sì",
 		"cancel": "Annulla"

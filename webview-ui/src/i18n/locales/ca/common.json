@@ -7,6 +7,11 @@
 		"errorStack": "Pila d'errors:",
 		"componentStack": "Pila de components:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code s'ha actualitzat",
+		"description": "Aquesta finestra encara executa la versió anterior, així que aquesta vista no es pot carregar. Torna a carregar la finestra per completar l'actualització.",
+		"reload": "Torna a carregar la finestra"
+	},
 	"answers": {
 		"yes": "Sí",
 		"cancel": "Cancel·lar"

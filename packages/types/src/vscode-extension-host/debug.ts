@@ -4,10 +4,11 @@
  * messages of the same domain.
  */
 
-/** Markdown preview, plan review launch and debug diagnostics. */
+/** Markdown preview, plan review launch, debug diagnostics and a window reload. */
 export type DebugWebviewMessageType =
 	| "openMarkdownPreview"
 	| "openPlanReview"
 	| "openDebugApiHistory"
 	| "openDebugUiHistory"
 	| "downloadErrorDiagnostics"
+	| "reloadWindow"

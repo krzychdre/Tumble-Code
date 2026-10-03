@@ -7,6 +7,11 @@
 		"errorStack": "Stack Error:",
 		"componentStack": "Stack Komponen:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code telah diperbarui",
+		"description": "Jendela ini masih menjalankan versi sebelumnya, sehingga tampilan ini tidak dapat dimuat. Muat ulang jendela untuk menyelesaikan pembaruan.",
+		"reload": "Muat ulang jendela"
+	},
 	"answers": {
 		"yes": "Ya",
 		"cancel": "Batal"

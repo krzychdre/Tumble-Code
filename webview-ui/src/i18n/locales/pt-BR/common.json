@@ -7,6 +7,11 @@
 		"errorStack": "Pilha de Erro:",
 		"componentStack": "Pilha de Componentes:"
 	},
+	"staleBuild": {
+		"title": "O Tumble Code foi atualizado",
+		"description": "Esta janela ainda executa a versão anterior, então esta visualização não pode ser carregada. Recarregue a janela para concluir a atualização.",
+		"reload": "Recarregar janela"
+	},
 	"number_format": {
 		"thousand_suffix": "k",
 		"million_suffix": "m",

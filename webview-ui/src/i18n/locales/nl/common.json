@@ -7,6 +7,11 @@
 		"errorStack": "Foutstack:",
 		"componentStack": "Componentstack:"
 	},
+	"staleBuild": {
+		"title": "Tumble Code is bijgewerkt",
+		"description": "Dit venster draait nog op de vorige versie, dus deze weergave kan niet laden. Herlaad het venster om de update te voltooien.",
+		"reload": "Venster herladen"
+	},
 	"answers": {
 		"yes": "Ja",
 		"cancel": "Annuleren"
