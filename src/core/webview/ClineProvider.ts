@@ -2192,10 +2192,13 @@ export class ClineProvider
 		}
 	}
 
-	private async getTaskProperties(): Promise<DynamicAppProperties & TaskProperties> {
+	private async getTaskProperties(eventTaskId?: string): Promise<DynamicAppProperties & TaskProperties> {
 		const { language = "en", mode, apiConfiguration } = await this.getState()
 
 		const task = this.getCurrentTask()
+		if (eventTaskId && eventTaskId !== task?.taskId) {
+			return { language, mode, ...(await this.getOtherTaskLineage(eventTaskId)) }
+		}
 		const todoList = task?.todoList
 		let todos: { total: number; completed: number; inProgress: number; pending: number } | undefined
 
@@ -2235,11 +2238,29 @@ export class ClineProvider
 		return this._gitProperties
 	}
 
-	public async getTelemetryProperties(): Promise<TelemetryProperties> {
+	/**
+	 * Lineage of a task that is not the current one: a parallel subagent
+	 * (never the current task, its parent is the task that fanned it out) or a
+	 * task from history (a backfill upload). The current task's model, todos
+	 * and lineage do not describe it, so they are left out.
+	 */
+	private async getOtherTaskLineage(taskId: string): Promise<TaskProperties> {
+		let parentTaskId = this.backgroundTaskRunner.subagentParentOf(taskId)
+		if (!parentTaskId) {
+			try {
+				parentTaskId = (await this.getTaskHistoryStore()).get(taskId)?.parentTaskId
+			} catch {
+				// History unavailable: report no parent rather than a wrong one.
+			}
+		}
+		return { taskId, parentTaskId, isSubtask: parentTaskId !== undefined }
+	}
+
+	public async getTelemetryProperties(taskId?: string): Promise<TelemetryProperties> {
 		return {
 			...this.getAppProperties(),
 			...this.getCloudProperties(),
-			...(await this.getTaskProperties()),
+			...(await this.getTaskProperties(taskId)),
 			...(await this.getGitProperties()),
 		}
 	}

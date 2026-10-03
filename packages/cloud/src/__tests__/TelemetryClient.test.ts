@@ -155,6 +155,25 @@ describe("TelemetryClient", () => {
 			expect(mockProvider.getTelemetryProperties).toHaveBeenCalledTimes(1)
 		})
 
+		// A subagent's events name its own task, which is not the current
+		// one; the provider needs the id to report that task's parent.
+		it("asks the provider for the properties of the event's task", async () => {
+			const client = new TelemetryClient(mockAuthService, mockSettingsService)
+			const mockProvider: TelemetryPropertiesProvider = {
+				getTelemetryProperties: vi.fn().mockResolvedValue({}),
+			}
+			client.setProvider(mockProvider)
+			const getEventProperties = getPrivateProperty<
+				(event: { event: TelemetryEventName; properties?: Record<string, any> }) => Promise<Record<string, any>>
+			>(client, "getEventProperties").bind(client)
+
+			await getEventProperties({ event: TelemetryEventName.LLM_COMPLETION, properties: { taskId: "sub-1" } })
+			await getEventProperties({ event: TelemetryEventName.TASK_CREATED, properties: {} })
+
+			expect(mockProvider.getTelemetryProperties).toHaveBeenNthCalledWith(1, "sub-1")
+			expect(mockProvider.getTelemetryProperties).toHaveBeenNthCalledWith(2, undefined)
+		})
+
 		it("should handle errors from provider gracefully", async () => {
 			const client = new TelemetryClient(mockAuthService, mockSettingsService)
 

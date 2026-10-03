@@ -40,7 +40,10 @@ export abstract class BaseTelemetryClient implements TelemetryClient {
 		if (provider) {
 			try {
 				// Get properties from the provider
-				providerProperties = await provider.getTelemetryProperties()
+				const taskId = event.properties?.taskId
+				providerProperties = await provider.getTelemetryProperties(
+					typeof taskId === "string" ? taskId : undefined,
+				)
 			} catch (error) {
 				// Log error but continue with capturing the event.
 				console.error(
