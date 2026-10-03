@@ -17,9 +17,6 @@ import {
 	type TumbleCodeSettings,
 	type ProviderSettingsEntry,
 	type StaticAppProperties,
-	type DynamicAppProperties,
-	type CloudAppProperties,
-	type TaskProperties,
 	type GitProperties,
 	type TelemetryProperties,
 	type TelemetryPropertiesProvider,
@@ -32,11 +29,9 @@ import {
 	TumbleCodeEventName,
 	openRouterDefaultModelId,
 	DEFAULT_MODES,
-	isRetiredProvider,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 	WebviewMessage,
-	readCliRuntimeEnv,
 } from "@tumble-code/types"
 import { CloudService } from "@tumble-code/cloud"
 
@@ -56,7 +51,6 @@ import { CodeIndexManager } from "../../services/code-index/manager"
 import type { IndexProgressUpdate } from "../../services/code-index/interfaces/manager"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
-import { getWorkspaceGitInfo } from "../../utils/git"
 import { logger } from "../../utils/logging"
 import { getWorkspacePath } from "../../utils/path"
 import { perfCounters } from "../../utils/perfCounters"
@@ -94,6 +88,7 @@ import { ModeProfileBinding } from "./ModeProfileBinding"
 import { forwardTaskEvents, type TaskEventForwardingHost } from "./taskEventForwarding"
 import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOptions } from "./WebviewHtml"
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
+import { TelemetryPropertiesSource } from "./TelemetryPropertiesSource"
 import { BackgroundTaskRunner, type BackgroundTaskOptions, type BackgroundTaskOutcome } from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
@@ -208,6 +203,12 @@ export class ClineProvider
 
 	/** Keeps local provider profiles in step with the cloud organization (CORE-R6 b). */
 	private readonly cloudProfileSync: CloudProfileSync
+
+	/**
+	 * The telemetry-properties cluster (R3-12 cluster 2): app/cloud/task/git
+	 * facts for every telemetry event. See {@link TelemetryPropertiesSource}.
+	 */
+	private readonly telemetryProperties: TelemetryPropertiesSource
 
 	/**
 	 * Headless background tasks: memory writers and parallel subagents
@@ -363,6 +364,15 @@ export class ClineProvider
 			},
 			activateProviderProfile: (args) => this.activateProviderProfile(args),
 			postStateToWebviewWithoutClineMessages: () => this.postStateToWebviewWithoutClineMessages(),
+		})
+		this.telemetryProperties = new TelemetryPropertiesSource({
+			getState: () => this.getState(),
+			getCurrentTask: () => this.getCurrentTask(),
+			subagentParentOf: (taskId) => this.backgroundTaskRunner.subagentParentOf(taskId),
+			getTaskHistoryStore: () => this.getTaskHistoryStore(),
+			get extensionPackageJSON() {
+				return context.extension?.packageJSON
+			},
 		})
 		const getTaskCreationCallback = () => this.taskCreationCallback
 		const getGlobalStoragePath = () => this.globalStoragePath
@@ -2103,123 +2113,23 @@ export class ClineProvider
 		await this.activateProviderProfile({ name })
 	}
 
-	// Telemetry
+	// Telemetry (the property assembly lives in TelemetryPropertiesSource;
+	// TaskProviderLike and TelemetryPropertiesProvider pin these members on
+	// the provider, so the surface here delegates one-to-one).
 
-	private _appProperties?: StaticAppProperties
-	private _gitProperties?: GitProperties
-
-	private getAppProperties(): StaticAppProperties {
-		if (!this._appProperties) {
-			const packageJSON = this.context.extension?.packageJSON
-			// The CLI hosts this same bundle; the cloud tells the clients apart by this.
-			const { isCliRuntime, cliVersion } = readCliRuntimeEnv(process.env)
-
-			this._appProperties = {
-				appName: packageJSON?.name ?? Package.name,
-				appVersion: packageJSON?.version ?? Package.version,
-				vscodeVersion: vscode.version,
-				platform: process.platform,
-				editorName: vscode.env.appName,
-				clientKind: isCliRuntime ? "cli" : "vscode",
-				...(isCliRuntime && cliVersion ? { clientVersion: cliVersion } : {}),
-			}
-		}
-
-		return this._appProperties
-	}
-
+	/** See {@link TelemetryPropertiesSource.getAppProperties}. */
 	public get appProperties(): StaticAppProperties {
-		return this._appProperties ?? this.getAppProperties()
+		return this.telemetryProperties.getAppProperties()
 	}
 
-	private getCloudProperties(): CloudAppProperties {
-		let cloudIsAuthenticated: boolean | undefined
-
-		try {
-			if (CloudService.hasInstance()) {
-				cloudIsAuthenticated = CloudService.instance.isAuthenticated()
-			}
-		} catch (error) {
-			// Silently handle errors to avoid breaking telemetry collection.
-			logger.warn(`[getTelemetryProperties] Failed to get cloud auth state: ${error}`)
-		}
-
-		return {
-			cloudIsAuthenticated,
-		}
-	}
-
-	private async getTaskProperties(eventTaskId?: string): Promise<DynamicAppProperties & TaskProperties> {
-		const { language = "en", mode, apiConfiguration } = await this.getState()
-
-		const task = this.getCurrentTask()
-		if (eventTaskId && eventTaskId !== task?.taskId) {
-			return { language, mode, ...(await this.getOtherTaskLineage(eventTaskId)) }
-		}
-		const todoList = task?.todoList
-		let todos: { total: number; completed: number; inProgress: number; pending: number } | undefined
-
-		if (todoList && todoList.length > 0) {
-			todos = {
-				total: todoList.length,
-				completed: todoList.filter((todo) => todo.status === "completed").length,
-				inProgress: todoList.filter((todo) => todo.status === "in_progress").length,
-				pending: todoList.filter((todo) => todo.status === "pending").length,
-			}
-		}
-
-		const apiProvider = apiConfiguration?.apiProvider
-
-		return {
-			language,
-			mode,
-			taskId: task?.taskId,
-			parentTaskId: task?.parentTaskId,
-			apiProvider: apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
-			modelId: task?.api?.getModel().id,
-			diffStrategy: task?.diffStrategy?.getName(),
-			isSubtask: task ? !!task.parentTaskId : undefined,
-			...(todos && { todos }),
-		}
-	}
-
-	private async getGitProperties(): Promise<GitProperties> {
-		if (!this._gitProperties) {
-			this._gitProperties = await getWorkspaceGitInfo()
-		}
-
-		return this._gitProperties
-	}
-
+	/** See {@link TelemetryPropertiesSource.getGitPropertiesIfComputed}. */
 	public get gitProperties(): GitProperties | undefined {
-		return this._gitProperties
+		return this.telemetryProperties.getGitPropertiesIfComputed()
 	}
 
-	/**
-	 * Lineage of a task that is not the current one: a parallel subagent
-	 * (never the current task, its parent is the task that fanned it out) or a
-	 * task from history (a backfill upload). The current task's model, todos
-	 * and lineage do not describe it, so they are left out.
-	 */
-	private async getOtherTaskLineage(taskId: string): Promise<TaskProperties> {
-		let parentTaskId = this.backgroundTaskRunner.subagentParentOf(taskId)
-		if (!parentTaskId) {
-			try {
-				parentTaskId = (await this.getTaskHistoryStore()).get(taskId)?.parentTaskId
-			} catch {
-				// History unavailable: report no parent rather than a wrong one.
-			}
-		}
-		return { taskId, parentTaskId, isSubtask: parentTaskId !== undefined }
-	}
-
+	/** See {@link TelemetryPropertiesSource.getTelemetryProperties}. */
 	public async getTelemetryProperties(taskId?: string): Promise<TelemetryProperties> {
-		return {
-			...this.getAppProperties(),
-			...this.getCloudProperties(),
-			...(await this.getTaskProperties(taskId)),
-			...(await this.getGitProperties()),
-		}
+		return this.telemetryProperties.getTelemetryProperties(taskId)
 	}
 
 	public get cwd() {
