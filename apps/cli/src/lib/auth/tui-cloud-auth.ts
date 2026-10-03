@@ -7,7 +7,7 @@
  * (loopback-callback.ts), and results in the transcript, because the CLI mutes
  * the extension's notifications. The extension reports each step with a
  * `cloudAuthResult` message. From a remote shell the user types
- * `/login <address the browser ended on>` instead.
+ * `/login <callback-url>` (the address the browser ended on) instead.
  */
 
 import type { ExtensionMessage, WebviewMessage } from "@tumble-code/types"
@@ -15,7 +15,9 @@ import type { ExtensionMessage, WebviewMessage } from "@tumble-code/types"
 import type { CliSettings } from "@/types/index.js"
 import { loadSettings as loadCliSettings } from "@/lib/storage/settings.js"
 
-import { resolveCloudApiUrl } from "./cloud-api-url.js"
+import { getSettingsPath } from "@/lib/storage/settings.js"
+
+import { normalizeCloudApiUrl, resolveCloudApiUrl } from "./cloud-api-url.js"
 import {
 	CLOUD_CALLBACK_PATH,
 	LOOPBACK_TIMEOUT_MS,
@@ -50,8 +52,21 @@ export interface TuiCloudAuthOptions {
 type StepResult = { success: true } | { success: false; error: string }
 
 const LOGIN_USAGE =
-	"Usage: /login (opens the browser) or /login <address> (the address the browser ended on, " +
+	"Usage: /login (opens the browser) or /login <callback-url> (the address the browser ended on, " +
 	`containing ${CLOUD_CALLBACK_PATH}?code=...).`
+
+/**
+ * `/login http://cloud.example.com` reads naturally but cannot work: the cloud
+ * URL is fixed when the extension starts (the auth service keys its stored
+ * credentials by it), so it belongs in the settings file.
+ */
+const serverUrlNote = (url: string) =>
+	[
+		`${url} looks like the cloud server address; /login does not take one.`,
+		`Add it to ${getSettingsPath()}:`,
+		`  { "cloudApiUrl": "${url}" }`,
+		"then restart the CLI and run /login without an argument.",
+	].join("\n")
 
 export class TuiCloudAuth {
 	/** The sign-in waiting for the browser; a newer /login or a pasted address ends it. */
@@ -59,13 +74,14 @@ export class TuiCloudAuth {
 
 	constructor(private readonly options: TuiCloudAuthOptions) {}
 
-	/** `/login [address]`. Resolves when the sign-in has finished or failed. */
+	/** `/login [callback-url]`. Resolves when the sign-in has finished or failed. */
 	async login(argument: string): Promise<void> {
 		if (argument) {
 			const callback = parseCloudCallbackUrl(argument)
 
 			if (!callback) {
-				this.options.note(LOGIN_USAGE)
+				const serverUrl = normalizeCloudApiUrl(argument)
+				this.options.note(serverUrl ? serverUrlNote(serverUrl) : LOGIN_USAGE)
 				return
 			}
 
@@ -129,7 +145,7 @@ export class TuiCloudAuth {
 				note(
 					`Waiting for the browser (up to ${Math.round(timeoutMs / 60_000)} minutes). ` +
 						"If it runs on another machine, copy the address it ends on " +
-						`(it contains ${CLOUD_CALLBACK_PATH}) and type: /login <address>`,
+						`(it contains ${CLOUD_CALLBACK_PATH}) and type: /login <callback-url>`,
 				)
 			}
 		})
