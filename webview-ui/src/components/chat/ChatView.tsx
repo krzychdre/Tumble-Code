@@ -95,6 +95,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const messageQueue = useExtensionSelector((s) => s.messageQueue) ?? []
 	const showWorktreesInHomeScreen = useExtensionSelector((s) => s.showWorktreesInHomeScreen)
 	const subagents = useExtensionSelector((s) => s.subagents)
+	const currentTaskId = useExtensionSelector((s) => s.currentTaskId)
 	const clearSubagents = useExtensionSelector((s) => s.clearSubagents)
 
 	const playSound = useChatSounds({ soundEnabled, soundVolume, customSoundUris })
@@ -570,7 +571,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							atBottomThreshold={10}
 						/>
 					</div>
-					<SubagentsPanel subagents={subagents} />
+					<SubagentsPanel subagents={subagents} taskId={currentTaskId} />
 					<FileChangesPanel clineMessages={messages} />
 					{areButtonsVisible && (
 						<div

@@ -26,6 +26,8 @@ import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface SubagentsPanelProps {
 	subagents: SubagentSummary[] | undefined
+	/** The task open in the chat. Only its own fan-out is listed. */
+	taskId: string | undefined
 	className?: string
 }
 
@@ -476,17 +478,27 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
  * Panel above the chat input listing the parallel background subagents of the
  * latest `run_parallel_tasks` fan-out: live status per child, an expandable
  * streaming tail, question answering, mid-run guidance, and per-child cancel.
- * Renders nothing when no fan-out is registered.
+ * Renders nothing when the open task has no fan-out.
+ *
+ * The panel belongs to the task that fanned out, like the edited-files bar
+ * belongs to its task. The host registry keeps a parent's rows while the
+ * parent hands work to a `new_task` subtask (the parent is not reset, it
+ * resumes later), so the list is filtered by `parentTaskId` here: a subtask,
+ * or any other task opened meanwhile, never shows its parent's subagents.
  */
-const SubagentsPanel = memo(({ subagents, className }: SubagentsPanelProps) => {
+const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: SubagentsPanelProps) => {
 	const { t } = useTranslation()
 	const [panelExpanded, setPanelExpanded] = useState(true)
 
-	const active = useMemo(() => (subagents ?? []).filter(isLive).length, [subagents])
+	const subagents = useMemo(
+		() => (allSubagents ?? []).filter((summary) => summary.parentTaskId === taskId),
+		[allSubagents, taskId],
+	)
+	const active = useMemo(() => subagents.filter(isLive).length, [subagents])
 
 	const handleOpenChange = useCallback((open: boolean) => setPanelExpanded(open), [])
 
-	if (!subagents || subagents.length === 0) {
+	if (!taskId || subagents.length === 0) {
 		return null
 	}
 
