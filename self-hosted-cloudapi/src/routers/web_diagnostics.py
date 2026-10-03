@@ -40,6 +40,7 @@ def problem_filter(
     provider: Optional[str] = None,
     tool: Optional[str] = None,
     source: Optional[str] = None,
+    client: Optional[str] = None,
     q: Optional[str] = None,
     sort: Optional[str] = None,
 ) -> ProblemFilter:
@@ -55,6 +56,7 @@ def problem_filter(
             "provider": provider,
             "tool": tool,
             "source": source,
+            "client": client,
             "q": q,
             "sort": sort,
         }

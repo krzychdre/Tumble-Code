@@ -33,6 +33,7 @@ from src.models.user import User
 from src.services.anonymizer import Anonymizer
 from src.services.exchange_quality import is_clean
 from src.services.exchange_reconstruction import Exchange, js_json, load_task
+from src.services.client_kind import parse_client
 from src.services.metrics_service import PERIODS, period_start
 from src.services.openai_messages import convert_message, response_message
 
@@ -45,6 +46,10 @@ class ExportOptions:
     models: list[str] = field(default_factory=list)
     # Workspaces whose exchanges never go into the dataset (a client's code).
     exclude_workspaces: list[str] = field(default_factory=list)
+    # "vscode" or "cli" (services/client_kind): only the tasks that client
+    # recorded; "" for both. A task is recorded by one client only, so this
+    # picks tasks (task_ids), not single exchanges.
+    client: str = ""
     format: str = "turns"
     strict: bool = False
     reasoning: bool = True
@@ -68,6 +73,7 @@ class ExportOptions:
             period=params.get("period") if params.get("period") in PERIODS else "all",
             models=[m for m in params.getlist("model") if m],
             exclude_workspaces=[w for w in params.getlist("exclude_workspace") if w],
+            client=parse_client(params.get("client")) or "",
             format=params.get("format") if params.get("format") in FORMATS else "turns",
             strict=flag("strict", False),
             reasoning=flag("reasoning", True),
@@ -101,6 +107,8 @@ async def task_ids(db: AsyncSession, user_id: str, options: ExportOptions) -> li
         query = query.where(LlmExchange.occurred_at >= since)
     if options.models:
         query = query.where(LlmExchange.model_id.in_(options.models))
+    if options.client:
+        query = query.where(LlmExchange.client_kind == options.client)
     if options.exclude_workspaces:
         query = query.where(
             or_(LlmExchange.workspace_path.is_(None), LlmExchange.workspace_path.notin_(options.exclude_workspaces))

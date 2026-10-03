@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Iterable, Optional, Sequence
 
+from src.services.client_kind import CLIENT_VSCODE
 from src.services.problem_catalogue import (
     CONFIGURATION,
     MODEL,
@@ -90,6 +91,9 @@ class Occurrence:
     # the messages before it.
     ts: Optional[int] = None
     app_version: Optional[str] = None
+    # "vscode" or "cli" (services/client_kind): the report's or the event's
+    # own client_kind, for a conversation the task's.
+    client: str = CLIENT_VSCODE
 
     def __post_init__(self) -> None:
         if not self.signature:

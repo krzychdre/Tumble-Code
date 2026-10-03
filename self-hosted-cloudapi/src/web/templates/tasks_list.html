@@ -55,6 +55,13 @@
         <input type="text" name="project" value="{{ view.project }}" list="project-options" autocomplete="off"></label>
       <label class="filter-field"><span class="field-label">Model</span>
         <input type="text" name="model" value="{{ view.model }}" list="model-options" autocomplete="off"></label>
+      <label class="filter-field"><span class="field-label">Client</span>
+        <select name="client">
+          <option value="">Any</option>
+          {% for key, label in (('vscode', 'VS Code'), ('cli', 'CLI')) %}
+          <option value="{{ key }}"{% if view.client == key %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select></label>
       <label class="filter-field"><span class="field-label">Grade</span>
         <select name="grade">
           <option value="">Any</option>
@@ -175,6 +182,8 @@
           <span class="cell-title">{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
           <span class="cell-meta">
             {%- if t.workspace_label %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif -%}
+            {#- VS Code is what nearly every row is, so only the CLI is marked. #}
+            {%- if t.client == 'cli' %}<span class="badge badge-client" title="Ran in the CLI">CLI</span>{% endif -%}
             {%- if t.models %}<span class="badge badge-model" title="{{ t.models.title }}"><span class="badge-name">{{ t.models.name }}</span>{% if t.models.more %}<span class="badge-more">{{ t.models.more }}</span>{% endif %}</span>{% endif -%}
           </span>
         </span>

@@ -17,6 +17,7 @@ from collections import Counter
 from datetime import datetime
 from typing import Optional, Sequence
 
+from src.services.client_kind import CLIENT_LABELS
 from src.services.metrics_service import PERIOD_LABELS
 from src.services.problem_catalogue import (
     CLASS_KEYS,
@@ -151,11 +152,13 @@ def _options(occurrences: Sequence[Occurrence], rules: dict[str, Rule]) -> dict[
     """What each filter can be set to in the period, with how many occurrences.
 
     From the unfiltered period, so every choice stays visible after one is
-    made; the most frequent first, classes and sources in their fixed order.
+    made; the most frequent first, classes, sources and clients in their fixed
+    order.
     """
     counters = {name: Counter() for name in ("category", "model", "provider", "tool")}
     classes: Counter = Counter()
     sources: Counter = Counter()
+    clients: Counter = Counter()
     for o in occurrences:
         counters["category"][o.category] += 1
         counters["model"][o.model or UNKNOWN_MODEL] += 1
@@ -165,6 +168,7 @@ def _options(occurrences: Sequence[Occurrence], rules: dict[str, Rule]) -> dict[
             counters["tool"][o.tool] += 1
         classes[CLASS_KEYS[rules[o.signature].classification]] += 1
         sources[o.source] += 1
+        clients[o.client] += 1
     options = {
         name: [{"value": v, "label": v, "count": n} for v, n in sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))]
         for name, c in counters.items()
@@ -176,6 +180,9 @@ def _options(occurrences: Sequence[Occurrence], rules: dict[str, Rule]) -> dict[
     ]
     options["source"] = [
         {"value": key, "label": label, "count": sources[key]} for key, label in SOURCE_LABELS.items() if sources.get(key)
+    ]
+    options["client"] = [
+        {"value": key, "label": label, "count": clients[key]} for key, label in CLIENT_LABELS.items() if clients.get(key)
     ]
     return options
 
@@ -193,8 +200,9 @@ def aggregate_problems(
     With ``filters`` the totals, the groups and the model fit count only the
     matching occurrences. The class tiles count everything the other filters
     let through, so each tile says what clicking it would show. The model
-    fit's request counts are the period's, narrowed only by a model or
-    provider filter (a request has no category or tool). ``key`` keeps the
+    fit's request counts are the period's, narrowed only by a model, provider
+    or client filter (a request has no category or tool; the client is
+    applied when they are read, services/problems/service). ``key`` keeps the
     one group with that ``group_key`` (a group's own brief).
     """
     filters = filters or ProblemFilter(period=period)

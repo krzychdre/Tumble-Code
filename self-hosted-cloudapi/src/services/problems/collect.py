@@ -39,6 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.error_report import ErrorReport
 from src.models.event import TelemetryEvent
 from src.models.task import Task, TaskMessage
+from src.services.client_kind import CLIENT_VSCODE
 from src.services.model_attribution import Completion, completion_from_properties, match_requests
 from src.services.problems.base import (
     MESSAGE_KEYS,
@@ -179,12 +180,24 @@ async def _completions_by_task(db, user_id: str, task_ids: list[str]) -> dict[st
     return completions
 
 
+async def _task_clients(db, task_ids: list[str]) -> dict[str, str]:
+    """Each task's client (``tasks.client_kind``), for its error messages."""
+    clients: dict[str, str] = {}
+    for chunk in chunks(task_ids):
+        rows = await db.execute(select(Task.id, Task.client_kind).where(Task.id.in_(chunk)))
+        clients.update({task_id: kind for task_id, kind in rows.all()})
+    return clients
+
+
 def conversation_occurrences(
     rows,
     requests: dict[str, list[tuple[int, tuple[int, int]]]],
     completions: dict[str, list[Completion]],
+    clients: Optional[dict[str, str]] = None,
 ) -> list[Occurrence]:
     """The error messages as occurrences, each with the model that caused it.
+
+    ``clients`` maps a task to its client; a task it does not name is VS Code.
 
     The model is the one that answered the request before the message: an
     error message is written after the request that produced it. A request
@@ -226,6 +239,7 @@ def conversation_occurrences(
                 provider=completion.provider if completion else None,
                 mode=completion.mode if completion else None,
                 ts=int(ts) if isinstance(ts, (int, float)) else None,
+                client=(clients or {}).get(task_id, CLIENT_VSCODE),
             )
         )
     return occurrences
@@ -234,7 +248,9 @@ def conversation_occurrences(
 # --- the telemetry source -----------------------------------------------------
 
 
-def telemetry_occurrence(event_type: str, payload, created_at: datetime, task_id: Optional[str]) -> Optional[Occurrence]:
+def telemetry_occurrence(
+    event_type: str, payload, created_at: datetime, task_id: Optional[str], client: str = CLIENT_VSCODE
+) -> Optional[Occurrence]:
     """One error event as an occurrence; None when its payload is unreadable."""
     props = parse_event_props(payload)
     if props is None:
@@ -256,6 +272,7 @@ def telemetry_occurrence(event_type: str, payload, created_at: datetime, task_id
         provider=prop_text(props, ("apiProvider", "provider")) or None,
         mode=prop_text(props, ("mode",)) or None,
         app_version=prop_text(props, ("appVersion",)) or None,
+        client=client,
     )
 
 
@@ -276,6 +293,7 @@ async def _report_occurrences(db, user_id: str, start: Optional[datetime]) -> li
         ErrorReport.provider,
         ErrorReport.mode,
         ErrorReport.app_version,
+        ErrorReport.client_kind,
     ).where(ErrorReport.user_id == user_id)
     if start is not None:
         stmt = stmt.where(ErrorReport.created_at >= start)
@@ -293,36 +311,56 @@ async def _report_occurrences(db, user_id: str, start: Optional[datetime]) -> li
             report_id=report_id,
             signature=signature,
             app_version=app_version,
+            client=client,
         )
-        for report_id, category, tool, summary, signature, occurred_at, task_id, model, provider, mode, app_version in (
-            await db.execute(stmt)
-        ).all()
+        for (
+            report_id,
+            category,
+            tool,
+            summary,
+            signature,
+            occurred_at,
+            task_id,
+            model,
+            provider,
+            mode,
+            app_version,
+            client,
+        ) in (await db.execute(stmt)).all()
     ]
 
 
 async def _telemetry_occurrences(db, user_id, start, cutoff) -> list[Occurrence]:
     stmt = select(
-        TelemetryEvent.event_type, TelemetryEvent.properties, TelemetryEvent.created_at, TelemetryEvent.task_id
+        TelemetryEvent.event_type,
+        TelemetryEvent.properties,
+        TelemetryEvent.created_at,
+        TelemetryEvent.task_id,
+        TelemetryEvent.client_kind,
     ).where(TelemetryEvent.user_id == user_id, TelemetryEvent.event_type.in_(tuple(ERROR_EVENT_LABELS)))
     if start is not None:
         stmt = stmt.where(TelemetryEvent.created_at >= start)
     if cutoff is not None:
         stmt = stmt.where(TelemetryEvent.created_at < cutoff)
     out = []
-    for event_type, payload, created_at, task_id in (await db.execute(stmt)).all():
-        occurrence = telemetry_occurrence(event_type, payload, created_at, task_id)
+    for event_type, payload, created_at, task_id, client in (await db.execute(stmt)).all():
+        occurrence = telemetry_occurrence(event_type, payload, created_at, task_id, client)
         if occurrence is not None:
             out.append(occurrence)
     return out
 
 
-async def _request_counts(db, user_id: str, start: Optional[datetime]):
-    """The period's LLM Completion events by ``(provider, model)``."""
+async def _request_counts(db, user_id: str, start: Optional[datetime], client: str = ""):
+    """The period's LLM Completion events by ``(provider, model)``, of one
+    client when ``client`` names one (the model fit then compares like with
+    like)."""
     stmt = select(TelemetryEvent.properties).where(
         TelemetryEvent.user_id == user_id, TelemetryEvent.event_type == LLM_COMPLETION_EVENT
     )
     if start is not None:
         stmt = stmt.where(TelemetryEvent.created_at >= start)
+    if client:
+        stmt = stmt.where(TelemetryEvent.client_kind == client)
     payloads = [payload for (payload,) in (await db.execute(stmt)).all()]
 
     def count() -> Counter:
@@ -360,6 +398,7 @@ async def collect_occurrences(
         task_ids = sorted({row[0] for row in rows})
         requests = await _requests_by_task(db, task_ids) if task_ids else {}
         completions = await _completions_by_task(db, user_id, task_ids) if task_ids else {}
-        occurrences += await anyio.to_thread.run_sync(conversation_occurrences, rows, requests, completions)
+        clients = await _task_clients(db, task_ids) if task_ids else {}
+        occurrences += await anyio.to_thread.run_sync(conversation_occurrences, rows, requests, completions, clients)
         occurrences += await _telemetry_occurrences(db, user_id, start, cutoff)
     return occurrences, cutoff

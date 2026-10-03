@@ -46,7 +46,7 @@ async def compute_user_problems(
     filters = replace(filters, period=period) if filters is not None else ProblemFilter(period=period)
     start = period_start(period, now)
     occurrences, cutoff = await collect_occurrences(db, user_id, start)
-    requests = await _request_counts(db, user_id, start)
+    requests = await _request_counts(db, user_id, start, filters.client)
     return await anyio.to_thread.run_sync(aggregate_problems, occurrences, requests, period, cutoff, filters, key)
 
 

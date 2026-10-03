@@ -66,6 +66,7 @@ def _sample_view(o: Occurrence) -> dict:
         "app_version": o.app_version,
         "category": o.category,
         "tool": o.tool,
+        "client": o.client,
     }
 
 

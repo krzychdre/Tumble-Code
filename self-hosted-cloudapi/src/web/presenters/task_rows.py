@@ -9,6 +9,7 @@ import textwrap
 from typing import Optional
 
 from src.models.task import Task
+from src.services.client_kind import CLIENT_VSCODE
 from src.services.model_attribution import models_badge
 from src.services.session_quality import quality_of
 from src.services.task_summary import DEFAULT_TITLE, duration_ms
@@ -105,6 +106,9 @@ def _list_row(task: Task, tree: dict[str, list[Task]], nest: bool) -> dict:
         # Read straight off the row: the list must never parse an event
         # payload per task (see services/model_attribution).
         "models": models_badge(task.models),
+        # "vscode" or "cli"; the row shows a badge for the CLI only. A row
+        # not yet flushed has no column default applied.
+        "client": task.client_kind or CLIENT_VSCODE,
         "child_count": len(kids),
         # What "include their subtasks" adds to a bulk delete: the whole
         # subtree, because that is what the delete removes, not only the

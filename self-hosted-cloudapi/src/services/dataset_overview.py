@@ -23,11 +23,15 @@ from src.services.metrics_service import period_start
 RECENT_TASKS = 20
 
 
-async def dataset_overview(db: AsyncSession, user_id: str, period: str) -> dict:
+async def dataset_overview(db: AsyncSession, user_id: str, period: str, client: Optional[str] = None) -> dict:
+    """The page's figures over ``period``; ``client`` ("vscode" or "cli") keeps
+    what that client recorded, None both."""
     since = period_start(period)
     scope = [LlmExchange.user_id == user_id]
     if since is not None:
         scope.append(LlmExchange.occurred_at >= since)
+    if client is not None:
+        scope.append(LlmExchange.client_kind == client)
 
     grouped = await db.execute(
         select(
@@ -89,6 +93,7 @@ async def dataset_overview(db: AsyncSession, user_id: str, period: str) -> dict:
 
     return {
         "period": period,
+        "client": client,
         "totals": {**totals, "tasks": int(task_count)},
         "models": model_rows,
         "issues": [
@@ -97,11 +102,11 @@ async def dataset_overview(db: AsyncSession, user_id: str, period: str) -> dict:
         "workspaces": [
             {"path": path, "exchanges": count, "tasks": tasks} for path, count, tasks in workspace_rows if path
         ],
-        "recent": await recent_tasks(db, user_id, since),
+        "recent": await recent_tasks(db, user_id, since, client),
     }
 
 
-async def recent_tasks(db: AsyncSession, user_id: str, since=None) -> list[dict]:
+async def recent_tasks(db: AsyncSession, user_id: str, since=None, client: Optional[str] = None) -> list[dict]:
     """The tasks recorded most recently, each with its title when the task is synced too."""
     query = (
         select(
@@ -117,6 +122,8 @@ async def recent_tasks(db: AsyncSession, user_id: str, since=None) -> list[dict]
     )
     if since is not None:
         query = query.where(LlmExchange.occurred_at >= since)
+    if client is not None:
+        query = query.where(LlmExchange.client_kind == client)
     rows = (await db.execute(query)).all()
     ids = [row[0] for row in rows]
     titles = dict(
