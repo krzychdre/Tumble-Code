@@ -111,7 +111,7 @@ export function useTaskSubmit({
 
 	useEffect(() => () => cloudSignInRef.current?.auth.cancel(), [])
 
-	/** /login [address] and /logout, run in the background so the prompt stays usable. */
+	/** /login [callback-url] and /logout, run in the background so the prompt stays usable. */
 	const runCloudAuth = useCallback(
 		(action: "cloudLogin" | "cloudLogout", argument: string) => {
 			if (!cloudAuth) {

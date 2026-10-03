@@ -76,7 +76,7 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 	{
 		name: "login",
 		description: "Sign in to Tumble Code Cloud in the browser (needs cloudApiUrl in ~/.roo/cli-settings.json)",
-		argumentHint: "[address]",
+		argumentHint: "[callback-url]",
 		action: "cloudLogin",
 	},
 	{

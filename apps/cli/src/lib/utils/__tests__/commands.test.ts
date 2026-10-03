@@ -64,7 +64,7 @@ describe("globalCommands", () => {
 
 	describe("cloud sign-in commands", () => {
 		it("registers /login (optionally with the pasted callback address) and /logout", () => {
-			expect(getGlobalCommand("login")).toMatchObject({ action: "cloudLogin", argumentHint: "[address]" })
+			expect(getGlobalCommand("login")).toMatchObject({ action: "cloudLogin", argumentHint: "[callback-url]" })
 			expect(getGlobalCommand("logout")).toMatchObject({ action: "cloudLogout" })
 		})
 

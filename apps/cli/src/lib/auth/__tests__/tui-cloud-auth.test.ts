@@ -96,7 +96,7 @@ describe("TuiCloudAuth /login", () => {
 			text: `${signIn?.authRedirect}/auth/clerk/callback?code=ticket&state=s1`,
 		})
 		expect(notes[0]).toBe("Signing in to Tumble Code Cloud at http://cloud.test")
-		expect(notes[1]).toContain("type: /login <address>")
+		expect(notes[1]).toContain("type: /login <callback-url>")
 		expect(notes.at(-1)).toContain("Signed in to Tumble Code Cloud.")
 		const page = await extension.browserPages[0]
 		expect(page?.status).toBe(200)
@@ -174,6 +174,18 @@ describe("TuiCloudAuth /login", () => {
 
 		expect(extension.sent).toEqual([])
 		expect(notes[0]).toContain("Usage: /login")
+	})
+
+	it("explains that the cloud server address goes in the settings, not after /login", async () => {
+		const extension = fakeExtension()
+		const { auth, notes } = setup(extension.channel)
+
+		await auth.login("http://localhost:8085/")
+
+		expect(extension.sent).toEqual([])
+		expect(notes[0]).toContain("http://localhost:8085 looks like the cloud server address")
+		expect(notes[0]).toContain('{ "cloudApiUrl": "http://localhost:8085" }')
+		expect(notes[0]).not.toContain("Usage:")
 	})
 
 	it("reports an extension that never answers the exchange", async () => {
