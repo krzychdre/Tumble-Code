@@ -7,6 +7,7 @@ import { type UserSettingsConfig, TelemetryEventName } from "@tumble-code/types"
 import { t } from "../../../i18n"
 import type { DomainHandlerMap } from "./types"
 import { logger } from "../../../utils/logging"
+import { waitForCloudStart } from "../../../extension/cloudStartup"
 
 export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 	shareCurrentTask: async (ctx, message) => {
@@ -68,25 +69,45 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 		}
 	},
 
-	rooCloudSignIn: async (ctx) => {
+	rooCloudSignIn: async (ctx, message) => {
 		const { provider } = ctx
 		try {
 			TelemetryService.instance.captureEvent(TelemetryEventName.AUTHENTICATION_INITIATED)
-			await CloudService.instance.login()
+			// The cloud starts in the background; the CLI's /login can come first.
+			await waitForCloudStart()
+			// The CLI passes a loopback address it listens on; the editor's deep
+			// link stays the default.
+			await (message.authRedirect
+				? CloudService.instance.login({ authRedirect: message.authRedirect })
+				: CloudService.instance.login())
 		} catch (error) {
 			logger.error(`AuthService#login failed: ${error}`)
 			vscode.window.showErrorMessage("Sign in failed.")
+			await provider.postMessageToWebview({
+				type: "cloudAuthResult",
+				text: "rooCloudSignIn",
+				success: false,
+				error: error instanceof Error ? error.message : String(error),
+			})
 		}
 	},
 
 	rooCloudSignOut: async (ctx) => {
 		const { provider } = ctx
 		try {
+			await waitForCloudStart()
 			await CloudService.instance.logout()
 			await provider.postStateToWebview()
+			await provider.postMessageToWebview({ type: "cloudAuthResult", text: "rooCloudSignOut", success: true })
 		} catch (error) {
 			logger.error(`AuthService#logout failed: ${error}`)
 			vscode.window.showErrorMessage("Sign out failed.")
+			await provider.postMessageToWebview({
+				type: "cloudAuthResult",
+				text: "rooCloudSignOut",
+				success: false,
+				error: error instanceof Error ? error.message : String(error),
+			})
 		}
 	},
 
@@ -157,6 +178,7 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 			}
 
 			// Reuse the existing authentication flow
+			await waitForCloudStart()
 			await CloudService.instance.handleAuthCallback(
 				code,
 				state,
@@ -164,12 +186,20 @@ export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 			)
 
 			await provider.postStateToWebview()
+			await provider.postMessageToWebview({ type: "cloudAuthResult", text: "rooCloudManualUrl", success: true })
 		} catch (error) {
 			logger.error(`ManualUrl#handleAuthCallback failed: ${error}`)
 			const errorMessage = error instanceof Error ? error.message : t("common:errors.manual_url_auth_failed")
 
 			// Show error message through VS Code UI
 			vscode.window.showErrorMessage(`${t("common:errors.manual_url_auth_error")}: ${errorMessage}`)
+			// ...and to the CLI, which mutes VS Code notifications.
+			await provider.postMessageToWebview({
+				type: "cloudAuthResult",
+				text: "rooCloudManualUrl",
+				success: false,
+				error: errorMessage,
+			})
 		}
 	},
 

@@ -2691,6 +2691,14 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudMan
     [
       "provider.postStateToWebview",
     ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "success": true,
+        "text": "rooCloudManualUrl",
+        "type": "cloudAuthResult",
+      },
+    ],
   ],
   "outcome": "resolved",
 }
@@ -2719,6 +2727,14 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudSig
     ],
     [
       "provider.postStateToWebview",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "success": true,
+        "text": "rooCloudSignOut",
+        "type": "cloudAuthResult",
+      },
     ],
   ],
   "outcome": "resolved",

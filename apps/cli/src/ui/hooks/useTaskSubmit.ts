@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { randomUUID } from "crypto"
 import fs from "fs/promises"
 import path from "path"
@@ -7,6 +7,7 @@ import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } fr
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
 import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
+import { TuiCloudAuth, type CloudAuthChannel } from "../../lib/auth/tui-cloud-auth.js"
 
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
@@ -30,6 +31,8 @@ export interface UseTaskSubmitOptions {
 	workspacePath?: string
 	/** The model named in the /export heading. */
 	model?: string
+	/** The running extension for /login and /logout (absent: they say so). */
+	cloudAuth?: CloudAuthChannel | null
 }
 
 export interface UseTaskSubmitReturn {
@@ -61,6 +64,7 @@ export function useTaskSubmit({
 	onPermissionModeChange,
 	workspacePath,
 	model,
+	cloudAuth,
 }: UseTaskSubmitOptions): UseTaskSubmitReturn {
 	const {
 		pendingAsk,
@@ -100,6 +104,32 @@ export function useTaskSubmit({
 	const note = useCallback(
 		(content: string) => addMessage({ id: randomUUID(), role: "system", content }),
 		[addMessage],
+	)
+
+	// One sign-in at a time per session; a waiting one ends with the session.
+	const cloudSignInRef = useRef<{ channel: CloudAuthChannel; auth: TuiCloudAuth } | null>(null)
+
+	useEffect(() => () => cloudSignInRef.current?.auth.cancel(), [])
+
+	/** /login [address] and /logout, run in the background so the prompt stays usable. */
+	const runCloudAuth = useCallback(
+		(action: "cloudLogin" | "cloudLogout", argument: string) => {
+			if (!cloudAuth) {
+				note("Cloud sign-in is not available until the extension has started.")
+				return
+			}
+
+			if (cloudSignInRef.current?.channel !== cloudAuth) {
+				cloudSignInRef.current?.auth.cancel()
+				cloudSignInRef.current = { channel: cloudAuth, auth: new TuiCloudAuth({ channel: cloudAuth, note }) }
+			}
+
+			const { auth } = cloudSignInRef.current
+			void (action === "cloudLogin" ? auth.login(argument) : auth.logout()).catch((error: unknown) =>
+				note(`Tumble Code Cloud: ${error instanceof Error ? error.message : String(error)}`),
+			)
+		},
+		[cloudAuth, note],
 	)
 
 	/**
@@ -209,6 +239,11 @@ export function useTaskSubmit({
 						return
 					}
 
+					if (globalCommand?.action === "cloudLogin" || globalCommand?.action === "cloudLogout") {
+						runCloudAuth(globalCommand.action, trimmedText.slice(commandMatch[0].length).trim())
+						return
+					}
+
 					if (globalCommand?.action === "openResumePicker") {
 						// The # trigger is the resume picker; App types it into the prompt.
 						useUIStateStore.getState().requestInput("#")
@@ -313,6 +348,7 @@ export function useTaskSubmit({
 			onPermissionModeChange,
 			copyToClipboard,
 			exportTranscript,
+			runCloudAuth,
 		],
 	)
 

@@ -143,3 +143,75 @@ describe("useExtensionHost task completion", () => {
 		exit.mockRestore()
 	})
 })
+
+describe("useExtensionHost cloud sign-in", () => {
+	const options: ExtensionHostOptions = {
+		mode: "code",
+		provider: "openai",
+		model: "m",
+		workspacePath: "/tmp/ws",
+		extensionPath: "/tmp/ext",
+		nonInteractive: false,
+		ephemeral: true,
+		debug: false,
+		exitOnComplete: false,
+	}
+
+	beforeEach(() => {
+		useCLIStore.getState().reset()
+	})
+
+	async function mount() {
+		const host = Object.assign(new EventEmitter(), {
+			client: Object.assign(new EventEmitter(), { transcript: new TranscriptReader() }),
+			activate: vi.fn(async () => {}),
+			sendToExtension: vi.fn(),
+			dispose: vi.fn(async () => {}),
+		})
+		let channel: ReturnType<typeof useExtensionHost>["cloudAuthChannel"] | undefined
+
+		function Harness() {
+			channel = useExtensionHost({
+				...options,
+				transcript: sink,
+				createExtensionHost: () => host as unknown as ExtensionHostInterface,
+			}).cloudAuthChannel
+			return <Text>harness</Text>
+		}
+
+		render(<Harness />)
+		await pWaitFor(() => host.activate.mock.calls.length > 0, { timeout: 2000 })
+		return { host, channel: channel! }
+	}
+
+	it("shows every URL the extension opens in the browser", async () => {
+		const { host } = await mount()
+
+		host.emit("openExternalUrl", "http://cloud.test/extension/sign-in?state=s1")
+
+		expect(useCLIStore.getState().messages.at(-1)).toMatchObject({
+			role: "system",
+			content:
+				"Opening your browser. If it does not open, visit:\n  http://cloud.test/extension/sign-in?state=s1",
+		})
+	})
+
+	it("gives /login a channel to the running host", async () => {
+		const { host, channel } = await mount()
+		const messages: unknown[] = []
+		const urls: string[] = []
+		const stopMessages = channel.onMessage((message) => messages.push(message))
+		const stopUrls = channel.onOpenExternal((url) => urls.push(url))
+
+		channel.send({ type: "rooCloudSignOut" })
+		host.emit("extensionWebviewMessage", { type: "cloudAuthResult", text: "rooCloudSignOut", success: true })
+		host.emit("openExternalUrl", "http://cloud.test/x")
+		stopMessages()
+		stopUrls()
+		host.emit("extensionWebviewMessage", { type: "cloudAuthResult" })
+
+		expect(host.sendToExtension).toHaveBeenCalledWith({ type: "rooCloudSignOut" })
+		expect(messages).toEqual([{ type: "cloudAuthResult", text: "rooCloudSignOut", success: true }])
+		expect(urls).toEqual(["http://cloud.test/x"])
+	})
+})

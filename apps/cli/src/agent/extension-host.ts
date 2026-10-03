@@ -42,6 +42,8 @@ import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
 import { VERSION } from "@/lib/utils/version.js"
 import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
+import { restoreCloudPort } from "@/lib/auth/cloud-api-url.js"
+import { openExternal as openInBrowser } from "@/lib/utils/open-external.js"
 
 import type { WaitingForInputEvent } from "./events.js"
 import type { MessageDelivery } from "./transcript-deliveries.js"
@@ -121,6 +123,11 @@ export interface ExtensionHostOptions {
 	 * running in an integration test and we want to see the output.
 	 */
 	integrationTest?: boolean
+	/**
+	 * Opens a URL the extension hands to `vscode.env.openExternal` (the cloud
+	 * sign-in page). Default: the platform's browser opener.
+	 */
+	openExternal?: (url: string) => Promise<boolean>
 }
 
 interface ExtensionModule {
@@ -132,7 +139,20 @@ interface WebviewViewProvider {
 	resolveWebviewView?(webviewView: unknown, context: unknown, token: unknown): void | Promise<void>
 }
 
-export interface ExtensionHostInterface extends IExtensionHost<ExtensionHostEventMap> {
+/**
+ * The host's events: the shim's two, plus `openExternalUrl`, every URL the
+ * extension opens in the browser (the TUI shows it, so a remote shell can open
+ * it by hand).
+ */
+export interface CliExtensionHostEventMap extends ExtensionHostEventMap {
+	openExternalUrl: string
+}
+
+export interface ExtensionHostInterface extends IExtensionHost<CliExtensionHostEventMap> {
+	off<K extends keyof CliExtensionHostEventMap>(
+		event: K,
+		listener: (message: CliExtensionHostEventMap[K]) => void,
+	): this
 	client: ExtensionClient
 	activate(): Promise<void>
 	runTask(prompt: string, taskId?: string): Promise<void>
@@ -164,6 +184,9 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 	// Ephemeral storage.
 	private ephemeralStorageDir: string | null = null
+
+	// Undoes the `vscode` module hook installed by activate().
+	private restoreModuleResolution: (() => void) | null = null
 
 	// Environment variables this host sets for the extension, with the values
 	// they had before, restored on dispose.
@@ -429,6 +452,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		this.vscode = createVSCodeAPI(this.options.extensionPath, this.options.workspacePath, undefined, {
 			appRoot: CLI_PACKAGE_ROOT,
 			storageDir,
+			openExternal: (url) => this.openExternalUrl(url),
 		})
 		setCliRuntimeGlobals({ vscode: this.vscode, extensionHost: this })
 
@@ -461,17 +485,24 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			require: require,
 		} as unknown as NodeJS.Module
 
+		// The hook stays until dispose: the extension also requires "vscode"
+		// lazily after activation (the cloud package's importVscode, on
+		// sign-in), and Node's resolve cache does not remember a module that
+		// was only ever served from require.cache.
+		this.restoreModuleResolution = () => {
+			Module._resolveFilename = originalResolve
+		}
+
 		try {
 			this.extensionModule = require(bundlePath) as ExtensionModule
 		} catch (error) {
-			Module._resolveFilename = originalResolve
+			this.restoreModuleResolution()
+			this.restoreModuleResolution = null
 
 			throw new Error(
 				`Failed to load extension bundle: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		}
-
-		Module._resolveFilename = originalResolve
 
 		try {
 			this.extensionAPI = await this.extensionModule.activate(this.vscode.context)
@@ -507,6 +538,22 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 				`server "${server.name}" (${server.source ?? "global"}) failed to start: ${lastMcpErrorLine(server)}`,
 			)
 		}
+	}
+
+	/**
+	 * `vscode.env.openExternal` for the extension: tells listeners (the TUI
+	 * shows the URL) and opens the browser. Always reports success, so the
+	 * extension goes on waiting for the browser even when no opener ran: the
+	 * URL is on screen.
+	 */
+	private async openExternalUrl(openedUrl: string): Promise<boolean> {
+		const cloudApiUrl =
+			this.options.cloudApiUrl ?? (process.env.TUMBLE_CODE_API_URL || process.env.ROO_CODE_API_URL)
+		const url = cloudApiUrl ? restoreCloudPort(openedUrl, cloudApiUrl) : openedUrl
+
+		this.emit("openExternalUrl", url)
+		await (this.options.openExternal ?? openInBrowser)(url).catch(() => false)
+		return true
 	}
 
 	public registerWebviewProvider(_viewId: string, _provider: WebviewViewProvider): void {}
@@ -657,6 +704,9 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 				// NO-OP
 			}
 		}
+
+		this.restoreModuleResolution?.()
+		this.restoreModuleResolution = null
 
 		// Clear references.
 		this.vscode = null

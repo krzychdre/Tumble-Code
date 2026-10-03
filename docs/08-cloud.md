@@ -81,7 +81,9 @@ it; every other http or https value is refused by `is_allowed_auth_redirect` in 
 callback answers with a 303 straight to `http://127.0.0.1:<port>/auth/clerk/callback?code=<ticket>&state=<state>`
 instead of the bounce page. The CLI hands code and state to the usual `handleAuthCallback`. A browser on another
 machine cannot reach that port; the user then pastes the address it ended on into the terminal. The extension runs
-headless for this, in its cloud-auth-only mode (`ROO_CLI_CLOUD_AUTH_ONLY`, `src/extension/cloudAuthOnly.ts`).
+headless for this, in its cloud-auth-only mode (`ROO_CLI_CLOUD_AUTH_ONLY`, `src/extension/cloudAuthOnly.ts`). The interactive `/login` uses the running extension
+instead: `rooCloudSignIn` with `authRedirect`, then `rooCloudManualUrl` with the callback URL; each step answers with a
+`cloudAuthResult` message, which the CLI shows because it mutes VS Code notifications.
 
 ## Server side
 

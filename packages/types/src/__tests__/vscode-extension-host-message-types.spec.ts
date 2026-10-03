@@ -68,6 +68,7 @@ type ExpectedExtensionMessageType =
 	| "commands"
 	| "dismissedUpsells"
 	| "organizationSwitchResult"
+	| "cloudAuthResult"
 	| "interactionRequired"
 	| "customToolsResult"
 	| "modes"

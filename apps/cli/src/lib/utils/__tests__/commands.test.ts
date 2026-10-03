@@ -62,6 +62,19 @@ describe("globalCommands", () => {
 		})
 	})
 
+	describe("cloud sign-in commands", () => {
+		it("registers /login (optionally with the pasted callback address) and /logout", () => {
+			expect(getGlobalCommand("login")).toMatchObject({ action: "cloudLogin", argumentHint: "[address]" })
+			expect(getGlobalCommand("logout")).toMatchObject({ action: "cloudLogout" })
+		})
+
+		it("offers both in the autocomplete picker", () => {
+			const names = getGlobalCommandsForAutocomplete().map((command) => command.name)
+
+			expect(names).toEqual(expect.arrayContaining(["login", "logout"]))
+		})
+	})
+
 	describe("getGlobalCommand", () => {
 		it("should return the command when found", () => {
 			const cmd = getGlobalCommand("new")
@@ -133,6 +146,8 @@ describe("globalCommands", () => {
 				"openResumePicker",
 				"copyLastAnswer",
 				"exportTranscript",
+				"cloudLogin",
+				"cloudLogout",
 			]
 
 			for (const cmd of GLOBAL_COMMANDS) {

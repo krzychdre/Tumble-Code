@@ -138,6 +138,7 @@ describe("ExtensionHost", () => {
 				[
 					"exports.activate = async () => {",
 					'\tglobalThis.__hostActivateOrder.push("activate")',
+					'\tglobalThis.__lazyVscode = () => require("vscode")',
 					"\tglobalThis.__extensionHost.markWebviewReady()",
 					"}",
 				].join("\n"),
@@ -148,6 +149,50 @@ describe("ExtensionHost", () => {
 		afterEach(() => {
 			fs.rmSync(extensionDir, { recursive: true, force: true })
 			delete (globalThis as Record<string, unknown>).__hostActivateOrder
+			delete (globalThis as Record<string, unknown>).__lazyVscode
+		})
+
+		// The cloud package requires "vscode" only when the user signs in, long
+		// after activation; that require failed once the hook was removed.
+		it("lets the extension require vscode lazily after activation, until dispose", async () => {
+			const shim = await import("@tumble-code/vscode-shim")
+			const vscodeApi = { context: {} }
+			vi.mocked(shim.createVSCodeAPI).mockReturnValue(vscodeApi as never)
+			const host = createTestHost({ extensionPath: extensionDir })
+			const lazyVscode = () => ((globalThis as Record<string, unknown>).__lazyVscode as () => unknown)()
+
+			await host.activate()
+			expect(lazyVscode()).toBe(vscodeApi)
+
+			await host.dispose()
+			expect(lazyVscode).toThrow(/vscode/)
+		})
+
+		it("shows and opens the URLs the extension opens, with the cloud port the shim dropped", async () => {
+			const shim = await import("@tumble-code/vscode-shim")
+			vi.mocked(shim.createVSCodeAPI).mockReturnValue({ context: {} } as never)
+			const openExternal = vi.fn(async () => false)
+			const host = createTestHost({
+				extensionPath: extensionDir,
+				cloudApiUrl: "http://127.0.0.1:8000",
+				openExternal,
+			})
+			const shown: string[] = []
+			host.on("openExternalUrl", (url: string) => shown.push(url))
+
+			try {
+				await host.activate()
+				const options = vi.mocked(shim.createVSCodeAPI).mock.calls[0]?.[3]
+				const opened = await options?.openExternal?.("http://127.0.0.1/extension/sign-in?state=s1")
+
+				const expected = "http://127.0.0.1:8000/extension/sign-in?state=s1"
+				expect(shown).toEqual([expected])
+				expect(openExternal).toHaveBeenCalledWith(expected)
+				// The URL is on screen, so the extension goes on waiting.
+				expect(opened).toBe(true)
+			} finally {
+				await host.dispose()
+			}
 		})
 
 		it("applies cloudApiUrl as the tumble-code.cloudApiUrl setting before the extension activates", async () => {

@@ -1,3 +1,4 @@
+import { EventEmitter } from "events"
 import fs from "fs"
 import os from "os"
 import path from "path"
@@ -12,6 +13,7 @@ import {
 	getPermissionsCommandHelp,
 	type PermissionMode,
 } from "../../../lib/utils/permissions.js"
+import type { CloudAuthChannel } from "../../../lib/auth/tui-cloud-auth.js"
 import { useCLIStore } from "../../store.js"
 import { useUIStateStore } from "../../stores/uiStateStore.js"
 import { useTaskSubmit, type UseTaskSubmitReturn } from "../useTaskSubmit.js"
@@ -314,5 +316,86 @@ describe("useTaskSubmit /copy and /export", () => {
 
 		await api.handleSubmit("/export notes/chat.md")
 		expect(systemMessages().at(-1)).toMatch(/already exists/)
+	})
+})
+
+describe("useTaskSubmit /login and /logout", () => {
+	let api: UseTaskSubmitReturn
+	let sent: WebviewMessage[]
+	let events: EventEmitter
+	let runTask: ReturnType<typeof vi.fn<(prompt: string) => Promise<void>>>
+
+	/** The running extension: answers the exchange and the sign-out with a success. */
+	const channel: CloudAuthChannel = {
+		send: (message) => {
+			sent.push(message)
+
+			if (message.type === "rooCloudManualUrl" || message.type === "rooCloudSignOut") {
+				setTimeout(
+					() => events.emit("message", { type: "cloudAuthResult", text: message.type, success: true }),
+					0,
+				)
+			}
+		},
+		onMessage: (listener) => {
+			events.on("message", listener)
+			return () => events.off("message", listener)
+		},
+		onOpenExternal: () => () => {},
+	}
+
+	function Harness({ cloudAuth }: { cloudAuth: CloudAuthChannel | null }) {
+		api = useTaskSubmit({
+			sendToExtension: vi.fn(),
+			runTask,
+			resetTranscript: () => {},
+			permissionMode: "ask",
+			onPermissionModeChange: () => {},
+			cloudAuth,
+		})
+		return <Text>harness</Text>
+	}
+
+	const systemMessages = () =>
+		useCLIStore
+			.getState()
+			.messages.filter((message) => message.role === "system")
+			.map((message) => message.content)
+
+	beforeEach(() => {
+		useCLIStore.getState().reset()
+		sent = []
+		events = new EventEmitter()
+		runTask = vi.fn(async () => undefined)
+	})
+
+	it("/login <address> completes the sign-in in the background and reports it, never reaching the model", async () => {
+		render(<Harness cloudAuth={channel} />)
+		const address = "http://127.0.0.1:53682/auth/clerk/callback?code=t&state=s"
+
+		await api.handleSubmit(`/login ${address}`)
+
+		await vi.waitFor(() => expect(systemMessages().at(-1)).toContain("Signed in to Tumble Code Cloud."))
+		expect(sent).toEqual([{ type: "rooCloudManualUrl", text: address }])
+		expect(runTask).not.toHaveBeenCalled()
+		expect(useCLIStore.getState().messages.filter((message) => message.role === "user")).toEqual([])
+	})
+
+	it("/logout signs out and reports it", async () => {
+		render(<Harness cloudAuth={channel} />)
+
+		await api.handleSubmit("/logout")
+
+		await vi.waitFor(() => expect(systemMessages().at(-1)).toBe("Signed out from Tumble Code Cloud."))
+		expect(sent).toEqual([{ type: "rooCloudSignOut" }])
+	})
+
+	it("says so when the extension has not started yet", async () => {
+		render(<Harness cloudAuth={null} />)
+
+		await api.handleSubmit("/logout")
+
+		expect(systemMessages().at(-1)).toBe("Cloud sign-in is not available until the extension has started.")
+		expect(sent).toEqual([])
 	})
 })

@@ -18,6 +18,8 @@ export type GlobalCommandAction =
 	| "openResumePicker"
 	| "copyLastAnswer"
 	| "exportTranscript"
+	| "cloudLogin"
+	| "cloudLogout"
 
 /**
  * Definition of a CLI global command
@@ -70,6 +72,17 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 		description: "Save this conversation as a Markdown file in the workspace",
 		argumentHint: "[file]",
 		action: "exportTranscript",
+	},
+	{
+		name: "login",
+		description: "Sign in to Tumble Code Cloud in the browser (needs cloudApiUrl in ~/.roo/cli-settings.json)",
+		argumentHint: "[address]",
+		action: "cloudLogin",
+	},
+	{
+		name: "logout",
+		description: "Sign out from Tumble Code Cloud",
+		action: "cloudLogout",
 	},
 	{
 		name: "mcp",
