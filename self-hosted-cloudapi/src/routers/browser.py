@@ -47,8 +47,9 @@ WEB_AUTH_REDIRECT = "web:/app"
 logger = logging.getLogger(__name__)
 
 # DEF-S3. The callback sends the browser, with a one-time sign-in ticket, to
-# the stored auth_redirect, so only an editor's own callback URI may be stored:
-# a custom scheme, then "://publisher.name" and nothing else. That is exactly
+# the stored auth_redirect, so only an editor's own callback URI (or a CLI's
+# loopback callback, below) may be stored. An editor URI is a custom scheme,
+# then "://publisher.name" and nothing else. That is exactly
 # what the extension builds (packages/cloud/src/WebAuthService.ts:
 # `${vscode.env.uriScheme}://${publisher}.${name}`), e.g.
 # "vscode://QUB-IT.tumble-code", "vscode-insiders://...", "cursor://...".
@@ -63,17 +64,41 @@ _NON_EDITOR_SCHEMES = frozenset(
 )
 
 
+# The CLI's sign-in (RFC 8252 section 7.3, loopback redirect for native apps):
+# the CLI listens on a port of this machine's loopback interface and asks for
+# the ticket to come back there. Exactly "http://" + one of the three loopback
+# names + ":" + a decimal port, and nothing after it: no path, query, fragment,
+# user info or trailing slash (the callback appends "/auth/clerk/callback"
+# itself, and a trailing slash would make that "//auth"). Lowercase only, as
+# the CLI builds it. [0-9], not \d: in a str pattern \d also matches other
+# scripts' digits. The first digit is never 0, so "08080" is refused; the
+# range check below keeps the port in 1024..65535 (no privileged port, no
+# overflow such as 99999). Nothing that resolves elsewhere gets through:
+# "127.0.0.1.evil.com", "127.0.0.1:8080@evil.com", "0.0.0.0", "127.1" and a
+# bare "localhost" without a port all fail the full match.
+_LOOPBACK_REDIRECT_RE = re.compile(r"http://(?:127\.0\.0\.1|localhost|\[::1\]):(?P<port>[1-9][0-9]{3,4})")
+_LOOPBACK_PORTS = range(1024, 65536)
+
+
+def is_loopback_auth_redirect(value: str) -> bool:
+    """True when ``value`` is a CLI's loopback callback, ``http://127.0.0.1:<port>`` and the like."""
+    match = _LOOPBACK_REDIRECT_RE.fullmatch(value or "")
+    return bool(match) and int(match.group("port")) in _LOOPBACK_PORTS
+
+
 def is_allowed_auth_redirect(value: str) -> bool:
-    """True when ``value`` is an editor callback URI we may send a ticket to."""
+    """True when ``value`` is an editor callback URI or a CLI's loopback callback we may send a ticket to."""
     match = _AUTH_REDIRECT_RE.fullmatch(value or "")
-    return bool(match) and match.group("scheme").lower() not in _NON_EDITOR_SCHEMES
+    if match and match.group("scheme").lower() not in _NON_EDITOR_SCHEMES:
+        return True
+    return is_loopback_auth_redirect(value)
 
 
 def _refuse_auth_redirect() -> HTMLResponse:
     return HTMLResponse(
         content=_auth_error_html(
             "Invalid sign-in request.",
-            "The sign-in link does not return to an editor. Start the sign-in again from the extension.",
+            "The sign-in link does not return to an editor or to the CLI. Start the sign-in again from the extension or the CLI.",
         ),
         status_code=400,
     )
@@ -213,7 +238,8 @@ async def auth_callback(
 
     Exchange code for tokens, create user/session, generate ticket,
     then render an HTML page that navigates back to VS Code via the
-    vscode:// custom-protocol URI.
+    vscode:// custom-protocol URI. A CLI's loopback redirect
+    (http://127.0.0.1:<port>) gets a plain 303 instead, see below.
 
     Why HTML instead of HTTP 307 redirect?
     ---------------------------------------
@@ -248,8 +274,9 @@ async def auth_callback(
             status_code=403,
         )
 
-    # A state row whose redirect is neither the web marker nor an editor
-    # callback (stored before DEF-S3 was fixed, say) never gets a ticket.
+    # A state row whose redirect is neither the web marker nor an editor or
+    # loopback callback (stored before DEF-S3 was fixed, say) never gets a
+    # ticket.
     if state_store.auth_redirect != WEB_AUTH_REDIRECT and not is_allowed_auth_redirect(state_store.auth_redirect):
         logger.warning("Auth callback refused: the stored auth_redirect is not an editor callback URI")
         return _refuse_auth_redirect()
@@ -354,6 +381,15 @@ async def auth_callback(
         params += "&organizationId=" + urllib.parse.quote(str(org_id))
 
     vscode_uri = redirect_url + callback_path + "?" + params
+
+    # A CLI's loopback redirect is plain http, which a browser follows from a
+    # 3xx, so no page is needed. A redirect also suits a CLI on another
+    # machine (an ssh session): the browser then fails to reach the port, but
+    # its address bar holds the whole callback URL, which the reader copies
+    # into the terminal. no-store keeps the ticket out of any cache.
+    if is_loopback_auth_redirect(redirect_url):
+        logger.info("Auth callback successful for user %s, redirecting to the CLI", user.id)
+        return RedirectResponse(url=vscode_uri, status_code=303, headers={"Cache-Control": "no-store"})
 
     logger.info("Auth callback successful for user %s, redirecting to VS Code", user.id)
 

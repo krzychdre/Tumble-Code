@@ -72,6 +72,11 @@ sequenceDiagram
 
 The web panel uses the same Authentik flow but ends with a signed `tumble_session` cookie instead of a ticket.
 
+The CLI signs in with a loopback redirect (RFC 8252): `auth_redirect=http://127.0.0.1:<port>` (or `localhost`,
+or `[::1]`; port 1024 to 65535, nothing after it), and the callback answers with a 303 straight to
+`http://127.0.0.1:<port>/auth/clerk/callback?code=<ticket>&state=<state>` instead of the bounce page. Every
+other http or https value is refused (`is_allowed_auth_redirect` in `routers/browser.py`).
+
 ## Server side
 
 ```mermaid

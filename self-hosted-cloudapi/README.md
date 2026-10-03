@@ -203,6 +203,18 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `tumble-code` to c
 5. The VS Code extension receives the ticket and calls `/v1/client/sign_ins` on
    `clerkBaseUrl` to complete sign-in
 
+`auth_redirect` accepts only two shapes; anything else gets a 400 before a state row is stored, and the
+callback re-checks the stored value before it mints a ticket:
+
+- an editor callback, `<scheme>://<publisher>.<name>` and nothing after it (`vscode://QUB-IT.tumble-code`,
+  `cursor://...`), answered with the HTML page above;
+- a CLI loopback callback (RFC 8252 section 7.3): exactly `http://127.0.0.1:<port>`, `http://localhost:<port>`
+  or `http://[::1]:<port>`, lowercase, port 1024 to 65535 without a leading zero, no path, query, fragment or
+  trailing slash. The callback answers it with a 303 straight to
+  `<auth_redirect>/auth/clerk/callback?code=<ticket>&state=<state>`. When the CLI runs on another machine the
+  browser cannot reach that port, but the address bar keeps the whole URL for the user to paste into the
+  terminal.
+
 ### Troubleshooting
 
 **"Failed to handle Tumble Code Cloud callback: Error: HTTP 400: Bad Request" after Authentik login:**
