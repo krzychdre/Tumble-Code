@@ -6,21 +6,11 @@ import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { OpenAiHandler } from "../openai"
 import { logger } from "../../../utils/logging"
 
-const mockCreate = vitest.fn()
+const mockCreate = vi.hoisted(() => vitest.fn())
 
-vitest.mock("openai", () => {
-	return {
-		__esModule: true,
-		default: vitest.fn().mockImplementation(function () {
-			return {
-				chat: {
-					completions: {
-						create: mockCreate,
-					},
-				},
-			}
-		}),
-	}
+vitest.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mockCreate)
 })
 
 /**

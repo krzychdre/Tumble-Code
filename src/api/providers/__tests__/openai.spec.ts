@@ -8,71 +8,16 @@ import { DEEP_SEEK_DEFAULT_TEMPERATURE } from "@tumble-code/types"
 import { Package } from "../../../shared/package"
 import axios from "axios"
 import { wireCaptureFetch } from "../utils/wire-capture"
+import { defaultOpenAiCreate } from "./provider-test-helpers"
 
-const mockCreate = vitest.fn()
+const mockCreate = vi.hoisted(() => vi.fn())
 
 // Set default implementation once at module level
-const defaultMockImplementation = async (options: any) => {
-	if (!options.stream) {
-		return {
-			id: "test-completion",
-			choices: [
-				{
-					message: { role: "assistant", content: "Test response", refusal: null },
-					finish_reason: "stop",
-					index: 0,
-				},
-			],
-			usage: {
-				prompt_tokens: 10,
-				completion_tokens: 5,
-				total_tokens: 15,
-			},
-		}
-	}
+const defaultMockImplementation = defaultOpenAiCreate
 
-	return {
-		[Symbol.asyncIterator]: async function* () {
-			yield {
-				choices: [
-					{
-						delta: { content: "Test response" },
-						index: 0,
-					},
-				],
-				usage: null,
-			}
-			yield {
-				choices: [
-					{
-						delta: {},
-						index: 0,
-					},
-				],
-				usage: {
-					prompt_tokens: 10,
-					completion_tokens: 5,
-					total_tokens: 15,
-				},
-			}
-		},
-	}
-}
-
-vitest.mock("openai", () => {
-	const mockConstructor = vitest.fn()
-	return {
-		__esModule: true,
-		default: mockConstructor.mockImplementation(function () {
-			return {
-				chat: {
-					completions: {
-						create: mockCreate,
-					},
-				},
-			}
-		}),
-	}
+vitest.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mockCreate)
 })
 
 // Mock axios for getOpenAiModels tests

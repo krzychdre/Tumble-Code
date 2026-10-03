@@ -9,45 +9,35 @@ vi.mock("@tumble-code/telemetry", () => ({
 }))
 
 // Mock Mistral client - must come before other imports
-const mockCreate = vi.fn()
-const mockComplete = vi.fn()
-vi.mock("@mistralai/mistralai", () => {
-	return {
-		Mistral: vi.fn().mockImplementation(function () {
-			return {
-				chat: {
-					stream: mockCreate.mockImplementation(async (_options) => {
-						const stream = {
-							[Symbol.asyncIterator]: async function* () {
-								yield {
-									data: {
-										choices: [
-											{
-												delta: { content: "Test response" },
-												index: 0,
-											},
-										],
-									},
-								}
+const mockCreate = vi.hoisted(() => vi.fn())
+const mockComplete = vi.hoisted(() => vi.fn())
+vi.mock("@mistralai/mistralai", async () => {
+	const { mistralModuleMock, TEST_RESPONSE_TEXT } = await import("./provider-test-helpers")
+	return mistralModuleMock(
+		mockCreate.mockImplementation(async () => ({
+			[Symbol.asyncIterator]: async function* () {
+				yield {
+					data: {
+						choices: [
+							{
+								delta: { content: TEST_RESPONSE_TEXT },
+								index: 0,
 							},
-						}
-						return stream
-					}),
-					complete: mockComplete.mockImplementation(async (_options) => {
-						return {
-							choices: [
-								{
-									message: {
-										content: "Test response",
-									},
-								},
-							],
-						}
-					}),
+						],
+					},
+				}
+			},
+		})),
+		mockComplete.mockImplementation(async () => ({
+			choices: [
+				{
+					message: {
+						content: TEST_RESPONSE_TEXT,
+					},
 				},
-			}
-		}),
-	}
+			],
+		})),
+	)
 })
 
 import type { Anthropic } from "@anthropic-ai/sdk"

@@ -14,27 +14,19 @@ import { type MinimaxModelId, minimaxDefaultModelId, minimaxModels } from "@tumb
 
 import { MiniMaxHandler } from "../minimax"
 
-vitest.mock("@anthropic-ai/sdk", () => {
-	const mockCreate = vitest.fn()
-	return {
-		Anthropic: vitest.fn(function () {
-			return {
-				messages: {
-					create: mockCreate,
-				},
-			}
-		}),
-	}
+const mockCreate = vi.hoisted(() => vitest.fn())
+
+vitest.mock("@anthropic-ai/sdk", async () => {
+	const { anthropicModuleMock } = await import("./provider-test-helpers")
+	return anthropicModuleMock(mockCreate)
 })
 
 describe("MiniMaxHandler", () => {
 	let handler: MiniMaxHandler
-	let mockCreate: any
 
 	beforeEach(() => {
 		vitest.clearAllMocks()
-		const anthropicInstance = (Anthropic as unknown as any)()
-		mockCreate = anthropicInstance.messages.create
+		// mockCreate comes from the shared SDK-mock scaffold (module scope).
 	})
 
 	describe("International MiniMax (default)", () => {
@@ -489,7 +481,6 @@ describe("MiniMaxHandler", () => {
 // bill it.
 describe("MiniMaxHandler cost accounting", () => {
 	let handler: MiniMaxHandler
-	let mockCreate: any
 
 	const scriptedStream = (events: any[]) =>
 		mockCreate.mockResolvedValueOnce({
@@ -518,7 +509,6 @@ describe("MiniMaxHandler cost accounting", () => {
 
 	beforeEach(() => {
 		vitest.clearAllMocks()
-		mockCreate = (Anthropic as unknown as any)().messages.create
 		handler = new MiniMaxHandler({ minimaxApiKey: "test-minimax-api-key" })
 	})
 

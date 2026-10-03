@@ -1,20 +1,10 @@
 // npx vitest run api/providers/__tests__/lmstudio-native-tools.spec.ts
 
 // Mock OpenAI client - must come before other imports
-const mockCreate = vi.fn()
-vi.mock("openai", () => {
-	return {
-		__esModule: true,
-		default: vi.fn().mockImplementation(function () {
-			return {
-				chat: {
-					completions: {
-						create: mockCreate,
-					},
-				},
-			}
-		}),
-	}
+const mockCreate = vi.hoisted(() => vi.fn())
+vi.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mockCreate)
 })
 
 import { LmStudioHandler } from "../lm-studio"

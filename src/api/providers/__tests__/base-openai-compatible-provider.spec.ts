@@ -7,20 +7,13 @@ import type { ModelInfo } from "@tumble-code/types"
 import { BaseOpenAiCompatibleProvider } from "../base-openai-compatible-provider"
 
 // Create mock functions
-const mockCreate = vi.fn()
+const mockCreate = vi.hoisted(() => vi.fn())
 
 // Mock OpenAI module
-vi.mock("openai", () => ({
-	default: vi.fn(function () {
-		return {
-			chat: {
-				completions: {
-					create: mockCreate,
-				},
-			},
-		}
-	}),
-}))
+vi.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mockCreate)
+})
 
 // Create a concrete test implementation of the abstract base class
 class TestOpenAiCompatibleProvider extends BaseOpenAiCompatibleProvider<"test-model"> {
