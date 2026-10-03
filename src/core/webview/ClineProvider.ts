@@ -79,6 +79,7 @@ import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@tumble-code/types"
 import type { TaskHistoryStore } from "../task-persistence"
 import { SubagentRegistry } from "./SubagentRegistry"
+import { PendingEditOperations, type PendingEditOperation } from "./PendingEditOperations"
 import {
 	ProviderStateBuilder,
 	type ProviderState,
@@ -101,16 +102,6 @@ import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-co
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
  * https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/customSidebarViewProvider.ts
  */
-
-interface PendingEditOperation {
-	messageTs: number
-	editedContent: string
-	images?: string[]
-	messageIndex: number
-	apiConversationHistoryIndex: number
-	timeoutId: NodeJS.Timeout
-	createdAt: number
-}
 
 export class ClineProvider
 	extends EventEmitter<TaskProviderEvents>
@@ -178,13 +169,13 @@ export class ClineProvider
 	private readonly taskHistory: TaskHistoryGateway
 	/**
 	 * Chat-message edits waiting for the user to confirm a checkpoint
-	 * restore, keyed by operation ID. Written by
+	 * restore, keyed by operation ID (R3-12 cluster 1; the mechanics live
+	 * in {@link PendingEditOperations}). Written by
 	 * {@link setPendingEditOperation} (from checkpointRestoreHandler) and
 	 * consumed when the restore finishes; each entry clears itself after
-	 * {@link ClineProvider.PENDING_OPERATION_TIMEOUT_MS}.
+	 * {@link PendingEditOperations}' 30 s timeout.
 	 */
-	private pendingOperations: Map<string, PendingEditOperation> = new Map()
-	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
+	private readonly pendingEdits = new PendingEditOperations()
 
 	/**
 	 * Monotonically increasing sequence number for clineMessages state pushes.
@@ -636,70 +627,31 @@ export class ClineProvider
 		return this.taskSlot.getTaskIds()
 	}
 
-	// Pending Edit Operations Management
+	// Pending Edit Operations Management (the mechanics live in
+	// PendingEditOperations; the public surface here delegates one-to-one so
+	// checkpointRestoreHandler and the tests are unchanged).
 
-	/**
-	 * Sets a pending edit operation with automatic timeout cleanup
-	 */
+	/** See {@link PendingEditOperations.set}. */
 	public setPendingEditOperation(
 		operationId: string,
-		editData: {
-			messageTs: number
-			editedContent: string
-			images?: string[]
-			messageIndex: number
-			apiConversationHistoryIndex: number
-		},
+		editData: Omit<PendingEditOperation, "timeoutId" | "createdAt">,
 	): void {
-		// Clear any existing operation with the same ID
-		this.clearPendingEditOperation(operationId)
-
-		// Create timeout for automatic cleanup
-		const timeoutId = setTimeout(() => {
-			this.clearPendingEditOperation(operationId)
-			logger.warn(`[setPendingEditOperation] Automatically cleared stale pending operation: ${operationId}`)
-		}, ClineProvider.PENDING_OPERATION_TIMEOUT_MS)
-
-		// Store the operation
-		this.pendingOperations.set(operationId, {
-			...editData,
-			timeoutId,
-			createdAt: Date.now(),
-		})
-
-		logger.debug(`[setPendingEditOperation] Set pending operation: ${operationId}`)
+		this.pendingEdits.set(operationId, editData)
 	}
 
-	/**
-	 * Gets a pending edit operation by ID
-	 */
+	/** See {@link PendingEditOperations.get}. */
 	private getPendingEditOperation(operationId: string): PendingEditOperation | undefined {
-		return this.pendingOperations.get(operationId)
+		return this.pendingEdits.get(operationId)
 	}
 
-	/**
-	 * Clears a specific pending edit operation
-	 */
+	/** See {@link PendingEditOperations.clear}. */
 	private clearPendingEditOperation(operationId: string): boolean {
-		const operation = this.pendingOperations.get(operationId)
-		if (operation) {
-			clearTimeout(operation.timeoutId)
-			this.pendingOperations.delete(operationId)
-			logger.debug(`[clearPendingEditOperation] Cleared pending operation: ${operationId}`)
-			return true
-		}
-		return false
+		return this.pendingEdits.clear(operationId)
 	}
 
-	/**
-	 * Clears all pending edit operations
-	 */
+	/** See {@link PendingEditOperations.clearAll}. */
 	private clearAllPendingEditOperations(): void {
-		for (const [operationId, operation] of this.pendingOperations) {
-			clearTimeout(operation.timeoutId)
-		}
-		this.pendingOperations.clear()
-		logger.debug(`[clearAllPendingEditOperations] Cleared all pending operations`)
+		this.pendingEdits.clearAll()
 	}
 
 	/*
