@@ -19,6 +19,7 @@ import { getGitStatus } from "../../utils/git"
 import { Task } from "../task/Task"
 import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { formatReminderSection } from "./reminder"
+import { formatCurrentTime } from "./currentTime"
 
 // Transient change-tracking per Task instance (never persisted, so a new or
 // resumed task — including after a mode switch to a different context window —
@@ -248,14 +249,7 @@ export async function getEnvironmentDetails(
 	// Add current time information with timezone (every turn if enabled,
 	// otherwise only on full emissions).
 	if (includeCurrentTime || prevSnapshot === undefined) {
-		const now = new Date()
-
-		const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-		const timeZoneOffset = -now.getTimezoneOffset() / 60 // Convert to hours and invert sign to match conventional notation
-		const timeZoneOffsetHours = Math.floor(Math.abs(timeZoneOffset))
-		const timeZoneOffsetMinutes = Math.abs(Math.round((Math.abs(timeZoneOffset) - timeZoneOffsetHours) * 60))
-		const timeZoneOffsetStr = `${timeZoneOffset >= 0 ? "+" : "-"}${timeZoneOffsetHours}:${timeZoneOffsetMinutes.toString().padStart(2, "0")}`
-		details += `\n\n# Current Time\nCurrent time in ISO 8601 UTC format: ${now.toISOString()}\nUser time zone: ${timeZone}, UTC${timeZoneOffsetStr}`
+		details += `\n\n${formatCurrentTime(new Date())}`
 	}
 
 	// Add git status information (if enabled with maxGitStatusFiles > 0).
