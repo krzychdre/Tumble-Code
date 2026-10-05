@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import anyio
 from sqlalchemy import select
@@ -24,6 +25,7 @@ from src.services.problems.aggregate import aggregate_problems
 from src.services.problems.collect import _request_counts, collect_occurrences
 from src.services.problems.filters import ProblemFilter
 from src.services.problems.views import report_view
+from src.utils.clientzone import UTC
 
 
 async def compute_user_problems(
@@ -33,21 +35,24 @@ async def compute_user_problems(
     now: Optional[datetime] = None,
     filters: Optional[ProblemFilter] = None,
     key: Optional[str] = None,
+    zone: ZoneInfo = UTC,
 ) -> dict:
     """The user's problem report over ``period``, narrowed by ``filters``.
 
     ``filters.period``, when given, wins over ``period``; ``key`` narrows it
-    to one group (see ``aggregate_problems``).
+    to one group (see ``aggregate_problems``). ``zone`` is the reader's: the
+    period starts at their local midnight.
     """
     if filters is not None:
         period = filters.period
     if period not in PERIODS:
         period = DEFAULT_PERIOD
     filters = replace(filters, period=period) if filters is not None else ProblemFilter(period=period)
-    start = period_start(period, now)
+    start = period_start(period, now, zone)
     occurrences, cutoff = await collect_occurrences(db, user_id, start)
     requests = await _request_counts(db, user_id, start, filters.client)
-    return await anyio.to_thread.run_sync(aggregate_problems, occurrences, requests, period, cutoff, filters, key)
+    return await anyio.to_thread.run_sync(aggregate_problems, occurrences, requests, period, cutoff, filters, key, zone
+    )
 
 
 async def load_report(db: AsyncSession, user_id: str, report_id: str) -> Optional[dict]:

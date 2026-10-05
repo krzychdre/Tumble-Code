@@ -23,6 +23,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Optional
+from zoneinfo import ZoneInfo
 
 import anyio
 from sqlalchemy import func, or_, select
@@ -35,6 +36,7 @@ from src.services.exchange_quality import is_clean
 from src.services.exchange_reconstruction import Exchange, js_json, load_task
 from src.services.client_kind import parse_client
 from src.services.metrics_service import PERIODS, period_start
+from src.utils.clientzone import UTC
 from src.services.openai_messages import convert_message, response_message
 
 FORMATS = ("turns", "trajectories")
@@ -56,6 +58,9 @@ class ExportOptions:
     anonymize: bool = True
     metadata: bool = False
     limit: int = 0
+    # The reader's zone (utils/clientzone): a period starts at their local
+    # midnight. Set by the router from the request, not from the query string.
+    zone: ZoneInfo = UTC
 
     @classmethod
     def from_query(cls, params) -> "ExportOptions":
@@ -102,7 +107,7 @@ async def build_anonymizer(db: AsyncSession, user_id: str) -> Anonymizer:
 async def task_ids(db: AsyncSession, user_id: str, options: ExportOptions) -> list[str]:
     """The tasks with at least one exchange matching the filters, oldest first."""
     query = select(LlmExchange.task_id).where(LlmExchange.user_id == user_id)
-    since = period_start(options.period)
+    since = period_start(options.period, zone=options.zone)
     if since is not None:
         query = query.where(LlmExchange.occurred_at >= since)
     if options.models:
@@ -315,7 +320,7 @@ async def export_lines(
     """The dataset, one JSONL line at a time, task by task."""
     if options.anonymize and anonymizer is None:
         anonymizer = await build_anonymizer(db, user_id)
-    since = period_start(options.period)
+    since = period_start(options.period, zone=options.zone)
     emitted = 0
     for task_id in await task_ids(db, user_id, options):
         exchanges = await load_task(db, user_id, task_id)

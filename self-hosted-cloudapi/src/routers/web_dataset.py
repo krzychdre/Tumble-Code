@@ -62,7 +62,7 @@ async def dataset_page(
     db = web["db"]
     period = _period(period)
     picked = parse_client(client)
-    overview = await dataset_overview(db, web["user"]["user_id"], period, picked)
+    overview = await dataset_overview(db, web["user"]["user_id"], period, picked, zone=web["zone"])
     settings_row = await read_dataset_settings(db, web["user"]["user_id"])
     return render_page(
         request,
@@ -113,6 +113,7 @@ async def dataset_export(
 ):
     """The dataset as JSONL, streamed task by task."""
     options = ExportOptions.from_query(request.query_params)
+    options.zone = web["zone"]
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     name = f"tumble-dataset-{options.format}-{options.period}-{stamp}.jsonl"
     return StreamingResponse(
@@ -131,9 +132,10 @@ async def dataset_audit(
     db = web["db"]
     user_id = web["user"]["user_id"]
     options = ExportOptions.from_query(request.query_params)
+    options.zone = web["zone"]
     options.anonymize = True
     anonymizer = await build_anonymizer(db, user_id)
-    since = period_start(options.period)
+    since = period_start(options.period, zone=options.zone)
     samples = 0
     tasks = 0
     truncated = False

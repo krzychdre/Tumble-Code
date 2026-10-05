@@ -11,6 +11,7 @@ foreign were deliberately indistinguishable before, and must stay so.
 """
 
 from typing import Optional, TypedDict
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse
@@ -18,18 +19,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.web_session import WebUser, require_web_user
 from src.database import get_db
+from src.utils.clientzone import client_zone
 from src.web.templating import templates
 
 
 class WebPage(TypedDict):
-    """What every /app page handler starts with: who is asking, and the
-    database session to answer with."""
+    """What every /app page handler starts with: who is asking, the database
+    session to answer with, and the reader's time zone (utils/clientzone)."""
 
     user: WebUser
     db: AsyncSession
+    zone: ZoneInfo
 
 
 async def require_web_page(
+    request: Request,
     user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ) -> WebPage:
@@ -39,7 +43,7 @@ async def require_web_page(
     overriding either of those in tests signs a reader in here too, exactly as
     before.
     """
-    return WebPage(user=user, db=db)
+    return WebPage(user=user, db=db, zone=client_zone(request))
 
 
 def render_page(
@@ -50,12 +54,13 @@ def render_page(
     /,
     **context,
 ) -> HTMLResponse:
-    """Render an /app page: the user and the highlighted nav tab plus whatever
-    the page itself has to say."""
+    """Render an /app page: the user, the highlighted nav tab and the zone the
+    page was computed in (``app.js`` reloads once if the browser's differs),
+    plus whatever the page itself has to say."""
     return templates.TemplateResponse(
         request,
         template_name,
-        {"user": page["user"], "nav_active": nav_active, **context},
+        {"user": page["user"], "nav_active": nav_active, "page_zone": page["zone"].key, **context},
     )
 
 

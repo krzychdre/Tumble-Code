@@ -13,9 +13,48 @@
  * - A form with data-autosubmit submits itself when one of its lists
  *   changes, so a filter applies on its own; its Apply button still works
  *   without scripting.
+ * - The browser's time zone goes to the server in the tumble_tz cookie
+ *   (utils/clientzone.py): "today", the daily buckets and every printed time
+ *   are the reader's. A page computed in another zone (body data-tz, e.g. UTC
+ *   on the first visit) reloads once, only if the cookie stuck, and never
+ *   twice for the same zone, so blocked cookies cannot loop.
  */
 ;(function () {
 	"use strict"
+	;(function syncTimeZone() {
+		var zone
+		try {
+			zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+		} catch (err) {
+			return
+		}
+		if (!zone || !/^[A-Za-z0-9_+\-\/]{1,64}$/.test(zone)) return
+		var current = (document.cookie.match(/(?:^|;\s*)tumble_tz=([^;]*)/) || [])[1]
+		if (current !== zone) {
+			document.cookie =
+				"tumble_tz=" +
+				zone +
+				"; path=/; max-age=31536000; samesite=lax" +
+				(location.protocol === "https:" ? "; secure" : "")
+		}
+		var rendered = document.body && document.body.getAttribute("data-tz")
+		if (!rendered || rendered === zone) return
+		var stuck = (document.cookie.match(/(?:^|;\s*)tumble_tz=([^;]*)/) || [])[1] === zone
+		var key = "tumble_tz_reloaded"
+		var done
+		try {
+			done = sessionStorage.getItem(key)
+		} catch (err) {
+			done = zone
+		}
+		if (!stuck || done === zone) return
+		try {
+			sessionStorage.setItem(key, zone)
+		} catch (err) {
+			return
+		}
+		location.reload()
+	})()
 
 	document.addEventListener("submit", function (e) {
 		var form = e.target
@@ -91,23 +130,25 @@
 		btn.hidden = false
 		btn.addEventListener("click", function () {
 			btn.disabled = true
-			copyFromUrl(btn.getAttribute("data-copy-url")).then(
-				function () {
-					btn.textContent = "Copied"
-					announce("Brief copied to the clipboard")
-				},
-				function () {
-					// No clipboard here (plain http, a denied permission): the
-					// download link beside the button still works.
-					btn.textContent = "Copy failed, use Download"
-					announce("Copying failed; use Download brief instead")
-				},
-			).then(function () {
-				setTimeout(function () {
-					btn.textContent = label
-					btn.disabled = false
-				}, 2500)
-			})
+			copyFromUrl(btn.getAttribute("data-copy-url"))
+				.then(
+					function () {
+						btn.textContent = "Copied"
+						announce("Brief copied to the clipboard")
+					},
+					function () {
+						// No clipboard here (plain http, a denied permission): the
+						// download link beside the button still works.
+						btn.textContent = "Copy failed, use Download"
+						announce("Copying failed; use Download brief instead")
+					},
+				)
+				.then(function () {
+					setTimeout(function () {
+						btn.textContent = label
+						btn.disabled = false
+					}, 2500)
+				})
 		})
 	})
 
