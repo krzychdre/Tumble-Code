@@ -10,4 +10,10 @@ applyColorEnv(process.env)
 // this line, so the CLI is loaded with a dynamic one.
 await loadReactProductionBuilds()
 
+// `timeZone` from cli-settings.json, before any command formats a date. A bad
+// value is only warned about by a run (run.ts), after its screen clear.
+const { loadSettings } = await import("@/lib/storage/settings.js")
+const { applyTimeZoneSetting } = await import("@/lib/utils/time-zone.js")
+applyTimeZoneSetting(await loadSettings().catch(() => ({})), () => {})
+
 await import("./main.js")
