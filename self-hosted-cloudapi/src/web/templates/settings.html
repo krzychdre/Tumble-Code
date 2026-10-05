@@ -70,7 +70,7 @@
       <button class="btn" type="submit">Save</button>
       {% if policy.last_run_at %}
       <span class="settings-meta">
-        Last run <span class="task-date" data-ts="{{ policy.last_run_at.isoformat() }}">{{ policy.last_run_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        Last run <span class="task-date">{{ policy.last_run_at | localtime }}</span>
         · {{ policy.last_deleted_tasks }} task{{ '' if policy.last_deleted_tasks == 1 else 's' }},
         {{ policy.last_deleted_events }} event{{ '' if policy.last_deleted_events == 1 else 's' }}
       </span>

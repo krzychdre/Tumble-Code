@@ -1,6 +1,8 @@
 # Local time zone in presentation: store UTC, show and count in the client's zone
 
-Status: planned (not started)
+Status: done, 2026-10-05. PRs #793 (D5), #794 (D6), #795 (D1-D3), and the
+rendering branch `fix/cloud-local-rendered-times` (D4 and the printed times).
+api image rebuild and VSIX/CLI rebuild owed.
 
 Rule for the whole change: **storage stays UTC; every human-facing date and every "day"
 (today, daily buckets, date filters) is computed in the time zone of whoever is looking.**
@@ -79,8 +81,10 @@ New `src/utils/clientzone.py` (name to match the existing `utils/format.py`):
   single place that handles DST: a day can be 23 or 25 hours long (EU: 2026-10-25 has 25
   hours), and in a few zones midnight itself does not exist on the switch day; the
   round-trip through UTC normalises it.
-- `fmt_local(dt, zone)`: `YYYY-MM-DD HH:MM` in the zone, plus the zone abbreviation
-  (`CEST`) only when the zone is UTC, so a stale UTC rendering is never mistaken for local.
+- `fmt_local(dt, zone)`: `YYYY-MM-DD HH:MM` in the zone, always followed by the zone's
+  abbreviation (`2026-10-05 10:18 CEST`, `... UTC` before the cookie exists), so no printed
+  time is ambiguous. The task list's narrow date column drops the abbreviation and shows the
+  full form as its tooltip (Jinja filter `localtime`, `web/templating.py`).
 
 Never use `timedelta(days=1)` on an aware local datetime to get "tomorrow's midnight"; always
 go `date + 1` then `day_start_utc`. That is the classic DST bug.
@@ -105,9 +109,10 @@ go `date + 1` then `day_start_utc`. That is the classic DST bug.
 - JSONL dataset export and per-task reconstruction: keep UTC ISO, but always with an offset
   (`as_utc(x).isoformat()`; today a naive SQLite value loses the `+00:00`,
   `routers/web_dataset.py:178`).
-- Problem brief markdown for agents (`services/problem_brief.py`): keep UTC, labelled, and
-  add the viewer's zone once in the header ("Times are UTC; viewer zone Europe/Warsaw") so an
-  agent reading it can convert.
+- Problem brief markdown for agents (`services/problem_brief.py`): changed during
+  implementation. It is built from the same group views as the page, so it uses the reader's
+  zone too; every time carries its abbreviation (`CEST`), which an agent can convert without
+  a separate header line.
 
 ### D5. The model gets local time ready-made, no arithmetic
 
@@ -201,3 +206,16 @@ setting warns and falls back.
 - A per-account zone setting (possible later on top of `client_zone`).
 - Sending the client zone from the extension to the cloud (the web reads the browser's own).
 - The VS Code webview: already local.
+
+## Implementation notes
+
+- 7d/30d/90d are calendar-aligned (owner agreed 2026-10-05). The metrics golden fixture
+  did not change: no seeded event sat between the old rolling bound and the new midnight.
+- `localizeDates()` in `static/render.js` was removed: it only ran on the task page, where
+  none of its elements exist; the server now prints those times in the reader's zone.
+- The problem pipeline (`compute_user_problems` -> `aggregate_problems` ->
+  `group_occurrences` -> `_group_view` / `pick_samples` / `report_view`) takes `zone`; the
+  default `UTC` keeps every pure-function caller and test unchanged.
+- Found on the way, not fixed here: `.changeset/cli-remove-stdin-prompt-stream.md` on main
+  mixes the ignored `@tumble-code/cli` with `tumble-code`, which makes `changeset status`
+  (and the Changeset Release job) fail.

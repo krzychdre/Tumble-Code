@@ -6,7 +6,6 @@ its query string), one report in full, and the agent brief
 """
 
 import re
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -24,6 +23,7 @@ from src.services.diagnostics_service import (
     load_report,
 )
 from src.services.problem_brief import problem_brief_markdown
+from src.utils.clientzone import today
 from src.web.presenters.problem_view import ProblemView
 
 router = APIRouter(tags=["web"])
@@ -99,7 +99,7 @@ async def diagnostics_markdown(
 ):
     """The agent brief of every problem the filters let through, as a file."""
     text = await problem_brief_markdown(web["db"], web["user"]["user_id"], filters, zone=web["zone"])
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    stamp = today(web["zone"]).isoformat()
     return _markdown(text, f"tumble-problem-report-{filters.period}-{stamp}.md")
 
 
@@ -139,7 +139,7 @@ async def diagnostics_report(
     web: WebPage = Depends(require_web_page),
 ):
     """One error report in full: facts, request, response. Its owner only."""
-    report = await load_report(web["db"], web["user"]["user_id"], report_id)
+    report = await load_report(web["db"], web["user"]["user_id"], report_id, web["zone"])
     if report is None:
         return not_found_page(
             request,

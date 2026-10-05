@@ -21,7 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, AsyncIterator, Optional
 from zoneinfo import ZoneInfo
 
@@ -36,7 +36,7 @@ from src.services.exchange_quality import is_clean
 from src.services.exchange_reconstruction import Exchange, js_json, load_task
 from src.services.client_kind import parse_client
 from src.services.metrics_service import PERIODS, period_start
-from src.utils.clientzone import UTC
+from src.utils.clientzone import UTC, as_utc
 from src.services.openai_messages import convert_message, response_message
 
 FORMATS = ("turns", "trajectories")
@@ -122,10 +122,6 @@ async def task_ids(db: AsyncSession, user_id: str, options: ExportOptions) -> li
     return list((await db.scalars(query)).all())
 
 
-def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-
-
 class _TaskRenderer:
     """Renders one task's exchanges; caches per message object (histories share them)."""
 
@@ -155,7 +151,7 @@ class _TaskRenderer:
             return False
         if exchange.workspace_path and exchange.workspace_path in options.exclude_workspaces:
             return False
-        return self.since is None or _aware(exchange.occurred_at) >= self.since
+        return self.since is None or as_utc(exchange.occurred_at) >= self.since
 
     def convert(self, message: Any) -> list[dict]:
         key = id(message)

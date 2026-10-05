@@ -64,3 +64,10 @@ def day_start_utc(day: date, zone: ZoneInfo) -> datetime:
 
 def today(zone: ZoneInfo, now: Optional[datetime] = None) -> date:
     return local_day(now or datetime.now(timezone.utc), zone)
+
+
+def fmt_local(stamp: datetime, zone: ZoneInfo) -> str:
+    """``2026-10-05 10:18 CEST``: the reader's wall clock, with the zone's
+    abbreviation so no one has to guess which clock it is."""
+    local = as_utc(stamp).astimezone(zone)
+    return f"{local:%Y-%m-%d %H:%M} {local.tzname()}"

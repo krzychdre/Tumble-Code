@@ -52,13 +52,13 @@ def _counted(counter: Counter) -> list[dict]:
     return [{"value": value, "count": count} for value, count in counter.most_common()]
 
 
-def _sample_view(o: Occurrence) -> dict:
+def _sample_view(o: Occurrence, zone: ZoneInfo = UTC) -> dict:
     return {
         "source": o.source,
         "source_label": SOURCE_LABELS[o.source],
         "text": o.text,
         "headline": headline(o.text),
-        "when": fmt_when(o.when),
+        "when": fmt_when(o.when, zone),
         "task_id": o.task_id,
         "model": o.model,
         "provider": o.provider,
@@ -108,8 +108,8 @@ def _group_view(
         "tasks": len(tasks),
         "reach": len(tasks) + len(days),
         "task_ids": sorted(tasks)[:MAX_GROUP_REPORTS],
-        "first_seen": fmt_when(first.when),
-        "last_seen": fmt_when(latest.when),
+        "first_seen": fmt_when(first.when, zone),
+        "last_seen": fmt_when(latest.when, zone),
         "last_ts": latest.when.timestamp(),
         "top_model": top_model,
         "top_provider": top_provider,
@@ -123,14 +123,14 @@ def _group_view(
         "modes": _counted(Counter(o.mode for o in members if o.mode)),
         "versions": _counted(Counter(o.app_version for o in members if o.app_version)),
         "sources": sorted({SOURCE_LABELS[o.source] for o in members}),
-        "reports": [{"id": o.report_id, "when": fmt_when(o.when)} for o in reports[:MAX_GROUP_REPORTS]],
-        "sample": _sample_view(latest),
-        "samples": [_sample_view(o) for o in pick_samples(members, zone=zone)],
+        "reports": [{"id": o.report_id, "when": fmt_when(o.when, zone)} for o in reports[:MAX_GROUP_REPORTS]],
+        "sample": _sample_view(latest, zone),
+        "samples": [_sample_view(o, zone) for o in pick_samples(members, zone=zone)],
     }
 
 
-def report_view(row: ErrorReport) -> dict:
-    """One stored report, laid out for the drill-down page."""
+def report_view(row: ErrorReport, zone: ZoneInfo = UTC) -> dict:
+    """One stored report, laid out for the drill-down page; times in ``zone``."""
     try:
         payload = json.loads(row.payload or "{}")
     except (json.JSONDecodeError, TypeError):
@@ -162,8 +162,8 @@ def report_view(row: ErrorReport) -> dict:
         "classification": rule.classification,
         "class_key": CLASS_KEYS[rule.classification],
         "mitigation": mitigation_for(rule, row.model_id, row.provider, row.tool_name),
-        "occurred": fmt_when(row.occurred_at),
-        "received": fmt_when(row.created_at),
+        "occurred": fmt_when(row.occurred_at, zone),
+        "received": fmt_when(row.created_at, zone),
         "error_message": payload.get("errorMessage") or "",
         "tool_result": payload.get("toolResult") or "",
         "facts": [
