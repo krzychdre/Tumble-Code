@@ -46,7 +46,7 @@ const mockHost = vi.hoisted(() => ({
 				mode?: string
 				reasoningEffort?: string
 				apiKey?: string
-				contextWindow?: number
+				modelSettings?: { contextWindow?: number; inputPrice?: number }
 				commandExecutionTimeout?: number
 				mcpSettingsPath?: string
 				modeProviderSettings?: {
@@ -944,7 +944,7 @@ describe("run context window per model", () => {
 		const { outcome } = await runWithExitThrowing()
 
 		expect(outcome).toBe("ran")
-		expect(mockHost.lastOptions?.contextWindow).toBe(262_144)
+		expect(mockHost.lastOptions?.modelSettings).toEqual({ contextWindow: 262_144 })
 		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(sized(262_144))
 		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual({
 			...sized(262_144),
@@ -960,8 +960,37 @@ describe("run context window per model", () => {
 
 		await runWithExitThrowing({ model: "Qwen3.8-27B" })
 
-		expect(mockHost.lastOptions?.contextWindow).toBe(65_536)
+		expect(mockHost.lastOptions?.modelSettings).toEqual({ contextWindow: 65_536 })
 		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(sized(65_536))
+	})
+
+	it("prices the model everywhere it runs", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { architect: { reasoningEffort: "high" } },
+			models: { "GLM-5.3-NVFP4": { inputPrice: 0.6, outputPrice: 2.2 } },
+		})
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		const priced = { ...openAiModelInfoSaneDefaults, inputPrice: 0.6, outputPrice: 2.2 }
+		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(priced)
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual({
+			...priced,
+			supportsReasoningEffort: true,
+			reasoningEffort: "high",
+		})
+	})
+
+	it("a malformed price fails at startup and names the model", async () => {
+		await saveSettings({ ...globalSettings, models: { "GLM-5.3-NVFP4": { outputPrice: "2.2" as never } } })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain("models.GLM-5.3-NVFP4.outputPrice must be a number of USD per million tokens")
+		expect(mockHost.lastOptions).toBeUndefined()
 	})
 
 	it("a malformed size fails at startup and names the model", async () => {
@@ -974,19 +1003,19 @@ describe("run context window per model", () => {
 		expect(mockHost.lastOptions).toBeUndefined()
 	})
 
-	it("warns once that a size is ignored on a provider that sizes its models itself", async () => {
+	it("warns once that a size or a price is ignored on a provider that sizes and prices its models itself", async () => {
 		process.env.ANTHROPIC_API_KEY = "k"
 		await saveSettings({
 			provider: "anthropic",
 			model: "claude-x",
 			modes: { ask: { reasoningEffort: "low" } },
-			models: { "claude-x": { contextWindow: 1_000_000 } },
+			models: { "claude-x": { contextWindow: 1_000_000, inputPrice: 3 } },
 		})
 
 		const { outcome, warnings } = await runWithExitThrowing()
 
 		expect(outcome).toBe("ran")
-		const ignored = warnings.filter((warning) => warning.includes("models.claude-x.contextWindow"))
+		const ignored = warnings.filter((warning) => warning.includes("models.claude-x (contextWindow, inputPrice)"))
 		expect(ignored).toHaveLength(1)
 		expect(ignored[0]).toContain("ignored with the anthropic provider")
 		expect(mockHost.lastOptions?.modeProviderSettings?.base).not.toHaveProperty("openAiCustomModelInfo")

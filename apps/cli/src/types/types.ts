@@ -53,6 +53,18 @@ export interface CliModelSettings {
 	 * extension would otherwise assume 128,000.
 	 */
 	contextWindow?: number
+	/**
+	 * Prices in USD per million tokens, the same fields the VS Code settings
+	 * set for an OpenAI-compatible model. Used with the openai provider, whose
+	 * models would otherwise cost $0, so the task cost and the cost sent to
+	 * Tumble Code Cloud stay at zero.
+	 */
+	inputPrice?: number
+	outputPrice?: number
+	/** Price of input tokens the server reports as read from its prompt cache. */
+	cacheReadsPrice?: number
+	/** Price of input tokens the server reports as written to its prompt cache (defaults to inputPrice). */
+	cacheWritesPrice?: number
 }
 
 export interface CliSettings {

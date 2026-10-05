@@ -1,16 +1,26 @@
-import { findModelSettingsProblems, getConfiguredContextWindow } from "../model-settings.js"
+import { findModelSettingsProblems, getConfiguredModelSettings, listSetModelSettings } from "../model-settings.js"
 
-describe("getConfiguredContextWindow", () => {
-	const models = { "GLM-5.3-NVFP4": { contextWindow: 262_144 }, "Qwen3.8-27B": {} }
+describe("getConfiguredModelSettings", () => {
+	const models = { "GLM-5.3-NVFP4": { contextWindow: 262_144, inputPrice: 0.6 }, "Qwen3.8-27B": {} }
 
 	it("finds the entry by the exact model id", () => {
-		expect(getConfiguredContextWindow(models, "GLM-5.3-NVFP4")).toBe(262_144)
-		expect(getConfiguredContextWindow(models, "glm-5.3-nvfp4")).toBeUndefined()
+		expect(getConfiguredModelSettings(models, "GLM-5.3-NVFP4")).toEqual({ contextWindow: 262_144, inputPrice: 0.6 })
+		expect(getConfiguredModelSettings(models, "glm-5.3-nvfp4")).toBeUndefined()
 	})
 
-	it("is undefined for a model without a size, and without a models map", () => {
-		expect(getConfiguredContextWindow(models, "Qwen3.8-27B")).toBeUndefined()
-		expect(getConfiguredContextWindow(undefined, "GLM-5.3-NVFP4")).toBeUndefined()
+	it("is undefined without a models map", () => {
+		expect(getConfiguredModelSettings(undefined, "GLM-5.3-NVFP4")).toBeUndefined()
+	})
+})
+
+describe("listSetModelSettings", () => {
+	it("names the keys an entry sets", () => {
+		expect(listSetModelSettings({ contextWindow: 1, outputPrice: 2, inputPrice: undefined })).toEqual([
+			"contextWindow",
+			"outputPrice",
+		])
+		expect(listSetModelSettings({})).toEqual([])
+		expect(listSetModelSettings(undefined)).toEqual([])
 	})
 })
 
@@ -29,6 +39,20 @@ describe("findModelSettingsProblems", () => {
 
 	it.each([0, -1, 1.5])("rejects %s", (contextWindow) => {
 		expect(findModelSettingsProblems({ m: { contextWindow } })).toHaveLength(1)
+	})
+
+	it("accepts prices of 0 or more, fractions included", () => {
+		expect(
+			findModelSettingsProblems({
+				m: { inputPrice: 0.6, outputPrice: 2.2, cacheReadsPrice: 0.11, cacheWritesPrice: 0 },
+			}),
+		).toEqual([])
+	})
+
+	it.each([-1, "0.6", Number.POSITIVE_INFINITY, null])("rejects the price %s and names the field", (inputPrice) => {
+		expect(findModelSettingsProblems({ m: { inputPrice } })).toEqual([
+			`models.m.inputPrice must be a number of USD per million tokens, 0 or more, got ${JSON.stringify(inputPrice)}`,
+		])
 	})
 
 	it("rejects a map or an entry that is not an object", () => {

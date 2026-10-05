@@ -316,7 +316,11 @@ describe("toProviderSettings", () => {
 	// The openai provider's model info had no supportsReasoningEffort, so the
 	// handler dropped every effort the CLI configured.
 	it("lets the openai handler send a configured effort", () => {
-		const settings = toProviderSettings({ ...connection, reasoningEffort: "low", contextWindow: 262_144 })
+		const settings = toProviderSettings({
+			...connection,
+			reasoningEffort: "low",
+			modelSettings: { contextWindow: 262_144 },
+		})
 
 		expect(settings.openAiCustomModelInfo).toEqual({
 			...openAiModelInfoSaneDefaults,
@@ -337,10 +341,29 @@ describe("toProviderSettings", () => {
 	})
 
 	it("sizes an openai model from its contextWindow, keeping the provider's other defaults", () => {
-		expect(toProviderSettings({ ...connection, contextWindow: 262_144 }).openAiCustomModelInfo).toEqual({
+		expect(
+			toProviderSettings({ ...connection, modelSettings: { contextWindow: 262_144 } }).openAiCustomModelInfo,
+		).toEqual({
 			...openAiModelInfoSaneDefaults,
 			contextWindow: 262_144,
 		})
+	})
+
+	// Without prices the openai model info kept the sane defaults' $0, so
+	// every task cost (and the cost sent to the cloud) was zero.
+	it("prices an openai model from its entry, leaving unset prices at the defaults", () => {
+		const settings = toProviderSettings({
+			...connection,
+			modelSettings: { inputPrice: 0.6, outputPrice: 2.2, cacheReadsPrice: 0.11 },
+		})
+
+		expect(settings.openAiCustomModelInfo).toEqual({
+			...openAiModelInfoSaneDefaults,
+			inputPrice: 0.6,
+			outputPrice: 2.2,
+			cacheReadsPrice: 0.11,
+		})
+		expect(settings.openAiCustomModelInfo).not.toHaveProperty("cacheWritesPrice")
 	})
 
 	it("clears a size an earlier run left in the extension state when no contextWindow is set", () => {
@@ -350,7 +373,12 @@ describe("toProviderSettings", () => {
 	})
 
 	it("sends no model info to providers that size their models themselves", () => {
-		const settings = toProviderSettings({ provider: "anthropic", model: "claude-x", apiKey: "k", contextWindow: 1 })
+		const settings = toProviderSettings({
+			provider: "anthropic",
+			model: "claude-x",
+			apiKey: "k",
+			modelSettings: { contextWindow: 1, inputPrice: 1 },
+		})
 		expect(settings).not.toHaveProperty("openAiCustomModelInfo")
 	})
 
