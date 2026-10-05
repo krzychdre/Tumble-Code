@@ -11,7 +11,6 @@ Owner only, like every /app page. See ai_plans/2026-10-02_llm-exchange-dataset.m
 """
 
 import json
-from datetime import datetime, timezone
 
 import anyio
 from fastapi import APIRouter, Depends, Request
@@ -37,6 +36,7 @@ from src.services.exchange_ingest import read_dataset_settings, save_dataset_set
 from src.services.exchange_quality import DROP_DEFAULT, DROP_STRICT, ISSUE_LABELS
 from src.services.exchange_reconstruction import load_task
 from src.services.metrics_service import PERIOD_LABELS, PERIODS, period_start
+from src.utils.clientzone import as_utc, today
 
 router = APIRouter(tags=["web"])
 
@@ -114,7 +114,7 @@ async def dataset_export(
     """The dataset as JSONL, streamed task by task."""
     options = ExportOptions.from_query(request.query_params)
     options.zone = web["zone"]
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    stamp = today(web["zone"]).isoformat()
     name = f"tumble-dataset-{options.format}-{options.period}-{stamp}.jsonl"
     return StreamingResponse(
         export_lines(web["db"], web["user"]["user_id"], options),
@@ -177,7 +177,8 @@ def _report_line(exchange) -> str:
             "id": exchange.id,
             "baseId": exchange.base_id,
             "sequence": exchange.sequence,
-            "occurredAt": exchange.occurred_at.isoformat()
+            # Machine data: UTC, always with its offset (SQLite hands it back naive).
+            "occurredAt": as_utc(exchange.occurred_at).isoformat()
             if exchange.occurred_at
             else None,
             "modelId": exchange.model_id,

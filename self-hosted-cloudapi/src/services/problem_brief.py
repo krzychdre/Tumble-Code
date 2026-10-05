@@ -342,7 +342,7 @@ def _sample_lines(number: int, total: int, sample: dict, group: dict, evidence: 
         )
         if part
     )
-    lines = [f"#### Sample {number} of {total}: {sample['source_label']}, {sample['when']} UTC" + (f", {who}" if who else ""), ""]
+    lines = [f"#### Sample {number} of {total}: {sample['source_label']}, {sample['when']}" + (f", {who}" if who else ""), ""]
     report = evidence["reports"].get(sample["report_id"]) if sample["report_id"] else None
     if sample["source"] == SOURCE_REPORT and report is not None:
         return lines + _report_evidence(sample, report, group["tool"])
@@ -384,8 +384,8 @@ def _group_section(number: Optional[int], group: dict, evidence: dict) -> list[s
         "",
         "### Impact",
         "",
-        f"- {_n(group['count'], 'occurrence')} in {_n(group['tasks'], 'task')}, first {group['first_seen']} UTC, "
-        f"last {group['last_seen']} UTC.",
+        f"- {_n(group['count'], 'occurrence')} in {_n(group['tasks'], 'task')}, first {group['first_seen']}, "
+        f"last {group['last_seen']}.",
         "- Models: " + ", ".join(
             f"{inline(m['model'])}" + (f" at {inline(m['provider'])}" if m["provider"] else "") + f" ({m['count']})"
             for m in group["models"]
@@ -449,9 +449,18 @@ def _model_fit_lines(problems: dict) -> list[str]:
 
 
 def render_brief(
-    problems: dict, filters: ProblemFilter, evidence: dict, generated: datetime, *, single: bool = False
+    problems: dict,
+    filters: ProblemFilter,
+    evidence: dict,
+    generated: datetime,
+    *,
+    single: bool = False,
+    zone: ZoneInfo = UTC,
 ) -> str:
-    """The brief as Markdown. ``single``: the brief of one group (no contents)."""
+    """The brief as Markdown. ``single``: the brief of one group (no contents).
+
+    Times are the reader's (``zone``), each with its zone's abbreviation, the
+    same as on the page the brief was copied from."""
     groups = problems["groups"]
     if single:
         title = f"# Tumble Code problem brief: {groups[0]['title']}"
@@ -461,7 +470,7 @@ def render_brief(
     lines = [
         title,
         "",
-        f"Period: {problems['period_label']}. Filters: {filters.describe()}. Generated {_fmt_when(generated)} UTC.",
+        f"Period: {problems['period_label']}. Filters: {filters.describe()}. Generated {_fmt_when(generated, zone)}.",
         "",
         f"{_n(problems['total'], 'problem occurrence')}{of_period} in "
         f"{_n(len(groups) + problems['hidden_groups'], 'group')}, {_n(problems['tasks'], 'task')} affected.",
@@ -487,7 +496,7 @@ def render_brief(
     legacy = problems["sources"].get(SOURCE_CONVERSATION) or problems["sources"].get(SOURCE_TELEMETRY)
     if problems["legacy_until"] and legacy:
         lines += [
-            f"Occurrences before {problems['legacy_until']} UTC come from synced conversations and telemetry, "
+            f"Occurrences before {problems['legacy_until']} come from synced conversations and telemetry, "
             "without a recorded request or response.",
             "",
         ]
@@ -529,4 +538,6 @@ async def problem_brief_markdown(
     if key is not None and not problems["groups"]:
         return None
     evidence = await load_evidence(db, user_id, problems["groups"])
-    return render_brief(problems, filters, evidence, now or datetime.now(timezone.utc), single=key is not None)
+    return render_brief(
+        problems, filters, evidence, now or datetime.now(timezone.utc), single=key is not None, zone=zone
+    )

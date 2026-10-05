@@ -10,7 +10,9 @@ import hashlib
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
+from jinja2 import pass_context
 
+from src.utils.clientzone import as_utc, fmt_local, parse_zone
 from src.utils.format import JINJA_FILTERS
 
 _WEB_DIR = Path(__file__).resolve().parent
@@ -40,5 +42,19 @@ def _asset_version(static_dir: Path = _WEB_DIR / "static") -> str:
 ASSET_VERSION = _asset_version()
 
 
+@pass_context
+def localtime(context, stamp, zone_label: bool = True) -> str:
+    """A stored timestamp on the reader's clock: the zone the page was computed
+    in (``page_zone``, routers/web_page.render_page), UTC without one.
+    ``zone_label=False`` drops the abbreviation where a column is narrow."""
+    if stamp is None:
+        return ""
+    zone = parse_zone(context.get("page_zone"))
+    if zone_label:
+        return fmt_local(stamp, zone)
+    return f"{as_utc(stamp).astimezone(zone):%Y-%m-%d %H:%M}"
+
+
 templates.env.globals["asset_v"] = ASSET_VERSION
 templates.env.filters.update(JINJA_FILTERS)
+templates.env.filters["localtime"] = localtime

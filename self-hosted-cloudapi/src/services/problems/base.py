@@ -9,8 +9,9 @@ filters, grouping and views all speak ``Occurrence``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Iterable, Optional, Sequence
+from zoneinfo import ZoneInfo
 
 from src.services.client_kind import CLIENT_VSCODE
 from src.services.problem_catalogue import (
@@ -21,6 +22,7 @@ from src.services.problem_catalogue import (
     UNCLASSIFIED,
     problem_signature,
 )
+from src.utils.clientzone import UTC, as_utc, fmt_local
 
 SOURCE_REPORT = "report"
 SOURCE_CONVERSATION = "conversation"
@@ -100,13 +102,11 @@ class Occurrence:
             self.signature = problem_signature(self.category, self.tool, self.text)
 
 
-def utc(stamp: datetime) -> datetime:
-    # SQLite hands timestamps back naive; they are stored in UTC.
-    return stamp if stamp.tzinfo else stamp.replace(tzinfo=timezone.utc)
+utc = as_utc
 
 
-def fmt_when(stamp: datetime) -> str:
-    return utc(stamp).strftime("%Y-%m-%d %H:%M")
+def fmt_when(stamp: datetime, zone: ZoneInfo = UTC) -> str:
+    return fmt_local(stamp, zone)
 
 
 def prop_text(props: dict, keys: Sequence[str]) -> str:

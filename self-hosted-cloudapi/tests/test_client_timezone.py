@@ -197,3 +197,34 @@ async def test_task_list_dates_are_local_days(client, db_session, session_factor
     assert not listed("Europe/Warsaw", until="2026-05-31")
     assert not listed(None, since="2026-06-01")
     assert listed(None, until="2026-05-31")
+
+
+# --- what the pages print ----------------------------------------------------------
+
+
+def test_fmt_local_names_the_zone():
+    from src.utils.clientzone import fmt_local
+
+    stamp = datetime(2026, 10, 4, 23, 30)  # naive, as SQLite returns it
+    assert fmt_local(stamp, WARSAW) == "2026-10-05 01:30 CEST"
+    assert fmt_local(stamp, UTC) == "2026-10-04 23:30 UTC"
+    assert fmt_local(datetime(2026, 12, 1, 12, 0, tzinfo=timezone.utc), WARSAW) == "2026-12-01 13:00 CET"
+
+
+def test_problem_times_are_the_readers():
+    stamp = datetime(2026, 10, 4, 23, 30, tzinfo=timezone.utc)
+    view = _group_view("sig", [Occurrence(source=SOURCE_TELEMETRY, category="index", tool=None, text="x", when=stamp)], zone=WARSAW)
+    assert view["first_seen"] == view["last_seen"] == view["sample"]["when"] == "2026-10-05 01:30 CEST"
+
+
+async def test_task_list_prints_local_times(client, db_session, session_factory):
+    await _seed_user(db_session)
+    async with session_factory() as session:
+        stamp = datetime(2026, 5, 31, 22, 30, tzinfo=timezone.utc)
+        session.add(Task(id="night", user_id="user_test", title="Night", created_at=stamp, updated_at=stamp))
+        await session.commit()
+
+    warsaw = _page(client, "/app", "Europe/Warsaw").text
+    assert '<span class="cell-date" title="2026-06-01 00:30 CEST">2026-06-01 00:30</span>' in warsaw
+    utc = _page(client, "/app", None).text
+    assert '<span class="cell-date" title="2026-05-31 22:30 UTC">2026-05-31 22:30</span>' in utc

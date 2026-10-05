@@ -775,13 +775,6 @@
 	// Exposed so the live controller (live.js) can reuse the exact same rendering.
 	window.TumbleConversation = { mount: mountConversation }
 
-	function localizeDates() {
-		document.querySelectorAll(".task-date[data-ts], .cell-date[data-ts]").forEach(function (el) {
-			const d = new Date(el.getAttribute("data-ts"))
-			if (!isNaN(d)) el.textContent = d.toLocaleString()
-		})
-	}
-
 	// Controls above the conversation: expand/collapse everything, and mute a
 	// whole kind of row. Built here rather than in the template because the
 	// filter chips should only offer the kinds this particular task actually
@@ -833,7 +826,6 @@
 	}
 
 	function init() {
-		localizeDates()
 		const container = document.getElementById("conversation")
 		const dataEl = document.getElementById("messages-data")
 		if (!container || !dataEl) return

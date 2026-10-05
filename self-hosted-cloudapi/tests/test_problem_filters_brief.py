@@ -262,7 +262,7 @@ async def test_rows_are_condensed_and_all_closed(client, db_session):
     assert "apply_diff" in row
     assert "GLM-5.3-Flash-NVFP4" in row and "+1 more" in row
     assert "4&times;" in row and "3 tasks" in row
-    assert re.search(r'<span class="diag-last"><span class="diag-last-label">last </span>\d{4}-\d\d-\d\d \d\d:\d\d</span>', row)
+    assert re.search(r'<span class="diag-last"><span class="diag-last-label">last </span>\d{4}-\d\d-\d\d \d\d:\d\d UTC</span>', row)
     # The expanded body: what to do, the brief buttons, the reports.
     key = group_key(problem_signature("invalid_tool_call", "apply_diff", MISSING_PATH))
     assert f'href="/app/diagnostics/problems/{key}/brief.md?period=all" download>Download brief</a>' in body

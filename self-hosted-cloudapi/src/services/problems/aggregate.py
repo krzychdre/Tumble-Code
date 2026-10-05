@@ -246,7 +246,7 @@ def aggregate_problems(
         "hidden_groups": max(0, len(groups) - MAX_GROUPS),
         "model_fit": model_fit(selected, groups, requests),
         "sources": dict(Counter(o.source for o in selected)),
-        "legacy_until": fmt_when(legacy_until) if legacy_until else None,
+        "legacy_until": fmt_when(legacy_until, zone) if legacy_until else None,
         "options": _options(occurrences, rules),
         "sort": filters.sort,
     }

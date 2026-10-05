@@ -174,7 +174,7 @@ def test_occurrences_group_by_signature_and_rank_by_reach():
     assert [g["rule"] for g in groups] == ["missing_tool_parameter", "path_guessed", "empty_response"]
     first = groups[0]
     assert (first["count"], first["tasks"], first["classification"]) == (3, 3, MODEL)
-    assert first["first_seen"] == "2026-10-01 12:00" and first["last_seen"] == "2026-10-01 12:02"
+    assert first["first_seen"] == "2026-10-01 12:00 UTC" and first["last_seen"] == "2026-10-01 12:02 UTC"
     assert "glm called apply_diff" in first["mitigation"]
     paths = groups[1]
     assert paths["count"] == 2

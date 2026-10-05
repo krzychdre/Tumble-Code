@@ -98,7 +98,7 @@
     Open a row for what to do and the evidence.
     {% set legacy = p.sources.get('conversation') or p.sources.get('telemetry') %}
     {% if p.legacy_until and legacy %}
-    Before {{ p.legacy_until }} UTC they are read from synced conversations and telemetry, without the request and response;
+    Before {{ p.legacy_until }} they are read from synced conversations and telemetry, without the request and response;
     from then on the extension sends a report for each.
     {% elif legacy and not p.sources.get('report') %}
     Read from synced conversations and telemetry: these have no request or response to open.
@@ -137,8 +137,8 @@
             <dt>Category</dt><dd>{{ g.category }}{% if g.tool %} · {{ g.tool }}{% endif %}</dd>
             <dt>Signature</dt><dd>{{ g.signature }}</dd>
             <dt>Problem key</dt><dd>{{ g.key }}</dd>
-            <dt>First seen</dt><dd>{{ g.first_seen }} UTC</dd>
-            <dt>Last seen</dt><dd>{{ g.last_seen }} UTC</dd>
+            <dt>First seen</dt><dd>{{ g.first_seen }}</dd>
+            <dt>Last seen</dt><dd>{{ g.last_seen }}</dd>
             <dt>Seen in</dt><dd>{{ g.sources|join(", ") }}</dd>
             {% if g.task_ids %}
             <dt>Tasks</dt>
@@ -156,7 +156,7 @@
               </tbody>
             </table>
           </div>
-          <h3 class="diag-h">Latest occurrence, {{ g.sample.when }} UTC</h3>
+          <h3 class="diag-h">Latest occurrence, {{ g.sample.when }}</h3>
           <pre class="diag-text">{{ g.sample.text }}</pre>
           {% if g.reports %}
           <p class="diag-links">Reports:

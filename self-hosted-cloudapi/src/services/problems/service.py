@@ -55,9 +55,9 @@ async def compute_user_problems(
     )
 
 
-async def load_report(db: AsyncSession, user_id: str, report_id: str) -> Optional[dict]:
+async def load_report(db: AsyncSession, user_id: str, report_id: str, zone: ZoneInfo = UTC) -> Optional[dict]:
     """The drill-down of one report, or None unless ``user_id`` owns it."""
     row = await db.scalar(
         select(ErrorReport).where(ErrorReport.id == report_id, ErrorReport.user_id == user_id)
     )
-    return report_view(row) if row is not None else None
+    return report_view(row, zone) if row is not None else None
