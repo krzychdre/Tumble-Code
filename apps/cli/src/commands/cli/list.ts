@@ -14,6 +14,7 @@ import { loadSettings, resolveMcpSettingsPath } from "@/lib/storage/index.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { getApiKeyFromEnv } from "@/lib/utils/provider.js"
 import { isRecord } from "@/lib/utils/guards.js"
+import { formatLocalIso } from "@/lib/utils/time-zone.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -92,7 +93,7 @@ function formatSessionTitle(task: string): string {
 
 function outputSessionsText(sessions: SessionLike[]): void {
 	for (const session of sessions) {
-		const startedAt = Number.isFinite(session.ts) ? new Date(session.ts).toISOString() : "unknown-time"
+		const startedAt = Number.isFinite(session.ts) ? formatLocalIso(new Date(session.ts)) : "unknown-time"
 		process.stdout.write(`${session.id}\t${startedAt}\t${formatSessionTitle(session.task)}\n`)
 	}
 }

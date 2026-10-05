@@ -343,6 +343,11 @@ and prints a one-line hint saying where to set one.
 | `models`                  | Facts per model (its context window), see below                   |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
+| `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
+
+Times the CLI shows (`tumble list`, `/export`) and the current time the model
+is told are local. The zone comes from `TZ`, else the system (`/etc/localtime`);
+a container without either runs in UTC. Set `timeZone` there; it overrides `TZ`.
 
 The file may hold an API key, so keep it readable only by you (`chmod 600
 ~/.roo/cli-settings.json`); the CLI warns when other users can read it. To keep

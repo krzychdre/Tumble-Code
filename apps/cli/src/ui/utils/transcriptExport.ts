@@ -6,6 +6,7 @@
 
 import path from "path"
 
+import { formatLocalIso } from "../../lib/utils/time-zone.js"
 import type { TUIMessage } from "../types.js"
 
 /**
@@ -145,7 +146,7 @@ export interface TranscriptExportMeta {
  * system notes a quote. Thinking is left out.
  */
 export function transcriptToMarkdown(messages: readonly TUIMessage[], meta: TranscriptExportMeta): string {
-	const facts = [`Exported ${meta.exportedAt.toISOString()}`]
+	const facts = [`Exported ${formatLocalIso(meta.exportedAt)}`]
 
 	if (meta.mode) {
 		facts.push(`mode ${meta.mode}`)

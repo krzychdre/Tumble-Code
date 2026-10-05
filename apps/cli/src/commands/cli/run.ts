@@ -27,6 +27,7 @@ import {
 	resolveMcpSettingsPath,
 } from "@/lib/storage/index.js"
 import { cloudApiUrlSetting } from "@/lib/auth/cloud-api-url.js"
+import { applyTimeZoneSetting } from "@/lib/utils/time-zone.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
 import {
 	getApiKeyField,
@@ -231,6 +232,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	}
 
 	const settings = await loadSettings()
+	applyTimeZoneSetting(settings, (message) => console.error(`[CLI] Warning: ignoring ${message}`))
 
 	const settingsHoldAKey = [settings, ...Object.values(settings.modes ?? {})].some((entry) => entry.apiKey)
 	if (settingsHoldAKey && (await isSettingsFileReadableByOthers())) {

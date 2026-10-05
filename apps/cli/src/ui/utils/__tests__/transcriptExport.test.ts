@@ -83,6 +83,12 @@ describe("osc52Copy", () => {
 
 describe("transcriptToMarkdown", () => {
 	it("writes the turns as Markdown sections, commands as fenced blocks, and skips thinking", () => {
+		const savedTz = process.env.TZ
+		process.env.TZ = "Europe/Warsaw"
+		onTestFinished(() => {
+			if (savedTz === undefined) delete process.env.TZ
+			else process.env.TZ = savedTz
+		})
 		const markdown = transcriptToMarkdown(
 			[
 				user("1", "List the files"),
@@ -95,6 +101,7 @@ describe("transcriptToMarkdown", () => {
 		)
 
 		expect(markdown).toContain("# Tumble Code transcript")
+		expect(markdown).toContain("Exported 2026-09-28T14:34:56+02:00")
 		expect(markdown).toContain("code")
 		expect(markdown).toContain("gpt-5")
 		expect(markdown).toContain("## You\n\nList the files")

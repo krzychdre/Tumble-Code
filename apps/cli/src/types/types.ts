@@ -107,4 +107,10 @@ export interface CliSettings {
 	 * applies.
 	 */
 	cloudApiUrl?: string
+	/**
+	 * IANA time zone (for example "Europe/Warsaw") for the times the CLI shows
+	 * and tells the model. Only needed where the system zone is missing or
+	 * wrong, such as a container without /etc/localtime; overrides TZ.
+	 */
+	timeZone?: string
 }

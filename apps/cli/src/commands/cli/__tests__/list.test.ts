@@ -70,7 +70,13 @@ describe("listSessions", () => {
 		})
 	})
 
-	it("prints tab-delimited text output with ISO timestamps and formatted titles", async () => {
+	it("prints tab-delimited text output with local ISO timestamps and formatted titles", async () => {
+		const savedTz = process.env.TZ
+		process.env.TZ = "Europe/Warsaw"
+		onTestFinished(() => {
+			if (savedTz === undefined) delete process.env.TZ
+			else process.env.TZ = savedTz
+		})
 		vi.mocked(readWorkspaceTaskSessions).mockResolvedValue([
 			{ id: "s1", task: "Task 1", ts: Date.UTC(2024, 0, 1, 0, 0, 0) },
 			{ id: "s2", task: "   ", ts: Date.UTC(2024, 0, 1, 1, 0, 0) },
@@ -79,6 +85,6 @@ describe("listSessions", () => {
 		const output = await captureStdout(() => listSessions({ format: "text", workspace: workspacePath }))
 		const lines = output.trim().split("\n")
 
-		expect(lines).toEqual(["s1\t2024-01-01T00:00:00.000Z\tTask 1", "s2\t2024-01-01T01:00:00.000Z\t(untitled)"])
+		expect(lines).toEqual(["s1\t2024-01-01T01:00:00+01:00\tTask 1", "s2\t2024-01-01T02:00:00+01:00\t(untitled)"])
 	})
 })
