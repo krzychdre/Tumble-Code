@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,6 +55,7 @@ from src.services.problem_catalogue import (
     task_for,
 )
 from src.services.session_quality import KIND_REQUEST
+from src.utils.clientzone import UTC
 
 # How much of each quoted text the brief keeps. An agent needs the head of a
 # message (what was asked) and its tail (what came last), so long texts lose
@@ -516,13 +518,14 @@ async def problem_brief_markdown(
     filters: ProblemFilter,
     key: Optional[str] = None,
     now: Optional[datetime] = None,
+    zone: ZoneInfo = UTC,
 ) -> Optional[str]:
     """The brief of the filtered report, or of the one group ``key``.
 
     None when ``key`` names no group of this user in the filtered period, so
     the route answers 404 alike for an unknown key and someone else's.
     """
-    problems = await compute_user_problems(db, user_id, filters=filters, now=now, key=key)
+    problems = await compute_user_problems(db, user_id, filters=filters, now=now, key=key, zone=zone)
     if key is not None and not problems["groups"]:
         return None
     evidence = await load_evidence(db, user_id, problems["groups"])

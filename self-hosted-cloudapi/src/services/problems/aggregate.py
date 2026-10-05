@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import datetime
 from typing import Optional, Sequence
+from zoneinfo import ZoneInfo
 
 from src.services.client_kind import CLIENT_LABELS
 from src.services.metrics_service import PERIOD_LABELS
@@ -41,6 +42,7 @@ from src.services.problems.filters import (
     ProblemFilter,
 )
 from src.services.problems.views import _group_view, group_key
+from src.utils.clientzone import UTC
 
 _SORTS = {
     SORT_IMPACT: lambda g: (-g["reach"], -g["count"], -g["last_ts"], g["signature"]),
@@ -63,20 +65,25 @@ def rules_by_signature(occurrences: Sequence[Occurrence]) -> dict[str, Rule]:
 
 
 def group_occurrences(
-    occurrences: Sequence[Occurrence], rules: Optional[dict[str, Rule]] = None, sort: str = SORT_IMPACT
+    occurrences: Sequence[Occurrence],
+    rules: Optional[dict[str, Rule]] = None,
+    sort: str = SORT_IMPACT,
+    zone: ZoneInfo = UTC,
 ) -> list[dict]:
     """Groups by signature, the most far-reaching first.
 
     Ranked by reach (see ``_group_view``), then by count, then by how recently
     the problem was last seen; ``sort`` puts count or recency first instead.
     ``rules`` fixes each signature's rule (see ``rules_by_signature``); without
-    it the group's latest occurrence decides.
+    it the group's latest occurrence decides. ``zone`` is the reader's: the
+    days a group reached are their calendar days.
     """
     by_signature: dict[str, list[Occurrence]] = {}
     for occurrence in occurrences:
         by_signature.setdefault(occurrence.signature, []).append(occurrence)
     groups = [
-        _group_view(signature, members, (rules or {}).get(signature)) for signature, members in by_signature.items()
+        _group_view(signature, members, (rules or {}).get(signature), zone)
+        for signature, members in by_signature.items()
     ]
     groups.sort(key=_SORTS.get(sort, _SORTS[SORT_IMPACT]))
     return groups
@@ -194,6 +201,7 @@ def aggregate_problems(
     legacy_until: Optional[datetime],
     filters: Optional[ProblemFilter] = None,
     key: Optional[str] = None,
+    zone: ZoneInfo = UTC,
 ) -> dict:
     """The page's figures from the occurrences; pure, no database.
 
@@ -211,7 +219,7 @@ def aggregate_problems(
     if key is not None:
         unclassed = [o for o in unclassed if group_key(o.signature) == key]
     selected = [o for o in unclassed if filters.matches(o, rules[o.signature])]
-    groups = group_occurrences(selected, rules, filters.sort)
+    groups = group_occurrences(selected, rules, filters.sort, zone)
     by_class = Counter()
     for o in unclassed:
         by_class[rules[o.signature].classification] += 1

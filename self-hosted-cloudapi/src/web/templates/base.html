@@ -11,7 +11,7 @@
   <script src="/static/theme.js?v={{ asset_v }}"></script>
   <link rel="stylesheet" href="/static/app.css?v={{ asset_v }}">
 </head>
-<body>
+<body{% if page_zone %} data-tz="{{ page_zone }}"{% endif %}>
   {# First thing a keyboard reaches: past the top bar straight to the page. #}
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">

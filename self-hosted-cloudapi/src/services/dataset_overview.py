@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Integer, cast, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,14 +20,18 @@ from src.models.llm_exchange import LlmBlob, LlmExchange
 from src.models.task import Task
 from src.services.exchange_quality import ISSUE_LABELS, is_clean, split_issues
 from src.services.metrics_service import period_start
+from src.utils.clientzone import UTC
 
 RECENT_TASKS = 20
 
 
-async def dataset_overview(db: AsyncSession, user_id: str, period: str, client: Optional[str] = None) -> dict:
+async def dataset_overview(
+    db: AsyncSession, user_id: str, period: str, client: Optional[str] = None, zone: ZoneInfo = UTC
+) -> dict:
     """The page's figures over ``period``; ``client`` ("vscode" or "cli") keeps
-    what that client recorded, None both."""
-    since = period_start(period)
+    what that client recorded, None both. The period starts at the reader's
+    local midnight (``zone``)."""
+    since = period_start(period, zone=zone)
     scope = [LlmExchange.user_id == user_id]
     if since is not None:
         scope.append(LlmExchange.occurred_at >= since)

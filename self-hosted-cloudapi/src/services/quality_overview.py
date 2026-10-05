@@ -1,5 +1,7 @@
 """How a user's runs went over a period, in aggregate (the metrics page panel)."""
 
+from zoneinfo import ZoneInfo
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,7 @@ from src.services.session_quality import (
     quality_of,
 )
 from src.services.task_summary import DEFAULT_TITLE
+from src.utils.clientzone import UTC
 
 # The columns quality_overview reads: the row's identity for the list, and
 # the stored counts quality_of() grades.
@@ -32,7 +35,9 @@ _QUALITY_COLUMNS = (
 )
 
 
-async def quality_overview(db: AsyncSession, user_id: str, period: str, client: str | None = None) -> dict:
+async def quality_overview(
+    db: AsyncSession, user_id: str, period: str, client: str | None = None, zone: ZoneInfo = UTC
+) -> dict:
     """How the user's runs went over the period, in aggregate.
 
     Reads the stored per-task counts, so this is one query over `tasks` rather
@@ -45,7 +50,7 @@ async def quality_overview(db: AsyncSession, user_id: str, period: str, client: 
     or "cli") keeps the runs of that client only, as on the rest of the page.
     """
     filters = [Task.user_id == user_id, Task.parent_task_id.is_(None)]
-    start = period_start(period)
+    start = period_start(period, zone=zone)
     if start is not None:
         filters.append(Task.updated_at >= start)
     if client is not None:

@@ -79,7 +79,7 @@ async def diagnostics_page(
 ):
     """The logged-in user's problems over the selected period, filtered, grouped and classified."""
     problems = await compute_user_problems(
-        web["db"], web["user"]["user_id"], filters=filters
+        web["db"], web["user"]["user_id"], filters=filters, zone=web["zone"]
     )
     return render_page(
         request,
@@ -98,7 +98,7 @@ async def diagnostics_markdown(
     web: WebPage = Depends(require_web_page),
 ):
     """The agent brief of every problem the filters let through, as a file."""
-    text = await problem_brief_markdown(web["db"], web["user"]["user_id"], filters)
+    text = await problem_brief_markdown(web["db"], web["user"]["user_id"], filters, zone=web["zone"])
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return _markdown(text, f"tumble-problem-report-{filters.period}-{stamp}.md")
 
@@ -115,7 +115,7 @@ async def diagnostics_problem_brief(
     """The agent brief of one problem group. Its owner only."""
     text = (
         await problem_brief_markdown(
-            web["db"], web["user"]["user_id"], filters, key=key
+            web["db"], web["user"]["user_id"], filters, key=key, zone=web["zone"]
         )
         if _GROUP_KEY.match(key)
         else None

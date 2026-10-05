@@ -13,9 +13,10 @@ one of the three, the client one of the two, and free text is matched with LIKE 
 """
 
 from dataclasses import dataclass, replace
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, timedelta
 from typing import Optional
 from urllib.parse import quote, urlencode
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, exists, func, literal, not_, or_, select
 from sqlalchemy.orm import aliased
@@ -23,6 +24,7 @@ from sqlalchemy.orm import aliased
 from src.models.task import Task
 from src.services.client_kind import CLIENT_LABELS, parse_client
 from src.services.session_quality import GRADE_CLEAN, GRADE_FRICTION, GRADE_LABELS, GRADE_UNFINISHED
+from src.utils.clientzone import UTC, day_start_utc
 
 # Column key -> what the column header says. Only these can be sorted by;
 # anything else in ``?sort=`` falls back to the default.
@@ -210,7 +212,7 @@ class ListView:
 
     # --- what the query does --------------------------------------------------
 
-    def conditions(self, user_id: str) -> list:
+    def conditions(self, user_id: str, zone: ZoneInfo = UTC) -> list:
         """WHERE clauses for this view, the user's own tasks only."""
         out = [Task.user_id == user_id]
         if self.q:
@@ -232,11 +234,12 @@ class ListView:
             out.append(Task.client_kind == self.client)
         if self.grade:
             out.append(_grade_condition(self.grade))
+        # The dates are the reader's calendar days (``zone``, utils/clientzone).
         if self.since:
-            out.append(Task.updated_at >= _start_of(self.since))
+            out.append(Task.updated_at >= day_start_utc(self.since, zone))
         if self.until:
             # Inclusive: "to 30 May" keeps everything on the 30th.
-            out.append(Task.updated_at < _start_of(self.until + timedelta(days=1)))
+            out.append(Task.updated_at < day_start_utc(self.until + timedelta(days=1), zone))
         if self.subtasks:
             child = aliased(Task)
             out.append(
@@ -264,10 +267,6 @@ class ListView:
         primary = key.desc() if descending else key.asc()
         # Ties keep the newest first, then a fixed order, so paging is stable.
         return [primary, Task.updated_at.desc(), Task.id], rollup
-
-
-def _start_of(day: date) -> datetime:
-    return datetime.combine(day, time.min, tzinfo=timezone.utc)
 
 
 def _grade_condition(grade: str):

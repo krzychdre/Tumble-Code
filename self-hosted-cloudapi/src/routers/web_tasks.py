@@ -112,7 +112,7 @@ async def task_list(
     user = web["user"]
     db = web["db"]
     user_id = user["user_id"]
-    filters = view.conditions(user_id)
+    filters = view.conditions(user_id, web["zone"])
 
     total = await db.scalar(select(func.count(Task.id)).where(*filters)) or 0
     page_count = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)

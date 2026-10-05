@@ -20,6 +20,7 @@ dialect-portable. Event names, kinds, labels and the payload decoding come from
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional, Sequence
+from zoneinfo import ZoneInfo
 
 import anyio
 from sqlalchemy import select
@@ -35,17 +36,21 @@ from src.services.telemetry_vocab import (
     iter_event_props,
     parse_event_props,
 )
+from src.utils.clientzone import UTC, as_utc, day_start_utc, local_day, today
 from src.utils.format import fmt_duration, fmt_tokens, num as _num
 
 logger = logging.getLogger(__name__)
 
-# Period presets → how far back from "now" to include (None = all time). The key
-# is what the route accepts as ?period=… and what the selector renders.
-PERIODS: dict[str, Optional[timedelta]] = {
-    "today": timedelta(0),  # special-cased to start-of-UTC-day below
-    "7d": timedelta(days=7),
-    "30d": timedelta(days=30),
-    "90d": timedelta(days=90),
+# Period presets -> how many of the reader's calendar days to include, today
+# counted (None = all time). The key is what the route accepts as ?period=...
+# and what the selector renders. A period starts at a local midnight, so "7
+# days" is seven whole days in the chart and the daily table, never a partial
+# first one.
+PERIODS: dict[str, Optional[int]] = {
+    "today": 1,
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
     "all": None,
 }
 PERIOD_LABELS: dict[str, str] = {
@@ -58,15 +63,18 @@ PERIOD_LABELS: dict[str, str] = {
 DEFAULT_PERIOD = "7d"
 
 
-def period_start(period: str, now: Optional[datetime] = None) -> Optional[datetime]:
-    """Resolve a period key to an inclusive UTC lower bound, or None for all-time."""
-    now = now or datetime.now(timezone.utc)
-    if period == "today":
-        return now.replace(hour=0, minute=0, second=0, microsecond=0)
-    delta = PERIODS.get(period, PERIODS[DEFAULT_PERIOD])
-    if delta is None:
+def period_start(
+    period: str, now: Optional[datetime] = None, zone: ZoneInfo = UTC
+) -> Optional[datetime]:
+    """Resolve a period key to an inclusive UTC lower bound, or None for all-time.
+
+    The bound is the reader's local midnight (``zone``, utils/clientzone) that
+    many days back, today included.
+    """
+    days = PERIODS.get(period, PERIODS[DEFAULT_PERIOD])
+    if days is None:
         return None
-    return now - delta
+    return day_start_utc(today(zone, now) - timedelta(days=days - 1), zone)
 
 
 def _event_ts_ms(props: dict, fallback: datetime) -> float:
@@ -79,10 +87,8 @@ def _event_ts_ms(props: dict, fallback: datetime) -> float:
         v = props.get(key)
         if isinstance(v, (int, float)) and not isinstance(v, bool):
             return float(v)
-    # created_at is stored in UTC; SQLite hands it back naive, and a naive
-    # timestamp() would read it in the host's local zone.
-    stamp = fallback if fallback.tzinfo else fallback.replace(tzinfo=timezone.utc)
-    return stamp.timestamp() * 1000.0
+    # A naive timestamp() would read it in the host's local zone.
+    return as_utc(fallback).timestamp() * 1000.0
 
 
 async def _embedding_payloads(
@@ -139,11 +145,13 @@ async def compute_user_metrics(
     period: str = DEFAULT_PERIOD,
     now: Optional[datetime] = None,
     client: Optional[str] = None,
+    zone: ZoneInfo = UTC,
 ) -> dict:
     """Aggregate the user's LLM-usage metrics for the given period.
 
     ``client`` ("vscode" or "cli", services/client_kind) keeps only the events
-    that client sent; None counts both.
+    that client sent; None counts both. ``zone`` is the reader's: the period
+    starts at their local midnight and ``by_day`` holds their calendar days.
 
     Returns a JSON-serializable dict:
       - period, period_label
@@ -158,7 +166,7 @@ async def compute_user_metrics(
     """
     if period not in PERIODS:
         period = DEFAULT_PERIOD
-    start = period_start(period, now)
+    start = period_start(period, now, zone)
 
     # Only the three columns the aggregation reads, as plain tuples: no ORM
     # entity per event (identity map, attribute instrumentation) and none of
@@ -184,7 +192,7 @@ async def compute_user_metrics(
     # 58 ms for all time on the live deployment); in a worker thread it no
     # longer holds up every other request while it runs.
     return await anyio.to_thread.run_sync(
-        aggregate_user_metrics, rows, embedding_payloads, period, now
+        aggregate_user_metrics, rows, embedding_payloads, period, now, zone
     )
 
 
@@ -193,6 +201,7 @@ def aggregate_user_metrics(
     embedding_payloads: Sequence,
     period: str,
     now: Optional[datetime] = None,
+    zone: ZoneInfo = UTC,
 ) -> dict:
     """The metrics page's figures from the fetched rows; see compute_user_metrics.
 
@@ -257,7 +266,7 @@ def aggregate_user_metrics(
         _bucket(by_client, client_kind or "unknown", tokens, cost)
 
         created = created_at or (now or datetime.now(timezone.utc))
-        day = created.strftime("%Y-%m-%d")
+        day = local_day(created, zone).isoformat()
         dslot = by_day.setdefault(day, {"day": day, "tokens": 0, "cost": 0.0})
         dslot["tokens"] += tokens
         dslot["cost"] += cost

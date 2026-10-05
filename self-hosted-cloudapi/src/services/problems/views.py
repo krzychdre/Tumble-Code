@@ -12,6 +12,7 @@ import hashlib
 import json
 from collections import Counter
 from typing import Optional, Sequence
+from zoneinfo import ZoneInfo
 
 from src.models.error_report import ErrorReport
 from src.services.problem_catalogue import (
@@ -29,6 +30,7 @@ from src.services.problems.base import (
     Occurrence,
     fmt_when,
 )
+from src.utils.clientzone import UTC, local_day
 
 
 def group_key(signature: str) -> str:
@@ -70,15 +72,18 @@ def _sample_view(o: Occurrence) -> dict:
     }
 
 
-def _group_view(signature: str, members: list[Occurrence], rule: Optional[Rule] = None) -> dict:
+def _group_view(
+    signature: str, members: list[Occurrence], rule: Optional[Rule] = None, zone: ZoneInfo = UTC
+) -> dict:
     """One row of the problem list: the members of a signature, summarized."""
     latest = max(members, key=lambda o: o.when)
     first = min(members, key=lambda o: o.when)
     tasks = {o.task_id for o in members if o.task_id}
     # Reach: tasks the problem hit, plus the days it hit outside any task (a
     # code-index error belongs to no task). It ranks a problem that spoiled
-    # twenty runs above one that fired two hundred times in one burst.
-    days = {o.when.date() for o in members if not o.task_id}
+    # twenty runs above one that fired two hundred times in one burst. Days
+    # are the reader's (``zone``).
+    days = {local_day(o.when, zone) for o in members if not o.task_id}
     models = Counter((o.provider or "", o.model or UNKNOWN_MODEL) for o in members)
     providers = Counter(o.provider for o in members if o.provider)
     tools = Counter(o.tool for o in members if o.tool)
@@ -120,7 +125,7 @@ def _group_view(signature: str, members: list[Occurrence], rule: Optional[Rule] 
         "sources": sorted({SOURCE_LABELS[o.source] for o in members}),
         "reports": [{"id": o.report_id, "when": fmt_when(o.when)} for o in reports[:MAX_GROUP_REPORTS]],
         "sample": _sample_view(latest),
-        "samples": [_sample_view(o) for o in pick_samples(members)],
+        "samples": [_sample_view(o) for o in pick_samples(members, zone=zone)],
     }
 
 
@@ -207,7 +212,9 @@ def report_view(row: ErrorReport) -> dict:
     }
 
 
-def pick_samples(members: Sequence[Occurrence], limit: int = MAX_SAMPLES) -> list[Occurrence]:
+def pick_samples(
+    members: Sequence[Occurrence], limit: int = MAX_SAMPLES, zone: ZoneInfo = UTC
+) -> list[Occurrence]:
     """Up to ``limit`` distinct occurrences to show an agent, best evidence first.
 
     Reports first (they carry the request and the response), newest first;
@@ -221,7 +228,7 @@ def pick_samples(members: Sequence[Occurrence], limit: int = MAX_SAMPLES) -> lis
     seen: set[tuple] = set()
 
     def task_of(o: Occurrence) -> str:
-        return o.task_id or f"day:{o.when.date()}"
+        return o.task_id or f"day:{local_day(o.when, zone)}"
 
     passes = (
         lambda o: (o.model or UNKNOWN_MODEL) not in models and task_of(o) not in tasks,
