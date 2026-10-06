@@ -792,6 +792,7 @@ describe("run provider settings per mode", () => {
 				enableReasoningEffort: true,
 				reasoningEffort: "max",
 				openAiCustomModelInfo: withEffort("max"),
+				openAiPreserveReasoning: false,
 			},
 			modes: {
 				architect: {
@@ -802,6 +803,7 @@ describe("run provider settings per mode", () => {
 					enableReasoningEffort: true,
 					reasoningEffort: "high",
 					openAiCustomModelInfo: withEffort("high"),
+					openAiPreserveReasoning: false,
 				},
 			},
 		})
@@ -981,6 +983,32 @@ describe("run context window per model", () => {
 			supportsReasoningEffort: true,
 			reasoningEffort: "high",
 		})
+	})
+
+	it("returns the reasoning wherever the model whose entry asks for it runs, and only there", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { ask: { model: "GLM-5.3-Flash-NVFP4" }, architect: { reasoningEffort: "max" } },
+			models: { "GLM-5.3-NVFP4": { preserveReasoning: true } },
+		})
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		const settings = mockHost.lastOptions?.modeProviderSettings
+		expect(settings?.base.openAiPreserveReasoning).toBe(true)
+		expect(settings?.modes.architect).toMatchObject({ openAiPreserveReasoning: true, reasoningEffort: "max" })
+		expect(settings?.modes.ask?.openAiPreserveReasoning).toBe(false)
+	})
+
+	it("a malformed preserveReasoning fails at startup and names the model", async () => {
+		await saveSettings({ ...globalSettings, models: { "GLM-5.3-NVFP4": { preserveReasoning: "yes" as never } } })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain('models.GLM-5.3-NVFP4.preserveReasoning must be true or false, got "yes"')
+		expect(mockHost.lastOptions).toBeUndefined()
 	})
 
 	it("a malformed price fails at startup and names the model", async () => {

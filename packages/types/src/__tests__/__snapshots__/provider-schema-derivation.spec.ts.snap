@@ -673,7 +673,7 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "openAiModelId": {
           "type": "string",
         },
-        "openAiR1FormatEnabled": {
+        "openAiPreserveReasoning": {
           "type": "boolean",
         },
         "openAiStreamingEnabled": {
@@ -1969,7 +1969,7 @@ exports[`generated provider settings schemas > keeps the flat schema's keys in o
   "vertex1MContext",
   "vertexJsonCredentials",
   "openAiBaseUrl",
-  "openAiR1FormatEnabled",
+  "openAiPreserveReasoning",
   "openAiModelId",
   "openAiCustomModelInfo",
   "openAiUseAzure",
@@ -2554,7 +2554,7 @@ exports[`generated provider settings schemas > keeps the flat schema, property o
       ],
       "type": "string",
     },
-    "openAiR1FormatEnabled": {
+    "openAiPreserveReasoning": {
       "type": "boolean",
     },
     "openAiStreamingEnabled": {
@@ -2817,7 +2817,7 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "vertexRegion",
   "vertex1MContext",
   "openAiBaseUrl",
-  "openAiR1FormatEnabled",
+  "openAiPreserveReasoning",
   "openAiModelId",
   "openAiCustomModelInfo",
   "openAiUseAzure",
@@ -3285,7 +3285,7 @@ exports[`generated provider settings schemas > keeps the persisted provider conf
             "openAiModelId": {
               "type": "string",
             },
-            "openAiR1FormatEnabled": {
+            "openAiPreserveReasoning": {
               "type": "boolean",
             },
             "openAiStreamingEnabled": {

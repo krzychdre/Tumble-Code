@@ -488,6 +488,10 @@
 			"description": "Kiểm soát mức độ chi tiết của các câu trả lời của mô hình. Mức độ chi tiết thấp tạo ra các câu trả lời ngắn gọn, trong khi mức độ chi tiết cao cung cấp giải thích kỹ lưỡng."
 		},
 		"setReasoningLevel": "Kích hoạt nỗ lực suy luận",
+		"preserveReasoning": {
+			"label": "Gửi lại suy luận cho mô hình",
+			"description": "Gửi lại phần suy luận trước đó của mô hình trong mỗi yêu cầu, để mô hình có thể tiếp tục từ những gì đã suy nghĩ (suy luận được giữ lại hoặc xen kẽ). Cần thiết cho GLM, DeepSeek, Kimi và các mô hình suy luận tương tự chạy trên vLLM, SGLang hoặc llama.cpp. Tốn nhiều ngữ cảnh hơn."
+		},
 		"awsAuthMethod": "Phương thức xác thực"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Giá đọc bộ nhớ đệm",
 		"cacheWritesPrice": "Giá ghi bộ nhớ đệm",
 		"enableStreaming": "Bật streaming",
-		"enableR1Format": "Kích hoạt tham số mô hình R1",
-		"enableR1FormatTips": "Cần kích hoạt khi sử dụng các mô hình R1 như QWQ, để tránh lỗi 400",
 		"useAzure": "Sử dụng Azure",
 		"azureApiVersion": "Đặt phiên bản API Azure",
 		"gemini": {

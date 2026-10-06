@@ -18,6 +18,8 @@ import {
 	isProviderName,
 	isRetiredProvider,
 	TelemetryEventName,
+	REMOVED_PROVIDER_SETTINGS_KEYS,
+	migrateRemovedProviderSettings,
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
@@ -120,7 +122,37 @@ export class ContextProxy {
 
 		await Promise.all(promises)
 
+		await this.migrateRemovedProviderState()
+
 		this._isInitialized = true
+	}
+
+	/**
+	 * The provider settings in global state are the live copy of the active profile, and nothing
+	 * re-reads that profile at start-up. Carry them over removed settings keys the way the stored
+	 * profiles are (see migrateRemovedProviderSettings), then drop the old keys.
+	 */
+	private async migrateRemovedProviderState() {
+		const removed: Record<string, unknown> = {}
+		for (const key of REMOVED_PROVIDER_SETTINGS_KEYS) {
+			const value = this.originalContext.globalState.get(key)
+			if (value !== undefined) removed[key] = value
+		}
+
+		if (Object.keys(removed).length === 0) {
+			return
+		}
+
+		const migrated = migrateRemovedProviderSettings({ ...this.stateCache, ...removed }) as GlobalState
+		for (const key of GLOBAL_STATE_KEYS) {
+			if (migrated[key] !== this.stateCache[key]) {
+				await this.updateGlobalState(key, migrated[key])
+			}
+		}
+
+		for (const key of Object.keys(removed)) {
+			await this.originalContext.globalState.update(key, undefined)
+		}
 	}
 
 	/**

@@ -2,6 +2,7 @@ import {
 	PROVIDER_PROFILES_SCHEMA_VERSION,
 	UnsupportedProviderProfilesVersionError,
 	createKnownPersistedProviderProfile,
+	migrateRemovedProviderSettings,
 	parseProviderProfilesEnvelope,
 	providerFieldOwnership,
 } from "../provider-profile.js"
@@ -77,6 +78,57 @@ describe("provider profile envelope", () => {
 				},
 			},
 		})
+	})
+})
+
+// "Enable R1 model parameters" (openAiR1FormatEnabled) was replaced by "Return reasoning to the
+// model" (openAiPreserveReasoning). The config schema is strict, so a stored or exported profile
+// that still has the old key must be read as it would be saved today, not reject the envelope.
+describe("removed provider settings keys", () => {
+	const envelopeWith = (config: Record<string, unknown>) => ({
+		schemaVersion: PROVIDER_PROFILES_SCHEMA_VERSION,
+		data: {
+			currentApiConfigName: "local",
+			apiConfigs: {
+				local: { id: "local-id", provider: { providerId: "openai", config } },
+				other: { id: "other-id", provider: { providerId: "anthropic", config: {} } },
+			},
+		},
+	})
+
+	it.each([
+		[{ openAiR1FormatEnabled: true }, { openAiPreserveReasoning: true }],
+		[{ openAiR1FormatEnabled: false }, {}],
+		[{ openAiR1FormatEnabled: true, openAiPreserveReasoning: false }, { openAiPreserveReasoning: false }],
+		[{ openAiPreserveReasoning: true }, { openAiPreserveReasoning: true }],
+	])("reads a stored config %j as %j", (removed, expected) => {
+		const config = { openAiModelId: "glm-5.3-flash", ...removed }
+
+		const { apiConfigs } = parseProviderProfilesEnvelope(envelopeWith(config)).data
+
+		expect(apiConfigs.local).toEqual({
+			id: "local-id",
+			provider: { providerId: "openai", config: { openAiModelId: "glm-5.3-flash", ...expected } },
+		})
+		expect(apiConfigs.other).toBeDefined()
+	})
+
+	it("carries the old key over when flat settings are saved (settings view, cloud sync)", () => {
+		const saved = createKnownPersistedProviderProfile({
+			apiProvider: "openai",
+			openAiModelId: "glm-5.3-flash",
+			openAiR1FormatEnabled: true,
+		} as Parameters<typeof createKnownPersistedProviderProfile>[0])
+
+		expect(saved.provider).toEqual({
+			providerId: "openai",
+			config: { openAiModelId: "glm-5.3-flash", openAiPreserveReasoning: true },
+		})
+	})
+
+	it("returns settings without removed keys unchanged", () => {
+		const settings = { apiProvider: "openai", openAiModelId: "m" }
+		expect(migrateRemovedProviderSettings(settings)).toBe(settings)
 	})
 })
 

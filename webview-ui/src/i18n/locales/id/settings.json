@@ -488,6 +488,10 @@
 			"description": "Mengontrol seberapa detail respons model. Verbositas rendah menghasilkan jawaban singkat, sedangkan verbositas tinggi memberikan penjelasan menyeluruh."
 		},
 		"setReasoningLevel": "Aktifkan Upaya Reasoning",
+		"preserveReasoning": {
+			"label": "Kembalikan reasoning ke model",
+			"description": "Mengirim kembali reasoning model sebelumnya pada setiap permintaan, sehingga model dapat melanjutkan apa yang sudah dipikirkannya (thinking yang dipertahankan atau diselingi). Diperlukan untuk GLM, DeepSeek, Kimi, dan model reasoning serupa yang dijalankan dengan vLLM, SGLang, atau llama.cpp. Menggunakan lebih banyak konteks."
+		},
 		"awsAuthMethod": "Metode autentikasi"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Harga cache reads",
 		"cacheWritesPrice": "Harga cache writes",
 		"enableStreaming": "Aktifkan streaming",
-		"enableR1Format": "Aktifkan parameter model R1",
-		"enableR1FormatTips": "Harus diaktifkan saat menggunakan model R1 seperti QWQ untuk mencegah error 400",
 		"useAzure": "Gunakan Azure",
 		"azureApiVersion": "Atur versi API Azure",
 		"gemini": {

@@ -65,6 +65,14 @@ export interface CliModelSettings {
 	cacheReadsPrice?: number
 	/** Price of input tokens the server reports as written to its prompt cache (defaults to inputPrice). */
 	cacheWritesPrice?: number
+	/**
+	 * Send the model's earlier reasoning back with every request, so it can
+	 * build on what it thought in previous turns (the VS Code setting "Return
+	 * reasoning to the model"). Used with the openai provider; whether a model
+	 * reads its reasoning back depends on the model and the server. Defaults
+	 * to false.
+	 */
+	preserveReasoning?: boolean
 }
 
 export interface CliSettings {

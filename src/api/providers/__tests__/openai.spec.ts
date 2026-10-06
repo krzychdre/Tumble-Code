@@ -1529,6 +1529,121 @@ describe("getOpenAiModels", () => {
 	})
 })
 
+describe("Return reasoning to the model (openAiPreserveReasoning)", () => {
+	const systemPrompt = "You are a helpful assistant."
+	const baseOptions: ApiHandlerOptions = {
+		openAiApiKey: "test-api-key",
+		openAiModelId: "glm-5.3-flash",
+		openAiBaseUrl: "http://localhost:8080/v1",
+	}
+	// The history as the task sends it with reasoning kept: the stored plain-text reasoning
+	// block first in the assistant message, environment details after the tool result.
+	const history = [
+		{ role: "user", content: "Pick a number and remember it." },
+		{
+			role: "assistant",
+			content: [
+				{ type: "reasoning", text: "I pick 483729.", summary: [] },
+				{ type: "text", text: "Picked." },
+				{ type: "tool_use", id: "call_1", name: "read_file", input: { path: "a.ts" } },
+			],
+		},
+		{
+			role: "user",
+			content: [
+				{ type: "tool_result", tool_use_id: "call_1", content: "file body" },
+				{ type: "text", text: "<environment_details>ctx</environment_details>" },
+			],
+		},
+	] as unknown as Anthropic.Messages.MessageParam[]
+
+	/** The request body for one createMessage call. */
+	const requestFor = async (options: ApiHandlerOptions) => {
+		const handler = new OpenAiHandler({ ...baseOptions, ...options })
+		for await (const _chunk of handler.createMessage(systemPrompt, history)) {
+			// consume stream
+		}
+		return mockCreate.mock.calls[0][0]
+	}
+
+	beforeEach(() => {
+		mockCreate.mockClear()
+		mockCreate.mockImplementation(defaultOpenAiCreate)
+	})
+
+	it("reports preserveReasoning in the model info only when the setting is on", () => {
+		expect(new OpenAiHandler(baseOptions).getModel().info.preserveReasoning).toBeUndefined()
+		expect(
+			new OpenAiHandler({ ...baseOptions, openAiPreserveReasoning: true }).getModel().info.preserveReasoning,
+		).toBe(true)
+	})
+
+	it("sends no reasoning when the setting is off", async () => {
+		const callArgs = await requestFor({})
+
+		const assistant = callArgs.messages.find((msg: { role: string }) => msg.role === "assistant")
+		expect(assistant).not.toHaveProperty("reasoning_content")
+		expect(assistant).not.toHaveProperty("reasoning")
+		expect(callArgs.thinking).toEqual({ type: "enabled" })
+	})
+
+	it.each([true, false])(
+		"sends the reasoning under both field names (streaming: %s)",
+		async (openAiStreamingEnabled) => {
+			const callArgs = await requestFor({ openAiPreserveReasoning: true, openAiStreamingEnabled })
+
+			expect(callArgs.messages).toEqual([
+				{ role: "system", content: systemPrompt },
+				{ role: "user", content: "Pick a number and remember it." },
+				{
+					role: "assistant",
+					content: "Picked.",
+					tool_calls: [
+						{
+							id: "call_1",
+							type: "function",
+							function: { name: "read_file", arguments: JSON.stringify({ path: "a.ts" }) },
+						},
+					],
+					reasoning_content: "I pick 483729.",
+					reasoning: "I pick 483729.",
+				},
+				// Text after a tool result goes into the tool message: a user message there
+				// would make the server drop the reasoning of the turn.
+				{
+					role: "tool",
+					tool_call_id: "call_1",
+					content: "file body\n\n<environment_details>ctx</environment_details>",
+				},
+			])
+		},
+	)
+
+	it("keeps the system prompt a cache breakpoint when the model supports prompt caching", async () => {
+		const callArgs = await requestFor({
+			openAiPreserveReasoning: true,
+			openAiCustomModelInfo: { contextWindow: 128_000, supportsPromptCache: true },
+		})
+
+		expect(callArgs.messages[0]).toEqual({
+			role: "system",
+			content: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
+		})
+		expect(callArgs.messages[2].reasoning).toBe("I pick 483729.")
+	})
+
+	it("leaves the deepseek-reasoner format alone: system prompt as the first user message", async () => {
+		const callArgs = await requestFor({ openAiModelId: "deepseek-reasoner" })
+
+		expect(callArgs.messages[0]).toEqual({
+			role: "user",
+			content: `${systemPrompt}\nPick a number and remember it.`,
+		})
+		expect(callArgs.messages.some((msg: { role: string }) => msg.role === "system")).toBe(false)
+		expect(callArgs.temperature).toBe(DEEP_SEEK_DEFAULT_TEMPERATURE)
+	})
+})
+
 describe("GLM Thinking Mode", () => {
 	const baseGlmOptions: ApiHandlerOptions = {
 		openAiApiKey: "test-api-key",
@@ -1551,208 +1666,138 @@ describe("GLM Thinking Mode", () => {
 		}))
 	})
 
-	describe("GLM-4.5", () => {
-		it("should enable thinking with LOW budget (basic) when reasoningEffort is low", async () => {
-			const glmHandler = new OpenAiHandler({
-				...baseGlmOptions,
-				openAiModelId: "glm-4.5",
-				enableReasoningEffort: true,
-				reasoningEffort: "low",
-				openAiCustomModelInfo: {
-					contextWindow: 128_000,
-					maxTokens: 4096,
-					supportsPromptCache: false,
-					supportsReasoningEffort: true,
-				},
+	/** The request body for one createMessage call. */
+	const requestFor = async (options: ApiHandlerOptions) => {
+		const stream = new OpenAiHandler({ ...baseGlmOptions, ...options }).createMessage("system", [])
+		for await (const _chunk of stream) {
+			// consume stream
+		}
+		return mockCreate.mock.calls[0][0]
+	}
+
+	const glmModelInfo = {
+		contextWindow: 128_000,
+		maxTokens: 4096,
+		supportsPromptCache: false,
+		supportsReasoningEffort: true,
+	}
+
+	describe("thinking follows the reasoning switch, not the effort", () => {
+		it.each(["none", "low", "medium", "high", "xhigh", "max"] as const)(
+			"enables thinking without clear_thinking at effort %s when reasoning is not returned",
+			async (effort) => {
+				const callArgs = await requestFor({
+					openAiModelId: "glm-4.7",
+					enableReasoningEffort: true,
+					reasoningEffort: effort,
+					openAiCustomModelInfo: glmModelInfo,
+				})
+
+				expect(callArgs.thinking).toEqual({ type: "enabled" })
+			},
+		)
+
+		it.each(["none", "low", "medium", "high", "xhigh", "max"] as const)(
+			"sends clear_thinking: false at effort %s when reasoning is returned",
+			async (effort) => {
+				const callArgs = await requestFor({
+					openAiModelId: "glm-4.7",
+					openAiPreserveReasoning: true,
+					enableReasoningEffort: true,
+					reasoningEffort: effort,
+					openAiCustomModelInfo: glmModelInfo,
+				})
+
+				expect(callArgs.thinking).toEqual({ type: "enabled", clear_thinking: false })
+			},
+		)
+	})
+
+	describe("reasoning_effort", () => {
+		it("passes the model's max effort through literally", async () => {
+			const callArgs = await requestFor({
+				openAiModelId: "glm-5.3",
+				openAiPreserveReasoning: true,
+				openAiCustomModelInfo: { ...glmModelInfo, reasoningEffort: "max" },
 			})
 
-			const stream = glmHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			const callArgs = mockCreate.mock.calls[0][0]
-			expect(callArgs.thinking).toEqual({ type: "enabled" })
+			expect(callArgs.reasoning_effort).toBe("max")
+			expect(callArgs.thinking).toEqual({ type: "enabled", clear_thinking: false })
 		})
 
-		it("should enable thinking with MEDIUM budget (preserved) when reasoningEffort is medium", async () => {
-			const glmHandler = new OpenAiHandler({
-				...baseGlmOptions,
-				openAiModelId: "glm-4.5",
+		it("passes a max effort chosen in the settings through literally", async () => {
+			const callArgs = await requestFor({
+				openAiModelId: "glm-5.3",
 				enableReasoningEffort: true,
-				reasoningEffort: "medium",
-				openAiCustomModelInfo: {
-					contextWindow: 128_000,
-					maxTokens: 4096,
-					supportsPromptCache: false,
-					supportsReasoningEffort: true,
-				},
+				reasoningEffort: "max",
+				openAiCustomModelInfo: { ...glmModelInfo, supportsReasoningEffort: ["low", "high", "max"] },
 			})
 
-			const stream = glmHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			const callArgs = mockCreate.mock.calls[0][0]
-			expect(callArgs.thinking).toEqual({ type: "enabled", clear_thinking: false })
+			expect(callArgs.reasoning_effort).toBe("max")
 		})
 	})
 
-	describe("GLM-4.7", () => {
-		it("should enable thinking with preserved mode for medium budget", async () => {
-			const glmHandler = new OpenAiHandler({
-				...baseGlmOptions,
-				openAiModelId: "GLM-4.7",
-				enableReasoningEffort: true,
-				reasoningEffort: "medium",
-				openAiCustomModelInfo: {
-					contextWindow: 200_000,
-					maxTokens: 16384,
-					supportsPromptCache: false,
-					supportsReasoningEffort: ["disable", "medium"],
-					reasoningEffort: "medium",
-				},
-			})
-
-			const stream = glmHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			const callArgs = mockCreate.mock.calls[0][0]
-			expect(callArgs.thinking).toEqual({ type: "enabled", clear_thinking: false })
-		})
-
-		it("should disable thinking when reasoningEffort is disable", async () => {
-			const glmHandler = new OpenAiHandler({
-				...baseGlmOptions,
+	describe("reasoning turned off", () => {
+		it("disables thinking, even when reasoning is returned", async () => {
+			const callArgs = await requestFor({
 				openAiModelId: "glm-4.7",
+				openAiPreserveReasoning: true,
 				enableReasoningEffort: false,
-				openAiCustomModelInfo: {
-					contextWindow: 200_000,
-					maxTokens: 16384,
-					supportsPromptCache: false,
-					supportsReasoningEffort: ["disable", "medium"],
-				},
+				openAiCustomModelInfo: { ...glmModelInfo, supportsReasoningEffort: ["disable", "medium"] },
 			})
 
-			const stream = glmHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			const callArgs = mockCreate.mock.calls[0][0]
 			expect(callArgs.thinking).toEqual({ type: "disabled" })
 		})
-	})
 
-	describe("GLM-5", () => {
-		it("should enable thinking with preserved mode when enableReasoningEffort is true", async () => {
-			const glmHandler = new OpenAiHandler({
-				...baseGlmOptions,
-				openAiModelId: "glm-5",
-				enableReasoningEffort: true,
-				reasoningEffort: "medium",
-				openAiCustomModelInfo: {
-					contextWindow: 256_000,
-					maxTokens: 32768,
-					supportsPromptCache: false,
-					supportsReasoningEffort: true,
-				},
-			})
+		it.each([
+			[false, { type: "enabled" }],
+			[true, { type: "enabled", clear_thinking: false }],
+		])(
+			"keeps GLM-5.3 thinking enabled (preserve reasoning: %s)",
+			async (openAiPreserveReasoning, expectedThinking) => {
+				// GLM-5.3 rejects thinking:{type:"disabled"} with an API error, so the
+				// disabled branch must not be taken for this model.
+				const callArgs = await requestFor({
+					openAiModelId: "glm-5.3",
+					openAiPreserveReasoning,
+					enableReasoningEffort: false,
+					openAiCustomModelInfo: { ...glmModelInfo, supportsReasoningEffort: ["low", "high", "max"] },
+				})
 
-			const stream = glmHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			const callArgs = mockCreate.mock.calls[0][0]
-			expect(callArgs.thinking).toEqual({ type: "enabled", clear_thinking: false })
-		})
-	})
-
-	describe("GLM-5.3 forced thinking", () => {
-		it("should keep thinking enabled when reasoning is turned off", async () => {
-			const glmHandler = new OpenAiHandler({
-				...baseGlmOptions,
-				openAiModelId: "glm-5.3",
-				enableReasoningEffort: false,
-				openAiCustomModelInfo: {
-					contextWindow: 1_000_000,
-					maxTokens: 131_072,
-					supportsPromptCache: false,
-					supportsReasoningEffort: ["low", "high", "max"],
-				},
-			})
-
-			const stream = glmHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			// GLM-5.3 rejects thinking:{type:"disabled"} with an API error, so the
-			// disabled branch must not be taken for this model.
-			const callArgs = mockCreate.mock.calls[0][0]
-			expect(callArgs.thinking).toEqual({ type: "enabled" })
-		})
+				expect(callArgs.thinking).toEqual(expectedThinking)
+			},
+		)
 	})
 
 	describe("Non-GLM models", () => {
 		it("should NOT add thinking parameter for non-GLM models", async () => {
-			const gptHandler = new OpenAiHandler({
-				...baseGlmOptions,
+			const callArgs = await requestFor({
 				openAiModelId: "gpt-4-turbo",
+				openAiPreserveReasoning: true,
 				enableReasoningEffort: true,
 				reasoningEffort: "medium",
-				openAiCustomModelInfo: {
-					contextWindow: 128_000,
-					maxTokens: 4096,
-					supportsPromptCache: false,
-					supportsReasoningEffort: true,
-				},
+				openAiCustomModelInfo: glmModelInfo,
 			})
 
-			const stream = gptHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			const callArgs = mockCreate.mock.calls[0][0]
 			expect(callArgs.thinking).toBeUndefined()
 		})
 	})
 
 	describe("GLM model variants", () => {
-		it.each([
-			["glm-4.5-air", "low", { type: "enabled" }],
-			["GLM-4.5-Flash", "low", { type: "enabled" }],
-			["glm-4.6", "medium", { type: "enabled", clear_thinking: false }],
-			["GLM-4.6-Pro", "high", { type: "enabled", clear_thinking: false }],
-			["glm-4.7", "xhigh", { type: "enabled", clear_thinking: false }],
-			["GLM-5-Pro", "medium", { type: "enabled", clear_thinking: false }],
-		])("should correctly configure thinking for %s with %s budget", async (modelId, effort, expectedThinking) => {
-			const glmHandler = new OpenAiHandler({
-				...baseGlmOptions,
-				openAiModelId: modelId,
-				enableReasoningEffort: true,
-				reasoningEffort: effort as "low" | "medium" | "high" | "xhigh",
-				openAiCustomModelInfo: {
-					contextWindow: 128_000,
-					maxTokens: 4096,
-					supportsPromptCache: false,
-					supportsReasoningEffort: true,
-				},
-			})
+		it.each(["glm-4.5-air", "GLM-4.5-Flash", "glm-4.6", "GLM-4.6-Pro", "glm-4.7", "GLM-5-Pro", "GLM-5.3-Flash"])(
+			"configures thinking for %s",
+			async (modelId) => {
+				const callArgs = await requestFor({
+					openAiModelId: modelId,
+					openAiPreserveReasoning: true,
+					enableReasoningEffort: true,
+					reasoningEffort: "high",
+					openAiCustomModelInfo: glmModelInfo,
+				})
 
-			const stream = glmHandler.createMessage("system", [])
-			for await (const _chunk of stream) {
-				// consume stream
-			}
-
-			const callArgs = mockCreate.mock.calls[0][0]
-			expect(callArgs.thinking).toEqual(expectedThinking)
-		})
+				expect(callArgs.thinking).toEqual({ type: "enabled", clear_thinking: false })
+			},
+		)
 	})
 })
 

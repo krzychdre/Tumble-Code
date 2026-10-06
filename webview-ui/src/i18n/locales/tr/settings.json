@@ -488,6 +488,10 @@
 			"description": "Modelin yanıtlarının ne kadar ayrıntılı olduğunu kontrol eder. Düşük ayrıntı düzeyi kısa yanıtlar üretirken, yüksek ayrıntı düzeyi kapsamlı açıklamalar sunar."
 		},
 		"setReasoningLevel": "Akıl Yürütme Çabasını Etkinleştir",
+		"preserveReasoning": {
+			"label": "Akıl yürütmeyi modele geri gönder",
+			"description": "Modelin önceki akıl yürütmesini her istekte geri gönderir, böylece model daha önce düşündüklerinin üzerine inşa edebilir (korunan veya iç içe geçmiş düşünme). vLLM, SGLang veya llama.cpp ile sunulan GLM, DeepSeek, Kimi ve benzeri akıl yürütme modelleri için gereklidir. Daha fazla bağlam kullanır."
+		},
 		"awsAuthMethod": "Kimlik doğrulama yöntemi"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Önbellek okuma fiyatı",
 		"cacheWritesPrice": "Önbellek yazma fiyatı",
 		"enableStreaming": "Akışı etkinleştir",
-		"enableR1Format": "R1 model parametrelerini etkinleştir",
-		"enableR1FormatTips": "QWQ gibi R1 modelleri kullanıldığında etkinleştirilmelidir, 400 hatası alınmaması için",
 		"useAzure": "Azure kullan",
 		"azureApiVersion": "Azure API sürümünü ayarla",
 		"gemini": {

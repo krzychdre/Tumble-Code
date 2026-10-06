@@ -742,4 +742,50 @@ describe("convertToR1Format", () => {
 			])
 		})
 	})
+	describe("reasoningFields option", () => {
+		const input = [
+			{
+				role: "assistant",
+				content: [
+					{ type: "reasoning", text: "first thought" },
+					{ type: "text", text: "First" },
+				],
+			},
+			{
+				role: "assistant",
+				content: [
+					{ type: "reasoning", text: "second thought" },
+					{ type: "text", text: "Second" },
+				],
+			},
+			{ role: "assistant", content: "Third", reasoning_content: "third thought" },
+		] as unknown as Anthropic.Messages.MessageParam[]
+
+		it("echoes reasoning under every listed field, also when assistant turns are merged", () => {
+			const result = convertToR1Format(input, { reasoningFields: ["reasoning_content", "reasoning"] })
+
+			expect(result).toEqual([
+				{
+					role: "assistant",
+					content: "First\nSecond\nThird",
+					reasoning_content: "third thought",
+					reasoning: "third thought",
+				},
+			])
+		})
+
+		it("defaults to reasoning_content alone", () => {
+			const [message] = convertToR1Format(input.slice(0, 1))
+
+			expect(message).toEqual({ role: "assistant", content: "First", reasoning_content: "first thought" })
+		})
+
+		it("adds no reasoning field to a message without reasoning", () => {
+			const result = convertToR1Format([{ role: "assistant", content: "Plain" }], {
+				reasoningFields: ["reasoning_content", "reasoning"],
+			})
+
+			expect(result).toEqual([{ role: "assistant", content: "Plain" }])
+		})
+	})
 })

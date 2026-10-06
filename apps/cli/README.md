@@ -340,7 +340,7 @@ and prints a one-line hint saying where to set one.
 | `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
 | `modes`                   | Settings per mode, see below                                      |
-| `models`                  | Facts per model (its context window), see below                   |
+| `models`                  | Facts per model (context window, prices, reasoning), see below    |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
 | `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
@@ -365,7 +365,12 @@ the CLI sends exactly what you configure: a configured effort (flag, settings
 file or a `modes` entry) is sent as `reasoning_effort` (GLM models get their
 thinking switch from it), and with none configured the default is
 `unspecified` instead of `medium`, so nothing is sent. Configure an effort only
-for a model that accepts one; some servers reject the field.
+for a model that accepts one; some servers reject the field. Every level of
+`--reasoning-effort` is valid here, `max` included: `"reasoningEffort": "max"`
+is sent as `reasoning_effort: "max"` (GLM-5.3 accepts `low`, `high` and `max`).
+A `--reasoning-effort` flag overrides the file, so `tumble --reasoning-effort
+low` sends `low` even when the file says `max`; the welcome line shows the
+level in use in brackets after the model.
 
 Note on `commandExecutionTimeout`: a shell command the agent runs is stopped
 once it has run this many seconds (default 300), and the model is told not to
@@ -475,6 +480,34 @@ US dollars per million tokens:
   and an entry for one of their models is ignored with a warning at startup.
 - A price that is not a number of 0 or more fails at startup and names the
   model and the key.
+
+### Returning reasoning to the model
+
+A reasoning model thinks before it answers, and by default the CLI keeps that
+reasoning to itself: the next request carries only the model's answers and tool
+calls. A model built for interleaved (preserved) thinking, such as GLM-5.3,
+works better when it sees what it thought in earlier turns. `preserveReasoning`
+in the model's `models` entry sends that reasoning back with every request, the
+same as "Return reasoning to the model" in the VS Code settings:
+
+```json
+{
+	"models": {
+		"GLM-5.3-Flash-NVFP4": { "contextWindow": 1048576, "preserveReasoning": true }
+	}
+}
+```
+
+- Each earlier answer carries its reasoning in both `reasoning_content` (the
+  name the Z.ai and DeepSeek APIs read) and `reasoning` (the name vLLM reads).
+  For a GLM model the request also asks the server to keep it
+  (`thinking.clear_thinking: false`).
+- It is a property of the model and its server, so it lives in `models` and
+  follows the model through every mode that runs it. It defaults to `false`.
+- The reasoning counts as input, so requests grow; leave it off for a model or
+  server that does not read it back.
+- Like the size and the prices, it applies only with the `openai` provider. A
+  value other than `true` or `false` fails at startup and names the model.
 
 ## MCP Servers
 

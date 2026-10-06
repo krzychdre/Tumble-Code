@@ -59,7 +59,6 @@ vi.mock("@/hooks/models/useOpenRouterKeyInfo", () => ({
 
 vi.mock("../ModelPicker", () => ({ ModelPicker: () => null }))
 vi.mock("../ThinkingBudget", () => ({ ThinkingBudget: () => null }))
-vi.mock("../R1FormatSetting", () => ({ R1FormatSetting: () => null }))
 vi.mock("../providers/OpenAICodexRateLimitDashboard", () => ({ OpenAICodexRateLimitDashboard: () => null }))
 
 type FormProvider = {

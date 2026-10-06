@@ -55,6 +55,15 @@ describe("findModelSettingsProblems", () => {
 		])
 	})
 
+	it("accepts preserveReasoning true or false and rejects anything else", () => {
+		expect(findModelSettingsProblems({ m: { preserveReasoning: true }, n: { preserveReasoning: false } })).toEqual(
+			[],
+		)
+		expect(findModelSettingsProblems({ m: { preserveReasoning: "true" } })).toEqual([
+			'models.m.preserveReasoning must be true or false, got "true"',
+		])
+	})
+
 	it("rejects a map or an entry that is not an object", () => {
 		expect(findModelSettingsProblems([])[0]).toMatch(/^models must be an object keyed by model id/)
 		expect(findModelSettingsProblems({ m: 262_144 })).toEqual([

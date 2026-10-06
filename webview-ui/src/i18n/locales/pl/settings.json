@@ -488,6 +488,10 @@
 			"description": "Kontroluje, jak szczegółowe są odpowiedzi modelu. Niska szczegółowość generuje zwięzłe odpowiedzi, podczas gdy wysoka szczegółowość dostarcza dokładnych wyjaśnień."
 		},
 		"setReasoningLevel": "Włącz wysiłek rozumowania",
+		"preserveReasoning": {
+			"label": "Odsyłaj rozumowanie do modelu",
+			"description": "Przy każdym zapytaniu odsyła modelowi jego wcześniejsze rozumowanie, dzięki czemu może on kontynuować to, co już przemyślał (zachowane lub przeplatane myślenie). Potrzebne dla GLM, DeepSeek, Kimi i podobnych modeli rozumujących uruchamianych na vLLM, SGLang lub llama.cpp. Zużywa więcej kontekstu."
+		},
 		"awsAuthMethod": "Metoda uwierzytelniania"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Cena odczytów bufora",
 		"cacheWritesPrice": "Cena zapisów bufora",
 		"enableStreaming": "Włącz strumieniowanie",
-		"enableR1Format": "Włącz parametry modelu R1",
-		"enableR1FormatTips": "Należy włączyć podczas korzystania z modeli R1, takich jak QWQ, aby uniknąć błędu 400",
 		"useAzure": "Użyj Azure",
 		"azureApiVersion": "Ustaw wersję API Azure",
 		"gemini": {
