@@ -15,9 +15,14 @@
  * its earlier reasoning back is a fact about the model and its server, so it
  * follows the model through every mode that runs it. It becomes the
  * extension's openAiPreserveReasoning.
+ *
+ * `reasoningEffort` too, and unlike the others it works with every provider:
+ * the levels a model accepts are its own, so one level for all models sent
+ * "max" to models that reject it.
  */
 
 import type { CliModelSettings } from "@/types/types.js"
+import { REASONING_EFFORTS } from "@/types/constants.js"
 
 /** The one provider whose model size and prices the settings file can set. */
 export const MODEL_SETTINGS_PROVIDER = "openai"
@@ -32,10 +37,14 @@ export function getConfiguredModelSettings(
 	return models?.[model]
 }
 
-/** The keys an entry actually sets, for the warning that names what is ignored. */
+/**
+ * The keys an entry sets that only the openai provider takes, for the warning
+ * that names what is ignored with another provider. `reasoningEffort` is not
+ * one of them: every provider takes it.
+ */
 export function listSetModelSettings(entry: CliModelSettings | undefined): string[] {
 	return Object.entries(entry ?? {})
-		.filter(([, value]) => value !== undefined)
+		.filter(([key, value]) => value !== undefined && key !== "reasoningEffort")
 		.map(([key]) => key)
 }
 
@@ -57,7 +66,7 @@ export function findModelSettingsProblems(models: unknown): string[] {
 			continue
 		}
 
-		const { contextWindow, preserveReasoning } = entry as CliModelSettings
+		const { contextWindow, preserveReasoning, reasoningEffort } = entry as CliModelSettings
 
 		if (contextWindow !== undefined && !(Number.isInteger(contextWindow) && contextWindow > 0)) {
 			problems.push(
@@ -68,6 +77,12 @@ export function findModelSettingsProblems(models: unknown): string[] {
 		if (preserveReasoning !== undefined && typeof preserveReasoning !== "boolean") {
 			problems.push(
 				`models.${model}.preserveReasoning must be true or false, got ${JSON.stringify(preserveReasoning)}`,
+			)
+		}
+
+		if (reasoningEffort !== undefined && !REASONING_EFFORTS.includes(reasoningEffort)) {
+			problems.push(
+				`models.${model}.reasoningEffort must be one of: ${REASONING_EFFORTS.join(", ")}, got ${JSON.stringify(reasoningEffort)}`,
 			)
 		}
 

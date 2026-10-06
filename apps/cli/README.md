@@ -221,28 +221,28 @@ When the agent asks a followup question, a permission-bordered dialog renders th
 
 ## Options
 
-| Option                                  | Description                                                                                  | Default                 |
-| --------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------- |
-| `[prompt]`                              | Your prompt (positional argument, optional)                                                  | None                    |
-| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                     | None                    |
-| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                       | None                    |
-| `-w, --workspace <path>`                | Workspace path to operate in                                                                 | Current directory       |
-| `-p, --print`                           | Print response and exit (non-interactive mode)                                               | `false`                 |
-| `-e, --extension <path>`                | Path to the extension bundle directory                                                       | Auto-detected           |
-| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)               | `false`                 |
-| `-a, --require-approval`                | Require manual approval before actions execute                                               | `false`                 |
-| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                                   | From env var            |
-| `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                                   | `openrouter`            |
-| `-m, --model <model>`                   | Model to use (openrouter: `anthropic/claude-opus-4.6`; openai, ollama, lmstudio: required)   | Provider default        |
-| `--base-url <url>`                      | Base URL override for the selected provider (when supported)                                 | None                    |
-| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                         | Settings, else `code`   |
-| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                                    | Auto-detected shell     |
-| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh, max) | Settings, else `medium` |
-| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)           | `10`                    |
-| `--command-execution-timeout <seconds>` | Seconds a shell command may run before it is stopped (`0` means no limit)                    | Settings, else `300`    |
-| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                        | `false`                 |
-| `--oneshot`                             | Exit upon task completion                                                                    | `false`                 |
-| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                               | `text`                  |
+| Option                                  | Description                                                                                                             | Default                          |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `[prompt]`                              | Your prompt (positional argument, optional)                                                                             | None                             |
+| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                                                | None                             |
+| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                                                  | None                             |
+| `-w, --workspace <path>`                | Workspace path to operate in                                                                                            | Current directory                |
+| `-p, --print`                           | Print response and exit (non-interactive mode)                                                                          | `false`                          |
+| `-e, --extension <path>`                | Path to the extension bundle directory                                                                                  | Auto-detected                    |
+| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)                                          | `false`                          |
+| `-a, --require-approval`                | Require manual approval before actions execute                                                                          | `false`                          |
+| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                                                              | From env var                     |
+| `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                                                              | `openrouter`                     |
+| `-m, --model <model>`                   | Model to use (openrouter: `anthropic/claude-opus-4.6`; openai, ollama, lmstudio: required)                              | Provider default                 |
+| `--base-url <url>`                      | Base URL override for the selected provider (when supported)                                                            | None                             |
+| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                                                    | Settings, else `code`            |
+| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                                                               | Auto-detected shell              |
+| `-r, --reasoning-effort <effort>`       | Reasoning effort level for every model of the run (unspecified, disabled, none, minimal, low, medium, high, xhigh, max) | The model's entry, else `medium` |
+| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)                                      | `10`                             |
+| `--command-execution-timeout <seconds>` | Seconds a shell command may run before it is stopped (`0` means no limit)                                               | Settings, else `300`             |
+| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                                                   | `false`                          |
+| `--oneshot`                             | Exit upon task completion                                                                                               | `false`                          |
+| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                                                          | `text`                           |
 
 ## Auth Commands
 
@@ -321,8 +321,10 @@ and prints a one-line hint saying where to set one.
 	"baseUrl": "http://192.168.50.194:11111/v1",
 	"model": "GLM-5.3-Flash-NVFP4",
 	"apiKey": "1111",
-	"reasoningEffort": "high",
-	"mode": "code"
+	"mode": "code",
+	"models": {
+		"GLM-5.3-Flash-NVFP4": { "reasoningEffort": "high" }
+	}
 }
 ```
 
@@ -333,14 +335,13 @@ and prints a one-line hint saying where to set one.
 | `baseUrl`                 | Base URL; used only while `provider` is the active provider       |
 | `apiKey`                  | API key; used only while `provider` is the active provider        |
 | `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`          |
-| `reasoningEffort`         | As for `--reasoning-effort` (see the note below)                  |
 | `mode`                    | Mode a new session starts in                                      |
 | `requireApproval`         | `true` asks before actions, as `--require-approval`               |
 | `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                              |
 | `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
 | `modes`                   | Settings per mode, see below                                      |
-| `models`                  | Facts per model (context window, prices, reasoning), see below    |
+| `models`                  | Per model: reasoning effort, context window, prices, see below    |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
 | `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
@@ -357,20 +358,6 @@ the key from that variable and stops with an error naming it when it is unset.
 Precedence: flag > settings file > built-in default. Provider, model and base
 URL also fall back to the CLI's own extension state in
 `~/.vscode-mock/global-storage` before the built-in default.
-
-Note on `reasoningEffort`: for most providers it reaches the model only when the
-provider's model information says the model supports a reasoning effort. The
-`openai` (OpenAI-compatible) provider knows nothing about its model, so there
-the CLI sends exactly what you configure: a configured effort (flag, settings
-file or a `modes` entry) is sent as `reasoning_effort` (GLM models get their
-thinking switch from it), and with none configured the default is
-`unspecified` instead of `medium`, so nothing is sent. Configure an effort only
-for a model that accepts one; some servers reject the field. Every level of
-`--reasoning-effort` is valid here, `max` included: `"reasoningEffort": "max"`
-is sent as `reasoning_effort: "max"` (GLM-5.3 accepts `low`, `high` and `max`).
-A `--reasoning-effort` flag overrides the file, so `tumble --reasoning-effort
-low` sends `low` even when the file says `max`; the welcome line shows the
-level in use in brackets after the model.
 
 Note on `commandExecutionTimeout`: a shell command the agent runs is stopped
 once it has run this many seconds (default 300), and the model is told not to
@@ -393,24 +380,58 @@ without an entry use the top level.
 	"baseUrl": "http://192.168.50.194:11111/v1",
 	"apiKey": "1111",
 	"model": "GLM-5.3-Flash-NVFP4",
-	"reasoningEffort": "max",
 	"modes": {
-		"architect": { "model": "GLM-5.3-NVFP4", "reasoningEffort": "high" },
+		"architect": { "model": "GLM-5.3-NVFP4" },
 		"ask": { "provider": "openai-codex", "model": "gpt-5.6-sol" }
 	}
 }
 ```
 
-- An entry may set `provider`, `model`, `baseUrl`, `apiKey`, `apiKeyEnv` and
-  `reasoningEffort`. Keys are mode slugs as listed by `tumble list modes`.
+- An entry may set `provider`, `model`, `baseUrl`, `apiKey` and `apiKeyEnv`.
+  Keys are mode slugs as listed by `tumble list modes`. The reasoning effort
+  comes with the model, from its `models` entry (see below).
 - An entry that names a different provider inherits none of the top-level
   `model`, `baseUrl` or key, which belong to the top-level provider; it gets
   that provider's defaults unless it sets them (`ask` above).
 - Every entry is checked at startup, so a missing key or an invalid value fails
   immediately and names the mode.
-- Passing any of `--provider`, `--model`, `--base-url`, `--api-key` or
-  `--reasoning-effort` makes that run use one configuration for every mode: the
-  flags on top of the top level, with `modes` ignored.
+- Passing any of `--provider`, `--model`, `--base-url` or `--api-key` makes
+  that run use one configuration for every mode: the flags on top of the top
+  level, with `modes` ignored. `--reasoning-effort` keeps the modes and sets
+  the level for every model of the run.
+
+### Reasoning effort per model
+
+How much a reasoning model thinks before it answers is set per model, because
+the levels are the model's own: GLM-5.3 accepts `low`, `high` and `max`, while
+another model on the same server rejects `max`. `reasoningEffort` in the
+model's `models` entry takes any level of `--reasoning-effort`:
+
+```json
+{
+	"models": {
+		"GLM-5.3-NVFP4": { "reasoningEffort": "max" },
+		"Qwen3.8-27B": { "reasoningEffort": "high" }
+	}
+}
+```
+
+- The level follows the model wherever it runs: the top level, a `modes` entry
+  or `--model`. A model without an entry gets nothing for the `openai`
+  (OpenAI-compatible) provider, which knows nothing about its models and so
+  sends `reasoning_effort` only when one is configured, and `medium` for every
+  other provider.
+- It works with every provider, not only `openai`. For most providers it
+  reaches the model only when the provider's model information says the model
+  supports a reasoning effort; for `openai` the CLI sends exactly what you
+  configure (GLM models also get their thinking switch from it).
+- `--reasoning-effort` sets one level for every model of that run, so
+  `tumble --reasoning-effort low` sends `low` even where an entry says `max`.
+  The welcome line shows the level in use in brackets after the model.
+- `reasoningEffort` at the top level or in a `modes` entry, where it used to
+  live, is ignored with a warning at startup that names the model entry to move
+  it to. A level that is not one of `--reasoning-effort`'s fails at startup and
+  names the model.
 
 ### Context window per model
 

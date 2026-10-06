@@ -1,6 +1,6 @@
 /**
- * Resolve the provider connection for a run: provider, model, base URL, API key
- * and reasoning effort, from layered sources.
+ * Resolve the provider connection for a run: provider, model, base URL and API
+ * key, from layered sources.
  *
  * Sources, highest precedence last in `layers`:
  *  - `fallback`: the CLI's own extension state (~/.vscode-mock, see
@@ -12,10 +12,9 @@
  * inherits the provider of the layer below it. A value is used only while its
  * layer's provider is the active provider, so a model saved for openrouter is
  * never sent to openai after `--provider openai` (decision A3 of
- * ai_plans/2026-08-04_cli-bare-run-settings-sync.md). `reasoningEffort` is not
- * provider-bound: the highest layer that sets it wins. With no layer setting it,
- * the openai provider gets "unspecified" and every other provider "medium" (see
- * defaultReasoningEffortFor).
+ * ai_plans/2026-08-04_cli-bare-run-settings-sync.md). The reasoning effort is
+ * not part of the connection: it belongs to the model (see
+ * resolveReasoningEffort).
  *
  * API key order: a layer's `apiKey`, else its `apiKeyEnv` (both only from
  * layers of the active provider, highest first), then the provider's
@@ -48,7 +47,6 @@ export interface ProviderConfigLayer {
 	apiKey?: string
 	/** Name of the environment variable that holds the API key. */
 	apiKeyEnv?: string
-	reasoningEffort?: ReasoningEffortFlagOptions
 }
 
 export interface ResolvedProviderConfig {
@@ -61,7 +59,6 @@ export interface ResolvedProviderConfig {
 	apiKey?: string
 	/** Set when the chosen key source is an `apiKeyEnv` whose variable is empty or unset. */
 	missingApiKeyEnv?: string
-	reasoningEffort: ReasoningEffortFlagOptions
 }
 
 export interface ResolveProviderConfigInput {
@@ -96,23 +93,35 @@ function defaultModelFor(provider: SupportedProvider): string {
 }
 
 /**
- * The reasoning effort a provider runs with when no layer sets one. The
- * openai provider talks to any OpenAI-compatible server and knows nothing
- * about its model, so it sends an effort only when one is configured: many
- * such servers and models reject a `reasoning_effort` they do not support.
+ * The reasoning effort a model runs with: the --reasoning-effort flag (one
+ * level for every model of the run), else the model's own entry in `models`
+ * of cli-settings.json, else the provider's default. It is looked up per
+ * model, never shared between models, because the levels differ from model to
+ * model: a level one model takes (GLM-5.3 and "max") is rejected by another.
+ *
+ * The default is "unspecified" (nothing is sent) for the openai provider,
+ * which talks to any OpenAI-compatible server and knows nothing about its
+ * model, and "medium" for every other provider.
  */
-function defaultReasoningEffortFor(provider: SupportedProvider): ReasoningEffortFlagOptions {
-	return provider === "openai" ? "unspecified" : DEFAULT_FLAGS.reasoningEffort
+export function resolveReasoningEffort(
+	provider: SupportedProvider,
+	modelSettings: CliModelSettings | undefined,
+	flagReasoningEffort?: ReasoningEffortFlagOptions,
+): ReasoningEffortFlagOptions {
+	return (
+		flagReasoningEffort ??
+		modelSettings?.reasoningEffort ??
+		(provider === "openai" ? "unspecified" : DEFAULT_FLAGS.reasoningEffort)
+	)
 }
 
 export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfigInput): ResolvedProviderConfig {
 	const present = layers.filter((layer): layer is ProviderConfigLayer => layer !== undefined)
 	// Highest precedence first from here on.
 	const scoped = scopeLayers(fallback, present).reverse()
-	const highestFirst = scoped.map((entry) => entry.layer)
 
 	const rawProvider =
-		highestFirst.find((layer) => layer.provider !== undefined)?.provider ??
+		scoped.map((entry) => entry.layer).find((layer) => layer.provider !== undefined)?.provider ??
 		fallback?.provider ??
 		DEFAULT_FLAGS.provider
 	const provider = resolveProviderIdAlias(rawProvider) as SupportedProvider
@@ -148,15 +157,13 @@ export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfi
 		baseUrl,
 		apiKey,
 		missingApiKeyEnv,
-		reasoningEffort:
-			highestFirst.find((layer) => layer.reasoningEffort)?.reasoningEffort ?? defaultReasoningEffortFor(provider),
 	}
 }
 
 /** The provider-connection fields of a settings object, without its other keys. */
 export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigLayer {
-	const { provider, model, baseUrl, apiKey, apiKeyEnv, reasoningEffort } = source
-	return { provider, model, baseUrl, apiKey, apiKeyEnv, reasoningEffort }
+	const { provider, model, baseUrl, apiKey, apiKeyEnv } = source
+	return { provider, model, baseUrl, apiKey, apiKeyEnv }
 }
 
 /**

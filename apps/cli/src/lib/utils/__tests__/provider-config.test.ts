@@ -12,6 +12,7 @@ import { DEFAULT_FLAGS } from "@/types/constants.js"
 import {
 	pickProviderConfig,
 	resolveProviderConfig,
+	resolveReasoningEffort,
 	summarizeProviderSettings,
 	toProviderSettings,
 } from "../provider-config.js"
@@ -84,7 +85,6 @@ describe("resolveProviderConfig", () => {
 			expect(resolveProviderConfig({ layers: [] })).toMatchObject({
 				provider: DEFAULT_FLAGS.provider,
 				model: DEFAULT_FLAGS.model,
-				reasoningEffort: DEFAULT_FLAGS.reasoningEffort,
 			})
 			expect(resolveProviderConfig({ layers: [{ provider: "openai-codex" }] }).model).toBe(
 				openAiCodexDefaultModelId,
@@ -181,23 +181,6 @@ describe("resolveProviderConfig", () => {
 		})
 	})
 
-	describe("reasoning effort", () => {
-		it("the highest layer wins and it survives a provider switch", () => {
-			const resolved = resolveProviderConfig({
-				layers: [{ provider: "openai", reasoningEffort: "max" }, { provider: "openrouter" }],
-			})
-
-			expect(resolved.reasoningEffort).toBe("max")
-		})
-
-		it("defaults to unspecified for the openai provider, which knows nothing about its model", () => {
-			expect(resolveProviderConfig({ layers: [{ provider: "openai" }] }).reasoningEffort).toBe("unspecified")
-			expect(resolveProviderConfig({ layers: [{ provider: "zai" }] }).reasoningEffort).toBe(
-				DEFAULT_FLAGS.reasoningEffort,
-			)
-		})
-	})
-
 	describe("API key", () => {
 		it("uses apiKey from the settings", () => {
 			expect(resolveProviderConfig({ layers: [{ provider: "openai", apiKey: "1111" }] }).apiKey).toBe("1111")
@@ -273,6 +256,26 @@ describe("resolveProviderConfig", () => {
 	})
 })
 
+describe("resolveReasoningEffort", () => {
+	// Observed 2026-10-06: one "max" for the whole settings file went to
+	// Qwen3.8-27B as well, which has no such level.
+	it("takes the level from the model's own entry, so each model gets its own", () => {
+		expect(resolveReasoningEffort("openai", { reasoningEffort: "max" })).toBe("max")
+		expect(resolveReasoningEffort("openai", { reasoningEffort: "high" })).toBe("high")
+	})
+
+	it("lets the flag set one level for every model of the run", () => {
+		expect(resolveReasoningEffort("openai", { reasoningEffort: "max" }, "low")).toBe("low")
+		expect(resolveReasoningEffort("openai", undefined, "disabled")).toBe("disabled")
+	})
+
+	it("defaults to unspecified for the openai provider, which knows nothing about its model", () => {
+		expect(resolveReasoningEffort("openai", undefined)).toBe("unspecified")
+		expect(resolveReasoningEffort("openai", { contextWindow: 262_144 })).toBe("unspecified")
+		expect(resolveReasoningEffort("zai", undefined)).toBe(DEFAULT_FLAGS.reasoningEffort)
+	})
+})
+
 describe("pickProviderConfig", () => {
 	it("keeps only the provider-connection keys", () => {
 		expect(
@@ -289,7 +292,6 @@ describe("pickProviderConfig", () => {
 			baseUrl: undefined,
 			apiKey: undefined,
 			apiKeyEnv: "K",
-			reasoningEffort: undefined,
 		})
 	})
 })
@@ -319,24 +321,22 @@ describe("toProviderSettings", () => {
 	// `--reasoning-effort low`, and a flag wins over the file.
 	it("carries max from the settings file to the openai handler, unless a flag sets another effort", () => {
 		const fromFile = resolveProviderConfig({
-			layers: [
-				{ provider: "openai", model: "GLM-5.3-Flash-NVFP4", reasoningEffort: "max" },
-				{ model: "GLM-5.3-Flash-NVFP4" },
-			],
+			layers: [{ provider: "openai", model: "GLM-5.3-Flash-NVFP4" }, { model: "GLM-5.3-Flash-NVFP4" }],
 		})
-		const settings = toProviderSettings(fromFile)
+		const settings = toProviderSettings({
+			...fromFile,
+			reasoningEffort: resolveReasoningEffort(fromFile.provider, { reasoningEffort: "max" }),
+		})
 
 		expect(settings).toMatchObject({ enableReasoningEffort: true, reasoningEffort: "max" })
 		expect(settings.openAiCustomModelInfo).toMatchObject({ supportsReasoningEffort: true, reasoningEffort: "max" })
 		expect(shouldUseReasoningEffort({ model: settings.openAiCustomModelInfo!, settings })).toBe(true)
 
-		const withFlag = resolveProviderConfig({
-			layers: [
-				{ provider: "openai", reasoningEffort: "max" },
-				{ model: "GLM-5.3-Flash-NVFP4", reasoningEffort: "low" },
-			],
+		const withFlag = toProviderSettings({
+			...fromFile,
+			reasoningEffort: resolveReasoningEffort(fromFile.provider, { reasoningEffort: "max" }, "low"),
 		})
-		expect(toProviderSettings(withFlag).reasoningEffort).toBe("low")
+		expect(withFlag.reasoningEffort).toBe("low")
 	})
 
 	// The openai provider's model info had no supportsReasoningEffort, so the

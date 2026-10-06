@@ -42,7 +42,8 @@ export interface CliModeSettings {
 	baseUrl?: string
 	apiKey?: string
 	apiKeyEnv?: string
-	reasoningEffort?: ReasoningEffortFlagOptions
+	/** @deprecated Ignored with a warning: the reasoning effort is set per model, in `models`. */
+	reasoningEffort?: unknown
 }
 
 /** Facts about one model that the CLI cannot learn from the provider, keyed by model id in cli-settings.json. */
@@ -73,6 +74,14 @@ export interface CliModelSettings {
 	 * to false.
 	 */
 	preserveReasoning?: boolean
+	/**
+	 * The reasoning effort sent with every request to this model, one of the
+	 * levels of --reasoning-effort. Set per model because the levels a model
+	 * accepts are its own (GLM-5.3 takes "max", other models reject it). Works
+	 * with every provider; the --reasoning-effort flag overrides it for a run.
+	 * Without it the openai provider sends no effort and the others "medium".
+	 */
+	reasoningEffort?: ReasoningEffortFlagOptions
 }
 
 export interface CliSettings {
@@ -88,14 +97,14 @@ export interface CliSettings {
 	apiKey?: string
 	/** Name of the environment variable holding the API key (used when apiKey is absent) */
 	apiKeyEnv?: string
-	/** Default reasoning effort level */
-	reasoningEffort?: ReasoningEffortFlagOptions
+	/** @deprecated Ignored with a warning: the reasoning effort is set per model, in `models`. */
+	reasoningEffort?: unknown
 	/**
 	 * Per-mode overrides, keyed by mode slug. Each entry changes only what it
 	 * names and inherits the rest; an entry that names a different provider
 	 * starts from that provider's defaults (model, baseUrl and key are not
 	 * carried across providers). Ignored for a run given any of --provider,
-	 * --model, --base-url, --api-key or --reasoning-effort.
+	 * --model, --base-url or --api-key.
 	 */
 	modes?: Record<string, CliModeSettings>
 	/**
