@@ -103,6 +103,19 @@ describe("InputFooter", () => {
 			expect(frame).toContain("████░░░░░░ 38%")
 		})
 
+		it("renders the tokens in the context out of the window next to the percentage", () => {
+			const { lastFrame } = render(
+				<InputFooter
+					mode="code"
+					model="GLM-5.3-NVFP4"
+					contextPercent={38}
+					contextTokens={99_600}
+					contextWindow={262_144}
+				/>,
+			)
+			expect(lastFrame()).toContain("████░░░░░░ 38% 99.6K/262K")
+		})
+
 		it("does not render ctx% when null", () => {
 			const { lastFrame } = render(<InputFooter mode="code" model="gpt-5" contextPercent={null} />)
 			const frame = lastFrame() ?? ""

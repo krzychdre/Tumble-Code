@@ -22,6 +22,10 @@ interface InputFooterProps {
 	model?: string
 	/** Context window usage percent 0-100; null = unknown */
 	contextPercent?: number | null
+	/** Tokens in the context now, shown next to the percentage */
+	contextTokens?: number
+	/** Context window size in tokens */
+	contextWindow?: number
 	/** Cumulative session cost in USD; shown when > 0 */
 	cost?: number
 	/** Cloud session and bridge; shown only when signed in (UI plan §4) */
@@ -88,10 +92,20 @@ const DimDot = () => <Text dimColor>{" · "}</Text>
  * Left side (priority order): toast (colored by kind) > exitHint (dim) >
  * "? for shortcuts" (dim). Right side: the cloud segment (signed-in runs
  * only), `{mode} · {model}` + the context
- * gauge (when the percent is not null) + ` · {cost}` (when > 0). The gauge
+ * gauge (when the percent is not null, with the tokens out of the window) + ` · {cost}` (when > 0). The gauge
  * owns its own colouring; see ContextGauge.
  */
-function InputFooter({ toast, exitHint, mode, model, contextPercent, cost, cloud }: InputFooterProps) {
+function InputFooter({
+	toast,
+	exitHint,
+	mode,
+	model,
+	contextPercent,
+	contextTokens,
+	contextWindow,
+	cost,
+	cloud,
+}: InputFooterProps) {
 	let leftHint: ReactNode
 	if (toast) {
 		leftHint = (
@@ -131,7 +145,9 @@ function InputFooter({ toast, exitHint, mode, model, contextPercent, cost, cloud
 	}
 	if (contextPercent != null) {
 		if (added) rightParts.push(<DimDot key="sep-ctx" />)
-		rightParts.push(<ContextGauge key="ctx" percent={contextPercent} />)
+		rightParts.push(
+			<ContextGauge key="ctx" percent={contextPercent} tokens={contextTokens} window={contextWindow} />,
+		)
 		added = true
 	}
 	if (cost != null && cost > 0) {

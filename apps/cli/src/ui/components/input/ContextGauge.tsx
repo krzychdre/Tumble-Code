@@ -41,16 +41,38 @@ export function gaugeColor(percent: number): string {
 	return theme.secondaryText
 }
 
+/**
+ * A token count short enough for the footer: `850`, `12.4K`, `262K`, `1.0M`.
+ * Above 100K the decimal is dropped; nobody reads it at that size.
+ */
+export function formatTokenCount(tokens: number): string {
+	if (tokens >= 1_000_000) {
+		return `${(tokens / 1_000_000).toFixed(1)}M`
+	}
+	if (tokens >= 100_000) {
+		return `${Math.round(tokens / 1_000)}K`
+	}
+	if (tokens >= 1_000) {
+		return `${(tokens / 1_000).toFixed(1)}K`
+	}
+	return String(Math.round(tokens))
+}
+
 interface ContextGaugeProps {
 	/** Context window usage, 0-100. */
 	percent: number
+	/** Tokens in the context now; shown with the window after the percentage. */
+	tokens?: number
+	/** Size of the context window in tokens. */
+	window?: number
 }
 
 /**
  * Context-window fill gauge for the input footer: a ten-cell bar followed by
- * the percentage, both in the same colour so they read as one unit.
+ * the percentage and, when known, the tokens in the context out of the
+ * window (`45% 118K/262K`), all in the same colour so they read as one unit.
  */
-function ContextGauge({ percent }: ContextGaugeProps) {
+function ContextGauge({ percent, tokens, window }: ContextGaugeProps) {
 	const clamped = Math.max(0, Math.min(100, percent))
 	const filled = fillCells(clamped)
 	const color = gaugeColor(clamped)
@@ -60,6 +82,12 @@ function ContextGauge({ percent }: ContextGaugeProps) {
 			<Text color={color}>{FILLED_CELL.repeat(filled)}</Text>
 			<Text color={theme.dimmed(theme.inactive)}>{EMPTY_CELL.repeat(GAUGE_CELLS - filled)}</Text>
 			<Text color={color}> {clamped}%</Text>
+			{tokens !== undefined && window !== undefined && window > 0 && (
+				<Text color={color}>
+					{" "}
+					{formatTokenCount(tokens)}/{formatTokenCount(window)}
+				</Text>
+			)}
 		</Text>
 	)
 }

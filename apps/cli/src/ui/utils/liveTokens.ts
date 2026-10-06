@@ -8,7 +8,7 @@
 import type { TUIMessage } from "../types.js"
 
 /** Characters per token: the usual rule of thumb for English text and code. */
-export const CHARS_PER_TOKEN = 4
+const CHARS_PER_TOKEN = 4
 
 /** Rows the model writes in a request: its answer, its reasoning and its tool calls. */
 const MODEL_OUTPUT_ROLES = new Set<TUIMessage["role"]>(["assistant", "thinking", "tool"])

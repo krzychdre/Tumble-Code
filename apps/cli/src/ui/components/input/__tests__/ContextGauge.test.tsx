@@ -1,6 +1,6 @@
 import { render } from "ink-testing-library"
 
-import ContextGauge, { fillCells } from "../ContextGauge.js"
+import ContextGauge, { fillCells, formatTokenCount } from "../ContextGauge.js"
 
 const barOf = (percent: number) => (render(<ContextGauge percent={percent} />).lastFrame() ?? "").split(" ")[0] ?? ""
 
@@ -62,5 +62,32 @@ describe("ContextGauge", () => {
 
 		expect(frame).toContain("100%")
 		expect(frame).not.toContain("130%")
+	})
+})
+
+describe("formatTokenCount", () => {
+	it.each([
+		[850, "850"],
+		[12_400, "12.4K"],
+		[99_949, "99.9K"],
+		[118_234, "118K"],
+		[262_144, "262K"],
+		[1_048_576, "1.0M"],
+	])("formats %s as %s", (tokens, expected) => {
+		expect(formatTokenCount(tokens)).toBe(expected)
+	})
+})
+
+describe("ContextGauge tokens", () => {
+	it("shows the tokens in the context out of the window after the percentage", () => {
+		const frame = render(<ContextGauge percent={45} tokens={118_234} window={262_144} />).lastFrame()
+
+		expect(frame).toContain("45% 118K/262K")
+	})
+
+	it("shows only the percentage when the counts are unknown", () => {
+		const frame = render(<ContextGauge percent={45} />).lastFrame() ?? ""
+
+		expect(frame.trimEnd().endsWith("45%")).toBe(true)
 	})
 })
