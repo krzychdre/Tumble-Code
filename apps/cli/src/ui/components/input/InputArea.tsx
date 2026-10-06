@@ -35,6 +35,10 @@ export interface InputAreaProps {
 	mode?: string
 	model?: string
 	contextPercent?: number | null
+	/** Tokens in the context now (footer, next to the percentage) */
+	contextTokens?: number
+	/** Context window size in tokens (footer) */
+	contextWindow?: number
 	cost?: number
 	cloud?: CloudStatus | null
 	toast?: Toast | null
@@ -67,6 +71,8 @@ function InputArea({
 	mode,
 	model,
 	contextPercent,
+	contextTokens,
+	contextWindow,
 	cost,
 	cloud,
 	toast,
@@ -102,6 +108,8 @@ function InputArea({
 				mode={mode}
 				model={model}
 				contextPercent={contextPercent}
+				contextTokens={contextTokens}
+				contextWindow={contextWindow}
 				cost={cost}
 				cloud={cloud}
 			/>

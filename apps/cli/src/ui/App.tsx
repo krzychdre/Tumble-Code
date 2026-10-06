@@ -549,6 +549,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						mode={currentMode || mode}
 						model={activeModel}
 						contextPercent={contextPercent}
+						contextTokens={tokenUsage?.contextTokens}
+						contextWindow={contextWindow}
 						cost={footerCost}
 						cloud={cloudStatus}
 						toast={currentToast}
