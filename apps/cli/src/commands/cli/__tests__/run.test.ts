@@ -596,11 +596,16 @@ describe("run mode and reasoning effort come from settings when no flag is given
 		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
-	it("uses the settings mode and reasoning effort on a bare run", async () => {
+	it("uses the settings mode and the model's reasoning effort on a bare run", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			await saveSettings({ provider: "openrouter", mode: "architect", reasoningEffort: "max" })
+			await saveSettings({
+				provider: "openrouter",
+				model: "openai/gpt-4o",
+				mode: "architect",
+				models: { "openai/gpt-4o": { reasoningEffort: "max" } },
+			})
 
 			await run("hello", baseFlags())
 
@@ -615,7 +620,12 @@ describe("run mode and reasoning effort come from settings when no flag is given
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			await saveSettings({ provider: "openrouter", mode: "architect", reasoningEffort: "max" })
+			await saveSettings({
+				provider: "openrouter",
+				model: "openai/gpt-4o",
+				mode: "architect",
+				models: { "openai/gpt-4o": { reasoningEffort: "max" } },
+			})
 
 			await run("hello", baseFlags({ mode: "ask", reasoningEffort: "low" }))
 
@@ -669,7 +679,7 @@ describe("run API key from the settings file", () => {
 				baseUrl: "http://192.168.50.194:11111/v1",
 				model: "GLM-5.3-Flash-NVFP4",
 				apiKey: "1111",
-				reasoningEffort: "max",
+				models: { "GLM-5.3-Flash-NVFP4": { reasoningEffort: "max" } },
 			})
 
 			await run("hello", baseFlags({ apiKey: undefined }))
@@ -729,7 +739,10 @@ describe("run provider settings per mode", () => {
 		baseUrl: "http://192.168.50.194:11111/v1",
 		model: "GLM-5.3-Flash-NVFP4",
 		apiKey: "1111",
-		reasoningEffort: "max" as const,
+		models: {
+			"GLM-5.3-Flash-NVFP4": { reasoningEffort: "max" as const },
+			"GLM-5.3-NVFP4": { reasoningEffort: "high" as const },
+		},
 	}
 
 	beforeEach(() => {
@@ -777,7 +790,7 @@ describe("run provider settings per mode", () => {
 	it("a mode entry changes only what it names and inherits the rest", async () => {
 		await saveSettings({
 			...globalSettings,
-			modes: { architect: { model: "GLM-5.3-NVFP4", reasoningEffort: "high" } },
+			modes: { architect: { model: "GLM-5.3-NVFP4" } },
 		})
 
 		const { outcome } = await runWithExitThrowing()
@@ -809,7 +822,9 @@ describe("run provider settings per mode", () => {
 		})
 	})
 
-	it("a mode entry naming another provider carries over no model, base URL or key", async () => {
+	// Before 2026-10-06 the top-level "max" went with it: an effort was shared
+	// by every model, whether the model had that level or not.
+	it("a mode entry naming another provider carries over no model, base URL, key or reasoning effort", async () => {
 		await saveSettings({ ...globalSettings, modes: { ask: { provider: "openai-codex" } } })
 
 		const { outcome } = await runWithExitThrowing()
@@ -819,15 +834,31 @@ describe("run provider settings per mode", () => {
 			apiProvider: "openai-codex",
 			apiModelId: "gpt-5.6-sol",
 			enableReasoningEffort: true,
-			reasoningEffort: "max",
+			reasoningEffort: "medium",
 		})
+	})
+
+	it("each model of the session gets its own reasoning effort", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { architect: { model: "GLM-5.3-NVFP4" }, ask: { model: "Qwen3.8-27B" } },
+		})
+
+		await runWithExitThrowing()
+
+		const settings = mockHost.lastOptions?.modeProviderSettings
+		expect(settings?.base.reasoningEffort).toBe("max")
+		expect(settings?.modes.architect?.reasoningEffort).toBe("high")
+		// No entry for Qwen: the openai provider sends no effort at all.
+		expect(settings?.modes.ask).not.toHaveProperty("reasoningEffort")
+		expect(settings?.modes.ask?.openAiCustomModelInfo).toBeNull()
 	})
 
 	it("the session starts with the entry of the mode it starts in", async () => {
 		await saveSettings({
 			...globalSettings,
 			mode: "architect",
-			modes: { architect: { model: "GLM-5.3-NVFP4", reasoningEffort: "high" } },
+			modes: { architect: { model: "GLM-5.3-NVFP4" } },
 		})
 
 		await runWithExitThrowing()
@@ -859,6 +890,16 @@ describe("run provider settings per mode", () => {
 		expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({ openAiModelId: "Qwen3.8-27B" })
 	})
 
+	it("--reasoning-effort alone keeps the mode entries and sets the level for every model", async () => {
+		await saveSettings({ ...globalSettings, modes: { architect: { model: "GLM-5.3-NVFP4" } } })
+
+		await runWithExitThrowing({ reasoningEffort: "low" })
+
+		const settings = mockHost.lastOptions?.modeProviderSettings
+		expect(settings?.modes.architect).toMatchObject({ openAiModelId: "GLM-5.3-NVFP4", reasoningEffort: "low" })
+		expect(settings?.base.reasoningEffort).toBe("low")
+	})
+
 	it("a broken mode entry fails at startup and names the mode", async () => {
 		await saveSettings({ ...globalSettings, modes: { debug: { provider: "anthropic" } } })
 
@@ -870,17 +911,54 @@ describe("run provider settings per mode", () => {
 		expect(mockHost.lastOptions).toBeUndefined()
 	})
 
-	it("a mode entry with an invalid reasoning effort fails at startup", async () => {
-		await saveSettings({
-			...globalSettings,
-			modes: { architect: { reasoningEffort: "maz" as never } },
-		})
+	it("a model entry with an invalid reasoning effort fails at startup and names the model", async () => {
+		await saveSettings({ ...globalSettings, models: { "GLM-5.3-NVFP4": { reasoningEffort: "maz" as never } } })
 
 		const { outcome, errors } = await runWithExitThrowing()
 
 		expect(outcome).toBe("failed")
-		expect(errors[0]).toContain("modes.architect")
+		expect(errors[0]).toContain(
+			'models.GLM-5.3-NVFP4.reasoningEffort must be one of: none, minimal, low, medium, high, xhigh, max, unspecified, disabled, got "maz"',
+		)
+	})
+
+	it("an invalid --reasoning-effort fails at startup", async () => {
+		await saveSettings(globalSettings)
+
+		const { outcome, errors } = await runWithExitThrowing({ reasoningEffort: "maz" as never })
+
+		expect(outcome).toBe("failed")
 		expect(errors[0]).toContain("Invalid reasoning effort: maz")
+	})
+
+	it("ignores a reasoning effort at the top level or in a mode entry and says where to move it", async () => {
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+		try {
+			await saveSettings({
+				...globalSettings,
+				reasoningEffort: "max",
+				modes: { architect: { model: "GLM-5.3-NVFP4", reasoningEffort: "low" } },
+				models: {},
+			})
+
+			const { outcome } = await runWithExitThrowing()
+
+			expect(outcome).toBe("ran")
+			const warnings = warnSpy.mock.calls.map((call) => String(call[0]))
+			expect(warnings).toContainEqual(
+				expect.stringContaining(
+					"reasoningEffort in " + path.join(tempDir, "cli-settings.json") + " is ignored",
+				),
+			)
+			expect(warnings).toContainEqual(expect.stringContaining('"GLM-5.3-Flash-NVFP4": { "reasoningEffort"'))
+			expect(warnings).toContainEqual(expect.stringContaining("modes.architect.reasoningEffort in"))
+			expect(warnings).toContainEqual(expect.stringContaining('"GLM-5.3-NVFP4": { "reasoningEffort"'))
+			expect(mockHost.lastOptions?.modeProviderSettings?.base).not.toHaveProperty("reasoningEffort")
+			expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect).not.toHaveProperty("reasoningEffort")
+		} finally {
+			warnSpy.mockRestore()
+		}
 	})
 })
 
@@ -939,20 +1017,19 @@ describe("run context window per model", () => {
 	it("sizes the model everywhere it runs: the session, the global settings and each mode", async () => {
 		await saveSettings({
 			...globalSettings,
-			modes: { ask: { model: "GLM-5.3-Flash-NVFP4" }, architect: { reasoningEffort: "high" } },
-			models: { "GLM-5.3-NVFP4": { contextWindow: 262_144 } },
+			modes: { ask: { model: "GLM-5.3-Flash-NVFP4" }, architect: { apiKey: "2222" } },
+			models: { "GLM-5.3-NVFP4": { contextWindow: 262_144, reasoningEffort: "high" } },
 		})
 
 		const { outcome } = await runWithExitThrowing()
 
 		expect(outcome).toBe("ran")
-		expect(mockHost.lastOptions?.modelSettings).toEqual({ contextWindow: 262_144 })
-		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(sized(262_144))
-		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual({
-			...sized(262_144),
-			supportsReasoningEffort: true,
-			reasoningEffort: "high",
-		})
+		expect(mockHost.lastOptions?.modelSettings).toEqual({ contextWindow: 262_144, reasoningEffort: "high" })
+		const sizedWithEffort = { ...sized(262_144), supportsReasoningEffort: true, reasoningEffort: "high" }
+		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(sizedWithEffort)
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual(
+			sizedWithEffort,
+		)
 		// Another model, no entry: the provider's default applies.
 		expect(mockHost.lastOptions?.modeProviderSettings?.modes.ask?.openAiCustomModelInfo).toBeNull()
 	})
@@ -969,7 +1046,7 @@ describe("run context window per model", () => {
 	it("prices the model everywhere it runs", async () => {
 		await saveSettings({
 			...globalSettings,
-			modes: { architect: { reasoningEffort: "high" } },
+			modes: { architect: { apiKey: "2222" } },
 			models: { "GLM-5.3-NVFP4": { inputPrice: 0.6, outputPrice: 2.2 } },
 		})
 
@@ -978,18 +1055,14 @@ describe("run context window per model", () => {
 		expect(outcome).toBe("ran")
 		const priced = { ...openAiModelInfoSaneDefaults, inputPrice: 0.6, outputPrice: 2.2 }
 		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(priced)
-		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual({
-			...priced,
-			supportsReasoningEffort: true,
-			reasoningEffort: "high",
-		})
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual(priced)
 	})
 
 	it("returns the reasoning wherever the model whose entry asks for it runs, and only there", async () => {
 		await saveSettings({
 			...globalSettings,
-			modes: { ask: { model: "GLM-5.3-Flash-NVFP4" }, architect: { reasoningEffort: "max" } },
-			models: { "GLM-5.3-NVFP4": { preserveReasoning: true } },
+			modes: { ask: { model: "GLM-5.3-Flash-NVFP4" }, architect: { apiKey: "2222" } },
+			models: { "GLM-5.3-NVFP4": { preserveReasoning: true, reasoningEffort: "max" } },
 		})
 
 		const { outcome } = await runWithExitThrowing()
@@ -1036,8 +1109,8 @@ describe("run context window per model", () => {
 		await saveSettings({
 			provider: "anthropic",
 			model: "claude-x",
-			modes: { ask: { reasoningEffort: "low" } },
-			models: { "claude-x": { contextWindow: 1_000_000, inputPrice: 3 } },
+			modes: { ask: { apiKeyEnv: "ANTHROPIC_API_KEY" } },
+			models: { "claude-x": { contextWindow: 1_000_000, inputPrice: 3, reasoningEffort: "high" } },
 		})
 
 		const { outcome, warnings } = await runWithExitThrowing()
@@ -1047,6 +1120,8 @@ describe("run context window per model", () => {
 		expect(ignored).toHaveLength(1)
 		expect(ignored[0]).toContain("ignored with the anthropic provider")
 		expect(mockHost.lastOptions?.modeProviderSettings?.base).not.toHaveProperty("openAiCustomModelInfo")
+		// The effort is not one of the ignored keys: every provider takes it.
+		expect(mockHost.lastOptions?.modeProviderSettings?.base.reasoningEffort).toBe("high")
 	})
 })
 

@@ -39,6 +39,7 @@ import {
 import {
 	pickProviderConfig,
 	resolveProviderConfig,
+	resolveReasoningEffort,
 	toProviderSettings,
 	type ResolvedProviderConfig,
 } from "@/lib/utils/provider-config.js"
@@ -144,10 +145,6 @@ async function findProviderConfigProblem(
 	// ollama, lmstudio); the settings UI requires one for the same providers.
 	if (!config.model && providerRequiresModelId(config.provider)) {
 		return [`No model given for ${config.provider}. Use --model or set model in ${getSettingsPath()}.`]
-	}
-
-	if (!REASONING_EFFORTS.includes(config.reasoningEffort)) {
-		return [`Invalid reasoning effort: ${config.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`]
 	}
 
 	return undefined
@@ -260,7 +257,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		model: flagOptions.model,
 		baseUrl: flagOptions.baseUrl,
 		apiKey: flagOptions.apiKey,
-		reasoningEffort: flagOptions.reasoningEffort,
 	}
 	const baseProviderConfig = resolveProviderConfig({
 		fallback: vsCodeConfig,
@@ -286,13 +282,16 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
 	// The session starts with the configuration of the mode it starts in.
 	const providerConfig = modeProviderConfigs[effectiveMode] ?? baseProviderConfig
-	const effectiveReasoningEffort = providerConfig.reasoningEffort
 	const effectiveProvider = providerConfig.provider
 	const effectiveModel = providerConfig.model
 	const effectiveBaseUrl = providerConfig.baseUrl
-	// `models` entries follow the model wherever it runs, flags included.
+	// `models` entries follow the model wherever it runs, flags included, and
+	// so does the reasoning effort, which is read from them.
 	const modelSettingsFor = (config: ResolvedProviderConfig) =>
 		getConfiguredModelSettings(settings.models, config.model)
+	const reasoningEffortFor = (config: ResolvedProviderConfig) =>
+		resolveReasoningEffort(config.provider, modelSettingsFor(config), flagOptions.reasoningEffort)
+	const effectiveReasoningEffort = reasoningEffortFor(providerConfig)
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
 	// the current working directory. The workspace is intentionally NEVER read
 	// from persisted settings — `tumble` must follow the directory it is run
@@ -384,6 +383,35 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			),
 	]
 
+	if (flagOptions.reasoningEffort !== undefined && !REASONING_EFFORTS.includes(flagOptions.reasoningEffort)) {
+		console.error(
+			`[CLI] Error: Invalid reasoning effort: ${flagOptions.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`,
+		)
+		process.exit(1)
+	}
+
+	// A reasoning effort at the top level or in a mode entry applied to every
+	// model that ran there, and a level one model takes is rejected by another
+	// ("max" for GLM-5.3, not for Qwen). It now lives in the model's entry;
+	// say where to move it instead of silently dropping it.
+	const misplacedReasoningEfforts = [
+		...(settings.reasoningEffort !== undefined ? [["reasoningEffort", effectiveModel] as const] : []),
+		...Object.entries(settings.modes ?? {})
+			.filter(([, modeSettings]) => modeSettings.reasoningEffort !== undefined)
+			.map(
+				([modeSlug]) =>
+					[
+						`modes.${modeSlug}.reasoningEffort`,
+						modeProviderConfigs[modeSlug]?.model ?? effectiveModel,
+					] as const,
+			),
+	]
+	for (const [key, model] of misplacedReasoningEfforts) {
+		console.warn(
+			`[CLI] Warning: ${key} in ${getSettingsPath()} is ignored: the reasoning effort is set per model now. Move it into the model's entry, e.g. "models": { ${JSON.stringify(model || "<model id>")}: { "reasoningEffort": "high" } }.`,
+		)
+	}
+
 	const modelSettingsProblems = findModelSettingsProblems(settings.models)
 	if (modelSettingsProblems.length > 0) {
 		for (const problem of modelSettingsProblems) {
@@ -427,12 +455,18 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		base: toProviderSettings({
 			...baseProviderConfig,
 			apiKey: keyFor(baseProviderConfig),
+			reasoningEffort: reasoningEffortFor(baseProviderConfig),
 			modelSettings: modelSettingsFor(baseProviderConfig),
 		}),
 		modes: Object.fromEntries(
 			Object.entries(modeProviderConfigs).map(([modeSlug, config]) => [
 				modeSlug,
-				toProviderSettings({ ...config, apiKey: keyFor(config), modelSettings: modelSettingsFor(config) }),
+				toProviderSettings({
+					...config,
+					apiKey: keyFor(config),
+					reasoningEffort: reasoningEffortFor(config),
+					modelSettings: modelSettingsFor(config),
+				}),
 			]),
 		),
 	}

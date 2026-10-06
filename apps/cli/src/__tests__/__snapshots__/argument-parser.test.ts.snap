@@ -54,7 +54,7 @@ Options:
   --base-url <url>                       Base URL override for the selected provider
   --mode <mode>                          Mode to start in (code, architect, ask, debug, etc.; defaults to the settings mode, then code)
   --terminal-shell <path>                Absolute path to shell executable for inline terminal commands
-  -r, --reasoning-effort <effort>        Reasoning effort level (none, minimal, low, medium, high, xhigh, max, unspecified, disabled; defaults to the settings value, then medium, or unspecified for the openai provider)
+  -r, --reasoning-effort <effort>        Reasoning effort level for every model of this run (none, minimal, low, medium, high, xhigh, max, unspecified, disabled; defaults to the model's reasoningEffort in the settings file's models, then medium, or unspecified for the openai provider)
   --consecutive-mistake-limit <limit>    Consecutive error/repetition limit before guidance prompt (0 disables the limit)
   --command-execution-timeout <seconds>  Seconds a shell command may run before it is stopped (0 means no limit; defaults to the settings value, then 300)
   --exit-on-error                        Exit on API request errors instead of retrying (default: false)
