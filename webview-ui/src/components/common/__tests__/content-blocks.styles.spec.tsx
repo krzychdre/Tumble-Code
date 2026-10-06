@@ -443,6 +443,8 @@ describe("MermaidBlock styles", () => {
 
 		resolve({ svg: '<svg data-testid="mermaid-svg"></svg>' })
 		await screen.findByTestId("mermaid-svg")
+		// The SVG is written to the DOM before setIsLoading(false) re-renders; wait for that render too.
+		await waitFor(() => expect(screen.queryByText("common:mermaid.loading")).toBeNull())
 		mermaidRender.result = undefined
 		expect(pick(host(), ["display", "justify-content", "max-height", "min-height", "cursor", "opacity"]))
 			.toMatchInlineSnapshot(`
