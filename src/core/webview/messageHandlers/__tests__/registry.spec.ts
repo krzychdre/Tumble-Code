@@ -20,9 +20,9 @@ describe("message handler registry", () => {
 		expect(claimedTwice).toEqual([])
 	})
 
-	it("routes the 135 message types the old switch handled (137 minus showMdmAuthRequiredNotification, #709, and telemetrySetting, consent setting removed), plus resyncClineMessages (#472) and openDiff, each to a function", () => {
+	it("routes the 135 message types the old switch handled (137 minus showMdmAuthRequiredNotification, #709, and telemetrySetting, consent setting removed), plus resyncClineMessages (#472), openDiff and reloadWindow (#791), each to a function", () => {
 		const entries = Object.entries(messageHandlers)
-		expect(entries).toHaveLength(137)
+		expect(entries).toHaveLength(138)
 		for (const [, handler] of entries) {
 			expect(typeof handler).toBe("function")
 		}

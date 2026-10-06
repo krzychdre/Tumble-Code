@@ -46,6 +46,7 @@ function makeProcessor(apiProvider: string, apiModelId: string) {
 		abort: false,
 		abandoned: false,
 		apiConfiguration: { apiProvider, apiModelId },
+		api: { getModel: () => ({ id: apiModelId }) },
 		clineMessages: [{ ts: 1, type: "say", say: "api_req_started", text: "{}" }],
 		assistantMessageContent: [],
 		history: {

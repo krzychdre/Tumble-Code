@@ -81,9 +81,13 @@ describe("the check line", () => {
 	})
 })
 
+// A missing file reads as an empty config on every platform. os.devNull does not:
+// git for Windows fails on \\.\nul with "Invalid argument".
+const NO_GIT_CONFIG = path.join(os.tmpdir(), "tumble-test-no-git-config", "config")
+
 /** Runs git in a test repository, isolated from the user's config, with the commit date given. */
 function git(cwd: string, date: string | undefined, ...args: string[]): string {
-	const env: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: "1" }
+	const env: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_GLOBAL: NO_GIT_CONFIG, GIT_CONFIG_NOSYSTEM: "1" }
 	if (date) {
 		env.GIT_AUTHOR_DATE = `${date}T12:00:00Z`
 		env.GIT_COMMITTER_DATE = `${date}T12:00:00Z`
