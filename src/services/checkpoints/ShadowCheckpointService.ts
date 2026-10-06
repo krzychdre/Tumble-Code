@@ -4,7 +4,7 @@ import * as path from "path"
 import crypto from "crypto"
 import EventEmitter from "events"
 
-import simpleGit, { SimpleGit, SimpleGitOptions } from "simple-git"
+import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git"
 import pWaitFor from "p-wait-for"
 import * as vscode from "vscode"
 
@@ -24,8 +24,10 @@ import { logger } from "../../utils/logging"
  *  - Location-override vars (GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_OBJECT_DIRECTORY,
  *    GIT_ALTERNATE_OBJECT_DIRECTORIES, GIT_CEILING_DIRECTORIES): redirect git operations to
  *    unintended repositories or limit where git searches.
- *  - Code-execution vectors blocked by simple-git ≥3.36's blockUnsafeOperationsPlugin when
- *    passed via .env(): GIT_EDITOR, GIT_SSH_COMMAND, GIT_PAGER, PREFIX, etc.
+ *  - Code-execution vectors simple-git 4 refuses when passed via .env(): GIT_EDITOR,
+ *    GIT_SSH_COMMAND, GIT_PAGER, PREFIX, VISUAL, GIT_CONFIG_PARAMETERS, etc. (its list is
+ *    GitEnvKeys in @simple-git/argv-parser). One of these left in the env makes every
+ *    checkpoint operation throw, so this set must cover all of them.
  *
  * Stripping GIT_CONFIG_COUNT also neutralises the entire GIT_CONFIG_KEY_n / GIT_CONFIG_VALUE_n
  * family — git ignores those per-key entries when the count key is absent.
@@ -51,8 +53,10 @@ export const BLOCKED_ENV_KEYS = new Set([
 	"GIT_CONFIG_GLOBAL",
 	"GIT_CONFIG_SYSTEM",
 	"GIT_CONFIG_COUNT",
+	"GIT_CONFIG_PARAMETERS",
 	"PREFIX",
 	"EDITOR",
+	"VISUAL",
 	"PAGER",
 	"SSH_ASKPASS",
 ])
@@ -96,7 +100,7 @@ function createSanitizedGit(baseDir: string): SimpleGit {
 		config: [],
 		// --template="" stops git copying hooks/templates into the shadow repo (axis 1).
 		// GIT_TEMPLATE_DIR is stripped from the env above to block the env-var path (axis 2).
-		// allowUnsafeTemplateDir opts out of simple-git ≥3.36's blockUnsafeOperationsPlugin
+		// allowUnsafeTemplateDir opts out of simple-git's blockUnsafeOperationsPlugin
 		// so the --template arg is not rejected before reaching git.
 		unsafe: { allowUnsafeTemplateDir: true },
 	}
