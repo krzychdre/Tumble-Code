@@ -148,6 +148,7 @@ describe("globalCommands", () => {
 				"exportTranscript",
 				"cloudLogin",
 				"cloudLogout",
+				"switchModel",
 			]
 
 			for (const cmd of GLOBAL_COMMANDS) {

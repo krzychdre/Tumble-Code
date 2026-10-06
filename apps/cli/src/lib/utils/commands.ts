@@ -20,6 +20,7 @@ export type GlobalCommandAction =
 	| "exportTranscript"
 	| "cloudLogin"
 	| "cloudLogout"
+	| "switchModel"
 
 /**
  * Definition of a CLI global command
@@ -83,6 +84,12 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 		name: "logout",
 		description: "Sign out from Tumble Code Cloud",
 		action: "cloudLogout",
+	},
+	{
+		name: "model",
+		description: "Show the models of ~/.roo/cli-settings.json; /model <id> runs <id> in this mode for the session",
+		argumentHint: "[model id]",
+		action: "switchModel",
 	},
 	{
 		name: "mcp",

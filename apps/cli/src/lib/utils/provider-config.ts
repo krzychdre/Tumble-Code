@@ -189,6 +189,40 @@ export function toProviderSettings(
 		config.baseUrl,
 	) as ProviderSettings
 
+	return applyModelSettings(settings, config.provider, config)
+}
+
+/**
+ * The same provider settings running another model of the same provider (the
+ * TUI's /model): the provider's model field, and what comes with the model
+ * (its reasoning effort and, for the openai provider, its size, prices and
+ * preserveReasoning), replacing those of the previous model. The connection
+ * (base URL, key) stays.
+ */
+export function withModel(
+	settings: ProviderSettings,
+	model: string,
+	options: { reasoningEffort?: ReasoningEffortFlagOptions; modelSettings?: CliModelSettings },
+): ProviderSettings {
+	const provider = settings.apiProvider
+	if (!provider || !isSupportedProvider(provider)) {
+		throw new Error(`Cannot switch the model of provider ${provider ?? "(none)"}`)
+	}
+
+	const next: ProviderSettings = { ...settings, [getModelField(provider)]: model }
+	// The previous model's level must not outlive it when the new one has none.
+	delete next.enableReasoningEffort
+	delete next.reasoningEffort
+
+	return applyModelSettings(next, provider, options)
+}
+
+/** Writes the model-dependent fields of toProviderSettings onto `settings`. */
+function applyModelSettings(
+	settings: ProviderSettings,
+	provider: SupportedProvider,
+	config: { reasoningEffort?: ReasoningEffortFlagOptions; modelSettings?: CliModelSettings },
+): ProviderSettings {
 	const effort =
 		config.reasoningEffort === "disabled" || config.reasoningEffort === "unspecified"
 			? undefined
@@ -211,7 +245,7 @@ export function toProviderSettings(
 	// settings are merged into the extension's persisted state, where a size, a
 	// price, an effort or a preserveReasoning from an earlier run would
 	// otherwise outlive the entry that set it.
-	if (config.provider === "openai") {
+	if (provider === "openai") {
 		const { contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice, preserveReasoning } =
 			config.modelSettings ?? {}
 		const configured = Object.fromEntries(

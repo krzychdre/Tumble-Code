@@ -3,11 +3,19 @@ import { randomUUID } from "crypto"
 import fs from "fs/promises"
 import path from "path"
 import { useStdout } from "ink"
-import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } from "@tumble-code/types"
+import {
+	suggestionModeToSwitch,
+	type ProviderSettings,
+	type UsableSuggestion,
+	type WebviewMessage,
+} from "@tumble-code/types"
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
 import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
 import { TuiCloudAuth, type CloudAuthChannel } from "../../lib/auth/tui-cloud-auth.js"
+import { formatModelList, formatModelSwitched } from "../../lib/utils/model-command.js"
+import { getSettingsPath } from "../../lib/storage/index.js"
+import type { CliModelSettings } from "../../types/types.js"
 
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
@@ -29,8 +37,14 @@ export interface UseTaskSubmitOptions {
 	onPermissionModeChange: (mode: PermissionMode) => void
 	/** Where /export writes (a relative /export path is taken from here). Default: the process cwd. */
 	workspacePath?: string
-	/** The model named in the /export heading. */
+	/** The model now running: named in the /export heading and by /model. */
 	model?: string
+	/** The mode now active, whose model /model changes. */
+	mode?: string
+	/** `models` of cli-settings.json, listed by /model. */
+	configuredModels?: Record<string, CliModelSettings>
+	/** Runs another model in a mode for the session (ExtensionHost.switchModel). */
+	switchModel?: ((mode: string, model: string) => ProviderSettings) | null
 	/** The running extension for /login and /logout (absent: they say so). */
 	cloudAuth?: CloudAuthChannel | null
 }
@@ -64,6 +78,9 @@ export function useTaskSubmit({
 	onPermissionModeChange,
 	workspacePath,
 	model,
+	mode,
+	configuredModels,
+	switchModel,
 	cloudAuth,
 }: UseTaskSubmitOptions): UseTaskSubmitReturn {
 	const {
@@ -250,6 +267,40 @@ export function useTaskSubmit({
 						return
 					}
 
+					if (globalCommand?.action === "switchModel") {
+						const requested = trimmedText.slice(commandMatch[0].length).trim()
+						const activeMode = mode ?? "code"
+						let content: string
+
+						if (!requested) {
+							content = formatModelList({
+								mode: activeMode,
+								currentModel: model,
+								models: configuredModels,
+								settingsPath: getSettingsPath(),
+							})
+						} else if (requested === model) {
+							content = `${activeMode} mode already runs ${requested}.`
+						} else if (!switchModel) {
+							content = "The model cannot be changed before the extension has started."
+						} else {
+							try {
+								const settings = switchModel(activeMode, requested)
+								content = formatModelSwitched({
+									mode: activeMode,
+									model: requested,
+									settings,
+									hasEntry: configuredModels?.[requested] !== undefined,
+								})
+							} catch (error) {
+								content = `Could not switch the model: ${error instanceof Error ? error.message : String(error)}`
+							}
+						}
+
+						addMessage({ id: randomUUID(), role: "system", content })
+						return
+					}
+
 					if (globalCommand?.action === "openMcpPanel") {
 						useUIStateStore.getState().setShowMcpPanel(true)
 						return
@@ -349,6 +400,10 @@ export function useTaskSubmit({
 			copyToClipboard,
 			exportTranscript,
 			runCloudAuth,
+			mode,
+			model,
+			configuredModels,
+			switchModel,
 		],
 	)
 

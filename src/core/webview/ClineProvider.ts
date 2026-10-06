@@ -1137,6 +1137,11 @@ export class ClineProvider
 		this.modeProfiles.setCliModeProviderSettings(settings)
 	}
 
+	/** See {@link ModeProfileBinding.applyCliProviderSettingsToCurrentMode}. */
+	public async applyCliProviderSettingsToCurrentMode() {
+		await this.modeProfiles.applyCliProviderSettingsToCurrentMode()
+	}
+
 	/**
 	 * Handle switching to a new mode, including updating the associated API configuration
 	 * @param newMode The mode to switch to

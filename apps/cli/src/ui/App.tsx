@@ -155,7 +155,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		nonInteractive: permissionMode === "allow",
 	})
 
-	const { sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel } = useExtensionHost({
+	const { sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel, switchModel } = useExtensionHost({
 		...hostOptions,
 		initialPrompt,
 		initialTaskId,
@@ -174,6 +174,9 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		onPermissionModeChange: setPermissionMode,
 		workspacePath,
 		model: activeModel,
+		mode: currentMode || mode,
+		configuredModels: hostOptions.models,
+		switchModel,
 		cloudAuth: cloudAuthChannel,
 	})
 

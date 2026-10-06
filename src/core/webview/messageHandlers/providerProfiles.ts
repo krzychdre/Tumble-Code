@@ -48,9 +48,15 @@ export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 		await provider.postStateToWebview()
 	},
 
-	cliModeProviderSettings: (ctx, message) => {
+	cliModeProviderSettings: async (ctx, message) => {
 		const { provider } = ctx
 		provider.setCliModeProviderSettings(message.cliModeProviderSettings)
+
+		// `bool`: the settings of the current mode changed (the CLI's /model),
+		// so they apply now instead of on the next mode switch.
+		if (message.bool) {
+			await provider.applyCliProviderSettingsToCurrentMode()
+		}
 	},
 
 	assignCurrentApiConfigToModes: async (ctx, message) => {

@@ -336,7 +336,10 @@ export interface WebviewMessage {
 	dataUri?: string
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ProviderSettings
-	/** For `cliModeProviderSettings`: the CLI's provider settings per mode. */
+	/**
+	 * For `cliModeProviderSettings`: the CLI's provider settings per mode. With
+	 * `bool: true` the current mode's entry also applies at once (the CLI's /model).
+	 */
 	cliModeProviderSettings?: CliModeProviderSettings
 	images?: string[]
 	bool?: boolean
