@@ -40,6 +40,9 @@ function applyTranscriptEffects(effects: readonly TranscriptEffect[]): void {
 			case "markStepStarted":
 				store.markStepStarted(effect.ts)
 				break
+			case "markStepCounted":
+				store.markStepCounted(effect.ts)
+				break
 			case "setTodos":
 				store.setTodos(effect.todos)
 				break

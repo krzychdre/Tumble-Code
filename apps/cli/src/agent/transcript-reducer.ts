@@ -156,6 +156,7 @@ export type TranscriptEffect =
 	| { type: "setHasStartedTask"; started: boolean }
 	| { type: "setIsResumingTask"; resuming: boolean }
 	| { type: "markStepStarted"; ts: number }
+	| { type: "markStepCounted"; ts: number }
 	| { type: "setTodos"; todos: TodoItem[] }
 	| { type: "setTokenUsage"; usage: TokenUsage }
 	| { type: "setMcpServers"; servers: McpServer[] }
@@ -329,6 +330,16 @@ class Reduction {
 	}
 }
 
+/** Whether an `api_req_started` text already carries the request's token counts. */
+function hasReportedUsage(text: string): boolean {
+	try {
+		const info = JSON.parse(text) as { tokensIn?: unknown; tokensOut?: unknown }
+		return typeof info.tokensIn === "number" || typeof info.tokensOut === "number"
+	} catch {
+		return false
+	}
+}
+
 /**
  * Map an extension "say" message to a transcript row.
  */
@@ -347,6 +358,12 @@ function reduceSay(r: Reduction, ts: number, say: ClineSay, text: string, partia
 		// Not a row, but it opens the next request to the model: the spinner
 		// times the current step from here.
 		r.emit({ type: "markStepStarted", ts })
+		// The server reports a request's tokens only with its last chunk, and
+		// the core then writes them into this same message. Until then the
+		// spinner estimates the step's output from what has streamed in.
+		if (hasReportedUsage(text)) {
+			r.emit({ type: "markStepCounted", ts })
+		}
 		return
 	}
 

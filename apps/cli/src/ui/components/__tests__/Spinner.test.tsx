@@ -1,6 +1,6 @@
 import { render } from "ink-testing-library"
 
-import Spinner, { formatElapsed } from "../Spinner.js"
+import Spinner, { formatElapsed, formatTokens } from "../Spinner.js"
 
 describe("formatElapsed", () => {
 	it.each([
@@ -71,5 +71,36 @@ describe("Spinner", () => {
 		rerender(<Spinner startTime={turnStart} stepStartTime={Date.now()} sound="Sploosh" />)
 
 		expect(lastFrame()).toContain("total 5m 03s · step 0s")
+	})
+
+	it("updates the token counts on the clock, not on every streamed chunk", async () => {
+		const now = new Date("2026-09-23T12:00:00Z").getTime()
+		vi.setSystemTime(now)
+
+		const { lastFrame, rerender } = render(
+			<Spinner startTime={now} tokensIn={120_400} tokensOut={3_000} sound="Sploosh" />,
+		)
+		expect(lastFrame()).toContain("↑ 120.4K ↓ 3.0K tokens")
+
+		rerender(<Spinner startTime={now} tokensIn={120_400} tokensOut={3_000} liveTokensOut={250} sound="Sploosh" />)
+		expect(lastFrame()).toContain("↓ 3.0K tokens")
+
+		await vi.advanceTimersByTimeAsync(1_000)
+		expect(lastFrame()).toContain("↑ 120.4K ↓ ~3.3K tokens")
+	})
+})
+
+describe("formatTokens", () => {
+	it("shows nothing before the first token", () => {
+		expect(formatTokens({})).toBe("")
+	})
+
+	it("shows the sent and received tokens the server reported", () => {
+		expect(formatTokens({ tokensIn: 85_977, tokensOut: 412 })).toBe(" · ↑ 86.0K ↓ 412 tokens")
+	})
+
+	it("marks the received count as an estimate while a request streams", () => {
+		expect(formatTokens({ tokensIn: 85_977, tokensOut: 412, liveTokensOut: 600 })).toBe(" · ↑ 86.0K ↓ ~1.0K tokens")
+		expect(formatTokens({ liveTokensOut: 30 })).toBe(" · ↓ ~30 tokens")
 	})
 })

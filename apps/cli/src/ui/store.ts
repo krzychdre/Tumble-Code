@@ -129,6 +129,11 @@ interface CLIState {
 	// whole turn. Replayed history can deliver older values; see markStepStarted.
 	stepStartedAt: number | null
 
+	// The latest request whose token counts the server has reported (the ts
+	// of its `api_req_started`). While it is older than stepStartedAt, the
+	// current request is still streaming and its output is only estimated.
+	stepCountedAt: number | null
+
 	// Autocomplete data (from API/extension)
 	fileSearchResults: FileResult[]
 	allSlashCommands: SlashCommandResult[]
@@ -179,6 +184,8 @@ interface CLIActions {
 	setIsResumingTask: (isResuming: boolean) => void
 	/** Record the start of a request to the model; an earlier start never replaces a later one. */
 	markStepStarted: (ts: number) => void
+	/** Record that a request's token counts arrived; forward-only like markStepStarted. */
+	markStepCounted: (ts: number) => void
 
 	// Autocomplete data actions
 	setFileSearchResults: (results: FileResult[]) => void
@@ -219,6 +226,7 @@ const initialState: CLIState = {
 	isResumingTask: false,
 	turnStartedAt: null,
 	stepStartedAt: null,
+	stepCountedAt: null,
 	fileSearchResults: [],
 	allSlashCommands: [],
 	availableModes: [],
@@ -304,6 +312,7 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 			error: null,
 			isResumingTask: false,
 			stepStartedAt: null,
+			stepCountedAt: null,
 			tokenUsage: null,
 			currentTodos: [],
 			previousTodos: [],
@@ -325,6 +334,8 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 	// later start may move the mark.
 	markStepStarted: (ts) =>
 		set((state) => (state.stepStartedAt !== null && state.stepStartedAt >= ts ? state : { stepStartedAt: ts })),
+	markStepCounted: (ts) =>
+		set((state) => (state.stepCountedAt !== null && state.stepCountedAt >= ts ? state : { stepCountedAt: ts })),
 	// Use shallow equality to prevent unnecessary re-renders when array content is the same
 	setFileSearchResults: (results) =>
 		set((state) => (shallowArrayEqual(state.fileSearchResults, results) ? state : { fileSearchResults: results })),
