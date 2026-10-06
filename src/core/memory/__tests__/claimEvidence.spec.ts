@@ -15,9 +15,13 @@ const hasGit = spawnSync("git", ["--version"]).status === 0
 
 let tick = 0
 
+// A missing file reads as an empty config on every platform. os.devNull does not:
+// git for Windows fails on \\.\nul with "Invalid argument".
+const NO_GIT_CONFIG = path.join(os.tmpdir(), "tumble-test-no-git-config", "config")
+
 /** Runs git in a test repository, isolated from the user's git config, with a fixed date per commit. */
 function git(cwd: string, ...args: string[]): string {
-	const env: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: "1" }
+	const env: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_GLOBAL: NO_GIT_CONFIG, GIT_CONFIG_NOSYSTEM: "1" }
 	if (["commit", "merge"].includes(args[0])) {
 		const date = new Date(Date.UTC(2026, 8, 20 + tick++, 12)).toISOString()
 		env.GIT_AUTHOR_DATE = date

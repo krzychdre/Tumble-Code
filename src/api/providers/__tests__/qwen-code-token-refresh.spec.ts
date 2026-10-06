@@ -88,7 +88,10 @@ describe("QwenCodeHandler token refresh", () => {
 			resource_url: "portal.qwen.ai",
 		})
 		expect(saved.expiry_date).toBeGreaterThan(Date.now())
-		expect((await fs.stat(credsPath)).mode & 0o777).toBe(0o600)
+		// Windows has no POSIX permission bits: stat reports 0o666 for any writable file.
+		if (process.platform !== "win32") {
+			expect((await fs.stat(credsPath)).mode & 0o777).toBe(0o600)
+		}
 		// No temp file or lock left behind next to the credentials.
 		expect(await fs.readdir(dir)).toEqual(["oauth_creds.json"])
 	})

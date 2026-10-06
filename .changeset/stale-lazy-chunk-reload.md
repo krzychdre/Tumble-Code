@@ -1,5 +1,4 @@
 ---
-"@tumble-code/vscode-webview": patch
 "tumble-code": patch
 ---
 

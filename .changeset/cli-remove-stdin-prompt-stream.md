@@ -1,5 +1,4 @@
 ---
-"@tumble-code/cli": patch
 "tumble-code": patch
 ---
 
