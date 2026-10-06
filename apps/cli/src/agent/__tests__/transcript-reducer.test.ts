@@ -25,6 +25,7 @@ interface TranscriptModel {
 	hasStartedTask: boolean
 	isResumingTask: boolean
 	stepStartedAt: number | null
+	stepCountedAt: number | null
 	currentTodos: TodoItem[]
 	previousTodos: TodoItem[]
 	tokenUsage: TokenUsage | null
@@ -48,6 +49,7 @@ function emptyModel(): TranscriptModel {
 		hasStartedTask: false,
 		isResumingTask: false,
 		stepStartedAt: null,
+		stepCountedAt: null,
 		currentTodos: [],
 		previousTodos: [],
 		tokenUsage: null,
@@ -86,6 +88,11 @@ function apply(model: TranscriptModel, effect: TranscriptEffect): void {
 		case "markStepStarted":
 			if (model.stepStartedAt === null || model.stepStartedAt < effect.ts) {
 				model.stepStartedAt = effect.ts
+			}
+			break
+		case "markStepCounted":
+			if (model.stepCountedAt === null || model.stepCountedAt < effect.ts) {
+				model.stepCountedAt = effect.ts
 			}
 			break
 		case "setTodos":
@@ -623,6 +630,25 @@ describe("transcript reducer", () => {
 		])
 		expect(model.stepStartedAt).toBe(3_000)
 		expect(model.messages).toHaveLength(0)
+	})
+
+	// An OpenAI-compatible server reports a request's tokens with its last
+	// chunk only; the spinner estimates the output until this mark moves.
+	it("marks a step counted once its api_req_started carries the request's tokens", () => {
+		sayUpdate(2_000, "api_req_started", '{"apiProtocol":"openai"}', false)
+		expect(model.stepCountedAt).toBeNull()
+
+		sayUpdate(2_000, "api_req_started", '{"apiProtocol":"openai","tokensIn":85977,"tokensOut":412}', false)
+		expect(model.stepCountedAt).toBe(2_000)
+
+		sayUpdate(3_000, "api_req_started", '{"apiProtocol":"openai"}', false)
+		expect(model.stepStartedAt).toBe(3_000)
+		expect(model.stepCountedAt).toBe(2_000)
+	})
+
+	it("does not mark a step counted for text that is not JSON", () => {
+		sayUpdate(2_000, "api_req_started", "not json", false)
+		expect(model.stepCountedAt).toBeNull()
 	})
 
 	describe("MCP calls", () => {

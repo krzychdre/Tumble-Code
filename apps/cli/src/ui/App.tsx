@@ -15,6 +15,7 @@ import { useCLIStore } from "./store.js"
 import { useUIStateStore } from "./stores/uiStateStore.js"
 import { useSecretPromptStore } from "./stores/secretPromptStore.js"
 import { remainderAfterCommit } from "./streamCommit.js"
+import { estimateStepOutputTokens } from "./utils/liveTokens.js"
 
 // Import extracted hooks.
 import {
@@ -107,6 +108,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		cloudStatus,
 		turnStartedAt,
 		stepStartedAt,
+		stepCountedAt,
 	} = useCLIStore()
 
 	// Access UI state from the UI store
@@ -266,6 +268,14 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// while loading, when the turn start is always set.
 	const turnStart = turnStartedAt ?? 0
 	const stepStart = Math.max(turnStart, stepStartedAt ?? 0)
+
+	// The server reports a request's tokens only at its end; until then the
+	// spinner adds an estimate of what the request has streamed in so far.
+	const isStepStreaming = isLoading && stepStartedAt !== null && (stepCountedAt ?? 0) < stepStartedAt
+	const liveTokensOut = useMemo(
+		() => (isStepStreaming ? estimateStepOutputTokens(messages, stepStartedAt) : 0),
+		[isStepStreaming, messages, stepStartedAt],
+	)
 
 	// --- Context percent for the footer ---------------------------------------
 
@@ -432,7 +442,9 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 					<Spinner
 						startTime={turnStart}
 						stepStartTime={stepStart}
+						tokensIn={tokenUsage?.totalTokensIn}
 						tokensOut={tokenUsage?.totalTokensOut}
+						liveTokensOut={liveTokensOut}
 						isActive
 					/>
 				)}

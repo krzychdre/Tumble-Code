@@ -177,7 +177,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ❯ Say hi
 
 ● Let me read the file.
-· Tumble… (esc to interrupt · total 1s · step 1s)
+· Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~5 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ❯ Say hi
 
 ● Let me read the file.
-∘ Tumble… (esc to interrupt · total 1s · step 1s)
+∘ Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~5 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -209,7 +209,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ● Let me read the file.
 
 ● The file exports one function.
-◦ Tumble… (esc to interrupt · total 1s · step 1s)
+◦ Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~5 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ● All done here.
 
 ● Finished the job.
-. Tumble… (esc to interrupt · total 1s · step 1s)
+. Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~8 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -386,7 +386,7 @@ exports[`App characterization (recorded message sequences) > draws an artifact r
 ❯ Say hi
 ● Read Artifact(0 B - 1.0 KB of 4.0 KB)
 ● Search Task History(retry)
-. Tumble… (esc to interrupt · total 1s · step 1s)
+. Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~33 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -403,7 +403,7 @@ exports[`App characterization (recorded message sequences) > draws an artifact r
 ● Search Task History(retry)
 
 ● Found it.
-○ Tumble… (esc to interrupt · total 1s · step 1s)
+○ Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~33 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -474,7 +474,7 @@ exports[`App characterization (recorded message sequences) > prints an auto-appr
 ● Read(src/a.ts)
 
 ● Read it.
-. Tumble… (esc to interrupt · total 1s · step 1s)
+. Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~9 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -777,7 +777,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 
 ❯ Say hi
   ∴ Thinking…
-. Tumble… (esc to interrupt · total 1s · step 1s)
+. Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~7 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -793,7 +793,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
   ∴ Thinking…
 
 ● Hi
-○ Tumble… (esc to interrupt · total 1s · step 1s)
+○ Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~7 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -809,7 +809,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
   ∴ Thinking…
 
 ● Hi there!
-◦ Tumble… (esc to interrupt · total 1s · step 1s)
+◦ Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~7 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -880,7 +880,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 ❯ Say hi
 
 ● Hello, wor
-. Tumble… (esc to interrupt · total 1s · step 1s)
+. Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~3 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -896,7 +896,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 
 ● Hello, world!
   Second line is
-○ Tumble… (esc to interrupt · total 1s · step 1s)
+○ Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~3 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -912,7 +912,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 
 ● Hello, world!
   Second line is here.
-◦ Tumble… (esc to interrupt · total 1s · step 1s)
+◦ Tumble… (esc to interrupt · total 1s · step 1s · ↓ ~3 tokens)
 ────────────────────────────────────────────────────────────────────────────────────────────────────
  ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────
