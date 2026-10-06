@@ -2,7 +2,12 @@
 
 import * as vscode from "vscode"
 
-import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, GLOBAL_SECRET_KEYS } from "@tumble-code/types"
+import {
+	GLOBAL_STATE_KEYS,
+	SECRET_STATE_KEYS,
+	GLOBAL_SECRET_KEYS,
+	REMOVED_PROVIDER_SETTINGS_KEYS,
+} from "@tumble-code/types"
 
 import { ContextProxy } from "../ContextProxy"
 
@@ -118,7 +123,10 @@ describe("ContextProxy", () => {
 		})
 
 		it("should initialize state cache with all global state keys", () => {
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length)
+			// Plus one read per removed provider settings key, to migrate it.
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(
+				GLOBAL_STATE_KEYS.length + REMOVED_PROVIDER_SETTINGS_KEYS.length,
+			)
 			for (const key of GLOBAL_STATE_KEYS) {
 				expect(mockGlobalState.get).toHaveBeenCalledWith(key)
 			}
@@ -145,7 +153,9 @@ describe("ContextProxy", () => {
 			expect(result).toBe("deepseek")
 
 			// Original context should be read only during initialization
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length)
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(
+				GLOBAL_STATE_KEYS.length + REMOVED_PROVIDER_SETTINGS_KEYS.length,
+			)
 		})
 
 		it("should handle default values correctly", async () => {
@@ -619,6 +629,43 @@ describe("ContextProxy", () => {
 			expect(touchedKeys).not.toContain("customCondensingPrompt")
 			expect(touchedKeys).not.toContain("openRouterImageGenerationSettings")
 			expect(mockGlobalState.get).not.toHaveBeenCalledWith("openRouterImageGenerationSettings")
+		})
+	})
+
+	// The live provider settings are read from global state at start-up, before any profile is.
+	describe("removed provider settings keys", () => {
+		const startWith = async (state: Record<string, unknown>) => {
+			vi.clearAllMocks()
+			mockGlobalState.get.mockImplementation((key: string) => state[key])
+			const started = new ContextProxy(mockContext)
+			await started.initialize()
+			return started
+		}
+
+		it("turns openAiR1FormatEnabled into openAiPreserveReasoning and drops the old key", async () => {
+			const started = await startWith({ apiProvider: "openai", openAiR1FormatEnabled: true })
+
+			expect(started.getProviderSettings().openAiPreserveReasoning).toBe(true)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("openAiPreserveReasoning", true)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("openAiR1FormatEnabled", undefined)
+		})
+
+		it("keeps an openAiPreserveReasoning value already set", async () => {
+			const started = await startWith({
+				apiProvider: "openai",
+				openAiR1FormatEnabled: true,
+				openAiPreserveReasoning: false,
+			})
+
+			expect(started.getProviderSettings().openAiPreserveReasoning).toBe(false)
+			expect(mockGlobalState.update).not.toHaveBeenCalledWith("openAiPreserveReasoning", expect.anything())
+			expect(mockGlobalState.update).toHaveBeenCalledWith("openAiR1FormatEnabled", undefined)
+		})
+
+		it("writes nothing when no removed key is stored", async () => {
+			await startWith({ apiProvider: "openai" })
+
+			expect(mockGlobalState.update).not.toHaveBeenCalled()
 		})
 	})
 })

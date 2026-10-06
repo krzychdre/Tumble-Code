@@ -488,6 +488,10 @@
 			"description": "モデルの応答の詳細度を制御します。冗長性が低いと簡潔な回答が生成され、高いと詳細な説明が提供されます。"
 		},
 		"setReasoningLevel": "推論労力を有効にする",
+		"preserveReasoning": {
+			"label": "推論をモデルに返す",
+			"description": "モデルの以前の推論をリクエストごとに送り返し、すでに考えた内容を踏まえて続けられるようにします (推論の保持またはインターリーブ思考)。vLLM、SGLang、llama.cpp で提供される GLM、DeepSeek、Kimi などの推論モデルで必要です。より多くのコンテキストを使用します。"
+		},
 		"awsAuthMethod": "認証方法"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "キャッシュ読み取り価格",
 		"cacheWritesPrice": "キャッシュ書き込み価格",
 		"enableStreaming": "ストリーミングを有効化",
-		"enableR1Format": "R1モデルパラメータを有効にする",
-		"enableR1FormatTips": "QWQなどのR1モデルを使用する際には、有効にする必要があります。400エラーを防ぐために",
 		"useAzure": "Azureを使用",
 		"azureApiVersion": "Azure APIバージョンを設定",
 		"gemini": {

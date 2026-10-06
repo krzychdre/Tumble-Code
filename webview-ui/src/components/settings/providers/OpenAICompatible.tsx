@@ -17,7 +17,6 @@ import { useProviderModels } from "@src/hooks/models/useProviderModels"
 import { convertHeadersToObject } from "../utils/headers"
 import { noTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
-import { R1FormatSetting } from "../R1FormatSetting"
 import { ThinkingBudget } from "../ThinkingBudget"
 import { type ProviderFormProps, useProviderField } from "./shared"
 
@@ -181,10 +180,6 @@ export const OpenAICompatible = ({
 				errorMessage={modelValidationError}
 				simplifySettings={simplifySettings}
 			/>
-			<R1FormatSetting
-				onChange={handleInputChange("openAiR1FormatEnabled", noTransform)}
-				openAiR1FormatEnabled={apiConfiguration?.openAiR1FormatEnabled ?? false}
-			/>
 			<LabeledCheckbox
 				checked={apiConfiguration?.openAiStreamingEnabled ?? true}
 				onCheckedChange={handleInputChange("openAiStreamingEnabled", noTransform)}>
@@ -303,10 +298,20 @@ export const OpenAICompatible = ({
 						}}
 						modelInfo={{
 							...(apiConfiguration.openAiCustomModelInfo || openAiModelInfoSaneDefaults),
-							supportsReasoningEffort: ["low", "medium", "high", "xhigh"],
+							supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
 						}}
 					/>
 				)}
+			</div>
+			<div>
+				<LabeledCheckbox
+					checked={apiConfiguration?.openAiPreserveReasoning ?? false}
+					onCheckedChange={handleInputChange("openAiPreserveReasoning", noTransform)}>
+					{t("settings:providers.preserveReasoning.label")}
+				</LabeledCheckbox>
+				<div className="text-sm text-vscode-descriptionForeground ml-6">
+					{t("settings:providers.preserveReasoning.description")}
+				</div>
 			</div>
 			<div className="flex flex-col gap-3">
 				<div className="text-sm text-vscode-descriptionForeground whitespace-pre-line">

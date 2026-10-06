@@ -10,6 +10,11 @@
  * openAiCustomModelInfo, the same field the VS Code settings fill. Other
  * providers size and price their models from their own tables and have no
  * field that could take it.
+ *
+ * `preserveReasoning` belongs here for the same reason: whether a model reads
+ * its earlier reasoning back is a fact about the model and its server, so it
+ * follows the model through every mode that runs it. It becomes the
+ * extension's openAiPreserveReasoning.
  */
 
 import type { CliModelSettings } from "@/types/types.js"
@@ -52,11 +57,17 @@ export function findModelSettingsProblems(models: unknown): string[] {
 			continue
 		}
 
-		const { contextWindow } = entry as CliModelSettings
+		const { contextWindow, preserveReasoning } = entry as CliModelSettings
 
 		if (contextWindow !== undefined && !(Number.isInteger(contextWindow) && contextWindow > 0)) {
 			problems.push(
 				`models.${model}.contextWindow must be a whole number of tokens greater than 0, got ${JSON.stringify(contextWindow)}`,
+			)
+		}
+
+		if (preserveReasoning !== undefined && typeof preserveReasoning !== "boolean") {
+			problems.push(
+				`models.${model}.preserveReasoning must be true or false, got ${JSON.stringify(preserveReasoning)}`,
 			)
 		}
 

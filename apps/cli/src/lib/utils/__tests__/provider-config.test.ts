@@ -310,7 +310,33 @@ describe("toProviderSettings", () => {
 				supportsReasoningEffort: true,
 				reasoningEffort: "high",
 			},
+			openAiPreserveReasoning: false,
 		})
+	})
+
+	// Observed 2026-10-05: requests went out with reasoning_effort "low" while
+	// the settings file said "max". The run had been started with
+	// `--reasoning-effort low`, and a flag wins over the file.
+	it("carries max from the settings file to the openai handler, unless a flag sets another effort", () => {
+		const fromFile = resolveProviderConfig({
+			layers: [
+				{ provider: "openai", model: "GLM-5.3-Flash-NVFP4", reasoningEffort: "max" },
+				{ model: "GLM-5.3-Flash-NVFP4" },
+			],
+		})
+		const settings = toProviderSettings(fromFile)
+
+		expect(settings).toMatchObject({ enableReasoningEffort: true, reasoningEffort: "max" })
+		expect(settings.openAiCustomModelInfo).toMatchObject({ supportsReasoningEffort: true, reasoningEffort: "max" })
+		expect(shouldUseReasoningEffort({ model: settings.openAiCustomModelInfo!, settings })).toBe(true)
+
+		const withFlag = resolveProviderConfig({
+			layers: [
+				{ provider: "openai", reasoningEffort: "max" },
+				{ model: "GLM-5.3-Flash-NVFP4", reasoningEffort: "low" },
+			],
+		})
+		expect(toProviderSettings(withFlag).reasoningEffort).toBe("low")
 	})
 
 	// The openai provider's model info had no supportsReasoningEffort, so the
@@ -377,9 +403,26 @@ describe("toProviderSettings", () => {
 			provider: "anthropic",
 			model: "claude-x",
 			apiKey: "k",
-			modelSettings: { contextWindow: 1, inputPrice: 1 },
+			modelSettings: { contextWindow: 1, inputPrice: 1, preserveReasoning: true },
 		})
 		expect(settings).not.toHaveProperty("openAiCustomModelInfo")
+		expect(settings).not.toHaveProperty("openAiPreserveReasoning")
+	})
+
+	it("returns the reasoning to an openai model whose entry asks for it", () => {
+		const settings = toProviderSettings({ ...connection, modelSettings: { preserveReasoning: true } })
+
+		expect(settings.openAiPreserveReasoning).toBe(true)
+		// A switch, not a size or price: the model info stays unset.
+		expect(settings.openAiCustomModelInfo).toBeNull()
+	})
+
+	it("clears a preserveReasoning an earlier run left in the extension state", () => {
+		expect(toProviderSettings(connection)).toHaveProperty("openAiPreserveReasoning", false)
+		expect(toProviderSettings({ ...connection, modelSettings: { preserveReasoning: false } })).toHaveProperty(
+			"openAiPreserveReasoning",
+			false,
+		)
 	})
 
 	it("turns reasoning off for disabled and leaves it out for unspecified", () => {

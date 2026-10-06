@@ -488,6 +488,10 @@
 			"description": "Controlla il livello di dettaglio delle risposte del modello. Una verbosity bassa produce risposte concise, mentre una verbosity alta fornisce spiegazioni approfondite."
 		},
 		"setReasoningLevel": "Abilita sforzo di ragionamento",
+		"preserveReasoning": {
+			"label": "Restituisci il ragionamento al modello",
+			"description": "Invia di nuovo al modello il suo ragionamento precedente a ogni richiesta, così può basarsi su ciò che ha già elaborato (ragionamento preservato o interfogliato). Necessario per GLM, DeepSeek, Kimi e modelli di ragionamento simili serviti con vLLM, SGLang o llama.cpp. Usa più contesto."
+		},
 		"awsAuthMethod": "Metodo di autenticazione"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Prezzo letture cache",
 		"cacheWritesPrice": "Prezzo scritture cache",
 		"enableStreaming": "Abilita streaming",
-		"enableR1Format": "Abilita i parametri del modello R1",
-		"enableR1FormatTips": "Deve essere abilitato quando si utilizzano modelli R1 come QWQ, per evitare l'errore 400",
 		"useAzure": "Usa Azure",
 		"azureApiVersion": "Imposta versione API Azure",
 		"gemini": {

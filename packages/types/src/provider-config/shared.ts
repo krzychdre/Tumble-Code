@@ -30,7 +30,8 @@ export const apiModelConfigSchema = z
 export const openAiCompatibleConfigSchema = z
 	.object({
 		openAiBaseUrl: z.string().optional(),
-		openAiR1FormatEnabled: z.boolean().optional(),
+		// Send the model's earlier reasoning back with every request (interleaved/preserved thinking).
+		openAiPreserveReasoning: z.boolean().optional(),
 		openAiModelId: z.string().optional(),
 		openAiCustomModelInfo: modelInfoSchema.nullish(),
 		openAiUseAzure: z.boolean().optional(),

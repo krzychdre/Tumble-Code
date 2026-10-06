@@ -488,6 +488,10 @@
 			"description": "Steuert, wie detailliert die Antworten des Modells sind. Niedrige Ausführlichkeit erzeugt knappe Antworten, während hohe Ausführlichkeit gründliche Erklärungen liefert."
 		},
 		"setReasoningLevel": "Denkaufwand aktivieren",
+		"preserveReasoning": {
+			"label": "Denkprozess an das Modell zurückgeben",
+			"description": "Sendet die bisherigen Überlegungen des Modells mit jeder Anfrage zurück, damit es auf dem aufbauen kann, was es bereits durchdacht hat (beibehaltenes bzw. verschachteltes Denken). Erforderlich für GLM, DeepSeek, Kimi und ähnliche Reasoning-Modelle, die über vLLM, SGLang oder llama.cpp bereitgestellt werden. Verbraucht mehr Kontext."
+		},
 		"awsAuthMethod": "Authentifizierungsmethode"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Cache-Lesepreis",
 		"cacheWritesPrice": "Cache-Schreibpreis",
 		"enableStreaming": "Streaming aktivieren",
-		"enableR1Format": "R1-Modellparameter aktivieren",
-		"enableR1FormatTips": "Muss bei Verwendung von R1-Modellen wie QWQ aktiviert werden, um 400er-Fehler zu vermeiden",
 		"useAzure": "Azure verwenden",
 		"azureApiVersion": "Azure API-Version festlegen",
 		"gemini": {

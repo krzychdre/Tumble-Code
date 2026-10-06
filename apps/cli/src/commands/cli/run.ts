@@ -392,17 +392,17 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
-	// A context window or a price set for a model that some configuration runs
-	// on another provider reaches nothing there; say so instead of letting the
-	// gauge, the condensing and the cost silently keep the provider's own
-	// numbers.
+	// A context window, a price or preserveReasoning set for a model that some
+	// configuration runs on another provider reaches nothing there; say so
+	// instead of letting the gauge, the condensing and the cost silently keep
+	// the provider's own numbers.
 	const ignoredModelSettingsWarnings = new Set(
 		providerConfigsToCheck
 			.map(([, config]) => [config, listSetModelSettings(modelSettingsFor(config))] as const)
 			.filter(([config, keys]) => config.provider !== MODEL_SETTINGS_PROVIDER && keys.length > 0)
 			.map(
 				([config, keys]) =>
-					`[CLI] Warning: models.${config.model} (${keys.join(", ")}) in ${getSettingsPath()} is ignored with the ${config.provider} provider; only ${MODEL_SETTINGS_PROVIDER} takes the context window and prices from the settings file.`,
+					`[CLI] Warning: models.${config.model} (${keys.join(", ")}) in ${getSettingsPath()} is ignored with the ${config.provider} provider; only ${MODEL_SETTINGS_PROVIDER} takes per-model settings from the settings file.`,
 			),
 	)
 	for (const warning of ignoredModelSettingsWarnings) {

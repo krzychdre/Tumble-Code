@@ -488,6 +488,10 @@
 			"description": "Bepaalt hoe gedetailleerd de reacties van het model zijn. Lage uitvoerbaarheid levert beknopte antwoorden op, terwijl hoge uitvoerbaarheid uitgebreide uitleg geeft."
 		},
 		"setReasoningLevel": "Redeneervermogen inschakelen",
+		"preserveReasoning": {
+			"label": "Redenering terugsturen naar het model",
+			"description": "Stuurt de eerdere redenering van het model bij elk verzoek terug, zodat het kan voortbouwen op wat het al heeft uitgedacht (behouden of doorlopend denken). Nodig voor GLM, DeepSeek, Kimi en vergelijkbare redeneermodellen die via vLLM, SGLang of llama.cpp worden aangeboden. Gebruikt meer context."
+		},
 		"awsAuthMethod": "Authenticatiemethode"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Cache-leesprijs",
 		"cacheWritesPrice": "Cache-schrijfprijs",
 		"enableStreaming": "Streaming inschakelen",
-		"enableR1Format": "R1-modelparameters inschakelen",
-		"enableR1FormatTips": "Moet ingeschakeld zijn bij gebruik van R1-modellen zoals QWQ om 400-fouten te voorkomen",
 		"useAzure": "Azure gebruiken",
 		"azureApiVersion": "Azure API-versie instellen",
 		"gemini": {

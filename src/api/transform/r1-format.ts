@@ -18,7 +18,16 @@ type AnthropicMessage = Anthropic.Messages.MessageParam
  */
 export type DeepSeekAssistantMessage = AssistantMessage & {
 	reasoning_content?: string
+	reasoning?: string
 }
+
+/**
+ * The assistant message fields a server reads earlier reasoning back from. DeepSeek, Z.ai and
+ * SGLang read `reasoning_content`; vLLM (0.10 and later) reads only `reasoning`.
+ */
+type ReasoningField = "reasoning_content" | "reasoning"
+
+const DEFAULT_REASONING_FIELDS: readonly ReasoningField[] = ["reasoning_content"]
 
 /**
  * Converts Anthropic messages to OpenAI format while merging consecutive messages with the same role.
@@ -38,13 +47,19 @@ export type DeepSeekAssistantMessage = AssistantMessage & {
  * @param options.mergeToolResultText If true, merge text content after tool_results into the last
  *                                     tool message instead of creating a separate user message.
  *                                     This is critical for DeepSeek's interleaved thinking mode.
+ * @param options.reasoningFields The fields each assistant message carries its reasoning under
+ *                                (default `["reasoning_content"]`). A server that accepts both reads
+ *                                one of them, so naming both does not duplicate the reasoning.
  * @returns Array of OpenAI messages where consecutive messages with the same role are combined
  */
 export function convertToR1Format(
 	messages: AnthropicMessage[],
-	options?: { mergeToolResultText?: boolean },
+	options?: { mergeToolResultText?: boolean; reasoningFields?: readonly ReasoningField[] },
 ): Message[] {
 	const result: Message[] = []
+	const reasoningFields = options?.reasoningFields ?? DEFAULT_REASONING_FIELDS
+	const reasoningOf = (reasoning: string | undefined): Partial<Record<ReasoningField, string>> =>
+		reasoning ? Object.fromEntries(reasoningFields.map((field) => [field, reasoning])) : {}
 
 	for (const message of messages) {
 		// Check if the message has reasoning_content (for DeepSeek interleaved thinking)
@@ -202,8 +217,8 @@ export function convertToR1Format(
 					role: "assistant",
 					content: textParts.length > 0 ? textParts.join("\n") : null,
 					...(toolCalls.length > 0 && { tool_calls: toolCalls }),
-					// Preserve reasoning_content for DeepSeek interleaved thinking
-					...(finalReasoning && { reasoning_content: finalReasoning }),
+					// Preserve reasoning for DeepSeek interleaved thinking
+					...reasoningOf(finalReasoning),
 				}
 
 				// Check if we can merge with the last message (only if no tool calls)
@@ -216,10 +231,8 @@ export function convertToR1Format(
 						const lastContent = lastMessage.content || ""
 						lastMessage.content = `${lastContent}\n${assistantMessage.content}`
 					}
-					// Preserve reasoning_content from the new message if present
-					if (finalReasoning) {
-						;(lastMessage as DeepSeekAssistantMessage).reasoning_content = finalReasoning
-					}
+					// Preserve reasoning from the new message if present
+					Object.assign(lastMessage, reasoningOf(finalReasoning))
 				} else {
 					result.push(assistantMessage)
 				}
@@ -232,15 +245,13 @@ export function convertToR1Format(
 					} else {
 						lastMessage.content = message.content
 					}
-					// Preserve reasoning_content from the new message if present
-					if (reasoningContent) {
-						;(lastMessage as DeepSeekAssistantMessage).reasoning_content = reasoningContent
-					}
+					// Preserve reasoning from the new message if present
+					Object.assign(lastMessage, reasoningOf(reasoningContent))
 				} else {
 					const assistantMessage: DeepSeekAssistantMessage = {
 						role: "assistant",
 						content: message.content,
-						...(reasoningContent && { reasoning_content: reasoningContent }),
+						...reasoningOf(reasoningContent),
 					}
 					result.push(assistantMessage)
 				}

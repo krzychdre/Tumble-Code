@@ -43,12 +43,11 @@ vi.mock("../../ModelPicker", () => ({
 	ModelPicker: () => <div data-testid="model-picker">Model Picker</div>,
 }))
 
-vi.mock("../../R1FormatSetting", () => ({
-	R1FormatSetting: () => <div data-testid="r1-format-setting">R1 Format Setting</div>,
-}))
-
+// Lists the reasoning effort options it is offered.
 vi.mock("../../ThinkingBudget", () => ({
-	ThinkingBudget: () => <div data-testid="thinking-budget">Thinking Budget</div>,
+	ThinkingBudget: ({ modelInfo }: any) => (
+		<div data-testid="thinking-budget">{modelInfo?.supportsReasoningEffort?.join(",")}</div>
+	),
 }))
 
 // Mock react-use
@@ -282,5 +281,59 @@ describe("OpenAICompatible Component - includeMaxTokens checkbox", () => {
 			const description = screen.getByText("settings:includeMaxOutputTokensDescription")
 			expect(description).toHaveClass("text-sm", "text-vscode-descriptionForeground", "ml-6")
 		})
+	})
+})
+
+describe("OpenAICompatible Component - reasoning", () => {
+	const mockSetApiConfigurationField = vi.fn()
+	const mockOrganizationAllowList = {
+		allowAll: true,
+		providers: {},
+	}
+
+	const renderWith = (apiConfiguration: Partial<ProviderSettings>) =>
+		render(
+			<OpenAICompatible
+				apiConfiguration={apiConfiguration as ProviderSettings}
+				setApiConfigurationField={mockSetApiConfigurationField}
+				organizationAllowList={mockOrganizationAllowList}
+			/>,
+		)
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("renders the return-reasoning checkbox with its description, unchecked by default", () => {
+		renderWith({})
+
+		expect(screen.getByTestId("checkbox-input-settings:providers.preservereasoning.label")).not.toBeChecked()
+		expect(screen.getByText("settings:providers.preserveReasoning.description")).toBeInTheDocument()
+	})
+
+	it("reflects openAiPreserveReasoning", () => {
+		renderWith({ openAiPreserveReasoning: true })
+
+		expect(screen.getByTestId("checkbox-input-settings:providers.preservereasoning.label")).toBeChecked()
+	})
+
+	it("writes openAiPreserveReasoning when toggled", () => {
+		renderWith({ openAiPreserveReasoning: false })
+
+		fireEvent.click(screen.getByTestId("checkbox-input-settings:providers.preservereasoning.label"))
+
+		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("openAiPreserveReasoning", true)
+	})
+
+	it("offers the max reasoning effort", () => {
+		renderWith({ enableReasoningEffort: true })
+
+		expect(screen.getByTestId("thinking-budget")).toHaveTextContent("low,medium,high,xhigh,max")
+	})
+
+	it("no longer offers the R1 format setting", () => {
+		renderWith({})
+
+		expect(screen.queryByText("settings:modelInfo.enableR1Format")).not.toBeInTheDocument()
 	})
 })

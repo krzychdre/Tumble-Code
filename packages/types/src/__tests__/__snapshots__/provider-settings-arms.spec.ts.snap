@@ -534,7 +534,7 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
       ],
       "type": "string",
     },
-    "openAiR1FormatEnabled": {
+    "openAiPreserveReasoning": {
       "type": "boolean",
     },
     "openAiStreamingEnabled": {

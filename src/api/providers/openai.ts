@@ -33,11 +33,13 @@ import { wireCaptureFetch } from "./utils/wire-capture"
  * GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5) from z.ai support a thinking
  * object that enables chain-of-thought reasoning.
  *
- * - LOW budget: { type: "enabled" } - Basic thinking (reasoning within turn)
- * - MEDIUM budget: { type: "enabled", clear_thinking: false } - Turn-level/preserved thinking
- * - Disabled: { type: "disabled" }
+ * - { type: "enabled" } - Thinking, earlier turns' reasoning is cleared
+ * - { type: "enabled", clear_thinking: false } - Preserved thinking: the reasoning sent back is kept
+ * - { type: "disabled" } - No thinking
  *
- * @see https://docs.z.ai/guides/llm/glm-4.7
+ * The depth of thinking travels separately, as `reasoning_effort`.
+ *
+ * @see https://docs.z.ai/guides/capabilities/thinking
  */
 type GLMChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParamsStreaming & {
 	thinking?: { type: "enabled" | "disabled"; clear_thinking?: boolean }
@@ -176,66 +178,18 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	): ApiStream {
 		const { info: modelInfo, reasoning } = this.getModel()
 		const modelId = this.options.openAiModelId ?? ""
-		const enabledR1Format = this.options.openAiR1FormatEnabled ?? false
-		const deepseekReasoner = modelId.includes("deepseek-reasoner") || enabledR1Format
+		const deepseekReasoner = modelId.includes("deepseek-reasoner")
 
 		if (modelId.includes("o1") || modelId.includes("o3") || modelId.includes("o4")) {
 			yield* this.handleO3FamilyMessage(modelId, systemPrompt, messages, metadata)
 			return
 		}
 
-		let systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
-			role: "system",
-			content: systemPrompt,
-		}
+		const convertedMessages = this.convertMessages(systemPrompt, messages, deepseekReasoner)
 
 		if (this.options.openAiStreamingEnabled ?? true) {
-			let convertedMessages
-
-			if (deepseekReasoner) {
-				convertedMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
-			} else {
-				if (modelInfo.supportsPromptCache) {
-					systemMessage = {
-						role: "system",
-						content: [
-							{
-								type: "text",
-								text: systemPrompt,
-								// @ts-expect-error-next-line
-								cache_control: { type: "ephemeral" },
-							},
-						],
-					}
-				}
-
-				convertedMessages = [systemMessage, ...convertToOpenAiMessages(messages)]
-
-				if (modelInfo.supportsPromptCache) {
-					// Note: the following logic is copied from openrouter:
-					// Add cache_control to the last two user messages
-					// (note: this works because we only ever add one user message at a time, but if we added multiple we'd need to mark the user message before the last assistant message)
-					const lastTwoUserMessages = convertedMessages.filter((msg) => msg.role === "user").slice(-2)
-
-					lastTwoUserMessages.forEach((msg) => {
-						if (typeof msg.content === "string") {
-							msg.content = [{ type: "text", text: msg.content }]
-						}
-
-						if (Array.isArray(msg.content)) {
-							// NOTE: this is fine since env details will always be added at the end. but if it weren't there, and the user added a image_url type message, it would pop a text part before it and then move it after to the end.
-							let lastTextPart = msg.content.filter((part) => part.type === "text").pop()
-
-							if (!lastTextPart) {
-								lastTextPart = { type: "text", text: "..." }
-								msg.content.push(lastTextPart)
-							}
-
-							// @ts-expect-error-next-line
-							lastTextPart["cache_control"] = { type: "ephemeral" }
-						}
-					})
-				}
+			if (!deepseekReasoner && modelInfo.supportsPromptCache) {
+				this.addCacheControl(convertedMessages)
 			}
 
 			const isGrokXAI = this._isGrokXAI(this.options.openAiBaseUrl)
@@ -276,9 +230,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		} else {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: modelId,
-				messages: deepseekReasoner
-					? convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
-					: [systemMessage, ...convertToOpenAiMessages(messages)],
+				messages: convertedMessages,
 				// Tools are always present (minimum ALWAYS_AVAILABLE_TOOLS)
 				tools: this.convertToolsForOpenAI(metadata?.tools),
 				tool_choice: metadata?.tool_choice,
@@ -316,6 +268,78 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 			yield this.processUsageMetrics(response.usage, modelInfo)
 		}
+	}
+
+	/**
+	 * The request messages, system prompt first. deepseek-reasoner takes no system message, so
+	 * its prompt goes first as a user message. With "Return reasoning to the model" on, each
+	 * assistant message carries its reasoning under both names: DeepSeek, Z.ai and SGLang read
+	 * `reasoning_content`, vLLM (0.10 and later) reads only `reasoning`. Text after tool results
+	 * is merged into the last tool message, because a user message there makes these servers
+	 * drop the reasoning of the turn.
+	 */
+	private convertMessages(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		deepseekReasoner: boolean,
+	): OpenAI.Chat.ChatCompletionMessageParam[] {
+		if (deepseekReasoner) {
+			return convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
+		}
+
+		const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = { role: "system", content: systemPrompt }
+
+		if (this.options.openAiPreserveReasoning) {
+			return [
+				systemMessage,
+				...convertToR1Format(messages, {
+					mergeToolResultText: true,
+					reasoningFields: ["reasoning_content", "reasoning"],
+				}),
+			]
+		}
+
+		return [systemMessage, ...convertToOpenAiMessages(messages)]
+	}
+
+	/** Marks the system prompt and the last two user messages as prompt-cache breakpoints. */
+	private addCacheControl(messages: OpenAI.Chat.ChatCompletionMessageParam[]): void {
+		for (const msg of messages) {
+			if (msg.role === "system" && typeof msg.content === "string") {
+				msg.content = [
+					{
+						type: "text",
+						text: msg.content,
+						// @ts-expect-error-next-line
+						cache_control: { type: "ephemeral" },
+					},
+				]
+			}
+		}
+
+		// Note: the following logic is copied from openrouter:
+		// Add cache_control to the last two user messages
+		// (note: this works because we only ever add one user message at a time, but if we added multiple we'd need to mark the user message before the last assistant message)
+		const lastTwoUserMessages = messages.filter((msg) => msg.role === "user").slice(-2)
+
+		lastTwoUserMessages.forEach((msg) => {
+			if (typeof msg.content === "string") {
+				msg.content = [{ type: "text", text: msg.content }]
+			}
+
+			if (Array.isArray(msg.content)) {
+				// NOTE: this is fine since env details will always be added at the end. but if it weren't there, and the user added a image_url type message, it would pop a text part before it and then move it after to the end.
+				let lastTextPart = msg.content.filter((part) => part.type === "text").pop()
+
+				if (!lastTextPart) {
+					lastTextPart = { type: "text", text: "..." }
+					msg.content.push(lastTextPart)
+				}
+
+				// @ts-expect-error-next-line
+				lastTextPart["cache_control"] = { type: "ephemeral" }
+			}
+		})
 	}
 
 	protected processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
@@ -574,12 +598,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	 * Adds GLM thinking parameter for GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5)
 	 * when used through custom OpenAI-compatible providers.
 	 *
-	 * GLM models support a `thinking` object with:
-	 * - LOW budget: { type: "enabled" } - Basic thinking within the turn
-	 * - MEDIUM budget: { type: "enabled", clear_thinking: false } - Turn-level/preserved thinking
-	 * - Disabled: { type: "disabled" }
+	 * Thinking is enabled when reasoning is on (see {@link GLMChatCompletionParams}).
+	 * `clear_thinking: false` is sent when the profile returns reasoning to the model
+	 * (openAiPreserveReasoning), whatever the effort: without it the server drops the
+	 * reasoning sent back. The effort itself goes as `reasoning_effort` (getModelParams).
 	 *
-	 * @see https://docs.z.ai/guides/llm/glm-4.7
+	 * @see https://docs.z.ai/guides/capabilities/thinking
 	 */
 	protected addGLMThinkingIfNeeded(
 		requestOptions: GLMChatCompletionParams,
@@ -594,25 +618,13 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		// Check if reasoning should be used based on model capabilities and settings
 		const useReasoning = shouldUseReasoningEffort({ model: modelInfo, settings: this.options })
 
-		if (useReasoning) {
-			// Determine thinking level based on reasoningEffort setting
-			// "medium" or higher = preserved thinking (clear_thinking: false)
-			// "low" or default = basic thinking
-			const reasoningEffort = this.options.reasoningEffort ?? modelInfo.reasoningEffort
-			const useMediumOrHigher =
-				reasoningEffort === "medium" || reasoningEffort === "high" || reasoningEffort === "xhigh"
-
-			if (useMediumOrHigher) {
-				// MEDIUM budget: preserved/turn-level thinking
-				requestOptions.thinking = { type: "enabled", clear_thinking: false }
-			} else {
-				// LOW budget: basic thinking
-				requestOptions.thinking = { type: "enabled" }
+		// Reasoning turned off still leaves thinking on for a model that has no off switch:
+		// sending "disabled" would fail the request outright.
+		if (useReasoning || isGLMForcedThinkingModel(modelId)) {
+			requestOptions.thinking = {
+				type: "enabled",
+				...(this.options.openAiPreserveReasoning && { clear_thinking: false }),
 			}
-		} else if (isGLMForcedThinkingModel(modelId)) {
-			// Reasoning was turned off, but this model has no off switch: sending
-			// "disabled" would fail the request outright, so keep thinking enabled.
-			requestOptions.thinking = { type: "enabled" }
 		} else {
 			// Reasoning is explicitly disabled
 			// For GLM-4.7 and GLM-5, thinking is ON by default in the API,
@@ -657,10 +669,15 @@ export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiH
 	}
 }
 
-/** The `{ id, info }` that `OpenAiHandler.getModel()` reports, without building a handler. */
+/**
+ * The `{ id, info }` that `OpenAiHandler.getModel()` reports, without building a handler.
+ * "Return reasoning to the model" sets `preserveReasoning`, so the task keeps the stored
+ * reasoning blocks in the history it sends to this handler.
+ */
 export function resolveOpenAiModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const info = options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults
 	return {
 		id: options.openAiModelId ?? "",
-		info: options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults,
+		info: options.openAiPreserveReasoning ? { ...info, preserveReasoning: true } : info,
 	}
 }

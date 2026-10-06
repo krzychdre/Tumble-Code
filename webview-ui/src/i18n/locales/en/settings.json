@@ -550,6 +550,10 @@
 			"description": "Controls how detailed the model's responses are. Low verbosity produces concise answers, while high verbosity provides thorough explanations."
 		},
 		"setReasoningLevel": "Enable Reasoning Effort",
+		"preserveReasoning": {
+			"label": "Return reasoning to the model",
+			"description": "Sends the model's earlier reasoning back with every request, so it can build on what it already thought through (preserved or interleaved thinking). Needed for GLM, DeepSeek, Kimi and similar reasoning models served by vLLM, SGLang or llama.cpp. Uses more context."
+		},
 		"awsAuthMethod": "Authentication Method"
 	},
 	"checkpoints": {
@@ -885,8 +889,6 @@
 		"cacheReadsPrice": "Cache reads price",
 		"cacheWritesPrice": "Cache writes price",
 		"enableStreaming": "Enable streaming",
-		"enableR1Format": "Enable R1 model parameters",
-		"enableR1FormatTips": "Must be enabled when using R1 models such as QWQ to prevent 400 errors",
 		"useAzure": "Use Azure",
 		"azureApiVersion": "Set Azure API version",
 		"gemini": {

@@ -53,8 +53,46 @@ const typedProfileOfRetiredProviderAsOpaque = (value: unknown): unknown => {
 	}
 }
 
+/**
+ * Provider settings keys that no longer exist. A stored or exported profile, or the live settings
+ * copy in global state, may still hold them.
+ */
+export const REMOVED_PROVIDER_SETTINGS_KEYS = ["openAiR1FormatEnabled"] as const
+
+/**
+ * Flat provider settings with the {@link REMOVED_PROVIDER_SETTINGS_KEYS} carried over to what
+ * replaced them and dropped. The config schemas are strict, so one leftover key would make every
+ * stored profile unreadable.
+ *
+ * - `openAiR1FormatEnabled` ("Enable R1 model parameters") meant the R1 message format with the
+ *   model's reasoning, which "Return reasoning to the model" (`openAiPreserveReasoning`) now does.
+ */
+export const migrateRemovedProviderSettings = <T extends Record<string, unknown>>(settings: T): T => {
+	if (!REMOVED_PROVIDER_SETTINGS_KEYS.some((key) => Object.prototype.hasOwnProperty.call(settings, key))) {
+		return settings
+	}
+
+	const { openAiR1FormatEnabled, ...rest } = settings
+	if (openAiR1FormatEnabled === true && rest.openAiPreserveReasoning === undefined) {
+		return { ...rest, openAiPreserveReasoning: true } as unknown as T
+	}
+	return rest as unknown as T
+}
+
+/** A typed profile read as it would be saved today: its config without removed settings keys. */
+const typedProfileWithoutRemovedKeys = (value: unknown): unknown => {
+	if (!isRecord(value) || !isRecord(value.provider) || !isRecord(value.provider.config)) {
+		return value
+	}
+
+	return {
+		...value,
+		provider: { ...value.provider, config: migrateRemovedProviderSettings(value.provider.config) },
+	}
+}
+
 export const persistedProviderProfileSchema = z.preprocess(
-	typedProfileOfRetiredProviderAsOpaque,
+	(value) => typedProfileOfRetiredProviderAsOpaque(typedProfileWithoutRemovedKeys(value)),
 	z.union([knownPersistedProviderProfileSchema, opaqueProviderProfileSchema]),
 )
 
@@ -191,7 +229,9 @@ export const createKnownPersistedProviderProfile = (profile: ProviderSettingsWit
 		)
 	}
 
-	return knownPersistedProviderProfileSchema.parse(toPersistedProviderProfile(profile))
+	return knownPersistedProviderProfileSchema.parse(
+		toPersistedProviderProfile(migrateRemovedProviderSettings(profile)),
+	)
 }
 
 /** The current envelope, validated. Anything else throws {@link UnsupportedProviderProfilesVersionError}. */

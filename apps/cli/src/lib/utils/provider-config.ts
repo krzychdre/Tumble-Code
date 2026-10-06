@@ -164,7 +164,8 @@ export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigL
  * provider's own model/base-url/key fields plus the reasoning switches
  * ("unspecified" leaves reasoning to the model's default, "disabled" turns it
  * off), and for the openai provider the model info that carries the model's
- * context window, its prices and the configured reasoning effort. Throws like
+ * context window, its prices and the configured reasoning effort, plus whether
+ * the model's earlier reasoning is sent back to it. Throws like
  * getProviderSettings for a base URL the provider has no field for.
  */
 export function toProviderSettings(
@@ -199,12 +200,13 @@ export function toProviderSettings(
 	// effort of its own the handler drops
 	// the configured effort, so the effort is written there as well (the
 	// settings UI's reasoning level control also stores it in this model
-	// info). The field is always written, because the startup
+	// info). The fields are always written, because the startup
 	// settings are merged into the extension's persisted state, where a size, a
-	// price or an effort from an earlier run would otherwise outlive the entry
-	// that set it.
+	// price, an effort or a preserveReasoning from an earlier run would
+	// otherwise outlive the entry that set it.
 	if (config.provider === "openai") {
-		const { contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice } = config.modelSettings ?? {}
+		const { contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice, preserveReasoning } =
+			config.modelSettings ?? {}
 		const configured = Object.fromEntries(
 			Object.entries({ contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice }).filter(
 				([, value]) => value !== undefined,
@@ -219,6 +221,7 @@ export function toProviderSettings(
 						...(effort ? { supportsReasoningEffort: true, reasoningEffort: effort } : {}),
 					}
 				: null
+		settings.openAiPreserveReasoning = preserveReasoning ?? false
 	}
 
 	return settings

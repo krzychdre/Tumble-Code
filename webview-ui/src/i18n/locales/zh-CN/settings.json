@@ -488,6 +488,10 @@
 			"description": "控制模型响应的详细程度。低详细度产生简洁的回答，而高详细度提供详尽的解释。"
 		},
 		"setReasoningLevel": "启用推理工作量",
+		"preserveReasoning": {
+			"label": "将推理回传给模型",
+			"description": "每次请求时都将模型之前的推理内容一并发回，使其能够在已有思考的基础上继续（保留式或交错式思考）。通过 vLLM、SGLang 或 llama.cpp 部署的 GLM、DeepSeek、Kimi 及类似推理模型需要开启此项。会占用更多上下文。"
+		},
 		"awsAuthMethod": "身份验证方式"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "缓存读取价格",
 		"cacheWritesPrice": "缓存写入价格",
 		"enableStreaming": "启用流式传输",
-		"enableR1Format": "启用 R1 模型参数",
-		"enableR1FormatTips": "使用 QWQ 等 R1 系列模型时必须启用，避免出现 400 错误",
 		"useAzure": "使用 Azure 服务",
 		"azureApiVersion": "设置 Azure API 版本",
 		"gemini": {

@@ -488,6 +488,10 @@
 			"description": "Controla el nivell de detall de les respostes del model. La verbositat baixa produeix respostes concises, mentre que la verbositat alta proporciona explicacions exhaustives."
 		},
 		"setReasoningLevel": "Activa l'esforç de raonament",
+		"preserveReasoning": {
+			"label": "Retorna el raonament al model",
+			"description": "Envia de nou el raonament anterior del model amb cada sol·licitud, perquè pugui basar-se en el que ja ha pensat (raonament preservat o intercalat). Necessari per a GLM, DeepSeek, Kimi i models de raonament similars servits amb vLLM, SGLang o llama.cpp. Utilitza més context."
+		},
 		"awsAuthMethod": "Mètode d'autenticació"
 	},
 	"checkpoints": {
@@ -769,8 +773,6 @@
 		"cacheReadsPrice": "Preu de lectures de caché",
 		"cacheWritesPrice": "Preu d'escriptures de caché",
 		"enableStreaming": "Habilitar streaming",
-		"enableR1Format": "Activar els paràmetres del model R1",
-		"enableR1FormatTips": "S'ha d'activat quan s'utilitzen models R1 com el QWQ per evitar errors 400",
 		"useAzure": "Utilitzar Azure",
 		"azureApiVersion": "Establir versió de l'API d'Azure",
 		"gemini": {
