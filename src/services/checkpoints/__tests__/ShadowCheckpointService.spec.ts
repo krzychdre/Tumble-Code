@@ -16,7 +16,7 @@ import { ShadowCheckpointService, BLOCKED_ENV_KEYS } from "../ShadowCheckpointSe
 // let two concurrent vitest runs delete each other's repositories mid-test.
 let tmpDir: string
 
-// simple-git ≥3.36 blocks env vars it considers code-execution vectors.
+// simple-git 4 blocks env vars it considers code-execution vectors.
 // Strip them for the duration of this test suite so tests pass for developers
 // who have GIT_EDITOR, GIT_SSH_COMMAND, etc. configured globally.
 // Safe under vitest's default "forks" pool (each worker has its own process.env);
@@ -908,8 +908,11 @@ describe("CheckpointService", () => {
 			const testWorkspaceDir = path.join(tmpDir, `workspace-blocked-env-test-${Date.now()}`)
 			await initWorkspaceRepo({ workspaceDir: testWorkspaceDir })
 
-			// beforeAll strips PREFIX, so it is always undefined here; set it to exercise isolation.
+			// beforeAll strips these, so they are always undefined here; set them to exercise isolation.
+			// VISUAL is a common shell setting; simple-git 4 throws when it reaches .env().
 			process.env.PREFIX = path.join(tmpDir, "git-prefix")
+			process.env.VISUAL = "vim"
+			process.env.GIT_CONFIG_PARAMETERS = "'core.pager=cat'"
 
 			try {
 				const testService = await klass.create({
@@ -936,8 +939,10 @@ describe("CheckpointService", () => {
 				await testService.restoreCheckpoint(commit!.commit)
 				expect(await fs.readFile(testWorkspaceFile, "utf-8")).toBe("Modified with PREFIX set")
 			} finally {
-				// beforeAll guarantees PREFIX was undefined at test start, so always delete it.
+				// beforeAll guarantees these were undefined at test start, so always delete them.
 				delete process.env.PREFIX
+				delete process.env.VISUAL
+				delete process.env.GIT_CONFIG_PARAMETERS
 
 				await fs.rm(testShadowDir, { recursive: true, force: true })
 				await fs.rm(testWorkspaceDir, { recursive: true, force: true })

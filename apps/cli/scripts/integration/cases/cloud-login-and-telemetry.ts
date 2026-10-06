@@ -31,11 +31,13 @@ const cliRoot = process.env.ROO_CLI_ROOT ? path.resolve(process.env.ROO_CLI_ROOT
 async function createFakeBrowser(): Promise<{ binDir: string; logFile: string }> {
 	const binDir = await fs.mkdtemp(path.join(os.tmpdir(), "cli-integration-browser-"))
 	const logFile = path.join(binDir, "browser.log")
+	// A fixed script: it finds browser.log next to itself, so no path is pasted into the code.
 	const script = [
 		"#!/usr/bin/env node",
 		"const fs = require('fs')",
-		`fetch(process.argv[2]).then(async (r) => fs.appendFileSync(${JSON.stringify(logFile)}, r.status + ' ' + (await r.text()) + '\\n'))`,
-		`  .catch((e) => fs.appendFileSync(${JSON.stringify(logFile)}, 'error ' + e.message + '\\n'))`,
+		"const logFile = require('path').join(__dirname, 'browser.log')",
+		"fetch(process.argv[2]).then(async (r) => fs.appendFileSync(logFile, r.status + ' ' + (await r.text()) + '\\n'))",
+		"  .catch((e) => fs.appendFileSync(logFile, 'error ' + e.message + '\\n'))",
 	].join("\n")
 
 	for (const name of ["xdg-open", "open"]) {
