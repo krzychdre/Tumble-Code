@@ -6,6 +6,7 @@ import {
 	type ExtensionMessage,
 	type HistoryItem,
 	type ModelSourceId,
+	type ProviderSettings,
 	type RequestableModelSource,
 	type WebviewMessage,
 	modelSources,
@@ -84,6 +85,8 @@ export interface UseExtensionHostReturn {
 	resetTranscript: () => void
 	/** The running extension for /login and /logout. */
 	cloudAuthChannel: CloudAuthChannel
+	/** Run another model in a mode for the session (/model); throws before the host exists. */
+	switchModel: (mode: string, model: string) => ProviderSettings
 }
 
 /**
@@ -288,6 +291,15 @@ export function useExtensionHost({
 		hostRef.current?.client.transcript.reset()
 	}, [])
 
+	// Stable switchModel - uses ref to always access current host.
+	const switchModel = useCallback((mode: string, model: string): ProviderSettings => {
+		if (!hostRef.current) {
+			throw new Error("Extension host not ready")
+		}
+
+		return hostRef.current.switchModel(mode, model)
+	}, [])
+
 	// Stable channel for /login and /logout - uses ref to always access current host.
 	const cloudAuthChannel = useMemo<CloudAuthChannel>(
 		() => ({
@@ -309,7 +321,15 @@ export function useExtensionHost({
 
 	// Memoized return object to prevent unnecessary re-renders in consumers.
 	return useMemo(
-		() => ({ isReady: isReadyRef.current, sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel }),
-		[sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel],
+		() => ({
+			isReady: isReadyRef.current,
+			sendToExtension,
+			runTask,
+			cleanup,
+			resetTranscript,
+			cloudAuthChannel,
+			switchModel,
+		}),
+		[sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel, switchModel],
 	)
 }

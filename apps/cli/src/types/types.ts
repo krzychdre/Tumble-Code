@@ -110,7 +110,7 @@ export interface CliSettings {
 	/**
 	 * Per-model facts, keyed by model id exactly as the provider names it
 	 * (e.g. "GLM-5.3-NVFP4"). An entry applies wherever that model runs: the
-	 * global settings, a mode entry or --model.
+	 * global settings, a mode entry, --model or /model.
 	 */
 	models?: Record<string, CliModelSettings>
 	/** Default consecutive error/repetition limit before guidance prompts */

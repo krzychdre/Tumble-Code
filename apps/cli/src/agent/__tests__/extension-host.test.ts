@@ -330,6 +330,69 @@ describe("ExtensionHost", () => {
 		})
 	})
 
+	describe("switchModel (/model)", () => {
+		const base = {
+			apiProvider: "openai" as const,
+			openAiBaseUrl: "http://192.168.50.194:11111/v1",
+			openAiModelId: "GLM-5.3-NVFP4",
+			enableReasoningEffort: true,
+			reasoningEffort: "max" as const,
+		}
+
+		function sentModeSettings(emitSpy: { mock: { calls: unknown[][] } }) {
+			return emitSpy.mock.calls
+				.map((call) => call[1] as WebviewMessage)
+				.filter((message) => message?.type === "cliModeProviderSettings")
+		}
+
+		it("runs the model in that mode only and has the extension apply it at once", () => {
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				models: { "Qwen3.8-27B": { reasoningEffort: "high" } },
+			})
+			host.markWebviewReady()
+			const emitSpy = vi.spyOn(host, "emit")
+
+			const settings = host.switchModel("code", "Qwen3.8-27B")
+
+			expect(settings).toMatchObject({ openAiModelId: "Qwen3.8-27B", reasoningEffort: "high" })
+			expect(sentModeSettings(emitSpy)).toEqual([
+				{
+					type: "cliModeProviderSettings",
+					cliModeProviderSettings: { base, modes: { code: settings } },
+					bool: true,
+				},
+			])
+		})
+
+		it("keeps --reasoning-effort for the new model", () => {
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				models: { "Qwen3.8-27B": { reasoningEffort: "high" } },
+				forcedReasoningEffort: "low",
+			})
+			host.markWebviewReady()
+
+			expect(host.switchModel("code", "Qwen3.8-27B").reasoningEffort).toBe("low")
+		})
+
+		it("a later switch starts from the mode's current entry", () => {
+			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: {} } })
+			host.markWebviewReady()
+			const emitSpy = vi.spyOn(host, "emit")
+
+			host.switchModel("code", "Qwen3.8-27B")
+			host.switchModel("architect", "GLM-5.3-Flash-NVFP4")
+
+			const last = sentModeSettings(emitSpy).at(-1)?.cliModeProviderSettings
+			expect(last?.modes.code?.openAiModelId).toBe("Qwen3.8-27B")
+			expect(last?.modes.architect?.openAiModelId).toBe("GLM-5.3-Flash-NVFP4")
+			expect(last?.base).toBe(base)
+		})
+	})
+
 	describe("webview provider registration", () => {
 		it("should register webview provider without throwing", () => {
 			const host = createTestHost()

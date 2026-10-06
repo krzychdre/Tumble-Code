@@ -435,6 +435,52 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 		})
 	})
 
+	describe("applyCliProviderSettingsToCurrentMode (the CLI's /model)", () => {
+		const switched: CliModeProviderSettings = {
+			base: cliSettings.base,
+			modes: {
+				...cliSettings.modes,
+				code: {
+					apiProvider: "openai",
+					openAiBaseUrl: "http://192.168.50.194:11111/v1",
+					openAiModelId: "Qwen3.8-27B",
+				},
+			},
+		}
+
+		it("applies the current mode's new entry at once and rebuilds the task's handler", async () => {
+			provider.setCliModeProviderSettings(cliSettings)
+			await provider.handleModeSwitch("code")
+			const task = { taskId: "t1", updateApiConfiguration: vi.fn(), apiConfiguration: cliSettings.base }
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(task as never)
+
+			provider.setCliModeProviderSettings(switched)
+			await provider.applyCliProviderSettingsToCurrentMode()
+
+			const settings = provider.contextProxy.getProviderSettings()
+			expect(settings.openAiModelId).toBe("Qwen3.8-27B")
+			// The level of the previous model does not stay behind.
+			expect(settings.reasoningEffort).toBeUndefined()
+			expect(task.updateApiConfiguration).toHaveBeenCalledWith(switched.modes.code)
+		})
+
+		it("leaves the other modes alone", async () => {
+			provider.setCliModeProviderSettings(switched)
+			await provider.applyCliProviderSettingsToCurrentMode()
+			await provider.handleModeSwitch("architect")
+
+			expect(provider.contextProxy.getProviderSettings()).toMatchObject(cliSettings.modes.architect)
+		})
+
+		it("does nothing without CLI settings", async () => {
+			const before = provider.contextProxy.getProviderSettings()
+
+			await provider.applyCliProviderSettingsToCurrentMode()
+
+			expect(provider.contextProxy.getProviderSettings()).toEqual(before)
+		})
+	})
+
 	describe("getApiConfigurationForMode", () => {
 		it("returns the mode's CLI settings, else the base settings", async () => {
 			provider.setCliModeProviderSettings(cliSettings)

@@ -350,6 +350,8 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		provider: effectiveProvider,
 		model: effectiveModel,
 		modelSettings: modelSettingsFor(providerConfig),
+		models: settings.models,
+		forcedReasoningEffort: flagOptions.reasoningEffort,
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
 		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),

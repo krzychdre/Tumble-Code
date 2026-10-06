@@ -5,7 +5,7 @@ import path from "path"
 
 import { Text } from "ink"
 import { render } from "ink-testing-library"
-import type { WebviewMessage } from "@tumble-code/types"
+import type { ProviderSettings, WebviewMessage } from "@tumble-code/types"
 
 import {
 	PERMISSIONS_COMMAND_USAGE,
@@ -397,5 +397,76 @@ describe("useTaskSubmit /login and /logout", () => {
 
 		expect(systemMessages().at(-1)).toBe("Cloud sign-in is not available until the extension has started.")
 		expect(sent).toEqual([])
+	})
+})
+
+describe("useTaskSubmit /model", () => {
+	let api: UseTaskSubmitReturn
+	let sendToExtension: ReturnType<typeof vi.fn<(message: WebviewMessage) => void>>
+	let runTask: ReturnType<typeof vi.fn<(prompt: string) => Promise<void>>>
+	let switchModel: ReturnType<typeof vi.fn<(mode: string, model: string) => ProviderSettings>>
+
+	function Harness() {
+		api = useTaskSubmit({
+			sendToExtension,
+			runTask,
+			resetTranscript: () => {},
+			permissionMode: "ask",
+			onPermissionModeChange: () => {},
+			model: "GLM-5.3-NVFP4",
+			mode: "code",
+			configuredModels: {
+				"GLM-5.3-NVFP4": { reasoningEffort: "max", contextWindow: 262_144 },
+				"Qwen3.8-27B": { contextWindow: 262_144 },
+			},
+			switchModel,
+		})
+		return <Text>harness</Text>
+	}
+
+	beforeEach(() => {
+		useCLIStore.getState().reset()
+		sendToExtension = vi.fn()
+		runTask = vi.fn(async () => undefined)
+		switchModel = vi.fn((_mode: string, model: string) => ({ apiProvider: "openai", openAiModelId: model }))
+		render(<Harness />)
+	})
+
+	it("lists the configured models without switching or reaching the model", async () => {
+		await api.handleSubmit("/model")
+
+		expect(switchModel).not.toHaveBeenCalled()
+		expect(runTask).not.toHaveBeenCalled()
+		const [message] = useCLIStore.getState().messages
+		expect(message?.role).toBe("system")
+		expect(message?.content).toContain("Model in code mode: GLM-5.3-NVFP4")
+		expect(message?.content).toContain("● GLM-5.3-NVFP4 (reasoning max, 262,144 tokens)")
+		expect(message?.content).toContain("  Qwen3.8-27B (262,144 tokens)")
+	})
+
+	it("switches the model of the current mode and never sends the command to the model", async () => {
+		await api.handleSubmit("/model Qwen3.8-27B")
+
+		expect(switchModel).toHaveBeenCalledWith("code", "Qwen3.8-27B")
+		expect(runTask).not.toHaveBeenCalled()
+		expect(sendToExtension).not.toHaveBeenCalled()
+		expect(useCLIStore.getState().messages.at(-1)?.content).toBe(
+			"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it.",
+		)
+	})
+
+	it("warns that an openai model without an entry runs on the defaults", async () => {
+		await api.handleSubmit("/model some-other-model")
+
+		expect(useCLIStore.getState().messages.at(-1)?.content).toContain(
+			"It has no entry in models, so it runs with a 128,000-token window",
+		)
+	})
+
+	it("does nothing for the model already running", async () => {
+		await api.handleSubmit("/model GLM-5.3-NVFP4")
+
+		expect(switchModel).not.toHaveBeenCalled()
+		expect(useCLIStore.getState().messages.at(-1)?.content).toBe("code mode already runs GLM-5.3-NVFP4.")
 	})
 })

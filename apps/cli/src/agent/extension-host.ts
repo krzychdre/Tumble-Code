@@ -20,6 +20,7 @@ import type {
 	ClineMessage,
 	CliModeProviderSettings,
 	ExtensionMessage,
+	ProviderSettings,
 	ReasoningEffortExtended,
 	TumbleCodeSettings,
 	WebviewMessage,
@@ -34,8 +35,13 @@ import {
 } from "@tumble-code/vscode-shim"
 import { DebugLogger, setDebugLogEnabled } from "@tumble-code/core/cli"
 
-import { DEFAULT_FLAGS, type CliModelSettings, type SupportedProvider } from "@/types/index.js"
-import { toProviderSettings } from "@/lib/utils/provider-config.js"
+import {
+	DEFAULT_FLAGS,
+	type CliModelSettings,
+	type ReasoningEffortFlagOptions,
+	type SupportedProvider,
+} from "@/types/index.js"
+import { resolveReasoningEffort, toProviderSettings, withModel } from "@/lib/utils/provider-config.js"
 import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
@@ -81,6 +87,10 @@ export interface ExtensionHostOptions {
 	 * the extension's own store binds to that mode.
 	 */
 	modeProviderSettings?: CliModeProviderSettings
+	/** `models` of cli-settings.json: what comes with a model that /model switches to. */
+	models?: Record<string, CliModelSettings>
+	/** The --reasoning-effort flag: one level for every model of the run, /model included. */
+	forcedReasoningEffort?: ReasoningEffortFlagOptions
 	workspacePath: string
 	extensionPath: string
 	/**
@@ -158,6 +168,7 @@ export interface ExtensionHostInterface extends IExtensionHost<CliExtensionHostE
 	runTask(prompt: string, taskId?: string): Promise<void>
 	resumeTask(taskId: string): Promise<void>
 	sendToExtension(message: WebviewMessage): void
+	switchModel(mode: string, model: string): ProviderSettings
 	dispose(): Promise<void>
 }
 
@@ -580,6 +591,38 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// Now trigger extension initialization. The context proxy should already
 		// have CLI-provided values when the webviewDidLaunch handler runs.
 		this.sendToExtension({ type: "webviewDidLaunch" })
+	}
+
+	/**
+	 * Run `model` in `mode` for the rest of the session (the TUI's /model):
+	 * the mode's provider settings with the new model and what its `models`
+	 * entry says about it (reasoning effort, size, prices), applied at once.
+	 * Other modes keep theirs, and switching back to `mode` brings the new
+	 * model back. Nothing is written to cli-settings.json. Returns the
+	 * settings the mode now runs with.
+	 */
+	public switchModel(mode: string, model: string): ProviderSettings {
+		const perMode = this.options.modeProviderSettings
+		if (!perMode) {
+			throw new Error("This session has no provider settings per mode to change")
+		}
+
+		const modelSettings = this.options.models?.[model]
+		const current = perMode.modes[mode] ?? perMode.base
+		const provider = current.apiProvider as SupportedProvider
+		const settings = withModel(current, model, {
+			reasoningEffort: resolveReasoningEffort(provider, modelSettings, this.options.forcedReasoningEffort),
+			modelSettings,
+		})
+
+		this.options.modeProviderSettings = { ...perMode, modes: { ...perMode.modes, [mode]: settings } }
+		this.sendToExtension({
+			type: "cliModeProviderSettings",
+			cliModeProviderSettings: this.options.modeProviderSettings,
+			bool: true,
+		})
+
+		return settings
 	}
 
 	public isInInitialSetup(): boolean {

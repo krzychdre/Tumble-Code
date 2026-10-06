@@ -15,6 +15,7 @@ import {
 	resolveReasoningEffort,
 	summarizeProviderSettings,
 	toProviderSettings,
+	withModel,
 } from "../provider-config.js"
 
 describe("resolveProviderConfig", () => {
@@ -454,5 +455,57 @@ describe("summarizeProviderSettings", () => {
 			summarizeProviderSettings({ apiProvider: "openrouter", enableReasoningEffort: false })?.reasoningEffort,
 		).toBe("disabled")
 		expect(summarizeProviderSettings(null)).toBeUndefined()
+	})
+})
+
+describe("withModel", () => {
+	const glm = toProviderSettings({
+		provider: "openai",
+		model: "GLM-5.3-NVFP4",
+		baseUrl: "http://192.168.50.194:11111/v1",
+		apiKey: "1111",
+		reasoningEffort: "max",
+		modelSettings: { contextWindow: 262_144, preserveReasoning: true, inputPrice: 1.4 },
+	})
+
+	it("keeps the connection and replaces everything that came with the previous model", () => {
+		const qwen = withModel(glm, "Qwen3.8-27B", { reasoningEffort: "unspecified", modelSettings: undefined })
+
+		expect(qwen).toEqual({
+			apiProvider: "openai",
+			openAiBaseUrl: "http://192.168.50.194:11111/v1",
+			openAiApiKey: "1111",
+			openAiModelId: "Qwen3.8-27B",
+			openAiCustomModelInfo: null,
+			openAiPreserveReasoning: false,
+		})
+	})
+
+	it("brings the new model's own level, size and prices", () => {
+		const qwen = withModel(glm, "Qwen3.8-27B", {
+			reasoningEffort: "high",
+			modelSettings: { contextWindow: 131_072, reasoningEffort: "high" },
+		})
+
+		expect(qwen).toMatchObject({
+			openAiModelId: "Qwen3.8-27B",
+			enableReasoningEffort: true,
+			reasoningEffort: "high",
+		})
+		expect(qwen.openAiCustomModelInfo).toEqual({
+			...openAiModelInfoSaneDefaults,
+			contextWindow: 131_072,
+			supportsReasoningEffort: true,
+			reasoningEffort: "high",
+		})
+	})
+
+	it("writes the model into the provider's own model field", () => {
+		const zai = toProviderSettings({ provider: "zai", model: "glm-5.3", apiKey: "k", reasoningEffort: "max" })
+
+		expect(withModel(zai, "glm-5.3-flash", { reasoningEffort: "medium" })).toMatchObject({
+			apiModelId: "glm-5.3-flash",
+			reasoningEffort: "medium",
+		})
 	})
 })

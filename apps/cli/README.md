@@ -138,6 +138,17 @@ allow` or manual approval with `/permissions ask` without restarting the CLI.
 The command changes only the active session; startup flags and saved CLI
 settings still determine the initial mode of the next session.
 
+To change the model while the session runs, type `/model`: it lists the
+models of `~/.roo/cli-settings.json` (their `models` entries) with the one in
+use marked. `/model <id>` runs `<id>` in the current mode until the session
+ends, with what its `models` entry says (reasoning effort, context window,
+prices); the next request goes to it, while a reply already streaming finishes
+on the old model. Other modes keep their models, the provider and its
+connection stay, and nothing is written to the settings file. Any id the
+provider serves works, also one without an entry (for the `openai` provider it
+then runs with a 128,000-token window, no prices and no reasoning effort, and
+the CLI says so).
+
 In approval-required mode:
 
 - Tool, command, browser, and MCP actions prompt for yes/no approval
@@ -416,8 +427,8 @@ model's `models` entry takes any level of `--reasoning-effort`:
 }
 ```
 
-- The level follows the model wherever it runs: the top level, a `modes` entry
-  or `--model`. A model without an entry gets nothing for the `openai`
+- The level follows the model wherever it runs: the top level, a `modes` entry,
+  `--model` or `/model`. A model without an entry gets nothing for the `openai`
   (OpenAI-compatible) provider, which knows nothing about its models and so
   sends `reasoning_effort` only when one is configured, and `medium` for every
   other provider.
@@ -452,8 +463,8 @@ the CLI the real size, keyed by the model id exactly as the server names it:
 }
 ```
 
-- An entry applies wherever its model runs: the top level, a `modes` entry or
-  `--model`.
+- An entry applies wherever its model runs: the top level, a `modes` entry,
+  `--model` or `/model`.
 - Use the size the server actually serves (for vLLM, its `--max-model-len`),
   which can be smaller than what the model supports. Condensing starts when the
   context passes about 90% of this size.

@@ -126,6 +126,25 @@ export class ModeProfileBinding {
 		this.cliModeProviderSettings = settings
 	}
 
+	/**
+	 * Apply the CLI's provider settings of the current mode now, without a
+	 * mode switch: the CLI's /model changed the model of that mode. The task
+	 * gets a new handler, so its next request goes to the new model (one
+	 * still streaming finishes on the old one). Does nothing without CLI
+	 * settings.
+	 */
+	async applyCliProviderSettingsToCurrentMode() {
+		const { mode } = await this.host.getState()
+		const settings = this.getCliProviderSettingsForMode(mode)
+		if (!settings) {
+			return
+		}
+
+		await this.host.contextProxy.setProviderSettings(settings)
+		this.updateTaskApiHandlerIfNeeded(settings, { forceRebuild: true })
+		await this.host.postStateToWebview()
+	}
+
 	get hasCliModeProviderSettings(): boolean {
 		return this.cliModeProviderSettings !== undefined
 	}
