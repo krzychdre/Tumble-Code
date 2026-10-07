@@ -2,21 +2,21 @@
 
 exports[`system prompt: live bytes are pinned (CORE-R11 must not change them) > deferred tools on, one tool loaded 1`] = `
 {
-  "length": 13727,
-  "sha256": "f01136b43b92b82f705f20998f1b4a266ef2b2c8faf9508c64f5632e6e93b8f5",
+  "length": 13162,
+  "sha256": "6ad996d5f4c638977eaf6647110df6866beb4e86dcec92eabea88549b64d4b98",
 }
 `;
 
 exports[`system prompt: live bytes are pinned (CORE-R11 must not change them) > plain task 1`] = `
 {
-  "length": 12999,
-  "sha256": "4796a6e153ac7b66dd5619b499f52e4c04ac01fa226687e63a420cc03b560047",
+  "length": 12434,
+  "sha256": "7d9ae02ea9343488d48bd6f67a40cb2b046757c407379175b1448ea7c14ec075",
 }
 `;
 
 exports[`system prompt: live bytes are pinned (CORE-R11 must not change them) > state without an mcpEnabled value 1`] = `
 {
-  "length": 12999,
-  "sha256": "4796a6e153ac7b66dd5619b499f52e4c04ac01fa226687e63a420cc03b560047",
+  "length": 12434,
+  "sha256": "7d9ae02ea9343488d48bd6f67a40cb2b046757c407379175b1448ea7c14ec075",
 }
 `;

@@ -9,6 +9,16 @@ import { McpHub } from "../../../services/mcp/McpHub"
  * availability sentence used to live here, but it varies with the mode's MCP
  * allowlist, so it moved to {@link getMcpAvailabilitySection} in the variable
  * tail. Nothing mode-dependent may be added back here.
+ *
+ * Because the text cannot adapt to the mode, it must not promise any tool. An
+ * earlier version said "You have access to tools that let you execute CLI
+ * commands ... read and write files" and "You can use the execute_command tool",
+ * and the orchestrator (`groups: []`, so no such tools) took it at its word: it
+ * called execute_command, vLLM's tool parser dropped the unknown name, and the
+ * client saw an empty answer and retried forever. So the section now says the
+ * tool list is the only source of truth, and every tool-specific paragraph
+ * opens with "When your tool list includes ...". What a mode actually lacks is
+ * stated in the variable tail, where mode-dependent bytes are allowed.
  */
 export function getCapabilitiesSection(cwd: string): string {
 	// `toPosix()` for consistency with RULES and SYSTEM INFORMATION, which both
@@ -22,9 +32,9 @@ export function getCapabilitiesSection(cwd: string): string {
 
 CAPABILITIES
 
-- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search, read and write files, and ask follow-up questions. These tools help you effectively accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
-- When the user initially gives you a task, a recursive list of all filepaths in the current workspace directory ('${workspacePath}') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. If you need to further explore directories such as outside the current workspace directory, you can use the list_files tool. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
-- You can use the execute_command tool to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you need to execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.`
+- The tools you have are exactly the tools in the tool list of this request, and that list depends on your mode. Depending on the mode, it can include tools to run CLI commands on the user's computer, list files, search files with a regex, read and write files, and ask follow-up questions. A tool that is not in your tool list does not exist in this mode: calling it fails and gives you no result. These tools help you accomplish a wide range of tasks, such as writing code, making edits or improvements to existing files, understanding the current state of a project, performing system operations, and much more.
+- When the user initially gives you a task, a recursive list of all filepaths in the current workspace directory ('${workspacePath}') will be included in environment_details. This provides an overview of the project's file structure, offering key insights into the project from directory/file names (how developers conceptualize and organize their code) and file extensions (the language used). This can also guide decision-making on which files to explore further. When your tool list includes list_files, you can use it to explore further directories, such as directories outside the current workspace directory. If you pass 'true' for the recursive parameter, it will list files recursively. Otherwise, it will list files at the top level, which is better suited for generic directories where you don't necessarily need the nested structure, like the Desktop.
+- When your tool list includes execute_command, you can use it to run commands on the user's computer whenever you feel it can help accomplish the user's task. When you execute a CLI command, you must provide a clear explanation of what the command does. Prefer to execute complex CLI commands over creating executable scripts, since they are more flexible and easier to run. Interactive and long-running commands are allowed, since the commands are run in the user's VSCode terminal. The user may keep commands running in the background and you will be kept updated on their status along the way. Each command you execute is run in a new terminal instance.`
 }
 
 /**
