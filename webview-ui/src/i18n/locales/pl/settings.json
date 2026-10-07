@@ -492,6 +492,10 @@
 			"label": "Odsyłaj rozumowanie do modelu",
 			"description": "Przy każdym zapytaniu odsyła modelowi jego wcześniejsze rozumowanie, dzięki czemu może on kontynuować to, co już przemyślał (zachowane lub przeplatane myślenie). Potrzebne dla GLM, DeepSeek, Kimi i podobnych modeli rozumujących uruchamianych na vLLM, SGLang lub llama.cpp. Zużywa więcej kontekstu."
 		},
+		"trimOldReasoning": {
+			"label": "Skracaj stare rozumowanie, gdy kontekst się zapełnia",
+			"description": "Gdy kontekst osiągnie próg kondensacji (albo granicę okna), najpierw skracane są długie bloki rozumowania ze starszych tur: zostaje początek, ostatni akapit i akapity z ustaleniami, reszta jest pomijana. Zmienia się tylko kopia wysyłana do modelu; zapisane zadanie zachowuje wszystko. Oszczędza kontekst bez dodatkowego wywołania modelu."
+		},
 		"awsAuthMethod": "Metoda uwierzytelniania"
 	},
 	"checkpoints": {

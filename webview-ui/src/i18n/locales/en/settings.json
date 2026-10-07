@@ -554,6 +554,10 @@
 			"label": "Return reasoning to the model",
 			"description": "Sends the model's earlier reasoning back with every request, so it can build on what it already thought through (preserved or interleaved thinking). Needed for GLM, DeepSeek, Kimi and similar reasoning models served by vLLM, SGLang or llama.cpp. Uses more context."
 		},
+		"trimOldReasoning": {
+			"label": "Shorten old reasoning when the context fills up",
+			"description": "When the context reaches the condense threshold (or the window limit), long reasoning blocks of older turns are shortened first: the beginning, the last paragraph and paragraphs with findings stay, the rest is left out. Only the copy sent to the model changes; the saved task keeps everything. Saves context without an extra model call."
+		},
 		"awsAuthMethod": "Authentication Method"
 	},
 	"checkpoints": {

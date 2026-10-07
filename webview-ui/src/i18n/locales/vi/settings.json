@@ -492,6 +492,10 @@
 			"label": "Gửi lại suy luận cho mô hình",
 			"description": "Gửi lại phần suy luận trước đó của mô hình trong mỗi yêu cầu, để mô hình có thể tiếp tục từ những gì đã suy nghĩ (suy luận được giữ lại hoặc xen kẽ). Cần thiết cho GLM, DeepSeek, Kimi và các mô hình suy luận tương tự chạy trên vLLM, SGLang hoặc llama.cpp. Tốn nhiều ngữ cảnh hơn."
 		},
+		"trimOldReasoning": {
+			"label": "Rút gọn suy luận cũ khi ngữ cảnh gần đầy",
+			"description": "Khi ngữ cảnh đạt đến ngưỡng nén (hoặc giới hạn cửa sổ), các khối suy luận dài của những lượt trước sẽ được rút gọn trước: phần mở đầu, đoạn cuối và các đoạn chứa phát hiện được giữ lại, phần còn lại bị lược bỏ. Chỉ bản sao gửi cho mô hình thay đổi; tác vụ đã lưu vẫn giữ toàn bộ. Tiết kiệm ngữ cảnh mà không cần gọi thêm mô hình."
+		},
 		"awsAuthMethod": "Phương thức xác thực"
 	},
 	"checkpoints": {

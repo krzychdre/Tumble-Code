@@ -312,6 +312,20 @@ export const OpenAICompatible = ({
 				<div className="text-sm text-vscode-descriptionForeground ml-6">
 					{t("settings:providers.preserveReasoning.description")}
 				</div>
+				{/* Trimming only acts on reasoning that is sent back, so the option
+				    is offered only while "Return reasoning to the model" is on. */}
+				{apiConfiguration?.openAiPreserveReasoning && (
+					<div className="ml-6 mt-2">
+						<LabeledCheckbox
+							checked={apiConfiguration?.openAiTrimOldReasoning ?? false}
+							onCheckedChange={handleInputChange("openAiTrimOldReasoning", noTransform)}>
+							{t("settings:providers.trimOldReasoning.label")}
+						</LabeledCheckbox>
+						<div className="text-sm text-vscode-descriptionForeground ml-6">
+							{t("settings:providers.trimOldReasoning.description")}
+						</div>
+					</div>
+				)}
 			</div>
 			<div className="flex flex-col gap-3">
 				<div className="text-sm text-vscode-descriptionForeground whitespace-pre-line">

@@ -492,6 +492,10 @@
 			"label": "Kembalikan reasoning ke model",
 			"description": "Mengirim kembali reasoning model sebelumnya pada setiap permintaan, sehingga model dapat melanjutkan apa yang sudah dipikirkannya (thinking yang dipertahankan atau diselingi). Diperlukan untuk GLM, DeepSeek, Kimi, dan model reasoning serupa yang dijalankan dengan vLLM, SGLang, atau llama.cpp. Menggunakan lebih banyak konteks."
 		},
+		"trimOldReasoning": {
+			"label": "Persingkat reasoning lama saat konteks hampir penuh",
+			"description": "Saat konteks mencapai ambang batas kondensasi (atau batas jendela), blok reasoning panjang dari giliran sebelumnya dipersingkat terlebih dahulu: bagian awal, paragraf terakhir, dan paragraf berisi temuan tetap dipertahankan, sisanya dihilangkan. Hanya salinan yang dikirim ke model yang berubah; tugas yang disimpan tetap menyimpan semuanya. Menghemat konteks tanpa panggilan model tambahan."
+		},
 		"awsAuthMethod": "Metode autentikasi"
 	},
 	"checkpoints": {

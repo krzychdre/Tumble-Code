@@ -492,6 +492,10 @@
 			"label": "Renvoyer le raisonnement au modèle",
 			"description": "Renvoie le raisonnement précédent du modèle à chaque requête, afin qu'il puisse s'appuyer sur ce qu'il a déjà réfléchi (réflexion préservée ou entrelacée). Nécessaire pour GLM, DeepSeek, Kimi et les modèles de raisonnement similaires servis par vLLM, SGLang ou llama.cpp. Consomme davantage de contexte."
 		},
+		"trimOldReasoning": {
+			"label": "Raccourcir l'ancien raisonnement quand le contexte se remplit",
+			"description": "Lorsque le contexte atteint le seuil de condensation (ou la limite de la fenêtre), les longs blocs de raisonnement des tours précédents sont d'abord raccourcis : le début, le dernier paragraphe et les paragraphes contenant des constats sont conservés, le reste est omis. Seule la copie envoyée au modèle change ; la tâche enregistrée conserve tout. Économise du contexte sans appel supplémentaire au modèle."
+		},
 		"awsAuthMethod": "Méthode d'authentification"
 	},
 	"checkpoints": {
