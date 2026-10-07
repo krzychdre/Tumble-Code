@@ -164,12 +164,17 @@ def test_the_line_is_smooth_but_never_swings_past_its_points():
         assert min(a, b) - 1e-6 <= min(ys) and max(ys) <= max(a, b) + 1e-6, (a, b, ys)
 
 
-def test_a_single_day_is_a_dot_without_a_line_area():
+def test_a_single_day_is_a_flat_line_at_its_level():
     from src.web.presenters.charts import daily
 
-    chart = daily([{"day": "2026-09-10", "tokens": 4, "cost": 0.1}])
-    assert chart["tokens"]["area"] == "" and chart["tokens"]["line"] == "M5,0"
+    chart = daily([{"day": "2026-09-10", "tokens": 4, "cost": 0.05}])
+    # No invented day before it: one slot, its level drawn across the plot.
+    assert [s["title"] for s in chart["slots"]] == ["2026-09-10: 4 tokens, $0.0500"]
     assert chart["slots"][0]["tokens"] == ("5", "0")
+    assert chart["tokens"]["line"] == "M0,0 L10,0"
+    assert chart["tokens"]["area"] == "M0,0 L10,0 L10,100 L0,100 Z"
+    # $0.05 under a "nice" $0.06 axis top.
+    assert chart["cost"]["line"] == "M0,16.67 L10,16.67"
     assert chart["dense"] is False
 
 

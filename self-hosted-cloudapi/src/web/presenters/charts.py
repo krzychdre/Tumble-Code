@@ -138,8 +138,17 @@ def _series(values: list[float], top: float) -> dict:
         (i * DAY_SLOT + DAY_SLOT / 2, PLOT_HEIGHT - (PLOT_HEIGHT * v / top if top > 0 else 0))
         for i, v in enumerate(values)
     ]
-    line = _smooth(points)
-    area = f"{line} L{_n(points[-1][0])},{PLOT_HEIGHT} L{_n(points[0][0])},{PLOT_HEIGHT} Z" if len(points) > 1 else ""
+    if not points:
+        line = area = ""
+    elif len(points) == 1:
+        # One day alone would be a lone dot: draw its level across the whole
+        # slot instead, a flat line rather than a made-up day before it.
+        y = _n(points[0][1])
+        line = f"M0,{y} L{DAY_SLOT},{y}"
+        area = f"{line} L{DAY_SLOT},{PLOT_HEIGHT} L0,{PLOT_HEIGHT} Z"
+    else:
+        line = _smooth(points)
+        area = f"{line} L{_n(points[-1][0])},{PLOT_HEIGHT} L{_n(points[0][0])},{PLOT_HEIGHT} Z"
     return {"line": line, "area": area, "points": [(_n(x), _n(y)) for x, y in points]}
 
 
