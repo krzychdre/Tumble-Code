@@ -235,12 +235,22 @@ describe("SubtaskRow", () => {
 			expect(screen.queryByTestId("running-indicator-running")).not.toBeInTheDocument()
 		})
 
-		it("shows nothing on a subtask at rest", () => {
+		it("shows a list bullet, not a status, on a subtask at rest", () => {
 			const node = createMockNode({ id: "leaf-1", task: "Resting subtask" })
 
 			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
 
 			expect(screen.queryByTestId(/^running-indicator-/)).not.toBeInTheDocument()
+			expect(screen.getByTestId("subtask-bullet")).toBeInTheDocument()
+		})
+
+		it("puts the status in the bullet's slot while the subtask works", () => {
+			const node = createMockNode({ id: "leaf-1", task: "Working subtask", runningStatus: "running" })
+
+			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+
+			expect(screen.getByTestId("running-indicator-running")).toBeInTheDocument()
+			expect(screen.queryByTestId("subtask-bullet")).not.toBeInTheDocument()
 		})
 
 		it("marks a working nested subtask", () => {

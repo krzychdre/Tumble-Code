@@ -50,7 +50,18 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 				style={{ paddingLeft: `${depth * 16}px` }}
 				onClick={handleClick}>
 				<span className="flex min-w-0 items-center gap-1.5">
-					<RunningStatusIndicator status={item.runningStatus} id={statusId} />
+					{/* List marker column: a dash at rest, the live status in the
+					    same slot while the subtask works, so the text never shifts. */}
+					{item.runningStatus ? (
+						<RunningStatusIndicator status={item.runningStatus} id={statusId} />
+					) : (
+						<span aria-hidden className="size-4 shrink-0 flex items-center justify-center">
+							<span
+								data-testid="subtask-bullet"
+								className="h-0.5 w-2 bg-current opacity-50 group-hover:opacity-100 group-hover:bg-vscode-focusBorder transition-colors"
+							/>
+						</span>
+					)}
 					<StandardTooltip content={item.task} delay={600}>
 						<span className="text-sm line-clamp-1">{item.task}</span>
 					</StandardTooltip>
