@@ -44,6 +44,8 @@ export interface TaskHistoryGatewayHost extends PostMessageHostMember {
 	postStateToWebviewWithoutClineMessages(): Promise<void>
 	getCurrentTask(): { readonly taskId: string } | undefined
 	clearCurrentTask(): Promise<void>
+	/** Stops the tasks among `taskIds` that are running off screen. */
+	destroyDetachedTasks(taskIds: string[]): Promise<void>
 }
 
 /**
@@ -575,6 +577,7 @@ export class TaskHistoryGateway {
 					break
 				}
 			}
+			await this.host.destroyDetachedTasks(allIdsToDelete)
 
 			// Delete all tasks from state in one batch. Mark each as
 			// self-originated so the shared store's onChange echo

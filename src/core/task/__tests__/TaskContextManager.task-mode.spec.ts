@@ -35,6 +35,7 @@ describe("TaskContextManager condensing metadata mode", () => {
 		const provider = {
 			getState: vi.fn().mockResolvedValue({ mode: "code" }),
 			postMessageToWebview: vi.fn(),
+			postMessageForTask: vi.fn(),
 		}
 		const access = {
 			taskId: "task-1",

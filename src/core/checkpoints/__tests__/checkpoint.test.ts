@@ -80,6 +80,7 @@ describe("Checkpoint functionality", () => {
 				globalStorageUri: { fsPath: "/test/storage" },
 			},
 			postMessageToWebview: vi.fn(),
+			postMessageForTask: vi.fn(),
 			postStateToWebview: vi.fn(),
 			cancelTask: vi.fn(),
 		}

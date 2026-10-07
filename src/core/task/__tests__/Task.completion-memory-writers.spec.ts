@@ -84,6 +84,7 @@ type ProviderStandIn = {
 	taskHistory: { setLiveTaskId: (id: string | undefined) => void }
 	resetSubagentPanel: () => Promise<void>
 	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
+	leaveCurrentTask: typeof ClineProvider.prototype.leaveCurrentTask
 	clearTask: typeof ClineProvider.prototype.clearTask
 	cancelTask: typeof ClineProvider.prototype.cancelTask
 	delegation: { detach: (parentTaskId: string, childTaskId: string) => Promise<boolean> }
@@ -109,6 +110,7 @@ function makeProvider(): ProviderStandIn {
 		taskHistory: { setLiveTaskId: vi.fn() },
 		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
 		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
+		leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
 		clearTask: ClineProvider.prototype.clearTask,
 		cancelTask: ClineProvider.prototype.cancelTask,
 		delegation: {

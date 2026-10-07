@@ -50,6 +50,7 @@ describe("Single-open-task invariant", () => {
 				cloudUserInfo: null,
 			}),
 			clearCurrentTask,
+			leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
 			setCurrentTask,
 			setProviderProfile: vi.fn(),
 			getStateToPostToWebview: vi.fn(),
@@ -67,7 +68,9 @@ describe("Single-open-task invariant", () => {
 
 		await (ClineProvider.prototype as any).createTask.call(provider, "New task")
 
+		// The previous task leaves the slot; if it still works it keeps running detached.
 		expect(clearCurrentTask).toHaveBeenCalledTimes(1)
+		expect(clearCurrentTask).toHaveBeenCalledWith({ keepRunning: true })
 		expect(setCurrentTask).toHaveBeenCalledTimes(1)
 	})
 
@@ -79,6 +82,7 @@ describe("Single-open-task invariant", () => {
 		const provider = {
 			getCurrentTask: vi.fn(() => undefined), // ensure not rehydrating
 			clearCurrentTask,
+			leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
 			setCurrentTask,
 			updateGlobalState,
 			// The mode and profile restore moved to ModeProfileBinding (CORE-R6 c).
@@ -130,6 +134,7 @@ describe("Single-open-task invariant", () => {
 		const task = await (ClineProvider.prototype as any).createTaskWithHistoryItem.call(provider, historyItem)
 		expect(task).toBeTruthy()
 		expect(clearCurrentTask).toHaveBeenCalledTimes(1)
+		expect(clearCurrentTask).toHaveBeenCalledWith({ keepRunning: true })
 		expect(setCurrentTask).toHaveBeenCalledTimes(1)
 	})
 

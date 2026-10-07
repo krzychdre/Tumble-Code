@@ -85,7 +85,7 @@ const getCommandsMap = ({
 
 		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "plus" })
 
-		await visibleProvider.clearCurrentTask()
+		await visibleProvider.leaveCurrentTask()
 		await visibleProvider.refreshWorkspace()
 		await visibleProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
 		// Send focusInput action immediately after chatButtonClicked

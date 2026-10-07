@@ -942,6 +942,7 @@ describe("Cline", () => {
 					postStateToWebviewWithoutTaskHistory: vi.fn().mockResolvedValue(undefined),
 					postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 					updateTaskHistory: vi.fn().mockResolvedValue(undefined),
+					getCurrentTask: vi.fn().mockReturnValue(undefined),
 				}
 
 				// Get the mocked delay function
