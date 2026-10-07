@@ -134,13 +134,22 @@ interface MockTaskOptions {
 	rooIgnoreAllowed?: boolean
 	maxImageFileSize?: number
 	maxTotalImageSize?: number
+	/** What the provider reports as image-capable modes (all modes, the task's own included). */
+	findImageCapableModes?: () => Promise<{ slug: string; modelId: string }[]>
 }
 
 function createMockTask(options: MockTaskOptions = {}) {
-	const { supportsImages = false, rooIgnoreAllowed = true, maxImageFileSize = 5, maxTotalImageSize = 20 } = options
+	const {
+		supportsImages = false,
+		rooIgnoreAllowed = true,
+		maxImageFileSize = 5,
+		maxTotalImageSize = 20,
+		findImageCapableModes = async () => [],
+	} = options
 
 	return {
 		cwd: "/test/workspace",
+		taskMode: "ask",
 		api: {
 			getModel: vi.fn().mockReturnValue({
 				info: { supportsImages },
@@ -165,6 +174,7 @@ function createMockTask(options: MockTaskOptions = {}) {
 					maxImageFileSize,
 					maxTotalImageSize,
 				}),
+				findImageCapableModes: vi.fn(findImageCapableModes),
 			}),
 		},
 	}
@@ -358,6 +368,47 @@ describe("ReadFileTool", () => {
 			expect(callbacks.pushToolResult).toHaveBeenCalledWith(
 				expect.stringContaining("Model does not support image processing"),
 			)
+		})
+
+		it("passes the other image-capable modes to the notice, without the task's own mode", async () => {
+			const mockTask = createMockTask({
+				supportsImages: false,
+				findImageCapableModes: async () => [
+					{ slug: "ask", modelId: "own-mode-model" },
+					{ slug: "vision", modelId: "qwen3.6-35b" },
+				],
+			})
+			mockedValidateImageForProcessing.mockResolvedValue({ isValid: false, reason: "unsupported_model" })
+
+			await readFileTool.execute({ path: "image.png" }, mockTask as any, createMockCallbacks())
+
+			expect(mockedValidateImageForProcessing).toHaveBeenCalledWith(expect.any(String), false, 5, 20, 0, [
+				{ slug: "vision", modelId: "qwen3.6-35b" },
+			])
+		})
+
+		it("treats a failing image-capable mode lookup as no such mode", async () => {
+			const mockTask = createMockTask({
+				supportsImages: false,
+				findImageCapableModes: async () => {
+					throw new Error("profile store unreadable")
+				},
+			})
+			mockedValidateImageForProcessing.mockResolvedValue({ isValid: false, reason: "unsupported_model" })
+
+			await readFileTool.execute({ path: "image.png" }, mockTask as any, createMockCallbacks())
+
+			expect(mockedValidateImageForProcessing).toHaveBeenCalledWith(expect.any(String), false, 5, 20, 0, [])
+		})
+
+		it("does not look up image-capable modes when the model supports images", async () => {
+			const findImageCapableModes = vi.fn(async () => [])
+			const mockTask = createMockTask({ supportsImages: true, findImageCapableModes })
+			mockedValidateImageForProcessing.mockResolvedValue({ isValid: false, reason: "size_limit" })
+
+			await readFileTool.execute({ path: "image.png" }, mockTask as any, createMockCallbacks())
+
+			expect(findImageCapableModes).not.toHaveBeenCalled()
 		})
 
 		it("should skip image when file exceeds size limit", async () => {

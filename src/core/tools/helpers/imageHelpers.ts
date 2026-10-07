@@ -91,7 +91,47 @@ export function isSupportedImageFormat(extension: string): boolean {
 }
 
 /**
- * Validates if an image can be processed based on size limits and model support
+ * A mode (other than the current one) that runs on a model which can see
+ * images, because an image-capable provider profile is pinned to it.
+ */
+export interface ImageCapableMode {
+	slug: string
+	modelId: string
+}
+
+/**
+ * The model-facing notice for an image the current model cannot see. It names
+ * the modes that can see images, or says plainly that none can: a weak model
+ * told only "delegate if a vision-capable mode exists" guesses a mode and
+ * delegates to another text-only one, which does the same, without end.
+ */
+function buildUnsupportedImageNotice(imageCapableModes: ImageCapableMode[]): string {
+	const intro = "Image file detected but the current model does not support images, so the image was not loaded."
+
+	if (imageCapableModes.length === 0) {
+		return (
+			`${intro} No other mode in this setup runs on a model that can see images. ` +
+			"Do NOT delegate this image with the new_task tool: any other mode would hit the same limit. " +
+			'Do not claim vision capabilities and do not ask anyone to "use vision capabilities". ' +
+			"Continue without the image and tell the user that the image could not be viewed. " +
+			"The user can enable this by pinning a vision-capable API profile to a mode (for example a Vision mode)."
+		)
+	}
+
+	const modeList = imageCapableModes
+		.map(({ slug, modelId }) => (modelId ? `\`${slug}\` (runs on ${modelId})` : `\`${slug}\``))
+		.join(", ")
+	const target = imageCapableModes.length === 1 ? `mode ${modeList}` : `one of these modes: ${modeList}`
+	return (
+		`${intro} Delegate it with the new_task tool to ${target}. ` +
+		"Include the image path and your question, then continue with the textual description it returns. " +
+		"Do not delegate the image to any other mode: those cannot see images either."
+	)
+}
+
+/**
+ * Validates if an image can be processed based on size limits and model support.
+ * `imageCapableModes` only shapes the notice when the model does not support images.
  */
 export async function validateImageForProcessing(
 	fullPath: string,
@@ -99,13 +139,14 @@ export async function validateImageForProcessing(
 	maxImageFileSize: number,
 	maxTotalImageSize: number,
 	currentTotalMemoryUsed: number,
+	imageCapableModes: ImageCapableMode[] = [],
 ): Promise<ImageValidationResult> {
 	// Check if model supports images
 	if (!supportsImages) {
 		return {
 			isValid: false,
 			reason: "unsupported_model",
-			notice: "Image file detected but current model does not support images. Skipping image processing. If a vision-capable mode is available (see MODES), delegate this image to it with the new_task tool - include the image path and your question - and continue using the textual description it returns.",
+			notice: buildUnsupportedImageNotice(imageCapableModes),
 		}
 	}
 

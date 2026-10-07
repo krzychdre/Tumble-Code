@@ -66,6 +66,7 @@ import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
 import { Task } from "../task/Task"
+import type { ImageCapableMode } from "../tools/helpers/imageHelpers"
 import type { SideQuery } from "../memory"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
@@ -1832,6 +1833,11 @@ export class ClineProvider
 		mode: string,
 	): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined> {
 		return this.modeProfiles.getApiConfigurationForMode(mode)
+	}
+
+	/** See {@link ModeProfileBinding.findImageCapableModes}. */
+	public async findImageCapableModes(): Promise<ImageCapableMode[]> {
+		return this.modeProfiles.findImageCapableModes()
 	}
 
 	/**
