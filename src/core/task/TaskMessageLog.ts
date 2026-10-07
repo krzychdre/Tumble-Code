@@ -413,6 +413,11 @@ export class TaskMessageLog {
 
 	// Cline Messages
 
+	/** Whether this task is the one the chat view shows (not one working off screen). */
+	private isOnScreen(): boolean {
+		return this.access.providerRef.deref()?.getCurrentTask()?.taskId === this.access.taskId
+	}
+
 	async getSavedClineMessages(): Promise<ClineMessage[]> {
 		return readTaskMessages({ taskId: this.access.taskId, globalStoragePath: this.access.globalStoragePath })
 	}
@@ -425,9 +430,13 @@ export class TaskMessageLog {
 			// other view (the CLI), or one that may be out of step, gets the
 			// state push with the whole message list. Neither carries taskHistory:
 			// the webview keeps it in memory and follows taskHistoryItemUpdated.
-			const sentAlone = (await provider?.postClineMessageAdded?.(this.access, message)) ?? false
-			if (!sentAlone) {
-				await provider?.postStateToWebviewWithoutTaskHistory()
+			// A task working off screen posts nothing: the state push carries
+			// only the task on screen, and reopening this task pushes its list.
+			if (this.isOnScreen()) {
+				const sentAlone = (await provider?.postClineMessageAdded?.(this.access, message)) ?? false
+				if (!sentAlone) {
+					await provider?.postStateToWebviewWithoutTaskHistory()
+				}
 			}
 		} else if (provider?.subagentRegistry.isWatched(this.access.taskId)) {
 			// A background task's messages never ride the state push (state
@@ -494,9 +503,10 @@ export class TaskMessageLog {
 		const provider = this.access.providerRef.deref()
 		// Tag every update with its source task so the webview can route it:
 		// current task → main chat, watched subagent → its live tail. Unwatched
-		// background tasks post nothing (previously their updates leaked to the
-		// webview and were dropped there by timestamp mismatch).
-		if (!this.access.isBackground || provider?.subagentRegistry.isWatched(this.access.taskId)) {
+		// background tasks and tasks working off screen post nothing (the
+		// webview would drop them anyway, after the trip).
+		const isWatched = this.access.isBackground && provider?.subagentRegistry.isWatched(this.access.taskId)
+		if ((!this.access.isBackground && this.isOnScreen()) || isWatched) {
 			await provider?.postMessageToWebview({
 				type: "messageUpdated",
 				sourceTaskId: this.access.taskId,

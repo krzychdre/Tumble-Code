@@ -251,6 +251,12 @@ export class TaskLifecycle {
 		}
 
 		this.access.providerProfileChangeListener = async () => {
+			// The panel's profile belongs to the task on screen. A task working
+			// off screen (detached, or a headless background task) keeps the
+			// configuration it runs on.
+			if (provider.getCurrentTask()?.taskId !== this.access.taskId) {
+				return
+			}
 			try {
 				const newState = await provider.getState()
 				if (newState?.apiConfiguration) {

@@ -127,9 +127,28 @@ Three stacked branches, one functionality each:
   restore reverts both. Diff tabs of a hidden task still open in the editor, as they do today for the foreground
   task.
 - No "stop" button on a history row; a hidden task is stopped by opening it and pressing Stop.
-- The global API rate limit (`lastGlobalApiRequestTime`) stays shared by all tasks.
+- The global API rate limit (`lastGlobalApiRequestTime`) stays shared by all tasks, and its `rateLimitSeconds`
+  comes from the panel's profile (`RetryHandler`).
+- The per-profile auto-condense threshold of a task off screen is looked up with the panel's current profile id
+  (`getCurrentProfileId(state)` in `TaskContextManager` / `TaskApiLoop`).
+- Full state pushes triggered by a task off screen (`Task.ts` queue, `TaskApiLoop`, `TaskStreamProcessor`) still
+  happen once per request; they carry the task on screen and are harmless, only wasted.
 - The public API (`startNewTask`) and the CLI keep the abort-on-switch behaviour.
 
 ## Tests
 
-Filled in per branch below.
+### Branch 1 (`feat/keep-task-running-on-navigation`)
+
+- `src/core/webview/__tests__/ClineProvider.task-slot.spec.ts`: leaving a working task detaches it (not aborted,
+  listeners kept, found by id); a task blocked on an approval is kept; a task at rest (completion, resume, failed
+  request) and a task whose loop never started are destroyed as before; `clearCurrentTask` without `keepRunning`
+  still destroys; the CLI destroys; `set` re-attaches; a detached task is destroyed and dropped on `TaskIdle`,
+  `TaskResumable` and `TaskAborted`; a detached delegated child does not repair its parent; `destroyDetached`;
+  `showTaskWithId` re-attaches the live instance (and rebuilds a task that is not alive). Reverting the detach
+  branch in `TaskSlot.clear` fails the detach cases.
+- `src/core/task/__tests__/TaskMessageLog.turn-counts.spec.ts`: a task working off screen posts nothing to either
+  view kind, yet saves and keeps the cloud contract.
+- `src/core/task/__tests__/TaskLifecycle.profile-listener.spec.ts` (new): a profile change updates only the task on
+  screen.
+- `src/__tests__/single-open-invariant.spec.ts`: user-initiated create and history open leave the previous task
+  with `keepRunning`.

@@ -99,6 +99,7 @@ const makeHost = () => {
 		postStateToWebviewWithoutClineMessages: vi.fn().mockResolvedValue(undefined),
 		getCurrentTask: vi.fn().mockReturnValue(undefined),
 		clearCurrentTask: vi.fn().mockResolvedValue(undefined),
+		destroyDetachedTasks: vi.fn().mockResolvedValue(undefined),
 	}
 	return { host, state, contextProxy }
 }

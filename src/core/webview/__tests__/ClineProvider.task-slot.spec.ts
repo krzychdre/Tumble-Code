@@ -8,7 +8,8 @@
 // The root id of a delegated child is covered in ClineProvider.spec.ts
 // ("createTask delegation lineage"), against the real createTask.
 
-import { describe, expect, it, vi } from "vitest"
+import { EventEmitter } from "events"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { ClineProvider } from "../ClineProvider"
 import { TaskSlot } from "../TaskSlot"
@@ -23,6 +24,7 @@ type ProviderStandIn = {
 	// the task-history gateway (P7); the stand-in stubs that seam.
 	taskHistory: { setLiveTaskId: (id: string | undefined) => void }
 	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
+	leaveCurrentTask: typeof ClineProvider.prototype.leaveCurrentTask
 	getCurrentTask: typeof ClineProvider.prototype.getCurrentTask
 	getCurrentTaskStack: typeof ClineProvider.prototype.getCurrentTaskStack
 	getLiveTaskInstance: typeof ClineProvider.prototype.getLiveTaskInstance
@@ -43,12 +45,34 @@ function makeTask(taskId: string, overrides: Record<string, unknown> = {}): Task
 	} as unknown as Task
 }
 
+/**
+ * A task with a real event emitter whose loop has started and whose last
+ * message is `lastMessage` (default: a streaming text, i.e. still working).
+ */
+function makeLiveTask(taskId: string, lastMessage: Record<string, unknown> = { type: "say", say: "text" }): Task {
+	const task = Object.assign(new EventEmitter(), {
+		taskId,
+		instanceId: `inst-${taskId}`,
+		isInitialized: true,
+		abort: false,
+		abandoned: false,
+		clineMessages: [{ ts: 1, ...lastMessage }],
+		abortTask: vi.fn(async function (this: { abort: boolean; abandoned: boolean }) {
+			this.abort = true
+			this.abandoned = true
+		}),
+	})
+	vi.spyOn(task, "emit")
+	return task as unknown as Task
+}
+
 function makeProvider(): ProviderStandIn {
 	const provider: ProviderStandIn = {
 		taskSlot: undefined as unknown as TaskSlot,
 		taskEventListeners: new Map(),
 		taskHistory: { setLiveTaskId: vi.fn() },
 		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
+		leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
 		getCurrentTask: ClineProvider.prototype.getCurrentTask,
 		getCurrentTaskStack: ClineProvider.prototype.getCurrentTaskStack,
 		getLiveTaskInstance: ClineProvider.prototype.getLiveTaskInstance,
@@ -175,5 +199,201 @@ describe("getLiveTaskInstance / condense lookup is slot-scoped (D7)", () => {
 
 		expect(provider.getLiveTaskInstance("task-A")).toBe(taskA)
 		expect(provider.getLiveTaskInstance("anything-else")).toBeUndefined()
+	})
+})
+
+describe("leaving a task that still works (keep running off screen)", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs()
+	})
+
+	it("detaches a working task: not aborted, listeners kept, still found by id", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		const cleanup = vi.fn()
+		provider.taskEventListeners.set(taskA, [cleanup])
+		await provider.taskSlot.set(taskA)
+
+		await provider.leaveCurrentTask()
+
+		expect(provider.getCurrentTask()).toBeUndefined()
+		expect(taskA.abortTask).not.toHaveBeenCalled()
+		expect(cleanup).not.toHaveBeenCalled()
+		expect(taskA.emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskUnfocused)
+		expect(provider.getLiveTaskInstance("task-A")).toBe(taskA)
+	})
+
+	it("keeps a task blocked on an approval: the user finds the pending ask when back", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A", { type: "ask", ask: "tool" })
+		await provider.taskSlot.set(taskA)
+
+		await provider.leaveCurrentTask()
+
+		expect(taskA.abortTask).not.toHaveBeenCalled()
+		expect(provider.getLiveTaskInstance("task-A")).toBe(taskA)
+	})
+
+	it.each([
+		["finished (completion ask)", { type: "ask", ask: "completion_result" }],
+		["waiting to be resumed", { type: "ask", ask: "resume_task" }],
+		["stopped by a failed request", { type: "ask", ask: "api_req_failed" }],
+	])("destroys a task at rest as before: %s", async (_label, lastMessage) => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A", lastMessage)
+		await provider.taskSlot.set(taskA)
+
+		await provider.leaveCurrentTask()
+
+		expect(taskA.abortTask).toHaveBeenCalledWith(true)
+		expect(provider.getLiveTaskInstance("task-A")).toBeUndefined()
+	})
+
+	it("destroys a task whose loop never started (a view of history)", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		;(taskA as { isInitialized: boolean }).isInitialized = false
+		await provider.taskSlot.set(taskA)
+
+		await provider.leaveCurrentTask()
+
+		expect(taskA.abortTask).toHaveBeenCalledWith(true)
+	})
+
+	it("clearCurrentTask without keepRunning still destroys a working task (delegation, delete, dispose)", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		await provider.taskSlot.set(taskA)
+
+		await provider.clearCurrentTask()
+
+		expect(taskA.abortTask).toHaveBeenCalledWith(true)
+		expect(provider.getLiveTaskInstance("task-A")).toBeUndefined()
+	})
+
+	it("in the CLI a working task is destroyed: the CLI cannot show a detached task", async () => {
+		vi.stubEnv("ROO_CLI_RUNTIME", "1")
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		await provider.taskSlot.set(taskA)
+
+		await provider.leaveCurrentTask()
+
+		expect(taskA.abortTask).toHaveBeenCalledWith(true)
+	})
+
+	it("set() re-attaches a detached task as the foreground task", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		const taskB = makeLiveTask("task-B")
+		await provider.taskSlot.set(taskA)
+		await provider.leaveCurrentTask()
+		await provider.taskSlot.set(taskB)
+
+		await provider.leaveCurrentTask()
+		await provider.taskSlot.set(taskA)
+
+		expect(provider.getCurrentTask()).toBe(taskA)
+		// Back in the slot, coming to rest no longer drops it.
+		taskA.emit(TumbleCodeEventName.TaskIdle)
+		expect(taskA.abortTask).not.toHaveBeenCalled()
+		expect(provider.getLiveTaskInstance("task-B")).toBe(taskB)
+	})
+
+	it.each([TumbleCodeEventName.TaskIdle, TumbleCodeEventName.TaskResumable, TumbleCodeEventName.TaskAborted])(
+		"a detached task is destroyed and dropped once it ends work (%s)",
+		async (event) => {
+			const provider = makeProvider()
+			const taskA = makeLiveTask("task-A")
+			const cleanup = vi.fn()
+			provider.taskEventListeners.set(taskA, [cleanup])
+			await provider.taskSlot.set(taskA)
+			await provider.leaveCurrentTask()
+
+			taskA.emit(event)
+
+			await vi.waitFor(() => expect(cleanup).toHaveBeenCalled())
+			expect(taskA.abortTask).toHaveBeenCalledWith(true)
+			expect(provider.getLiveTaskInstance("task-A")).toBeUndefined()
+		},
+	)
+
+	it("a detached delegated child keeps its parent delegated (no repair)", async () => {
+		const provider = makeProvider()
+		const detach = vi.spyOn(provider.delegation, "detach").mockResolvedValue(true)
+		const child = makeLiveTask("child-1")
+		;(child as { parentTaskId?: string }).parentTaskId = "parent-1"
+		await provider.taskSlot.set(child)
+
+		await provider.leaveCurrentTask()
+
+		expect(detach).not.toHaveBeenCalled()
+	})
+
+	it("destroyDetached stops only the given detached tasks", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		const taskB = makeLiveTask("task-B")
+		await provider.taskSlot.set(taskA)
+		await provider.leaveCurrentTask()
+		await provider.taskSlot.set(taskB)
+		await provider.leaveCurrentTask()
+
+		await provider.taskSlot.destroyDetached(["task-A", "unknown"])
+
+		expect(taskA.abortTask).toHaveBeenCalledWith(true)
+		expect(taskB.abortTask).not.toHaveBeenCalled()
+		expect(provider.getLiveTaskInstance("task-B")).toBe(taskB)
+
+		await provider.taskSlot.destroyDetached()
+		expect(taskB.abortTask).toHaveBeenCalledWith(true)
+	})
+})
+
+describe("showTaskWithId puts a task running off screen back on screen", () => {
+	function makeNavigatingProvider() {
+		const provider = makeProvider() as ProviderStandIn & Record<string, any>
+		Object.assign(provider, {
+			showTaskWithId: ClineProvider.prototype.showTaskWithId,
+			reattachTask: (ClineProvider.prototype as any).reattachTask,
+			setCurrentTask: ClineProvider.prototype.setCurrentTask,
+			getHistoryItem: vi.fn(async (id: string) => ({ id, mode: "code" })),
+			createTaskWithHistoryItem: vi.fn(),
+			modeProfiles: { restoreForHistoryItem: vi.fn().mockResolvedValue(undefined) },
+			rehydrateSubagents: vi.fn().mockResolvedValue(undefined),
+			postStateToWebview: vi.fn().mockResolvedValue(undefined),
+			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+		})
+		return provider
+	}
+
+	it("re-attaches the live instance instead of rebuilding the task from history", async () => {
+		const provider = makeNavigatingProvider()
+		const taskA = makeLiveTask("task-A")
+		const taskB = makeLiveTask("task-B", { type: "ask", ask: "completion_result" })
+		await provider.taskSlot.set(taskA)
+		await provider.leaveCurrentTask()
+		await provider.taskSlot.set(taskB)
+
+		await provider.showTaskWithId("task-A")
+
+		expect(provider.getCurrentTask()).toBe(taskA)
+		expect(taskA.abortTask).not.toHaveBeenCalled()
+		expect(provider.createTaskWithHistoryItem).not.toHaveBeenCalled()
+		// The task left behind was at rest: destroyed as before.
+		expect(taskB.abortTask).toHaveBeenCalledWith(true)
+		// The panel shows the task's own mode and profile, its subagents, its state.
+		expect(provider.modeProfiles.restoreForHistoryItem).toHaveBeenCalledWith({ id: "task-A", mode: "code" })
+		expect(provider.rehydrateSubagents).toHaveBeenCalled()
+		expect(provider.postStateToWebview).toHaveBeenCalled()
+		expect(provider.postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
+	})
+
+	it("rebuilds from history a task that is not alive", async () => {
+		const provider = makeNavigatingProvider()
+
+		await provider.showTaskWithId("task-A")
+
+		expect(provider.createTaskWithHistoryItem).toHaveBeenCalledWith(expect.objectContaining({ id: "task-A" }))
 	})
 })

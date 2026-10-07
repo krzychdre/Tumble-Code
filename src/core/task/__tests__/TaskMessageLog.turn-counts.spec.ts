@@ -78,8 +78,11 @@ interface TurnTask {
  * or a provider without the messageAdded path) gets a full state push per
  * added message, "appends" (the VS Code webview) gets only the new message
  * with the state that has no message list (CORE-R7).
+ *
+ * `onScreen` false makes the task one that works off screen: the provider's
+ * current task is another one.
  */
-function makeTask(historyMessages: number, view: "full" | "appends" = "full") {
+function makeTask(historyMessages: number, view: "full" | "appends" = "full", onScreen = true) {
 	const clineMessages: ClineMessage[] = []
 	for (let i = 0; i < historyMessages; i++) {
 		clineMessages.push({ ts: i + 1, type: "say", say: "text", text: "x".repeat(1_700) })
@@ -112,6 +115,7 @@ function makeTask(historyMessages: number, view: "full" | "appends" = "full") {
 		}),
 		updateTaskHistory: vi.fn(async () => []),
 		subagentRegistry: { isWatched: () => false },
+		getCurrentTask: () => (onScreen ? task : undefined),
 		// What the real provider posts to a view that accepts it: the message and
 		// the state without the message list (about 6 KB on real settings; the
 		// stand-in below is the part that does not grow with the conversation).
@@ -231,6 +235,25 @@ describe("CORE-R7 request-cycle counts (TaskAskSay + TaskMessageLog)", () => {
 	})
 
 	const chunks = { reasoning: 20, text: 30, toolArgs: 10 }
+
+	it.each(["full", "appends"] as const)(
+		"a task working off screen posts nothing to the %s view, yet saves and keeps the cloud contract",
+		async (view) => {
+			const { task, snapshot } = makeTask(0, view, false)
+
+			await runTurn(task, chunks)
+			await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)
+
+			expect(snapshot()).toMatchObject({
+				statePushes: 0,
+				messageAddedPosts: 0,
+				messageUpdatedPosts: 0,
+				saves: 2,
+				taskMessageCaptures: 4,
+				messageEvents: { created: 4 },
+			})
+		},
+	)
 
 	it("pins the pushes, saves, getState calls and the cloud contract of one cycle for a view without messageAdded (the CLI)", async () => {
 		const { task, snapshot } = makeTask(0)

@@ -28,6 +28,7 @@ import {
 	type MarketplaceInstalledMetadata,
 	TumbleCodeEventName,
 	openRouterDefaultModelId,
+	readCliRuntimeEnv,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 	WebviewMessage,
@@ -275,6 +276,7 @@ export class ClineProvider
 			postStateToWebviewWithoutClineMessages: () => this.postStateToWebviewWithoutClineMessages(),
 			getCurrentTask: () => this.getCurrentTask(),
 			clearCurrentTask: () => this.clearCurrentTask(),
+			destroyDetachedTasks: (taskIds) => this.taskSlot.destroyDetached(taskIds),
 		})
 		this.stateBuilder = new ProviderStateBuilder({
 			contextProxy,
@@ -623,15 +625,37 @@ export class ClineProvider
 		return this._disposed
 	}
 
-	// Removes and destroys the current task instance. Resuming a parent is
-	// NOT done here — it happens by rehydrating the parent from history
+	// Removes the current task instance: destroys it, or with `keepRunning`
+	// detaches it while it still works (see TaskSlot.clear). Resuming a parent
+	// is NOT done here: it happens by rehydrating the parent from history
 	// (createTaskWithHistoryItem / delegation complete).
 	// (Was `removeClineFromStack`; the slot mechanics live in TaskSlot.)
-	async clearCurrentTask(options?: { skipDelegationRepair?: boolean }) {
+	async clearCurrentTask(options?: { skipDelegationRepair?: boolean; keepRunning?: boolean }) {
 		await this.taskSlot.clear(options)
 		// Slot is empty: drop the live-task mark so the store can demote the
 		// watcher when the task's file ages out (P7).
 		this.taskHistory.setLiveTaskId(undefined)
+	}
+
+	/**
+	 * Takes the current task off screen because the user opened something
+	 * else (another task, a new task, the home screen). In the chat panel a
+	 * task that still works keeps running detached; the CLI shows one task
+	 * and has no way back to a detached one, so there it stops as before.
+	 */
+	async leaveCurrentTask(): Promise<void> {
+		await this.clearCurrentTask({ keepRunning: !readCliRuntimeEnv(process.env).isCliRuntime })
+	}
+
+	/**
+	 * Posts a message that belongs to the chat view of task `taskId` (a
+	 * checkpoint, context condensing) only while that task is on screen, so a
+	 * task working off screen never drives the view of another task.
+	 */
+	public async postMessageForTask(taskId: string, message: ExtensionMessage): Promise<void> {
+		if (this.getCurrentTask()?.taskId === taskId) {
+			await this.postMessageToWebview(message)
+		}
 	}
 
 	/**
@@ -704,10 +728,11 @@ export class ClineProvider
 		clearTimeout(this.sharedSettingsPushTimer)
 		this.sharedSettingsPushTimer = undefined
 
-		// Clear the current task (if any).
+		// Clear the current task (if any) and stop the detached ones.
 		if (this.taskSlot.current) {
 			await this.clearCurrentTask()
 		}
+		await this.taskSlot.destroyDetached()
 
 		logger.debug("Cleared all tasks")
 
@@ -950,7 +975,7 @@ export class ClineProvider
 			} catch {
 				// Non-fatal: panel reset is best-effort.
 			}
-			await this.clearCurrentTask()
+			await this.leaveCurrentTask()
 		}
 
 		// Restore the saved mode and its provider profile (or the CLI's
@@ -1284,6 +1309,15 @@ export class ClineProvider
 	async showTaskWithId(id: string) {
 		if (id !== this.getCurrentTask()?.taskId) {
 			const historyItem = await this.getHistoryItem(id)
+
+			// A task the user left while it was working is still running:
+			// put that instance back on screen instead of rebuilding it.
+			const liveTask = this.taskSlot.findLiveInstance(id)
+			if (liveTask) {
+				await this.reattachTask(liveTask, historyItem)
+				await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+				return
+			}
 
 			// Resolve the parentTask reference from the current task so that
 			// subtask delegation metadata survives history-item round-trips
@@ -1713,7 +1747,7 @@ export class ClineProvider
 				// Non-fatal: panel reset is best-effort.
 			}
 			try {
-				await this.clearCurrentTask()
+				await this.leaveCurrentTask()
 			} catch {
 				// Non-fatal
 			}
@@ -2069,8 +2103,30 @@ export class ClineProvider
 		const current = this.taskSlot.current
 		if (current) {
 			logger.info(`[clearTask] clearing task ${current.taskId}.${current.instanceId}`)
-			await this.clearCurrentTask()
+			await this.leaveCurrentTask()
 		}
+	}
+
+	/**
+	 * Puts a detached, still running task back on screen: the same steps as
+	 * opening a task from history (leave the current task, restore the
+	 * task's mode and profile, its subagent panel, push the state), with the
+	 * live instance instead of a new one.
+	 */
+	private async reattachTask(task: Task, historyItem: HistoryItem): Promise<void> {
+		try {
+			await this.resetSubagentPanel()
+		} catch {
+			// Non-fatal: panel reset is best-effort.
+		}
+		await this.leaveCurrentTask()
+		// Install first: the profile restore below then updates this task,
+		// which already runs on that profile.
+		await this.setCurrentTask(task)
+		await this.modeProfiles.restoreForHistoryItem(historyItem)
+		await this.rehydrateSubagents(historyItem)
+		await this.postStateToWebview()
+		logger.info(`[reattachTask] task ${task.taskId}.${task.instanceId} is back on screen`)
 	}
 
 	public resumeTask(taskId: string): void {

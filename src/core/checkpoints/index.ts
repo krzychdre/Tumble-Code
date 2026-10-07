@@ -21,7 +21,7 @@ import { logger } from "../../utils/logging"
 const WARNING_THRESHOLD_MS = 5000
 
 function sendCheckpointInitWarn(task: Task, type?: "WAIT_TIMEOUT" | "INIT_TIMEOUT", timeout?: number) {
-	task.providerRef.deref()?.postMessageToWebview({
+	task.providerRef.deref()?.postMessageForTask(task.taskId, {
 		type: "checkpointInitWarning",
 		checkpointWarning: type && timeout ? { type, timeout } : undefined,
 	})
@@ -160,7 +160,7 @@ async function checkGitInstallation(
 			try {
 				sendCheckpointInitWarn(task)
 				// Always update the current checkpoint hash in the webview, including the suppress flag
-				provider?.postMessageToWebview({
+				provider?.postMessageForTask(task.taskId, {
 					type: "currentCheckpointUpdated",
 					text: to,
 					suppressMessage: !!suppressMessage,
@@ -249,7 +249,7 @@ export async function checkpointRestore(
 	try {
 		await service.restoreCheckpoint(commitHash)
 		TelemetryService.instance.capture(TelemetryEventName.CHECKPOINT_RESTORED, { taskId: task.taskId })
-		await provider?.postMessageToWebview({ type: "currentCheckpointUpdated", text: commitHash })
+		await provider?.postMessageForTask(task.taskId, { type: "currentCheckpointUpdated", text: commitHash })
 
 		if (mode === "restore") {
 			// Calculate metrics from messages that will be deleted (must be done before rewind)

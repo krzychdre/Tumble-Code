@@ -440,7 +440,7 @@ export class TaskContextManager {
 		// Send condenseTaskContextStarted to show in-progress indicator
 		await this.access.providerRef
 			.deref()
-			?.postMessageToWebview({ type: "condenseTaskContextStarted", text: this.access.taskId })
+			?.postMessageForTask(this.access.taskId, { type: "condenseTaskContextStarted", text: this.access.taskId })
 
 		// Build tools for condensing metadata
 		const metadata = await this.buildCondensingMetadata(
@@ -574,7 +574,10 @@ export class TaskContextManager {
 			// IMPORTANT: Must always be sent to dismiss the spinner, even on error
 			await this.access.providerRef
 				.deref()
-				?.postMessageToWebview({ type: "condenseTaskContextResponse", text: this.access.taskId })
+				?.postMessageForTask(this.access.taskId, {
+					type: "condenseTaskContextResponse",
+					text: this.access.taskId,
+				})
 		}
 	}
 
@@ -625,7 +628,10 @@ export class TaskContextManager {
 		if (willShowCondenseSpinner) {
 			await this.access.providerRef
 				.deref()
-				?.postMessageToWebview({ type: "condenseTaskContextStarted", text: this.access.taskId })
+				?.postMessageForTask(this.access.taskId, {
+					type: "condenseTaskContextStarted",
+					text: this.access.taskId,
+				})
 		}
 
 		// Build tools for condensing metadata
@@ -836,7 +842,10 @@ export class TaskContextManager {
 			if (willShowCondenseSpinner) {
 				await this.access.providerRef
 					.deref()
-					?.postMessageToWebview({ type: "condenseTaskContextResponse", text: this.access.taskId })
+					?.postMessageForTask(this.access.taskId, {
+						type: "condenseTaskContextResponse",
+						text: this.access.taskId,
+					})
 			}
 		}
 	}
