@@ -702,3 +702,143 @@ describe("newTaskTool delegation flow", () => {
 		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task child-1"))
 	})
 })
+
+describe("newTaskTool delegation guard", () => {
+	// A chain of history items, child -> parent, keyed by task id.
+	type History = Record<string, { parentTaskId?: string }>
+
+	const makeTask = (opts: { mode: string; parentTaskId?: string; history?: History }) => {
+		const history = opts.history ?? {}
+		const provider = {
+			getState: vi.fn().mockResolvedValue({ customModes: [], mode: opts.mode }),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
+			getHistoryItem: vi.fn(async (id: string) => {
+				if (!history[id]) {
+					throw new Error("Task not found")
+				}
+				return history[id]
+			}),
+		}
+		const task = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
+			recordToolError: vi.fn(),
+			consecutiveMistakeCount: 0,
+			taskId: "current-task",
+			parentTaskId: opts.parentTaskId,
+			getTaskMode: vi.fn().mockResolvedValue(opts.mode),
+			providerRef: { deref: () => provider },
+		}
+		return { task, provider }
+	}
+
+	const callNewTask = async (task: unknown, mode: string) => {
+		const block: ToolUse<"new_task"> = {
+			type: "tool_use",
+			name: "new_task",
+			params: { mode, message: "Do something" },
+			partial: false,
+		}
+		await newTaskTool.handle(task as any, withNativeArgs(block), {
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+		})
+	}
+
+	// A chain of `levels` ancestors above "current-task": a1 (its parent) ... aN (the root).
+	const chainOf = (levels: number) => {
+		const history: History = {}
+		for (let i = 1; i <= levels; i++) {
+			history[`a${i}`] = { parentTaskId: i < levels ? `a${i + 1}` : undefined }
+		}
+		return { parentTaskId: levels > 0 ? "a1" : undefined, history }
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+		mockAskApproval.mockResolvedValue(true)
+		vi.mocked(getModeBySlug).mockImplementation((slug: string) => ({
+			slug,
+			name: slug,
+			roleDefinition: "Test role definition",
+			groups: ["read"],
+		}))
+		vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({ get: vi.fn().mockReturnValue(false) } as any)
+	})
+
+	it("refuses a subtask delegating to its own mode (the ask -> ask loop)", async () => {
+		const { task, provider } = makeTask({ mode: "ask", ...chainOf(1) })
+
+		await callNewTask(task, "ask")
+
+		expect(mockAskApproval).not.toHaveBeenCalled()
+		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
+		expect(task.recordToolError).toHaveBeenCalledWith("new_task")
+		expect(task.consecutiveMistakeCount).toBe(1)
+		const result = mockPushToolResult.mock.calls[0][0] as string
+		expect(result).toContain('already a subtask in "ask" mode')
+		expect(result).toContain("Do the work yourself in this task")
+		expect(result).toContain("attempt_completion")
+	})
+
+	it("lets the task the user started delegate to its own mode (fresh context)", async () => {
+		const { task, provider } = makeTask({ mode: "code" })
+
+		await callNewTask(task, "code")
+
+		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith(expect.objectContaining({ mode: "code" }))
+		expect(task.consecutiveMistakeCount).toBe(0)
+	})
+
+	it("allows orchestrator -> code -> ask", async () => {
+		const { task, provider } = makeTask({ mode: "code", ...chainOf(1) })
+
+		await callNewTask(task, "ask")
+
+		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith(expect.objectContaining({ mode: "ask" }))
+	})
+
+	it("allows a child at the depth limit (5 levels below the root)", async () => {
+		const { task, provider } = makeTask({ mode: "code", ...chainOf(4) })
+
+		await callNewTask(task, "ask")
+
+		expect(provider.delegateParentAndOpenChild).toHaveBeenCalled()
+	})
+
+	it("refuses a child deeper than the limit, walking parentTaskId through the history", async () => {
+		const { task, provider } = makeTask({ mode: "code", ...chainOf(5) })
+
+		await callNewTask(task, "ask")
+
+		expect(mockAskApproval).not.toHaveBeenCalled()
+		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
+		expect(task.consecutiveMistakeCount).toBe(1)
+		const result = mockPushToolResult.mock.calls[0][0] as string
+		expect(result).toContain("already 5 levels of subtasks below the task the user started")
+		expect(result).toContain("limit (5)")
+		expect(result).toContain("attempt_completion")
+	})
+
+	it("stops walking a chain that points back at itself", async () => {
+		const { task, provider } = makeTask({
+			mode: "code",
+			parentTaskId: "a1",
+			history: { a1: { parentTaskId: "a2" }, a2: { parentTaskId: "a1" } },
+		})
+
+		await callNewTask(task, "ask")
+
+		expect(provider.getHistoryItem).toHaveBeenCalledTimes(5)
+		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
+	})
+
+	it("counts only the known ancestors when a parent is missing from the history", async () => {
+		const { task, provider } = makeTask({ mode: "code", parentTaskId: "deleted-parent" })
+
+		await callNewTask(task, "ask")
+
+		expect(provider.delegateParentAndOpenChild).toHaveBeenCalled()
+	})
+})
