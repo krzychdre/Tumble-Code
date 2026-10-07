@@ -967,6 +967,30 @@ describe("ChatView host messages", () => {
 
 		expect(postMessage).toHaveBeenCalledWith({ type: "getTaskWithAggregatedCosts", text: "parent" })
 	})
+
+	it("asks for aggregated costs for parallel subagents, again when their cost moves", async () => {
+		const currentTaskItem = { id: "parent", ts: 1, task: "t", number: 1, parallelChildIds: ["sub"] }
+		const subagent = (totalCost: number) => ({
+			taskId: "sub",
+			parentTaskId: "parent",
+			index: 0,
+			mode: "code",
+			description: "part",
+			status: "running",
+			tokensIn: 0,
+			tokensOut: 0,
+			totalCost,
+			startedAt: 1,
+			lastActivityAt: 1,
+		})
+		await mount([withAsk(ask("followup"))], { currentTaskItem, subagents: [subagent(0)] })
+		expect(postMessage).toHaveBeenCalledWith({ type: "getTaskWithAggregatedCosts", text: "parent" })
+
+		const posted = await postedDuring(() =>
+			hydrate(withAsk(ask("followup")), { currentTaskItem, subagents: [subagent(0.5)] }),
+		)
+		expect(posted).toContain("getTaskWithAggregatedCosts")
+	})
 })
 
 const readButtonElement = (container: HTMLElement, label: string) => {

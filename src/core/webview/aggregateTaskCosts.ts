@@ -12,7 +12,7 @@ export interface AggregatedCosts {
 }
 
 /**
- * Recursively aggregate costs for a task and all its subtasks.
+ * Recursively aggregate costs for a task and all its subtasks and parallel subagents.
  *
  * @param taskId - The task ID to aggregate costs for
  * @param getTaskHistory - Function to load HistoryItem by task ID
@@ -42,9 +42,11 @@ export async function aggregateTaskCostsRecursive(
 	let childrenCost = 0
 	const childBreakdown: { [childId: string]: AggregatedCosts } = {}
 
-	// Recursively aggregate child costs
-	if (history.childIds && history.childIds.length > 0) {
-		for (const childId of history.childIds) {
+	// Recursively aggregate child costs: delegated subtasks and parallel
+	// subagents alike (deduped, a child may be named in both lists).
+	const childIds = new Set([...(history.childIds ?? []), ...(history.parallelChildIds ?? [])])
+	if (childIds.size > 0) {
+		for (const childId of childIds) {
 			const childAggregated = await aggregateTaskCostsRecursive(
 				childId,
 				getTaskHistory,

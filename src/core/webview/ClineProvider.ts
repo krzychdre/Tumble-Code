@@ -298,6 +298,7 @@ export class ClineProvider
 			getCurrentTask: () => this.getCurrentTask(),
 			clearCurrentTask: () => this.clearCurrentTask(),
 			destroyDetachedTasks: (taskIds) => this.taskSlot.destroyDetached(taskIds),
+			abortBackgroundTasks: (taskIds) => this.backgroundTaskRunner.abortTasks(taskIds),
 		})
 		this.stateBuilder = new ProviderStateBuilder({
 			contextProxy,
@@ -312,7 +313,7 @@ export class ClineProvider
 			listSubagents: () => this.subagentRegistry.list(),
 			getMemoryActivity: () => this.backgroundTaskRunner.memoryActivity,
 			// Every built state is posted: note the map as the one the view holds.
-			getRunningTasks: () => (this.runningTasksInView = this.taskSlot.getRunningTasks()),
+			getRunningTasks: () => (this.runningTasksInView = this.getRunningTasks()),
 			getWebview: () => this.view?.webview,
 			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
 			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
@@ -692,9 +693,14 @@ export class ClineProvider
 		}
 	}
 
+	/** The working tasks of this panel: the slot's tasks plus the live parallel subagents. */
+	private getRunningTasks(): Record<string, RunningTaskStatus> {
+		return this.taskSlot.getRunningTasks(this.backgroundTaskRunner.liveSubagents())
+	}
+
 	/** Posts `runningTasksUpdated` when the working tasks differ from what the view holds. */
 	private async postRunningTasksIfChanged(): Promise<void> {
-		const runningTasks = this.taskSlot.getRunningTasks()
+		const runningTasks = this.getRunningTasks()
 		const known = this.runningTasksInView
 		const keys = Object.keys(runningTasks)
 		if (keys.length === Object.keys(known).length && keys.every((id) => runningTasks[id] === known[id])) {

@@ -254,11 +254,12 @@ export class TaskSlot {
 	 * and the detached ones, judged by the same rule that decides whether a
 	 * task is kept running. A task blocked on an approval or a question is
 	 * "awaiting_input"; a task at rest is absent. Feeds the status shown on
-	 * the history rows (`runningTasks`).
+	 * the history rows (`runningTasks`). `others` are live tasks outside the
+	 * slot judged by the same rule (the parallel subagents).
 	 */
-	getRunningTasks(): Record<string, RunningTaskStatus> {
+	getRunningTasks(others: Iterable<Task> = []): Record<string, RunningTaskStatus> {
 		const runningTasks: Record<string, RunningTaskStatus> = {}
-		for (const task of [this.currentTask, ...[...this.detached.values()].map((entry) => entry.task)]) {
+		for (const task of [this.currentTask, ...[...this.detached.values()].map((entry) => entry.task), ...others]) {
 			if (task && isWorking(task)) {
 				runningTasks[task.taskId] = task.taskStatus === TaskStatus.Interactive ? "awaiting_input" : "running"
 			}

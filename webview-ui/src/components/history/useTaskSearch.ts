@@ -98,6 +98,44 @@ function subtreeUsages(taskHistory: HistoryItem[]): Map<string, SubtreeUsage> {
 	return totals
 }
 
+/**
+ * The tasks shown for workspace `cwd`: those of the workspace and every
+ * descendant of one, whatever workspace the descendant recorded, so a subtask
+ * never vanishes from under its parent. Each task is judged once (memoized up
+ * the parent chain from the full history), so this stays linear.
+ */
+function inWorkspace(taskHistory: HistoryItem[], cwd: string | undefined): (item: HistoryItem) => boolean {
+	const byId = new Map(taskHistory.map((item) => [item.id, item]))
+	const known = new Map<string, boolean>()
+	const judge = (item: HistoryItem): boolean => {
+		const chain = new Set<string>()
+		let verdict = false
+		for (let current: HistoryItem | undefined = item; current; ) {
+			const memo = known.get(current.id)
+			if (memo !== undefined) {
+				verdict = memo
+				break
+			}
+			if (current.workspace === cwd) {
+				verdict = true
+				chain.add(current.id)
+				break
+			}
+			// A parent cycle in corrupt history ends the walk.
+			if (chain.has(current.id)) {
+				break
+			}
+			chain.add(current.id)
+			current = current.parentTaskId ? byId.get(current.parentTaskId) : undefined
+		}
+		for (const id of chain) {
+			known.set(id, verdict)
+		}
+		return verdict
+	}
+	return judge
+}
+
 export const useTaskSearch = () => {
 	// P1: narrow slices.
 	const taskHistory = useExtensionSelector((s) => s.taskHistory)
@@ -121,7 +159,7 @@ export const useTaskSearch = () => {
 	const presentableTasks = useMemo((): DisplayHistoryItem[] => {
 		let tasks = taskHistory.filter((item) => item.ts && item.task)
 		if (!showAllWorkspaces) {
-			tasks = tasks.filter((item) => item.workspace === cwd)
+			tasks = tasks.filter(inWorkspace(taskHistory, cwd))
 		}
 		const totals = subtreeUsages(taskHistory)
 		return tasks.map((item) => {
