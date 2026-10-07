@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "क्या आप वाकई इस {scope} मोड को हटाना चाहते हैं?\n\nयह संबंधित नियम फ़ोल्डर को भी यहाँ हटा देगा:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "यह सबएजेंट समाप्त हो चुका है और केवल पढ़ने के लिए दिखाया गया है, इसलिए इसे जारी नहीं रखा जा सकता। इसके मूल कार्य पर वापस जाएँ या नया कार्य शुरू करें।",
 		"invalid_data_uri": "अमान्य डेटा URI फॉर्मेट",
 		"error_copying_image": "छवि कॉपी करने में त्रुटि: {{errorMessage}}",
 		"error_saving_image": "छवि सहेजने में त्रुटि: {{errorMessage}}",

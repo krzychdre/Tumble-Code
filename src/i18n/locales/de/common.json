@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "Bist du sicher, dass du diesen {scope}-Modus löschen möchtest?\n\nDadurch wird auch der zugehörige Regelordner unter folgender Adresse gelöscht:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Dieser Subagent ist beendet und wird schreibgeschützt angezeigt, daher kann er nicht fortgesetzt werden. Kehre zu seiner übergeordneten Aufgabe zurück oder starte eine neue Aufgabe.",
 		"invalid_data_uri": "Ungültiges Daten-URI-Format",
 		"error_copying_image": "Fehler beim Kopieren des Bildes: {{errorMessage}}",
 		"error_saving_image": "Fehler beim Speichern des Bildes: {{errorMessage}}",

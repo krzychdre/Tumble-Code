@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "Anda yakin ingin menghapus mode {scope} ini?\n\nIni juga akan menghapus folder aturan terkait di:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Subagen ini sudah selesai dan ditampilkan hanya-baca, jadi tidak dapat dilanjutkan. Kembali ke tugas induknya atau mulai tugas baru.",
 		"invalid_data_uri": "Format data URI tidak valid",
 		"error_copying_image": "Error menyalin gambar: {{errorMessage}}",
 		"error_opening_image": "Error membuka gambar: {{error}}",
