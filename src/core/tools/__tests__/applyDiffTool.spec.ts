@@ -5,7 +5,6 @@ import type { MockedFunction } from "vitest"
 
 import { fileExistsAtPath } from "../../../utils/fs"
 import { getReadablePath } from "../../../utils/path"
-import { unescapeHtmlEntities } from "../../../utils/text-normalization"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { applyDiffTool } from "../ApplyDiffTool"
 import { pushToolWriteResult } from "../helpers/toolWriteResult"
@@ -49,10 +48,6 @@ vi.mock("../../../utils/pathUtils", () => ({
 
 vi.mock("../../../utils/path", () => ({
 	getReadablePath: vi.fn().mockReturnValue("test/file.txt"),
-}))
-
-vi.mock("../../../utils/text-normalization", () => ({
-	unescapeHtmlEntities: vi.fn().mockImplementation((content) => content),
 }))
 
 vi.mock("../../plan-review/planReviewPause", () => ({
@@ -211,6 +206,21 @@ describe("applyDiffTool", () => {
 			expect(result).toBe(
 				"Tool result message\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>",
 			)
+		})
+	})
+
+	// Native tool calls deliver the diff as JSON, verbatim. The SEARCH side must
+	// match the file byte for byte, so decoding "&quot;" here made every edit of
+	// an XML attribute value (Tableau .twb files) fail to match.
+	describe("HTML entities in the diff", () => {
+		it("hands the diff to the strategy verbatim for a non-Claude model", async () => {
+			mockCline.api.getModel.mockReturnValue({ id: "glm-5.3" })
+			const diff =
+				"<<<<<<< SEARCH\n<member value='&quot;Day&quot;' />\n=======\n<member value='&quot;Week&quot;' /> &gt; &amp;\n>>>>>>> REPLACE"
+
+			await executeApplyDiffTool({ diff })
+
+			expect(mockCline.diffStrategy.applyDiff).toHaveBeenCalledWith("original content", diff, undefined)
 		})
 	})
 

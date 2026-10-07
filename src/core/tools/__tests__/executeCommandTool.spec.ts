@@ -6,7 +6,7 @@ import * as vscode from "vscode"
 import { Task } from "../../task/Task"
 import { formatResponse } from "../../prompts/responses"
 import { ToolUse, AskApproval, HandleError, PushToolResult } from "../../../shared/tools"
-import { unescapeHtmlEntities } from "../../../utils/text-normalization"
+import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 
 // Mock dependencies
@@ -114,33 +114,25 @@ describe("executeCommandTool", () => {
 		vitest.useRealTimers()
 	})
 
-	/**
-	 * Tests for HTML entity unescaping in commands
-	 * This verifies that HTML entities are properly converted to their actual characters
-	 */
-	describe("HTML entity unescaping", () => {
-		it("should unescape &lt; to < character", () => {
-			const input = "echo &lt;test&gt;"
-			const expected = "echo <test>"
-			expect(unescapeHtmlEntities(input)).toBe(expected)
-		})
+	// Native tool calls deliver the command as JSON, verbatim. An HTML entity in
+	// it is literal text the model meant (for example a sed script that rewrites
+	// "&gt;"), so the tool must neither show nor run a decoded copy.
+	describe("HTML entities in the command", () => {
+		it("checks, shows and runs the command verbatim", async () => {
+			const command = "sed -i 's/&gt;/>/g; s/&quot;/\"/g; s/&amp;/\\&/g' page.html"
+			mockToolUse.params.command = command
+			mockToolUse.nativeArgs = { command }
 
-		it("should unescape &gt; to > character", () => {
-			const input = "echo test &gt; output.txt"
-			const expected = "echo test > output.txt"
-			expect(unescapeHtmlEntities(input)).toBe(expected)
-		})
+			await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
+				askApproval: mockAskApproval as unknown as AskApproval,
+				handleError: mockHandleError as unknown as HandleError,
+				pushToolResult: mockPushToolResult as unknown as PushToolResult,
+			})
 
-		it("should unescape &amp; to & character", () => {
-			const input = "echo foo &amp;&amp; echo bar"
-			const expected = "echo foo && echo bar"
-			expect(unescapeHtmlEntities(input)).toBe(expected)
-		})
-
-		it("should handle multiple mixed HTML entities", () => {
-			const input = "grep -E 'pattern' &lt;file.txt &gt;output.txt 2&gt;&amp;1"
-			const expected = "grep -E 'pattern' <file.txt >output.txt 2>&1"
-			expect(unescapeHtmlEntities(input)).toBe(expected)
+			expect(mockCline.rooIgnoreController.validateCommand).toHaveBeenCalledWith(command)
+			expect(mockAskApproval).toHaveBeenCalledWith("command", command)
+			const terminal = await TerminalRegistry.getOrCreateTerminal("/test/workspace", "task", "execa")
+			expect(terminal.runCommand).toHaveBeenCalledWith(command, expect.anything())
 		})
 	})
 

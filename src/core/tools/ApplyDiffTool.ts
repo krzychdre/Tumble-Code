@@ -9,7 +9,6 @@ import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
-import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
@@ -25,12 +24,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 
 	async execute(params: ApplyDiffParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { handleError, pushToolResult } = callbacks
-		const { path: relPath } = params
-		let { diff: diffContent } = params
-
-		if (diffContent && !task.api.getModel().id.includes("claude")) {
-			diffContent = unescapeHtmlEntities(diffContent)
-		}
+		const { path: relPath, diff: diffContent } = params
 
 		try {
 			if (!relPath) {
