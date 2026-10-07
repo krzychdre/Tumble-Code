@@ -4,6 +4,9 @@
 // threshold check; manageContext counted the same message again. The manager
 // now hands the count on when manageContext uses the same handler, and leaves
 // it out when a different (condense) handler does the counting.
+//
+// The same stubbed manageContext also pins the other per-call option the manager
+// derives from the task: trimOldReasoning (shouldTrimOldReasoning), on both call sites.
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 
@@ -22,11 +25,11 @@ vi.mock("../../environment/getEnvironmentDetails", () => ({
 	getEnvironmentDetails: vi.fn().mockResolvedValue(""),
 }))
 
-function buildAccess(condenseHandler?: object) {
-	const api = { getModel: () => ({ id: "m", info: {} }), countTokens: async () => 0 }
+function buildAccess(condenseHandler?: object, profile: { apiConfiguration?: object; modelInfo?: object } = {}) {
+	const api = { getModel: () => ({ id: "m", info: profile.modelInfo ?? {} }), countTokens: async () => 0 }
 	const access = {
 		taskId: "t",
-		apiConfiguration: {},
+		apiConfiguration: profile.apiConfiguration ?? {},
 		api,
 		getCondenseApiHandler: vi.fn().mockResolvedValue(condenseHandler ?? api),
 		apiConversationHistory: [{ role: "user", content: "history", ts: 1 }],
@@ -83,5 +86,36 @@ describe("TaskContextManager hands the last-message count to manageContext (API 
 
 		expect(manageContextMock.mock.calls[0][0].apiHandler).toBe(condenseHandler)
 		expect(manageContextMock.mock.calls[0][0].lastMessageTokens).toBeUndefined()
+	})
+})
+
+describe("TaskContextManager passes the old-reasoning trim gate to manageContext", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		manageContextMock.mockResolvedValue({ messages: [], summary: "", cost: 0, prevContextTokens: 10_123 })
+		willManageContextMock.mockReturnValue(false)
+	})
+
+	const trimOn = { apiProvider: "openai", openAiTrimOldReasoning: true }
+	const preserves = { preserveReasoning: true }
+
+	// Both manageContext call sites: the regular pass and the forced one after a context-window error.
+	const passes = {
+		regular: (access: TaskContextManagerAccess) => new TaskContextManager(access).manageContextIfNeeded(params),
+		forced: (access: TaskContextManagerAccess) => new TaskContextManager(access).handleContextWindowExceededError(),
+	}
+
+	describe.each(Object.entries(passes))("%s pass", (_name, pass) => {
+		it.each([
+			["the setting is on and the model gets its reasoning back", trimOn, preserves, true],
+			["the setting is off", { apiProvider: "openai", openAiTrimOldReasoning: false }, preserves, false],
+			["the setting is stale on another provider", { ...trimOn, apiProvider: "zai" }, preserves, false],
+			["reasoning is not sent back to the model", trimOn, { preserveReasoning: false }, false],
+			["neither is set", {}, {}, false],
+		])("trimOldReasoning when %s", async (_case, apiConfiguration, modelInfo, expected) => {
+			await pass(buildAccess(undefined, { apiConfiguration, modelInfo }))
+
+			expect(manageContextMock.mock.calls[0][0].trimOldReasoning).toBe(expected)
+		})
 	})
 })

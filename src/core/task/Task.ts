@@ -413,9 +413,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// condense attempts. Once it reaches MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES the
 	// condense step is skipped for the rest of the task; a genuine reduction resets it.
 	consecutiveAutoCompactFailures: number = 0
-	// Non-destructive microcompaction: tool_use_ids whose results should be cleared
+	// Non-destructive microcompaction: tool_use_ids whose results should be cleared,
+	// and `reasoning:<ts>` keys (reasoningTrimKey) whose reasoning should be trimmed,
 	// at SEND time (content replaced on the outgoing copy only; stored history stays
-	// pristine). Transient — recomputed by the context manager on every request that
+	// pristine). Transient: recomputed by the context manager on every request that
 	// runs context management, so it stays correct across mid-task mode switches.
 	microcompactedIds: Set<string> = new Set()
 	// Estimated tokens the send-time microcompaction strip removed from the LAST

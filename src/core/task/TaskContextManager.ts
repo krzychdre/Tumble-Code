@@ -21,6 +21,7 @@ import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { McpHub } from "../../services/mcp/McpHub"
 import { manageContext, willManageContext } from "../context-management"
+import { shouldTrimOldReasoning } from "../context-management/reasoningTrim"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { getMessagesSinceLastSummary, summarizeConversation, getEffectiveApiHistory } from "../condense"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
@@ -156,8 +157,9 @@ export interface TaskContextManagerAccess
 	// Auto-condense circuit breaker counter (read AND written by the manager).
 	consecutiveAutoCompactFailures: number
 
-	// Non-destructive microcompaction: transient set of tool_use_ids to clear at
-	// send time. Written by the manager each request; read by buildCleanConversationHistory.
+	// Non-destructive microcompaction: transient set of tool_use_ids to clear and
+	// `reasoning:<ts>` keys (reasoningTrimKey) to trim at send time. Written by the
+	// manager each request; read by buildCleanConversationHistory.
 	microcompactedIds: Set<string>
 
 	// Estimated tokens the send-time strip removed from the last request. Written by
@@ -486,6 +488,8 @@ export class TaskContextManager {
 				// Carry the rejected request's clears forward, as the regular pass does, so
 				// a second rejection in a row strips more instead of the same set again.
 				previouslyClearedIds: this.access.microcompactedIds,
+				// The task's own profile and model: those decide what reasoning goes back to the model.
+				trimOldReasoning: shouldTrimOldReasoning(this.access.apiConfiguration, this.access.api.getModel().info),
 				...pruneOptions,
 			})
 
@@ -709,6 +713,7 @@ export class TaskContextManager {
 				// pass the live set — manageContext only reads it, and it is rewritten
 				// from the result below.
 				previouslyClearedIds: this.access.microcompactedIds,
+				trimOldReasoning: shouldTrimOldReasoning(this.access.apiConfiguration, this.access.api.getModel().info),
 				...pruneOptions,
 			})
 

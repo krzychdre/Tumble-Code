@@ -38,13 +38,18 @@ dostawcy, dostaje jedną flagę; nowy rodzaj przycinanych treści to nowy moduł
 
 ### Bramka (jedno miejsce)
 
-`shouldTrimOldReasoning(settings, modelInfo)` w module rdzenia: `settings.openAiTrimOldReasoning === true &&
-modelInfo.preserveReasoning === true`. Bez odsyłania rozumowania nie ma czego przycinać. Rdzeń nie sprawdza
-dostawcy (OCP): inny dostawca nie ma tego pola, więc bramka daje `false`.
+`shouldTrimOldReasoning(settings, modelInfo)` w module rdzenia: `settings.apiProvider === "openai" &&
+settings.openAiTrimOldReasoning === true && modelInfo.preserveReasoning === true`. Bez odsyłania rozumowania
+nie ma czego przycinać. Sprawdzenie dostawcy jest konieczne (poprawka po przeglądzie): ustawienia dostawców to
+jeden płaski obiekt, więc `openAiTrimOldReasoning=true` przeżywa zmianę dostawcy profilu (lista rozwijana
+zmienia tylko `apiProvider`) i start CLI z innym dostawcą (stan rozszerzenia jest scalany kluczami). Modele
+Z.ai, DeepSeek, Moonshot, MiniMax i część Bedrock same deklarują `preserveReasoning: true`, więc bez tego
+sprawdzenia nieaktualna wartość przycinałaby ich rozumowanie, choć tam nie ma checkboxa, który by to wyłączył.
 
 ### Moduł rdzenia: `src/core/context-management/reasoningTrim.ts` (nowy, czysty, bez I/O)
 
 Stałe (eksportowane, udokumentowane liczbami z pomiarów):
+
 - `REASONING_TRIM_MIN_CHARS = 2_000` (~500 tokenów): krótszy blok nigdy nie jest przycinany.
 - `REASONING_TRIM_HEAD_CHARS = 400` (~100 tokenów): tyle początku zostaje zawsze (pełne akapity).
 - `REASONING_TRIM_KEEP_RECENT = 3`: rozumowanie z 3 najnowszych wiadomości asystenta jest nietykalne.
@@ -53,6 +58,7 @@ Stałe (eksportowane, udokumentowane liczbami z pomiarów):
   (ASCII, bez długich myślników).
 
 Funkcje:
+
 - `reasoningTrimKey(ts: number): string` → `"reasoning:" + ts`. Klucz w TYM SAMYM zbiorze co tool_use_id
   wyników wyciętych przez microcompact (`Task.microcompactedIds`). Prefiks nie koliduje z id narzędzi.
 - `trimReasoningText(text: string): string | undefined`. Dzieli na akapity (pusta linia). Zostawia: akapity
@@ -92,24 +98,24 @@ Funkcje:
 
 ## Podział pracy (równolegle, rozłączne pliki)
 
-| Agent | Pliki | Zależność |
-| --- | --- | --- |
-| A rdzeń | `reasoningTrim.ts` + `__tests__/reasoningTrim.spec.ts` | brak |
-| B wpięcie | `context-management/index.ts`, `TaskContextManager.ts`, `ApiRequestBuilder.ts` + ich testy | po A |
-| C webview | `OpenAICompatible.tsx`, 18× `settings.json`, spec komponentu, ew. indeks wyszukiwania ustawień | brak |
-| D CLI | `apps/cli` (`types.ts`, `model-settings.ts`, `provider-config.ts`, README) + testy | brak |
+| Agent     | Pliki                                                                                          | Zależność |
+| --------- | ---------------------------------------------------------------------------------------------- | --------- |
+| A rdzeń   | `reasoningTrim.ts` + `__tests__/reasoningTrim.spec.ts`                                         | brak      |
+| B wpięcie | `context-management/index.ts`, `TaskContextManager.ts`, `ApiRequestBuilder.ts` + ich testy     | po A      |
+| C webview | `OpenAICompatible.tsx`, 18× `settings.json`, spec komponentu, ew. indeks wyszukiwania ustawień | brak      |
+| D CLI     | `apps/cli` (`types.ts`, `model-settings.ts`, `provider-config.ts`, README) + testy             | brak      |
 
 Następnie przegląd w trzech perspektywach (poprawność i stabilność cache; DRY/YAGNI/OCP i czytelność;
 spójność UI, i18n i CLI), weryfikacja każdego zarzutu przez niezależnych sceptyków, poprawki, bramki CI.
 
 ## Przed / po
 
-| Sytuacja | Przed | Po (ustawienie włączone) |
-| --- | --- | --- |
-| Kontekst poniżej progu kondensacji | pełne rozumowanie | bez zmian, cache jak dotąd |
-| Próg osiągnięty | wycinanie starych wyników narzędzi, potem kondensacja | najpierw przycięcie długich starych bloków rozumowania, potem wyniki narzędzi, potem kondensacja |
-| Kolejne zapytania po przycięciu | n/d | te same bloki przycięte identycznie, cache trafia |
-| Ustawienie wyłączone lub rozumowanie nieodsyłane | n/d | zachowanie dokładnie jak dziś |
+| Sytuacja                                         | Przed                                                 | Po (ustawienie włączone)                                                                         |
+| ------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Kontekst poniżej progu kondensacji               | pełne rozumowanie                                     | bez zmian, cache jak dotąd                                                                       |
+| Próg osiągnięty                                  | wycinanie starych wyników narzędzi, potem kondensacja | najpierw przycięcie długich starych bloków rozumowania, potem wyniki narzędzi, potem kondensacja |
+| Kolejne zapytania po przycięciu                  | n/d                                                   | te same bloki przycięte identycznie, cache trafia                                                |
+| Ustawienie wyłączone lub rozumowanie nieodsyłane | n/d                                                   | zachowanie dokładnie jak dziś                                                                    |
 
 ## Testy
 

@@ -2,6 +2,8 @@
 
 import { ApiRequestBuilder, type ApiRequestBuilderAccess } from "../ApiRequestBuilder"
 import type { ApiMessage } from "../../task-persistence"
+import { MICROCOMPACT_CLEARED_PLACEHOLDER } from "../../context-management/microcompact"
+import { reasoningTrimKey, trimReasoningText } from "../../context-management/reasoningTrim"
 
 vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vi.fn() } },
@@ -20,8 +22,13 @@ const encryptedApi = { getEncryptedContent: () => undefined }
 // Any other handler.
 const plainApi = {}
 
-function build(api: object, messages: ApiMessage[], preserveReasoning = false): unknown[] {
-	const access = { api, microcompactedIds: new Set<string>() } as unknown as ApiRequestBuilderAccess
+function build(
+	api: object,
+	messages: ApiMessage[],
+	preserveReasoning = false,
+	microcompactedIds: ReadonlySet<string> = new Set<string>(),
+): unknown[] {
+	const access = { api, microcompactedIds } as unknown as ApiRequestBuilderAccess
 	return new ApiRequestBuilder(access).buildCleanConversationHistory(messages, preserveReasoning)
 }
 
@@ -123,5 +130,53 @@ describe("ApiRequestBuilder.buildCleanConversationHistory message shapes (S6 cha
 			{ role: "user", content: "Q" },
 			{ role: "assistant", content: "A" },
 		])
+	})
+})
+
+describe("ApiRequestBuilder.buildCleanConversationHistory send-time strip of the microcompact set", () => {
+	// Long enough to be trimmed: a head paragraph, plan paragraphs without a finding, a closing one.
+	const longReasoning = [
+		"The user wants the cache fixed. ".repeat(12).trim(),
+		...Array.from({ length: 8 }, (_, i) => `Let me read helper ${i} and its call sites. `.repeat(8).trim()),
+		"Next I read the config.",
+	].join("\n\n")
+
+	const history = (): ApiMessage[] => [
+		{ role: "user", content: "Fix the cache", ts: 1 },
+		{
+			role: "assistant",
+			content: [
+				{ type: "reasoning", text: longReasoning, summary: [] } as any,
+				{ type: "tool_use", id: "read-1", name: "read_file", input: {} },
+			],
+			ts: 2,
+		},
+		{ role: "user", content: [{ type: "tool_result", tool_use_id: "read-1", content: "file text" }], ts: 3 },
+		{
+			role: "assistant",
+			content: [{ type: "reasoning", text: longReasoning, summary: [] } as any, { type: "text", text: "Done." }],
+			ts: 4,
+		},
+	]
+
+	const reasoningAt = (clean: unknown[], index: number) => (clean[index] as any).content[0].text
+
+	it("trims the reasoning of the keyed turns and clears the keyed tool results, one set for both", () => {
+		const stored = history()
+		const clean = build(plainApi, stored, true, new Set([reasoningTrimKey(2), "read-1"]))
+
+		expect(reasoningAt(clean, 1)).toBe(trimReasoningText(longReasoning))
+		expect((clean[2] as any).content[0].content).toBe(MICROCOMPACT_CLEARED_PLACEHOLDER)
+		// A turn whose key is not in the set goes out in full.
+		expect(reasoningAt(clean, 3)).toBe(longReasoning)
+		// Only the outgoing copy changes: the stored history stays pristine.
+		expect(stored).toEqual(history())
+	})
+
+	it("sends the reasoning in full when the set holds no key for it", () => {
+		const clean = build(plainApi, history(), true, new Set(["read-1"]))
+
+		expect(reasoningAt(clean, 1)).toBe(longReasoning)
+		expect(reasoningAt(clean, 3)).toBe(longReasoning)
 	})
 })

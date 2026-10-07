@@ -102,7 +102,8 @@ export interface TaskApiLoopAccess
 	apiFailureMessage?: string
 
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
-	// are cleared on the outgoing request copy (stored history stays pristine).
+	// are cleared, and `reasoning:<ts>` keys (reasoningTrimKey) whose reasoning is
+	// trimmed, on the outgoing request copy (stored history stays pristine).
 	microcompactedIds: Set<string>
 
 	// Estimated tokens the previous request's send-time strip removed. Added back to

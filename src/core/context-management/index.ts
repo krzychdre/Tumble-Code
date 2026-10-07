@@ -16,7 +16,13 @@ import type { ArtifactStore } from "../artifacts/ArtifactStore"
 import { ApiMessage } from "../task-persistence/apiMessages"
 import { ANTHROPIC_DEFAULT_MAX_TOKENS, PRUNE_CONDENSE_DEFAULTS, TelemetryEventName } from "@tumble-code/types"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
-import { microcompactToolResults, microcompactTargetChars, MICROCOMPACT_PLACEHOLDER_TOKENS } from "./microcompact"
+import {
+	microcompactToolResults,
+	microcompactTargetChars,
+	MICROCOMPACT_CHARS_PER_TOKEN,
+	MICROCOMPACT_PLACEHOLDER_TOKENS,
+} from "./microcompact"
+import { selectReasoningTrims } from "./reasoningTrim"
 import { buildContextLedger, type ContextLedger } from "./ledger"
 import { logger } from "../../utils/logging"
 
@@ -273,12 +279,19 @@ export type ContextManagementOptions = {
 	 */
 	condenseCircuitOpen?: boolean
 	/**
-	 * `tool_use_id`s the PREVIOUS request's microcompaction stripped at send time.
+	 * What the PREVIOUS request's microcompaction stripped at send time: the `tool_use_id`s
+	 * of cleared tool results and the `reasoningTrimKey`s of trimmed reasoning blocks.
 	 * Carried forward so the selection can only grow: a set that shrank between turns
 	 * would move the first byte differing from the last request backwards and throw away
 	 * the provider's prompt cache from that point on.
 	 */
 	previouslyClearedIds?: ReadonlySet<string>
+	/**
+	 * Shorten the reasoning of old assistant turns in the pre-pass, before any tool result is
+	 * cleared (setting `openAiTrimOldReasoning`, gated by `shouldTrimOldReasoning`). Default
+	 * false: the pre-pass then clears tool results only, exactly as before the setting existed.
+	 */
+	trimOldReasoning?: boolean
 	/**
 	 * Run the deterministic prune pass before the LLM summary. Default true;
 	 * `false` is the user's escape hatch (setting `pruneBeforeCondense`).
@@ -299,16 +312,17 @@ export type ContextManagementResult = SummarizeResponse & {
 	truncationId?: string
 	messagesRemoved?: number
 	newContextTokensAfterTruncation?: number
-	/** True when the cheap tool-result microcompaction pre-pass ran. */
+	/** True when the cheap microcompaction pre-pass cleared or trimmed anything. */
 	microcompacted?: boolean
-	/** Number of tool results whose content was cleared by microcompaction. */
+	/** Number of tool results whose content was cleared by microcompaction (trimmed reasoning not counted). */
 	microcompactClearedCount?: number
-	/** Estimated tokens reclaimed by microcompaction. */
+	/** Estimated tokens reclaimed by microcompaction, trimmed reasoning included. */
 	microcompactTokensCleared?: number
 	/**
-	 * The `tool_use_id`s whose results microcompaction selected for clearing.
-	 * Microcompaction is NON-DESTRUCTIVE: the stored content is left intact and
-	 * these ids are applied as a send-time strip (see `applyMicrocompactCleared` /
+	 * What microcompaction selected: the `tool_use_id`s of tool results to clear and the
+	 * `reasoningTrimKey`s of reasoning blocks to shorten. Microcompaction is
+	 * NON-DESTRUCTIVE: the stored content is left intact and these keys are applied as a
+	 * send-time strip (see `applyMicrocompactCleared` / `applyReasoningTrims` /
 	 * `buildCleanConversationHistory`). The caller stashes them as transient,
 	 * recomputed-per-request state so they stay correct across mode switches.
 	 */
@@ -351,6 +365,7 @@ export async function manageContext({
 	rooIgnoreController,
 	condenseCircuitOpen,
 	previouslyClearedIds,
+	trimOldReasoning,
 	pruneBeforeCondense,
 	pruneToolResultBudget,
 	artifactStore,
@@ -410,6 +425,10 @@ export async function manageContext({
 	// transient, recomputed-per-request state so a wider-context mode (after a mode
 	// switch) simply clears nothing. condense/truncate below run on pristine
 	// `messages`, so branch 2's kept raw tail stays pristine too.
+	//
+	// With `trimOldReasoning` the same pass first shortens long reasoning blocks of
+	// old assistant turns (reasoningTrim.ts), through the same id set and the same
+	// send-time strip.
 	let microcompacted = false
 	let microcompactClearedCount = 0
 	let microcompactTokensCleared = 0
@@ -430,27 +449,46 @@ export async function manageContext({
 		const ceilingTokens = Math.min(condenseCeilingTokens, allowedTokens)
 		const targetChars = microcompactTargetChars(prevContextTokens - ceilingTokens)
 
+		// Old reasoning goes FIRST, tool results only cover what it leaves (opt-in, see
+		// `trimOldReasoning`). A trimmed reasoning block keeps its head, its findings and its
+		// last paragraph, so the model needs no recovery action; a cleared tool result can
+		// cost a re-read or a re-run, which is one more request. Previously trimmed blocks
+		// are carried over like previously cleared results (both live in the same id set).
+		const reasoning = trimOldReasoning
+			? selectReasoningTrims(messages, { targetChars, alreadyTrimmed: previouslyClearedIds })
+			: { keys: [], reclaimedChars: 0 }
+
 		const mc = microcompactToolResults(messages, {
-			targetChars,
+			// Zero when reasoning alone met the target: the tool results a previous request
+			// cleared are still carried over, nothing new is cleared.
+			targetChars: Math.max(0, targetChars - reasoning.reclaimedChars),
 			// Marks which results carry facts the model cannot cheaply re-derive.
 			criticalToolUseIds: getLedger().criticalToolUseIds,
 			alreadyClearedToolUseIds: previouslyClearedIds,
 		})
-		if (mc.clearedCount > 0) {
+		if (mc.clearedCount > 0 || reasoning.keys.length > 0) {
 			microcompacted = true
 			microcompactClearedCount = mc.clearedCount
-			microcompactClearedIds = mc.clearedToolUseIds
+			microcompactClearedIds = [...reasoning.keys, ...mc.clearedToolUseIds]
 			const grossTokensCleared = mc.clearedText
 				? await estimateTokenCount([{ type: "text", text: mc.clearedText }], apiHandler)
 				: 0
 			// Net of the placeholder written back into each cleared result: that is what the
 			// strip actually removes from the payload, and therefore what the next request has
 			// to add back to recover the pristine size (see nextMicrocompactStrippedTokens).
-			microcompactTokensCleared = Math.max(
+			const toolTokensCleared = Math.max(
 				0,
 				grossTokensCleared - MICROCOMPACT_PLACEHOLDER_TOKENS * mc.clearedCount,
 			)
+			// Selection measures the reasoning reclaim in chars, already net of the markers.
+			// MICROCOMPACT_CHARS_PER_TOKEN converts it to the `estimateTokenCount` scale (tiktoken
+			// times TOKEN_FUDGE_FACTOR) the tool-result tokens above are on, so the two add up
+			// without counting the removed text a second time.
+			const reasoningTokensCleared = Math.round(reasoning.reclaimedChars / MICROCOMPACT_CHARS_PER_TOKEN)
+			microcompactTokensCleared = toolTokensCleared + reasoningTokensCleared
 
+			// No reasoning-specific fields: `cleared` and `candidates` stay tool-result counts,
+			// and `tokensCleared` simply includes the trimmed reasoning.
 			TelemetryService.instance.capture(TelemetryEventName.CONTEXT_MICROCOMPACTED, {
 				taskId,
 				candidates: mc.candidateCount,
@@ -464,10 +502,11 @@ export async function manageContext({
 				reclaimRatio: prevContextTokens > 0 ? microcompactTokensCleared / prevContextTokens : 0,
 			})
 
-			// Estimate the post-strip context size. If clearing old tool output at
-			// send time will bring us back under both thresholds, we are done — skip
-			// the expensive summarization (and truncation) entirely. This is the
-			// "quiet" path that keeps the conversation fully intact.
+			// Estimate the post-strip context size. If clearing old tool output (and
+			// trimming old reasoning) at send time will bring us back under both
+			// thresholds, we are done: skip the expensive summarization (and
+			// truncation) entirely. This is the "quiet" path that keeps the
+			// conversation fully intact.
 			const newContextTokens = Math.max(0, prevContextTokens - microcompactTokensCleared)
 			const newContextPercent = (100 * newContextTokens) / contextWindow
 			const stillOverCondense = autoCondenseContext && newContextPercent >= effectiveThreshold
@@ -514,7 +553,9 @@ export async function manageContext({
 	//
 	// Results microcompaction already selected are skipped: their text is absent
 	// from this request's payload anyway, so pruning them would spend a disk
-	// write for zero reclaim this round.
+	// write for zero reclaim this round. The skip set also receives the
+	// `reasoning:<ts>` keys of trimmed reasoning; they never equal a tool_use_id,
+	// so they skip nothing.
 	let historyMessages = messages
 	let prunedCount = 0
 	let prunedBytesSaved = 0
