@@ -492,6 +492,10 @@
 			"label": "Devolver o raciocínio ao modelo",
 			"description": "Envia de volta o raciocínio anterior do modelo a cada requisição, para que ele possa partir do que já pensou (raciocínio preservado ou intercalado). Necessário para GLM, DeepSeek, Kimi e modelos de raciocínio semelhantes servidos por vLLM, SGLang ou llama.cpp. Usa mais contexto."
 		},
+		"trimOldReasoning": {
+			"label": "Encurtar o raciocínio antigo quando o contexto enche",
+			"description": "Quando o contexto atinge o limite de condensação (ou o limite da janela), os blocos longos de raciocínio de turnos anteriores são encurtados primeiro: o início, o último parágrafo e os parágrafos com descobertas permanecem, o resto é omitido. Só muda a cópia enviada ao modelo; a tarefa salva mantém tudo. Economiza contexto sem uma chamada extra ao modelo."
+		},
 		"awsAuthMethod": "Método de autenticação"
 	},
 	"checkpoints": {

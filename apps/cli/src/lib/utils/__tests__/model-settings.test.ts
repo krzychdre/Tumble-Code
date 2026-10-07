@@ -19,6 +19,10 @@ describe("listSetModelSettings", () => {
 			"contextWindow",
 			"outputPrice",
 		])
+		expect(listSetModelSettings({ preserveReasoning: true, trimOldReasoning: false })).toEqual([
+			"preserveReasoning",
+			"trimOldReasoning",
+		])
 		expect(listSetModelSettings({})).toEqual([])
 		expect(listSetModelSettings(undefined)).toEqual([])
 	})
@@ -55,12 +59,10 @@ describe("findModelSettingsProblems", () => {
 		])
 	})
 
-	it("accepts preserveReasoning true or false and rejects anything else", () => {
-		expect(findModelSettingsProblems({ m: { preserveReasoning: true }, n: { preserveReasoning: false } })).toEqual(
-			[],
-		)
-		expect(findModelSettingsProblems({ m: { preserveReasoning: "true" } })).toEqual([
-			'models.m.preserveReasoning must be true or false, got "true"',
+	it.each(["preserveReasoning", "trimOldReasoning"])("accepts %s true or false and rejects anything else", (key) => {
+		expect(findModelSettingsProblems({ m: { [key]: true }, n: { [key]: false } })).toEqual([])
+		expect(findModelSettingsProblems({ m: { [key]: "true" } })).toEqual([
+			`models.m.${key} must be true or false, got "true"`,
 		])
 	})
 

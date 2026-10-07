@@ -27,6 +27,7 @@ import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildSystemPromptInput, isMcpEnabledForPrompt } from "../prompts/system-prompt-input"
 import { applyMicrocompactCleared } from "../context-management/microcompact"
+import { applyReasoningTrims } from "../context-management/reasoningTrim"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
@@ -69,9 +70,11 @@ export interface ApiRequestBuilderAccess
 	instanceId: string
 
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
-	// are cleared on the OUTGOING request copy (stored history stays pristine).
-	// Recomputed each request by the context manager. See applyMicrocompactCleared.
-	microcompactedToolUseIds: ReadonlySet<string>
+	// are cleared, and `reasoning:<ts>` keys (reasoningTrimKey) whose reasoning is
+	// trimmed, on the OUTGOING request copy (stored history stays pristine).
+	// Recomputed each request by the context manager. See applyMicrocompactCleared
+	// and applyReasoningTrims.
+	microcompactedIds: ReadonlySet<string>
 
 	// Context manager for context management
 	contextManager: TaskContextManager
@@ -300,15 +303,17 @@ export class ApiRequestBuilder {
 		const cleanConversationHistory: (Anthropic.Messages.MessageParam | ReasoningItemForRequest)[] = []
 
 		// Non-destructive microcompaction (send-time): clear the content of old
-		// tool results selected by the context manager for THIS request's model.
-		// Operates on a copy — stored history stays pristine — so it is cache-stable
-		// and correct across mid-task mode switches (a wider-window mode passes an
-		// empty set and gets full fidelity back). No-op (same ref) when the set is
-		// empty, which is the common case.
-		const microcompactedToolUseIds = this.access.microcompactedToolUseIds
+		// tool results and trim the reasoning of old turns, as selected by the
+		// context manager for THIS request's model. One set holds both kinds of
+		// keys; each apply step ignores the other kind. Operates on a copy (stored
+		// history stays pristine), so it is cache-stable and correct across mid-task
+		// mode switches (a wider-window mode passes an empty set and gets full
+		// fidelity back). No-op (same ref) when the set is empty, which is the
+		// common case.
+		const microcompactedIds = this.access.microcompactedIds
 		const sourceMessages =
-			microcompactedToolUseIds && microcompactedToolUseIds.size > 0
-				? applyMicrocompactCleared(messages, microcompactedToolUseIds)
+			microcompactedIds && microcompactedIds.size > 0
+				? applyReasoningTrims(applyMicrocompactCleared(messages, microcompactedIds), microcompactedIds)
 				: messages
 
 		// Encrypted reasoning is OpenAI ciphertext (TaskMessageLog stores it only from a handler

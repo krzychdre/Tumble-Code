@@ -492,6 +492,10 @@
 			"label": "Restituisci il ragionamento al modello",
 			"description": "Invia di nuovo al modello il suo ragionamento precedente a ogni richiesta, così può basarsi su ciò che ha già elaborato (ragionamento preservato o interfogliato). Necessario per GLM, DeepSeek, Kimi e modelli di ragionamento simili serviti con vLLM, SGLang o llama.cpp. Usa più contesto."
 		},
+		"trimOldReasoning": {
+			"label": "Accorcia il ragionamento vecchio quando il contesto si riempie",
+			"description": "Quando il contesto raggiunge la soglia di condensazione (o il limite della finestra), vengono prima accorciati i blocchi di ragionamento lunghi dei turni precedenti: restano l'inizio, l'ultimo paragrafo e i paragrafi con le scoperte, il resto viene omesso. Cambia solo la copia inviata al modello; l'attività salvata conserva tutto. Risparmia contesto senza una chiamata aggiuntiva al modello."
+		},
 		"awsAuthMethod": "Metodo di autenticazione"
 	},
 	"checkpoints": {

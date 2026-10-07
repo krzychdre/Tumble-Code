@@ -69,7 +69,7 @@ function xaiHistory(): ApiMessage[] {
 }
 
 function build(api: ApiHandler, messages: ApiMessage[]): Anthropic.Messages.MessageParam[] {
-	const access = { api, microcompactedToolUseIds: new Set<string>() } as unknown as ApiRequestBuilderAccess
+	const access = { api, microcompactedIds: new Set<string>() } as unknown as ApiRequestBuilderAccess
 	return new ApiRequestBuilder(access).buildCleanConversationHistory(
 		messages,
 		api.getModel().info.preserveReasoning === true,

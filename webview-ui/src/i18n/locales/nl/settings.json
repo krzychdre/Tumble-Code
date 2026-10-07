@@ -492,6 +492,10 @@
 			"label": "Redenering terugsturen naar het model",
 			"description": "Stuurt de eerdere redenering van het model bij elk verzoek terug, zodat het kan voortbouwen op wat het al heeft uitgedacht (behouden of doorlopend denken). Nodig voor GLM, DeepSeek, Kimi en vergelijkbare redeneermodellen die via vLLM, SGLang of llama.cpp worden aangeboden. Gebruikt meer context."
 		},
+		"trimOldReasoning": {
+			"label": "Oude redenering inkorten als de context vol raakt",
+			"description": "Wanneer de context de compressiedrempel (of de grens van het venster) bereikt, worden eerst lange redeneringsblokken van eerdere beurten ingekort: het begin, de laatste alinea en alinea's met bevindingen blijven staan, de rest vervalt. Alleen de kopie die naar het model gaat verandert; de opgeslagen taak bewaart alles. Bespaart context zonder extra modelaanroep."
+		},
 		"awsAuthMethod": "Authenticatiemethode"
 	},
 	"checkpoints": {

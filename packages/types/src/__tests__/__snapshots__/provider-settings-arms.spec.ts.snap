@@ -540,6 +540,9 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
     "openAiStreamingEnabled": {
       "type": "boolean",
     },
+    "openAiTrimOldReasoning": {
+      "type": "boolean",
+    },
     "openAiUseAzure": {
       "type": "boolean",
     },

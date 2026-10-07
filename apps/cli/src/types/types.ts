@@ -75,6 +75,15 @@ export interface CliModelSettings {
 	 */
 	preserveReasoning?: boolean
 	/**
+	 * When the context fills up, shorten the long reasoning blocks of older
+	 * turns before anything else is cut (the VS Code setting "Shorten old
+	 * reasoning when the context fills up"). Only the copy sent to the model
+	 * changes, the task history keeps every block whole. Needs
+	 * preserveReasoning, since without it no reasoning is sent back. Used with
+	 * the openai provider. Defaults to false.
+	 */
+	trimOldReasoning?: boolean
+	/**
 	 * The reasoning effort sent with every request to this model, one of the
 	 * levels of --reasoning-effort. Set per model because the levels a model
 	 * accepts are its own (GLM-5.3 takes "max", other models reject it). Works

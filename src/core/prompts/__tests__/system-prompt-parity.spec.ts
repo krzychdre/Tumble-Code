@@ -158,7 +158,7 @@ function makeTask(provider: ReturnType<typeof makeProvider>, materialized: strin
 		apiConfiguration: {},
 		api: { getModel: () => ({ id: "test-model", info: { isStealthModel: false } }) },
 		apiConversationHistory: [],
-		microcompactedToolUseIds: new Set<string>(),
+		microcompactedIds: new Set<string>(),
 		providerRef: { deref: () => provider },
 		cwd: CWD,
 		// Task sets exactly this in its constructor.

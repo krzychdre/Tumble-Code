@@ -195,8 +195,8 @@ export function toProviderSettings(
 /**
  * The same provider settings running another model of the same provider (the
  * TUI's /model): the provider's model field, and what comes with the model
- * (its reasoning effort and, for the openai provider, its size, prices and
- * preserveReasoning), replacing those of the previous model. The connection
+ * (its reasoning effort and, for the openai provider, its size, prices,
+ * preserveReasoning and trimOldReasoning), replacing those of the previous model. The connection
  * (base URL, key) stays.
  */
 export function withModel(
@@ -243,11 +243,18 @@ function applyModelSettings(
 	// settings UI's reasoning level control also stores it in this model
 	// info). The fields are always written, because the startup
 	// settings are merged into the extension's persisted state, where a size, a
-	// price, an effort or a preserveReasoning from an earlier run would
-	// otherwise outlive the entry that set it.
+	// price, an effort, a preserveReasoning or a trimOldReasoning from an
+	// earlier run would otherwise outlive the entry that set it.
 	if (provider === "openai") {
-		const { contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice, preserveReasoning } =
-			config.modelSettings ?? {}
+		const {
+			contextWindow,
+			inputPrice,
+			outputPrice,
+			cacheReadsPrice,
+			cacheWritesPrice,
+			preserveReasoning,
+			trimOldReasoning,
+		} = config.modelSettings ?? {}
 		const configured = Object.fromEntries(
 			Object.entries({ contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice }).filter(
 				([, value]) => value !== undefined,
@@ -263,6 +270,7 @@ function applyModelSettings(
 					}
 				: null
 		settings.openAiPreserveReasoning = preserveReasoning ?? false
+		settings.openAiTrimOldReasoning = trimOldReasoning ?? false
 	}
 
 	return settings

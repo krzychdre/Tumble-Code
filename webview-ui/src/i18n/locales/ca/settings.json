@@ -492,6 +492,10 @@
 			"label": "Retorna el raonament al model",
 			"description": "Envia de nou el raonament anterior del model amb cada sol·licitud, perquè pugui basar-se en el que ja ha pensat (raonament preservat o intercalat). Necessari per a GLM, DeepSeek, Kimi i models de raonament similars servits amb vLLM, SGLang o llama.cpp. Utilitza més context."
 		},
+		"trimOldReasoning": {
+			"label": "Escurça el raonament antic quan el context s'omple",
+			"description": "Quan el context arriba al llindar de condensació (o al límit de la finestra), primer s'escurcen els blocs de raonament llargs dels torns anteriors: es conserven l'inici, l'últim paràgraf i els paràgrafs amb conclusions, i la resta s'omet. Només canvia la còpia que s'envia al model; la tasca desada ho conserva tot. Estalvia context sense cap crida addicional al model."
+		},
 		"awsAuthMethod": "Mètode d'autenticació"
 	},
 	"checkpoints": {

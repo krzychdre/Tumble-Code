@@ -1,6 +1,6 @@
 // cd src && npx vitest run core/context-management/__tests__/microcompact.spec.ts
 
-import type { ModelInfo } from "@tumble-code/types"
+import { TelemetryEventName, type ModelInfo } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
 import { BaseProvider } from "../../../api/providers/base-provider"
@@ -21,6 +21,7 @@ import {
 	type MicrocompactCandidate,
 } from "../microcompact"
 import { manageContext } from "../index"
+import { reasoningTrimKey, trimReasoningText } from "../reasoningTrim"
 
 let counter = 0
 
@@ -590,7 +591,7 @@ describe("manageContext microcompaction pre-pass", () => {
 
 		// Need-adaptive: a modest overage clears a few of the oldest results, not the
 		// whole eligible set. The old rule always cleared everything but the last five.
-		const cleared = result.microcompactClearedToolUseIds ?? []
+		const cleared = result.microcompactClearedIds ?? []
 		expect(cleared.length).toBeGreaterThan(0)
 		expect(cleared.length).toBeLessThan(10 - MICROCOMPACT_MIN_KEEP)
 		// Oldest-first prefix, so the sent prefix diverges as late as possible.
@@ -644,9 +645,166 @@ describe("manageContext microcompaction pre-pass", () => {
 			profileThresholds: {},
 			currentProfileId: "default",
 			// A prior, higher-pressure turn had cleared six results.
-			previouslyClearedToolUseIds: new Set(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"]),
+			previouslyClearedIds: new Set(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"]),
 		})
 
-		expect(result.microcompactClearedToolUseIds).toEqual(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"])
+		expect(result.microcompactClearedIds).toEqual(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"])
+	})
+})
+
+// --- Old-reasoning trimming inside the pre-pass (trimOldReasoning) ---------------------
+
+describe("manageContext pre-pass with trimOldReasoning", () => {
+	const apiHandler = new MockApiHandler()
+	const taskId = "reasoning-trim-task"
+
+	beforeEach(() => {
+		counter = 0
+		if (!TelemetryService.hasInstance()) {
+			TelemetryService.createInstance([])
+		}
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	/** ~3.8k chars: a head paragraph, eight plan paragraphs and a closing one. Trims to ~0.7k. */
+	function longReasoning(label: string): string {
+		const head = `${label}: the user wants the cache fixed. `.repeat(12).trim()
+		const plans = Array.from({ length: 8 }, (_, i) =>
+			`Let me read helper ${i} next and check its call sites. `.repeat(8).trim(),
+		)
+		return [head, ...plans, `${label}: next I read the config.`].join("\n\n")
+	}
+
+	/**
+	 * Ten turns, each an assistant `read_file` call answered by a 6k-char result (big-0..big-9).
+	 * The first `withReasoning` assistant turns also carry a long plain-text reasoning block.
+	 */
+	function turns(withReasoning: number): ApiMessage[] {
+		const out: ApiMessage[] = [firstUser()]
+		for (let i = 0; i < 10; i++) {
+			const [assistant, result] = toolPair("read_file", bigText(`file ${i} contents`, 6000), `big-${i}`)
+			if (i < withReasoning) {
+				assistant.content = [
+					{ type: "reasoning", text: longReasoning(`turn ${i}`), summary: [] },
+					...(assistant.content as unknown[]),
+				] as ApiMessage["content"]
+			}
+			out.push(assistant, result)
+		}
+		return out
+	}
+
+	/** Chars the trim takes off the reasoning of assistant turn `i` in `turns()`. */
+	function reclaimOf(i: number): number {
+		const text = longReasoning(`turn ${i}`)
+		return text.length - trimReasoningText(text)!.length
+	}
+
+	/**
+	 * Context window 30k, condense at 50% (15k). `lastMessageTokens: 0` makes the overage
+	 * exactly `totalTokens - 15k`, so the char target is known (see microcompactTargetChars).
+	 */
+	function run(
+		messages: ApiMessage[],
+		totalTokens: number,
+		extra: Partial<Parameters<typeof manageContext>[0]> = {},
+	) {
+		return manageContext({
+			messages,
+			totalTokens,
+			lastMessageTokens: 0,
+			contextWindow: 30000,
+			maxTokens: 1000,
+			apiHandler,
+			autoCondenseContext: true,
+			autoCondenseContextPercent: 50,
+			systemPrompt: "sys",
+			taskId,
+			profileThresholds: {},
+			currentProfileId: "default",
+			...extra,
+		})
+	}
+
+	const reasoningKeys = (ids: string[] | undefined) => (ids ?? []).filter((id) => id.startsWith("reasoning:"))
+	const toolIds = (ids: string[] | undefined) => (ids ?? []).filter((id) => !id.startsWith("reasoning:"))
+
+	it("flag off: clears tool results only, exactly as without the option", async () => {
+		const messages = turns(10)
+
+		const omitted = await run(messages, 20000)
+		const off = await run(messages, 20000, { trimOldReasoning: false })
+
+		expect(off).toEqual(omitted)
+		expect(reasoningKeys(off.microcompactClearedIds)).toEqual([])
+		expect(toolIds(off.microcompactClearedIds).length).toBeGreaterThan(0)
+	})
+
+	it("flag off: a reasoning key carried over from an earlier request is dropped, not kept", async () => {
+		const result = await run(turns(10), 20000, {
+			previouslyClearedIds: new Set([reasoningTrimKey(1)]),
+		})
+
+		expect(reasoningKeys(result.microcompactClearedIds)).toEqual([])
+	})
+
+	it("trims old reasoning first and clears tool results only for the remainder", async () => {
+		// Overage 5000 tokens -> 13750 chars. Two reasoning blocks reclaim ~6.2k of it.
+		const messages = turns(2)
+		const targetChars = microcompactTargetChars(5000)
+		expect(reclaimOf(0) + reclaimOf(1)).toBeLessThan(targetChars)
+
+		const off = await run(messages, 20000)
+		const on = await run(messages, 20000, { trimOldReasoning: true })
+
+		// Both reasoning blocks, oldest first and ahead of the tool ids.
+		const ids = on.microcompactClearedIds ?? []
+		expect(ids.slice(0, 2)).toEqual([reasoningTrimKey(1), reasoningTrimKey(2)])
+		// Tool results cover only what reasoning left: fewer than without the flag, still oldest first.
+		const onTools = toolIds(ids)
+		expect(onTools.length).toBeLessThan(toolIds(off.microcompactClearedIds).length)
+		expect(onTools).toEqual(Array.from({ length: onTools.length }, (_, i) => `big-${i}`))
+		// `cleared` stays a tool-result count; the token estimate includes the reasoning.
+		expect(on.microcompactClearedCount).toBe(onTools.length)
+		expect(on.messages).toBe(messages) // non-destructive: nothing persisted
+	})
+
+	it("keeps reasoning keys carried over from an earlier request, together with carried tool ids", async () => {
+		// Overage 1000 tokens -> 2750 chars: one block would do, but the carried block is
+		// taken first and is enough, so the oldest block stays untouched.
+		const result = await run(turns(10), 16000, {
+			trimOldReasoning: true,
+			previouslyClearedIds: new Set([reasoningTrimKey(2), "big-5"]),
+		})
+
+		expect(result.microcompactClearedIds).toEqual([reasoningTrimKey(2), "big-5"])
+	})
+
+	it("a reasoning-only outcome skips condense and reports the reasoning tokens", async () => {
+		// Overage 1000 tokens -> 2750 chars; the oldest block alone reclaims more than that.
+		const messages = turns(10)
+		expect(reclaimOf(0)).toBeGreaterThanOrEqual(microcompactTargetChars(1000))
+		const capture = vi.spyOn(TelemetryService.instance, "capture")
+
+		const result = await run(messages, 16000, { trimOldReasoning: true })
+
+		const tokensCleared = Math.round(reclaimOf(0) / MICROCOMPACT_CHARS_PER_TOKEN)
+		expect(result).toMatchObject({
+			summary: "",
+			microcompacted: true,
+			microcompactClearedCount: 0,
+			microcompactClearedIds: [reasoningTrimKey(1)],
+			microcompactTokensCleared: tokensCleared,
+			newContextTokens: 16000 - tokensCleared,
+		})
+		expect(result.truncationId).toBeUndefined()
+		expect(result.messages).toBe(messages)
+		expect(capture).toHaveBeenCalledWith(
+			TelemetryEventName.CONTEXT_MICROCOMPACTED,
+			expect.objectContaining({ cleared: 0, tokensCleared }),
+		)
 	})
 })

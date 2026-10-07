@@ -492,6 +492,10 @@
 			"label": "Devolver el razonamiento al modelo",
 			"description": "Envía de vuelta el razonamiento anterior del modelo con cada solicitud, para que pueda apoyarse en lo que ya ha pensado (razonamiento preservado o intercalado). Necesario para GLM, DeepSeek, Kimi y modelos de razonamiento similares servidos con vLLM, SGLang o llama.cpp. Usa más contexto."
 		},
+		"trimOldReasoning": {
+			"label": "Acortar el razonamiento antiguo cuando el contexto se llena",
+			"description": "Cuando el contexto alcanza el umbral de condensación (o el límite de la ventana), primero se acortan los bloques de razonamiento largos de turnos anteriores: se conservan el inicio, el último párrafo y los párrafos con hallazgos, y se omite el resto. Solo cambia la copia que se envía al modelo; la tarea guardada lo conserva todo. Ahorra contexto sin una llamada adicional al modelo."
+		},
 		"awsAuthMethod": "Método de autenticación"
 	},
 	"checkpoints": {

@@ -492,6 +492,10 @@
 			"label": "Denkprozess an das Modell zurückgeben",
 			"description": "Sendet die bisherigen Überlegungen des Modells mit jeder Anfrage zurück, damit es auf dem aufbauen kann, was es bereits durchdacht hat (beibehaltenes bzw. verschachteltes Denken). Erforderlich für GLM, DeepSeek, Kimi und ähnliche Reasoning-Modelle, die über vLLM, SGLang oder llama.cpp bereitgestellt werden. Verbraucht mehr Kontext."
 		},
+		"trimOldReasoning": {
+			"label": "Alten Denkprozess kürzen, wenn der Kontext voll wird",
+			"description": "Wenn der Kontext den Schwellenwert für die Kontextkomprimierung (oder die Grenze des Kontextfensters) erreicht, werden zuerst lange Denkblöcke älterer Runden gekürzt: Der Anfang, der letzte Absatz und Absätze mit Erkenntnissen bleiben erhalten, der Rest entfällt. Nur die an das Modell gesendete Kopie ändert sich; die gespeicherte Aufgabe behält alles. Spart Kontext ohne zusätzlichen Modellaufruf."
+		},
 		"awsAuthMethod": "Authentifizierungsmethode"
 	},
 	"checkpoints": {

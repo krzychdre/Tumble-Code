@@ -492,6 +492,10 @@
 			"label": "Akıl yürütmeyi modele geri gönder",
 			"description": "Modelin önceki akıl yürütmesini her istekte geri gönderir, böylece model daha önce düşündüklerinin üzerine inşa edebilir (korunan veya iç içe geçmiş düşünme). vLLM, SGLang veya llama.cpp ile sunulan GLM, DeepSeek, Kimi ve benzeri akıl yürütme modelleri için gereklidir. Daha fazla bağlam kullanır."
 		},
+		"trimOldReasoning": {
+			"label": "Bağlam dolarken eski akıl yürütmeyi kısalt",
+			"description": "Bağlam sıkıştırma eşiğine (veya pencere sınırına) ulaştığında önce önceki turların uzun akıl yürütme blokları kısaltılır: başlangıç, son paragraf ve bulgu içeren paragraflar kalır, geri kalanı çıkarılır. Yalnızca modele gönderilen kopya değişir; kaydedilen görev her şeyi korur. Ek model çağrısı olmadan bağlamdan tasarruf sağlar."
+		},
 		"awsAuthMethod": "Kimlik doğrulama yöntemi"
 	},
 	"checkpoints": {

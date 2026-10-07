@@ -63,7 +63,7 @@ describe("ApiRequestBuilder .rooignore instructions (DEF-C1)", () => {
 			apiConfiguration: {},
 			api: { getModel: () => ({ id: "m", info: {} }) },
 			apiConversationHistory: [],
-			microcompactedToolUseIds: new Set<string>(),
+			microcompactedIds: new Set<string>(),
 			providerRef: { deref: () => provider },
 			cwd,
 			contextManager: {},

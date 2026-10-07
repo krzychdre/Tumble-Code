@@ -53,7 +53,7 @@ function buildAccess() {
 		getCondenseApiHandler: vi.fn().mockResolvedValue(apiHandler),
 		apiConversationHistory: [{ role: "user", content: "original history", ts: 1 }],
 		consecutiveAutoCompactFailures: 0,
-		microcompactedToolUseIds: new Set<string>(),
+		microcompactedIds: new Set<string>(),
 		microcompactStrippedTokens: 0,
 		cwd: "/workspace",
 		fileContextTracker: { getFilesReadByRoo: vi.fn().mockResolvedValue([]) },

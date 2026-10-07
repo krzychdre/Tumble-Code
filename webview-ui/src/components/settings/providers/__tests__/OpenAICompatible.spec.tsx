@@ -325,6 +325,28 @@ describe("OpenAICompatible Component - reasoning", () => {
 		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("openAiPreserveReasoning", true)
 	})
 
+	it("hides the trim-old-reasoning checkbox while reasoning is not returned", () => {
+		renderWith({ openAiPreserveReasoning: false, openAiTrimOldReasoning: true })
+
+		expect(screen.queryByTestId("checkbox-input-settings:providers.trimoldreasoning.label")).not.toBeInTheDocument()
+		expect(screen.queryByText("settings:providers.trimOldReasoning.description")).not.toBeInTheDocument()
+	})
+
+	it("shows the trim-old-reasoning checkbox, unchecked by default, once reasoning is returned", () => {
+		renderWith({ openAiPreserveReasoning: true })
+
+		expect(screen.getByTestId("checkbox-input-settings:providers.trimoldreasoning.label")).not.toBeChecked()
+		expect(screen.getByText("settings:providers.trimOldReasoning.description")).toBeInTheDocument()
+	})
+
+	it("writes openAiTrimOldReasoning when toggled", () => {
+		renderWith({ openAiPreserveReasoning: true, openAiTrimOldReasoning: false })
+
+		fireEvent.click(screen.getByTestId("checkbox-input-settings:providers.trimoldreasoning.label"))
+
+		expect(mockSetApiConfigurationField).toHaveBeenCalledWith("openAiTrimOldReasoning", true)
+	})
+
 	it("offers the max reasoning effort", () => {
 		renderWith({ enableReasoningEffort: true })
 
