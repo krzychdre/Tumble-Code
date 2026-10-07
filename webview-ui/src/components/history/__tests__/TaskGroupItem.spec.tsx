@@ -4,6 +4,10 @@ import TaskGroupItem from "../TaskGroupItem"
 import type { TaskGroup, DisplayHistoryItem, SubtaskTreeNode } from "../types"
 
 vi.mock("@src/utils/vscode")
+// TaskDetails reads the custom modes to name a task's mode.
+vi.mock("@/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector({ customModes: [] } as never),
+}))
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
 		t: (key: string, options?: Record<string, unknown>) => {
@@ -18,6 +22,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 vi.mock("@/utils/format", () => ({
 	formatDateTime: vi.fn(() => "2026-05-22 17:50:33"),
+	formatTimestamp: vi.fn(() => "17:50"),
 	formatLargeNumber: vi.fn((num: number) => num.toString()),
 }))
 

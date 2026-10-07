@@ -389,4 +389,57 @@ describe("useTaskSearch", () => {
 			])
 		})
 	})
+
+	describe("the usage of a task with subtasks", () => {
+		// root (0.25) -> child (0.5) -> grandchild (1), the grandchild in another
+		// workspace; plus an unrelated task-1 (0.01) without subtasks.
+		const tree: HistoryItem[] = [
+			mockTaskHistory[0],
+			{ ...mockTaskHistory[1], id: "root", totalCost: 0.25 },
+			{ ...mockTaskHistory[1], id: "child", totalCost: 0.5, parentTaskId: "root" },
+			{
+				...mockTaskHistory[1],
+				id: "grandchild",
+				totalCost: 1,
+				parentTaskId: "child",
+				workspace: "/workspace/project2",
+			},
+		]
+
+		const subtreeCostsOf = (taskHistory: HistoryItem[]) => {
+			mockUseExtensionState.mockReturnValue({ taskHistory, cwd: "/workspace/project1" } as any)
+			const { result } = renderHook(() => useTaskSearch())
+			return Object.fromEntries(result.current.tasks.map((task) => [task.id, task.subtree?.cost]))
+		}
+
+		it("sums every descendant, also one outside the current workspace", () => {
+			expect(subtreeCostsOf(tree)).toEqual({ "task-1": undefined, root: 1.75, child: 1.5 })
+		})
+
+		it("sums the tokens of the tree too", () => {
+			mockUseExtensionState.mockReturnValue({ taskHistory: tree, cwd: "/workspace/project1" } as any)
+			const { result } = renderHook(() => useTaskSearch())
+			const root = result.current.tasks.find((task) => task.id === "root")
+			expect(root?.subtree).toEqual({ cost: 1.75, tokensIn: 600, tokensOut: 300 })
+		})
+
+		it("sorts by the cost of the whole tree for most expensive", () => {
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: [...tree, { ...mockTaskHistory[0], id: "pricey", totalCost: 1.6 }],
+				cwd: "/workspace/project1",
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+			act(() => result.current.setSortOption("mostExpensive"))
+			expect(result.current.tasks.map((task) => task.id)).toEqual(["root", "pricey", "child", "task-1"])
+		})
+
+		it("counts each task once in a parent cycle", () => {
+			const costs = subtreeCostsOf([
+				{ ...mockTaskHistory[0], id: "a", totalCost: 1, parentTaskId: "b" },
+				{ ...mockTaskHistory[1], id: "b", totalCost: 2, parentTaskId: "a" },
+			])
+			// History order: "a" is summed first and reaches "b", whose child is "a" again.
+			expect(costs).toEqual({ a: 3, b: 2 })
+		})
+	})
 })

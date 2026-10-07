@@ -37,6 +37,7 @@ const TaskItem = ({
 }: TaskItemProps) => {
 	const isCompact = variant === "compact"
 	const statusId = useId()
+	const detailsId = useId()
 
 	const handleClick = () => {
 		if (isSelectionMode && onToggleSelection) {
@@ -52,7 +53,7 @@ const TaskItem = ({
 			key={item.id}
 			data-testid={`task-item-${item.id}`}
 			aria-label={item.task}
-			aria-describedby={item.runningStatus ? statusId : undefined}
+			aria-describedby={item.runningStatus ? `${statusId} ${detailsId}` : detailsId}
 			aria-pressed={isSelectionMode ? isSelected : undefined}
 			className={cn(
 				"cursor-pointer group relative overflow-hidden text-left w-full",
@@ -125,6 +126,7 @@ const TaskItem = ({
 						isSelectionMode={isSelectionMode}
 						isSubtask={item.isSubtask}
 						onDelete={onDelete}
+						detailsId={detailsId}
 					/>
 				</div>
 			</div>

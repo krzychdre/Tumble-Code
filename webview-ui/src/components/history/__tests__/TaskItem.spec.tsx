@@ -3,6 +3,11 @@ import { render, screen, fireEvent } from "@/utils/test-utils"
 import TaskItem from "../TaskItem"
 
 vi.mock("@src/utils/vscode")
+// TaskDetails reads the custom modes to name a task's mode.
+vi.mock("@/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector({ customModes: [] } as never),
+}))
+
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
 		t: (key: string) => key,
@@ -11,6 +16,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 vi.mock("@/utils/format", () => ({
 	formatDateTime: vi.fn(() => "2026-05-22 17:50:33"),
+	formatTimestamp: vi.fn(() => "17:50"),
 	formatLargeNumber: vi.fn((num: number) => num.toString()),
 }))
 
@@ -90,8 +96,8 @@ describe("TaskItem", () => {
 			/>,
 		)
 
-		// Should display the full date and time
-		expect(screen.getByText("2026-05-22 17:50:33")).toBeInTheDocument()
+		// A task from today shows its time; the day header carries the date
+		expect(screen.getByText("17:50")).toBeInTheDocument()
 	})
 
 	it("applies hover effect class", () => {
@@ -116,7 +122,11 @@ describe("TaskItem", () => {
 			const indicator = screen.getByRole("img", { name: "history:runningIndicator.running" })
 			expect(indicator).toHaveAttribute("data-testid", "running-indicator-running")
 			expect(indicator.querySelector(".ui-progress-ring")).toBeInTheDocument()
-			expect(screen.getByTestId("task-item-1")).toHaveAttribute("aria-describedby", indicator.id)
+			const details = screen.getByTestId("task-details")
+			expect(screen.getByTestId("task-item-1")).toHaveAttribute(
+				"aria-describedby",
+				`${indicator.id} ${details.id}`,
+			)
 		})
 
 		it("shows the attention icon on a task waiting for input", () => {
@@ -131,7 +141,11 @@ describe("TaskItem", () => {
 			render(<TaskItem item={mockTask} variant="full" />)
 
 			expect(screen.queryByTestId(/^running-indicator-/)).not.toBeInTheDocument()
-			expect(screen.getByTestId("task-item-1")).not.toHaveAttribute("aria-describedby")
+			// Only the summary line describes a task at rest.
+			expect(screen.getByTestId("task-item-1")).toHaveAttribute(
+				"aria-describedby",
+				screen.getByTestId("task-details").id,
+			)
 		})
 	})
 })

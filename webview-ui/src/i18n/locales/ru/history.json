@@ -58,5 +58,12 @@
 	"runningIndicator": {
 		"running": "Выполняется",
 		"awaitingInput": "Ожидает вашего ответа"
-	}
+	},
+	"costWithSubtasks": "{{total}} с подзадачами (только эта задача: {{own}})",
+	"tokensInOut": "Токены: {{in}} на входе, {{out}} на выходе",
+	"taskOutcome": {
+		"completed": "Завершена",
+		"unfinished": "Не завершена"
+	},
+	"tokensInOutWithSubtasks": "Токены с подзадачами: {{in}} на входе, {{out}} на выходе (только эта задача: {{ownIn}} на входе, {{ownOut}} на выходе)"
 }

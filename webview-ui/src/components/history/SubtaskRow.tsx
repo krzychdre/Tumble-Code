@@ -7,6 +7,7 @@ import { countAllSubtasks } from "./types"
 import { StandardTooltip } from "../ui"
 import SubtaskCollapsibleRow from "./SubtaskCollapsibleRow"
 import RunningStatusIndicator from "./RunningStatusIndicator"
+import TaskDetails from "./TaskDetails"
 
 interface SubtaskRowProps {
 	/** The subtask tree node to display */
@@ -28,6 +29,7 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 	const { item, children, isExpanded } = node
 	const hasChildren = children.length > 0
 	const statusId = useId()
+	const detailsId = useId()
 
 	const handleClick = () => {
 		vscode.postMessage({ type: "showTaskWithId", text: item.id })
@@ -40,22 +42,39 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 			<button
 				type="button"
 				aria-label={item.task}
-				aria-describedby={item.runningStatus ? statusId : undefined}
+				aria-describedby={item.runningStatus ? `${statusId} ${detailsId}` : detailsId}
 				className={cn(
-					"group flex w-full items-center justify-between gap-2 pr-4 py-1 cursor-pointer",
 					"text-left bg-transparent border-none p-0 font-inherit",
+					"group flex w-full items-start justify-between gap-2 pr-4 py-1 cursor-pointer",
 					"text-vscode-foreground/60 hover:text-vscode-foreground transition-colors",
 					"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-vscode-focusBorder",
 				)}
 				style={{ paddingLeft: `${depth * 16}px` }}
 				onClick={handleClick}>
-				<span className="flex min-w-0 items-center gap-1.5">
-					<RunningStatusIndicator status={item.runningStatus} id={statusId} />
-					<StandardTooltip content={item.task} delay={600}>
-						<span className="text-sm line-clamp-1">{item.task}</span>
-					</StandardTooltip>
+				<span className="flex min-w-0 items-start gap-1.5">
+					{/* List marker column: a dash at rest, the live status in the
+					    same slot while the subtask works, so the text never shifts.
+					    h-5 matches the title's line height. */}
+					<span className="flex h-5 shrink-0 items-center">
+						{item.runningStatus ? (
+							<RunningStatusIndicator status={item.runningStatus} id={statusId} />
+						) : (
+							<span aria-hidden className="size-4 flex items-center justify-center">
+								<span
+									data-testid="subtask-bullet"
+									className="h-0.5 w-2 bg-current opacity-50 group-hover:opacity-100 group-hover:bg-vscode-focusBorder transition-colors"
+								/>
+							</span>
+						)}
+					</span>
+					<span className="flex min-w-0 flex-col gap-0.5">
+						<StandardTooltip content={item.task} delay={600}>
+							<span className="text-sm line-clamp-1">{item.task}</span>
+						</StandardTooltip>
+						<TaskDetails item={item} id={detailsId} />
+					</span>
 				</span>
-				<ArrowRight className="size-3 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
+				<ArrowRight className="size-3 mt-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
 			</button>
 
 			{/* Nested subtask collapsible section */}

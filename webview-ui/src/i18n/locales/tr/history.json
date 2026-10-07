@@ -56,5 +56,12 @@
 	"runningIndicator": {
 		"running": "Çalışıyor",
 		"awaitingInput": "Yanıtınızı bekliyor"
-	}
+	},
+	"costWithSubtasks": "{{total}} alt görevler dahil (yalnızca bu görev: {{own}})",
+	"tokensInOut": "Token: {{in}} giriş, {{out}} çıkış",
+	"taskOutcome": {
+		"completed": "Tamamlandı",
+		"unfinished": "Tamamlanmadı"
+	},
+	"tokensInOutWithSubtasks": "Alt görevlerle token: {{in}} giriş, {{out}} çıkış (yalnızca bu görev: {{ownIn}} giriş, {{ownOut}} çıkış)"
 }

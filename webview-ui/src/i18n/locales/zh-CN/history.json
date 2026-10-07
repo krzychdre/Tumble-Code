@@ -56,5 +56,12 @@
 	"runningIndicator": {
 		"running": "运行中",
 		"awaitingInput": "等待你的输入"
-	}
+	},
+	"costWithSubtasks": "含子任务共 {{total}}（仅此任务：{{own}}）",
+	"tokensInOut": "Token：输入 {{in}}，输出 {{out}}",
+	"taskOutcome": {
+		"completed": "已完成",
+		"unfinished": "未完成"
+	},
+	"tokensInOutWithSubtasks": "含子任务的 Token：输入 {{in}}，输出 {{out}}（仅此任务：输入 {{ownIn}}，输出 {{ownOut}}）"
 }

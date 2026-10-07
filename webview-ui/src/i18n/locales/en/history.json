@@ -56,5 +56,12 @@
 	"runningIndicator": {
 		"running": "Working",
 		"awaitingInput": "Waiting for your input"
-	}
+	},
+	"costWithSubtasks": "{{total}} including subtasks (this task alone: {{own}})",
+	"tokensInOut": "Tokens: {{in}} in, {{out}} out",
+	"taskOutcome": {
+		"completed": "Done",
+		"unfinished": "Unfinished"
+	},
+	"tokensInOutWithSubtasks": "Tokens with subtasks: {{in}} in, {{out}} out (this task alone: {{ownIn}} in, {{ownOut}} out)"
 }

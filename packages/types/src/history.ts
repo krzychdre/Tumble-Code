@@ -21,6 +21,10 @@ export const historyItemSchema = z.object({
 	mode: z.string().optional(),
 	apiConfigName: z.string().optional(), // Provider profile name for sticky profile feature
 	status: z.enum(["active", "completed", "delegated"]).optional(),
+	// Whether the task's last step is its completion result, read from its
+	// messages on every save. `status` cannot tell: only a subtask that hands
+	// its result back to its parent ever becomes "completed".
+	outcome: z.enum(["completed", "unfinished"]).optional(),
 	delegatedToId: z.string().optional(), // Last child this parent delegated to
 	childIds: z.array(z.string()).optional(), // All children spawned by this task (new_task foreground delegation)
 	// Headless background children spawned by `run_parallel_tasks`. Kept

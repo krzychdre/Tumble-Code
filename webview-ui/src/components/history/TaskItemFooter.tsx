@@ -1,19 +1,20 @@
 import React from "react"
-import type { HistoryItem } from "@tumble-code/types"
-import { formatDateTime } from "@/utils/format"
 import { CopyButton } from "./CopyButton"
 import { ExportButton } from "./ExportButton"
+import TaskDetails from "./TaskDetails"
+import type { DisplayHistoryItem } from "./types"
 import { DeleteButton } from "./DeleteButton"
-import { StandardTooltip } from "../ui/standard-tooltip"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Split } from "lucide-react"
 
 export interface TaskItemFooterProps {
-	item: HistoryItem
+	item: DisplayHistoryItem
 	variant: "compact" | "full"
 	isSelectionMode?: boolean
 	isSubtask?: boolean
 	onDelete?: (taskId: string) => void
+	/** Lets the row button point `aria-describedby` at the summary. */
+	detailsId?: string
 }
 
 const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
@@ -22,12 +23,13 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 	isSelectionMode = false,
 	isSubtask = false,
 	onDelete,
+	detailsId,
 }) => {
 	const { t } = useAppTranslation()
 
 	return (
 		<div className="text-xs text-vscode-descriptionForeground flex justify-between items-center">
-			<div className="flex gap-1 items-center text-vscode-descriptionForeground/60">
+			<div className="flex min-w-0 flex-1 gap-1 items-center text-vscode-descriptionForeground/60">
 				{/* Subtask tag */}
 				{isSubtask && (
 					<>
@@ -36,21 +38,8 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 						<span>·</span>
 					</>
 				)}
-				{/* Full date and time (yyyy-mm-dd hh:mm:ss), tabular numerals so
-				    columns of timestamps line up (§2.9). */}
-				<StandardTooltip content={new Date(item.ts).toLocaleString()}>
-					<span className="tabular-nums">{formatDateTime(item.ts)}</span>
-				</StandardTooltip>
-
-				{/* Cost */}
-				{!!item.totalCost && (
-					<>
-						<span>·</span>
-						<span className="flex items-center tabular-nums" data-testid="cost-footer-compact">
-							{"$" + item.totalCost.toFixed(2)}
-						</span>
-					</>
-				)}
+				{/* The same summary a subtask row shows: mode, time, outcome, cost, tokens. */}
+				<TaskDetails item={item} id={detailsId} />
 			</div>
 
 			{/* Action Buttons for non-compact view */}

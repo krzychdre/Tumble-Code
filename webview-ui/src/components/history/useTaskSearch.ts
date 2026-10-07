@@ -6,7 +6,7 @@ import type { HistoryItem, RunningTaskStatus } from "@tumble-code/types"
 import { highlightFzfMatch } from "@/utils/highlight"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
-import type { DisplayHistoryItem } from "./types"
+import type { DisplayHistoryItem, SubtreeUsage } from "./types"
 
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
 
@@ -42,6 +42,62 @@ function withAncestors(
 	return marked
 }
 
+const NO_USAGE: SubtreeUsage = { cost: 0, tokensIn: 0, tokensOut: 0 }
+
+const ownUsage = (item: HistoryItem): SubtreeUsage => ({
+	cost: item.totalCost || 0,
+	tokensIn: item.tokensIn || 0,
+	tokensOut: item.tokensOut || 0,
+})
+
+/**
+ * A task saves only the cost and tokens of its own API requests. The usage of
+ * a task that delegated is its own plus that of every descendant, at any
+ * depth, so this sums the tree from the full history (the workspace filter
+ * must not cut a subtree). Only tasks with children get an entry.
+ */
+function subtreeUsages(taskHistory: HistoryItem[]): Map<string, SubtreeUsage> {
+	const childrenOf = new Map<string, HistoryItem[]>()
+	for (const item of taskHistory) {
+		if (item.parentTaskId && item.parentTaskId !== item.id) {
+			const siblings = childrenOf.get(item.parentTaskId) ?? []
+			siblings.push(item)
+			childrenOf.set(item.parentTaskId, siblings)
+		}
+	}
+	const totals = new Map<string, SubtreeUsage>()
+	const visiting = new Set<string>()
+	const sum = (item: HistoryItem): SubtreeUsage => {
+		const known = totals.get(item.id)
+		if (known !== undefined) {
+			return known
+		}
+		// A parent cycle in corrupt history: the task is already counted further up.
+		if (visiting.has(item.id)) {
+			return NO_USAGE
+		}
+		const children = childrenOf.get(item.id)
+		if (!children) {
+			return ownUsage(item)
+		}
+		visiting.add(item.id)
+		const total = ownUsage(item)
+		for (const child of children) {
+			const usage = sum(child)
+			total.cost += usage.cost
+			total.tokensIn += usage.tokensIn
+			total.tokensOut += usage.tokensOut
+		}
+		visiting.delete(item.id)
+		totals.set(item.id, total)
+		return total
+	}
+	for (const item of taskHistory) {
+		sum(item)
+	}
+	return totals
+}
+
 export const useTaskSearch = () => {
 	// P1: narrow slices.
 	const taskHistory = useExtensionSelector((s) => s.taskHistory)
@@ -62,12 +118,16 @@ export const useTaskSearch = () => {
 		}
 	}, [searchQuery, sortOption, lastNonRelevantSort])
 
-	const presentableTasks = useMemo(() => {
+	const presentableTasks = useMemo((): DisplayHistoryItem[] => {
 		let tasks = taskHistory.filter((item) => item.ts && item.task)
 		if (!showAllWorkspaces) {
 			tasks = tasks.filter((item) => item.workspace === cwd)
 		}
-		return tasks
+		const totals = subtreeUsages(taskHistory)
+		return tasks.map((item) => {
+			const subtree = totals.get(item.id)
+			return subtree === undefined ? item : { ...item, subtree }
+		})
 	}, [taskHistory, showAllWorkspaces, cwd])
 
 	const fzf = useMemo(() => {
@@ -102,7 +162,7 @@ export const useTaskSearch = () => {
 				case "oldest":
 					return (a.ts || 0) - (b.ts || 0)
 				case "mostExpensive":
-					return (b.totalCost || 0) - (a.totalCost || 0)
+					return (b.subtree?.cost ?? (b.totalCost || 0)) - (a.subtree?.cost ?? (a.totalCost || 0))
 				case "mostTokens": {
 					const aTokens = (a.tokensIn || 0) + (a.tokensOut || 0) + (a.cacheWrites || 0) + (a.cacheReads || 0)
 					const bTokens = (b.tokensIn || 0) + (b.tokensOut || 0) + (b.cacheWrites || 0) + (b.cacheReads || 0)

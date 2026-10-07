@@ -56,5 +56,12 @@
 	"runningIndicator": {
 		"running": "実行中",
 		"awaitingInput": "入力を待っています"
-	}
+	},
+	"costWithSubtasks": "サブタスクを含めて {{total}}（このタスクのみ: {{own}}）",
+	"tokensInOut": "トークン: 入力 {{in}}、出力 {{out}}",
+	"taskOutcome": {
+		"completed": "完了",
+		"unfinished": "未完了"
+	},
+	"tokensInOutWithSubtasks": "サブタスクを含むトークン: 入力 {{in}}、出力 {{out}}（このタスクのみ: 入力 {{ownIn}}、出力 {{ownOut}}）"
 }
