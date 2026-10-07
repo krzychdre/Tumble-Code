@@ -39,9 +39,31 @@ describe("getCapabilitiesSection", () => {
 		const result = getCapabilitiesSection(cwd)
 
 		expect(result).toContain("CAPABILITIES")
-		expect(result).toContain("execute CLI commands")
+		expect(result).toContain("run CLI commands")
 		expect(result).toContain("list files")
 		expect(result).toContain("read and write files")
+	})
+
+	// CAPABILITIES is mode-independent (stable head), so it cannot know whether
+	// this mode has execute_command. The orchestrator (`groups: []`) read the old
+	// "You can use the execute_command tool" as a promise, called the tool, and
+	// looped on empty responses because vLLM dropped the unknown tool call.
+	it("does not promise execute_command or any other tool unconditionally", () => {
+		const result = getCapabilitiesSection(cwd)
+
+		expect(result).not.toContain("You can use the execute_command tool")
+		expect(result).not.toContain("You have access to tools that let you")
+		expect(result).toContain("exactly the tools in the tool list of this request")
+		expect(result).toContain("calling it fails and gives you no result")
+
+		// Every sentence that names a concrete tool states the condition first.
+		for (const tool of ["execute_command", "list_files"]) {
+			const sentences = result.split(/(?<=\.)\s+/).filter((sentence) => sentence.includes(tool))
+			expect(sentences.length).toBeGreaterThan(0)
+			for (const sentence of sentences) {
+				expect(sentence).toMatch(new RegExp(`When your tool list includes ${tool}\\b`))
+			}
+		}
 	})
 
 	// Prefix stability (WS-F): CAPABILITIES belongs to the stable head, so it must
