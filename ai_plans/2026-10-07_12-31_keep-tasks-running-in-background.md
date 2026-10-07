@@ -134,6 +134,12 @@ Three stacked branches, one functionality each:
 - Full state pushes triggered by a task off screen (`Task.ts` queue, `TaskApiLoop`, `TaskStreamProcessor`) still
   happen once per request; they carry the task on screen and are harmless, only wasted.
 - The public API (`startNewTask`) and the CLI keep the abort-on-switch behaviour.
+- `getApiConfigurationForMode` (shared with the parallel subagents) resolves a mode's profile through
+  `ProviderSettingsManager.activateProfile`, which also writes that name as `currentApiConfigName` into the stored
+  profile list. The panel's active profile (global state) is not changed; the stored field is not read at runtime.
+  Left as is.
+- A message typed into the view of a delegated parent (shown without "Resume") is queued; it is lost if the child
+  completes and the parent is reopened.
 
 ## Tests
 
@@ -152,3 +158,33 @@ Three stacked branches, one functionality each:
   screen.
 - `src/__tests__/single-open-invariant.spec.ts`: user-initiated create and history open leave the previous task
   with `keepRunning`.
+
+### Branch 2 (`feat/background-delegation`)
+
+What changed:
+
+- `DelegationService.delegate` takes the parent from the slot or from the detached set
+  (`getLiveTaskInstance`). A parent off screen is destroyed with `destroyDetachedTasks(..., skipDelegationRepair)`,
+  the panel's mode is not switched, and the child comes from `ClineProvider.createDetachedChildTask`: `taskMode`
+  set, profile from `getApiConfigurationForMode(mode)` else the parent's, `setTaskApiConfigName`, detached before
+  `start()`.
+- `DelegationService.complete` resumes the parent off screen (`createDetachedTaskFromHistory`, profile from
+  `ModeProfileBinding.getApiConfigurationForTask`: the task's own profile by name, else its mode's) only when the
+  child worked off screen and the user is not looking at the parent. A parent view on screen is cleared BEFORE the
+  parent is marked active, for the same reason the child is (its abort saves the old "delegated" status).
+- `DelegationService.detach` (the delegated-parent repair) leaves the parent waiting when the child that goes away
+  awaits a grandchild that still works: closing a view of B must not cut A -> B -> C while C runs.
+- `ClineProvider.showTaskWithId` opens a parent whose awaited child is alive with `startTask: false` and loads its
+  saved messages, so it is shown without the "Resume" ask.
+- The on-screen paths call none of the new host members, so they behave exactly as before.
+
+Tests:
+
+- `src/core/webview/__tests__/DelegationService.spec.ts`: delegate from an off-screen parent (no slot change, no
+  mode switch, detached child); complete with the child off screen and the user elsewhere (parent resumed off
+  screen); complete while the user looks at the parent (cleared while still "delegated", then reopened on screen);
+  detach keeps the parent waiting while the grandchild works. Forcing the parent back on screen fails the second.
+- `src/core/webview/__tests__/ClineProvider.spec.ts`: `createDetachedChildTask` (mode, profile, lineage, not on
+  screen, detached; the parent's profile without a mode profile) and `createDetachedTaskFromHistory`.
+- `src/core/webview/__tests__/ModeProfileBinding.getApiConfigurationForTask.spec.ts` (new).
+- `src/core/webview/__tests__/ClineProvider.task-slot.spec.ts`: the delegated parent view.

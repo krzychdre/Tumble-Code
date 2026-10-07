@@ -314,6 +314,11 @@ export class ClineProvider
 			createTask: (text, images, parentTask, options) => this.createTask(text, images, parentTask, options),
 			createTaskWithHistoryItem: (item, options) => this.createTaskWithHistoryItem(item, options),
 			handleModeSwitch: (mode) => this.handleModeSwitch(mode),
+			getLiveTaskInstance: (taskId) => this.getLiveTaskInstance(taskId),
+			destroyDetachedTasks: (taskIds, options) => this.taskSlot.destroyDetached(taskIds, options),
+			createDetachedChildTask: (text, parentTask, mode, options) =>
+				this.createDetachedChildTask(text, parentTask, mode, options),
+			createDetachedTaskFromHistory: (item) => this.createDetachedTaskFromHistory(item),
 			emit: (event, ...args) => this.untypedEmitter.emit(event, ...args),
 			showAllowListViolation: (error) => this.showAllowListViolation(error),
 		})
@@ -1005,21 +1010,11 @@ export class ClineProvider
 			throw error
 		}
 
-		const task = new Task({
-			provider: this,
-			...profileOptions,
-			enableCheckpoints,
-			checkpointTimeout,
+		const task = this.newTaskFromHistory(
 			historyItem,
-			experiments,
-			parentTask: historyItem.parentTask,
-			taskNumber: historyItem.number,
-			workspacePath: historyItem.workspace,
-			onCreated: this.taskCreationCallback,
-			startTask: options?.startTask ?? true,
-			// Preserve the status from the history item to avoid overwriting it when the task saves messages
-			initialStatus: historyItem.status,
-		})
+			{ profileOptions, enableCheckpoints, checkpointTimeout, experiments },
+			options?.startTask ?? true,
+		)
 
 		if (isRehydratingCurrentTask) {
 			// Replace the current task in-place to avoid UI flicker (the
@@ -1095,6 +1090,57 @@ export class ClineProvider
 			}, 100) // Small delay to ensure task is fully ready
 		}
 
+		return task
+	}
+
+	/**
+	 * The Task for `historyItem`, with the options every rebuild from history
+	 * shares (on screen in createTaskWithHistoryItem, off screen in
+	 * createDetachedTaskFromHistory).
+	 */
+	private newTaskFromHistory(
+		historyItem: HistoryItem & { parentTask?: Task },
+		settings: Pick<
+			Awaited<ReturnType<ClineProvider["getState"]>>,
+			"enableCheckpoints" | "checkpointTimeout" | "experiments"
+		> & { profileOptions: ReturnType<typeof profileTaskOptions> },
+		startTask: boolean,
+	): Task {
+		const { profileOptions, enableCheckpoints, checkpointTimeout, experiments } = settings
+		return new Task({
+			provider: this,
+			...profileOptions,
+			enableCheckpoints,
+			checkpointTimeout,
+			historyItem,
+			experiments,
+			parentTask: historyItem.parentTask,
+			taskNumber: historyItem.number,
+			workspacePath: historyItem.workspace,
+			onCreated: this.taskCreationCallback,
+			startTask,
+			// Preserve the status from the history item to avoid overwriting it when the task saves messages
+			initialStatus: historyItem.status,
+		})
+	}
+
+	/**
+	 * Rebuilds a task from history off screen, not started (a parent resumed
+	 * after its child completed off screen; see DelegationService.complete).
+	 * It runs on its own profile and mode; the panel's mode, profile and slot
+	 * stay with the task the user is looking at.
+	 */
+	private async createDetachedTaskFromHistory(historyItem: HistoryItem): Promise<Task> {
+		const { apiConfiguration, organizationAllowList, enableCheckpoints, checkpointTimeout, experiments } =
+			await this.getState()
+		const own = await this.modeProfiles.getApiConfigurationForTask(historyItem)
+		const profileOptions = profileTaskOptions(own?.apiConfiguration ?? apiConfiguration, organizationAllowList)
+		const task = this.newTaskFromHistory(
+			historyItem,
+			{ profileOptions, enableCheckpoints, checkpointTimeout, experiments },
+			false,
+		)
+		this.taskSlot.detach(task)
 		return task
 	}
 
@@ -1331,7 +1377,18 @@ export class ClineProvider
 				parentTask = current
 			}
 
-			await this.createTaskWithHistoryItem({ ...historyItem, parentTask })
+			// A parent whose child still works off screen is shown, not
+			// resumed: resuming it would run it next to its own child. The
+			// child's completion brings it back (DelegationService.complete).
+			const awaitsLiveChild =
+				!!historyItem.awaitingChildId && !!this.taskSlot.findLiveInstance(historyItem.awaitingChildId)
+			const task = await this.createTaskWithHistoryItem(
+				{ ...historyItem, parentTask },
+				{ startTask: !awaitsLiveChild },
+			)
+			if (awaitsLiveChild) {
+				await task.overwriteClineMessages(await task.history.getSavedClineMessages())
+			}
 		}
 
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
@@ -1792,6 +1849,40 @@ export class ClineProvider
 			`[createTask] ${task.parentTask ? "child" : "parent"} task ${task.taskId}.${task.instanceId} instantiated`,
 		)
 
+		return task
+	}
+
+	/**
+	 * Creates, not started, the delegated child of a parent that works off
+	 * screen (see DelegationService.delegate). The child works off screen too,
+	 * in `mode` on the profile pinned to it, else on its parent's profile; the
+	 * panel's mode, profile and slot stay with the task the user is looking at.
+	 */
+	private async createDetachedChildTask(
+		text: string,
+		parentTask: Task,
+		mode: string,
+		options: CreateTaskOptions,
+	): Promise<Task> {
+		const { organizationAllowList, enableCheckpoints, checkpointTimeout, experiments } = await this.getState()
+		const modeProfile = await this.getApiConfigurationForMode(mode)
+		const task = new Task({
+			provider: this,
+			...profileTaskOptions(modeProfile?.apiConfiguration ?? parentTask.apiConfiguration, organizationAllowList),
+			enableCheckpoints,
+			checkpointTimeout,
+			task: text,
+			experiments,
+			taskMode: mode,
+			rootTaskId: parentTask.rootTaskId ?? parentTask.taskId,
+			parentTask,
+			taskNumber: 1,
+			onCreated: this.taskCreationCallback,
+			...options,
+			startTask: false,
+		})
+		task.setTaskApiConfigName(modeProfile?.name ?? parentTask.taskApiConfigName)
+		this.taskSlot.detach(task)
 		return task
 	}
 

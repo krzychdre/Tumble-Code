@@ -590,6 +590,8 @@ describe("History resume delegation - parent metadata transitions", () => {
 			}),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => ({ taskId: "different-open-task" })),
+			// Nor does the child work off screen: the parent reopens on screen as before.
+			getLiveTaskInstance: vi.fn(() => undefined),
 			clearCurrentTask,
 			createTaskWithHistoryItem,
 			updateTaskHistory,

@@ -174,6 +174,7 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		getCurrentTask: vi.fn(() => undefined),
 		clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 		leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
+		newTaskFromHistory: (ClineProvider.prototype as any).newTaskFromHistory,
 		setCurrentTask: vi.fn().mockResolvedValue(undefined),
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		updateGlobalState: vi.fn().mockResolvedValue(undefined),

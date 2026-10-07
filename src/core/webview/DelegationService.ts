@@ -38,6 +38,12 @@ export interface DelegationHost extends CurrentTaskHostMember, PostMessageHostMe
 	createTask(text?: string, images?: string[], parentTask?: Task, options?: CreateTaskOptions): Promise<Task>
 	createTaskWithHistoryItem(item: HistoryItem, options?: { startTask?: boolean }): Promise<Task>
 	handleModeSwitch(mode: Mode): Promise<void>
+	/** The live instance of a task: on screen or working off screen (see TaskSlot). */
+	getLiveTaskInstance(taskId: string): Task | undefined
+	destroyDetachedTasks(taskIds: string[], options?: { skipDelegationRepair?: boolean }): Promise<void>
+	/** The off-screen counterparts of createTask (child) and createTaskWithHistoryItem (resumed parent). */
+	createDetachedChildTask(text: string, parentTask: Task, mode: string, options: CreateTaskOptions): Promise<Task>
+	createDetachedTaskFromHistory(item: HistoryItem): Promise<Task>
 	emit<K extends keyof TaskProviderEvents>(event: K, ...args: TaskProviderEvents[K]): boolean
 	/** Shows an organization allow-list rejection; returns whether `error` was one. */
 	showAllowListViolation(error: unknown): boolean
@@ -89,6 +95,10 @@ export class DelegationService {
 	 * - Persist parent delegation metadata
 	 * - Emit TaskDelegated on the provider (the public API forwards it)
 	 * - Create child as sole active and switch mode to child's mode
+	 *
+	 * A parent working off screen (the user left it) hands over off screen:
+	 * its child starts off screen in its own mode, and the panel's mode,
+	 * profile and slot stay with whatever the user is looking at.
 	 */
 	async delegate(params: {
 		parentTaskId: string
@@ -100,16 +110,17 @@ export class DelegationService {
 
 		// Metadata-driven delegation is always enabled
 
-		// 1) Get parent (must be current task)
-		const parent = this.host.getCurrentTask()
+		// 1) Get the parent: the current task, or a task working off screen
+		const current = this.host.getCurrentTask()
+		const parent = current?.taskId === parentTaskId ? current : this.host.getLiveTaskInstance(parentTaskId)
 		if (!parent) {
-			throw new Error("[delegateParentAndOpenChild] No current task")
-		}
-		if (parent.taskId !== parentTaskId) {
 			throw new Error(
-				`[delegateParentAndOpenChild] Parent mismatch: expected ${parentTaskId}, current ${parent.taskId}`,
+				current
+					? `[delegateParentAndOpenChild] Parent mismatch: expected ${parentTaskId}, current ${current.taskId}`
+					: "[delegateParentAndOpenChild] No current task",
 			)
 		}
+		const onScreen = parent === current
 		// 2) Flush pending tool results to API history BEFORE disposing the parent.
 		//    This is critical: when tools are called before new_task,
 		//    their tool_result blocks are in userMessageContent but not yet saved to API history.
@@ -148,7 +159,11 @@ export class DelegationService {
 		//    This ensures we never have >1 tasks open at any time during delegation.
 		//    Await abort completion to ensure clean disposal and prevent unhandled rejections.
 		try {
-			await this.host.clearCurrentTask({ skipDelegationRepair: true })
+			if (onScreen) {
+				await this.host.clearCurrentTask({ skipDelegationRepair: true })
+			} else {
+				await this.host.destroyDetachedTasks([parentTaskId], { skipDelegationRepair: true })
+			}
 		} catch (error) {
 			logger.warn(
 				`[delegateParentAndOpenChild] Error during parent disposal (non-fatal): ${
@@ -162,14 +177,17 @@ export class DelegationService {
 		//    This ensures the child's system prompt and configuration are based on the correct mode.
 		//    The mode switch must happen before createTask() because the Task constructor
 		//    initializes its mode from provider.getState() during initializeTaskMode().
-		try {
-			await this.host.handleModeSwitch(mode)
-		} catch (e) {
-			logger.warn(
-				`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
-					(e as Error)?.message ?? String(e)
-				}`,
-			)
+		//    An off-screen child gets its mode as a task option instead.
+		if (onScreen) {
+			try {
+				await this.host.handleModeSwitch(mode)
+			} catch (e) {
+				logger.warn(
+					`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
+						(e as Error)?.message ?? String(e)
+					}`,
+				)
+			}
 		}
 
 		// 4) Create child as sole active (parent reference preserved for lineage)
@@ -184,11 +202,10 @@ export class DelegationService {
 		// startTask() races with step 5's atomicReadAndUpdate, and the last
 		// writer to the parent's history_item.json overwrites the other's
 		// changes, causing the parent's delegation fields to be lost.
-		const child = await this.host.createTask(message, undefined, parent, {
-			initialTodos,
-			initialStatus: "active",
-			startTask: false,
-		})
+		const childOptions = { initialTodos, initialStatus: "active" as const, startTask: false }
+		const child = onScreen
+			? await this.host.createTask(message, undefined, parent, childOptions)
+			: await this.host.createDetachedChildTask(message, parent, mode, childOptions)
 
 		// 5) Persist parent delegation metadata BEFORE the child starts writing.
 		//    atomicReadAndUpdate reads from the in-memory cache and writes back within a
@@ -257,6 +274,13 @@ export class DelegationService {
 		const parentHistory = await this.host.getHistoryItem(parentTaskId)
 
 		if (parentHistory?.status !== "delegated" || parentHistory?.awaitingChildId !== childTaskId) {
+			return false
+		}
+
+		// A child that delegated in turn to a task still working (off screen)
+		// did not go away: only a view of it closed. Its parent keeps waiting.
+		const childHistory = await this.host.getHistoryItem(childTaskId).catch(() => undefined)
+		if (childHistory?.awaitingChildId && this.host.getLiveTaskInstance(childHistory.awaitingChildId)) {
 			return false
 		}
 
@@ -592,12 +616,21 @@ export class DelegationService {
 		//    This MUST happen BEFORE updating the child's status to "completed" because
 		//    clearCurrentTask() → abortTask(true) → saveClineMessages() writes
 		//    the historyItem with initialStatus (typically "active"), which would
-		//    overwrite a "completed" status set earlier.
+		//    overwrite a "completed" status set earlier. A view of the parent on
+		//    screen (opened while the child worked off screen) closes first for
+		//    the same reason: it would write the parent back to "delegated".
+		//    The parent comes back on screen only if the user is looking at the
+		//    child or at the parent; otherwise it resumes off screen.
 		const current = this.host.getCurrentTask()
-		if (current?.taskId === childTaskId) {
+		const childOffScreen = current?.taskId !== childTaskId && !!this.host.getLiveTaskInstance(childTaskId)
+		const parentOnScreen = !childOffScreen || current?.taskId === parentTaskId
+		if (current && (current.taskId === childTaskId || current.taskId === parentTaskId)) {
 			// This method explicitly persists the parent's active state below, so the
 			// generic delegated→active repair in clearCurrentTask would be redundant.
 			await this.host.clearCurrentTask({ skipDelegationRepair: true })
+		}
+		if (childOffScreen) {
+			await this.host.destroyDetachedTasks([childTaskId], { skipDelegationRepair: true })
 		}
 
 		// 4) Update child metadata to "completed" status.
@@ -641,11 +674,14 @@ export class DelegationService {
 			// non-fatal
 		}
 
-		// 7) Reopen the parent from history as the sole active task (restores saved mode)
+		// 7) Reopen the parent from history as the sole active task (restores saved mode),
+		//    or off screen in its own mode and profile (see step 3)
 		//    IMPORTANT: startTask=false to suppress resume-from-history ask scheduling
 		let parentInstance: Task
 		try {
-			parentInstance = await this.host.createTaskWithHistoryItem(updatedHistory, { startTask: false })
+			parentInstance = parentOnScreen
+				? await this.host.createTaskWithHistoryItem(updatedHistory, { startTask: false })
+				: await this.host.createDetachedTaskFromHistory(updatedHistory)
 		} catch (error) {
 			// The parent's profile is no longer allowed. The child is already
 			// closed and the parent's history holds the result (steps 2-5), so
