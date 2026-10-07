@@ -542,7 +542,9 @@
 		"pauseTitle": "Plan bijgewerkt — beoordeel en keur goed"
 	},
 	"subagents": {
-		"headerActive": "Subagenten: {{active}}/{{total}} actief",
+		"headerRunning": "Subagenten: {{running}}/{{total}} bezig",
+		"headerQueued": "in wachtrij: {{count}}",
+		"headerAwaitingInput": "wachten op invoer: {{count}}",
 		"headerDone": "Subagenten: {{total}} voltooid",
 		"noOutput": "Nog geen uitvoer.",
 		"tokens": "Tokens gebruikt",

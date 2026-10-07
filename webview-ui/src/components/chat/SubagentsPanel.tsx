@@ -413,7 +413,10 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 	const cancellable = isLive(summary) && !isQueuedPlaceholder(summary)
 
 	return (
-		<div className="border border-vscode-panel-border overflow-hidden">
+		// shrink-0: overflow-hidden drops a flex item's content-based minimum
+		// height, so in the height-capped list the rows were squashed into slivers
+		// instead of the list scrolling.
+		<div className="shrink-0 border border-vscode-panel-border overflow-hidden">
 			<div className="flex items-center">
 				<button
 					type="button"
@@ -487,16 +490,32 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
  * parent hands work to a `new_task` subtask (the parent is not reset, it
  * resumes later), so the list is filtered by `parentTaskId` here: a subtask,
  * or any other task opened meanwhile, never shows its parent's subagents.
+ *
+ * The list starts collapsed: a wide fan-out would otherwise cover the chat
+ * every time the task is opened. ChatView keys the panel by task id, so
+ * entering another task collapses it again.
  */
 const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: SubagentsPanelProps) => {
 	const { t } = useTranslation()
-	const [panelExpanded, setPanelExpanded] = useState(true)
+	const [panelExpanded, setPanelExpanded] = useState(false)
 
 	const subagents = useMemo(
 		() => (allSubagents ?? []).filter((summary) => summary.parentTaskId === taskId),
 		[allSubagents, taskId],
 	)
-	const active = useMemo(() => subagents.filter(isLive).length, [subagents])
+	// "Active" used to count queued children too, so a fan-out with 4 running
+	// and 16 waiting for a slot read "20/20 active". Each live state is
+	// counted on its own; the header names only the non-zero ones.
+	const counts = useMemo(() => {
+		const byStatus = { running: 0, queued: 0, awaiting_input: 0 }
+		for (const summary of subagents) {
+			if (summary.status in byStatus) {
+				byStatus[summary.status as keyof typeof byStatus]++
+			}
+		}
+		return byStatus
+	}, [subagents])
+	const anyLive = counts.running + counts.queued + counts.awaiting_input > 0
 
 	const handleOpenChange = useCallback((open: boolean) => setPanelExpanded(open), [])
 
@@ -518,15 +537,24 @@ const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: Sub
 				)}
 				<Bot className="size-4 shrink-0" aria-hidden />
 				<span className="text-sm font-medium">
-					{active > 0
-						? t("chat:subagents.headerActive", { active, total: subagents.length })
+					{anyLive
+						? [
+								t("chat:subagents.headerRunning", { running: counts.running, total: subagents.length }),
+								counts.queued > 0 && t("chat:subagents.headerQueued", { count: counts.queued }),
+								counts.awaiting_input > 0 &&
+									t("chat:subagents.headerAwaitingInput", { count: counts.awaiting_input }),
+							]
+								.filter(Boolean)
+								.join(" · ")
 						: t("chat:subagents.headerDone", { total: subagents.length })}
 				</span>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
 				{/* Several expanded rows must not push the chat and the composer
 				    out of view: the list scrolls once it fills half the height. */}
-				<div className="flex flex-col gap-1 pb-2 pl-6 max-h-[50vh] overflow-y-auto">
+				<div
+					data-testid="subagents-list"
+					className="flex flex-col gap-1 pb-2 pl-6 max-h-[50vh] overflow-y-auto">
 					{subagents.map((summary) => (
 						<SubagentRow key={`${summary.parentTaskId}:${summary.index}`} summary={summary} />
 					))}

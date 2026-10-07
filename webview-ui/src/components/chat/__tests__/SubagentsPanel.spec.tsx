@@ -47,11 +47,67 @@ const renderPanel = (subagents: SubagentSummary[], taskId: string | undefined) =
 		</TooltipProvider>,
 	)
 
+const expandPanel = () => fireEvent.click(screen.getByText(/chat:subagents.header/))
+
 describe("SubagentsPanel task scope", () => {
 	it("lists the fan-out of the open task", () => {
 		renderPanel([summary({})], "parent")
+		expandPanel()
 
 		expect(screen.getByText("first subtask")).toBeInTheDocument()
+	})
+
+	it("starts collapsed so a wide fan-out does not cover the chat", () => {
+		renderPanel([summary({})], "parent")
+
+		expect(screen.getByText(/chat:subagents.headerDone/)).toBeInTheDocument()
+		expect(screen.queryByText("first subtask")).not.toBeInTheDocument()
+	})
+
+	// Regression: queued children counted as active, so 4 running + 16 queued
+	// read "20/20 active".
+	it("counts running, queued and awaiting-input children separately", () => {
+		renderPanel(
+			[
+				summary({ taskId: "r", index: 0, status: "running" }),
+				summary({ taskId: "q1", index: 1, status: "queued" }),
+				summary({ taskId: "q2", index: 2, status: "queued" }),
+				summary({ taskId: "w", index: 3, status: "awaiting_input" }),
+				summary({ taskId: "c", index: 4, status: "completed" }),
+			],
+			"parent",
+		)
+
+		expect(screen.getByText(/chat:subagents.headerRunning/)).toHaveTextContent(
+			'chat:subagents.headerRunning {"running":1,"total":5} · chat:subagents.headerQueued {"count":2} · chat:subagents.headerAwaitingInput {"count":1}',
+		)
+	})
+
+	it("names only the live states that are present", () => {
+		renderPanel([summary({ taskId: "r", status: "running" })], "parent")
+
+		expect(screen.getByText(/chat:subagents.headerRunning/)).toHaveTextContent(
+			'chat:subagents.headerRunning {"running":1,"total":1}',
+		)
+	})
+
+	// Regression: overflow-hidden rows in the height-capped flex column were
+	// squashed into slivers (20 parallel subagents) instead of the list scrolling.
+	it("scrolls the list instead of squashing the rows", () => {
+		renderPanel(
+			Array.from({ length: 20 }, (_, index) =>
+				summary({ taskId: `child-${index}`, index, description: `subtask ${index}`, status: "running" }),
+			),
+			"parent",
+		)
+		expandPanel()
+
+		const list = screen.getByTestId("subagents-list")
+		expect(list).toHaveClass("max-h-[50vh]", "overflow-y-auto")
+		expect(list.children).toHaveLength(20)
+		for (const row of Array.from(list.children)) {
+			expect(row).toHaveClass("shrink-0")
+		}
 	})
 
 	// Regression: a parent that delegated to a new_task subtask keeps its rows in
@@ -71,6 +127,7 @@ describe("SubagentsPanel task scope", () => {
 			],
 			"parent",
 		)
+		expandPanel()
 
 		expect(screen.getByText("first subtask")).toBeInTheDocument()
 		expect(screen.queryByText("foreign subtask")).not.toBeInTheDocument()
@@ -85,7 +142,10 @@ describe("SubagentsPanel task scope", () => {
 })
 
 describe("SubagentsPanel tail of a finished subagent", () => {
-	const expandRow = () => fireEvent.click(screen.getByRole("button", { expanded: false, name: /first subtask/ }))
+	const expandRow = () => {
+		expandPanel()
+		fireEvent.click(screen.getByRole("button", { expanded: false, name: /first subtask/ }))
+	}
 
 	// Regression: the final-message fallback rendered outside any height cap, so
 	// a long result ran past the panel with no scrollbar.

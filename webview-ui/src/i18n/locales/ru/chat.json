@@ -561,7 +561,9 @@
 		"pauseTitle": "План обновлён — проверьте и утвердите"
 	},
 	"subagents": {
-		"headerActive": "Субагенты: {{active}}/{{total}} активно",
+		"headerRunning": "Субагенты: {{running}}/{{total}} выполняется",
+		"headerQueued": "в очереди: {{count}}",
+		"headerAwaitingInput": "ждут ответа: {{count}}",
 		"headerDone": "Субагенты: {{total}} завершено",
 		"noOutput": "Пока нет вывода.",
 		"tokens": "Использовано токенов",

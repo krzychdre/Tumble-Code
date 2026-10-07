@@ -550,7 +550,9 @@
 		"pauseTitle": "Pla actualitzat — revisa i aprova"
 	},
 	"subagents": {
-		"headerActive": "Subagents: {{active}}/{{total}} actius",
+		"headerRunning": "Subagents: {{running}}/{{total}} en execució",
+		"headerQueued": "en cua: {{count}}",
+		"headerAwaitingInput": "esperant resposta: {{count}}",
 		"headerDone": "Subagents: {{total}} finalitzats",
 		"noOutput": "Encara no hi ha sortida.",
 		"tokens": "Tokens utilitzats",

@@ -42,7 +42,9 @@
 		"openFile": "Open file"
 	},
 	"subagents": {
-		"headerActive": "Subagents: {{active}}/{{total}} active",
+		"headerRunning": "Subagents: {{running}}/{{total}} running",
+		"headerQueued": "{{count}} queued",
+		"headerAwaitingInput": "{{count}} awaiting input",
 		"headerDone": "Subagents: {{total}} finished",
 		"noOutput": "No output yet.",
 		"tokens": "Tokens used",

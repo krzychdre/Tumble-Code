@@ -550,7 +550,9 @@
 		"pauseTitle": "Piano aggiornato — rivedi e approva"
 	},
 	"subagents": {
-		"headerActive": "Subagenti: {{active}}/{{total}} attivi",
+		"headerRunning": "Subagenti: {{running}}/{{total}} in esecuzione",
+		"headerQueued": "in coda: {{count}}",
+		"headerAwaitingInput": "in attesa di risposta: {{count}}",
 		"headerDone": "Subagenti: {{total}} completati",
 		"noOutput": "Nessun output ancora.",
 		"tokens": "Token usati",

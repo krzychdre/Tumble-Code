@@ -2153,26 +2153,24 @@ export class ClineProvider
 
 	/**
 	 * Single source of truth for resetting the parallel-subagent panel at a
-	 * task boundary: clears the in-memory registry and broadcasts an empty
-	 * `subagentsUpdated` so the webview panel renders nothing for the new
-	 * task. Called from every entry point that begins a fresh foreground
-	 * task (`createTask` for a user-initiated top-level task, `clearTask`,
-	 * and `createTaskWithHistoryItem` for a rehydrated root). Mid-task
-	 * re-fan-out continues to use `SubagentRegistry.beginFanOut`.
+	 * task boundary: drops the rows of finished fan-outs (see
+	 * `SubagentRegistry.clearSettled`) and broadcasts what is left. A fan-out
+	 * still running off screen keeps its rows, so its parent shows them again
+	 * when reopened; the webview panel lists only the open task's rows.
+	 * Called from every entry point that changes the foreground task
+	 * (`createTask` for a user-initiated top-level task, `clearTask`,
+	 * `createTaskWithHistoryItem` for a rehydrated root, `reattachTask`).
 	 *
 	 * The broadcast is best-effort: if the webview is not yet mounted the
-	 * post is dropped silently, and the next `postStateToWebview` will carry
-	 * the now-empty `subagents` slice via the state payload anyway.
+	 * post is dropped silently, and the next `postStateToWebview` carries
+	 * the `subagents` slice via the state payload anyway.
 	 */
 	private async resetSubagentPanel(): Promise<void> {
-		this.subagentRegistry.clearAll()
-		// `clearAll` already posts; this second explicit post is belt-and-
-		// suspenders in case a subclass overrides the registry's post hook,
-		// and keeps the contract that this method always broadcasts `[]`.
+		this.subagentRegistry.clearSettled()
 		await this.postMessageToWebview({
 			type: "subagentsUpdated",
 			sourceTaskId: this.getCurrentTask()?.taskId,
-			subagents: [],
+			subagents: this.subagentRegistry.list(),
 		})
 	}
 

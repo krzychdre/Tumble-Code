@@ -35,6 +35,8 @@ export function queuedSubagentId(parentTaskId: string, index: number): string {
 export class SubagentRegistry {
 	private summaries = new Map<string, SubagentSummary>()
 	private watched = new Set<string>()
+	/** Parents whose fan-out has begun and not yet settled. */
+	private inProgress = new Set<string>()
 
 	/**
 	 * @param post Broadcast an extension message to the webview.
@@ -63,9 +65,22 @@ export class SubagentRegistry {
 	/**
 	 * Start a new fan-out for `parentTaskId`: drop the previous fan-out's
 	 * entries (and their watch flags) so the panel only ever shows the live
-	 * generation.
+	 * generation. The fan-out counts as in progress until {@link endFanOut}.
 	 */
 	beginFanOut(parentTaskId: string): void {
+		this.dropParent(parentTaskId)
+		this.inProgress.add(parentTaskId)
+	}
+
+	/**
+	 * The fan-out of `parentTaskId` settled and its sidecar is written. Its
+	 * rows stay until the next task boundary ({@link clearSettled}).
+	 */
+	endFanOut(parentTaskId: string): void {
+		this.inProgress.delete(parentTaskId)
+	}
+
+	private dropParent(parentTaskId: string): void {
 		let changed = false
 		for (const [taskId, summary] of this.summaries) {
 			if (summary.parentTaskId === parentTaskId) {
@@ -80,24 +95,30 @@ export class SubagentRegistry {
 	}
 
 	/**
-	 * Reset the registry entirely and broadcast an empty panel. Called by
-	 * `ClineProvider` at every entry point that begins a fresh foreground
-	 * task (new task, clearTask, rehydrate from history) so subagents from a
-	 * previous task never leak into the new one.
+	 * Drop the rows of every finished fan-out and broadcast. Called by
+	 * `ClineProvider` at every entry point that changes the foreground task
+	 * (new task, clearTask, open from history, reattach) so a finished
+	 * fan-out's rows do not pile up; the task being opened gets them back from
+	 * its sidecar via {@link restore}.
 	 *
-	 * Unlike {@link beginFanOut} (which scopes to one parent and preserves
-	 * detached fan-outs still running for other parents), this drops every
-	 * entry. It is the right call only at task boundaries where the previous
-	 * foreground task is gone; mid-task re-fan-out continues to use
-	 * `beginFanOut`.
+	 * A fan-out still in progress keeps its rows: its parent runs on off
+	 * screen, its children keep reporting status changes, and the sidecar is
+	 * written from these rows when the fan-out settles. Dropping them made a
+	 * reopened parent show an empty panel, then only the children started
+	 * after the reopen, and the sidecar lost the rest.
 	 */
-	clearAll(): void {
-		if (this.summaries.size === 0 && this.watched.size === 0) {
-			return
+	clearSettled(): void {
+		let changed = false
+		for (const [taskId, summary] of this.summaries) {
+			if (!this.inProgress.has(summary.parentTaskId)) {
+				this.summaries.delete(taskId)
+				this.watched.delete(taskId)
+				changed = true
+			}
 		}
-		this.summaries.clear()
-		this.watched.clear()
-		this.postUpdate()
+		if (changed) {
+			this.postUpdate()
+		}
 	}
 
 	/**
@@ -111,6 +132,11 @@ export class SubagentRegistry {
 	 * before the message arrives.
 	 */
 	restore(parentTaskId: string, summaries: SubagentSummary[]): void {
+		// The live rows of a fan-out still in progress are newer than any
+		// sidecar (which holds the previous fan-out, if any).
+		if (this.inProgress.has(parentTaskId)) {
+			return
+		}
 		// Drop any live or stale entries for this parent first (idempotent
 		// re-rehydrate of the same task should not double the panel).
 		for (const [taskId, summary] of this.summaries) {
@@ -132,7 +158,7 @@ export class SubagentRegistry {
 
 	/** Alias with intent: a parent task is gone — remove its fan-out entries. */
 	clearForParent(parentTaskId: string): void {
-		this.beginFanOut(parentTaskId)
+		this.dropParent(parentTaskId)
 	}
 
 	/**

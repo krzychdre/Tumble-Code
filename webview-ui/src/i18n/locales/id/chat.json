@@ -548,7 +548,9 @@
 		"pauseTitle": "Rencana diperbarui — tinjau dan setujui"
 	},
 	"subagents": {
-		"headerActive": "Subagen: {{active}}/{{total}} aktif",
+		"headerRunning": "Subagen: {{running}}/{{total}} berjalan",
+		"headerQueued": "antre: {{count}}",
+		"headerAwaitingInput": "menunggu input: {{count}}",
 		"headerDone": "Subagen: {{total}} selesai",
 		"noOutput": "Belum ada keluaran.",
 		"tokens": "Token digunakan",

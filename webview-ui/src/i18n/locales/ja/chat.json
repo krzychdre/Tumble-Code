@@ -542,7 +542,9 @@
 		"pauseTitle": "プランが更新されました — 確認して承認してください"
 	},
 	"subagents": {
-		"headerActive": "サブエージェント: {{active}}/{{total}} 個実行中",
+		"headerRunning": "サブエージェント: {{running}}/{{total}} 個実行中",
+		"headerQueued": "待機中: {{count}}",
+		"headerAwaitingInput": "入力待ち: {{count}}",
 		"headerDone": "サブエージェント: {{total}} 件完了",
 		"noOutput": "まだ出力はありません。",
 		"tokens": "使用トークン",

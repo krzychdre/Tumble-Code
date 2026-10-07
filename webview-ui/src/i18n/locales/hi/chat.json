@@ -542,7 +542,9 @@
 		"pauseTitle": "योजना अपडेट हुई — समीक्षा करें और स्वीकृत करें"
 	},
 	"subagents": {
-		"headerActive": "उप-एजेंट: {{active}}/{{total}} सक्रिय",
+		"headerRunning": "उप-एजेंट: {{running}}/{{total}} चल रहे हैं",
+		"headerQueued": "कतार में: {{count}}",
+		"headerAwaitingInput": "इनपुट की प्रतीक्षा में: {{count}}",
 		"headerDone": "उप-एजेंट: {{total}} समाप्त",
 		"noOutput": "अभी तक कोई आउटपुट नहीं।",
 		"tokens": "उपयोग किए गए टोकन",

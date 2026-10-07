@@ -571,7 +571,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							atBottomThreshold={10}
 						/>
 					</div>
-					<SubagentsPanel subagents={subagents} taskId={currentTaskId} />
+					<SubagentsPanel key={currentTaskId} subagents={subagents} taskId={currentTaskId} />
 					<FileChangesPanel clineMessages={messages} />
 					{areButtonsVisible && (
 						<div
