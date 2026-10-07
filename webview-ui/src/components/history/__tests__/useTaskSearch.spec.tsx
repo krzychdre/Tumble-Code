@@ -332,4 +332,61 @@ describe("useTaskSearch", () => {
 		expect(result.current.tasks[0].runningStatus).toBe("running")
 		expect(result.current.tasks[0].highlight).toBeDefined()
 	})
+
+	describe("a working subtask", () => {
+		// root -> child -> grandchild, plus an unrelated task-1 at rest.
+		const tree: HistoryItem[] = [
+			mockTaskHistory[0],
+			{ ...mockTaskHistory[1], id: "root", number: 4 },
+			{ ...mockTaskHistory[1], id: "child", number: 5, parentTaskId: "root", rootTaskId: "root" },
+			{ ...mockTaskHistory[1], id: "grandchild", number: 6, parentTaskId: "child", rootTaskId: "root" },
+		]
+
+		const statusesWith = (runningTasks: Record<string, string>) => {
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: tree,
+				cwd: "/workspace/project1",
+				runningTasks,
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+			return Object.fromEntries(result.current.tasks.map((task) => [task.id, task.runningStatus]))
+		}
+
+		it("marks every ancestor up to the root task as running", () => {
+			expect(statusesWith({ grandchild: "running" })).toEqual({
+				"task-1": undefined,
+				root: "running",
+				child: "running",
+				grandchild: "running",
+			})
+		})
+
+		it("shows on the ancestors that the subtask waits for the user", () => {
+			expect(statusesWith({ grandchild: "awaiting_input" })).toMatchObject({
+				root: "awaiting_input",
+				child: "awaiting_input",
+			})
+		})
+
+		it("lets a waiting subtask win over a running one on a shared ancestor", () => {
+			const statuses = statusesWith({ child: "awaiting_input", grandchild: "running" })
+			expect(statuses).toMatchObject({ root: "awaiting_input", child: "awaiting_input", grandchild: "running" })
+		})
+
+		it("stops at a parent cycle instead of looping", () => {
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: [
+					{ ...mockTaskHistory[0], id: "a", parentTaskId: "b" },
+					{ ...mockTaskHistory[1], id: "b", parentTaskId: "a" },
+				],
+				cwd: "/workspace/project1",
+				runningTasks: { a: "running" },
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+			expect(result.current.tasks.map((task) => [task.id, task.runningStatus])).toEqual([
+				["b", "running"],
+				["a", "running"],
+			])
+		})
+	})
 })
