@@ -25,6 +25,13 @@ export interface SystemPromptSettings {
 	 */
 	slimToolset?: boolean
 	slimHidesMcp?: boolean
+	/**
+	 * Tool names the request removes on top of the mode's groups (the user's
+	 * `disabledTools`, the model's `excludedTools`, the background-task
+	 * removals). TOOLS IN THIS MODE reads it so it never suggests `new_task` or
+	 * `switch_mode` when the tool array does not carry them.
+	 */
+	removedTools?: string[]
 }
 
 /**

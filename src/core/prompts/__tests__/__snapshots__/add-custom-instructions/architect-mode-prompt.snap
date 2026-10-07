@@ -64,6 +64,12 @@ The Current Workspace Directory is the active VS Code project directory, and is 
 
 ====
 
+TOOLS IN THIS MODE
+
+This mode cannot run shell commands (there is no execute_command tool). Do not call those tools: a call to a tool that is not in your tool list is rejected and you get no result. When the work needs commands, delegate it with new_task to a mode that has those tools (for example code), or switch with switch_mode.
+
+====
+
 MODES
 
 - Test modes section

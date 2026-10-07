@@ -64,7 +64,7 @@ All contributions start with a GitHub Issue.
 
 - Check for existing reports first.
 - Create a new bug report with: - Clear, numbered reproduction steps - Expected vs actual result - Tumble Code version (required); API provider/model if relevant
-      <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+  <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Development & Submission Process
 
@@ -106,7 +106,8 @@ lists:
 - **Stable prefix** (`stableHead`): identity opener, markdown rules, tool-use protocol, output
   efficiency, objective, capabilities, system information, memory. These bytes are identical for
   every mode and every profile on one workspace and machine.
-- **Variable tail** (`variableTail`): MCP availability, modes list, skills, rules, the mode's MODE
+- **Variable tail** (`variableTail`): MCP availability, the mode's missing tools (only for a mode
+  without `command`, `read` or `edit`), modes list, skills, rules, the mode's MODE
   section, user custom instructions, and last of all the deferred-tool catalog. These bytes may
   differ per mode, profile or user.
 

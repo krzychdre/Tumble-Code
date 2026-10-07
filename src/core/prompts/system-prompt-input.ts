@@ -1,6 +1,12 @@
 import * as vscode from "vscode"
 
-import { type CustomModePrompts, type ModeConfig, type ProviderSettings, SETTINGS_DEFAULTS } from "@tumble-code/types"
+import {
+	type CustomModePrompts,
+	type ModeConfig,
+	type ProviderSettings,
+	SETTINGS_DEFAULTS,
+	isParallelTasksEnabled,
+} from "@tumble-code/types"
 
 import type { McpHub } from "../../services/mcp/McpHub"
 import type { SkillsManager } from "../../services/skills/SkillsManager"
@@ -17,6 +23,8 @@ export interface SystemPromptState {
 	experiments?: Record<string, boolean>
 	language?: string
 	enableSubfolderRules?: boolean
+	disabledTools?: string[]
+	parallelTasksMaxConcurrency?: number
 	/** The ACTIVE profile, so the slim-toolset flags follow every mode switch. */
 	apiConfiguration?: Pick<ProviderSettings, "todoListEnabled" | "slimToolset" | "slimHidesMcp">
 }
@@ -42,14 +50,44 @@ export interface SystemPromptSource {
 	rooIgnoreController?: { getInstructions(): string | undefined }
 	/** Task-scoped: deferred tools the task already loaded. */
 	materializedDeferredTools?: ReadonlySet<string>
+	/** Task-scoped: a background task (parallel subagent, memory writer) loses the delegation tools. */
+	isBackground?: boolean
 	/** Facts about the model the request goes to. */
-	modelInfo?: { isStealthModel?: boolean }
+	modelInfo?: { isStealthModel?: boolean; excludedTools?: string[] }
 	skillsManager?: SkillsManager
 }
 
 /** Whether the prompt gets the MCP hub. An unset value takes the settings default. */
 export function isMcpEnabledForPrompt(state: Pick<SystemPromptState, "mcpEnabled"> | undefined): boolean {
 	return state?.mcpEnabled ?? SETTINGS_DEFAULTS.mcpEnabled
+}
+
+/**
+ * The `disabledTools` list a request hands to the tool filter: the user's
+ * setting, plus the delegation tools a background task never gets, plus
+ * run_parallel_tasks when the concurrency cap turns the feature off.
+ *
+ * One function for the tools array (ApiRequestBuilder.buildToolsArray) and for
+ * the prompt, so the prompt cannot suggest a tool the array no longer carries.
+ */
+export function getRequestDisabledTools(
+	state: Pick<SystemPromptState, "disabledTools" | "parallelTasksMaxConcurrency"> | undefined,
+	isBackground: boolean,
+): string[] | undefined {
+	// Background tasks (parallel subagents, memory writers) never get
+	// delegation tools: a subtask is a small one-shot job that must return
+	// to its parent, not fan out further. Foreground tasks lose
+	// run_parallel_tasks when the user's concurrency cap turns the feature
+	// Off (< 2). Routed through disabledTools so the existing
+	// alias-resolving filter removes them.
+	const disabledTools = state?.disabledTools
+	if (isBackground) {
+		return [...(disabledTools ?? []), "new_task", "run_parallel_tasks"]
+	}
+	if (!isParallelTasksEnabled(state?.parallelTasksMaxConcurrency)) {
+		return [...(disabledTools ?? []), "run_parallel_tasks"]
+	}
+	return disabledTools
 }
 
 /** Map the facts about a request to the input of `SYSTEM_PROMPT`. */
@@ -76,6 +114,10 @@ export function buildSystemPromptInput(source: SystemPromptSource): SystemPrompt
 			isStealthModel: source.modelInfo?.isStealthModel,
 			slimToolset: state?.apiConfiguration?.slimToolset,
 			slimHidesMcp: state?.apiConfiguration?.slimHidesMcp,
+			removedTools: [
+				...(getRequestDisabledTools(state, source.isBackground ?? false) ?? []),
+				...(source.modelInfo?.excludedTools ?? []),
+			],
 		},
 		skillsManager: source.skillsManager,
 		materializedDeferredTools: source.materializedDeferredTools,

@@ -619,6 +619,21 @@ describe("system prompt section order", () => {
 		expect(Math.min(...tailIndexes)).toBeGreaterThan(Math.max(...headIndexes))
 	})
 
+	it("puts TOOLS IN THIS MODE in the tail for orchestrator and omits it for code", async () => {
+		// The section is mode-dependent (orchestrator has `groups: []`), so it
+		// must start after the whole stable head and never touch code's bytes.
+		const orchestrator = await buildPrompt("orchestrator")
+		const code = await buildPrompt("code")
+
+		const sectionIndex = orchestrator.indexOf("====\n\nTOOLS IN THIS MODE")
+		expect(sectionIndex).toBeGreaterThan(-1)
+		for (const marker of STABLE_HEAD_MARKERS) {
+			expect(orchestrator.indexOf(marker)).toBeLessThan(sectionIndex)
+		}
+		expect(sectionIndex).toBeLessThan(orchestrator.indexOf("====\n\nMODES"))
+		expect(code).not.toContain("TOOLS IN THIS MODE")
+	})
+
 	it("puts the deferred-tools catalog last of all", async () => {
 		// The catalog is the only section that shrinks WITHIN a conversation:
 		// every `tools_load` materialization removes an entry. Anything printed
