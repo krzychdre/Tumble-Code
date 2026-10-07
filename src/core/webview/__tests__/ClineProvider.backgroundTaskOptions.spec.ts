@@ -23,6 +23,7 @@ vi.mock("../../task/Task", () => ({
 			instanceId: "1",
 			options,
 			start: vi.fn(),
+			setTaskApiConfigName: vi.fn(),
 		}
 	}),
 }))
@@ -86,7 +87,7 @@ describe("ClineProvider.createBackgroundTask profile rules (DEF-C6)", () => {
 		await expect(
 			provider.createBackgroundTask("do work", {
 				taskMode: "code",
-				subagentInfo: { parentTaskId: "parent", index: 0, description: "do work" },
+				subagentInfo: { parentTaskId: "parent", rootTaskId: "parent", workspace: "/project", index: 0, description: "do work" },
 			}),
 		).rejects.toBeInstanceOf(OrganizationAllowListViolationError)
 
@@ -130,7 +131,7 @@ describe("ClineProvider.createBackgroundTask profile rules (DEF-C6)", () => {
 
 		await provider.createBackgroundTask("do work", {
 			taskMode: "code",
-			subagentInfo: { parentTaskId: "parent", index: 0, description: "do work" },
+			subagentInfo: { parentTaskId: "parent", rootTaskId: "parent", workspace: "/project", index: 0, description: "do work" },
 		})
 
 		// The limit follows the profile the subagent actually runs on (the

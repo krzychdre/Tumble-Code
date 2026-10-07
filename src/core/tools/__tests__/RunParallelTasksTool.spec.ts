@@ -673,6 +673,37 @@ describe("RunParallelTasksTool.execute", () => {
 		expect(emitter.listenerCount(TumbleCodeEventName.TaskAborted)).toBe(0)
 	})
 
+	// The subagent's history item sits under the fan-out parent in the parent's
+	// workspace (the history list filters by workspace; the worktree would hide it).
+	it.each([
+		["a top-level parent", undefined, "parent-12345678"],
+		["a delegated parent", "root-1", "root-1"],
+	])("passes the history placement of each subagent for %s", async (_label, rootTaskId, expectedRoot) => {
+		const provider = makeFakeProvider()
+		const parent = makeFakeParentTask(provider, { rootTaskId })
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			makeCallbacks(),
+		)
+
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+		provider.children.forEach((c) => c.complete())
+		await execPromise
+
+		const opts = provider.createBackgroundTask.mock.calls[0][1] as {
+			workspacePath: string
+			subagentInfo: Record<string, unknown>
+		}
+		expect(opts.subagentInfo).toMatchObject({
+			parentTaskId: "parent-12345678",
+			rootTaskId: expectedRoot,
+			workspace: "/home/user/myproj",
+			index: 0,
+		})
+		expect(opts.workspacePath).not.toBe("/home/user/myproj")
+	})
+
 	it("passes a real approval policy (not blanket approve) to createBackgroundTask", async () => {
 		// State: no commands auto-approved, so a command ask should be denied.
 		const provider = makeFakeProvider({ autoApprovalEnabled: true, alwaysAllowExecute: false })

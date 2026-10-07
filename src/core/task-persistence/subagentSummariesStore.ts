@@ -102,10 +102,10 @@ export async function loadSubagentSummaries(
  * Directory inside the parent task's directory that holds one message
  * transcript per subagent (`<parentTaskId>/subagents/<childTaskId>.json`).
  *
- * A completed subagent's own task directory is deleted as soon as it
- * finishes (BackgroundTaskRunner), so without this copy the panel could only
- * show the summary's `finalMessage`. Living under the parent, the transcripts
- * go away when the parent task is deleted.
+ * Completed subagents used to have their own task directory deleted as soon
+ * as they finished, so without this copy the panel could only show the
+ * summary's `finalMessage`. Living under the parent, the transcripts go away
+ * when the parent task is deleted.
  */
 export const SUBAGENT_TRANSCRIPTS_DIRNAME = "subagents"
 

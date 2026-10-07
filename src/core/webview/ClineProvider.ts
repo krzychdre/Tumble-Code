@@ -420,12 +420,8 @@ export class ClineProvider
 			},
 		})
 		const getTaskCreationCallback = () => this.taskCreationCallback
-		const getGlobalStoragePath = () => this.globalStoragePath
 		this.backgroundTaskRunner = new BackgroundTaskRunner({
 			provider: this,
-			get globalStoragePath() {
-				return getGlobalStoragePath()
-			},
 			subagentRegistry: this.subagentRegistry,
 			get taskCreationCallback() {
 				return getTaskCreationCallback()

@@ -13,6 +13,7 @@ import {
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
 import { queuedSubagentId } from "../webview/SubagentRegistry"
+import type { SubagentInfo } from "../webview/BackgroundTaskRunner"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
@@ -241,7 +242,7 @@ interface SubtaskProvider {
 			workspacePath?: string
 			maxAgentTurns?: number
 			autoApprovalOverride?: AutoApprovalOverride
-			subagentInfo?: { parentTaskId: string; index: number; description: string }
+			subagentInfo?: SubagentInfo
 		},
 	): Promise<Task>
 	awaitTaskCompletion(
@@ -276,6 +277,8 @@ interface RunOneSubtaskArgs {
 	provider: SubtaskProvider
 	cwd: string
 	parentTaskId: string
+	/** The fan-out parent's root task: the subagent's history item sits in its tree. */
+	rootTaskId: string
 	subtask: NormalizedSubtask
 	index: number
 	signal: AbortSignal
@@ -290,6 +293,7 @@ async function runOneSubtask({
 	provider,
 	cwd,
 	parentTaskId,
+	rootTaskId,
 	subtask,
 	index,
 	signal,
@@ -332,7 +336,15 @@ async function runOneSubtask({
 				getState: () => provider.getState(),
 				worktreePath,
 			}),
-			subagentInfo: { parentTaskId, index, description: subagentDescription(subtask.message) },
+			// History placement: the parent's cwd, not the worktree, so the
+			// history list (filtered by workspace) shows the subagent.
+			subagentInfo: {
+				parentTaskId,
+				rootTaskId,
+				workspace: cwd,
+				index,
+				description: subagentDescription(subtask.message),
+			},
 		})
 		registryId = child.taskId
 		// Persist the parent→child relation on the parent's HistoryItem so
@@ -595,6 +607,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 						provider,
 						cwd,
 						parentTaskId: task.taskId,
+						rootTaskId: task.rootTaskId ?? task.taskId,
 						subtask,
 						index,
 						signal: controller.signal,

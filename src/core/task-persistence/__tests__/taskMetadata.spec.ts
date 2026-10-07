@@ -64,3 +64,26 @@ describe("taskMetadata outcome", () => {
 		)
 	})
 })
+
+describe("taskMetadata isSubagent", () => {
+	const itemWith = async (isSubagent?: boolean) =>
+		(
+			await taskMetadata({
+				taskId: "task-1",
+				taskNumber: 1,
+				messages: [say(1, "text", "Do it")],
+				globalStoragePath: "/storage",
+				workspace: "/ws",
+				isSubagent,
+			})
+		).historyItem
+
+	it("marks a parallel subagent's item", async () => {
+		expect((await itemWith(true)).isSubagent).toBe(true)
+	})
+
+	it("leaves the flag off every other item", async () => {
+		expect(await itemWith(false)).not.toHaveProperty("isSubagent")
+		expect(await itemWith(undefined)).not.toHaveProperty("isSubagent")
+	})
+})

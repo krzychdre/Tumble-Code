@@ -181,11 +181,18 @@ export interface TaskOptions extends CreateTaskOptions {
 	 */
 	taskMode?: string
 	/**
-	 * Marks this task as a headless background task (memory writer / parallel
-	 * subagent). Background tasks never occupy the provider's current-task
-	 * slot, do not drive the webview, and skip their own memory background-writers.
+	 * Marks this task as a headless background task (a parallel subagent).
+	 * Background tasks never occupy the provider's current-task slot, do not
+	 * drive the webview, and skip their own memory background-writers.
 	 */
 	isBackground?: boolean
+	/**
+	 * Where a parallel subagent sits in the task history, see
+	 * {@link TaskHistoryLineage}. History only: the live task keeps no
+	 * `parentTaskId` (that would route attempt_completion into new_task
+	 * delegation) and runs in its own `workspacePath`.
+	 */
+	historyLineage?: TaskHistoryLineage
 	/**
 	 * Hard cap on assistant turns for a background task. When the loop reaches
 	 * this many assistant turns the task aborts cleanly. `undefined` = no cap
@@ -199,6 +206,19 @@ export interface TaskOptions extends CreateTaskOptions {
 	 * headless task run autonomously without mutating global approval settings.
 	 */
 	autoApprovalOverride?: AutoApprovalOverride
+}
+
+/**
+ * The history placement of a parallel subagent: its HistoryItem is written as
+ * a subtask of the fan-out parent (`isSubagent: true`) with the parent's
+ * workspace, so the history list nests it and counts its cost. `workspace` is
+ * the parent's, not the subagent's git worktree: the history list filters by
+ * workspace and the worktree may be gone.
+ */
+export interface TaskHistoryLineage {
+	parentTaskId: string
+	rootTaskId: string
+	workspace: string
 }
 
 /**
@@ -874,6 +894,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Headless background task controls (memory writer / parallel subagents).
 	// All default to the inert foreground values so normal tasks are unaffected.
 	readonly isBackground: boolean
+	readonly historyLineage?: TaskHistoryLineage
 	readonly maxAgentTurns?: number
 	autoApprovalOverride?: AutoApprovalOverride
 	/** Assistant-turn counter used to enforce `maxAgentTurns`. */
@@ -903,6 +924,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		initialStatus,
 		taskMode,
 		isBackground = false,
+		historyLineage,
 		maxAgentTurns,
 		autoApprovalOverride,
 	}: TaskOptions) {
@@ -969,6 +991,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Headless background-task controls (memory writer / parallel subagents).
 		this.isBackground = isBackground
+		this.historyLineage = historyLineage
 		this.maxAgentTurns = maxAgentTurns
 		this.autoApprovalOverride = autoApprovalOverride
 

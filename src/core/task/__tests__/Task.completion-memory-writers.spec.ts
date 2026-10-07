@@ -71,7 +71,7 @@ vi.mock("../../../api", () => ({
 	})),
 }))
 
-import { Task } from "../Task"
+import { Task, type TaskOptions } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { TaskSlot } from "../../webview/TaskSlot"
 import { attemptCompletionTool, type AttemptCompletionCallbacks } from "../../tools/AttemptCompletionTool"
@@ -149,12 +149,17 @@ function makeProvider(): ProviderStandIn {
 	return provider
 }
 
-function makeTask(provider: ProviderStandIn, options: { parentTaskId?: string; isBackground?: boolean } = {}): Task {
+function makeTask(
+	provider: ProviderStandIn,
+	options: Pick<TaskOptions, "isBackground" | "historyLineage" | "workspacePath"> & { parentTaskId?: string } = {},
+): Task {
 	const task = new Task({
 		provider: provider as unknown as ClineProvider,
 		apiConfiguration: { apiProvider: "anthropic", apiKey: "test-key" } as ProviderSettings,
 		startTask: false,
 		isBackground: options.isBackground,
+		historyLineage: options.historyLineage,
+		workspacePath: options.workspacePath,
 	})
 	if (options.parentTaskId) {
 		;(task as unknown as { parentTaskId: string }).parentTaskId = options.parentTaskId
@@ -460,5 +465,24 @@ describe("task-completed telemetry after a normally completed task", () => {
 		await provider.clearTask()
 
 		expect(captureTaskCompletedSpy).not.toHaveBeenCalled()
+	})
+})
+
+// A parallel subagent's lineage is for its history item only: a runtime
+// parentTaskId would route attempt_completion into new_task delegation, and a
+// parentTask would make it run in the parent's workspace instead of its worktree.
+describe("parallel subagent history lineage", () => {
+	it("keeps the live task without a parent and in its own workspace", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider, {
+			isBackground: true,
+			workspacePath: "/worktrees/child",
+			historyLineage: { parentTaskId: "parent-1", rootTaskId: "root-1", workspace: "/project" },
+		})
+
+		expect(task.parentTaskId).toBeUndefined()
+		expect(task.rootTaskId).toBeUndefined()
+		expect(task.workspacePath).toBe("/worktrees/child")
+		expect(task.historyLineage).toEqual({ parentTaskId: "parent-1", rootTaskId: "root-1", workspace: "/project" })
 	})
 })

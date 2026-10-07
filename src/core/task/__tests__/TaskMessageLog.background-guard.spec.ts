@@ -79,5 +79,30 @@ describe("TaskMessageLog.saveClineMessages — background guard", () => {
 		expect(saveTaskMessages).toHaveBeenCalled()
 		expect(taskMetadata).toHaveBeenCalled()
 		expect(access.providerRef.deref()?.updateTaskHistory).not.toHaveBeenCalled()
+		expect(taskMetadata).toHaveBeenCalledWith(expect.objectContaining({ isSubagent: false, workspace: "/tmp" }))
+	})
+
+	// A parallel subagent has no runtime parent; its history lineage places the
+	// item under the fan-out parent, in the parent's workspace, not its worktree.
+	it("writes a parallel subagent's history item as a subtask of the fan-out parent", async () => {
+		const access = buildAccess({
+			isBackground: true,
+			cwd: "/worktrees/child",
+			historyLineage: { parentTaskId: "parent-1", rootTaskId: "root-1", workspace: "/project" },
+		})
+		const history = new TaskMessageLog(access)
+
+		await history.saveClineMessages()
+
+		expect(taskMetadata).toHaveBeenCalledWith(
+			expect.objectContaining({
+				parentTaskId: "parent-1",
+				rootTaskId: "root-1",
+				workspace: "/project",
+				taskNumber: 1,
+				isSubagent: true,
+			}),
+		)
+		expect(access.providerRef.deref()?.updateTaskHistory).toHaveBeenCalled()
 	})
 })

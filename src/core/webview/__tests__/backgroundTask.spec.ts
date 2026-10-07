@@ -21,7 +21,6 @@ function makeRunner(host: Partial<BackgroundTaskHost> = {}): BackgroundTaskRunne
 /** The runner's private members these tests reach into. */
 type RunnerInternals = {
 	backgroundTasks: Map<string, unknown>
-	cleanupBackgroundTaskFiles: (taskId: string) => void
 	resolveMemoryWriterApiConfiguration: () => Promise<unknown>
 	setMemoryActivity: (kind: string, active: boolean) => void
 	runMemorySubTask: (...args: any[]) => Promise<unknown>
@@ -49,15 +48,9 @@ function makeFakeTask({ taskId = "bg-1", completionText }: FakeTaskOptions = {})
 	}
 }
 
-function invokeAwait(
-	task: ReturnType<typeof makeFakeTask>,
-	options?: { signal?: AbortSignal },
-	_unused?: undefined,
-	cleanupSpy?: Mock,
-) {
+function invokeAwait(task: ReturnType<typeof makeFakeTask>, options?: { signal?: AbortSignal }) {
 	const runner = makeRunner()
 	const internals = runner as unknown as RunnerInternals
-	internals.cleanupBackgroundTaskFiles = cleanupSpy ?? vi.fn()
 	const backgroundTasks = internals.backgroundTasks
 	backgroundTasks.set((task as unknown as { taskId: string }).taskId, task)
 	const promise = runner.awaitTaskCompletion(task as never, options)
@@ -119,46 +112,6 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
 		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
 		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
-	})
-
-	it("cleans up task directory for completed background tasks", async () => {
-		const task = makeFakeTask({ completionText: "done" })
-		const cleanupSpy = vi.fn()
-		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
-
-		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskCompleted, "bg-1", {}, {})
-
-		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
-		// Cleanup is chained after the dispose (abortTask) settles.
-		await vi.waitFor(() => expect(cleanupSpy).toHaveBeenCalledWith("bg-1"))
-	})
-
-	it("does not clean up task directory for aborted background tasks", async () => {
-		const task = makeFakeTask()
-		const cleanupSpy = vi.fn()
-		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
-
-		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
-
-		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
-		// Flush microtasks so a wrongly-chained cleanup would have fired by now.
-		await new Promise((r) => setTimeout(r, 0))
-		expect(cleanupSpy).not.toHaveBeenCalled()
-	})
-
-	it("cleanup failure does not affect the await result", async () => {
-		const task = makeFakeTask({ completionText: "done" })
-		// The real cleanupBackgroundTaskFiles is fire-and-forget (void async IIFE
-		// with try/catch); it never throws synchronously. Simulate a rejection
-		// inside the async body by returning a rejected promise — the await
-		// result must still resolve normally.
-		const cleanupSpy = vi.fn().mockResolvedValue(undefined)
-		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
-
-		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskCompleted, "bg-1", {}, {})
-
-		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
-		await vi.waitFor(() => expect(cleanupSpy).toHaveBeenCalledWith("bg-1"))
 	})
 })
 

@@ -43,6 +43,7 @@ vi.mock("../../../shared/package", () => ({
 
 import { attemptCompletionTool, AttemptCompletionCallbacks } from "../AttemptCompletionTool"
 import { Task } from "../../task/Task"
+import { logger } from "../../../utils/logging"
 import * as vscode from "vscode"
 
 describe("attemptCompletionTool", () => {
@@ -667,11 +668,11 @@ describe("attemptCompletionTool", () => {
 
 		const setupDelegation = (
 			parentHistory: { status?: string; awaitingChildId?: string },
-			options: { tryReattach?: boolean } = {},
+			options: { tryReattach?: boolean; childHistory?: Record<string, unknown> } = {},
 		) => {
 			mockGetHistoryItem = vi.fn(async (id: string) => {
 				if (id === CHILD_ID) {
-					return { id: CHILD_ID, status: "active" }
+					return options.childHistory ?? { id: CHILD_ID, status: "active" }
 				}
 				return { id: PARENT_ID, ...parentHistory }
 			})
@@ -769,6 +770,38 @@ describe("attemptCompletionTool", () => {
 			expect(mockReopenParentFromDelegation).toHaveBeenCalledWith(
 				expect.objectContaining({ parentTaskId: PARENT_ID, childTaskId: CHILD_ID }),
 			)
+		})
+
+		// A parallel subagent returns its result through run_parallel_tasks.
+		it("never enters delegation for a live background task", async () => {
+			const block = setupDelegation({ status: "delegated", awaitingChildId: CHILD_ID })
+			;(mockTask as any).isBackground = true
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			expect(mockGetHistoryItem).not.toHaveBeenCalled()
+			expect(mockReopenParentFromDelegation).not.toHaveBeenCalled()
+			expect(mockTask.ask).toHaveBeenCalledWith("completion_result", "", false)
+		})
+
+		// Reopened from history it gets parentTaskId from its item: history
+		// lineage only, so no delegation and no "unexpected status" error.
+		it("quietly skips delegation for a parallel subagent reopened from history", async () => {
+			const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const block = setupDelegation(
+				{ status: "active", awaitingChildId: CHILD_ID },
+				{ childHistory: { id: CHILD_ID, isSubagent: true } },
+			)
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			expect(mockGetHistoryItem).toHaveBeenCalledWith(CHILD_ID)
+			expect(mockGetHistoryItem).not.toHaveBeenCalledWith(PARENT_ID)
+			expect(mockTryReattachDelegatedParent).not.toHaveBeenCalled()
+			expect(mockReopenParentFromDelegation).not.toHaveBeenCalled()
+			expect(errorSpy).not.toHaveBeenCalled()
+			expect(mockTask.ask).toHaveBeenCalledWith("completion_result", "", false)
+			errorSpy.mockRestore()
 		})
 
 		it("finalizes (does NOT delegate) when the parent is already completed", async () => {
