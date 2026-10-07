@@ -295,12 +295,12 @@ describe("leaving a task that still works (keep running off screen)", () => {
 
 		expect(provider.getCurrentTask()).toBe(taskA)
 		// Back in the slot, coming to rest no longer drops it.
-		taskA.emit(TumbleCodeEventName.TaskIdle)
+		taskA.emit(TumbleCodeEventName.TaskIdle, taskA.taskId)
 		expect(taskA.abortTask).not.toHaveBeenCalled()
 		expect(provider.getLiveTaskInstance("task-B")).toBe(taskB)
 	})
 
-	it.each([TumbleCodeEventName.TaskIdle, TumbleCodeEventName.TaskResumable, TumbleCodeEventName.TaskAborted])(
+	it.each([TumbleCodeEventName.TaskIdle, TumbleCodeEventName.TaskResumable, TumbleCodeEventName.TaskAborted] as const)(
 		"a detached task is destroyed and dropped once it ends work (%s)",
 		async (event) => {
 			const provider = makeProvider()
@@ -310,7 +310,8 @@ describe("leaving a task that still works (keep running off screen)", () => {
 			await provider.taskSlot.set(taskA)
 			await provider.leaveCurrentTask()
 
-			taskA.emit(event)
+			// The task's own events carry no arguments for TaskAborted, its id for the others.
+			;(taskA as unknown as EventEmitter).emit(event, taskA.taskId)
 
 			await vi.waitFor(() => expect(cleanup).toHaveBeenCalled())
 			expect(taskA.abortTask).toHaveBeenCalledWith(true)
