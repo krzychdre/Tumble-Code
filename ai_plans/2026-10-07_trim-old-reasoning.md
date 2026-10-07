@@ -1,6 +1,6 @@
 # Przycinanie starego rozumowania przy zapełnionym kontekście (`openAiTrimOldReasoning`)
 
-**Status:** w realizacji na gałęzi `feat/trim-old-reasoning` (worktree `/tmp/roo-wt-reasoning-trim`).
+**Status:** zrealizowane na gałęzi `feat/trim-old-reasoning` (rdzeń, webview, CLI; przegląd w trzech perspektywach, 5 z 8 zarzutów potwierdzonych i poprawionych).
 **Powiązane plany:** `2026-10-06_openai-compatible-return-reasoning.md` (checkbox „Return reasoning to the model”),
 `archive/2026-06/2026-06-07_microcompact-nondestructive.md` (microcompact przy wysyłce).
 **Zasady:** DRY (jedna ścieżka decyzji „wycięte przy wysyłce” dla wyników narzędzi i rozumowania), YAGNI (tylko
@@ -126,3 +126,19 @@ Opisane przy agentach; dodatkowo odtworzenie reguły na prawdziwych historiach z
 - Słowa-ustalenia są głównie angielskie; GLM rozumuje po angielsku w zmierzonych zadaniach.
 - Blok bez podziału na akapity nie jest przycinany (YAGNI: zdania jako jednostka dopiero, gdy dane pokażą potrzebę).
 - Wpływ na jakość pracy agenta warto sprawdzić zestawem agent-bench (5 zadań × 2 przebiegi GLM-5.3-Flash).
+
+## Wynik na prawdziwych danych (2026-10-07)
+
+`selectReasoningTrims` + `applyReasoningTrims` bez limitu celu, na historiach 14 ostatnich zadań CLI
+(`~/.vscode-mock/global-storage/tasks`): rozumowanie 317 965 → 202 686 tokenów (36% mniej), cała historia
+7,2% mniejsza; w zadaniach z dużą ilością myślenia historia maleje o 17-40% (np. `01a1158e` 39,5%,
+`01a11315` 19,7%, `01a110c8` 16,7%). Zadanie skondensowane (`01a1119d`) zyskuje mało, bo liczy się tylko
+historia efektywna. Dwa przebiegi dały identyczny wynik (determinizm, stabilność cache).
+
+## Poprawki po przeglądzie
+
+- Bramka sprawdza też `apiProvider === "openai"`: ustawienia dostawcy to jeden płaski obiekt, więc
+  `openAiTrimOldReasoning: true` przetrwałby przełączenie profilu na Z.ai (którego modele mają
+  `preserveReasoning` z tabeli) i przycinałby tam rozumowanie bez widocznego checkboxa.
+- Changesety: `tumble-code` (rdzeń + webview) i osobny dla `@tumble-code/cli`.
+- Opis w 18 językach dopasowany do zachowania (próg kondensacji albo limit okna; co dokładnie zostaje).
