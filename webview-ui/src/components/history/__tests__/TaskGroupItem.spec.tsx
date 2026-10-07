@@ -4,7 +4,7 @@ import TaskGroupItem from "../TaskGroupItem"
 import type { TaskGroup, DisplayHistoryItem, SubtaskTreeNode } from "../types"
 
 vi.mock("@src/utils/vscode")
-// SubtaskDetails reads the custom modes to name a subtask's mode.
+// TaskDetails reads the custom modes to name a task's mode.
 vi.mock("@/context/ExtensionStateContext", () => ({
 	useExtensionSelector: (selector: (s: never) => unknown) => selector({ customModes: [] } as never),
 }))

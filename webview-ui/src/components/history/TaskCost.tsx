@@ -19,7 +19,7 @@ interface TaskCostProps {
 const TaskCost = ({ item, "data-testid": testId }: TaskCostProps) => {
 	const { t } = useAppTranslation()
 	const own = item.totalCost || 0
-	const total = item.subtreeCost ?? own
+	const total = item.subtree?.cost ?? own
 
 	if (!total) {
 		return null
@@ -31,7 +31,7 @@ const TaskCost = ({ item, "data-testid": testId }: TaskCostProps) => {
 		</span>
 	)
 
-	if (item.subtreeCost === undefined) {
+	if (!item.subtree) {
 		return amount
 	}
 

@@ -6,7 +6,7 @@ import SubtaskRow from "../SubtaskRow"
 import type { SubtaskTreeNode, DisplayHistoryItem } from "../types"
 
 vi.mock("@src/utils/vscode")
-// SubtaskDetails reads the custom modes to name a subtask's mode.
+// TaskDetails reads the custom modes to name a task's mode.
 vi.mock("@/context/ExtensionStateContext", () => ({
 	useExtensionSelector: (selector: (s: never) => unknown) => selector({ customModes: [] } as never),
 }))
@@ -225,7 +225,7 @@ describe("SubtaskRow", () => {
 			const indicator = screen.getByRole("img", { name: "history:runningIndicator.running" })
 			expect(indicator.querySelector(".ui-progress-ring")).toBeInTheDocument()
 			const describedBy = screen.getByRole("button", { name: "Working subtask" }).getAttribute("aria-describedby")
-			expect(describedBy?.split(" ")).toEqual([indicator.id, screen.getByTestId("subtask-details").id])
+			expect(describedBy?.split(" ")).toEqual([indicator.id, screen.getByTestId("task-details").id])
 		})
 
 		it("shows the attention icon on a subtask waiting for input", () => {
@@ -284,12 +284,10 @@ describe("SubtaskRow", () => {
 
 			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
 
-			const details = screen.getByTestId("subtask-details")
+			const details = screen.getByTestId("task-details")
 			expect(details).toHaveTextContent("Code")
-			expect(screen.getByTestId("subtask-outcome-completed")).toHaveTextContent(
-				"history:subtaskOutcome.completed",
-			)
-			expect(screen.getByTestId("subtask-cost")).toHaveTextContent("$0.21")
+			expect(screen.getByTestId("task-outcome-completed")).toHaveTextContent("history:taskOutcome.completed")
+			expect(screen.getByTestId("task-cost")).toHaveTextContent("$0.21")
 			// The k/m suffixes come from an uninitialised i18next in tests, so check the numbers.
 			expect(details).toHaveTextContent(/↑1\.9.* ↓35\.6/)
 			expect(screen.getByRole("button", { name: "Finished subtask" })).toHaveAttribute(
@@ -303,7 +301,7 @@ describe("SubtaskRow", () => {
 
 			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
 
-			expect(screen.getByTestId("subtask-outcome-unfinished")).toBeInTheDocument()
+			expect(screen.getByTestId("task-outcome-unfinished")).toBeInTheDocument()
 		})
 
 		it("leaves the outcome to the live status while the subtask works", () => {
@@ -311,15 +309,20 @@ describe("SubtaskRow", () => {
 
 			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
 
-			expect(screen.queryByTestId(/^subtask-outcome-/)).not.toBeInTheDocument()
+			expect(screen.queryByTestId(/^task-outcome-/)).not.toBeInTheDocument()
 		})
 
 		it("shows the cost of the subtask's own subtasks too", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Delegating subtask", totalCost: 0.1, subtreeCost: 0.5 })
+			const node = createMockNode({
+				id: "leaf-1",
+				task: "Delegating subtask",
+				totalCost: 0.1,
+				subtree: { cost: 0.5, tokensIn: 0, tokensOut: 0 },
+			})
 
 			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
 
-			expect(screen.getByTestId("subtask-cost")).toHaveTextContent("$0.50")
+			expect(screen.getByTestId("task-cost")).toHaveTextContent("$0.50")
 		})
 
 		it("leaves out the cost of a subtask that cost nothing, separator included", () => {
@@ -334,9 +337,9 @@ describe("SubtaskRow", () => {
 
 			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
 
-			expect(screen.queryByTestId("subtask-cost")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("task-cost")).not.toBeInTheDocument()
 			// Only the start time and the outcome are left, so one separator between them.
-			expect(screen.getByTestId("subtask-details").textContent?.split("·")).toHaveLength(2)
+			expect(screen.getByTestId("task-details").textContent?.split("·")).toHaveLength(2)
 		})
 	})
 })

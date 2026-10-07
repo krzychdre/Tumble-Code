@@ -65,9 +65,10 @@
 		"awaitingInput": "Wartet auf deine Eingabe"
 	},
 	"costWithSubtasks": "{{total}} einschließlich Unteraufgaben (nur diese Aufgabe: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "Tokens: {{in}} Eingabe, {{out}} Ausgabe",
+	"taskOutcome": {
 		"completed": "Erledigt",
 		"unfinished": "Nicht abgeschlossen"
 	},
-	"tokensInOut": "Tokens: {{in}} Eingabe, {{out}} Ausgabe"
+	"tokensInOutWithSubtasks": "Tokens mit Unteraufgaben: {{in}} Eingabe, {{out}} Ausgabe (nur diese Aufgabe: {{ownIn}} Eingabe, {{ownOut}} Ausgabe)"
 }

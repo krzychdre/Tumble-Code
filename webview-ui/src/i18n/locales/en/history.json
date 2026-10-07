@@ -58,9 +58,10 @@
 		"awaitingInput": "Waiting for your input"
 	},
 	"costWithSubtasks": "{{total}} including subtasks (this task alone: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "Tokens: {{in}} in, {{out}} out",
+	"taskOutcome": {
 		"completed": "Done",
 		"unfinished": "Unfinished"
 	},
-	"tokensInOut": "Tokens: {{in}} in, {{out}} out"
+	"tokensInOutWithSubtasks": "Tokens with subtasks: {{in}} in, {{out}} out (this task alone: {{ownIn}} in, {{ownOut}} out)"
 }

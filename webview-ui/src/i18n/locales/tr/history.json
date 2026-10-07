@@ -58,9 +58,10 @@
 		"awaitingInput": "Yanıtınızı bekliyor"
 	},
 	"costWithSubtasks": "{{total}} alt görevler dahil (yalnızca bu görev: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "Token: {{in}} giriş, {{out}} çıkış",
+	"taskOutcome": {
 		"completed": "Tamamlandı",
 		"unfinished": "Tamamlanmadı"
 	},
-	"tokensInOut": "Token: {{in}} giriş, {{out}} çıkış"
+	"tokensInOutWithSubtasks": "Alt görevlerle token: {{in}} giriş, {{out}} çıkış (yalnızca bu görev: {{ownIn}} giriş, {{ownOut}} çıkış)"
 }

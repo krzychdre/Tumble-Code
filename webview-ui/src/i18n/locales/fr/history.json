@@ -66,9 +66,10 @@
 		"awaitingInput": "En attente de votre réponse"
 	},
 	"costWithSubtasks": "{{total}} avec les sous-tâches (cette tâche seule : {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "Jetons : {{in}} en entrée, {{out}} en sortie",
+	"taskOutcome": {
 		"completed": "Terminée",
 		"unfinished": "Inachevée"
 	},
-	"tokensInOut": "Jetons : {{in}} en entrée, {{out}} en sortie"
+	"tokensInOutWithSubtasks": "Jetons avec les sous-tâches : {{in}} en entrée, {{out}} en sortie (cette tâche seule : {{ownIn}} en entrée, {{ownOut}} en sortie)"
 }

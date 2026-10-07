@@ -66,9 +66,10 @@
 		"awaitingInput": "Esperant la teva resposta"
 	},
 	"costWithSubtasks": "{{total}} amb les subtasques (només aquesta tasca: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "Tokens: {{in}} d'entrada, {{out}} de sortida",
+	"taskOutcome": {
 		"completed": "Completada",
 		"unfinished": "Sense acabar"
 	},
-	"tokensInOut": "Tokens: {{in}} d'entrada, {{out}} de sortida"
+	"tokensInOutWithSubtasks": "Tokens amb les subtasques: {{in}} d'entrada, {{out}} de sortida (només aquesta tasca: {{ownIn}} d'entrada, {{ownOut}} de sortida)"
 }

@@ -390,7 +390,7 @@ describe("useTaskSearch", () => {
 		})
 	})
 
-	describe("the cost of a task with subtasks", () => {
+	describe("the usage of a task with subtasks", () => {
 		// root (0.25) -> child (0.5) -> grandchild (1), the grandchild in another
 		// workspace; plus an unrelated task-1 (0.01) without subtasks.
 		const tree: HistoryItem[] = [
@@ -409,11 +409,18 @@ describe("useTaskSearch", () => {
 		const subtreeCostsOf = (taskHistory: HistoryItem[]) => {
 			mockUseExtensionState.mockReturnValue({ taskHistory, cwd: "/workspace/project1" } as any)
 			const { result } = renderHook(() => useTaskSearch())
-			return Object.fromEntries(result.current.tasks.map((task) => [task.id, task.subtreeCost]))
+			return Object.fromEntries(result.current.tasks.map((task) => [task.id, task.subtree?.cost]))
 		}
 
 		it("sums every descendant, also one outside the current workspace", () => {
 			expect(subtreeCostsOf(tree)).toEqual({ "task-1": undefined, root: 1.75, child: 1.5 })
+		})
+
+		it("sums the tokens of the tree too", () => {
+			mockUseExtensionState.mockReturnValue({ taskHistory: tree, cwd: "/workspace/project1" } as any)
+			const { result } = renderHook(() => useTaskSearch())
+			const root = result.current.tasks.find((task) => task.id === "root")
+			expect(root?.subtree).toEqual({ cost: 1.75, tokensIn: 600, tokensOut: 300 })
 		})
 
 		it("sorts by the cost of the whole tree for most expensive", () => {

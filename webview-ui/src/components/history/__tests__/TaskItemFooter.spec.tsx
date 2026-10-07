@@ -2,6 +2,11 @@ import { render, screen } from "@/utils/test-utils"
 
 import TaskItemFooter from "../TaskItemFooter"
 
+// TaskDetails reads the custom modes to name a task's mode.
+vi.mock("@/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector({ customModes: [] } as never),
+}))
+
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
 		t: (key: string) => key,
@@ -10,6 +15,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 vi.mock("@/utils/format", () => ({
 	formatDateTime: vi.fn(() => "2026-05-22 17:50:33"),
+	formatTimestamp: vi.fn(() => "17:50"),
 	formatLargeNumber: vi.fn((num: number) => num.toString()),
 }))
 
@@ -25,10 +31,15 @@ const mockItem = {
 }
 
 describe("TaskItemFooter", () => {
-	it("renders the task date and time", () => {
+	it("renders the time of a task from today", () => {
 		render(<TaskItemFooter item={mockItem} variant="full" />)
 
-		// Should show the full date and time
+		expect(screen.getByText("17:50")).toBeInTheDocument()
+	})
+
+	it("renders the full date and time of an older task", () => {
+		render(<TaskItemFooter item={{ ...mockItem, ts: new Date("2022-02-16T12:00:00").getTime() }} variant="full" />)
+
 		expect(screen.getByText("2026-05-22 17:50:33")).toBeInTheDocument()
 	})
 
@@ -106,9 +117,26 @@ describe("TaskItemFooter", () => {
 		expect(screen.queryByText("history:subtaskTag")).not.toBeInTheDocument()
 	})
 
-	it("shows the cost of the whole tree on a task with subtasks", () => {
-		render(<TaskItemFooter item={{ ...mockItem, totalCost: 0.21, subtreeCost: 1.54 }} variant="full" />)
+	it("shows the same summary as a subtask row: mode, outcome, cost and tokens of the whole tree", () => {
+		render(
+			<TaskItemFooter
+				item={{
+					...mockItem,
+					mode: "orchestrator",
+					status: "completed",
+					totalCost: 0.21,
+					subtree: { cost: 1.54, tokensIn: 3000, tokensOut: 400 },
+				}}
+				variant="full"
+				detailsId="details-1"
+			/>,
+		)
 
-		expect(screen.getByTestId("cost-footer-compact")).toHaveTextContent("$1.54")
+		const details = screen.getByTestId("task-details")
+		expect(details).toHaveAttribute("id", "details-1")
+		expect(details).toHaveTextContent("Orchestrator")
+		expect(screen.getByTestId("task-outcome-completed")).toBeInTheDocument()
+		expect(screen.getByTestId("task-cost")).toHaveTextContent("$1.54")
+		expect(screen.getByTestId("task-tokens")).toHaveTextContent("↑3000 ↓400")
 	})
 })

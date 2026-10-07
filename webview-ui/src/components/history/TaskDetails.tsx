@@ -12,18 +12,19 @@ import type { DisplayHistoryItem } from "./types"
 
 const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
 
-interface SubtaskDetailsProps {
+interface TaskDetailsProps {
 	item: DisplayHistoryItem
 	/** Lets the row button point `aria-describedby` at the details. */
 	id?: string
 }
 
 /**
- * The second line of a subtask row: mode, start time, outcome, cost and tokens.
- * Each part is optional and left out when the history item lacks it. A working
- * subtask shows no outcome, its marker already carries the live status.
+ * The summary line of a history row, the same for a task and a subtask: mode,
+ * start time, outcome, cost and tokens. Cost and tokens cover the task's whole
+ * subtree. Each part is left out when the history item lacks it. A working
+ * task shows no outcome, its spinner already carries the live status.
  */
-const SubtaskDetails = ({ item, id }: SubtaskDetailsProps) => {
+const TaskDetails = ({ item, id }: TaskDetailsProps) => {
 	const { t } = useAppTranslation()
 	const customModes = useExtensionSelector((s) => s.customModes)
 
@@ -31,7 +32,16 @@ const SubtaskDetails = ({ item, id }: SubtaskDetailsProps) => {
 	// History saved before task status existed has none; claim no outcome for it.
 	const outcome =
 		item.runningStatus || !item.status ? undefined : item.status === "completed" ? "completed" : "unfinished"
-	const hasTokens = !!(item.tokensIn || item.tokensOut)
+	const tokensIn = item.subtree?.tokensIn ?? (item.tokensIn || 0)
+	const tokensOut = item.subtree?.tokensOut ?? (item.tokensOut || 0)
+	const tokensTooltip = item.subtree
+		? t("history:tokensInOutWithSubtasks", {
+				in: tokensIn.toLocaleString(),
+				out: tokensOut.toLocaleString(),
+				ownIn: (item.tokensIn || 0).toLocaleString(),
+				ownOut: (item.tokensOut || 0).toLocaleString(),
+			})
+		: t("history:tokensInOut", { in: tokensIn.toLocaleString(), out: tokensOut.toLocaleString() })
 
 	const parts = [
 		modeName && (
@@ -48,7 +58,7 @@ const SubtaskDetails = ({ item, id }: SubtaskDetailsProps) => {
 		outcome && (
 			<span
 				key="outcome"
-				data-testid={`subtask-outcome-${outcome}`}
+				data-testid={`task-outcome-${outcome}`}
 				className={
 					outcome === "completed"
 						? "flex items-center gap-1 text-vscode-charts-green"
@@ -59,19 +69,14 @@ const SubtaskDetails = ({ item, id }: SubtaskDetailsProps) => {
 				) : (
 					<CircleDashed className="size-3" aria-hidden />
 				)}
-				{t(`history:subtaskOutcome.${outcome}`)}
+				{t(`history:taskOutcome.${outcome}`)}
 			</span>
 		),
-		!!(item.subtreeCost ?? item.totalCost) && <TaskCost key="cost" item={item} data-testid="subtask-cost" />,
-		hasTokens && (
-			<StandardTooltip
-				key="tokens"
-				content={t("history:tokensInOut", {
-					in: (item.tokensIn || 0).toLocaleString(),
-					out: (item.tokensOut || 0).toLocaleString(),
-				})}>
-				<span className="tabular-nums">
-					↑{formatLargeNumber(item.tokensIn || 0)} ↓{formatLargeNumber(item.tokensOut || 0)}
+		!!(item.subtree?.cost ?? item.totalCost) && <TaskCost key="cost" item={item} data-testid="task-cost" />,
+		!!(tokensIn || tokensOut) && (
+			<StandardTooltip key="tokens" content={tokensTooltip}>
+				<span className="tabular-nums" data-testid="task-tokens">
+					↑{formatLargeNumber(tokensIn)} ↓{formatLargeNumber(tokensOut)}
 				</span>
 			</StandardTooltip>
 		),
@@ -80,7 +85,7 @@ const SubtaskDetails = ({ item, id }: SubtaskDetailsProps) => {
 	return (
 		<span
 			id={id}
-			data-testid="subtask-details"
+			data-testid="task-details"
 			className="flex flex-wrap items-center gap-x-1.5 text-xs text-vscode-descriptionForeground/80">
 			{parts.map((part, index) => (
 				<span key={index} className="flex items-center gap-1.5">
@@ -92,4 +97,4 @@ const SubtaskDetails = ({ item, id }: SubtaskDetailsProps) => {
 	)
 }
 
-export default memo(SubtaskDetails)
+export default memo(TaskDetails)

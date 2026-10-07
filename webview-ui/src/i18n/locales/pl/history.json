@@ -60,9 +60,10 @@
 		"awaitingInput": "Czeka na Twoją odpowiedź"
 	},
 	"costWithSubtasks": "{{total}} razem z podzadaniami (samo to zadanie: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "Tokeny: {{in}} wejściowych, {{out}} wyjściowych",
+	"taskOutcome": {
 		"completed": "Ukończone",
 		"unfinished": "Nieukończone"
 	},
-	"tokensInOut": "Tokeny: {{in}} wejściowych, {{out}} wyjściowych"
+	"tokensInOutWithSubtasks": "Tokeny z podzadaniami: {{in}} wejściowych, {{out}} wyjściowych (samo to zadanie: {{ownIn}} wejściowych, {{ownOut}} wyjściowych)"
 }

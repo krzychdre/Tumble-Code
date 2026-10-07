@@ -58,9 +58,10 @@
 		"awaitingInput": "入力を待っています"
 	},
 	"costWithSubtasks": "サブタスクを含めて {{total}}（このタスクのみ: {{own}}）",
-	"subtaskOutcome": {
+	"tokensInOut": "トークン: 入力 {{in}}、出力 {{out}}",
+	"taskOutcome": {
 		"completed": "完了",
 		"unfinished": "未完了"
 	},
-	"tokensInOut": "トークン: 入力 {{in}}、出力 {{out}}"
+	"tokensInOutWithSubtasks": "サブタスクを含むトークン: 入力 {{in}}、出力 {{out}}（このタスクのみ: 入力 {{ownIn}}、出力 {{ownOut}}）"
 }

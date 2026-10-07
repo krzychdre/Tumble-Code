@@ -27,7 +27,13 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 vi.mock("@/utils/format", () => ({
 	formatDateTime: () => "2026-05-22 17:50:33",
+	formatTimestamp: () => "17:50",
 	formatLargeNumber: (num: number) => num.toString(),
+}))
+
+// The history row's summary line reads the custom modes to name the task's mode.
+vi.mock("@/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector({ customModes: [] } as never),
 }))
 
 beforeEach(() => {

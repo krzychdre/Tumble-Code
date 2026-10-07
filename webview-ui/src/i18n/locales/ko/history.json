@@ -58,9 +58,10 @@
 		"awaitingInput": "입력을 기다리는 중"
 	},
 	"costWithSubtasks": "하위 작업 포함 {{total}} (이 작업만: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "토큰: 입력 {{in}}, 출력 {{out}}",
+	"taskOutcome": {
 		"completed": "완료",
 		"unfinished": "미완료"
 	},
-	"tokensInOut": "토큰: 입력 {{in}}, 출력 {{out}}"
+	"tokensInOutWithSubtasks": "하위 작업 포함 토큰: 입력 {{in}}, 출력 {{out}} (이 작업만: 입력 {{ownIn}}, 출력 {{ownOut}})"
 }

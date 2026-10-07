@@ -10,8 +10,15 @@ export interface DisplayHistoryItem extends HistoryItem {
 	isSubtask?: boolean
 	/** Set while the task is working (`runningTasks` in the extension state); absent at rest */
 	runningStatus?: RunningTaskStatus
-	/** Own cost plus that of every subtask at any depth; set only on a task with subtasks */
-	subtreeCost?: number
+	/** Own usage plus that of every subtask at any depth; set only on a task with subtasks */
+	subtree?: SubtreeUsage
+}
+
+/** Cost and tokens of a task together with all of its subtasks. */
+export interface SubtreeUsage {
+	cost: number
+	tokensIn: number
+	tokensOut: number
 }
 
 /**

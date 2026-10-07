@@ -58,9 +58,10 @@
 		"awaitingInput": "等待你的輸入"
 	},
 	"costWithSubtasks": "含子任務共 {{total}}（僅此任務：{{own}}）",
-	"subtaskOutcome": {
+	"tokensInOut": "Token：輸入 {{in}}，輸出 {{out}}",
+	"taskOutcome": {
 		"completed": "已完成",
 		"unfinished": "未完成"
 	},
-	"tokensInOut": "Token：輸入 {{in}}，輸出 {{out}}"
+	"tokensInOutWithSubtasks": "含子任務的 Token：輸入 {{in}}，輸出 {{out}}（僅此任務：輸入 {{ownIn}}，輸出 {{ownOut}}）"
 }

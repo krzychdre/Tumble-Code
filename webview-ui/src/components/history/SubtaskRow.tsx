@@ -7,7 +7,7 @@ import { countAllSubtasks } from "./types"
 import { StandardTooltip } from "../ui"
 import SubtaskCollapsibleRow from "./SubtaskCollapsibleRow"
 import RunningStatusIndicator from "./RunningStatusIndicator"
-import SubtaskDetails from "./SubtaskDetails"
+import TaskDetails from "./TaskDetails"
 
 interface SubtaskRowProps {
 	/** The subtask tree node to display */
@@ -71,7 +71,7 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 						<StandardTooltip content={item.task} delay={600}>
 							<span className="text-sm line-clamp-1">{item.task}</span>
 						</StandardTooltip>
-						<SubtaskDetails item={item} id={detailsId} />
+						<TaskDetails item={item} id={detailsId} />
 					</span>
 				</span>
 				<ArrowRight className="size-3 mt-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />

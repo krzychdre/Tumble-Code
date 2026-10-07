@@ -58,9 +58,10 @@
 		"awaitingInput": "आपके इनपुट की प्रतीक्षा में"
 	},
 	"costWithSubtasks": "{{total}} उप-कार्यों सहित (केवल यह कार्य: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "टोकन: {{in}} इनपुट, {{out}} आउटपुट",
+	"taskOutcome": {
 		"completed": "पूर्ण",
 		"unfinished": "अपूर्ण"
 	},
-	"tokensInOut": "टोकन: {{in}} इनपुट, {{out}} आउटपुट"
+	"tokensInOutWithSubtasks": "उप-कार्यों सहित टोकन: {{in}} इनपुट, {{out}} आउटपुट (केवल यह कार्य: {{ownIn}} इनपुट, {{ownOut}} आउटपुट)"
 }

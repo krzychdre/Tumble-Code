@@ -58,9 +58,10 @@
 		"awaitingInput": "Wacht op je invoer"
 	},
 	"costWithSubtasks": "{{total}} inclusief subtaken (alleen deze taak: {{own}})",
-	"subtaskOutcome": {
+	"tokensInOut": "Tokens: {{in}} invoer, {{out}} uitvoer",
+	"taskOutcome": {
 		"completed": "Voltooid",
 		"unfinished": "Niet voltooid"
 	},
-	"tokensInOut": "Tokens: {{in}} invoer, {{out}} uitvoer"
+	"tokensInOutWithSubtasks": "Tokens met subtaken: {{in}} invoer, {{out}} uitvoer (alleen deze taak: {{ownIn}} invoer, {{ownOut}} uitvoer)"
 }
