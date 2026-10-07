@@ -1,4 +1,4 @@
-import { memo } from "react"
+import { memo, useId } from "react"
 import { ArrowRight, Folder } from "lucide-react"
 import type { DisplayHistoryItem } from "./types"
 
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { LabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 import TaskItemFooter from "./TaskItemFooter"
+import RunningStatusIndicator from "./RunningStatusIndicator"
 import { StandardTooltip } from "../ui"
 
 interface TaskItemProps {
@@ -35,6 +36,7 @@ const TaskItem = ({
 	className,
 }: TaskItemProps) => {
 	const isCompact = variant === "compact"
+	const statusId = useId()
 
 	const handleClick = () => {
 		if (isSelectionMode && onToggleSelection) {
@@ -50,6 +52,7 @@ const TaskItem = ({
 			key={item.id}
 			data-testid={`task-item-${item.id}`}
 			aria-label={item.task}
+			aria-describedby={item.runningStatus ? statusId : undefined}
 			aria-pressed={isSelectionMode ? isSelected : undefined}
 			className={cn(
 				"cursor-pointer group relative overflow-hidden text-left w-full",
@@ -103,6 +106,8 @@ const TaskItem = ({
 								</StandardTooltip>
 							</div>
 						)}
+						{/* Live status of a task that is still working */}
+						<RunningStatusIndicator status={item.runningStatus} id={statusId} />
 						{/* Arrow icon that appears on hover */}
 						<ArrowRight className="size-4 shrink-0 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-has-focus-visible:opacity-100 transition-opacity" />
 					</div>

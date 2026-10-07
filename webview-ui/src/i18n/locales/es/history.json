@@ -60,5 +60,9 @@
 	"yesterday": "Ayer",
 	"noHistory": "Aún no hay tareas. Inicia una conversación para crear tu historial.",
 	"noSearchResults": "Ninguna tarea coincide con esta búsqueda.",
-	"clearSearch": "Borrar búsqueda"
+	"clearSearch": "Borrar búsqueda",
+	"runningIndicator": {
+		"running": "Trabajando",
+		"awaitingInput": "Esperando tu respuesta"
+	}
 }

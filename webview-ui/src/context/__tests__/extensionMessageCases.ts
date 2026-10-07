@@ -193,6 +193,12 @@ export const extensionMessageCases: ExtensionMessageCase[] = [
 			expect(view.mode).toBe("ask")
 		},
 	},
+	{
+		name: "state: a push carrying runningTasks replaces the running task map",
+		seed: [{ type: "runningTasksUpdated", runningTasks: { "task-a": "running" } }],
+		message: statePush({ runningTasks: { "task-b": "awaiting_input" } }),
+		check: (view) => expect(view.runningTasks).toEqual({ "task-b": "awaiting_input" }),
+	},
 
 	// action
 	{
@@ -391,6 +397,25 @@ export const extensionMessageCases: ExtensionMessageCase[] = [
 		message: { type: "memoryActivity" },
 		check: (view) => expect(view.memoryActivity).toEqual({ recall: 1, write: 0 }),
 		noChange: true,
+	},
+
+	// runningTasksUpdated
+	{
+		name: "runningTasksUpdated: sets the running task map",
+		message: { type: "runningTasksUpdated", runningTasks: { "task-a": "running", "task-b": "awaiting_input" } },
+		check: (view) => expect(view.runningTasks).toEqual({ "task-a": "running", "task-b": "awaiting_input" }),
+	},
+	{
+		name: "runningTasksUpdated: replaces the whole map, so a task at rest drops out",
+		seed: [{ type: "runningTasksUpdated", runningTasks: { "task-a": "running", "task-b": "running" } }],
+		message: { type: "runningTasksUpdated", runningTasks: { "task-b": "awaiting_input" } },
+		check: (view) => expect(view.runningTasks).toEqual({ "task-b": "awaiting_input" }),
+	},
+	{
+		name: "runningTasksUpdated: a message without a map clears it",
+		seed: [{ type: "runningTasksUpdated", runningTasks: { "task-a": "running" } }],
+		message: { type: "runningTasksUpdated" },
+		check: (view) => expect(view.runningTasks).toEqual({}),
 	},
 
 	// skills

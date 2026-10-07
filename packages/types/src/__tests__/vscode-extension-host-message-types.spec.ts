@@ -35,6 +35,7 @@ type ExpectedExtensionMessageType =
 	| "subagentsUpdated"
 	| "subagentMessages"
 	| "memoryActivity"
+	| "runningTasksUpdated"
 	| "mcpServers"
 	| "enhancedPrompt"
 	| "commitSearchResults"

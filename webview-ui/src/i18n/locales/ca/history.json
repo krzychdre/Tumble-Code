@@ -60,5 +60,9 @@
 	"yesterday": "Ahir",
 	"noHistory": "Encara no hi ha tasques. Comença una conversa per crear l'historial.",
 	"noSearchResults": "Cap tasca coincideix amb la cerca.",
-	"clearSearch": "Esborra la cerca"
+	"clearSearch": "Esborra la cerca",
+	"runningIndicator": {
+		"running": "Treballant",
+		"awaitingInput": "Esperant la teva resposta"
+	}
 }

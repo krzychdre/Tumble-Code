@@ -52,5 +52,9 @@
 	"yesterday": "어제",
 	"noHistory": "아직 작업이 없습니다. 대화를 시작해 기록을 만들어 보세요.",
 	"noSearchResults": "이 검색과 일치하는 작업이 없습니다.",
-	"clearSearch": "검색 지우기"
+	"clearSearch": "검색 지우기",
+	"runningIndicator": {
+		"running": "작업 중",
+		"awaitingInput": "입력을 기다리는 중"
+	}
 }

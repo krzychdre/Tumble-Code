@@ -52,5 +52,9 @@
 	"yesterday": "昨天",
 	"noHistory": "還沒有工作。開始一段對話來建立歷史記錄。",
 	"noSearchResults": "沒有工作符合此搜尋。",
-	"clearSearch": "清除搜尋"
+	"clearSearch": "清除搜尋",
+	"runningIndicator": {
+		"running": "執行中",
+		"awaitingInput": "等待你的輸入"
+	}
 }

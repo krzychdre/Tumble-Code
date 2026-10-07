@@ -54,5 +54,9 @@
 	"yesterday": "Wczoraj",
 	"noHistory": "Brak zadań. Rozpocznij rozmowę, aby zbudować historię.",
 	"noSearchResults": "Żadne zadanie nie pasuje do tego wyszukiwania.",
-	"clearSearch": "Wyczyść wyszukiwanie"
+	"clearSearch": "Wyczyść wyszukiwanie",
+	"runningIndicator": {
+		"running": "Pracuje",
+		"awaitingInput": "Czeka na Twoją odpowiedź"
+	}
 }

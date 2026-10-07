@@ -60,5 +60,9 @@
 	"yesterday": "Hier",
 	"noHistory": "Aucune tâche pour le moment. Lancez une conversation pour constituer votre historique.",
 	"noSearchResults": "Aucune tâche ne correspond à cette recherche.",
-	"clearSearch": "Effacer la recherche"
+	"clearSearch": "Effacer la recherche",
+	"runningIndicator": {
+		"running": "En cours",
+		"awaitingInput": "En attente de votre réponse"
+	}
 }

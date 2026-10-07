@@ -52,5 +52,9 @@
 	"yesterday": "Dün",
 	"noHistory": "Henüz görev yok. Geçmişinizi oluşturmak için bir sohbet başlatın.",
 	"noSearchResults": "Bu aramayla eşleşen görev yok.",
-	"clearSearch": "Aramayı temizle"
+	"clearSearch": "Aramayı temizle",
+	"runningIndicator": {
+		"running": "Çalışıyor",
+		"awaitingInput": "Yanıtınızı bekliyor"
+	}
 }

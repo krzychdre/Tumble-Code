@@ -52,5 +52,9 @@
 	"yesterday": "Yesterday",
 	"noHistory": "No tasks yet. Start a conversation to build your history.",
 	"noSearchResults": "No tasks match this search.",
-	"clearSearch": "Clear search"
+	"clearSearch": "Clear search",
+	"runningIndicator": {
+		"running": "Working",
+		"awaitingInput": "Waiting for your input"
+	}
 }

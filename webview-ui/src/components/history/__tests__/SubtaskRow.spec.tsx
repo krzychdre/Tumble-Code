@@ -211,4 +211,50 @@ describe("SubtaskRow", () => {
 			expect(screen.getByText("Grandchild")).toBeInTheDocument()
 		})
 	})
+
+	describe("running status", () => {
+		it("shows a spinner on a working subtask", () => {
+			const node = createMockNode({ id: "leaf-1", task: "Working subtask", runningStatus: "running" })
+
+			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+
+			const indicator = screen.getByRole("img", { name: "history:runningIndicator.running" })
+			expect(indicator.querySelector(".ui-progress-ring")).toBeInTheDocument()
+			expect(screen.getByRole("button", { name: "Working subtask" })).toHaveAttribute(
+				"aria-describedby",
+				indicator.id,
+			)
+		})
+
+		it("shows the attention icon on a subtask waiting for input", () => {
+			const node = createMockNode({ id: "leaf-1", task: "Asking subtask", runningStatus: "awaiting_input" })
+
+			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+
+			expect(screen.getByRole("img", { name: "history:runningIndicator.awaitingInput" })).toBeInTheDocument()
+			expect(screen.queryByTestId("running-indicator-running")).not.toBeInTheDocument()
+		})
+
+		it("shows nothing on a subtask at rest", () => {
+			const node = createMockNode({ id: "leaf-1", task: "Resting subtask" })
+
+			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+
+			expect(screen.queryByTestId(/^running-indicator-/)).not.toBeInTheDocument()
+		})
+
+		it("marks a working nested subtask", () => {
+			const node = createMockNode(
+				{ id: "parent-1", task: "Parent" },
+				[createMockNode({ id: "child-1", task: "Child", runningStatus: "running" })],
+				true,
+			)
+
+			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+
+			const child = screen.getByTestId("subtask-row-child-1")
+			expect(child.querySelector('[data-testid="running-indicator-running"]')).toBeInTheDocument()
+			expect(screen.getAllByTestId(/^running-indicator-/)).toHaveLength(1)
+		})
+	})
 })

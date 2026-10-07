@@ -285,4 +285,51 @@ describe("useTaskSearch", () => {
 		// When not searching, it should fall back to newest
 		expect(result.current.sortOption).toBe("mostRelevant")
 	})
+
+	it("marks the rows of working tasks with their running status", () => {
+		mockUseExtensionState.mockReturnValue({
+			taskHistory: mockTaskHistory,
+			cwd: "/workspace/project1",
+			runningTasks: { "task-1": "running", "task-2": "awaiting_input" },
+		} as any)
+
+		const { result } = renderHook(() => useTaskSearch())
+
+		expect(result.current.tasks.map((task) => [task.id, task.runningStatus])).toEqual([
+			["task-2", "awaiting_input"],
+			["task-1", "running"],
+		])
+	})
+
+	it("leaves tasks at rest unmarked and unchanged", () => {
+		mockUseExtensionState.mockReturnValue({
+			taskHistory: mockTaskHistory,
+			cwd: "/workspace/project1",
+			runningTasks: { "task-2": "running" },
+		} as any)
+
+		const { result } = renderHook(() => useTaskSearch())
+
+		const restingTask = result.current.tasks.find((task) => task.id === "task-1")
+		expect(restingTask?.runningStatus).toBeUndefined()
+		expect(restingTask).toBe(mockTaskHistory[0])
+	})
+
+	it("keeps the running status on search results", () => {
+		mockUseExtensionState.mockReturnValue({
+			taskHistory: mockTaskHistory,
+			cwd: "/workspace/project1",
+			runningTasks: { "task-2": "running" },
+		} as any)
+
+		const { result } = renderHook(() => useTaskSearch())
+
+		act(() => {
+			result.current.setSearchQuery("unit tests")
+		})
+
+		expect(result.current.tasks[0].id).toBe("task-2")
+		expect(result.current.tasks[0].runningStatus).toBe("running")
+		expect(result.current.tasks[0].highlight).toBeDefined()
+	})
 })

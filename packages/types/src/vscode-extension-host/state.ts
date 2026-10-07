@@ -20,6 +20,13 @@ import type { AudioType } from "./settings.js"
 /** The remote-control bridge connection as the state push reports it. */
 export type RemoteControlStatus = "off" | "connecting" | "connected" | "offline"
 
+/**
+ * What a task that is working right now is doing: "running" while it calls the
+ * model or runs tools, "awaiting_input" while it is blocked on the user (an
+ * approval or a question).
+ */
+export type RunningTaskStatus = "running" | "awaiting_input"
+
 export type ExtensionState = Pick<
 	GlobalSettings,
 	| "currentApiConfigName"
@@ -118,6 +125,11 @@ export type ExtensionState = Pick<
 	subagents?: SubagentSummary[]
 	/** Live memory-system activity (recall prefetches / background writers). */
 	memoryActivity?: { recall: number; write: number }
+	/**
+	 * Tasks of this panel that are working right now, keyed by task id, the
+	 * open one included. A task at rest is absent.
+	 */
+	runningTasks?: Record<string, RunningTaskStatus>
 	apiConfiguration: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean

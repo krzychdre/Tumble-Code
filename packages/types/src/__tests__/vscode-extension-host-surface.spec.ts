@@ -60,6 +60,7 @@ type ExpectedExtensionMessageField =
 	| "subagents"
 	| "subagentMessages"
 	| "memoryActivity"
+	| "runningTasks"
 	| "mcpServers"
 	| "commits"
 	| "listApiConfig"

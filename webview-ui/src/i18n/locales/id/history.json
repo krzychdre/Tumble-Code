@@ -61,5 +61,9 @@
 	"yesterday": "Kemarin",
 	"noHistory": "Belum ada tugas. Mulai percakapan untuk membangun riwayat Anda.",
 	"noSearchResults": "Tidak ada tugas yang cocok dengan pencarian ini.",
-	"clearSearch": "Hapus pencarian"
+	"clearSearch": "Hapus pencarian",
+	"runningIndicator": {
+		"running": "Sedang bekerja",
+		"awaitingInput": "Menunggu masukan Anda"
+	}
 }

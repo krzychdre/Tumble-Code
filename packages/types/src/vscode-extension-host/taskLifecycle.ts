@@ -38,6 +38,7 @@ export type TaskLifecycleExtensionMessageType =
 	| "messageUpdated"
 	| "messageAdded"
 	| "memoryActivity"
+	| "runningTasksUpdated"
 	| "condenseTaskContextStarted"
 	| "condenseTaskContextResponse"
 	| "interactionRequired"
