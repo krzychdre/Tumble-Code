@@ -129,40 +129,57 @@ describe("SubagentRegistry", () => {
 		expect(registry.list().map((s) => s.taskId)).toEqual(["a", "b"])
 	})
 
-	describe("clearAll", () => {
-		it("drops every entry and watch flag, and posts an empty list", () => {
+	describe("clearSettled", () => {
+		it("drops every finished fan-out's entries and watch flags, and posts", () => {
 			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))
 			registry.register(makeSummary({ taskId: "b", parentTaskId: "p2", index: 1 }))
 			registry.watch("a")
 			posted.length = 0
 
-			registry.clearAll()
+			registry.clearSettled()
 
 			expect(registry.list()).toEqual([])
-			expect(registry.has("a")).toBe(false)
-			expect(registry.has("b")).toBe(false)
 			expect(registry.isWatched("a")).toBe(false)
 			expect(posted).toHaveLength(1)
 			expect(posted[0].type).toBe("subagentsUpdated")
 			expect(posted[0].subagents).toEqual([])
 		})
 
-		it("is a no-op (no post) when the registry is already empty", () => {
+		it("is a no-op (no post) when nothing is dropped", () => {
 			posted.length = 0
-			registry.clearAll()
+			registry.clearSettled()
 			expect(posted).toHaveLength(0)
 		})
 
-		it("does not interfere with beginFanOut's per-parent semantics", () => {
-			// clearAll is global; beginFanOut stays scoped. After clearAll,
-			// a fresh fan-out for a new parent registers cleanly.
-			registry.register(makeSummary({ taskId: "old", parentTaskId: "p1" }))
-			registry.clearAll()
-			posted.length = 0
+		// Regression: leaving a task whose fan-out still ran off screen wiped
+		// its rows, so the reopened parent showed an empty panel, then only
+		// the children started afterwards, and status updates of the others
+		// (unknown ids) were lost from the sidecar too.
+		it("keeps the rows of a fan-out still in progress, and they keep updating", () => {
+			registry.beginFanOut("p1")
+			registry.register(makeSummary({ taskId: "running", parentTaskId: "p1", index: 0 }))
+			registry.register(
+				makeSummary({ taskId: "waiting", parentTaskId: "p1", index: 1, status: "awaiting_input" }),
+			)
+			registry.watch("running")
+			registry.register(makeSummary({ taskId: "old", parentTaskId: "p2", status: "completed" }))
 
-			registry.register(makeSummary({ taskId: "new", parentTaskId: "p2" }))
-			expect(registry.list().map((s) => s.taskId)).toEqual(["new"])
-			expect(posted[0].subagents).toHaveLength(1)
+			registry.clearSettled()
+
+			expect(registry.list().map((s) => s.taskId)).toEqual(["running", "waiting"])
+			expect(registry.isWatched("running")).toBe(true)
+			registry.markTerminal("running", "completed", "done")
+			expect(registry.get("running")?.status).toBe("completed")
+		})
+
+		it("drops the rows once the fan-out has ended", () => {
+			registry.beginFanOut("p1")
+			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))
+			registry.endFanOut("p1")
+
+			registry.clearSettled()
+
+			expect(registry.list()).toEqual([])
 		})
 	})
 
@@ -208,6 +225,15 @@ describe("SubagentRegistry", () => {
 				makeSummary({ taskId: "bad", parentTaskId: "p2", index: 0 }),
 			])
 			expect(registry.list().map((s) => s.taskId)).toEqual(["good"])
+		})
+
+		it("leaves the live rows of a fan-out still in progress untouched", () => {
+			registry.beginFanOut("p1")
+			registry.register(makeSummary({ taskId: "live", parentTaskId: "p1", index: 0 }))
+
+			registry.restore("p1", [makeSummary({ taskId: "previous", parentTaskId: "p1", status: "completed" })])
+
+			expect(registry.list().map((s) => s.taskId)).toEqual(["live"])
 		})
 
 		it("is a no-op for an empty list", () => {

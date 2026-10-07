@@ -101,6 +101,7 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 		})
 	const subagentRegistry = {
 		beginFanOut: vi.fn(),
+		endFanOut: vi.fn(),
 		registerQueued: vi.fn(),
 		markTerminal: vi.fn(),
 		get: vi.fn().mockReturnValue(undefined),
@@ -141,6 +142,7 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 		getState: ReturnType<typeof vi.fn>
 		subagentRegistry: {
 			beginFanOut: ReturnType<typeof vi.fn>
+			endFanOut: ReturnType<typeof vi.fn>
 			registerQueued: ReturnType<typeof vi.fn>
 			markTerminal: ReturnType<typeof vi.fn>
 			snapshot: ReturnType<typeof vi.fn>
@@ -859,6 +861,28 @@ describe("RunParallelTasksTool.execute", () => {
 			const parsed = JSON.parse(raw)
 			expect(Array.isArray(parsed)).toBe(true)
 			expect(parsed[0].taskId).toBe("child-x")
+		})
+
+		// The registry keeps an in-progress fan-out's rows across task switches;
+		// it must learn when the fan-out is over, after the sidecar is written.
+		it("ends the fan-out in the registry after the sidecar is written", async () => {
+			const provider = makeFakeProvider()
+			const parent = makeFakeParentTask(provider)
+
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				makeCallbacks(),
+			)
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			expect(provider.subagentRegistry.endFanOut).not.toHaveBeenCalled()
+			provider.children.forEach((c) => c.complete())
+			await execPromise
+
+			expect(provider.subagentRegistry.endFanOut).toHaveBeenCalledWith("parent-12345678")
+			expect(provider.subagentRegistry.endFanOut.mock.invocationCallOrder[0]).toBeGreaterThan(
+				provider.subagentRegistry.snapshot.mock.invocationCallOrder[0],
+			)
 		})
 
 		// The child's own task directory is deleted once it completes, so the

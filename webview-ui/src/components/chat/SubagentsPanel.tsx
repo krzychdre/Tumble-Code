@@ -503,7 +503,19 @@ const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: Sub
 		() => (allSubagents ?? []).filter((summary) => summary.parentTaskId === taskId),
 		[allSubagents, taskId],
 	)
-	const active = useMemo(() => subagents.filter(isLive).length, [subagents])
+	// "Active" used to count queued children too, so a fan-out with 4 running
+	// and 16 waiting for a slot read "20/20 active". Each live state is
+	// counted on its own; the header names only the non-zero ones.
+	const counts = useMemo(() => {
+		const byStatus = { running: 0, queued: 0, awaiting_input: 0 }
+		for (const summary of subagents) {
+			if (summary.status in byStatus) {
+				byStatus[summary.status as keyof typeof byStatus]++
+			}
+		}
+		return byStatus
+	}, [subagents])
+	const anyLive = counts.running + counts.queued + counts.awaiting_input > 0
 
 	const handleOpenChange = useCallback((open: boolean) => setPanelExpanded(open), [])
 
@@ -525,8 +537,15 @@ const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: Sub
 				)}
 				<Bot className="size-4 shrink-0" aria-hidden />
 				<span className="text-sm font-medium">
-					{active > 0
-						? t("chat:subagents.headerActive", { active, total: subagents.length })
+					{anyLive
+						? [
+								t("chat:subagents.headerRunning", { running: counts.running, total: subagents.length }),
+								counts.queued > 0 && t("chat:subagents.headerQueued", { count: counts.queued }),
+								counts.awaiting_input > 0 &&
+									t("chat:subagents.headerAwaitingInput", { count: counts.awaiting_input }),
+							]
+								.filter(Boolean)
+								.join(" · ")
 						: t("chat:subagents.headerDone", { total: subagents.length })}
 				</span>
 			</CollapsibleTrigger>

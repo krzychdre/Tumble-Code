@@ -64,6 +64,33 @@ describe("SubagentsPanel task scope", () => {
 		expect(screen.queryByText("first subtask")).not.toBeInTheDocument()
 	})
 
+	// Regression: queued children counted as active, so 4 running + 16 queued
+	// read "20/20 active".
+	it("counts running, queued and awaiting-input children separately", () => {
+		renderPanel(
+			[
+				summary({ taskId: "r", index: 0, status: "running" }),
+				summary({ taskId: "q1", index: 1, status: "queued" }),
+				summary({ taskId: "q2", index: 2, status: "queued" }),
+				summary({ taskId: "w", index: 3, status: "awaiting_input" }),
+				summary({ taskId: "c", index: 4, status: "completed" }),
+			],
+			"parent",
+		)
+
+		expect(screen.getByText(/chat:subagents.headerRunning/)).toHaveTextContent(
+			'chat:subagents.headerRunning {"running":1,"total":5} · chat:subagents.headerQueued {"count":2} · chat:subagents.headerAwaitingInput {"count":1}',
+		)
+	})
+
+	it("names only the live states that are present", () => {
+		renderPanel([summary({ taskId: "r", status: "running" })], "parent")
+
+		expect(screen.getByText(/chat:subagents.headerRunning/)).toHaveTextContent(
+			'chat:subagents.headerRunning {"running":1,"total":1}',
+		)
+	})
+
 	// Regression: overflow-hidden rows in the height-capped flex column were
 	// squashed into slivers (20 parallel subagents) instead of the list scrolling.
 	it("scrolls the list instead of squashing the rows", () => {

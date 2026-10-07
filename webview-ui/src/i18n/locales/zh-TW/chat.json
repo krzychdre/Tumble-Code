@@ -533,7 +533,9 @@
 		"pauseTitle": "計劃已更新 — 請審查並批准"
 	},
 	"subagents": {
-		"headerActive": "子代理:{{active}}/{{total}} 個活動中",
+		"headerRunning": "子代理:{{running}}/{{total}} 個執行中",
+		"headerQueued": "排隊中:{{count}}",
+		"headerAwaitingInput": "等待輸入:{{count}}",
 		"headerDone": "子代理:{{total}} 個已完成",
 		"noOutput": "尚無輸出。",
 		"tokens": "已用 token",

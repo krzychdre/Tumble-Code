@@ -214,6 +214,7 @@ async function cleanupSubtaskWorktreeIfEmpty({
 /** Registry surface the fan-out reports lifecycle changes to (webview panel). */
 export interface SubtaskRegistry {
 	beginFanOut(parentTaskId: string): void
+	endFanOut(parentTaskId: string): void
 	registerQueued(summary: {
 		parentTaskId: string
 		index: number
@@ -623,6 +624,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 				await persistSubagentSummariesSidecar(provider, task.taskId)
 			} finally {
 				task.off(TumbleCodeEventName.TaskAborted, onParentAborted)
+				provider.subagentRegistry.endFanOut(task.taskId)
 			}
 		} catch (error) {
 			await handleError("running parallel tasks", error, this.name)

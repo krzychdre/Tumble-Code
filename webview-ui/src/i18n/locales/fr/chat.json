@@ -550,7 +550,9 @@
 		"pauseTitle": "Plan mis à jour — relisez et approuvez"
 	},
 	"subagents": {
-		"headerActive": "Sous-agents : {{active}}/{{total}} actifs",
+		"headerRunning": "Sous-agents : {{running}}/{{total}} en cours",
+		"headerQueued": "en file d'attente : {{count}}",
+		"headerAwaitingInput": "en attente de réponse : {{count}}",
 		"headerDone": "Sous-agents : {{total}} terminés",
 		"noOutput": "Pas encore de sortie.",
 		"tokens": "Jetons utilisés",

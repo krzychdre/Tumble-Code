@@ -542,7 +542,9 @@
 		"pauseTitle": "Plan aktualisiert — prüfen und genehmigen"
 	},
 	"subagents": {
-		"headerActive": "Subagenten: {{active}}/{{total}} aktiv",
+		"headerRunning": "Subagenten: {{running}}/{{total}} laufen",
+		"headerQueued": "in Warteschlange: {{count}}",
+		"headerAwaitingInput": "warten auf Eingabe: {{count}}",
 		"headerDone": "Subagenten: {{total}} abgeschlossen",
 		"noOutput": "Noch keine Ausgabe.",
 		"tokens": "Verwendete Token",

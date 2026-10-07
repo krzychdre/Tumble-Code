@@ -543,7 +543,9 @@
 		"pauseTitle": "Kế hoạch đã cập nhật — xem xét và phê duyệt"
 	},
 	"subagents": {
-		"headerActive": "Tác nhân con: {{active}}/{{total}} đang chạy",
+		"headerRunning": "Tác nhân con: {{running}}/{{total}} đang chạy",
+		"headerQueued": "đang chờ: {{count}}",
+		"headerAwaitingInput": "chờ phản hồi: {{count}}",
 		"headerDone": "Tác nhân con: {{total}} đã xong",
 		"noOutput": "Chưa có kết xuất.",
 		"tokens": "Token đã dùng",

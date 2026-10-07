@@ -550,7 +550,9 @@
 		"pauseTitle": "Plano atualizado — revise e aprove"
 	},
 	"subagents": {
-		"headerActive": "Subagentes: {{active}}/{{total}} ativos",
+		"headerRunning": "Subagentes: {{running}}/{{total}} em execução",
+		"headerQueued": "na fila: {{count}}",
+		"headerAwaitingInput": "aguardando resposta: {{count}}",
 		"headerDone": "Subagentes: {{total}} concluídos",
 		"noOutput": "Ainda não há saída.",
 		"tokens": "Tokens usados",

@@ -46,7 +46,9 @@
 		"openFile": "Otwórz plik"
 	},
 	"subagents": {
-		"headerActive": "Subagenci: {{active}}/{{total}} aktywnych",
+		"headerRunning": "Subagenci: {{running}}/{{total}} w toku",
+		"headerQueued": "oczekujące: {{count}}",
+		"headerAwaitingInput": "czeka na odpowiedź: {{count}}",
 		"headerDone": "Subagenci: {{total}} zakończonych",
 		"noOutput": "Brak danych wyjściowych.",
 		"tokens": "Zużyte tokeny",

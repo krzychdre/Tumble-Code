@@ -543,7 +543,9 @@
 		"pauseTitle": "Plan güncellendi — incele ve onayla"
 	},
 	"subagents": {
-		"headerActive": "Alt aracılar: {{active}}/{{total}} aktif",
+		"headerRunning": "Alt aracılar: {{running}}/{{total}} çalışıyor",
+		"headerQueued": "sırada: {{count}}",
+		"headerAwaitingInput": "yanıt bekliyor: {{count}}",
 		"headerDone": "Alt aracılar: {{total}} tamamlandı",
 		"noOutput": "Henüz çıktı yok.",
 		"tokens": "Kullanılan token",
