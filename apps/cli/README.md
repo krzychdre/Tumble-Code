@@ -142,9 +142,10 @@ To change the model while the session runs, type `/model`: it lists the
 models of `~/.roo/cli-settings.json` (their `models` entries) with the one in
 use marked. `/model <id>` runs `<id>` in the current mode until the session
 ends, with what its `models` entry says (reasoning effort, context window,
-prices); the next request goes to it, while a reply already streaming finishes
-on the old model. Other modes keep their models, the provider and its
-connection stay, and nothing is written to the settings file. Any id the
+prices, returned reasoning); the next request goes to it, while a reply
+already streaming finishes on the old model. Other modes keep their models,
+the provider and its connection stay, and nothing is written to the settings
+file. Any id the
 provider serves works, also one without an entry (for the `openai` provider it
 then runs with a 128,000-token window, no prices and no reasoning effort, and
 the CLI says so).
@@ -352,7 +353,7 @@ and prints a one-line hint saying where to set one.
 | `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
 | `modes`                   | Settings per mode, see below                                      |
-| `models`                  | Per model: reasoning effort, context window, prices, see below    |
+| `models`                  | Per model: effort, window, prices, returned reasoning, see below  |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
 | `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
@@ -540,6 +541,36 @@ same as "Return reasoning to the model" in the VS Code settings:
   server that does not read it back.
 - Like the size and the prices, it applies only with the `openai` provider. A
   value other than `true` or `false` fails at startup and names the model.
+
+Returned reasoning fills the context window: in tasks with a lot of thinking it
+was 20-38% of the history sent to the model. `trimOldReasoning` shortens it
+once the context fills up, the same as "Shorten old reasoning when the context
+fills up" in the VS Code settings:
+
+```json
+{
+	"models": {
+		"GLM-5.3-Flash-NVFP4": { "preserveReasoning": true, "trimOldReasoning": true }
+	}
+}
+```
+
+- Nothing changes until the context reaches the point where the CLI would
+  otherwise start freeing room (cutting old tool results, then condensing).
+  Then the long reasoning blocks of older turns are shortened first, oldest
+  first, until enough room is free; the reasoning of the last three answers
+  and blocks under about 500 tokens stay whole.
+- A shortened block keeps its beginning, its last paragraph and every
+  paragraph that states a finding ("found", "root cause", "confirmed" and the
+  like); a note in its place says how many paragraphs were left out. In
+  measured tasks that kept about half of the reasoning.
+- Only the copy sent to the model changes: the task history keeps every block
+  whole. A block once shortened is shortened the same way in every later
+  request, so the server's prompt cache keeps matching.
+- It needs `preserveReasoning`: without it no reasoning is sent back and there
+  is nothing to shorten. It defaults to `false`, applies only with the
+  `openai` provider, and a value other than `true` or `false` fails at startup
+  and names the model.
 
 ## MCP Servers
 

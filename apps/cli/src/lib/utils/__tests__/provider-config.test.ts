@@ -314,6 +314,7 @@ describe("toProviderSettings", () => {
 				reasoningEffort: "high",
 			},
 			openAiPreserveReasoning: false,
+			openAiTrimOldReasoning: false,
 		})
 	})
 
@@ -404,10 +405,11 @@ describe("toProviderSettings", () => {
 			provider: "anthropic",
 			model: "claude-x",
 			apiKey: "k",
-			modelSettings: { contextWindow: 1, inputPrice: 1, preserveReasoning: true },
+			modelSettings: { contextWindow: 1, inputPrice: 1, preserveReasoning: true, trimOldReasoning: true },
 		})
 		expect(settings).not.toHaveProperty("openAiCustomModelInfo")
 		expect(settings).not.toHaveProperty("openAiPreserveReasoning")
+		expect(settings).not.toHaveProperty("openAiTrimOldReasoning")
 	})
 
 	it("returns the reasoning to an openai model whose entry asks for it", () => {
@@ -422,6 +424,24 @@ describe("toProviderSettings", () => {
 		expect(toProviderSettings(connection)).toHaveProperty("openAiPreserveReasoning", false)
 		expect(toProviderSettings({ ...connection, modelSettings: { preserveReasoning: false } })).toHaveProperty(
 			"openAiPreserveReasoning",
+			false,
+		)
+	})
+
+	it("shortens old reasoning for an openai model whose entry asks for it", () => {
+		const settings = toProviderSettings({
+			...connection,
+			modelSettings: { preserveReasoning: true, trimOldReasoning: true },
+		})
+
+		expect(settings).toMatchObject({ openAiPreserveReasoning: true, openAiTrimOldReasoning: true })
+		expect(settings.openAiCustomModelInfo).toBeNull()
+	})
+
+	it("clears a trimOldReasoning an earlier run left in the extension state", () => {
+		expect(toProviderSettings(connection)).toHaveProperty("openAiTrimOldReasoning", false)
+		expect(toProviderSettings({ ...connection, modelSettings: { trimOldReasoning: false } })).toHaveProperty(
+			"openAiTrimOldReasoning",
 			false,
 		)
 	})
@@ -465,7 +485,7 @@ describe("withModel", () => {
 		baseUrl: "http://192.168.50.194:11111/v1",
 		apiKey: "1111",
 		reasoningEffort: "max",
-		modelSettings: { contextWindow: 262_144, preserveReasoning: true, inputPrice: 1.4 },
+		modelSettings: { contextWindow: 262_144, preserveReasoning: true, trimOldReasoning: true, inputPrice: 1.4 },
 	})
 
 	it("keeps the connection and replaces everything that came with the previous model", () => {
@@ -478,6 +498,7 @@ describe("withModel", () => {
 			openAiModelId: "Qwen3.8-27B",
 			openAiCustomModelInfo: null,
 			openAiPreserveReasoning: false,
+			openAiTrimOldReasoning: false,
 		})
 	})
 
@@ -497,6 +518,18 @@ describe("withModel", () => {
 			contextWindow: 131_072,
 			supportsReasoningEffort: true,
 			reasoningEffort: "high",
+		})
+	})
+
+	it("brings the new model's own reasoning switches", () => {
+		const flash = withModel(glm, "GLM-5.3-Flash-NVFP4", {
+			modelSettings: { preserveReasoning: true, trimOldReasoning: true },
+		})
+
+		expect(flash).toMatchObject({ openAiPreserveReasoning: true, openAiTrimOldReasoning: true })
+		expect(withModel(flash, "GLM-5.3-NVFP4", { modelSettings: { preserveReasoning: true } })).toMatchObject({
+			openAiPreserveReasoning: true,
+			openAiTrimOldReasoning: false,
 		})
 	})
 
