@@ -4,6 +4,7 @@ import getFolderSize from "get-folder-size"
 import type { ClineMessage, HistoryItem } from "@tumble-code/types"
 
 import {
+	findLast,
 	findLastIndex,
 	consolidateTokenUsage,
 	consolidateApiRequests,
@@ -13,6 +14,21 @@ import { getTaskDirectoryPath } from "../../utils/storage"
 import { perfCounters } from "../../utils/perfCounters"
 import { t } from "../../i18n"
 import { readTaskMessages } from "./taskMessages"
+
+/**
+ * Whether the task ended with its completion result. Resume asks come after
+ * it when the task is reopened, and a subtask asks to finish after it; neither
+ * is a further step.
+ */
+function taskOutcome(messages: ClineMessage[]): HistoryItem["outcome"] {
+	const lastStep = findLast(
+		messages,
+		(m) =>
+			!(m.ask === "resume_task" || m.ask === "resume_completed_task") &&
+			!(m.ask === "tool" && m.text?.includes('"finishTask"')),
+	)
+	return lastStep?.say === "completion_result" || lastStep?.ask === "completion_result" ? "completed" : "unfinished"
+}
 
 const taskSizeCache = new NodeCache({ stdTTL: 30, checkperiod: 5 * 60 })
 
@@ -133,6 +149,7 @@ export async function taskMetadata({
 		mode,
 		...(typeof apiConfigName === "string" && apiConfigName.length > 0 ? { apiConfigName } : {}),
 		...(initialStatus && { status: initialStatus }),
+		...(hasMessages && { outcome: taskOutcome(messages) }),
 	}
 
 	return { historyItem, tokenUsage }

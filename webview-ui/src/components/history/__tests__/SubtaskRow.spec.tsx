@@ -304,6 +304,19 @@ describe("SubtaskRow", () => {
 			expect(screen.getByTestId("task-outcome-unfinished")).toBeInTheDocument()
 		})
 
+		it("takes the outcome saved from the messages over the status", () => {
+			const node = createMockNode({
+				id: "leaf-1",
+				task: "Reopened subtask",
+				status: "completed",
+				outcome: "unfinished",
+			})
+
+			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+
+			expect(screen.getByTestId("task-outcome-unfinished")).toBeInTheDocument()
+		})
+
 		it("leaves the outcome to the live status while the subtask works", () => {
 			const node = createMockNode({ id: "leaf-1", task: "Working subtask", runningStatus: "running" })
 

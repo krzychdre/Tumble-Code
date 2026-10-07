@@ -29,9 +29,11 @@ const TaskDetails = ({ item, id }: TaskDetailsProps) => {
 	const customModes = useExtensionSelector((s) => s.customModes)
 
 	const modeName = item.mode ? modeLabel(getModeBySlug(item.mode, customModes)?.name ?? item.mode) : undefined
-	// History saved before task status existed has none; claim no outcome for it.
-	const outcome =
-		item.runningStatus || !item.status ? undefined : item.status === "completed" ? "completed" : "unfinished"
+	// History saved before `outcome` existed falls back to the status a subtask
+	// gets when it hands its result back, and before that claims no outcome.
+	const outcome = item.runningStatus
+		? undefined
+		: (item.outcome ?? (item.status ? (item.status === "completed" ? "completed" : "unfinished") : undefined))
 	const tokensIn = item.subtree?.tokensIn ?? (item.tokensIn || 0)
 	const tokensOut = item.subtree?.tokensOut ?? (item.tokensOut || 0)
 	const tokensTooltip = item.subtree

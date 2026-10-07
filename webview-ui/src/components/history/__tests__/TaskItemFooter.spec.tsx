@@ -123,7 +123,9 @@ describe("TaskItemFooter", () => {
 				item={{
 					...mockItem,
 					mode: "orchestrator",
-					status: "completed",
+					// A parent stays "active" after its subtask returns; the outcome says it finished.
+					status: "active",
+					outcome: "completed",
 					totalCost: 0.21,
 					subtree: { cost: 1.54, tokensIn: 3000, tokensOut: 400 },
 				}}
