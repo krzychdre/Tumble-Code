@@ -18,14 +18,13 @@ import {
 	type ClineApiReqInfo,
 	TumbleCodeEventName,
 	getModelId,
-	isParallelTasksEnabled,
 } from "@tumble-code/types"
 import { type ApiHandler } from "../../api"
 import { getRuntimeProviderCapabilities } from "../../api/runtime-provider-registry"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { SYSTEM_PROMPT } from "../prompts/system"
-import { buildSystemPromptInput, isMcpEnabledForPrompt } from "../prompts/system-prompt-input"
+import { buildSystemPromptInput, getRequestDisabledTools, isMcpEnabledForPrompt } from "../prompts/system-prompt-input"
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { applyReasoningTrims } from "../context-management/reasoningTrim"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
@@ -192,6 +191,7 @@ export class ApiRequestBuilder {
 				mcpHub,
 				rooIgnoreController: this.access.rooIgnoreController,
 				materializedDeferredTools: this.access.materializedDeferredTools,
+				isBackground: this.access.isBackground,
 				modelInfo: this.access.api.getModel().info,
 				skillsManager: provider.getSkillsManager(),
 			}),
@@ -216,18 +216,9 @@ export class ApiRequestBuilder {
 			apiConfiguration?.apiProvider,
 		).allowedFunctionNames
 
-		// Background tasks (parallel subagents, memory writers) never get
-		// delegation tools: a subtask is a small one-shot job that must return
-		// to its parent, not fan out further. Foreground tasks lose
-		// run_parallel_tasks when the user's concurrency cap turns the feature
-		// Off (< 2). Routed through disabledTools so the existing
-		// alias-resolving filter removes them.
-		let disabledTools = state?.disabledTools
-		if (this.access.isBackground) {
-			disabledTools = [...(disabledTools ?? []), "new_task", "run_parallel_tasks"]
-		} else if (!isParallelTasksEnabled(state?.parallelTasksMaxConcurrency)) {
-			disabledTools = [...(disabledTools ?? []), "run_parallel_tasks"]
-		}
+		// Shared with the system prompt, so TOOLS IN THIS MODE never suggests
+		// a delegation tool this array does not carry.
+		const disabledTools = getRequestDisabledTools(state, this.access.isBackground)
 
 		const toolsResult = await buildNativeToolsArrayWithRestrictions({
 			provider,

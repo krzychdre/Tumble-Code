@@ -16,6 +16,7 @@ import {
 	getOutputEfficiencySection,
 	getCapabilitiesSection,
 	getMcpAvailabilitySection,
+	getModeToolLimitsSection,
 	getModesSection,
 	addCustomInstructions,
 	markdownFormattingSection,
@@ -256,6 +257,14 @@ async function generatePrompt(
 		// allowlist goes with it, so this text follows the SAME convention as the
 		// tool-listing layer (one source of truth for which servers are visible).
 		getMcpAvailabilitySection(hasMcpGroup ? mcpHub : undefined, allowedMcpServers),
+		// Per-mode: which of command/read/edit the mode lacks and how to get the
+		// work done anyway. Zero bytes for a mode that has all three. The
+		// example target is the `code` mode as the user has it (a custom
+		// override included), named only when it has the missing groups.
+		getModeToolLimitsSection(modeConfig.groups, {
+			removedTools: settings?.removedTools,
+			exampleMode: getModeBySlug("code", customModeConfigs),
+		}),
 		// Per-settings: the list of installed modes.
 		modesSection,
 		// Per-mode: skills are filtered by the current mode.
