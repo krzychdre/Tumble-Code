@@ -9,6 +9,7 @@ import {
 	type ModeConfig,
 	type OrganizationAllowList,
 	type ProviderName,
+	type RunningTaskStatus,
 	type TumbleCodeSettings,
 	type SubagentSummary,
 	ORGANIZATION_ALLOW_ALL,
@@ -241,6 +242,8 @@ interface ProviderStateSources {
 	nextClineMessagesSeq(): number
 	listSubagents(): SubagentSummary[]
 	getMemoryActivity(): { recall: number; write: number }
+	/** The tasks of this panel that work right now (see TaskSlot.getRunningTasks). */
+	getRunningTasks(): Record<string, RunningTaskStatus>
 	getWebview(): vscode.Webview | undefined
 	getExtensionVersion(): string
 	getStorageErrorMessage(): string
@@ -397,6 +400,7 @@ export class ProviderStateBuilder {
 			clineMessagesSeq: this.sources.nextClineMessagesSeq(),
 			subagents: this.sources.listSubagents(),
 			memoryActivity: { ...this.sources.getMemoryActivity() },
+			runningTasks: this.sources.getRunningTasks(),
 			currentTaskTodos: currentTask?.todoList || [],
 			messageQueue: currentTask?.messageQueueService?.messages,
 			// Only materialize the full history when the caller needs it. The

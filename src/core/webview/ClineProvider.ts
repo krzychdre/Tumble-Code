@@ -26,6 +26,7 @@ import {
 	type ExtensionMessage,
 	type ExtensionState,
 	type MarketplaceInstalledMetadata,
+	type RunningTaskStatus,
 	TumbleCodeEventName,
 	openRouterDefaultModelId,
 	readCliRuntimeEnv,
@@ -94,6 +95,19 @@ import { ModeProfileQueries } from "./ModeProfileQueries"
 import { BackgroundTaskRunner, type BackgroundTaskOptions, type BackgroundTaskOutcome } from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
+
+/** The task events after which a task may have started or stopped working, or begun to wait for the user. */
+const RUNNING_TASK_EVENTS = [
+	TumbleCodeEventName.TaskStarted,
+	TumbleCodeEventName.TaskActive,
+	TumbleCodeEventName.TaskInteractive,
+	TumbleCodeEventName.TaskIdle,
+	TumbleCodeEventName.TaskResumable,
+	TumbleCodeEventName.TaskCompleted,
+	TumbleCodeEventName.TaskAborted,
+	TumbleCodeEventName.TaskFocused,
+	TumbleCodeEventName.TaskUnfocused,
+] as const
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -188,6 +202,12 @@ export class ClineProvider
 	 * (and are posted) in a different order.
 	 */
 	private clineMessagesSeq = 0
+
+	/**
+	 * The `runningTasks` map the view was last sent, by a state push or a
+	 * `runningTasksUpdated`, so a task event posts the map only when it changed.
+	 */
+	private runningTasksInView: Record<string, RunningTaskStatus> = {}
 
 	/**
 	 * The view declared on its launch that it applies `messageAdded` (CORE-R7).
@@ -290,6 +310,8 @@ export class ClineProvider
 			nextClineMessagesSeq: () => ++this.clineMessagesSeq,
 			listSubagents: () => this.subagentRegistry.list(),
 			getMemoryActivity: () => this.backgroundTaskRunner.memoryActivity,
+			// Every built state is posted: note the map as the one the view holds.
+			getRunningTasks: () => (this.runningTasksInView = this.taskSlot.getRunningTasks()),
 			getWebview: () => this.view?.webview,
 			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
 			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
@@ -452,6 +474,16 @@ export class ClineProvider
 
 			// Store the cleanup functions for later removal.
 			this.taskEventListeners.set(instance, forwardTaskEvents(instance, forwardingHost))
+		}
+
+		// The history rows show which tasks work. Each of these events can
+		// change that, for the foreground task and for a detached one (it
+		// keeps its forwarded listeners). Deferred to a microtask: the slot
+		// emits TaskUnfocused before it moves a working task to the detached
+		// set (TaskSlot.clear), and a detached task leaves the set only in
+		// its own TaskIdle/TaskAborted listener, which runs after this one.
+		for (const event of RUNNING_TASK_EVENTS) {
+			this.on(event, () => queueMicrotask(() => void this.postRunningTasksIfChanged()))
 		}
 
 		// Initialize Roo Code Cloud profile sync. When CloudService is not
@@ -661,6 +693,18 @@ export class ClineProvider
 		if (this.getCurrentTask()?.taskId === taskId) {
 			await this.postMessageToWebview(message)
 		}
+	}
+
+	/** Posts `runningTasksUpdated` when the working tasks differ from what the view holds. */
+	private async postRunningTasksIfChanged(): Promise<void> {
+		const runningTasks = this.taskSlot.getRunningTasks()
+		const known = this.runningTasksInView
+		const keys = Object.keys(runningTasks)
+		if (keys.length === Object.keys(known).length && keys.every((id) => runningTasks[id] === known[id])) {
+			return
+		}
+		this.runningTasksInView = runningTasks
+		await this.postMessageToWebview({ type: "runningTasksUpdated", runningTasks })
 	}
 
 	/**

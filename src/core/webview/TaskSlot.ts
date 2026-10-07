@@ -1,4 +1,4 @@
-import { TumbleCodeEventName, isIdleAsk, isResumableAsk } from "@tumble-code/types"
+import { type RunningTaskStatus, TaskStatus, TumbleCodeEventName, isIdleAsk, isResumableAsk } from "@tumble-code/types"
 
 import { t } from "../../i18n"
 import type { Task } from "../task/Task"
@@ -242,6 +242,23 @@ export class TaskSlot {
 	 */
 	findLiveInstance(taskId: string): Task | undefined {
 		return this.currentTask?.taskId === taskId ? this.currentTask : this.detached.get(taskId)?.task
+	}
+
+	/**
+	 * The tasks of this panel that work right now, by id: the foreground task
+	 * and the detached ones, judged by the same rule that decides whether a
+	 * task is kept running. A task blocked on an approval or a question is
+	 * "awaiting_input"; a task at rest is absent. Feeds the status shown on
+	 * the history rows (`runningTasks`).
+	 */
+	getRunningTasks(): Record<string, RunningTaskStatus> {
+		const runningTasks: Record<string, RunningTaskStatus> = {}
+		for (const task of [this.currentTask, ...[...this.detached.values()].map((entry) => entry.task)]) {
+			if (task && isWorking(task)) {
+				runningTasks[task.taskId] = task.taskStatus === TaskStatus.Interactive ? "awaiting_input" : "running"
+			}
+		}
+		return runningTasks
 	}
 
 	/**

@@ -10,16 +10,18 @@
 
 import * as vscode from "vscode"
 import * as path from "path"
+import { EventEmitter } from "events"
 import { isDeepStrictEqual } from "util"
 
 import type { TumbleCodeSettings } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { experimentDefault } from "@tumble-code/types"
+import { experimentDefault, TaskStatus, TumbleCodeEventName } from "@tumble-code/types"
 import { EMBEDDING_MODEL_PROFILES } from "../../../shared/embeddingModels"
 import { ContextProxy } from "../../config/ContextProxy"
 import { TaskHistoryStore } from "../../task-persistence"
 import { ClineProvider } from "../ClineProvider"
+import type { Task } from "../../task/Task"
 import { checkAutoApproval } from "../../auto-approval"
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import { logger } from "../../../utils/logging"
@@ -682,5 +684,90 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 		expect(saved?.codebaseIndexEmbedderModelDimension).toBeUndefined()
 		// The dimension field stays empty (its placeholder shows) instead of a made-up 1536.
 		expect(posted.codebaseIndexConfig?.codebaseIndexEmbedderModelDimension).toBeUndefined()
+	})
+
+	describe("runningTasks (the working tasks on the history rows)", () => {
+		/** A task with a real event emitter whose loop runs, attached to `provider` as a created task is. */
+		const makeWorkingTask = (provider: ClineProvider, taskId: string) => {
+			const task = Object.assign(new EventEmitter(), {
+				taskId,
+				instanceId: `inst-${taskId}`,
+				isInitialized: true,
+				abort: false,
+				abandoned: false,
+				taskStatus: TaskStatus.Running,
+				clineMessages: [{ ts: 1, type: "say", say: "text" }] as Array<Record<string, unknown>>,
+				abortTask: vi.fn().mockResolvedValue(undefined),
+			})
+			// What the Task constructor does: the provider forwards its events.
+			;(provider as any).taskCreationCallback(task)
+			return task
+		}
+		const asTask = (task: EventEmitter) => task as unknown as Task
+		const postedMaps = (post: { mock: { calls: unknown[][] } }) =>
+			post.mock.calls
+				.map(([message]) => message as { type: string; runningTasks?: unknown })
+				.filter((message) => message.type === "runningTasksUpdated")
+				.map((message) => message.runningTasks)
+
+		it("the posted state carries the working tasks", async () => {
+			const provider = await makeProvider({ cloudMode: "signedOut" })
+			await provider.setCurrentTask(asTask(makeWorkingTask(provider, "task-A")))
+
+			expect((await provider.getStateToPostToWebview()).runningTasks).toEqual({ "task-A": "running" })
+		})
+
+		it("a task event posts the map only when it changed", async () => {
+			const provider = await makeProvider({ cloudMode: "signedOut" })
+			const post = vi.spyOn(provider, "postMessageToWebview")
+			const task = makeWorkingTask(provider, "task-A")
+
+			await provider.setCurrentTask(asTask(task))
+			await flush(0)
+			// Started, still running: nothing new to tell the view.
+			task.emit(TumbleCodeEventName.TaskStarted)
+			await flush(0)
+			task.taskStatus = TaskStatus.Interactive
+			task.emit(TumbleCodeEventName.TaskInteractive, "task-A")
+			await flush(0)
+
+			expect(postedMaps(post)).toEqual([{ "task-A": "running" }, { "task-A": "awaiting_input" }])
+		})
+
+		it("a state push counts as sent: the next event does not post the same map again", async () => {
+			const provider = await makeProvider({ cloudMode: "signedOut" })
+			const post = vi.spyOn(provider, "postMessageToWebview")
+			const task = makeWorkingTask(provider, "task-A")
+			await provider.setCurrentTask(asTask(task))
+			await flush(0)
+
+			task.clineMessages.push({ ts: 2, type: "ask", ask: "completion_result" })
+			expect((await provider.getStateToPostToWebview()).runningTasks).toEqual({})
+			task.emit(TumbleCodeEventName.TaskIdle, "task-A")
+			await flush(0)
+
+			expect(postedMaps(post)).toEqual([{ "task-A": "running" }])
+		})
+
+		it("a task the user leaves while it works stays listed until it comes to rest", async () => {
+			const provider = await makeProvider({ cloudMode: "signedOut" })
+			const post = vi.spyOn(provider, "postMessageToWebview")
+			const task = makeWorkingTask(provider, "task-A")
+			await provider.setCurrentTask(asTask(task))
+			await flush(0)
+
+			// TaskUnfocused fires while the task is out of the slot and not yet
+			// detached; the map is read after the move, so it is unchanged.
+			await provider.leaveCurrentTask()
+			await flush(0)
+			expect(postedMaps(post)).toEqual([{ "task-A": "running" }])
+
+			task.clineMessages.push({ ts: 2, type: "ask", ask: "completion_result" })
+			task.emit(TumbleCodeEventName.TaskIdle, "task-A")
+			await flush(0)
+
+			expect(postedMaps(post)).toEqual([{ "task-A": "running" }, {}])
+			expect(task.abortTask).toHaveBeenCalledWith(true)
+		})
 	})
 })
