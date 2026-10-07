@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Fzf } from "fzf"
 
-import type { RunningTaskStatus } from "@tumble-code/types"
+import type { HistoryItem, RunningTaskStatus } from "@tumble-code/types"
 
 import { highlightFzfMatch } from "@/utils/highlight"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
@@ -12,6 +12,35 @@ type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRe
 
 // Stable fallback so a state without the map does not change the memo inputs.
 const NO_RUNNING_TASKS: Record<string, RunningTaskStatus> = {}
+
+/**
+ * The host reports the tasks that work themselves; a parent that delegated
+ * waits for its subtask and is absent. Each working task also marks its
+ * ancestors up to the root, so the root row shows that its tree works.
+ * A subtask waiting for the user wins over one that only runs.
+ */
+function withAncestors(
+	runningTasks: Record<string, RunningTaskStatus>,
+	taskHistory: HistoryItem[],
+): Record<string, RunningTaskStatus> {
+	const parentOf = new Map<string, string>()
+	for (const item of taskHistory) {
+		if (item.parentTaskId) {
+			parentOf.set(item.id, item.parentTaskId)
+		}
+	}
+	const marked = { ...runningTasks }
+	for (const [taskId, status] of Object.entries(runningTasks)) {
+		const seen = new Set([taskId])
+		for (let id = parentOf.get(taskId); id && !seen.has(id); id = parentOf.get(id)) {
+			seen.add(id)
+			if (marked[id] !== "awaiting_input") {
+				marked[id] = status
+			}
+		}
+	}
+	return marked
+}
 
 export const useTaskSearch = () => {
 	// P1: narrow slices.
@@ -95,11 +124,12 @@ export const useTaskSearch = () => {
 		if (Object.keys(runningTasks).length === 0) {
 			return sortedTasks
 		}
+		const marked = withAncestors(runningTasks, taskHistory)
 		return sortedTasks.map((item) => {
-			const runningStatus = runningTasks[item.id]
+			const runningStatus = marked[item.id]
 			return runningStatus ? { ...item, runningStatus } : item
 		})
-	}, [sortedTasks, runningTasks])
+	}, [sortedTasks, runningTasks, taskHistory])
 
 	return {
 		tasks,
