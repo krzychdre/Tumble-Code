@@ -392,6 +392,22 @@ describe("getRunningTasks: the working tasks shown on the history rows", () => {
 		expect(provider.taskSlot.getRunningTasks()).toEqual({})
 	})
 
+	it("also judges live tasks outside the slot (parallel subagents) by the same rule", async () => {
+		const provider = makeProvider()
+		await provider.taskSlot.set(makeLiveTask("task-A"))
+		const subagent = makeLiveTask("sub-1")
+		const asking = Object.assign(makeLiveTask("sub-2", { type: "ask", ask: "followup" }), {
+			taskStatus: TaskStatus.Interactive,
+		})
+		const finished = makeLiveTask("sub-3", { type: "ask", ask: "completion_result" })
+
+		expect(provider.taskSlot.getRunningTasks([subagent, asking, finished])).toEqual({
+			"task-A": "running",
+			"sub-1": "running",
+			"sub-2": "awaiting_input",
+		})
+	})
+
 	it("drops a detached task once it comes to rest", async () => {
 		const provider = makeProvider()
 		const taskA = makeLiveTask("task-A")

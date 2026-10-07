@@ -203,6 +203,25 @@ export class BackgroundTaskRunner {
 		return this.backgroundTasks.get(taskId)
 	}
 
+	/** The live parallel subagents (background tasks that a fan-out started). */
+	public liveSubagents(): Task[] {
+		return [...this.backgroundTasks.values()].filter((task) => this.subagentParents.has(task.taskId))
+	}
+
+	/**
+	 * Aborts the live background tasks among `taskIds` (their history is being
+	 * deleted). The abort settles {@link awaitTaskCompletion}, so the fan-out
+	 * that waits on them reports them as failed instead of hanging.
+	 */
+	public async abortTasks(taskIds: Iterable<string>): Promise<void> {
+		for (const taskId of taskIds) {
+			const task = this.backgroundTasks.get(taskId)
+			if (task) {
+				await task.abortTask().catch(logAbortFailure)
+			}
+		}
+	}
+
 	/**
 	 * Adjust a memory-activity counter and push the change to the webview.
 	 * `active: true` opens an activity window, `false` closes it. Counters,

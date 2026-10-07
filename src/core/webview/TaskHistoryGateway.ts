@@ -46,6 +46,8 @@ export interface TaskHistoryGatewayHost extends PostMessageHostMember {
 	clearCurrentTask(): Promise<void>
 	/** Stops the tasks among `taskIds` that are running off screen. */
 	destroyDetachedTasks(taskIds: string[]): Promise<void>
+	/** Aborts the tasks among `taskIds` that run as parallel subagents (headless background tasks). */
+	abortBackgroundTasks(taskIds: string[]): Promise<void>
 }
 
 /**
@@ -540,23 +542,24 @@ export class TaskHistoryGateway {
 	}
 
 	// this function deletes a task from task history, and deletes its checkpoints and delete the task folder
-	// If the task has subtasks (childIds), they will also be deleted recursively
+	// If the task has subtasks (childIds) or parallel subagents (parallelChildIds), they are deleted recursively too
 	async deleteTaskWithId(id: string, cascadeSubtasks: boolean = true): Promise<void> {
 		try {
 			// Existence check: throws "Task not found" (handled below).
 			await this.getHistoryItem(id)
 
-			// Collect all task IDs to delete (parent + all subtasks)
-			const allIdsToDelete: string[] = [id]
+			// Collect all task IDs to delete (parent + all subtasks). A Set:
+			// the delegation and fan-out lists may name the same child, and a
+			// corrupt cycle must not loop forever.
+			const idsToDelete = new Set<string>([id])
 
 			if (cascadeSubtasks) {
-				// Recursively collect all child IDs
 				const collectChildIds = async (taskId: string): Promise<void> => {
 					try {
 						const item = await this.getHistoryItem(taskId)
-						if (item.childIds && item.childIds.length > 0) {
-							for (const childId of item.childIds) {
-								allIdsToDelete.push(childId)
+						for (const childId of [...(item.childIds ?? []), ...(item.parallelChildIds ?? [])]) {
+							if (!idsToDelete.has(childId)) {
+								idsToDelete.add(childId)
 								await collectChildIds(childId)
 							}
 						}
@@ -568,6 +571,7 @@ export class TaskHistoryGateway {
 
 				await collectChildIds(id)
 			}
+			const allIdsToDelete = [...idsToDelete]
 
 			// Remove from stack if any of the tasks to delete are in the current task stack
 			for (const taskId of allIdsToDelete) {
@@ -578,6 +582,9 @@ export class TaskHistoryGateway {
 				}
 			}
 			await this.host.destroyDetachedTasks(allIdsToDelete)
+			// Before the store and directory deletes below: an aborting task
+			// saves its messages, which would re-create its directory.
+			await this.host.abortBackgroundTasks(allIdsToDelete)
 
 			// Delete all tasks from state in one batch. Mark each as
 			// self-originated so the shared store's onChange echo

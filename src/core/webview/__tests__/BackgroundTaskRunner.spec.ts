@@ -199,6 +199,23 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		expect(runner.subagentParentOf(writer.taskId)).toBeUndefined()
 	})
 
+	// The history rows show live subagents as running, and deleting a
+	// subagent's history aborts it.
+	it("lists only live subagents and aborts the given live background tasks", async () => {
+		const runner = new BackgroundTaskRunner(makeHost().host)
+		const subagent = (await runner.createBackgroundTask("work", {
+			subagentInfo: { parentTaskId: "parent", index: 0, description: "part one" },
+		})) as unknown as FakeTask
+		const writer = (await runner.createBackgroundTask("memory")) as unknown as FakeTask
+
+		expect(runner.liveSubagents()).toEqual([subagent])
+
+		await runner.abortTasks([subagent.taskId, "unknown"])
+
+		expect(subagent.abortTask).toHaveBeenCalledWith()
+		expect(writer.abortTask).not.toHaveBeenCalled()
+	})
+
 	it("skips the mode binding for an explicit profile and for tasks without subagentInfo", async () => {
 		const { host } = makeHost()
 		const runner = new BackgroundTaskRunner(host)

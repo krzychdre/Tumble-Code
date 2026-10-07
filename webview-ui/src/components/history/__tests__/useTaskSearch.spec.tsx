@@ -76,6 +76,25 @@ describe("useTaskSearch", () => {
 		expect(result.current.tasks.every((task) => task.workspace === "/workspace/project1")).toBe(true)
 	})
 
+	it("keeps a subtask from another workspace (at any depth) when an ancestor is in this one", () => {
+		const base = { number: 4, ts: 1, tokensIn: 0, tokensOut: 0, totalCost: 0 }
+		mockUseExtensionState.mockReturnValue({
+			taskHistory: [
+				...mockTaskHistory,
+				{ ...base, id: "sub", task: "subagent", parentTaskId: "task-1", workspace: "/tmp/worktree" },
+				{ ...base, id: "grand", task: "grandchild", parentTaskId: "sub", workspace: undefined },
+				{ ...base, id: "stranger", task: "child of project2", parentTaskId: "task-3", workspace: "/x" },
+				{ ...base, id: "loop-a", task: "corrupt a", parentTaskId: "loop-b", workspace: "/x" },
+				{ ...base, id: "loop-b", task: "corrupt b", parentTaskId: "loop-a", workspace: "/x" },
+			],
+			cwd: "/workspace/project1",
+		} as any)
+
+		const { result } = renderHook(() => useTaskSearch())
+
+		expect(result.current.tasks.map((task) => task.id).sort()).toEqual(["grand", "sub", "task-1", "task-2"])
+	})
+
 	it("shows all workspaces when showAllWorkspaces is true", () => {
 		const { result } = renderHook(() => useTaskSearch())
 
@@ -430,7 +449,14 @@ describe("useTaskSearch", () => {
 			} as any)
 			const { result } = renderHook(() => useTaskSearch())
 			act(() => result.current.setSortOption("mostExpensive"))
-			expect(result.current.tasks.map((task) => task.id)).toEqual(["root", "pricey", "child", "task-1"])
+			// The grandchild of another workspace is listed under its root.
+			expect(result.current.tasks.map((task) => task.id)).toEqual([
+				"root",
+				"pricey",
+				"child",
+				"grandchild",
+				"task-1",
+			])
 		})
 
 		it("counts each task once in a parent cycle", () => {

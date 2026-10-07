@@ -324,4 +324,28 @@ describe("aggregateTaskCostsRecursive", () => {
 		// Total: 1.0 + 0.6 + 0.4 = 2.0
 		expect(result.totalCost).toBe(2.0)
 	})
+	it("includes parallel subagents recursively and counts a child named in both lists once", async () => {
+		const mockHistory: Record<string, HistoryItem> = {
+			parent: {
+				id: "parent",
+				totalCost: 1.0,
+				childIds: ["delegated"],
+				parallelChildIds: ["sub-1", "delegated"],
+			} as unknown as HistoryItem,
+			delegated: {
+				id: "delegated",
+				totalCost: 0.5,
+				parallelChildIds: ["sub-2"],
+			} as unknown as HistoryItem,
+			"sub-1": { id: "sub-1", totalCost: 0.25 } as unknown as HistoryItem,
+			"sub-2": { id: "sub-2", totalCost: 0.125 } as unknown as HistoryItem,
+		}
+
+		const result = await aggregateTaskCostsRecursive("parent", async (id) => mockHistory[id])
+
+		expect(result.childrenCost).toBe(0.875)
+		expect(result.totalCost).toBe(1.875)
+		expect(Object.keys(result.childBreakdown!)).toEqual(["delegated", "sub-1"])
+		expect(result.childBreakdown!.delegated.childBreakdown!["sub-2"].totalCost).toBe(0.125)
+	})
 })

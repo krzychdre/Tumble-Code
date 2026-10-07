@@ -1,7 +1,7 @@
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 
-import type { AudioType, ClineMessage, HistoryItem } from "@tumble-code/types"
+import type { AudioType, ClineMessage, HistoryItem, SubagentSummary } from "@tumble-code/types"
 
 import { appendImages } from "@src/utils/imageUtils"
 import { useExtensionMessage, type ExtensionMessageOf } from "@src/utils/extensionBus"
@@ -40,6 +40,8 @@ interface ChatHostMessagesOptions {
 	/** The task message (the first message); a new object on every state push. */
 	task: ClineMessage | undefined
 	currentTaskItem: HistoryItem | undefined
+	/** The live parallel subagents (all tasks); their costs move the aggregate of the task that fanned out. */
+	subagents: SubagentSummary[] | undefined
 	/** Inputs of the "clear the checkpoint warning" effect. */
 	modifiedMessagesLength: number
 }
@@ -57,6 +59,7 @@ export function useChatHostMessages({
 	playSound,
 	task,
 	currentTaskItem,
+	subagents,
 	modifiedMessagesLength,
 }: ChatHostMessagesOptions) {
 	const { sendingDisabled, setSendingDisabled, enableButtons, isStreaming } = ask
@@ -80,17 +83,24 @@ export function useChatHostMessages({
 		setIsCondensing(false)
 	}, [taskTs])
 
-	// Request aggregated costs when task changes and has childIds
+	// Request aggregated costs when the task changes and has subtasks or
+	// parallel subagents. While its subagents run, their costs and statuses
+	// change without the task item changing: the key re-requests then.
 	const currentTaskId = currentTaskItem?.id
 	const currentTaskChildIds = currentTaskItem?.childIds
+	const currentTaskParallelChildIds = currentTaskItem?.parallelChildIds
+	const subagentsKey = (subagents ?? [])
+		.filter((subagent) => subagent.parentTaskId === currentTaskId)
+		.map((subagent) => `${subagent.taskId}:${subagent.status}:${subagent.totalCost}`)
+		.join("|")
 	useEffect(() => {
-		if (taskTs && currentTaskChildIds && currentTaskChildIds.length > 0) {
+		if (taskTs && (currentTaskChildIds?.length || currentTaskParallelChildIds?.length || subagentsKey)) {
 			vscode.postMessage({
 				type: "getTaskWithAggregatedCosts",
 				text: currentTaskId,
 			})
 		}
-	}, [taskTs, currentTaskId, currentTaskChildIds])
+	}, [taskTs, currentTaskId, currentTaskChildIds, currentTaskParallelChildIds, subagentsKey])
 
 	const handleMessage = (message: ChatViewMessage) => {
 		switch (message.type) {

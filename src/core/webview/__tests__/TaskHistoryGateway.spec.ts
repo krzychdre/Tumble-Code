@@ -100,6 +100,7 @@ const makeHost = () => {
 		getCurrentTask: vi.fn().mockReturnValue(undefined),
 		clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 		destroyDetachedTasks: vi.fn().mockResolvedValue(undefined),
+		abortBackgroundTasks: vi.fn().mockResolvedValue(undefined),
 	}
 	return { host, state, contextProxy }
 }
@@ -391,6 +392,31 @@ describe("TaskHistoryGateway", () => {
 			expect(fs.rm).toHaveBeenCalledWith("/storage/tasks/p", { recursive: true, force: true })
 			expect(fs.rm).toHaveBeenCalledWith("/storage/tasks/c", { recursive: true, force: true })
 			expect(host.postStateToWebview).toHaveBeenCalledTimes(1)
+		})
+
+		it("deleteTaskWithId follows the parallel subagents too and aborts them before deleting", async () => {
+			const { gateway, host, records, store } = await ready()
+			records.set("p", item("p", { childIds: ["c"], parallelChildIds: ["s1", "s2"] }))
+			records.set("c", item("c", { parallelChildIds: ["s3"] }))
+			records.set("s1", item("s1", { parentTaskId: "p", isSubagent: true }))
+			records.set("s2", item("s2", { parentTaskId: "p", isSubagent: true, parallelChildIds: ["p"] }))
+			records.set("s3", item("s3", { parentTaskId: "c", isSubagent: true }))
+			const order: string[] = []
+			host.abortBackgroundTasks.mockImplementation(async () => void order.push("abort"))
+			store.deleteMany.mockImplementation(async (ids: string[]) => {
+				order.push("deleteMany")
+				ids.forEach((id) => records.delete(id))
+			})
+
+			await gateway.deleteTaskWithId("p")
+
+			const expected = ["p", "c", "s3", "s1", "s2"]
+			expect(store.deleteMany).toHaveBeenCalledWith(expected, gateway.origin)
+			expect(host.abortBackgroundTasks).toHaveBeenCalledWith(expected)
+			expect(order).toEqual(["abort", "deleteMany"])
+			for (const id of expected) {
+				expect(fs.rm).toHaveBeenCalledWith(`/storage/tasks/${id}`, { recursive: true, force: true })
+			}
 		})
 
 		it("deleteTaskWithId rethrows errors other than 'Task not found'", async () => {
