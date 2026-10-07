@@ -590,7 +590,7 @@ describe("manageContext microcompaction pre-pass", () => {
 
 		// Need-adaptive: a modest overage clears a few of the oldest results, not the
 		// whole eligible set. The old rule always cleared everything but the last five.
-		const cleared = result.microcompactClearedToolUseIds ?? []
+		const cleared = result.microcompactClearedIds ?? []
 		expect(cleared.length).toBeGreaterThan(0)
 		expect(cleared.length).toBeLessThan(10 - MICROCOMPACT_MIN_KEEP)
 		// Oldest-first prefix, so the sent prefix diverges as late as possible.
@@ -644,9 +644,9 @@ describe("manageContext microcompaction pre-pass", () => {
 			profileThresholds: {},
 			currentProfileId: "default",
 			// A prior, higher-pressure turn had cleared six results.
-			previouslyClearedToolUseIds: new Set(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"]),
+			previouslyClearedIds: new Set(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"]),
 		})
 
-		expect(result.microcompactClearedToolUseIds).toEqual(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"])
+		expect(result.microcompactClearedIds).toEqual(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"])
 	})
 })

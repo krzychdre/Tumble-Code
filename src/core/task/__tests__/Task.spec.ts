@@ -2810,7 +2810,7 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 
 			// The transient bookkeeping matches what went over the wire, so the next
 			// request's threshold check adds the stripped size back.
-			expect([...task.microcompactedToolUseIds].sort()).toEqual(clearedIdsIn(retry).sort())
+			expect([...task.microcompactedIds].sort()).toEqual(clearedIdsIn(retry).sort())
 			expect(task.microcompactStrippedTokens).toBeGreaterThan(0)
 		})
 
@@ -2820,7 +2820,7 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			// Left over from an earlier pass under another mode and model: an id that no
 			// longer resolves in this history. Mutate in place: the request builder holds
 			// this very Set.
-			task.microcompactedToolUseIds.add("stale-from-other-mode")
+			task.microcompactedIds.add("stale-from-other-mode")
 			task.microcompactStrippedTokens = 0
 
 			const iterator = task.attemptApiRequest(0)
@@ -2829,9 +2829,9 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			expect(createMessage).toHaveBeenCalledTimes(2)
 			const retry = createMessage.mock.calls[1][1] as any[]
 
-			expect(task.microcompactedToolUseIds.has("stale-from-other-mode")).toBe(false)
+			expect(task.microcompactedIds.has("stale-from-other-mode")).toBe(false)
 			expect(clearedIdsIn(retry).length).toBeGreaterThan(0)
-			expect([...task.microcompactedToolUseIds].sort()).toEqual(clearedIdsIn(retry).sort())
+			expect([...task.microcompactedIds].sort()).toEqual(clearedIdsIn(retry).sort())
 			// The stripped-size correction now describes this request, not the old one.
 			expect(task.microcompactStrippedTokens).toBeGreaterThan(0)
 		})

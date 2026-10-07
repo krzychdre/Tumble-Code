@@ -158,7 +158,7 @@ export interface TaskContextManagerAccess
 
 	// Non-destructive microcompaction: transient set of tool_use_ids to clear at
 	// send time. Written by the manager each request; read by buildCleanConversationHistory.
-	microcompactedToolUseIds: Set<string>
+	microcompactedIds: Set<string>
 
 	// Estimated tokens the send-time strip removed from the last request. Written by
 	// the manager each request; read by the API loop to un-deflate the reported
@@ -485,7 +485,7 @@ export class TaskContextManager {
 				environmentDetails,
 				// Carry the rejected request's clears forward, as the regular pass does, so
 				// a second rejection in a row strips more instead of the same set again.
-				previouslyClearedToolUseIds: this.access.microcompactedToolUseIds,
+				previouslyClearedIds: this.access.microcompactedIds,
 				...pruneOptions,
 			})
 
@@ -708,7 +708,7 @@ export class TaskContextManager {
 				// differing byte backwards and void the provider's prompt cache. Safe to
 				// pass the live set — manageContext only reads it, and it is rewritten
 				// from the result below.
-				previouslyClearedToolUseIds: this.access.microcompactedToolUseIds,
+				previouslyClearedIds: this.access.microcompactedIds,
 				...pruneOptions,
 			})
 
@@ -849,9 +849,9 @@ export class TaskContextManager {
 		// Always overwrite (empty when nothing to clear) so a stale set from a
 		// prior request, or a prior mode with a narrower context window, never
 		// lingers. The send-time chokepoint applies it to the outgoing copy only.
-		this.access.microcompactedToolUseIds.clear()
-		for (const id of result.microcompactClearedToolUseIds ?? []) {
-			this.access.microcompactedToolUseIds.add(id)
+		this.access.microcompactedIds.clear()
+		for (const id of result.microcompactClearedIds ?? []) {
+			this.access.microcompactedIds.add(id)
 		}
 
 		// Record how much the strip will remove from the outgoing request, so the
@@ -862,7 +862,7 @@ export class TaskContextManager {
 		// 77M excess input tokens).
 		this.access.microcompactStrippedTokens = nextMicrocompactStrippedTokens(
 			result,
-			this.access.microcompactedToolUseIds.size,
+			this.access.microcompactedIds.size,
 		)
 	}
 

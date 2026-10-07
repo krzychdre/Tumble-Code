@@ -93,7 +93,7 @@ function makeAccess(providerStateOverrides: () => Record<string, unknown> = () =
 		apiConversationHistory: [],
 		clineMessages: [],
 		cloudSyncedMessageTimestamps: new Set<number>(),
-		microcompactedToolUseIds: new Set<string>(),
+		microcompactedIds: new Set<string>(),
 		microcompactStrippedTokens: 0,
 		skipPrevResponseIdOnce: false,
 		consecutiveMistakeCount: 0,

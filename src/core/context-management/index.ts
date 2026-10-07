@@ -278,7 +278,7 @@ export type ContextManagementOptions = {
 	 * would move the first byte differing from the last request backwards and throw away
 	 * the provider's prompt cache from that point on.
 	 */
-	previouslyClearedToolUseIds?: ReadonlySet<string>
+	previouslyClearedIds?: ReadonlySet<string>
 	/**
 	 * Run the deterministic prune pass before the LLM summary. Default true;
 	 * `false` is the user's escape hatch (setting `pruneBeforeCondense`).
@@ -312,7 +312,7 @@ export type ContextManagementResult = SummarizeResponse & {
 	 * `buildCleanConversationHistory`). The caller stashes them as transient,
 	 * recomputed-per-request state so they stay correct across mode switches.
 	 */
-	microcompactClearedToolUseIds?: string[]
+	microcompactClearedIds?: string[]
 	/** Tool results the deterministic pruner moved to `prune` artifacts. */
 	prunedCount?: number
 	/** Bytes the pruner removed from the conversation, net of the previews. */
@@ -350,7 +350,7 @@ export async function manageContext({
 	cwd,
 	rooIgnoreController,
 	condenseCircuitOpen,
-	previouslyClearedToolUseIds,
+	previouslyClearedIds,
 	pruneBeforeCondense,
 	pruneToolResultBudget,
 	artifactStore,
@@ -413,7 +413,7 @@ export async function manageContext({
 	let microcompacted = false
 	let microcompactClearedCount = 0
 	let microcompactTokensCleared = 0
-	let microcompactClearedToolUseIds: string[] = []
+	let microcompactClearedIds: string[] = []
 
 	// Built at most once per pass and shared by both consumers: microcompaction reads it as a
 	// protection list, condense reads it as a critical-fact checklist. One linear pass over the
@@ -434,12 +434,12 @@ export async function manageContext({
 			targetChars,
 			// Marks which results carry facts the model cannot cheaply re-derive.
 			criticalToolUseIds: getLedger().criticalToolUseIds,
-			alreadyClearedToolUseIds: previouslyClearedToolUseIds,
+			alreadyClearedToolUseIds: previouslyClearedIds,
 		})
 		if (mc.clearedCount > 0) {
 			microcompacted = true
 			microcompactClearedCount = mc.clearedCount
-			microcompactClearedToolUseIds = mc.clearedToolUseIds
+			microcompactClearedIds = mc.clearedToolUseIds
 			const grossTokensCleared = mc.clearedText
 				? await estimateTokenCount([{ type: "text", text: mc.clearedText }], apiHandler)
 				: 0
@@ -482,7 +482,7 @@ export async function manageContext({
 					microcompacted: true,
 					microcompactClearedCount,
 					microcompactTokensCleared,
-					microcompactClearedToolUseIds,
+					microcompactClearedIds,
 				}
 			}
 		}
@@ -491,7 +491,7 @@ export async function manageContext({
 	// Only surface microcompaction fields when the pre-pass actually ran, so the
 	// no-op result shape stays backward-compatible with existing callers/tests.
 	const microcompactFields = microcompacted
-		? { microcompacted, microcompactClearedCount, microcompactTokensCleared, microcompactClearedToolUseIds }
+		? { microcompacted, microcompactClearedCount, microcompactTokensCleared, microcompactClearedIds }
 		: undefined
 
 	// --- Deterministic prune pass (cheap, no-LLM, destructive but recoverable) ---
@@ -524,8 +524,8 @@ export async function manageContext({
 		pruneBeforeCondense !== false && !!artifactStore && (overCondenseThreshold || overAllowedTokens)
 
 	if (pruneEnabled && artifactStore) {
-		const skipToolUseIds = new Set<string>(microcompactClearedToolUseIds)
-		for (const id of previouslyClearedToolUseIds ?? []) {
+		const skipToolUseIds = new Set<string>(microcompactClearedIds)
+		for (const id of previouslyClearedIds ?? []) {
 			skipToolUseIds.add(id)
 		}
 
@@ -692,7 +692,7 @@ export async function manageContext({
 		}
 	}
 	// No truncation or condensation needed. Microcompaction is carried as
-	// `microcompactClearedToolUseIds` (in `microcompactFields`) and applied at
+	// `microcompactClearedIds` (in `microcompactFields`) and applied at
 	// send time, never persisted here. A prune, if one ran, IS persisted, so
 	// return the history as the pruner left it.
 	return {

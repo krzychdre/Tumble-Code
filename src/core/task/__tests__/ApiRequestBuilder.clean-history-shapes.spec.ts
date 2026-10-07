@@ -21,7 +21,7 @@ const encryptedApi = { getEncryptedContent: () => undefined }
 const plainApi = {}
 
 function build(api: object, messages: ApiMessage[], preserveReasoning = false): unknown[] {
-	const access = { api, microcompactedToolUseIds: new Set<string>() } as unknown as ApiRequestBuilderAccess
+	const access = { api, microcompactedIds: new Set<string>() } as unknown as ApiRequestBuilderAccess
 	return new ApiRequestBuilder(access).buildCleanConversationHistory(messages, preserveReasoning)
 }
 

@@ -71,7 +71,7 @@ export interface ApiRequestBuilderAccess
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
 	// are cleared on the OUTGOING request copy (stored history stays pristine).
 	// Recomputed each request by the context manager. See applyMicrocompactCleared.
-	microcompactedToolUseIds: ReadonlySet<string>
+	microcompactedIds: ReadonlySet<string>
 
 	// Context manager for context management
 	contextManager: TaskContextManager
@@ -305,10 +305,10 @@ export class ApiRequestBuilder {
 		// and correct across mid-task mode switches (a wider-window mode passes an
 		// empty set and gets full fidelity back). No-op (same ref) when the set is
 		// empty, which is the common case.
-		const microcompactedToolUseIds = this.access.microcompactedToolUseIds
+		const microcompactedIds = this.access.microcompactedIds
 		const sourceMessages =
-			microcompactedToolUseIds && microcompactedToolUseIds.size > 0
-				? applyMicrocompactCleared(messages, microcompactedToolUseIds)
+			microcompactedIds && microcompactedIds.size > 0
+				? applyMicrocompactCleared(messages, microcompactedIds)
 				: messages
 
 		// Encrypted reasoning is OpenAI ciphertext (TaskMessageLog stores it only from a handler

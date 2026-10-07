@@ -103,7 +103,7 @@ export interface TaskApiLoopAccess
 
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
 	// are cleared on the outgoing request copy (stored history stays pristine).
-	microcompactedToolUseIds: Set<string>
+	microcompactedIds: Set<string>
 
 	// Estimated tokens the previous request's send-time strip removed. Added back to
 	// the provider-reported context size before the threshold check so the gate sees
@@ -292,7 +292,7 @@ export class TaskApiLoop {
 			apiConfiguration: access.apiConfiguration,
 			api: access.api,
 			apiConversationHistory: access.apiConversationHistory,
-			microcompactedToolUseIds: access.microcompactedToolUseIds,
+			microcompactedIds: access.microcompactedIds,
 			providerRef: access.providerRef,
 			cwd: access.cwd,
 			contextManager: access.contextManager,

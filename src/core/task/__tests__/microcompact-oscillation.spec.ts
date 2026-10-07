@@ -184,7 +184,7 @@ async function runTask(turns: number, undeflate: boolean): Promise<TurnRecord[]>
 		expect(result.summary).toBe("")
 		expect(result.truncationId).toBeUndefined()
 
-		const clearedIds = result.microcompactClearedToolUseIds ?? []
+		const clearedIds = result.microcompactClearedIds ?? []
 		const sent = (await pristineTokens(messages)) - (result.microcompactTokensCleared ?? 0)
 		log.push({ sent, stripped: clearedIds.length > 0 })
 
