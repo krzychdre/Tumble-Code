@@ -14,8 +14,10 @@ import {
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { type Mode, defaultModeSlug, getModeBySlug } from "../../shared/modes"
+import { type Mode, defaultModeSlug, getAllModes, getModeBySlug } from "../../shared/modes"
 import { t } from "../../i18n"
+import { resolveProviderModel } from "../../api"
+import type { ImageCapableMode } from "../tools/helpers/imageHelpers"
 import type { ContextProxy } from "../config/ContextProxy"
 import type { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import type { Task } from "../task/Task"
@@ -429,6 +431,43 @@ export class ModeProfileBinding {
 			)
 			return undefined
 		}
+	}
+
+	/**
+	 * The modes that run on a model which can see images: their own provider
+	 * settings (a CLI per-mode entry or a profile pinned to the mode) resolve
+	 * to a model with `supportsImages`. A mode without its own settings runs
+	 * on the current profile and is not listed; neither is any mode while the
+	 * workspace locks one profile across modes. Read-only (no profile is
+	 * activated); a mode whose settings cannot be read or resolved is skipped.
+	 */
+	async findImageCapableModes(): Promise<ImageCapableMode[]> {
+		const modes = getAllModes(await this.host.getCustomModes())
+		const found: ImageCapableMode[] = []
+
+		for (const { slug } of modes) {
+			try {
+				const resolution = await this.resolve(slug)
+				let settings: ProviderSettings | undefined
+				if (resolution.source === "cli") {
+					settings = resolution.apiConfiguration
+				} else if (resolution.source === "store" && resolution.binding.status === "usable") {
+					settings = await this.providerSettingsManager.getProfile({ id: resolution.binding.configId })
+				}
+				if (!settings) {
+					continue
+				}
+
+				const { id, info } = resolveProviderModel(settings)
+				if (info.supportsImages) {
+					found.push({ slug, modelId: id })
+				}
+			} catch {
+				// Unreadable profile or unavailable provider: the mode cannot be offered.
+			}
+		}
+
+		return found
 	}
 
 	/**

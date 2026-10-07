@@ -33,6 +33,7 @@ import {
 	validateImageForProcessing,
 	processImageFile,
 	ImageMemoryTracker,
+	type ImageCapableMode,
 } from "./helpers/imageHelpers"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { describeReadFile } from "./toolDescriptors"
@@ -368,6 +369,20 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	}
 
 	/**
+	 * The modes other than the task's own that run on an image-capable model,
+	 * named in the notice for an image this model cannot see. Any failure
+	 * counts as "none", which tells the model not to delegate the image.
+	 */
+	private async findOtherImageCapableModes(task: Task): Promise<ImageCapableMode[]> {
+		try {
+			const modes = (await task.providerRef.deref()?.findImageCapableModes()) ?? []
+			return modes.filter(({ slug }) => slug !== task.taskMode)
+		} catch {
+			return []
+		}
+	}
+
+	/**
 	 * Handle binary file processing (images, PDF, DOCX, etc.).
 	 */
 	private async handleBinaryFile(
@@ -392,6 +407,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 					maxImageFileSize,
 					maxTotalImageSize,
 					imageMemoryTracker.getTotalMemoryUsed(),
+					supportsImages ? [] : await this.findOtherImageCapableModes(task),
 				)
 
 				if (!validationResult.isValid) {
