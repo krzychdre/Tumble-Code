@@ -112,8 +112,8 @@ describe("MultiSearchReplaceDiffStrategy", () => {
 			const diff = "<<<<<<< SEARCH\n" + "content\n" + "=======\n" + "=======\n" + ">>>>>>> REPLACE"
 			const result = strategy["validateMarkerSequencing"](diff)
 			expect(result.success).toBe(false)
-			expect(result.error).toContain("'=======' found in your diff content")
-			expect(result.error).toContain("When removing merge conflict markers")
+			expect(result.error).toContain("more than one '=======' separator (the extra one is at line 4)")
+			expect(result.error).not.toContain("When removing merge conflict markers")
 		})
 
 		it("detects replace before separator (merge conflict message)", () => {

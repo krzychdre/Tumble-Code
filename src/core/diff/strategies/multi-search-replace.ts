@@ -72,6 +72,36 @@ function fuzzySearch(lines: string[], searchChunk: string, startIndex: number, e
 	return { bestScore, bestMatchIndex, bestMatchContent }
 }
 
+/**
+ * Returns every start index in `lines` where `searchChunk` matches with similarity 1, that is
+ * exactly after normalizeString. Used to scan the whole file when the :start_line: hint is wrong,
+ * so it skips fuzzySearch's Levenshtein work. normalizeString maps characters one by one and
+ * collapses all whitespace, so normalizing each line once and joining the non-empty ones with a
+ * space gives the same string as normalizing the joined chunk.
+ */
+function findExactMatches(lines: string[], searchChunk: string): number[] {
+	const target = normalizeString(searchChunk)
+	const searchLen = searchChunk.split(/\r?\n/).length
+	const matches: number[] = []
+	if (target === "") {
+		return matches
+	}
+
+	const normalizedLines = lines.map((line) => normalizeString(line))
+	for (let i = 0; i + searchLen <= lines.length; i++) {
+		const window = normalizedLines.slice(i, i + searchLen).filter((line) => line !== "")
+		// Cheap reject before joining: the first non-empty line must open the target.
+		const first = window[0] ?? ""
+		if (!target.startsWith(first) || (target.length > first.length && target[first.length] !== " ")) {
+			continue
+		}
+		if (window.join(" ") === target) {
+			matches.push(i)
+		}
+	}
+	return matches
+}
+
 export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 	private fuzzyThreshold: number
 	private bufferLines: number
@@ -98,13 +128,18 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 			.replace(/^\\:start_line:/gm, ":start_line:")
 	}
 
-	private validateMarkerSequencing(diffContent: string): { success: boolean; error?: string } {
+	/**
+	 * @param lineMap optional 1-based line number in the model's diff for each line of `diffContent`,
+	 *   so errors point at the line the model wrote even after repairStrayMarkers dropped lines.
+	 */
+	private validateMarkerSequencing(diffContent: string, lineMap?: number[]): { success: boolean; error?: string } {
 		enum State {
 			START,
 			AFTER_SEARCH,
 			AFTER_SEPARATOR,
 		}
 		const state = { current: State.START, line: 0 }
+		const reportedLine = () => lineMap?.[state.line - 1] ?? state.line
 
 		// Pattern allows optional '>' after SEARCH to handle AI-generated diffs
 		// (e.g., Sonnet 4 sometimes adds an extra '>')
@@ -118,7 +153,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 		const reportMergeConflictError = (found: string, _expected: string) => ({
 			success: false,
 			error:
-				`ERROR: Special marker '${found}' found in your diff content at line ${state.line}:\n` +
+				`ERROR: Special marker '${found}' found in your diff content at line ${reportedLine()}:\n` +
 				"\n" +
 				`When removing merge conflict markers like '${found}' from files, you MUST escape them\n` +
 				"in your SEARCH section by prepending a backslash (\\) at the beginning of the line:\n" +
@@ -142,7 +177,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 		const reportInvalidDiffError = (found: string, expected: string) => ({
 			success: false,
 			error:
-				`ERROR: Diff block is malformed: marker '${found}' found in your diff content at line ${state.line}. Expected: ${expected}\n` +
+				`ERROR: Diff block is malformed: marker '${found}' found in your diff content at line ${reportedLine()}. Expected: ${expected}\n` +
 				"\n" +
 				"CORRECT FORMAT:\n\n" +
 				"<<<<<<< SEARCH\n" +
@@ -157,7 +192,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 		const reportLineMarkerInReplaceError = (marker: string) => ({
 			success: false,
 			error:
-				`ERROR: Invalid line marker '${marker}' found in REPLACE section at line ${state.line}\n` +
+				`ERROR: Invalid line marker '${marker}' found in REPLACE section at line ${reportedLine()}\n` +
 				"\n" +
 				"Line markers (:start_line: and :end_line:) are only allowed in SEARCH sections.\n" +
 				"\n" +
@@ -178,12 +213,36 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 				">>>>>>> REPLACE\n",
 		})
 
+		// A second '=======' inside one block. repairStrayMarkers already dropped the unambiguous
+		// ones, so what is left is "SEARCH / A / ======= / B / ======= / C" with text in both B and C.
+		const reportDuplicateSeparatorError = () => ({
+			success: false,
+			error:
+				`ERROR: A SEARCH/REPLACE block has more than one '=======' separator (the extra one is at line ${reportedLine()}).\n` +
+				"Each block must have exactly one '=======' line, between the text to find and the new text.\n" +
+				"To change several places, write one complete block per place.\n" +
+				"\n" +
+				"CORRECT FORMAT:\n\n" +
+				"<<<<<<< SEARCH\n" +
+				":start_line:5\n" +
+				"-------\n" +
+				"[exact content to find]\n" +
+				"=======\n" +
+				"[new content to replace with]\n" +
+				">>>>>>> REPLACE\n" +
+				"\n" +
+				"If the file itself contains a line '=======', write it as '\\=======' in your content.\n",
+		})
+
 		const lines = diffContent.split("\n")
 		const searchCount = lines.filter((l) => SEARCH_PATTERN.test(l.trim())).length
 		const sepCount = lines.filter((l) => l.trim() === SEP).length
 		const replaceCount = lines.filter((l) => l.trim() === REPLACE).length
 
 		const likelyBadStructure = searchCount !== replaceCount || sepCount < searchCount
+		// Escaped markers mean the model is editing merge-conflict text; an unescaped conflict
+		// '=======' it missed is then likelier than a doubled block separator.
+		const escapesMarkers = lines.some((l) => /^\\(?:<<<<<<<|=======|>>>>>>>)/.test(l.trim()))
 
 		for (const line of diffContent.split("\n")) {
 			state.line++
@@ -223,9 +282,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 					if (SEARCH_PATTERN.test(marker)) return reportInvalidDiffError(SEARCH_PATTERN.source, REPLACE)
 					if (marker.startsWith(SEARCH_PREFIX)) return reportMergeConflictError(marker, REPLACE)
 					if (marker === SEP)
-						return likelyBadStructure
-							? reportInvalidDiffError(SEP, REPLACE)
-							: reportMergeConflictError(SEP, REPLACE)
+						return escapesMarkers ? reportMergeConflictError(SEP, REPLACE) : reportDuplicateSeparatorError()
 					if (marker === REPLACE) state.current = State.START
 					else if (marker.startsWith(REPLACE_PREFIX)) return reportMergeConflictError(marker, REPLACE)
 					break
@@ -306,11 +363,14 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 
 				// Peel off any leading Grok header directives (:start_line:, :end_line:, -------)
 				// so the "first line is SEARCH" heuristic sees real content, not metadata. The
-				// directives are preserved as a header on the SEARCH section.
+				// directives are preserved as a header on the SEARCH section. Same rule as the main
+				// parser: a line-number directive may be indented, and so may a "-------" that follows one.
 				let header = ""
-				const directiveLine = /^(?::start_line:\s*\d+|:end_line:\s*\d+|-------)\s*$/
+				const isDirective = (line: string) =>
+					/^(?:[ \t]*:(?:start|end)_line:\s*\d+|-------)\s*$/.test(line) ||
+					(/:(?:start|end)_line:/.test(header) && /^[ \t]*-------\s*$/.test(line))
 				let nlIdx: number
-				while ((nlIdx = content.indexOf("\n")) !== -1 && directiveLine.test(content.slice(0, nlIdx))) {
+				while ((nlIdx = content.indexOf("\n")) !== -1 && isDirective(content.slice(0, nlIdx))) {
 					header += content.slice(0, nlIdx + 1)
 					content = content.slice(nlIdx + 1)
 				}
@@ -342,6 +402,81 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 		return repaired || diffContent
 	}
 
+	/**
+	 * Drops stray '=======' and '>>>>>>> REPLACE' lines that weak models (GLM, Qwen) add to an
+	 * otherwise valid diff, but only where the intent is unambiguous:
+	 * - a second '=======' in a block with nothing but blank lines between it and the closer
+	 *   ("old / ======= / new / ======= / >>>>>>> REPLACE", or "old / ======= / ======= /
+	 *   >>>>>>> REPLACE" for a deletion);
+	 * - '=======' or repeated '>>>>>>> REPLACE' lines after a block's closer, with only blank lines
+	 *   up to the next block or the end of the diff.
+	 * "SEARCH / A / ======= / B / ======= / C" with text in both B and C stays as it is (the new text
+	 * could be B or C), and so does any block holding conflict lines such as "<<<<<<< HEAD" (escaped
+	 * or not: there a bare '=======' may be the conflict's own middle line); validation reports both. Escaped markers ('\=======') never match. Runs after repairTruncatedDiff, so a
+	 * doubled separator whose closer was cut off is handled too.
+	 * Returns the diff and, for each of its lines, the 1-based line number in the input.
+	 */
+	private repairStrayMarkers(diffContent: string): { diff: string; lineMap: number[] } {
+		const lines = diffContent.split("\n")
+		const isSearch = (i: number) => /^<<<<<<< SEARCH>?$/.test(lines[i].trim())
+		const isSeparator = (i: number) => lines[i].trim() === "======="
+		const isCloser = (i: number) => lines[i].trim() === ">>>>>>> REPLACE"
+		const isBlank = (i: number) => lines[i].trim() === ""
+		// Conflict lines, escaped or not: in such a block an unescaped '=======' may be file content.
+		const isConflictLine = (i: number) => /^(?:\\?(?:<<<<<<<|>>>>>>>)|\\=======)/.test(lines[i].trim())
+		const dropped = new Set<number>()
+
+		let i = 0
+		while (i < lines.length) {
+			if (!isSearch(i)) {
+				i++
+				continue
+			}
+
+			let closer = i + 1
+			while (closer < lines.length && !isCloser(closer) && !isSearch(closer)) {
+				closer++
+			}
+			if (closer === lines.length || !isCloser(closer)) {
+				i = closer
+				continue
+			}
+
+			const separators: number[] = []
+			let hasConflictLine = false
+			for (let j = i + 1; j < closer; j++) {
+				if (isSeparator(j)) separators.push(j)
+				else if (isConflictLine(j)) hasConflictLine = true
+			}
+			if (!hasConflictLine && separators.length === 2) {
+				let tailIsBlank = true
+				for (let j = separators[1] + 1; j < closer; j++) {
+					if (!isBlank(j)) tailIsBlank = false
+				}
+				if (tailIsBlank) {
+					for (let j = separators[1]; j < closer; j++) dropped.add(j)
+				}
+			}
+
+			let next = closer + 1
+			while (next < lines.length && (isBlank(next) || isSeparator(next) || isCloser(next))) {
+				next++
+			}
+			if (next === lines.length || isSearch(next)) {
+				for (let j = closer + 1; j < next; j++) {
+					if (!isBlank(j)) dropped.add(j)
+				}
+			}
+			i = next
+		}
+
+		if (dropped.size === 0) {
+			return { diff: diffContent, lineMap: lines.map((_, j) => j + 1) }
+		}
+		const kept = lines.map((_, j) => j).filter((j) => !dropped.has(j))
+		return { diff: kept.map((j) => lines[j]).join("\n"), lineMap: kept.map((j) => j + 1) }
+	}
+
 	async applyDiff(
 		originalContent: string,
 		diffContent: string,
@@ -349,10 +484,11 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 		_paramEndLine?: number,
 	): Promise<DiffResult> {
 		// Repair truncated diffs before validation (common with Grok and other models
-		// whose output gets cut off mid-stream, leaving missing ======= and >>>>>>> REPLACE markers)
-		const repairedDiff = this.repairTruncatedDiff(diffContent)
+		// whose output gets cut off mid-stream, leaving missing ======= and >>>>>>> REPLACE markers),
+		// then drop stray '=======' / '>>>>>>> REPLACE' lines whose meaning is unambiguous.
+		const { diff: repairedDiff, lineMap } = this.repairStrayMarkers(this.repairTruncatedDiff(diffContent))
 
-		const validseq = this.validateMarkerSequencing(repairedDiff)
+		const validseq = this.validateMarkerSequencing(repairedDiff, lineMap)
 		if (!validseq.success) {
 			return {
 				success: false,
@@ -369,14 +505,16 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 			2. (?<!\\)<<<<<<< SEARCH\s*\n  
 			  Matches the line "<<<<<<< SEARCH" (ignoring any trailing spaces) – the negative lookbehind makes sure it isn't escaped.
 
-			3. ((?:\:start_line:\s*(\d+)\s*\n))?  
-			  Optionally matches a ":start_line:" line. The outer capturing group is group 1 and the inner (\d+) is group 2.
+			3. ((?:[ \t]*:start_line:\s*(\d+)\s*\n))?  
+			  Optionally matches a ":start_line:" line, which may be indented (GLM writes " :start_line:139").
+			  The outer capturing group is group 1 and the inner (\d+) is group 2.
 
-			4. ((?:\:end_line:\s*(\d+)\s*\n))?  
-			  Optionally matches a ":end_line:" line. Group 3 is the whole match and group 4 is the digits.
+			4. ((?:[ \t]*:end_line:\s*(\d+)\s*\n))?  
+			  Optionally matches a ":end_line:" line, also possibly indented. Group 3 is the whole match and group 4 is the digits.
 
-			5. ((?<!\\)-------\s*\n)?  
-			  Optionally matches the "-------" marker line (group 5).
+			5. ((?<!\\)-------\s*\n|(?<=:(?:start|end)_line:\s*\d+\s*\n)[ \t]*-------\s*\n)?  
+			  Optionally matches the "-------" marker line (group 5). It may be indented only right after a
+			  line-number header; an indented "-------" as the first line of a header-less block is search content.
 
 			6. ([\s\S]*?)(?:\n)?  
 			  Non‐greedy match for the "search content" (group 6) up to the next marker.
@@ -393,7 +531,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 
 		const matches = [
 			...repairedDiff.matchAll(
-				/(?:^|\n)(?<!\\)<<<<<<< SEARCH>?\s*\n((?::start_line:\s*(\d+)\s*\n))?((?::end_line:\s*(\d+)\s*\n))?((?<!\\)-------\s*\n)?([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)=======\s*\n)([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)>>>>>>> REPLACE)(?=\n|$)/g,
+				/(?:^|\n)(?<!\\)<<<<<<< SEARCH>?\s*\n((?:[ \t]*:start_line:\s*(\d+)\s*\n))?((?:[ \t]*:end_line:\s*(\d+)\s*\n))?((?<!\\)-------\s*\n|(?<=:(?:start|end)_line:\s*\d+\s*\n)[ \t]*-------\s*\n)?([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)=======\s*\n)([\s\S]*?)(?:\n)?(?:(?<=\n)(?<!\\)>>>>>>> REPLACE)(?=\n|$)/g,
 			),
 		]
 
@@ -406,7 +544,12 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 		// Detect line ending from original content
 		const lineEnding = originalContent.includes("\r\n") ? "\r\n" : "\n"
 		let resultLines = originalContent.split(/\r?\n/)
-		let delta = 0
+		// Edits applied so far, in order, as positions in resultLines at the time of each edit.
+		// A :start_line: hint (original file numbering) is shifted only by the edits at or above it:
+		// a block placed by the whole-file fallback can sit below the hints of later blocks.
+		const appliedEdits: { index: number; lineDelta: number }[] = []
+		const shiftHint = (hint: number) =>
+			appliedEdits.reduce((line, edit) => (line - 1 >= edit.index ? line + edit.lineDelta : line), hint)
 		const diffResults: DiffResult[] = []
 		let appliedCount = 0
 		const replacements = matches
@@ -422,7 +565,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 
 		for (const replacement of replacements) {
 			let { searchContent, replaceContent } = replacement
-			let startLine = replacement.startLine + (replacement.startLine === 0 ? 0 : delta)
+			let startLine = replacement.startLine === 0 ? 0 : shiftHint(replacement.startLine)
 
 			// First unescape any escaped markers in the content
 			searchContent = this.unescapeMarkers(searchContent)
@@ -540,32 +683,46 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 					searchLines = aggressiveSearchLines
 					replaceLines = replaceContent ? replaceContent.split(/\r?\n/) : []
 				} else {
-					// No match found with either method
-					const originalContentSection =
-						startLine !== undefined && endLine !== undefined
-							? `\n\nOriginal Content:\n${addLineNumbers(
-									resultLines
-										.slice(
-											Math.max(0, startLine - 1 - this.bufferLines),
-											Math.min(resultLines.length, endLine + this.bufferLines),
-										)
-										.join("\n"),
-									Math.max(1, startLine - this.bufferLines),
-								)}`
-							: `\n\nOriginal Content:\n${addLineNumbers(resultLines.join("\n"))}`
+					// The :start_line: hint may be off by more than the buffer, or past the end of the file.
+					// Scan the whole file, but accept only an exact match at exactly one place, whatever
+					// fuzzyThreshold says: a fuzzy match far from the hint would be a guess.
+					const wholeFileMatches = startLine ? findExactMatches(resultLines, searchChunk) : []
+					if (wholeFileMatches.length === 1) {
+						matchIndex = wholeFileMatches[0]
+						bestMatchScore = 1
+						bestMatchContent = resultLines.slice(matchIndex, matchIndex + searchLines.length).join("\n")
+					} else {
+						// No match found with either method
+						const originalContentSection =
+							startLine !== undefined && endLine !== undefined
+								? `\n\nOriginal Content:\n${addLineNumbers(
+										resultLines
+											.slice(
+												Math.max(0, startLine - 1 - this.bufferLines),
+												Math.min(resultLines.length, endLine + this.bufferLines),
+											)
+											.join("\n"),
+										Math.max(1, startLine - this.bufferLines),
+									)}`
+								: `\n\nOriginal Content:\n${addLineNumbers(resultLines.join("\n"))}`
 
-					const bestMatchSection = bestMatchContent
-						? `\n\nBest Match Found:\n${addLineNumbers(bestMatchContent, matchIndex + 1)}`
-						: `\n\nBest Match Found:\n(no match)`
+						const bestMatchSection = bestMatchContent
+							? `\n\nBest Match Found:\n${addLineNumbers(bestMatchContent, matchIndex + 1)}`
+							: `\n\nBest Match Found:\n(no match)`
 
-					const lineRange = startLine ? ` at line: ${startLine}` : ""
+						const lineRange = startLine ? ` at line: ${startLine}` : ""
+						const duplicatesNote =
+							wholeFileMatches.length > 1
+								? `\n- The search content occurs ${wholeFileMatches.length} times in the file (at lines ${wholeFileMatches.map((index) => index + 1).join(", ")}); set :start_line: to the line where the one you want to change starts`
+								: ""
 
-					diffResults.push({
-						success: false,
-						...replacement.block,
-						error: `No sufficiently similar match found${lineRange} (${Math.floor(bestMatchScore * 100)}% similar, needs ${Math.floor(this.fuzzyThreshold * 100)}%)\n\nDebug Info:\n- Similarity Score: ${Math.floor(bestMatchScore * 100)}%\n- Required Threshold: ${Math.floor(this.fuzzyThreshold * 100)}%\n- Search Range: ${startLine ? `starting at line ${startLine}` : "start to end"}\n- Tried both standard and aggressive line number stripping\n- Tip: Use the read_file tool to get the latest content of the file before attempting to use the apply_diff tool again, as the file content may have changed\n\nSearch Content:\n${searchChunk}${bestMatchSection}${originalContentSection}`,
-					})
-					continue
+						diffResults.push({
+							success: false,
+							...replacement.block,
+							error: `No sufficiently similar match found${lineRange} (${Math.floor(bestMatchScore * 100)}% similar, needs ${Math.floor(this.fuzzyThreshold * 100)}%)\n\nDebug Info:\n- Similarity Score: ${Math.floor(bestMatchScore * 100)}%\n- Required Threshold: ${Math.floor(this.fuzzyThreshold * 100)}%\n- Search Range: ${startLine ? `starting at line ${startLine}` : "start to end"}\n- Tried both standard and aggressive line number stripping${duplicatesNote}\n- Tip: Use the read_file tool to get the latest content of the file before attempting to use the apply_diff tool again, as the file content may have changed\n\nSearch Content:\n${searchChunk}${bestMatchSection}${originalContentSection}`,
+						})
+						continue
+					}
 				}
 			}
 
@@ -613,7 +770,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 			const beforeMatch = resultLines.slice(0, matchIndex)
 			const afterMatch = resultLines.slice(matchIndex + searchLines.length)
 			resultLines = [...beforeMatch, ...indentedReplaceLines, ...afterMatch]
-			delta = delta - matchedLines.length + replaceLines.length
+			appliedEdits.push({ index: matchIndex, lineDelta: replaceLines.length - matchedLines.length })
 			appliedCount++
 		}
 		const finalContent = resultLines.join(lineEnding)
