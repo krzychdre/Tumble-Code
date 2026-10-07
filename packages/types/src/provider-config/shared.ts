@@ -32,6 +32,9 @@ export const openAiCompatibleConfigSchema = z
 		openAiBaseUrl: z.string().optional(),
 		// Send the model's earlier reasoning back with every request (interleaved/preserved thinking).
 		openAiPreserveReasoning: z.boolean().optional(),
+		// Under context pressure, shorten long reasoning blocks of older turns before anything else
+		// (only the copy sent to the model). Needs openAiPreserveReasoning.
+		openAiTrimOldReasoning: z.boolean().optional(),
 		openAiModelId: z.string().optional(),
 		openAiCustomModelInfo: modelInfoSchema.nullish(),
 		openAiUseAzure: z.boolean().optional(),
