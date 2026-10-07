@@ -244,19 +244,30 @@ export class TaskSlot {
 		return this.currentTask?.taskId === taskId ? this.currentTask : this.detached.get(taskId)?.task
 	}
 
-	/** Destroys the detached tasks among `taskIds` (their history is being deleted). */
-	async destroyDetached(taskIds: Iterable<string> = [...this.detached.keys()]): Promise<void> {
+	/**
+	 * Destroys the detached tasks among `taskIds` (default: all of them):
+	 * their history is being deleted, they hand over to a delegation partner,
+	 * or the provider shuts down.
+	 */
+	async destroyDetached(
+		taskIds: Iterable<string> = [...this.detached.keys()],
+		options?: { skipDelegationRepair?: boolean },
+	): Promise<void> {
 		for (const taskId of taskIds) {
 			const task = this.detached.get(taskId)?.task
 			if (task) {
 				this.takeDetached(task)
-				await this.destroy(task)
+				await this.destroy(task, options)
 			}
 		}
 	}
 
-	/** Keeps `task` running off screen until it comes to rest or aborts. */
-	private detach(task: Task): void {
+	/**
+	 * Keeps `task` running off screen until it comes to rest or aborts: a
+	 * task the user left, or a delegation partner of one that started off
+	 * screen.
+	 */
+	detach(task: Task): void {
 		const end = () => {
 			if (this.takeDetached(task)) {
 				void this.destroy(task)

@@ -217,6 +217,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
 			updateTaskHistory,
 			getCurrentTask: vi.fn().mockReturnValue(undefined),
+			getLiveTaskInstance: vi.fn().mockReturnValue(undefined),
 			clearCurrentTask: vi.fn().mockResolvedValue(undefined),
 			createTaskWithHistoryItem: vi.fn().mockResolvedValue(undefined),
 			emit: vi.fn(),

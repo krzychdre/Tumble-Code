@@ -91,6 +91,15 @@ function makeHost(store: InMemoryHistoryStore, overrides: Partial<DelegationHost
 			resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 		}),
 		handleModeSwitch: vi.fn().mockResolvedValue(undefined),
+		// No task works off screen unless a test says so.
+		getLiveTaskInstance: vi.fn().mockReturnValue(undefined),
+		destroyDetachedTasks: vi.fn().mockResolvedValue(undefined),
+		createDetachedChildTask: vi.fn(),
+		createDetachedTaskFromHistory: vi.fn().mockResolvedValue({
+			overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
+			overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
+			resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
+		}),
 		emit: vi.fn().mockReturnValue(true),
 		showAllowListViolation: vi.fn().mockReturnValue(false),
 		...overrides,
@@ -419,6 +428,130 @@ describe("DelegationService transition table", () => {
 		).resolves.toBe(true)
 		expect(store.get("p")).toMatchObject({ status: "active", awaitingChildId: undefined, completedByChildId: "c1" })
 		expect(store.get("c1")?.status).toBe("completed")
+	})
+})
+
+describe("DelegationService with tasks working off screen", () => {
+	let store: InMemoryHistoryStore
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+		vi.mocked(readApiMessages).mockResolvedValue([])
+		store = new InMemoryHistoryStore()
+	})
+
+	it("delegate: a parent off screen hands over off screen, leaving the panel alone", async () => {
+		store.items.set("p", item("p", { status: "active" }))
+		const parentTask = {
+			taskId: "p",
+			flushPendingToolResultsToHistory: vi.fn().mockResolvedValue(true),
+			retrySaveApiConversationHistory: vi.fn(),
+		}
+		const child = { taskId: "c1", start: vi.fn() }
+		const host = makeHost(store, {
+			getCurrentTask: vi.fn().mockReturnValue({ taskId: "other" }),
+			getLiveTaskInstance: vi.fn((id: string) => (id === "p" ? parentTask : undefined)) as any,
+			createDetachedChildTask: vi.fn().mockResolvedValue(child),
+		})
+
+		const opened = await new DelegationService(host).delegate({
+			parentTaskId: "p",
+			message: "do it",
+			initialTodos: [],
+			mode: "ask",
+		})
+
+		expect(opened).toBe(child)
+		expect(host.destroyDetachedTasks).toHaveBeenCalledWith(["p"], { skipDelegationRepair: true })
+		expect(host.createDetachedChildTask).toHaveBeenCalledWith("do it", parentTask, "ask", {
+			initialTodos: [],
+			initialStatus: "active",
+			startTask: false,
+		})
+		// The task on screen, the panel's mode and the slot are untouched.
+		expect(host.clearCurrentTask).not.toHaveBeenCalled()
+		expect(host.handleModeSwitch).not.toHaveBeenCalled()
+		expect(host.createTask).not.toHaveBeenCalled()
+		expect(delegationState(store.get("p"))).toEqual({
+			status: "delegated",
+			awaitingChildId: "c1",
+			delegatedToId: "c1",
+			childIds: ["c1"],
+		})
+		expect(child.start).toHaveBeenCalledTimes(1)
+	})
+
+	it("complete: a child off screen resumes its parent off screen while the user looks elsewhere", async () => {
+		store.items.set("p", item("p", { status: "delegated", awaitingChildId: "c1", delegatedToId: "c1" }))
+		store.items.set("c1", item("c1", { status: "active", parentTaskId: "p" }))
+		const host = makeHost(store, {
+			getCurrentTask: vi.fn().mockReturnValue({ taskId: "other" }),
+			getLiveTaskInstance: vi.fn((id: string) => (id === "c1" ? { taskId: "c1" } : undefined)) as any,
+		})
+
+		await expect(
+			new DelegationService(host).complete({
+				parentTaskId: "p",
+				childTaskId: "c1",
+				completionResultSummary: "r",
+			}),
+		).resolves.toBe(true)
+
+		expect(host.clearCurrentTask).not.toHaveBeenCalled()
+		expect(host.destroyDetachedTasks).toHaveBeenCalledWith(["c1"], { skipDelegationRepair: true })
+		expect(host.createTaskWithHistoryItem).not.toHaveBeenCalled()
+		expect(host.createDetachedTaskFromHistory).toHaveBeenCalledWith(expect.objectContaining({ id: "p" }))
+		const parentInstance = await vi.mocked(host.createDetachedTaskFromHistory).mock.results[0].value
+		expect(parentInstance.resumeAfterDelegation).toHaveBeenCalled()
+		expect(store.get("p")).toMatchObject({ status: "active", awaitingChildId: undefined, completedByChildId: "c1" })
+	})
+
+	it("complete: the parent the user looks at closes before it is marked active, then comes back on screen", async () => {
+		store.items.set("p", item("p", { status: "delegated", awaitingChildId: "c1", delegatedToId: "c1" }))
+		store.items.set("c1", item("c1", { status: "active", parentTaskId: "p" }))
+		const statusWhenCleared: (string | undefined)[] = []
+		const host = makeHost(store, {
+			getCurrentTask: vi.fn().mockReturnValue({ taskId: "p" }),
+			getLiveTaskInstance: vi.fn((id: string) => (id === "c1" ? { taskId: "c1" } : undefined)) as any,
+			clearCurrentTask: vi.fn(async () => {
+				statusWhenCleared.push(store.get("p")?.status)
+			}),
+		})
+
+		await new DelegationService(host).complete({
+			parentTaskId: "p",
+			childTaskId: "c1",
+			completionResultSummary: "r",
+		})
+
+		// Closing the view saves the parent with its old status; "active" must come after.
+		expect(statusWhenCleared).toEqual(["delegated"])
+		expect(store.get("p")?.status).toBe("active")
+		expect(host.destroyDetachedTasks).toHaveBeenCalledWith(["c1"], { skipDelegationRepair: true })
+		expect(host.createTaskWithHistoryItem).toHaveBeenCalledWith(expect.objectContaining({ id: "p" }), {
+			startTask: false,
+		})
+		expect(host.createDetachedTaskFromHistory).not.toHaveBeenCalled()
+	})
+
+	it.each([
+		{
+			name: "its own child still works off screen: the parent keeps waiting",
+			grandchildLive: true,
+			returns: false,
+		},
+		{ name: "its own child is gone: the parent is detached as before", grandchildLive: false, returns: true },
+	])("detach of a child that delegated in turn, $name", async ({ grandchildLive, returns }) => {
+		store.items.set("p", item("p", { status: "delegated", awaitingChildId: "c1" }))
+		store.items.set("c1", item("c1", { status: "delegated", awaitingChildId: "g1", parentTaskId: "p" }))
+		const host = makeHost(store, {
+			getLiveTaskInstance: vi.fn((id: string) =>
+				grandchildLive && id === "g1" ? { taskId: "g1" } : undefined,
+			) as any,
+		})
+
+		await expect(new DelegationService(host).detach("p", "c1")).resolves.toBe(returns)
+		expect(store.get("p")?.status).toBe(returns ? "active" : "delegated")
 	})
 })
 

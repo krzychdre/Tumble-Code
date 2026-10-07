@@ -434,6 +434,32 @@ export class ModeProfileBinding {
 	}
 
 	/**
+	 * Resolve the profile a task saved in history runs on, without changing
+	 * the foreground profile (the off-screen counterpart of
+	 * {@link restoreForHistoryItem}): the task's own profile by name, else the
+	 * profile pinned to its mode. Undefined means "use the current profile".
+	 */
+	async getApiConfigurationForTask(
+		historyItem: Pick<HistoryItem, "mode" | "apiConfigName">,
+	): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined> {
+		if (historyItem.apiConfigName) {
+			try {
+				const { name, ...profile } = await this.providerSettingsManager.getProfile({
+					name: historyItem.apiConfigName,
+				})
+				return { apiConfiguration: profile, name }
+			} catch (error) {
+				logger.warn(
+					`[getApiConfigurationForTask] profile "${historyItem.apiConfigName}" not readable: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			}
+		}
+		return historyItem.mode ? this.getApiConfigurationForMode(historyItem.mode) : undefined
+	}
+
+	/**
 	 * The modes that run on a model which can see images: their own provider
 	 * settings (a CLI per-mode entry or a profile pinned to the mode) resolve
 	 * to a model with `supportsImages`. A mode without its own settings runs

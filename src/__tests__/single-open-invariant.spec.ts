@@ -117,6 +117,7 @@ describe("Single-open-task invariant", () => {
 			// touches nothing — while a double that has drifted from the class
 			// still fails here loudly instead of at "is not a function".
 			rehydrateSubagents: (ClineProvider.prototype as any).rehydrateSubagents,
+			newTaskFromHistory: (ClineProvider.prototype as any).newTaskFromHistory,
 			postStateToWebview: vi.fn(),
 		} as unknown as ClineProvider
 

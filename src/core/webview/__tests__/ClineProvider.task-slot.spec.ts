@@ -390,11 +390,32 @@ describe("showTaskWithId puts a task running off screen back on screen", () => {
 		expect(provider.postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
 	})
 
+	it("shows, without resuming, a parent whose child still works off screen", async () => {
+		const provider = makeNavigatingProvider()
+		const child = makeLiveTask("child-1")
+		await provider.taskSlot.set(child)
+		await provider.leaveCurrentTask()
+		const saved = [{ ts: 1, type: "say", say: "text", text: "before the subtask" }]
+		const view = { overwriteClineMessages: vi.fn(), history: { getSavedClineMessages: vi.fn(async () => saved) } }
+		provider.getHistoryItem.mockResolvedValue({ id: "parent-1", status: "delegated", awaitingChildId: "child-1" })
+		provider.createTaskWithHistoryItem.mockResolvedValue(view)
+
+		await provider.showTaskWithId("parent-1")
+
+		expect(provider.createTaskWithHistoryItem).toHaveBeenCalledWith(expect.objectContaining({ id: "parent-1" }), {
+			startTask: false,
+		})
+		expect(view.overwriteClineMessages).toHaveBeenCalledWith(saved)
+		expect(child.abortTask).not.toHaveBeenCalled()
+	})
+
 	it("rebuilds from history a task that is not alive", async () => {
 		const provider = makeNavigatingProvider()
 
 		await provider.showTaskWithId("task-A")
 
-		expect(provider.createTaskWithHistoryItem).toHaveBeenCalledWith(expect.objectContaining({ id: "task-A" }))
+		expect(provider.createTaskWithHistoryItem).toHaveBeenCalledWith(expect.objectContaining({ id: "task-A" }), {
+			startTask: true,
+		})
 	})
 })

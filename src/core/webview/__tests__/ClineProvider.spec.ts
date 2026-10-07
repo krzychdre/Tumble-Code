@@ -417,8 +417,11 @@ describe("ClineProvider", () => {
 				setTaskNumber: vi.fn(),
 				setParentTask: vi.fn(),
 				setRootTask: vi.fn(),
+				setTaskApiConfigName: vi.fn(),
 				taskId: options?.historyItem?.id || "test-task-id",
 				emit: vi.fn(),
+				once: vi.fn(),
+				off: vi.fn(),
 			}
 
 			Object.defineProperty(task, "messageManager", {
@@ -648,6 +651,72 @@ describe("ClineProvider", () => {
 			const parent = liveTask("mid-task", "root-task")
 			await provider.createTask("grandchild", undefined, parent, { startTask: false })
 			expect(lastTaskOptions()).toMatchObject({ rootTaskId: "root-task", parentTask: parent })
+		})
+	})
+
+	describe("tasks created off screen (delegation partners of a task the user left)", () => {
+		const lastTaskOptions = () => vi.mocked(Task).mock.calls.at(-1)![0]
+		const parent = {
+			taskId: "parent-task",
+			rootTaskId: "root-task",
+			apiConfiguration: { apiProvider: "anthropic" },
+			taskApiConfigName: "parent-profile",
+		} as unknown as Task
+
+		it("a child starts off screen in its own mode, on the mode's profile, not on screen", async () => {
+			stubCreateTaskDeps()
+			vi.spyOn(provider, "getApiConfigurationForMode").mockResolvedValue({
+				apiConfiguration: { apiProvider: "openai" },
+				name: "ask-profile",
+			})
+
+			const child = await (provider as any).createDetachedChildTask("sub", parent, "ask", {
+				initialStatus: "active",
+			})
+
+			expect(lastTaskOptions()).toMatchObject({
+				task: "sub",
+				taskMode: "ask",
+				parentTask: parent,
+				rootTaskId: "root-task",
+				apiConfiguration: { apiProvider: "openai" },
+				initialStatus: "active",
+				startTask: false,
+			})
+			expect(child.setTaskApiConfigName).toHaveBeenCalledWith("ask-profile")
+			expect((provider as any).setCurrentTask).not.toHaveBeenCalled()
+			expect(provider.getCurrentTask()).toBeUndefined()
+			expect(provider.getLiveTaskInstance(child.taskId)).toBe(child)
+		})
+
+		it("a child of a mode without its own profile runs on its parent's profile", async () => {
+			stubCreateTaskDeps()
+			vi.spyOn(provider, "getApiConfigurationForMode").mockResolvedValue(undefined)
+
+			const child = await (provider as any).createDetachedChildTask("sub", parent, "ask", {})
+
+			expect(lastTaskOptions().apiConfiguration).toEqual({ apiProvider: "anthropic" })
+			expect(child.setTaskApiConfigName).toHaveBeenCalledWith("parent-profile")
+		})
+
+		it("a parent resumed from history off screen runs on its own profile, not started", async () => {
+			stubCreateTaskDeps()
+			const getForTask = vi
+				.spyOn((provider as any).modeProfiles, "getApiConfigurationForTask")
+				.mockResolvedValue({ apiConfiguration: { apiProvider: "openai" }, name: "own" })
+			const historyItem = { id: "parent-task", number: 3, mode: "code", apiConfigName: "own", status: "active" }
+
+			const task = await (provider as any).createDetachedTaskFromHistory(historyItem)
+
+			expect(getForTask).toHaveBeenCalledWith(historyItem)
+			expect(lastTaskOptions()).toMatchObject({
+				historyItem,
+				apiConfiguration: { apiProvider: "openai" },
+				startTask: false,
+				initialStatus: "active",
+			})
+			expect(provider.getCurrentTask()).toBeUndefined()
+			expect(provider.getLiveTaskInstance("parent-task")).toBe(task)
 		})
 	})
 
