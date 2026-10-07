@@ -1397,11 +1397,12 @@ async def test_subtree_walk_survives_a_cycle_on_the_page(client, db_session, ses
     assert flat.status_code == 200
 
 
-async def test_the_tree_costs_a_query_per_level_not_per_run(
+async def test_the_tree_costs_the_same_queries_whatever_the_runs_or_depth(
     client, db_session, session_factory, test_engine
 ):
-    """A page of runs loads their subtrees one tree level at a time. Ten runs
-    must cost exactly what five do, or the list has grown an N+1 again."""
+    """A page of runs loads all their subtrees in one query. Ten runs, the new
+    five three levels deeper, must cost exactly what five do, or the list has
+    grown an N+1 (per run) or a query per tree level again."""
     from sqlalchemy import event
 
     await _seed_user(db_session)
@@ -1430,7 +1431,16 @@ async def test_the_tree_costs_a_query_per_level_not_per_run(
         five = await selects_for_page()
         await _seed_tree(
             session_factory,
-            *[spec for n in range(5, 10) for spec in ((f"r{n}", None, f"Run {n}"), (f"c{n}", f"r{n}", f"Sub {n}"))],
+            *[
+                spec
+                for n in range(5, 10)
+                for spec in (
+                    (f"r{n}", None, f"Run {n}"),
+                    (f"c{n}", f"r{n}", f"Sub {n}"),
+                    (f"g{n}", f"c{n}", f"Grandchild {n}"),
+                    (f"gg{n}", f"g{n}", f"Great-grandchild {n}"),
+                )
+            ],
         )
         ten = await selects_for_page()
     finally:
@@ -1537,6 +1547,43 @@ async def test_a_run_row_shows_what_the_whole_run_cost(client, db_session, sessi
 
     # The flat view lists the same tasks, so it states the same costs.
     assert '<span class="rollup-mark">Σ</span>$2.0000' in _row(flat, "run")
+
+
+async def test_a_run_deeper_than_twenty_levels_is_summed_whole(
+    client, db_session, session_factory
+):
+    """The tree walk stopped at 20 levels. A vision subtask that kept delegating
+    to another vision subtask built a chain 90 deep on the live corpus, and the
+    list showed $0.7431 (the first 20 levels) for a run that cost $3.6138,
+    while sorting by cost used the full sum. Every level is counted now."""
+    await _seed_user(db_session)
+    depth = 30
+    await _seed_tree(
+        session_factory,
+        ("deep-0", None, "Deep run"),
+        *[(f"deep-{n}", f"deep-{n - 1}", f"Level {n}") for n in range(1, depth + 1)],
+    )
+    async with session_factory() as s:
+        await s.execute(
+            Task.__table__.update()
+            .where(Task.id.like("deep-%"))
+            .values(cost=0.01, tokens_in=100, tokens_out=0)
+        )
+        await s.commit()
+
+    _override_web_user(client.app)
+    try:
+        roots = client.get("/app").text
+        page = client.get("/app/tasks/deep-0").text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    # 31 tasks at $0.01; the old walk stopped at $0.2100.
+    assert '<span class="rollup-mark">Σ</span>$0.3100' in _row(roots, "deep-0")
+    assert 'value="deep-0"\n               data-child-count="30"' in roots
+    assert _cell(page, "hdr-run-cost") == "$0.3100"
+    assert _cell(page, "hdr-subtasks-cost") == "$0.3000"
+    assert '<a href="#subtasks">30 subtasks</a>' in page
 
 
 async def test_the_run_hover_separates_the_task_from_its_subtasks(
@@ -1819,6 +1866,28 @@ async def test_bulk_delete_can_include_the_whole_subtree(client, db_session, ses
 
     assert resp.status_code == 303
     assert await _remaining(session_factory) == {"unrelated"}, "the walk must reach every depth"
+
+
+async def test_bulk_delete_reaches_below_twenty_levels(db_session, session_factory):
+    """The walk stopped at 20 levels, so deleting a 90-level vision chain would
+    have left 71 subtasks behind as orphaned runs."""
+    from src.services.share_service import delete_tasks
+
+    await _seed_user(db_session)
+    depth = 30
+    await _seed_tasks(
+        session_factory,
+        ("chain-0", "user_test", None),
+        *[(f"chain-{n}", "user_test", f"chain-{n - 1}") for n in range(1, depth + 1)],
+        ("unrelated", "user_test", None),
+    )
+
+    async with session_factory() as s:
+        deleted = await delete_tasks(s, ["chain-0"], "user_test", include_subtasks=True)
+        await s.commit()
+
+    assert deleted == depth + 1
+    assert await _remaining(session_factory) == {"unrelated"}
 
 
 async def test_subtree_walk_survives_a_cycle(db_session, session_factory):

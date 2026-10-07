@@ -11,6 +11,7 @@ from src.models.llm_exchange import LlmBlob, LlmExchange
 from src.models.task import Task, TaskMessage, TaskShare
 from src.models.settings import OrganizationSettings
 from src.schemas.share import ShareResponse
+from src.services.task_tree import descendant_ids
 
 
 async def share_task(
@@ -192,28 +193,13 @@ async def _owned_ids(db: AsyncSession, task_ids: list[str], user_id: str) -> lis
     return [row[0] for row in result.all()]
 
 
-async def _with_descendants(
-    db: AsyncSession, task_ids: list[str], user_id: str, max_depth: int = 20
-) -> list[str]:
+async def _with_descendants(db: AsyncSession, task_ids: list[str], user_id: str) -> list[str]:
     """Expand a selection to include every subtask beneath it, at any depth.
 
-    Walked level by level rather than with a recursive CTE so the same code runs
-    on SQLite (the test database) and Postgres. Bounded by ``max_depth`` — the
-    parent links are built from client-supplied ids, and a cycle must not spin
-    here.
+    One query whatever the depth (``task_tree.descendant_ids``, which also ends
+    on a cycle in the client-supplied parent links).
     """
-    collected = list(task_ids)
-    seen = set(collected)
-    frontier = collected
-    for _ in range(max_depth):
-        if not frontier:
-            break
-        result = await db.execute(
-            select(Task.id).where(
-                Task.parent_task_id.in_(frontier), Task.user_id == user_id
-            )
-        )
-        frontier = [row[0] for row in result.all() if row[0] not in seen]
-        seen.update(frontier)
-        collected.extend(frontier)
-    return collected
+    result = await db.execute(descendant_ids(task_ids, user_id))
+    requested = set(task_ids)
+    below = [row[0] for row in result.all() if row[0] not in requested]
+    return list(task_ids) + below

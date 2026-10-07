@@ -129,39 +129,69 @@ async def link_pending_children(db: AsyncSession, parent_task_id: str) -> None:
     )
 
 
+def descendant_ids(task_ids: Iterable[str], user_id: str):
+    """A SELECT of the id of every task of the user beneath these tasks.
+
+    One recursive CTE (``WITH RECURSIVE``, which SQLite and Postgres both run)
+    whatever the depth. There is deliberately no depth limit: the walk used to
+    stop at 20 levels, and a vision subtask that kept delegating to another
+    vision subtask built a chain 90 levels deep, so the list showed $0.7431 for
+    a run that cost $3.6138 and a delete left 71 subtasks behind. UNION rather
+    than UNION ALL is what ends a cycle in the client-supplied parent links: a
+    row already produced is not produced again, so the recursion runs dry. The
+    result can include a requested id itself (on a cycle, or when one requested
+    task sits beneath another); callers skip what they already hold.
+    """
+    below = (
+        select(Task.id)
+        .where(Task.parent_task_id.in_(list(task_ids)), Task.user_id == user_id)
+        .cte("descendants", recursive=True)
+    )
+    child = aliased(Task, name="child")
+    below = below.union(
+        select(child.id)
+        .join(below, child.parent_task_id == below.c.id)
+        .where(child.user_id == user_id)
+    )
+    return select(below.c.id)
+
+
 async def subtrees(
     db: AsyncSession,
     task_ids: Iterable[str],
     user_id: str,
-    max_depth: int = 20,
 ) -> dict[str, list[Task]]:
     """Every stored task beneath these tasks, grouped by parent, oldest first.
 
-    One query per level of the tree rather than one per task, so a page of 25
-    runs costs as many queries as its deepest run is deep (one or two on the
-    live corpus). Walked level by level rather than with a recursive CTE so the
-    same code runs on SQLite (the test database) and Postgres.
+    One query for the whole page, however deep its runs go (``descendant_ids``);
+    the tree is then assembled here, level by level from the requested tasks.
 
     The requested ids may include each other's subtasks (the flat view asks for
     a page of every kind of task at once), and such a task still belongs under
     its parent. Each task is placed under exactly one parent, and never under a
     task beneath it: a cycle in the client-supplied links is cut at the edge
     that would close it, rather than producing a tree that contains itself.
-    ``max_depth`` bounds the walk for the same reason.
     """
+    frontier = list(dict.fromkeys(t for t in task_ids if t))
+    if not frontier:
+        return {}
+    result = await db.execute(
+        select(Task).where(Task.id.in_(descendant_ids(frontier, user_id)))
+    )
+    children_of: dict[str, list[Task]] = {}
+    for row in result.scalars().all():
+        children_of.setdefault(row.parent_task_id, []).append(row)
+
     tree: dict[str, list[Task]] = {}
     parent_of: dict[str, str] = {}
-    frontier = list(dict.fromkeys(t for t in task_ids if t))
-    for _ in range(max_depth):
-        if not frontier:
-            break
-        result = await db.execute(
-            select(Task)
-            .where(Task.parent_task_id.in_(frontier), Task.user_id == user_id)
-            .order_by(Task.created_at)
+    # Terminates: a task enters the frontier only the first time it is placed.
+    while frontier:
+        level = sorted(
+            (child for parent in frontier for child in children_of.get(parent, [])),
+            key=lambda t: t.created_at,
         )
         frontier = []
-        for child in result.scalars().all():
+        for child in level:
             if child.id in parent_of or _is_at_or_above(parent_of, child.parent_task_id, child.id):
                 continue
             parent_of[child.id] = child.parent_task_id
