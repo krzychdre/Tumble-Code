@@ -412,8 +412,9 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 	 *   up to the next block or the end of the diff.
 	 * "SEARCH / A / ======= / B / ======= / C" with text in both B and C stays as it is (the new text
 	 * could be B or C), and so does any block holding conflict lines such as "<<<<<<< HEAD" (escaped
-	 * or not: there a bare '=======' may be the conflict's own middle line); validation reports both. Escaped markers ('\=======') never match. Runs after repairTruncatedDiff, so a
-	 * doubled separator whose closer was cut off is handled too.
+	 * or not: there a bare '=======' may be the conflict's own middle line); validation reports both.
+	 * Escaped markers ('\=======') never match. Runs after repairTruncatedDiff, so a doubled separator
+	 * whose closer was cut off is handled too.
 	 * Returns the diff and, for each of its lines, the 1-based line number in the input.
 	 */
 	private repairStrayMarkers(diffContent: string): { diff: string; lineMap: number[] } {
