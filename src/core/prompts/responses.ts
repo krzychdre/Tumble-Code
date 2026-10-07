@@ -5,6 +5,11 @@ import { RooIgnoreController, LOCK_TEXT_SYMBOL } from "../ignore/RooIgnoreContro
 import { RooProtectedController } from "../protect/RooProtectedController"
 import { getToolMinimalExample } from "./tools/native-tools/examples"
 
+// Opens every empty-response retry note, so a later retry can find and replace the
+// previous one instead of stacking a second note.
+const EMPTY_RESPONSE_RETRY_NOTE_START =
+	"[ERROR] Your previous reply produced no text and no tool call that reached the system."
+
 export const formatResponse = {
 	toolDenied: () =>
 		JSON.stringify({
@@ -67,6 +72,27 @@ If you require additional information from the user, use the ask_followup_questi
 Otherwise, if you have not completed the task and do not need additional information, then proceed with the next step of the task.
 (This is an automated message, so do not respond to it conversationally.)`
 	},
+
+	/**
+	 * Appended to the user content when an empty answer (no text, no tool call) is retried.
+	 * A server such as vLLM drops a call to a tool that is not in the request's tool list
+	 * without an error, so the model never learns why its turn vanished and a blind retry
+	 * repeats the same call. The note names the tools it can call instead.
+	 *
+	 * @param toolNames The callable tool names of the request that came back empty.
+	 */
+	emptyResponseRetryNote: (toolNames: string[]) => {
+		const tools =
+			toolNames.length > 0
+				? `The tools you can call now are: ${toolNames.join(", ")}.\nReply with one of these tools, or with plain text.`
+				: "You have no tools in this request. Reply with plain text."
+
+		return `${EMPTY_RESPONSE_RETRY_NOTE_START}
+A call to a tool that is not in your tool list is rejected by the server and discarded.
+${tools}`
+	},
+
+	isEmptyResponseRetryNote: (text: string) => text.startsWith(EMPTY_RESPONSE_RETRY_NOTE_START),
 
 	/**
 	 * @param toolName Tool whose failure grew the mistake counter, or `undefined` when the
