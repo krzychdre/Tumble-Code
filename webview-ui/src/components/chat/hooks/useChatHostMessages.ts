@@ -21,6 +21,7 @@ const CHAT_VIEW_MESSAGE_TYPES = [
 	"condenseTaskContextResponse",
 	"checkpointInitWarning",
 	"interactionRequired",
+	"taskCompletedOffScreen",
 	"taskWithAggregatedCosts",
 ] as const
 
@@ -159,6 +160,10 @@ export function useChatHostMessages({
 				break
 			case "interactionRequired":
 				playSound("notification")
+				break
+			case "taskCompletedOffScreen":
+				// A task the user left finished; its completion ask never reaches this view.
+				playSound("celebration")
 				break
 			case "taskWithAggregatedCosts":
 				if (message.text && message.aggregatedCosts) {

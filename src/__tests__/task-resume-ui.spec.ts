@@ -226,6 +226,7 @@ function makeProvider(overrides: Record<string, any> = {}) {
 			}
 		},
 		detachDelegatedParent: async () => false,
+		onDetachedTaskCompleted: vi.fn(),
 	})
 	return provider as unknown as ClineProvider
 }

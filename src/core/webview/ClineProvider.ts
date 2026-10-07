@@ -272,6 +272,7 @@ export class ClineProvider
 			performPreparationTasks: (task) => this.performPreparationTasks(task),
 			removeTaskEventListeners: (task) => this.removeTaskEventListeners(task),
 			detachDelegatedParent: (parentTaskId, childTaskId) => this.delegation.detach(parentTaskId, childTaskId),
+			onDetachedTaskCompleted: () => void this.postMessageToWebview({ type: "taskCompletedOffScreen" }),
 		})
 		this.statePusher = new WebviewStatePusher({
 			getStateToPostToWebview: (options) =>

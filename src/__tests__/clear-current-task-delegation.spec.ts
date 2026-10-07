@@ -68,6 +68,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 				}
 			},
 			detachDelegatedParent: (parentTaskId, childTaskId) => provider.delegation.detach(parentTaskId, childTaskId),
+			onDetachedTaskCompleted: vi.fn(),
 		})
 		slot.seedForTests(childTask as any)
 
@@ -213,6 +214,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 			performPreparationTasks: vi.fn(),
 			removeTaskEventListeners: vi.fn(),
 			detachDelegatedParent: vi.fn(),
+			onDetachedTaskCompleted: vi.fn(),
 		})
 
 		// Should not throw
@@ -297,6 +299,7 @@ describe("TaskSlot.clear() delegation awareness", () => {
 			performPreparationTasks: vi.fn(),
 			removeTaskEventListeners: vi.fn(),
 			detachDelegatedParent: vi.fn(),
+			onDetachedTaskCompleted: vi.fn(),
 		})
 		slot.seedForTests(taskB as any)
 

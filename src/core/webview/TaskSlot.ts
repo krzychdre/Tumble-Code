@@ -22,6 +22,11 @@ export interface TaskSlotHost {
 	 * whether the repair applied. See DelegationService.detach.
 	 */
 	detachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean>
+	/**
+	 * A detached task finished (it came to rest on its completion ask). The
+	 * view shows nothing of an off-screen task, so the host announces it.
+	 */
+	onDetachedTaskCompleted(task: Task): void
 }
 
 /**
@@ -285,17 +290,23 @@ export class TaskSlot {
 	 * screen.
 	 */
 	detach(task: Task): void {
-		const end = () => {
-			if (this.takeDetached(task)) {
-				void this.destroy(task)
+		const end = (event: (typeof DETACHED_TASK_END_EVENTS)[number]) => {
+			if (!this.takeDetached(task)) {
+				return
 			}
+			const last = task.clineMessages.at(-1)
+			if (event === TumbleCodeEventName.TaskIdle && last?.type === "ask" && last.ask === "completion_result") {
+				this.host.onDetachedTaskCompleted(task)
+			}
+			void this.destroy(task)
 		}
-		for (const event of DETACHED_TASK_END_EVENTS) {
-			task.once(event, end)
+		const listeners = DETACHED_TASK_END_EVENTS.map((event) => [event, () => end(event)] as const)
+		for (const [event, listener] of listeners) {
+			task.once(event, listener)
 		}
 		this.detached.set(task.taskId, {
 			task,
-			release: () => DETACHED_TASK_END_EVENTS.forEach((event) => task.off(event, end)),
+			release: () => listeners.forEach(([event, listener]) => task.off(event, listener)),
 		})
 		logger.info(`[TaskSlot#detach] task ${task.taskId}.${task.instanceId} keeps running off screen`)
 	}

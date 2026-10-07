@@ -71,6 +71,7 @@ type ExpectedExtensionMessageType =
 	| "organizationSwitchResult"
 	| "cloudAuthResult"
 	| "interactionRequired"
+	| "taskCompletedOffScreen"
 	| "customToolsResult"
 	| "modes"
 	| "taskWithAggregatedCosts"

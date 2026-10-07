@@ -144,6 +144,7 @@ function makeProvider(): ProviderStandIn {
 			}
 		},
 		detachDelegatedParent: (parentTaskId, childTaskId) => provider.delegation.detach(parentTaskId, childTaskId),
+		onDetachedTaskCompleted: vi.fn(),
 	})
 	return provider
 }
