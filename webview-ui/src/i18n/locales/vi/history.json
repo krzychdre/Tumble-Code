@@ -56,5 +56,11 @@
 	"runningIndicator": {
 		"running": "Đang chạy",
 		"awaitingInput": "Đang chờ bạn phản hồi"
-	}
+	},
+	"costWithSubtasks": "{{total}} gồm cả tác vụ con (riêng tác vụ này: {{own}})",
+	"subtaskOutcome": {
+		"completed": "Hoàn thành",
+		"unfinished": "Chưa hoàn thành"
+	},
+	"tokensInOut": "Token: {{in}} đầu vào, {{out}} đầu ra"
 }

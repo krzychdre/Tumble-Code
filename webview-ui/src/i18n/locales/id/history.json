@@ -65,5 +65,11 @@
 	"runningIndicator": {
 		"running": "Sedang bekerja",
 		"awaitingInput": "Menunggu masukan Anda"
-	}
+	},
+	"costWithSubtasks": "{{total}} termasuk subtugas (tugas ini saja: {{own}})",
+	"subtaskOutcome": {
+		"completed": "Selesai",
+		"unfinished": "Belum selesai"
+	},
+	"tokensInOut": "Token: {{in}} masuk, {{out}} keluar"
 }

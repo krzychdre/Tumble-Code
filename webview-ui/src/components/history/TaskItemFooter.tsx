@@ -1,15 +1,16 @@
 import React from "react"
-import type { HistoryItem } from "@tumble-code/types"
 import { formatDateTime } from "@/utils/format"
 import { CopyButton } from "./CopyButton"
 import { ExportButton } from "./ExportButton"
+import TaskCost from "./TaskCost"
+import type { DisplayHistoryItem } from "./types"
 import { DeleteButton } from "./DeleteButton"
 import { StandardTooltip } from "../ui/standard-tooltip"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Split } from "lucide-react"
 
 export interface TaskItemFooterProps {
-	item: HistoryItem
+	item: DisplayHistoryItem
 	variant: "compact" | "full"
 	isSelectionMode?: boolean
 	isSubtask?: boolean
@@ -43,12 +44,10 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 				</StandardTooltip>
 
 				{/* Cost */}
-				{!!item.totalCost && (
+				{!!(item.subtreeCost ?? item.totalCost) && (
 					<>
 						<span>·</span>
-						<span className="flex items-center tabular-nums" data-testid="cost-footer-compact">
-							{"$" + item.totalCost.toFixed(2)}
-						</span>
+						<TaskCost item={item} data-testid="cost-footer-compact" />
 					</>
 				)}
 			</div>

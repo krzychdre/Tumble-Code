@@ -56,5 +56,11 @@
 	"runningIndicator": {
 		"running": "작업 중",
 		"awaitingInput": "입력을 기다리는 중"
-	}
+	},
+	"costWithSubtasks": "하위 작업 포함 {{total}} (이 작업만: {{own}})",
+	"subtaskOutcome": {
+		"completed": "완료",
+		"unfinished": "미완료"
+	},
+	"tokensInOut": "토큰: 입력 {{in}}, 출력 {{out}}"
 }

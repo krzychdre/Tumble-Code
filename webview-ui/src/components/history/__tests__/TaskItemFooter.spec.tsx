@@ -105,4 +105,10 @@ describe("TaskItemFooter", () => {
 
 		expect(screen.queryByText("history:subtaskTag")).not.toBeInTheDocument()
 	})
+
+	it("shows the cost of the whole tree on a task with subtasks", () => {
+		render(<TaskItemFooter item={{ ...mockItem, totalCost: 0.21, subtreeCost: 1.54 }} variant="full" />)
+
+		expect(screen.getByTestId("cost-footer-compact")).toHaveTextContent("$1.54")
+	})
 })

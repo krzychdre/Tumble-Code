@@ -56,5 +56,11 @@
 	"runningIndicator": {
 		"running": "काम कर रहा है",
 		"awaitingInput": "आपके इनपुट की प्रतीक्षा में"
-	}
+	},
+	"costWithSubtasks": "{{total}} उप-कार्यों सहित (केवल यह कार्य: {{own}})",
+	"subtaskOutcome": {
+		"completed": "पूर्ण",
+		"unfinished": "अपूर्ण"
+	},
+	"tokensInOut": "टोकन: {{in}} इनपुट, {{out}} आउटपुट"
 }

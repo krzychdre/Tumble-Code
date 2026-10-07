@@ -57,5 +57,11 @@
 	"runningIndicator": {
 		"running": "In esecuzione",
 		"awaitingInput": "In attesa della tua risposta"
-	}
+	},
+	"costWithSubtasks": "{{total}} incluse le sottoattività (solo questa attività: {{own}})",
+	"subtaskOutcome": {
+		"completed": "Completata",
+		"unfinished": "Non completata"
+	},
+	"tokensInOut": "Token: {{in}} in ingresso, {{out}} in uscita"
 }

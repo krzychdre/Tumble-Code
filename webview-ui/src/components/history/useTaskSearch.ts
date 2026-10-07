@@ -42,6 +42,51 @@ function withAncestors(
 	return marked
 }
 
+/**
+ * A task saves only the cost of its own API requests. The cost of a task that
+ * delegated is its own cost plus that of every descendant, at any depth, so
+ * this sums the tree from the full history (the workspace filter must not cut
+ * a subtree). Only tasks with children get an entry.
+ */
+function subtreeCosts(taskHistory: HistoryItem[]): Map<string, number> {
+	const childrenOf = new Map<string, HistoryItem[]>()
+	for (const item of taskHistory) {
+		if (item.parentTaskId && item.parentTaskId !== item.id) {
+			const siblings = childrenOf.get(item.parentTaskId) ?? []
+			siblings.push(item)
+			childrenOf.set(item.parentTaskId, siblings)
+		}
+	}
+	const totals = new Map<string, number>()
+	const visiting = new Set<string>()
+	const sum = (item: HistoryItem): number => {
+		const known = totals.get(item.id)
+		if (known !== undefined) {
+			return known
+		}
+		// A parent cycle in corrupt history: the task is already counted further up.
+		if (visiting.has(item.id)) {
+			return 0
+		}
+		const children = childrenOf.get(item.id)
+		if (!children) {
+			return item.totalCost || 0
+		}
+		visiting.add(item.id)
+		let total = item.totalCost || 0
+		for (const child of children) {
+			total += sum(child)
+		}
+		visiting.delete(item.id)
+		totals.set(item.id, total)
+		return total
+	}
+	for (const item of taskHistory) {
+		sum(item)
+	}
+	return totals
+}
+
 export const useTaskSearch = () => {
 	// P1: narrow slices.
 	const taskHistory = useExtensionSelector((s) => s.taskHistory)
@@ -62,12 +107,16 @@ export const useTaskSearch = () => {
 		}
 	}, [searchQuery, sortOption, lastNonRelevantSort])
 
-	const presentableTasks = useMemo(() => {
+	const presentableTasks = useMemo((): DisplayHistoryItem[] => {
 		let tasks = taskHistory.filter((item) => item.ts && item.task)
 		if (!showAllWorkspaces) {
 			tasks = tasks.filter((item) => item.workspace === cwd)
 		}
-		return tasks
+		const totals = subtreeCosts(taskHistory)
+		return tasks.map((item) => {
+			const subtreeCost = totals.get(item.id)
+			return subtreeCost === undefined ? item : { ...item, subtreeCost }
+		})
 	}, [taskHistory, showAllWorkspaces, cwd])
 
 	const fzf = useMemo(() => {
@@ -102,7 +151,7 @@ export const useTaskSearch = () => {
 				case "oldest":
 					return (a.ts || 0) - (b.ts || 0)
 				case "mostExpensive":
-					return (b.totalCost || 0) - (a.totalCost || 0)
+					return (b.subtreeCost ?? (b.totalCost || 0)) - (a.subtreeCost ?? (a.totalCost || 0))
 				case "mostTokens": {
 					const aTokens = (a.tokensIn || 0) + (a.tokensOut || 0) + (a.cacheWrites || 0) + (a.cacheReads || 0)
 					const bTokens = (b.tokensIn || 0) + (b.tokensOut || 0) + (b.cacheWrites || 0) + (b.cacheReads || 0)

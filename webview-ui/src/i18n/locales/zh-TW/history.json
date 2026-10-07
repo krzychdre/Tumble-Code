@@ -56,5 +56,11 @@
 	"runningIndicator": {
 		"running": "執行中",
 		"awaitingInput": "等待你的輸入"
-	}
+	},
+	"costWithSubtasks": "含子任務共 {{total}}（僅此任務：{{own}}）",
+	"subtaskOutcome": {
+		"completed": "已完成",
+		"unfinished": "未完成"
+	},
+	"tokensInOut": "Token：輸入 {{in}}，輸出 {{out}}"
 }

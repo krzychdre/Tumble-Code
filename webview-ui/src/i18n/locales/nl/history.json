@@ -56,5 +56,11 @@
 	"runningIndicator": {
 		"running": "Bezig",
 		"awaitingInput": "Wacht op je invoer"
-	}
+	},
+	"costWithSubtasks": "{{total}} inclusief subtaken (alleen deze taak: {{own}})",
+	"subtaskOutcome": {
+		"completed": "Voltooid",
+		"unfinished": "Niet voltooid"
+	},
+	"tokensInOut": "Tokens: {{in}} invoer, {{out}} uitvoer"
 }
