@@ -13,6 +13,7 @@ import type {
 } from "../../api/transform/stream"
 import { MCP_TOOL_PREFIX, MCP_TOOL_SEPARATOR, parseMcpToolName, normalizeMcpToolName } from "../../utils/mcp-name"
 import { logger } from "../../utils/logging"
+import { recoverGluedToolArgs } from "./recoverGluedToolArgs"
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -439,8 +440,13 @@ export class NativeToolCallParser {
 		}
 
 		try {
-			// Parse the arguments JSON string
-			const args = toolCall.arguments === "" ? {} : JSON.parse(toolCall.arguments)
+			// Parse the arguments JSON string, then put back an argument a GLM server glued
+			// onto the previous one, before any required-parameter check sees the call.
+			const parsedArgs = toolCall.arguments === "" ? {} : JSON.parse(toolCall.arguments)
+			const args = recoverGluedToolArgs(resolvedName, parsedArgs) as Record<string, unknown>
+			if (args !== parsedArgs) {
+				logger.warn(`Recovered tool arguments glued onto another argument for tool '${resolvedName}'`)
+			}
 
 			// Build stringified params for display/logging.
 			// Tool execution MUST use nativeArgs (typed) and does not support legacy fallbacks.
