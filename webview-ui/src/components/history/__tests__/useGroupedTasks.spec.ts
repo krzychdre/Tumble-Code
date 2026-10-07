@@ -397,6 +397,27 @@ describe("useGroupedTasks", () => {
 			expect(result.current.groups[0].isExpanded).toBe(true)
 		})
 	})
+
+	describe("running status", () => {
+		const parentTask = { ...createMockTask({ id: "parent-1" }), runningStatus: "awaiting_input" as const }
+		const childTask = {
+			...createMockTask({ id: "child-1", task: "Child task", parentTaskId: "parent-1" }),
+			runningStatus: "running" as const,
+		}
+
+		it("passes the running status through to group parents and subtasks", () => {
+			const { result } = renderHook(() => useGroupedTasks([parentTask, childTask], ""))
+
+			expect(result.current.groups[0].parent.runningStatus).toBe("awaiting_input")
+			expect(result.current.groups[0].subtasks[0].item.runningStatus).toBe("running")
+		})
+
+		it("passes the running status through to search results", () => {
+			const { result } = renderHook(() => useGroupedTasks([parentTask, childTask], "task"))
+
+			expect(result.current.flatTasks?.map((task) => task.runningStatus)).toEqual(["awaiting_input", "running"])
+		})
+	})
 })
 
 describe("buildSubtree", () => {

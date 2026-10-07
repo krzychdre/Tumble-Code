@@ -15,7 +15,7 @@ import { ClineProvider } from "../ClineProvider"
 import { TaskSlot } from "../TaskSlot"
 import { DelegationService } from "../DelegationService"
 import type { Task } from "../../task/Task"
-import { TumbleCodeEventName } from "@tumble-code/types"
+import { TaskStatus, TumbleCodeEventName } from "@tumble-code/types"
 
 type ProviderStandIn = {
 	taskSlot: TaskSlot
@@ -348,6 +348,57 @@ describe("leaving a task that still works (keep running off screen)", () => {
 
 		await provider.taskSlot.destroyDetached()
 		expect(taskB.abortTask).toHaveBeenCalledWith(true)
+	})
+})
+
+describe("getRunningTasks: the working tasks shown on the history rows", () => {
+	it("is empty for an empty slot", () => {
+		expect(makeProvider().taskSlot.getRunningTasks()).toEqual({})
+	})
+
+	it("lists the foreground task and the detached ones, a task blocked on an ask as awaiting input", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		const taskB = Object.assign(makeLiveTask("task-B", { type: "ask", ask: "tool" }), {
+			taskStatus: TaskStatus.Interactive,
+		})
+		const taskC = makeLiveTask("task-C")
+		await provider.taskSlot.set(taskA)
+		await provider.leaveCurrentTask()
+		await provider.taskSlot.set(taskB)
+		await provider.leaveCurrentTask()
+		await provider.taskSlot.set(taskC)
+
+		expect(provider.taskSlot.getRunningTasks()).toEqual({
+			"task-A": "running",
+			"task-B": "awaiting_input",
+			"task-C": "running",
+		})
+	})
+
+	it.each<[string, Record<string, unknown> | undefined, Record<string, unknown>]>([
+		["finished (completion ask)", { type: "ask", ask: "completion_result" }, {}],
+		["waiting to be resumed", { type: "ask", ask: "resume_task" }, {}],
+		["a view of history whose loop never started", undefined, { isInitialized: false }],
+		["aborted", undefined, { abort: true }],
+	])("leaves out a foreground task at rest: %s", async (_label, lastMessage, fields) => {
+		const provider = makeProvider()
+		await provider.taskSlot.set(Object.assign(makeLiveTask("task-A", lastMessage), fields))
+
+		expect(provider.taskSlot.getRunningTasks()).toEqual({})
+	})
+
+	it("drops a detached task once it comes to rest", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		await provider.taskSlot.set(taskA)
+		await provider.leaveCurrentTask()
+		expect(provider.taskSlot.getRunningTasks()).toEqual({ "task-A": "running" })
+
+		taskA.clineMessages.push({ ts: 2, type: "ask", ask: "completion_result" })
+		taskA.emit(TumbleCodeEventName.TaskIdle, "task-A")
+
+		expect(provider.taskSlot.getRunningTasks()).toEqual({})
 	})
 })
 

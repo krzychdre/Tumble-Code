@@ -58,7 +58,7 @@ graph TD
   CP[ClineProvider]
   CP --> SB[ProviderStateBuilder<br/>getState and the webview state]
   CP --> SP[WebviewStatePusher<br/>postStateToWebview family]
-  CP --> TS[TaskSlot<br/>the one foreground task]
+  CP --> TS[TaskSlot<br/>the foreground task, tasks working off screen]
   CP --> HG[TaskHistoryGateway<br/>history list operations]
   CP --> DS[DelegationService<br/>parent and child task hand-over]
   CP --> MB[ModeProfileBinding<br/>mode to profile, profile activation]
@@ -70,14 +70,28 @@ graph TD
 
 ### The task slot
 
-`ClineProvider` holds exactly one foreground task, in `TaskSlot` (`core/webview/TaskSlot.ts`): `createTask`
-clears the current top-level task before setting a new one, and `DelegationService` clears the parent before
-it opens a child. The parent is re-created from history when the child finishes. `TaskSlot.set` (provider
-method `setCurrentTask`, formerly `addClineToStack`) emits `TaskFocused` and runs provider preparation (for
-example the LM Studio model preload); `TaskSlot.clear` (provider method `clearCurrentTask`, formerly
-`removeClineFromStack`) aborts the task, removes its listeners and repairs a delegated parent if needed.
-`TaskSlot.replaceInPlace` is the flicker-free rehydrate path used by `createTaskWithHistoryItem` when the
-reopened task is the current one.
+`ClineProvider` holds exactly one foreground task, the one the chat shows, in `TaskSlot`
+(`core/webview/TaskSlot.ts`): `createTask` clears the current top-level task before setting a new one, and
+`DelegationService` clears the parent before it opens a child. The parent is re-created from history when the
+child finishes. `TaskSlot.set` (provider method `setCurrentTask`, formerly `addClineToStack`) emits `TaskFocused`
+and runs provider preparation (for example the LM Studio model preload); `TaskSlot.clear` (provider method
+`clearCurrentTask`, formerly `removeClineFromStack`) aborts the task, removes its listeners and repairs a
+delegated parent if needed. `TaskSlot.replaceInPlace` is the flicker-free rehydrate path used by
+`createTaskWithHistoryItem` when the reopened task is the current one.
+
+The slot also keeps the tasks the user left while they were still working ("detached"). The navigation paths
+(opening another task, a new task, the home screen) call `leaveCurrentTask`, which clears with `keepRunning`: a
+task that works (its loop started, not aborted, its last message not a completion, resume or failed-request
+ask) is detached instead of aborted and keeps its listeners; a task at rest is aborted as before. Every other
+caller, and the CLI, still aborts. A detached task is aborted and dropped once it comes to rest (`TaskIdle`,
+`TaskResumable`, `TaskAborted`), so the set only holds working tasks. `showTaskWithId` puts a live instance back
+into the slot (`findLiveInstance`) instead of rebuilding it from history. A task off screen does not drive the
+chat view (`TaskMessageLog` posts nothing for it, checkpoint and condense posts go through `postMessageForTask`)
+nor follow the panel's profile changes. Delegation follows the placement: a detached parent hands over to a
+detached child in the child's own mode and profile, and a detached child that completes resumes its parent off
+screen unless the user is looking at it. `TaskSlot.getRunningTasks` (the slot occupant plus the detached tasks
+that work) reaches the webview as `runningTasks`, which the history rows show as a spinner or an attention icon.
+See `ai_plans/2026-10-07_12-31_keep-tasks-running-in-background.md`.
 
 ### Getting state to the panel
 

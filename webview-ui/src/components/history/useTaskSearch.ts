@@ -1,15 +1,23 @@
 import { useState, useEffect, useMemo } from "react"
 import { Fzf } from "fzf"
 
+import type { RunningTaskStatus } from "@tumble-code/types"
+
 import { highlightFzfMatch } from "@/utils/highlight"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
+import type { DisplayHistoryItem } from "./types"
+
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
+
+// Stable fallback so a state without the map does not change the memo inputs.
+const NO_RUNNING_TASKS: Record<string, RunningTaskStatus> = {}
 
 export const useTaskSearch = () => {
 	// P1: narrow slices.
 	const taskHistory = useExtensionSelector((s) => s.taskHistory)
 	const cwd = useExtensionSelector((s) => s.cwd)
+	const runningTasks = useExtensionSelector((s) => s.runningTasks) ?? NO_RUNNING_TASKS
 	const [searchQuery, setSearchQuery] = useState("")
 	const [sortOption, setSortOption] = useState<SortOption>("newest")
 	const [lastNonRelevantSort, setLastNonRelevantSort] = useState<SortOption | null>("newest")
@@ -39,7 +47,7 @@ export const useTaskSearch = () => {
 		})
 	}, [presentableTasks])
 
-	const tasks = useMemo(() => {
+	const sortedTasks = useMemo(() => {
 		let results = presentableTasks
 
 		if (searchQuery) {
@@ -80,6 +88,18 @@ export const useTaskSearch = () => {
 			}
 		})
 	}, [presentableTasks, searchQuery, fzf, sortOption])
+
+	// Kept apart from the sort so a status change does not search and sort again;
+	// rows of tasks at rest keep their object identity.
+	const tasks = useMemo((): DisplayHistoryItem[] => {
+		if (Object.keys(runningTasks).length === 0) {
+			return sortedTasks
+		}
+		return sortedTasks.map((item) => {
+			const runningStatus = runningTasks[item.id]
+			return runningStatus ? { ...item, runningStatus } : item
+		})
+	}, [sortedTasks, runningTasks])
 
 	return {
 		tasks,

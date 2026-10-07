@@ -108,4 +108,30 @@ describe("TaskItem", () => {
 		const taskItem = screen.getByTestId("task-item-1")
 		expect(taskItem).toHaveClass("hover:text-vscode-foreground")
 	})
+
+	describe("running status", () => {
+		it.each(["compact", "full"] as const)("shows a spinner on a working task (%s)", (variant) => {
+			render(<TaskItem item={{ ...mockTask, runningStatus: "running" }} variant={variant} />)
+
+			const indicator = screen.getByRole("img", { name: "history:runningIndicator.running" })
+			expect(indicator).toHaveAttribute("data-testid", "running-indicator-running")
+			expect(indicator.querySelector(".ui-progress-ring")).toBeInTheDocument()
+			expect(screen.getByTestId("task-item-1")).toHaveAttribute("aria-describedby", indicator.id)
+		})
+
+		it("shows the attention icon on a task waiting for input", () => {
+			render(<TaskItem item={{ ...mockTask, runningStatus: "awaiting_input" }} variant="full" />)
+
+			const indicator = screen.getByRole("img", { name: "history:runningIndicator.awaitingInput" })
+			expect(indicator).toHaveAttribute("data-testid", "running-indicator-awaiting_input")
+			expect(indicator.querySelector(".ui-progress-ring")).not.toBeInTheDocument()
+		})
+
+		it("shows nothing on a task at rest", () => {
+			render(<TaskItem item={mockTask} variant="full" />)
+
+			expect(screen.queryByTestId(/^running-indicator-/)).not.toBeInTheDocument()
+			expect(screen.getByTestId("task-item-1")).not.toHaveAttribute("aria-describedby")
+		})
+	})
 })

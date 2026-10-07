@@ -87,7 +87,7 @@ import type {
 	PlanReviewWebviewMessageType,
 	PlanReviewExtensionMessageType,
 } from "./vscode-extension-host/planReview.js"
-import type { ExtensionState } from "./vscode-extension-host/state.js"
+import type { ExtensionState, RunningTaskStatus } from "./vscode-extension-host/state.js"
 
 export * from "./vscode-extension-host/taskLifecycle.js"
 export * from "./vscode-extension-host/messageEdits.js"
@@ -215,6 +215,11 @@ export interface ExtensionMessage {
 	 * how many recall prefetches / background writers are running right now.
 	 */
 	memoryActivity?: { recall: number; write: number }
+	/**
+	 * Tasks of this panel that are working right now (`runningTasksUpdated`
+	 * pushes and state): the full map, replacing the previous one.
+	 */
+	runningTasks?: Record<string, RunningTaskStatus>
 	mcpServers?: McpServer[]
 	commits?: GitCommit[]
 	listApiConfig?: ProviderSettingsEntry[]

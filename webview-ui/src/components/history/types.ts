@@ -1,4 +1,4 @@
-import type { HistoryItem } from "@tumble-code/types"
+import type { HistoryItem, RunningTaskStatus } from "@tumble-code/types"
 
 /**
  * Extended HistoryItem with display-related fields for search highlighting and subtask indication
@@ -8,6 +8,8 @@ export interface DisplayHistoryItem extends HistoryItem {
 	highlight?: string
 	/** Whether this task is a subtask (has a parent in the current task list) */
 	isSubtask?: boolean
+	/** Set while the task is working (`runningTasks` in the extension state); absent at rest */
+	runningStatus?: RunningTaskStatus
 }
 
 /**

@@ -63,6 +63,7 @@ const createInitialExtensionState = (): ExtensionState => ({
 	version: "",
 	clineMessages: [],
 	subagents: [],
+	runningTasks: {},
 	taskHistory: [],
 	shouldShowAnnouncement: false,
 	allowedCommands: [],
@@ -366,6 +367,11 @@ export function applyExtensionMessage(prev: ExtensionStore, message: ExtensionMe
 				return prev
 			}
 			return updateExtensionState(prev, (prevState) => ({ ...prevState, memoryActivity }))
+		}
+		case "runningTasksUpdated": {
+			// The host sends the whole map each time; a task at rest is absent.
+			const runningTasks = message.runningTasks ?? {}
+			return updateExtensionState(prev, (prevState) => ({ ...prevState, runningTasks }))
 		}
 		case "skills":
 			return message.skills ? { ...prev, skills: message.skills } : prev

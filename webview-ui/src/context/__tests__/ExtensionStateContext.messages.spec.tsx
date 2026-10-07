@@ -93,6 +93,7 @@ describe("ExtensionStateContext message table", () => {
 				"memoryActivity",
 				"messageAdded",
 				"messageUpdated",
+				"runningTasksUpdated",
 				"selectedImages",
 				"skills",
 				"state",

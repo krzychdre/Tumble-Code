@@ -1,4 +1,4 @@
-import { memo } from "react"
+import { memo, useId } from "react"
 import { ArrowRight } from "lucide-react"
 import { vscode } from "@/utils/vscode"
 import { cn } from "@/lib/utils"
@@ -6,6 +6,7 @@ import type { SubtaskTreeNode } from "./types"
 import { countAllSubtasks } from "./types"
 import { StandardTooltip } from "../ui"
 import SubtaskCollapsibleRow from "./SubtaskCollapsibleRow"
+import RunningStatusIndicator from "./RunningStatusIndicator"
 
 interface SubtaskRowProps {
 	/** The subtask tree node to display */
@@ -26,6 +27,7 @@ interface SubtaskRowProps {
 const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps) => {
 	const { item, children, isExpanded } = node
 	const hasChildren = children.length > 0
+	const statusId = useId()
 
 	const handleClick = () => {
 		vscode.postMessage({ type: "showTaskWithId", text: item.id })
@@ -38,6 +40,7 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 			<button
 				type="button"
 				aria-label={item.task}
+				aria-describedby={item.runningStatus ? statusId : undefined}
 				className={cn(
 					"group flex w-full items-center justify-between gap-2 pr-4 py-1 cursor-pointer",
 					"text-left bg-transparent border-none p-0 font-inherit",
@@ -46,9 +49,12 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 				)}
 				style={{ paddingLeft: `${depth * 16}px` }}
 				onClick={handleClick}>
-				<StandardTooltip content={item.task} delay={600}>
-					<span className="text-sm line-clamp-1">{item.task}</span>
-				</StandardTooltip>
+				<span className="flex min-w-0 items-center gap-1.5">
+					<RunningStatusIndicator status={item.runningStatus} id={statusId} />
+					<StandardTooltip content={item.task} delay={600}>
+						<span className="text-sm line-clamp-1">{item.task}</span>
+					</StandardTooltip>
+				</span>
 				<ArrowRight className="size-3 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
 			</button>
 

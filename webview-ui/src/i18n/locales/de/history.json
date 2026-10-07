@@ -59,5 +59,9 @@
 	"yesterday": "Gestern",
 	"noHistory": "Noch keine Aufgaben. Beginne eine Unterhaltung, um deinen Verlauf aufzubauen.",
 	"noSearchResults": "Keine Aufgaben entsprechen dieser Suche.",
-	"clearSearch": "Suche löschen"
+	"clearSearch": "Suche löschen",
+	"runningIndicator": {
+		"running": "Arbeitet",
+		"awaitingInput": "Wartet auf deine Eingabe"
+	}
 }
