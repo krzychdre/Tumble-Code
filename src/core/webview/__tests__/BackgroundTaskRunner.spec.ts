@@ -257,7 +257,13 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 	it("lists only live subagents and aborts the given live background tasks", async () => {
 		const runner = new BackgroundTaskRunner(makeHost().host)
 		const subagent = (await runner.createBackgroundTask("work", {
-			subagentInfo: { parentTaskId: "parent", index: 0, description: "part one" },
+			subagentInfo: {
+				parentTaskId: "parent",
+				rootTaskId: "parent",
+				workspace: "/repo",
+				index: 0,
+				description: "part one",
+			},
 		})) as unknown as FakeTask
 		const writer = (await runner.createBackgroundTask("memory")) as unknown as FakeTask
 
@@ -293,9 +299,9 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		})
 		const runner = new BackgroundTaskRunner(host)
 
-		await expect(
-			runner.createBackgroundTask("x", { subagentInfo: SUBAGENT_INFO }),
-		).rejects.toBeInstanceOf(OrganizationAllowListViolationError)
+		await expect(runner.createBackgroundTask("x", { subagentInfo: SUBAGENT_INFO })).rejects.toBeInstanceOf(
+			OrganizationAllowListViolationError,
+		)
 		expect(Task).not.toHaveBeenCalled()
 		expect(register).not.toHaveBeenCalled()
 	})
