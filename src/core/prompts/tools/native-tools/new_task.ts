@@ -2,7 +2,7 @@ import type OpenAI from "openai"
 
 const NEW_TASK_DESCRIPTION = `Create a new task instance in the chosen mode using your provided message and initial todo list (if required).
 
-Each new task is a whole separate conversation with its own full system prompt and context. Delegate only work that genuinely needs a different mode or a fresh context. Steps you can do in your current mode belong on your own todo list, not in a subtask.
+Each new task is a whole separate conversation with its own full system prompt and context. Delegate only work that genuinely needs a different mode or a fresh context. Steps you can do in your current mode belong on your own todo list, not in a subtask. A subtask cannot start another subtask in its own mode (it would have the same model and tools), and delegation chains have a depth limit.
 
 CRITICAL: This tool MUST be called alone. Do NOT call this tool alongside other tools in the same message turn. If you need to gather information before delegating, use other tools in a separate turn first, then call new_task by itself in the next turn.`
 
