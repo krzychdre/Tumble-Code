@@ -503,8 +503,12 @@ describe("apply_diff", () => {
 		await applyDiff()
 
 		expect(pushToolResult).toHaveBeenCalledWith(
-			`But unable to apply all diff parts to file: ${abs("src/a.ts")}. Use the read_file tool to check the newest file version and re-apply diffs.\n` +
+			`Partially applied the diff to file: ${abs("src/a.ts")}. 1 block(s) failed.\n` +
 				"WRITE_RESULT" +
+				"\n\nThe other blocks were applied. The file already contains them. Do NOT send them again.\n" +
+				"Next step: use read_file to read the current lines of the failed blocks (line numbers may have changed). " +
+				"Then send one new apply_diff with ONLY the failed blocks, fixed.\n\n" +
+				"<error_details>\nBlock 1 failed:\nno match\n</error_details>" +
 				"\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>" +
 				"\n\nREVIEW_NOTE",
 		)

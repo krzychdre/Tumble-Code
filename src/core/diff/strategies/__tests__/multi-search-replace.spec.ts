@@ -1374,4 +1374,23 @@ function sum(a, b) {
 			}
 		})
 	})
+	describe("failed block positions", () => {
+		it("names each failed block by its place in the diff and its :start_line:", async () => {
+			const strategy = new MultiSearchReplaceDiffStrategy()
+			const diff =
+				"<<<<<<< SEARCH\n:start_line:3\n-------\nc\n=======\nC\n>>>>>>> REPLACE\n\n" +
+				"<<<<<<< SEARCH\n:start_line:1\n-------\nnot in file\n=======\nx\n>>>>>>> REPLACE\n\n" +
+				"<<<<<<< SEARCH\nalso not in file\n=======\ny\n>>>>>>> REPLACE"
+
+			const result = await strategy.applyDiff("a\nb\nc\nd", diff)
+
+			expect(result.success).toBe(true)
+			expect(result.blockCount).toBe(3)
+			// Blocks are applied in start-line order, so the fail parts come out sorted that way.
+			expect(result.failParts?.map((part) => (part.success ? null : [part.blockIndex, part.startLine]))).toEqual([
+				[3, undefined],
+				[2, 1],
+			])
+		})
+	})
 })

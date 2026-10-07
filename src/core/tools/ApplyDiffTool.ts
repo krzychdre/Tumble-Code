@@ -9,7 +9,7 @@ import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
-import type { ToolUse } from "../../shared/tools"
+import type { DiffResult, ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { applyComputedEdit } from "./helpers/applyComputedEdit"
@@ -17,6 +17,107 @@ import { applyComputedEdit } from "./helpers/applyComputedEdit"
 interface ApplyDiffParams {
 	path: string
 	diff: string
+}
+
+/** Longest best-match excerpt shown for a failed block after the first one. */
+const MAX_BEST_MATCH_CHARS = 2000
+
+type FailPart = Extract<DiffResult, { success: false }>
+
+function failedOnly(failParts: DiffResult[]): FailPart[] {
+	return failParts.filter((part): part is FailPart => !part.success)
+}
+
+/** "Block 2 of 3 (:start_line:145)", or "Block 2" when the strategy did not say where the block was. */
+function blockLabel(part: FailPart, fallbackIndex: number, blockCount: number | undefined): string {
+	const index = part.blockIndex ?? fallbackIndex
+	const of = blockCount ? ` of ${blockCount}` : ""
+	return `Block ${index}${of}${part.startLine ? ` (:start_line:${part.startLine})` : ""}`
+}
+
+/** The one-line reason and the best match of a failure, without the search text and file dump. */
+function shortFailure(error: string): string {
+	const reason = error.split("\n")[0]
+	const bestMatchStart = error.indexOf("\n\nBest Match Found:\n")
+	if (bestMatchStart === -1) {
+		return reason
+	}
+	const bestMatchEnd = error.indexOf("\n\nOriginal Content:", bestMatchStart)
+	let bestMatch = error.slice(bestMatchStart + 2, bestMatchEnd === -1 ? undefined : bestMatchEnd)
+	if (bestMatch.length > MAX_BEST_MATCH_CHARS) {
+		bestMatch = `${bestMatch.slice(0, MAX_BEST_MATCH_CHARS)}\n... (shortened)`
+	}
+	return `${reason}\n${bestMatch}`
+}
+
+/**
+ * Every failed block, in the order of the model's diff. Only the first one
+ * keeps the full debug text (search content and original file lines, which
+ * can be the whole file); the others get the reason and the best match.
+ */
+function formatFailedBlocks(failParts: DiffResult[], blockCount: number | undefined): string {
+	const failed = failedOnly(failParts)
+		.map((part, i) => ({ part, label: blockLabel(part, i + 1, blockCount) }))
+		.sort((a, b) => (a.part.blockIndex ?? 0) - (b.part.blockIndex ?? 0))
+	const sections = failed.map(({ part, label }, i) => {
+		const error = part.error ?? "Unknown error"
+		if (i > 0) {
+			return `${label} failed:\n${shortFailure(error)}`
+		}
+		const details = part.details ? JSON.stringify(part.details, null, 2) : ""
+		return `${label} failed:\n${error}${details ? `\n\nDetails:\n${details}` : ""}`
+	})
+	return `<error_details>\n${sections.join("\n\n")}\n</error_details>`
+}
+
+/** Block numbers for a sentence: "block 2", "blocks 2 and 3", "blocks 1, 2 and 4". */
+function listBlocks(numbers: number[]): string {
+	return numbers.length <= 1
+		? `block ${numbers.join("")}`
+		: `blocks ${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`
+}
+
+/**
+ * Text around the write result when only some blocks applied: which blocks
+ * are now in the file (must not be sent again) and which failed. Weak models
+ * re-sent applied blocks when they were only told "unable to apply all diff parts".
+ */
+function partialApplyReport(
+	absolutePath: string,
+	failParts: DiffResult[],
+	blockCount: number | undefined,
+): { prefix: string; suffix: string } {
+	const failedParts = failedOnly(failParts)
+	const failedIndexes = failedParts
+		.map((part) => part.blockIndex)
+		.filter((index): index is number => typeof index === "number")
+		.sort((a, b) => a - b)
+	const details = formatFailedBlocks(failParts, blockCount)
+	const next =
+		"Next step: use read_file to read the current lines of the failed blocks (line numbers may have changed). " +
+		"Then send one new apply_diff with ONLY the failed blocks, fixed."
+
+	if (!blockCount || failedIndexes.length !== failedParts.length) {
+		return {
+			prefix: `Partially applied the diff to file: ${absolutePath}. ${failedParts.length} block(s) failed.\n`,
+			suffix:
+				`\n\nThe other blocks were applied. The file already contains them. Do NOT send them again.\n${next}\n\n` +
+				details,
+		}
+	}
+
+	const appliedIndexes = Array.from({ length: blockCount }, (_, i) => i + 1).filter(
+		(index) => !failedIndexes.includes(index),
+	)
+	const applied = listBlocks(appliedIndexes)
+	const failed = listBlocks(failedIndexes)
+	return {
+		prefix: `Partially applied the diff to file: ${absolutePath}. ${appliedIndexes.length} of ${blockCount} blocks applied, ${failedIndexes.length} failed.\n`,
+		suffix:
+			`\n\nApplied: ${applied}. The file already contains these changes. Do NOT send ${applied} again.\n` +
+			`Failed: ${failed}. These changes are NOT in the file.\n${next}\n\n` +
+			details,
+	}
 }
 
 export class ApplyDiffTool extends BaseTool<"apply_diff"> {
@@ -77,17 +178,17 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 				})
 
 				if (diffResult.failParts && diffResult.failParts.length > 0) {
-					for (const failPart of diffResult.failParts) {
-						if (failPart.success) {
-							continue
-						}
-
-						const errorDetails = failPart.details ? JSON.stringify(failPart.details, null, 2) : ""
-
-						formattedError = `<error_details>\n${
-							failPart.error
-						}${errorDetails ? `\n\nDetails:\n${errorDetails}` : ""}\n</error_details>`
-					}
+					const { blockCount } = diffResult
+					const nothingApplied =
+						blockCount === 1
+							? "The diff block was not applied."
+							: blockCount
+								? `None of the ${blockCount} diff blocks were applied.`
+								: "No diff block was applied."
+					formattedError = `Unable to apply diff to file: ${absolutePath}\n${nothingApplied} The file is unchanged.\n\n${formatFailedBlocks(
+						diffResult.failParts,
+						blockCount,
+					)}`
 				} else {
 					const errorDetails = diffResult.details ? JSON.stringify(diffResult.details, null, 2) : ""
 
@@ -123,16 +224,18 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 					? "\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>"
 					: ""
 
+			const partial =
+				diffResult.failParts && diffResult.failParts.length > 0
+					? partialApplyReport(absolutePath, diffResult.failParts, diffResult.blockCount)
+					: undefined
+
 			const outcome = await applyComputedEdit(task, relPath, diffResult.content, callbacks, {
 				originalContent,
 				cardIncludesOriginalContent: true,
 				cardDiff: diffContent,
 				progressStatus: task.diffStrategy.getProgressStatus(block, diffResult),
-				resultPrefix:
-					diffResult.failParts && diffResult.failParts.length > 0
-						? `But unable to apply all diff parts to file: ${absolutePath}. Use the read_file tool to check the newest file version and re-apply diffs.\n`
-						: "",
-				resultSuffix: singleBlockNotice,
+				resultPrefix: partial?.prefix ?? "",
+				resultSuffix: (partial?.suffix ?? "") + singleBlockNotice,
 			})
 
 			if (outcome !== "rejected") {
