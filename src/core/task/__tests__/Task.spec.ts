@@ -405,6 +405,48 @@ describe("Cline", () => {
 			expect(cline.consecutiveMistakeLimit).toBe(5)
 		})
 
+		it("keeps the root id it is given for a new subtask", () => {
+			const parent = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "parent task",
+				startTask: false,
+			})
+			const child = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "child task",
+				parentTask: parent,
+				rootTaskId: "root-task",
+				startTask: false,
+			})
+
+			expect(child.rootTaskId).toBe("root-task")
+			expect(child.parentTaskId).toBe(parent.taskId)
+		})
+
+		it("takes the root id from the history item when reopening a subtask", () => {
+			const reopened = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				historyItem: {
+					id: "child-task",
+					number: 1,
+					ts: Date.now(),
+					task: "child task",
+					tokensIn: 0,
+					tokensOut: 0,
+					totalCost: 0,
+					parentTaskId: "parent-task",
+					rootTaskId: "root-task",
+				},
+				rootTaskId: "ignored",
+				startTask: false,
+			})
+
+			expect(reopened.rootTaskId).toBe("root-task")
+		})
+
 		it("should require either task or historyItem", () => {
 			expect(() => {
 				new Task({ provider: mockProvider, apiConfiguration: mockApiConfig })
@@ -959,7 +1001,7 @@ describe("Cline", () => {
 					apiConfiguration: mockApiConfig,
 					task: "child task",
 					parentTask: parent,
-					rootTask: parent,
+					rootTaskId: parent.taskId,
 					startTask: false,
 				})
 				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
@@ -1048,7 +1090,7 @@ describe("Cline", () => {
 					apiConfiguration: mockApiConfig,
 					task: "child task",
 					parentTask: parent,
-					rootTask: parent,
+					rootTaskId: parent.taskId,
 					startTask: false,
 				})
 				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
@@ -1102,7 +1144,7 @@ describe("Cline", () => {
 					apiConfiguration: mockApiConfig,
 					task: "child task 1",
 					parentTask: parent,
-					rootTask: parent,
+					rootTaskId: parent.taskId,
 					startTask: false,
 				})
 				vi.spyOn(child1.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
@@ -1126,7 +1168,7 @@ describe("Cline", () => {
 					apiConfiguration: mockApiConfig,
 					task: "child task 2",
 					parentTask: parent,
-					rootTask: parent,
+					rootTaskId: parent.taskId,
 					startTask: false,
 				})
 				vi.spyOn(child2.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
@@ -1187,7 +1229,7 @@ describe("Cline", () => {
 					apiConfiguration: mockApiConfig,
 					task: "child task",
 					parentTask: parent,
-					rootTask: parent,
+					rootTaskId: parent.taskId,
 					startTask: false,
 				})
 				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")

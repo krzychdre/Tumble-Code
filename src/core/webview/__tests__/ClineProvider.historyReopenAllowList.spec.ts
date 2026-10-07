@@ -134,7 +134,6 @@ function fakeTask(taskId: string, extra: Record<string, unknown> = {}): any {
 	return {
 		taskId,
 		instanceId: `${taskId}-inst`,
-		rootTask: undefined,
 		parentTask: undefined,
 		isStreaming: false,
 		didFinishAbortingStream: true,

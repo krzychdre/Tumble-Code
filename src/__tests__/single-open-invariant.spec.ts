@@ -12,7 +12,6 @@ vi.mock("../core/task/Task", () => {
 		public instanceId = "inst"
 		public parentTask?: any
 		public apiConfiguration: any
-		public rootTask?: any
 		constructor(opts: any) {
 			this.taskId = opts.historyItem?.id ?? `task-${Math.random().toString(36).slice(2, 8)}`
 			this.parentTask = opts.parentTask

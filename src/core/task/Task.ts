@@ -165,7 +165,8 @@ export interface TaskOptions extends CreateTaskOptions {
 	historyItem?: HistoryItem
 	experiments?: Record<string, boolean>
 	startTask?: boolean
-	rootTask?: Task
+	/** Id of the top task of a delegation chain; the history item's value wins on rehydration. */
+	rootTaskId?: string
 	parentTask?: Task
 	taskNumber?: number
 	onCreated?: (task: Task) => void
@@ -237,7 +238,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	toolStreamState?: TaskToolStreamState
 
-	readonly rootTask: Task | undefined = undefined
 	readonly parentTask: Task | undefined = undefined
 	readonly taskNumber: number
 	readonly workspacePath: string
@@ -894,7 +894,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		historyItem,
 		experiments: experimentsConfig,
 		startTask = true,
-		rootTask,
+		rootTaskId,
 		parentTask,
 		taskNumber = -1,
 		onCreated,
@@ -927,7 +927,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		this.taskId = historyItem ? historyItem.id : (taskId ?? uuidv7())
-		this.rootTaskId = historyItem ? historyItem.rootTaskId : rootTask?.taskId
+		this.rootTaskId = historyItem ? historyItem.rootTaskId : rootTaskId
 		this.parentTaskId = historyItem ? historyItem.parentTaskId : parentTask?.taskId
 		this.childTaskId = undefined
 

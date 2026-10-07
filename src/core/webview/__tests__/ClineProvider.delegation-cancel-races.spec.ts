@@ -155,7 +155,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			taskId: "child-1",
 			instanceId: "ci-1",
 			parentTaskId: "parent-1",
-			rootTask: { taskId: "parent-1" },
 			parentTask: { taskId: "parent-1" },
 			isStreaming: false,
 			emit: vi.fn(),
@@ -185,10 +184,8 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		expect(updateTaskHistory).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "parent-1", status: "active", awaitingChildId: undefined }),
 		)
-		// Child rehydrated standalone (no parentTask/rootTask carried over).
-		expect(createWithHistory).toHaveBeenCalledWith(
-			expect.objectContaining({ parentTask: undefined, rootTask: undefined }),
-		)
+		// Child rehydrated standalone (no live parentTask carried over).
+		expect(createWithHistory).toHaveBeenCalledWith(expect.objectContaining({ parentTask: undefined }))
 	})
 
 	it("reopenParentFromDelegation aborts (returns false) when parent no longer awaits this child", async () => {

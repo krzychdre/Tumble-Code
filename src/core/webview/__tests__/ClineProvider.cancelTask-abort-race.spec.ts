@@ -175,7 +175,6 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		const task: any = {
 			taskId,
 			instanceId,
-			rootTask: undefined,
 			parentTask: undefined,
 			isStreaming,
 			didFinishAbortingStream: false,

@@ -563,9 +563,8 @@ export class ClineProvider
 				}
 
 				const historyItem = await this.getHistoryItem(instance.taskId)
-				const rootTask = instance.rootTask
 				const parentTask = instance.parentTask
-				await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+				await this.createTaskWithHistoryItem({ ...historyItem, parentTask })
 			}
 		} catch (error) {
 			this.showAllowListViolation(error)
@@ -931,7 +930,7 @@ export class ClineProvider
 	}
 
 	public async createTaskWithHistoryItem(
-		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
+		historyItem: HistoryItem & { parentTask?: Task },
 		options?: { startTask?: boolean },
 	) {
 		// Check if we're rehydrating the current task to avoid flicker
@@ -988,7 +987,6 @@ export class ClineProvider
 			checkpointTimeout,
 			historyItem,
 			experiments,
-			rootTask: historyItem.rootTask,
 			parentTask: historyItem.parentTask,
 			taskNumber: historyItem.number,
 			workspacePath: historyItem.workspace,
@@ -1287,22 +1285,19 @@ export class ClineProvider
 		if (id !== this.getCurrentTask()?.taskId) {
 			const historyItem = await this.getHistoryItem(id)
 
-			// Resolve rootTask/parentTask references from the current task so
-			// that subtask delegation metadata survives history-item round-trips
+			// Resolve the parentTask reference from the current task so that
+			// subtask delegation metadata survives history-item round-trips
 			// (only the IDs are persisted, not the live Task objects). With the
 			// single-task slot, the previous find() over the stack could only
-			// ever match the current task anyway.
-			let rootTask: Task | undefined
+			// ever match the current task anyway. The root id needs no live
+			// object: the Task takes it from the history item.
 			let parentTask: Task | undefined
 			const current = this.getCurrentTask()
-			if (historyItem.rootTaskId && current?.taskId === historyItem.rootTaskId) {
-				rootTask = current
-			}
 			if (historyItem.parentTaskId && current?.taskId === historyItem.parentTaskId) {
 				parentTask = current
 			}
 
-			await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+			await this.createTaskWithHistoryItem({ ...historyItem, parentTask })
 		}
 
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
@@ -1732,13 +1727,12 @@ export class ClineProvider
 			task: text,
 			images,
 			experiments,
-			// Derive rootTask from the parent chain (D7): the old array read
-			// (`clineStack[0]`) always saw an empty array on every production
-			// path (pop-before-push), so it yielded undefined. The chain
-			// derivation yields the same undefined for top-level tasks and
-			// records the lineage for delegated children, matching the
-			// persisted rootTaskId semantics.
-			rootTask: parentTask ? (parentTask.rootTask ?? parentTask) : undefined,
+			// The root of a delegation chain is the parent's root, or the
+			// parent itself when the parent is a top-level task. Read the id,
+			// not a Task object: a Task only keeps its root as an id string,
+			// so every level below the first child used to record its parent
+			// as the root.
+			rootTaskId: parentTask ? (parentTask.rootTaskId ?? parentTask.taskId) : undefined,
 			parentTask,
 			// The old array read (`length + 1`) always evaluated to 1 because
 			// every production path popped the previous task first.
@@ -1887,9 +1881,8 @@ export class ClineProvider
 			}
 		}
 
-		// Preserve parent and root task information for history item.
-		// `let` because a delegated-parent detach below may clear them.
-		let rootTask = task.rootTask
+		// Preserve the parent task information for the history item.
+		// `let` because a delegated-parent detach below may clear it.
 		let parentTask = task.parentTask
 
 		// Mark this as a user-initiated cancellation so provider-only rehydration can occur
@@ -1959,13 +1952,12 @@ export class ClineProvider
 			historyItem = outcome.childHistory
 			if (outcome.dropLineage) {
 				parentTask = undefined
-				rootTask = undefined
 			}
 		}
 
 		// Clears task again, so we need to abortTask manually above.
 		try {
-			await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+			await this.createTaskWithHistoryItem({ ...historyItem, parentTask })
 		} catch (error) {
 			// The task's profile is no longer allowed: it stays on screen,
 			// stopped, and the user learns why it cannot be resumed.
