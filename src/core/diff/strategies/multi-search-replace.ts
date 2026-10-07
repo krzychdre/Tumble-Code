@@ -410,7 +410,10 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 		const diffResults: DiffResult[] = []
 		let appliedCount = 0
 		const replacements = matches
-			.map((match) => ({
+			.map((match, index) => ({
+				// Where the block sits in the model's diff (1-based) and its declared
+				// :start_line:, so a failure can name the block (the list is sorted below).
+				block: { blockIndex: index + 1, startLine: Number(match[2] ?? 0) || undefined },
 				startLine: Number(match[2] ?? 0),
 				searchContent: match[6],
 				replaceContent: match[7],
@@ -443,6 +446,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 			if (searchContent === replaceContent) {
 				diffResults.push({
 					success: false,
+					...replacement.block,
 					error:
 						`Search and replace content are identical - no changes would be made\n\n` +
 						`Debug Info:\n` +
@@ -460,6 +464,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 			if (searchLines.length === 0) {
 				diffResults.push({
 					success: false,
+					...replacement.block,
 					error: `Empty search content is not allowed\n\nDebug Info:\n- Search content cannot be empty\n- For insertions, provide a specific line using :start_line: and include content to search for\n- For example, match a single line to insert before/after it`,
 				})
 				continue
@@ -557,6 +562,7 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 
 					diffResults.push({
 						success: false,
+						...replacement.block,
 						error: `No sufficiently similar match found${lineRange} (${Math.floor(bestMatchScore * 100)}% similar, needs ${Math.floor(this.fuzzyThreshold * 100)}%)\n\nDebug Info:\n- Similarity Score: ${Math.floor(bestMatchScore * 100)}%\n- Required Threshold: ${Math.floor(this.fuzzyThreshold * 100)}%\n- Search Range: ${startLine ? `starting at line ${startLine}` : "start to end"}\n- Tried both standard and aggressive line number stripping\n- Tip: Use the read_file tool to get the latest content of the file before attempting to use the apply_diff tool again, as the file content may have changed\n\nSearch Content:\n${searchChunk}${bestMatchSection}${originalContentSection}`,
 					})
 					continue
@@ -615,12 +621,14 @@ export class MultiSearchReplaceDiffStrategy implements DiffStrategy {
 			return {
 				success: false,
 				failParts: diffResults,
+				blockCount: matches.length,
 			}
 		}
 		return {
 			success: true,
 			content: finalContent,
 			failParts: diffResults,
+			blockCount: matches.length,
 		}
 	}
 

@@ -123,10 +123,16 @@ export interface McpToolUse {
 }
 
 export type DiffResult =
-	| { success: true; content: string; failParts?: DiffResult[] }
+	| { success: true; content: string; failParts?: DiffResult[]; blockCount?: number }
 	| ({
 			success: false
 			error?: string
+			/** Number of SEARCH/REPLACE blocks in the diff (set on the overall result). */
+			blockCount?: number
+			/** Position of a failed block in the model's diff, 1-based (set on a fail part). */
+			blockIndex?: number
+			/** The failed block's declared :start_line:, when it had one. */
+			startLine?: number
 			details?: {
 				similarity?: number
 				threshold?: number
