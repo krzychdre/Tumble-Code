@@ -596,20 +596,20 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	describe("createTask startTask gating", () => {
-		const stubCreateTaskDeps = () => {
-			// createTask runs setValues + allowlist + stack ops before start();
-			// stub those so the test exercises only the start()-gating branch.
-			vi.spyOn(provider as any, "setValues").mockResolvedValue(undefined)
-			vi.spyOn(provider, "getState").mockResolvedValue({
-				mode: "code",
-				apiConfiguration: { apiProvider: "openrouter" },
-				organizationAllowList: { allowAll: true, providers: {} },
-			} as any)
-			vi.spyOn(provider as any, "setCurrentTask").mockResolvedValue(undefined)
-			vi.spyOn(provider as any, "clearCurrentTask").mockResolvedValue(undefined)
-		}
+	const stubCreateTaskDeps = () => {
+		// createTask runs setValues + allowlist + stack ops before start();
+		// stub those so the tests exercise only the branch under test.
+		vi.spyOn(provider as any, "setValues").mockResolvedValue(undefined)
+		vi.spyOn(provider, "getState").mockResolvedValue({
+			mode: "code",
+			apiConfiguration: { apiProvider: "openrouter" },
+			organizationAllowList: { allowAll: true, providers: {} },
+		} as any)
+		vi.spyOn(provider as any, "setCurrentTask").mockResolvedValue(undefined)
+		vi.spyOn(provider as any, "clearCurrentTask").mockResolvedValue(undefined)
+	}
 
+	describe("createTask startTask gating", () => {
 		it("auto-starts the task by default", async () => {
 			stubCreateTaskDeps()
 			const task = await provider.createTask("hello")
@@ -620,6 +620,34 @@ describe("ClineProvider", () => {
 			stubCreateTaskDeps()
 			const task = await provider.createTask("hello", undefined, undefined, { startTask: false })
 			expect((task as any).start).not.toHaveBeenCalled()
+		})
+	})
+
+	describe("createTask delegation lineage", () => {
+		// The options the provider handed to the Task constructor (mocked above).
+		const lastTaskOptions = () => vi.mocked(Task).mock.calls.at(-1)![0]
+
+		// A live Task keeps its lineage as id strings only (taskId, rootTaskId);
+		// there is no live root Task object to follow.
+		const liveTask = (taskId: string, rootTaskId?: string) => ({ taskId, rootTaskId }) as unknown as Task
+
+		it("a top-level task has no root", async () => {
+			stubCreateTaskDeps()
+			await provider.createTask("top", undefined, undefined, { startTask: false })
+			expect(lastTaskOptions().rootTaskId).toBeUndefined()
+		})
+
+		it("a first-level child records its top-level parent as the root", async () => {
+			stubCreateTaskDeps()
+			await provider.createTask("child", undefined, liveTask("root-task"), { startTask: false })
+			expect(lastTaskOptions().rootTaskId).toBe("root-task")
+		})
+
+		it("a grandchild records the root of the chain, not its parent", async () => {
+			stubCreateTaskDeps()
+			const parent = liveTask("mid-task", "root-task")
+			await provider.createTask("grandchild", undefined, parent, { startTask: false })
+			expect(lastTaskOptions()).toMatchObject({ rootTaskId: "root-task", parentTask: parent })
 		})
 	})
 
@@ -948,7 +976,6 @@ describe("ClineProvider", () => {
 
 			// Set up parent-child relationship
 			;(childTask as any).parentTask = parentTask
-			;(childTask as any).rootTask = parentTask
 
 			// Mock the provider methods
 			const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
@@ -2704,7 +2731,6 @@ describe("ClineProvider", () => {
 			const task = await makeTask({
 				abortReason: "streaming_failed",
 				isBackground: false,
-				rootTask: { taskId: "root" },
 				parentTask: { taskId: "parent" },
 			})
 			attach(task)
@@ -2718,7 +2744,6 @@ describe("ClineProvider", () => {
 			expect(rehydrate).toHaveBeenCalledWith({
 				id: "task-1",
 				task: "t",
-				rootTask: { taskId: "root" },
 				parentTask: { taskId: "parent" },
 			})
 		})

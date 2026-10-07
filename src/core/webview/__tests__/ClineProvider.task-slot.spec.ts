@@ -4,8 +4,9 @@
 // stack), owned by TaskSlot. Every production path removed the current task
 // before adding another, so the retired `clineStack` array never held more
 // than one entry. These tests prove the slot mechanics and that the derived
-// rootTask / taskNumber match what the old array logic produced on every real
-// path.
+// taskNumber matches what the old array logic produced on every real path.
+// The root id of a delegated child is covered in ClineProvider.spec.ts
+// ("createTask delegation lineage"), against the real createTask.
 
 import { describe, expect, it, vi } from "vitest"
 
@@ -140,7 +141,7 @@ describe("single-task slot mechanics (D7)", () => {
 	})
 })
 
-describe("createTask rootTask/taskNumber derivation (D7)", () => {
+describe("createTask taskNumber derivation (D7)", () => {
 	// The old array logic read, at Task-construction time:
 	//   rootTask:   clineStack.length > 0 ? clineStack[0] : undefined
 	//   taskNumber: clineStack.length + 1
@@ -148,7 +149,7 @@ describe("createTask rootTask/taskNumber derivation (D7)", () => {
 	// the previous task first, so length was always 0: rootTask === undefined
 	// and taskNumber === 1. The derivation reproduces both.
 
-	it("top-level task: rootTask undefined, taskNumber 1 (old: empty array)", () => {
+	it("top-level task: no root, taskNumber 1 (old: empty array)", () => {
 		const provider = makeProvider()
 
 		// Old behavior: after clearCurrentTask, clineStack.length === 0,
@@ -163,24 +164,6 @@ describe("createTask rootTask/taskNumber derivation (D7)", () => {
 		expect(oldRootTask).toBeUndefined()
 		expect(newRootTask).toBe(oldRootTask)
 		expect(newTaskNumber).toBe(oldTaskNumber)
-	})
-
-	it("delegated child: rootTask derived from the parent chain", () => {
-		const provider = makeProvider()
-		const parent = makeTask("parent", { rootTask: undefined })
-		const grandChildParent = makeTask("mid", { rootTask: parent })
-
-		// Old behavior: the delegation path popped the parent BEFORE
-		// createTask ran, so clineStack was empty → rootTask undefined.
-		// New derivation: parentTask ? (parentTask.rootTask ?? parentTask) : undefined
-		const derive = (parentTask?: Task) => (parentTask ? (parentTask.rootTask ?? parentTask) : undefined)
-
-		// depth-1 child: root is its parent
-		expect(derive(parent)).toBe(parent)
-		// depth-2 child: root is the parent's root (the grandparent)
-		expect(derive(grandChildParent)).toBe(parent)
-		// top-level: undefined
-		expect(derive(undefined)).toBeUndefined()
 	})
 })
 
