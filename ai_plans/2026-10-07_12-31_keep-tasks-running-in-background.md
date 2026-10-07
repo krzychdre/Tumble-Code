@@ -1,6 +1,6 @@
 # Keep a task running when the user navigates away from it
 
-**Status:** in progress (three stacked branches, see "Delivery").
+**Status:** implemented on three stacked local branches (see "Delivery"); not pushed, VSIX rebuild needed to try it.
 **Related plans:** `2026-09-28_s1-clineprovider-split.md` (TaskSlot), `2026-10-03_08-40_subagents-panel-and-telemetry-overview.md`
 (BackgroundTaskRunner, SubagentRegistry).
 
