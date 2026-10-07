@@ -298,6 +298,7 @@ export class ClineProvider
 			getCurrentTask: () => this.getCurrentTask(),
 			clearCurrentTask: () => this.clearCurrentTask(),
 			destroyDetachedTasks: (taskIds) => this.taskSlot.destroyDetached(taskIds),
+			abortBackgroundTasks: (taskIds) => this.backgroundTaskRunner.abortTasks(taskIds),
 		})
 		this.stateBuilder = new ProviderStateBuilder({
 			contextProxy,
@@ -312,7 +313,7 @@ export class ClineProvider
 			listSubagents: () => this.subagentRegistry.list(),
 			getMemoryActivity: () => this.backgroundTaskRunner.memoryActivity,
 			// Every built state is posted: note the map as the one the view holds.
-			getRunningTasks: () => (this.runningTasksInView = this.taskSlot.getRunningTasks()),
+			getRunningTasks: () => (this.runningTasksInView = this.getRunningTasks()),
 			getWebview: () => this.view?.webview,
 			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
 			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
@@ -420,12 +421,8 @@ export class ClineProvider
 			},
 		})
 		const getTaskCreationCallback = () => this.taskCreationCallback
-		const getGlobalStoragePath = () => this.globalStoragePath
 		this.backgroundTaskRunner = new BackgroundTaskRunner({
 			provider: this,
-			get globalStoragePath() {
-				return getGlobalStoragePath()
-			},
 			subagentRegistry: this.subagentRegistry,
 			get taskCreationCallback() {
 				return getTaskCreationCallback()
@@ -696,9 +693,14 @@ export class ClineProvider
 		}
 	}
 
+	/** The working tasks of this panel: the slot's tasks plus the live parallel subagents. */
+	private getRunningTasks(): Record<string, RunningTaskStatus> {
+		return this.taskSlot.getRunningTasks(this.backgroundTaskRunner.liveSubagents())
+	}
+
 	/** Posts `runningTasksUpdated` when the working tasks differ from what the view holds. */
 	private async postRunningTasksIfChanged(): Promise<void> {
-		const runningTasks = this.taskSlot.getRunningTasks()
+		const runningTasks = this.getRunningTasks()
 		const known = this.runningTasksInView
 		const keys = Object.keys(runningTasks)
 		if (keys.length === Object.keys(known).length && keys.every((id) => runningTasks[id] === known[id])) {
@@ -1155,7 +1157,9 @@ export class ClineProvider
 		return new Task({
 			provider: this,
 			...profileOptions,
-			enableCheckpoints,
+			// A finished subagent opens read-only (see TaskResumption): no
+			// checkpoint may restore its worktree's state into the workspace.
+			enableCheckpoints: enableCheckpoints && !historyItem.isSubagent,
 			checkpointTimeout,
 			historyItem,
 			experiments,
@@ -1397,8 +1401,22 @@ export class ClineProvider
 		return this.taskHistory.getTaskWithAggregatedCosts(taskId)
 	}
 
-	async showTaskWithId(id: string) {
+	async showTaskWithId(id: string): Promise<void> {
 		if (id !== this.getCurrentTask()?.taskId) {
+			// A parallel subagent still running is a headless background task:
+			// rebuilding it from history would start a second Task with the
+			// same id. Its parent's subagents panel shows it live instead.
+			if (this.getBackgroundTask(id)) {
+				const parentTaskId =
+					this.backgroundTaskRunner.subagentParentOf(id) ??
+					(await this.getHistoryItem(id).catch(() => undefined))?.parentTaskId
+				if (parentTaskId && parentTaskId !== id) {
+					return this.showTaskWithId(parentTaskId)
+				}
+				await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+				return
+			}
+
 			const historyItem = await this.getHistoryItem(id)
 
 			// A task the user left while it was working is still running:

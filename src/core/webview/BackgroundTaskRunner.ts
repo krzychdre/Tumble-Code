@@ -1,5 +1,4 @@
 import * as path from "path"
-import fs from "fs/promises"
 import * as vscode from "vscode"
 
 import { type ExtensionMessage, type ProviderSettings, type TodoItem, TumbleCodeEventName } from "@tumble-code/types"
@@ -26,9 +25,20 @@ export interface BackgroundTaskOptions {
 	apiConfiguration?: ProviderSettings
 	/**
 	 * Registers the child in the subagent registry so it is visible in
-	 * the webview subagents panel.
+	 * the webview subagents panel, and writes its history item as a subtask
+	 * of `parentTaskId` (see TaskHistoryLineage). `rootTaskId` and
+	 * `workspace` are the fan-out parent's root task and working directory.
 	 */
-	subagentInfo?: { parentTaskId: string; index: number; description: string }
+	subagentInfo?: SubagentInfo
+}
+
+/** Panel and history placement of a parallel subagent, see {@link BackgroundTaskOptions.subagentInfo}. */
+export interface SubagentInfo {
+	parentTaskId: string
+	rootTaskId: string
+	workspace: string
+	index: number
+	description: string
 }
 
 /** The terminal state of a background task, see {@link BackgroundTaskRunner.awaitTaskCompletion}. */
@@ -58,8 +68,6 @@ export interface MemoryActivityCounts {
 export interface BackgroundTaskHost extends PostMessageHostMember {
 	/** The provider every background Task is created for. */
 	readonly provider: ClineProvider
-	/** The extension global storage directory (the parent of `tasks/<id>/`). */
-	readonly globalStoragePath: string
 	readonly subagentRegistry: Pick<SubagentRegistry, "register">
 	/** Attaches the provider's task-event forwarding to a new Task. */
 	readonly taskCreationCallback: (task: Task) => void
@@ -155,6 +163,15 @@ export class BackgroundTaskRunner {
 			taskMode: options.taskMode,
 			workspacePath: options.workspacePath,
 			isBackground: true,
+			...(options.subagentInfo && {
+				historyLineage: {
+					parentTaskId: options.subagentInfo.parentTaskId,
+					rootTaskId: options.subagentInfo.rootTaskId,
+					workspace: options.subagentInfo.workspace,
+				},
+				// The default -1 would end up in the history item's number.
+				taskNumber: 1,
+			}),
 			maxAgentTurns: options.maxAgentTurns,
 			autoApprovalOverride: options.autoApprovalOverride,
 			initialTodos: options.initialTodos,
@@ -165,6 +182,9 @@ export class BackgroundTaskRunner {
 
 		this.backgroundTasks.set(task.taskId, task)
 		if (options.subagentInfo) {
+			// A Task created with a taskMode leaves its profile name unset; the
+			// history item shows the profile the subagent actually ran on.
+			task.setTaskApiConfigName(apiConfigName)
 			this.subagentParents.set(task.taskId, options.subagentInfo.parentTaskId)
 			// Register BEFORE start() so a tail subscribed on the queued
 			// placeholder streams the child's first messages.
@@ -203,6 +223,25 @@ export class BackgroundTaskRunner {
 		return this.backgroundTasks.get(taskId)
 	}
 
+	/** The live parallel subagents (background tasks that a fan-out started). */
+	public liveSubagents(): Task[] {
+		return [...this.backgroundTasks.values()].filter((task) => this.subagentParents.has(task.taskId))
+	}
+
+	/**
+	 * Aborts the live background tasks among `taskIds` (their history is being
+	 * deleted). The abort settles {@link awaitTaskCompletion}, so the fan-out
+	 * that waits on them reports them as failed instead of hanging.
+	 */
+	public async abortTasks(taskIds: Iterable<string>): Promise<void> {
+		for (const taskId of taskIds) {
+			const task = this.backgroundTasks.get(taskId)
+			if (task) {
+				await task.abortTask().catch(logAbortFailure)
+			}
+		}
+	}
+
 	/**
 	 * Adjust a memory-activity counter and push the change to the webview.
 	 * `active: true` opens an activity window, `false` closes it. Counters,
@@ -221,10 +260,9 @@ export class BackgroundTaskRunner {
 	/**
 	 * Await a background task's terminal state. Resolves `{ completed: true,
 	 * lastMessage }` on `TaskCompleted` (attempt_completion) or `{ completed:
-	 * false, abortReason }` on `TaskAborted`. Removes the registry entry,
-	 * disposes a completed task, and then deletes its on-disk directory
-	 * (aborted tasks keep theirs for post-mortem). An optional `signal` aborts
-	 * the task early.
+	 * false, abortReason }` on `TaskAborted`. Removes the registry entry and
+	 * disposes a completed task. The on-disk directory is kept: it holds the
+	 * subagent's history item. An optional `signal` aborts the task early.
 	 *
 	 * `abortReason` is propagated so callers can tell a provider failure
 	 * (`"streaming_failed"`) from turn-budget exhaustion
@@ -262,17 +300,13 @@ export class BackgroundTaskRunner {
 				this.backgroundTasks.delete(task.taskId)
 				// Dispose a completed background task (aborted ones are already torn
 				// down). `isBackground` makes this abort skip the memory writers.
-				// Completed background tasks have no history item and are never
-				// resumed: delete their on-disk directory once the dispose settles
-				// (abortTask saves messages, which would re-create the directory).
-				// Aborted/failed tasks keep their directory for post-mortem. No
-				// ShadowCheckpointService cleanup is needed (background tasks are
-				// created with enableCheckpoints: false).
+				// The abort saves the messages, which writes the final history item
+				// (outcome "completed"); the task directory stays, the history store
+				// drops items whose directory is gone. No ShadowCheckpointService
+				// cleanup is needed (background tasks are created with
+				// enableCheckpoints: false).
 				if (result.completed) {
-					void task
-						.abortTask(true)
-						.catch(logAbortFailure)
-						.then(() => this.cleanupBackgroundTaskFiles(task.taskId))
+					void task.abortTask(true).catch(logAbortFailure)
 				}
 				resolve({ ...result, writtenPaths })
 			}
@@ -304,25 +338,6 @@ export class BackgroundTaskRunner {
 				else options.signal.addEventListener("abort", onSignalAbort, { once: true })
 			}
 		})
-	}
-
-	/**
-	 * Best-effort deletion of a completed background task's on-disk directory.
-	 * Failure is logged and never thrown: the await result is already settled.
-	 */
-	private cleanupBackgroundTaskFiles(taskId: string): void {
-		void (async () => {
-			try {
-				const { getTaskDirectoryPath } = await import("../../utils/storage")
-				const dirPath = await getTaskDirectoryPath(this.host.globalStoragePath, taskId)
-				await fs.rm(dirPath, { recursive: true, force: true })
-				logger.debug(`[cleanupBackgroundTaskFiles] removed task directory for ${taskId}`)
-			} catch (error) {
-				logger.warn(
-					`[cleanupBackgroundTaskFiles] failed to remove task directory for ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-		})()
 	}
 
 	/**

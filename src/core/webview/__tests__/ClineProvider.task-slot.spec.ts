@@ -392,6 +392,22 @@ describe("getRunningTasks: the working tasks shown on the history rows", () => {
 		expect(provider.taskSlot.getRunningTasks()).toEqual({})
 	})
 
+	it("also judges live tasks outside the slot (parallel subagents) by the same rule", async () => {
+		const provider = makeProvider()
+		await provider.taskSlot.set(makeLiveTask("task-A"))
+		const subagent = makeLiveTask("sub-1")
+		const asking = Object.assign(makeLiveTask("sub-2", { type: "ask", ask: "followup" }), {
+			taskStatus: TaskStatus.Interactive,
+		})
+		const finished = makeLiveTask("sub-3", { type: "ask", ask: "completion_result" })
+
+		expect(provider.taskSlot.getRunningTasks([subagent, asking, finished])).toEqual({
+			"task-A": "running",
+			"sub-1": "running",
+			"sub-2": "awaiting_input",
+		})
+	})
+
 	it("drops a detached task once it comes to rest", async () => {
 		const provider = makeProvider()
 		const taskA = makeLiveTask("task-A")
@@ -466,6 +482,8 @@ describe("showTaskWithId puts a task running off screen back on screen", () => {
 			rehydrateSubagents: vi.fn().mockResolvedValue(undefined),
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+			getBackgroundTask: vi.fn((): unknown => undefined),
+			backgroundTaskRunner: { subagentParentOf: vi.fn((): string | undefined => undefined) },
 		})
 		return provider
 	}
@@ -509,6 +527,41 @@ describe("showTaskWithId puts a task running off screen back on screen", () => {
 		})
 		expect(view.overwriteClineMessages).toHaveBeenCalledWith(saved)
 		expect(child.abortTask).not.toHaveBeenCalled()
+	})
+
+	// A running parallel subagent is a headless background task: rebuilding
+	// it from history would start a second Task with the same id.
+	it("opens the parent of a subagent that still runs, building no second task", async () => {
+		const provider = makeNavigatingProvider()
+		const parent = makeLiveTask("parent-1")
+		await provider.taskSlot.set(parent)
+		const subagent = makeLiveTask("sub-1")
+		provider.getBackgroundTask.mockImplementation((id: string) => (id === "sub-1" ? subagent : undefined))
+		provider.backgroundTaskRunner.subagentParentOf.mockReturnValue("parent-1")
+
+		await provider.showTaskWithId("sub-1")
+
+		expect(provider.createTaskWithHistoryItem).not.toHaveBeenCalled()
+		expect(provider.getCurrentTask()).toBe(parent)
+		expect(subagent.abortTask).not.toHaveBeenCalled()
+		expect(provider.postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
+	})
+
+	it("falls back to the history item's parent for a running subagent", async () => {
+		const provider = makeNavigatingProvider()
+		provider.getBackgroundTask.mockImplementation((id: string) =>
+			id === "sub-1" ? makeLiveTask("sub-1") : undefined,
+		)
+		provider.getHistoryItem.mockImplementation(async (id: string) =>
+			id === "sub-1" ? { id, parentTaskId: "parent-1", isSubagent: true } : { id, mode: "code" },
+		)
+
+		await provider.showTaskWithId("sub-1")
+
+		expect(provider.createTaskWithHistoryItem).toHaveBeenCalledTimes(1)
+		expect(provider.createTaskWithHistoryItem).toHaveBeenCalledWith(expect.objectContaining({ id: "parent-1" }), {
+			startTask: true,
+		})
 	})
 
 	it("rebuilds from history a task that is not alive", async () => {

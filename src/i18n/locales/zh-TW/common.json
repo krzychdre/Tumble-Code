@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "您確定要刪除此 {scope} 模式嗎？\n\n這也將刪除位於以下位置的關聯規則資料夾：\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "此子代理已完成，僅以唯讀方式顯示，因此無法繼續。請返回其父任務或開始新任務。",
 		"invalid_data_uri": "資料 URI 格式無效",
 		"error_copying_image": "複製圖片時發生錯誤：{{errorMessage}}",
 		"error_saving_image": "儲存圖片時發生錯誤：{{errorMessage}}",

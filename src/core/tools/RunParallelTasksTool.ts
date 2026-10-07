@@ -13,6 +13,7 @@ import {
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
 import { queuedSubagentId } from "../webview/SubagentRegistry"
+import type { SubagentInfo } from "../webview/BackgroundTaskRunner"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
@@ -241,7 +242,7 @@ interface SubtaskProvider {
 			workspacePath?: string
 			maxAgentTurns?: number
 			autoApprovalOverride?: AutoApprovalOverride
-			subagentInfo?: { parentTaskId: string; index: number; description: string }
+			subagentInfo?: SubagentInfo
 		},
 	): Promise<Task>
 	awaitTaskCompletion(
@@ -276,6 +277,8 @@ interface RunOneSubtaskArgs {
 	provider: SubtaskProvider
 	cwd: string
 	parentTaskId: string
+	/** The fan-out parent's root task: the subagent's history item sits in its tree. */
+	rootTaskId: string
 	subtask: NormalizedSubtask
 	index: number
 	signal: AbortSignal
@@ -290,6 +293,7 @@ async function runOneSubtask({
 	provider,
 	cwd,
 	parentTaskId,
+	rootTaskId,
 	subtask,
 	index,
 	signal,
@@ -332,7 +336,15 @@ async function runOneSubtask({
 				getState: () => provider.getState(),
 				worktreePath,
 			}),
-			subagentInfo: { parentTaskId, index, description: subagentDescription(subtask.message) },
+			// History placement: the parent's cwd, not the worktree, so the
+			// history list (filtered by workspace) shows the subagent.
+			subagentInfo: {
+				parentTaskId,
+				rootTaskId,
+				workspace: cwd,
+				index,
+				description: subagentDescription(subtask.message),
+			},
 		})
 		registryId = child.taskId
 		// Persist the parent→child relation on the parent's HistoryItem so
@@ -345,9 +357,6 @@ async function runOneSubtask({
 		// panel still work; only rehydration of this run would be affected).
 		await persistParallelChildId(provider, parentTaskId, child.taskId)
 		const outcome = await provider.awaitTaskCompletion(child, { signal })
-		// A completed child's own directory is deleted right after this, so its
-		// messages are kept under the parent for the panel's tail.
-		await persistSubagentTranscript(provider, parentTaskId, child)
 
 		// Cancellation shows up two ways: the fan-out signal (parent aborted)
 		// or a per-subagent cancel from the panel (registry already terminal
@@ -453,25 +462,6 @@ async function persistSubagentSummariesSidecar(provider: SubtaskProvider, parent
 		// Non-fatal: see persistParallelChildId. The live panel is unaffected.
 		logger.warn(
 			`[run_parallel_tasks] Failed to persist subagents sidecar for parent ${parentTaskId}: ${
-				error instanceof Error ? error.message : String(error)
-			}`,
-		)
-	}
-}
-
-/**
- * Best-effort copy of a finished child's messages to
- * `tasks/<parentTaskId>/subagents/<childTaskId>.json`, read back when the
- * user expands the child's row after it is gone. Never throws: without the
- * copy the row shows the summary's final message only.
- */
-async function persistSubagentTranscript(provider: SubtaskProvider, parentTaskId: string, child: Task): Promise<void> {
-	try {
-		const { saveSubagentTranscript } = await import("../task-persistence/subagentSummariesStore")
-		await saveSubagentTranscript(provider.globalStoragePath, parentTaskId, child.taskId, [...child.clineMessages])
-	} catch (error) {
-		logger.warn(
-			`[run_parallel_tasks] Failed to persist the messages of subagent ${child.taskId}: ${
 				error instanceof Error ? error.message : String(error)
 			}`,
 		)
@@ -595,6 +585,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 						provider,
 						cwd,
 						parentTaskId: task.taskId,
+						rootTaskId: task.rootTaskId ?? task.taskId,
 						subtask,
 						index,
 						signal: controller.signal,

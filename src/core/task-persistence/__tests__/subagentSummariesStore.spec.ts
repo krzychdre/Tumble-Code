@@ -24,8 +24,8 @@ import {
 	loadSubagentSummaries,
 	getSubagentSummariesFilePath,
 	SUBAGENTS_SIDECAR_FILENAME,
-	saveSubagentTranscript,
 	loadSubagentTranscript,
+	isSafeSubagentTaskId,
 } from "../subagentSummariesStore"
 
 function makeSummary(overrides: Partial<SubagentSummary> = {}): SubagentSummary {
@@ -148,32 +148,41 @@ describe("subagentSummariesStore", () => {
 		})
 	})
 
-	describe("saveSubagentTranscript + loadSubagentTranscript", () => {
+	// Older fan-outs kept each child's messages under the parent; they are
+	// still read for those runs.
+	describe("loadSubagentTranscript (legacy copy under the parent)", () => {
 		const messages = [{ ts: 1, type: "say" as const, say: "text" as const, text: "did it" }]
+		const legacyDir = () => path.join(tmpRoot, "tasks", "parent-1", "subagents")
 
-		it("stores the transcript under the parent and reads it back", async () => {
-			await saveSubagentTranscript(tmpRoot, "parent-1", "child-1", messages)
+		it("reads a transcript kept under the parent", async () => {
+			await fs.mkdir(legacyDir(), { recursive: true })
+			await fs.writeFile(path.join(legacyDir(), "child-1.json"), JSON.stringify(messages))
 
 			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "child-1")).toEqual(messages)
-			const onDisk = path.join(tmpRoot, "tasks", "parent-1", "subagents", "child-1.json")
-			expect(JSON.parse(await fs.readFile(onDisk, "utf8"))).toEqual(messages)
 		})
 
-		it("returns an empty list without a transcript or with an unreadable one", async () => {
+		it("returns an empty list without a transcript or with an unreadable one, creating nothing", async () => {
 			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "child-1")).toEqual([])
-			await fs.mkdir(path.join(tmpRoot, "tasks", "parent-1", "subagents"), { recursive: true })
-			await fs.writeFile(path.join(tmpRoot, "tasks", "parent-1", "subagents", "child-1.json"), "{not json")
+			await expect(fs.access(path.join(tmpRoot, "tasks", "parent-1"))).rejects.toThrow()
+			await fs.mkdir(legacyDir(), { recursive: true })
+			await fs.writeFile(path.join(legacyDir(), "child-1.json"), "{not json")
 			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "child-1")).toEqual([])
 		})
 
 		// The id arrives from the webview: it must not name a file elsewhere.
 		it("rejects a child id that leaves the transcripts directory", async () => {
 			await fs.writeFile(path.join(tmpRoot, "secret.json"), JSON.stringify([{ ts: 9 }]))
-			await expect(saveSubagentTranscript(tmpRoot, "parent-1", "../x", messages)).rejects.toThrow(
-				/invalid subagent task id/,
-			)
 			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "../../../secret")).toEqual([])
 			expect(await loadSubagentTranscript(tmpRoot, "parent-1", "..")).toEqual([])
+		})
+	})
+
+	describe("isSafeSubagentTaskId", () => {
+		it("accepts a plain id and rejects separators, dot names and empty", () => {
+			expect(isSafeSubagentTaskId("019a-child")).toBe(true)
+			for (const id of ["", ".", "..", "../x", "a/b", ".hidden"]) {
+				expect(isSafeSubagentTaskId(id)).toBe(false)
+			}
 		})
 	})
 })

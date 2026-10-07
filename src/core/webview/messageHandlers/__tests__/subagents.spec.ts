@@ -13,7 +13,6 @@ vi.mock("vscode", () => ({
 	window: { showErrorMessage: vi.fn() },
 }))
 
-import { saveSubagentTranscript } from "../../../task-persistence/subagentSummariesStore"
 import type { HandlerContext } from "../context"
 import { subagentsHandlers } from "../subagents"
 
@@ -30,7 +29,12 @@ function makeContext(globalStoragePath: string, live?: { clineMessages: ClineMes
 			get: (id: string) => (id === "child-1" ? { parentTaskId: "parent-1" } : undefined),
 		},
 	}
-	return { ctx: { provider } as unknown as HandlerContext, postMessageToWebview }
+	return { ctx: { provider } as unknown as HandlerContext, postMessageToWebview, provider }
+}
+
+async function writeJson(filePath: string, value: unknown) {
+	await fs.mkdir(path.dirname(filePath), { recursive: true })
+	await fs.writeFile(filePath, JSON.stringify(value))
 }
 
 describe("subscribeSubagentMessages", () => {
@@ -55,10 +59,31 @@ describe("subscribeSubagentMessages", () => {
 		})
 	})
 
-	// Regression: a finished child is disposed and its own directory deleted,
-	// so the expanded row could show only the final message.
-	it("sends a finished child's transcript kept under its parent", async () => {
-		await saveSubagentTranscript(tmpRoot, "parent-1", "child-1", [said("read the file", 1), said("done", 2)])
+	// A finished child keeps its own task directory: the panel reads its
+	// messages there, like any task's.
+	it("sends a finished child's messages from its own task directory", async () => {
+		await writeJson(path.join(tmpRoot, "tasks", "child-1", "ui_messages.json"), [said("own", 1)])
+		await writeJson(path.join(tmpRoot, "tasks", "parent-1", "subagents", "child-1.json"), [said("legacy", 1)])
+		const { ctx, postMessageToWebview } = makeContext(tmpRoot)
+
+		await subagentsHandlers.subscribeSubagentMessages!(ctx, {
+			type: "subscribeSubagentMessages",
+			taskId: "child-1",
+		})
+
+		expect(postMessageToWebview).toHaveBeenCalledWith({
+			type: "subagentMessages",
+			sourceTaskId: "child-1",
+			subagentMessages: [said("own", 1)],
+		})
+	})
+
+	// Older fan-outs deleted the child's directory and kept a copy under the parent.
+	it("falls back to the copy kept under the parent by older runs", async () => {
+		await writeJson(path.join(tmpRoot, "tasks", "parent-1", "subagents", "child-1.json"), [
+			said("read the file", 1),
+			said("done", 2),
+		])
 		const { ctx, postMessageToWebview } = makeContext(tmpRoot)
 
 		await subagentsHandlers.subscribeSubagentMessages!(ctx, {
@@ -71,9 +96,11 @@ describe("subscribeSubagentMessages", () => {
 			sourceTaskId: "child-1",
 			subagentMessages: [said("read the file", 1), said("done", 2)],
 		})
+		// Reading must not leave an empty task directory behind for the old run.
+		await expect(fs.access(path.join(tmpRoot, "tasks", "child-1"))).rejects.toThrow()
 	})
 
-	it("sends an empty snapshot for a child with neither a live task nor a transcript", async () => {
+	it("sends an empty snapshot for a child with neither a live task nor stored messages", async () => {
 		const { ctx, postMessageToWebview } = makeContext(tmpRoot)
 
 		await subagentsHandlers.subscribeSubagentMessages!(ctx, {
@@ -82,5 +109,19 @@ describe("subscribeSubagentMessages", () => {
 		})
 
 		expect(postMessageToWebview).toHaveBeenCalledWith(expect.objectContaining({ subagentMessages: [] }))
+		await expect(fs.access(path.join(tmpRoot, "tasks"))).rejects.toThrow()
+	})
+
+	// The id comes from the webview and names a directory.
+	it("rejects an id that leaves the tasks directory", async () => {
+		await writeJson(path.join(tmpRoot, "ui_messages.json"), [said("secret", 1)])
+		const { ctx, postMessageToWebview, provider } = makeContext(tmpRoot)
+
+		for (const taskId of ["..", "../x", "a/b", ".hidden"]) {
+			await subagentsHandlers.subscribeSubagentMessages!(ctx, { type: "subscribeSubagentMessages", taskId })
+		}
+
+		expect(postMessageToWebview).not.toHaveBeenCalled()
+		expect(provider.subagentRegistry.watch).not.toHaveBeenCalled()
 	})
 })

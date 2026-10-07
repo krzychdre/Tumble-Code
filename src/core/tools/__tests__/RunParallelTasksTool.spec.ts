@@ -673,6 +673,37 @@ describe("RunParallelTasksTool.execute", () => {
 		expect(emitter.listenerCount(TumbleCodeEventName.TaskAborted)).toBe(0)
 	})
 
+	// The subagent's history item sits under the fan-out parent in the parent's
+	// workspace (the history list filters by workspace; the worktree would hide it).
+	it.each([
+		["a top-level parent", undefined, "parent-12345678"],
+		["a delegated parent", "root-1", "root-1"],
+	])("passes the history placement of each subagent for %s", async (_label, rootTaskId, expectedRoot) => {
+		const provider = makeFakeProvider()
+		const parent = makeFakeParentTask(provider, { rootTaskId })
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			makeCallbacks(),
+		)
+
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+		provider.children.forEach((c) => c.complete())
+		await execPromise
+
+		const opts = provider.createBackgroundTask.mock.calls[0][1] as {
+			workspacePath: string
+			subagentInfo: Record<string, unknown>
+		}
+		expect(opts.subagentInfo).toMatchObject({
+			parentTaskId: "parent-12345678",
+			rootTaskId: expectedRoot,
+			workspace: "/home/user/myproj",
+			index: 0,
+		})
+		expect(opts.workspacePath).not.toBe("/home/user/myproj")
+	})
+
 	it("passes a real approval policy (not blanket approve) to createBackgroundTask", async () => {
 		// State: no commands auto-approved, so a command ask should be denied.
 		const provider = makeFakeProvider({ autoApprovalEnabled: true, alwaysAllowExecute: false })
@@ -885,19 +916,19 @@ describe("RunParallelTasksTool.execute", () => {
 			)
 		})
 
-		// The child's own task directory is deleted once it completes, so the
-		// panel can show what it did only from this copy under the parent.
-		it("keeps each finished child's messages under the parent", async () => {
+		// A finished child keeps its own task directory (its history item
+		// points at it), so the panel reads its messages there; the old copy
+		// under the parent is no longer written.
+		it("does not copy finished children's messages under the parent", async () => {
 			const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rpt-transcript-"))
 			const provider = makeFakeProvider()
 			provider.globalStoragePath = tmpRoot
 			const parent = makeFakeParentTask(provider)
-			const callbacks = makeCallbacks()
 
 			const execPromise = runParallelTasksTool.execute(
 				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
 				parent,
-				callbacks,
+				makeCallbacks(),
 			)
 			await vi.waitFor(() => expect(provider.children.length).toBe(2))
 			const [first, second] = provider.children
@@ -906,16 +937,8 @@ describe("RunParallelTasksTool.execute", () => {
 			second.failWithApiError("model gone")
 			await execPromise
 
-			const transcriptOf = async (child: FakeChild) =>
-				JSON.parse(
-					await fs.readFile(
-						path.join(tmpRoot, "tasks", "parent-12345678", "subagents", `${child.taskId}.json`),
-						"utf8",
-					),
-				)
-			expect(await transcriptOf(first)).toEqual([{ ts: 1, type: "say", say: "text", text: "did A" }])
-			// A failed child is kept too: its row is expandable like any other.
-			expect(await transcriptOf(second)).toEqual([])
+			const legacyDir = path.join(tmpRoot, "tasks", "parent-12345678", "subagents")
+			await expect(fs.access(legacyDir)).rejects.toThrow()
 		})
 
 		it("survives a sidecar write failure (best-effort, does not throw)", async () => {

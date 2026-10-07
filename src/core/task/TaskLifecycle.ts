@@ -833,7 +833,8 @@ export class TaskLifecycle {
 		// HistoryItem uses `ts` (creation timestamp) as its time field; the
 		// dream's session gate reads `lastModified`. Map the field. `ts` is a
 		// creation-time snapshot, so it undercounts activity within a long
-		// session — safe, since the gate is a skip-only throttle.
+		// session, which is safe since the gate is a skip-only throttle. A parallel
+		// subagent is part of its parent's session, not a session of its own.
 		void provider
 			.getTaskHistory()
 			.then((history) =>
@@ -841,9 +842,11 @@ export class TaskLifecycle {
 					cwd: this.access.cwd,
 					isMainAgent: !this.access.parentTaskId,
 					config: dreamConfig,
-					taskHistory: history.map((h) => ({
-						lastModified: typeof h.ts === "number" ? h.ts : undefined,
-					})),
+					taskHistory: history
+						.filter((h) => !h.isSubagent)
+						.map((h) => ({
+							lastModified: typeof h.ts === "number" ? h.ts : undefined,
+						})),
 					currentTaskId: this.access.taskId,
 					query,
 					onImproved: (count) => {

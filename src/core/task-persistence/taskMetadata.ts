@@ -45,6 +45,8 @@ export type TaskMetadataOptions = {
 	apiConfigName?: string
 	/** Initial status for the task (e.g., "active" for child tasks) */
 	initialStatus?: "active" | "delegated" | "completed"
+	/** A parallel subagent's item (see HistoryItem.isSubagent). */
+	isSubagent?: boolean
 }
 
 export async function taskMetadata({
@@ -58,6 +60,7 @@ export async function taskMetadata({
 	mode,
 	apiConfigName,
 	initialStatus,
+	isSubagent,
 }: TaskMetadataOptions) {
 	perfCounters.add("taskMetadataRuns")
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, id)
@@ -149,6 +152,7 @@ export async function taskMetadata({
 		mode,
 		...(typeof apiConfigName === "string" && apiConfigName.length > 0 ? { apiConfigName } : {}),
 		...(initialStatus && { status: initialStatus }),
+		...(isSubagent && { isSubagent: true }),
 		...(hasMessages && { outcome: taskOutcome(messages) }),
 	}
 

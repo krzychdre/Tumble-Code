@@ -18,12 +18,9 @@ import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTask
  * writer (see ai_plans/archive/2026-07/2026-07-11_fix-stop-button-memory-writers-on-cancel.md).
  */
 
+// Pins that a completed subagent's task directory (its history item) is kept.
 const rm = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock("fs/promises", () => ({ default: { rm }, rm }))
-
-vi.mock("../../../utils/storage", () => ({
-	getTaskDirectoryPath: vi.fn(async (storage: string, taskId: string) => `${storage}/tasks/${taskId}`),
-}))
 
 const showInformationMessage = vi.hoisted(() => vi.fn())
 vi.mock("vscode", () => ({ window: { showInformationMessage } }))
@@ -43,6 +40,7 @@ type FakeTask = EventEmitter & {
 	abortReason?: string
 	apiFailureMessage?: string
 	start: ReturnType<typeof vi.fn>
+	setTaskApiConfigName: ReturnType<typeof vi.fn>
 	abortTask: ReturnType<typeof vi.fn>
 	fileContextTracker: { getAndClearCheckpointPossibleFile: ReturnType<typeof vi.fn> }
 }
@@ -65,6 +63,7 @@ function installTaskFake() {
 			clineMessages: [] as FakeTask["clineMessages"],
 			abortReason: undefined as string | undefined,
 			start: vi.fn(() => events.push(`start:${taskId}`)),
+			setTaskApiConfigName: vi.fn(),
 			abortTask: vi.fn(async (isAbandoned?: boolean) => {
 				events.push(`abortTask:${taskId}:${isAbandoned === true}`)
 			}),
@@ -79,6 +78,14 @@ function installTaskFake() {
 	} as never)
 }
 
+const SUBAGENT_INFO = {
+	parentTaskId: "parent",
+	rootTaskId: "root",
+	workspace: "/project",
+	index: 2,
+	description: "part two",
+}
+
 const ALLOW_ALL: OrganizationAllowList = { allowAll: true, providers: {} }
 const ACTIVE: ProviderSettings = { apiProvider: "anthropic", apiModelId: "claude", consecutiveMistakeLimit: 3 }
 
@@ -91,7 +98,6 @@ function makeHost(overrides: Partial<BackgroundTaskHost> = {}) {
 	const onCreated = vi.fn()
 	const host: BackgroundTaskHost = {
 		provider: provider as never,
-		globalStoragePath: "/storage",
 		subagentRegistry: { register },
 		taskCreationCallback: onCreated,
 		getState: vi.fn(async () => ({
@@ -149,8 +155,12 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 			onCreated,
 		})
 		expect(runner.getBackgroundTask(task.taskId)).toBe(task)
-		// A memory writer (no subagentInfo) stays invisible in the panel.
+		// A background task without subagentInfo stays invisible in the panel
+		// and out of the task history.
 		expect(register).not.toHaveBeenCalled()
+		expect(task.options.historyLineage).toBeUndefined()
+		expect(task.options.taskNumber).toBeUndefined()
+		expect(task.setTaskApiConfigName).not.toHaveBeenCalled()
 		expect(task.start).toHaveBeenCalledTimes(1)
 	})
 
@@ -163,7 +173,7 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 
 		const task = (await runner.createBackgroundTask("work", {
 			taskMode: "ask",
-			subagentInfo: { parentTaskId: "parent", index: 2, description: "part two" },
+			subagentInfo: SUBAGENT_INFO,
 		})) as unknown as FakeTask
 
 		expect(events).toEqual([`register:${task.taskId}`, `start:${task.taskId}`])
@@ -181,12 +191,55 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		expect(task.options.apiConfiguration).toBe(pinned)
 	})
 
+	// The subagent's history item is a subtask of the fan-out parent, shown in
+	// the parent's workspace, numbered 1 and carrying the profile it ran on.
+	// The live task gets no parentTask (that would enter new_task delegation
+	// and run in the parent's workspace instead of the worktree).
+	it("gives a subagent a history lineage, task number 1 and its profile name", async () => {
+		const pinned: ProviderSettings = { apiProvider: "anthropic", apiModelId: "pinned" }
+		const { host } = makeHost({
+			getApiConfigurationForMode: vi.fn(async () => ({ apiConfiguration: pinned, name: "pinned-profile" })),
+		})
+		const runner = new BackgroundTaskRunner(host)
+
+		const task = (await runner.createBackgroundTask("work", {
+			taskMode: "ask",
+			workspacePath: "/worktrees/child",
+			subagentInfo: SUBAGENT_INFO,
+		})) as unknown as FakeTask
+
+		expect(task.options).toMatchObject({
+			workspacePath: "/worktrees/child",
+			isBackground: true,
+			taskNumber: 1,
+			historyLineage: { parentTaskId: "parent", rootTaskId: "root", workspace: "/project" },
+		})
+		expect(task.options.parentTask).toBeUndefined()
+		expect(task.setTaskApiConfigName).toHaveBeenCalledWith("pinned-profile")
+		expect(task.setTaskApiConfigName.mock.invocationCallOrder[0]).toBeLessThan(
+			task.start.mock.invocationCallOrder[0],
+		)
+	})
+
+	it("keeps the task directory of a completed subagent", async () => {
+		const runner = new BackgroundTaskRunner(makeHost().host)
+		const task = (await runner.createBackgroundTask("work", { subagentInfo: SUBAGENT_INFO })) as unknown as FakeTask
+		const pending = runner.awaitTaskCompletion(task as never)
+
+		task.emit(TumbleCodeEventName.TaskCompleted)
+
+		await expect(pending).resolves.toMatchObject({ completed: true })
+		await vi.waitFor(() => expect(task.abortTask).toHaveBeenCalledWith(true))
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		expect(rm).not.toHaveBeenCalled()
+	})
+
 	// Telemetry links a subagent's events to its parent through this, also
 	// after the child left the live map.
 	it("remembers a subagent's parent after the subagent finished", async () => {
 		const runner = new BackgroundTaskRunner(makeHost().host)
 		const subagent = (await runner.createBackgroundTask("work", {
-			subagentInfo: { parentTaskId: "parent", index: 0, description: "part one" },
+			subagentInfo: { ...SUBAGENT_INFO, index: 0, description: "part one" },
 		})) as unknown as FakeTask
 		const writer = (await runner.createBackgroundTask("memory")) as unknown as FakeTask
 
@@ -197,6 +250,29 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		expect(runner.getBackgroundTask(subagent.taskId)).toBeUndefined()
 		expect(runner.subagentParentOf(subagent.taskId)).toBe("parent")
 		expect(runner.subagentParentOf(writer.taskId)).toBeUndefined()
+	})
+
+	// The history rows show live subagents as running, and deleting a
+	// subagent's history aborts it.
+	it("lists only live subagents and aborts the given live background tasks", async () => {
+		const runner = new BackgroundTaskRunner(makeHost().host)
+		const subagent = (await runner.createBackgroundTask("work", {
+			subagentInfo: {
+				parentTaskId: "parent",
+				rootTaskId: "parent",
+				workspace: "/repo",
+				index: 0,
+				description: "part one",
+			},
+		})) as unknown as FakeTask
+		const writer = (await runner.createBackgroundTask("memory")) as unknown as FakeTask
+
+		expect(runner.liveSubagents()).toEqual([subagent])
+
+		await runner.abortTasks([subagent.taskId, "unknown"])
+
+		expect(subagent.abortTask).toHaveBeenCalledWith()
+		expect(writer.abortTask).not.toHaveBeenCalled()
 	})
 
 	it("skips the mode binding for an explicit profile and for tasks without subagentInfo", async () => {
@@ -223,9 +299,9 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		})
 		const runner = new BackgroundTaskRunner(host)
 
-		await expect(
-			runner.createBackgroundTask("x", { subagentInfo: { parentTaskId: "p", index: 0, description: "x" } }),
-		).rejects.toBeInstanceOf(OrganizationAllowListViolationError)
+		await expect(runner.createBackgroundTask("x", { subagentInfo: SUBAGENT_INFO })).rejects.toBeInstanceOf(
+			OrganizationAllowListViolationError,
+		)
 		expect(Task).not.toHaveBeenCalled()
 		expect(register).not.toHaveBeenCalled()
 	})
@@ -236,7 +312,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		return (await runner.createBackgroundTask("work", { workspacePath: "/work" })) as unknown as FakeTask
 	}
 
-	it("complete: collects written paths, de-registers, disposes, then deletes the task directory", async () => {
+	it("complete: collects written paths, de-registers and disposes", async () => {
 		const runner = new BackgroundTaskRunner(makeHost().host)
 		const task = await started(runner)
 		task.clineMessages.push(
@@ -254,8 +330,6 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 			writtenPaths: [path.resolve("/work", "notes/a.md"), "/abs/b.md"],
 		})
 		expect(runner.getBackgroundTask(task.taskId)).toBeUndefined()
-		await vi.waitFor(() => expect(rm).toHaveBeenCalledWith(`/storage/tasks/${task.taskId}`, expect.anything()))
-		expect(rm).toHaveBeenCalledWith(`/storage/tasks/${task.taskId}`, { recursive: true, force: true })
 		expect(events).toEqual([
 			`start:${task.taskId}`,
 			`collectWrittenPaths:${task.taskId}`,
@@ -324,23 +398,6 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		void runner.awaitTaskCompletion(task as never, { signal: controller.signal })
 
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
-	})
-
-	it("a failing directory cleanup is logged, never thrown", async () => {
-		const { host, loggerWarnSpy } = makeHost()
-		const runner = new BackgroundTaskRunner(host)
-		rm.mockRejectedValueOnce(new Error("EBUSY"))
-		const task = await started(runner)
-		const pending = runner.awaitTaskCompletion(task as never)
-
-		task.emit(TumbleCodeEventName.TaskCompleted)
-
-		await expect(pending).resolves.toMatchObject({ completed: true })
-		await vi.waitFor(() =>
-			expect(loggerWarnSpy).toHaveBeenCalledWith(
-				`[cleanupBackgroundTaskFiles] failed to remove task directory for ${task.taskId}: EBUSY`,
-			),
-		)
 	})
 })
 

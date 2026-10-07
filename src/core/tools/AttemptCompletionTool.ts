@@ -87,8 +87,10 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 				await task.say("completion_result", result, undefined, false)
 			}
 
-			// Check for subtask using parentTaskId (metadata-driven delegation)
-			if (task.parentTaskId) {
+			// Check for subtask using parentTaskId (metadata-driven delegation).
+			// A live parallel subagent (background task) has no runtime parent
+			// and returns its result through run_parallel_tasks, never here.
+			if (task.parentTaskId && !task.isBackground) {
 				// Check if this subtask has already completed and returned to parent
 				// to prevent duplicate tool_results when user revisits from history
 				const provider = task.providerRef.deref() as DelegationProvider | undefined
@@ -97,7 +99,11 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 						const historyItem = await provider.getHistoryItem(task.taskId)
 						const status = historyItem?.status
 
-						if (status === "completed") {
+						if (historyItem?.isSubagent) {
+							// A finished parallel subagent reopened from history: its
+							// parentTaskId is history lineage only, the fan-out parent
+							// already got its result through run_parallel_tasks.
+						} else if (status === "completed") {
 							// Subtask already completed - skip delegation flow entirely
 							// Fall through to normal completion ask flow below (outside this if block)
 							// This shows the user the completion result and waits for acceptance

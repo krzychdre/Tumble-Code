@@ -238,7 +238,11 @@ describe("TaskLifecycle.triggerMemoryBackgroundWriters — visibility toasts", (
 		const provider = access.providerRef.deref() as unknown as {
 			getTaskHistory: ReturnType<typeof vi.fn>
 		}
-		provider.getTaskHistory.mockResolvedValue([{ id: "stored-task", ts: 1234 }])
+		// A parallel subagent is not a session of its own.
+		provider.getTaskHistory.mockResolvedValue([
+			{ id: "stored-task", ts: 1234 },
+			{ id: "subagent", ts: 5678, isSubagent: true },
+		])
 
 		new TaskLifecycle(access).triggerMemoryBackgroundWriters()
 		await vi.waitFor(() => expect(executeAutoDream).toHaveBeenCalledTimes(1))

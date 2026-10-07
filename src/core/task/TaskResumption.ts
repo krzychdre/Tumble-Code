@@ -26,6 +26,7 @@ import { applyExecutionSnapshot, detectStaleFileChanges, type StaleFile } from "
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 import { logger } from "../../utils/logging"
+import { t } from "../../i18n"
 import {
 	TaskAbortFlagAccess,
 	TaskApiConversationHistoryAccess,
@@ -52,6 +53,8 @@ export interface TaskResumptionAccess
 
 	// State flags
 	isInitialized: boolean
+	/** A finished parallel subagent opened from history: shown, never resumed (see Task). */
+	isReadOnlySubagent?: boolean
 	abandoned: boolean
 	abortReason?: string
 
@@ -98,6 +101,12 @@ export class TaskResumption {
 
 			// Step 3: Load API conversation history
 			this.access.apiConversationHistory = await this.access.history.getSavedApiConversationHistory()
+
+			if (this.access.isReadOnlySubagent) {
+				this.access.isInitialized = true
+				await this.holdReadOnly()
+				return
+			}
 
 			// Step 4: Determine resume type and ask user
 			const lastClineMessage = this.findLastRelevantMessage()
@@ -147,6 +156,23 @@ export class TaskResumption {
 				return
 			}
 			throw error
+		}
+	}
+
+	/**
+	 * Show a finished subagent without ever running it again. The ask is
+	 * always resume_completed_task, also for a failed or cancelled one, so the
+	 * webview offers "Start New Task" and no Resume; a typed reply only gets
+	 * an explanation. Ends when the user leaves the task (the ask then throws
+	 * on abort, which the caller treats as expected).
+	 */
+	private async holdReadOnly(): Promise<void> {
+		for (;;) {
+			const { response } = await this.access.askSay.ask("resume_completed_task")
+			if (response !== "messageResponse") {
+				return
+			}
+			await this.access.askSay.say("error", t("common:errors.subagent_read_only"))
 		}
 	}
 

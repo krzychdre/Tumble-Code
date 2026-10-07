@@ -4,7 +4,7 @@ import * as fs from "fs/promises"
 import type { ClineMessage, SubagentSummary } from "@tumble-code/types"
 
 import { safeWriteJson } from "@tumble-code/core/fs"
-import { getTaskDirectoryPath } from "../../utils/storage"
+import { getStorageBasePath, getTaskDirectoryPath } from "../../utils/storage"
 import { fileExistsAtPath } from "../../utils/fs"
 
 /**
@@ -99,15 +99,20 @@ export async function loadSubagentSummaries(
 }
 
 /**
- * Directory inside the parent task's directory that holds one message
- * transcript per subagent (`<parentTaskId>/subagents/<childTaskId>.json`).
- *
- * A completed subagent's own task directory is deleted as soon as it
- * finishes (BackgroundTaskRunner), so without this copy the panel could only
- * show the summary's `finalMessage`. Living under the parent, the transcripts
- * go away when the parent task is deleted.
+ * Directory inside the parent task's directory where older fan-outs kept one
+ * message transcript per subagent (`<parentTaskId>/subagents/<childTaskId>.json`),
+ * back when a completed subagent's own task directory was deleted. Only read
+ * now, as the fallback for those runs.
  */
 export const SUBAGENT_TRANSCRIPTS_DIRNAME = "subagents"
+
+/**
+ * Whether a subagent task id is safe to use as a file or directory name: no
+ * path separator, no "..", no leading dot.
+ */
+export function isSafeSubagentTaskId(taskId: string): boolean {
+	return !!taskId && path.basename(taskId) === taskId && !taskId.startsWith(".")
+}
 
 async function getSubagentTranscriptPath(
 	globalStoragePath: string,
@@ -119,28 +124,16 @@ async function getSubagentTranscriptPath(
 	}
 	// The id names a file: a value with a path separator or ".." must not
 	// reach outside the transcripts directory.
-	if (!childTaskId || path.basename(childTaskId) !== childTaskId || childTaskId.startsWith(".")) {
+	if (!isSafeSubagentTaskId(childTaskId)) {
 		throw new Error(`getSubagentTranscriptPath: invalid subagent task id "${childTaskId}"`)
 	}
-	const taskDir = await getTaskDirectoryPath(globalStoragePath, parentTaskId)
-	return path.join(taskDir, SUBAGENT_TRANSCRIPTS_DIRNAME, `${childTaskId}.json`)
-}
-
-/** Persist a finished subagent's messages under its parent. Throws on I/O errors. */
-export async function saveSubagentTranscript(
-	globalStoragePath: string,
-	parentTaskId: string,
-	childTaskId: string,
-	messages: ClineMessage[],
-): Promise<void> {
-	const filePath = await getSubagentTranscriptPath(globalStoragePath, parentTaskId, childTaskId)
-	await safeWriteJson(filePath, messages)
+	const basePath = await getStorageBasePath(globalStoragePath)
+	return path.join(basePath, "tasks", parentTaskId, SUBAGENT_TRANSCRIPTS_DIRNAME, `${childTaskId}.json`)
 }
 
 /**
- * Load a subagent's persisted messages. Returns an empty array when there is
- * no transcript (a fan-out from before transcripts were kept) or it cannot be
- * read; never throws.
+ * Load a subagent's transcript kept under its parent by older fan-outs.
+ * Returns an empty array when there is none or it cannot be read; never throws.
  */
 export async function loadSubagentTranscript(
 	globalStoragePath: string,

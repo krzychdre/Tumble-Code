@@ -33,6 +33,12 @@ export const historyItemSchema = z.object({
 	// flows do not collide. Persisted going forward; pre-fix history items
 	// simply lack the field and rehydration falls back to an empty panel.
 	parallelChildIds: z.array(z.string()).optional(),
+	// Set on the history item of a `run_parallel_tasks` child. Its
+	// `parentTaskId` names the task that fanned out (for nesting and the
+	// subtree cost), but it is not a `new_task` child: it never hands a
+	// result back through delegation, opens read-only, and its `workspace` is
+	// the parent's workspace (it ran in a git worktree that may be gone).
+	isSubagent: z.boolean().optional(),
 	awaitingChildId: z.string().optional(), // Child currently awaited (set when delegated)
 	completedByChildId: z.string().optional(), // Child that completed and resumed this parent
 	completionResultSummary: z.string().optional(), // Summary from completed child

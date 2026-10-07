@@ -244,6 +244,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		playSound,
 		task,
 		currentTaskItem,
+		subagents,
 		modifiedMessagesLength: modifiedMessages.length,
 	})
 

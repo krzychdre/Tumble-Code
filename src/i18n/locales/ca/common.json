@@ -13,6 +13,7 @@
 		"delete_custom_mode_with_rules": "Esteu segur que voleu suprimir aquest mode {scope}?\n\nAixò també suprimirà la carpeta de regles associada a:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Aquest subagent ha acabat i es mostra només en mode de lectura, així que no es pot continuar. Torna a la seva tasca principal o comença una tasca nova.",
 		"invalid_data_uri": "Format d'URI de dades no vàlid",
 		"error_copying_image": "Error copiant la imatge: {{errorMessage}}",
 		"error_saving_image": "Error desant la imatge: {{errorMessage}}",

@@ -213,6 +213,8 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		// still fails here loudly instead of at "is not a function".
 		rehydrateSubagents: (ClineProvider.prototype as any).rehydrateSubagents,
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+		// No live parallel subagent with the opened id.
+		getBackgroundTask: vi.fn().mockReturnValue(undefined),
 		...overrides,
 	}
 	provider.taskSlot = new TaskSlot({

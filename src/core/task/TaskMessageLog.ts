@@ -48,6 +48,7 @@ import { type ErrorReportTask, reportToolResultIdRepair } from "../diagnostics/E
 import { defaultModeSlug } from "../../shared/modes"
 
 import { type ClineProvider } from "../webview/ClineProvider"
+import type { TaskHistoryLineage } from "./Task"
 
 import {
 	type MessageContent,
@@ -88,6 +89,8 @@ export interface TaskMessageLogAccess
 	_taskApiConfigName: string | undefined
 	taskApiConfigReady: Promise<void>
 	initialStatus?: "active" | "delegated" | "completed"
+	/** Set on a parallel subagent: its history item is a subtask of the fan-out parent. */
+	historyLineage?: TaskHistoryLineage
 
 	// Token usage (for saveClineMessages)
 	toolUsage: ToolUsage
@@ -99,8 +102,8 @@ export interface TaskMessageLogAccess
 	// Callback for operations needing full Task context
 	restoreTodoListForTask: () => void
 
-	// isBackground (TaskBackgroundFlagAccess): background tasks must not
-	// appear in or be resumable from task history.
+	// isBackground (TaskBackgroundFlagAccess): a background task writes a
+	// history item only when it has a historyLineage (a parallel subagent).
 
 	// Set when the task is cleared or replaced (see Task.abandoned).
 	abandoned?: boolean
@@ -645,7 +648,7 @@ export class TaskMessageLog {
 			this.hasWrittenClineMessages = true
 
 			const historyItem = await this.emitTokenUsageUpdate()
-			if (!this.access.isBackground) {
+			if (!this.access.isBackground || this.access.historyLineage) {
 				await this.updateProviderTaskHistory(historyItem)
 			}
 
@@ -667,14 +670,16 @@ export class TaskMessageLog {
 			await this.access.taskApiConfigReady
 		}
 
+		const lineage = this.access.historyLineage
 		const { historyItem, tokenUsage } = await taskMetadata({
 			taskId: this.access.taskId,
-			rootTaskId: this.access.rootTaskId,
-			parentTaskId: this.access.parentTaskId,
+			rootTaskId: this.access.rootTaskId ?? lineage?.rootTaskId,
+			parentTaskId: this.access.parentTaskId ?? lineage?.parentTaskId,
 			taskNumber: this.access.taskNumber,
 			messages: this.access.clineMessages,
 			globalStoragePath: this.access.globalStoragePath,
-			workspace: this.access.cwd,
+			workspace: lineage?.workspace ?? this.access.cwd,
+			isSubagent: lineage !== undefined,
 			mode: this.access._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode.
 			apiConfigName: this.access._taskApiConfigName, // Use the task's own provider profile, not the current provider profile.
 			initialStatus: this.access.initialStatus,
