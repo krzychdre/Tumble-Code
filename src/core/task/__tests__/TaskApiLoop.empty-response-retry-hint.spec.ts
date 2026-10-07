@@ -200,6 +200,27 @@ describe("TaskApiLoop: the retry of an empty answer names the callable tools", (
 		])
 	})
 
+	it("a mode switch since the empty request leaves the stale tool names out of the note", async () => {
+		const { loop, access, buildToolsArray } = makeLoop()
+		buildToolsArray.mockResolvedValue({
+			allTools: ORCHESTRATOR_TOOLS.map(functionTool),
+			allowedFunctionNames: undefined,
+		})
+		await sendRequest(loop)
+		access.getTaskMode = async () => "code"
+
+		const userContent = [{ type: "text", text: "go" }]
+		access.apiConversationHistory.push({ role: "user", content: userContent })
+		const stack: any[] = []
+
+		await loop.handleEmptyAssistantResponse({ retryAttempt: 0 }, userContent, stack)
+
+		const [note] = notesIn(stack[0].userContent)
+		expect(note).toBe(formatResponse.emptyResponseRetryNote(undefined))
+		expect(note).toContain("Use only the tools in your tool list")
+		expect(note).not.toContain("new_task")
+	})
+
 	it("a non-empty answer queues the tool results without a note", async () => {
 		const { loop, access } = makeLoop()
 		Object.assign(access, {

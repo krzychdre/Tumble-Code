@@ -79,11 +79,13 @@ Otherwise, if you have not completed the task and do not need additional informa
 	 * without an error, so the model never learns why its turn vanished and a blind retry
 	 * repeats the same call. The note names the tools it can call instead.
 	 *
-	 * @param toolNames The callable tool names of the request that came back empty.
+	 * @param toolNames The callable tool names of the request that came back empty, or
+	 * `undefined` when they are no longer current (the task switched mode since).
 	 */
-	emptyResponseRetryNote: (toolNames: string[]) => {
-		const tools =
-			toolNames.length > 0
+	emptyResponseRetryNote: (toolNames: string[] | undefined) => {
+		const tools = !toolNames
+			? "Use only the tools in your tool list, or reply with plain text."
+			: toolNames.length > 0
 				? `The tools you can call now are: ${toolNames.join(", ")}.\nReply with one of these tools, or with plain text.`
 				: "You have no tools in this request. Reply with plain text."
 

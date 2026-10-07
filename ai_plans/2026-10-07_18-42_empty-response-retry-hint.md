@@ -42,9 +42,10 @@ did not provide any assistant messages”, `error MODEL_NO_ASSISTANT_MESSAGES`, 
   `allowedFunctionNames`, gdy jest ustawione (wtedy dostawca dostaje wszystkie narzędzia, ale wywołać może
   tylko te, łącznie z odroczonymi), w przeciwnym razie nazwy funkcji z `allTools`. Zapamiętanie zamiast
   ponownego `buildToolsArray`: to dokładnie ten zbiór, względem którego serwer odrzucił wywołanie, a ponowne
-  budowanie ma skutek uboczny (czyści i wypełnia katalog narzędzi odroczonych) i odpytuje MCP. Ograniczenie:
-  gdy użytkownik zmieni tryb między pustą odpowiedzią a kliknięciem Retry, notatka wymieni narzędzia starego
-  trybu; samo zapytanie i tak buduje narzędzia nowego trybu, a taka zmiana jest rzadka.
+  budowanie ma skutek uboczny (czyści i wypełnia katalog narzędzi odroczonych) i odpytuje MCP. Razem z nazwami
+  zapamiętany jest tryb (`lastRequestToolsMode`). Gdy użytkownik zmieni tryb między pustą odpowiedzią a kliknięciem
+  Retry, nazwy należą do starego trybu, więc notatka ich nie wymienia i mówi tylko "Use only the tools in your tool
+  list, or reply with plain text.".
 - `handleEmptyAssistantResponse` buduje `retryUserContent = withEmptyResponseRetryNote(currentUserContent)`:
   nowa tablica (tablica wywołującego się nie zmienia), notatka z wcześniejszego ponowienia jest usuwana,
   nowa dopisywana na końcu, więc przy kolejnych pustych odpowiedziach w treści jest zawsze dokładnie jedna.

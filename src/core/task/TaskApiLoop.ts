@@ -277,8 +277,10 @@ export class TaskApiLoop {
 	// The tool names the last request let the model call. The retry of an empty
 	// answer names them (formatResponse.emptyResponseRetryNote): they are the set
 	// the server checked the dropped call against, and remembering them avoids a
-	// second buildToolsArray, which rewrites the deferred-tool directory.
+	// second buildToolsArray, which rewrites the deferred-tool directory. The mode
+	// they were built for is kept too: after a mode switch the names are stale.
 	private lastRequestToolNames: string[] = []
+	private lastRequestToolsMode: string | undefined
 
 	/**
 	 * The access object IS the owning Task (Task.ts constructs this class with
@@ -1156,7 +1158,7 @@ export class TaskApiLoop {
 		// called a tool the server dropped calls it again. Both retry paths send a
 		// note naming the callable tools. The user message was popped above, so the
 		// retry re-adds it (userMessageWasRemoved) with the note inside.
-		const retryUserContent = this.withEmptyResponseRetryNote(currentUserContent)
+		const retryUserContent = await this.withEmptyResponseRetryNote(currentUserContent)
 
 		// A background task never asks (its approval policy would approve the
 		// api_req_failed ask at once, a retry with no delay): it backs off.
@@ -1226,18 +1228,24 @@ export class TaskApiLoop {
 	/**
 	 * A copy of `content` ending with one empty-response retry note. The note of an
 	 * earlier retry is dropped first, so repeated empty answers never stack notes.
-	 * The caller's array is not changed.
+	 * The caller's array is not changed. When the task switched mode since the
+	 * empty request, the remembered names belong to the old mode, so the note
+	 * leaves them out instead of listing tools the retry may not offer.
 	 */
-	private withEmptyResponseRetryNote(
+	private async withEmptyResponseRetryNote(
 		content: Anthropic.Messages.ContentBlockParam[],
-	): Anthropic.Messages.ContentBlockParam[] {
+	): Promise<Anthropic.Messages.ContentBlockParam[]> {
+		const modeUnchanged = (await this.access.getTaskMode()) === this.lastRequestToolsMode
 		const withoutEarlierNote = content.filter(
 			(block) => !(block.type === "text" && formatResponse.isEmptyResponseRetryNote(block.text)),
 		)
 
 		return [
 			...withoutEarlierNote,
-			{ type: "text", text: formatResponse.emptyResponseRetryNote(this.lastRequestToolNames) },
+			{
+				type: "text",
+				text: formatResponse.emptyResponseRetryNote(modeUnchanged ? this.lastRequestToolNames : undefined),
+			},
 		]
 	}
 
@@ -1471,6 +1479,7 @@ export class TaskApiLoop {
 		const modelInfo = this.access.api.getModel().info
 		const { allTools, allowedFunctionNames } = await this.buildToolsArray(state, apiConfiguration, mode, modelInfo)
 		// With allowedFunctionNames the provider gets every tool but may call only these.
+		this.lastRequestToolsMode = mode
 		this.lastRequestToolNames =
 			allowedFunctionNames ?? allTools.flatMap((tool) => ("function" in tool ? [tool.function.name] : []))
 
