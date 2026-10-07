@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "Bu {scope} modunu silmek istediğinizden emin misiniz?\n\nBu işlem, ilişkili kurallar klasörünü de şu konumdan silecektir:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Bu alt ajan tamamlandı ve salt okunur gösteriliyor, bu yüzden devam ettirilemez. Üst görevine dönün veya yeni bir görev başlatın.",
 		"invalid_data_uri": "Geçersiz veri URI formatı",
 		"error_copying_image": "Resim kopyalanırken hata oluştu: {{errorMessage}}",
 		"error_saving_image": "Resim kaydedilirken hata oluştu: {{errorMessage}}",

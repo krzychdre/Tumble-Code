@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "Czy na pewno chcesz usunąć ten tryb {scope}?\n\nSpowoduje to również usunięcie powiązanego folderu reguł pod adresem:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Ten subagent zakończył pracę i jest pokazany tylko do odczytu, więc nie można go kontynuować. Wróć do jego zadania nadrzędnego albo rozpocznij nowe zadanie.",
 		"invalid_data_uri": "Nieprawidłowy format URI danych",
 		"error_copying_image": "Błąd kopiowania obrazu: {{errorMessage}}",
 		"error_saving_image": "Błąd zapisywania obrazu: {{errorMessage}}",

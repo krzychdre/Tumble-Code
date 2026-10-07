@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "Bạn có chắc chắn muốn xóa chế độ {scope} này không?\n\nThao tác này cũng sẽ xóa thư mục quy tắc liên quan tại:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Tác tử con này đã hoàn tất và chỉ được hiển thị ở chế độ chỉ đọc, nên không thể tiếp tục. Hãy quay lại tác vụ cha của nó hoặc bắt đầu một tác vụ mới.",
 		"invalid_data_uri": "Định dạng URI dữ liệu không hợp lệ",
 		"error_copying_image": "Lỗi khi sao chép hình ảnh: {{errorMessage}}",
 		"error_saving_image": "Lỗi khi lưu hình ảnh: {{errorMessage}}",

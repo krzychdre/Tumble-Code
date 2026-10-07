@@ -9,6 +9,7 @@
 		"delete_custom_mode_with_rules": "Êtes-vous sûr de vouloir supprimer ce mode {scope} ?\n\nCela supprimera également le dossier de règles associé à l'adresse :\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Ce sous-agent est terminé et s'affiche en lecture seule, il ne peut donc pas être poursuivi. Reviens à sa tâche parente ou démarre une nouvelle tâche.",
 		"invalid_data_uri": "Format d'URI de données invalide",
 		"error_copying_image": "Erreur lors de la copie de l'image : {{errorMessage}}",
 		"error_saving_image": "Erreur lors de l'enregistrement de l'image : {{errorMessage}}",

@@ -1157,7 +1157,9 @@ export class ClineProvider
 		return new Task({
 			provider: this,
 			...profileOptions,
-			enableCheckpoints,
+			// A finished subagent opens read-only (see TaskResumption): no
+			// checkpoint may restore its worktree's state into the workspace.
+			enableCheckpoints: enableCheckpoints && !historyItem.isSubagent,
 			checkpointTimeout,
 			historyItem,
 			experiments,
@@ -1399,8 +1401,22 @@ export class ClineProvider
 		return this.taskHistory.getTaskWithAggregatedCosts(taskId)
 	}
 
-	async showTaskWithId(id: string) {
+	async showTaskWithId(id: string): Promise<void> {
 		if (id !== this.getCurrentTask()?.taskId) {
+			// A parallel subagent still running is a headless background task:
+			// rebuilding it from history would start a second Task with the
+			// same id. Its parent's subagents panel shows it live instead.
+			if (this.getBackgroundTask(id)) {
+				const parentTaskId =
+					this.backgroundTaskRunner.subagentParentOf(id) ??
+					(await this.getHistoryItem(id).catch(() => undefined))?.parentTaskId
+				if (parentTaskId && parentTaskId !== id) {
+					return this.showTaskWithId(parentTaskId)
+				}
+				await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+				return
+			}
+
 			const historyItem = await this.getHistoryItem(id)
 
 			// A task the user left while it was working is still running:

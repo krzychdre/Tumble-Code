@@ -13,6 +13,7 @@
 		"delete_custom_mode_with_rules": "Tem certeza de que deseja excluir este modo {scope}?\n\nIsso também excluirá a pasta de regras associada em:\n{rulesFolderPath}"
 	},
 	"errors": {
+		"subagent_read_only": "Este subagente terminou e é exibido somente leitura, por isso não pode ser continuado. Volte para a tarefa principal dele ou inicie uma nova tarefa.",
 		"invalid_data_uri": "Formato de URI de dados inválido",
 		"error_copying_image": "Erro ao copiar imagem: {{errorMessage}}",
 		"error_saving_image": "Erro ao salvar imagem: {{errorMessage}}",

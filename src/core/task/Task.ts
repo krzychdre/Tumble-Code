@@ -899,6 +899,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	autoApprovalOverride?: AutoApprovalOverride
 	/** Assistant-turn counter used to enforce `maxAgentTurns`. */
 	agentTurnCount = 0
+	/**
+	 * A finished parallel subagent reopened from history: shown, never
+	 * resumed. It ran in a git worktree that may be gone, and resuming it
+	 * would run its toolset in the parent's workspace.
+	 */
+	readonly isReadOnlySubagent: boolean
 
 	// MessageManager for high-level message operations (lazy initialized)
 	private _messageManager?: MessageManager
@@ -992,6 +998,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Headless background-task controls (memory writer / parallel subagents).
 		this.isBackground = isBackground
 		this.historyLineage = historyLineage
+		this.isReadOnlySubagent = !!historyItem?.isSubagent
 		this.maxAgentTurns = maxAgentTurns
 		this.autoApprovalOverride = autoApprovalOverride
 
