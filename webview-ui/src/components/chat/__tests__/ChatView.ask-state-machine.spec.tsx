@@ -919,6 +919,15 @@ describe("ChatView host messages", () => {
 		expect(harness.played).toEqual(["/notification.wav"])
 	})
 
+	it("taskCompletedOffScreen plays the celebration sound while another task is on screen", async () => {
+		await mount([withAsk(ask("followup"))], { soundEnabled: true })
+		harness.played = []
+
+		await act(async () => fromHost({ type: "taskCompletedOffScreen" }))
+
+		expect(harness.played).toEqual(["/celebration.wav"])
+	})
+
 	it("interactionRequired stays silent when sounds are off", async () => {
 		await mount([withAsk(ask("followup"))], { soundEnabled: false })
 		harness.played = []

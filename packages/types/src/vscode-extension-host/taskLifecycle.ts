@@ -42,6 +42,7 @@ export type TaskLifecycleExtensionMessageType =
 	| "condenseTaskContextStarted"
 	| "condenseTaskContextResponse"
 	| "interactionRequired"
+	| "taskCompletedOffScreen"
 	| "taskWithAggregatedCosts"
 	| "commandExecutionStatus"
 	| "action"

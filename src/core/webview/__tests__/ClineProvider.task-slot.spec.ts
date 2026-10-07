@@ -33,6 +33,7 @@ type ProviderStandIn = {
 	performPreparationTasks: (task: Task) => Promise<void>
 	getState: () => Promise<{ mode: string }>
 	delegation: DelegationService
+	onDetachedTaskCompleted: (task: Task) => void
 }
 
 function makeTask(taskId: string, overrides: Record<string, unknown> = {}): Task {
@@ -81,6 +82,7 @@ function makeProvider(): ProviderStandIn {
 		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
 		getState: vi.fn().mockResolvedValue({ mode: "code" }),
 		delegation: undefined as unknown as DelegationService,
+		onDetachedTaskCompleted: vi.fn(),
 	}
 	provider.taskSlot = new TaskSlot({
 		getState: () => provider.getState(),
@@ -94,6 +96,7 @@ function makeProvider(): ProviderStandIn {
 		},
 		detachDelegatedParent: async (parentTaskId, childTaskId) =>
 			provider.delegation.detach(parentTaskId, childTaskId),
+		onDetachedTaskCompleted: (task) => provider.onDetachedTaskCompleted(task),
 	})
 	provider.delegation = new DelegationService(provider as any)
 	return provider
@@ -300,24 +303,25 @@ describe("leaving a task that still works (keep running off screen)", () => {
 		expect(provider.getLiveTaskInstance("task-B")).toBe(taskB)
 	})
 
-	it.each([TumbleCodeEventName.TaskIdle, TumbleCodeEventName.TaskResumable, TumbleCodeEventName.TaskAborted] as const)(
-		"a detached task is destroyed and dropped once it ends work (%s)",
-		async (event) => {
-			const provider = makeProvider()
-			const taskA = makeLiveTask("task-A")
-			const cleanup = vi.fn()
-			provider.taskEventListeners.set(taskA, [cleanup])
-			await provider.taskSlot.set(taskA)
-			await provider.leaveCurrentTask()
+	it.each([
+		TumbleCodeEventName.TaskIdle,
+		TumbleCodeEventName.TaskResumable,
+		TumbleCodeEventName.TaskAborted,
+	] as const)("a detached task is destroyed and dropped once it ends work (%s)", async (event) => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		const cleanup = vi.fn()
+		provider.taskEventListeners.set(taskA, [cleanup])
+		await provider.taskSlot.set(taskA)
+		await provider.leaveCurrentTask()
 
-			// The task's own events carry no arguments for TaskAborted, its id for the others.
-			;(taskA as unknown as EventEmitter).emit(event, taskA.taskId)
+		// The task's own events carry no arguments for TaskAborted, its id for the others.
+		;(taskA as unknown as EventEmitter).emit(event, taskA.taskId)
 
-			await vi.waitFor(() => expect(cleanup).toHaveBeenCalled())
-			expect(taskA.abortTask).toHaveBeenCalledWith(true)
-			expect(provider.getLiveTaskInstance("task-A")).toBeUndefined()
-		},
-	)
+		await vi.waitFor(() => expect(cleanup).toHaveBeenCalled())
+		expect(taskA.abortTask).toHaveBeenCalledWith(true)
+		expect(provider.getLiveTaskInstance("task-A")).toBeUndefined()
+	})
 
 	it("a detached delegated child keeps its parent delegated (no repair)", async () => {
 		const provider = makeProvider()
@@ -399,6 +403,53 @@ describe("getRunningTasks: the working tasks shown on the history rows", () => {
 		taskA.emit(TumbleCodeEventName.TaskIdle, "task-A")
 
 		expect(provider.taskSlot.getRunningTasks()).toEqual({})
+	})
+})
+
+describe("a detached task that finishes is announced (completion sound)", () => {
+	async function detachedTask() {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		await provider.taskSlot.set(taskA)
+		await provider.leaveCurrentTask()
+		return { provider, taskA }
+	}
+
+	it("announces a detached task that comes to rest on its completion ask", async () => {
+		const { provider, taskA } = await detachedTask()
+
+		taskA.clineMessages.push({ ts: 2, type: "ask", ask: "completion_result" })
+		taskA.emit(TumbleCodeEventName.TaskIdle, "task-A")
+
+		expect(provider.onDetachedTaskCompleted).toHaveBeenCalledExactlyOnceWith(taskA)
+	})
+
+	it.each([
+		["rests on another ask", TumbleCodeEventName.TaskIdle, { ts: 2, type: "ask", ask: "api_req_failed" }],
+		["waits to be resumed", TumbleCodeEventName.TaskResumable, { ts: 2, type: "ask", ask: "resume_task" }],
+		[
+			"is aborted after its completion ask",
+			TumbleCodeEventName.TaskAborted,
+			{ ts: 2, type: "ask", ask: "completion_result" },
+		],
+	] as const)("stays silent when the detached task %s", async (_label, event, lastMessage) => {
+		const { provider, taskA } = await detachedTask()
+
+		taskA.clineMessages.push({ ...lastMessage })
+		;(taskA as unknown as EventEmitter).emit(event, "task-A")
+
+		expect(provider.onDetachedTaskCompleted).not.toHaveBeenCalled()
+	})
+
+	it("stays silent for the foreground task: its own view plays the sound", async () => {
+		const provider = makeProvider()
+		const taskA = makeLiveTask("task-A")
+		await provider.taskSlot.set(taskA)
+
+		taskA.clineMessages.push({ ts: 2, type: "ask", ask: "completion_result" })
+		taskA.emit(TumbleCodeEventName.TaskIdle, "task-A")
+
+		expect(provider.onDetachedTaskCompleted).not.toHaveBeenCalled()
 	})
 })
 
