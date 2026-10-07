@@ -6,7 +6,6 @@ import type { MockedFunction } from "vitest"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../../utils/fs"
 import { isPathOutsideWorkspace } from "../../../utils/pathUtils"
 import { getReadablePath } from "../../../utils/path"
-import { unescapeHtmlEntities } from "../../../utils/text-normalization"
 import { everyLineHasLineNumbers, stripLineNumbers } from "../../../integrations/misc/extract-text"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { writeToFileTool } from "../WriteToFileTool"
@@ -49,10 +48,6 @@ vi.mock("../../../utils/pathUtils", () => ({
 
 vi.mock("../../../utils/path", () => ({
 	getReadablePath: vi.fn().mockReturnValue("test/path.txt"),
-}))
-
-vi.mock("../../../utils/text-normalization", () => ({
-	unescapeHtmlEntities: vi.fn().mockImplementation((content) => content),
 }))
 
 vi.mock("../../plan-review/planReviewPause", () => ({
@@ -105,7 +100,6 @@ describe("writeToFileTool", () => {
 	const mockedCreateDirectoriesForFile = createDirectoriesForFile as MockedFunction<typeof createDirectoriesForFile>
 	const mockedIsPathOutsideWorkspace = isPathOutsideWorkspace as MockedFunction<typeof isPathOutsideWorkspace>
 	const mockedGetReadablePath = getReadablePath as MockedFunction<typeof getReadablePath>
-	const mockedUnescapeHtmlEntities = unescapeHtmlEntities as MockedFunction<typeof unescapeHtmlEntities>
 	const mockedEveryLineHasLineNumbers = everyLineHasLineNumbers as MockedFunction<typeof everyLineHasLineNumbers>
 	const mockedStripLineNumbers = stripLineNumbers as MockedFunction<typeof stripLineNumbers>
 	const mockedPathResolve = path.resolve as MockedFunction<typeof path.resolve>
@@ -124,7 +118,6 @@ describe("writeToFileTool", () => {
 		mockedFileExistsAtPath.mockResolvedValue(false)
 		mockedIsPathOutsideWorkspace.mockReturnValue(false)
 		mockedGetReadablePath.mockReturnValue("test/path.txt")
-		mockedUnescapeHtmlEntities.mockImplementation((content) => content)
 		mockedEveryLineHasLineNumbers.mockReturnValue(false)
 		mockedStripLineNumbers.mockImplementation((content) => content)
 
@@ -355,20 +348,26 @@ describe("writeToFileTool", () => {
 			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith("", true)
 		})
 
-		it("unescapes HTML entities for non-Claude models", async () => {
-			mockCline.api.getModel.mockReturnValue({ id: "gpt-4" })
+		// Native tool calls deliver the content as JSON, verbatim. Task 01a1160c
+		// (GLM-5.3) wrote this decoder into a .py file and got a syntax error on
+		// disk because the entities were decoded before the write.
+		it("writes HTML entities verbatim for a non-Claude model", async () => {
+			mockCline.api.getModel.mockReturnValue({ id: "glm-5.3" })
+			const content =
+				'for a, b in (("&gt;", ">"), ("&lt;", "<"), ("&quot;", \'"\'), ("&amp;", "&")):\n    s = s.replace(a, b)'
 
-			await executeWriteFileTool({ content: "&lt;test&gt;" })
+			await executeWriteFileTool({ content })
 
-			expect(mockedUnescapeHtmlEntities).toHaveBeenCalledWith("&lt;test&gt;")
+			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith(content, true)
 		})
 
-		it("skips HTML unescaping for Claude models", async () => {
-			mockCline.api.getModel.mockReturnValue({ id: "claude-3" })
+		it("keeps an XML attribute value with &quot; verbatim", async () => {
+			mockCline.api.getModel.mockReturnValue({ id: "glm-5.3" })
+			const content = "<calculation formula='[Order Date] &amp; &quot;Day&quot;' value='&quot;Day&quot;' />"
 
-			await executeWriteFileTool({ content: "&lt;test&gt;" })
+			await executeWriteFileTool({ content }, { fileExists: true })
 
-			expect(mockedUnescapeHtmlEntities).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith(content, true)
 		})
 
 		it("strips line numbers from numbered content", async () => {

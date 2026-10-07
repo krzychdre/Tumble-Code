@@ -10,7 +10,6 @@ import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 import { stripLineNumbers, everyLineHasLineNumbers } from "../../integrations/misc/extract-text"
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
-import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { EXPERIMENT_IDS, experiments } from "@tumble-code/types"
 import { convertNewFileToUnifiedDiff } from "../diff/stats"
 import type { ToolUse } from "../../shared/tools"
@@ -74,10 +73,6 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 		if (newContent.endsWith("```")) {
 			newContent = newContent.split("\n").slice(0, -1).join("\n")
-		}
-
-		if (!task.api.getModel().id.includes("claude")) {
-			newContent = unescapeHtmlEntities(newContent)
 		}
 
 		// Content copied from read_file output keeps its line numbers.

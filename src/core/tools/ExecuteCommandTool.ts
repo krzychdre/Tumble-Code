@@ -19,7 +19,6 @@ import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 
 import { ToolUse, ToolResponse } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
-import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { parseCommand } from "@tumble-code/core/browser"
 import {
 	ExitCodeDetails,
@@ -84,9 +83,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				return
 			}
 
-			const canonicalCommand = unescapeHtmlEntities(command)
-
-			const ignoredFileAttemptedToAccess = task.rooIgnoreController?.validateCommand(canonicalCommand)
+			const ignoredFileAttemptedToAccess = task.rooIgnoreController?.validateCommand(command)
 
 			if (ignoredFileAttemptedToAccess) {
 				await task.say("rooignore_error", ignoredFileAttemptedToAccess)
@@ -100,7 +97,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 			// presenting the command for approval. Surfacing this as a tool error gives
 			// the agent a precise, actionable message so it can retry with a corrected
 			// command, rather than receiving a generic denial from the approval dialog.
-			const { parseError } = parseCommand(canonicalCommand)
+			const { parseError } = parseCommand(command)
 			if (parseError !== null) {
 				const executionId = task.lastMessageTs?.toString() ?? Date.now().toString()
 				const provider = await task.providerRef.deref()
@@ -115,7 +112,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				return
 			}
 
-			const didApprove = await askApproval("command", canonicalCommand)
+			const didApprove = await askApproval("command", command)
 
 			if (!didApprove) {
 				return
@@ -139,9 +136,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				.get<string[]>("commandTimeoutAllowlist", [])
 
 			// Check if command matches any prefix in the allowlist
-			const isCommandAllowlisted = commandTimeoutAllowlist.some((prefix) =>
-				canonicalCommand.startsWith(prefix.trim()),
-			)
+			const isCommandAllowlisted = commandTimeoutAllowlist.some((prefix) => command.startsWith(prefix.trim()))
 
 			// Convert seconds to milliseconds for internal use, but skip timeout if command is allowlisted
 			const commandExecutionTimeout = isCommandAllowlisted ? 0 : commandExecutionTimeoutSeconds * 1000
@@ -151,7 +146,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 			const options: ExecuteCommandOptions = {
 				executionId,
-				command: canonicalCommand,
+				command,
 				customCwd,
 				terminalShellIntegrationDisabled,
 				commandExecutionTimeout,
