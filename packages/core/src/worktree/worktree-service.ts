@@ -97,10 +97,13 @@ export class WorktreeService {
 	 */
 	async createWorktree(cwd: string, options: CreateWorktreeOptions): Promise<WorktreeResult> {
 		try {
-			const { path: worktreePath, branch, baseBranch, createNewBranch } = options
+			const { path: worktreePath, branch, baseBranch, createNewBranch, lockReason } = options
 
 			// Build the git worktree add command arguments
 			const args: string[] = ["worktree", "add"]
+			if (lockReason) {
+				args.push("--lock", "--reason", lockReason)
+			}
 
 			if (createNewBranch && branch) {
 				// Create new branch: git worktree add -b <branch> <path> [<base>]
@@ -175,6 +178,19 @@ export class WorktreeService {
 				success: false,
 				message: `Failed to delete worktree: ${errorMessage}`,
 			}
+		}
+	}
+
+	/**
+	 * Unlock a worktree locked by `git worktree add --lock` / `git worktree lock`.
+	 * Returns false when git refused (e.g. the worktree was not locked).
+	 */
+	async unlockWorktree(cwd: string, worktreePath: string): Promise<boolean> {
+		try {
+			await execFileAsync("git", ["worktree", "unlock", worktreePath], { cwd })
+			return true
+		} catch {
+			return false
 		}
 	}
 

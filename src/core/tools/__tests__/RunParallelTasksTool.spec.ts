@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest"
 
 import { EventEmitter } from "events"
 import * as fs from "fs/promises"
@@ -18,14 +18,23 @@ import { TumbleCodeEventName } from "@tumble-code/types"
 
 // Mock worktreeService before importing the tool. vi.hoisted ensures the
 // mock functions are available when the hoisted vi.mock factory runs.
-const { mockCheckGitRepo, mockCreateWorktree, mockHasUncommittedChanges, mockBranchHasCommits, mockDeleteWorktree } =
-	vi.hoisted(() => ({
-		mockCheckGitRepo: vi.fn().mockResolvedValue(true),
-		mockCreateWorktree: vi.fn().mockResolvedValue({ success: true, message: "ok" }),
-		mockHasUncommittedChanges: vi.fn().mockResolvedValue(false),
-		mockBranchHasCommits: vi.fn().mockResolvedValue(false),
-		mockDeleteWorktree: vi.fn().mockResolvedValue({ success: true, message: "removed" }),
-	}))
+const {
+	mockCheckGitRepo,
+	mockCreateWorktree,
+	mockHasUncommittedChanges,
+	mockBranchHasCommits,
+	mockDeleteWorktree,
+	mockUnlockWorktree,
+	mockListWorktrees,
+} = vi.hoisted(() => ({
+	mockCheckGitRepo: vi.fn().mockResolvedValue(true),
+	mockCreateWorktree: vi.fn().mockResolvedValue({ success: true, message: "ok" }),
+	mockHasUncommittedChanges: vi.fn().mockResolvedValue(false),
+	mockBranchHasCommits: vi.fn().mockResolvedValue(false),
+	mockDeleteWorktree: vi.fn().mockResolvedValue({ success: true, message: "removed" }),
+	mockUnlockWorktree: vi.fn().mockResolvedValue(true),
+	mockListWorktrees: vi.fn().mockResolvedValue([]),
+}))
 vi.mock("@tumble-code/core", () => ({
 	worktreeService: {
 		checkGitRepo: mockCheckGitRepo,
@@ -33,6 +42,8 @@ vi.mock("@tumble-code/core", () => ({
 		hasUncommittedChanges: mockHasUncommittedChanges,
 		branchHasCommits: mockBranchHasCommits,
 		deleteWorktree: mockDeleteWorktree,
+		unlockWorktree: mockUnlockWorktree,
+		listWorktrees: mockListWorktrees,
 	},
 }))
 
@@ -61,6 +72,9 @@ import {
 	runWithConcurrency,
 	formatParallelResults,
 	worktreeNamesFor,
+	subtaskLockReason,
+	subtaskLockOwner,
+	sweepOrphanedSubtaskWorktrees,
 	runParallelTasksTool,
 	type ParallelSubtaskResult,
 } from "../RunParallelTasksTool"
@@ -416,12 +430,29 @@ describe("RunParallelTasksTool helpers", () => {
 	})
 
 	describe("worktreeNamesFor", () => {
-		it("derives deterministic worktree path + branch from parent id and index", () => {
-			const a = worktreeNamesFor("/home/u/myproj", "abcdef1234567890", 0)
-			const b = worktreeNamesFor("/home/u/myproj", "abcdef1234567890", 0)
-			expect(a).toEqual(b) // deterministic
-			expect(a.branch).toBe("worktree/parallel-abcdef12-1")
-			expect(a.worktreePath).toContain("myproj-abcdef12-1")
+		it("derives worktree path + branch from parent id, run id and index", () => {
+			const a = worktreeNamesFor("/home/u/myproj", "abcdef1234567890", "run1", 0)
+			expect(a.branch).toBe("worktree/parallel-abcdef12-run1-1")
+			expect(a.worktreePath).toContain("myproj-abcdef12-run1-1")
+		})
+
+		it("a second run of the same parent gets different names", () => {
+			const first = worktreeNamesFor("/home/u/myproj", "abcdef1234567890", "run1", 0)
+			const retry = worktreeNamesFor("/home/u/myproj", "abcdef1234567890", "run2", 0)
+			expect(retry.branch).not.toBe(first.branch)
+			expect(retry.worktreePath).not.toBe(first.worktreePath)
+		})
+	})
+
+	describe("subtask worktree lock", () => {
+		it("round-trips the owning pid", () => {
+			expect(subtaskLockOwner(subtaskLockReason(4242))).toBe(4242)
+		})
+
+		it("ignores locks that are not ours", () => {
+			expect(subtaskLockOwner(undefined)).toBeUndefined()
+			expect(subtaskLockOwner("on a USB stick")).toBeUndefined()
+			expect(subtaskLockOwner(subtaskLockReason(4242).replace("4242", "x"))).toBeUndefined()
 		})
 	})
 })
@@ -438,6 +469,8 @@ describe("RunParallelTasksTool.execute", () => {
 		mockHasUncommittedChanges.mockResolvedValue(false)
 		mockBranchHasCommits.mockResolvedValue(false)
 		mockDeleteWorktree.mockResolvedValue({ success: true, message: "removed" })
+		mockUnlockWorktree.mockResolvedValue(true)
+		mockListWorktrees.mockResolvedValue([])
 	})
 
 	it("cap below 2 (feature Off): refused before validation/approval", async () => {
@@ -1018,7 +1051,7 @@ describe("RunParallelTasksTool.execute", () => {
 			expect(mockBranchHasCommits).toHaveBeenCalled()
 			expect(mockDeleteWorktree).toHaveBeenCalledWith(
 				"/home/user/myproj",
-				expect.stringContaining("myproj-parent-1"),
+				expect.stringMatching(/myproj-parent-1-\w+-1$/),
 			)
 			const report = callbacks.pushToolResult.mock.calls[0][0] as string
 			expect(report).toContain("cleaned up (no changes)")
@@ -1113,6 +1146,135 @@ describe("RunParallelTasksTool.execute", () => {
 			expect(report).toContain("2 completed")
 			expect(report).not.toContain("cleaned up")
 			expect(report).toContain("worktree:")
+		})
+
+		it("creates each worktree locked by this process and unlocks it when the subtask ends", async () => {
+			mockBranchHasCommits.mockResolvedValue(true)
+			const provider = makeFakeProvider()
+			const parent = makeFakeParentTask(provider)
+			const callbacks = makeCallbacks()
+
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				callbacks,
+			)
+
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			provider.children.forEach((c) => c.complete())
+			await execPromise
+
+			for (const [, options] of mockCreateWorktree.mock.calls) {
+				expect(options.lockReason).toBe(subtaskLockReason(process.pid))
+			}
+			const created = mockCreateWorktree.mock.calls.map(([, options]) => options.path)
+			const unlocked = mockUnlockWorktree.mock.calls.map(([, worktreePath]) => worktreePath)
+			expect(unlocked.sort()).toEqual(created.sort())
+		})
+
+		it("a retry by the same parent never reuses the first run's branches", async () => {
+			mockBranchHasCommits.mockResolvedValue(true)
+			const provider = makeFakeProvider()
+			const parent = makeFakeParentTask(provider)
+			const runOnce = async () => {
+				const before = provider.children.length
+				const execPromise = runParallelTasksTool.execute(
+					{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+					parent,
+					makeCallbacks(),
+				)
+				await vi.waitFor(() => expect(provider.children.length).toBe(before + 2))
+				provider.children.slice(before).forEach((c) => c.complete())
+				await execPromise
+			}
+
+			await runOnce()
+			// Run ids are millisecond timestamps: make sure the clock moved.
+			await new Promise((resolve) => setTimeout(resolve, 2))
+			await runOnce()
+
+			const branches = mockCreateWorktree.mock.calls.map(([, options]) => options.branch)
+			expect(branches).toHaveLength(4)
+			expect(new Set(branches).size).toBe(4)
+		})
+	})
+
+	describe("orphaned worktree sweep", () => {
+		const DEAD_PID = 999_999
+		let killSpy: ReturnType<typeof vi.spyOn>
+
+		beforeEach(() => {
+			killSpy = vi.spyOn(process, "kill").mockImplementation(((pid: number) => {
+				if (pid === DEAD_PID) throw Object.assign(new Error("no such process"), { code: "ESRCH" })
+				return true
+			}) as typeof process.kill)
+		})
+
+		afterEach(() => {
+			killSpy.mockRestore()
+		})
+
+		const worktree = (name: string, lockReason?: string) => ({
+			path: `/home/user/.roo/worktrees/${name}`,
+			branch: `worktree/parallel-${name}`,
+			commitHash: "abc",
+			isCurrent: false,
+			isBare: false,
+			isDetached: false,
+			isLocked: lockReason !== undefined,
+			lockReason,
+		})
+
+		it("removes a clean worktree whose owning process is gone", async () => {
+			mockListWorktrees.mockResolvedValue([worktree("orphan", subtaskLockReason(DEAD_PID))])
+
+			await sweepOrphanedSubtaskWorktrees("/home/user/myproj")
+
+			expect(mockUnlockWorktree).toHaveBeenCalledWith("/home/user/myproj", "/home/user/.roo/worktrees/orphan")
+			expect(mockDeleteWorktree).toHaveBeenCalledWith("/home/user/myproj", "/home/user/.roo/worktrees/orphan")
+		})
+
+		it("unlocks but keeps an orphan with changes", async () => {
+			mockHasUncommittedChanges.mockResolvedValue(true)
+			mockListWorktrees.mockResolvedValue([worktree("orphan", subtaskLockReason(DEAD_PID))])
+
+			await sweepOrphanedSubtaskWorktrees("/home/user/myproj")
+
+			expect(mockUnlockWorktree).toHaveBeenCalledTimes(1)
+			expect(mockDeleteWorktree).not.toHaveBeenCalled()
+		})
+
+		it("leaves running, unlocked and foreign-locked worktrees alone", async () => {
+			mockListWorktrees.mockResolvedValue([
+				worktree("running", subtaskLockReason(process.pid)),
+				worktree("kept-for-review"),
+				worktree("user-lock", "on a USB stick"),
+			])
+
+			await sweepOrphanedSubtaskWorktrees("/home/user/myproj")
+
+			expect(mockUnlockWorktree).not.toHaveBeenCalled()
+			expect(mockDeleteWorktree).not.toHaveBeenCalled()
+		})
+
+		it("runs before a fan-out creates its worktrees", async () => {
+			mockListWorktrees.mockResolvedValue([worktree("orphan", subtaskLockReason(DEAD_PID))])
+			const provider = makeFakeProvider()
+			const parent = makeFakeParentTask(provider)
+
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				makeCallbacks(),
+			)
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			provider.children.forEach((c) => c.complete())
+			await execPromise
+
+			expect(mockDeleteWorktree.mock.calls[0]).toEqual(["/home/user/myproj", "/home/user/.roo/worktrees/orphan"])
+			expect(mockDeleteWorktree.mock.invocationCallOrder[0]).toBeLessThan(
+				mockCreateWorktree.mock.invocationCallOrder[0],
+			)
 		})
 	})
 })
