@@ -225,4 +225,51 @@ bare
 			expect(await service.branchHasCommits("/repo", "worktree/parallel-x-1")).toBe(true)
 		})
 	})
+
+	describe("worktree lock", () => {
+		let service: WorktreeService
+		const mockExecFile = vi.mocked(execFile)
+
+		beforeEach(() => {
+			service = new WorktreeService()
+			mockExecFile.mockReset()
+		})
+
+		type ExecCb = (err: Error | null, result?: { stdout: string; stderr: string }) => void
+		const mockImpl = (stdout: string) =>
+			((_cmd: string, _args: string[], _opts: unknown, cb: ExecCb) => cb(null, { stdout, stderr: "" })) as never
+
+		const mockErr = (err: Error) =>
+			((_cmd: string, _args: string[], _opts: unknown, cb: ExecCb) => cb(err)) as never
+
+		it("createWorktree with lockReason creates the worktree locked", async () => {
+			mockExecFile.mockImplementation(mockImpl(""))
+			vi.spyOn(service, "listWorktrees").mockResolvedValue([])
+			await service.createWorktree("/repo", {
+				path: "/wt",
+				branch: "b",
+				createNewBranch: true,
+				lockReason: "owner pid 7",
+			})
+			expect(mockExecFile.mock.calls[0]?.[1]).toEqual([
+				"worktree",
+				"add",
+				"--lock",
+				"--reason",
+				"owner pid 7",
+				"-b",
+				"b",
+				"/wt",
+			])
+		})
+
+		it("unlockWorktree returns true on success, false when git refuses", async () => {
+			mockExecFile.mockImplementation(mockImpl(""))
+			expect(await service.unlockWorktree("/repo", "/wt")).toBe(true)
+			expect(mockExecFile.mock.calls[0]?.[1]).toEqual(["worktree", "unlock", "/wt"])
+
+			mockExecFile.mockImplementation(mockErr(new Error("not locked")))
+			expect(await service.unlockWorktree("/repo", "/wt")).toBe(false)
+		})
+	})
 })

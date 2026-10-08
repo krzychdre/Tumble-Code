@@ -63,6 +63,8 @@ export interface CreateWorktreeOptions {
 	baseBranch?: string
 	/** If true, create a new branch; if false, checkout existing branch */
 	createNewBranch?: boolean
+	/** If set, the worktree is created locked (`git worktree add --lock --reason`) */
+	lockReason?: string
 }
 
 /**

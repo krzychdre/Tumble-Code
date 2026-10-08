@@ -174,18 +174,82 @@ export function formatParallelResults(results: ReadonlyArray<ParallelSubtaskResu
 	return lines.join("\n").trimEnd()
 }
 
-/** Deterministic worktree dir + branch for a given parent task and subtask index. */
+/** A fresh id for one run_parallel_tasks call, so a retry never reuses a name. */
+export function newFanOutRunId(): string {
+	return Date.now().toString(36)
+}
+
+/**
+ * Worktree dir + branch for a subtask of one fan-out run. The run id keeps a
+ * second fan-out of the same parent clear of worktrees the first one left
+ * behind (kept for review, or orphaned by a crash).
+ */
 export function worktreeNamesFor(
 	cwd: string,
 	parentTaskId: string,
+	runId: string,
 	index: number,
 ): { worktreePath: string; branch: string } {
 	const project = path.basename(cwd) || "project"
 	const shortId = parentTaskId.slice(0, 8)
-	const tag = `${project}-${shortId}-${index + 1}`
+	const tag = `${project}-${shortId}-${runId}-${index + 1}`
 	return {
 		worktreePath: path.join(os.homedir(), ".roo", "worktrees", tag),
-		branch: `worktree/parallel-${shortId}-${index + 1}`,
+		branch: `worktree/parallel-${shortId}-${runId}-${index + 1}`,
+	}
+}
+
+const SUBTASK_LOCK_PREFIX = "tumble-code parallel subtask, pid "
+
+/**
+ * Git lock reason of a subagent worktree while its worker runs. The worker
+ * unlocks it in {@link finalize}; a lock that outlives the process that took
+ * it marks a worktree orphaned by a crash or a killed extension host.
+ */
+export function subtaskLockReason(pid: number = process.pid): string {
+	return `${SUBTASK_LOCK_PREFIX}${pid}`
+}
+
+/** The pid that owns a subagent worktree lock, or undefined for any other lock. */
+export function subtaskLockOwner(lockReason: string | undefined): number | undefined {
+	if (!lockReason?.startsWith(SUBTASK_LOCK_PREFIX)) return undefined
+	const pid = Number(lockReason.slice(SUBTASK_LOCK_PREFIX.length))
+	return Number.isInteger(pid) && pid > 0 ? pid : undefined
+}
+
+function isProcessAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0)
+		return true
+	} catch (error) {
+		// EPERM: the process exists but belongs to another user.
+		return (error as NodeJS.ErrnoException).code === "EPERM"
+	}
+}
+
+/**
+ * Reclaim subagent worktrees whose owning process died before its workers
+ * could clean up. Their lock is lifted; the empty ones are removed with
+ * their branch, the ones with changes stay for the user to review. Locks
+ * held by a live process (this one included) belong to a running fan-out
+ * and are left alone. Best-effort: never throws.
+ */
+export async function sweepOrphanedSubtaskWorktrees(cwd: string): Promise<void> {
+	try {
+		for (const worktree of await worktreeService.listWorktrees(cwd)) {
+			const owner = subtaskLockOwner(worktree.lockReason)
+			if (owner === undefined || isProcessAlive(owner)) continue
+			await worktreeService.unlockWorktree(cwd, worktree.path)
+			if (worktree.branch) {
+				await cleanupSubtaskWorktreeIfEmpty({ cwd, worktreePath: worktree.path, branch: worktree.branch })
+			}
+		}
+	} catch (error) {
+		logger.warn(
+			`[run_parallel_tasks] Orphaned worktree sweep failed in ${cwd}: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+		)
 	}
 }
 
@@ -279,6 +343,8 @@ interface RunOneSubtaskArgs {
 	parentTaskId: string
 	/** The fan-out parent's root task: the subagent's history item sits in its tree. */
 	rootTaskId: string
+	/** Id of this run_parallel_tasks call, see {@link worktreeNamesFor}. */
+	runId: string
 	subtask: NormalizedSubtask
 	index: number
 	signal: AbortSignal
@@ -294,11 +360,12 @@ async function runOneSubtask({
 	cwd,
 	parentTaskId,
 	rootTaskId,
+	runId,
 	subtask,
 	index,
 	signal,
 }: RunOneSubtaskArgs): Promise<ParallelSubtaskResult> {
-	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, index)
+	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, runId, index)
 	const registry = provider.subagentRegistry
 	// Until the child Task exists, panel updates target the queued placeholder.
 	let registryId = queuedSubagentId(parentTaskId, index)
@@ -313,6 +380,7 @@ async function runOneSubtask({
 			path: worktreePath,
 			branch,
 			createNewBranch: true,
+			lockReason: subtaskLockReason(),
 		})
 		if (!created.success) {
 			const error = `worktree creation failed: ${created.message}`
@@ -413,6 +481,8 @@ function describeSubtaskFailure(failureMessage: string | undefined): string {
 async function finalize(cwd: string, result: ParallelSubtaskResult): Promise<ParallelSubtaskResult> {
 	const { worktreePath, branch } = result
 	if (!worktreePath || !branch) return result
+	// A kept worktree is the user's to review, so it is unlocked either way.
+	await worktreeService.unlockWorktree(cwd, worktreePath)
 	const cleaned = await cleanupSubtaskWorktreeIfEmpty({ cwd, worktreePath, branch })
 	return cleaned ? { ...result, cleaned: true } : result
 }
@@ -546,6 +616,9 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 				return
 			}
 
+			await sweepOrphanedSubtaskWorktrees(cwd)
+			const runId = newFanOutRunId()
+
 			// Seed the webview subagents panel: previous fan-out entries for
 			// this parent are dropped, every subtask appears immediately as
 			// "queued" and transitions as its worker picks it up.
@@ -586,6 +659,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 						cwd,
 						parentTaskId: task.taskId,
 						rootTaskId: task.rootTaskId ?? task.taskId,
+						runId,
 						subtask,
 						index,
 						signal: controller.signal,
