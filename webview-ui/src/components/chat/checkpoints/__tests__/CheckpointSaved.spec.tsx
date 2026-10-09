@@ -56,7 +56,7 @@ describe("CheckpointSaved popover visibility", () => {
 
 		// Initially hidden (not hovering)
 		expect(getMenu()).toBeTruthy()
-		expect(getMenu().className).toContain("hidden")
+		expect(getMenu().className).toContain("sr-only")
 
 		// Open via captured handler
 		await waitForOpenHandler()
@@ -64,10 +64,10 @@ describe("CheckpointSaved popover visibility", () => {
 
 		await waitFor(() => {
 			expect(getMenu().className).toContain("block")
-			expect(getMenu().className).not.toContain("hidden")
+			expect(getMenu().className).not.toContain("sr-only")
 		})
 
-		// Close via captured handler — menu remains visible briefly, then hides
+		// Close via captured handler: menu remains visible briefly, then hides
 		lastOnOpenChange?.(false)
 
 		await waitFor(() => {
@@ -75,7 +75,7 @@ describe("CheckpointSaved popover visibility", () => {
 		})
 
 		await waitFor(() => {
-			expect(getMenu().className).toContain("hidden")
+			expect(getMenu().className).toContain("sr-only")
 		})
 	})
 
@@ -159,7 +159,7 @@ describe("CheckpointSaved popover visibility", () => {
 		fireEvent.mouseLeave(getParentDiv())
 
 		await waitFor(() => {
-			expect(menuContainer().className).toContain("hidden")
+			expect(menuContainer().className).toContain("sr-only")
 		})
 
 		// Hover to make menu visible again, then reopen
@@ -180,7 +180,7 @@ describe("CheckpointSaved popover visibility", () => {
 		fireEvent.mouseLeave(getParentDiv())
 
 		await waitFor(() => {
-			expect(menuContainer().className).toContain("hidden")
+			expect(menuContainer().className).toContain("sr-only")
 		})
 	})
 
@@ -192,19 +192,19 @@ describe("CheckpointSaved popover visibility", () => {
 			container.querySelector("[class*='flex items-center justify-between']") as HTMLElement
 
 		// Initially hidden (not hovering)
-		expect(getMenu().className).toContain("hidden")
+		expect(getMenu().className).toContain("sr-only")
 
 		// Hover over the component
 		fireEvent.mouseEnter(getParentDiv())
 		await waitFor(() => {
 			expect(getMenu().className).toContain("block")
-			expect(getMenu().className).not.toContain("hidden")
+			expect(getMenu().className).not.toContain("sr-only")
 		})
 
 		// Mouse leaves the component
 		fireEvent.mouseLeave(getParentDiv())
 		await waitFor(() => {
-			expect(getMenu().className).toContain("hidden")
+			expect(getMenu().className).toContain("sr-only")
 		})
 	})
 
@@ -223,5 +223,51 @@ describe("CheckpointSaved popover visibility", () => {
 		await userEvent.click(jumpButton)
 
 		expect(onJumpToPreviousCheckpoint).toHaveBeenCalledTimes(1)
+	})
+
+	it("keeps the menu buttons in the Tab order and shows the menu while focus is inside the row", async () => {
+		const user = userEvent.setup()
+		render(
+			<>
+				<CheckpointSaved {...baseProps} onJumpToPreviousCheckpoint={() => {}} />
+				<button type="button">after</button>
+			</>,
+		)
+
+		const getMenu = () => screen.getByTestId("checkpoint-menu-container") as HTMLElement
+		expect(getMenu().className).not.toContain("block")
+
+		// Tab reaches the first menu button even though the mouse never hovered the row.
+		await user.tab()
+		expect(screen.getByRole("button", { name: "chat:checkpoint.menu.viewDiff" })).toHaveFocus()
+		expect(getMenu().className).toContain("block")
+
+		// Moving focus between the menu's own buttons keeps the menu open. (The Popover mock renders the
+		// popover content inline, so its buttons sit in the Tab order here too; walk until the row ends.)
+		const after = screen.getByRole("button", { name: "after" })
+		const visited: Array<string | null> = []
+		for (let i = 0; i < 20; i++) {
+			await user.tab()
+			if (document.activeElement === after) {
+				break
+			}
+			visited.push(
+				document.activeElement?.getAttribute("aria-label") ??
+					document.activeElement?.getAttribute("data-testid") ??
+					null,
+			)
+			expect(getMenu().className).toContain("block")
+		}
+		expect(visited).toEqual(
+			expect.arrayContaining([
+				"chat:checkpoint.menu.restore",
+				"chat:scrollToLatestCheckpoint",
+				"chat:checkpoint.menu.more",
+			]),
+		)
+
+		// Leaving the row hides the menu again.
+		expect(after).toHaveFocus()
+		expect(getMenu().className).not.toContain("block")
 	})
 })

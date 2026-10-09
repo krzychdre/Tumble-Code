@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
+import userEvent from "@testing-library/user-event"
 
 import { TranslationProvider } from "@/i18n/__mocks__/TranslationContext"
 
@@ -110,6 +111,57 @@ describe("BatchFilePermission", () => {
 			type: "openFile",
 			text: "src/components/Button.tsx",
 		})
+	})
+
+	it("exposes every file row as a focusable button with the focus ring", () => {
+		render(
+			<TranslationProvider>
+				<BatchFilePermission
+					files={mockFiles}
+					onPermissionResponse={mockOnPermissionResponse}
+					ts={Date.now()}
+				/>
+			</TranslationProvider>,
+		)
+
+		const rows = screen.getAllByRole("button")
+		expect(rows).toHaveLength(mockFiles.length)
+		for (const row of rows) {
+			expect(row).toHaveAttribute("tabindex", "0")
+			expect(row.className).toContain("focus-visible:outline-vscode-focusBorder")
+		}
+		expect(rows[0]).toHaveAccessibleName(/Button\.tsx/)
+	})
+
+	it("opens the file with Enter and Space after reaching the row with Tab", async () => {
+		const user = userEvent.setup()
+		render(
+			<TranslationProvider>
+				<BatchFilePermission
+					files={mockFiles}
+					onPermissionResponse={mockOnPermissionResponse}
+					ts={Date.now()}
+				/>
+			</TranslationProvider>,
+		)
+
+		const rows = screen.getAllByRole("button")
+		await user.tab()
+		expect(rows[0]).toHaveFocus()
+		await user.keyboard("{Enter}")
+		expect(mockVscodePostMessage).toHaveBeenLastCalledWith({
+			type: "openFile",
+			text: "src/components/Button.tsx",
+		})
+
+		await user.tab()
+		expect(rows[1]).toHaveFocus()
+		await user.keyboard(" ")
+		expect(mockVscodePostMessage).toHaveBeenLastCalledWith({
+			type: "openFile",
+			text: "/absolute/path/to/outside/config.json",
+		})
+		expect(mockVscodePostMessage).toHaveBeenCalledTimes(2)
 	})
 
 	it("handles files with paths starting with dot correctly", () => {
