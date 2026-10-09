@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tumble Code - every screen, today vs proposal</title>
+<style>
+	* { box-sizing: border-box; }
+	body { margin: 0; padding: 24px; background: #111; color: #ddd; font: 13px/1.4 system-ui, "Segoe UI", Ubuntu, sans-serif; }
+	h1 { font-size: 18px; margin: 0 0 4px; }
+	.lead { color: #999; margin: 0 0 12px; max-width: 1200px; }
+	nav { position: sticky; top: 0; z-index: 10; background: #111; padding: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #333; margin-bottom: 12px; }
+	nav a { color: #9cdcfe; text-decoration: none; padding: 3px 8px; border: 1px solid #333; }
+	nav a:hover { border-color: #666; }
+	.controls { display: flex; gap: 20px; flex-wrap: wrap; margin: 8px 0 4px; color: #bbb; }
+	.controls label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+	section.screen { margin: 28px 0 40px; }
+	section.screen > h2 { font-size: 16px; margin: 0 0 4px; }
+	section.screen > .why { color: #aaa; margin: 0 0 12px; max-width: 1200px; }
+	section.screen > .why li { margin-bottom: 3px; }
+	.grid { display: grid; grid-template-columns: repeat(2, var(--w, 440px)); gap: 20px; }
+	.col-title { font-weight: 600; margin: 0 0 6px; color: #bbb; }
+	.col-title small { font-weight: 400; color: #888; }
+
+	/* ---------- VS Code theme tokens (subset of Dark Modern / Light Modern) ---------- */
+	.dark {
+		--fg: #cccccc; --desc: #9d9d9d; --bg: #1f1f1f; --sidebar: #181818;
+		--input-bg: #313131; --input-fg: #cccccc; --input-border: #3c3c3c; --dropdown-border: #3c3c3c;
+		--focus: #0078d4; --btn-bg: #0078d4; --btn-hover: #026ec1; --btn-fg: #ffffff;
+		--btn2-bg: #313131; --btn2-fg: #cccccc; --btn2-hover: #3c3c3c;
+		--green: #89d185; --red: #f85149; --yellow: #cca700; --blue: #3794ff; --link: #4daafc;
+		--list-hover: #2a2d2e; --list-active: #04395e; --list-active-fg: #ffffff;
+		--panel-border: #2b2b2b; --menu-bg: #1f1f1f; --code-bg: #2b2b2b; --widget-shadow: rgba(0,0,0,.36);
+		--hover-widget: #202020; --cb-bg: #313131; --cb-border: #3c3c3c;
+	}
+	.light {
+		--fg: #3b3b3b; --desc: #6f6f6f; --bg: #ffffff; --sidebar: #f8f8f8;
+		--input-bg: #ffffff; --input-fg: #3b3b3b; --input-border: #cecece; --dropdown-border: #cecece;
+		--focus: #005fb8; --btn-bg: #005fb8; --btn-hover: #0258a8; --btn-fg: #ffffff;
+		--btn2-bg: #e5e5e5; --btn2-fg: #3b3b3b; --btn2-hover: #cccccc;
+		--green: #388a34; --red: #c72e0f; --yellow: #a07a00; --blue: #005fb8; --link: #005fb8;
+		--list-hover: #f2f2f2; --list-active: #e8e8e8; --list-active-fg: #000000;
+		--panel-border: #e5e5e5; --menu-bg: #ffffff; --code-bg: #f2f2f2; --widget-shadow: rgba(0,0,0,.16);
+		--hover-widget: #f8f8f8; --cb-bg: #f8f8f8; --cb-border: #cecece;
+	}
+	/* Many community themes leave input.border undefined, so VS Code exposes nothing and the
+	   webview falls back to transparent. */
+	body.no-input-border .panel { --input-border: transparent; }
+
+	.panel { background: var(--bg); color: var(--fg); border: 1px solid #333; font-size: 13px; position: relative; --radius: 0px; overflow: hidden; }
+	.panel.pad { padding: 12px; }
+	body.rounded .after { --radius: 4px; }
+	.after {
+		--frame: color-mix(in srgb, var(--fg) 13%, transparent);
+		--frame-hover: color-mix(in srgb, var(--fg) 26%, transparent);
+		--control-border: color-mix(in srgb, var(--fg) 45%, transparent);
+		--surface: color-mix(in srgb, var(--fg) 3%, transparent);
+		--surface-hover: color-mix(in srgb, var(--fg) 6%, transparent);
+		--selected: color-mix(in srgb, var(--focus) 18%, transparent);
+	}
+	p { margin: 0; }
+	.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+	.desc { color: var(--desc); }
+	.meta { font-size: 11px; color: var(--desc); }
+	.row { display: flex; align-items: center; gap: 8px; }
+	.col { display: flex; flex-direction: column; }
+	.grow { flex: 1; min-width: 0; }
+	.ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	button { font: inherit; color: inherit; }
+	.sq { width: 8px; height: 8px; display: inline-block; flex-shrink: 0; }
+	.sq.ok { background: var(--green); } .sq.warn { background: var(--yellow); } .sq.err { background: var(--red); } .sq.off { background: var(--desc); }
+
+	/* ================= PRIMITIVES ================= */
+	.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+	.btn.primary { background: var(--btn-bg); color: var(--btn-fg); }
+	.btn.secondary { background: var(--btn2-bg); color: var(--btn2-fg); }
+	.btn.ghost { background: transparent; }
+	.btn.danger { background: var(--red); color: #fff; }
+	.input, .select { display: flex; align-items: center; width: 100%; padding: 0 8px; background: var(--input-bg); color: var(--input-fg); border: 1px solid var(--dropdown-border); font: inherit; outline: none; }
+	.input::placeholder { color: #757575; }
+	.select { justify-content: space-between; cursor: pointer; }
+	.select::after { content: "⌄"; opacity: .5; margin-left: 8px; }
+	textarea.input { padding: 8px 9px; min-height: 64px; resize: none; }
+	.cb { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+	.cb i { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; background: var(--cb-bg); border: 1px solid var(--cb-border); font-style: normal; font-size: 12px; flex-shrink: 0; }
+	.cb.on i::after { content: "✓"; }
+	.tg { display: inline-block; position: relative; width: 26px; height: 10px; background: var(--btn2-bg); cursor: pointer; flex-shrink: 0; }
+	.tg::after { content: ""; position: absolute; top: 1px; left: 1px; width: 8px; height: 8px; background: var(--fg); }
+	.tg.on { background: var(--btn-bg); } .tg.on::after { left: 17px; }
+	.slider { position: relative; height: 8px; background: var(--list-hover); border: 1px solid var(--input-border); flex: 1; }
+	.slider b { position: absolute; top: -3px; left: 55%; width: 12px; height: 12px; background: var(--btn-bg); border: 1px solid color-mix(in srgb, var(--btn-bg) 50%, transparent); }
+	.slider s { display: none; }
+	.badge { display: inline-flex; align-items: center; padding: 1px 8px; font-size: 11px; background: color-mix(in srgb, var(--btn-bg) 25%, transparent); }
+	.icon-btn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 0; color: var(--desc); cursor: pointer; padding: 0; }
+	.tip { display: inline-block; padding: 4px 8px; font-size: 11px; background: var(--hover-widget); outline: 1px solid var(--dropdown-border); }
+	.link { color: var(--link); text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; }
+
+	.before .btn { height: 28px; }
+	.before .btn.primary:hover, .before .btn.secondary:hover { opacity: .7; }
+	.before .btn.ghost:hover { background: var(--list-hover); }
+	.before .input { height: 26px; }
+	.before .select { height: 28px; background: var(--input-bg); }
+	.before .select:hover { background: transparent; }
+	.before .input:focus { border-color: var(--focus); }
+	.before .icon-btn:hover { background: rgba(90, 93, 94, .31); }
+
+	.after .btn { height: 26px; border-radius: var(--radius); transition: background-color .12s, border-color .12s; }
+	.after .btn.primary:hover { background: var(--btn-hover); }
+	.after .btn.secondary { background: var(--surface); color: var(--fg); border-color: var(--frame-hover); }
+	.after .btn.secondary:hover { background: var(--surface-hover); border-color: color-mix(in srgb, var(--fg) 40%, transparent); }
+	.after .btn.ghost:hover { background: var(--surface-hover); }
+	.after .btn.danger { background: transparent; color: var(--red); border-color: color-mix(in srgb, var(--red) 55%, transparent); }
+	.after .btn.danger:hover { background: color-mix(in srgb, var(--red) 10%, transparent); }
+	.after .btn.sm { height: 22px; padding: 0 8px; font-size: 12px; }
+	.after :is(.btn, .icon-btn, .chip, .card, .select, .tab, .side-tab, .pop-item, .tile, .tool-head, .server, .cb, .tg, .link, .mcard, .trigger):focus-visible { outline: 1px solid var(--focus); outline-offset: 1px; }
+	.after .input, .after .select { height: 26px; border-color: var(--frame-hover); border-radius: var(--radius); transition: border-color .12s; }
+	.after .input:hover, .after .select:hover { border-color: color-mix(in srgb, var(--fg) 40%, transparent); }
+	.after .input:focus { border-color: var(--focus); outline: 1px solid var(--focus); outline-offset: -1px; }
+	.after .input::placeholder { color: var(--desc); }
+	.after textarea.input { height: auto; }
+	.after .select::after { opacity: .8; color: var(--desc); }
+	.after .cb { gap: 8px; }
+	.after .cb i { width: 16px; height: 16px; background: var(--input-bg); border-color: var(--control-border); border-radius: var(--radius); }
+	.after .cb:hover i { border-color: var(--fg); }
+	.after .cb.on i { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-fg); }
+	.after .tg { width: 28px; height: 16px; background: transparent; border: 1px solid var(--control-border); border-radius: calc(var(--radius) * 2); }
+	.after .tg::after { top: 3px; left: 3px; width: 8px; height: 8px; background: var(--desc); border-radius: var(--radius); transition: left .12s; }
+	.after .tg.on { background: var(--btn-bg); border-color: var(--btn-bg); }
+	.after .tg.on::after { left: 15px; background: var(--btn-fg); }
+	.after .tg:hover { border-color: var(--fg); }
+	.after .slider { height: 4px; border: 0; background: var(--frame-hover); }
+	.after .slider s { display: block; position: absolute; inset: 0 45% 0 0; background: var(--btn-bg); text-decoration: none; }
+	.after .slider b { top: -5px; width: 14px; height: 14px; border: 2px solid var(--bg); outline: 1px solid var(--btn-bg); border-radius: var(--radius); }
+	.after .badge { border: 1px solid var(--frame-hover); background: var(--surface); border-radius: var(--radius); }
+	.after .icon-btn { width: 22px; height: 22px; border-radius: var(--radius); }
+	.after .icon-btn:hover { background: var(--surface-hover); color: var(--fg); }
+	.after .tip { outline: 0; border: 1px solid var(--frame-hover); box-shadow: 0 2px 8px var(--widget-shadow); border-radius: var(--radius); }
+	.after .link { text-decoration: none; }
+	.after .link:hover { text-decoration: underline; }
+
+	/* ================= CHAT ================= */
+	.chat { display: flex; flex-direction: column; }
+	.th { margin: 8px 12px 4px; padding: 10px 12px 8px; background: var(--input-bg); color: color-mix(in srgb, var(--fg) 80%, transparent); border-bottom: 1px solid var(--panel-border); }
+	.th .ctx { display: flex; align-items: center; gap: 8px; font-size: 12px; color: color-mix(in srgb, var(--desc) 70%, transparent); margin-top: 6px; }
+	.ctx .bar { width: 60px; height: 3px; background: color-mix(in srgb, var(--fg) 20%, transparent); position: relative; }
+	.ctx .bar::after { content: ""; position: absolute; inset: 0 62% 0 0; background: var(--fg); }
+	.msg { padding: 8px 6px 8px 12px; }
+	.mhead { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 8px; }
+	.ubub { margin-left: 24px; padding: 4px 8px; background: color-mix(in srgb, var(--fg) 70%, transparent); color: var(--bg); border: 1px solid var(--input-border); }
+	.abody { padding-left: 24px; }
+	.tool { margin-left: 24px; background: var(--bg); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+	.tool-head { display: flex; align-items: center; gap: 8px; padding: 6px 8px; color: var(--desc); cursor: pointer; width: 100%; background: none; border: 0; text-align: left; }
+	.tool-body { padding: 8px; }
+	.term { background: var(--code-bg); padding: 8px 12px; }
+	.reason .rbody { margin-left: 8px; padding-left: 16px; border-left: 1px solid color-mix(in srgb, var(--desc) 20%, transparent); color: var(--desc); }
+	.reason .chev { opacity: 0; }
+	.reason:hover .chev { opacity: 1; }
+	.err .ebody { margin-left: 8px; padding-left: 16px; border-left: 1px solid color-mix(in srgb, var(--red) 50%, transparent); font-weight: 300; }
+	.err .mhead { color: var(--red); }
+	.err .eacts { opacity: 0; margin-left: auto; }
+	.err:hover .eacts { opacity: 1; }
+	.cp { display: flex; align-items: center; gap: 8px; color: var(--blue); font-weight: 600; font-size: 12px; padding: 8px 12px 12px; }
+	.cp .rule { flex: 1; height: 2px; background: linear-gradient(90deg, rgba(0,188,255,.65), transparent); }
+	.fu { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 8px 36px; }
+	.fu .btn { justify-content: flex-start; height: auto; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent); background: transparent; text-align: left; }
+	.askbar { display: flex; gap: 12px; padding: 0 15px; height: 36px; align-items: center; }
+	.askbar .btn { flex: 1; }
+	.todo { border-top: 1px solid var(--sidebar); margin: 4px 0 0; padding: 8px 10px; font-size: 12px; }
+	.todo .tbar { width: 40px; height: 3px; background: color-mix(in srgb, var(--fg) 20%, transparent); position: relative; }
+	.todo .tbar::after { content: ""; position: absolute; inset: 0 50% 0 0; background: var(--green); }
+
+	.after .th { margin: 8px 12px; padding: 10px 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--frame); border-radius: var(--radius); cursor: pointer; transition: background-color .12s, border-color .12s; }
+	.after .th:hover { background: var(--surface-hover); border-color: var(--frame-hover); }
+	.after .th .ctx { color: var(--desc); }
+	.after .msg { padding: 8px 12px; }
+	.after .mhead { font-weight: 600; }
+	.after .ubub { padding: 8px 10px; background: var(--surface-hover); color: var(--fg); border: 1px solid var(--frame); border-left: 2px solid var(--link); border-radius: var(--radius); }
+	.after .tool { border: 1px solid var(--frame); border-left: 2px solid var(--green); background: var(--surface); border-radius: var(--radius); }
+	.after .tool.running { border-left-color: var(--link); }
+	.after .tool-head { height: 28px; padding: 0 8px; }
+	.after .tool-head:hover { background: var(--surface-hover); color: var(--fg); }
+	.after .tool-body { border-top: 1px solid var(--frame); }
+	.after .term { background: transparent; padding: 8px; }
+	.after .reason .chev { opacity: 1; color: var(--desc); }
+	.after .reason .rbody { border-left-color: var(--frame-hover); }
+	.after .err .ebody { margin-left: 24px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--red) 35%, transparent); border-left: 2px solid var(--red); background: color-mix(in srgb, var(--red) 6%, transparent); font-weight: 400; border-radius: var(--radius); }
+	.after .err .eacts { opacity: 1; }
+	.after .cp { color: var(--desc); font-weight: 400; }
+	.after .cp .ic { color: var(--blue); }
+	.after .cp .rule { height: 1px; background: color-mix(in srgb, var(--blue) 45%, transparent); }
+	.after .fu .btn { padding: 6px 10px; border-color: var(--frame-hover); background: var(--surface); border-radius: var(--radius); }
+	.after .fu .btn:hover { background: var(--surface-hover); border-color: color-mix(in srgb, var(--fg) 40%, transparent); }
+	.after .askbar { padding: 0 12px; gap: 8px; height: auto; margin-bottom: 8px; }
+	.after .todo { border: 1px solid var(--frame); background: var(--surface); margin: 4px 12px 0; border-radius: var(--radius); }
+
+	/* composer (same as approved demo) */
+	.comp { margin: 8px 12px 0; border: 1px solid color-mix(in srgb, var(--input-fg) 25%, transparent); }
+	.comp textarea { display: block; width: 100%; min-height: 52px; resize: none; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; padding: 8px 10px; }
+	.comp textarea::placeholder { color: var(--desc); }
+	.tb { display: flex; gap: 8px; align-items: center; padding: 6px 12px 12px; font-size: 11px; }
+	.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid rgba(255,255,255,.08); background: transparent; color: var(--fg); font-size: 11px; cursor: pointer; }
+	.after .comp { border-color: var(--frame); border-radius: var(--radius); }
+	.after .comp:hover { border-color: var(--frame-hover); }
+	.after .comp:focus-within { border-color: var(--focus); outline: 1px solid var(--focus); outline-offset: -1px; }
+	.after .chip { height: 22px; padding: 0 7px; border-color: var(--frame); border-radius: var(--radius); }
+	.after .chip:hover { border-color: var(--frame-hover); background: var(--surface-hover); }
+	.after .tb .icon-btn { border: 1px solid var(--frame); }
+
+	/* ================= POPOVERS ================= */
+	.pop { margin: 12px; width: calc(100% - 24px); background: var(--menu-bg); border: 1px solid var(--focus); }
+	.pop-search { padding: 8px; border-bottom: 1px solid var(--dropdown-border); }
+	.pop-search .input { height: 32px; font-size: 12px; border-color: var(--input-border); }
+	.pop-desc { padding: 12px; border-bottom: 1px solid var(--dropdown-border); font-size: 11px; color: var(--desc); }
+	.pop-list { padding: 4px 0; }
+	.pop-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 12px; cursor: pointer; width: 100%; background: none; border: 0; text-align: left; }
+	.pop-item:hover { background: var(--list-hover); }
+	.pop-item.sel { background: var(--list-active); color: var(--list-active-fg); }
+	.pop-item .t { font-weight: 700; }
+	.pop-item .d { font-size: 11px; color: var(--desc); }
+	.pop-item .pin { opacity: .5; margin-left: auto; }
+	.pop-foot { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-top: 1px solid var(--dropdown-border); font-size: 12px; color: var(--desc); }
+	.pop-foot .ic { opacity: .6; }
+	.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+	.tile { display: flex; align-items: center; gap: 6px; padding: 8px; border: 0; cursor: pointer; background: color-mix(in srgb, var(--btn-bg) 15%, transparent); color: var(--fg); text-align: left; font-size: 12px; }
+	.tile.on { background: var(--btn-bg); color: var(--btn-fg); }
+	.pop-h { padding: 12px 12px 8px; font-weight: 700; font-size: 13px; }
+
+	.after .pop { border-color: var(--focus); box-shadow: 0 4px 16px var(--widget-shadow); border-radius: var(--radius); }
+	.after .pop-search, .after .pop-desc { border-bottom-color: var(--frame); }
+	.after .pop-search .input { height: 26px; border-color: var(--frame-hover); }
+	.after .pop-item { padding: 5px 10px; margin: 0 4px; width: calc(100% - 8px); border-radius: var(--radius); }
+	.after .pop-item:hover { background: var(--surface-hover); }
+	.after .pop-item.sel { background: var(--selected); color: var(--fg); }
+	.after .pop-item .t { font-weight: 600; }
+	.after .pop-item .pin { opacity: 1; color: var(--desc); }
+	.after .pop-foot { border-top-color: var(--frame); }
+	.after .pop-foot .ic { opacity: 1; }
+	.after .pop-label { padding: 8px 14px 2px; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--desc); }
+	.before .pop-label { display: none; }
+	.after .tile { height: 28px; padding: 0 8px; background: transparent; border: 1px solid var(--frame-hover); border-radius: var(--radius); }
+	.after .tile:hover { background: var(--surface-hover); }
+	.after .tile.on { background: var(--selected); color: var(--fg); border-color: var(--focus); }
+	.after .tile.on::after { content: "✓"; margin-left: auto; color: var(--focus); }
+	.after .tile.forced { border-color: #ea580c; background: color-mix(in srgb, #ea580c 14%, transparent); }
+
+	/* ================= SETTINGS ================= */
+	.set-top { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--panel-border); }
+	.set-top h3 { margin: 0; font-size: 14.5px; font-weight: 700; flex: 1; }
+	.set-top .input { width: 140px; height: 28px; border-color: var(--input-border); }
+	.set { display: flex; min-height: 520px; }
+	.side { width: 168px; border-right: 1px solid var(--sidebar); flex-shrink: 0; }
+	.side-tab { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; width: 100%; border: 0; border-left: 2px solid transparent; background: none; opacity: .7; cursor: pointer; text-align: left; }
+	.side-tab:hover { background: var(--list-hover); }
+	.side-tab.active { opacity: 1; border-left-color: var(--focus); background: var(--list-active); }
+	.content { flex: 1; min-width: 0; }
+	.s-head { padding: 24px 20px 16px; background: var(--sidebar); }
+	.s-head h4 { margin: 0; font-size: 16px; font-weight: 600; }
+	.s-head p { margin-top: 8px; font-size: 12px; color: var(--desc); }
+	.s-body { display: flex; flex-direction: column; gap: 16px; padding: 8px 20px 20px; }
+	.s-group { display: flex; flex-direction: column; gap: 16px; }
+	.s-row .lbl { font-weight: 500; }
+	.s-row .sd { font-size: 12px; color: var(--desc); margin: 4px 0 0 28px; }
+	.s-row .sd.xs { font-size: 11px; margin-left: 0; }
+	.s-row .ctl { margin-top: 6px; }
+	.nested { border-left: 2px solid var(--btn-bg); padding-left: 12px; display: flex; flex-direction: column; gap: 12px; }
+	.s-gtitle { display: none; }
+
+	.after .set-top { border-bottom-color: var(--frame); padding: 8px 16px; }
+	.after .set-top .input { height: 26px; border-color: var(--frame-hover); }
+	.after .side { border-right-color: var(--frame); padding: 6px 0; }
+	.after .side-tab { height: 30px; opacity: 1; color: var(--desc); padding: 0 12px; margin: 1px 6px; width: calc(100% - 12px); border-left: 0; border-radius: var(--radius); position: relative; }
+	.after .side-tab:hover { background: var(--surface-hover); color: var(--fg); }
+	.after .side-tab.active { background: var(--selected); color: var(--fg); }
+	.after .side-tab.active::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; background: var(--focus); }
+	.after .s-head { background: var(--bg); padding: 20px 20px 12px; border-bottom: 1px solid var(--frame); }
+	.after .s-body { padding: 16px 20px 20px; }
+	.after .s-gtitle { display: block; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--desc); margin: 0 0 6px 2px; }
+	.after .s-group { gap: 0; border: 1px solid var(--frame); background: var(--surface); border-radius: var(--radius); }
+	.after .s-row { padding: 10px 12px; }
+	.after .s-row + .s-row, .after .s-group > .nested { border-top: 1px solid var(--frame); }
+	.after .s-row .sd, .after .s-row .sd.xs { font-size: 12px; margin: 2px 0 0 24px; }
+	.after .s-row .sd.np { margin-left: 0; }
+	.after .s-row .lbl { font-weight: 500; }
+	.after .nested { border-left: 0; padding: 0 0 0 24px; gap: 0; position: relative; }
+	.after .nested::before { content: ""; position: absolute; left: 19px; top: 8px; bottom: 8px; width: 1px; background: var(--frame-hover); }
+	.after .nested .s-row { padding-left: 12px; }
+
+	/* ================= MCP ================= */
+	.server { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--code-bg); margin-bottom: 8px; cursor: pointer; }
+	.server.dis { opacity: .6; }
+	.server .st { display: none; }
+	.toolrow { display: flex; align-items: center; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--panel-border); font-size: 12px; }
+	.toolrow:last-child { border-bottom: 0; }
+	.srv-body { background: var(--code-bg); padding: 0 10px 12px; margin: -8px 0 8px; }
+	.after .server { background: var(--surface); border: 1px solid var(--frame); margin-bottom: 0; border-radius: var(--radius); transition: background-color .12s, border-color .12s; }
+	.after .server:hover { background: var(--surface-hover); border-color: var(--frame-hover); }
+	.after .server.dis { opacity: 1; color: var(--desc); }
+	.after .server .st { display: inline; font-size: 11px; color: var(--desc); }
+	.after .server.open { border-bottom-color: var(--frame); }
+	.after .srv-body { background: var(--surface); border: 1px solid var(--frame); border-top: 0; margin: 0; padding: 0 10px; border-radius: 0 0 var(--radius) var(--radius); }
+	.after .toolrow { border-bottom-color: var(--frame); }
+	.after .srv-list { display: flex; flex-direction: column; gap: 8px; }
+
+	/* ================= MARKETPLACE ================= */
+	.tabs { display: flex; position: relative; border-bottom: 2px solid var(--input-border); margin-bottom: 12px; }
+	.tab { padding: 8px 16px; background: none; border: 0; font-weight: 500; font-size: 12px; cursor: pointer; position: relative; }
+	.tab.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--btn-bg); }
+	.mcard { border: 1px solid var(--panel-border); padding: 12px; margin-bottom: 8px; background: var(--bg); }
+	.mcard:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
+	.mcard h5 { margin: 0 0 4px; font-size: 14.5px; font-weight: 600; }
+	.tag { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; font-size: 11px; background: var(--btn2-bg); margin-right: 4px; }
+	.tag.inst { background: color-mix(in srgb, var(--green) 20%, transparent); border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); }
+	.after .tabs { border-bottom: 1px solid var(--frame); }
+	.after .tab { color: var(--desc); }
+	.after .tab:hover { color: var(--fg); background: var(--surface-hover); }
+	.after .tab.active { color: var(--fg); }
+	.after .tab.active::after { bottom: -1px; background: var(--focus); }
+	.after .mcard { background: var(--surface); border-color: var(--frame); border-radius: var(--radius); cursor: pointer; transition: background-color .12s, border-color .12s; }
+	.after .mcard:hover { background: var(--surface-hover); border-color: var(--frame-hover); }
+	.after .mcard h5 { font-size: 13.5px; }
+	.after .tag { background: transparent; border: 1px solid var(--frame-hover); color: var(--desc); border-radius: var(--radius); }
+	.after .tag.inst { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); background: transparent; }
+
+	/* ================= HISTORY VIEW ================= */
+	.hcard { display: block; width: 100%; text-align: left; padding: 12px 12px 4px 16px; margin-bottom: 4px; cursor: pointer; background: var(--bg); color: color-mix(in srgb, var(--fg) 80%, transparent); border: 1px solid color-mix(in srgb, var(--input-fg) 25%, transparent); }
+	.hcard .meta { color: color-mix(in srgb, var(--desc) 60%, transparent); padding: 4px 0 8px; }
+	.hgroup { font-size: 11px; text-transform: uppercase; color: var(--desc); margin: 12px 0 6px; }
+	.after .hcard { padding: 10px 12px; margin-bottom: 8px; background: var(--surface); color: var(--fg); border-color: var(--frame); border-radius: var(--radius); }
+	.after .hcard:hover { background: var(--surface-hover); border-color: var(--frame-hover); }
+	.after .hcard .meta { color: var(--desc); padding: 4px 0 0; }
+	.after .hgroup { letter-spacing: .04em; }
+
+	/* ================= DIALOG ================= */
+	.overlay { position: absolute; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; }
+	.dlg { width: 82%; background: var(--bg); border: 1px solid var(--input-border); padding: 24px; }
+	.dlg h4 { margin: 0 0 8px; font-size: 15px; }
+	.dlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+	.after .overlay { background: color-mix(in srgb, var(--bg) 55%, rgba(0,0,0,.35)); }
+	.after .dlg { border-color: var(--frame-hover); box-shadow: 0 8px 28px var(--widget-shadow); padding: 16px; border-radius: var(--radius); }
+	.after .dlg h4 { font-size: 14px; font-weight: 600; }
+	.after .dlg .acts { margin-top: 16px; }
+
+	/* ================= HOME ================= */
+	.hero { text-align: center; padding: 16px 0 8px; font-size: 28px; }
+	.tips { display: flex; flex-direction: column; gap: 12px; padding: 0 8px; color: var(--desc); font-size: 12px; }
+	.tips b { color: var(--fg); font-weight: 500; }
+	.after .tips { gap: 0; border: 1px solid var(--frame); background: var(--surface); padding: 0; border-radius: var(--radius); }
+	.after .tips > div { padding: 10px 12px; }
+	.after .tips > div + div { border-top: 1px solid var(--frame); }
+
+	.notes { max-width: 1200px; color: #bbb; }
+	.notes li { margin-bottom: 5px; }
+	.notes code, .why code { color: #ddd; }
+</style>
+</head>
+<body>
+<h1>Tumble Code: every screen, today vs proposal</h1>
+<p class="lead">Same rules as the approved first demo, applied everywhere. In every section: left column is <code>main</code> today, right is the proposal; first row dark ("Dark Modern"), second row light ("Light Modern"). Hover, click and press Tab to see hover and focus states.</p>
+<div class="controls">
+	<label><input type="checkbox" id="noborder" /> Simulate a theme without <code>input.border</code> (common in community themes; many "today" lines disappear)</label>
+	<label><input type="checkbox" id="rounded" /> Proposal with 4px rounded corners</label>
+</div>
+<nav>
+	<a href="#rules">Rules</a><a href="#primitives">Controls</a><a href="#chat">Chat</a><a href="#popovers">Popovers</a><a href="#settings">Settings</a><a href="#modes">Modes</a><a href="#mcp">MCP</a><a href="#marketplace">Marketplace</a><a href="#history">History</a><a href="#home">Home</a><a href="#dialog">Dialogs</a>
+</nav>
+
+<section class="screen" id="rules">
+	<h2>The rules (one design language for the whole webview)</h2>
+	<ol class="notes">
+		<li><b>Frame</b> = 13% of the theme foreground; <b>hover frame</b> = 26%; <b>surface</b> fill 3%, hover 6%. Used by every card, block, popover section, chip and list. Replaces 8 border sources in use today (panel-border, dropdown-border, input-border with transparent fallback, editorGroup-border, widget-border, lineHighlightBorder, sideBar-background used as a border, hard-coded white rgba).</li>
+		<li><b>Form controls</b> (input, select, textarea, secondary button) use the 26% frame so they read as controls; <b>checkbox and toggle</b> use 45% so their outline meets the WCAG 3:1 contrast rule for small controls.</li>
+		<li><b>Two heights only</b>: 26px for form controls and buttons, 22px for compact toolbar chips and icon buttons. Today 18, 20, 22, 24, 26, 28, 32, 36, 40 and 48px are all in use.</li>
+		<li><b>One focus ring</b>: 1px theme focus colour, 1px offset, on every interactive element (today four different styles, and several elements have none).</li>
+		<li><b>One selected state</b>: focus colour at 18% fill (+ a 2px bar in side navigation). <b>One hover</b>: surface 6%.</li>
+		<li><b>No text dimmed with opacity</b>: secondary text uses the theme description colour. <b>No hover-only controls</b>: copy, docs and chevrons stay visible (keyboard and touch users never see hover-only buttons).</li>
+		<li><b>No hard-coded colours</b>: white rgba hovers, <code>#757575</code> placeholder, <code>#3c3c3c</code> checkbox fallback, cyan checkpoint gradient, black overlay all derive from the theme.</li>
+		<li>Kept on purpose: square corners (toggle above to compare), the orange frame accent for elevated auto-approve, the 2px status edge on tool blocks.</li>
+	</ol>
+</section>
+
+<!-- ======================== TEMPLATES ======================== -->
+<template id="t-primitives">
+	<div class="panel pad">
+		<div class="col" style="gap:12px">
+			<div class="row"><button class="btn primary">Save</button><button class="btn secondary">Cancel</button><button class="btn ghost">Ghost</button><button class="btn danger">Delete</button></div>
+			<input class="input" placeholder="Search settings..." />
+			<div class="select" tabindex="0">gpt-5.3-codex</div>
+			<textarea class="input" placeholder="Custom instructions for this mode..."></textarea>
+			<div class="row" style="gap:16px">
+				<span class="cb on" tabindex="0"><i></i>Auto-approve reads</span>
+				<span class="cb" tabindex="0"><i></i>Write files</span>
+			</div>
+			<div class="row" style="gap:10px"><span class="tg on" tabindex="0"></span>Enabled <span class="tg" tabindex="0" style="margin-left:12px"></span>Disabled</div>
+			<div class="row"><span class="desc" style="width:80px">Temperature</span><span class="slider"><s></s><b></b></span><span class="mono">0.7</span></div>
+			<div class="row"><span class="badge">MCP</span><span class="badge">3 tools</span><button class="icon-btn">⟳</button><button class="icon-btn">🗑︎</button><span class="tip">Refresh server</span></div>
+			<div><button class="link">Import settings</button> <span class="desc">from a JSON file</span></div>
+		</div>
+	</div>
+</template>
+
+<template id="t-chat">
+	<div class="panel chat">
+		<div class="th" tabindex="0">
+			<div class="row"><span class="grow ell">Fix the history row borders and make the toolbar consistent</span><span class="desc">⌄</span></div>
+			<div class="ctx"><span class="bar"></span>38% · 76.1k / 200k <span>·</span> $0.42</div>
+		</div>
+		<div class="msg">
+			<div class="mhead">👤︎ You said</div>
+			<div class="ubub">The borders on the history rows look off, can you make them softer?</div>
+		</div>
+		<div class="msg reason">
+			<div class="mhead" style="font-weight:600">💡︎ Thinking <span class="meta" style="font-weight:400">4s</span><span class="chev">⌄</span></div>
+			<div class="rbody">The frame is 25% foreground with no fill; reduce it and add a surface...</div>
+		</div>
+		<div class="msg">
+			<div class="mhead">🗎︎ Tumble wants to read a file</div>
+			<div class="tool">
+				<button class="tool-head"><span class="grow ell">webview-ui/src/index.css</span><span>⌄</span></button>
+			</div>
+		</div>
+		<div class="msg">
+			<div class="mhead">⌨︎ Run command <span class="sq ok"></span></div>
+			<div class="tool">
+				<button class="tool-head"><span class="grow ell">pnpm --filter webview-ui test</span><span>■</span><span>⌃</span></button>
+				<div class="tool-body term">✓ 412 tests passed (18.2s)</div>
+			</div>
+		</div>
+		<div class="msg err">
+			<div class="mhead">⚠︎ Error <span class="eacts row" style="gap:4px;font-weight:400"><button class="icon-btn">⧉</button><button class="icon-btn">?</button></span></div>
+			<div class="ebody">The model returned an empty response. Retrying in 5s.</div>
+		</div>
+		<div class="cp"><span class="ic">⚑</span>Checkpoint<span class="rule"></span></div>
+		<div class="fu">
+			<button class="btn">Apply the same frame to the settings view</button>
+			<button class="btn">Stop here, I will review first</button>
+		</div>
+		<div class="askbar"><button class="btn primary">Approve</button><button class="btn secondary">Reject</button></div>
+		<div class="todo"><div class="row"><span>☰ To-do</span><span class="tbar"></span><span class="meta">2 / 4</span></div></div>
+		<div class="comp"><textarea placeholder="Type a message..."></textarea></div>
+		<div class="tb"><button class="chip">&lt;/&gt; Code ▾</button><button class="chip">glm-5.3 ▾</button><span class="grow"></span><button class="icon-btn">🧠︎</button><button class="icon-btn">⛁</button></div>
+	</div>
+</template>
+
+<template id="t-popovers">
+	<div class="panel">
+		<div class="pop">
+			<div class="pop-search"><input class="input" placeholder="Search modes..." /></div>
+			<div class="pop-desc">Switch mode with ⌘. to cycle.</div>
+			<div class="pop-list">
+				<div class="pop-label">Built-in</div>
+				<button class="pop-item sel"><span>&lt;/&gt;</span><span class="grow"><div class="t">Code</div><div class="d ell">Write, modify and refactor code</div></span><span>✓</span></button>
+				<button class="pop-item"><span>?</span><span class="grow"><div class="t">Ask</div><div class="d ell">Answer questions, no edits</div></span></button>
+				<button class="pop-item"><span>⧉</span><span class="grow"><div class="t">Orchestrator</div><div class="d ell">Split work across modes</div></span></button>
+				<div class="pop-label">Custom</div>
+				<button class="pop-item"><span>👁︎</span><span class="grow"><div class="t">Vision</div><div class="d ell">Describe images for text-only models</div></span><span class="pin">📌︎</span></button>
+			</div>
+			<div class="pop-foot"><span><span class="ic">⚙︎</span> Edit modes</span><span class="ic">ⓘ</span></div>
+		</div>
+		<div class="pop">
+			<div class="pop-h">Auto-approve</div>
+			<div class="tiles">
+				<button class="tile on">👁︎ Read</button><button class="tile on">✎ Write</button>
+				<button class="tile">⌨︎ Execute</button><button class="tile">🌐︎ Browser</button>
+				<button class="tile">⧉ Subtasks</button><button class="tile forced">⚡ Bypass (forced)</button>
+			</div>
+			<div class="pop-foot"><span class="row"><button class="btn ghost sm">All</button><button class="btn ghost sm">None</button></span><span class="row" style="gap:6px"><span class="tg on"></span>Enabled</span></div>
+		</div>
+	</div>
+</template>
+
+<template id="t-settings">
+	<div class="panel">
+		<div class="set-top"><button class="icon-btn">←</button><h3>Settings</h3><input class="input" placeholder="Search..." /><button class="btn primary">Save</button></div>
+		<div class="set">
+			<div class="side">
+				<button class="side-tab">🔌︎ Providers</button>
+				<button class="side-tab active">✓ Auto-approve</button>
+				<button class="side-tab">⌨︎ Terminal</button>
+				<button class="side-tab">🔔︎ Notifications</button>
+				<button class="side-tab">◐ UI</button>
+				<button class="side-tab">⚗︎ Experimental</button>
+			</div>
+			<div class="content">
+				<div class="s-head"><h4>Auto-approve</h4><p>Let Tumble run these actions without asking.</p></div>
+				<div class="s-body">
+					<div>
+						<div class="s-gtitle">Files</div>
+						<div class="s-group">
+							<div class="s-row"><span class="cb on" tabindex="0"><i></i><span class="lbl">Read files</span></span><div class="sd">Read files inside the workspace.</div></div>
+							<div class="nested">
+								<div class="s-row"><span class="cb" tabindex="0"><i></i><span class="lbl">Include files outside the workspace</span></span></div>
+							</div>
+							<div class="s-row"><span class="cb" tabindex="0"><i></i><span class="lbl">Write files</span></span><div class="sd xs">Create and edit files without approval.</div></div>
+						</div>
+					</div>
+					<div>
+						<div class="s-gtitle">Requests</div>
+						<div class="s-group">
+							<div class="s-row"><div class="lbl">Delay after writes</div><div class="sd np">Wait for diagnostics before the next step.</div><div class="row ctl"><span class="slider"><s></s><b></b></span><span class="mono">1s</span></div></div>
+							<div class="s-row"><div class="lbl">Max requests</div><div class="ctl"><input class="input" value="50" /></div></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+
+<template id="t-modes">
+	<div class="panel pad">
+		<div class="row" style="margin-bottom:12px"><div class="select grow" tabindex="0">&lt;/&gt; Code</div><button class="icon-btn">＋</button><button class="icon-btn">✎</button><button class="icon-btn">🗑︎</button></div>
+		<div class="s-group">
+			<div class="s-row"><div class="lbl" style="font-weight:700">Role definition</div><div class="sd np" style="margin-bottom:6px">Who Tumble is in this mode.</div><textarea class="input">You are Tumble, a highly skilled software engineer...</textarea></div>
+			<div class="s-row"><div class="lbl" style="font-weight:700">API configuration</div><div class="ctl"><div class="select" tabindex="0">glm-5.3-flash</div></div></div>
+			<div class="s-row"><div class="lbl" style="font-weight:700">Tools</div><div class="row ctl" style="flex-wrap:wrap;gap:12px"><span class="cb on"><i></i>Read</span><span class="cb on"><i></i>Edit</span><span class="cb"><i></i>Browser</span><span class="cb on"><i></i>Command</span></div></div>
+		</div>
+		<div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn secondary">Preview system prompt</button></div>
+	</div>
+</template>
+
+<template id="t-mcp">
+	<div class="panel pad">
+		<div class="srv-list">
+			<div class="server open" tabindex="0"><span>⌄</span><span class="grow">context7</span><span class="badge">global</span><button class="icon-btn">⟳</button><span class="sq ok"></span><span class="st">Running</span></div>
+			<div class="srv-body">
+				<div class="toolrow"><span class="grow mono">resolve-library-id</span><span class="cb on"><i></i>Always allow</span><span class="tg on"></span></div>
+				<div class="toolrow"><span class="grow mono">query-docs</span><span class="cb"><i></i>Always allow</span><span class="tg on"></span></div>
+			</div>
+			<div class="server" tabindex="0"><span>›</span><span class="grow">searxNcrawl</span><span class="badge">project</span><button class="icon-btn">⟳</button><span class="sq warn"></span><span class="st">Connecting</span></div>
+			<div class="server dis" tabindex="0"><span>›</span><span class="grow">crawl4ai</span><span class="badge">global</span><button class="icon-btn">⟳</button><span class="sq off"></span><span class="st">Disabled</span></div>
+		</div>
+		<div class="row" style="margin-top:12px"><button class="btn secondary grow">Edit global MCP</button><button class="btn secondary grow">Edit project MCP</button></div>
+	</div>
+</template>
+
+<template id="t-marketplace">
+	<div class="panel pad">
+		<div class="tabs"><button class="tab active">MCP</button><button class="tab">Modes</button></div>
+		<div class="row" style="margin-bottom:12px"><input class="input" placeholder="Search marketplace..." /></div>
+		<div class="mcard" tabindex="0"><h5>Context7</h5><p class="desc" style="font-size:12px;margin-bottom:8px">Up-to-date library documentation for any prompt.</p><span class="tag">docs</span><span class="tag">search</span><span class="tag inst">✓ Installed</span></div>
+		<div class="mcard" tabindex="0"><h5>Reviewer</h5><p class="desc" style="font-size:12px;margin-bottom:8px">Code review mode with a strict checklist.</p><span class="tag">mode</span><button class="btn primary" style="float:right;margin-top:-4px">Install</button></div>
+	</div>
+</template>
+
+<template id="t-history">
+	<div class="panel pad">
+		<div class="row" style="margin-bottom:10px"><h4 style="margin:0;font-size:14.5px;flex:1">History</h4><button class="btn secondary">Select</button></div>
+		<input class="input" placeholder="Fuzzy search history..." style="margin-bottom:6px" />
+		<div class="row"><div class="select grow" tabindex="0">This workspace</div><div class="select grow" tabindex="0">Newest</div></div>
+		<div class="hgroup">Today</div>
+		<button class="hcard"><p class="ell">merge it</p><div class="meta">CODE · 20:04 · <span style="color:var(--green)">✓ Done</span> · $0.06</div></button>
+		<button class="hcard"><p class="ell">/commitmsg</p><div class="meta">CODE · 19:45 · <span style="color:var(--green)">✓ Done</span> · $0.03</div></button>
+		<div class="hgroup">Yesterday</div>
+		<button class="hcard"><p class="ell">push i merge</p><div class="meta">CODE · 11:09 · <span style="color:var(--green)">✓ Done</span> · $0.13</div></button>
+	</div>
+</template>
+
+<template id="t-home">
+	<div class="panel pad">
+		<div class="hero">🪨︎</div>
+		<p style="text-align:center;margin-bottom:16px" class="desc">What can I do for you?</p>
+		<div class="tips">
+			<div><b>⧉ Orchestrator</b><br />Splits big jobs into subtasks in the right modes.</div>
+			<div><b>⚑ Checkpoints</b><br />Every step can be rolled back.</div>
+			<div><b>@ Mentions</b><br />Add files, problems and terminal output to the context.</div>
+		</div>
+	</div>
+</template>
+
+<template id="t-dialog">
+	<div class="panel" style="height:280px">
+		<div class="pad desc" style="padding:12px">History rows behind the dialog...</div>
+		<div class="overlay">
+			<div class="dlg">
+				<h4>Delete task?</h4>
+				<p class="desc" style="font-size:12px">This removes the task, its subtasks and checkpoints. This cannot be undone.</p>
+				<div class="acts"><button class="btn secondary">Cancel</button><button class="btn danger">Delete</button></div>
+			</div>
+		</div>
+	</div>
+</template>
+
+<script>
+	const SCREENS = [
+		["primitives", "Controls (buttons, inputs, selects, checkbox, toggle, slider, badge, tooltip, link)", 440, [
+			"Buttons and inputs share one 26px height; secondary buttons become outlined instead of a grey block that looks disabled in light themes.",
+			"Inputs and selects: 26% frame, hover 40%, focus = theme focus colour; select no longer loses its fill on hover; placeholder uses the theme colour instead of <code>#757575</code>.",
+			"Checkbox 16px and toggle 28x16 with a 45% outline, hover and focus ring (the toggle had neither); slider shows the filled part.",
+			"Danger button is outlined red instead of a solid error-colour block; icon buttons hover with the theme surface instead of <code>rgba(90,93,94,.31)</code>.",
+		]],
+		["chat", "Chat (task header, messages, tool blocks, command, error, checkpoint, follow-ups, approve bar, to-do)", 440, [
+			"Task header becomes a closed card with hover (today only a bottom border; text at 80% opacity).",
+			"User message: the inverted 70% foreground block (heaviest thing on screen) becomes a tinted card with a link-coloured edge.",
+			"Every tool block (file read, command, MCP, diff) gets the frame, the 2px status edge and a 28px header row with a hover; the undefined <code>border-vscode-border</code> and the legacy borderless ToolUseBlock go away.",
+			"Thinking chevron, error copy/docs buttons and follow-up copy stay visible instead of appearing only on hover.",
+			"Errors get a tinted red card; checkpoint rule uses the theme blue instead of hard-coded cyan; to-do sits in a card instead of under an invisible border.",
+			"Approve/Reject: 12px gutter like the rest of the chat (was 15px), 8px gap.",
+		]],
+		["popovers", "Popovers (mode, model, auto-approve, worktree, code index)", 440, [
+			"Keeps the focus-coloured (orange when elevated) frame you asked for earlier, adds a shadow so it floats above the chat.",
+			"Search box 26px with a visible frame (today 32px with input-border, gone in many themes).",
+			"Items: inset hover rows, selected = focus tint + check (the solid list-selection blue fought the frame), group labels, no 50-70% opacity icons.",
+			"Auto-approve tiles: outlined 28px tiles, on = focus tint + check (today a solid primary block vs a 15% blue block, hard to tell apart in light themes).",
+		]],
+		["settings", "Settings", 640, [
+			"Sidebar divider was the sidebar background colour (invisible); tabs were 48px tall and at 70% opacity. Now 30px, description colour, selected = tint + 2px bar.",
+			"Related settings are grouped in framed cards with hairlines between rows and a small group label; descriptions align under the label (today <code>ml-5</code>, <code>ml-6</code>, <code>-mt-2</code>, <code>text-xs</code> and <code>text-sm</code> are mixed).",
+			"Nested options use a thin frame line instead of the bright button-colour bar.",
+			"Search box gets the 26px frame (it used input-border and vanished in many themes).",
+		]],
+		["modes", "Modes", 440, [
+			"Mode editor fields in one framed card, field titles <code>font-medium</code> like Settings (today <code>font-bold</code>).",
+			"The hand-made config dropdown in the header gets hover and focus (today none) and the frame instead of input-border; system prompt divider uses the frame.",
+		]],
+		["mcp", "MCP servers", 440, [
+			"Server rows are clickable but had no border and no hover; now framed cards with hover and focus.",
+			"Status dot is paired with a word (Running, Connecting, Disabled), so colour is never the only signal; disabled rows use the description colour instead of 60% opacity.",
+			"Tool rows: hairline dividers in the frame colour, toggle with outline and focus ring.",
+		]],
+		["marketplace", "Marketplace", 440, [
+			"Tabs had no hover, no focus and an underline track in input-border (often invisible); now description colour, hover, focus and a focus-coloured indicator.",
+			"Cards use the shared frame and surface (today panel-border + 5% hover, the closest thing to the proposal already).",
+			"Tags are outlined; the Installed tag is green text with a green frame.",
+		]],
+		["history", "History view", 440, [
+			"Search input (26px) and the two selects (28px today) line up at 26px.",
+			"Rows are the cards approved in the first demo.",
+		]],
+		["home", "Home / welcome", 440, [
+			"Tips sit in one framed card with hairlines instead of a loose list; the history preview below uses the approved cards.",
+		]],
+		["dialog", "Dialogs", 440, [
+			"Dialog frame used the input border (often transparent) or panel-border depending on the dialog type; now one frame + shadow, 16px padding in both types.",
+			"Overlay derives from the theme background instead of solid black 50%, so light themes are not darkened to grey.",
+		]],
+	]
+	const nav = document.querySelector("nav")
+	for (const [id, title, width, why] of SCREENS) {
+		const sec = document.createElement("section")
+		sec.className = "screen"
+		sec.id = id
+		sec.innerHTML = `<h2>${title}</h2><ul class="why">${why.map((w) => `<li>${w}</li>`).join("")}</ul>`
+		const grid = document.createElement("div")
+		grid.className = "grid"
+		grid.style.setProperty("--w", width + "px")
+		const tpl = document.getElementById("t-" + id)
+		for (const theme of ["dark", "light"]) {
+			for (const variant of ["before", "after"]) {
+				const col = document.createElement("div")
+				col.innerHTML = `<p class="col-title">${variant === "before" ? "Today" : "Proposal"} <small>(${theme})</small></p>`
+				const panel = tpl.content.firstElementChild.cloneNode(true)
+				panel.classList.add(theme, variant)
+				col.append(panel)
+				grid.append(col)
+			}
+		}
+		sec.append(grid)
+		document.body.append(sec)
+	}
+	document.getElementById("noborder").addEventListener("change", (e) => document.body.classList.toggle("no-input-border", e.target.checked))
+	document.getElementById("rounded").addEventListener("change", (e) => document.body.classList.toggle("rounded", e.target.checked))
+</script>
+</body>
+</html>

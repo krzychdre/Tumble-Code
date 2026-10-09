@@ -85,11 +85,13 @@
 	--color-chart-5: var(--chart-5);
 
 	/**
-	 * Rectangular corners: every Tailwind radius token is collapsed to 0. The
-	 * `rounded` and `rounded-full` utilities do not read these tokens, so
-	 * `scripts/check-webview-radius.mjs` (part of the webview lint) keeps every
-	 * `rounded*` class out of the source instead of flattening them here.
+	 * Corners follow VS Code (ai_plans/2026-10-09_ui-frame-language.md): 2px on controls, cards and blocks
+	 * (`rounded-control`), 4px on surfaces that float above the content: popovers, menus, dialogs, tooltips
+	 * (`rounded-floating`). The stock Tailwind scale stays at 0 and `scripts/check-webview-radius.mjs`
+	 * rejects every other `rounded*` class, so these two are the only corner sizes in the webview.
 	 */
+	--radius-control: 2px;
+	--radius-floating: 4px;
 	--radius-xs: 0;
 	--radius-sm: 0;
 	--radius-md: 0;
@@ -125,17 +127,28 @@
 
 	--color-vscode-input-foreground: var(--vscode-input-foreground);
 	--color-vscode-input-background: var(--vscode-input-background);
-	--color-vscode-input-border: var(
-		--vscode-input-border,
-		transparent
-	); /* Some themes don't have a border color, so we can fallback to transparent */
+	/* Resolves to --input-frame (see body below): the theme's input.border or the visible fallback. */
+	--color-vscode-input-border: var(--vscode-input-border, var(--input-frame));
 
 	--color-vscode-focusBorder: var(--vscode-focusBorder);
 	/* Frame of popovers and the composer focus outline; turns orange with bypass/autonomous auto-approve. */
 	--color-frame-accent: var(--frame-accent);
-	/* Composer border while it is not focused, also the frame of history rows: the input border is
-	   transparent in many themes, so mix the input foreground in to keep the box outline visible. */
-	--color-composer-idle-border: color-mix(in srgb, var(--vscode-input-foreground, #cccccc) 25%, transparent);
+	/* The frame language (ai_plans/2026-10-09_ui-frame-language.md). Values live in :root below.
+	   frame / frame-hover: border of every card, block, popover section, chip and list row.
+	   input-frame / input-frame-hover: border of inputs, selects, textareas and secondary buttons; the
+	   theme's own input.border when it defines one.
+	   toggle-border: outline of checkboxes and switches, strong enough for the 3:1 contrast rule.
+	   surface / surface-hover: the fill of framed cards. selected: the fill of the chosen list item. */
+	--color-frame: var(--frame);
+	--color-frame-hover: var(--frame-hover);
+	--color-input-frame: var(--input-frame);
+	--color-input-frame-hover: var(--input-frame-hover);
+	--color-toggle-border: var(--toggle-border);
+	--color-surface: var(--surface);
+	--color-surface-hover: var(--surface-hover);
+	--color-selected: var(--selected);
+	/* Composer border while it is not focused: the shared frame. */
+	--color-composer-idle-border: var(--frame);
 
 	--color-vscode-badge-foreground: var(--vscode-badge-foreground);
 	--color-vscode-badge-background: var(--vscode-badge-background);
@@ -214,7 +227,8 @@
 		--accent-foreground: var(--vscode-list-hoverForeground);
 		--destructive: var(--vscode-errorForeground);
 		--destructive-foreground: var(--vscode-editor-background);
-		--border: var(--vscode-input-border, transparent); /* --border gets theme value or transparent fallback */
+		/* A bare `border` class draws the shared frame; it used to fall back to transparent and vanish. */
+		--border: var(--frame);
 		--input: var(--vscode-input-background);
 		/* The focus ring is the theme's focusBorder, never the (often
 		   transparent) input border (§2.1, ai_plans/2026-09-27_ui-modernization.md). */
@@ -230,7 +244,21 @@
 		--chart-3: var(--vscode-charts-yellow);
 		--chart-4: var(--vscode-charts-orange);
 		--chart-5: var(--vscode-charts-green);
-		--radius: 0; /* Rectangular corners across the webview. */
+		--radius: var(--radius-control);
+		/* Frame language: every value mixes the theme foreground, so it works in dark, light and
+		   high-contrast themes; no hard-coded white or black. */
+		--frame: color-mix(in srgb, var(--vscode-foreground, #cccccc) 13%, transparent);
+		--frame-hover: color-mix(in srgb, var(--vscode-foreground, #cccccc) 26%, transparent);
+		/* Read on :root, where VS Code injects the theme: body re-points --vscode-input-border below. */
+		--input-frame: var(
+			--vscode-input-border,
+			color-mix(in srgb, var(--vscode-foreground, #cccccc) 26%, transparent)
+		);
+		--input-frame-hover: color-mix(in srgb, var(--vscode-foreground, #cccccc) 40%, transparent);
+		--toggle-border: color-mix(in srgb, var(--vscode-foreground, #cccccc) 45%, transparent);
+		--surface: color-mix(in srgb, var(--vscode-foreground, #cccccc) 3%, transparent);
+		--surface-hover: color-mix(in srgb, var(--vscode-foreground, #cccccc) 6%, transparent);
+		--selected: color-mix(in srgb, var(--vscode-focusBorder, #007fd4) 18%, transparent);
 		--frame-accent: var(--vscode-focusBorder, #007fd4);
 	}
 
@@ -243,8 +271,10 @@
 	/* Higher specififty than VSCode's theme and root. */
 	/* Used for baseline theme overrides, but avoid using for styling. */
 
+	/* The theme's input.border when it defines one, otherwise the visible input frame (it used to be
+	   transparent, so inputs in many themes had no outline). */
 	body {
-		--vscode-input-border: var(--border);
+		--vscode-input-border: var(--input-frame);
 	}
 }
 

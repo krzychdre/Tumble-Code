@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tumble Code - UI frames proposal</title>
+<style>
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		padding: 24px;
+		background: #111;
+		color: #ddd;
+		font: 13px/1.4 system-ui, "Segoe UI", Ubuntu, sans-serif;
+	}
+	h1 { font-size: 18px; margin: 0 0 4px; }
+	.lead { color: #999; margin: 0 0 16px; max-width: 1100px; }
+	.controls { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+	.controls label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+	.grid { display: grid; grid-template-columns: repeat(2, minmax(380px, 460px)); gap: 20px; }
+	.col-title { font-weight: 600; margin: 0 0 6px; color: #bbb; }
+	.col-title small { font-weight: 400; color: #888; }
+
+	/* ---------- VS Code theme tokens (subset) ---------- */
+	.dark {
+		--fg: #cccccc;
+		--desc: #9d9d9d;
+		--bg: #1f1f1f;
+		--input-bg: #313131;
+		--input-fg: #cccccc;
+		--input-border: #3c3c3c;
+		--focus: #0078d4;
+		--btn-bg: #0078d4;
+		--btn-fg: #ffffff;
+		--green: #89d185;
+		--link: #4daafc;
+		--hover-bg: #2a2d2e;
+	}
+	.light {
+		--fg: #3b3b3b;
+		--desc: #6f6f6f;
+		--bg: #ffffff;
+		--input-bg: #ffffff;
+		--input-fg: #3b3b3b;
+		--input-border: #cecece;
+		--focus: #005fb8;
+		--btn-bg: #005fb8;
+		--btn-fg: #ffffff;
+		--green: #388a34;
+		--link: #005fb8;
+		--hover-bg: #f2f2f2;
+	}
+
+	.panel {
+		background: var(--bg);
+		color: var(--fg);
+		padding: 12px;
+		border: 1px solid #333;
+		font-size: 13px;
+		--radius: 0px;
+	}
+	body.rounded .after { --radius: 4px; }
+
+	/* ---------- shared bits ---------- */
+	.section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 8px; }
+	.section-head h2 { margin: 0; font-size: 14.3px; font-weight: 600; }
+	.view-all { color: var(--desc); background: none; border: 0; font: inherit; cursor: pointer; padding: 0; }
+	.view-all:hover { color: var(--link); }
+	.ico { width: 12px; height: 12px; display: inline-block; vertical-align: -1px; }
+	.meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; color: var(--desc); }
+	.meta .done { color: var(--green); }
+	.title { margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.subtasks { font-size: 11px; color: var(--desc); display: flex; gap: 4px; align-items: center; }
+
+	/* ========== BEFORE: what main renders today ========== */
+	.before .card {
+		display: block; width: 100%; text-align: left; font: inherit;
+		background: var(--bg);
+		color: color-mix(in srgb, var(--fg) 80%, transparent);
+		border: 1px solid color-mix(in srgb, var(--input-fg) 25%, transparent);
+		padding: 12px 12px 4px 16px;
+		margin-bottom: 4px;
+		cursor: pointer;
+	}
+	.before .card:hover { color: var(--fg); }
+	.before .card .meta { color: color-mix(in srgb, var(--desc) 60%, transparent); padding-bottom: 8px; }
+	.before .card .subtasks { padding: 4px 0 8px; }
+	.before .composer {
+		border: 1px solid color-mix(in srgb, var(--input-fg) 25%, transparent);
+		background: var(--bg);
+	}
+	.before .chip {
+		display: inline-flex; gap: 6px; align-items: center; padding: 4px 6px; font-size: 11px;
+		background: transparent; color: var(--fg);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		opacity: 0.9;
+		font-family: inherit;
+	}
+	.before .chip:hover { border-color: rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.03); opacity: 1; }
+	.before .icon-btn {
+		width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+		background: transparent; border: 0; color: var(--desc); opacity: 0.85; padding: 0;
+	}
+	.before .icon-btn:hover { background: rgba(255, 255, 255, 0.03); opacity: 1; }
+	.before .tool {
+		border-left: 2px solid var(--green);
+		background: color-mix(in srgb, var(--fg) 4%, transparent);
+		padding: 6px 8px;
+	}
+
+	/* ========== AFTER: proposal ========== */
+	.after {
+		/* One frame scale for every bordered thing, derived from the theme foreground so it works in
+		   dark, light and high-contrast themes instead of hard-coded white. */
+		--frame: color-mix(in srgb, var(--fg) 13%, transparent);
+		--frame-hover: color-mix(in srgb, var(--fg) 26%, transparent);
+		--surface: color-mix(in srgb, var(--fg) 3%, transparent);
+		--surface-hover: color-mix(in srgb, var(--fg) 6%, transparent);
+	}
+	.after .list { display: flex; flex-direction: column; gap: 8px; }
+	.after .card {
+		display: block; width: 100%; text-align: left; font: inherit;
+		background: var(--surface);
+		color: var(--fg);
+		border: 1px solid var(--frame);
+		border-radius: var(--radius);
+		padding: 10px 12px;
+		cursor: pointer;
+		transition: background-color 0.12s, border-color 0.12s;
+	}
+	.after .card:hover { background: var(--surface-hover); border-color: var(--frame-hover); }
+	.after .card:focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; border-color: var(--focus); }
+	.after .card .title { font-weight: 500; }
+	.after .card.group { padding: 0; }
+	.after .card.group > .inner { padding: 10px 12px; }
+	.after .card .subtasks {
+		border-top: 1px solid var(--frame);
+		padding: 6px 12px;
+	}
+	.after .card .subtasks:hover { color: var(--fg); background: var(--surface-hover); }
+	.after .composer {
+		border: 1px solid var(--frame);
+		border-radius: var(--radius);
+		background: var(--bg);
+		transition: border-color 0.12s;
+	}
+	.after .composer:hover { border-color: var(--frame-hover); }
+	.after .composer:focus-within { border-color: var(--focus); outline: 1px solid var(--focus); outline-offset: -1px; }
+	.after .chip {
+		display: inline-flex; gap: 6px; align-items: center; height: 22px; padding: 0 7px; font-size: 11px;
+		background: transparent; color: var(--fg);
+		border: 1px solid var(--frame);
+		border-radius: var(--radius);
+		font-family: inherit;
+		cursor: pointer;
+		transition: background-color 0.12s, border-color 0.12s;
+	}
+	.after .chip:hover { border-color: var(--frame-hover); background: var(--surface-hover); }
+	.after .chip:focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; }
+	.after .chip .caret { opacity: 0.6; margin-left: 2px; }
+	.after .icon-btn {
+		width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+		background: transparent; color: var(--desc); padding: 0;
+		border: 1px solid var(--frame);
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+	}
+	.after .icon-btn:hover { border-color: var(--frame-hover); background: var(--surface-hover); color: var(--fg); }
+	.after .icon-btn.busy { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+	.after .tool {
+		border: 1px solid var(--frame);
+		border-left: 2px solid var(--green);
+		border-radius: var(--radius);
+		background: var(--surface);
+		padding: 6px 8px;
+	}
+
+	/* ---------- composer internals (both) ---------- */
+	.composer textarea {
+		display: block; width: 100%; min-height: 64px; resize: none; border: 0; outline: 0;
+		background: transparent; color: var(--fg); font: inherit; padding: 8px 10px;
+	}
+	.composer textarea::placeholder { color: var(--desc); }
+	.composer .actions { display: flex; justify-content: flex-end; gap: 4px; padding: 0 6px 6px; color: var(--desc); }
+	.toolbar { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+	.toolbar .left { display: flex; gap: 8px; flex: 1; min-width: 0; }
+	.toolbar .right { display: flex; gap: 4px; }
+	.chat { margin: 16px 0 12px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+	.chat .label { color: var(--desc); font-size: 11px; margin-bottom: 2px; }
+	.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+
+	.notes { max-width: 940px; margin-top: 24px; color: #bbb; }
+	.notes li { margin-bottom: 6px; }
+	.notes code { color: #ddd; }
+</style>
+</head>
+<body>
+<h1>Tumble Code: frames, toolbar chips and history rows</h1>
+<p class="lead">
+	Left column: what <code>main</code> renders today. Right column: the proposal. Top row is the dark theme
+	(VS Code "Dark Modern"), bottom row is the light theme ("Light Modern"). Hover the rows and chips, click
+	into the composer and press Tab to see the focus ring.
+</p>
+<div class="controls">
+	<label><input type="checkbox" id="rounded" /> Proposal with 4px rounded corners (today the webview forces square
+		corners, see <code>check-webview-radius.mjs</code>)</label>
+</div>
+
+<div id="grid" class="grid"></div>
+
+<div class="notes">
+	<h3>What changes and why</h3>
+	<ol>
+		<li><b>One dimmer frame colour for everything.</b> History rows, the composer, the mode/model/auto-approve
+			chips and the memory/index icons all use the same border: 13% of the theme foreground instead of 25%
+			(rows, composer) or hard-coded <code>rgba(255,255,255,0.08)</code> (chips). Hover raises it to 26%,
+			keyboard focus uses the theme focus colour.</li>
+		<li><b>Light theme fix.</b> The chips' white-at-8% border is invisible on a white background, so in light themes
+			the mode and model selectors had no frame at all. Mixing from the theme foreground works in both.</li>
+		<li><b>Rows read as cards, not as a table.</b> A 3% tinted fill, 8px gap between cards (was 4px), even 10/12px
+			padding, the title in full foreground with weight 500 and the meta line in the normal description colour
+			(it was description colour at 60%, below comfortable contrast).</li>
+		<li><b>Subtasks toggle</b> sits under a hairline inside the card and is a full-width hover target.</li>
+		<li><b>Same size for every toolbar control</b>: 22px high chips and 22x22 icon buttons, so the memory and
+			index icons line up with the selectors. A busy memory icon also tints its frame green.</li>
+		<li><b>Hover and focus states</b> on every card and chip (today the rows only change text opacity).</li>
+		<li>Tool blocks in the chat get the same frame plus the existing 2px status edge.</li>
+	</ol>
+</div>
+
+<template id="panel-tpl">
+	<div class="panel">
+		<div class="section-head">
+			<h2>Recent Tasks</h2>
+			<button class="view-all">View all</button>
+		</div>
+		<div class="list">
+			<button class="card">
+				<p class="title">merge it</p>
+				<div class="meta">CODE · 20:04 · <span class="done">✓ Done</span> · $0.06 · ↑521.5k ↓6.0k</div>
+			</button>
+			<button class="card">
+				<p class="title">/commitmsg</p>
+				<div class="meta">CODE · 19:45 · <span class="done">✓ Done</span> · $0.03 · ↑183.0k ↓1.5k</div>
+			</button>
+			<div class="card group" tabindex="0">
+				<div class="inner">
+					<p class="title">implementuj ai_plans/simplification_round3_audit_2026-10-02.md - każda zmiana na własnym branchu</p>
+					<div class="meta">ORCH · 2026-10-03 10:31 · ◌ Unfinished · $33.10 · ↑91.7m ↓733.3k</div>
+				</div>
+				<div class="subtasks">› 16 subtasks</div>
+			</div>
+		</div>
+
+		<div class="chat">
+			<div>
+				<div class="label">Tumble read a file</div>
+				<div class="tool mono">webview-ui/src/index.css · lines 120-140</div>
+			</div>
+		</div>
+
+		<div class="composer">
+			<textarea placeholder="Type your task here..."></textarea>
+			<div class="actions"><span>⧉</span><span>➤</span></div>
+		</div>
+		<div class="toolbar">
+			<div class="left">
+				<button class="chip">&lt;/&gt; Code<span class="caret">▾</span></button>
+				<button class="chip">glm-5.3-flash<span class="caret">▾</span></button>
+				<button class="chip">✓ Auto-approve<span class="caret">▾</span></button>
+			</div>
+			<div class="right">
+				<button class="icon-btn" title="Memory idle">🧠︎</button>
+				<button class="icon-btn" title="Index ready">⛁</button>
+			</div>
+		</div>
+	</div>
+</template>
+
+<script>
+	const grid = document.getElementById("grid")
+	const tpl = document.getElementById("panel-tpl")
+	for (const theme of ["dark", "light"]) {
+		for (const variant of ["before", "after"]) {
+			const col = document.createElement("div")
+			const h = document.createElement("p")
+			h.className = "col-title"
+			h.innerHTML = `${variant === "before" ? "Today" : "Proposal"} <small>(${theme})</small>`
+			const panel = tpl.content.firstElementChild.cloneNode(true)
+			panel.classList.add(theme, variant)
+			if (variant === "after" && theme === "dark") panel.querySelectorAll(".icon-btn")[0].classList.add("busy")
+			col.append(h, panel)
+			grid.append(col)
+		}
+	}
+	document.getElementById("rounded").addEventListener("change", (e) => {
+		document.body.classList.toggle("rounded", e.target.checked)
+	})
+</script>
+</body>
+</html>
