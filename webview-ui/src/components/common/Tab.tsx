@@ -14,7 +14,7 @@ export const Tab = ({ className, children, ...props }: TabProps) => (
 )
 
 export const TabHeader = ({ className, children, ...props }: TabProps) => (
-	<div className={cn("px-5 py-2.5 border-b border-vscode-panel-border", className)} {...props}>
+	<div className={cn("px-5 py-2.5 border-b border-frame", className)} {...props}>
 		{children}
 	</div>
 )
@@ -112,7 +112,7 @@ export const TabTrigger = forwardRef<
 			role="tab"
 			aria-selected={isSelected}
 			tabIndex={isSelected ? 0 : -1}
-			className={cn("focus:outline-none focus:ring-2 focus:ring-vscode-focusBorder", className)}
+			className={cn("focus:outline-none focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder", className)}
 			onClick={onSelect}
 			{...props}>
 			{children}

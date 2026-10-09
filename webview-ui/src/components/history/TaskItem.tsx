@@ -58,12 +58,12 @@ const TaskItem = ({
 			className={cn(
 				"cursor-pointer group relative overflow-hidden text-left w-full",
 				"bg-transparent border-none p-0 font-inherit",
-				"text-vscode-foreground/80 hover:text-vscode-foreground transition-colors",
-				"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-vscode-focusBorder",
+				"text-vscode-foreground transition-colors",
+				"focus:outline-none focus-visible:outline-solid focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder",
 				className,
 			)}
 			onClick={handleClick}>
-			<div className={(!isCompact && isSelectionMode ? "pl-3 pb-3" : "pl-4") + " flex gap-3 px-3 pt-3 pb-1"}>
+			<div className="flex gap-3 px-3 py-2.5">
 				{/* Selection checkbox - only in full variant */}
 				{!isCompact && isSelectionMode && (
 					<div
@@ -83,7 +83,7 @@ const TaskItem = ({
 						{item.highlight ? (
 							<div
 								className={cn(
-									"flex-1 min-w-0 overflow-hidden whitespace-pre-wrap font-light text-ellipsis line-clamp-3",
+									"flex-1 min-w-0 overflow-hidden whitespace-pre-wrap font-medium text-ellipsis line-clamp-3",
 									{
 										"text-base": !isCompact,
 									},
@@ -95,7 +95,7 @@ const TaskItem = ({
 						) : (
 							<div
 								className={cn(
-									"flex-1 min-w-0 overflow-hidden whitespace-pre-wrap font-light text-ellipsis line-clamp-3",
+									"flex-1 min-w-0 overflow-hidden whitespace-pre-wrap font-medium text-ellipsis line-clamp-3",
 									{
 										"text-base": !isCompact,
 									},
@@ -109,8 +109,8 @@ const TaskItem = ({
 						)}
 						{/* Live status of a task that is still working */}
 						<RunningStatusIndicator status={item.runningStatus} id={statusId} />
-						{/* Arrow icon that appears on hover */}
-						<ArrowRight className="size-4 shrink-0 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-has-focus-visible:opacity-100 transition-opacity" />
+						{/* Open arrow: always visible in the description colour, full colour on hover and focus */}
+						<ArrowRight className="size-4 shrink-0 text-vscode-descriptionForeground group-hover:text-vscode-foreground group-focus-visible:text-vscode-foreground transition-colors" />
 					</div>
 
 					{showWorkspace && item.workspace && (

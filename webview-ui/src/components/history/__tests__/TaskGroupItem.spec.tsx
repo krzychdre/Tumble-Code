@@ -374,7 +374,7 @@ describe("TaskGroupItem", () => {
 			expect(container).toHaveClass("custom-class")
 		})
 
-		it("keeps a visible frame like the unfocused composer", () => {
+		it("is a framed card on the shared surface", () => {
 			render(
 				<TaskGroupItem
 					group={createMockGroup()}
@@ -386,7 +386,7 @@ describe("TaskGroupItem", () => {
 
 			// A transparent border made the rows blend into the panel in most themes.
 			const container = screen.getByTestId("task-group-parent-1")
-			expect(container).toHaveClass("border-composer-idle-border")
+			expect(container).toHaveClass("border-frame", "bg-surface", "hover:border-frame-hover", "rounded-control")
 			expect(container).not.toHaveClass("border-transparent")
 		})
 	})

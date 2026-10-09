@@ -85,8 +85,8 @@ describe("ToggleSwitch", () => {
 
 		const toggle = screen.getByRole("switch")
 		expect(toggle).toBeInTheDocument()
-		// Medium size should be 26px x 10px
-		expect(toggle).toHaveStyle({ width: "26px", height: "10px" })
+		// Both sizes draw the 28x16 switch of the frame language.
+		expect(toggle).toHaveStyle({ width: "28px", height: "16px" })
 	})
 
 	it("defaults to small size", () => {
@@ -95,7 +95,6 @@ describe("ToggleSwitch", () => {
 
 		const toggle = screen.getByRole("switch")
 		expect(toggle).toBeInTheDocument()
-		// Small size should be 20px x 10px
-		expect(toggle).toHaveStyle({ width: "20px", height: "10px" })
+		expect(toggle).toHaveStyle({ width: "28px", height: "16px" })
 	})
 })

@@ -138,27 +138,22 @@ export function SearchableSelect({
 		<Popover open={open} onOpenChange={handleOpenChange}>
 			<PopoverTrigger asChild>
 				<Button
-					variant="outline"
+					variant="combobox"
 					role="combobox"
 					aria-expanded={open}
 					disabled={disabled}
 					className={cn(
 						"w-full justify-between font-normal",
-						"h-7 px-3 py-2",
-						"border border-vscode-dropdown-border",
-						"bg-vscode-dropdown-background hover:bg-transparent",
-						"text-vscode-dropdown-foreground",
-						"focus-visible:border-vscode-focusBorder",
-						"aria-expanded:border-vscode-focusBorder",
-						!selectedOption && "text-muted-foreground",
+						"h-[26px] px-2 py-0",
+						!selectedOption && "text-vscode-descriptionForeground",
 						className,
 					)}
 					data-testid={dataTestId}>
 					<span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-					<ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+					<ChevronDown className="ml-2 h-4 w-4 shrink-0 text-vscode-descriptionForeground" />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
+			<PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] overflow-hidden">
 				<Command shouldFilter={false}>
 					<div className="relative">
 						<CommandInput
@@ -166,14 +161,14 @@ export function SearchableSelect({
 							value={searchValue}
 							onValueChange={setSearchValue}
 							placeholder={searchPlaceholder}
-							className="h-9 mr-4"
+							className="mr-4"
 						/>
 						{searchValue.length > 0 && (
 							<div
 								className="absolute right-2 top-0 bottom-0 flex items-center justify-center"
 								data-testid="clear-search-button"
 								onClick={handleClearSearch}>
-								<X className="text-vscode-input-foreground opacity-50 hover:opacity-100 size-4 p-0.5 cursor-pointer" />
+								<X className="text-vscode-descriptionForeground hover:text-vscode-input-foreground size-4 p-0.5 cursor-pointer" />
 							</div>
 						)}
 					</div>

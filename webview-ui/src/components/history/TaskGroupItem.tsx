@@ -52,7 +52,11 @@ const TaskGroupItem = ({
 	return (
 		<div
 			data-testid={`task-group-${parent.id}`}
-			className={cn("bg-vscode-editor-background border border-composer-idle-border overflow-hidden", className)}>
+			className={cn(
+				"overflow-hidden rounded-control border border-frame bg-surface transition-colors",
+				"hover:border-frame-hover hover:bg-surface-hover",
+				className,
+			)}>
 			{/* Parent task */}
 			<TaskItem
 				item={parent}
@@ -64,9 +68,14 @@ const TaskGroupItem = ({
 				onDelete={onDelete}
 			/>
 
-			{/* Subtask collapsible row — shows total recursive count */}
+			{/* Subtask collapsible row: shows the total recursive count, under a hairline inside the card */}
 			{hasSubtasks && (
-				<SubtaskCollapsibleRow count={totalSubtaskCount} isExpanded={isExpanded} onToggle={onToggleExpand} />
+				<SubtaskCollapsibleRow
+					count={totalSubtaskCount}
+					isExpanded={isExpanded}
+					onToggle={onToggleExpand}
+					className="mt-0 border-t border-frame"
+				/>
 			)}
 
 			{/* Expanded subtask tree */}

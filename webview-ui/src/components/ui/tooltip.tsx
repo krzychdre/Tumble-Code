@@ -29,14 +29,14 @@ function TooltipContent({
 				data-slot="tooltip-content"
 				sideOffset={sideOffset}
 				className={cn(
-					"bg-vscode-editorHoverWidget-background outline outline-vscode-editorHoverWidget-border text-vscode-editorHoverWidget-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) px-2 py-1 text-xs text-balance",
+					"rounded-floating border border-frame-hover bg-vscode-editorHoverWidget-background text-vscode-editorHoverWidget-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) px-2 py-1 text-xs text-balance",
 					"max-w-[300px] break-words",
 					"shadow-[0_2px_8px_var(--color-vscode-widget-shadow)]",
 					className,
 				)}
 				{...props}>
 				{children}
-				<TooltipPrimitive.Arrow className="bg-vscode-editorHoverWidget-background border-b border-r border-vscode-editorHoverWidget-border fill-vscode-editorHoverWidget-background z-50 size-1.5 translate-y-[calc(-50%_+_1px)] rotate-45" />
+				<TooltipPrimitive.Arrow className="bg-vscode-editorHoverWidget-background border-b border-r border-frame-hover fill-vscode-editorHoverWidget-background z-50 size-1.5 translate-y-[calc(-50%_+_1px)] rotate-45" />
 			</TooltipPrimitive.Content>
 		</TooltipPrimitive.Portal>
 	)

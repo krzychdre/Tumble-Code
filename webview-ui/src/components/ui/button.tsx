@@ -4,26 +4,35 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * The frame language (ai_plans/2026-10-09_ui-frame-language.md): 26px high (22px for `sm`), 2px corners,
+ * one focus ring. Primary is VS Code's filled button with its own hover colour; secondary (and the
+ * `outline` / `combobox` looks that converged on it) is an outlined control on the shared surface;
+ * destructive is an outlined red button that fills faintly on hover.
+ */
 const buttonVariants = cva(
-	"inline-flex items-center justify-center gap-2 whitespace-nowrap text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer active:opacity-80",
+	"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control text-base font-medium transition-colors focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder disabled:pointer-events-none disabled:opacity-30 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer active:opacity-80",
 	{
 		variants: {
 			variant: {
-				primary: "bg-primary text-primary-foreground hover:bg-primary/70",
-				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70",
-				ghost: "hover:bg-accent hover:text-accent-foreground",
-				destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+				primary:
+					"border border-[var(--vscode-button-border,transparent)] bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
+				secondary:
+					"border border-input-frame bg-surface text-vscode-foreground hover:border-input-frame-hover hover:bg-surface-hover",
+				ghost: "hover:bg-surface-hover",
+				destructive:
+					"border border-[color-mix(in_srgb,var(--vscode-errorForeground)_55%,transparent)] bg-transparent text-vscode-errorForeground hover:bg-[color-mix(in_srgb,var(--vscode-errorForeground)_10%,transparent)]",
 				outline:
-					"border border-vscode-foreground/30 text-vscode-foreground bg-transparent hover:bg-secondary hover:text-accent-foreground",
+					"border border-input-frame bg-surface text-vscode-foreground hover:border-input-frame-hover hover:bg-surface-hover",
 				link: "text-primary underline-offset-4 hover:underline",
 				combobox:
-					"border border-vscode-dropdown-border focus-visible:border-vscode-focusBorder bg-vscode-dropdown-background hover:bg-transparent text-vscode-dropdown-foreground font-normal",
+					"border border-input-frame bg-vscode-dropdown-background text-vscode-dropdown-foreground font-normal hover:border-input-frame-hover focus-visible:border-vscode-focusBorder aria-expanded:border-vscode-focusBorder",
 			},
 			size: {
-				default: "h-7 px-3",
-				sm: "h-6 px-2 text-sm",
-				lg: "h-8 px-4 text-lg",
-				icon: "h-7 w-7",
+				default: "h-[26px] px-3",
+				sm: "h-[22px] px-2 text-sm",
+				lg: "h-[26px] px-4",
+				icon: "h-[26px] w-[26px]",
 			},
 		},
 		defaultVariants: {

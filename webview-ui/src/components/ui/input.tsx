@@ -3,16 +3,18 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * The look of a single-line text field, VS Code's own: 26px high, the dropdown
- * border, the input colours, the editor font size, the focus shown as a
- * focusBorder-coloured border (no outline), 40% opacity when disabled.
+ * The look of a single-line text field (ai_plans/2026-10-09_ui-frame-language.md):
+ * 26px high, the input frame (stronger on hover), 2px corners, the input
+ * colours, the editor font size, the focus shown as a focusBorder-coloured
+ * border plus a 1px focusBorder outline, the description colour for the
+ * placeholder, 40% opacity when disabled.
  * `ui-input` is a marker for the unlayered rules in `index.css`. A label
  * above a field takes `leading-[normal]`, the line height of VS Code's own
  * field labels.
  */
 const FIELD_BOX =
-	"h-[26px] w-full border border-vscode-dropdown-border bg-vscode-input-background text-vscode-input-foreground"
-const FIELD_TEXT = "text-base leading-[normal] placeholder:text-[#757575]"
+	"h-[26px] w-full rounded-control border border-input-frame hover:border-input-frame-hover bg-vscode-input-background text-vscode-input-foreground transition-colors"
+const FIELD_TEXT = "text-base leading-[normal] placeholder:text-vscode-descriptionForeground"
 const FIELD_STATE = "disabled:cursor-not-allowed read-only:cursor-not-allowed"
 
 const hasContent = (node: React.ReactNode) => node !== undefined && node !== null && node !== false && node !== ""
@@ -43,7 +45,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, start
 					FIELD_BOX,
 					FIELD_TEXT,
 					FIELD_STATE,
-					"focus:border-vscode-focusBorder disabled:opacity-40",
+					"focus:border-vscode-focusBorder focus:outline-solid focus:outline-1 focus:-outline-offset-1 focus:outline-vscode-focusBorder disabled:opacity-40",
 					className,
 				)}
 				{...props}
@@ -56,7 +58,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, start
 			className={cn(
 				"flex items-center",
 				FIELD_BOX,
-				"focus-within:border-vscode-focusBorder",
+				"focus-within:border-vscode-focusBorder focus-within:outline-solid focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-vscode-focusBorder",
 				props.disabled && "opacity-40",
 				className,
 			)}>

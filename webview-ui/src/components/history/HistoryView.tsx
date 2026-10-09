@@ -146,7 +146,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 							}
 						}}
 						start={
-							<span className="codicon codicon-search mt-0.5 opacity-80 text-sm!" aria-hidden="true" />
+							<span className="codicon codicon-search mt-0.5 text-vscode-descriptionForeground text-sm!" aria-hidden="true" />
 						}
 						end={
 							searchQuery ? (
@@ -292,7 +292,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 								isSelected={selectedTaskIds.includes(item.id)}
 								onToggleSelection={toggleTaskSelection}
 								onDelete={handleDelete}
-								className="m-2 border border-solid border-composer-idle-border"
+								className="mx-2 mb-2 rounded-control border border-solid border-frame bg-surface hover:border-frame-hover hover:bg-surface-hover"
 							/>
 						)}
 					/>
@@ -329,7 +329,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 									onDelete={handleDelete}
 									onToggleExpand={() => toggleExpand(row.group.parent.id)}
 									onToggleSubtaskExpand={toggleExpand}
-									className="m-2"
+									className="mx-2 mb-2"
 								/>
 							)
 						}
@@ -339,7 +339,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 
 			{/* Fixed action bar at bottom - only shown in selection mode with selected items */}
 			{isSelectionMode && selectedTaskIds.length > 0 && (
-				<div className="fixed bottom-0 left-0 right-2 bg-vscode-editor-background border-t border-vscode-panel-border p-2 flex justify-between items-center">
+				<div className="fixed bottom-0 left-0 right-2 bg-vscode-editor-background border-t border-frame p-2 flex justify-between items-center">
 					<div className="text-vscode-foreground">
 						{t("history:selectedItems", { selected: selectedTaskIds.length, total: tasks.length })}
 					</div>

@@ -28,8 +28,8 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 	const { t } = useAppTranslation()
 
 	return (
-		<div className="text-xs text-vscode-descriptionForeground flex justify-between items-center">
-			<div className="flex min-w-0 flex-1 gap-1 items-center text-vscode-descriptionForeground/60">
+		<div className="text-xs text-vscode-descriptionForeground flex justify-between items-center mt-1">
+			<div className="flex min-w-0 flex-1 gap-1 items-center">
 				{/* Subtask tag */}
 				{isSubtask && (
 					<>
@@ -42,9 +42,9 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 				<TaskDetails item={item} id={detailsId} />
 			</div>
 
-			{/* Action Buttons for non-compact view */}
+			{/* Row actions: always visible (keyboard and touch users see them too), in the description colour */}
 			{!isSelectionMode && (
-				<div className="flex flex-row gap-0 -mx-1.5 items-center text-vscode-descriptionForeground/60 hover:text-vscode-descriptionForeground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-has-focus-visible:opacity-100">
+				<div className="flex flex-row gap-0.5 -mr-1 items-center text-vscode-descriptionForeground">
 					<CopyButton itemTask={item.task} />
 					{variant === "full" && <ExportButton itemId={item.id} />}
 					{onDelete && <DeleteButton itemId={item.id} onDelete={onDelete} />}

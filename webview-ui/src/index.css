@@ -290,14 +290,14 @@
 
 	/* §2.6: a real disabled style for the chat action-bar buttons, not just
 	   a cursor and 50% opacity. The button keeps its place and shape but reads
-	   as inert: desaturated fill, no hover, and the theme's own
-	   button-foreground/disabledForeground mix. */
+	   as inert: the frame language's empty surface and frame, no hover, and
+	   the theme's disabledForeground (2026-10-09_ui-frame-language.md). */
 	.disabled-action-button:disabled {
 		opacity: 1;
-		filter: saturate(0.2);
-		background: var(--vscode-button-secondaryBackground, #3a3d41);
-		color: var(--vscode-disabledForeground, var(--vscode-button-secondaryForeground, #ffffff));
-		border: 1px solid var(--vscode-contrastBorder, transparent);
+		filter: none;
+		background: var(--surface);
+		color: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+		border: 1px solid var(--frame);
 		cursor: default;
 		pointer-events: none;
 	}
@@ -412,10 +412,12 @@
 	}
 
 	/*
-	 * Checkbox with label (components/ui/labeled-checkbox.tsx), the same look
-	 * as the deprecated toolkit's <vscode-checkbox>. `.ui-checkbox` mirrors the
-	 * toolkit's host element, `.ui-checkbox-box` its control and
-	 * `.ui-checkbox-label` its label part. Fallbacks are the toolkit's defaults.
+	 * Checkbox with label (components/ui/labeled-checkbox.tsx). `.ui-checkbox`
+	 * mirrors the deprecated toolkit's host element, `.ui-checkbox-box` its
+	 * control and `.ui-checkbox-label` its label part. The look is the frame
+	 * language's (ai_plans/2026-10-09_ui-frame-language.md): a 16px box with
+	 * the toggle outline (3:1 contrast), the foreground outline on hover, the
+	 * button colours when checked and the shared focus ring.
 	 */
 	.ui-checkbox {
 		display: inline-flex;
@@ -435,27 +437,38 @@
 		position: relative;
 		display: block;
 		flex-shrink: 0;
-		width: 18px;
-		height: 18px;
+		width: 16px;
+		height: 16px;
 	}
 
 	.ui-checkbox-input {
 		appearance: none;
 		display: block;
 		box-sizing: border-box;
-		width: 18px;
-		height: 18px;
+		width: 16px;
+		height: 16px;
 		margin: 0;
 		padding: 0;
-		border: 1px solid var(--vscode-checkbox-border, #3c3c3c);
+		border: 1px solid var(--toggle-border);
+		border-radius: var(--radius-control);
 		outline: none;
-		background: var(--vscode-checkbox-background, #3c3c3c);
+		background: var(--vscode-checkbox-background, var(--vscode-input-background));
 		cursor: pointer;
+		transition: border-color 0.12s;
 	}
 
-	.ui-checkbox-input:enabled:active,
+	.ui-checkbox:hover .ui-checkbox-input:enabled {
+		border-color: var(--vscode-foreground);
+	}
+
+	.ui-checkbox-input:checked {
+		border-color: var(--vscode-button-background);
+		background: var(--vscode-button-background);
+	}
+
 	.ui-checkbox-input:focus-visible {
-		border-color: var(--vscode-focusBorder, #007fd4);
+		outline: 1px solid var(--vscode-focusBorder);
+		outline-offset: 1px;
 	}
 
 	.ui-checkbox-check {
@@ -463,9 +476,9 @@
 		top: 1px;
 		left: 1px;
 		display: block;
-		width: 16px;
-		height: 16px;
-		fill: var(--vscode-foreground, #cccccc);
+		width: 14px;
+		height: 14px;
+		fill: var(--vscode-button-foreground);
 		opacity: 0;
 		pointer-events: none;
 	}
@@ -475,10 +488,10 @@
 	}
 
 	.ui-checkbox-label {
-		padding-inline-start: 10px;
+		padding-inline-start: 8px;
 		margin-inline-end: 10px;
 		font-family: var(--vscode-font-family, sans-serif);
-		color: var(--vscode-foreground, #cccccc);
+		color: var(--vscode-foreground);
 		cursor: pointer;
 	}
 
@@ -494,8 +507,10 @@
 	/*
 	 * Icon button look (Button variant="icon", components/ui/button.tsx): the
 	 * deprecated toolkit's <vscode-button appearance="icon">, formerly
-	 * ThemedButton. Fallbacks are the toolkit's defaults. The font size is
-	 * Chromium's default button size, which the toolkit's inner <button> kept.
+	 * ThemedButton, with the frame language's hover fill (the shared
+	 * surface-hover instead of a fixed grey), 2px corners and focus ring. The
+	 * font size is Chromium's default button size, which the toolkit's inner
+	 * <button> kept.
 	 */
 	.ui-button-icon {
 		display: inline-flex;
@@ -505,9 +520,10 @@
 		margin: 0;
 		padding: 3px;
 		border: none;
+		border-radius: var(--radius-control);
 		outline: none;
 		background-color: transparent;
-		color: var(--vscode-foreground, #cccccc);
+		color: var(--vscode-foreground);
 		fill: currentColor;
 		cursor: pointer;
 		font-family: var(--vscode-font-family, sans-serif);
@@ -518,21 +534,21 @@
 	}
 
 	.ui-button-icon:hover {
-		background-color: rgba(90, 93, 94, 0.31);
+		background-color: var(--surface-hover);
 	}
 
 	/*
-	 * While pressed the toolkit painted the hover fill twice (host and inner
-	 * button); the gradient is the second layer. It is an image, so it also
-	 * shows over a background colour set by the call site.
+	 * While pressed the hover fill is painted twice; the gradient is the
+	 * second layer. It is an image, so it also shows over a background colour
+	 * set by the call site.
 	 */
 	.ui-button-icon:active {
-		background-image: linear-gradient(rgba(90, 93, 94, 0.31), rgba(90, 93, 94, 0.31));
+		background-image: linear-gradient(var(--surface-hover), var(--surface-hover));
 	}
 
 	.ui-button-icon:focus-visible {
-		outline: 1px solid var(--vscode-focusBorder, #007fd4);
-		outline-offset: 0;
+		outline: 1px solid var(--vscode-focusBorder);
+		outline-offset: 1px;
 	}
 
 	.ui-button-icon:disabled {
@@ -549,9 +565,10 @@
 	}
 
 	/*
-	 * Radio group (components/ui/themed-radio.tsx), the same look as the
-	 * deprecated toolkit's <vscode-radio-group> / <vscode-radio>. Fallbacks are
-	 * the toolkit's defaults.
+	 * Radio group (components/ui/themed-radio.tsx), the deprecated toolkit's
+	 * <vscode-radio-group> / <vscode-radio> drawn with the frame language's
+	 * checkbox look: the toggle outline, the foreground outline on hover, the
+	 * button colour for the chosen option and the shared focus ring.
 	 */
 	.ui-radio-group {
 		display: flex;
@@ -599,15 +616,25 @@
 		height: 16px;
 		margin: 0;
 		padding: 0;
-		border: 1px solid var(--vscode-checkbox-border, #3c3c3c);
+		border: 1px solid var(--toggle-border);
+		border-radius: var(--radius-control);
 		outline: none;
-		background: var(--vscode-checkbox-background, #3c3c3c);
+		background: var(--vscode-checkbox-background, var(--vscode-input-background));
 		cursor: pointer;
+		transition: border-color 0.12s;
 	}
 
-	.ui-radio-input:enabled:active,
+	.ui-radio:hover .ui-radio-input:enabled {
+		border-color: var(--vscode-foreground);
+	}
+
+	.ui-radio-input:checked {
+		border-color: var(--vscode-button-background);
+	}
+
 	.ui-radio-input:focus-visible {
-		border-color: var(--vscode-focusBorder, #007fd4);
+		outline: 1px solid var(--vscode-focusBorder);
+		outline-offset: 1px;
 	}
 
 	/* 4px inside the 1px border, like the toolkit's indicator inside its control. */
@@ -615,7 +642,7 @@
 		position: absolute;
 		inset: 5px;
 		display: inline-block;
-		background: var(--vscode-foreground, #cccccc);
+		background: var(--vscode-button-background);
 		opacity: 0;
 		pointer-events: none;
 	}
@@ -625,10 +652,10 @@
 	}
 
 	.ui-radio-label {
-		padding-inline-start: 10px;
+		padding-inline-start: 8px;
 		margin-inline-end: 10px;
 		font-family: var(--vscode-font-family, sans-serif);
-		color: var(--vscode-foreground, #cccccc);
+		color: var(--vscode-foreground);
 		cursor: pointer;
 	}
 
@@ -648,8 +675,10 @@
 	 * padding and a 1px border (coloured on keyboard focus) and views 10px 6px
 	 * padding, but in this webview preflight.css resets padding and border on
 	 * every element, host elements included, so none of that ever showed. The
-	 * tabs therefore have no padding, no border and no focus frame here either
-	 * (keyboard focus on a tab is not visible, as before).
+	 * tabs therefore have no padding and no border here either. The frame
+	 * language (ai_plans/2026-10-09_ui-frame-language.md) adds the shared focus
+	 * ring, the description colour for inactive tabs and the focus colour for
+	 * the active-tab indicator.
 	 */
 	.ui-panels {
 		display: grid;
@@ -684,7 +713,7 @@
 		height: 1px;
 		margin: 0;
 		border-radius: 0;
-		background: var(--vscode-panelTitle-activeForeground, #e7e7e7);
+		background: var(--vscode-panelTitle-activeBorder, var(--vscode-focusBorder));
 	}
 
 	.ui-panels-tabpanel {
@@ -702,7 +731,7 @@
 		height: 28px;
 		border-radius: 0;
 		outline: none;
-		color: var(--vscode-panelTitle-inactiveForeground, #e7e7e799);
+		color: var(--vscode-panelTitle-inactiveForeground, var(--vscode-descriptionForeground));
 		fill: currentcolor;
 		cursor: pointer;
 		font-family: var(--vscode-font-family, sans-serif);
@@ -714,7 +743,12 @@
 	.ui-panel-tab:active,
 	.ui-panel-tab[aria-selected="true"] {
 		background: transparent;
-		color: var(--vscode-panelTitle-activeForeground, #e7e7e7);
+		color: var(--vscode-panelTitle-activeForeground, var(--vscode-foreground));
+	}
+
+	.ui-panel-tab:focus-visible {
+		outline: 1px solid var(--vscode-focusBorder);
+		outline-offset: -1px;
 	}
 
 	.ui-panel-view {
@@ -934,14 +968,14 @@ body:focus-within .scrollable {
 	display: none; /* Chrome, Safari and Opera */
 }
 
-/* Faded icon buttons in textfields */
+/* Icon buttons in textfields: description colour, foreground on hover (frame language). */
 .input-icon-button {
 	cursor: pointer;
-	opacity: 0.65;
+	color: var(--vscode-descriptionForeground);
 }
 
 .input-icon-button:hover {
-	opacity: 1;
+	color: var(--vscode-foreground);
 }
 
 .input-icon-button.disabled {

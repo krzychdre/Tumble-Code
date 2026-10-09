@@ -13,7 +13,7 @@ describe("Input", () => {
 
 		const input = screen.getByTestId("name")
 		expect(input.tagName).toBe("INPUT")
-		expect(input).toHaveClass("ui-input", "grow", "h-[26px]", "border-vscode-dropdown-border")
+		expect(input).toHaveClass("ui-input", "grow", "h-[26px]", "border-input-frame")
 		expect(input).toHaveAttribute("placeholder", "Name")
 
 		fireEvent.change(input, { target: { value: "a" } })
@@ -33,7 +33,7 @@ describe("Input", () => {
 
 		const input = screen.getByTestId("search")
 		const wrapper = input.parentElement!
-		expect(wrapper).toHaveClass("w-full", "border-vscode-dropdown-border", "focus-within:border-vscode-focusBorder")
+		expect(wrapper).toHaveClass("w-full", "border-input-frame", "focus-within:border-vscode-focusBorder")
 		expect(input).not.toHaveClass("w-full")
 		expect(input).toHaveClass("ui-input", "border-0", "bg-transparent")
 		expect(wrapper.firstElementChild).toContainElement(screen.getByTestId("icon"))
@@ -69,7 +69,7 @@ describe("Textarea", () => {
 		render(<Textarea data-testid="notes" rows={4} className="resize-y" />)
 
 		const textarea = screen.getByTestId("notes")
-		expect(textarea).toHaveClass("ui-textarea", "p-[9px]", "border-vscode-dropdown-border", "resize-y")
+		expect(textarea).toHaveClass("ui-textarea", "p-[9px]", "border-input-frame", "resize-y")
 		expect(textarea).not.toHaveClass("resize-none")
 		expect(textarea).toHaveAttribute("rows", "4")
 	})
