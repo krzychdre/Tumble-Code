@@ -27,6 +27,7 @@ import { postImmediateSetting } from "./postImmediateSetting"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { SettingsCard, SettingsNested, checkboxDescription, settingDescription } from "./SettingsCard"
 
 const UNSET_PROFILE = "-"
 
@@ -114,12 +115,13 @@ export const ContextManagementSettings = ({
 		}
 	}
 	return (
-		<div className={cn("flex flex-col gap-2", className)} {...props}>
+		<div className={cn("flex flex-col", className)} {...props}>
 			<SectionHeader description={t("settings:contextManagement.description")}>
 				{t("settings:sections.contextManagement")}
 			</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				<SearchableSetting
 					settingId="context-open-tabs"
 					section="contextManagement"
@@ -136,7 +138,7 @@ export const ContextManagementSettings = ({
 						/>
 						<span className="w-10">{maxOpenTabsContext ?? SETTINGS_DEFAULTS.maxOpenTabsContext}</span>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={settingDescription}>
 						{t("settings:contextManagement.openTabs.description")}
 					</div>
 				</SearchableSetting>
@@ -159,7 +161,7 @@ export const ContextManagementSettings = ({
 						/>
 						<span className="w-10">{maxWorkspaceFiles ?? SETTINGS_DEFAULTS.maxWorkspaceFiles}</span>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={settingDescription}>
 						{t("settings:contextManagement.workspaceFiles.description")}
 					</div>
 				</SearchableSetting>
@@ -182,7 +184,7 @@ export const ContextManagementSettings = ({
 						/>
 						<span className="w-10">{maxGitStatusFiles ?? SETTINGS_DEFAULTS.maxGitStatusFiles}</span>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={settingDescription}>
 						{t("settings:contextManagement.maxGitStatusFiles.description")}
 					</div>
 				</SearchableSetting>
@@ -195,11 +197,11 @@ export const ContextManagementSettings = ({
 						checked={showRooIgnoredFiles}
 						onChange={(e: any) => setShowRooIgnoredFiles(e.target.checked)}
 						data-testid="show-rooignored-files-checkbox">
-						<label className="block font-medium mb-1">
+						<label className="font-medium">
 							{t("settings:contextManagement.rooignore.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
+					<div className={checkboxDescription}>
 						{t("settings:contextManagement.rooignore.description")}
 					</div>
 				</SearchableSetting>
@@ -212,11 +214,11 @@ export const ContextManagementSettings = ({
 						checked={enableSubfolderRules}
 						onChange={(e: any) => setEnableSubfolderRules(e.target.checked)}
 						data-testid="enable-subfolder-rules-checkbox">
-						<label className="block font-medium mb-1">
+						<label className="font-medium">
 							{t("settings:contextManagement.enableSubfolderRules.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
+					<div className={checkboxDescription}>
 						{t("settings:contextManagement.enableSubfolderRules.description")}
 					</div>
 				</SearchableSetting>
@@ -247,7 +249,7 @@ export const ContextManagementSettings = ({
 							<span>{t("settings:contextManagement.maxImageFileSize.mb")}</span>
 						</div>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-2">
+					<div className={settingDescription}>
 						{t("settings:contextManagement.maxImageFileSize.description")}
 					</div>
 				</SearchableSetting>
@@ -278,7 +280,7 @@ export const ContextManagementSettings = ({
 							<span>{t("settings:contextManagement.maxTotalImageSize.mb")}</span>
 						</div>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-2">
+					<div className={settingDescription}>
 						{t("settings:contextManagement.maxTotalImageSize.description")}
 					</div>
 				</SearchableSetting>
@@ -291,11 +293,11 @@ export const ContextManagementSettings = ({
 						checked={includeDiagnosticMessages}
 						onChange={(e: any) => setIncludeDiagnosticMessages(e.target.checked)}
 						data-testid="include-diagnostic-messages-checkbox">
-						<label className="block font-medium mb-1">
+						<label className="font-medium">
 							{t("settings:contextManagement.diagnostics.includeMessages.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
+					<div className={checkboxDescription}>
 						{t("settings:contextManagement.diagnostics.includeMessages.description")}
 					</div>
 				</SearchableSetting>
@@ -348,12 +350,12 @@ export const ContextManagementSettings = ({
 							size="sm"
 							onClick={() => setMaxDiagnosticMessages(50)}
 							title={t("settings:contextManagement.diagnostics.maxMessages.resetTooltip")}
-							className="p-1 h-6 w-6"
+							className="p-1 h-[22px] w-[22px]"
 							disabled={maxDiagnosticMessages === 50}>
 							<span className="codicon codicon-discard" aria-hidden="true" />
 						</Button>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={settingDescription}>
 						{t("settings:contextManagement.diagnostics.maxMessages.description")}
 					</div>
 				</SearchableSetting>
@@ -376,7 +378,7 @@ export const ContextManagementSettings = ({
 						/>
 						<span className="w-20">{writeDelayMs}ms</span>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={settingDescription}>
 						{t("settings:contextManagement.diagnostics.delayAfterWrite.description")}
 					</div>
 				</SearchableSetting>
@@ -389,11 +391,11 @@ export const ContextManagementSettings = ({
 						checked={includeCurrentTime}
 						onChange={(e: any) => setIncludeCurrentTime(e.target.checked)}
 						data-testid="include-current-time-checkbox">
-						<label className="block font-medium mb-1">
+						<label className="font-medium">
 							{t("settings:contextManagement.includeCurrentTime.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
+					<div className={checkboxDescription}>
 						{t("settings:contextManagement.includeCurrentTime.description")}
 					</div>
 				</SearchableSetting>
@@ -406,16 +408,18 @@ export const ContextManagementSettings = ({
 						checked={includeCurrentCost}
 						onChange={(e: any) => setIncludeCurrentCost(e.target.checked)}
 						data-testid="include-current-cost-checkbox">
-						<label className="block font-medium mb-1">
+						<label className="font-medium">
 							{t("settings:contextManagement.includeCurrentCost.label")}
 						</label>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
+					<div className={checkboxDescription}>
 						{t("settings:contextManagement.includeCurrentCost.description")}
 					</div>
 				</SearchableSetting>
+				</SettingsCard>
 			</Section>
-			<Section className="pt-2">
+			<Section className="pt-0">
+				<SettingsCard>
 				{/* Context Condensing Prompt Editor */}
 				<SearchableSetting
 					settingId="context-condense-prompt"
@@ -433,7 +437,7 @@ export const ContextManagementSettings = ({
 							</Button>
 						</StandardTooltip>
 					</div>
-					<div className="text-sm text-vscode-descriptionForeground mb-2">
+					<div className={cn(settingDescription, "mt-0 mb-2")}>
 						{t("prompts:supportPrompts.types.CONDENSE.description")}
 					</div>
 					<Textarea
@@ -458,8 +462,8 @@ export const ContextManagementSettings = ({
 					</LabeledCheckbox>
 				</SearchableSetting>
 				{autoCondenseContext && (
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
-						<div className="flex items-center gap-4 font-bold">
+					<SettingsNested>
+						<div className="flex items-center gap-2 font-medium">
 							<FoldVertical size={16} />
 							<div>{t("settings:contextManagement.condensingThreshold.label")}</div>
 						</div>
@@ -520,7 +524,7 @@ export const ContextManagementSettings = ({
 								/>
 								<span className="w-20">{getCurrentThresholdValue()}%</span>
 							</div>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{selectedThresholdProfile === "default"
 									? t("settings:contextManagement.condensingThreshold.defaultDescription", {
 											threshold: autoCondenseContextPercent,
@@ -533,9 +537,8 @@ export const ContextManagementSettings = ({
 						<SearchableSetting
 							settingId="context-condense-profile"
 							section="contextManagement"
-							label={t("settings:contextManagement.condenseProfile.label")}
-							className="mt-section">
-							<label className="block text-sm font-medium mb-2">
+							label={t("settings:contextManagement.condenseProfile.label")}>
+							<label className="block font-medium mb-1">
 								{t("settings:contextManagement.condenseProfile.label")}
 							</label>
 							<Select
@@ -561,11 +564,11 @@ export const ContextManagementSettings = ({
 									))}
 								</SelectContent>
 							</Select>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:contextManagement.condenseProfile.description")}
 							</div>
 						</SearchableSetting>
-					</div>
+					</SettingsNested>
 				)}
 
 				{/* Prune Before Condense */}
@@ -579,12 +582,13 @@ export const ContextManagementSettings = ({
 						data-testid="prune-before-condense-checkbox">
 						<span className="font-medium">{t("settings:contextManagement.pruneBeforeCondense.label")}</span>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={checkboxDescription}>
 						{t("settings:contextManagement.pruneBeforeCondense.description")}
 					</div>
 				</SearchableSetting>
 
 				{pruneBeforeCondense !== false && (
+					<SettingsNested>
 					<SearchableSetting
 						settingId="context-prune-tool-result-budget"
 						section="contextManagement"
@@ -617,11 +621,13 @@ export const ContextManagementSettings = ({
 								<span>{t("settings:contextManagement.pruneToolResultBudget.bytes")}</span>
 							</div>
 						</div>
-						<div className="text-vscode-descriptionForeground text-sm mt-2">
+						<div className={settingDescription}>
 							{t("settings:contextManagement.pruneToolResultBudget.description")}
 						</div>
 					</SearchableSetting>
+					</SettingsNested>
 				)}
+				</SettingsCard>
 			</Section>
 		</div>
 	)

@@ -69,6 +69,7 @@ import { ExperimentalSettings } from "./ExperimentalSettings"
 import { LanguageSettings } from "./LanguageSettings"
 import { About } from "./About"
 import { Section } from "./Section"
+import { SettingsCard } from "./SettingsCard"
 import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { SkillsSettings } from "./SkillsSettings"
@@ -98,10 +99,13 @@ const TabLoadingFallback = () => {
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
-	"w-48 data-[compact=true]:w-12 flex-shrink-0 flex flex-col overflow-y-auto overflow-x-hidden border-r border-vscode-sideBar-background"
+	"w-48 data-[compact=true]:w-12 flex-shrink-0 flex flex-col gap-px py-1.5 overflow-y-auto overflow-x-hidden border-r border-frame"
+/* Side navigation (ai_plans/2026-10-09_ui-frame-settings.md): 30px inset rows in the description colour, the
+   chosen one tinted with a 2px focus bar on the left, and the shared 1px focus ring instead of ring-2. */
 export const settingsTabTrigger =
-	"whitespace-nowrap overflow-hidden min-w-0 h-12 px-4 py-3 box-border flex items-center border-l-2 border-transparent text-vscode-foreground opacity-70 hover:bg-vscode-list-hoverBackground data-[compact=true]:w-12 data-[compact=true]:p-4"
-export const settingsTabTriggerActive = "opacity-100 border-vscode-focusBorder bg-vscode-list-activeSelectionBackground"
+	"relative shrink-0 whitespace-nowrap overflow-hidden min-w-0 h-[30px] mx-1.5 px-3 box-border flex items-center rounded-control text-vscode-descriptionForeground hover:bg-surface-hover hover:text-vscode-foreground focus:ring-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder data-[compact=true]:mx-1 data-[compact=true]:px-0 data-[compact=true]:justify-center"
+export const settingsTabTriggerActive =
+	"bg-selected hover:bg-selected text-vscode-foreground hover:text-vscode-foreground before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:bg-vscode-focusBorder"
 
 export interface SettingsViewRef {
 	checkUnsaveChanges: (then: () => void) => void
@@ -523,6 +527,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 									<SectionHeader>{t("settings:sections.providers")}</SectionHeader>
 
 									<Section>
+										<SettingsCard>
 										<ApiConfigManager
 											currentApiConfigName={currentApiConfigName}
 											listApiConfigMeta={listApiConfigMeta}
@@ -553,6 +558,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 												})
 											}
 										/>
+										</SettingsCard>
+										<SettingsCard>
 										<ApiOptions
 											uriScheme={uriScheme}
 											apiConfiguration={apiConfiguration}
@@ -560,6 +567,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 											errorMessage={errorMessage}
 											setErrorMessage={setErrorMessage}
 										/>
+										</SettingsCard>
 									</Section>
 								</div>
 							)}

@@ -14,7 +14,7 @@ export const SectionHeader = ({ description, actions, children, className, ...pr
 	return (
 		<div
 			className={cn(
-				"sticky top-0 z-10 text-vscode-sideBar-foreground bg-vscode-sideBar-background px-5 pt-page pb-section",
+				"sticky top-0 z-10 text-vscode-foreground bg-vscode-editor-background border-b border-frame px-5 pt-page pb-section",
 				className,
 			)}
 			{...props}>

@@ -8,6 +8,7 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Link, Input } from "@src/components/ui"
 
 import { type ProviderFormProps, useProviderField } from "./shared"
+import { checkboxDescription } from "../SettingsCard"
 
 type VertexProps = ProviderFormProps
 
@@ -120,7 +121,7 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 						}}>
 						{t("settings:providers.vertex1MContextBetaLabel")}
 					</LabeledCheckbox>
-					<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">
+					<div className={checkboxDescription}>
 						{t("settings:providers.vertex1MContextBetaDescription")}
 					</div>
 				</div>

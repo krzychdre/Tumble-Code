@@ -10,6 +10,8 @@ import {
 } from "@src/components/ui"
 import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider } from "@tumble-code/types"
 import { useAppTranslation } from "@/i18n/TranslationContext"
+import { cn } from "@/lib/utils"
+import { SettingsNested, checkboxDescription, settingDescription } from "./SettingsCard"
 
 interface ImageGenerationSettingsProps {
 	enabled: boolean
@@ -79,20 +81,20 @@ export const ImageGenerationSettings = ({
 	const isConfigured = !requiresApiKey || (requiresApiKey && openRouterImageApiKey)
 
 	return (
-		<div className="space-y-section">
+		<div className="flex flex-col">
 			<div>
 				<div className="flex items-center gap-2">
 					<LabeledCheckbox checked={enabled} onChange={(e: any) => onChange(e.target.checked)}>
 						<span className="font-medium">{t("settings:experimental.IMAGE_GENERATION.name")}</span>
 					</LabeledCheckbox>
 				</div>
-				<p className="text-vscode-descriptionForeground text-sm mt-0">
+				<p className={cn(checkboxDescription, "mb-0")}>
 					{t("settings:experimental.IMAGE_GENERATION.description")}
 				</p>
 			</div>
 
 			{enabled && (
-				<div className="ml-2 space-y-block">
+				<SettingsNested className="mt-block">
 					{/* API Key Configuration (OpenRouter is the only supported provider) */}
 					<div>
 						<label className="block font-medium mb-1">
@@ -105,7 +107,7 @@ export const ImageGenerationSettings = ({
 							className="w-full"
 							type="password"
 						/>
-						<p className="text-vscode-descriptionForeground text-xs mt-1">
+						<p className={cn(settingDescription, "mb-0")}>
 							{t("settings:experimental.IMAGE_GENERATION.getApiKeyText")}{" "}
 							<a
 								href="https://openrouter.ai/keys"
@@ -134,7 +136,7 @@ export const ImageGenerationSettings = ({
 								))}
 							</SelectContent>
 						</Select>
-						<p className="text-vscode-descriptionForeground text-xs mt-1">
+						<p className={cn(settingDescription, "mb-0")}>
 							{t("settings:experimental.IMAGE_GENERATION.modelSelectionDescription")}
 						</p>
 					</div>
@@ -151,7 +153,7 @@ export const ImageGenerationSettings = ({
 							{t("settings:experimental.IMAGE_GENERATION.successConfigured")}
 						</div>
 					)}
-				</div>
+				</SettingsNested>
 			)}
 		</div>
 	)

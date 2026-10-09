@@ -2,6 +2,8 @@ import type { GlobalSettings, AutoApprovalMode } from "@tumble-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { cn } from "@/lib/utils"
+import { Check } from "lucide-react"
+
 import { Button, StandardTooltip } from "@/components/ui"
 
 type AutoApproveToggles = Pick<
@@ -103,28 +105,31 @@ export const AutoApproveToggle = ({ onToggle, mode, ...props }: AutoApproveToggl
 	const { t } = useAppTranslation()
 
 	return (
-		<div className={cn("flex flex-row flex-wrap gap-2 py-2")}>
+		<div className="flex flex-row flex-wrap gap-2">
 			{Object.values(autoApproveSettingsConfig).map(({ key, descriptionKey, labelKey, icon, testId }) => {
 				const forced = isAutoApproveForced(mode, key)
 				const isActive = forced || props[key]
 				return (
 					<StandardTooltip key={key} content={t(descriptionKey || "")}>
 						<Button
-							variant={isActive ? "primary" : "secondary"}
+							variant="secondary"
 							onClick={() => onToggle(key, !props[key])}
 							aria-label={t(labelKey)}
 							aria-pressed={!!isActive}
 							disabled={forced}
 							data-testid={testId}
 							className={cn(
-								"gap-1.5 text-xs whitespace-nowrap",
-								!isActive &&
-									"opacity-50 [:root[data-auto-approve=elevated]_&]:bg-vscode-input-background [:root[data-auto-approve=elevated]_&]:hover:bg-vscode-input-background",
+								// Outlined tiles like the composer's auto-approve popover: off = plain frame,
+								// on = focus tint + focus border + check, forced by bypass/autonomous = orange tint.
+								"gap-1.5 text-xs whitespace-nowrap border border-input-frame bg-transparent text-vscode-descriptionForeground hover:bg-surface-hover hover:text-vscode-foreground",
+								isActive &&
+									"bg-selected hover:bg-selected border-vscode-focusBorder text-vscode-foreground hover:text-vscode-foreground",
 								forced &&
-									"!bg-orange-600 hover:!bg-orange-600 !text-white !border-orange-600 !opacity-100 cursor-default",
+									"bg-orange-600/15 hover:bg-orange-600/15 border-orange-600 disabled:opacity-100 cursor-default",
 							)}>
 							<span className={`codicon codicon-${icon} text-sm`} aria-hidden="true" />
 							<span>{t(labelKey)}</span>
+							{isActive && <Check className="size-3.5" aria-hidden="true" />}
 						</Button>
 					</StandardTooltip>
 				)

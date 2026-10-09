@@ -20,6 +20,7 @@ import {
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { SettingsCard, SettingsNested, checkboxDescription, settingDescription } from "./SettingsCard"
 import { postImmediateSetting } from "./postImmediateSetting"
 import { useSetting } from "./SettingsDraftContext"
 import type { ExtensionMessage } from "@tumble-code/types"
@@ -98,6 +99,7 @@ const PromptsSettings = () => {
 			</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				<SearchableSetting
 					settingId="prompts-support-prompt-select"
 					section="prompts"
@@ -118,12 +120,12 @@ const PromptsSettings = () => {
 								))}
 						</SelectContent>
 					</Select>
-					<div className="text-sm text-vscode-descriptionForeground mt-1">
+					<div className={settingDescription}>
 						{t(`prompts:supportPrompts.types.${activeSupportOption}.description`)}
 					</div>
 				</SearchableSetting>
 
-				<div key={activeSupportOption} className="mt-section">
+				<div key={activeSupportOption}>
 					<div className="flex justify-between items-center mb-1">
 						<label className="block font-medium">{t("prompts:supportPrompts.prompt")}</label>
 						<StandardTooltip
@@ -150,7 +152,7 @@ const PromptsSettings = () => {
 					/>
 
 					{activeSupportOption === "ENHANCE" && (
-						<div className="mt-4 flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
+						<SettingsNested className="mt-block">
 							<div>
 								<label className="block font-medium mb-1">
 									{t("prompts:supportPrompts.enhance.apiConfiguration")}
@@ -184,7 +186,7 @@ const PromptsSettings = () => {
 										))}
 									</SelectContent>
 								</Select>
-								<div className="text-sm text-vscode-descriptionForeground mt-1">
+								<div className={settingDescription}>
 									{t("prompts:supportPrompts.enhance.apiConfigDescription")}
 								</div>
 							</div>
@@ -206,7 +208,7 @@ const PromptsSettings = () => {
 										{t("prompts:supportPrompts.enhance.includeTaskHistory")}
 									</span>
 								</LabeledCheckbox>
-								<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
+								<div className={checkboxDescription}>
 									{t("prompts:supportPrompts.enhance.includeTaskHistoryDescription")}
 								</div>
 							</div>
@@ -229,9 +231,10 @@ const PromptsSettings = () => {
 									</Button>
 								</div>
 							</div>
-						</div>
+						</SettingsNested>
 					)}
 				</div>
+				</SettingsCard>
 			</Section>
 		</div>
 	)

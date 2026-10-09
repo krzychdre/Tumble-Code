@@ -2,6 +2,7 @@ import { type ProviderSettings, type ModelInfo, type VerbosityLevel, verbosityLe
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import { settingDescription } from "./SettingsCard"
 
 interface VerbosityProps {
 	apiConfiguration: ProviderSettings
@@ -37,7 +38,7 @@ export const Verbosity = ({ apiConfiguration, setApiConfigurationField, modelInf
 					))}
 				</SelectContent>
 			</Select>
-			<div className="text-xs text-muted-foreground mt-1">{t("settings:providers.verbosity.description")}</div>
+			<div className={settingDescription}>{t("settings:providers.verbosity.description")}</div>
 		</div>
 	)
 }

@@ -14,7 +14,7 @@ export const SystemPromptActions = ({ currentModeSlug }: SystemPromptActionsProp
 	const { t } = useAppTranslation()
 
 	return (
-		<div className="pb-section border-b border-vscode-input-border">
+		<div className="pb-section border-b border-frame">
 			<div className="flex gap-2 mb-section">
 				<Button
 					variant="primary"
@@ -73,11 +73,11 @@ export const SystemPromptDialog = ({ title, currentModeName, content, onClose }:
 								modeName: currentModeName || "Code",
 							})}
 					</DialogTitle>
-					<pre className="p-2 whitespace-pre-wrap break-words font-mono text-vscode-editor-font-size text-vscode-editor-foreground bg-vscode-editor-background border border-vscode-editor-lineHighlightBorder overflow-y-auto">
+					<pre className="p-2 whitespace-pre-wrap break-words font-mono text-vscode-editor-font-size text-vscode-editor-foreground bg-vscode-editor-background border border-frame rounded-control overflow-y-auto">
 						{content}
 					</pre>
 				</div>
-				<div className="flex justify-end p-3 px-5 border-t border-vscode-editor-lineHighlightBorder bg-vscode-editor-background">
+				<div className="flex justify-end p-3 px-5 border-t border-frame bg-vscode-editor-background">
 					<Button variant="secondary" onClick={onClose}>
 						{t("prompts:createModeDialog.close")}
 					</Button>

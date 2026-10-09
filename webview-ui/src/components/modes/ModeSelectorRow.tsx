@@ -173,7 +173,7 @@ export const ModeSelectorRow = ({
 								variant="combobox"
 								role="combobox"
 								aria-expanded={open}
-								className="justify-between grow"
+								className="justify-between grow h-[26px]"
 								data-testid="mode-select-trigger">
 								<div className="flex items-center gap-1.5 truncate">
 									<ModeIcon slug={visualMode} className="size-4" />
@@ -185,7 +185,7 @@ export const ModeSelectorRow = ({
 										)}
 									</span>
 								</div>
-								<ChevronDown className="opacity-50" />
+								<ChevronDown className="text-vscode-descriptionForeground" />
 							</Button>
 						</PopoverTrigger>
 						<PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]">
@@ -196,13 +196,13 @@ export const ModeSelectorRow = ({
 										value={searchValue}
 										onValueChange={setSearchValue}
 										placeholder={t("prompts:modes.selectMode")}
-										className="h-9 mr-4"
+										className="h-[26px] mr-4"
 										data-testid="mode-search-input"
 									/>
 									{searchValue.length > 0 && (
 										<div className="absolute right-2 top-0 bottom-0 flex items-center justify-center">
 											<X
-												className="text-vscode-input-foreground opacity-50 hover:opacity-100 size-4 p-0.5 cursor-pointer"
+												className="text-vscode-descriptionForeground hover:text-vscode-foreground size-4 p-0.5 cursor-pointer"
 												onClick={onClearSearch}
 											/>
 										</div>

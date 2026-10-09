@@ -11,6 +11,7 @@ import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { SettingsCard, SettingsNested, checkboxDescription, settingDescription } from "./SettingsCard"
 import { Slider } from "../ui"
 
 const MAX_CUSTOM_SOUND_DURATION_SECONDS = 10
@@ -78,14 +79,14 @@ const CustomSoundRow = ({ audioType, label, description, basename, uri }: Custom
 		if (!uri) return
 		const audio = new Audio(uri)
 		audio.play().catch(() => {
-			/* ignore — user can re-trigger */
+			/* ignore, the user can re-trigger */
 		})
 	}
 
 	return (
 		<SearchableSetting settingId={`notifications-sound-custom-${audioType}`} section="notifications" label={label}>
 			<div className="font-medium">{label}</div>
-			<div className="text-vscode-descriptionForeground text-sm mt-1">{description}</div>
+			<div className={settingDescription}>{description}</div>
 			{basename && (
 				<div className="text-xs mt-2 text-vscode-descriptionForeground">
 					{t("settings:notifications.sound.custom.current")}: <code>{basename}</code>
@@ -136,7 +137,7 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 		customSoundNotificationOriginal,
 		customSoundUris,
 	} = useExtensionState()
-	// `basename` drives row state — when set, the row is in "custom" mode.
+	// `basename` drives row state: when set, the row is in "custom" mode.
 	// `displayName` is what the user sees: their original filename when
 	// available, falling back to the storage basename for settings saved
 	// before the *Original fields existed.
@@ -155,6 +156,7 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 			<SectionHeader>{t("settings:sections.notifications")}</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				<SearchableSetting
 					settingId="notifications-sound"
 					section="notifications"
@@ -165,13 +167,13 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 						data-testid="sound-enabled-checkbox">
 						<span className="font-medium">{t("settings:notifications.sound.label")}</span>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={checkboxDescription}>
 						{t("settings:notifications.sound.description")}
 					</div>
 				</SearchableSetting>
 
 				{soundEnabled && (
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
+					<SettingsNested>
 						<SearchableSetting
 							settingId="notifications-sound-volume"
 							section="notifications"
@@ -194,11 +196,13 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 							</div>
 						</SearchableSetting>
 
-						<div className="font-medium mt-1">{t("settings:notifications.sound.custom.sectionLabel")}</div>
-						<div className="text-vscode-descriptionForeground text-sm">
+						<div>
+							<div className="font-medium">{t("settings:notifications.sound.custom.sectionLabel")}</div>
+							<div className={settingDescription}>
 							{t("settings:notifications.sound.custom.sectionDescription", {
 								max: MAX_CUSTOM_SOUND_DURATION_SECONDS,
 							})}
+							</div>
 						</div>
 						{CUSTOM_SOUND_SLOTS.map((slot) => (
 							<CustomSoundRow
@@ -210,8 +214,9 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 								uri={customSoundUris?.[slot.id]}
 							/>
 						))}
-					</div>
+					</SettingsNested>
 				)}
+				</SettingsCard>
 			</Section>
 		</div>
 	)

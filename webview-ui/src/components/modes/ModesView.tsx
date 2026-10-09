@@ -8,6 +8,7 @@ import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { Section } from "@src/components/settings/Section"
+import { SettingsCard } from "@src/components/settings/SettingsCard"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 
@@ -201,14 +202,16 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 						}}
 						isExporting={importExport.isExporting}
 					/>
+				</div>
 
+				<SettingsCard>
 					{/* API Configuration - Moved Here */}
-					<div className="mb-block">
-						<div className="font-bold mb-1">{t("prompts:apiConfiguration.title")}</div>
+					<div>
+						<div className="font-medium mb-1">{t("prompts:apiConfiguration.title")}</div>
 						<div className="text-sm text-vscode-descriptionForeground mb-row">
 							{t("prompts:apiConfiguration.select")}
 						</div>
-						<div className="mb-row">
+						<div>
 							<Select value={currentApiConfigName} onValueChange={onSelectApiConfiguration}>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder={t("settings:common.select")} />
@@ -223,7 +226,6 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 							</Select>
 						</div>
 					</div>
-				</div>
 
 				<ModePromptFields
 					visualMode={visualMode}
@@ -257,6 +259,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 					onUpdateAgentPrompt={updateAgentPrompt}
 					onReset={() => resetAgentPrompt("customInstructions")}
 				/>
+				</SettingsCard>
 
 				<SystemPromptActions currentModeSlug={currentMode?.slug} />
 

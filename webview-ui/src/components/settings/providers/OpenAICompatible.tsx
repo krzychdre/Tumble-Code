@@ -19,6 +19,7 @@ import { noTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
 import { ThinkingBudget } from "../ThinkingBudget"
 import { type ProviderFormProps, useProviderField } from "./shared"
+import { checkboxDescription } from "../SettingsCard"
 
 /** A price label with its info tooltip. */
 const PriceLabel = ({ label, description }: { label: string; description: string }) => (
@@ -191,7 +192,7 @@ export const OpenAICompatible = ({
 					onCheckedChange={handleInputChange("includeMaxTokens", noTransform)}>
 					{t("settings:includeMaxOutputTokens")}
 				</LabeledCheckbox>
-				<div className="text-sm text-vscode-descriptionForeground ml-6">
+				<div className={checkboxDescription}>
 					{t("settings:includeMaxOutputTokensDescription")}
 				</div>
 			</div>
@@ -309,7 +310,7 @@ export const OpenAICompatible = ({
 					onCheckedChange={handleInputChange("openAiPreserveReasoning", noTransform)}>
 					{t("settings:providers.preserveReasoning.label")}
 				</LabeledCheckbox>
-				<div className="text-sm text-vscode-descriptionForeground ml-6">
+				<div className={checkboxDescription}>
 					{t("settings:providers.preserveReasoning.description")}
 				</div>
 				{/* Trimming only acts on reasoning that is sent back, so the option
@@ -321,7 +322,7 @@ export const OpenAICompatible = ({
 							onCheckedChange={handleInputChange("openAiTrimOldReasoning", noTransform)}>
 							{t("settings:providers.trimOldReasoning.label")}
 						</LabeledCheckbox>
-						<div className="text-sm text-vscode-descriptionForeground ml-6">
+						<div className={checkboxDescription}>
 							{t("settings:providers.trimOldReasoning.description")}
 						</div>
 					</div>

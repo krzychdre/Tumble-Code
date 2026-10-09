@@ -23,6 +23,8 @@ import {
 
 import { noTransform } from "../transforms"
 import { type ProviderFormProps, useProviderField } from "./shared"
+import { checkboxDescription } from "../SettingsCard"
+import { cn } from "@/lib/utils"
 
 type BedrockProps = ProviderFormProps & {
 	selectedModelInfo?: ModelInfo
@@ -211,7 +213,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 							</StandardTooltip>
 						</div>
 					</LabeledCheckbox>
-					<div className="text-sm text-vscode-descriptionForeground ml-6 mt-1">
+					<div className={checkboxDescription}>
 						{t("settings:providers.cacheUsageNote")}
 					</div>
 				</>
@@ -225,7 +227,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 						}}>
 						{t("settings:providers.awsBedrock1MContextBetaLabel")}
 					</LabeledCheckbox>
-					<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">
+					<div className={checkboxDescription}>
 						{t("settings:providers.awsBedrock1MContextBetaDescription")}
 					</div>
 				</div>
@@ -248,7 +250,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 						placeholder={t("settings:providers.awsBedrockVpc.vpcEndpointUrlPlaceholder")}
 						data-testid="vpc-endpoint-input"
 					/>
-					<div className="text-sm text-vscode-descriptionForeground ml-6 mt-1 mb-3">
+					<div className={cn(checkboxDescription, "mb-3")}>
 						{t("settings:providers.awsBedrockVpc.examples")}
 						<div className="ml-2">• https://vpce-xxx.bedrock.region.vpce.amazonaws.com/</div>
 						<div className="ml-2">• https://gateway.my-company.com/route/app/bedrock</div>

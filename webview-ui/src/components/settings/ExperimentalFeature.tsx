@@ -1,5 +1,7 @@
 import { LabeledCheckbox } from "@src/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
+import { checkboxDescription } from "./SettingsCard"
+import { cn } from "@/lib/utils"
 
 interface ExperimentalFeatureProps {
 	enabled: boolean
@@ -22,7 +24,7 @@ export const ExperimentalFeature = ({ enabled, onChange, experimentKey }: Experi
 					<span className="font-medium">{t(nameKey)}</span>
 				</LabeledCheckbox>
 			</div>
-			<p className="text-vscode-descriptionForeground text-sm mt-0">{t(descriptionKey)}</p>
+			<p className={cn(checkboxDescription, "mb-0")}>{t(descriptionKey)}</p>
 		</div>
 	)
 }

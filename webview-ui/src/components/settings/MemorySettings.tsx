@@ -17,6 +17,7 @@ import {
 	LabeledCheckbox,
 	Input,
 } from "@/components/ui"
+import { SettingsCard, checkboxDescription, settingDescription } from "./SettingsCard"
 
 type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
 	listApiConfigMeta: ProviderSettingsEntry[]
@@ -49,6 +50,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 			<SectionHeader>{t("settings:sections.memory")}</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				<SearchableSetting settingId="memory-enable" section="memory" label={t("settings:memory.enable.label")}>
 					<LabeledCheckbox
 						checked={autoMemoryEnabled ?? SETTINGS_DEFAULTS.autoMemoryEnabled}
@@ -57,7 +59,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 						}}>
 						<span className="font-medium">{t("settings:memory.enable.label")}</span>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={checkboxDescription}>
 						{t("settings:memory.enable.description")}
 					</div>
 				</SearchableSetting>
@@ -76,7 +78,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 								}}>
 								<span className="font-medium">{t("settings:memory.recall.label")}</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={checkboxDescription}>
 								{t("settings:memory.recall.description")}
 							</div>
 						</SearchableSetting>
@@ -99,7 +101,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 								className="w-full"
 								data-testid="memory-directory-input"
 							/>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:memory.directory.description")}
 							</div>
 						</SearchableSetting>
@@ -118,7 +120,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 								data-testid="memory-share-claude-code-checkbox">
 								<span className="font-medium">{t("settings:memory.shareWithClaudeCode.label")}</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={checkboxDescription}>
 								{autoMemoryDirectory
 									? t("settings:memory.shareWithClaudeCode.overridden")
 									: t("settings:memory.shareWithClaudeCode.description")}
@@ -154,7 +156,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 									))}
 								</SelectContent>
 							</Select>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:memory.writerProfile.description")}
 							</div>
 						</SearchableSetting>
@@ -171,7 +173,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 								}}>
 								<span className="font-medium">{t("settings:memory.dream.enable.label")}</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={checkboxDescription}>
 								{t("settings:memory.dream.enable.description")}
 							</div>
 						</SearchableSetting>
@@ -202,7 +204,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 											{autoDreamMinHours ?? SETTINGS_DEFAULTS.autoDreamMinHours}
 										</span>
 									</div>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={settingDescription}>
 										{t("settings:memory.dream.minHours.description")}
 									</div>
 								</SearchableSetting>
@@ -233,7 +235,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 											{autoDreamMinSessions ?? SETTINGS_DEFAULTS.autoDreamMinSessions}
 										</span>
 									</div>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={settingDescription}>
 										{t("settings:memory.dream.minSessions.description")}
 									</div>
 								</SearchableSetting>
@@ -241,6 +243,7 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 						)}
 					</>
 				)}
+				</SettingsCard>
 			</Section>
 		</div>
 	)

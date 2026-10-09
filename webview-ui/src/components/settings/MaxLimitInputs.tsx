@@ -2,6 +2,7 @@ import React from "react"
 import { useTranslation } from "react-i18next"
 import { MaxRequestsInput } from "./MaxRequestsInput"
 import { MaxCostInput } from "./MaxCostInput"
+import { settingDescription } from "./SettingsCard"
 
 export interface MaxLimitInputsProps {
 	allowedMaxRequests?: number
@@ -24,7 +25,7 @@ export const MaxLimitInputs: React.FC<MaxLimitInputsProps> = ({
 				<MaxRequestsInput allowedMaxRequests={allowedMaxRequests} onValueChange={onMaxRequestsChange} />
 				<MaxCostInput allowedMaxCost={allowedMaxCost} onValueChange={onMaxCostChange} />
 			</div>
-			<div className="text-xs text-vscode-descriptionForeground">
+			<div className={settingDescription}>
 				{t("settings:autoApprove.maxLimits.description")}
 			</div>
 		</div>

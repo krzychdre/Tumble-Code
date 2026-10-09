@@ -15,6 +15,7 @@ import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { SettingsCard, settingDescription } from "./SettingsCard"
 
 type SubagentSettingsProps = HTMLAttributes<HTMLDivElement>
 
@@ -41,6 +42,7 @@ export const SubagentSettings = (props: SubagentSettingsProps) => {
 			</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				<SearchableSetting
 					settingId="subagents-max-concurrency"
 					section="subagents"
@@ -61,7 +63,7 @@ export const SubagentSettings = (props: SubagentSettingsProps) => {
 								: concurrency}
 						</span>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={settingDescription}>
 						{t("settings:subagents.maxConcurrency.description")}
 					</div>
 				</SearchableSetting>
@@ -86,10 +88,11 @@ export const SubagentSettings = (props: SubagentSettingsProps) => {
 								: `${followupTimeout}s`}
 						</span>
 					</div>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={settingDescription}>
 						{t("settings:subagents.followupTimeout.description")}
 					</div>
 				</SearchableSetting>
+				</SettingsCard>
 			</Section>
 		</div>
 	)
