@@ -6,6 +6,7 @@
 	"views.activitybar.title": "Tumble Code",
 	"views.sidebar.name": "Tumble Code",
 	"command.newTask.title": "Nieuwe Taak",
+	"command.newTaskButton.title": "Tumble Code: Nieuwe Taak",
 	"command.history.title": "Taakgeschiedenis",
 	"command.marketplace.title": "Marktplaats",
 	"command.openInEditor.title": "Openen in Editor",

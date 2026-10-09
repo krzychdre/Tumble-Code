@@ -2,6 +2,7 @@
 	"extension.displayName": "Tumble Code",
 	"extension.description": "Düzenleyicinde tam bir AI ajanları geliştirme ekibi.",
 	"command.newTask.title": "Yeni Görev",
+	"command.newTaskButton.title": "Tumble Code: Yeni Görev",
 	"command.explainCode.title": "Kodu Açıkla",
 	"command.fixCode.title": "Kodu Düzelt",
 	"command.improveCode.title": "Kodu İyileştir",
