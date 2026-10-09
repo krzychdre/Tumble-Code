@@ -23,6 +23,7 @@
 	"searchBranch": "Cari branch...",
 	"noBranchFound": "Branch tidak ditemukan",
 	"worktreePath": "Di",
+	"browseFolder": "Pilih folder",
 	"selectWorktreeLocation": "Pilih Lokasi Worktree",
 	"selectFolderForWorktree": "Pilih folder untuk worktree baru",
 	"noIncludeFileWarning": "Tidak ada file .worktreeinclude",

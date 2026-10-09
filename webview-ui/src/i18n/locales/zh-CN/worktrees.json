@@ -23,6 +23,7 @@
 	"searchBranch": "搜索分支...",
 	"noBranchFound": "未找到分支",
 	"worktreePath": "在",
+	"browseFolder": "浏览文件夹",
 	"selectWorktreeLocation": "选择 Worktree 位置",
 	"selectFolderForWorktree": "为新 worktree 选择文件夹",
 	"noIncludeFileWarning": "没有 .worktreeinclude 文件",

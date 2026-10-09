@@ -143,7 +143,9 @@
 		"settings": "Modus-Einstellungen",
 		"description": "Spezialisierte Personas, die Tumbles Verhalten anpassen.",
 		"searchPlaceholder": "Modi suchen...",
-		"noResults": "Keine Ergebnisse gefunden"
+		"noResults": "Keine Ergebnisse gefunden",
+		"builtInGroup": "Integriert",
+		"customGroup": "Benutzerdefiniert"
 	},
 	"errorReadingFile": "Fehler beim Lesen der Datei",
 	"noValidImages": "Keine gültigen Bilder wurden verarbeitet",

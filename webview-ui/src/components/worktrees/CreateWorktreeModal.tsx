@@ -5,7 +5,17 @@ import type { WorktreeDefaultsResponse, BranchInfo, WorktreeIncludeStatus, Exten
 
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button, Input, Spinner } from "@/components/ui"
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	Button,
+	Input,
+	Spinner,
+	StandardTooltip,
+} from "@/components/ui"
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
 import { CornerDownRight, Folder, FolderSearch, Info } from "lucide-react"
 import { onExtensionMessage } from "@src/utils/extensionBus"
@@ -222,10 +232,15 @@ export const CreateWorktreeModal = ({
 							placeholder={defaults?.suggestedPath || "/path/to/worktree"}
 							className="flex-1 pr-9"
 						/>
-						<FolderSearch
-							className="size-4 shrink-0 absolute right-3 cursor-pointer hover:opacity-75 transition-opacity"
-							onClick={() => vscode.postMessage({ type: "browseForWorktreePath" })}
-						/>
+						<StandardTooltip content={t("worktrees:browseFolder")}>
+							<button
+								type="button"
+								aria-label={t("worktrees:browseFolder")}
+								onClick={() => vscode.postMessage({ type: "browseForWorktreePath" })}
+								className="absolute right-2 flex items-center justify-center size-[22px] p-0 shrink-0 bg-transparent border-none rounded-control cursor-pointer text-vscode-descriptionForeground hover:text-vscode-foreground focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder">
+								<FolderSearch className="size-4" aria-hidden="true" />
+							</button>
+						</StandardTooltip>
 					</div>
 
 					{/* Error message */}

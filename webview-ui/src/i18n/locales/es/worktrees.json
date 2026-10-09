@@ -23,6 +23,7 @@
 	"searchBranch": "Buscar ramas...",
 	"noBranchFound": "No se encontró ninguna rama",
 	"worktreePath": "En",
+	"browseFolder": "Buscar una carpeta",
 	"selectWorktreeLocation": "Seleccionar ubicación del Worktree",
 	"selectFolderForWorktree": "Seleccionar carpeta para el worktree nuevo",
 	"noIncludeFileWarning": "No hay archivo .worktreeinclude",

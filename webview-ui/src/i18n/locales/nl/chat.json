@@ -136,7 +136,9 @@
 		"settings": "Modus Instellingen",
 		"description": "Gespecialiseerde persona's die het gedrag van Tumble aanpassen.",
 		"searchPlaceholder": "Zoek modi...",
-		"noResults": "Geen resultaten gevonden"
+		"noResults": "Geen resultaten gevonden",
+		"builtInGroup": "Ingebouwd",
+		"customGroup": "Aangepast"
 	},
 	"addImages": "Afbeeldingen toevoegen aan bericht",
 	"pressToSend": "Druk op {{keyCombination}} om te verzenden",

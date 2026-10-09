@@ -23,6 +23,7 @@
 	"searchBranch": "ब्रांच खोजें...",
 	"noBranchFound": "कोई ब्रांच नहीं मिली",
 	"worktreePath": "में",
+	"browseFolder": "फ़ोल्डर चुनें",
 	"selectWorktreeLocation": "Worktree स्थान चुनें",
 	"selectFolderForWorktree": "नए worktree के लिए फ़ोल्डर चुनें",
 	"noIncludeFileWarning": ".worktreeinclude फ़ाइल नहीं है",

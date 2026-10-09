@@ -169,7 +169,9 @@
 		"settings": "Ustawienia Trybów",
 		"description": "Wyspecjalizowane persony, które dostosowują zachowanie Tumble.",
 		"searchPlaceholder": "Szukaj trybów...",
-		"noResults": "Nie znaleziono wyników"
+		"noResults": "Nie znaleziono wyników",
+		"builtInGroup": "Wbudowane",
+		"customGroup": "Własne"
 	},
 	"errorReadingFile": "Błąd odczytu pliku",
 	"noValidImages": "Nie przetworzono żadnych prawidłowych obrazów",

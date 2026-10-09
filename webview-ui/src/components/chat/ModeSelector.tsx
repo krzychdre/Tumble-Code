@@ -43,7 +43,7 @@ export const ModeSelector = ({
 	const [open, setOpen] = React.useState(false)
 	const [searchValue, setSearchValue] = React.useState("")
 	const searchInputRef = React.useRef<HTMLInputElement>(null)
-	const selectedItemRef = React.useRef<HTMLDivElement>(null)
+	const selectedItemRef = React.useRef<HTMLButtonElement>(null)
 	const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 	const lastNotifiedInvalidModeRef = React.useRef<string | null>(null)
 	const portalContainer = useRooPortal("roo-portal")
@@ -214,6 +214,49 @@ export const ModeSelector = ({
 	// Combine instruction text for tooltip.
 	const instructionText = `${t("chat:modeSelector.description")} ${modeShortcutText}`
 
+	// Built-in and custom modes are listed under their own small labels, but only when both groups have
+	// entries and the user is not searching (a search shows one flat list ranked by relevance). A mode is
+	// custom when it comes from customModes, also when it overrides a built-in slug, as in the Modes view.
+	const groupIdPrefix = React.useId()
+	const modeGroups = React.useMemo(() => {
+		if (searchValue) return null
+		const customSlugs = new Set((customModes ?? []).map((mode) => mode.slug))
+		const builtIn = filteredModes.filter((mode) => !customSlugs.has(mode.slug))
+		const custom = filteredModes.filter((mode) => customSlugs.has(mode.slug))
+		if (builtIn.length === 0 || custom.length === 0) return null
+		return [
+			{ key: "built-in", label: t("chat:modeSelector.builtInGroup"), modes: builtIn },
+			{ key: "custom", label: t("chat:modeSelector.customGroup"), modes: custom },
+		]
+	}, [searchValue, customModes, filteredModes, t])
+
+	const renderModeItem = (mode: (typeof modes)[number]) => {
+		const isSelected = mode.slug === value
+		return (
+			<button
+				type="button"
+				key={mode.slug}
+				ref={isSelected ? selectedItemRef : null}
+				onClick={() => handleSelect(mode.slug)}
+				aria-pressed={isSelected}
+				className={cn(
+					"mx-1 w-[calc(100%-0.5rem)] px-2.5 py-1.5 text-sm text-left text-vscode-foreground cursor-pointer flex items-center gap-2.5 rounded-control border-none",
+					"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder",
+					isSelected ? "bg-selected" : "bg-transparent hover:bg-surface-hover",
+				)}
+				data-testid="mode-selector-item">
+				<ModeIcon slug={mode.slug} className="size-4 self-start mt-0.5" />
+				<div className="flex-1 min-w-0">
+					<div className="font-semibold truncate">{modeLabel(mode.name)}</div>
+					{mode.description && (
+						<div className="text-xs text-vscode-descriptionForeground truncate">{mode.description}</div>
+					)}
+				</div>
+				{isSelected && <Check className="ml-auto size-4 p-0.5 text-vscode-focusBorder" />}
+			</button>
+		)
+	}
+
 	return (
 		<Popover open={open} onOpenChange={onOpenChange} data-testid="mode-selector-root">
 			<StandardTooltip content={title}>
@@ -278,31 +321,18 @@ export const ModeSelector = ({
 							</div>
 						) : (
 							<div className="py-1">
-								{filteredModes.map((mode) => {
-									const isSelected = mode.slug === value
-									return (
-										<div
-											key={mode.slug}
-											ref={isSelected ? selectedItemRef : null}
-											onClick={() => handleSelect(mode.slug)}
-											className={cn(
-												"mx-1 px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-2.5 rounded-control",
-												isSelected ? "bg-selected" : "hover:bg-surface-hover",
-											)}
-											data-testid="mode-selector-item">
-											<ModeIcon slug={mode.slug} className="size-4 self-start mt-0.5" />
-											<div className="flex-1 min-w-0">
-												<div className="font-semibold truncate">{modeLabel(mode.name)}</div>
-												{mode.description && (
-													<div className="text-xs text-vscode-descriptionForeground truncate">
-														{mode.description}
-													</div>
-												)}
+								{modeGroups
+									? modeGroups.map((group) => (
+											<div key={group.key} role="group" aria-labelledby={`${groupIdPrefix}-${group.key}`}>
+												<div
+													id={`${groupIdPrefix}-${group.key}`}
+													className="mx-1 px-2.5 pt-2 pb-0.5 text-[length:var(--text-meta)] uppercase tracking-wide text-vscode-descriptionForeground">
+													{group.label}
+												</div>
+												{group.modes.map(renderModeItem)}
 											</div>
-											{isSelected && <Check className="ml-auto size-4 p-0.5 text-vscode-focusBorder" />}
-										</div>
-									)
-								})}
+										))
+									: filteredModes.map(renderModeItem)}
 							</div>
 						)}
 					</div>

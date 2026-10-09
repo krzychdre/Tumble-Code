@@ -23,6 +23,7 @@
 	"searchBranch": "Поиск веток...",
 	"noBranchFound": "Ветка не найдена",
 	"worktreePath": "В",
+	"browseFolder": "Выбрать папку",
 	"selectWorktreeLocation": "Выбрать расположение Worktree",
 	"selectFolderForWorktree": "Выбрать папку для нового worktree",
 	"noIncludeFileWarning": "Нет файла .worktreeinclude",

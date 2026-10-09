@@ -143,7 +143,9 @@
 		"settings": "Cài đặt Chế độ",
 		"description": "Các nhân cách chuyên biệt điều chỉnh hành vi của Tumble.",
 		"searchPlaceholder": "Tìm kiếm chế độ...",
-		"noResults": "Không tìm thấy kết quả nào"
+		"noResults": "Không tìm thấy kết quả nào",
+		"builtInGroup": "Tích hợp sẵn",
+		"customGroup": "Tùy chỉnh"
 	},
 	"errorReadingFile": "Lỗi khi đọc tệp",
 	"noValidImages": "Không có hình ảnh hợp lệ nào được xử lý",

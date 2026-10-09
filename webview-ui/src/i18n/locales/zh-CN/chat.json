@@ -143,7 +143,9 @@
 		"settings": "模式设置",
 		"description": "专门定制Tumble行为的角色。",
 		"searchPlaceholder": "搜索模式...",
-		"noResults": "未找到结果"
+		"noResults": "未找到结果",
+		"builtInGroup": "内置",
+		"customGroup": "自定义"
 	},
 	"errorReadingFile": "读取文件时出错",
 	"noValidImages": "没有处理有效图片",

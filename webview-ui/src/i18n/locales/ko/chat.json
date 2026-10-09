@@ -143,7 +143,9 @@
 		"settings": "모드 설정",
 		"description": "Tumble의 행동을 맞춤화하는 전문화된 페르소나.",
 		"searchPlaceholder": "모드 검색...",
-		"noResults": "결과를 찾을 수 없습니다"
+		"noResults": "결과를 찾을 수 없습니다",
+		"builtInGroup": "기본 제공",
+		"customGroup": "사용자 지정"
 	},
 	"errorReadingFile": "파일 읽기 오류",
 	"noValidImages": "처리된 유효한 이미지가 없습니다",

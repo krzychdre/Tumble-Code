@@ -145,7 +145,9 @@
 		"settings": "Configuració de Modes",
 		"description": "Personalitats especialitzades que adapten el comportament de Tumble.",
 		"searchPlaceholder": "Cerca modes...",
-		"noResults": "No s'han trobat resultats"
+		"noResults": "No s'han trobat resultats",
+		"builtInGroup": "Integrats",
+		"customGroup": "Personalitzats"
 	},
 	"errorReadingFile": "Error en llegir el fitxer",
 	"noValidImages": "No s'ha processat cap imatge vàlida",
