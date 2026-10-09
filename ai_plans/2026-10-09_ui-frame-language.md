@@ -77,3 +77,22 @@ Each branch has its own plan file `2026-10-09_ui-frame-<area>.md` describing the
    to-do, follow-ups, approve bar, queued messages, file-changes and subagents panels.
 4. `feat/ui-frame-settings` - settings and modes.
 5. `feat/ui-frame-views` - MCP, marketplace, cloud, worktrees, plan review, zoomable modal.
+
+## Merged (2026-10-09)
+
+Foundation #840, composer #841, views #842, controls #843, settings #846 (replaces #844, which closed when its
+branch was deleted after a failed push during the rebase; no content lost), chat #845. Full webview suite on main
+after the batch: 259 files, 3761 tests passed; `tsc --noEmit` clean.
+
+Follow-up `fix/ui-frame-dialog-cancel`: the checkpoint-restore and edit/delete-message confirmation dialogs
+still passed the old filled secondary and primary button classes to `AlertDialogCancel` / `AlertDialogAction`;
+the overrides are removed so they use the shared button look like every other dialog.
+
+## Open items reported by the helpers (behaviour changes, so out of a styling pass)
+
+- `history/SubtaskCollapsibleRow`: the subtask toggle is not reachable with Tab.
+- `modes/ModesViewHeader`: config menu items are `div`s, not keyboard reachable.
+- `chat/McpExecution` header and `chat/BatchFilePermission` file rows: clickable `div`s, not keyboard reachable.
+- `chat/checkpoints`: the checkpoint menu still appears only on row hover (driven by component state).
+- `worktrees/CreateWorktreeModal`: the "browse folder" icon is not keyboard reachable (needs a new i18n label).
+- Mode popover: no "Built-in" / "Custom" group labels yet (needs new i18n keys in every locale).

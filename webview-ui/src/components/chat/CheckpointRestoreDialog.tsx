@@ -52,18 +52,12 @@ export const CheckpointRestoreDialog: React.FC<CheckpointRestoreDialogProps> = (
 					<AlertDialogDescription className="text-base">{description}</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter className="flex-col gap-2">
-					<AlertDialogCancel className="bg-vscode-button-secondaryBackground hover:bg-vscode-button-secondaryHoverBackground text-vscode-button-secondaryForeground border-vscode-button-border">
-						{t("common:answers.cancel")}
-					</AlertDialogCancel>
-					<AlertDialogAction
-						onClick={handleConfirmWithoutRestore}
-						className="bg-vscode-button-background hover:bg-vscode-button-hoverBackground text-vscode-button-foreground border-vscode-button-border">
+					<AlertDialogCancel>{t("common:answers.cancel")}</AlertDialogCancel>
+					<AlertDialogAction onClick={handleConfirmWithoutRestore}>
 						{isEdit ? t("common:confirmation.editOnly") : t("common:confirmation.deleteOnly")}
 					</AlertDialogAction>
 					{hasCheckpoint && (
-						<AlertDialogAction
-							onClick={handleConfirmWithRestore}
-							className="bg-vscode-button-background hover:bg-vscode-button-hoverBackground text-vscode-button-foreground border-vscode-button-border">
+						<AlertDialogAction onClick={handleConfirmWithRestore}>
 							{t("common:confirmation.restoreToCheckpoint")}
 						</AlertDialogAction>
 					)}
