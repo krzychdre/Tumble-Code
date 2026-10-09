@@ -94,6 +94,16 @@ describe("ChatTextArea composer accessibility (§2.5)", () => {
 		expect(textbox().className).not.toContain("border-frame-accent")
 	})
 
+	it("keeps a visible border when the composer is not focused", () => {
+		render(<Harness />)
+		fireEvent.blur(textbox())
+
+		// Many themes have a transparent input border, so the idle composer
+		// would have no outline at all against the panel background.
+		expect(textbox().className).toContain("border-composer-idle-border")
+		expect(textbox().className).not.toContain("border-transparent")
+	})
+
 	it("the @ mention menu is a listbox whose options carry ids and selection state", () => {
 		const { container } = render(<Harness />)
 		type("@")

@@ -524,7 +524,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										? "border border-transparent outline outline-1 outline-frame-accent"
 										: isDraggingOver
 											? "border-2 border-dashed border-frame-accent"
-											: "border border-transparent",
+											: "border border-composer-idle-border",
 									"pl-2",
 									"py-2",
 									isEditMode ? "pr-20" : "pr-9",
@@ -582,7 +582,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										? "border border-transparent outline outline-1 outline-frame-accent"
 										: isDraggingOver
 											? "border-2 border-dashed border-frame-accent"
-											: "border border-transparent",
+											: "border border-composer-idle-border",
 									isDraggingOver
 										? "bg-[color-mix(in_srgb,var(--vscode-input-background)_95%,var(--vscode-focusBorder))]"
 										: "bg-vscode-input-background",
