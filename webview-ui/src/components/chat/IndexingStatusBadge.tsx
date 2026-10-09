@@ -88,13 +88,12 @@ export const IndexingStatusBadge: React.FC<IndexingStatusBadgeProps> = ({ classN
 						size="sm"
 						aria-label={tooltipText}
 						className={cn(
-							"relative h-5 w-5 p-0",
-							"opacity-85",
-							"hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)]",
-							"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
+							"relative size-[22px] p-0 rounded-control",
+							"bg-transparent border border-frame hover:border-frame-hover hover:bg-surface-hover",
+							"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
 							className,
 						)}>
-						<Database className={cn("w-4 h-4 transition-colors duration-200", statusIconClass)} />
+						<Database className={cn("size-3.5 transition-colors duration-200", statusIconClass)} />
 					</Button>
 				</PopoverTrigger>
 			</StandardTooltip>

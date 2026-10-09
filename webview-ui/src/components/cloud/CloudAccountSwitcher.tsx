@@ -60,11 +60,12 @@ export const CloudAccountSwitcher = () => {
 			<Select value={currentValue} onValueChange={handleOrganizationChange} disabled={isLoading}>
 				<SelectTrigger
 					className={cn(
-						"h-4.5 w-4.5 p-0 gap-0",
-						"bg-transparent opacity-90 hover:opacity-50",
+						"size-[22px] p-0 gap-0 rounded-control",
+						"bg-transparent hover:bg-surface-hover",
 						"flex items-center justify-center",
 						"overflow-clip",
-						"border border-vscode-dropdown-border",
+						"border border-frame hover:border-frame-hover",
+						"focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
 						"[&>svg]:hidden", // Hide the default chevron/caret
 						isLoading && "opacity-50",
 					)}

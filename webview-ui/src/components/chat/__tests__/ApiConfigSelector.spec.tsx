@@ -455,8 +455,9 @@ describe("ApiConfigSelector", () => {
 		const config2Row = screen.getByText("Config 2").closest(".group") as HTMLElement
 		const pinButton = within(config2Row).getByRole("button", { name: "chat:pin" })
 		expect(pinButton).not.toHaveAttribute("tabindex", "-1")
-		// Shown on hover and when anything in the row has keyboard focus.
-		expect(pinButton).toHaveClass("opacity-0", "group-hover:opacity-100", "group-has-focus-visible:opacity-100")
+		// Always visible (it used to appear only on hover), in the muted description colour.
+		expect(pinButton).not.toHaveClass("opacity-0")
+		expect(pinButton).toHaveClass("text-vscode-descriptionForeground")
 
 		const selectButton = within(config2Row).getByRole("button", { name: /Config 2/ })
 		fireEvent.click(selectButton)
@@ -493,7 +494,7 @@ describe("ApiConfigSelector", () => {
 		expect(scrollContainer).toBeInTheDocument()
 
 		// Check for pinned configs sticky header
-		const pinnedStickyHeader = scrollContainer?.querySelector(".sticky.top-0.z-10.bg-vscode-dropdown-background")
+		const pinnedStickyHeader = scrollContainer?.querySelector(".sticky.top-0.z-10.bg-popover")
 		expect(pinnedStickyHeader).toBeInTheDocument()
 		expect(pinnedStickyHeader).toHaveAttribute("aria-label", "chat:apiConfigGroups.pinned")
 

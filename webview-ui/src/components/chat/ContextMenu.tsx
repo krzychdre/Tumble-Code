@@ -13,6 +13,7 @@ import {
 } from "@src/utils/context-mentions"
 import { removeLeadingNonAlphanumeric } from "@src/utils/removeLeadingNonAlphanumeric"
 import { vscode } from "@src/utils/vscode"
+import { cn } from "@src/lib/utils"
 
 interface ContextMenuProps {
 	onSelect: (type: ContextMenuOptionType, value?: string) => void
@@ -78,31 +79,18 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 		switch (option.type) {
 			case ContextMenuOptionType.SectionHeader:
 				return (
-					<span
-						style={{
-							fontWeight: "bold",
-							fontSize: "0.85em",
-							opacity: 0.8,
-						}}>
+					<span className="text-[10.5px] font-semibold uppercase tracking-wide text-vscode-descriptionForeground">
 						{option.label}
 					</span>
 				)
 			case ContextMenuOptionType.Mode:
 				return (
-					<div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-						<div style={{ lineHeight: "1.2" }}>
+					<div className="flex flex-col gap-0.5 min-w-0">
+						<div className="leading-[1.2]">
 							<span>{option.slashCommand}</span>
 						</div>
 						{option.description && (
-							<span
-								style={{
-									opacity: 0.5,
-									fontSize: "0.9em",
-									lineHeight: "1.2",
-									whiteSpace: "nowrap",
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-								}}>
+							<span className="text-[0.9em] leading-[1.2] truncate text-vscode-descriptionForeground">
 								{option.description}
 							</span>
 						)}
@@ -110,30 +98,17 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 				)
 			case ContextMenuOptionType.Command:
 				return (
-					<div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-						<div style={{ lineHeight: "1.2", display: "flex", alignItems: "center", gap: "6px" }}>
+					<div className="flex flex-col gap-0.5 min-w-0">
+						<div className="leading-[1.2] flex items-center gap-1.5">
 							<span>{option.slashCommand}</span>
 							{option.argumentHint && (
-								<span
-									style={{
-										opacity: 0.5,
-										fontSize: "0.9em",
-										lineHeight: "1.2",
-									}}>
+								<span className="text-[0.9em] leading-[1.2] text-vscode-descriptionForeground">
 									{option.argumentHint}
 								</span>
 							)}
 						</div>
 						{option.description && (
-							<span
-								style={{
-									opacity: 0.5,
-									fontSize: "0.9em",
-									lineHeight: "1.2",
-									whiteSpace: "nowrap",
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-								}}>
+							<span className="text-[0.9em] leading-[1.2] truncate text-vscode-descriptionForeground">
 								{option.description}
 							</span>
 						)}
@@ -150,17 +125,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 			case ContextMenuOptionType.Git:
 				if (option.value) {
 					return (
-						<div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-							<span style={{ lineHeight: "1.2" }}>{option.label}</span>
-							<span
-								style={{
-									fontSize: "0.85em",
-									opacity: 0.7,
-									whiteSpace: "nowrap",
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									lineHeight: "1.2",
-								}}>
+						<div className="flex flex-col gap-0 min-w-0">
+							<span className="leading-[1.2]">{option.label}</span>
+							<span className="text-[0.85em] leading-[1.2] truncate text-vscode-descriptionForeground">
 								{option.description}
 							</span>
 						</div>
@@ -178,29 +145,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 					const filename = pathList.at(-1)
 					const folderPath = pathList.slice(0, -1).join("/")
 					return (
-						<div
-							style={{
-								flex: 1,
-								overflow: "hidden",
-								display: "flex",
-								gap: "0.5em",
-								whiteSpace: "nowrap",
-								alignItems: "center",
-								justifyContent: "space-between",
-								textAlign: "left",
-							}}>
+						<div className="flex-1 overflow-hidden flex gap-[0.5em] whitespace-nowrap items-center justify-between text-left">
 							<span>{filename}</span>
 							<span
-								style={{
-									whiteSpace: "nowrap",
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									direction: "rtl",
-									textAlign: "right",
-									flex: 1,
-									opacity: 0.75,
-									fontSize: "0.75em",
-								}}>
+								className="flex-1 truncate text-right text-[0.75em] text-vscode-descriptionForeground"
+								style={{ direction: "rtl" }}>
 								{folderPath}
 							</span>
 						</div>
@@ -267,15 +216,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 	}
 
 	return (
-		<div
-			style={{
-				position: "absolute",
-				bottom: "calc(100% - 10px)",
-				left: 15,
-				right: 15,
-				overflowX: "hidden",
-			}}
-			onMouseDown={onMouseDown}>
+		<div className="absolute bottom-[calc(100%-10px)] left-[15px] right-[15px] overflow-x-hidden" onMouseDown={onMouseDown}>
 			<div
 				ref={menuRef}
 				role="listbox"
@@ -283,17 +224,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 				{...(isOptionSelectable(filteredOptions[selectedIndex] ?? ({} as ContextMenuQueryItem))
 					? { "aria-activedescendant": contextMenuOptionId(filteredOptions[selectedIndex]) }
 					: {})}
-				style={{
-					backgroundColor: "var(--vscode-dropdown-background)",
-					border: "1px solid var(--vscode-editorGroup-border)",
-					boxShadow: "0 4px 10px rgba(0, 0, 0, 0.25)",
-					zIndex: 1000,
-					display: "flex",
-					flexDirection: "column",
-					maxHeight: "300px",
-					overflowY: "auto",
-					overflowX: "hidden",
-				}}>
+				className={cn(
+					"z-[1000] flex flex-col max-h-[300px] overflow-y-auto overflow-x-hidden py-1",
+					"bg-vscode-dropdown-background text-vscode-dropdown-foreground",
+					"border border-frame-hover rounded-floating shadow-[0_4px_10px_var(--vscode-widget-shadow)]",
+				)}>
 				{/* Settings button for slash commands */}
 				{searchQuery === "/" && (
 					<div className="p-2 flex items-start gap-4 justify-between">
@@ -302,23 +237,21 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 								<p className="font-bold text-base text-vscode-foreground mt-1 mb-0.5">
 									{t("settings:sections.slashCommands")}
 								</p>
-								<p className="text-xs mt-0.5 -mb-1">{t("settings:slashCommands.description")} </p>
+								<p className="text-xs mt-0.5 -mb-1 text-vscode-descriptionForeground">
+									{t("settings:slashCommands.description")}{" "}
+								</p>
 							</div>
 						)}
 						<button
-							className="mt-1 cursor-pointer"
+							className={cn(
+								"mt-1 p-0.5 cursor-pointer rounded-control bg-transparent border-none",
+								"text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover",
+								"focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
+							)}
 							onClick={handleSettingsClick}
 							onMouseDown={(e) => {
 								e.stopPropagation()
 								e.preventDefault()
-							}}
-							onMouseEnter={(e) => {
-								e.currentTarget.style.opacity = "1"
-								e.currentTarget.style.backgroundColor = "var(--vscode-list-hoverBackground)"
-							}}
-							onMouseLeave={(e) => {
-								e.currentTarget.style.opacity = "0.7"
-								e.currentTarget.style.backgroundColor = "transparent"
 							}}
 							title={t("chat:slashCommands.manageCommands")}>
 							<Settings size={16} />
@@ -326,108 +259,68 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 					</div>
 				)}
 				{filteredOptions && filteredOptions.length > 0 ? (
-					filteredOptions.map((option, index) => (
-						<div
-							key={`${option.type}-${option.value || index}`}
-							id={contextMenuOptionId(option)}
-							role="option"
-							aria-selected={index === selectedIndex && isOptionSelectable(option)}
-							onClick={() => isOptionSelectable(option) && onSelect(option.type, option.value)}
-							style={{
-								padding:
-									option.type === ContextMenuOptionType.SectionHeader
-										? "16px 8px 4px 8px"
-										: "4px 8px",
-								cursor: isOptionSelectable(option) ? "pointer" : "default",
-								color: "var(--vscode-dropdown-foreground)",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "space-between",
-								position: "relative",
-								...(option.type === ContextMenuOptionType.SectionHeader
-									? {
-											borderBottom: "1px solid var(--vscode-editorGroup-border)",
-											marginBottom: "2px",
-										}
-									: {}),
-								...(index === selectedIndex && isOptionSelectable(option)
-									? {
-											backgroundColor: "var(--vscode-list-activeSelectionBackground)",
-											color: "var(--vscode-list-activeSelectionForeground)",
-										}
-									: {}),
-							}}
-							onMouseEnter={() => isOptionSelectable(option) && setSelectedIndex(index)}>
+					filteredOptions.map((option, index) => {
+						const isSectionHeader = option.type === ContextMenuOptionType.SectionHeader
+						const isSelected = index === selectedIndex && isOptionSelectable(option)
+						return (
 							<div
-								style={{
-									display: "flex",
-									alignItems: "center",
-									flex: 1,
-									minWidth: 0,
-									overflow: "hidden",
-									paddingTop: 0,
-									position: "relative",
-								}}>
+								key={`${option.type}-${option.value || index}`}
+								id={contextMenuOptionId(option)}
+								role="option"
+								aria-selected={isSelected}
+								onClick={() => isOptionSelectable(option) && onSelect(option.type, option.value)}
+								className={cn(
+									"relative flex items-center justify-between",
+									isSectionHeader
+										? "mx-2 px-1 pt-3 pb-1 mb-0.5 border-b border-frame cursor-default"
+										: "mx-1 px-2 py-1 rounded-control",
+									!isSectionHeader && (isOptionSelectable(option) ? "cursor-pointer" : "cursor-default"),
+									isSelected && "bg-selected",
+								)}
+								onMouseEnter={() => isOptionSelectable(option) && setSelectedIndex(index)}>
+								<div className="relative flex items-center flex-1 min-w-0 overflow-hidden">
+									{(option.type === ContextMenuOptionType.File ||
+										option.type === ContextMenuOptionType.Folder ||
+										option.type === ContextMenuOptionType.OpenedFile) && (
+										<img
+											src={getMaterialIconForOption(option)}
+											alt=""
+											aria-hidden="true"
+											className="mr-1.5 shrink-0 size-4"
+										/>
+									)}
+									{option.type !== ContextMenuOptionType.Mode &&
+										option.type !== ContextMenuOptionType.Command &&
+										option.type !== ContextMenuOptionType.File &&
+										option.type !== ContextMenuOptionType.Folder &&
+										option.type !== ContextMenuOptionType.OpenedFile &&
+										option.type !== ContextMenuOptionType.SectionHeader &&
+										getIconForOption(option) && (
+											<i
+												className={`codicon codicon-${getIconForOption(option)} mr-1.5 shrink-0 text-[14px]`}
+												aria-hidden="true"
+											/>
+										)}
+									{renderOptionContent(option)}
+								</div>
 								{(option.type === ContextMenuOptionType.File ||
 									option.type === ContextMenuOptionType.Folder ||
-									option.type === ContextMenuOptionType.OpenedFile) && (
-									<img
-										src={getMaterialIconForOption(option)}
-										alt=""
-										aria-hidden="true"
-										style={{
-											marginRight: "6px",
-											flexShrink: 0,
-											width: "16px",
-											height: "16px",
-										}}
-									/>
-								)}
-								{option.type !== ContextMenuOptionType.Mode &&
-									option.type !== ContextMenuOptionType.Command &&
-									option.type !== ContextMenuOptionType.File &&
-									option.type !== ContextMenuOptionType.Folder &&
-									option.type !== ContextMenuOptionType.OpenedFile &&
-									option.type !== ContextMenuOptionType.SectionHeader &&
-									getIconForOption(option) && (
+									option.type === ContextMenuOptionType.Git) &&
+									!option.value && (
 										<i
-											className={`codicon codicon-${getIconForOption(option)}`}
-											style={{
-												marginRight: "6px",
-												flexShrink: 0,
-												fontSize: "14px",
-												marginTop: 0,
-											}}
+											className="codicon codicon-chevron-right text-[10px] shrink-0 ml-2 text-vscode-descriptionForeground"
 											aria-hidden="true"
 										/>
 									)}
-								{renderOptionContent(option)}
 							</div>
-							{(option.type === ContextMenuOptionType.File ||
-								option.type === ContextMenuOptionType.Folder ||
-								option.type === ContextMenuOptionType.Git) &&
-								!option.value && (
-									<i
-										className="codicon codicon-chevron-right"
-										style={{ fontSize: "10px", flexShrink: 0, marginLeft: 8 }}
-										aria-hidden="true"
-									/>
-								)}
-						</div>
-					))
+						)
+					})
 				) : (
 					<div
 						role="option"
 						aria-selected={false}
 						aria-disabled={true}
-						style={{
-							padding: "4px",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							color: "var(--vscode-foreground)",
-							opacity: 0.7,
-						}}>
+						className="p-1 flex items-center justify-center text-vscode-descriptionForeground">
 						<span>{t("chat:contextMenu.noResults")}</span>
 					</div>
 				)}

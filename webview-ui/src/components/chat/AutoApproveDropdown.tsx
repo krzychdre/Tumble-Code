@@ -1,5 +1,5 @@
 import React from "react"
-import { ListChecks, LayoutList, Settings, ShieldCheck, ShieldAlert, Zap, X } from "lucide-react"
+import { Check, ListChecks, LayoutList, Settings, ShieldCheck, ShieldAlert, Zap, X } from "lucide-react"
 
 import { vscode } from "@/utils/vscode"
 
@@ -207,17 +207,15 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 					disabled={disabled}
 					data-testid="auto-approve-dropdown-trigger"
 					className={cn(
-						"inline-flex items-center gap-1.5 relative whitespace-nowrap px-1.5 py-1 text-xs",
+						"inline-flex items-center gap-1.5 relative whitespace-nowrap h-[22px] px-[7px] text-xs rounded-control",
 						"bg-transparent border text-vscode-foreground",
-						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
+						"transition-colors duration-150 focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
 						"max-[300px]:shrink-0",
-						isModeActive ? "!border-orange-600 text-orange-500" : "border-[rgba(255,255,255,0.08)]",
+						// Bypass / autonomous: the same orange the popover and composer frames turn to.
+						isModeActive ? "border-orange-600 text-orange-500" : "border-frame",
 						disabled
 							? "opacity-50 cursor-not-allowed"
-							: cn(
-									"opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] cursor-pointer",
-									!isModeActive && "hover:border-[rgba(255,255,255,0.15)]",
-								),
+							: cn("hover:bg-surface-hover cursor-pointer", !isModeActive && "hover:border-frame-hover"),
 						triggerClassName,
 					)}>
 					<TriggerIcon className="size-3 flex-shrink-0" />
@@ -234,13 +232,13 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 				onOpenAutoFocus={(e) => e.preventDefault()}>
 				<div className="flex flex-col w-full">
 					{/* Header with description */}
-					<div className="p-3 border-b border-vscode-dropdown-border">
+					<div className="p-3 border-b border-frame">
 						<div className="flex items-center justify-between gap-1 pr-1 pb-2">
 							<h4 className="m-0 font-bold text-base text-vscode-foreground">
 								{t("chat:autoApprove.title")}
 							</h4>
 							<Settings
-								className="inline mb-0.5 mr-1 size-4 cursor-pointer"
+								className="inline mb-0.5 mr-1 size-4 cursor-pointer text-vscode-descriptionForeground hover:text-vscode-foreground"
 								onClick={handleOpenSettings}
 							/>
 						</div>
@@ -249,7 +247,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 						</p>
 					</div>
 					{/* Mode selector: default / bypass / autonomous.
-					    Not gated by the master toggle — picking Bypass/Autonomous enables it. */}
+					    Not gated by the master toggle: picking Bypass/Autonomous enables it. */}
 					<div className="px-3 pt-3">
 						<AutoApproveModeSelector
 							mode={autoApprovalMode}
@@ -266,16 +264,21 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 									key={key}
 									content={forced ? t("chat:autoApprove.mode.forcedHint") : t(descriptionKey)}>
 									<Button
-										variant={isEnabled ? "primary" : "secondary"}
+										variant="ghost"
 										onClick={() => onAutoApproveToggle(key, !toggles[key])}
 										className={cn(
-											"flex items-center gap-2 px-2 py-2 text-sm text-left justify-start h-auto",
-											"transition-all duration-150",
+											"flex items-center gap-2 h-[28px] px-2 text-sm font-normal text-left justify-start",
+											"border rounded-control text-vscode-foreground hover:text-vscode-foreground",
+											"transition-colors duration-150",
 											!effectiveAutoApprovalEnabled &&
 												"opacity-50 cursor-not-allowed hover:opacity-50",
-											!isEnabled && "bg-vscode-button-background/15",
+											// Off: outlined like an input. On: the selection tint with a focus-colour frame.
+											!isEnabled &&
+												"bg-transparent border-input-frame hover:bg-surface-hover hover:border-input-frame-hover",
+											isEnabled && !forced && "bg-selected border-vscode-focusBorder hover:bg-selected",
+											// Forced on by bypass / autonomous: orange tint and frame, not clickable.
 											forced &&
-												"!bg-orange-600 hover:!bg-orange-600 !text-white !border-orange-600 !opacity-100 cursor-default",
+												"bg-orange-600/15 border-orange-600 hover:bg-orange-600/15 disabled:opacity-100 cursor-default",
 										)}
 										disabled={!effectiveAutoApprovalEnabled || forced}
 										data-testid={`auto-approve-${key}`}>
@@ -284,6 +287,15 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 											aria-hidden="true"
 										/>
 										<span className="flex-1 truncate">{t(labelKey)}</span>
+										{isEnabled && (
+											<Check
+												aria-hidden="true"
+												className={cn(
+													"flex-shrink-0",
+													forced ? "text-orange-500" : "text-vscode-focusBorder",
+												)}
+											/>
+										)}
 									</Button>
 								</StandardTooltip>
 							)
@@ -291,7 +303,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 					</div>
 
 					{/* Bottom bar with Select All/None buttons */}
-					<div className="flex flex-row items-center justify-between px-2 py-2 border-t border-vscode-dropdown-border">
+					<div className="flex flex-row items-center justify-between px-2 py-2 border-t border-frame">
 						<div className="flex flex-row gap-1">
 							<Button
 								variant="ghost"
@@ -300,7 +312,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 								onClick={handleSelectAll}
 								disabled={!effectiveAutoApprovalEnabled}
 								className={cn(
-									"gap-1 px-2 py-1 text-base font-bold h-auto",
+									"gap-1 h-[22px] px-2 text-xs",
 									!effectiveAutoApprovalEnabled && "opacity-50 hover:opacity-50 cursor-not-allowed",
 								)}>
 								<ListChecks className="w-3.5 h-3.5" />
@@ -313,7 +325,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 								onClick={handleSelectNone}
 								disabled={!effectiveAutoApprovalEnabled}
 								className={cn(
-									"gap-1 px-2 py-1 text-base font-bold h-auto",
+									"gap-1 h-[22px] px-2 text-xs",
 									!effectiveAutoApprovalEnabled && "opacity-50 hover:opacity-50 cursor-not-allowed",
 								)}>
 								<LayoutList className="w-3.5 h-3.5" />

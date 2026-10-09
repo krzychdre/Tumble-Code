@@ -142,9 +142,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					collisionPadding={16}
 					avoidCollisions={true}
 					container={portalContainer}>
-					<div className="p-3 border-b border-vscode-dropdown-border cursor-default">
+					<div className="p-3 border-b border-frame cursor-default">
 						<div className="flex flex-row items-center gap-1 p-0 m-0 w-full">
-							<h4 className="m-0 flex-1">{t("settings:codeIndex.title")}</h4>
+							<h4 className="m-0 flex-1 text-sm font-semibold">{t("settings:codeIndex.title")}</h4>
 						</div>
 					</div>
 

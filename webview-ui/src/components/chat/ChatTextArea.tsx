@@ -490,8 +490,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"right-0",
 									"z-[1000]",
 									isEditMode ? "-mb-3" : "mb-2",
-									"filter",
-									"drop-shadow-md",
 								)}>
 								<ContextMenu {...menuProps} />
 							</div>
@@ -499,6 +497,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 						<div
 							className={cn(
+								"group/composer",
 								"relative",
 								"flex-1",
 								"flex",
@@ -524,10 +523,12 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										? "border border-transparent outline outline-1 outline-frame-accent"
 										: isDraggingOver
 											? "border-2 border-dashed border-frame-accent"
-											: "border border-composer-idle-border",
+											: "border border-composer-idle-border group-hover/composer:border-frame-hover",
 									"pl-2",
 									"py-2",
 									isEditMode ? "pr-20" : "pr-9",
+									"rounded-control",
+									"transition-[border-color] duration-150",
 									"z-10",
 									"forced-color-adjust-none",
 								)}
@@ -582,11 +583,12 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										? "border border-transparent outline outline-1 outline-frame-accent"
 										: isDraggingOver
 											? "border-2 border-dashed border-frame-accent"
-											: "border border-composer-idle-border",
+											: "border border-composer-idle-border group-hover/composer:border-frame-hover",
 									isDraggingOver
 										? "bg-[color-mix(in_srgb,var(--vscode-input-background)_95%,var(--vscode-focusBorder))]"
 										: "bg-vscode-input-background",
-									"transition-background-color duration-150 ease-in-out",
+									"rounded-control",
+									"transition-[background-color,border-color] duration-150 ease-in-out",
 									"will-change-background-color",
 									"min-h-[94px]",
 									"box-border",
@@ -620,15 +622,10 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							{!inputValue && (
 								<div
 									className={cn(
-										"absolute left-2 z-30 flex items-center h-8 font-vscode-font-family text-vscode-editor-font-size leading-vscode-editor-line-height",
+										"absolute left-2 bottom-3 z-30 flex items-center h-8 font-vscode-font-family text-vscode-editor-font-size leading-vscode-editor-line-height",
+										"text-vscode-descriptionForeground select-none pointer-events-none",
 										isEditMode ? "pr-20" : "pr-9",
-									)}
-									style={{
-										bottom: "0.75rem",
-										color: "color-mix(in oklab, var(--vscode-input-foreground) 50%, transparent)",
-										userSelect: "none",
-										pointerEvents: "none",
-									}}>
+									)}>
 									{placeholderBottomText}
 								</div>
 							)}

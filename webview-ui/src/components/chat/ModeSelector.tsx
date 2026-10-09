@@ -221,15 +221,16 @@ export const ModeSelector = ({
 					disabled={disabled}
 					data-testid="mode-selector-trigger"
 					className={cn(
-						"inline-flex items-center gap-1.5 relative whitespace-nowrap px-1.5 py-1 text-xs",
-						"bg-transparent border border-[rgba(255,255,255,0.08)] text-vscode-foreground",
-						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
+						"inline-flex items-center gap-1.5 relative whitespace-nowrap h-[22px] px-[7px] text-xs rounded-control",
+						"bg-transparent border border-frame text-vscode-foreground",
+						"transition-colors duration-150 focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
 						disabled
 							? "opacity-50 cursor-not-allowed"
-							: "opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer",
+							: "hover:bg-surface-hover hover:border-frame-hover cursor-pointer",
 						triggerClassName,
+						// Until the user opens the selector once, the trigger is a filled primary chip.
 						!disabled && !hasOpenedModeSelector
-							? "bg-primary opacity-90 hover:bg-primary-hover text-vscode-button-foreground"
+							? "bg-primary border-transparent hover:bg-primary-hover hover:border-transparent text-vscode-button-foreground"
 							: null,
 					)}>
 					{selectedMode && <ModeIcon slug={selectedMode.slug} className="size-3" />}
@@ -244,27 +245,27 @@ export const ModeSelector = ({
 				<div className="flex flex-col w-full">
 					{/* Show search bar only when there are more than SEARCH_THRESHOLD items, otherwise show info blurb */}
 					{showSearch ? (
-						<div className="relative p-2 border-b border-vscode-dropdown-border">
+						<div className="relative p-2 border-b border-frame">
 							<Input
 								aria-label={t("prompts:modes.selectMode")}
 								ref={searchInputRef}
 								value={searchValue}
 								onChange={(e) => setSearchValue(e.target.value)}
 								placeholder={t("chat:modeSelector.searchPlaceholder")}
-								className="h-8 px-2 py-1 text-xs border-vscode-input-border"
+								className="text-xs pr-7"
 								data-testid="mode-search-input"
 							/>
 							{searchValue.length > 0 && (
 								<div className="absolute right-4 top-0 bottom-0 flex items-center justify-center">
 									<X
-										className="text-vscode-input-foreground opacity-50 hover:opacity-100 size-4 p-0.5 cursor-pointer"
+										className="text-vscode-descriptionForeground hover:text-vscode-foreground size-4 p-0.5 cursor-pointer"
 										onClick={onClearSearch}
 									/>
 								</div>
 							)}
 						</div>
 					) : (
-						<div className="p-3 border-b border-vscode-dropdown-border">
+						<div className="p-3 border-b border-frame">
 							<p className="m-0 text-xs text-vscode-descriptionForeground">{instructionText}</p>
 						</div>
 					)}
@@ -272,7 +273,7 @@ export const ModeSelector = ({
 					{/* Mode List */}
 					<div ref={scrollContainerRef} className="max-h-[300px] overflow-y-auto">
 						{filteredModes.length === 0 && searchValue ? (
-							<div className="py-2 px-3 text-sm text-vscode-foreground/70">
+							<div className="py-2 px-3 text-sm text-vscode-descriptionForeground">
 								{t("chat:modeSelector.noResults")}
 							</div>
 						) : (
@@ -285,23 +286,20 @@ export const ModeSelector = ({
 											ref={isSelected ? selectedItemRef : null}
 											onClick={() => handleSelect(mode.slug)}
 											className={cn(
-												"px-3 py-1.5 text-sm cursor-pointer flex items-center gap-2.5",
-												"hover:bg-vscode-list-hoverBackground",
-												isSelected
-													? "bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground"
-													: "",
+												"mx-1 px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-2.5 rounded-control",
+												isSelected ? "bg-selected" : "hover:bg-surface-hover",
 											)}
 											data-testid="mode-selector-item">
 											<ModeIcon slug={mode.slug} className="size-4 self-start mt-0.5" />
 											<div className="flex-1 min-w-0">
-												<div className="font-bold truncate">{modeLabel(mode.name)}</div>
+												<div className="font-semibold truncate">{modeLabel(mode.name)}</div>
 												{mode.description && (
 													<div className="text-xs text-vscode-descriptionForeground truncate">
 														{mode.description}
 													</div>
 												)}
 											</div>
-											{isSelected && <Check className="ml-auto size-4 p-0.5" />}
+											{isSelected && <Check className="ml-auto size-4 p-0.5 text-vscode-focusBorder" />}
 										</div>
 									)
 								})}
@@ -310,7 +308,7 @@ export const ModeSelector = ({
 					</div>
 
 					{/* Bottom bar with buttons on left and title on right */}
-					<div className="flex flex-row items-center justify-between px-2 py-2 border-t border-vscode-dropdown-border">
+					<div className="flex flex-row items-center justify-between px-2 py-2 border-t border-frame">
 						<div className="flex flex-row gap-1">
 							<IconButton
 								icon="codicon-extensions"
@@ -346,7 +344,7 @@ export const ModeSelector = ({
 							{showSearch && (
 								<StandardTooltip content={instructionText}>
 									<span
-										className="codicon codicon-info text-xs text-vscode-descriptionForeground opacity-70 hover:opacity-100 cursor-help"
+										className="codicon codicon-info text-xs text-vscode-descriptionForeground hover:text-vscode-foreground cursor-help"
 										aria-hidden="true"
 									/>
 								</StandardTooltip>
