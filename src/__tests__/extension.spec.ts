@@ -167,7 +167,7 @@ vi.mock("../extension/api", () => ({
 vi.mock("../activate", () => ({
 	handleUri: vi.fn(),
 	registerCommands: vi.fn(),
-	replaceOrphanedTabs: vi.fn().mockResolvedValue(undefined),
+	openStartupTab: vi.fn().mockResolvedValue(undefined),
 	registerCodeActions: vi.fn(),
 	registerTerminalActions: vi.fn(),
 	CodeActionProvider: vi.fn().mockImplementation(function () {

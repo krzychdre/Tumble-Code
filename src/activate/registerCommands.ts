@@ -228,7 +228,7 @@ const getCommandsMap = ({
  * tabs restored with a window. So the new host closes those tabs and opens a
  * working one. Call it before this host opens a tab of its own.
  */
-export const replaceOrphanedTabs = async (options: Omit<RegisterCommandOptions, "provider">) => {
+export const replaceOrphanedTabs = async (options: Omit<RegisterCommandOptions, "provider">): Promise<boolean> => {
 	const orphans = vscode.window.tabGroups.all
 		.flatMap((group) => group.tabs)
 		.filter(
@@ -236,12 +236,27 @@ export const replaceOrphanedTabs = async (options: Omit<RegisterCommandOptions, 
 				tab.input instanceof vscode.TabInputWebview && tab.input.viewType.endsWith(ClineProvider.tabPanelId),
 		)
 	if (orphans.length === 0) {
-		return
+		return false
 	}
 	// The old tab's group is locked, so it stays open, empty; reuse it.
 	const viewColumn = orphans[0].group.viewColumn
 	await vscode.window.tabGroups.close(orphans)
 	await openClineInNewTab(options, viewColumn)
+	return true
+}
+
+/**
+ * Opens the editor tab this host starts with: the replacement of an orphaned
+ * tab if there was one, else a new tab when `openInEditorOnStartup` is on, so
+ * the user does not have to open the sidebar and click "Open in Editor".
+ */
+export const openStartupTab = async (options: Omit<RegisterCommandOptions, "provider">) => {
+	if (await replaceOrphanedTabs(options)) {
+		return
+	}
+	if (vscode.workspace.getConfiguration(Package.name).get<boolean>("openInEditorOnStartup", false)) {
+		await openClineInNewTab(options)
+	}
 }
 
 /** Opens Tumble Code in an editor tab, in `viewColumn` if given, else right of the open editors. */
