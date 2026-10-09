@@ -95,13 +95,16 @@ const TodoText = ({ todo }: { todo: TodoItem }) => (
 )
 
 const LIST_ITEM = "flex items-start min-h-5 mb-0.5"
-const SMALL_BUTTON = "px-[7px] py-px text-xs cursor-pointer border border-solid"
+// Frame language (ai_plans/2026-10-09_ui-frame-language.md): compact 22px controls, outlined
+// secondary buttons and inputs on the input frame, 2px corners.
+const SMALL_BUTTON =
+	"inline-flex items-center h-[22px] px-2 text-xs cursor-pointer border border-solid rounded-control transition-colors"
 const PRIMARY_BUTTON =
-	"bg-vscode-button-background text-vscode-button-foreground border-[var(--vscode-button-border,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+	"bg-vscode-button-background hover:bg-vscode-button-hoverBackground text-vscode-button-foreground border-[var(--vscode-button-border,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
 const SECONDARY_BUTTON =
-	"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground border-[var(--vscode-button-secondaryBorder,transparent)]"
+	"bg-surface hover:bg-surface-hover text-vscode-foreground border-input-frame hover:border-input-frame-hover"
 const TEXT_INPUT =
-	"flex-1 min-w-0 font-medium text-base mr-1.5 px-[3px] py-px border-0 border-b border-solid focus-ring"
+	"flex-1 min-w-0 h-[22px] font-medium text-base mr-1.5 px-1.5 border border-solid border-input-frame hover:border-input-frame-hover rounded-control focus:outline focus:outline-1 focus:-outline-offset-1 focus:outline-vscode-focusBorder focus:border-vscode-focusBorder"
 
 const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 	todos = NO_TODOS,
@@ -217,13 +220,13 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 							className="codicon codicon-feedback mr-1.5 text-vscode-charts-yellow"
 							aria-hidden="true"
 						/>
-						<span className="font-bold mr-2">{t("chat:todo.userEdit")}</span>
+						<span className="font-bold mr-2 text-vscode-foreground">{t("chat:todo.userEdit")}</span>
 						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
 						<div className="flex-grow" />
 					</div>
 				</ToolUseBlockHeader>
 				{editTodos.length > 0 ? (
-					<div className="overflow-x-auto max-w-full pt-1.5 pb-0.5">
+					<div className="overflow-x-auto max-w-full px-2 pt-1.5 pb-1 border-t border-frame">
 						<ul className="m-0 pl-0 list-none">
 							{editTodos.map((todo, idx) => (
 								<li key={todo.id || idx} className={LIST_ITEM}>
@@ -234,7 +237,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						</ul>
 					</div>
 				) : (
-					<div className="overflow-x-auto max-w-full pt-3 pb-2">
+					<div className="overflow-x-auto max-w-full px-2 pt-2 pb-2 border-t border-frame">
 						<span className="text-vscode-descriptionForeground">{t("chat:todo.userEdits")}</span>
 					</div>
 				)}
@@ -248,7 +251,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 				<ToolUseBlockHeader>
 					<div className="flex items-center w-full">
 						<span className="codicon codicon-checklist mr-1.5 text-vscode-foreground" aria-hidden="true" />
-						<span className="font-bold mr-2">{t("chat:todo.listUpdated")}</span>
+						<span className="font-bold mr-2 text-vscode-foreground">{t("chat:todo.listUpdated")}</span>
 						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
 						<div className="flex-grow" />
 						{editable && (
@@ -257,7 +260,8 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 								onClick={() => setIsEditing(!isEditing)}
 								aria-pressed={isEditing}
 								className={cn(
-									"ml-2 px-2 py-0.5 text-base cursor-pointer border border-solid focus-ring",
+									SMALL_BUTTON,
+									"ml-2 focus-ring",
 									isEditing ? PRIMARY_BUTTON : SECONDARY_BUTTON,
 								)}>
 								{isEditing ? t("chat:todo.done") : t("chat:todo.edit")}
@@ -265,7 +269,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						)}
 					</div>
 				</ToolUseBlockHeader>
-				<div className="overflow-x-auto max-w-full pt-1.5 pb-0.5">
+				<div className="overflow-x-auto max-w-full px-2 pt-1.5 pb-1 border-t border-frame">
 					{Array.isArray(editTodos) && editTodos.length > 0 ? (
 						<ul className="m-0 pl-0 list-none">
 							{editTodos.map((todo, idx) => {
@@ -280,7 +284,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 												onChange={(e) => handleContentChange(todo.id!, e.target.value)}
 												className={cn(
 													TEXT_INPUT,
-													"text-vscode-input-foreground bg-vscode-input-background border-vscode-input-border",
+													"text-vscode-input-foreground bg-vscode-input-background",
 												)}
 												onBlur={(e) => {
 													if (!e.target.value.trim()) {
@@ -295,7 +299,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 											<select
 												value={todo.status || ""}
 												onChange={(e) => handleStatusChange(todo.id!, e.target.value)}
-												className="mr-1.5 border border-solid border-vscode-input-border bg-vscode-input-background text-vscode-input-foreground text-xs px-1 py-px">
+												className="mr-1.5 h-[22px] border border-solid border-input-frame hover:border-input-frame-hover rounded-control bg-vscode-input-background text-vscode-input-foreground text-xs px-1 focus-ring">
 												{STATUS_OPTIONS.map((opt) => (
 													<option key={opt.value} value={opt.value}>
 														{t(opt.label)}
@@ -307,7 +311,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 											<button
 												type="button"
 												onClick={() => handleDelete(todo.id!)}
-												className="ml-0.5 p-0 border-none bg-transparent text-vscode-errorForeground cursor-pointer text-sm leading-none focus-ring"
+												className="ml-0.5 inline-flex items-center justify-center size-[22px] p-0 border-none bg-transparent hover:bg-surface-hover rounded-control text-vscode-errorForeground cursor-pointer text-sm leading-none focus-ring"
 												title={t("chat:todo.remove")}
 												aria-label={t("chat:todo.remove")}>
 												×
@@ -328,7 +332,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 										onKeyDown={handleNewInputKeyDown}
 										className={cn(
 											TEXT_INPUT,
-											"text-vscode-foreground bg-transparent border-vscode-input-border",
+											"text-vscode-foreground bg-transparent",
 										)}
 									/>
 									<button
@@ -372,13 +376,13 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 				{/* Delete confirmation dialog */}
 				{deleteId && (
 					<div
-						className="fixed inset-0 z-[9999] flex items-center justify-center bg-[rgba(0,0,0,0.15)]"
+						className="fixed inset-0 z-[9999] flex items-center justify-center bg-[color-mix(in_srgb,var(--vscode-widget-shadow,black)_40%,transparent)]"
 						onClick={cancelDelete}>
 						<div
 							role="alertdialog"
 							aria-modal="true"
 							aria-labelledby={deleteLabelId}
-							className="z-[10000] min-w-[200px] px-5 py-4 bg-vscode-editorHoverWidget-background text-vscode-editorHoverWidget-foreground border border-solid border-vscode-editorHoverWidget-border shadow-[0_2px_16px_var(--vscode-widget-shadow)]"
+							className="z-[10000] min-w-[200px] px-5 py-4 bg-vscode-editorHoverWidget-background text-vscode-editorHoverWidget-foreground border border-solid border-frame-hover rounded-floating shadow-[0_2px_16px_var(--vscode-widget-shadow)]"
 							onClick={(e) => e.stopPropagation()}>
 							<div id={deleteLabelId} className="mb-3 text-sm">
 								{t("chat:todo.deleteConfirm")}
@@ -387,7 +391,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 								<button
 									type="button"
 									onClick={cancelDelete}
-									className={cn(SMALL_BUTTON, SECONDARY_BUTTON, "px-2.5 py-0.5 focus-ring")}>
+									className={cn(SMALL_BUTTON, SECONDARY_BUTTON, "px-2.5 focus-ring")}>
 									{t("chat:todo.cancel")}
 								</button>
 								<button
@@ -395,7 +399,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 									onClick={confirmDelete}
 									className={cn(
 										SMALL_BUTTON,
-										"px-2.5 py-0.5 bg-vscode-errorForeground text-vscode-editor-background border-vscode-errorForeground focus-ring",
+										"px-2.5 bg-vscode-errorForeground text-vscode-editor-background border-vscode-errorForeground focus-ring",
 									)}>
 									{t("chat:todo.delete")}
 								</button>

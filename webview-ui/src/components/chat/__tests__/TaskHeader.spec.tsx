@@ -121,15 +121,16 @@ describe("TaskHeader", () => {
 			expect(details).toHaveClass("max-h-[40vh]")
 		})
 
-		it("uses a flat 1px panel border instead of shadow and rounded corners", () => {
+		it("is a closed card on the shared frame and surface, without shadow", () => {
 			renderTaskHeader()
 			const header = screen.getByRole("button", { name: /test task/i })
 			const container = header.closest("div")
 
-			expect(container?.className).toContain("border-b")
-			expect(container?.className).toContain("border-vscode-panel-border")
+			expect(container).toHaveClass("border", "border-frame", "bg-surface", "rounded-control")
+			expect(container).toHaveClass("hover:bg-surface-hover", "hover:border-frame-hover")
+			expect(container).toHaveClass("text-vscode-foreground")
+			expect(container?.className).not.toContain("text-vscode-foreground/80")
 			expect(container?.className).not.toContain("shadow-lg")
-			expect(container?.className).not.toContain("rounded-xl")
 		})
 
 		it("renders lucide arrows with aria-labels instead of unicode arrows", () => {

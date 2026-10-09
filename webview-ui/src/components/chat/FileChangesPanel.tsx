@@ -109,8 +109,8 @@ const FileChangesPanel = memo(({ clineMessages, className }: FileChangesPanelPro
 		<Collapsible open={panelExpanded} onOpenChange={setPanelExpanded} className={cn("px-3", className)}>
 			<CollapsibleTrigger
 				className={cn(
-					"flex items-center gap-2 w-full py-2 text-left text-vscode-foreground",
-					"hover:bg-vscode-list-hoverBackground",
+					"flex items-center gap-2 w-full min-h-[28px] px-1 py-1 text-left text-vscode-foreground rounded-control",
+					"hover:bg-surface-hover transition-colors focus-ring",
 				)}>
 				{panelExpanded ? (
 					<ChevronDown className="size-4 shrink-0" aria-hidden />
@@ -154,7 +154,7 @@ const FileChangesPanel = memo(({ clineMessages, className }: FileChangesPanelPro
 						)
 						const isExpanded = expandedPaths.has(path)
 						return (
-							<div key={path} className="border border-vscode-panel-border">
+							<div key={path}>
 								<CodeAccordion
 									path={path}
 									code={displayDiff}

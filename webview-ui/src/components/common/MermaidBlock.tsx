@@ -116,7 +116,7 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 				<div style={{ marginTop: "0px", overflow: "hidden", marginBottom: "8px" }}>
 					<div
 						style={{
-							borderBottom: isErrorExpanded ? "1px solid var(--vscode-editorGroup-border)" : "none",
+							borderBottom: isErrorExpanded ? "1px solid var(--frame)" : "none",
 							fontWeight: "normal",
 							fontSize: "var(--vscode-font-size)",
 							color: "var(--vscode-editor-foreground)",

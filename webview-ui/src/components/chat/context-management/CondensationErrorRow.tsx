@@ -15,7 +15,7 @@ export function CondensationErrorRow({ errorText }: CondensationErrorRowProps) {
 		<div className="flex flex-col gap-1">
 			<div className="flex items-center gap-2">
 				<span
-					className="codicon codicon-warning text-vscode-editorWarning-foreground opacity-80 text-base -mb-0.5"
+					className="codicon codicon-warning text-vscode-editorWarning-foreground text-base -mb-0.5"
 					aria-hidden="true"></span>
 				<span className="font-bold text-vscode-foreground">
 					{t("chat:contextManagement.condensation.errorHeader")}

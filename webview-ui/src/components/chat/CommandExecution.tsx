@@ -199,36 +199,53 @@ export const CommandExecution = ({
 
 	useExtensionMessage("commandExecutionStatus", onMessage)
 
+	// The 2px status edge of the framed block, the same colours as ToolBlock.
+	const statusEdgeColor =
+		status?.status === "started"
+			? "var(--status-running)"
+			: status?.status === "error" || (status?.status === "exited" && status.exitCode !== 0)
+				? "var(--status-failed)"
+				: status?.status === "exited"
+					? "var(--status-done)"
+					: "var(--frame)"
+
 	return (
 		<>
 			<div className="flex flex-row items-center justify-between gap-2 mb-1">
 				<div className="flex flex-row items-center gap-2 min-w-0 flex-1">
 					{icon}
 					{title}
+					{/* Status dots are one size (8px) and always paired with a word or the
+					    exit code, so the status is never colour alone. */}
 					{status?.status === "started" && (
 						<StandardTooltip content={t("chat:commandExecution.running")}>
-							<div className="size-2 bg-[var(--status-running)] animate-pulse" />
+							<div className="flex flex-row items-center gap-1.5 text-xs text-vscode-descriptionForeground shrink-0">
+								<div className="size-2 shrink-0 bg-[var(--status-running)] animate-pulse" />
+								<span>{t("chat:commandExecution.running")}</span>
+							</div>
 						</StandardTooltip>
 					)}
 					{status?.status === "exited" && (
-						<div className="flex flex-row items-center gap-2 font-mono text-xs">
-							<StandardTooltip
-								content={t("chat.commandExecution.exitStatus", { exitStatus: status.exitCode })}>
+						<StandardTooltip
+							content={t("chat:commandExecution.exitStatus", { exitCode: status.exitCode })}>
+							<div className="flex flex-row items-center gap-1.5 font-mono text-xs text-vscode-descriptionForeground shrink-0">
 								<div
 									className={cn(
-										"size-2",
+										"size-2 shrink-0",
 										status.exitCode === 0 ? "bg-[var(--status-done)]" : "bg-[var(--status-failed)]",
 									)}
 								/>
-							</StandardTooltip>
-						</div>
+								<span>{status.exitCode}</span>
+							</div>
+						</StandardTooltip>
 					)}
 					{status?.status === "error" && (
-						<div className="flex flex-row items-center gap-2 font-mono text-xs text-vscode-errorForeground">
-							<StandardTooltip content={status.message ?? t("chat:commandExecution.malformedCommand")}>
-								<div className="size-2 bg-[var(--status-failed)]" />
-							</StandardTooltip>
-						</div>
+						<StandardTooltip content={status.message ?? t("chat:commandExecution.malformedCommand")}>
+							<div className="flex flex-row items-center gap-1.5 text-xs text-vscode-errorForeground shrink-0">
+								<div className="size-2 shrink-0 bg-[var(--status-failed)]" />
+								<span>{t("chat:error")}</span>
+							</div>
+						</StandardTooltip>
 					)}
 					{!isExpanded && commandPreview && (
 						<div className="font-mono text-xs text-vscode-descriptionForeground truncate min-w-0">
@@ -280,11 +297,13 @@ export const CommandExecution = ({
 			{/* Nothing below the header is mounted while collapsed: no code block,
 			    no ANSI conversion of the output, no pattern selector. */}
 			{isExpanded && (
-				<div className="bg-vscode-editor-background border border-vscode-border ml-6 mt-2">
+				<div
+					className="ml-6 mt-2 overflow-hidden border border-frame bg-surface rounded-control"
+					style={{ borderLeft: `var(--border-status) solid ${statusEdgeColor}` }}>
 					<div className="p-2">
 						<CodeBlock source={command} language="shell" />
 						{output.length > 0 && (
-							<div className="mt-1 pt-1 border-t border-border/25">
+							<div className="mt-2 -mx-2 -mb-2 border-t border-frame">
 								<TerminalOutput content={output} />
 							</div>
 						)}

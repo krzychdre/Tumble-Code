@@ -64,13 +64,13 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 	const progressLabel = t("chat:todo.partial", { completed: completedCount, total: totalCount })
 
 	return (
-		<div data-todo-list className="mt-1 -mx-2.5 border-t border-vscode-sideBar-background overflow-hidden">
+		<div data-todo-list className="mt-1 border border-frame bg-surface rounded-control overflow-hidden">
 			<button
 				type="button"
 				aria-expanded={!isCollapsed}
 				aria-controls={listId}
 				className={cn(
-					"flex w-full items-center gap-2 pt-2 px-2.5 text-left cursor-pointer select-none bg-transparent border-none focus-ring",
+					"flex w-full min-h-[28px] items-center gap-2 px-2.5 text-left cursor-pointer select-none bg-transparent border-none hover:bg-surface-hover transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder",
 					mostImportantTodo?.status === "in_progress" && isCollapsed
 						? "text-vscode-charts-yellow"
 						: "text-vscode-foreground",
@@ -106,7 +106,7 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 				<ul
 					id={listId}
 					ref={ulRef}
-					className="list-none max-h-[300px] overflow-y-auto mt-2 -mb-1 pb-0 px-2 cursor-default">
+					className="list-none max-h-[300px] overflow-y-auto m-0 pt-2 pb-0 px-2.5 border-t border-frame cursor-default">
 					{todos.map((todo: any, idx: number) => {
 						const icon = getTodoIcon(todo.status as TodoStatus)
 						return (
@@ -118,7 +118,7 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 								className={cn(
 									"font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal mb-2",
 									todo.status === "in_progress" && "text-vscode-charts-yellow",
-									todo.status !== "in_progress" && todo.status !== "completed" && "opacity-60",
+									todo.status !== "in_progress" && todo.status !== "completed" && "text-vscode-descriptionForeground",
 								)}>
 								{icon}
 								<span>{todo.content}</span>

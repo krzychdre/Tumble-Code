@@ -81,10 +81,12 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 			</div>
 			<div
 				className={cn(
-					"ml-6 border overflow-hidden whitespace-pre-wrap",
+					"ml-6 overflow-hidden whitespace-pre-wrap rounded-control",
 					isEditing
-						? "bg-vscode-editor-background text-vscode-editor-foreground"
-						: "cursor-text p-1 bg-vscode-editor-foreground/70 text-vscode-editor-background",
+						? "border border-frame bg-vscode-editor-background text-vscode-editor-foreground"
+						: // Frame language: a tinted card with a link-coloured edge instead of the
+							// inverted 70% foreground block.
+							"cursor-text border border-frame border-l-2 border-l-vscode-textLink-foreground bg-surface-hover text-vscode-foreground",
 				)}>
 				{isEditing ? (
 					<div className="flex flex-col gap-2">
@@ -109,7 +111,7 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 				) : (
 					<div className="flex justify-between">
 						<div
-							className="flex-grow px-2 py-1 wrap-anywhere transition-colors"
+							className="flex-grow px-[10px] py-2 wrap-anywhere transition-colors"
 							onClick={(e) => {
 								e.stopPropagation()
 								if (!isStreaming) {
@@ -119,10 +121,10 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 							title={t("chat:queuedMessages.clickToEdit")}>
 							<Mention text={message.text} withShadow />
 						</div>
-						<div className="flex gap-2 pr-1">
+						<div className="flex items-start gap-2 pr-[10px] pt-2">
 							<button
 								type="button"
-								className="block p-0 bg-transparent border-none text-inherit cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity focus-ring"
+								className="block p-0 bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer shrink-0 focus-ring"
 								style={{ visibility: isStreaming ? "hidden" : "visible" }}
 								aria-label={t("common:confirmation.editMessage")}
 								title={t("common:confirmation.editMessage")}
@@ -134,7 +136,7 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 							</button>
 							<button
 								type="button"
-								className="block p-0 bg-transparent border-none text-inherit cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity focus-ring"
+								className="block p-0 bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer shrink-0 focus-ring"
 								style={{ visibility: isStreaming ? "hidden" : "visible" }}
 								aria-label={t("common:confirmation.deleteMessage")}
 								title={t("common:confirmation.deleteMessage")}

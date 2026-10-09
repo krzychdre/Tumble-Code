@@ -39,7 +39,7 @@ export const AutoApprovedRequestLimitWarning = memo(({ message }: AutoApprovedRe
 			</div>
 
 			<div
-				className="bg-vscode-panel-border flex flex-col gap-3"
+				className="bg-surface border border-frame rounded-control flex flex-col gap-3"
 				style={{
 					display: "flex",
 					marginTop: "15px",

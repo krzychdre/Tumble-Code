@@ -101,7 +101,7 @@ export const NewTaskToolRow = ({ tool, meta }: ToolRendererProps) => {
 					/>
 				</span>
 			</div>
-			<div className="border-l border-muted-foreground/80 ml-2 pl-4 pb-1">
+			<div className="border-l border-frame-hover ml-2 pl-4 pb-1">
 				<MarkdownBlock markdown={tool.content} />
 				<div>
 					{childTaskId && !isFollowedBySubtaskResult && (

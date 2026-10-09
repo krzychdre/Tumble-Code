@@ -216,8 +216,8 @@ const approvalButtons = (container: HTMLElement) =>
 
 const readButtons = (container: HTMLElement) => {
 	const buttons = approvalButtons(container)
-	const primary = buttons.find((button) => button.className.includes("mr-")) ?? null
-	const secondary = buttons.find((button) => button.className.includes("ml-[6px]")) ?? null
+	const primary = buttons.find((button) => button.dataset.askButton === "primary") ?? null
+	const secondary = buttons.find((button) => button.dataset.askButton === "secondary") ?? null
 	return {
 		primary: primary?.textContent ?? null,
 		secondary: secondary?.textContent ?? null,

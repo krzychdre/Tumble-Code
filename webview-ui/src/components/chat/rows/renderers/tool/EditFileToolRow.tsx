@@ -62,16 +62,10 @@ export const EditFileToolRow = ({ message, tool, isExpanded, toggleExpand }: Too
 				/>
 				{tool.path?.toLowerCase().endsWith(".md") && (
 					<button
-						className="flex items-center gap-1 mt-1 text-xs cursor-pointer hover:opacity-80"
+						className="flex items-center gap-1 mt-1 h-[22px] px-2 text-xs cursor-pointer border-none rounded-control bg-vscode-button-background hover:bg-vscode-button-hoverBackground text-vscode-button-foreground transition-colors focus-ring"
 						onClick={(e) => {
 							e.stopPropagation()
 							vscode.postMessage({ type: "openPlanReview", text: tool.path })
-						}}
-						style={{
-							color: "var(--vscode-button-foreground)",
-							background: "var(--vscode-button-background)",
-							padding: "2px 8px",
-							border: "none",
 						}}>
 						<MessageSquarePlus className="w-3 h-3" />
 						{t("chat:planReview.reviewFile")}

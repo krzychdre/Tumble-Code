@@ -13,10 +13,13 @@ import { cn } from "@/lib/utils"
  *   (`actions`) without nesting them in the toggle.
  * - Content inside `title` that needs its own hover (a path tooltip) gets
  *   `relative` so it sits above that overlay; a click on it still toggles.
- * - The chevron sits at 60% opacity by default and reaches 100% on hover or
- *   when the toggle has keyboard focus; it is never fully hidden, so keyboard
- *   users can see it (the old `opacity-0`-until-hover chevron was invisible to
- *   them).
+ * - The chevron is always visible in the description colour and turns to the
+ *   foreground colour on hover or when the toggle has keyboard focus (the old
+ *   `opacity-0`-until-hover chevron was invisible to keyboard users).
+ * - Frame language (ai_plans/2026-10-09_ui-frame-language.md): the block is a
+ *   framed card (`border-frame`, `bg-surface`, `rounded-control`), the header
+ *   row is at least 28px tall with a `bg-surface-hover` hover, and the body is
+ *   separated from it by a `border-frame` rule.
  * - The body is mounted only while expanded, so a collapsed block costs no
  *   highlighting or diff rendering.
  * - With `status`, the container carries a `--border-status`-wide left border
@@ -74,7 +77,7 @@ export const ToolBlock = ({
 
 	return (
 		<div
-			className={cn("bg-vscode-editor-background font-mono", className)}
+			className={cn("border border-frame bg-surface rounded-control font-mono", className)}
 			style={
 				status
 					? {
@@ -85,7 +88,8 @@ export const ToolBlock = ({
 			<div
 				data-testid={headerTestId}
 				className={cn(
-					"group relative flex items-center select-none text-sm text-vscode-descriptionForeground",
+					"group relative flex items-center gap-1 min-h-[28px] px-2 select-none text-sm text-vscode-descriptionForeground",
+					"hover:bg-surface-hover hover:text-vscode-foreground transition-colors",
 					headerClassName,
 				)}>
 				<button
@@ -107,7 +111,7 @@ export const ToolBlock = ({
 				{collapsible && (
 					<span
 						className={cn(
-							"codicon shrink-0 opacity-60 group-hover:opacity-100 group-has-[button[aria-expanded]:focus-visible]:opacity-100",
+							"codicon shrink-0 text-vscode-descriptionForeground group-hover:text-vscode-foreground group-has-[button[aria-expanded]:focus-visible]:text-vscode-foreground",
 							isExpanded ? "codicon-chevron-up" : "codicon-chevron-down",
 						)}
 						aria-hidden="true"
@@ -121,7 +125,9 @@ export const ToolBlock = ({
 				</div>
 			)}
 			{showBody && (
-				<div id={bodyId} className={cn("overflow-y-auto max-h-[300px] font-mono", bodyClassName)}>
+				<div
+					id={bodyId}
+					className={cn("overflow-y-auto max-h-[300px] font-mono border-t border-frame", bodyClassName)}>
 					{children}
 				</div>
 			)}

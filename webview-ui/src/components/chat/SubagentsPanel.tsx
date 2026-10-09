@@ -16,7 +16,7 @@ import {
 import type { ClineMessage, ExtensionMessage, SubagentSummary } from "@tumble-code/types"
 import { parseFollowUpData } from "@tumble-code/types"
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger, Input, StandardTooltip } from "@/components/ui"
+import { Button, Collapsible, CollapsibleContent, CollapsibleTrigger, Input, StandardTooltip } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
 
@@ -312,25 +312,22 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 					<span className="text-xs text-vscode-descriptionForeground grow truncate">
 						{t("chat:subagents.permissionNeeded")}
 					</span>
-					<button
+					<Button
 						type="button"
+						variant="primary"
+						size="sm"
 						onClick={() => respondToPermission(true)}
-						className={cn(
-							"text-xs px-2 py-1 border-0 cursor-pointer",
-							"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
-						)}>
+						className="h-[22px] text-xs">
 						{t("chat:approve.title")}
-					</button>
-					<button
+					</Button>
+					<Button
 						type="button"
+						variant="secondary"
+						size="sm"
 						onClick={() => respondToPermission(false)}
-						className={cn(
-							"text-xs px-2 py-1 border border-vscode-button-border cursor-pointer",
-							"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground",
-							"hover:bg-vscode-button-secondaryHoverBackground",
-						)}>
+						className="h-[22px] text-xs">
 						{t("chat:reject.title")}
-					</button>
+					</Button>
 				</div>
 			)}
 			{usableSuggestions.length > 0 && (
@@ -341,9 +338,9 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 							type="button"
 							onClick={() => sendAnswer(suggestion.answer)}
 							className={cn(
-								"text-xs px-2 py-1 border border-vscode-button-border cursor-pointer",
-								"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground",
-								"hover:bg-vscode-button-secondaryHoverBackground",
+								"text-xs min-h-[22px] px-2 py-0.5 border border-input-frame rounded-control cursor-pointer text-left",
+								"bg-surface text-vscode-foreground transition-colors",
+								"hover:bg-surface-hover hover:border-input-frame-hover focus-ring",
 							)}>
 							{suggestion.answer}
 						</button>
@@ -367,7 +364,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 								? t("chat:subagents.answerPlaceholder")
 								: t("chat:subagents.guidancePlaceholder")
 						}
-						className="h-auto w-auto grow text-sm px-2 py-1 border-vscode-input-border placeholder:text-vscode-input-placeholderForeground"
+						className="h-[26px] w-auto grow text-sm px-2 border-input-frame placeholder:text-vscode-input-placeholderForeground"
 					/>
 					<StandardTooltip content={t("chat:subagents.send")}>
 						<button
@@ -376,9 +373,9 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 							onClick={() => sendAnswer(input)}
 							disabled={!input.trim()}
 							className={cn(
-								"p-1 border-0 cursor-pointer bg-transparent",
-								"text-vscode-foreground hover:bg-vscode-list-hoverBackground",
-								"disabled:opacity-40 disabled:cursor-default",
+								"flex items-center justify-center size-[22px] p-0 border-0 rounded-control cursor-pointer bg-transparent",
+								"text-vscode-foreground hover:bg-surface-hover focus-ring",
+								"disabled:text-vscode-descriptionForeground disabled:cursor-default",
 							)}>
 							<Send className="size-4" aria-hidden />
 						</button>
@@ -416,14 +413,15 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 		// shrink-0: overflow-hidden drops a flex item's content-based minimum
 		// height, so in the height-capped list the rows were squashed into slivers
 		// instead of the list scrolling.
-		<div className="shrink-0 border border-vscode-panel-border overflow-hidden">
+		<div className="shrink-0 border border-frame bg-surface rounded-control overflow-hidden">
 			<div className="flex items-center">
 				<button
 					type="button"
 					onClick={() => setExpanded((prev) => !prev)}
 					className={cn(
-						"flex items-center gap-2 grow min-w-0 px-2 py-1.5 text-left bg-transparent border-0 cursor-pointer",
-						"text-vscode-foreground hover:bg-vscode-list-hoverBackground",
+						"flex items-center gap-2 grow min-w-0 min-h-[28px] px-2 py-1 text-left bg-transparent border-0 cursor-pointer",
+						"text-vscode-foreground hover:bg-surface-hover transition-colors",
+						"focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder",
 					)}
 					aria-expanded={expanded}>
 					{expanded ? (
@@ -432,7 +430,7 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 						<ChevronRight className="size-3 shrink-0" aria-hidden />
 					)}
 					<StatusIcon status={summary.status} />
-					<span className="text-xs px-1 py-0.5 bg-vscode-badge-background text-vscode-badge-foreground shrink-0">
+					<span className="text-xs px-1 py-0.5 bg-vscode-badge-background text-vscode-badge-foreground rounded-control shrink-0">
 						{summary.mode}
 					</span>
 					{summary.apiConfigName && (
@@ -462,8 +460,8 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 							type="button"
 							onClick={cancel}
 							className={cn(
-								"p-1.5 mr-1 border-0 cursor-pointer bg-transparent shrink-0",
-								"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-vscode-list-hoverBackground",
+								"flex items-center justify-center size-[22px] p-0 mr-1 border-0 rounded-control cursor-pointer bg-transparent shrink-0",
+								"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-surface-hover focus-ring",
 							)}>
 							<Square className="size-3.5" aria-hidden />
 						</button>
@@ -471,7 +469,7 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 				)}
 			</div>
 			{expanded && (
-				<div className="border-t border-vscode-panel-border bg-vscode-editor-background">
+				<div className="border-t border-frame">
 					<SubagentTail summary={summary} />
 				</div>
 			)}
@@ -527,8 +525,8 @@ const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: Sub
 		<Collapsible open={panelExpanded} onOpenChange={handleOpenChange} className={cn("px-3", className)}>
 			<CollapsibleTrigger
 				className={cn(
-					"flex items-center gap-2 w-full py-2 text-left text-vscode-foreground",
-					"hover:bg-vscode-list-hoverBackground",
+					"flex items-center gap-2 w-full min-h-[28px] px-1 py-1 text-left text-vscode-foreground rounded-control",
+					"hover:bg-surface-hover transition-colors focus-ring",
 				)}>
 				{panelExpanded ? (
 					<ChevronDown className="size-4 shrink-0" aria-hidden />

@@ -89,7 +89,7 @@ export const SubtaskResultRow = ({ message }: RowRendererProps) => {
 	// Get the child task ID that produced this result
 	const completedChildTaskId = currentTaskItem?.completedByChildId
 	return (
-		<div className="border-l border-muted-foreground/80 ml-2 pl-4 pt-2 pb-1 -mt-5">
+		<div className="border-l border-frame-hover ml-2 pl-4 pt-2 pb-1 -mt-5">
 			<div style={headerStyle}>
 				<span style={{ fontWeight: "bold" }}>{t("chat:subtasks.resultContent")}</span>
 				<Check className="size-3" />

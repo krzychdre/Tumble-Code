@@ -29,7 +29,7 @@ const converter = new Convert({
 		14: "var(--vscode-terminal-ansiBrightCyan, #29b8db)",
 		15: "var(--vscode-terminal-ansiBrightWhite, #e5e5e5)",
 	},
-	escapeXML: true, // Prevent XSS — escape HTML entities in the content
+	escapeXML: true, // Prevent XSS: escape HTML entities in the content
 	newline: false, // We handle newlines ourselves via <pre>
 })
 
@@ -63,8 +63,10 @@ export const TerminalOutput: React.FC<TerminalOutputProps> = ({ content, classNa
 				whiteSpace: "pre-wrap",
 				wordBreak: "break-word",
 				margin: 0,
-				padding: "8px 12px",
-				backgroundColor: "var(--vscode-terminal-background, transparent)",
+				padding: "8px",
+				// Transparent: the framed command block behind it provides the surface
+				// (ai_plans/2026-10-09_ui-frame-language.md). The ANSI palette stays.
+				backgroundColor: "transparent",
 				color: "var(--vscode-terminal-foreground, inherit)",
 				overflow: "auto",
 				// Support Unicode box-drawing characters and extended ASCII

@@ -163,7 +163,7 @@ const TaskHeader = ({
 			return false
 		}
 
-		// Nested interactive elements keep their own clicks — except the
+		// Nested interactive elements keep their own clicks, except the
 		// header toggle button itself, which IS the expand control.
 		const button = target.closest("button")
 		if (button && !button.hasAttribute("data-task-header-toggle")) {
@@ -213,11 +213,11 @@ const TaskHeader = ({
 			<div
 				className={cn(
 					"px-3 pt-2.5 pb-2 flex flex-col gap-1.5 relative z-1",
-					"bg-vscode-input-background hover:bg-vscode-input-background/90",
-					"text-vscode-foreground/80 hover:text-vscode-foreground",
-					// §2.3: flat like the editor tabs — a 1px panel-border bottom
-					// border instead of shadow + rounded-xl.
-					"border-b border-vscode-panel-border",
+					// Frame language (ai_plans/2026-10-09_ui-frame-language.md): a closed
+					// card on the shared surface, full foreground text, frame on hover.
+					"bg-surface hover:bg-surface-hover text-vscode-foreground",
+					"border border-frame hover:border-frame-hover rounded-control",
+					"transition-colors",
 				)}
 				onClick={handleHeaderClick}>
 				<button
@@ -227,7 +227,7 @@ const TaskHeader = ({
 					aria-controls={detailsId}
 					// No onClick here on purpose: the click bubbles to the card's
 					// single handler; handling it here too would toggle twice.
-					className="flex justify-between items-center gap-0 w-full text-left bg-transparent border-none p-0 cursor-pointer">
+					className="flex justify-between items-center gap-0 w-full text-left bg-transparent border-none p-0 cursor-pointer focus-ring">
 					<div className="flex items-center select-none grow min-w-0">
 						<div className="grow min-w-0">
 							{isTaskExpanded && <span className="font-bold">{t("chat:task.title")}</span>}
@@ -244,12 +244,12 @@ const TaskHeader = ({
 									tabIndex={-1}
 									aria-hidden="true"
 									onClick={(e) => e.stopPropagation()}
-									className="shrink-0 min-h-[20px] min-w-[20px] p-[2px] cursor-pointer opacity-60 hover:opacity-100 bg-transparent">
+									className="shrink-0 min-h-[20px] min-w-[20px] p-[2px] cursor-pointer text-vscode-descriptionForeground hover:text-vscode-foreground bg-transparent">
 									{isTaskExpanded ? (
 										<ChevronUp size={16} />
 									) : (
-										// §2.2 chevron rule: 60% by default, never hidden —
-										// the old opacity-0-until-hover was invisible to keyboard users.
+										// §2.2 chevron rule: never hidden (the old opacity-0-until-hover
+										// was invisible to keyboard users); description colour by default.
 										<ChevronDown size={16} />
 									)}
 								</span>
@@ -259,9 +259,9 @@ const TaskHeader = ({
 				</button>
 				{!isTaskExpanded && contextWindow > 0 && (
 					<div
-						className="flex items-center gap-2 text-sm text-muted-foreground/70"
+						className="flex items-center gap-2 text-sm text-vscode-descriptionForeground"
 						onClick={(e) => e.stopPropagation()}>
-						{/* Kilo Code–style horizontal context bar: tokens-used —bar— context-window */}
+						{/* Kilo Code style horizontal context bar: tokens-used, bar, context-window */}
 						<ContextWindowProgress
 							contextWindow={contextWindow}
 							contextTokens={contextTokens || 0}
@@ -305,7 +305,7 @@ const TaskHeader = ({
 							<TaskActions item={currentTaskItem} buttonsDisabled={buttonsDisabled} />
 						</div>
 
-						<div className="pt-3 mt-2 -mx-2.5 px-2.5 border-t border-vscode-sideBar-background">
+						<div className="pt-3 mt-2 -mx-2.5 px-2.5 border-t border-frame">
 							<table className="w-full text-sm">
 								<tbody>
 									{contextWindow > 0 && (
@@ -414,9 +414,9 @@ const TaskHeader = ({
 						</div>
 					</div>
 				)}
-				{/* Todo list - always shown at bottom when todos exist */}
-				{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 			</div>
+			{/* Todo list - always shown under the task card when todos exist; its own card. */}
+			{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
 		</div>
 	)
 }

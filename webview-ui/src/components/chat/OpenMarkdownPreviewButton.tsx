@@ -33,7 +33,7 @@ export const OpenMarkdownPreviewButton = memo(({ markdown, className }: OpenMark
 			<button
 				type="button"
 				onClick={handleClick}
-				className={`opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 transition-opacity cursor-pointer focus-ring ${className ?? ""}`}
+				className={`inline-flex items-center justify-center size-[22px] p-0 bg-transparent border-none rounded-control text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover transition-colors cursor-pointer focus-ring ${className ?? ""}`}
 				aria-label={t("chat:markdownPreview.openAriaLabel")}>
 				<SquareArrowOutUpRight className="w-4 h-4" />
 			</button>

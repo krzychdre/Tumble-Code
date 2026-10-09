@@ -201,7 +201,7 @@ const DiffView = memo(({ source, filePath }: DiffViewProps) => {
 										<td colSpan={6} className="p-0 bg-[var(--vscode-editor-background)]">
 											<button
 												type="button"
-												className="diff-fold w-full text-left px-2 py-0.5 cursor-pointer bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-vscode-list-hoverBackground focus-ring"
+												className="diff-fold w-full text-left px-2 py-0.5 cursor-pointer bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover focus-ring"
 												onClick={() => openFold(row.key)}>
 												{t("chat:diffView.unchangedLines", { count: row.count })}
 											</button>
@@ -237,7 +237,7 @@ const DiffView = memo(({ source, filePath }: DiffViewProps) => {
 									? "bg-[var(--vscode-diffEditor-insertedTextBackground)]"
 									: line.type === "deletion"
 										? "bg-[var(--vscode-diffEditor-removedTextBackground)]"
-										: "bg-[var(--vscode-editorGroup-border)]"
+										: "bg-frame"
 
 							const contentBgClass =
 								line.type === "addition"

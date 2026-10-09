@@ -87,17 +87,15 @@ export const CheckpointSaved = ({
 			className="flex items-center justify-between gap-2 pt-2 pb-3"
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}>
-			<div className="flex items-center gap-2 text-[var(--vscode-charts-blue)] whitespace-nowrap">
-				<GitCommitVertical className="w-4" />
-				<span className="font-semibold">{t("chat:checkpoint.regular")}</span>
-				{isCurrent && <span className="text-muted">({t("chat:checkpoint.current")})</span>}
+			<div className="flex items-center gap-2 text-vscode-descriptionForeground whitespace-nowrap">
+				<GitCommitVertical className="w-4 text-vscode-charts-blue" />
+				<span>{t("chat:checkpoint.regular")}</span>
+				{isCurrent && <span>({t("chat:checkpoint.current")})</span>}
 			</div>
+			{/* A 1px rule in the theme blue (it was a hard-coded cyan gradient). */}
 			<span
-				className="block w-full h-[2px] mt-[2px] text-xs"
-				style={{
-					backgroundImage:
-						"linear-gradient(90deg, rgba(0, 188, 255, .65), rgba(0, 188, 255, .65) 80%, rgba(0, 188, 255, 0) 99%)",
-				}}></span>
+				aria-hidden="true"
+				className="block w-full h-px bg-[color-mix(in_srgb,var(--vscode-charts-blue)_45%,transparent)]"></span>
 
 			{/* Keep menu visible while hovering, popover is open, or briefly after close to prevent jump */}
 			<div data-testid="checkpoint-menu-container" className={cn("h-4 -mt-2", menuVisible ? "block" : "hidden")}>

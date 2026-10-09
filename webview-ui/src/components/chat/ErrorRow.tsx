@@ -203,7 +203,7 @@ export const ErrorRow = memo(
 					{/* The title is a real button for keyboard users; its click bubbles to the
 					    header, so a click anywhere on the header still toggles. */}
 					<div
-						className="font-sm text-vscode-editor-foreground flex items-center justify-between cursor-pointer"
+						className="text-vscode-editor-foreground flex items-center justify-between cursor-pointer"
 						onClick={handleToggleExpand}>
 						<button
 							type="button"
@@ -214,11 +214,11 @@ export const ErrorRow = memo(
 								{errorTitle}
 							</span>
 						</button>
-						<div className="flex items-center transition-opacity opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100">
+						<div className="flex items-center text-vscode-descriptionForeground">
 							{showCopyButton && (
 								<Button
 									variant="icon"
-									className="ml-0.75 mr-1.75 h-6 text-vscode-editor-foreground flex items-center justify-center bg-transparent"
+									className="ml-0.75 mr-1.75 h-[22px] text-vscode-descriptionForeground hover:text-vscode-foreground flex items-center justify-center bg-transparent"
 									aria-label={t("chat:errorDetails.copyToClipboard")}
 									onClick={handleCopy}>
 									<span className={`codicon codicon-${showCopySuccess ? "check" : "copy"}`} />
@@ -231,7 +231,7 @@ export const ErrorRow = memo(
 						</div>
 					</div>
 					{isExpanded && (
-						<div className="px-2 py-1 mt-2 bg-vscode-editor-background ml-6">
+						<div className="px-2 py-1 mt-2 ml-6 border border-l-2 rounded-control border-[color-mix(in_srgb,var(--vscode-errorForeground)_35%,transparent)] border-l-vscode-errorForeground bg-[color-mix(in_srgb,var(--vscode-errorForeground)_6%,transparent)]">
 							<CodeBlock source={message} language="text" />
 						</div>
 					)}
@@ -251,7 +251,7 @@ export const ErrorRow = memo(
 								{docsURL && (
 									<a
 										href={docsURL}
-										className="text-sm flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100"
+										className="text-sm flex items-center gap-1 text-vscode-descriptionForeground hover:text-vscode-foreground focus-ring"
 										onClick={(e) => {
 											e.preventDefault()
 											// Handle internal navigation to settings
@@ -276,17 +276,18 @@ export const ErrorRow = memo(
 							</div>
 						</div>
 					)}
-					<div className="ml-2 pl-4 mt-1 pt-0.5 border-l border-vscode-errorForeground/50">
+					{/* Frame language: the body is a tinted error card with a 2px error edge. */}
+					<div className="ml-6 mt-1 px-[10px] py-2 border border-l-2 rounded-control border-[color-mix(in_srgb,var(--vscode-errorForeground)_35%,transparent)] border-l-vscode-errorForeground bg-[color-mix(in_srgb,var(--vscode-errorForeground)_6%,transparent)]">
 						<p
 							className={
 								messageClassName ||
-								"cursor-default my-0 font-light whitespace-pre-wrap break-words text-vscode-descriptionForeground"
+								"cursor-default my-0 font-normal whitespace-pre-wrap break-words text-vscode-foreground"
 							}>
 							{message}
 							{formattedErrorDetails && (
 								<button
 									onClick={() => setIsDetailsDialogOpen(true)}
-									className="cursor-pointer ml-1 text-vscode-descriptionForeground/50 hover:text-vscode-descriptionForeground hover:underline font-normal"
+									className="cursor-pointer ml-1 text-vscode-descriptionForeground hover:text-vscode-foreground hover:underline font-normal focus-ring"
 									aria-label={t("chat:errorDetails.title")}>
 									{t("chat:errorDetails.link")}
 								</button>
@@ -303,12 +304,12 @@ export const ErrorRow = memo(
 							<DialogHeader>
 								<DialogTitle>{t("chat:errorDetails.title")}</DialogTitle>
 							</DialogHeader>
-							<div className="max-h-96 overflow-auto bg-vscode-editor-background border border-vscode-editorGroup-border">
+							<div className="max-h-96 overflow-auto bg-vscode-editor-background border border-frame rounded-control">
 								<pre className="font-mono text-sm whitespace-pre-wrap break-words bg-transparent px-3">
 									{formattedErrorDetails}
 								</pre>
 								{usesProxy && (
-									<div className="cursor-default flex gap-2 border-t-1 px-3 py-2 border-vscode-editorGroup-border bg-foreground/5 text-vscode-button-secondaryForeground">
+									<div className="cursor-default flex gap-2 border-t border-frame px-3 py-2 bg-surface text-vscode-button-secondaryForeground">
 										<Info className="size-3 shrink-0 mt-1 text-vscode-descriptionForeground" />
 										<span className="text-vscode-descriptionForeground text-sm">
 											{t("chat:errorDetails.proxyProvider")}

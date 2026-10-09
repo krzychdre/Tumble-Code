@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, memo } from "react"
+import React, { useRef, useLayoutEffect, memo } from "react"
 import { useWindowSize } from "react-use"
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
@@ -11,12 +11,11 @@ interface ThumbnailsProps {
 }
 
 /**
- * Attachment tiles. Square 48px (§2.5): each tile keeps a real, focusable
- * remove button in the tab order; it is dimmed until the tile is hovered or
- * the button itself is focused, so keyboard users can always reach it.
+ * Attachment tiles. Square 48px (§2.5) with the shared frame: each tile keeps a
+ * real, focusable remove button in the tab order. The button is always visible
+ * (ai_plans/2026-10-09_ui-frame-language.md: no hover-only controls).
  */
 const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProps) => {
-	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 	const containerRef = useRef<HTMLDivElement>(null)
 	const { width } = useWindowSize()
 	const { t } = useAppTranslation()
@@ -30,7 +29,6 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 			}
 			onHeightChange?.(height)
 		}
-		setHoveredIndex(null)
 	}, [images, width, onHeightChange])
 
 	const handleDelete = (index: number) => {
@@ -55,12 +53,9 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 				...style,
 			}}>
 			{images.map((image, index) => (
-				<div
-					key={index}
-					style={{ position: "relative" }}
-					onMouseEnter={() => setHoveredIndex(index)}
-					onMouseLeave={() => setHoveredIndex(null)}>
+				<div key={index} style={{ position: "relative" }}>
 					<img
+						className="block border border-frame rounded-control"
 						src={image}
 						alt={t("chat:thumbnailAlt", { index: index + 1 })}
 						style={{
@@ -76,7 +71,7 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 							type="button"
 							aria-label={t("chat:removeImage", { index: index + 1 })}
 							onClick={() => handleDelete(index)}
-							className="codicon codicon-close"
+							className="codicon codicon-close rounded-control focus-ring"
 							style={{
 								position: "absolute",
 								top: -4,
@@ -90,18 +85,9 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 								cursor: "pointer",
 								border: "none",
 								padding: 0,
-								color: "var(--vscode-foreground)",
+								color: "var(--vscode-badge-foreground)",
 								fontSize: 10,
 								fontWeight: "bold",
-								opacity: hoveredIndex === index ? 1 : 0,
-							}}
-							onFocus={(e) => {
-								e.currentTarget.style.opacity = "1"
-							}}
-							onBlur={(e) => {
-								if (hoveredIndex !== index) {
-									e.currentTarget.style.opacity = "0"
-								}
 							}}>
 						</button>
 					)}

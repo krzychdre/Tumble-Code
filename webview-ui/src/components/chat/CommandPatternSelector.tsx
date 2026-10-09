@@ -64,24 +64,18 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 	}
 
 	return (
-		<div className="border-t border-vscode-panel-border/50 bg-vscode-sideBar-background/30">
+		<div className="border-t border-frame">
 			<button
 				onClick={() => setIsExpanded(!isExpanded)}
-				className="w-full px-3 py-2 flex items-center justify-between hover:bg-vscode-list-hoverBackground transition-colors">
+				className="w-full min-h-[28px] px-2 py-1 flex items-center justify-between text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder">
 				<div className="group flex items-center gap-2 cursor-pointer w-full text-left">
 					<span
-						className={cn(
-							"text-sm flex-1 group-hover:opacity-100",
-							isExpanded ? "opacity-100" : "opacity-40",
-						)}>
+						className={cn("text-sm flex-1", isExpanded && "text-vscode-foreground")}>
 						<CheckCheck className="size-3 inline-block mr-2" />
 						{t("chat:commandExecution.manageCommands")}
 					</span>
 					<ChevronUp
-						className={cn(
-							"group-hover:opacity-100 size-4 transition-transform",
-							isExpanded ? "opacity-100" : "opacity-40 -rotate-180",
-						)}
+						className={cn("size-4 transition-transform", !isExpanded && "-rotate-180")}
 					/>
 				</div>
 			</button>
@@ -109,14 +103,14 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 													setEditState(item.pattern, false, item.pattern)
 												}
 											}}
-											className="h-auto font-mono text-xs border-vscode-input-border px-2 py-1.5"
+											className="h-[26px] font-mono text-xs border-input-frame px-2"
 											placeholder={item.pattern}
 											autoFocus
 										/>
 									) : (
 										<div
 											onClick={() => setEditState(item.pattern, true)}
-											className="font-mono text-xs text-vscode-foreground cursor-pointer hover:bg-vscode-list-hoverBackground px-2 py-1.5 transition-colors border border-transparent break-all"
+											className="font-mono text-xs text-vscode-foreground cursor-pointer hover:bg-surface-hover px-2 py-1.5 transition-colors border border-transparent rounded-control break-all"
 											title={t("chat:commandExecution.clickToEditPattern")}>
 											<span className="break-all">{editState.value}</span>
 											{item.description && (
@@ -135,7 +129,7 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 												: "chat:commandExecution.addToAllowed",
 										)}>
 										<button
-											className={cn("p-1 transition-all cursor-pointer", {
+											className={cn("p-1 transition-all cursor-pointer rounded-control focus-ring", {
 												"bg-vscode-charts-green/20 text-vscode-charts-green hover:bg-vscode-charts-green/30":
 													status === "allowed",
 												"text-vscode-descriptionForeground hover:text-vscode-charts-green hover:bg-vscode-charts-green/10":
@@ -157,7 +151,7 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 												: "chat:commandExecution.addToDenied",
 										)}>
 										<button
-											className={cn("p-1 transition-all cursor-pointer", {
+											className={cn("p-1 transition-all cursor-pointer rounded-control focus-ring", {
 												"bg-vscode-errorForeground/20 text-vscode-errorForeground hover:bg-vscode-errorForeground/30":
 													status === "denied",
 												"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-vscode-errorForeground/10":

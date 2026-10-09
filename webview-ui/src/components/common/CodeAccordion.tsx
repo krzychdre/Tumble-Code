@@ -67,7 +67,7 @@ const CodeAccordion = ({
 
 	if (!hasHeader) {
 		return (
-			<ToolUseBlock className="overflow-visible">
+			<ToolUseBlock className="overflow-visible p-2">
 				<div className="overflow-x-auto overflow-y-auto max-h-[300px] max-w-full">{content}</div>
 			</ToolUseBlock>
 		)
@@ -127,7 +127,7 @@ const CodeAccordion = ({
 				{isDiff && source && (
 					<button
 						type="button"
-						className="flex items-center mr-1 p-0 cursor-pointer bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground focus-ring"
+						className="flex items-center justify-center size-[22px] p-0 cursor-pointer bg-transparent border-none rounded-control text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover focus-ring"
 						title={t("chat:diffView.openDiff")}
 						aria-label={t("chat:diffView.openDiff")}
 						onClick={(e) => {
@@ -140,7 +140,7 @@ const CodeAccordion = ({
 				{onJumpToFile && path && (
 					<button
 						type="button"
-						className="flex items-center mr-1 p-0 cursor-pointer bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground focus-ring"
+						className="flex items-center justify-center size-[22px] p-0 cursor-pointer bg-transparent border-none rounded-control text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover focus-ring"
 						title={t("chat:diffView.openFile")}
 						aria-label={t("chat:diffView.openFile")}
 						onClick={(e) => {
@@ -155,10 +155,11 @@ const CodeAccordion = ({
 
 	return (
 		// overflow-visible: an overflow-hidden block would become the sticky header's
-		// scroll box and pin nothing.
+		// scroll box and pin nothing. The sticky header needs an opaque fill (code
+		// scrolls under it): the editor background with the surface tint on top.
 		<ToolBlock
-			className="overflow-visible p-2"
-			headerClassName="sticky top-0 z-10 bg-vscode-editor-background"
+			className="overflow-visible"
+			headerClassName="sticky top-0 z-10 rounded-t-control bg-vscode-editor-background hover:bg-vscode-editor-background bg-[linear-gradient(var(--surface),var(--surface))] hover:bg-[linear-gradient(var(--surface-hover),var(--surface-hover))]"
 			headerTestId="code-accordion-header"
 			bodyClassName="overflow-x-auto max-w-full"
 			isExpanded={isExpanded}
