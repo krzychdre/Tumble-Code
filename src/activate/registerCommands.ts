@@ -97,6 +97,19 @@ const getCommandsMap = ({
 
 		return openClineInNewTab({ context, outputChannel })
 	},
+	// The button in the title bar of every editor: shows the Tumble tab, or
+	// opens one. The panel registry is not asked, it forgets the tab as soon as
+	// the sidebar view resolves.
+	editorTitleButtonClicked: async () => {
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "editorTitle" })
+
+		const tab = ClineProvider.getEditorTab()
+		if (tab) {
+			tab.reveal()
+			return
+		}
+		await openClineInNewTab({ context, outputChannel })
+	},
 	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
 	settingsButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog()

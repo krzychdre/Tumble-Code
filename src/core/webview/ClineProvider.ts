@@ -853,6 +853,15 @@ export class ClineProvider
 		return findLast(Array.from(this.activeInstances), (instance) => instance.findLiveTask(taskId) !== undefined)
 	}
 
+	/** The newest editor tab Tumble Code is open in, if any. */
+	public static getEditorTab(): vscode.WebviewPanel | undefined {
+		const host = findLast(
+			Array.from(this.activeInstances),
+			(instance) => instance.view !== undefined && "onDidChangeViewState" in instance.view,
+		)
+		return host?.view as vscode.WebviewPanel | undefined
+	}
+
 	public static getVisibleInstance(): ClineProvider | undefined {
 		return findLast(Array.from(this.activeInstances), (instance) => instance.view?.visible === true)
 	}

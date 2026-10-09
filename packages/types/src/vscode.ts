@@ -33,6 +33,7 @@ export const commandIds = [
 	"historyButtonClicked",
 	"marketplaceButtonClicked",
 	"popoutButtonClicked",
+	"editorTitleButtonClicked",
 	"cloudButtonClicked",
 	"settingsButtonClicked",
 
