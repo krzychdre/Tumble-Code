@@ -550,6 +550,20 @@ describe("ClineProvider", () => {
 		expect(ClineProvider.getVisibleInstance()).toBe(provider)
 	})
 
+	test("observeInstances replays live providers and reports each new one until disposed", () => {
+		const seen: ClineProvider[] = []
+		const observer = ClineProvider.observeInstances((instance) => seen.push(instance))
+		expect(seen).toContain(provider)
+
+		const tab = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+		expect(seen[seen.length - 1]).toBe(tab)
+
+		observer.dispose()
+		const count = seen.length
+		new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+		expect(seen).toHaveLength(count)
+	})
+
 	test("resolveWebviewView hydrates the saved terminalProfile into the process-wide Terminal state", async () => {
 		const setTerminalProfileSpy = vi.spyOn(Terminal, "setTerminalProfile").mockImplementation(() => {})
 		// Seed the persisted setting so the real getState() returns it during hydration.

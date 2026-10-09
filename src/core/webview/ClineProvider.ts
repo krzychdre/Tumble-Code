@@ -124,6 +124,7 @@ export class ClineProvider
 	public static readonly sideBarId = `${Package.name}.SidebarProvider`
 	public static readonly tabPanelId = `${Package.name}.TabPanelProvider`
 	private static activeInstances: Set<ClineProvider> = new Set()
+	private static instanceObservers: Set<(provider: ClineProvider) => void> = new Set()
 	private disposables: vscode.Disposable[] = []
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
@@ -261,6 +262,9 @@ export class ClineProvider
 		this.currentWorkspacePath = getWorkspacePath()
 
 		ClineProvider.activeInstances.add(this)
+		for (const observe of ClineProvider.instanceObservers) {
+			observe(this)
+		}
 
 		// Closures, not `this`: they reach private members and pick up
 		// methods that tests replace on the instance after construction.
@@ -826,6 +830,22 @@ export class ClineProvider
 
 		// Clean up any event listeners attached to this provider
 		this.removeAllListeners()
+	}
+
+	/**
+	 * Calls `observe` for every live provider now and for each one created
+	 * later: the sidebar and every editor tab, however the tab was opened
+	 * (command, API, replacement of an orphaned tab). Before, the API bus only
+	 * heard the sidebar and the tabs it opened itself, so a task run in a tab
+	 * never reached the remote-control bridge and the cloud stored its
+	 * telemetry (cost, tokens) but no messages.
+	 */
+	public static observeInstances(observe: (provider: ClineProvider) => void): vscode.Disposable {
+		for (const instance of this.activeInstances) {
+			observe(instance)
+		}
+		this.instanceObservers.add(observe)
+		return { dispose: () => this.instanceObservers.delete(observe) }
 	}
 
 	public static getVisibleInstance(): ClineProvider | undefined {

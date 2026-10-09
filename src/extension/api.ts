@@ -31,6 +31,7 @@ export class API extends EventEmitter<TumbleCodeEvents> implements TumbleCodeAPI
 	private readonly context: vscode.ExtensionContext
 	private readonly log: (...args: unknown[]) => void
 	private logfile?: string
+	private readonly registeredProviders = new WeakSet<ClineProvider>()
 
 	constructor(outputChannel: vscode.OutputChannel, provider: ClineProvider, enableLogging = false) {
 		super()
@@ -48,6 +49,12 @@ export class API extends EventEmitter<TumbleCodeEvents> implements TumbleCodeAPI
 		}
 
 		this.registerListeners(this.sidebarProvider)
+		// Every provider, not just the sidebar: a task run in an editor tab must
+		// reach the bus too (the remote-control bridge stores its messages).
+		const observer = ClineProvider.observeInstances((instance) => this.registerListeners(instance))
+		if (observer) {
+			this.context?.subscriptions.push(observer)
+		}
 	}
 
 	public async startNewTask({
@@ -68,7 +75,6 @@ export class API extends EventEmitter<TumbleCodeEvents> implements TumbleCodeAPI
 			await vscode.commands.executeCommand("workbench.action.closeAllEditors")
 
 			provider = await openClineInNewTab({ context: this.context, outputChannel: this.outputChannel })
-			this.registerListeners(provider)
 		} else {
 			await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
 
@@ -189,6 +195,13 @@ export class API extends EventEmitter<TumbleCodeEvents> implements TumbleCodeAPI
 	}
 
 	private registerListeners(provider: ClineProvider) {
+		// The sidebar is registered explicitly and is also a live instance the
+		// observer replays; listening twice would forward every event twice.
+		if (this.registeredProviders.has(provider)) {
+			return
+		}
+		this.registeredProviders.add(provider)
+
 		// Delegation lifecycle. DelegationService emits these on the provider
 		// (its host), never on a Task, and the payload already names both the
 		// parent and the child, so they are forwarded once per provider rather
