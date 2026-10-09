@@ -14,6 +14,7 @@ vi.mock("vscode", () => ({
 		constructor(public viewType: string) {}
 	},
 	Uri: { joinPath: vi.fn(() => ({})) },
+	ViewColumn: { Two: 2 },
 	CodeActionKind: {
 		QuickFix: { value: "quickfix" },
 		RefactorRewrite: { value: "refactor.rewrite" },
@@ -40,6 +41,10 @@ vi.mock("vscode", () => ({
 }))
 
 vi.mock("../../core/webview/ClineProvider")
+
+vi.mock("@tumble-code/telemetry", () => ({
+	TelemetryService: { instance: { capture: vi.fn() } },
+}))
 
 vi.mock("../../core/config/ContextProxy", () => ({
 	ContextProxy: { getInstance: vi.fn().mockResolvedValue({}) },
@@ -149,5 +154,42 @@ describe("replaceOrphanedTabs", () => {
 		)
 		expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith("workbench.action.newGroupRight")
 		expect(vi.mocked(ClineProvider).mock.instances[0].resolveWebviewView).toHaveBeenCalled()
+	})
+})
+
+describe("editorTitleButtonClicked", () => {
+	const runCommand = async () => {
+		registerCommands({
+			context: { subscriptions: [], extensionUri: {} } as unknown as vscode.ExtensionContext,
+			outputChannel: { appendLine: vi.fn() } as unknown as vscode.OutputChannel,
+			provider: {} as ClineProvider,
+		})
+		const call = vi
+			.mocked(vscode.commands.registerCommand)
+			.mock.calls.find(([id]) => id.endsWith(".editorTitleButtonClicked"))
+		expect(call).toBeDefined()
+		await call![1]()
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("reveals the open Tumble tab instead of opening a second one", async () => {
+		const panel = { reveal: vi.fn() }
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
+
+		await runCommand()
+
+		expect(panel.reveal).toHaveBeenCalledTimes(1)
+		expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled()
+	})
+
+	it("opens a new Tumble tab when none is open", async () => {
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+
+		await runCommand()
+
+		expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1)
 	})
 })
