@@ -40,13 +40,9 @@ TASK = "task-stream"
 
 @pytest.fixture(autouse=True)
 def _clean_registry():
-    for table in (registry._meta, registry._ext_sid_by_user, registry._instance_by_user,
-                  registry._task_access_by_sid):
-        table.clear()
+    registry.reset()
     yield
-    for table in (registry._meta, registry._ext_sid_by_user, registry._instance_by_user,
-                  registry._task_access_by_sid):
-        table.clear()
+    registry.reset()
 
 
 @pytest.fixture

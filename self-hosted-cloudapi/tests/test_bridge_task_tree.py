@@ -44,15 +44,9 @@ CHILD = "task-child"
 
 @pytest.fixture(autouse=True)
 def _clean_registry():
-    registry._meta.clear()
-    registry._ext_sid_by_user.clear()
-    registry._instance_by_user.clear()
-    registry._task_access_by_sid.clear()
+    registry.reset()
     yield
-    registry._meta.clear()
-    registry._ext_sid_by_user.clear()
-    registry._instance_by_user.clear()
-    registry._task_access_by_sid.clear()
+    registry.reset()
 
 
 @pytest.fixture
