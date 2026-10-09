@@ -166,7 +166,9 @@
 		"settings": "Pengaturan Mode",
 		"description": "Persona khusus yang menyesuaikan perilaku Tumble.",
 		"searchPlaceholder": "Cari mode...",
-		"noResults": "Tidak ada hasil yang ditemukan"
+		"noResults": "Tidak ada hasil yang ditemukan",
+		"builtInGroup": "Bawaan",
+		"customGroup": "Kustom"
 	},
 	"addImages": "Tambahkan gambar ke pesan",
 	"pressToSend": "Tekan {{keyCombination}} untuk mengirim",

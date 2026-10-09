@@ -23,6 +23,7 @@
 	"searchBranch": "브랜치 검색...",
 	"noBranchFound": "브랜치를 찾을 수 없습니다",
 	"worktreePath": "In",
+	"browseFolder": "폴더 찾아보기",
 	"selectWorktreeLocation": "Worktree 위치 선택",
 	"selectFolderForWorktree": "새 worktree의 폴더 선택",
 	"noIncludeFileWarning": ".worktreeinclude 파일 없음",

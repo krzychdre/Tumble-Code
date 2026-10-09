@@ -143,7 +143,9 @@
 		"settings": "Mod Ayarları",
 		"description": "Tumble'nun davranışını özelleştiren uzmanlaşmış kişilikler.",
 		"searchPlaceholder": "Modları ara...",
-		"noResults": "Sonuç bulunamadı"
+		"noResults": "Sonuç bulunamadı",
+		"builtInGroup": "Yerleşik",
+		"customGroup": "Özel"
 	},
 	"errorReadingFile": "Dosya okuma hatası",
 	"noValidImages": "Hiçbir geçerli resim işlenmedi",

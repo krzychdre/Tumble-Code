@@ -23,6 +23,7 @@
 	"searchBranch": "Branches durchsuchen...",
 	"noBranchFound": "Kein Branch gefunden",
 	"worktreePath": "In",
+	"browseFolder": "Ordner auswählen",
 	"selectWorktreeLocation": "Worktree-Speicherort auswählen",
 	"selectFolderForWorktree": "Ordner für neuen Worktree auswählen",
 	"noIncludeFileWarning": "Keine .worktreeinclude-Datei",

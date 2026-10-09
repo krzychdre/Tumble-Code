@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from "@/utils/test-utils"
+import { render, screen, fireEvent, within } from "@/utils/test-utils"
+import userEvent from "@testing-library/user-event"
 
 import type { ModeConfig } from "@tumble-code/types"
 
@@ -367,5 +368,135 @@ describe("ModeSelector", () => {
 		const items = screen.getAllByTestId("mode-selector-item")
 		expect(items.map((item) => item.querySelector(".font-semibold")?.textContent)).toEqual(["Code", "Translate"])
 		items.forEach((item) => expect(item.querySelector("svg")).not.toBeNull())
+	})
+	describe("Built-in and Custom groups", () => {
+		// The popover scrolls the selected row into view on open; jsdom has no scrollTo.
+		beforeAll(() => {
+			Element.prototype.scrollTo = vi.fn()
+		})
+
+		const mode = (slug: string, name: string): ModeConfig => ({
+			slug,
+			name,
+			description: `${name} mode`,
+			roleDefinition: "r",
+			groups: ["read"],
+		})
+
+		const itemNames = () =>
+			screen
+				.getAllByTestId("mode-selector-item")
+				.map((item) => item.querySelector(".font-semibold")?.textContent)
+
+		test("labels the two groups when there are built-in and custom modes, in the visual order", () => {
+			const custom = [mode("mine", "Mine")]
+			// getAllModes keeps an added custom mode after the built-ins.
+			mockModes = [mode("code", "Code"), mode("ask", "Ask"), ...custom]
+
+			render(
+				<ModeSelector
+					title="Mode Selector"
+					value={"code" as Mode}
+					onChange={vi.fn()}
+					modeShortcutText=""
+					customModes={custom}
+				/>,
+			)
+			fireEvent.click(screen.getByTestId("mode-selector-trigger"))
+
+			const builtIn = screen.getByRole("group", { name: "chat:modeSelector.builtInGroup" })
+			const customGroup = screen.getByRole("group", { name: "chat:modeSelector.customGroup" })
+			expect(within(builtIn).getAllByTestId("mode-selector-item")).toHaveLength(2)
+			expect(within(customGroup).getAllByTestId("mode-selector-item")).toHaveLength(1)
+			expect(itemNames()).toEqual(["Code", "Ask", "Mine"])
+		})
+
+		test("puts a custom override of a built-in slug in the Custom group, after the built-ins", () => {
+			const custom = [mode("code", "My Code")]
+			mockModes = [mode("code", "My Code"), mode("ask", "Ask")]
+
+			render(
+				<ModeSelector
+					title="Mode Selector"
+					value={"ask" as Mode}
+					onChange={vi.fn()}
+					modeShortcutText=""
+					customModes={custom}
+				/>,
+			)
+			fireEvent.click(screen.getByTestId("mode-selector-trigger"))
+
+			expect(itemNames()).toEqual(["Ask", "My Code"])
+			const customGroup = screen.getByRole("group", { name: "chat:modeSelector.customGroup" })
+			expect(within(customGroup).getByText("My Code")).toBeInTheDocument()
+		})
+
+		test("shows no group labels when every mode is built-in", () => {
+			mockModes = [mode("code", "Code"), mode("ask", "Ask")]
+
+			render(<ModeSelector title="Mode Selector" value={"code" as Mode} onChange={vi.fn()} modeShortcutText="" />)
+			fireEvent.click(screen.getByTestId("mode-selector-trigger"))
+
+			expect(screen.queryByRole("group")).not.toBeInTheDocument()
+			expect(screen.queryByText("chat:modeSelector.builtInGroup")).not.toBeInTheDocument()
+		})
+
+		test("keeps the flat filtered list while searching", () => {
+			const custom = [mode("custom-a", "Custom A"), mode("custom-b", "Custom B")]
+			mockModes = [
+				...Array.from({ length: 5 }, (_, i) => mode(`mode-${i}`, `Mode ${i}`)),
+				...custom,
+			]
+
+			render(
+				<ModeSelector
+					title="Mode Selector"
+					value={"mode-0" as Mode}
+					onChange={vi.fn()}
+					modeShortcutText=""
+					customModes={custom}
+				/>,
+			)
+			fireEvent.click(screen.getByTestId("mode-selector-trigger"))
+			expect(screen.getAllByRole("group")).toHaveLength(2)
+
+			fireEvent.change(screen.getByTestId("mode-search-input"), { target: { value: "Custom" } })
+
+			expect(screen.queryByRole("group")).not.toBeInTheDocument()
+			expect(screen.queryByText("chat:modeSelector.customGroup")).not.toBeInTheDocument()
+			expect(itemNames().length).toBeGreaterThan(0)
+		})
+
+		test("mode rows are buttons in visual order; Tab skips the group labels and Enter selects", async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const custom = [mode("mine", "Mine")]
+			mockModes = [mode("code", "Code"), mode("ask", "Ask"), ...custom]
+
+			render(
+				<ModeSelector
+					title="Mode Selector"
+					value={"code" as Mode}
+					onChange={onChange}
+					modeShortcutText=""
+					customModes={custom}
+				/>,
+			)
+			await user.click(screen.getByTestId("mode-selector-trigger"))
+
+			const items = screen.getAllByTestId("mode-selector-item")
+			items.forEach((item) => expect(item.tagName).toBe("BUTTON"))
+			expect(items[0]).toHaveAttribute("aria-pressed", "true")
+			expect(items[2]).toHaveAttribute("aria-pressed", "false")
+
+			items[0].focus()
+			await user.tab()
+			expect(items[1]).toHaveFocus()
+			await user.tab()
+			expect(items[2]).toHaveFocus()
+
+			await user.keyboard("{Enter}")
+			expect(onChange).toHaveBeenCalledWith("mine")
+		})
 	})
 })

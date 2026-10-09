@@ -23,6 +23,7 @@
 	"searchBranch": "ブランチを検索...",
 	"noBranchFound": "ブランチが見つかりません",
 	"worktreePath": "In",
+	"browseFolder": "フォルダーを参照",
 	"selectWorktreeLocation": "Worktree の場所を選択",
 	"selectFolderForWorktree": "新しい worktree のフォルダーを選択",
 	"noIncludeFileWarning": ".worktreeinclude ファイルなし",

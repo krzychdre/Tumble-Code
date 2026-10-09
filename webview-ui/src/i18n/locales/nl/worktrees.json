@@ -23,6 +23,7 @@
 	"searchBranch": "Branches zoeken...",
 	"noBranchFound": "Geen branch gevonden",
 	"worktreePath": "In",
+	"browseFolder": "Map kiezen",
 	"selectWorktreeLocation": "Locatie Worktree selecteren",
 	"selectFolderForWorktree": "Map voor nieuwe worktree selecteren",
 	"noIncludeFileWarning": "Geen .worktreeinclude-bestand",

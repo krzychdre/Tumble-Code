@@ -23,6 +23,7 @@
 	"searchBranch": "Tìm nhánh...",
 	"noBranchFound": "Không tìm thấy nhánh",
 	"worktreePath": "Trong",
+	"browseFolder": "Duyệt thư mục",
 	"selectWorktreeLocation": "Chọn vị trí Worktree",
 	"selectFolderForWorktree": "Chọn thư mục cho worktree mới",
 	"noIncludeFileWarning": "Không có tệp .worktreeinclude",

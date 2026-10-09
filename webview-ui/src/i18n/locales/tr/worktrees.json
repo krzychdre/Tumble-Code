@@ -23,6 +23,7 @@
 	"searchBranch": "Branch ara...",
 	"noBranchFound": "Branch bulunamadı",
 	"worktreePath": "In",
+	"browseFolder": "Klasöre göz at",
 	"selectWorktreeLocation": "Worktree Konumunu Seç",
 	"selectFolderForWorktree": "Yeni worktree için klasör seç",
 	"noIncludeFileWarning": ".worktreeinclude dosyası yok",

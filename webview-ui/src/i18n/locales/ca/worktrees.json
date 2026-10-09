@@ -23,6 +23,7 @@
 	"searchBranch": "Cercar branques...",
 	"noBranchFound": "No s'ha trobat cap branca",
 	"worktreePath": "En",
+	"browseFolder": "Cerca una carpeta",
 	"selectWorktreeLocation": "Selecciona la ubicació del Worktree",
 	"selectFolderForWorktree": "Selecciona carpeta per al worktree nou",
 	"noIncludeFileWarning": "No hi ha cap fitxer .worktreeinclude",
