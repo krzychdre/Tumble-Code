@@ -92,6 +92,15 @@
 				"icon": "$(link-external)"
 			},
 			{
+				"command": "tumble-code.editorTitleButtonClicked",
+				"title": "%command.openInEditor.title%",
+				"category": "%configuration.title%",
+				"icon": {
+					"light": "assets/icons/editor-title-light.svg",
+					"dark": "assets/icons/editor-title-dark.svg"
+				}
+			},
+			{
 				"command": "tumble-code.cloudButtonClicked",
 				"title": "%command.cloud.title%",
 				"icon": "$(cloud)"
@@ -295,6 +304,11 @@
 					"command": "tumble-code.popoutButtonClicked",
 					"group": "overflow@2",
 					"when": "activeWebviewPanelId == tumble-code.TabPanelProvider"
+				},
+				{
+					"command": "tumble-code.editorTitleButtonClicked",
+					"group": "navigation@100",
+					"when": "activeWebviewPanelId != tumble-code.TabPanelProvider"
 				},
 				{
 					"command": "tumble-code.reviewPlanFile",

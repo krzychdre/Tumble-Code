@@ -550,6 +550,30 @@ describe("ClineProvider", () => {
 		expect(ClineProvider.getVisibleInstance()).toBe(provider)
 	})
 
+	test("getEditorTab returns the newest editor tab panel, never the sidebar view", () => {
+		// Instances from earlier tests stay registered; look at this test's only.
+		// @ts-expect-error - accessing private property for testing
+		const instances: Set<ClineProvider> = ClineProvider.activeInstances
+		const saved = [...instances]
+		instances.clear()
+		instances.add(provider)
+		try {
+			// A sidebar WebviewView has no onDidChangeViewState.
+			// @ts-expect-error - accessing private property for testing
+			provider.view = mockWebviewView
+			expect(ClineProvider.getEditorTab()).toBeUndefined()
+
+			const tab = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const panel = { ...mockWebviewView, onDidChangeViewState: vi.fn() }
+			// @ts-expect-error - accessing private property for testing
+			tab.view = panel
+			expect(ClineProvider.getEditorTab()).toBe(panel)
+		} finally {
+			instances.clear()
+			saved.forEach((instance) => instances.add(instance))
+		}
+	})
+
 	test("observeInstances replays live providers and reports each new one until disposed", () => {
 		const seen: ClineProvider[] = []
 		const observer = ClineProvider.observeInstances((instance) => seen.push(instance))
