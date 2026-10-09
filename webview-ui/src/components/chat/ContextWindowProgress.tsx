@@ -119,7 +119,7 @@ export const ContextWindowProgress = ({ contextWindow, contextTokens, maxTokens 
 				</div>
 			</StandardTooltip>
 			{/* The percentage as text (§1.3: status never colour alone). */}
-			<span data-testid="context-used-percent" className="text-[var(--text-meta)]">
+			<span data-testid="context-used-percent" className="text-[length:var(--text-meta)]">
 				{Math.round(usedPercent)}%
 			</span>
 			<div data-testid="context-window-size">{formatLargeNumber(safeContextWindow)}</div>

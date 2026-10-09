@@ -48,7 +48,7 @@ export function CondensationResultRow({ data }: CondensationResultRowProps) {
 			</div>
 
 			{isExpanded && (
-				<div className="mt-2 ml-0 p-4 bg-vscode-editor-background text-vscode-foreground text-sm">
+				<div className="mt-2 ml-0 p-3 border border-frame bg-surface rounded-control text-vscode-foreground text-sm">
 					<Markdown markdown={summary} />
 				</div>
 			)}

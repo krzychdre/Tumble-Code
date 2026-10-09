@@ -57,10 +57,10 @@ export const BlockTimestamp = memo(({ startTs, endTs, live = false, className }:
 			{formatTimestamp(startTs)}
 			{durationMs !== null && (
 				<>
-					<span className="mx-1 opacity-60" aria-hidden="true">
+					<span className="mx-1" aria-hidden="true">
 						·
 					</span>
-					<span className="opacity-80">{formatDuration(durationMs)}</span>
+					<span>{formatDuration(durationMs)}</span>
 				</>
 			)}
 		</span>

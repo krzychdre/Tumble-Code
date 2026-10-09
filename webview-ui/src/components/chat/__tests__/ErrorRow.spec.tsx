@@ -87,26 +87,25 @@ describe("ErrorRow diagnostics download", () => {
 })
 
 describe("ErrorRow keyboard access", () => {
-	it("an expandable diff error toggles from a real button, and its hidden controls show on keyboard focus", () => {
+	it("an expandable diff error toggles from a real button, and its copy control is always visible", () => {
 		render(<ErrorRow type="diff_error" message="the diff did not apply" expandable showCopyButton />)
 
 		const toggle = screen.getByRole("button", { name: "chat:diffError.title" })
 		expect(toggle).toHaveAttribute("aria-expanded", "false")
 
 		const copyButton = screen.getByRole("button", { name: "Copy to Clipboard" })
-		expect(copyButton.parentElement).toHaveClass(
-			"opacity-0",
-			"group-hover:opacity-100",
-			"group-has-focus-visible:opacity-100",
-		)
+		// Frame language: no hover-only controls.
+		expect(copyButton.parentElement?.className).not.toMatch(/opacity-0/)
 
 		fireEvent.click(toggle)
 		expect(toggle).toHaveAttribute("aria-expanded", "true")
 	})
 
-	it("the docs link shows on keyboard focus, not only on hover", () => {
+	it("the docs link is always visible and has the focus ring", () => {
 		render(<ErrorRow type="error" message="boom" docsURL="https://example.com/docs" />)
 
-		expect(screen.getByRole("link")).toHaveClass("opacity-0", "group-has-focus-visible:opacity-100")
+		const link = screen.getByRole("link")
+		expect(link.className).not.toMatch(/opacity-0/)
+		expect(link).toHaveClass("focus-ring", "text-vscode-descriptionForeground")
 	})
 })

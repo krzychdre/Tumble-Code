@@ -104,7 +104,7 @@ export const UseMcpServerRow = ({ message, isLast, lastModifiedMessage }: RowRen
 				{icon}
 				{title}
 			</div>
-			<div className="w-full bg-vscode-editor-background border border-vscode-border p-2 mt-2">
+			<div className="w-full bg-surface border border-frame rounded-control p-2 mt-2">
 				{useMcpServer.type === "access_mcp_resource" && (
 					<McpResourceRow
 						item={{

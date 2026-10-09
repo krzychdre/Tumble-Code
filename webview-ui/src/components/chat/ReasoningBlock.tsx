@@ -40,8 +40,8 @@ export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 
 	return (
 		<div className="group">
-			{/* A real button, so the header is reachable with Tab; the chevron shows on
-			    hover and while the header has keyboard focus. */}
+			{/* A real button, so the header is reachable with Tab; the chevron is always
+			    visible in the description colour. */}
 			<button
 				type="button"
 				aria-expanded={!isCollapsed}
@@ -55,7 +55,7 @@ export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 				<span className="flex items-center gap-2">
 					<ChevronUp
 						className={cn(
-							"w-4 transition-all opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100",
+							"w-4 transition-all text-vscode-descriptionForeground group-hover:text-vscode-foreground",
 							isCollapsed && "-rotate-180",
 						)}
 						aria-hidden="true"
@@ -65,7 +65,7 @@ export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 			{(content?.trim()?.length ?? 0) > 0 && !isCollapsed && (
 				<div
 					ref={contentRef}
-					className="border-l border-vscode-descriptionForeground/20 ml-2 pl-4 pb-1 text-vscode-descriptionForeground break-words">
+					className="border-l border-frame-hover ml-2 pl-4 pb-1 text-vscode-descriptionForeground break-words">
 					<MarkdownBlock markdown={content} />
 				</div>
 			)}

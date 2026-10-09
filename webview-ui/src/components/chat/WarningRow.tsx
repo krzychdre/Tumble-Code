@@ -56,7 +56,7 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 				{docsURL && (
 					<a
 						href={docsURL}
-						className="text-sm flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100"
+						className="text-sm flex items-center gap-1 text-vscode-descriptionForeground hover:text-vscode-foreground focus-ring"
 						onClick={(e) => {
 							e.preventDefault()
 							vscode.postMessage({ type: "openExternal", url: docsURL })
@@ -68,7 +68,7 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 				{onDismiss && (
 					<button
 						type="button"
-						className="flex items-center justify-center shrink-0 bg-transparent border-none cursor-pointer hover:opacity-50 transition-opacity duration-200 text-vscode-foreground focus:outline focus:outline-1 focus:outline-vscode-focusBorder focus:outline-offset-1"
+						className="flex items-center justify-center shrink-0 size-[22px] p-0 bg-transparent border-none rounded-control cursor-pointer transition-colors text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover focus-ring"
 						onClick={onDismiss}
 						aria-label={t("common:dismiss")}
 						title={t("common:dismissAndDontShowAgain")}>
@@ -76,15 +76,15 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 					</button>
 				)}
 			</div>
-			<div className="cursor-default ml-2 pl-4 mt-1 pt-0.5 border-l border-vscode-editorWarning-foreground/50">
-				<p className="my-0 font-light whitespace-pre-wrap break-words text-vscode-descriptionForeground">
+			<div className="cursor-default ml-6 mt-1 px-[10px] py-2 border border-l-2 rounded-control border-[color-mix(in_srgb,var(--vscode-editorWarning-foreground)_35%,transparent)] border-l-vscode-editorWarning-foreground bg-[color-mix(in_srgb,var(--vscode-editorWarning-foreground)_6%,transparent)]">
+				<p className="my-0 font-normal whitespace-pre-wrap break-words text-vscode-foreground">
 					{message}
 					{actionText && onAction && (
 						<>
 							{" "}
 							<a
 								href="#"
-								className="text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground cursor-pointer"
+								className="text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground cursor-pointer focus-ring"
 								onClick={(e) => {
 									e.preventDefault()
 									onAction()

@@ -444,7 +444,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useImperativeHandle(ref, () => ({ acceptInput }))
 
 	// §2.6: Ctrl/Cmd+Enter answers with the primary action, Esc with the
-	// secondary — only while the buttons are on screen and enabled. isMac is
+	// secondary, only while the buttons are on screen and enabled. isMac is
 	// the module-level constant above (also used by the mode shortcut text).
 	const areButtonsVisible = showScrollToBottom || primaryButtonText || secondaryButtonText
 
@@ -578,7 +578,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						<div
 							data-testid="action-bar"
 							onKeyDown={handleActionBarKeyDown}
-							className={`flex h-9 items-center mb-1 px-[15px] ${
+							className={`flex items-center gap-2 mb-2 px-gutter ${
 								showScrollToBottom ? "opacity-100" : enableButtons ? "opacity-100" : "opacity-50"
 							}`}>
 							{showScrollToBottom ? (
@@ -587,7 +587,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 										<Button
 											aria-label={t("chat:scrollToBottom")}
 											variant="secondary"
-											className={hasLatestCheckpoint ? "flex-1 mr-[6px]" : "flex-[2]"}
+											className={hasLatestCheckpoint ? "flex-1" : "flex-[2]"}
 											onClick={handleScrollToBottomAndResetCheckpointCursor}>
 											<span className="codicon codicon-chevron-down"></span>
 										</Button>
@@ -596,7 +596,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 										<StandardTooltip content={t("chat:scrollToLatestCheckpoint")}>
 											<Button
 												variant="secondary"
-												className="flex-1 ml-[6px]"
+												className="flex-1"
 												onClick={handleScrollToLatestCheckpoint}
 												aria-label={t("chat:scrollToLatestCheckpoint")}>
 												<span className="codicon codicon-history" aria-hidden="true"></span>
@@ -615,9 +615,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 											}>
 											<Button
 												variant="primary"
+												data-ask-button="primary"
 												disabled={!enableButtons}
 												className={cn(
-													secondaryButtonText ? "flex-1 mr-[6px]" : "flex-[2] mr-0",
+													secondaryButtonText ? "flex-1" : "flex-[2]",
 													// §2.6: a real disabled style, not just opacity.
 													!enableButtons && "disabled-action-button",
 												)}
@@ -635,9 +636,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 											}>
 											<Button
 												variant="secondary"
+												data-ask-button="secondary"
 												disabled={!enableButtons}
 												className={cn(
-													"flex-1 ml-[6px]",
+													"flex-1",
 													!enableButtons && "disabled-action-button",
 												)}
 												onClick={() => handleSecondaryButtonClick(inputValue, selectedImages)}>
@@ -669,7 +671,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				}}
 			/>
 			{showRetiredProviderWarning && (
-				<div className="px-[15px] py-1">
+				<div className="px-gutter py-1">
 					<WarningRow
 						title={t("chat:retiredProvider.title")}
 						message={t("chat:retiredProvider.message")}

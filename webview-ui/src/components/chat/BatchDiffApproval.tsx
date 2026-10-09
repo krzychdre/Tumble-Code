@@ -34,7 +34,7 @@ export const BatchDiffApproval = memo(({ files = [], ts }: BatchDiffApprovalProp
 
 	return (
 		<div className="pt-[5px]">
-			<div className="flex flex-col gap-0 border border-border p-1">
+			<div className="flex flex-col gap-1">
 				{files.map((file, index) => {
 					// Use backend-provided unified diff only. Stats also provided by backend.
 					const unified = file.content || ""

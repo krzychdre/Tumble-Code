@@ -239,11 +239,9 @@ describe("FollowUpSuggest", () => {
 
 		const copyButtons = screen.getAllByRole("button", { name: "Copy to input" })
 		expect(copyButtons).toHaveLength(2)
-		expect(copyButtons[0]).toHaveClass(
-			"opacity-0",
-			"group-hover:opacity-100",
-			"group-has-focus-visible:opacity-100",
-		)
+		// Always visible (no hover-only controls), in the description colour.
+		expect(copyButtons[0].className).not.toMatch(/opacity-0/)
+		expect(copyButtons[0]).toHaveClass("text-vscode-descriptionForeground", "focus-ring")
 
 		act(() => copyButtons[0].click())
 		expect(mockOnSuggestionClick).toHaveBeenCalledWith(

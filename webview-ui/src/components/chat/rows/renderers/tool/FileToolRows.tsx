@@ -58,7 +58,7 @@ export const ReadFileToolRow = ({ message, tool, onBatchFileResponse }: ToolRend
 					{/* Opens the file: a real button so Tab reaches it. */}
 					<button
 						type="button"
-						className="group flex w-full items-center p-0 text-left font-mono text-sm text-vscode-descriptionForeground select-none bg-transparent border-none cursor-pointer focus-ring"
+						className="group flex w-full min-h-[28px] items-center px-2 py-0 text-left font-mono text-sm text-vscode-descriptionForeground select-none bg-transparent border-none cursor-pointer hover:bg-surface-hover hover:text-vscode-foreground transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder"
 						onClick={() =>
 							vscode.postMessage({
 								type: "openFile",
@@ -74,7 +74,7 @@ export const ReadFileToolRow = ({ message, tool, onBatchFileResponse }: ToolRend
 						</PathTooltip>
 						<span className="flex-grow" />
 						<SquareArrowOutUpRight
-							className="w-4 shrink-0 codicon codicon-link-external opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity"
+							className="w-4 shrink-0 codicon codicon-link-external"
 							style={{ fontSize: 13.5, margin: "1px 0" }}
 						/>
 					</button>

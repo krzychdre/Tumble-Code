@@ -169,7 +169,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 					)
 				) : (
 					<textarea
-						className="w-full min-h-[200px] bg-vscode-editor-background text-vscode-editor-foreground border border-vscode-editorGroup-border p-2 font-mono resize-y focus-ring"
+						className="w-full min-h-[200px] bg-vscode-editor-background text-vscode-editor-foreground border border-input-frame hover:border-input-frame-hover rounded-control p-2 font-mono resize-y focus-ring"
 						readOnly
 						value={code}
 						style={{ height: "100%", minHeight: "unset", fontSize: "var(--vscode-editor-font-size)" }}

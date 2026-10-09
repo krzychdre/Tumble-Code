@@ -31,7 +31,7 @@ const ChatRow = memo(
 		const prevHeightRef = useRef(0)
 
 		const [chatrow, { height }] = useSize(
-			<div className="px-gutter py-row pr-1.5">
+			<div className="px-gutter py-row">
 				<ChatRowContent {...props} />
 			</div>,
 		)

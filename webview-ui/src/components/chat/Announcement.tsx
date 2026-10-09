@@ -39,7 +39,7 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 				</DialogHeader>
 				<div>
 					{/* Community Handoff Notice */}
-					<div className="mb-4 p-3 border border-vscode-textLink-foreground/40 bg-vscode-textLink-foreground/5">
+					<div className="mb-4 p-3 border border-vscode-textLink-foreground/40 bg-vscode-textLink-foreground/5 rounded-control">
 						<p className="font-semibold mb-1.5 text-vscode-textLink-foreground">
 							{t("chat:announcement.handoff.heading")}
 						</p>

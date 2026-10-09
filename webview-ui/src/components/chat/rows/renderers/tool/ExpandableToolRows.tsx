@@ -7,11 +7,11 @@ import { headerStyle, toolIcon } from "../shared"
 import type { ToolRendererProps } from "../types"
 
 // Skill and slash command asks: a header, then a box with the name and source
-// that expands to the description and arguments.
+// that expands to the description and arguments. ToolBlock draws the frame.
 
-const boxClass = "mt-1 border border-vscode-editorGroup-border overflow-hidden"
-const boxHeaderClass = "px-3 py-2.5"
-const boxBodyClass = "font-display px-4 py-3 border-t border-vscode-editorGroup-border flex flex-col gap-2"
+const boxClass = "mt-1 overflow-hidden"
+const boxHeaderClass = "px-3 py-1.5"
+const boxBodyClass = "font-display px-3 py-2 flex flex-col gap-2"
 
 /** A skill the model wants to load. */
 export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpand }: ToolRendererProps) => {

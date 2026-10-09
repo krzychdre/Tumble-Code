@@ -221,7 +221,7 @@ export const McpExecution = ({
 					{status && (
 						<div className="flex flex-row items-center gap-2 font-mono text-xs">
 							<div
-								className={cn("size-1.5", {
+								className={cn("size-2 shrink-0", {
 									"bg-[var(--status-running)]": status.status === "started",
 									"bg-[var(--status-done)]": status.status === "completed",
 									"bg-[var(--status-failed)]": status.status === "error",
@@ -256,7 +256,20 @@ export const McpExecution = ({
 
 			{/* Collapsible details section */}
 			{isDetailsExpanded && (
-				<div className="w-full bg-vscode-editor-background p-2" data-testid="mcp-details-content">
+				<div
+					className="w-full p-2 border border-frame bg-surface rounded-control"
+					style={{
+						borderLeft: `var(--border-status) solid ${
+							status?.status === "started"
+								? "var(--status-running)"
+								: status?.status === "completed"
+									? "var(--status-done)"
+									: status?.status === "error"
+										? "var(--status-failed)"
+										: "var(--frame)"
+						}`,
+					}}
+					data-testid="mcp-details-content">
 					{/* Tool information section */}
 					{useMcpServer?.type === "use_mcp_tool" && (
 						<div onClick={(e) => e.stopPropagation()}>
@@ -306,7 +319,7 @@ export const McpExecution = ({
 
 					{/* Response section - collapsible within details */}
 					{hasResponse && (
-						<div className="mt-1 pt-1 border-t border-border/25">
+						<div className="mt-1 pt-1 border-t border-frame">
 							<div
 								data-testid="mcp-response-header"
 								className="flex items-center gap-1 cursor-pointer select-none mb-1"
@@ -372,7 +385,7 @@ const ResponseContainerInternal = ({
 	return (
 		<div
 			className={cn("overflow-hidden", {
-				"max-h-96 overflow-y-auto mt-1 pt-1 border-t border-border/25": hasArguments,
+				"max-h-96 overflow-y-auto mt-1 pt-1 border-t border-frame": hasArguments,
 				"max-h-96 overflow-y-auto mt-1 pt-1": !hasArguments,
 			})}>
 			{isJson ? (

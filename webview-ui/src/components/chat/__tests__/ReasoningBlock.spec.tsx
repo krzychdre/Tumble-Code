@@ -51,16 +51,14 @@ describe("ReasoningBlock", () => {
 		)
 	})
 
-	it("the header is a keyboard-reachable toggle whose chevron also shows on keyboard focus", () => {
+	it("the header is a keyboard-reachable toggle whose chevron is always visible", () => {
 		const { container } = render(<ReasoningBlock content="" ts={1000} endTs={7600} />)
 
 		const toggle = screen.getByRole("button")
 		expect(toggle).toHaveAttribute("aria-expanded", "true")
-		expect(container.querySelector("svg.lucide-chevron-up")).toHaveClass(
-			"opacity-0",
-			"group-hover:opacity-100",
-			"group-has-focus-visible:opacity-100",
-		)
+		const chevron = container.querySelector("svg.lucide-chevron-up")
+		expect(chevron).toHaveClass("text-vscode-descriptionForeground")
+		expect(chevron?.getAttribute("class")).not.toMatch(/opacity-0/)
 
 		fireEvent.click(toggle)
 		expect(toggle).toHaveAttribute("aria-expanded", "false")

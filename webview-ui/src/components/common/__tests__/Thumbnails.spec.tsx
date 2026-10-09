@@ -42,21 +42,16 @@ describe("Thumbnails (§2.5 attachment tiles)", () => {
 		expect(remove).toHaveAttribute("aria-label", "chat:removeImage")
 		expect(remove).toBeInTheDocument()
 
-		// Visually hidden (opacity 0) but still focusable.
-		expect((remove as HTMLButtonElement).style.opacity).toBe("0")
 		expect(remove.tabIndex).toBe(0)
 	})
 
-	it("focusing the remove button makes it visible", () => {
+	it("the remove button is always visible, not only on hover or focus", () => {
 		const setImages = vi.fn()
 		render(<Thumbnails images={images} setImages={setImages} />)
 
 		const remove = screen.getAllByRole("button").at(-1)! as HTMLButtonElement
-		fireEvent.focus(remove)
-		expect(remove.style.opacity).toBe("1")
-
-		fireEvent.blur(remove)
-		expect(remove.style.opacity).toBe("0")
+		expect(remove.style.opacity).toBe("")
+		expect(remove).toHaveClass("focus-ring")
 	})
 
 	it("clicking the remove button deletes the image", () => {

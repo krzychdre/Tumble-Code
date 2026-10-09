@@ -110,7 +110,7 @@ describe("ToolBlock (§2.2 primitive)", () => {
 		expect(noHandler.querySelector("button")).toBeDisabled()
 	})
 
-	it("shows the chevron at 60% opacity by default, never fully hidden", () => {
+	it("shows the chevron in the description colour by default, never hidden", () => {
 		render(
 			<ToolBlock isExpanded={false} onToggleExpand={() => {}} title="read_file">
 				<div>body</div>
@@ -119,11 +119,11 @@ describe("ToolBlock (§2.2 primitive)", () => {
 
 		const chevron = screen.getByRole("button").parentElement!.querySelector(".codicon-chevron-down")
 		expect(chevron).not.toBeNull()
-		expect(chevron).toHaveClass("opacity-60")
+		expect(chevron).toHaveClass("text-vscode-descriptionForeground")
 		expect(chevron).not.toHaveClass("opacity-0")
-		// Full opacity on hover and while the toggle has keyboard focus.
-		expect(chevron).toHaveClass("group-hover:opacity-100")
-		expect(chevron).toHaveClass("group-has-[button[aria-expanded]:focus-visible]:opacity-100")
+		// Foreground colour on hover and while the toggle has keyboard focus.
+		expect(chevron).toHaveClass("group-hover:text-vscode-foreground")
+		expect(chevron).toHaveClass("group-has-[button[aria-expanded]:focus-visible]:text-vscode-foreground")
 	})
 
 	it("carries a --border-status left border in the status color", () => {
