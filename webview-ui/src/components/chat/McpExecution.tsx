@@ -198,12 +198,15 @@ export const McpExecution = ({
 
 	return (
 		<>
-			{/* Concise header: serverName > toolName with status and expand toggle */}
-			<div
+			{/* Concise header: serverName > toolName with status and expand toggle. A real button, so Tab
+			    reaches it and Enter/Space toggle it; its children are spans to keep the button content valid. */}
+			<button
+				type="button"
 				data-testid="mcp-execution-header"
-				className="flex flex-row items-center justify-between gap-2 mb-1 cursor-pointer select-none"
+				aria-expanded={isDetailsExpanded}
+				className="flex flex-row items-center justify-between gap-2 mb-1 w-full text-left cursor-pointer select-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder"
 				onClick={onToggleDetailsExpand}>
-				<div className="flex flex-row items-center gap-1.5 min-w-0">
+				<span className="flex flex-row items-center gap-1.5 min-w-0">
 					<Server size={16} className="text-vscode-descriptionForeground flex-shrink-0" />
 					<span className="font-bold text-vscode-foreground truncate" data-testid="mcp-server-name">
 						{displayServerName}
@@ -216,18 +219,18 @@ export const McpExecution = ({
 							</span>
 						</>
 					)}
-				</div>
-				<div className="flex flex-row items-center gap-1 flex-shrink-0 px-1">
+				</span>
+				<span className="flex flex-row items-center gap-1 flex-shrink-0 px-1">
 					{status && (
-						<div className="flex flex-row items-center gap-2 font-mono text-xs">
-							<div
+						<span className="flex flex-row items-center gap-2 font-mono text-xs">
+							<span
 								className={cn("size-2 shrink-0", {
 									"bg-[var(--status-running)]": status.status === "started",
 									"bg-[var(--status-done)]": status.status === "completed",
 									"bg-[var(--status-failed)]": status.status === "error",
 								})}
 							/>
-							<div
+							<span
 								className={cn("whitespace-nowrap", {
 									"text-vscode-foreground":
 										status.status === "started" || status.status === "completed",
@@ -238,11 +241,11 @@ export const McpExecution = ({
 									: status.status === "completed"
 										? t("execution.completed")
 										: t("execution.error")}
-							</div>
+							</span>
 							{status.status === "error" && "error" in status && status.error && (
-								<div className="whitespace-nowrap">({status.error})</div>
+								<span className="whitespace-nowrap">({status.error})</span>
 							)}
-						</div>
+						</span>
 					)}
 					<ChevronDown
 						data-testid="mcp-details-chevron"
@@ -251,8 +254,8 @@ export const McpExecution = ({
 							"-rotate-90": !isDetailsExpanded,
 						})}
 					/>
-				</div>
-			</div>
+				</span>
+			</button>
 
 			{/* Collapsible details section */}
 			{isDetailsExpanded && (

@@ -2,6 +2,7 @@
 
 import React from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 
 import { McpExecution } from "../McpExecution"
 
@@ -190,6 +191,43 @@ describe("McpExecution", () => {
 			expect(screen.getByTestId("mcp-tool-row")).toBeInTheDocument()
 			expect(screen.getByTestId("mcp-tool-row-name")).toHaveTextContent("my-tool")
 			expect(screen.getByTestId("mcp-tool-row-description")).toHaveTextContent("A useful tool")
+		})
+	})
+
+	describe("keyboard access", () => {
+		it("renders the header as a button that announces its expanded state", () => {
+			render(<McpExecution executionId="test-1" serverName="context7" toolName="query-docs" />)
+
+			const header = screen.getByTestId("mcp-execution-header")
+			expect(header.tagName).toBe("BUTTON")
+			expect(header).toHaveAttribute("type", "button")
+			expect(header).toHaveAttribute("aria-expanded", "false")
+			expect(header.className).toContain("focus-visible:outline-vscode-focusBorder")
+
+			fireEvent.click(header)
+			expect(header).toHaveAttribute("aria-expanded", "true")
+		})
+
+		it("reaches the header with Tab and toggles the details with Enter and Space", async () => {
+			const user = userEvent.setup()
+			render(
+				<McpExecution
+					executionId="test-1"
+					serverName="context7"
+					toolName="query-docs"
+					text='{"query": "react hooks"}'
+					isArguments={true}
+				/>,
+			)
+
+			await user.tab()
+			expect(screen.getByTestId("mcp-execution-header")).toHaveFocus()
+
+			await user.keyboard("{Enter}")
+			expect(screen.getByTestId("mcp-details-content")).toBeInTheDocument()
+
+			await user.keyboard(" ")
+			expect(screen.queryByTestId("mcp-details-content")).not.toBeInTheDocument()
 		})
 	})
 

@@ -1,4 +1,4 @@
-import { memo } from "react"
+import { memo, type KeyboardEvent } from "react"
 
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
 import { vscode } from "@src/utils/vscode"
@@ -25,6 +25,16 @@ export const BatchFilePermission = memo(({ files = [], onPermissionResponse, ts 
 		return null
 	}
 
+	// The row is the shared ToolUseBlockHeader, which renders a div, so it becomes a role="button" with
+	// tabIndex 0 and Enter or Space does what a click does (open the file).
+	const openFile = (file: FilePermissionItem) => vscode.postMessage({ type: "openFile", text: file.content })
+	const onRowKeyDown = (event: KeyboardEvent<HTMLDivElement>, file: FilePermissionItem) => {
+		if (event.key === "Enter" || event.key === " ") {
+			event.preventDefault()
+			openFile(file)
+		}
+	}
+
 	return (
 		<div className="pt-[5px]">
 			{/* Individual files */}
@@ -34,7 +44,11 @@ export const BatchFilePermission = memo(({ files = [], onPermissionResponse, ts 
 						<div key={`${file.path}-${index}-${ts}`} className="flex items-center gap-2">
 							<ToolUseBlock className="flex-1">
 								<ToolUseBlockHeader
-									onClick={() => vscode.postMessage({ type: "openFile", text: file.content })}>
+									role="button"
+									tabIndex={0}
+									className="focus-visible:outline-solid focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder"
+									onClick={() => openFile(file)}
+									onKeyDown={(event) => onRowKeyDown(event, file)}>
 									{file.path?.startsWith(".") && <span>.</span>}
 									<PathTooltip
 										content={formatPathTooltip(
