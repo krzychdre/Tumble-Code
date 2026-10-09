@@ -182,3 +182,17 @@ services:
       auth_db:
         condition: service_healthy
     restart: unless-stopped
+
+# Pin the network subnet. Docker's 172.17.0.0/12 pool is exhausted on this
+# host (15 networks already), so the daemon falls back to its spare pool
+# 192.168.0.0/16 in /20 chunks. The auto-assigned 192.168.0.0/20 claimed the
+# whole 192.168.0.0-15.255 range, which swallowed 192.168.8.1 — the admin
+# page of the router behind the home gateway became unreachable
+# ("Brak trasy do hosta"). 10.99.0.0/24 is private and unused here (no 10.x
+# routes or interfaces on the laptop), and one /24 is enough for 5 services.
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.99.0.0/24

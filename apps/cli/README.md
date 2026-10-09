@@ -33,6 +33,18 @@ ROO_INSTALL_DIR=/opt/roo-code ROO_BIN_DIR=/usr/local/bin curl -fsSL ... | sh
 ROO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/krzychdre/Tumble-Code/main/apps/cli/install.sh | sh
 ```
 
+**Offline machines and flaky networks:**
+
+The installer never stalls on a bad network. It checks the npm registry with a short timeout before installing, every
+`npm install` runs under a wall-clock budget (default 180 seconds) with a progress heartbeat, npm's output is kept and
+shown when something fails, and the new release is staged first - a failed install leaves an existing installation
+untouched.
+
+```bash
+ROO_NPM_TIMEOUT=300 curl -fsSL ... | sh      # allow more time on a slow link
+ROO_CONNECT_TIMEOUT=30 curl -fsSL ... | sh   # allow more time to connect
+```
+
 ### Updating
 
 Re-run the install script to update to the latest version:
