@@ -88,9 +88,11 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 				</div>
 			)}
 
-			{/* Expanded nested subtasks */}
+			{/* Expanded nested subtasks. Collapsed ones stay mounted for the
+			    height animation, so `inert` keeps Tab off the clipped rows. */}
 			{hasChildren && (
 				<div
+					inert={!isExpanded}
 					className={cn(
 						"overflow-clip transition-all duration-300",
 						isExpanded ? "max-h-[2000px]" : "max-h-0",

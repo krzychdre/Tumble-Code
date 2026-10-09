@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useId, useRef } from "react"
 import { Download } from "lucide-react"
 
 import { vscode } from "@src/utils/vscode"
@@ -16,6 +16,9 @@ type ModesViewHeaderProps = {
 export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps) => {
 	const { t } = useAppTranslation()
 	const [showConfigMenu, setShowConfigMenu] = useState(false)
+	const menuId = useId()
+	const triggerRef = useRef<HTMLButtonElement>(null)
+	const menuRef = useRef<HTMLDivElement>(null)
 
 	// Handle clicks outside the config menu
 	useEffect(() => {
@@ -29,16 +32,77 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 		return () => document.removeEventListener("click", handleClickOutside)
 	}, [showConfigMenu])
 
+	// Menu button pattern: an opened menu takes focus on its first item, so the
+	// Arrow keys work at once. A mouse user does not see the move.
+	useEffect(() => {
+		if (showConfigMenu) {
+			menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+		}
+	}, [showConfigMenu])
+
+	const closeMenuToTrigger = () => {
+		setShowConfigMenu(false)
+		triggerRef.current?.focus()
+	}
+
+	const onMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+		const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])
+		const current = items.indexOf(document.activeElement as HTMLButtonElement)
+		const moveTo = (index: number) => items[(index + items.length) % items.length]?.focus()
+		switch (e.key) {
+			case "ArrowDown":
+				e.preventDefault()
+				moveTo(current + 1)
+				break
+			case "ArrowUp":
+				e.preventDefault()
+				moveTo(current - 1)
+				break
+			case "Home":
+				e.preventDefault()
+				moveTo(0)
+				break
+			case "End":
+				e.preventDefault()
+				moveTo(items.length - 1)
+				break
+			case "Escape":
+				e.preventDefault()
+				e.stopPropagation()
+				closeMenuToTrigger()
+				break
+		}
+	}
+
+	const pickMenuItem = (action: () => void) => {
+		action()
+		closeMenuToTrigger()
+	}
+
+	const menuItemClass =
+		"block w-full text-left bg-transparent border-0 px-2 py-1.5 cursor-pointer rounded-control text-vscode-foreground text-sm hover:bg-surface-hover focus:bg-surface-hover focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder"
+
 	return (
 		<SectionHeader
 			description={t("prompts:modes.createModeHelpText")}
 			actions={
 				// Clicks inside the actions must not reach the document listener that closes the menu.
 				<div onClick={(e) => e.stopPropagation()} className="flex gap-2">
-					<div className="relative inline-block">
+					<div
+						className="relative inline-block"
+						onBlur={(e) => {
+							// Close once focus leaves both the trigger and the menu (Tab away).
+							if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+								setShowConfigMenu(false)
+							}
+						}}>
 						<StandardTooltip content={t("prompts:modes.editModesConfig")}>
 							<Button
+								ref={triggerRef}
 								aria-label={t("prompts:modes.editModesConfig")}
+								aria-haspopup="menu"
+								aria-expanded={showConfigMenu}
+								aria-controls={showConfigMenu ? menuId : undefined}
 								variant="ghost"
 								size="icon"
 								className="flex"
@@ -47,47 +111,61 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 									e.stopPropagation()
 									setShowConfigMenu((prev) => !prev)
 								}}
-								onBlur={() => {
-									// Add slight delay to allow menu item clicks to register
-									setTimeout(() => setShowConfigMenu(false), 200)
+								onKeyDown={(e: React.KeyboardEvent) => {
+									if (e.key === "ArrowDown" && !showConfigMenu) {
+										e.preventDefault()
+										setShowConfigMenu(true)
+									}
 								}}>
 								<span className="codicon codicon-json"></span>
 							</Button>
 						</StandardTooltip>
 						{showConfigMenu && (
 							<div
+								ref={menuRef}
+								id={menuId}
+								role="menu"
+								aria-label={t("prompts:modes.editModesConfig")}
+								onKeyDown={onMenuKeyDown}
 								onClick={(e) => e.stopPropagation()}
 								onMouseDown={(e) => e.stopPropagation()}
 								className="absolute top-full right-0 w-[200px] mt-1 p-1 bg-vscode-dropdown-background border border-frame-hover rounded-floating shadow-lg z-[1000]">
-								<div
-									className="px-2 py-1.5 cursor-pointer rounded-control text-vscode-foreground text-sm hover:bg-surface-hover focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder"
-									onMouseDown={(e) => {
-										e.preventDefault() // Prevent blur
-										vscode.postMessage({
-											type: "openCustomModesSettings",
-										})
-										setShowConfigMenu(false)
-									}}
-									onClick={(e) => e.preventDefault()}>
+								<button
+									type="button"
+									role="menuitem"
+									tabIndex={-1}
+									className={menuItemClass}
+									// Keep focus where it is while the mouse presses; the click does the work.
+									onMouseDown={(e) => e.preventDefault()}
+									onClick={() =>
+										pickMenuItem(() =>
+											vscode.postMessage({
+												type: "openCustomModesSettings",
+											}),
+										)
+									}>
 									{t("prompts:modes.editGlobalModes")}
-								</div>
-								<div
-									className="px-2 py-1.5 cursor-pointer rounded-control text-vscode-foreground text-sm hover:bg-surface-hover focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder"
-									onMouseDown={(e) => {
-										e.preventDefault() // Prevent blur
-										vscode.postMessage({
-											type: "openFile",
-											text: "./.roomodes",
-											values: {
-												create: true,
-												content: JSON.stringify({ customModes: [] }, null, 2),
-											},
-										})
-										setShowConfigMenu(false)
-									}}
-									onClick={(e) => e.preventDefault()}>
+								</button>
+								<button
+									type="button"
+									role="menuitem"
+									tabIndex={-1}
+									className={menuItemClass}
+									onMouseDown={(e) => e.preventDefault()}
+									onClick={() =>
+										pickMenuItem(() =>
+											vscode.postMessage({
+												type: "openFile",
+												text: "./.roomodes",
+												values: {
+													create: true,
+													content: JSON.stringify({ customModes: [] }, null, 2),
+												},
+											}),
+										)
+									}>
 									{t("prompts:modes.editProjectModes")}
-								</div>
+								</button>
 							</div>
 						)}
 					</div>

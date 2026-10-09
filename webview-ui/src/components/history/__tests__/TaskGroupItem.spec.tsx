@@ -1,4 +1,7 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
+import userEvent from "@testing-library/user-event"
+
+import { vscode } from "@src/utils/vscode"
 
 import TaskGroupItem from "../TaskGroupItem"
 import type { TaskGroup, DisplayHistoryItem, SubtaskTreeNode } from "../types"
@@ -15,6 +18,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 				return `${options.count} Subtask${options.count === 1 ? "" : "s"}`
 			}
 			if (key === "history:subtaskTag") return "Subtask: "
+			if (key === "history:collapseSubtasks") return "Collapse subtasks"
+			if (key === "history:expandSubtasks") return "Expand subtasks"
 			return key
 		},
 	}),
@@ -388,6 +393,81 @@ describe("TaskGroupItem", () => {
 			const container = screen.getByTestId("task-group-parent-1")
 			expect(container).toHaveClass("border-frame", "bg-surface", "hover:border-frame-hover", "rounded-control")
 			expect(container).not.toHaveClass("border-transparent")
+		})
+	})
+	describe("keyboard access to the subtask toggle", () => {
+		const renderGroup = (isExpanded = false, onToggleExpand = vi.fn()) => {
+			const group = createMockGroup({
+				isExpanded,
+				subtasks: [createMockSubtaskNode({ id: "child-1", task: "Child 1" })],
+			})
+			render(
+				<TaskGroupItem
+					group={group}
+					variant="full"
+					onToggleExpand={onToggleExpand}
+					onToggleSubtaskExpand={vi.fn()}
+				/>,
+			)
+			return onToggleExpand
+		}
+
+		it("is a real button that says whether the list is open", () => {
+			renderGroup(false)
+			const toggle = screen.getByRole("button", { name: "Expand subtasks" })
+			expect(toggle.tagName).toBe("BUTTON")
+			expect(toggle).toHaveAttribute("type", "button")
+			expect(toggle).toHaveAttribute("aria-expanded", "false")
+			expect(toggle).toHaveClass("w-full", "focus-visible:outline-vscode-focusBorder")
+		})
+
+		it("reports the open state", () => {
+			renderGroup(true)
+			expect(screen.getByRole("button", { name: "Collapse subtasks" })).toHaveAttribute("aria-expanded", "true")
+		})
+
+		it("is reached with Tab and toggles with Enter and Space", async () => {
+			const user = userEvent.setup()
+			const onToggleExpand = renderGroup(false)
+			const toggle = screen.getByTestId("subtask-collapsible-row")
+
+			for (let i = 0; i < 20 && document.activeElement !== toggle; i++) {
+				await user.tab()
+			}
+			expect(toggle).toHaveFocus()
+
+			await user.keyboard("{Enter}")
+			expect(onToggleExpand).toHaveBeenCalledTimes(1)
+			await user.keyboard(" ")
+			expect(onToggleExpand).toHaveBeenCalledTimes(2)
+			expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "showTaskWithId" }))
+		})
+
+		it("does not open the task or reach a parent click handler when clicked", () => {
+			const parentClick = vi.fn()
+			const group = createMockGroup({ subtasks: [createMockSubtaskNode({ id: "child-1", task: "Child 1" })] })
+			render(
+				<div onClick={parentClick}>
+					<TaskGroupItem
+						group={group}
+						variant="full"
+						onToggleExpand={vi.fn()}
+						onToggleSubtaskExpand={vi.fn()}
+					/>
+				</div>,
+			)
+			fireEvent.click(screen.getByTestId("subtask-collapsible-row"))
+			expect(parentClick).not.toHaveBeenCalled()
+			expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "showTaskWithId" }))
+		})
+		it("keeps Tab off the subtasks of a collapsed group", () => {
+			renderGroup(false)
+			expect(screen.getByTestId("subtask-list")).toHaveAttribute("inert")
+		})
+
+		it("lets Tab into the subtasks of an expanded group", () => {
+			renderGroup(true)
+			expect(screen.getByTestId("subtask-list")).not.toHaveAttribute("inert")
 		})
 	})
 })
