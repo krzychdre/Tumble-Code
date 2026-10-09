@@ -45,9 +45,9 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 				aria-describedby={item.runningStatus ? `${statusId} ${detailsId}` : detailsId}
 				className={cn(
 					"text-left bg-transparent border-none p-0 font-inherit",
-					"group flex w-full items-start justify-between gap-2 pr-4 py-1 cursor-pointer",
-					"text-vscode-foreground/60 hover:text-vscode-foreground transition-colors",
-					"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-vscode-focusBorder",
+					"group flex w-full items-start justify-between gap-2 pr-3 py-1 cursor-pointer",
+					"text-vscode-descriptionForeground hover:text-vscode-foreground transition-colors",
+					"focus:outline-none focus-visible:outline-solid focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder",
 				)}
 				style={{ paddingLeft: `${depth * 16}px` }}
 				onClick={handleClick}>
@@ -74,7 +74,7 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 						<TaskDetails item={item} id={detailsId} />
 					</span>
 				</span>
-				<ArrowRight className="size-3 mt-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
+				<ArrowRight className="size-3 mt-1 shrink-0" />
 			</button>
 
 			{/* Nested subtask collapsible section */}

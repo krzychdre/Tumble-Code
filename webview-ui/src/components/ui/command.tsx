@@ -21,12 +21,12 @@ const CommandInput = React.forwardRef<
 	React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
 	// eslint-disable-next-line react/no-unknown-property
-	<div className="flex items-center border-b border-vscode-dropdown-border px-3" cmdk-input-wrapper="">
-		<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+	<div className="flex items-center border-b border-frame px-2 py-1" cmdk-input-wrapper="">
+		<Search className="mr-2 h-4 w-4 shrink-0 text-vscode-descriptionForeground" />
 		<CommandPrimitive.Input
 			ref={ref}
 			className={cn(
-				"flex h-10 w-full bg-transparent py-3 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+				"flex h-[26px] w-full bg-transparent py-0 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
 				className,
 			)}
 			{...props}
@@ -93,7 +93,7 @@ const CommandSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	<CommandPrimitive.Separator
 		ref={ref}
-		className={cn("-mx-1 h-px bg-vscode-dropdown-border", className)}
+		className={cn("-mx-1 h-px bg-frame", className)}
 		{...props}
 	/>
 ))
@@ -106,8 +106,8 @@ const CommandItem = React.forwardRef<
 	<CommandPrimitive.Item
 		ref={ref}
 		className={cn(
-			"relative flex gap-2 select-none items-center px-2 py-1.5 outline-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-			"data-[selected=true]:bg-vscode-list-activeSelectionBackground data-[selected=true]:text-vscode-list-activeSelectionForeground",
+			"relative flex gap-2 select-none items-center rounded-control px-2 py-1.5 outline-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+			"hover:bg-surface-hover data-[selected=true]:bg-surface-hover",
 			"text-vscode-dropdown-foreground text-sm",
 			"active:opacity-90 cursor-pointer",
 			className,

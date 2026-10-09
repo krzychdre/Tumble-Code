@@ -13,12 +13,12 @@ export const StaleBuildNotice = () => {
 	return (
 		<div
 			data-testid="stale-build-notice"
-			className="m-4 px-4 py-2.5 border text-sm leading-normal text-vscode-foreground bg-[var(--vscode-inputValidation-warningBackground)] border-[var(--vscode-inputValidation-warningBorder)]">
+			className="m-4 px-4 py-2.5 rounded-control border text-sm leading-normal text-vscode-foreground bg-[var(--vscode-inputValidation-warningBackground)] border-[var(--vscode-inputValidation-warningBorder)]">
 			<div className="mb-0.5 font-bold">{t("common:staleBuild.title")}</div>
 			<div>{t("common:staleBuild.description")}</div>
 			<button
 				onClick={() => vscode.postMessage({ type: "reloadWindow" })}
-				className="mt-1.5 underline cursor-pointer bg-transparent border-none p-0 text-vscode-textLink-foreground hover:opacity-80">
+				className="mt-1.5 rounded-control underline cursor-pointer bg-transparent border-none p-0 text-vscode-textLink-foreground hover:text-[var(--vscode-textLink-activeForeground)] focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder">
 				{t("common:staleBuild.reload")}
 			</button>
 		</div>

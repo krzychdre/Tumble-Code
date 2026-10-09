@@ -17,13 +17,13 @@ export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBut
 	/** Spins the glyph (codicon) or swaps it for a spinner (lucide). */
 	isLoading?: boolean
 	/**
-	 * `chrome` (default): the quiet 85% opacity buttons of the task header,
-	 * task actions and the composer's selectors.
+	 * `chrome` (default): the quiet description-coloured buttons of the task
+	 * header, task actions and the composer's selectors.
 	 * `toolbar`: the square overlay toolbar of images, diagrams and zoom
 	 * controls, built on `Button variant="icon"`.
 	 */
 	variant?: "chrome" | "toolbar"
-	/** Toolbar only: 24px (`sm`) or 28px (`md`, default) square. */
+	/** Toolbar only: 22px (`sm`, compact) or 26px (`md`, default) square. */
 	size?: "sm" | "md"
 }
 
@@ -69,9 +69,9 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 					variant="icon"
 					aria-label={title}
 					className={cn(
-						size === "sm" ? "w-6 h-6" : "w-7 h-7",
-						"flex items-center justify-center border-none text-vscode-editor-foreground cursor-pointer",
-						"bg-transparent hover:bg-vscode-toolbar-hoverBackground",
+						size === "sm" ? "w-[22px] h-[22px]" : "w-[26px] h-[26px]",
+						"flex items-center justify-center rounded-control border-none text-vscode-editor-foreground cursor-pointer",
+						"bg-transparent hover:bg-surface-hover",
 						className,
 					)}
 					disabled={disabled}
@@ -85,15 +85,15 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 					ref={ref}
 					aria-label={title}
 					className={cn(
-						"relative inline-flex items-center justify-center",
+						"relative inline-flex items-center justify-center rounded-control",
 						"bg-transparent border-none p-1.5",
 						// Codicons are 16.5px font glyphs and need the 28px box to centre.
 						isCodicon && "min-w-7 min-h-7",
-						"text-vscode-foreground opacity-85",
+						"text-vscode-descriptionForeground",
 						"transition-all duration-150",
-						"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-						"active:bg-[rgba(255,255,255,0.1)]",
-						!disabled && "cursor-pointer hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)]",
+						"focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
+						"active:bg-surface-hover",
+						!disabled && "cursor-pointer hover:text-vscode-foreground hover:bg-surface-hover",
 						disabled && "cursor-not-allowed opacity-40 hover:bg-transparent active:bg-transparent",
 						className,
 					)}

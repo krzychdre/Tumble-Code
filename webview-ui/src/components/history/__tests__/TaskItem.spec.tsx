@@ -100,7 +100,7 @@ describe("TaskItem", () => {
 		expect(screen.getByText("17:50")).toBeInTheDocument()
 	})
 
-	it("applies hover effect class", () => {
+	it("shows the row in the full foreground colour, not dimmed", () => {
 		render(
 			<TaskItem
 				item={mockTask}
@@ -112,7 +112,8 @@ describe("TaskItem", () => {
 		)
 
 		const taskItem = screen.getByTestId("task-item-1")
-		expect(taskItem).toHaveClass("hover:text-vscode-foreground")
+		expect(taskItem).toHaveClass("text-vscode-foreground")
+		expect(taskItem.className).not.toContain("text-vscode-foreground/80")
 	})
 
 	describe("running status", () => {

@@ -28,8 +28,8 @@ describe("CommandInput search glyph", () => {
 		expect(svgs).toHaveLength(1)
 		// The glyph comes first, then the input.
 		expect(wrapper.firstElementChild?.tagName.toLowerCase()).toBe("svg")
-		// Muted, fixed-size, never shrinks.
-		expect(svgs[0].getAttribute("class")).toContain("opacity-50")
+		// Muted (description colour), fixed-size, never shrinks.
+		expect(svgs[0].getAttribute("class")).toContain("text-vscode-descriptionForeground")
 		expect(svgs[0].getAttribute("class")).toContain("shrink-0")
 	})
 })

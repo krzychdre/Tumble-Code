@@ -68,7 +68,7 @@ const WelcomeViewProvider = () => {
 				<div className="mt-4">
 					<button
 						onClick={() => vscode.postMessage({ type: "importSettings" })}
-						className="cursor-pointer bg-transparent border-none p-0 text-vscode-foreground hover:underline">
+						className="cursor-pointer rounded-control bg-transparent border-none p-0 text-vscode-foreground hover:underline focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder">
 						{t("welcome:importSettings")}
 					</button>
 				</div>

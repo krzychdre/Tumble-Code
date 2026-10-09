@@ -31,8 +31,6 @@ const RooHero = () => {
 				data-testid="roo-hero-ground">
 				<div className="w-full border-b-1 group-hover:border-b-1 border-dashed border-vscode-foreground animate-ground-slide" />
 			</div>
-			<div className="z-4 bg-gradient-to-r from-transparent to-vscode-sideBar-background absolute top-0 right-0 bottom-0 w-10 opacity-100" />
-			<div className="z-3 bg-gradient-to-l from-transparent to-vscode-sideBar-background absolute top-0 left-0 bottom-0 w-10 opacity-100" />
 			<div className="bg-vscode-foreground/10 size-10 z-1 absolute -bottom-4 animate-sun opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-[2px]" />
 		</div>
 	)

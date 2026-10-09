@@ -1,24 +1,38 @@
 import React from "react"
 
+import { cn } from "@/lib/utils"
+
 export interface ToggleSwitchProps {
 	checked: boolean
 	onChange: () => void
 	disabled?: boolean
+	/**
+	 * Kept for the call sites; both sizes now draw the same 28x16 switch of the frame
+	 * language (ai_plans/2026-10-09_ui-frame-language.md).
+	 */
 	size?: "small" | "medium"
 	"aria-label"?: string
 	"data-testid"?: string
 }
 
+const WIDTH = 28
+const HEIGHT = 16
+const DOT = 8
+/** Gap between the 1px border and the dot, on the top and on the side the dot rests on. */
+const INSET = (HEIGHT - 2 - DOT) / 2
+
+/**
+ * An outlined switch: off is a transparent track with the toggle outline and a description-coloured
+ * dot, on is filled with the button colour and a button-foreground dot. The outline turns to the
+ * foreground colour on hover and keyboard focus shows the shared focus ring.
+ */
 export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 	checked,
 	onChange,
 	disabled = false,
-	size = "small",
 	"aria-label": ariaLabel,
 	"data-testid": dataTestId,
 }) => {
-	const dimensions = size === "small" ? { width: 20, height: 10, dotSize: 8 } : { width: 26, height: 10, dotSize: 6 }
-
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter" || e.key === " ") {
 			e.preventDefault()
@@ -35,32 +49,27 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 			aria-label={ariaLabel}
 			tabIndex={disabled ? -1 : 0}
 			data-testid={dataTestId}
-			style={{
-				width: `${dimensions.width}px`,
-				height: `${dimensions.height}px`,
-				backgroundColor: checked
-					? "var(--vscode-button-background)"
-					: "var(--vscode-button-secondaryBackground)",
-				borderRadius: 0,
-				position: "relative",
-				cursor: disabled ? "not-allowed" : "pointer",
-				transition: "background-color 0.2s",
-				opacity: disabled ? 0.6 : 1,
-			}}
+			className={cn(
+				"relative shrink-0 rounded-control border transition-colors",
+				"focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
+				checked
+					? "border-vscode-button-background bg-vscode-button-background"
+					: "border-toggle-border bg-transparent",
+				disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-vscode-foreground",
+			)}
+			style={{ width: `${WIDTH}px`, height: `${HEIGHT}px` }}
 			onClick={disabled ? undefined : onChange}
 			onKeyDown={handleKeyDown}>
 			<div
+				className={cn(
+					"absolute rounded-control transition-[left] duration-200",
+					checked ? "bg-vscode-button-foreground" : "bg-vscode-descriptionForeground",
+				)}
 				style={{
-					width: `${dimensions.dotSize}px`,
-					height: `${dimensions.dotSize}px`,
-					backgroundColor: "var(--vscode-foreground)",
-					borderRadius: 0,
-					position: "absolute",
-					top: `${(dimensions.height - dimensions.dotSize) / 2}px`,
-					left: checked
-						? `${dimensions.width - dimensions.dotSize - (dimensions.height - dimensions.dotSize) / 2}px`
-						: `${(dimensions.height - dimensions.dotSize) / 2}px`,
-					transition: "left 0.2s",
+					width: `${DOT}px`,
+					height: `${DOT}px`,
+					top: `${INSET}px`,
+					left: checked ? `${WIDTH - 2 - DOT - INSET}px` : `${INSET}px`,
 				}}
 			/>
 		</div>

@@ -88,7 +88,7 @@ const TaskDetails = ({ item, id }: TaskDetailsProps) => {
 		<span
 			id={id}
 			data-testid="task-details"
-			className="flex flex-wrap items-center gap-x-1.5 text-xs text-vscode-descriptionForeground/80">
+			className="flex flex-wrap items-center gap-x-1.5 text-xs text-vscode-descriptionForeground">
 			{parts.map((part, index) => (
 				<span key={index} className="flex items-center gap-1.5">
 					{index > 0 && <span aria-hidden>·</span>}

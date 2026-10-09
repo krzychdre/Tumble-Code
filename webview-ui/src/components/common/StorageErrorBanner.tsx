@@ -32,7 +32,7 @@ const StorageErrorBanner = () => {
 			<div className="break-words whitespace-pre-wrap">{storageErrorMessage}</div>
 			<button
 				onClick={() => vscode.postMessage({ type: "openExtensionLogs" })}
-				className="mt-1.5 underline cursor-pointer bg-transparent border-none p-0 text-vscode-textLink-foreground hover:opacity-80">
+				className="mt-1.5 rounded-control underline cursor-pointer bg-transparent border-none p-0 text-vscode-textLink-foreground hover:text-[var(--vscode-textLink-activeForeground)] focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder">
 				{t("common:storageError.showLogs")}
 			</button>
 		</div>

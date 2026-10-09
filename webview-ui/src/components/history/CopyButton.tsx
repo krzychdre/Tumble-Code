@@ -31,7 +31,7 @@ export const CopyButton = ({ itemTask }: CopyButtonProps) => {
 				variant="ghost"
 				size="icon"
 				onClick={onCopy}
-				className="group-hover:opacity-100 group-focus-visible:opacity-100 group-has-focus-visible:opacity-100 opacity-50 transition-opacity"
+				className="h-[22px] w-[22px] text-vscode-descriptionForeground hover:text-vscode-foreground"
 				data-testid="copy-prompt-button">
 				<span className={cn("codicon scale-80", { "codicon-check": isCopied, "codicon-copy": !isCopied })} />
 			</Button>

@@ -74,7 +74,7 @@ export function StandardTooltip({
 				side={side}
 				align={align}
 				sideOffset={sideOffset}
-				className={`p-2 ${className}`}
+				className={className}
 				style={style}>
 				{content}
 			</TooltipContent>

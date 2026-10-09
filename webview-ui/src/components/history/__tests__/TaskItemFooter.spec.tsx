@@ -58,16 +58,18 @@ describe("TaskItemFooter", () => {
 		expect(screen.getByTestId("export")).toBeInTheDocument()
 	})
 
-	it("the hover-only action buttons also show while the row or a button has keyboard focus", () => {
-		render(<TaskItemFooter item={mockItem} variant="full" />)
+	it("keeps the action buttons visible without hover, in the description colour, with their accessible names", () => {
+		render(<TaskItemFooter item={mockItem} variant="full" onDelete={vi.fn()} />)
 
-		const actions = screen.getByTestId("copy-prompt-button").parentElement
-		expect(actions).toHaveClass(
-			"opacity-0",
-			"group-hover:opacity-100",
-			"group-focus-visible:opacity-100",
-			"group-has-focus-visible:opacity-100",
-		)
+		const copy = screen.getByTestId("copy-prompt-button")
+		const actions = copy.parentElement
+		// Keyboard and touch users never hover, so nothing may hide the actions.
+		expect(actions).not.toHaveClass("opacity-0")
+		expect(actions).toHaveClass("text-vscode-descriptionForeground")
+		for (const button of [copy, screen.getByTestId("export"), screen.getByTestId("delete-task-button")]) {
+			expect(button.className).not.toMatch(/(^|\s)opacity-/)
+			expect(button).toHaveAccessibleName()
+		}
 	})
 
 	it("hides export button in compact variant", () => {
