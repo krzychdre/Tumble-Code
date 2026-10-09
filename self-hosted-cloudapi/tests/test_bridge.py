@@ -24,12 +24,11 @@ from src.auth.web_session import _serializer
 from src.models.user import User, Session
 from src.models.task import Task, TaskMessage
 from src.realtime import sio as sio_module
-from src.realtime.hub import ConnectionRegistry, registry
+from src.realtime.hub import EVT_INSTANCE_STATE, ConnectionRegistry, registry
 from src.realtime.sio import (
     _user_id_from_token,
     _cookie_from_environ,
     EVT_MESSAGE,
-    EVT_INSTANCE_STATE,
     TASK_RELAYED_EVENT,
     TASK_RELAYED_COMMAND,
 )
@@ -41,15 +40,9 @@ from src.realtime.sio import (
 @pytest.fixture(autouse=True)
 def _clean_registry():
     """The relay registry is a process singleton; reset it around each test."""
-    registry._meta.clear()
-    registry._ext_sid_by_user.clear()
-    registry._instance_by_user.clear()
-    registry._task_access_by_sid.clear()
+    registry.reset()
     yield
-    registry._meta.clear()
-    registry._ext_sid_by_user.clear()
-    registry._instance_by_user.clear()
-    registry._task_access_by_sid.clear()
+    registry.reset()
 
 
 @pytest.fixture
@@ -122,14 +115,48 @@ def test_registry_newest_extension_instance_wins():
     assert reg.extension_sid("u1") == "ext_new"
 
 
-def test_registry_update_instance_state_merges():
+def test_registry_instance_of_a_task_merges_its_snapshot():
     reg = ConnectionRegistry()
+    reg.attach("ext1", "extension", "u1")
     reg.register_extension("ext1", "u1", {"instanceId": "i1"})
-    reg.update_instance_state("u1", {"contextTokens": 1234, "isRunning": True})
-    inst = reg.instance("u1")
+    reg.note_task_event("ext1", "t1", {"type": EVT_INSTANCE_STATE, "contextTokens": 1234, "isRunning": True})
+    inst = reg.instance("u1", "t1")
     assert inst["instanceId"] == "i1"
     assert inst["contextTokens"] == 1234
     assert inst["isRunning"] is True
+    # Another task's snapshot never leaks into this one.
+    assert "isRunning" not in reg.instance("u1", "t2")
+
+
+def test_registry_routes_a_task_to_the_window_that_streams_it():
+    """Two VS Code windows of one user: a command must reach the window that
+    runs the task, not the newest window (which got every command before)."""
+    reg = ConnectionRegistry()
+    for sid in ("ext_a", "ext_b"):
+        reg.attach(sid, "extension", "u1")
+        reg.register_extension(sid, "u1", {"workspacePath": f"/{sid}"})
+    reg.note_task_event("ext_a", "task-in-a", {"type": "message"})
+
+    assert reg.extension_sid("u1", "task-in-a") == "ext_a"
+    # A task no window streams (resume from the web) goes to the newest.
+    assert reg.extension_sid("u1", "task-elsewhere") == "ext_b"
+    assert reg.extension_sid("u1") == "ext_b"
+    assert reg.instance("u1", "task-in-a")["workspacePath"] == "/ext_a"
+
+
+def test_registry_detaching_a_window_forgets_its_tasks_but_keeps_the_user_online():
+    reg = ConnectionRegistry()
+    for sid in ("ext_a", "ext_b"):
+        reg.attach(sid, "extension", "u1")
+        reg.register_extension(sid, "u1")
+    reg.note_task_event("ext_b", "t", {"type": EVT_INSTANCE_STATE, "isRunning": True})
+
+    reg.detach("ext_b")
+
+    assert reg.has_extension("u1") is True
+    assert reg.extension_sid("u1", "t") == "ext_a"
+    # A stale "running" must not outlive the window that reported it.
+    assert "isRunning" not in reg.instance("u1", "t")
 
 
 # --- handshake auth helpers ------------------------------------------------
@@ -317,6 +344,30 @@ async def test_task_command_relayed_only_to_owner_extension(
 
     # Relayed exactly once, only to the owner's extension socket.
     stub_emit.assert_awaited_once_with(TASK_RELAYED_COMMAND, cmd, to="ext_owner")
+
+
+async def test_task_command_reaches_the_window_that_runs_the_task(
+    patch_session_factory, db_session, stub_emit
+):
+    """Stop pressed on the web for a task run in the older of two windows: it
+    used to go to the newest window, which does not have the task."""
+    await _seed_user(db_session, "owner")
+    db_session.add(Task(id="task-own", user_id="owner"))
+    await db_session.commit()
+
+    registry.attach("br_owner", "browser", "owner")
+    for sid in ("ext_running", "ext_newer"):
+        registry.attach(sid, "extension", "owner")
+        registry.register_extension(sid, "owner")
+    await sio_module.on_task_event(
+        "ext_running", {"taskId": "task-own", "type": EVT_INSTANCE_STATE, "isRunning": True}
+    )
+    stub_emit.reset_mock()
+
+    cmd = {"taskId": "task-own", "type": "stop_task", "timestamp": 1}
+    assert await sio_module.on_task_command("br_owner", cmd) == {"success": True}
+
+    stub_emit.assert_awaited_once_with(TASK_RELAYED_COMMAND, cmd, to="ext_running")
 
 
 async def test_task_command_on_foreign_task_is_forbidden(
@@ -609,7 +660,7 @@ async def test_task_event_instance_state_updates_registry(
     await sio_module.on_task_event("ext_owner", event)
 
     stub_emit.assert_awaited_once_with(TASK_RELAYED_EVENT, event, room="task:task-own")
-    inst = registry.instance("owner")
+    inst = registry.instance("owner", "task-own")
     assert inst["isRunning"] is True
     assert inst["contextTokens"] == 5000
     assert inst["contextWindow"] == 200000
@@ -717,8 +768,8 @@ async def test_state_event_for_an_unknown_task_is_held_until_the_task_exists(
     state = {"taskId": "task-later", "type": EVT_INSTANCE_STATE, "isRunning": True}
     await sio_module.on_task_event("ext_owner", state)
     stub_emit.assert_not_awaited()
-    # The sender's own instance record still follows its state.
-    assert registry.instance("owner")["isRunning"] is True
+    # Nor is it kept: the snapshot of a task is stored only once its owner is known.
+    assert "isRunning" not in registry.instance("owner", "task-later")
 
     # The row appears later (here: created by a backfill on another connection).
     db_session.add(Task(id="task-later", user_id="owner"))

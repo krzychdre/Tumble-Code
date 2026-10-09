@@ -183,9 +183,10 @@
 		})
 	})
 
-	// The bridge keeps one record per extension, not per task: what it registered
-	// with (no figures, no mode) merged with the last snapshot of whichever task
-	// it last reported on. Only a snapshot of this task describes this task; the
+	// The join answers with what the window running this task registered with
+	// (no figures, no mode), merged with this task's last snapshot when there is
+	// one; for a task no window streams it is the newest window's record. Only a
+	// snapshot of this task describes this task; the
 	// auto-approval settings belong to the extension, so they hold for any, and
 	// the controls push all of them at once, so they must start from the truth.
 	function ownSnapshot(inst) {

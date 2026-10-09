@@ -48,7 +48,6 @@ TASK_RELAYED_COMMAND = "task:relayed_command"  # to extension
 
 # Bridge event `type` discriminators (TaskBridgeEventName).
 EVT_MESSAGE = "message"
-EVT_INSTANCE_STATE = "instanceState"
 
 
 def _origin_allowed(origin: Optional[str], environ: Optional[dict] = None) -> bool:
@@ -186,7 +185,7 @@ async def on_extension_register(sid, data):
 async def on_extension_heartbeat(sid, data=None):
     meta = registry.meta(sid)
     if meta and meta["role"] == "extension":
-        registry.heartbeat(meta["user_id"])
+        registry.heartbeat(sid)
     return {"success": True}
 
 
@@ -228,10 +227,6 @@ async def on_task_event(sid, data):
     user_id = meta["user_id"]
     evt_type = data.get("type")
 
-    if evt_type == EVT_INSTANCE_STATE:
-        # The sender's own instance record: independent of the task it names.
-        registry.update_instance_state(user_id, data)
-
     owned = registry.task_access(sid, task_id)
     if owned is False:
         return
@@ -239,6 +234,7 @@ async def on_task_event(sid, data):
     is_message = evt_type == EVT_MESSAGE and isinstance(data.get("message"), dict)
 
     if owned:
+        registry.note_task_event(sid, task_id, data)
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
         if is_message and await _persist(sid, task_id, user_id, data) is False:
             # Only if the row was deleted and recreated by another user while
@@ -261,6 +257,7 @@ async def on_task_event(sid, data):
         return
     registry.remember_task_access(sid, task_id, owned)
     if owned:
+        registry.note_task_event(sid, task_id, data)
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
 
 
@@ -291,12 +288,11 @@ async def _save_messages(task_id: str, user_id: str, events: list[dict]) -> Opti
             owned = None
             for data in events:
                 # Worktree root: prefer the value the originating window
-                # stamped on the event, correct even when several windows share
-                # one cloud account, since the registry tracks only one
-                # instance per user. Fall back to the registered instance for
-                # older clients that don't send it.
+                # stamped on the event. Fall back, for older clients that
+                # don't send it, to the instance of the window that streams
+                # the task.
                 workspace_path = data.get("workspacePath") or (
-                    registry.instance(user_id) or {}
+                    registry.instance(user_id, task_id) or {}
                 ).get("workspacePath")
                 owned = await upsert_task_message(
                     db, task_id, user_id, data["message"], workspace_path=workspace_path
@@ -339,7 +335,7 @@ async def on_task_join(sid, data):
     if not await _user_owns_task(meta["user_id"], task_id):
         return {"success": False, "error": "forbidden"}
     await sio.enter_room(sid, _room(task_id))
-    instance = registry.instance(meta["user_id"])
+    instance = registry.instance(meta["user_id"], task_id)
     return {
         "success": True,
         "taskId": task_id,
@@ -367,7 +363,9 @@ async def on_task_command(sid, data):
     task_id = data.get("taskId")
     if not await _user_owns_task(meta["user_id"], task_id):
         return {"success": False, "error": "forbidden"}
-    ext_sid = registry.extension_sid(meta["user_id"])
+    # The window that runs the task: with several windows open, the newest
+    # one used to get every command, so Stop missed a task run elsewhere.
+    ext_sid = registry.extension_sid(meta["user_id"], task_id)
     if not ext_sid:
         return {"success": False, "error": "extension offline"}
     await sio.emit(TASK_RELAYED_COMMAND, data, to=ext_sid)
