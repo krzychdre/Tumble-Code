@@ -2035,6 +2035,31 @@ export class ClineProvider
 		return true
 	}
 
+	/**
+	 * Resumes a stopped task the way its Resume Task button does: shows it
+	 * (rebuilt from history when nothing runs it) and answers the resume_task
+	 * ask the rebuilt task waits on. Showing alone resumes nothing, and a task
+	 * just stopped is already on screen, so showing it is a no-op. False when
+	 * the task does not reach that ask in time (it runs, or it finished).
+	 */
+	public async resumeTask(taskId: string, timeoutMs = 10_000): Promise<boolean> {
+		await this.showTaskWithId(taskId)
+		const waitingTask = () => {
+			const task = this.findLiveTask(taskId)
+			const last = task?.clineMessages.at(-1)
+			return last?.type === "ask" && last.ask === "resume_task" && !last.partial && !last.isAnswered
+				? task
+				: undefined
+		}
+		try {
+			await pWaitFor(() => waitingTask() !== undefined, { timeout: timeoutMs, interval: 100 })
+		} catch {
+			return false
+		}
+		waitingTask()?.handleWebviewAskResponse("yesButtonClicked")
+		return true
+	}
+
 	/** Cancels one live parallel subagent (its row's Stop, or the bridge). */
 	public cancelSubagent(taskId: string): void {
 		const subagentTask = this.getBackgroundTask(taskId)
