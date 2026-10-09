@@ -8,6 +8,7 @@ import { Button, LabeledCheckbox, Spinner, Input } from "@src/components/ui"
 
 import { ModelPicker } from "../ModelPicker"
 import { type ProviderFormProps, useProviderField } from "./shared"
+import { checkboxDescription, settingDescription } from "../SettingsCard"
 
 type LiteLLMProps = ProviderFormProps & {
 	organizationAllowList: OrganizationAllowList
@@ -71,6 +72,7 @@ export const LiteLLM = ({
 				/>
 			</label>
 
+			<div>
 			<label className="block w-full leading-[normal]">
 				<span className="block font-medium mb-1">{t("settings:providers.litellmApiKey")}</span>
 				<Input
@@ -81,8 +83,7 @@ export const LiteLLM = ({
 				/>
 			</label>
 
-			<div className="text-sm text-vscode-descriptionForeground -mt-2">
-				{t("settings:providers.apiKeyStorageNotice")}
+			<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
 			</div>
 
 			<Button
@@ -141,7 +142,7 @@ export const LiteLLM = ({
 								}}>
 								<span className="font-medium">{t("settings:providers.enablePromptCaching")}</span>
 							</LabeledCheckbox>
-							<div className="text-sm text-vscode-descriptionForeground ml-6 mt-1">
+							<div className={checkboxDescription}>
 								{t("settings:providers.enablePromptCachingTitle")}
 							</div>
 						</div>

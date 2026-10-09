@@ -8,6 +8,7 @@ import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { Slider, LabeledCheckbox, Input } from "@/components/ui"
+import { SettingsCard, checkboxDescription, settingDescription } from "./SettingsCard"
 
 type WebToolsSettingsProps = HTMLAttributes<HTMLDivElement>
 
@@ -22,6 +23,7 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 			<SectionHeader>{t("settings:sections.web")}</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				<SearchableSetting settingId="web-enable" section="web" label={t("settings:web.enable.label")}>
 					<LabeledCheckbox
 						checked={webToolsEnabled ?? SETTINGS_DEFAULTS.webToolsEnabled}
@@ -31,7 +33,7 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 						data-testid="web-tools-enabled-checkbox">
 						<span className="font-medium">{t("settings:web.enable.label")}</span>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={checkboxDescription}>
 						{t("settings:web.enable.description")}
 					</div>
 				</SearchableSetting>
@@ -55,7 +57,7 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 								className="w-full"
 								data-testid="web-searxng-url-input"
 							/>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:web.searxngBaseUrl.description")}
 							</div>
 						</SearchableSetting>
@@ -84,12 +86,13 @@ export const WebToolsSettings = (props: WebToolsSettingsProps) => {
 									{webSearchMaxResults ?? WEB_TOOLS_DEFAULTS.DEFAULT_SEARCH_RESULTS}
 								</span>
 							</div>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:web.maxResults.description")}
 							</div>
 						</SearchableSetting>
 					</>
 				)}
+				</SettingsCard>
 			</Section>
 		</div>
 	)

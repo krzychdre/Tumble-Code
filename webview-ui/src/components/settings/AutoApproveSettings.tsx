@@ -17,6 +17,7 @@ import { SearchableSetting } from "./SearchableSetting"
 import { AutoApproveToggle } from "./AutoApproveToggle"
 import { AutoApproveModeSelector } from "./AutoApproveModeSelector"
 import { MaxLimitInputs } from "./MaxLimitInputs"
+import { SettingsCard, checkboxDescription, settingDescription } from "./SettingsCard"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useAutoApprovalState } from "@/hooks/useAutoApprovalState"
 import { useAutoApprovalToggles } from "@/hooks/useAutoApprovalToggles"
@@ -99,7 +100,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 			<SectionHeader>{t("settings:sections.autoApprove")}</SectionHeader>
 
 			<Section>
-				<div className="space-y-section">
+				<SettingsCard>
 					<SearchableSetting
 						settingId="auto-approve-enabled"
 						section="autoApprove"
@@ -114,7 +115,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 							}}>
 							<span className="font-medium">{t("settings:autoApprove.enabled")}</span>
 						</LabeledCheckbox>
-						<div className="text-vscode-descriptionForeground text-sm mt-1">
+						<div className={checkboxDescription}>
 							<p>{t("settings:autoApprove.description")}</p>
 							<p>
 								<Trans
@@ -161,16 +162,12 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 						onMaxRequestsChange={(value) => setAllowedMaxRequests(value)}
 						onMaxCostChange={(value) => setAllowedMaxCost(value)}
 					/>
-				</div>
+				</SettingsCard>
 
 				{/* ADDITIONAL SETTINGS */}
 
 				{alwaysAllowReadOnly && (
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
-						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-eye" aria-hidden="true" />
-							<div>{t("settings:autoApprove.readOnly.label")}</div>
-						</div>
+					<SettingsCard title={t("settings:autoApprove.readOnly.label")}>
 						<SearchableSetting
 							settingId="auto-approve-readonly-outside-workspace"
 							section="autoApprove"
@@ -183,19 +180,15 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 									{t("settings:autoApprove.readOnly.outsideWorkspace.label")}
 								</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={checkboxDescription}>
 								{t("settings:autoApprove.readOnly.outsideWorkspace.description")}
 							</div>
 						</SearchableSetting>
-					</div>
+					</SettingsCard>
 				)}
 
 				{alwaysAllowWrite && (
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
-						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-edit" aria-hidden="true" />
-							<div>{t("settings:autoApprove.write.label")}</div>
-						</div>
+					<SettingsCard title={t("settings:autoApprove.write.label")}>
 						<SearchableSetting
 							settingId="auto-approve-write-outside-workspace"
 							section="autoApprove"
@@ -208,7 +201,7 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 									{t("settings:autoApprove.write.outsideWorkspace.label")}
 								</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={checkboxDescription}>
 								{t("settings:autoApprove.write.outsideWorkspace.description")}
 							</div>
 						</SearchableSetting>
@@ -222,19 +215,15 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 								data-testid="always-allow-write-protected-checkbox">
 								<span className="font-medium">{t("settings:autoApprove.write.protected.label")}</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1 mb-block">
+							<div className={checkboxDescription}>
 								{t("settings:autoApprove.write.protected.description")}
 							</div>
 						</SearchableSetting>
-					</div>
+					</SettingsCard>
 				)}
 
 				{alwaysAllowFollowupQuestions && (
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
-						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-question" aria-hidden="true" />
-							<div>{t("settings:autoApprove.followupQuestions.label")}</div>
-						</div>
+					<SettingsCard title={t("settings:autoApprove.followupQuestions.label")}>
 						<SearchableSetting
 							settingId="auto-approve-followup-timeout"
 							section="autoApprove"
@@ -250,28 +239,24 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 								/>
 								<span className="w-20">{followupAutoApproveTimeoutMs / 1000}s</span>
 							</div>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:autoApprove.followupQuestions.timeoutLabel")}
 							</div>
 						</SearchableSetting>
-					</div>
+					</SettingsCard>
 				)}
 
 				{alwaysAllowExecute && (
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
-						<div className="flex items-center gap-4 font-bold">
-							<span className="codicon codicon-terminal" aria-hidden="true" />
-							<div>{t("settings:autoApprove.execute.label")}</div>
-						</div>
-
+					<SettingsCard title={t("settings:autoApprove.execute.label")}>
+						<div className="flex flex-col gap-2">
 						<SearchableSetting
 							settingId="auto-approve-allowed-commands"
 							section="autoApprove"
 							label={t("settings:autoApprove.execute.allowedCommands")}>
-							<label className="block font-medium mb-1" data-testid="allowed-commands-heading">
+							<label className="block font-medium" data-testid="allowed-commands-heading">
 								{t("settings:autoApprove.execute.allowedCommands")}
 							</label>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:autoApprove.execute.allowedCommandsDescription")}
 							</div>
 						</SearchableSetting>
@@ -287,10 +272,10 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 									}
 								}}
 								placeholder={t("settings:autoApprove.execute.commandPlaceholder")}
-								className="grow h-8"
+								className="grow"
 								data-testid="command-input"
 							/>
-							<Button className="h-8" onClick={handleAddCommand} data-testid="add-command-button">
+							<Button onClick={handleAddCommand} data-testid="add-command-button">
 								{t("settings:autoApprove.execute.addButton")}
 							</Button>
 						</div>
@@ -314,16 +299,18 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 							))}
 						</div>
 
+						</div>
+
 						{/* Denied Commands Section */}
+						<div className="flex flex-col gap-2">
 						<SearchableSetting
 							settingId="auto-approve-denied-commands"
 							section="autoApprove"
-							label={t("settings:autoApprove.execute.deniedCommands")}
-							className="mt-page">
-							<label className="block font-medium mb-1" data-testid="denied-commands-heading">
+							label={t("settings:autoApprove.execute.deniedCommands")}>
+							<label className="block font-medium" data-testid="denied-commands-heading">
 								{t("settings:autoApprove.execute.deniedCommands")}
 							</label>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:autoApprove.execute.deniedCommandsDescription")}
 							</div>
 						</SearchableSetting>
@@ -339,11 +326,10 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 									}
 								}}
 								placeholder={t("settings:autoApprove.execute.deniedCommandPlaceholder")}
-								className="grow h-8"
+								className="grow"
 								data-testid="denied-command-input"
 							/>
 							<Button
-								className="h-8"
 								onClick={handleAddDeniedCommand}
 								data-testid="add-denied-command-button">
 								{t("settings:autoApprove.execute.addButton")}
@@ -368,7 +354,8 @@ export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 								</Button>
 							))}
 						</div>
-					</div>
+						</div>
+					</SettingsCard>
 				)}
 			</Section>
 		</div>

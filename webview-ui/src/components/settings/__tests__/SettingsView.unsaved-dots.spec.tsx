@@ -98,11 +98,11 @@ describe("SettingsView unsaved-edit dots", () => {
 		expect(saveDot()).toBeNull()
 	})
 
-	it("keeps the focus ring on the tab triggers", () => {
+	it("keeps the 1px focus ring on the tab triggers", () => {
 		render(<SettingsView onDone={vi.fn()} />)
 
 		for (const tab of within(screen.getByTestId("settings-tab-list")).getAllByRole("tab")) {
-			expect(tab.className).not.toMatch(/focus:ring-0/)
+			expect(tab).toHaveClass("focus-visible:outline-1", "focus-visible:outline-vscode-focusBorder")
 		}
 	})
 })

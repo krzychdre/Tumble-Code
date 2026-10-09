@@ -7,6 +7,7 @@ import { Input } from "@src/components/ui"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
 import { inputEventTransform } from "../transforms"
+import { settingDescription } from "../SettingsCard"
 
 export type SetApiConfigurationField = <K extends keyof ProviderSettings>(
 	field: K,
@@ -72,6 +73,7 @@ export const ApiKeyField = ({
 
 	const trio = (
 		<>
+			<div>
 			<label className="block w-full leading-[normal]">
 				<span className="block font-medium mb-1">{t(labelKey)}</span>
 				<Input
@@ -81,13 +83,7 @@ export const ApiKeyField = ({
 					placeholder={t("settings:placeholders.apiKey")}
 				/>
 			</label>
-			<div
-				className={
-					grouped
-						? "text-sm text-vscode-descriptionForeground"
-						: "text-sm text-vscode-descriptionForeground -mt-2"
-				}>
-				{t("settings:providers.apiKeyStorageNotice")}
+			<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
 			</div>
 			{!apiKey && (
 				<VSCodeButtonLink href={getKeyUrl} appearance="secondary">

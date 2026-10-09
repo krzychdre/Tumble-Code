@@ -26,6 +26,7 @@ import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { SettingsCard, checkboxDescription, settingDescription } from "./SettingsCard"
 import { useExtensionMessage } from "@src/utils/extensionBus"
 
 type TerminalSettingsProps = HTMLAttributes<HTMLDivElement> & {
@@ -99,14 +100,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 
 			<Section>
 				{/* Basic Settings */}
-				<div className="flex flex-col gap-block">
-					<div className="flex flex-col gap-1">
-						<div className="flex items-center gap-2 font-bold">
-							<span className="codicon codicon-settings-gear" aria-hidden="true" />
-							<div>{t("settings:terminal.basic.label")}</div>
-						</div>
-					</div>
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
+				<SettingsCard title={t("settings:terminal.basic.label")}>
 						<SearchableSetting
 							settingId="terminal-output-preview-size"
 							section="terminal"
@@ -134,26 +128,17 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									</SelectItem>
 								</SelectContent>
 							</Select>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={settingDescription}>
 								{t("settings:terminal.outputPreviewSize.description")}
 							</div>
 						</SearchableSetting>
-					</div>
-				</div>
+				</SettingsCard>
 
 				{/* Advanced Settings */}
-				<div className="flex flex-col gap-block">
-					<div className="flex flex-col gap-1">
-						<div className="flex items-center gap-2 font-bold">
-							<span className="codicon codicon-tools" aria-hidden="true" />
-							<div>{t("settings:terminal.advanced.label")}</div>
-						</div>
-						<div className="text-vscode-descriptionForeground">
-							{t("settings:terminal.advanced.description")}
-						</div>
-					</div>
-					<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
-						{/* Profile override — only applies when VS Code integrated terminal is active
+				<SettingsCard
+					title={t("settings:terminal.advanced.label")}
+					description={t("settings:terminal.advanced.description")}>
+						{/* Profile override: only applies when VS Code integrated terminal is active
 						    (shell integration enabled). Hidden in Execa/inline mode since getProfileShell()
 						    is not wired there. */}
 						{isVSCodeTerminalEnabled && (
@@ -227,7 +212,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										onValueChange={(value) =>
 											setTerminalProfile(value === DEFAULT_PROFILE_VALUE ? undefined : value)
 										}>
-										<SelectTrigger className="w-full ml-6">
+										<SelectTrigger className="w-[calc(100%-1.5rem)] ml-6">
 											<SelectValue placeholder={t("settings:common.select")} />
 										</SelectTrigger>
 										<SelectContent>
@@ -240,7 +225,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									</Select>
 								)}
 
-								<div className="text-vscode-descriptionForeground text-sm mt-1">
+								<div className={settingDescription}>
 									{t("settings:terminal.profile.description")}
 								</div>
 							</SearchableSetting>
@@ -260,7 +245,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 									{t("settings:terminal.shellIntegrationDisabled.label")}
 								</span>
 							</LabeledCheckbox>
-							<div className="text-vscode-descriptionForeground text-sm mt-1">
+							<div className={checkboxDescription}>
 								{t("settings:terminal.shellIntegrationDisabled.description")}
 							</div>
 						</SearchableSetting>
@@ -284,7 +269,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										data-testid="terminal-inherit-env-checkbox">
 										<span className="font-medium">{t("settings:terminal.inheritEnv.label")}</span>
 									</LabeledCheckbox>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={checkboxDescription}>
 										{t("settings:terminal.inheritEnv.description")}
 									</div>
 								</SearchableSetting>
@@ -317,7 +302,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 											s
 										</span>
 									</div>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={settingDescription}>
 										{t("settings:terminal.shellIntegrationTimeout.description")}
 									</div>
 								</SearchableSetting>
@@ -343,7 +328,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 											{terminalCommandDelay ?? SETTINGS_DEFAULTS.terminalCommandDelay}ms
 										</span>
 									</div>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={settingDescription}>
 										{t("settings:terminal.commandDelay.description")}
 									</div>
 								</SearchableSetting>
@@ -362,7 +347,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 											{t("settings:terminal.powershellCounter.label")}
 										</span>
 									</LabeledCheckbox>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={checkboxDescription}>
 										{t("settings:terminal.powershellCounter.description")}
 									</div>
 								</SearchableSetting>
@@ -379,7 +364,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 											{t("settings:terminal.zshClearEolMark.label")}
 										</span>
 									</LabeledCheckbox>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={checkboxDescription}>
 										{t("settings:terminal.zshClearEolMark.description")}
 									</div>
 								</SearchableSetting>
@@ -394,7 +379,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										data-testid="terminal-zsh-oh-my-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshOhMy.label")}</span>
 									</LabeledCheckbox>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={checkboxDescription}>
 										{t("settings:terminal.zshOhMy.description")}
 									</div>
 								</SearchableSetting>
@@ -409,7 +394,7 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										data-testid="terminal-zsh-p10k-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshP10k.label")}</span>
 									</LabeledCheckbox>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={checkboxDescription}>
 										{t("settings:terminal.zshP10k.description")}
 									</div>
 								</SearchableSetting>
@@ -424,14 +409,13 @@ export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...
 										data-testid="terminal-zdotdir-checkbox">
 										<span className="font-medium">{t("settings:terminal.zdotdir.label")}</span>
 									</LabeledCheckbox>
-									<div className="text-vscode-descriptionForeground text-sm mt-1">
+									<div className={checkboxDescription}>
 										{t("settings:terminal.zdotdir.description")}
 									</div>
 								</SearchableSetting>
 							</>
 						)}
-					</div>
-				</div>
+				</SettingsCard>
 			</Section>
 		</div>
 	)

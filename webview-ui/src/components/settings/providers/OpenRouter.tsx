@@ -11,6 +11,7 @@ import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 import { ModelPicker } from "../ModelPicker"
 import { OpenRouterBalanceDisplay } from "./OpenRouterBalanceDisplay"
 import { type ProviderFormProps, useProviderField } from "./shared"
+import { settingDescription } from "../SettingsCard"
 
 type OpenRouterProps = ProviderFormProps & {
 	routerModels?: RouterModels
@@ -58,9 +59,7 @@ export const OpenRouter = ({
 					onChange={handleInputChange("openRouterApiKey")}
 					placeholder={t("settings:placeholders.apiKey")}
 				/>
-			</div>
-			<div className="text-sm text-vscode-descriptionForeground -mt-2">
-				{t("settings:providers.apiKeyStorageNotice")}
+				<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
 			</div>
 			{!apiConfiguration?.openRouterApiKey && (
 				<VSCodeButtonLink href={getOpenRouterAuthUrl(uriScheme)} style={{ width: "100%" }} appearance="primary">

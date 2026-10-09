@@ -9,6 +9,7 @@ import { useSetting, useSettingsDraft } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { SettingsCard } from "./SettingsCard"
 import { ExperimentalFeature } from "./ExperimentalFeature"
 import { ImageGenerationSettings } from "./ImageGenerationSettings"
 import { CustomToolsSettings } from "./CustomToolsSettings"
@@ -26,10 +27,11 @@ export const ExperimentalSettings = ({ className, ...props }: ExperimentalSettin
 	)
 
 	return (
-		<div className={cn("flex flex-col gap-2", className)} {...props}>
+		<div className={cn("flex flex-col", className)} {...props}>
 			<SectionHeader>{t("settings:sections.experimental")}</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				{Object.entries(experimentConfigsMap)
 					.filter(([key]) => key in EXPERIMENT_IDS)
 					.map((config) => {
@@ -96,6 +98,7 @@ export const ExperimentalSettings = ({ className, ...props }: ExperimentalSettin
 							</SearchableSetting>
 						)
 					})}
+				</SettingsCard>
 			</Section>
 		</div>
 	)

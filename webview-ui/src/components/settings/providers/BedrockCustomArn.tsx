@@ -4,6 +4,7 @@ import { validateBedrockArn } from "@src/utils/validate"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Input } from "@src/components/ui"
 import { type ProviderFormProps } from "./shared"
+import { settingDescription } from "../SettingsCard"
 
 type BedrockCustomArnProps = ProviderFormProps
 
@@ -16,7 +17,7 @@ export const BedrockCustomArn = ({ apiConfiguration, setApiConfigurationField }:
 	}, [apiConfiguration])
 
 	return (
-		<>
+		<div>
 			<label className="block w-full leading-[normal]">
 				<span className="block font-medium mb-1">{t("settings:labels.customArn")}</span>
 				<Input
@@ -25,7 +26,7 @@ export const BedrockCustomArn = ({ apiConfiguration, setApiConfigurationField }:
 					placeholder={t("settings:placeholders.customArn")}
 				/>
 			</label>
-			<div className="text-sm text-vscode-descriptionForeground -mt-2">
+			<div className={settingDescription}>
 				{t("settings:providers.awsCustomArnUse")}
 				<ul className="list-disc pl-5 mt-1">
 					<li>
@@ -45,6 +46,6 @@ export const BedrockCustomArn = ({ apiConfiguration, setApiConfigurationField }:
 					<div className="text-sm text-vscode-errorForeground mt-2">{validation.errorMessage}</div>
 				)
 			)}
-		</>
+		</div>
 	)
 }

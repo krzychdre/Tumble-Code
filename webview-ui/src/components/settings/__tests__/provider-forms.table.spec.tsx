@@ -306,26 +306,22 @@ describe("provider forms table", () => {
 		expect(label.tagName).toBe("SPAN")
 		expect(label).toHaveAttribute("class", "block font-medium mb-1")
 
+		// The label and its storage notice share one wrapper, so the notice sits right under the input.
 		const notice = field.nextElementSibling as HTMLElement
 		expect(notice.tagName).toBe("DIV")
 		expect(notice).toHaveTextContent("settings:providers.apiKeyStorageNotice")
-		expect(notice).toHaveAttribute(
-			"class",
-			trio.grouped
-				? "text-sm text-vscode-descriptionForeground"
-				: "text-sm text-vscode-descriptionForeground -mt-2",
-		)
+		expect(notice).toHaveAttribute("class", "text-sm text-vscode-descriptionForeground mt-0.5")
 
-		const link = notice.nextElementSibling as HTMLElement
+		const link = field.parentElement!.nextElementSibling as HTMLElement
 		expect(link).toBe(screen.getByTestId("get-key-link"))
 		expect(link).toHaveAttribute("href", trio.getKeyUrl)
 		expect(link).toHaveAttribute("data-appearance", "secondary")
 		expect(link).toHaveTextContent(trio.getKeyLabelKey)
 
 		if (trio.grouped) {
-			const group = field.parentElement!
+			const group = field.parentElement!.parentElement!
 			expect(group.tagName).toBe("DIV")
-			expect(group.children).toHaveLength(3)
+			expect(group.children).toHaveLength(2)
 		}
 	})
 

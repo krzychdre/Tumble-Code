@@ -67,9 +67,9 @@ export const ModeToolsSection = ({
 		}
 
 	return (
-		<div className="mb-section">
+		<div>
 			<div className="flex justify-between items-center mb-1">
-				<div className="font-bold">{t("prompts:tools.title")}</div>
+				<div className="font-medium">{t("prompts:tools.title")}</div>
 				{customMode && (
 					<StandardTooltip
 						content={isToolsEditMode ? t("prompts:tools.doneEditing") : t("prompts:tools.editTools")}>
