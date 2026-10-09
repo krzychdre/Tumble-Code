@@ -73,8 +73,11 @@
 		"commands": [
 			{
 				"command": "tumble-code.plusButtonClicked",
-				"title": "%command.newTask.title%",
-				"icon": "$(edit)"
+				"title": "%command.newTaskButton.title%",
+				"icon": {
+					"light": "assets/icons/new-task-light.svg",
+					"dark": "assets/icons/new-task-dark.svg"
+				}
 			},
 			{
 				"command": "tumble-code.historyButtonClicked",

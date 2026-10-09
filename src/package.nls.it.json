@@ -2,6 +2,7 @@
 	"extension.displayName": "Tumble Code",
 	"extension.description": "Un intero team di sviluppo di agenti IA nel tuo editor.",
 	"command.newTask.title": "Nuovo Task",
+	"command.newTaskButton.title": "Tumble Code: Nuovo Task",
 	"command.explainCode.title": "Spiega Codice",
 	"command.fixCode.title": "Correggi Codice",
 	"command.improveCode.title": "Migliora Codice",
