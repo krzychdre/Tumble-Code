@@ -4,6 +4,7 @@
 // has to keep all of it.
 
 import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
+import userEvent from "@testing-library/user-event"
 
 import ModesView from "../ModesView"
 import { ExtensionStateContext } from "@src/context/ExtensionStateContext"
@@ -116,12 +117,16 @@ describe("ModesView sections", () => {
 			const menuButton = document.querySelector(".codicon-json")!.closest("button")!
 
 			fireEvent.click(menuButton)
+			// A real mouse press: mousedown keeps focus, the click picks the item.
 			fireEvent.mouseDown(screen.getByText("prompts:modes.editGlobalModes"))
+			fireEvent.click(screen.getByText("prompts:modes.editGlobalModes"))
 			expect(posted()).toContainEqual({ type: "openCustomModesSettings" })
 			expect(screen.queryByText("prompts:modes.editGlobalModes")).not.toBeInTheDocument()
 
 			fireEvent.click(menuButton)
+			// A real mouse press: mousedown keeps focus, the click picks the item.
 			fireEvent.mouseDown(screen.getByText("prompts:modes.editProjectModes"))
+			fireEvent.click(screen.getByText("prompts:modes.editProjectModes"))
 			expect(posted()).toContainEqual({
 				type: "openFile",
 				text: "./.roomodes",
@@ -137,6 +142,57 @@ describe("ModesView sections", () => {
 
 			fireEvent.click(document.body)
 			expect(screen.queryByText("prompts:modes.editGlobalModes")).not.toBeInTheDocument()
+		})
+
+		it("exposes the config menu to the keyboard: Arrow keys move, Enter picks, Escape returns to the trigger", async () => {
+			const user = userEvent.setup()
+			renderView()
+			const trigger = screen.getByRole("button", { name: "prompts:modes.editModesConfig" })
+			expect(trigger).toHaveAttribute("aria-haspopup", "menu")
+			expect(trigger).toHaveAttribute("aria-expanded", "false")
+
+			trigger.focus()
+			await user.keyboard("{Enter}")
+			expect(trigger).toHaveAttribute("aria-expanded", "true")
+			const menu = screen.getByRole("menu")
+			expect(trigger).toHaveAttribute("aria-controls", menu.id)
+			const [globalItem, projectItem] = screen.getAllByRole("menuitem")
+			expect(globalItem).toHaveTextContent("prompts:modes.editGlobalModes")
+			expect(globalItem.tagName).toBe("BUTTON")
+			expect(globalItem).toHaveFocus()
+
+			await user.keyboard("{ArrowDown}")
+			expect(projectItem).toHaveFocus()
+			await user.keyboard("{ArrowDown}")
+			expect(globalItem).toHaveFocus()
+			await user.keyboard("{ArrowUp}")
+			expect(projectItem).toHaveFocus()
+
+			await user.keyboard("{Escape}")
+			expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+			expect(trigger).toHaveFocus()
+			expect(trigger).toHaveAttribute("aria-expanded", "false")
+
+			await user.keyboard("{Enter}")
+			expect(screen.getAllByRole("menuitem")[0]).toHaveFocus()
+			await user.keyboard("{Enter}")
+			expect(posted()).toContainEqual({ type: "openCustomModesSettings" })
+			expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+
+			await user.keyboard("{Enter}")
+			await user.keyboard("{ArrowDown}")
+			await user.keyboard(" ")
+			expect(postedOfType("openFile")).toHaveLength(1)
+		})
+
+		it("closes the config menu when focus leaves it with Tab", async () => {
+			const user = userEvent.setup()
+			renderView()
+			screen.getByRole("button", { name: "prompts:modes.editModesConfig" }).focus()
+			await user.keyboard("{Enter}")
+			expect(screen.getByRole("menu")).toBeInTheDocument()
+			await user.tab()
+			expect(screen.queryByRole("menu")).not.toBeInTheDocument()
 		})
 
 		it("asks the webview to open the marketplace on the mode tab", () => {

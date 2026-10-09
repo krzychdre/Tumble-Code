@@ -78,10 +78,12 @@ const TaskGroupItem = ({
 				/>
 			)}
 
-			{/* Expanded subtask tree */}
+			{/* Expanded subtask tree. A collapsed tree stays mounted for the
+			    height animation, so `inert` keeps Tab off the clipped rows. */}
 			{hasSubtasks && (
 				<div
 					data-testid="subtask-list"
+					inert={!isExpanded}
 					className={cn(
 						"overflow-clip transition-all duration-500",
 						isExpanded ? "max-h-[2000px] pb-2" : "max-h-0",

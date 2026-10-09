@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
+import userEvent from "@testing-library/user-event"
 
 import { vscode } from "@src/utils/vscode"
 
@@ -353,6 +354,55 @@ describe("SubtaskRow", () => {
 			expect(screen.queryByTestId("task-cost")).not.toBeInTheDocument()
 			// Only the start time and the outcome are left, so one separator between them.
 			expect(screen.getByTestId("task-details").textContent?.split("·")).toHaveLength(2)
+		})
+	})
+	describe("keyboard access to the nested subtask toggle", () => {
+		it("is a real button reached with Tab after the task row, toggled by Enter and Space", async () => {
+			const user = userEvent.setup()
+			const onToggleExpand = vi.fn()
+			const node = createMockNode(
+				{ id: "parent-1", task: "Parent" },
+				[createMockNode({ id: "child-1", task: "Child" })],
+				false,
+			)
+
+			render(<SubtaskRow node={node} depth={1} onToggleExpand={onToggleExpand} />)
+
+			const toggle = screen.getByRole("button", { name: "Expand subtasks" })
+			expect(toggle.tagName).toBe("BUTTON")
+			expect(toggle).toHaveAttribute("aria-expanded", "false")
+
+			await user.tab()
+			expect(screen.getByRole("button", { name: "Parent" })).toHaveFocus()
+			await user.tab()
+			expect(toggle).toHaveFocus()
+
+			await user.keyboard("{Enter}")
+			await user.keyboard(" ")
+			expect(onToggleExpand).toHaveBeenCalledTimes(2)
+			expect(onToggleExpand).toHaveBeenCalledWith("parent-1")
+			expect(vscode.postMessage).not.toHaveBeenCalled()
+		})
+		it("keeps Tab off the rows of a collapsed list and lets it in once expanded", () => {
+			const children = [createMockNode({ id: "child-1", task: "Child" })]
+			const { rerender } = render(
+				<SubtaskRow
+					node={createMockNode({ id: "parent-1", task: "Parent" }, children, false)}
+					depth={1}
+					onToggleExpand={vi.fn()}
+				/>,
+			)
+			const childRow = () => screen.getByTestId("subtask-row-child-1")
+			expect(childRow().parentElement).toHaveAttribute("inert")
+
+			rerender(
+				<SubtaskRow
+					node={createMockNode({ id: "parent-1", task: "Parent" }, children, true)}
+					depth={1}
+					onToggleExpand={vi.fn()}
+				/>,
+			)
+			expect(childRow().parentElement).not.toHaveAttribute("inert")
 		})
 	})
 })
