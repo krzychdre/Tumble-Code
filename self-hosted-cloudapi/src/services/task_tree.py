@@ -32,6 +32,7 @@ from sqlalchemy import literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from src.database import dialect_insert
 from src.models.relation import TaskRelation
 from src.models.task import Task
 
@@ -60,8 +61,22 @@ async def record_relation(
         select(TaskRelation.child_task_id).where(TaskRelation.child_task_id == child)
     )
     if existing.scalar_one_or_none() is None:
-        db.add(TaskRelation(child_task_id=child, parent_task_id=parent, user_id=user_id))
-        await db.flush()
+        # Several events of one subtask arrive at once (Task Created, the
+        # first messages, an LLM Completion), each in its own request. Two of
+        # them could both miss the lookup above and both insert; the loser
+        # died on ``task_relations_pkey`` and the whole event request answered
+        # 500. ON CONFLICT DO NOTHING lets the loser keep the winner's row,
+        # which holds the same link (a task never changes parent).
+        upsert_insert = dialect_insert(db)
+        if upsert_insert is None:
+            db.add(TaskRelation(child_task_id=child, parent_task_id=parent, user_id=user_id))
+            await db.flush()
+        else:
+            await db.execute(
+                upsert_insert(TaskRelation)
+                .values(child_task_id=child, parent_task_id=parent, user_id=user_id)
+                .on_conflict_do_nothing(index_elements=["child_task_id"])
+            )
 
     # The child's row may already exist (a live task streams messages while its
     # events fire). Stamp it now so the tree is right without waiting for a
