@@ -53,7 +53,7 @@ import { activateCloudAuthOnly } from "./extension/cloudAuthOnly"
 import {
 	handleUri,
 	registerCommands,
-	openStartupTab,
+	replaceOrphanedTabs,
 	registerCodeActions,
 	registerTerminalActions,
 	CodeActionProvider,
@@ -364,8 +364,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	registerCommands({ context, outputChannel, provider })
-	openStartupTab({ context, outputChannel }).catch((error) =>
-		logger.error(`Failed to open the startup editor tab: ${error instanceof Error ? error.message : String(error)}`),
+	replaceOrphanedTabs({ context, outputChannel }).catch((error) =>
+		logger.error(
+			`Failed to replace an orphaned editor tab: ${error instanceof Error ? error.message : String(error)}`,
+		),
 	)
 
 	// Check for worktree auto-open path (set when switching to a worktree)

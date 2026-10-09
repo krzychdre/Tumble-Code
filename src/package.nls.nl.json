@@ -37,7 +37,6 @@
 	"settings.vsCodeLmModelSelector.vendor.description": "De leverancier van het taalmodel (bijv. copilot)",
 	"settings.vsCodeLmModelSelector.family.description": "De familie van het taalmodel (bijv. gpt-4)",
 	"settings.customStoragePath.description": "Aangepast opslagpad. Laat leeg om de standaardlocatie te gebruiken. Ondersteunt absolute paden (bijv. 'D:\\TumbleCodeStorage')",
-	"settings.openInEditorOnStartup.description": "Tumble Code openen in een editortabblad wanneer het venster wordt geopend, in plaats van alleen in de zijbalk",
 	"settings.enableCodeActions.description": "Snelle correcties van Tumble Code inschakelen.",
 	"settings.autoImportSettingsPath.description": "Pad naar een Tumble Code-configuratiebestand om automatisch te importeren bij het opstarten van de extensie. Ondersteunt absolute paden en paden ten opzichte van de thuismap (bijv. '~/Documents/tumble-code-settings.json'). Laat leeg om automatisch importeren uit te schakelen.",
 	"settings.maximumIndexedFilesForFileSearch.description": "Maximaal aantal bestanden om te indexeren voor de @ bestandszoekfunctie. Hogere waarden bieden betere zoekresultaten in grote projecten maar kunnen meer geheugen gebruiken. Standaard: 10.000.",

@@ -393,11 +393,6 @@
 					"description": "%settings.customStoragePath.description%",
 					"scope": "machine"
 				},
-				"tumble-code.openInEditorOnStartup": {
-					"type": "boolean",
-					"default": false,
-					"description": "%settings.openInEditorOnStartup.description%"
-				},
 				"tumble-code.enableCodeActions": {
 					"type": "boolean",
 					"default": true,

@@ -37,7 +37,6 @@
 	"settings.vsCodeLmModelSelector.vendor.description": "Dostawca modelu językowego (np. copilot)",
 	"settings.vsCodeLmModelSelector.family.description": "Rodzina modelu językowego (np. gpt-4)",
 	"settings.customStoragePath.description": "Niestandardowa ścieżka przechowywania. Pozostaw puste, aby użyć domyślnej lokalizacji. Obsługuje ścieżki bezwzględne (np. 'D:\\TumbleCodeStorage')",
-	"settings.openInEditorOnStartup.description": "Otwieraj Tumble Code w karcie edytora po otwarciu okna, a nie tylko na pasku bocznym",
 	"settings.enableCodeActions.description": "Włącz szybkie poprawki Tumble Code.",
 	"settings.autoImportSettingsPath.description": "Ścieżka do pliku konfiguracyjnego Tumble Code, który ma być automatycznie importowany podczas uruchamiania rozszerzenia. Obsługuje ścieżki bezwzględne i ścieżki względne do katalogu domowego (np. '~/Documents/tumble-code-settings.json'). Pozostaw puste, aby wyłączyć automatyczne importowanie.",
 	"settings.maximumIndexedFilesForFileSearch.description": "Maksymalna liczba plików do indeksowania dla funkcji wyszukiwania plików @. Wyższe wartości zapewniają lepsze wyniki wyszukiwania w dużych projektach, ale mogą zużywać więcej pamięci. Domyślnie: 10 000.",
