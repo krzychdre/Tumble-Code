@@ -40,7 +40,7 @@ async function applyAutoApproval(payload: AutoApprovalSettings, provider: Bridge
  *
  * Commands that act on a live task address it by `command.taskId` and no-op
  * when nothing runs that task (e.g. the user closed it); `resume_task` reopens
- * one by id regardless.
+ * one by id regardless and resumes it.
  */
 export async function dispatchBridgeCommand(command: TaskBridgeCommand, provider: BridgeProvider): Promise<void> {
 	switch (command.type) {
@@ -76,7 +76,7 @@ export async function dispatchBridgeCommand(command: TaskBridgeCommand, provider
 			return
 		}
 		case TaskBridgeCommandName.ResumeTask: {
-			await provider.showTaskWithId(command.taskId)
+			await provider.resumeTask(command.taskId)
 			return
 		}
 	}

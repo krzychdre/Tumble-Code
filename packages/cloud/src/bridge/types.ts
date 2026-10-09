@@ -28,7 +28,11 @@ export interface BridgeProvider {
 	findTask(taskId: string): BridgeTask | undefined
 	/** Stops the live task with this id; false when nothing runs it. */
 	stopTask(taskId: string): Promise<boolean>
-	showTaskWithId(id: string): Promise<unknown>
+	/**
+	 * Resumes a stopped task by id: shows it and answers its resume_task ask,
+	 * as the panel's Resume Task button does; false when it never asks that.
+	 */
+	resumeTask(taskId: string): Promise<boolean>
 	postStateToWebview(): Promise<void>
 	contextProxy: {
 		setValue(key: string, value: unknown): Promise<void> | void
