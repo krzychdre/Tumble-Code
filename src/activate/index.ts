@@ -1,5 +1,5 @@
 export { handleUri } from "./handleUri"
-export { registerCommands, replaceOrphanedTabs } from "./registerCommands"
+export { registerCommands, openStartupTab } from "./registerCommands"
 export { registerCodeActions } from "./registerCodeActions"
 export { registerTerminalActions } from "./registerTerminalActions"
 export { CodeActionProvider } from "./CodeActionProvider"
