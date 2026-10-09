@@ -57,7 +57,7 @@ function makeProvider() {
 	const provider: BridgeProvider = {
 		findTask: vi.fn(() => undefined),
 		stopTask: vi.fn(async () => false),
-		showTaskWithId: vi.fn(async () => undefined),
+		resumeTask: vi.fn(async () => true),
 		postStateToWebview: vi.fn(async () => {}),
 		contextProxy: { setValue: vi.fn(async () => {}) },
 	}

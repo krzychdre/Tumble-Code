@@ -71,7 +71,7 @@ export function setupRemoteControlBridge(opts: {
 		findTask: (taskId: string) => ClineProvider.findTaskHost(taskId)?.findLiveTask(taskId),
 		stopTask: async (taskId: string) => (await ClineProvider.findTaskHost(taskId)?.stopTask(taskId)) ?? false,
 		// A task still live in a tab resumes there; any other opens in the sidebar.
-		resumeTask: (id: string) => (ClineProvider.findTaskHost(id) ?? provider).resumeTask(id),
+		resumeTask: (id: string) => (ClineProvider.findTaskHost(id) ?? provider).resumeStoppedTask(id),
 		// Auto-approval is one setting for every panel.
 		postStateToWebview: () => ClineProvider.postStateToAllWebviewsWithoutClineMessages(),
 		contextProxy: {

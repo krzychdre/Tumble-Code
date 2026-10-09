@@ -21,7 +21,7 @@ function makeProvider(task: BridgeTask | undefined) {
 	const provider: BridgeProvider = {
 		findTask: (taskId: string) => (task?.taskId === taskId ? task : undefined),
 		stopTask: vi.fn(async () => true),
-		showTaskWithId: vi.fn(async () => undefined),
+		resumeTask: vi.fn(async () => true),
 		postStateToWebview: vi.fn(async () => {}),
 		contextProxy: { setValue },
 	}
@@ -113,12 +113,12 @@ describe("dispatchBridgeCommand", () => {
 		expect(provider.postStateToWebview).not.toHaveBeenCalled()
 	})
 
-	it("resume_task → provider.showTaskWithId(taskId)", async () => {
+	it("resume_task → provider.resumeTask(taskId)", async () => {
 		await dispatchBridgeCommand(
 			{ type: TaskBridgeCommandName.ResumeTask, taskId: "task-hist", timestamp: ts },
 			provider,
 		)
-		expect(provider.showTaskWithId).toHaveBeenCalledWith("task-hist")
+		expect(provider.resumeTask).toHaveBeenCalledWith("task-hist")
 	})
 
 	it("live-task commands no-op (no throw) when nothing runs the task", async () => {

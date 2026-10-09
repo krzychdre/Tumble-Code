@@ -2042,7 +2042,7 @@ export class ClineProvider
 	 * just stopped is already on screen, so showing it is a no-op. False when
 	 * the task does not reach that ask in time (it runs, or it finished).
 	 */
-	public async resumeTask(taskId: string, timeoutMs = 10_000): Promise<boolean> {
+	public async resumeStoppedTask(taskId: string, timeoutMs = 10_000): Promise<boolean> {
 		await this.showTaskWithId(taskId)
 		const waitingTask = () => {
 			const task = this.findLiveTask(taskId)
