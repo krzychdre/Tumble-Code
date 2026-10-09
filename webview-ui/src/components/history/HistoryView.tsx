@@ -292,7 +292,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 								isSelected={selectedTaskIds.includes(item.id)}
 								onToggleSelection={toggleTaskSelection}
 								onDelete={handleDelete}
-								className="m-2"
+								className="m-2 border border-solid border-composer-idle-border"
 							/>
 						)}
 					/>

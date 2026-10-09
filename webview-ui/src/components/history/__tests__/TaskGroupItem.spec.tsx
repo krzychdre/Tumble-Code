@@ -373,5 +373,21 @@ describe("TaskGroupItem", () => {
 			const container = screen.getByTestId("task-group-parent-1")
 			expect(container).toHaveClass("custom-class")
 		})
+
+		it("keeps a visible frame like the unfocused composer", () => {
+			render(
+				<TaskGroupItem
+					group={createMockGroup()}
+					variant="compact"
+					onToggleExpand={vi.fn()}
+					onToggleSubtaskExpand={vi.fn()}
+				/>,
+			)
+
+			// A transparent border made the rows blend into the panel in most themes.
+			const container = screen.getByTestId("task-group-parent-1")
+			expect(container).toHaveClass("border-composer-idle-border")
+			expect(container).not.toHaveClass("border-transparent")
+		})
 	})
 })
