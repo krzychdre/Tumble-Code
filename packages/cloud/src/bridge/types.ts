@@ -20,8 +20,14 @@ export interface BridgeTask {
  * The minimal control surface the bridge needs from the ClineProvider.
  */
 export interface BridgeProvider {
-	getCurrentTask(): BridgeTask | undefined
-	cancelTask(): Promise<void>
+	/**
+	 * The live task with this id, in whichever panel, editor tab or subagent
+	 * slot runs it. Tasks run in parallel, so a command names its task and
+	 * never means "the sidebar's current task".
+	 */
+	findTask(taskId: string): BridgeTask | undefined
+	/** Stops the live task with this id; false when nothing runs it. */
+	stopTask(taskId: string): Promise<boolean>
 	showTaskWithId(id: string): Promise<unknown>
 	postStateToWebview(): Promise<void>
 	contextProxy: {

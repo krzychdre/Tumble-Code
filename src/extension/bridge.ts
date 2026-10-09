@@ -11,7 +11,7 @@ import {
 
 import { TaskStatus, type RemoteControlStatus } from "@tumble-code/types"
 
-import type { ClineProvider } from "../core/webview/ClineProvider"
+import { ClineProvider } from "../core/webview/ClineProvider"
 import { getBridgeRetryDelayMs } from "../activate/cloud-urls"
 import type { API } from "./api"
 import { setRemoteControlStatus } from "./remoteControlStatus"
@@ -64,11 +64,16 @@ export function setupRemoteControlBridge(opts: {
 
 	const isAuthenticated = () => CloudService.hasInstance() && CloudService.instance.isAuthenticated()
 
+	// Tasks run in parallel: in the sidebar, in editor tabs, detached off
+	// screen and as parallel subagents. A command names its task, so it is
+	// looked up in every panel instead of meaning the sidebar's current task.
 	const bridgeProvider: BridgeProvider = {
-		getCurrentTask: () => provider.getCurrentTask() as unknown as ReturnType<BridgeProvider["getCurrentTask"]>,
-		cancelTask: () => provider.cancelTask(),
-		showTaskWithId: (id: string) => provider.showTaskWithId(id),
-		postStateToWebview: () => provider.postStateToWebview(),
+		findTask: (taskId: string) => ClineProvider.findTaskHost(taskId)?.findLiveTask(taskId),
+		stopTask: async (taskId: string) => (await ClineProvider.findTaskHost(taskId)?.stopTask(taskId)) ?? false,
+		// A task still live in a tab is shown there; any other opens in the sidebar.
+		showTaskWithId: (id: string) => (ClineProvider.findTaskHost(id) ?? provider).showTaskWithId(id),
+		// Auto-approval is one setting for every panel.
+		postStateToWebview: () => ClineProvider.postStateToAllWebviewsWithoutClineMessages(),
 		contextProxy: {
 			// The bridge protocol carries untyped key/value pairs; ContextProxy.setValue
 			// wants a known settings key with its value type, which only the remote
@@ -78,8 +83,10 @@ export function setupRemoteControlBridge(opts: {
 	}
 
 	const snapshot = async (taskId: string): Promise<InstanceStatePayload | null> => {
-		const task = provider.getCurrentTask()
-		const state = await provider.getState()
+		// The snapshot describes the task it is sent for, wherever it runs.
+		const host = ClineProvider.findTaskHost(taskId)
+		const task = host?.findLiveTask(taskId)
+		const state = await (host ?? provider).getState()
 		const tokenUsage = task?.getTokenUsage?.()
 		let contextWindow: number | undefined
 		try {
@@ -94,8 +101,14 @@ export function setupRemoteControlBridge(opts: {
 		// resumable once the turn is done.
 		const status = task?.taskStatus
 		const isRunning = status === TaskStatus.Running || status === TaskStatus.Interactive
+		let mode = state.mode
+		try {
+			mode = task?.taskMode ?? mode
+		} catch {
+			// The task's mode is not initialized yet; the panel's mode stands in.
+		}
 		return {
-			mode: state.mode,
+			mode,
 			isRunning,
 			autoApproval: {
 				autoApprovalEnabled: state.autoApprovalEnabled,

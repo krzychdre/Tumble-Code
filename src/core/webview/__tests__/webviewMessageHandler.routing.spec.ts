@@ -489,6 +489,7 @@ function createProvider() {
 		}),
 		getCurrentTask: () => currentTask,
 		getBackgroundTask: (id: string) => (id === "child-1" ? childTask : undefined),
+		cancelSubagent: () => undefined,
 		getMcpHub: () => mcpHub,
 		getSkillsManager: () => undefined,
 		getCurrentWorkspaceCodeIndexManager: () => undefined,

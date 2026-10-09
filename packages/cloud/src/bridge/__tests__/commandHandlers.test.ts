@@ -19,8 +19,8 @@ function makeTask(): BridgeTask & {
 function makeProvider(task: BridgeTask | undefined) {
 	const setValue = vi.fn(async () => {})
 	const provider: BridgeProvider = {
-		getCurrentTask: () => task,
-		cancelTask: vi.fn(async () => {}),
+		findTask: (taskId: string) => (task?.taskId === taskId ? task : undefined),
+		stopTask: vi.fn(async () => true),
 		showTaskWithId: vi.fn(async () => undefined),
 		postStateToWebview: vi.fn(async () => {}),
 		contextProxy: { setValue },
@@ -67,9 +67,23 @@ describe("dispatchBridgeCommand", () => {
 		expect(task.handleWebviewAskResponse).toHaveBeenCalledWith("noButtonClicked", undefined, undefined)
 	})
 
-	it("stop_task → provider.cancelTask()", async () => {
+	it("stop_task → provider.stopTask(taskId) of the task it names", async () => {
 		await dispatchBridgeCommand({ type: TaskBridgeCommandName.StopTask, taskId: "task-1", timestamp: ts }, provider)
-		expect(provider.cancelTask).toHaveBeenCalledTimes(1)
+		expect(provider.stopTask).toHaveBeenCalledTimes(1)
+		expect(provider.stopTask).toHaveBeenCalledWith("task-1")
+	})
+
+	it("a message for another task never reaches this one", async () => {
+		await dispatchBridgeCommand(
+			{ type: TaskBridgeCommandName.Message, taskId: "task-2", payload: { text: "hi" }, timestamp: ts },
+			provider,
+		)
+		await dispatchBridgeCommand(
+			{ type: TaskBridgeCommandName.ApproveAsk, taskId: "task-2", payload: {}, timestamp: ts },
+			provider,
+		)
+		expect(task.submitUserMessage).not.toHaveBeenCalled()
+		expect(task.handleWebviewAskResponse).not.toHaveBeenCalled()
 	})
 
 	it("set_auto_approval → setValue per provided key, then a single postStateToWebview", async () => {
@@ -107,7 +121,7 @@ describe("dispatchBridgeCommand", () => {
 		expect(provider.showTaskWithId).toHaveBeenCalledWith("task-hist")
 	})
 
-	it("live-task commands no-op (no throw) when there is no current task", async () => {
+	it("live-task commands no-op (no throw) when nothing runs the task", async () => {
 		const { provider: empty } = makeProvider(undefined)
 		await expect(
 			dispatchBridgeCommand(
