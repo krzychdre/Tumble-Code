@@ -848,6 +848,11 @@ export class ClineProvider
 		return { dispose: () => this.instanceObservers.delete(observe) }
 	}
 
+	/** The provider (sidebar or editor tab) that has a live task by this id. */
+	public static findTaskHost(taskId: string): ClineProvider | undefined {
+		return findLast(Array.from(this.activeInstances), (instance) => instance.findLiveTask(taskId) !== undefined)
+	}
+
 	public static getVisibleInstance(): ClineProvider | undefined {
 		return findLast(Array.from(this.activeInstances), (instance) => instance.view?.visible === true)
 	}
@@ -1992,6 +1997,57 @@ export class ClineProvider
 	 */
 	public getLiveTaskInstance(taskId: string): Task | undefined {
 		return this.taskSlot.findLiveInstance(taskId)
+	}
+
+	/**
+	 * Any live task of this panel by id: the foreground task, a detached one
+	 * or a parallel subagent. The remote-control bridge addresses tasks by id,
+	 * and with tasks running in parallel "the current task" is only one of them.
+	 */
+	public findLiveTask(taskId: string): Task | undefined {
+		return this.taskSlot.findLiveInstance(taskId) ?? this.getBackgroundTask(taskId)
+	}
+
+	/**
+	 * Stops one live task of this panel, whichever kind it is, the way the
+	 * panel's own Stop does for that kind; false when the panel has no live
+	 * task by that id. A parent stopped as "user_cancelled" also cancels the
+	 * parallel subagents it waits on (RunParallelTasksTool).
+	 */
+	public async stopTask(taskId: string): Promise<boolean> {
+		if (this.getCurrentTask()?.taskId === taskId) {
+			await this.cancelTask()
+			return true
+		}
+		if (this.getBackgroundTask(taskId)) {
+			this.cancelSubagent(taskId)
+			return true
+		}
+		const detached = this.taskSlot.findLiveInstance(taskId)
+		if (!detached) {
+			return false
+		}
+		// A detached task leaves the detached set on its own TaskAborted.
+		logger.info(`[stopTask] cancelling detached task ${detached.taskId}.${detached.instanceId}`)
+		detached.abortReason = "user_cancelled"
+		detached.cancelCurrentRequest(true)
+		await detached.abortTask().catch((error) => logger.debug(`[stopTask] abortTask failed: ${String(error)}`))
+		return true
+	}
+
+	/** Cancels one live parallel subagent (its row's Stop, or the bridge). */
+	public cancelSubagent(taskId: string): void {
+		const subagentTask = this.getBackgroundTask(taskId)
+		if (!subagentTask) {
+			return
+		}
+		// Mark cancelled BEFORE aborting: first-terminal-wins in the registry
+		// keeps the row "cancelled" when the TaskAborted listener races in with
+		// its generic "failed".
+		this.subagentRegistry.markTerminal(subagentTask.taskId, "cancelled")
+		subagentTask
+			.abortTask()
+			.catch((error) => logger.debug(`[subagents] cancel: abortTask failed: ${String(error)}`))
 	}
 
 	/**

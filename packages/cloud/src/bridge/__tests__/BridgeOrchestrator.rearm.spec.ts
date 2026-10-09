@@ -55,8 +55,8 @@ class FakeEmitter {
 
 function makeProvider() {
 	const provider: BridgeProvider = {
-		getCurrentTask: vi.fn(() => undefined),
-		cancelTask: vi.fn(async () => {}),
+		findTask: vi.fn(() => undefined),
+		stopTask: vi.fn(async () => false),
 		showTaskWithId: vi.fn(async () => undefined),
 		postStateToWebview: vi.fn(async () => {}),
 		contextProxy: { setValue: vi.fn(async () => {}) },

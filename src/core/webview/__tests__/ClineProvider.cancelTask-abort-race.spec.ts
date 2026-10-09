@@ -1,4 +1,7 @@
+import { EventEmitter } from "events"
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { ClineProvider } from "../ClineProvider"
 import { Task } from "../../task/Task"
@@ -112,53 +115,55 @@ vi.mock("../../task-persistence/taskMessages", async (importOriginal) => {
 	}
 })
 
+function makeProvider(): ClineProvider {
+	const mockContext: any = {
+		globalState: {
+			get: vi.fn().mockReturnValue(undefined),
+			update: vi.fn().mockResolvedValue(undefined),
+			keys: vi.fn().mockReturnValue([]),
+		},
+		globalStorageUri: { fsPath: "/test/storage" },
+		secrets: {
+			get: vi.fn().mockResolvedValue(undefined),
+			store: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		},
+		workspaceState: {
+			get: vi.fn().mockReturnValue(undefined),
+			update: vi.fn().mockResolvedValue(undefined),
+			keys: vi.fn().mockReturnValue([]),
+		},
+		extensionUri: { fsPath: "/test/extension" },
+	}
+
+	const mockOutputChannel: any = {
+		appendLine: vi.fn(),
+		dispose: vi.fn(),
+	}
+
+	const mockContextProxy = {
+		getValues: vi.fn().mockReturnValue({}),
+		getValue: vi.fn().mockReturnValue(undefined),
+		setValue: vi.fn().mockResolvedValue(undefined),
+		onDidChangeValues: vi.fn(() => ({ dispose: vi.fn() })),
+		getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "anthropic" }),
+		extensionUri: mockContext.extensionUri,
+		globalStorageUri: mockContext.globalStorageUri,
+	}
+
+	const provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", mockContextProxy as any)
+	provider.getState = vi.fn().mockResolvedValue({ apiConfiguration: { apiProvider: "anthropic" }, mode: "code" })
+	provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+	provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
+	return provider
+}
+
 describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 	let provider: ClineProvider
-	let mockContext: any
-	let mockOutputChannel: any
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-
-		mockContext = {
-			globalState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			globalStorageUri: { fsPath: "/test/storage" },
-			secrets: {
-				get: vi.fn().mockResolvedValue(undefined),
-				store: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			extensionUri: { fsPath: "/test/extension" },
-		}
-
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			dispose: vi.fn(),
-		}
-
-		const mockContextProxy = {
-			getValues: vi.fn().mockReturnValue({}),
-			getValue: vi.fn().mockReturnValue(undefined),
-			setValue: vi.fn().mockResolvedValue(undefined),
-			onDidChangeValues: vi.fn(() => ({ dispose: vi.fn() })),
-			getProviderSettings: vi.fn().mockReturnValue({ apiProvider: "anthropic" }),
-			extensionUri: mockContext.extensionUri,
-			globalStorageUri: mockContext.globalStorageUri,
-		}
-
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", mockContextProxy as any)
-		provider.getState = vi.fn().mockResolvedValue({ apiConfiguration: { apiProvider: "anthropic" }, mode: "code" })
-		provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
-		provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
+		provider = makeProvider()
 	})
 
 	// Helper: create a mock task with controllable isStreaming and abortTask timing.
@@ -392,5 +397,81 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 					off: vi.fn(),
 				}) as any,
 		)
+	})
+})
+
+/**
+ * Stop from the web cockpit names its task. Tasks run in parallel (sidebar,
+ * editor tabs, detached off screen, parallel subagents), so stopping "the
+ * current task" stopped the wrong one, or nothing, for every other kind.
+ */
+describe("ClineProvider stops a live task by id", () => {
+	let provider: ClineProvider
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+		provider = makeProvider()
+	})
+
+	function liveTask(taskId: string): any {
+		const task = new EventEmitter() as any
+		Object.assign(task, {
+			taskId,
+			instanceId: `${taskId}-inst`,
+			clineMessages: [],
+			abortReason: undefined,
+			cancelCurrentRequest: vi.fn(),
+			abortTask: vi.fn(async () => {
+				task.emit(TumbleCodeEventName.TaskAborted)
+			}),
+		})
+		return task
+	}
+
+	it("stops the foreground task through cancelTask", async () => {
+		const task = liveTask("fg")
+		;(provider as any).taskSlot.seedForTests(task)
+		const cancel = vi.spyOn(provider, "cancelTask").mockResolvedValue(undefined)
+
+		expect(await provider.stopTask("fg")).toBe(true)
+		expect(cancel).toHaveBeenCalledOnce()
+	})
+
+	it("stops a detached task as a user cancel and lets it leave the detached set", async () => {
+		;(provider as any).taskSlot.seedForTests(liveTask("fg"))
+		const detached = liveTask("off-screen")
+		;(provider as any).taskSlot.detach(detached)
+		const cancel = vi.spyOn(provider, "cancelTask")
+
+		expect(provider.findLiveTask("off-screen")).toBe(detached)
+		expect(await provider.stopTask("off-screen")).toBe(true)
+
+		expect(cancel).not.toHaveBeenCalled()
+		// "user_cancelled" is what makes a waiting fan-out cancel its subagents.
+		expect(detached.abortReason).toBe("user_cancelled")
+		expect(detached.cancelCurrentRequest).toHaveBeenCalledWith(true)
+		// Once by stopTask; the detached set's own cleanup (TaskSlot.destroy)
+		// runs on TaskAborted and aborts again, as for any detached task.
+		expect(detached.abortTask).toHaveBeenCalled()
+		expect(provider.findLiveTask("off-screen")).toBeUndefined()
+	})
+
+	it("stops a parallel subagent the way its row's Stop does", async () => {
+		const subagent = liveTask("sub-1")
+		vi.spyOn(provider, "getBackgroundTask").mockImplementation((id) => (id === "sub-1" ? subagent : undefined))
+		const markTerminal = vi.spyOn(provider.subagentRegistry, "markTerminal")
+
+		expect(provider.findLiveTask("sub-1")).toBe(subagent)
+		expect(await provider.stopTask("sub-1")).toBe(true)
+
+		expect(markTerminal).toHaveBeenCalledWith("sub-1", "cancelled")
+		expect(subagent.abortTask).toHaveBeenCalledOnce()
+	})
+
+	it("reports a task it does not run, so another panel can be asked", async () => {
+		;(provider as any).taskSlot.seedForTests(liveTask("fg"))
+		expect(await provider.stopTask("elsewhere")).toBe(false)
+		expect(ClineProvider.findTaskHost("fg")).toBe(provider)
+		expect(ClineProvider.findTaskHost("elsewhere")).toBeUndefined()
 	})
 })

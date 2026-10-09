@@ -67,8 +67,8 @@ class FakeEmitter {
 
 function makeProvider() {
 	const provider: BridgeProvider = {
-		getCurrentTask: vi.fn(() => undefined),
-		cancelTask: vi.fn(async () => {}),
+		findTask: vi.fn(() => undefined),
+		stopTask: vi.fn(async () => false),
 		showTaskWithId: vi.fn(async () => undefined),
 		postStateToWebview: vi.fn(async () => {}),
 		contextProxy: { setValue: vi.fn(async () => {}) },
@@ -160,7 +160,7 @@ describe("BridgeOrchestrator", () => {
 			timestamp: 1,
 		})
 		await vi.runAllTimersAsync()
-		expect(provider.cancelTask).toHaveBeenCalledTimes(1)
+		expect(provider.stopTask).toHaveBeenCalledWith("task-9")
 	})
 
 	it("ignores malformed relayed commands without throwing", async () => {
@@ -168,7 +168,7 @@ describe("BridgeOrchestrator", () => {
 		await orch.start()
 		socket.fire(TaskSocketEvents.RELAYED_COMMAND, { type: "not_a_command", foo: 1 })
 		await vi.runAllTimersAsync()
-		expect(provider.cancelTask).not.toHaveBeenCalled()
+		expect(provider.stopTask).not.toHaveBeenCalled()
 	})
 
 	it("stop() tears down and stops forwarding bus events", async () => {

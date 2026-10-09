@@ -38,13 +38,14 @@ async function applyAutoApproval(payload: AutoApprovalSettings, provider: Bridge
  * control entry points. Pure dispatch — the orchestrator validates the command
  * shape before calling this, so each branch can trust its payload.
  *
- * Commands that act on the live task no-op when there is no current task (e.g.
- * the user closed it); `resume_task` reopens one by id regardless.
+ * Commands that act on a live task address it by `command.taskId` and no-op
+ * when nothing runs that task (e.g. the user closed it); `resume_task` reopens
+ * one by id regardless.
  */
 export async function dispatchBridgeCommand(command: TaskBridgeCommand, provider: BridgeProvider): Promise<void> {
 	switch (command.type) {
 		case TaskBridgeCommandName.Message: {
-			const task = provider.getCurrentTask()
+			const task = provider.findTask(command.taskId)
 			if (!task) return
 			await task.submitUserMessage(
 				command.payload.text,
@@ -55,19 +56,19 @@ export async function dispatchBridgeCommand(command: TaskBridgeCommand, provider
 			return
 		}
 		case TaskBridgeCommandName.ApproveAsk: {
-			const task = provider.getCurrentTask()
+			const task = provider.findTask(command.taskId)
 			if (!task) return
 			task.handleWebviewAskResponse("yesButtonClicked", command.payload.text, command.payload.images)
 			return
 		}
 		case TaskBridgeCommandName.DenyAsk: {
-			const task = provider.getCurrentTask()
+			const task = provider.findTask(command.taskId)
 			if (!task) return
 			task.handleWebviewAskResponse("noButtonClicked", command.payload.text, command.payload.images)
 			return
 		}
 		case TaskBridgeCommandName.StopTask: {
-			await provider.cancelTask()
+			await provider.stopTask(command.taskId)
 			return
 		}
 		case TaskBridgeCommandName.SetAutoApproval: {

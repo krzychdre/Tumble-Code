@@ -151,16 +151,8 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > cancelSubag
 {
   "events": [
     [
-      "provider.getBackgroundTask",
+      "provider.cancelSubagent",
       "child-1",
-    ],
-    [
-      "subagentRegistry.markTerminal",
-      "child-1",
-      "cancelled",
-    ],
-    [
-      "task(child-1).abortTask",
     ],
   ],
   "outcome": "resolved",

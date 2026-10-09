@@ -69,18 +69,8 @@ export const subagentsHandlers: DomainHandlerMap<"subagents"> = {
 	},
 
 	cancelSubagent: (ctx, message) => {
-		const { provider } = ctx
-		{
-			const subagentTask = message.taskId ? provider.getBackgroundTask(message.taskId) : undefined
-			if (subagentTask) {
-				// Mark cancelled BEFORE aborting: first-terminal-wins in the
-				// registry keeps the row "cancelled" when the TaskAborted
-				// listener races in with its generic "failed".
-				provider.subagentRegistry.markTerminal(subagentTask.taskId, "cancelled")
-				subagentTask
-					.abortTask()
-					.catch((error) => logger.debug(`[subagents] cancel: abortTask failed: ${String(error)}`))
-			}
+		if (message.taskId) {
+			ctx.provider.cancelSubagent(message.taskId)
 		}
 	},
 
