@@ -38,14 +38,8 @@ export const MessageModificationConfirmationDialog: React.FC<MessageModification
 					<AlertDialogDescription className="text-base">{description}</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter className="flex-col gap-2">
-					<AlertDialogCancel className="bg-vscode-button-secondaryBackground hover:bg-vscode-button-secondaryHoverBackground text-vscode-button-secondaryForeground border-vscode-button-border">
-						{t("common:answers.cancel")}
-					</AlertDialogCancel>
-					<AlertDialogAction
-						onClick={onConfirm}
-						className="bg-vscode-button-background hover:bg-vscode-button-hoverBackground text-vscode-button-foreground border-vscode-button-border">
-						{t("common:confirmation.proceed")}
-					</AlertDialogAction>
+					<AlertDialogCancel>{t("common:answers.cancel")}</AlertDialogCancel>
+					<AlertDialogAction onClick={onConfirm}>{t("common:confirmation.proceed")}</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
