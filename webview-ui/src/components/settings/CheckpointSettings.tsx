@@ -6,6 +6,7 @@ import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { SettingsCard, checkboxDescription, settingDescription } from "./SettingsCard"
 import {
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	MAX_CHECKPOINT_TIMEOUT_SECONDS,
@@ -23,6 +24,7 @@ export const CheckpointSettings = (props: CheckpointSettingsProps) => {
 			<SectionHeader>{t("settings:sections.checkpoints")}</SectionHeader>
 
 			<Section>
+				<SettingsCard>
 				<SearchableSetting
 					settingId="checkpoints-enable"
 					section="checkpoints"
@@ -34,7 +36,7 @@ export const CheckpointSettings = (props: CheckpointSettingsProps) => {
 						}}>
 						<span className="font-medium">{t("settings:checkpoints.enable.label")}</span>
 					</LabeledCheckbox>
-					<div className="text-vscode-descriptionForeground text-sm mt-1">
+					<div className={checkboxDescription}>
 						{t("settings:checkpoints.enable.description")}
 					</div>
 				</SearchableSetting>
@@ -43,9 +45,8 @@ export const CheckpointSettings = (props: CheckpointSettingsProps) => {
 					<SearchableSetting
 						settingId="checkpoints-timeout"
 						section="checkpoints"
-						label={t("settings:checkpoints.timeout.label")}
-						className="mt-section">
-						<label className="block text-sm font-medium mb-2">
+						label={t("settings:checkpoints.timeout.label")}>
+						<label className="block font-medium mb-1">
 							{t("settings:checkpoints.timeout.label")}
 						</label>
 						<div className="flex items-center gap-2">
@@ -64,11 +65,12 @@ export const CheckpointSettings = (props: CheckpointSettingsProps) => {
 								{checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS}
 							</span>
 						</div>
-						<div className="text-vscode-descriptionForeground text-sm mt-1">
+						<div className={settingDescription}>
 							{t("settings:checkpoints.timeout.description")}
 						</div>
 					</SearchableSetting>
 				)}
+				</SettingsCard>
 			</Section>
 		</div>
 	)

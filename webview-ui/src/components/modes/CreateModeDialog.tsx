@@ -124,7 +124,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 				<div className="flex-1 p-5 overflow-y-auto min-h-0">
 					<DialogTitle className="mb-4">{t("prompts:createModeDialog.title")}</DialogTitle>
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.name.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.name.label")}</div>
 						<Input
 							type="text"
 							value={name}
@@ -134,7 +134,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						{fieldError("name")}
 					</div>
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.slug.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.slug.label")}</div>
 						<Input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full" />
 						<div className="text-xs text-vscode-descriptionForeground mt-1">
 							{t("prompts:createModeDialog.slug.description")}
@@ -142,7 +142,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						{fieldError("slug")}
 					</div>
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.saveLocation.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.saveLocation.label")}</div>
 						<div className="text-sm text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.saveLocation.description")}
 						</div>
@@ -169,7 +169,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 					</div>
 
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.roleDefinition.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.roleDefinition.label")}</div>
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.roleDefinition.description")}
 						</div>
@@ -183,7 +183,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 					</div>
 
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.description.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.description.label")}</div>
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.description.description")}
 						</div>
@@ -196,7 +196,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 					</div>
 
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.whenToUse.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.whenToUse.label")}</div>
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.whenToUse.description")}
 						</div>
@@ -208,7 +208,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						/>
 					</div>
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.tools.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.tools.label")}</div>
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.tools.description")}
 						</div>
@@ -267,7 +267,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						)}
 					</div>
 					<div className="mb-4">
-						<div className="font-bold mb-1">{t("prompts:createModeDialog.customInstructions.label")}</div>
+						<div className="font-medium mb-1">{t("prompts:createModeDialog.customInstructions.label")}</div>
 						<div className="text-base text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.customInstructions.description")}
 						</div>
@@ -279,7 +279,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						/>
 					</div>
 				</div>
-				<div className="flex justify-end p-3 px-5 gap-2 border-t border-vscode-editor-lineHighlightBorder bg-vscode-editor-background">
+				<div className="flex justify-end p-3 px-5 gap-2 border-t border-frame bg-vscode-editor-background">
 					<Button variant="secondary" onClick={onClose}>
 						{t("prompts:createModeDialog.buttons.cancel")}
 					</Button>

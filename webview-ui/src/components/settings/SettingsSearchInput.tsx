@@ -54,7 +54,7 @@ export function SettingsSearchInput({
 				onKeyDown={onKeyDown}
 				placeholder={isWide ? t("settings:search.placeholder") : ""}
 				className={cn(
-					"pl-8 h-7 text-sm border border-vscode-input-border bg-vscode-input-background focus:border-vscode-focusBorder transition-all duration-200 ease-in-out",
+					"pl-8 text-sm transition-all duration-200 ease-in-out",
 					isWide ? "w-40 pr-2.5" : "w-8 pr-0 cursor-pointer",
 					value && "pr-7",
 				)}

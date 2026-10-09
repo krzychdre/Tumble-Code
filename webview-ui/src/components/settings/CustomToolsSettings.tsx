@@ -9,6 +9,8 @@ import { vscode } from "@/utils/vscode"
 
 import { Button, LabeledCheckbox, Spinner } from "@/components/ui"
 import { useExtensionMessage } from "@src/utils/extensionBus"
+import { cn } from "@/lib/utils"
+import { SettingsNested, checkboxDescription } from "./SettingsCard"
 
 interface ToolParameter {
 	name: string
@@ -78,20 +80,20 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 	)
 
 	return (
-		<div className="space-y-section">
+		<div className="flex flex-col">
 			<div>
 				<div className="flex items-center gap-2">
 					<LabeledCheckbox checked={enabled} onChange={(e: any) => onChange(e.target.checked)}>
 						<span className="font-medium">{t("settings:experimental.CUSTOM_TOOLS.name")}</span>
 					</LabeledCheckbox>
 				</div>
-				<p className="text-vscode-descriptionForeground text-sm mt-0">
+				<p className={cn(checkboxDescription, "mb-0")}>
 					{t("settings:experimental.CUSTOM_TOOLS.description")}
 				</p>
 			</div>
 
 			{enabled && (
-				<div className="ml-2 space-y-block">
+				<SettingsNested className="mt-block">
 					<div className="flex items-center justify-between gap-4">
 						<label className="block font-medium">
 							{t("settings:experimental.CUSTOM_TOOLS.toolsHeader")}
@@ -107,7 +109,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 					</div>
 
 					{refreshError && (
-						<div className="p-2 bg-vscode-inputValidation-errorBackground text-vscode-errorForeground text-sm border border-vscode-inputValidation-errorBorder">
+						<div className="p-2 bg-vscode-inputValidation-errorBackground text-vscode-errorForeground text-sm border border-vscode-inputValidation-errorBorder rounded-control">
 							{t("settings:experimental.CUSTOM_TOOLS.refreshError")}: {refreshError}
 						</div>
 					)}
@@ -120,7 +122,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 						processedTools.map((tool) => (
 							<div
 								key={tool.name}
-								className="bg-vscode-editor-background border border-vscode-panel-border space-y-3 p-3">
+								className="bg-surface border border-frame rounded-control space-y-3 p-3">
 								<div className="space-y-1">
 									<div className="font-medium text-vscode-foreground">{tool.name}</div>
 									{tool.source && (
@@ -142,7 +144,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 											{tool.parameters.map((param) => (
 												<div
 													key={param.name}
-													className="flex items-start gap-2 text-xs pl-2 py-1 border-l-2 border-vscode-panel-border">
+													className="flex items-start gap-2 text-xs pl-2 py-1 border-l border-frame-hover">
 													<code className="text-vscode-textLink-foreground font-mono">
 														{param.name}
 													</code>
@@ -156,7 +158,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 													)}
 													{param.description && (
 														<span className="text-vscode-descriptionForeground">
-															— {param.description}
+															- {param.description}
 														</span>
 													)}
 												</div>
@@ -167,7 +169,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 							</div>
 						))
 					)}
-				</div>
+				</SettingsNested>
 			)}
 		</div>
 	)

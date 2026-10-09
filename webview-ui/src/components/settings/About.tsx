@@ -12,6 +12,7 @@ import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { useSetting } from "./SettingsDraftContext"
+import { SettingsCard, checkboxDescription } from "./SettingsCard"
 
 type AboutProps = HTMLAttributes<HTMLDivElement>
 
@@ -20,11 +21,12 @@ export const About = ({ className, ...props }: AboutProps) => {
 	const [debug, setDebug] = useSetting("debug")
 
 	return (
-		<div className={cn("flex flex-col gap-2", className)} {...props}>
+		<div className={cn("flex flex-col", className)} {...props}>
 			<SectionHeader>{t("settings:sections.about")}</SectionHeader>
 
 			<Section>
-				<p>
+				<SettingsCard>
+				<p className="m-0">
 					{Package.sha
 						? `Version: ${Package.version} (${Package.sha.slice(0, 8)})`
 						: `Version: ${Package.version}`}
@@ -41,18 +43,20 @@ export const About = ({ className, ...props }: AboutProps) => {
 						}}>
 						{t("settings:about.debugMode.label")}
 					</LabeledCheckbox>
-					<p className="text-vscode-descriptionForeground text-sm mt-0">
+					<p className={cn(checkboxDescription, "mb-0")}>
 						{t("settings:about.debugMode.description")}
 					</p>
 				</SearchableSetting>
+				</SettingsCard>
 			</Section>
 
-			<Section className="space-y-0">
+			<Section className="pt-0">
+				<SettingsCard>
 				<SearchableSetting
 					settingId="about-manage-settings"
 					section="about"
 					label={t("settings:about.manageSettings")}>
-					<h3>{t("settings:about.manageSettings")}</h3>
+					<h3 className="m-0 mb-2 text-base font-medium">{t("settings:about.manageSettings")}</h3>
 					<div className="flex flex-wrap items-center gap-2">
 						<Button onClick={() => vscode.postMessage({ type: "exportSettings" })} className="w-28">
 							<Upload className="p-0.5" />
@@ -71,6 +75,7 @@ export const About = ({ className, ...props }: AboutProps) => {
 						</Button>
 					</div>
 				</SearchableSetting>
+				</SettingsCard>
 			</Section>
 		</div>
 	)

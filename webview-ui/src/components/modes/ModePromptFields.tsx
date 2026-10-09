@@ -26,7 +26,7 @@ export const PromptFieldHeader = ({
 	onReset,
 }: PromptFieldHeaderProps) => (
 	<div className="flex justify-between items-center mb-1">
-		<div className="font-bold">{title}</div>
+		<div className="font-medium">{title}</div>
 		{!isCustomMode && (
 			<StandardTooltip content={resetTooltip}>
 				<Button
@@ -124,7 +124,7 @@ export const ModePromptFields = ({
 	return (
 		<>
 			{/* Role Definition section */}
-			<div className="mb-section">
+			<div>
 				<PromptFieldHeader
 					title={t("prompts:roleDefinition.title")}
 					resetTooltip={t("prompts:roleDefinition.resetToDefault")}
@@ -144,7 +144,7 @@ export const ModePromptFields = ({
 			</div>
 
 			{/* Description section */}
-			<div className="mb-section">
+			<div>
 				<PromptFieldHeader
 					title={t("prompts:description.title")}
 					resetTooltip={t("prompts:description.resetToDefault")}
@@ -159,7 +159,7 @@ export const ModePromptFields = ({
 			</div>
 
 			{/* When to Use section */}
-			<div className="mb-section">
+			<div>
 				<PromptFieldHeader
 					title={t("prompts:whenToUse.title")}
 					resetTooltip={t("prompts:whenToUse.resetToDefault")}

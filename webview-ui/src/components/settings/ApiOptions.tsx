@@ -60,6 +60,7 @@ import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
 import { type SetApiConfigurationField, useProviderField } from "./providers/shared"
 import { ExternalLink } from "lucide-react"
+import { settingDescription } from "./SettingsCard"
 
 export interface ApiOptionsProps {
 	uriScheme: string | undefined
@@ -298,7 +299,7 @@ const ApiOptions = ({
 
 			{isUnavailableSelectedProvider ? (
 				<div
-					className="border border-vscode-panel-border px-3 py-2 text-sm text-vscode-descriptionForeground"
+					className="border border-frame rounded-control px-3 py-2 text-sm text-vscode-descriptionForeground"
 					data-testid="unavailable-provider-message">
 					{selectedProviderClassification === "retired"
 						? t("settings:providers.retiredProviderMessage")
@@ -386,7 +387,7 @@ const ApiOptions = ({
 
 					{!fromWelcomeView && (
 						<Collapsible open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
-							<CollapsibleTrigger className="flex items-center gap-1 w-full cursor-pointer hover:opacity-80 mb-2">
+							<CollapsibleTrigger className="flex items-center gap-1 w-full cursor-pointer mb-2 rounded-control text-vscode-foreground hover:bg-surface-hover focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder">
 								<span
 									className={`codicon codicon-chevron-${isAdvancedSettingsOpen ? "down" : "right"}`}
 									aria-hidden="true"></span>
@@ -458,7 +459,7 @@ const ApiOptions = ({
 													)}
 												</SelectContent>
 											</Select>
-											<div className="text-sm text-vscode-descriptionForeground mt-1">
+											<div className={settingDescription}>
 												{t("settings:providers.openRouter.providerRouting.description")}{" "}
 												<a href="https://openrouter.ai/docs/features/provider-routing">
 													{t("settings:providers.openRouter.providerRouting.learnMore")}.

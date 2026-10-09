@@ -3,6 +3,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useDebounce } from "react-use"
 
 import { Slider, LabeledCheckbox } from "@/components/ui"
+import { SettingsNested, checkboxDescription, settingDescription } from "./SettingsCard"
 
 interface TemperatureControlProps {
 	value: number | undefined | null
@@ -41,15 +42,15 @@ export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue
 							setInputValue(value ?? defaultValue ?? 0)
 						}
 					}}>
-					<label className="block font-medium mb-1">{t("settings:temperature.useCustom")}</label>
+					<label className="font-medium">{t("settings:temperature.useCustom")}</label>
 				</LabeledCheckbox>
-				<div className="text-sm text-vscode-descriptionForeground mt-1">
+				<div className={checkboxDescription}>
 					{t("settings:temperature.description")}
 				</div>
 			</div>
 
 			{isCustomTemperature && (
-				<div className="flex flex-col gap-block pl-3 border-l-2 border-vscode-button-background">
+				<SettingsNested>
 					<div>
 						<div className="flex items-center gap-2">
 							<Slider
@@ -61,11 +62,9 @@ export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue
 							/>
 							<span className="w-10">{inputValue}</span>
 						</div>
-						<div className="text-vscode-descriptionForeground text-sm mt-1">
-							{t("settings:temperature.rangeDescription")}
-						</div>
+						<div className={settingDescription}>{t("settings:temperature.rangeDescription")}</div>
 					</div>
-				</div>
+				</SettingsNested>
 			)}
 		</>
 	)

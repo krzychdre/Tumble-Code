@@ -112,7 +112,7 @@ export function SettingsSearchResults({
 				return (
 					<div key={section}>
 						{/* Section header */}
-						<div className="flex items-center gap-2 px-3 py-1.5 mt-4 first:mt-0 text-xs text-vscode-descriptionForeground bg-vscode-sideBar-background border-b-vscode-panel-border sticky top-0">
+						<div className="flex items-center gap-2 px-3 py-1.5 mt-2 first:mt-0 text-xs text-vscode-descriptionForeground bg-vscode-dropdown-background border-b border-frame sticky top-0">
 							{Icon && <Icon className="h-3.5 w-3.5" />}
 							<span>{t(`settings:sections.${section}`)}</span>
 						</div>
@@ -132,9 +132,8 @@ export function SettingsSearchResults({
 									onMouseDown={(event) => event.preventDefault()}
 									onClick={() => onSelectResult(result)}
 									className={cn(
-										"w-full cursor-pointer text-left px-3 py-2 hover:bg-vscode-list-hoverBackground focus:bg-vscode-list-hoverBackground focus-ring",
-										isHighlighted &&
-											"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
+										"w-full cursor-pointer text-left px-3 py-1.5 text-vscode-foreground hover:bg-surface-hover focus-ring",
+										isHighlighted && "bg-selected hover:bg-selected",
 									)}>
 									<div className="text-sm">
 										<HighlightMatch text={result.label} positions={result.positions} />

@@ -123,7 +123,7 @@ export const ModelInfoView = ({
 					<div className="text-xs text-vscode-descriptionForeground mb-1">
 						{t("settings:serviceTier.pricingTableTitle")}
 					</div>
-					<div className="border border-vscode-dropdown-border overflow-hidden">
+					<div className="border border-frame rounded-control overflow-hidden">
 						<table className="w-full text-sm">
 							<thead className="bg-vscode-dropdown-background">
 								<tr>
@@ -140,14 +140,14 @@ export const ModelInfoView = ({
 								</tr>
 							</thead>
 							<tbody>
-								<tr className="border-t border-vscode-dropdown-border/60">
+								<tr className="border-t border-frame">
 									<td className="px-3 py-1.5">{t("settings:serviceTier.standard")}</td>
 									<td className="px-3 py-1.5 text-right">{fmt(modelInfo?.inputPrice)}</td>
 									<td className="px-3 py-1.5 text-right">{fmt(modelInfo?.outputPrice)}</td>
 									<td className="px-3 py-1.5 text-right">{fmt(modelInfo?.cacheReadsPrice)}</td>
 								</tr>
 								{allowedTierNames.includes("flex") && (
-									<tr className="border-t border-vscode-dropdown-border/60">
+									<tr className="border-t border-frame">
 										<td className="px-3 py-1.5">{t("settings:serviceTier.flex")}</td>
 										<td className="px-3 py-1.5 text-right">
 											{fmt(
@@ -170,7 +170,7 @@ export const ModelInfoView = ({
 									</tr>
 								)}
 								{allowedTierNames.includes("priority") && (
-									<tr className="border-t border-vscode-dropdown-border/60">
+									<tr className="border-t border-frame">
 										<td className="px-3 py-1.5">{t("settings:serviceTier.priority")}</td>
 										<td className="px-3 py-1.5 text-right">
 											{fmt(

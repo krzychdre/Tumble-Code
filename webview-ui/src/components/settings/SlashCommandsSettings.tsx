@@ -18,8 +18,10 @@ import {
 	StandardTooltip,
 } from "@/components/ui"
 import { vscode } from "@/utils/vscode"
+import { cn } from "@/lib/utils"
 
 import { SectionHeader } from "./SectionHeader"
+import { SettingsCard, settingDescription } from "./SettingsCard"
 import { CreateSlashCommandDialog } from "./CreateSlashCommandDialog"
 
 export const SlashCommandsSettings: React.FC = () => {
@@ -98,7 +100,7 @@ export const SlashCommandsSettings: React.FC = () => {
 			const isBuiltIn = command.source === "built-in"
 
 			return (
-				<div key={`${command.source}-${command.name}`} className="p-2.5 px-2 border border-transparent">
+				<div key={`${command.source}-${command.name}`} className="min-w-0">
 					<div className="flex items-start justify-between gap-2 flex-col min-[400px]:flex-row overflow-hidden">
 						<div className="flex-1 min-w-0">
 							{/* Command name */}
@@ -107,14 +109,14 @@ export const SlashCommandsSettings: React.FC = () => {
 							</div>
 							{/* Command description */}
 							{command.description && (
-								<div className="text-xs text-vscode-descriptionForeground mt-1 line-clamp-3">
+								<div className={cn(settingDescription, "line-clamp-3")}>
 									{command.description}
 								</div>
 							)}
 						</div>
 
 						{/* Actions */}
-						<div className="flex items-center gap-1 px-0 ml-0 min-[400px]:ml-0 min-[400px]:mt-2 flex-shrink-0">
+						<div className="flex items-center gap-1 flex-shrink-0">
 							<StandardTooltip content={t("settings:slashCommands.editCommand")}>
 								<Button
 									aria-label={t("settings:slashCommands.editCommand")}
@@ -155,7 +157,7 @@ export const SlashCommandsSettings: React.FC = () => {
 					</p>
 
 					{/* Add Command button */}
-					<Button variant="secondary" className="py-1" onClick={() => setCreateDialogOpen(true)}>
+					<Button variant="secondary" onClick={() => setCreateDialogOpen(true)}>
 						<Plus />
 						{t("settings:slashCommands.addCommand")}
 					</Button>
@@ -163,44 +165,48 @@ export const SlashCommandsSettings: React.FC = () => {
 			</div>
 
 			{/* Scrollable List Area */}
-			<div className="flex-1 overflow-y-auto px-4 py-2 min-h-0">
-				<div className="flex flex-col gap-1">
+			<div className="flex-1 overflow-y-auto px-5 pt-section pb-page min-h-0">
+				<div className="flex flex-col gap-section">
 					{/* Project Commands Section - Only show if in a workspace */}
 					{hasWorkspace && (
-						<>
-							<div className="flex items-center gap-2 px-2 py-2 mt-2 cursor-default">
-								<Folder className="size-4 shrink-0" />
-								<span className="font-medium text-lg">
+						<SettingsCard
+							title={
+								<span className="flex items-center gap-1.5">
+									<Folder className="size-3.5 shrink-0" aria-hidden="true" />
 									{t("settings:slashCommands.workspaceCommands")}
 								</span>
-							</div>
+							}>
 							{projectCommands.length > 0 ? (
 								projectCommands.map(renderCommandItem)
 							) : (
-								<div className="px-2 pb-section text-sm text-vscode-descriptionForeground cursor-default">
+								<div className="text-sm text-vscode-descriptionForeground cursor-default">
 									{t("settings:slashCommands.noWorkspaceCommands")}
 								</div>
 							)}
-						</>
+						</SettingsCard>
 					)}
 
 					{/* Global Commands Section */}
-					<div className="flex items-center gap-2 px-2 py-2 mt-2 cursor-default">
-						<Globe className="size-4 shrink-0" />
-						<span className="font-medium text-lg">{t("settings:slashCommands.globalCommands")}</span>
-					</div>
-					{globalCommands.length > 0 ? (
-						globalCommands.map(renderCommandItem)
-					) : (
-						<div className="px-2 pb-section text-sm text-vscode-descriptionForeground cursor-default">
-							{t("settings:slashCommands.noGlobalCommands")}
-						</div>
-					)}
+					<SettingsCard
+						title={
+							<span className="flex items-center gap-1.5">
+								<Globe className="size-3.5 shrink-0" aria-hidden="true" />
+								{t("settings:slashCommands.globalCommands")}
+							</span>
+						}>
+						{globalCommands.length > 0 ? (
+							globalCommands.map(renderCommandItem)
+						) : (
+							<div className="text-sm text-vscode-descriptionForeground cursor-default">
+								{t("settings:slashCommands.noGlobalCommands")}
+							</div>
+						)}
+					</SettingsCard>
 				</div>
 			</div>
 
 			{/* Fixed Footer */}
-			<div className="px-6 py-1 text-sm border-t border-vscode-panel-border text-muted-foreground">
+			<div className="px-5 py-1.5 text-sm border-t border-frame text-vscode-descriptionForeground">
 				{t("settings:slashCommands.footer")}
 			</div>
 

@@ -58,9 +58,9 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 							<div
 								onClick={(e) => e.stopPropagation()}
 								onMouseDown={(e) => e.stopPropagation()}
-								className="absolute top-full right-0 w-[200px] mt-1 bg-vscode-editor-background border border-vscode-input-border shadow-md z-[1000]">
+								className="absolute top-full right-0 w-[200px] mt-1 p-1 bg-vscode-dropdown-background border border-frame-hover rounded-floating shadow-lg z-[1000]">
 								<div
-									className="p-2 cursor-pointer text-vscode-foreground text-sm"
+									className="px-2 py-1.5 cursor-pointer rounded-control text-vscode-foreground text-sm hover:bg-surface-hover focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder"
 									onMouseDown={(e) => {
 										e.preventDefault() // Prevent blur
 										vscode.postMessage({
@@ -72,7 +72,7 @@ export const ModesViewHeader = ({ onImport, isImporting }: ModesViewHeaderProps)
 									{t("prompts:modes.editGlobalModes")}
 								</div>
 								<div
-									className="p-2 cursor-pointer text-vscode-foreground text-sm border-t border-vscode-input-border"
+									className="px-2 py-1.5 cursor-pointer rounded-control text-vscode-foreground text-sm hover:bg-surface-hover focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder"
 									onMouseDown={(e) => {
 										e.preventDefault() // Prevent blur
 										vscode.postMessage({

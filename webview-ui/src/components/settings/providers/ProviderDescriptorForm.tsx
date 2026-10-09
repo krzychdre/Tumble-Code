@@ -42,6 +42,7 @@ import { useTextDraft } from "@src/components/ui/hooks"
 
 import { ModelPicker } from "../ModelPicker"
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
+import { checkboxDescription, settingDescription } from "../SettingsCard"
 
 type ProviderDescriptorFormProps = ProviderFormProps & {
 	provider: DescriptorFormProviderId
@@ -251,7 +252,7 @@ const UrlField = ({
 	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	return (
-		<>
+		<div>
 			<label className="block w-full leading-[normal]">
 				<span className="block font-medium mb-1">{t(field.labelKey)}</span>
 				<Input
@@ -261,11 +262,8 @@ const UrlField = ({
 					placeholder={field.placeholder}
 				/>
 			</label>
-			{field.descriptionKey && (
-				// The negative margin compensates for the form's flex gap, as under the API key.
-				<div className="text-sm text-vscode-descriptionForeground -mt-2">{t(field.descriptionKey)}</div>
-			)}
-		</>
+			{field.descriptionKey && <div className={settingDescription}>{t(field.descriptionKey)}</div>}
+		</div>
 	)
 }
 
@@ -284,7 +282,7 @@ const CheckboxField = ({
 				{t(field.labelKey)}
 			</LabeledCheckbox>
 			{field.descriptionKey && (
-				<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">{t(field.descriptionKey)}</div>
+				<div className={checkboxDescription}>{t(field.descriptionKey)}</div>
 			)}
 		</>
 	)
