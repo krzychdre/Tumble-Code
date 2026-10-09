@@ -37,7 +37,6 @@
 	"settings.vsCodeLmModelSelector.vendor.description": "El proveedor del modelo de lenguaje (ej. copilot)",
 	"settings.vsCodeLmModelSelector.family.description": "La familia del modelo de lenguaje (ej. gpt-4)",
 	"settings.customStoragePath.description": "Ruta de almacenamiento personalizada. Dejar vacío para usar la ubicación predeterminada. Admite rutas absolutas (ej. 'D:\\TumbleCodeStorage')",
-	"settings.openInEditorOnStartup.description": "Abrir Tumble Code en una pestaña del editor al abrir la ventana, en lugar de solo en la barra lateral",
 	"settings.enableCodeActions.description": "Habilitar correcciones rápidas de Tumble Code.",
 	"settings.autoImportSettingsPath.description": "Ruta a un archivo de configuración de Tumble Code para importar automáticamente al iniciar la extensión. Admite rutas absolutas y rutas relativas al directorio de inicio (por ejemplo, '~/Documents/tumble-code-settings.json'). Dejar vacío para desactivar la importación automática.",
 	"settings.maximumIndexedFilesForFileSearch.description": "Número máximo de archivos a indexar para la función de búsqueda de archivos @. Valores más altos proporcionan mejores resultados de búsqueda en proyectos grandes pero pueden usar más memoria. Por defecto: 10.000.",
