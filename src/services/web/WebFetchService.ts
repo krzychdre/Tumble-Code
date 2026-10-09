@@ -31,6 +31,15 @@ export interface WebFetchResult {
 /** Maximum redirect hops followed manually before giving up. */
 const MAX_REDIRECT_HOPS = 5
 
+/**
+ * Sent on every request so sites answer as they would to a desktop Chrome.
+ * Node's `fetch` signs itself as `node`, which some hosts refuse outright
+ * (crates.io answers 403); a model cannot set headers, so it has no way around
+ * that refusal on its own.
+ */
+const BROWSER_USER_AGENT =
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+
 /** HTTP status codes that carry a `Location` header. */
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
 
@@ -286,6 +295,7 @@ export class WebFetchService {
 				redirect: "manual",
 				headers: {
 					Accept: "text/html,application/xhtml+xml,text/plain;q=0.8,*/*;q=0.5",
+					"User-Agent": BROWSER_USER_AGENT,
 				},
 			})
 
