@@ -47,7 +47,7 @@ const McpView = () => {
 
 						{/* Server List */}
 						{servers.length > 0 && (
-							<div className="flex flex-col gap-block">
+							<div className="flex flex-col gap-row">
 								{servers.map((server) => (
 									<ServerRow
 										key={`${server.name}-${server.source || "global"}`}
@@ -59,7 +59,7 @@ const McpView = () => {
 						)}
 
 						{/* Edit Settings Buttons */}
-						<div className="grid w-full grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-block mt-row">
+						<div className="grid w-full grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-block mt-block">
 							<Button
 								variant="secondary"
 								className="w-full"

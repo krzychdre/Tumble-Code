@@ -49,7 +49,13 @@
 		"retrying": "Opnieuw proberen...",
 		"retryConnection": "Verbinding opnieuw proberen",
 		"restart": "Server herstarten",
-		"toggle": "Server {{serverName}} in- of uitschakelen"
+		"toggle": "Server {{serverName}} in- of uitschakelen",
+		"state": {
+			"connected": "Actief",
+			"connecting": "Verbinden",
+			"disconnected": "Verbroken",
+			"disabled": "Uitgeschakeld"
+		}
 	},
 	"refreshMCP": "MCP-servers vernieuwen",
 	"execution": {

@@ -240,11 +240,10 @@ describe("McpToolRow", () => {
 		const toolName = screen.getByText("test-tool")
 		const toolDescription = screen.getByText("A disabled tool")
 
-		// Check that the tool name has the grayed out classes
-		expect(toolName).toHaveClass("text-vscode-descriptionForeground", "opacity-60")
-
-		// Check that the description has reduced opacity
-		expect(toolDescription).toHaveClass("opacity-40")
+		// The name drops to the description colour (no opacity dimming)
+		expect(toolName).toHaveClass("text-vscode-descriptionForeground")
+		expect(toolName).not.toHaveClass("text-vscode-foreground")
+		expect(toolDescription).toHaveClass("text-vscode-descriptionForeground")
 	})
 
 	it("shows normal styling for tool name and description when tool is enabled", () => {
@@ -260,10 +259,9 @@ describe("McpToolRow", () => {
 
 		// Check that the tool name has normal styling
 		expect(toolName).toHaveClass("text-vscode-foreground")
-		expect(toolName).not.toHaveClass("text-vscode-descriptionForeground", "opacity-60")
+		expect(toolName).not.toHaveClass("text-vscode-descriptionForeground")
 
-		// Check that the description has normal opacity
-		expect(toolDescription).toHaveClass("opacity-80")
-		expect(toolDescription).not.toHaveClass("opacity-40")
+		// The description keeps the description colour
+		expect(toolDescription).toHaveClass("text-vscode-descriptionForeground")
 	})
 })

@@ -49,7 +49,13 @@
 		"retrying": "Tekrar deneniyor...",
 		"retryConnection": "Bağlantıyı tekrar dene",
 		"restart": "Sunucuyu yeniden başlat",
-		"toggle": "{{serverName}} sunucusunu aç veya kapat"
+		"toggle": "{{serverName}} sunucusunu aç veya kapat",
+		"state": {
+			"connected": "Çalışıyor",
+			"connecting": "Bağlanıyor",
+			"disconnected": "Bağlantı kesildi",
+			"disabled": "Devre dışı"
+		}
 	},
 	"refreshMCP": "MCP Sunucularını Yenile",
 	"execution": {

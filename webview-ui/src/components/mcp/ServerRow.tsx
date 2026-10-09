@@ -54,6 +54,19 @@ const statusDotClass = (server: McpServer) => {
 	}
 }
 
+/** The status word next to the dot, so colour is never the only signal. */
+const statusLabelKey = (server: McpServer) => {
+	if (server.disabled) return "mcp:serverStatus.state.disabled"
+	switch (server.status) {
+		case "connected":
+			return "mcp:serverStatus.state.connected"
+		case "connecting":
+			return "mcp:serverStatus.state.connecting"
+		case "disconnected":
+			return "mcp:serverStatus.state.disconnected"
+	}
+}
+
 /** The empty state of one tab of an expanded server. */
 const EmptyTab = ({ children }: { children: React.ReactNode }) => (
 	<div className="py-block text-vscode-descriptionForeground">{children}</div>
@@ -73,6 +86,9 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 	const isExpandable = server.status === "connected" && !server.disabled
 	const source = server.source || "global"
 	const resources = [...(server.resourceTemplates || []), ...(server.resources || [])]
+
+	// A body (tools when expanded, the error otherwise) attaches under the card, sharing its frame.
+	const hasBody = isExpandable ? isExpanded : !server.disabled
 
 	const handleRowClick = () => {
 		if (isExpandable) {
@@ -95,26 +111,44 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 		setShowDeleteConfirm(false)
 	}
 
+	const nameLabel = (
+		<span className="flex-1 min-w-0">
+			{server.name}
+			{server.source && (
+				<span className="ml-2 px-1.5 py-px text-xs bg-vscode-badge-background text-vscode-badge-foreground">
+					{server.source}
+				</span>
+			)}
+		</span>
+	)
+
 	return (
-		<div className="mb-row">
+		<div>
 			<div
 				className={cn(
-					"flex items-center gap-2 p-row bg-vscode-textCodeBlock-background",
-					isExpandable ? "cursor-pointer" : "cursor-default",
-					server.disabled && "opacity-60",
+					"flex items-center gap-2 p-row bg-surface border border-frame transition-colors",
+					hasBody ? "rounded-t-control" : "rounded-control",
+					isExpandable
+						? "cursor-pointer hover:bg-surface-hover hover:border-frame-hover"
+						: "cursor-default",
+					server.disabled && "text-vscode-descriptionForeground",
 				)}
 				onClick={handleRowClick}>
-				{isExpandable && (
-					<span className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`} aria-hidden="true" />
+				{isExpandable ? (
+					// A real button for keyboard users; its click bubbles to the row handler above.
+					<button
+						type="button"
+						aria-expanded={isExpanded}
+						className="flex flex-1 min-w-0 items-center gap-2 p-0 bg-transparent border-0 text-left text-inherit cursor-pointer focus-ring">
+						<span
+							className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`}
+							aria-hidden="true"
+						/>
+						{nameLabel}
+					</button>
+				) : (
+					nameLabel
 				)}
-				<span className="flex-1 min-w-0">
-					{server.name}
-					{server.source && (
-						<span className="ml-2 px-1.5 py-px text-xs bg-vscode-badge-background text-vscode-badge-foreground">
-							{server.source}
-						</span>
-					)}
-				</span>
 				<div className="flex items-center gap-2 mr-2" onClick={(e) => e.stopPropagation()}>
 					<Button
 						variant="ghost"
@@ -132,7 +166,14 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 						<span className="codicon codicon-refresh" aria-hidden="true" />
 					</Button>
 				</div>
-				<div className={cn("size-2 ml-2 shrink-0", statusDotClass(server))} data-testid="mcp-server-status" />
+				<div className="flex items-center gap-1.5 ml-2 shrink-0">
+					<div
+						className={cn("size-2 shrink-0", statusDotClass(server))}
+						data-testid="mcp-server-status"
+						aria-hidden="true"
+					/>
+					<span className="text-xs text-vscode-descriptionForeground">{t(statusLabelKey(server))}</span>
+				</div>
 				<ToggleSwitch
 					checked={!server.disabled}
 					onChange={() => {
@@ -150,7 +191,7 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 
 			{isExpandable
 				? isExpanded && (
-						<div className="px-2.5 pb-block text-base bg-vscode-textCodeBlock-background">
+						<div className="px-2.5 pb-block text-base bg-surface border border-t-0 border-frame rounded-b-control">
 							<ThemedPanels className="mb-block">
 								<ThemedPanelTab id="tools">
 									{t("mcp:tabs.tools")} ({server.tools?.length || 0})
@@ -200,7 +241,7 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 
 								{server.instructions && (
 									<ThemedPanelView id="instructions-view">
-										<div className="py-block text-sm opacity-80 whitespace-pre-wrap break-words">
+										<div className="py-block text-sm text-vscode-descriptionForeground whitespace-pre-wrap break-words">
 											{server.instructions}
 										</div>
 									</ThemedPanelView>
@@ -246,7 +287,7 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 					)
 				: // Only show error UI for non-disabled servers
 					!server.disabled && (
-						<div className="w-full pb-block text-base bg-vscode-textCodeBlock-background">
+						<div className="w-full pt-row pb-block text-base bg-surface border border-t-0 border-frame rounded-b-control">
 							<div className="mb-row px-2.5 text-[var(--status-failed)] break-words">
 								{server.error &&
 									server.error.split("\n").map((item, index) => (

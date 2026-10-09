@@ -169,7 +169,7 @@ export const CreateWorktreeModal = ({
 				<div className="flex flex-col gap-3">
 					{/* No .worktreeinclude warning - shows when the current worktree doesn't have .worktreeinclude */}
 					{includeStatus?.exists === false && (
-						<div className="flex items-center gap-2 px-3 py-2 bg-vscode-inputValidation-warningBackground border border-vscode-inputValidation-warningBorder text-sm">
+						<div className="flex items-center gap-2 px-3 py-2 bg-vscode-inputValidation-warningBackground border border-vscode-inputValidation-warningBorder rounded-control text-sm">
 							<Info />
 							<span className="text-vscode-foreground">
 								<span className="font-medium">{t("worktrees:noIncludeFileWarning")}</span>
@@ -185,7 +185,7 @@ export const CreateWorktreeModal = ({
 					<div className="flex flex-col gap-1">
 						<label className="text-sm text-vscode-foreground">{t("worktrees:baseBranch")}</label>
 						{!branches ? (
-							<div className="flex items-center gap-2 h-8 px-2 text-sm text-vscode-descriptionForeground">
+							<div className="flex items-center gap-2 h-[26px] px-2 text-sm text-vscode-descriptionForeground">
 								<Spinner className="size-4" />
 								<span>{t("worktrees:loadingBranches")}</span>
 							</div>
@@ -230,7 +230,7 @@ export const CreateWorktreeModal = ({
 
 					{/* Error message */}
 					{error && (
-						<div className="flex items-center gap-2 px-3 py-2 bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
+						<div className="flex items-center gap-2 px-3 py-2 bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder rounded-control text-sm">
 							<span
 								className="codicon codicon-error text-vscode-errorForeground flex-shrink-0"
 								aria-hidden="true"
@@ -241,7 +241,7 @@ export const CreateWorktreeModal = ({
 
 					{/* Progress section - appears during file copying */}
 					{copyProgress && (
-						<div className="flex flex-col gap-2 px-3 py-3 bg-vscode-editor-background border border-vscode-panel-border">
+						<div className="flex flex-col gap-2 px-3 py-3 bg-surface border border-frame rounded-control">
 							<div className="flex items-center gap-2 text-sm">
 								<Spinner className="size-4" />
 								<span className="text-vscode-foreground font-medium">

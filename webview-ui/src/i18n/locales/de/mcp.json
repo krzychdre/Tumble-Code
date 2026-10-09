@@ -49,7 +49,13 @@
 		"retrying": "Wiederhole...",
 		"retryConnection": "Verbindung wiederholen",
 		"restart": "Server neu starten",
-		"toggle": "Server {{serverName}} ein- oder ausschalten"
+		"toggle": "Server {{serverName}} ein- oder ausschalten",
+		"state": {
+			"connected": "Läuft",
+			"connecting": "Verbindet",
+			"disconnected": "Getrennt",
+			"disabled": "Deaktiviert"
+		}
 	},
 	"refreshMCP": "MCP-Server aktualisieren",
 	"execution": {

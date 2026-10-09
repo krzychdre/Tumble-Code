@@ -49,7 +49,13 @@
 		"retrying": "다시 시도 중...",
 		"retryConnection": "연결 다시 시도",
 		"restart": "서버 다시 시작",
-		"toggle": "{{serverName}} 서버 켜기/끄기"
+		"toggle": "{{serverName}} 서버 켜기/끄기",
+		"state": {
+			"connected": "실행 중",
+			"connecting": "연결 중",
+			"disconnected": "연결 끊김",
+			"disabled": "비활성화됨"
+		}
 	},
 	"refreshMCP": "MCP 서버 새로 고침",
 	"execution": {

@@ -135,11 +135,11 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 
 	return (
 		<Tab>
-			<TabContent className="pt-10">
+			<TabContent className="px-gutter pt-10">
 				{isAuthenticated ? (
 					<>
 						{userInfo && (
-							<div className="flex flex-col items-start ml-4 mb-6">
+							<div className="flex flex-col items-start mb-6">
 								<div className="w-16 h-16 mb-3 overflow-hidden">
 									{userInfo?.picture ? (
 										<img
@@ -172,7 +172,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 						)}
 
 						{/* Task Sync Toggle - Always shown when authenticated */}
-						<div className="mt-4 p-4 border-b border-t border-vscode-widget-border pl-4 max-w-140">
+						<div className="mt-4 py-4 border-y border-frame max-w-140">
 							<div className="flex items-center gap-3 mb-2">
 								<ToggleSwitch
 									checked={taskSyncEnabled}
@@ -198,12 +198,12 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 							</div>
 						</div>
 
-						<div className="text-vscode-descriptionForeground text-sm mt-4 mb-8 pl-4">
+						<div className="text-vscode-descriptionForeground text-sm mt-4 mb-8">
 							<Info className="inline size-3 mr-1 mb-0.5 text-vscode-descriptionForeground" />
 							{t("cloud:usageMetricsAlwaysReported")}
 						</div>
 
-						<div className="flex flex-col gap-2 mt-4 pl-4">
+						<div className="flex flex-col gap-2 mt-4">
 							<Button variant="secondary" onClick={handleVisitCloudWebsite} className="w-full max-w-80">
 								{t("cloud:visitCloudWebsite")}
 							</Button>
@@ -214,7 +214,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 					</>
 				) : (
 					<>
-						<div className="flex flex-col items-start gap-4 px-4 max-w-lg">
+						<div className="flex flex-col items-start gap-4 max-w-lg">
 							<div className={cn(authInProgress && "opacity-50")}>{renderCloudBenefitsContent(t)}</div>
 
 							{!authInProgress && (
@@ -235,7 +235,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 									{!showManualEntry && (
 										<button
 											onClick={handleShowManualEntry}
-											className="text-base ml-5 text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground underline cursor-pointer bg-transparent border-none p-0">
+											className="text-base ml-5 text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground underline cursor-pointer bg-transparent border-none p-0 focus-ring">
 											{t("cloud:havingTrouble")}
 										</button>
 									)}
@@ -260,7 +260,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 										or{" "}
 										<button
 											onClick={handleReset}
-											className="text-base text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground underline cursor-pointer bg-transparent border-none p-0">
+											className="text-base text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground underline cursor-pointer bg-transparent border-none p-0 focus-ring">
 											{t("cloud:startOver")}
 										</button>
 									</p>
@@ -270,13 +270,13 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 					</>
 				)}
 				{cloudApiUrl && cloudApiUrl !== PRODUCTION_TUMBLE_CODE_API_URL && (
-					<div className="ml-4 mt-6 flex">
+					<div className="mt-6 flex">
 						<div className="inline-flex items-center gap-2 text-xs">
 							<TriangleAlert className="size-3 text-vscode-descriptionForeground" />
-							<span className="text-vscode-foreground/75">{t("cloud:cloudUrlPillLabel")} </span>
+							<span className="text-vscode-descriptionForeground">{t("cloud:cloudUrlPillLabel")} </span>
 							<button
 								onClick={handleOpenCloudUrl}
-								className="text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground underline cursor-pointer bg-transparent border-none p-0">
+								className="text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground underline cursor-pointer bg-transparent border-none p-0 focus-ring">
 								{cloudApiUrl}
 							</button>
 						</div>

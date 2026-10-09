@@ -68,7 +68,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 								payload: { filters: { installed: value } },
 							})
 						}>
-						<SelectTrigger className="flex-1 h-7">
+						<SelectTrigger className="flex-1">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -87,7 +87,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 										variant="combobox"
 										role="combobox"
 										aria-expanded={isTagPopoverOpen}
-										className="w-full justify-between h-7">
+										className="w-full justify-between">
 										<span className="truncate">
 											{state.filters.tags.length > 0
 												? state.filters.tags
@@ -120,7 +120,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 												</Button>
 											)}
 										</div>
-										<CommandList className="max-h-[200px] overflow-y-auto bg-vscode-dropdown-background divide-y divide-vscode-panel-border">
+										<CommandList className="max-h-[200px] overflow-y-auto bg-vscode-dropdown-background divide-y divide-frame">
 											<CommandEmpty className="p-2 text-sm text-vscode-descriptionForeground">
 												{t("marketplace:filters.tags.noResults")}
 											</CommandEmpty>
@@ -213,7 +213,8 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 								payload: { filters: { search: "", type: "", tags: [], installed: "all" } },
 							})
 						}
-						className="mt-4 bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground hover:bg-vscode-button-secondaryHoverBackground transition-colors">
+						variant="secondary"
+						className="mt-4">
 						<span className="codicon codicon-clear-all mr-2" aria-hidden="true"></span>
 						{t("marketplace:items.empty.clearAllFilters")}
 					</Button>
@@ -231,7 +232,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 										organization: cloudUserInfo?.organizationName,
 									})}
 								</h3>
-								<div className="flex-1 h-px bg-vscode-input-border"></div>
+								<div className="flex-1 h-px bg-frame"></div>
 							</div>
 							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
 								{orgMcps.map((item) => (
@@ -263,7 +264,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 									<h3 className="text-sm font-semibold text-vscode-foreground">
 										{t("marketplace:sections.marketplace")}
 									</h3>
-									<div className="flex-1 h-px bg-vscode-input-border"></div>
+									<div className="flex-1 h-px bg-frame"></div>
 								</div>
 							)}
 							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">

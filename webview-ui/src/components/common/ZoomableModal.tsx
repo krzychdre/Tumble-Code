@@ -34,7 +34,7 @@ export function ZoomableModal({ isOpen, onClose, title, ...rest }: ZoomableModal
 	return (
 		<Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
 			<DialogContent
-				className="w-[90%] h-[90%] max-w-[1200px] sm:max-w-[1200px] flex flex-col gap-0 p-0 border-vscode-editorGroup-border shadow-[0_5px_15px_rgba(0,0,0,0.5)]"
+				className="w-[90%] h-[90%] max-w-[1200px] sm:max-w-[1200px] flex flex-col gap-0 p-0 border-frame-hover rounded-floating shadow-[0_8px_28px_var(--vscode-widget-shadow)]"
 				showCloseButton={false}
 				aria-describedby={undefined}>
 				<DialogTitle className="sr-only">{title}</DialogTitle>
@@ -56,7 +56,7 @@ function ZoomableModalContent({
 
 	return (
 		<>
-			<div className="flex justify-between items-center border-b border-vscode-editorGroup-border">
+			<div className="flex justify-between items-center border-b border-frame">
 				<div className="flex gap-0">{tabs}</div>
 
 				<div className="pr-3">
@@ -76,7 +76,7 @@ function ZoomableModalContent({
 				{zoomable ? (
 					<>
 						<div {...panLayerProps}>{children}</div>
-						<div className="absolute bottom-4 left-4 bg-vscode-editor-background border border-vscode-editorGroup-border px-2 py-1 text-xs text-vscode-descriptionForeground pointer-events-none opacity-80">
+						<div className="absolute bottom-4 left-4 bg-vscode-editor-background border border-frame rounded-control px-2 py-1 text-xs text-vscode-descriptionForeground pointer-events-none">
 							{Math.round(zoomLevel * 100)}%
 						</div>
 					</>
@@ -84,7 +84,7 @@ function ZoomableModalContent({
 					children
 				)}
 			</div>
-			<div className="absolute bottom-0 right-0 left-0 p-3 flex items-center justify-end gap-2 bg-vscode-editor-background border-t border-vscode-editorGroup-border">
+			<div className="absolute bottom-0 right-0 left-0 p-3 flex items-center justify-end gap-2 bg-vscode-editor-background border-t border-frame">
 				{zoomable && (
 					<ZoomControls
 						zoomLevel={zoomLevel}
