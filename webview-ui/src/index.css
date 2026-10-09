@@ -133,6 +133,9 @@
 	--color-vscode-focusBorder: var(--vscode-focusBorder);
 	/* Frame of popovers and the composer focus outline; turns orange with bypass/autonomous auto-approve. */
 	--color-frame-accent: var(--frame-accent);
+	/* Composer border while it is not focused: the input border is transparent in many themes,
+	   so mix the input foreground in to keep the box outline visible. */
+	--color-composer-idle-border: color-mix(in srgb, var(--vscode-input-foreground, #cccccc) 25%, transparent);
 
 	--color-vscode-badge-foreground: var(--vscode-badge-foreground);
 	--color-vscode-badge-background: var(--vscode-badge-background);
