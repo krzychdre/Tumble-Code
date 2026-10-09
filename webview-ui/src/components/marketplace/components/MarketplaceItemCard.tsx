@@ -82,15 +82,15 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 
 	return (
 		<>
-			<div className="border border-vscode-panel-border cursor-default p-3 transition-colors bg-vscode-editor-background hover:bg-vscode-editor-foreground/5">
+			<div className="border border-frame rounded-control cursor-default p-3 transition-colors bg-surface hover:bg-surface-hover hover:border-frame-hover">
 				<div className="flex gap-2 items-start justify-between">
 					<div className="flex gap-2 items-start">
 						<div>
-							<h3 className="text-lg font-semibold text-vscode-foreground mt-0 mb-1 leading-none">
+							<h3 className="text-base font-semibold text-vscode-foreground mt-0 mb-1 leading-none">
 								{item.type === "mcp" && item.url && isValidUrl(item.url) ? (
 									<Button
 										variant="link"
-										className="p-0 h-auto text-lg font-semibold text-vscode-foreground hover:underline"
+										className="p-0 h-auto text-base font-semibold text-vscode-foreground hover:underline"
 										onClick={() => vscode.postMessage({ type: "openExternal", url: item.url })}>
 										{item.name}
 									</Button>
@@ -113,7 +113,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 								<Button
 									size="sm"
 									variant="secondary"
-									className="text-xs h-5 py-0 px-2"
+									className="text-xs h-[22px] py-0 px-2"
 									onClick={() => {
 										// Determine which installation to remove (prefer project over global)
 										const target = isInstalledInProject ? "project" : "global"
@@ -128,7 +128,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 							<Button
 								size="sm"
 								variant="primary"
-								className="text-xs h-5 py-0 px-2"
+								className="text-xs h-[22px] py-0 px-2"
 								onClick={handleInstallClick}>
 								{t("marketplace:items.card.install")}
 							</Button>
@@ -150,7 +150,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 					<div className="relative flex flex-wrap gap-1 my-2">
 						{/* Installation status badge on the left */}
 						{isInstalled && (
-							<span className="text-xs px-2 py-0.5 h-5 flex items-center bg-[var(--status-done)]/20 text-[var(--status-done)] border border-[var(--status-done)]/30 shrink-0">
+							<span className="text-xs px-2 h-[22px] flex items-center text-[var(--status-done)] border border-[var(--status-done)]/45 rounded-control shrink-0">
 								{t("marketplace:items.card.installed")}
 							</span>
 						)}
@@ -169,9 +169,13 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 									<Button
 										size="sm"
 										variant="secondary"
-										className={cn("capitalize text-xs px-2 h-5", {
-											"border-solid border-primary text-primary": filters.tags.includes(tag),
-										})}
+										className={cn(
+											"capitalize text-xs px-2 h-[22px] bg-transparent border border-input-frame rounded-control text-vscode-descriptionForeground",
+											"hover:bg-surface-hover hover:text-vscode-foreground",
+											{
+												"border-vscode-focusBorder text-vscode-foreground": filters.tags.includes(tag),
+											},
+										)}
 										onClick={() => {
 											const newTags = filters.tags.includes(tag)
 												? filters.tags.filter((t: string) => t !== tag)

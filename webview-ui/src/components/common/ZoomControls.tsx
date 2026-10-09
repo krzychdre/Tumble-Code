@@ -78,7 +78,7 @@ export function ZoomControls({
 					onMouseLeave={useContinuousZoom && adjustZoom ? stopContinuousZoom : undefined}
 				/>
 			</StandardTooltip>
-			<div className="text-sm text-vscode-editor-foreground min-w-[50px] text-center">
+			<div className="text-sm text-vscode-descriptionForeground min-w-[50px] text-center">
 				{Math.round(zoomLevel * 100)}%
 			</div>
 			<StandardTooltip content={zoomInTitle}>

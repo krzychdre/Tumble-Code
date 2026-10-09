@@ -49,7 +49,13 @@
 		"retrying": "再試行中...",
 		"retryConnection": "再接続",
 		"restart": "サーバーを再起動",
-		"toggle": "{{serverName}} サーバーのオン/オフを切り替え"
+		"toggle": "{{serverName}} サーバーのオン/オフを切り替え",
+		"state": {
+			"connected": "実行中",
+			"connecting": "接続中",
+			"disconnected": "切断",
+			"disabled": "無効"
+		}
 	},
 	"refreshMCP": "MCPサーバーを更新",
 	"execution": {

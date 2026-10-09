@@ -17,7 +17,7 @@ const McpResourceRow = ({ item }: McpResourceRowProps) => {
 				<span className="codicon codicon-symbol-file mr-1.5" aria-hidden="true" />
 				<span className="font-medium break-all">{uri}</span>
 			</div>
-			<div className="my-1 text-sm opacity-80">
+			<div className="my-1 text-sm text-vscode-descriptionForeground">
 				{item.name && item.description
 					? `${item.name}: ${item.description}`
 					: !item.name && item.description
@@ -27,7 +27,7 @@ const McpResourceRow = ({ item }: McpResourceRowProps) => {
 							: t("mcp:resource.noDescription")}
 			</div>
 			<div className="text-sm">
-				<span className="opacity-80">{t("mcp:resource.returns")} </span>
+				<span className="text-vscode-descriptionForeground">{t("mcp:resource.returns")} </span>
 				<code className="px-1 py-px text-[var(--vscode-textPreformat-foreground)] bg-[var(--vscode-textPreformat-background)]">
 					{item.mimeType || t("mcp:resource.unknownType")}
 				</code>

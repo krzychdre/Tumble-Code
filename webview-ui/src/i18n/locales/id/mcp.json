@@ -50,7 +50,13 @@
 		"retrying": "Mencoba lagi...",
 		"retryConnection": "Coba Koneksi Lagi",
 		"restart": "Mulai ulang server",
-		"toggle": "Aktifkan atau nonaktifkan server {{serverName}}"
+		"toggle": "Aktifkan atau nonaktifkan server {{serverName}}",
+		"state": {
+			"connected": "Berjalan",
+			"connecting": "Menghubungkan",
+			"disconnected": "Terputus",
+			"disabled": "Dinonaktifkan"
+		}
 	},
 	"execution": {
 		"running": "Berjalan",

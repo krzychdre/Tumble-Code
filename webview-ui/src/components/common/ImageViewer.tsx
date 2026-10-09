@@ -24,7 +24,6 @@ export function ImageViewer({
 }: ImageViewerProps) {
 	const [showModal, setShowModal] = useState(false)
 	const [copyFeedback, setCopyFeedback] = useState(false)
-	const [isHovering, setIsHovering] = useState(false)
 	const [imageError, setImageError] = useState<string | null>(null)
 	const { copyWithFeedback } = useCopyToClipboard()
 	const { t } = useAppTranslation()
@@ -95,20 +94,6 @@ export function ImageViewer({
 		}
 	}
 
-	/**
-	 * Handle mouse enter event for image container
-	 */
-	const handleMouseEnter = () => {
-		setIsHovering(true)
-	}
-
-	/**
-	 * Handle mouse leave event for image container
-	 */
-	const handleMouseLeave = () => {
-		setIsHovering(false)
-	}
-
 	const handleImageError = useCallback(() => {
 		setImageError("Failed to load image")
 	}, [])
@@ -154,10 +139,7 @@ export function ImageViewer({
 
 	return (
 		<>
-			<div
-				className={`relative w-full ${className}`}
-				onMouseEnter={handleMouseEnter}
-				onMouseLeave={handleMouseLeave}>
+			<div className={`relative w-full ${className}`}>
 				{imageError ? (
 					<div
 						style={{
@@ -188,8 +170,9 @@ export function ImageViewer({
 				{imagePath && (
 					<div className="mt-1 text-xs text-vscode-descriptionForeground">{formatDisplayPath(imagePath)}</div>
 				)}
-				{showControls && isHovering && (
-					<div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 p-0.5 z-10 opacity-100 transition-opacity duration-200 ease-in-out">
+				{/* Always visible (not only on hover), so keyboard and touch users can reach the buttons. */}
+				{showControls && (
+					<div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 border border-frame rounded-control p-0.5 z-10">
 						<MermaidActionButtons
 							onZoom={handleZoom}
 							onCopy={handleCopy}

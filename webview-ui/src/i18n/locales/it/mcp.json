@@ -49,7 +49,13 @@
 		"retrying": "Riprovo...",
 		"retryConnection": "Riprova connessione",
 		"restart": "Riavvia server",
-		"toggle": "Attiva o disattiva il server {{serverName}}"
+		"toggle": "Attiva o disattiva il server {{serverName}}",
+		"state": {
+			"connected": "In esecuzione",
+			"connecting": "Connessione",
+			"disconnected": "Disconnesso",
+			"disabled": "Disattivato"
+		}
 	},
 	"refreshMCP": "Aggiorna server MCP",
 	"execution": {

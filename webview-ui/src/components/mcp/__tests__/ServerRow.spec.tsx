@@ -78,15 +78,30 @@ describe("ServerRow", () => {
 	it("the status dot follows the connection state, grey when disabled", () => {
 		const { rerender } = render(<ServerRow server={server()} />)
 		expect(screen.getByTestId("mcp-server-status")).toHaveClass("bg-[var(--status-done)]")
+		expect(screen.getByText("mcp:serverStatus.state.connected")).toBeInTheDocument()
 
 		rerender(<ServerRow server={server({ status: "connecting" })} />)
 		expect(screen.getByTestId("mcp-server-status")).toHaveClass("bg-[var(--status-waiting)]")
+		expect(screen.getByText("mcp:serverStatus.state.connecting")).toBeInTheDocument()
 
 		rerender(<ServerRow server={server({ status: "disconnected" })} />)
 		expect(screen.getByTestId("mcp-server-status")).toHaveClass("bg-[var(--status-failed)]")
+		expect(screen.getByText("mcp:serverStatus.state.disconnected")).toBeInTheDocument()
 
 		rerender(<ServerRow server={server({ disabled: true })} />)
 		expect(screen.getByTestId("mcp-server-status")).toHaveClass("bg-vscode-descriptionForeground")
+		expect(screen.getByText("mcp:serverStatus.state.disabled")).toBeInTheDocument()
+	})
+
+	it("a connected server's header is a keyboard-reachable button that reports the expanded state", () => {
+		render(<ServerRow server={server()} />)
+
+		const header = screen.getByRole("button", { name: /github/ })
+		expect(header).toHaveAttribute("aria-expanded", "false")
+
+		fireEvent.click(header)
+		expect(screen.getByRole("button", { name: /github/ })).toHaveAttribute("aria-expanded", "true")
+		expect(screen.getAllByRole("tab").length).toBeGreaterThan(0)
 	})
 
 	it("the icon buttons restart the server and ask before deleting it, without expanding the row", () => {

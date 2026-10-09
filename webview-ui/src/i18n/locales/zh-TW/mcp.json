@@ -50,7 +50,13 @@
 		"retrying": "重試中...",
 		"retryConnection": "重試連線",
 		"restart": "重新啟動伺服器",
-		"toggle": "切換 {{serverName}} 伺服器"
+		"toggle": "切換 {{serverName}} 伺服器",
+		"state": {
+			"connected": "執行中",
+			"connecting": "連線中",
+			"disconnected": "已中斷",
+			"disabled": "已停用"
+		}
 	},
 	"execution": {
 		"running": "執行中",

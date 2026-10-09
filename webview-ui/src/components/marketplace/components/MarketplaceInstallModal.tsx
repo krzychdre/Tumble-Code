@@ -227,7 +227,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 								href={item.url}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="text-primary hover:underline inline-flex items-center gap-1">
+								className="text-primary hover:underline inline-flex items-center gap-1 focus-ring">
 								{t("marketplace:install.moreInfoMcp", { name: item.name })}
 							</a>
 						) : null}
@@ -264,7 +264,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 										onChange={() => setScope("project")}
 										disabled={!hasWorkspace}
 									/>
-									<span className={!hasWorkspace ? "opacity-50" : ""}>
+									<span className={!hasWorkspace ? "text-vscode-descriptionForeground" : ""}>
 										{t("marketplace:install.project")}
 									</span>
 								</label>
@@ -351,7 +351,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 						)}
 						{/* Validation Error */}
 						{validationError && (
-							<div className="text-sm text-[var(--status-failed)] bg-[var(--status-failed)]/10 border border-[var(--status-failed)]/20 p-2">
+							<div className="text-sm text-[var(--status-failed)] bg-[var(--status-failed)]/10 border border-[var(--status-failed)]/20 rounded-control p-2">
 								{validationError}
 							</div>
 						)}

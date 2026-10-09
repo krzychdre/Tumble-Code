@@ -50,7 +50,13 @@
 		"retrying": "Retrying...",
 		"retryConnection": "Retry Connection",
 		"restart": "Restart server",
-		"toggle": "Toggle {{serverName}} server"
+		"toggle": "Toggle {{serverName}} server",
+		"state": {
+			"connected": "Running",
+			"connecting": "Connecting",
+			"disconnected": "Disconnected",
+			"disabled": "Disabled"
+		}
 	},
 	"execution": {
 		"running": "Running",

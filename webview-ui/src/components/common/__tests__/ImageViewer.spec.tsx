@@ -154,10 +154,8 @@ describe("ImageViewer", () => {
 			Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
 		})
 
-		it("shows the hover toolbar only when controls are enabled", () => {
+		it("shows the toolbar without hovering whenever controls are enabled", () => {
 			const { container, rerender } = render(<ImageViewer imageUri={URI} imagePath={PATH} />)
-			expect(button(container, "zoom-in")).toBeNull()
-			fireEvent.mouseEnter(wrapper(container))
 			expect(button(container, "zoom-in")).not.toBeNull()
 
 			rerender(<ImageViewer imageUri={URI} imagePath={PATH} showControls={false} />)
@@ -252,7 +250,7 @@ describe("ImageViewer", () => {
 			expect(panLayer().style.transform).toBe("scale(1) translate(0px, 0px)")
 		})
 
-		it("copies the file path from the hover toolbar and shows a check mark", async () => {
+		it("copies the file path from the image toolbar and shows a check mark", async () => {
 			const { container } = render(<ImageViewer imageUri={URI} imagePath={PATH} />)
 			fireEvent.mouseEnter(wrapper(container))
 			fireEvent.click(button(wrapper(container), "copy")!)

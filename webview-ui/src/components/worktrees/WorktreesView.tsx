@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, type ReactNode } from "react"
 
 import type { Worktree, WorktreeListResponse, WorktreeIncludeStatus, ExtensionMessage } from "@tumble-code/types"
 
@@ -6,6 +6,7 @@ import { Badge, Button, Spinner, StandardTooltip, ToggleSwitch } from "@/compone
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
+import { cn } from "@/lib/utils"
 
 import { SectionHeader } from "../settings/SectionHeader"
 import { postImmediateSetting } from "../settings/postImmediateSetting"
@@ -14,6 +15,29 @@ import { CreateWorktreeModal } from "./CreateWorktreeModal"
 import { DeleteWorktreeModal } from "./DeleteWorktreeModal"
 import { Folder, GitBranch, Lock, Plus, SquareArrowOutUpRight, Trash } from "lucide-react"
 import { onExtensionMessage } from "@src/utils/extensionBus"
+
+/** The branch and path of one worktree: a plain block on the current one, a focusable button on the others. */
+const InfoElement = ({
+	isCurrent,
+	className,
+	children,
+}: {
+	isCurrent: boolean
+	className?: string
+	children: ReactNode
+}) =>
+	isCurrent ? (
+		<div className={className}>{children}</div>
+	) : (
+		<button
+			type="button"
+			className={cn(
+				"block p-0 bg-transparent border-0 text-left text-inherit cursor-pointer focus-ring",
+				className,
+			)}>
+			{children}
+		</button>
+	)
 
 export const WorktreesView = () => {
 	const { t } = useAppTranslation()
@@ -194,7 +218,7 @@ export const WorktreesView = () => {
 			</div>
 
 			{/* Scrollable List Area */}
-			<div className="flex-1 overflow-y-auto px-4 py-2 min-h-0">
+			<div className="flex-1 overflow-y-auto px-5 py-2 min-h-0">
 				{isLoading ? (
 					<div className="flex items-center justify-center h-48">
 						<Spinner label={t("common:loading")} className="size-6" />
@@ -205,20 +229,25 @@ export const WorktreesView = () => {
 						<p className="text-center">{error}</p>
 					</div>
 				) : (
-					<div className="flex flex-col gap-1">
+					<div className="flex flex-col gap-row">
 						{worktrees.map((worktree) => (
 							<div
 								key={worktree.path}
-								className={`p-2.5 px-3.5 hover:bg-vscode-list-hoverBackground border border-transparent ${
+								className={cn(
+									"p-2.5 px-3.5 border border-frame rounded-control transition-colors",
 									worktree.isCurrent
-										? " bg-vscode-list-activeSelectionBackground border-vscode-list-activeSelectionForeground/20"
-										: "cursor-pointer"
-								}`}
+										? "bg-selected"
+										: "bg-surface cursor-pointer hover:bg-surface-hover hover:border-frame-hover",
+								)}
 								onClick={
 									worktree.isCurrent ? undefined : () => handleSwitchWorktree(worktree.path, false)
 								}>
 								<div className="flex items-start min-[400px]:items-center justify-between gap-2 flex-col min-[400px]:flex-row overflow-hidden">
-									<div className={`flex-1 min-w-0 ${worktree.isCurrent && "cursor-default"}`}>
+									{/* The info is a real button on switchable rows so keyboard users can reach it; its
+									    click bubbles to the row handler above. */}
+									<InfoElement
+										isCurrent={worktree.isCurrent}
+										className={cn("flex-1 min-w-0", worktree.isCurrent && "cursor-default")}>
 										{/* Info */}
 										<div className="flex items-center gap-2 overflow-hidden">
 											<GitBranch className="size-3 shrink-0" />
@@ -243,7 +272,7 @@ export const WorktreesView = () => {
 											<Folder className="size-3 shrink-0 mt-0.5" />
 											<span className="truncate">{worktree.path}</span>
 										</div>
-									</div>
+									</InfoElement>
 
 									{/* Actions */}
 									<div className="flex items-center gap-1 ml-3 min-[400px]:ml-0 flex-shrink-0">
@@ -283,10 +312,10 @@ export const WorktreesView = () => {
 			</div>
 
 			{/* Fixed Footer - Settings */}
-			<div className="flex-shrink-0 flex flex-col border-t border-vscode-sideBar-background">
+			<div className="flex-shrink-0 flex flex-col">
 				{/* Worktree include status */}
 				{includeStatus && (
-					<div className="flex items-center gap-2 text-sm px-5 py-3 justify-between text-vscode-descriptionForeground border-t border-vscode-sideBar-background">
+					<div className="flex items-center gap-2 text-sm px-5 py-3 justify-between text-vscode-descriptionForeground border-t border-frame">
 						{includeStatus.exists ? (
 							<span>{t("worktrees:includeFileExists")}</span>
 						) : (

@@ -186,7 +186,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 		if (document.getElementById(styleId)) return
 		const style = document.createElement("style")
 		style.id = styleId
-		style.textContent = `::highlight(plan-review-annotation) { background-color: color-mix(in srgb, var(--vscode-editor-findMatchHighlightBackground, #ea5c0044) 50%, transparent); }`
+		style.textContent = `::highlight(plan-review-annotation) { background-color: color-mix(in srgb, var(--vscode-editor-findMatchHighlightBackground, color-mix(in srgb, var(--vscode-charts-orange) 27%, transparent)) 50%, transparent); }`
 		document.head.appendChild(style)
 		return () => {
 			document.getElementById(styleId)?.remove()
@@ -317,7 +317,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					<p className="text-sm text-vscode-descriptionForeground p-2">{t("chat:planReview.emptyState")}</p>
 				) : (
 					annotations.map((ann) => (
-						<div key={ann.id} className="border border-vscode-editorWidget-border p-2 flex flex-col gap-1">
+						<div key={ann.id} className="border border-frame rounded-control bg-surface p-2 flex flex-col gap-1">
 							<blockquote
 								className="border-l-2 border-vscode-textLink-foreground pl-2 text-xs text-vscode-descriptionForeground line-clamp-3"
 								style={{
@@ -331,7 +331,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 							{editingId === ann.id ? (
 								<div className="flex flex-col gap-1">
 									<textarea
-										className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border p-1"
+										className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-input-frame rounded-control p-1 hover:border-input-frame-hover focus:outline-none focus-visible:border-vscode-focusBorder"
 										rows={2}
 										value={editingText}
 										onChange={(e) => setEditingText(e.target.value)}
@@ -352,7 +352,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 									<div className="flex gap-1">
 										<StandardTooltip content={t("chat:planReview.editNote")}>
 											<button
-												className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground"
+												className="cursor-pointer p-1 rounded-control hover:bg-surface-hover focus-ring"
 												onClick={() => handleStartEdit(ann.id, ann.note)}
 												aria-label={t("chat:planReview.editNote")}>
 												<Pencil className="w-3.5 h-3.5" />
@@ -360,7 +360,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 										</StandardTooltip>
 										<StandardTooltip content={t("chat:planReview.deleteNote")}>
 											<button
-												className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground"
+												className="cursor-pointer p-1 rounded-control hover:bg-surface-hover focus-ring"
 												onClick={() => handleDelete(ann.id)}
 												aria-label={t("chat:planReview.deleteNote")}>
 												<Trash2 className="w-3.5 h-3.5" />
@@ -384,7 +384,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 			className="fixed inset-0 flex flex-col"
 			style={{ background: "var(--vscode-editor-background)" }}>
 			{/* Header */}
-			<div className="flex items-center justify-between px-4 py-2 border-b border-vscode-editorWidget-border shrink-0">
+			<div className="flex items-center justify-between px-4 py-2 border-b border-frame shrink-0">
 				<div className="flex items-baseline gap-2 min-w-0">
 					<h2 className="text-base font-bold shrink-0">{t("chat:planReview.title")}</h2>
 					{filePath && (
@@ -395,9 +395,9 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					{hasChanges && (
 						<span
 							data-testid="plan-diff-badge"
-							className="text-xs px-1.5 py-0.5 shrink-0"
+							className="text-xs px-1.5 py-0.5 shrink-0 rounded-control"
 							style={{
-								background: "var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.15))",
+								background: "var(--vscode-diffEditor-insertedTextBackground, color-mix(in srgb, var(--vscode-charts-green) 15%, transparent))",
 								color: "var(--vscode-foreground)",
 							}}>
 							{t("chat:planReview.changesHighlighted")}
@@ -405,7 +405,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					)}
 				</div>
 				<button
-					className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground shrink-0"
+					className="cursor-pointer p-1 rounded-control hover:bg-surface-hover shrink-0 focus-ring"
 					onClick={onClose}
 					aria-label={t("chat:planReview.cancel")}>
 					<X className="w-5 h-5" />
@@ -428,8 +428,8 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 								title={t("chat:planReview.removedContent")}
 								className="my-2 px-2 py-1 text-xs text-vscode-descriptionForeground whitespace-pre-wrap line-through"
 								style={{
-									background: "var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.15))",
-									borderLeft: "3px solid var(--vscode-editorGutter-deletedBackground, #f14c4c)",
+									background: "var(--vscode-diffEditor-removedTextBackground, color-mix(in srgb, var(--vscode-errorForeground) 15%, transparent))",
+									borderLeft: "3px solid var(--vscode-editorGutter-deletedBackground, var(--vscode-errorForeground))",
 								}}>
 								{segment.text}
 							</div>
@@ -440,8 +440,8 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 								className="my-1 px-2"
 								style={{
 									background:
-										"var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.15))",
-									borderLeft: "3px solid var(--vscode-editorGutter-addedBackground, #487e02)",
+										"var(--vscode-diffEditor-insertedTextBackground, color-mix(in srgb, var(--vscode-charts-green) 15%, transparent))",
+									borderLeft: "3px solid var(--vscode-editorGutter-addedBackground, var(--vscode-charts-green))",
 								}}>
 								<MarkdownBlock markdown={segment.markdown} />
 							</div>
@@ -453,12 +453,13 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					{/* Floating "Add note" chip */}
 					{chipPos && !showNoteEditor && (
 						<button
-							className="absolute z-10 flex items-center gap-1 px-2 py-1 text-xs shadow-lg cursor-pointer"
+							className="absolute z-10 flex items-center gap-1 px-2 py-1 text-xs rounded-control cursor-pointer focus-ring"
 							style={{
 								left: chipPos.x,
 								top: chipPos.y,
 								background: "var(--vscode-button-background)",
 								color: "var(--vscode-button-foreground)",
+								boxShadow: "0 2px 8px var(--vscode-widget-shadow)",
 							}}
 							// Keep the text selection visible while clicking the chip.
 							onMouseDown={(e) => e.preventDefault()}
@@ -471,16 +472,16 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					{/* Inline note editor */}
 					{showNoteEditor && editorPos && (
 						<div
-							className="absolute z-20 flex flex-col gap-1 p-2 shadow-xl"
+							className="absolute z-20 flex flex-col gap-1 p-2 border border-frame-hover rounded-floating"
 							style={{
 								left: editorPos.x,
 								top: editorPos.y,
 								background: "var(--vscode-editor-background)",
-								border: "1px solid var(--vscode-editorWidget-border)",
+								boxShadow: "0 8px 28px var(--vscode-widget-shadow)",
 								minWidth: 240,
 							}}>
 							<textarea
-								className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border p-1"
+								className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-input-frame rounded-control p-1 hover:border-input-frame-hover focus:outline-none focus-visible:border-vscode-focusBorder"
 								rows={3}
 								placeholder={t("chat:planReview.notePlaceholder")}
 								value={noteEditorText}
@@ -503,16 +504,16 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 				<div
 					className={
 						isWide
-							? "w-72 border-l border-vscode-editorWidget-border p-2 shrink-0 overflow-hidden"
-							: "max-h-[200px] border-t border-vscode-editorWidget-border p-2 shrink-0"
+							? "w-72 border-l border-frame p-2 shrink-0 overflow-hidden"
+							: "max-h-[200px] border-t border-frame p-2 shrink-0"
 					}>
 					{annotationsPanel}
 				</div>
 			</div>
 
-			{/* Footer — always visible action bar */}
+			{/* Footer: always visible action bar */}
 			<div
-				className="flex items-center justify-between gap-2 px-4 py-3 border-t border-vscode-editorWidget-border shrink-0"
+				className="flex items-center justify-between gap-2 px-4 py-3 border-t border-frame shrink-0"
 				style={{ background: "var(--vscode-editorWidget-background)" }}>
 				<span className="text-sm text-vscode-descriptionForeground">
 					{annotations.length > 0

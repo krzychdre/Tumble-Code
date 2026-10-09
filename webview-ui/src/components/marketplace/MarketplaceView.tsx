@@ -9,6 +9,14 @@ import { cn } from "@/lib/utils"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ExtensionStateContext } from "@/context/ExtensionStateContext"
 
+/** One tab of the MCP / Modes strip: description colour until active, a hover fill and the focus ring. */
+const tabClass = (active: boolean) =>
+	cn(
+		"cursor-pointer flex items-center justify-center gap-2 flex-1 h-[26px] text-sm font-medium transition-colors relative z-10 bg-transparent border-0",
+		"hover:bg-surface-hover hover:text-vscode-foreground focus-ring",
+		active ? "text-vscode-foreground" : "text-vscode-descriptionForeground",
+	)
+
 interface MarketplaceViewProps {
 	onDone?: () => void
 	stateManager: MarketplaceViewStateManager
@@ -97,25 +105,23 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 					</div>
 
 					<div className="w-full mt-2">
-						<div className="flex relative py-1">
-							<div className="absolute w-full h-[2px] -bottom-[2px] bg-vscode-input-border">
-								<div
-									className={cn(
-										"absolute w-1/2 h-[2px] bottom-0 bg-vscode-button-background transition-all duration-300 ease-in-out",
-										{
-											"left-0": state.activeTab === "mcp",
-											"left-1/2": state.activeTab === "mode",
-										},
-									)}
-								/>
-							</div>
+						<div className="flex relative border-b border-frame">
+							<div
+								className={cn(
+									"absolute w-1/2 h-[2px] -bottom-px bg-vscode-focusBorder transition-all duration-300 ease-in-out z-20",
+									{
+										"left-0": state.activeTab === "mcp",
+										"left-1/2": state.activeTab === "mode",
+									},
+								)}
+							/>
 							<button
-								className="cursor-pointer flex items-center justify-center gap-2 flex-1 text-sm font-medium transition-colors duration-300 relative z-10 text-vscode-foreground"
+								className={tabClass(state.activeTab === "mcp")}
 								onClick={() => manager.transition({ type: "SET_ACTIVE_TAB", payload: { tab: "mcp" } })}>
 								MCP
 							</button>
 							<button
-								className="cursor-pointer flex items-center justify-center gap-2 flex-1 text-sm font-medium transition-colors duration-300 relative z-10 text-vscode-foreground"
+								className={tabClass(state.activeTab === "mode")}
 								onClick={() =>
 									manager.transition({ type: "SET_ACTIVE_TAB", payload: { tab: "mode" } })
 								}>

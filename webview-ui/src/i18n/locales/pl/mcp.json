@@ -49,7 +49,13 @@
 		"retrying": "Ponawianie...",
 		"retryConnection": "Ponów połączenie",
 		"restart": "Uruchom serwer ponownie",
-		"toggle": "Włącz lub wyłącz serwer {{serverName}}"
+		"toggle": "Włącz lub wyłącz serwer {{serverName}}",
+		"state": {
+			"connected": "Działa",
+			"connecting": "Łączenie",
+			"disconnected": "Rozłączony",
+			"disabled": "Wyłączony"
+		}
 	},
 	"refreshMCP": "Odśwież serwery MCP",
 	"execution": {

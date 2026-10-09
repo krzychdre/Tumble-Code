@@ -70,7 +70,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 
 				<div className="flex flex-col gap-3 overflow-hidden">
 					{/* Worktree info */}
-					<div className="flex flex-col p-5 gap-2 cursor-default text-vscode-foreground bg-vscode-input-background">
+					<div className="flex flex-col p-3 gap-2 cursor-default text-vscode-foreground bg-surface border border-frame rounded-control">
 						<p className="flex items-center gap-2 m-0">
 							<GitBranch className="size-4 shrink-0" />
 							<span className="font-medium truncate">
@@ -88,7 +88,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 					</div>
 
 					{/* Warning message */}
-					<div className="flex items-start gap-2 px-5 py-2">
+					<div className="flex items-start gap-2 px-3 py-2">
 						<TriangleAlert className="size-4 text-vscode-charts-yellow flex-shrink-0" />
 						<div className="flex flex-col min-w-0 gap-2">
 							<p className="m-0 text-vscode-foreground">{t("worktrees:deleteWarning")}</p>
@@ -119,7 +119,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 
 					{/* Error message */}
 					{error && (
-						<div className="flex items-center gap-2 px-2 py-1.5 bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder text-sm">
+						<div className="flex items-center gap-2 px-2 py-1.5 bg-vscode-inputValidation-errorBackground border border-vscode-inputValidation-errorBorder rounded-control text-sm">
 							<span
 								className="codicon codicon-error text-vscode-errorForeground flex-shrink-0"
 								aria-hidden="true"
