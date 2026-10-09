@@ -40,10 +40,17 @@ const MemoryActivityBadge = memo(() => {
 				role="status"
 				aria-label={label}
 				data-busy={busy}
-				className="relative h-5 w-5 flex items-center justify-center opacity-85">
+				className={cn(
+					"relative size-[22px] flex items-center justify-center rounded-control border",
+					"transition-colors duration-200 hover:bg-surface-hover",
+					// Busy: green icon in a green-tinted frame; idle: the shared frame.
+					busy
+						? "border-[color-mix(in_srgb,var(--vscode-charts-green)_45%,transparent)]"
+						: "border-frame hover:border-frame-hover",
+				)}>
 				<Brain
 					className={cn(
-						"w-4 h-4 transition-colors duration-200",
+						"size-3.5 transition-colors duration-200",
 						busy ? "text-vscode-charts-green" : "text-vscode-descriptionForeground",
 					)}
 					aria-hidden

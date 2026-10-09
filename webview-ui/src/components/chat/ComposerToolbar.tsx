@@ -107,7 +107,7 @@ export const ComposerToolbar = ({
 			</div>
 			<div
 				className={cn(
-					"flex flex-shrink-0 items-center gap-0.5 h-5 leading-none",
+					"flex flex-shrink-0 items-center gap-1 h-[22px] leading-none",
 					!isEditMode && cloudUserInfo ? "" : "pr-2",
 				)}>
 				{!isEditMode ? <MemoryActivityBadge /> : null}

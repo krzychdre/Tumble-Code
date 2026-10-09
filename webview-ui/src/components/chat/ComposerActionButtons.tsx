@@ -5,6 +5,17 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { cn } from "@src/lib/utils"
 import { Spinner, StandardTooltip } from "@src/components/ui"
 
+/** Shared look of the composer's icon buttons: 28px square, description colour, no frame of their own. */
+const ACTION_BUTTON_BASE = cn(
+	"relative inline-flex items-center justify-center",
+	"min-w-[28px] min-h-[28px] p-1.5 bg-transparent border-none rounded-control",
+	"text-vscode-descriptionForeground",
+	"focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
+)
+
+/** Hover and press feedback, only on buttons the user can actually press right now. */
+const ACTION_BUTTON_INTERACTIVE = "hover:text-vscode-foreground hover:bg-surface-hover active:bg-surface-hover"
+
 interface ComposerActionButtonsProps {
 	isEditMode: boolean
 	/** The task is working (LLM request, command, MCP call, retry wait...), not waiting on the user. */
@@ -67,21 +78,13 @@ export const ComposerActionButtons = ({
 					disabled={shouldDisableImages}
 					onClick={!shouldDisableImages ? onSelectImages : undefined}
 					className={cn(
-						"relative inline-flex items-center justify-center",
-						"bg-transparent border-none p-1.5",
-						"min-w-[28px] min-h-[28px]",
-						"text-vscode-descriptionForeground hover:text-vscode-foreground",
+						ACTION_BUTTON_BASE,
 						"transition-all duration-1000",
-						"cursor-pointer",
 						!shouldDisableImages
-							? "opacity-50 hover:opacity-100 delay-750 pointer-events-auto"
+							? "opacity-100 delay-750 pointer-events-auto cursor-pointer"
 							: "opacity-0 pointer-events-none duration-200 delay-0",
-						!shouldDisableImages &&
-							"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
-						"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-						!shouldDisableImages && "active:bg-[rgba(255,255,255,0.1)]",
-						shouldDisableImages &&
-							"opacity-40 cursor-not-allowed grayscale-[30%] hover:bg-transparent hover:border-[rgba(255,255,255,0.08)] active:bg-transparent",
+						!shouldDisableImages && ACTION_BUTTON_INTERACTIVE,
+						shouldDisableImages && "opacity-40 cursor-not-allowed grayscale-[30%]",
 					)}>
 					<Image className="w-4 h-4" />
 				</button>
@@ -93,14 +96,9 @@ export const ComposerActionButtons = ({
 						disabled={false}
 						onClick={onCancel}
 						className={cn(
-							"relative inline-flex items-center justify-center",
-							"bg-transparent border-none p-1.5",
-							"min-w-[28px] min-h-[28px]",
-							"opacity-60 hover:opacity-100 text-vscode-descriptionForeground hover:text-vscode-foreground",
+							ACTION_BUTTON_BASE,
+							ACTION_BUTTON_INTERACTIVE,
 							"transition-all duration-150",
-							"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
-							"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-							"active:bg-[rgba(255,255,255,0.1)]",
 							"cursor-pointer",
 						)}>
 						<X className="w-4 h-4" />
@@ -113,19 +111,13 @@ export const ComposerActionButtons = ({
 						disabled={false}
 						onClick={onEnhancePrompt}
 						className={cn(
-							"relative inline-flex items-center justify-center",
-							"bg-transparent border-none p-1.5",
-							"min-w-[28px] min-h-[28px]",
-							"text-vscode-descriptionForeground hover:text-vscode-foreground",
+							ACTION_BUTTON_BASE,
 							"transition-all duration-1000",
 							"cursor-pointer",
 							hasInputContent
-								? "opacity-50 hover:opacity-100 delay-750 pointer-events-auto"
+								? "opacity-100 delay-750 pointer-events-auto"
 								: "opacity-0 pointer-events-none duration-200 delay-0",
-							hasInputContent &&
-								"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
-							"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-							hasInputContent && "active:bg-[rgba(255,255,255,0.1)]",
+							hasInputContent && ACTION_BUTTON_INTERACTIVE,
 						)}>
 						{isEnhancingPrompt ? <Spinner className="size-4" /> : <WandSparkles className="w-4 h-4" />}
 					</button>
@@ -139,15 +131,10 @@ export const ComposerActionButtons = ({
 						disabled={false}
 						onClick={onEnqueueMessage}
 						className={cn(
-							"relative inline-flex items-center justify-center",
-							"bg-transparent border-none p-1.5",
-							"min-w-[28px] min-h-[28px]",
-							"text-vscode-descriptionForeground hover:text-vscode-foreground",
+							ACTION_BUTTON_BASE,
+							ACTION_BUTTON_INTERACTIVE,
 							"transition-all duration-200",
-							"opacity-100 hover:opacity-100 pointer-events-auto",
-							"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
-							"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-							"active:bg-[rgba(255,255,255,0.1)]",
+							"opacity-100 pointer-events-auto",
 							"cursor-pointer",
 						)}>
 						<ListEnd className="w-4 h-4" />
@@ -161,20 +148,14 @@ export const ComposerActionButtons = ({
 					disabled={false}
 					onClick={isTaskBusy ? onStop : onSend}
 					className={cn(
-						"relative inline-flex items-center justify-center",
-						"bg-transparent border-none p-1.5",
-						"min-w-[28px] min-h-[28px]",
-						"text-vscode-descriptionForeground hover:text-vscode-foreground",
+						ACTION_BUTTON_BASE,
 						"transition-all duration-200",
 						isEditMode || isTaskBusy || hasInputContent
-							? "opacity-100 hover:opacity-100 pointer-events-auto"
+							? "opacity-100 pointer-events-auto cursor-pointer"
 							: "opacity-0 pointer-events-none",
-						(isEditMode || isTaskBusy || hasInputContent) &&
-							"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
-						"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-						(isEditMode || isTaskBusy || hasInputContent) && "active:bg-[rgba(255,255,255,0.1)]",
-						(isEditMode || isTaskBusy || hasInputContent) && "cursor-pointer",
-						isTaskBusy && "bg-vscode-button-background hover:bg-vscode-button-background",
+						(isEditMode || isTaskBusy || hasInputContent) && ACTION_BUTTON_INTERACTIVE,
+						isTaskBusy &&
+							"bg-vscode-button-background hover:bg-vscode-button-hoverBackground active:bg-vscode-button-hoverBackground",
 					)}>
 					{isTaskBusy ? (
 						<Square className="size-4 stroke-none fill-vscode-button-foreground" />

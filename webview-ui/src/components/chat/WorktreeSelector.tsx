@@ -88,17 +88,17 @@ export const WorktreeSelector = ({ disabled = false }: WorktreeSelectorProps) =>
 					disabled={disabled}
 					data-testid="worktree-selector-trigger"
 					className={cn(
-						"inline-flex gap-1 mx-2 mb-1 items-center relative whitespace-nowrap px-3 py-2",
-						"bg-transparent text-vscode-foreground text-left text-sm",
-						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
+						"inline-flex gap-1 mx-2 mb-1 items-center relative whitespace-nowrap h-[22px] px-[7px] rounded-control",
+						"bg-transparent border border-frame text-vscode-foreground text-left text-xs",
+						"transition-colors duration-150 focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-vscode-focusBorder",
 						disabled
 							? "opacity-50 cursor-not-allowed"
-							: "opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer",
+							: "hover:bg-surface-hover hover:border-frame-hover cursor-pointer",
 					)}>
 					<span className="font-semibold mr-2">{t("worktrees:selector.worktree")}:</span>
 					<GitBranch className="w-3 h-3" />
 					<span className="truncate">{currentWorktree?.branch || t("worktrees:noBranch")}</span>
-					<ChevronDown className="size-3" />
+					<ChevronDown className="size-3 text-vscode-descriptionForeground" />
 				</PopoverTrigger>
 			</StandardTooltip>
 			<PopoverContent
@@ -107,10 +107,10 @@ export const WorktreeSelector = ({ disabled = false }: WorktreeSelectorProps) =>
 				container={portalContainer}
 				className="p-0 overflow-hidden min-w-80 max-w-9/10">
 				<div className="flex flex-col w-full">
-					{/* Bottom bar with settings cog and title */}
-					<div className="px-3 pb-4">
-						<div className="flex flex-row items-center justify-between">
-							<h4 className="">{t("worktrees:selector.title")}</h4>
+					{/* Header with title, settings cog and description */}
+					<div className="p-3 border-b border-frame">
+						<div className="flex flex-row items-center justify-between pb-1">
+							<h4 className="m-0 text-sm font-semibold">{t("worktrees:selector.title")}</h4>
 							<IconButton
 								icon="codicon-settings-gear"
 								title={t("worktrees:selector.settings")}
@@ -132,33 +132,33 @@ export const WorktreeSelector = ({ disabled = false }: WorktreeSelectorProps) =>
 									onClick={() => !isSelected && handleSelect(worktree.path)}
 									data-testid="worktree-selector-item"
 									className={cn(
-										"px-3 py-1.5 text-sm cursor-pointer flex items-center",
-										"hover:bg-vscode-list-hoverBackground",
-										isSelected &&
-											"bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground",
+										"mx-1 px-2.5 py-1.5 text-sm cursor-pointer flex items-center rounded-control",
+										isSelected ? "bg-selected" : "hover:bg-surface-hover",
 									)}>
 									<div className="flex-1 min-w-0">
 										<div className="flex items-center gap-2">
 											<GitBranch className="w-3 h-3 shrink-0" />
-											<span className="font-bold truncate">
+											<span className="font-semibold truncate">
 												{worktree.branch || t("worktrees:noBranch")}
 											</span>
 											{worktree.isBare && (
-												<span className="text-xs opacity-70">{t("worktrees:primary")}</span>
+												<span className="text-xs text-vscode-descriptionForeground">
+													{t("worktrees:primary")}
+												</span>
 											)}
 										</div>
 										<div className="text-xs text-vscode-descriptionForeground ml-5 truncate">
 											{worktree.path}
 										</div>
 									</div>
-									{isSelected && <Check className="ml-auto size-4 p-0.5" />}
+									{isSelected && <Check className="ml-auto size-4 p-0.5 text-vscode-focusBorder" />}
 								</div>
 							)
 						})}
 					</div>
 
 					{/* New worktree button */}
-					<div className="px-3 py-2 border-t border-vscode-panel-border">
+					<div className="px-2 py-2 border-t border-frame">
 						<Button
 							variant="ghost"
 							size="sm"

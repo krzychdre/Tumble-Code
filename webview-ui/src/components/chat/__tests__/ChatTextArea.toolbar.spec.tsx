@@ -237,7 +237,7 @@ describe("ChatTextArea action buttons (characterization)", () => {
 		expect(buttonWithIcon(container, "lucide-wand-sparkles")).toHaveClass("opacity-0")
 
 		rerender(<ChatTextArea {...defaultProps} inputValue="hi" />)
-		expect(buttonWithIcon(container, "lucide-wand-sparkles")).toHaveClass("opacity-50", "pointer-events-auto")
+		expect(buttonWithIcon(container, "lucide-wand-sparkles")).toHaveClass("opacity-100", "pointer-events-auto")
 	})
 
 	it("edit mode shows a cancel button instead of enhance, and Escape cancels", () => {

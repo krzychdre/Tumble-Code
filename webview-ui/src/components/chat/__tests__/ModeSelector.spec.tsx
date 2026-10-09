@@ -365,7 +365,7 @@ describe("ModeSelector", () => {
 
 		fireEvent.click(trigger)
 		const items = screen.getAllByTestId("mode-selector-item")
-		expect(items.map((item) => item.querySelector(".font-bold")?.textContent)).toEqual(["Code", "Translate"])
+		expect(items.map((item) => item.querySelector(".font-semibold")?.textContent)).toEqual(["Code", "Translate"])
 		items.forEach((item) => expect(item.querySelector("svg")).not.toBeNull())
 	})
 })

@@ -2,6 +2,7 @@ import type { IndexingStatus } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { LabeledCheckbox } from "@src/components/ui"
 
 type CodeIndexWorkspaceTogglesProps = {
 	indexingStatus: IndexingStatus
@@ -19,9 +20,8 @@ export const CodeIndexWorkspaceToggles = ({ indexingStatus }: CodeIndexWorkspace
 	return (
 		<>
 			{/* Auto-enable default */}
-			<div className="flex items-center gap-2 pt-4 pb-1">
-				<input
-					type="checkbox"
+			<div className="pt-4 pb-1">
+				<LabeledCheckbox
 					id="auto-enable-default-toggle"
 					checked={indexingStatus.autoEnableDefault ?? true}
 					onChange={(e) =>
@@ -30,17 +30,14 @@ export const CodeIndexWorkspaceToggles = ({ indexingStatus }: CodeIndexWorkspace
 							bool: e.target.checked,
 						})
 					}
-					className="accent-vscode-focusBorder"
-				/>
-				<label htmlFor="auto-enable-default-toggle" className="text-xs text-vscode-foreground cursor-pointer">
+					className="text-xs text-vscode-foreground">
 					{t("settings:codeIndex.autoEnableDefaultLabel")}
-				</label>
+				</LabeledCheckbox>
 			</div>
 
 			{/* Workspace Toggle */}
-			<div className="flex items-center gap-2 pt-1 pb-2">
-				<input
-					type="checkbox"
+			<div className="pt-1 pb-2">
+				<LabeledCheckbox
 					id="workspace-indexing-toggle"
 					checked={indexingStatus.workspaceEnabled ?? false}
 					onChange={(e) =>
@@ -49,11 +46,9 @@ export const CodeIndexWorkspaceToggles = ({ indexingStatus }: CodeIndexWorkspace
 							bool: e.target.checked,
 						})
 					}
-					className="accent-vscode-focusBorder"
-				/>
-				<label htmlFor="workspace-indexing-toggle" className="text-xs text-vscode-foreground cursor-pointer">
+					className="text-xs text-vscode-foreground">
 					{t("settings:codeIndex.workspaceToggleLabel")}
-				</label>
+				</LabeledCheckbox>
 			</div>
 		</>
 	)
