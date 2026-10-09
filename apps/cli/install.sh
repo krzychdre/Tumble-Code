@@ -7,6 +7,8 @@
 #   ROO_BIN_DIR       - Binary symlink directory (default: ~/.local/bin)
 #   ROO_VERSION       - Specific version to install (default: latest)
 #   ROO_LOCAL_TARBALL - Path to local tarball to install (skips download)
+#   ROO_NPM_TIMEOUT   - Seconds before a stalled npm install is killed (default: 180)
+#   ROO_CONNECT_TIMEOUT - Seconds to wait while connecting to GitHub or npm (default: 10)
 
 set -e
 
@@ -15,6 +17,16 @@ INSTALL_DIR="${ROO_INSTALL_DIR:-$HOME/.roo/cli}"
 BIN_DIR="${ROO_BIN_DIR:-$HOME/.local/bin}"
 REPO="krzychdre/Tumble-Code"
 MIN_NODE_VERSION=22
+
+# Robustness knobs: every network step is bounded so the installer can never
+# stall on an unreachable network, and the dependencies are installed into a
+# staging directory so a failed install cannot destroy a working one.
+CONNECT_TIMEOUT="${ROO_CONNECT_TIMEOUT:-10}" # seconds per network connection
+NPM_TIMEOUT="${ROO_NPM_TIMEOUT:-180}"        # wall-clock budget for one npm install
+# Ignore junk in the knobs instead of dying later inside [ ].
+case "$NPM_TIMEOUT" in *[!0-9]*|"") NPM_TIMEOUT=180 ;; esac
+case "$CONNECT_TIMEOUT" in *[!0-9]*|"") CONNECT_TIMEOUT=10 ;; esac
+REGISTRY_REACHABLE=""
 
 # Color output (only if terminal supports it)
 if [ -t 1 ]; then
@@ -37,6 +49,45 @@ info() { printf "${GREEN}==>${NC} %s\n" "$1"; }
 warn() { printf "${YELLOW}Warning:${NC} %s\n" "$1"; }
 error() { printf "${RED}Error:${NC} %s\n" "$1" >&2; exit 1; }
 
+# Run "$@" in the background under a wall-clock budget (first argument,
+# seconds). A wedged network - a blackholed connect, a stalled postinstall
+# download - gets killed instead of stalling the installer forever. Returns
+# 124 on timeout, the command's exit status otherwise, and prints a heartbeat
+# so a long install never looks frozen.
+run_with_timeout() {
+    BUDGET_SECS="$1"
+    shift
+    "$@" &
+    RUN_PID=$!
+    RUN_ELAPSED=0
+    while kill -0 "$RUN_PID" 2>/dev/null; do
+        if [ "$RUN_ELAPSED" -ge "$BUDGET_SECS" ]; then
+            kill "$RUN_PID" 2>/dev/null || true
+            sleep 1
+            kill -9 "$RUN_PID" 2>/dev/null || true
+            return 124
+        fi
+        sleep 1
+        RUN_ELAPSED=$((RUN_ELAPSED + 1))
+        if [ $((RUN_ELAPSED % 15)) -eq 0 ]; then
+            printf "  ...still running (%ss)\n" "$RUN_ELAPSED"
+        fi
+    done
+    if wait "$RUN_PID" 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+# Show the tail of an npm log. npm's output is kept instead of being thrown
+# into /dev/null, so a failure points at the real cause.
+show_npm_log() {
+    if [ -s "$1" ]; then
+        warn "Last lines of the npm output:"
+        tail -n 15 "$1" 2>/dev/null | sed 's/^/    /'
+    fi
+}
+
 # Check Node.js version
 check_node() {
     if ! command -v node >/dev/null 2>&1; then
@@ -56,6 +107,17 @@ Please upgrade Node.js to version $MIN_NODE_VERSION or higher."
     fi
     
     info "Found Node.js $(node -v)"
+}
+
+# npm ships with Node.js but minimal images sometimes omit it; without this
+# check the failure would hide behind 2>/dev/null as "Make sure npm is
+# available".
+check_npm() {
+    if ! command -v npm >/dev/null 2>&1; then
+        error "npm is not available. It normally ships with Node.js.
+
+Reinstall Node.js $MIN_NODE_VERSION or higher, or install npm manually."
+    fi
 }
 
 # Detect OS and architecture
@@ -100,7 +162,7 @@ get_version() {
     info "Fetching latest version..."
     
     # Try to get the latest cli release
-    RELEASES_JSON=$(curl -fsSL "https://api.github.com/repos/$REPO/releases" 2>/dev/null) || {
+    RELEASES_JSON=$(curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" "https://api.github.com/repos/$REPO/releases" 2>/dev/null) || {
         error "Failed to fetch releases from GitHub. Check your internet connection."
     }
     
@@ -166,13 +228,101 @@ if (latestVersion) {
     info "Latest version: $VERSION"
 }
 
+# Probe the npm registry through npm itself, so the user's mirror and proxy
+# settings apply, under a hard timeout: an unreachable network is detected in
+# seconds instead of surfacing as npm's multi-minute retry stall.
+check_registry() {
+    info "Checking npm registry reachability..."
+    NPM_PING_LOG="$TMP_DIR/npm-ping.log"
+    PING_STATUS=0
+    run_with_timeout $((CONNECT_TIMEOUT + 5)) sh -c 'exec npm ping --fetch-retries=0 --fetch-timeout="$1" >>"$2" 2>&1' sh "$((CONNECT_TIMEOUT * 1000))" "$NPM_PING_LOG" || PING_STATUS=$?
+    if [ "$PING_STATUS" -eq 0 ]; then
+        REGISTRY_REACHABLE=1
+        return 0
+    fi
+    REGISTRY_REACHABLE=""
+    if [ "$PING_STATUS" -eq 124 ]; then
+        warn "npm registry did not answer within $((CONNECT_TIMEOUT + 5))s."
+    else
+        warn "npm registry not reachable:"
+        tail -n 3 "$NPM_PING_LOG" 2>/dev/null | sed 's/^/    /'
+    fi
+}
+
+# Report a stalled dependency install: show what npm managed to say, then stop.
+npm_install_timed_out() {
+    show_npm_log "$1"
+    error "Installing dependencies timed out after ${NPM_TIMEOUT}s and npm was terminated.
+
+This is almost always a network problem (offline machine, captive portal,
+blackholed VPN). Check your connection and run the installer again, or raise
+the budget with ROO_NPM_TIMEOUT=<seconds> if your network is just slow."
+}
+
+# Install the release's external dependencies into $1 (a staging directory),
+# appending npm's output to $2. Every attempt is bounded by run_with_timeout
+# so neither an offline machine nor a wedged network can stall the installer:
+#   - registry unreachable -> first a cache-only --offline attempt (it cannot
+#     stall), then bounded registry attempts in case the ping was a false
+#     alarm - the tarball download usually succeeded moments earlier
+#   - install stalled      -> killed after $NPM_TIMEOUT seconds
+#   - any failure          -> npm's own output is shown, not discarded
+install_dependencies() {
+    TARGET_DIR="$1"
+    NPM_LOG="$2"
+
+    # npm runs through sh -c so its output goes to the log while the
+    # run_with_timeout heartbeat stays on the terminal; extra arguments become
+    # extra npm flags.
+    run_npm_install() {
+        run_with_timeout "$NPM_TIMEOUT" sh -c 'cd "$1" || exit 1; log="$2"; shift 2; exec npm install --omit=dev --no-audit --no-fund --loglevel=warn "$@" >>"$log" 2>&1' sh "$TARGET_DIR" "$NPM_LOG" "$@"
+    }
+
+    if [ -z "$REGISTRY_REACHABLE" ]; then
+        warn "npm registry unreachable - installing from the local npm cache only..."
+        OFFLINE_STATUS=0
+        run_npm_install --offline || OFFLINE_STATUS=$?
+        if [ "$OFFLINE_STATUS" -eq 0 ]; then
+            info "Dependencies restored from the npm cache."
+            return 0
+        fi
+        if [ "$OFFLINE_STATUS" -eq 124 ]; then
+            npm_install_timed_out "$NPM_LOG"
+        fi
+        show_npm_log "$NPM_LOG"
+        warn "The npm cache is not enough - trying the registry anyway..."
+    fi
+
+    info "Installing dependencies..."
+    INSTALL_STATUS=0
+    run_npm_install --prefer-offline || INSTALL_STATUS=$?
+    if [ "$INSTALL_STATUS" -eq 124 ]; then
+        npm_install_timed_out "$NPM_LOG"
+    fi
+    if [ "$INSTALL_STATUS" -ne 0 ]; then
+        warn "npm install failed, trying again with --legacy-peer-deps..."
+        INSTALL_STATUS=0
+        run_npm_install --prefer-offline --legacy-peer-deps || INSTALL_STATUS=$?
+        if [ "$INSTALL_STATUS" -eq 124 ]; then
+            npm_install_timed_out "$NPM_LOG"
+        fi
+        if [ "$INSTALL_STATUS" -ne 0 ]; then
+            show_npm_log "$NPM_LOG"
+            error "Failed to install dependencies.
+
+If this machine is offline or behind a proxy, fix the network first and run
+the installer again. A previous installation, if any, is left untouched."
+        fi
+    fi
+}
+
 # Download and extract
 download_and_install() {
     TARBALL="tumble-cli-${PLATFORM}.tar.gz"
     
     # Create temp directory
     TMP_DIR=$(mktemp -d)
-    trap "rm -rf $TMP_DIR" EXIT
+    trap 'rm -rf "$TMP_DIR"' EXIT
     
     # Use local tarball if provided, otherwise download
     if [ -n "$ROO_LOCAL_TARBALL" ]; then
@@ -183,17 +333,21 @@ download_and_install() {
         cp "$ROO_LOCAL_TARBALL" "$TMP_DIR/$TARBALL"
     else
         URL="https://github.com/$REPO/releases/download/cli-v${VERSION}/${TARBALL}"
-        
+
         info "Downloading from $URL..."
-        
-        # Download with progress indicator
-        HTTP_CODE=$(curl -fsSL -w "%{http_code}" "$URL" -o "$TMP_DIR/$TARBALL" 2>/dev/null) || {
+
+        # Download with progress indicator, bounded so an unreachable network
+        # fails with a message instead of hanging the installer.
+        HTTP_CODE=$(curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" --speed-time 60 --speed-limit 10 -w "%{http_code}" "$URL" -o "$TMP_DIR/$TARBALL" 2>"$TMP_DIR/curl-download.log") || {
             if [ "$HTTP_CODE" = "404" ]; then
                 error "Release not found for platform $PLATFORM version $VERSION.
 
 Available at: https://github.com/$REPO/releases"
             fi
-            error "Download failed. HTTP code: $HTTP_CODE"
+            CURL_TIP=$(tail -n 1 "$TMP_DIR/curl-download.log" 2>/dev/null)
+            error "Download failed${CURL_TIP:+: $CURL_TIP}
+
+Check your internet connection and run the installer again."
         }
 
         # Verify we got something
@@ -202,52 +356,55 @@ Available at: https://github.com/$REPO/releases"
         fi
     fi
 
-    # Remove old installation if exists
-    if [ -d "$INSTALL_DIR" ]; then
-        info "Removing previous installation..."
-        rm -rf "$INSTALL_DIR"
-    fi
-    
-    mkdir -p "$INSTALL_DIR"
-    
-    # Extract
-    info "Extracting to $INSTALL_DIR..."
-    tar -xzf "$TMP_DIR/$TARBALL" -C "$INSTALL_DIR" --strip-components=1 || {
+    # Extract into a staging directory and replace the installation only after
+    # the dependencies are installed: a failed or offline install then leaves
+    # any previous working installation untouched.
+    STAGING_DIR="$TMP_DIR/staging"
+    mkdir -p "$STAGING_DIR"
+
+    info "Extracting..."
+    tar -xzf "$TMP_DIR/$TARBALL" -C "$STAGING_DIR" --strip-components=1 || {
         error "Failed to extract tarball. The download may be corrupted."
     }
-    
+
     # Save ripgrep binary before npm install (npm install will overwrite node_modules)
     RIPGREP_BIN=""
-    if [ -f "$INSTALL_DIR/node_modules/@vscode/ripgrep/bin/rg" ]; then
+    if [ -f "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg" ]; then
         RIPGREP_BIN="$TMP_DIR/rg"
-        cp "$INSTALL_DIR/node_modules/@vscode/ripgrep/bin/rg" "$RIPGREP_BIN"
+        cp "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg" "$RIPGREP_BIN"
     fi
-    
-    # Install npm dependencies
-    info "Installing dependencies..."
-    cd "$INSTALL_DIR"
-    npm install --production --silent 2>/dev/null || {
-        warn "npm install failed, trying with --legacy-peer-deps..."
-        npm install --production --legacy-peer-deps --silent 2>/dev/null || {
-            error "Failed to install dependencies. Make sure npm is available."
-        }
-    }
-    cd - > /dev/null
-    
+
+    # Probe the network before installing so an offline machine fails fast
+    # with clear guidance instead of stalling in npm's retry loop.
+    check_registry
+
+    # Install npm dependencies; bounded so a wedged network cannot stall us
+    NPM_LOG="$TMP_DIR/npm-install.log"
+    install_dependencies "$STAGING_DIR" "$NPM_LOG"
+
     # Restore ripgrep binary after npm install
     if [ -n "$RIPGREP_BIN" ] && [ -f "$RIPGREP_BIN" ]; then
-        mkdir -p "$INSTALL_DIR/node_modules/@vscode/ripgrep/bin"
-        cp "$RIPGREP_BIN" "$INSTALL_DIR/node_modules/@vscode/ripgrep/bin/rg"
-        chmod +x "$INSTALL_DIR/node_modules/@vscode/ripgrep/bin/rg"
+        mkdir -p "$STAGING_DIR/node_modules/@vscode/ripgrep/bin"
+        cp "$RIPGREP_BIN" "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg"
+        chmod +x "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg"
     fi
-    
+
     # Make executable
-    chmod +x "$INSTALL_DIR/bin/tumble"
-    
+    chmod +x "$STAGING_DIR/bin/tumble"
+
     # Also make ripgrep executable if it exists
-    if [ -f "$INSTALL_DIR/bin/rg" ]; then
-        chmod +x "$INSTALL_DIR/bin/rg"
+    if [ -f "$STAGING_DIR/bin/rg" ]; then
+        chmod +x "$STAGING_DIR/bin/rg"
     fi
+
+    # Swap the staged install into place; every failure above left the
+    # previous installation intact.
+    if [ -e "$INSTALL_DIR" ]; then
+        info "Replacing previous installation..."
+        rm -rf "$INSTALL_DIR"
+    fi
+    mkdir -p "$(dirname "$INSTALL_DIR")"
+    mv "$STAGING_DIR" "$INSTALL_DIR"
 }
 
 # Create symlink in bin directory
@@ -341,6 +498,7 @@ main() {
     echo ""
     
     check_node
+    check_npm
     detect_platform
     get_version
     download_and_install
