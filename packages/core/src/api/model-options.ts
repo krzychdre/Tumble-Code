@@ -3,6 +3,7 @@ import {
 	type ProviderSettings,
 	type ModelSourceId,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
+	isCompactProfile,
 } from "@tumble-code/types"
 
 // ApiHandlerOptions
@@ -84,6 +85,24 @@ export const GEMINI_25_PRO_MIN_THINKING_TOKENS = 128
 
 // Max Tokens
 
+/** Most output tokens the compact profile reserves when the model states no positive maxTokens. */
+export const COMPACT_MAX_OUTPUT_TOKENS = 4096
+/** Share of the context window the compact reservation may take at most (small windows). */
+export const COMPACT_OUTPUT_WINDOW_SHARE = 0.15
+
+/**
+ * Output space the compact profile reserves for a model without a positive `maxTokens`:
+ * `min(4096, floor(contextWindow * 0.15))`, 4096 for a 40,960-token window. A local model
+ * profile often leaves `maxTokens` at -1 ("no limit"), which used to reserve nothing, so a long
+ * answer could run past the window. 4096 tokens fit a full tool call or a condense summary; the
+ * 15 percent share keeps a very small window usable.
+ */
+export function getCompactOutputReservation(contextWindow: number): number {
+	return contextWindow > 0
+		? Math.min(COMPACT_MAX_OUTPUT_TOKENS, Math.floor(contextWindow * COMPACT_OUTPUT_WINDOW_SHARE))
+		: COMPACT_MAX_OUTPUT_TOKENS
+}
+
 export const getModelMaxOutputTokens = ({
 	modelId,
 	model,
@@ -97,6 +116,18 @@ export const getModelMaxOutputTokens = ({
 }): number | undefined => {
 	if (shouldUseReasoningBudget({ model, settings })) {
 		return settings?.modelMaxTokens || DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS
+	}
+
+	// Compact profile (small local models): a missing or non-positive maxTokens reserves a
+	// bounded output instead of nothing (-1 used to win every min below) or the 8192 fallback.
+	// A positive maxTokens, and an explicit modelMaxTokens on a model with a max-output
+	// slider, keep the rules below.
+	if (
+		isCompactProfile(settings) &&
+		!(typeof model.maxTokens === "number" && model.maxTokens > 0) &&
+		!(model.supportsMaxTokens && settings?.modelMaxTokens != null && settings.modelMaxTokens > 0)
+	) {
+		return getCompactOutputReservation(model.contextWindow)
 	}
 
 	const isAnthropicContext =

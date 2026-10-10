@@ -29,6 +29,11 @@ or false every output is today's (`compact-off-golden.spec.ts` plus the flag-off
 - `OpenAiHandler.addMaxTokensIfNeeded`: under compact always send `max_completion_tokens` (llama.cpp reads it as
   an alias of `n_predict`), equal to the reservation, or to the user's smaller explicit value when
   `includeMaxTokens` is on.
+- Added on request: one tool call per message under compact. `TaskApiLoop` sets `parallelToolCalls: false` in
+  the request metadata (every handler that sends `parallel_tool_calls` reads it: openai, lm-studio, deepseek,
+  qwen-code, xai, the base OpenAI-compatible handlers; Anthropic turns it into `disable_parallel_tool_use`), and
+  `OpenAiHandler` also forces `false` from its own options. Native Ollama has no such parameter.
+- Not covered (follow-up): LM Studio and native Ollama send no output limit at all (`max_tokens` / `num_predict`).
 
 ## 3. Condensing
 

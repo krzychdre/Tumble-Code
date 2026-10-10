@@ -8,6 +8,7 @@ import {
 	openAiModelInfoSaneDefaults,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
 	OPENAI_AZURE_AI_INFERENCE_PATH,
+	isCompactProfile,
 } from "@tumble-code/types"
 
 import { type ApiHandlerOptions, shouldUseReasoningEffort } from "@tumble-code/core/browser"
@@ -211,7 +212,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				...(reasoning && reasoning),
 				tools: this.convertToolsForOpenAI(metadata?.tools),
 				tool_choice: metadata?.tool_choice,
-				parallel_tool_calls: metadata?.parallelToolCalls ?? true,
+				parallel_tool_calls: this.resolveParallelToolCalls(metadata),
 			}
 
 			// Add max_tokens if needed
@@ -234,7 +235,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				// Tools are always present (minimum ALWAYS_AVAILABLE_TOOLS)
 				tools: this.convertToolsForOpenAI(metadata?.tools),
 				tool_choice: metadata?.tool_choice,
-				parallel_tool_calls: metadata?.parallelToolCalls ?? true,
+				parallel_tool_calls: this.resolveParallelToolCalls(metadata),
 			}
 
 			// Add max_tokens if needed
@@ -437,7 +438,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				// Tools are always present (minimum ALWAYS_AVAILABLE_TOOLS)
 				tools: this.convertToolsForOpenAI(metadata?.tools),
 				tool_choice: metadata?.tool_choice,
-				parallel_tool_calls: metadata?.parallelToolCalls ?? true,
+				parallel_tool_calls: this.resolveParallelToolCalls(metadata),
 			}
 
 			// O3 family models do not support the deprecated max_tokens parameter
@@ -467,7 +468,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				// Tools are always present (minimum ALWAYS_AVAILABLE_TOOLS)
 				tools: this.convertToolsForOpenAI(metadata?.tools),
 				tool_choice: metadata?.tool_choice,
-				parallel_tool_calls: metadata?.parallelToolCalls ?? true,
+				parallel_tool_calls: this.resolveParallelToolCalls(metadata),
 			}
 
 			// O3 family models do not support the deprecated max_tokens parameter
@@ -586,12 +587,37 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			| OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
 		modelInfo: ModelInfo,
 	): void {
+		// Compact profile (small local models): always bound the generation by the output space
+		// the context management reserved (getModelMaxOutputTokens, 4096 for a 40,960 window when
+		// maxTokens is -1), so an answer cannot run past the window. A smaller explicit value from
+		// "include max tokens" is kept; a larger one is lowered to the reservation. llama.cpp reads
+		// max_completion_tokens as an alias of n_predict.
+		if (isCompactProfile(this.options)) {
+			const reserved = this.getModel().maxTokens
+			const requested =
+				this.options.includeMaxTokens === true ? this.options.modelMaxTokens || modelInfo.maxTokens : undefined
+			const limits = [reserved, requested].filter((n): n is number => typeof n === "number" && n > 0)
+			if (limits.length > 0) {
+				requestOptions.max_completion_tokens = Math.min(...limits)
+			}
+			return
+		}
+
 		// Only add max_completion_tokens if includeMaxTokens is true
 		if (this.options.includeMaxTokens === true) {
 			// Use user-configured modelMaxTokens if available, otherwise fall back to model's default maxTokens
 			// Using max_completion_tokens as max_tokens is deprecated
 			requestOptions.max_completion_tokens = this.options.modelMaxTokens || modelInfo.maxTokens
 		}
+	}
+
+	/**
+	 * `parallel_tool_calls` for a request. The compact profile asks for one tool call per message
+	 * (its prompt says so, and llama.cpp honours the parameter): a small model that emits several
+	 * calls at once loses track of their results. Otherwise the caller's choice, default true.
+	 */
+	private resolveParallelToolCalls(metadata?: ApiHandlerCreateMessageMetadata): boolean {
+		return isCompactProfile(this.options) ? false : (metadata?.parallelToolCalls ?? true)
 	}
 
 	/**
