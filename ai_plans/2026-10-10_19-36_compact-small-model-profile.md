@@ -158,6 +158,17 @@ the tool filter does, and a selection writes only the flags whose effective valu
 `SlimToolsetControl` and `CompactProfileControl`; the locale keys moved to `settings:advanced.modelSize.*` in all 18
 locales, with the existing MCP sub-checkbox translations carried over.
 
+## Subagents off under compact (owner's request, 2026-10-10)
+
+"When compact mode is activated, deactivate subagents and set them to off." Every subagent setting
+(`parallelTasksMaxConcurrency`, the followup timeout, `alwaysAllowSubtasks`) is global, so writing one of them from a
+compact profile would take subagents away from large models too. Subagents are therefore off per profile, at runtime:
+`NewTaskTool` and `RunParallelTasksTool` refuse for a compact task right after the background check, counting a mistake
+(`recordFailure`) so a small model cannot loop on the refused tool, and `new_task` gets no checkpoint and no streaming
+card under compact (plan `2026-10-10_22-36_compact-no-subagents.md`). In the settings, selecting the compact option
+shows a disabled, unchecked "Subagents" switch under it, and the Subagents tab notes that a compact profile never starts
+subagents whatever its settings say.
+
 ## Follow-ups outside this branch
 
 - Ungated: route malformed `apply_diff` errors through `toolError` so they carry the minimal example, and stop
