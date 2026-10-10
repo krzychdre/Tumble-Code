@@ -25,7 +25,12 @@ export interface SystemPromptState {
 	enableSubfolderRules?: boolean
 	disabledTools?: string[]
 	parallelTasksMaxConcurrency?: number
-	/** The ACTIVE profile, so the slim-toolset flags follow every mode switch. */
+	/**
+	 * The ACTIVE profile, so the slim-toolset flags follow every mode switch.
+	 * `compactProfile` is deliberately not read from here: it follows the profile
+	 * that serves the request, which the caller passes as
+	 * `SystemPromptSource.compactProfile`.
+	 */
 	apiConfiguration?: Pick<ProviderSettings, "todoListEnabled" | "slimToolset" | "slimHidesMcp">
 }
 
@@ -54,6 +59,15 @@ export interface SystemPromptSource {
 	isBackground?: boolean
 	/** Facts about the model the request goes to. */
 	modelInfo?: { isStealthModel?: boolean; excludedTools?: string[] }
+	/**
+	 * Whether the profile that serves the request is a compact profile, resolved
+	 * by the caller with `isCompactProfile()` from the same profile it takes the
+	 * model from: the live request uses the task's own `apiConfiguration` (the
+	 * profile its API handler was built from, which a background task or a
+	 * detached parent does not share with the panel), the preview uses the
+	 * profile it resolves the preview model from. Undefined means off.
+	 */
+	compactProfile?: boolean
 	skillsManager?: SkillsManager
 }
 
@@ -114,6 +128,7 @@ export function buildSystemPromptInput(source: SystemPromptSource): SystemPrompt
 			isStealthModel: source.modelInfo?.isStealthModel,
 			slimToolset: state?.apiConfiguration?.slimToolset,
 			slimHidesMcp: state?.apiConfiguration?.slimHidesMcp,
+			compactProfile: source.compactProfile,
 			removedTools: [
 				...(getRequestDisabledTools(state, source.isBackground ?? false) ?? []),
 				...(source.modelInfo?.excludedTools ?? []),

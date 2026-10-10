@@ -150,12 +150,16 @@ function makeProvider(state: Record<string, unknown>) {
 }
 
 /** The task as the live path sees it (Task hands itself to ApiRequestBuilder as the access object). */
-function makeTask(provider: ReturnType<typeof makeProvider>, materialized: string[] = []) {
+function makeTask(
+	provider: ReturnType<typeof makeProvider>,
+	materialized: string[] = [],
+	apiConfiguration: Record<string, unknown> = {},
+) {
 	return {
 		taskId: "task-1",
 		instanceId: "instance-1",
 		isBackground: false,
-		apiConfiguration: {},
+		apiConfiguration,
 		api: { getModel: () => ({ id: "test-model", info: { isStealthModel: false } }) },
 		apiConversationHistory: [],
 		microcompactedIds: new Set<string>(),
@@ -174,9 +178,13 @@ function makeTask(provider: ReturnType<typeof makeProvider>, materialized: strin
 }
 
 /** Build the preview and the live prompt for one task state, recording what each passed to SYSTEM_PROMPT. */
-async function previewAndLive(state: Record<string, unknown>, materialized: string[] = []) {
+async function previewAndLive(
+	state: Record<string, unknown>,
+	materialized: string[] = [],
+	taskApiConfiguration: Record<string, unknown> = {},
+) {
 	const provider = makeProvider(state)
-	const task = makeTask(provider, materialized)
+	const task = makeTask(provider, materialized, taskApiConfiguration)
 	provider.getCurrentTask.mockReturnValue(task)
 
 	vi.mocked(SYSTEM_PROMPT).mockClear()
@@ -234,6 +242,25 @@ describe("system prompt: preview equals live (CORE-R11)", () => {
 
 		// Both paths fall back to the settings default (MCP on).
 		expect(live).toContain("MCP SERVERS")
+		expect(preview).toBe(live)
+	})
+
+	it("passes the same compact flag when the focused task runs on the active compact profile", async () => {
+		// Every profile activation hands the profile to the focused task
+		// (ModeProfileBinding.updateTaskApiHandlerIfNeeded), so the preview, which
+		// reads the active profile like it does for the model, and the live path,
+		// which reads the task's own profile, agree.
+		const profile = { apiProvider: "openai", todoListEnabled: true, compactProfile: true }
+		const { preview, live, previewInput, liveInput } = await previewAndLive(
+			makeState({ apiConfiguration: profile }),
+			[],
+			profile,
+		)
+
+		// Each recorded call is its argument list; SYSTEM_PROMPT takes one options object.
+		expect(liveInput[0].settings?.compactProfile).toBe(true)
+		expect(previewInput[0].settings?.compactProfile).toBe(true)
+		expect(previewInput).toEqual(liveInput)
 		expect(preview).toBe(live)
 	})
 

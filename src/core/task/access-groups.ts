@@ -42,7 +42,21 @@ export interface TaskApiHandlerAccess {
 	api: ApiHandler
 }
 
-/** The provider settings the task was created with. */
+/**
+ * The provider settings the task was created with: the profile its API handler
+ * (`api`) was built from. `Task.updateApiConfiguration` replaces both together
+ * when a profile is activated for the focused task (a mode switch to a mode with
+ * a bound profile, a profile switch, a saved profile edit), so this always names
+ * the profile that serves the task's next request. A background task or a
+ * detached parent keeps its own profile here while the panel's active profile
+ * (`getState().apiConfiguration`) belongs to the focused task.
+ *
+ * Per-profile behaviour of the task reads this, never the active profile. The
+ * compact profile flag in particular is read with exactly
+ * `isCompactProfile(this.access.apiConfiguration)` in a helper module, or
+ * `isCompactProfile(task.apiConfiguration)` where a `Task` is at hand (tools,
+ * getEnvironmentDetails), with `isCompactProfile` from `@tumble-code/types`.
+ */
 export interface TaskApiConfigurationAccess {
 	apiConfiguration: ProviderSettings
 }

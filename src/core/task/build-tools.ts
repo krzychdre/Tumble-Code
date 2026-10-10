@@ -41,6 +41,15 @@ interface BuildToolsOptions {
 	 */
 	webToolsEnabled?: boolean
 	/**
+	 * Whether the profile that serves the request is a compact profile. The
+	 * caller resolves it with `isCompactProfile(task.apiConfiguration)` (the
+	 * task's own profile, see ApiRequestBuilder.buildToolsArray); it is NOT read
+	 * from `apiConfiguration` above, which is the panel's active profile.
+	 * Undefined means off. Forwarded to the tool filters as
+	 * `filterSettings.compactProfile`; read it there with `isCompactProfile()`.
+	 */
+	compactProfile?: boolean
+	/**
 	 * If true, returns all tools without mode filtering, but also includes
 	 * the list of allowed tool names for use with allowedFunctionNames.
 	 * This enables providers that support function call restrictions (e.g., Gemini)
@@ -110,6 +119,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		disabledTools,
 		modelInfo,
 		webToolsEnabled,
+		compactProfile,
 		includeAllToolsWithRestrictions,
 		materializedDeferredTools,
 	} = options
@@ -132,6 +142,9 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		webToolsEnabled,
 		slimToolset: apiConfiguration?.slimToolset,
 		slimHidesMcp: apiConfiguration?.slimHidesMcp,
+		// The compact flag comes from the caller (the task's own profile), see
+		// `BuildToolsOptions.compactProfile`.
+		compactProfile,
 	}
 
 	// Check if the model supports images for read_file tool description.

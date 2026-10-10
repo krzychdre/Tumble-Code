@@ -391,6 +391,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private terminalEventEmitted = false
 
 	// API
+	/**
+	 * The profile `api` was built from; see TaskApiConfigurationAccess. Per-profile
+	 * flags of this task are read here, e.g. `isCompactProfile(task.apiConfiguration)`.
+	 */
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
 	autoApprovalHandler: AutoApprovalHandler

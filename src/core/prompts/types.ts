@@ -26,6 +26,14 @@ export interface SystemPromptSettings {
 	slimToolset?: boolean
 	slimHidesMcp?: boolean
 	/**
+	 * The compact profile flag of the profile that SERVES the request (the
+	 * task's own `apiConfiguration` on the live path), resolved by the caller
+	 * through `SystemPromptSource.compactProfile`. Read it with
+	 * `isCompactProfile(settings)` from `@tumble-code/types`; anything but `true`
+	 * means the prompt must stay byte-identical to a build without the flag.
+	 */
+	compactProfile?: boolean
+	/**
 	 * Tool names the request removes on top of the mode's groups (the user's
 	 * `disabledTools`, the model's `excludedTools`, the background-task
 	 * removals). TOOLS IN THIS MODE reads it so it never suggests `new_task` or
