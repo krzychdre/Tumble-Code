@@ -3,7 +3,7 @@
     "type": "function",
     "function": {
       "name": "read_file",
-      "description": "Read one file. Returns a header line, then the file's lines exactly as stored, without line numbers. Omit offset and limit to read from the start; use them only to continue a long file.",
+      "description": "Read one file. Returns a header line, then the file's lines without line numbers, as stored except that a line over 2000 characters is cut short. Omit offset and limit to read from the start; use them only to continue a long file.",
       "parameters": {
         "type": "object",
         "properties": {

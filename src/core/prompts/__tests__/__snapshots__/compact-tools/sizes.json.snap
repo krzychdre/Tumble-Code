@@ -4,36 +4,36 @@
     "todayNativeChars": 30769,
     "todaySentChars": 30875,
     "compactTools": 8,
-    "compactNativeChars": 3860,
-    "compactSentChars": 3980,
-    "compactWithWebToolsSentChars": 4620
+    "compactNativeChars": 3905,
+    "compactSentChars": 4025,
+    "compactWithWebToolsSentChars": 4665
   },
   "code": {
     "todayTools": 19,
     "todayNativeChars": 36504,
     "todaySentChars": 36632,
     "compactTools": 9,
-    "compactNativeChars": 4264,
-    "compactSentChars": 4399,
-    "compactWithWebToolsSentChars": 5039
+    "compactNativeChars": 4309,
+    "compactSentChars": 4444,
+    "compactWithWebToolsSentChars": 5084
   },
   "ask": {
     "todayTools": 15,
     "todayNativeChars": 27055,
     "todaySentChars": 27147,
     "compactTools": 6,
-    "compactNativeChars": 2681,
-    "compactSentChars": 2771,
-    "compactWithWebToolsSentChars": 3411
+    "compactNativeChars": 2726,
+    "compactSentChars": 2816,
+    "compactWithWebToolsSentChars": 3456
   },
   "debug": {
     "todayTools": 19,
     "todayNativeChars": 36504,
     "todaySentChars": 36632,
     "compactTools": 9,
-    "compactNativeChars": 4264,
-    "compactSentChars": 4399,
-    "compactWithWebToolsSentChars": 5039
+    "compactNativeChars": 4309,
+    "compactSentChars": 4444,
+    "compactWithWebToolsSentChars": 5084
   },
   "orchestrator": {
     "todayTools": 8,
