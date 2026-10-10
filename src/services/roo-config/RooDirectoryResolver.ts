@@ -20,7 +20,6 @@ import {
  * | ------------- | ------------ | ------------------------------------------------------------------------------- |
  * | `rules`       | concatenated | ~/.roo, <cwd>/.roo, then subfolder .roo directories alphabetically (opt-in)       |
  * | `agent-rules` | concatenated | <cwd>, then every subfolder that has a .roo directory (opt-in)                  |
- * | `commands`    | override     | built-in (not a directory), ~/.roo/commands, <cwd>/.roo/commands                  |
  * | `skills`      | override     | ~/.agents, <cwd>/.agents, ~/.roo, <cwd>/.roo (each: skills, then skills-<mode>)   |
  *
  * `rules` with a `mode` lists the `rules-<mode>` directories; the prompt puts
@@ -37,7 +36,7 @@ import {
  * mode and a mid-task mode switch resolves the new mode's directories.
  */
 
-export type RooDirectoryKind = "rules" | "agent-rules" | "commands" | "skills"
+export type RooDirectoryKind = "rules" | "agent-rules" | "skills"
 
 export type RooDirectorySource = "global" | "project" | "subfolder"
 
@@ -70,11 +69,6 @@ export class RooDirectoryResolver {
 				return RooDirectoryResolver.rules(cwd ?? "", options)
 			case "agent-rules":
 				return RooDirectoryResolver.agentRules(cwd ?? "", options)
-			case "commands":
-				return [
-					{ path: path.join(getGlobalRooDirectory(), "commands"), source: "global" },
-					{ path: path.join(getProjectRooDirectoryForCwd(cwd ?? ""), "commands"), source: "project" },
-				]
 			case "skills":
 				return RooDirectoryResolver.skills(cwd, options.modes ?? [])
 		}

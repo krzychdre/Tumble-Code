@@ -1,7 +1,5 @@
 // npx vitest run services/roo-config/__tests__/watcher.spec.ts
 
-import * as path from "path"
-
 const { watchers, invalidate } = vi.hoisted(() => ({
 	watchers: [] as Array<{
 		pattern: unknown
@@ -46,7 +44,6 @@ vi.mock("vscode", () => ({
 }))
 
 vi.mock("../cache", () => ({ invalidateRooDirectoryCache: invalidate }))
-vi.mock("../index", () => ({ getGlobalRooDirectory: () => path.join("home", ".roo") }))
 
 import { registerRooDirectoryWatchers } from "../watcher"
 
@@ -56,18 +53,15 @@ describe("registerRooDirectoryWatchers", () => {
 		invalidate.mockClear()
 	})
 
-	it("watches every workspace .roo directory and the global commands directory", () => {
+	it("watches every workspace .roo directory, and only for files appearing or disappearing", () => {
 		const disposables = registerRooDirectoryWatchers()
 
-		expect(watchers.map((w) => w.pattern)).toEqual([
-			"**/.roo/**",
-			expect.objectContaining({ pattern: "{commands,commands/**}", base: { fsPath: path.join("home", ".roo") } }),
-		])
-		// Two watchers plus three event subscriptions each.
-		expect(disposables).toHaveLength(8)
+		expect(watchers.map((w) => w.pattern)).toEqual(["**/.roo/**"])
+		// One watcher plus the create and delete subscriptions.
+		expect(disposables).toHaveLength(3)
 	})
 
-	it("drops every lookup when a file appears or disappears, and only command lists when one changes", () => {
+	it("drops every lookup when a file appears or disappears, and nothing when one changes", () => {
 		registerRooDirectoryWatchers()
 		const [workspace] = watchers
 
@@ -77,6 +71,6 @@ describe("registerRooDirectoryWatchers", () => {
 		expect(invalidate).toHaveBeenNthCalledWith(2)
 
 		workspace.change()
-		expect(invalidate).toHaveBeenNthCalledWith(3, "commands")
+		expect(invalidate).toHaveBeenCalledTimes(2)
 	})
 })

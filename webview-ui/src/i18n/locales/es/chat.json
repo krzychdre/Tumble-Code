@@ -461,18 +461,9 @@
 		"placeholder": "Edita tu mensaje..."
 	},
 	"slashCommands": {
-		"description": "Usa comandos de barra integrados o crea personalizados para acceder rápidamente a prompts y flujos de trabajo utilizados con frecuencia. <DocsLink>Documentación</DocsLink>",
-		"manageCommands": "Administrar comandos de barra en la configuración",
-		"globalCommands": "Comandos Globales",
-		"workspaceCommands": "Comandos del Espacio de Trabajo",
-		"editCommand": "Editar comando",
-		"deleteCommand": "Eliminar comando",
-		"deleteDialog": {
-			"title": "Eliminar Comando",
-			"description": "¿Estás seguro de que quieres eliminar el comando \"{{name}}\"? Esta acción no se puede deshacer.",
-			"cancel": "Cancelar",
-			"confirm": "Eliminar"
-		}
+		"title": "Comandos de Barra",
+		"description": "Ejecuta un comando integrado o un skill, o cambia de modo.",
+		"manageSkills": "Administrar skills en la configuración"
 	},
 	"contextMenu": {
 		"noResults": "No hay resultados",

@@ -465,18 +465,9 @@
 		"ariaLabel": "Version {{version}} - Click to view release notes"
 	},
 	"slashCommands": {
-		"description": "Use built-in slash commands or create custom ones for quick access to frequently used prompts and workflows. <DocsLink>Docs</DocsLink>",
-		"manageCommands": "Manage slash commands in settings",
-		"globalCommands": "Global Commands",
-		"workspaceCommands": "Workspace Commands",
-		"editCommand": "Edit command",
-		"deleteCommand": "Delete command",
-		"deleteDialog": {
-			"title": "Delete Command",
-			"description": "Are you sure you want to delete the command \"{{name}}\"? This action cannot be undone.",
-			"cancel": "Cancel",
-			"confirm": "Delete"
-		}
+		"title": "Slash Commands",
+		"description": "Run a built-in command or a skill, or switch modes.",
+		"manageSkills": "Manage skills in settings"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble wants to run a slash command",

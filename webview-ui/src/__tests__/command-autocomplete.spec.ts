@@ -167,6 +167,60 @@ describe("Command Autocomplete", () => {
 		})
 	})
 
+	describe("built-in commands and skills", () => {
+		const modes = [{ name: "Code", slug: "code", roleDefinition: "x", groups: ["read"] }] as any[]
+		const entries: Command[] = [
+			{ name: "init", source: "built-in", description: "Create AGENTS.md" },
+			{
+				name: "release",
+				source: "global",
+				description: "Cut a release",
+				filePath: "/h/.roo/skills/release/SKILL.md",
+			},
+			{
+				name: "lint",
+				source: "project",
+				description: "Run the linters",
+				filePath: "/w/.roo/skills/lint/SKILL.md",
+			},
+		]
+
+		it("lists built-in commands, then skills with their descriptions, then modes, each under its own header", () => {
+			const options = getContextMenuOptions("/", null, mockQueryItems, [], modes, entries)
+
+			expect(options.map((option) => [option.type, option.label ?? option.value])).toEqual([
+				[ContextMenuOptionType.SectionHeader, "Commands"],
+				[ContextMenuOptionType.Command, "init"],
+				[ContextMenuOptionType.SectionHeader, "Skills"],
+				[ContextMenuOptionType.Command, "release"],
+				[ContextMenuOptionType.Command, "lint"],
+				[ContextMenuOptionType.SectionHeader, "Modes"],
+				[ContextMenuOptionType.Mode, "code"],
+			])
+			expect(
+				options
+					.filter((option) => option.type === ContextMenuOptionType.Command)
+					.map((option) => option.description),
+			).toEqual(["Create AGENTS.md", "Cut a release", "Run the linters"])
+		})
+
+		it("inserts a skill as /skill-name, like a command", () => {
+			const options = getContextMenuOptions("/rel", null, mockQueryItems, [], [], entries)
+			const release = options.find((option) => option.value === "release")
+
+			expect(release?.type).toBe(ContextMenuOptionType.Command)
+			expect(release?.slashCommand).toBe("/release")
+		})
+
+		it("omits the Commands header when only skills match", () => {
+			const options = getContextMenuOptions("/lint", null, mockQueryItems, [], [], entries)
+
+			expect(options.filter((option) => option.type === ContextMenuOptionType.SectionHeader)).toEqual([
+				{ type: ContextMenuOptionType.SectionHeader, label: "Skills" },
+			])
+		})
+	})
+
 	describe("command source indication", () => {
 		it("should not expose source information in autocomplete", () => {
 			const options = getContextMenuOptions("/setup", null, mockQueryItems, [], [], mockCommands)

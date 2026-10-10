@@ -234,9 +234,6 @@ vi.mock("../About", () => ({
 vi.mock("../PromptsSettings", () => ({
 	default: () => null,
 }))
-vi.mock("../SlashCommandsSettings", () => ({
-	SlashCommandsSettings: () => null,
-}))
 vi.mock("../UISettings", () => ({
 	UISettings: () => null,
 }))

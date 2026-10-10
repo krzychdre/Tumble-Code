@@ -29,7 +29,8 @@ A bare short ID usually means the roadmap item. These places use the same letter
   openai-codex); folded into `API-13`.
 - `P1` and `P8` in `src/services/roo-config/__tests__/roo-directory-precedence.spec.ts`: rows of the refactor plan's
   services performance table: three workspace ripgrep scans per system-prompt build (P1) and the slash-command
-  list re-read from disk on every keystroke (P8). Both were fixed by `SVC-11` (#331).
+  list re-read from disk on every keystroke (P8). Both were fixed by `SVC-11` (#331); the P8 test went away with
+  the custom command files.
 - `API P2`, `API P3`, `API P4`, `API P6`: see the refactor plan section below, not the roadmap's P2 to P6.
 
 ## Refactor master plan (2026-09-24)

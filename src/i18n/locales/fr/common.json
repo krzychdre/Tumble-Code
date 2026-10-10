@@ -54,13 +54,6 @@
 		"share_task_not_found": "Tâche non trouvée ou accès refusé.",
 		"task_show_failed": "Échec de l'ouverture de la tâche. Elle a peut-être été supprimée ou corrompue.",
 		"mode_import_failed": "Échec de l'importation du mode : {{error}}",
-		"command_not_found": "Commande '{{name}}' introuvable",
-		"open_command_file": "Échec de l'ouverture du fichier de commande",
-		"delete_command": "Échec de la suppression de la commande",
-		"no_workspace_for_project_command": "Aucun dossier d'espace de travail trouvé pour la commande de projet",
-		"command_already_exists": "La commande \"{{commandName}}\" existe déjà",
-		"create_command_failed": "Échec de la création de la commande",
-		"command_template_content": "---\ndescription: \"Brève description de ce que fait cette commande\"\n---\n\nCeci est une nouvelle commande slash. Modifie ce fichier pour personnaliser le comportement de la commande.",
 		"message": {
 			"no_active_task_to_delete": "Aucune tâche active pour supprimer des messages",
 			"invalid_timestamp_for_deletion": "Horodatage du message invalide pour la suppression",

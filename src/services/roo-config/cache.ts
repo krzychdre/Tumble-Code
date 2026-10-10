@@ -2,15 +2,12 @@
  * Memo for lookups derived from `.roo` directories, keyed by lookup kind and
  * working directory.
  *
- * Two lookups are expensive enough to repeat badly:
+ * One lookup is expensive enough to repeat badly:
  * - "subfolders": the workspace-wide ripgrep scan for nested `.roo`
  *   directories. With subfolder rules on, every system-prompt build used to
  *   run it three times.
- * - "commands": the slash-command list. The chat input asks for it on every
- *   keystroke while the slash menu is open, and each request re-read and
- *   re-parsed every command file.
  *
- * Only directory LISTS and the command list are cached. Rule file contents are
+ * Only directory LISTS are cached. Rule file contents are
  * still read on every prompt build, and mode-specific directories are derived
  * from the cached list for the mode of that build, so a mid-task mode switch
  * never sees another mode's rules.
@@ -20,7 +17,7 @@
  * shim), after ROO_DIRECTORY_CACHE_TTL_MS.
  */
 
-export type RooDirectoryCacheKind = "subfolders" | "commands"
+export type RooDirectoryCacheKind = "subfolders"
 
 /** Upper bound on how stale a cached lookup can get when no watcher reports a change. */
 export const ROO_DIRECTORY_CACHE_TTL_MS = 30_000

@@ -446,18 +446,9 @@
 		"ariaLabel": "版本 {{version}} - 點選查看發布說明"
 	},
 	"slashCommands": {
-		"description": "使用內建斜線命令或建立自訂命令，以便快速存取常用的提示詞和工作流程。<DocsLink>說明文件</DocsLink>",
-		"manageCommands": "在設定中管理斜線命令",
-		"globalCommands": "全域命令",
-		"workspaceCommands": "工作區命令",
-		"editCommand": "編輯命令",
-		"deleteCommand": "刪除命令",
-		"deleteDialog": {
-			"title": "刪除命令",
-			"description": "您確定要刪除「{{name}}」命令嗎？此操作無法復原。",
-			"cancel": "取消",
-			"confirm": "刪除"
-		}
+		"title": "斜線命令",
+		"description": "執行內建命令或技能，或切換模式。",
+		"manageSkills": "在設定中管理技能"
 	},
 	"slashCommand": {
 		"wantsToRun": "Tumble 想要執行斜線指令",

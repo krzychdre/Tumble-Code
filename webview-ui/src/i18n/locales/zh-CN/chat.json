@@ -456,18 +456,9 @@
 		"placeholder": "编辑消息..."
 	},
 	"slashCommands": {
-		"description": "使用内置斜杠命令或创建自定义命令，快速访问常用提示词和工作流程。<DocsLink>文档</DocsLink>",
-		"manageCommands": "在设置中管理斜杠命令",
-		"globalCommands": "全局命令",
-		"workspaceCommands": "工作区命令",
-		"editCommand": "编辑命令",
-		"deleteCommand": "删除命令",
-		"deleteDialog": {
-			"title": "删除命令",
-			"description": "确定要删除命令 \"{{name}}\" 吗？此操作无法撤销。",
-			"cancel": "取消",
-			"confirm": "删除"
-		}
+		"title": "斜杠命令",
+		"description": "运行内置命令或技能，或切换模式。",
+		"manageSkills": "在设置中管理技能"
 	},
 	"contextMenu": {
 		"noResults": "无结果",

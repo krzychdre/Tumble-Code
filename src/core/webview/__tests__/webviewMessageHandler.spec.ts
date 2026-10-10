@@ -16,8 +16,8 @@ vi.mock("../../../integrations/openai-codex/rate-limits", () => ({
 	fetchOpenAiCodexRateLimitInfo: vi.fn(),
 }))
 
-vi.mock("../../../services/command/commands", () => ({
-	getCommands: vi.fn(),
+vi.mock("../../../services/command/built-in-commands", () => ({
+	getBuiltInCommands: vi.fn(),
 }))
 
 vi.mock("@anthropic-ai/vertex-sdk", () => ({
@@ -43,12 +43,12 @@ import { webviewMessageHandler } from "../webviewMessageHandler"
 import { defaultModeSlug } from "../../../shared/modes"
 import type { ClineProvider } from "../ClineProvider"
 import { getModels } from "../../../api/providers/fetchers/modelCache"
-import { getCommands } from "../../../services/command/commands"
+import { getBuiltInCommands } from "../../../services/command/built-in-commands"
 const { openAiCodexOAuthManager } = await import("../../../integrations/openai-codex/oauth")
 const { fetchOpenAiCodexRateLimitInfo } = await import("../../../integrations/openai-codex/rate-limits")
 
 const mockGetModels = getModels as Mock<typeof getModels>
-const mockGetCommands = vi.mocked(getCommands)
+const mockGetCommands = vi.mocked(getBuiltInCommands)
 const mockGetAccessToken = vi.mocked(openAiCodexOAuthManager.getAccessToken)
 const mockGetAccountId = vi.mocked(openAiCodexOAuthManager.getAccountId)
 const mockFetchOpenAiCodexRateLimitInfo = vi.mocked(fetchOpenAiCodexRateLimitInfo)
@@ -734,15 +734,14 @@ describe("webviewMessageHandler - requestCommands", () => {
 		expect(commandMessage?.commands?.filter((command) => command.name === "skill-slug-entry")).toHaveLength(1)
 	})
 
-	it("adds skill-backed command entries without overriding existing command names", async () => {
+	it("lists built-in commands and skills, and a built-in command wins over a skill of the same name", async () => {
 		mockGetCommands.mockResolvedValue([
 			{
-				name: "deploy",
-				content: "existing command",
-				source: "project",
-				filePath: "/mock/workspace/.roo/commands/deploy.md",
-				description: "Deploy command",
-				argumentHint: "staging | production",
+				name: "init",
+				content: "built-in body",
+				source: "built-in",
+				filePath: "<built-in:init>",
+				description: "Init command",
 			},
 		])
 
@@ -754,9 +753,9 @@ describe("webviewMessageHandler - requestCommands", () => {
 
 		const getSkillsForMode = vi.fn().mockReturnValue([
 			{
-				name: "deploy",
-				description: "Deploy skill",
-				path: "/mock/.roo/skills/deploy/SKILL.md",
+				name: "init",
+				description: "Init skill",
+				path: "/mock/.roo/skills/init/SKILL.md",
 				source: "global",
 				modeSlugs: ["code"],
 			},
@@ -780,13 +779,13 @@ describe("webviewMessageHandler - requestCommands", () => {
 
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "commands",
-			commands: expect.arrayContaining([
+			commands: [
 				{
-					name: "deploy",
-					source: "project",
-					filePath: "/mock/workspace/.roo/commands/deploy.md",
-					description: "Deploy command",
-					argumentHint: "staging | production",
+					name: "init",
+					source: "built-in",
+					filePath: "<built-in:init>",
+					description: "Init command",
+					argumentHint: undefined,
 				},
 				{
 					name: "skill-only",
@@ -794,7 +793,7 @@ describe("webviewMessageHandler - requestCommands", () => {
 					filePath: "/mock/.roo/skills/skill-only/SKILL.md",
 					description: "Skill-generated command",
 				},
-			]),
+			],
 		})
 
 		const commandMessageCall = vi
@@ -803,10 +802,10 @@ describe("webviewMessageHandler - requestCommands", () => {
 		expect(commandMessageCall).toBeDefined()
 
 		const commandMessage = commandMessageCall?.[0]
-		expect(commandMessage?.commands?.filter((command) => command.name === "deploy")).toHaveLength(1)
+		expect(commandMessage?.commands?.filter((command) => command.name === "init")).toHaveLength(1)
 	})
 
-	it("preserves existing behavior when skills manager is unavailable", async () => {
+	it("lists only the built-in commands when the skills manager is unavailable", async () => {
 		mockGetCommands.mockResolvedValue([
 			{
 				name: "build",

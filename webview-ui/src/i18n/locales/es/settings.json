@@ -36,7 +36,6 @@
 		"notifications": "Notificaciones",
 		"contextManagement": "Contexto",
 		"terminal": "Terminal",
-		"slashCommands": "Comandos de Barra",
 		"prompts": "Indicaciones",
 		"ui": "UI",
 		"experimental": "Experimental",
@@ -53,41 +52,6 @@
 			"label": "Activar modo de depuración",
 			"description": "Activa el modo de depuración: muestra botones adicionales en el encabezado de la tarea para ver el historial de conversación de la API y los mensajes de la UI como JSON formateado en archivos temporales, y escribe líneas de depuración detalladas (incluidos los contadores de rendimiento de cada solicitud) en el panel de salida de Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Gestiona tus comandos de barra para ejecutar rápidamente flujos de trabajo y acciones personalizadas.",
-		"workspaceCommands": "Comandos del espacio de trabajo",
-		"globalCommands": "Comandos globales",
-		"noWorkspaceCommands": "Sin comandos en este proyecto aún.",
-		"noGlobalCommands": "Sin comandos globales aún.",
-		"addCommand": "Agregar comando de barra",
-		"editCommand": "Editar comando",
-		"deleteCommand": "Eliminar comando",
-		"deleteDialog": {
-			"title": "Eliminar comando",
-			"description": "¿Estás seguro de que quieres eliminar el comando \"{{name}}\"? Esta acción no se puede deshacer.",
-			"confirm": "Eliminar",
-			"cancel": "Cancelar"
-		},
-		"createDialog": {
-			"title": "Crear nuevo comando de barra",
-			"nameLabel": "Nombre",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Solo letras minúsculas, números, guiones y guiones bajos",
-			"sourceLabel": "Ubicación",
-			"create": "Crear",
-			"cancel": "Cancelar"
-		},
-		"source": {
-			"global": "Global (disponible en todos los espacios de trabajo)",
-			"project": "Espacio de trabajo"
-		},
-		"validation": {
-			"nameRequired": "El nombre es obligatorio",
-			"nameTooLong": "El nombre debe tener 64 caracteres o menos",
-			"nameInvalid": "El nombre solo puede contener letras, números, guiones y guiones bajos"
-		},
-		"footer": "Usa comandos de barra para acceder rápidamente a indicaciones y flujos de trabajo frecuentemente utilizados."
 	},
 	"prompts": {
 		"description": "Configura indicaciones de soporte que se utilizan para acciones rápidas como mejorar indicaciones, explicar código y solucionar problemas. Estas indicaciones ayudan a Tumble a brindar mejor asistencia para tareas comunes de desarrollo."

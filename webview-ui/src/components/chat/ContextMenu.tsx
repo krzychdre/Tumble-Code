@@ -207,16 +207,18 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 	const handleSettingsClick = (e: React.MouseEvent) => {
 		// Prevent any default behavior
 		e.preventDefault()
-		// Switch to settings tab and navigate to slash commands section
+		// Skills are the user-defined "/" entries, so the button opens the Skills section
 		vscode.postMessage({
 			type: "switchTab",
 			tab: "settings",
-			values: { section: "slashCommands" },
+			values: { section: "skills" },
 		})
 	}
 
 	return (
-		<div className="absolute bottom-[calc(100%-10px)] left-[15px] right-[15px] overflow-x-hidden" onMouseDown={onMouseDown}>
+		<div
+			className="absolute bottom-[calc(100%-10px)] left-[15px] right-[15px] overflow-x-hidden"
+			onMouseDown={onMouseDown}>
 			<div
 				ref={menuRef}
 				role="listbox"
@@ -229,16 +231,16 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 					"bg-vscode-dropdown-background text-vscode-dropdown-foreground",
 					"border border-frame-hover rounded-floating shadow-[0_4px_10px_var(--vscode-widget-shadow)]",
 				)}>
-				{/* Settings button for slash commands */}
+				{/* Header with a button to the Skills settings */}
 				{searchQuery === "/" && (
 					<div className="p-2 flex items-start gap-4 justify-between">
 						{searchQuery.length === 1 && (
 							<div className="text-sm">
 								<p className="font-bold text-base text-vscode-foreground mt-1 mb-0.5">
-									{t("settings:sections.slashCommands")}
+									{t("chat:slashCommands.title")}
 								</p>
 								<p className="text-xs mt-0.5 -mb-1 text-vscode-descriptionForeground">
-									{t("settings:slashCommands.description")}{" "}
+									{t("chat:slashCommands.description")}
 								</p>
 							</div>
 						)}
@@ -253,7 +255,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 								e.stopPropagation()
 								e.preventDefault()
 							}}
-							title={t("chat:slashCommands.manageCommands")}>
+							title={t("chat:slashCommands.manageSkills")}
+							aria-label={t("chat:slashCommands.manageSkills")}>
 							<Settings size={16} />
 						</button>
 					</div>
@@ -274,7 +277,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 									isSectionHeader
 										? "mx-2 px-1 pt-3 pb-1 mb-0.5 border-b border-frame cursor-default"
 										: "mx-1 px-2 py-1 rounded-control",
-									!isSectionHeader && (isOptionSelectable(option) ? "cursor-pointer" : "cursor-default"),
+									!isSectionHeader &&
+										(isOptionSelectable(option) ? "cursor-pointer" : "cursor-default"),
 									isSelected && "bg-selected",
 								)}
 								onMouseEnter={() => isOptionSelectable(option) && setSelectedIndex(index)}>

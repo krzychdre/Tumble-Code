@@ -36,7 +36,6 @@
 		"notifications": "Notifiche",
 		"contextManagement": "Contesto",
 		"terminal": "Terminal",
-		"slashCommands": "Comandi Slash",
 		"prompts": "Prompt",
 		"ui": "UI",
 		"experimental": "Sperimentale",
@@ -53,41 +52,6 @@
 			"label": "Abilita modalità debug",
 			"description": "Abilita la modalità debug: mostra pulsanti aggiuntivi nell'intestazione dell'attività per visualizzare la cronologia delle conversazioni API e i messaggi dell'interfaccia utente come JSON formattato in file temporanei e scrive righe di debug dettagliate (inclusi i contatori di prestazioni di ogni richiesta) nel pannello di output di Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Gestisci i tuoi comandi slash per eseguire rapidamente flussi di lavoro e azioni personalizzate.",
-		"workspaceCommands": "Comandi dell'area di lavoro",
-		"globalCommands": "Comandi globali",
-		"noWorkspaceCommands": "Nessun comando in questo progetto ancora.",
-		"noGlobalCommands": "Nessun comando globale ancora.",
-		"addCommand": "Aggiungi comando Slash",
-		"editCommand": "Modifica comando",
-		"deleteCommand": "Elimina comando",
-		"deleteDialog": {
-			"title": "Elimina comando",
-			"description": "Sei sicuro di voler eliminare il comando \"{{name}}\"? Questa azione non può essere annullata.",
-			"confirm": "Elimina",
-			"cancel": "Annulla"
-		},
-		"createDialog": {
-			"title": "Crea nuovo comando Slash",
-			"nameLabel": "Nome",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Solo lettere minuscole, numeri, trattini e sottolineature",
-			"sourceLabel": "Posizione",
-			"create": "Crea",
-			"cancel": "Annulla"
-		},
-		"source": {
-			"global": "Global (disponibile in tutte le aree di lavoro)",
-			"project": "Area di lavoro"
-		},
-		"validation": {
-			"nameRequired": "Il nome è obbligatorio",
-			"nameTooLong": "Il nome deve avere 64 caratteri o meno",
-			"nameInvalid": "Il nome può contenere solo lettere, numeri, trattini e sottolineature"
-		},
-		"footer": "Usa i comandi slash per accedere rapidamente ai prompt e ai flussi di lavoro utilizzati di frequente."
 	},
 	"prompts": {
 		"description": "Configura i prompt di supporto utilizzati per azioni rapide come il miglioramento dei prompt, la spiegazione del codice e la risoluzione dei problemi. Questi prompt aiutano Tumble a fornire una migliore assistenza per le attività di sviluppo comuni."

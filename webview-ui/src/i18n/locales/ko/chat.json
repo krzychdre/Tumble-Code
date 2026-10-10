@@ -455,18 +455,9 @@
 		"placeholder": "메시지 편집..."
 	},
 	"slashCommands": {
-		"description": "내장 슬래시 명령을 사용하거나 자주 사용하는 프롬프트와 워크플로우에 빠르게 액세스할 수 있는 사용자 정의 슬래시 명령을 만듭니다. <DocsLink>문서</DocsLink>",
-		"manageCommands": "설정에서 슬래시 명령 관리",
-		"globalCommands": "전역 명령",
-		"workspaceCommands": "작업 공간 명령",
-		"editCommand": "명령 편집",
-		"deleteCommand": "명령 삭제",
-		"deleteDialog": {
-			"title": "명령 삭제",
-			"description": "\"{{name}}\" 명령을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
-			"cancel": "취소",
-			"confirm": "삭제"
-		}
+		"title": "슬래시 명령",
+		"description": "기본 제공 명령이나 스킬을 실행하거나 모드를 전환합니다.",
+		"manageSkills": "설정에서 스킬 관리"
 	},
 	"contextMenu": {
 		"noResults": "결과 없음",

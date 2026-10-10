@@ -461,18 +461,9 @@
 		"placeholder": "Modifiez votre message..."
 	},
 	"slashCommands": {
-		"description": "Utilisez les commandes slash intégrées ou créez des personnalisées pour accéder rapidement aux prompts et flux de travail fréquemment utilisés. <DocsLink>Documentation</DocsLink>",
-		"manageCommands": "Gérer les commandes slash dans les paramètres",
-		"globalCommands": "Commandes Globales",
-		"workspaceCommands": "Commandes de l'Espace de Travail",
-		"editCommand": "Modifier la commande",
-		"deleteCommand": "Supprimer la commande",
-		"deleteDialog": {
-			"title": "Supprimer la commande",
-			"description": "Êtes-vous sûr de vouloir supprimer la commande \"{{name}}\" ? Cette action ne peut pas être annulée.",
-			"cancel": "Annuler",
-			"confirm": "Supprimer"
-		}
+		"title": "Commandes Slash",
+		"description": "Exécutez une commande intégrée ou une skill, ou changez de mode.",
+		"manageSkills": "Gérer les skills dans les paramètres"
 	},
 	"contextMenu": {
 		"noResults": "Aucun résultat",

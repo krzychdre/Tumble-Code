@@ -36,7 +36,6 @@
 		"notifications": "通知",
 		"contextManagement": "上下文",
 		"terminal": "終端機",
-		"slashCommands": "斜線命令",
 		"prompts": "提示詞",
 		"ui": "UI",
 		"experimental": "實驗性",
@@ -53,41 +52,6 @@
 			"label": "啟用偵錯模式",
 			"description": "啟用偵錯模式：在工作標題顯示額外按鈕，用於在暫存檔案中檢視 API 對話歷史記錄和 UI 訊息的格式化 JSON，並將詳細的偵錯行（包括每個請求的效能計數器）寫入 Tumble Code 輸出面板。"
 		}
-	},
-	"slashCommands": {
-		"description": "管理您的斜線命令，以便快速執行自訂工作流程和動作。",
-		"workspaceCommands": "工作區命令",
-		"globalCommands": "全域命令",
-		"noWorkspaceCommands": "此專案中還沒有命令。",
-		"noGlobalCommands": "還沒有全域命令。",
-		"addCommand": "新增斜線命令",
-		"editCommand": "編輯命令",
-		"deleteCommand": "刪除命令",
-		"deleteDialog": {
-			"title": "刪除命令",
-			"description": "您確定要刪除命令 \"{{name}}\" 嗎？此動作無法復原。",
-			"confirm": "刪除",
-			"cancel": "取消"
-		},
-		"createDialog": {
-			"title": "建立新斜線命令",
-			"nameLabel": "名稱",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "僅限小寫字母、數字、連字號和底線",
-			"sourceLabel": "位置",
-			"create": "建立",
-			"cancel": "取消"
-		},
-		"source": {
-			"global": "全域（可在所有工作區中使用）",
-			"project": "工作區"
-		},
-		"validation": {
-			"nameRequired": "名稱為必填項",
-			"nameTooLong": "名稱必須為 64 個字元或更少",
-			"nameInvalid": "名稱只能包含字母、數字、連字號和底線"
-		},
-		"footer": "使用斜線命令快速存取經常使用的提示詞和工作流程。"
 	},
 	"ui": {
 		"density": {

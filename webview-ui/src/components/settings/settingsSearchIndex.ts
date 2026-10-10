@@ -42,11 +42,6 @@ export const STATIC_SEARCH_INDEX: StaticSearchEntry[] = [
 	{ settingId: "tab-providers", section: "providers", labelKey: "settings:sections.providers" },
 	{ settingId: "tab-modes", section: "modes", labelKey: "settings:sections.modes" },
 	{ settingId: "tab-skills", section: "skills", labelKey: "settings:sections.skills" },
-	{
-		settingId: "tab-slashCommands",
-		section: "slashCommands",
-		labelKey: "settings:sections.slashCommands",
-	},
 	{ settingId: "tab-autoApprove", section: "autoApprove", labelKey: "settings:sections.autoApprove" },
 	{ settingId: "tab-mcp", section: "mcp", labelKey: "settings:sections.mcp" },
 	{ settingId: "tab-checkpoints", section: "checkpoints", labelKey: "settings:sections.checkpoints" },

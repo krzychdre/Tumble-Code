@@ -149,7 +149,7 @@ Long-lived helpers the task and the provider use. Each folder is self-contained.
 | `services/web`                       | `web_search` and `web_fetch`, with an SSRF guard on the target address                |
 | `services/marketplace`               | Remote catalog of modes and MCP servers, and the installer                            |
 | `services/skills`                    | Skills discovery and invocation                                                       |
-| `services/command`                   | Slash commands                                                                        |
+| `services/command`                   | Built-in slash commands (`/init`); the `/` menu lists skills next to them             |
 | `services/roo-config`                | Resolution and watching of `.roo/` folders                                            |
 | `services/glob`, `ripgrep`, `search` | File listing, content search, fuzzy file search for `@` mentions                      |
 | `core/memory`                        | Auto-memory: extraction after tasks, consolidation, recall (do not touch)             |

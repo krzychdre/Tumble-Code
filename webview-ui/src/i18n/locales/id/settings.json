@@ -36,7 +36,6 @@
 		"notifications": "Notifikasi",
 		"contextManagement": "Konteks",
 		"terminal": "Terminal",
-		"slashCommands": "Perintah Slash",
 		"prompts": "Prompt",
 		"ui": "UI",
 		"experimental": "Eksperimental",
@@ -53,41 +52,6 @@
 			"label": "Aktifkan mode debug",
 			"description": "Aktifkan mode debug: menampilkan tombol tambahan di header tugas untuk melihat riwayat percakapan API dan pesan UI sebagai JSON yang diformat dalam file sementara, serta menulis baris debug terperinci (termasuk penghitung kinerja setiap permintaan) ke panel output Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Kelola perintah slash kamu untuk mengeksekusi alur kerja dan tindakan kustom dengan cepat.",
-		"workspaceCommands": "Perintah Ruang Kerja",
-		"globalCommands": "Perintah Global",
-		"noWorkspaceCommands": "Tidak ada perintah di proyek ini belum.",
-		"noGlobalCommands": "Tidak ada perintah global belum.",
-		"addCommand": "Tambahkan Perintah Slash",
-		"editCommand": "Edit perintah",
-		"deleteCommand": "Hapus perintah",
-		"deleteDialog": {
-			"title": "Hapus Perintah",
-			"description": "Apakah Anda yakin ingin menghapus perintah \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
-			"confirm": "Hapus",
-			"cancel": "Batal"
-		},
-		"createDialog": {
-			"title": "Buat Perintah Slash Baru",
-			"nameLabel": "Nama",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Hanya huruf kecil, angka, tanda hubung dan garis bawah",
-			"sourceLabel": "Lokasi",
-			"create": "Buat",
-			"cancel": "Batal"
-		},
-		"source": {
-			"global": "Global (tersedia di semua ruang kerja)",
-			"project": "Ruang Kerja"
-		},
-		"validation": {
-			"nameRequired": "Nama diperlukan",
-			"nameTooLong": "Nama harus 64 karakter atau kurang",
-			"nameInvalid": "Nama hanya dapat berisi huruf, angka, tanda hubung, dan garis bawah"
-		},
-		"footer": "Gunakan perintah slash untuk akses cepat ke prompt dan alur kerja yang sering digunakan."
 	},
 	"prompts": {
 		"description": "Konfigurasi support prompt yang digunakan untuk aksi cepat seperti meningkatkan prompt, menjelaskan kode, dan memperbaiki masalah. Prompt ini membantu Tumble memberikan bantuan yang lebih baik untuk tugas pengembangan umum."
