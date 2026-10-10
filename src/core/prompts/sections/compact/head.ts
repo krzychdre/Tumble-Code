@@ -68,7 +68,7 @@ export function getCompactDatesSection(): string {
 
 DATES
 
-"Today" is the date in "Current time" in environment_details. Put a dated entry under the heading of its date. If that heading does not exist yet, create it in the same format as the other dates. Never put today's entry under another date.
+"Today" is the date in "Current time" in environment_details. When the user gives no date, the entry belongs to today. Put a dated entry under the heading of its date. If that heading does not exist yet, create it in the same format as the other dates. Never put today's entry under another date.
 
 Example. Current time: 2025-03-14 12:05 (Friday), Europe/Warsaw. notes.md ends with:
 ## 2025-03-13
