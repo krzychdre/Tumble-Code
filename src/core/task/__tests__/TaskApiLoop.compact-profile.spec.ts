@@ -1,8 +1,8 @@
 // cd src && npx vitest run core/task/__tests__/TaskApiLoop.compact-profile.spec.ts
 
 // The compact profile, read from the task's own profile: one tool call per message in the
-// request metadata every handler reads, and the output reservation and condense threshold
-// handed to context management.
+// request metadata every handler reads, and the output reservation handed to context
+// management (the condense threshold is TaskContextManager's, see its compact spec).
 
 import { TaskApiLoop } from "../TaskApiLoop"
 import type { ApiHandlerCreateMessageMetadata } from "../../../api"
