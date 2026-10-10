@@ -1,7 +1,8 @@
 // cd src && npx vitest run core/task/__tests__/TaskContextManager.compact-profile.spec.ts
 
 // Condensing under the compact profile, read from the task's own profile: the 70 percent default
-// threshold on both passes, the compact toolset in the condense request, no prune pass.
+// threshold on both passes, the compact toolset and one tool call per message in the condense
+// request, no prune pass.
 
 import { TaskContextManager, type TaskContextManagerAccess } from "../TaskContextManager"
 import type { ProviderState } from "../../webview/ProviderStateBuilder"
@@ -124,6 +125,22 @@ describe("TaskContextManager under the compact profile", () => {
 		it.each(FLAG_OFF)("flag %s: the regular toolset", async (_label, apiConfiguration) => {
 			await new TaskContextManager(buildAccess(apiConfiguration)).manageContextIfNeeded(params)
 			expect(buildToolsMock.mock.calls[0][0].compactProfile).toBe(false)
+		})
+
+		it("asks for one tool call per message, on the regular and the forced pass", async () => {
+			await new TaskContextManager(buildAccess(COMPACT)).manageContextIfNeeded(params)
+			await new TaskContextManager(buildAccess(COMPACT)).handleContextWindowExceededError()
+
+			expect(manageContextMock.mock.calls[0][0].metadata.parallelToolCalls).toBe(false)
+			expect(manageContextMock.mock.calls[1][0].metadata.parallelToolCalls).toBe(false)
+		})
+
+		it.each(FLAG_OFF)("flag %s: parallel tool calls stay on", async (_label, apiConfiguration) => {
+			await new TaskContextManager(buildAccess(apiConfiguration)).manageContextIfNeeded(params)
+			await new TaskContextManager(buildAccess(apiConfiguration)).handleContextWindowExceededError()
+
+			expect(manageContextMock.mock.calls[0][0].metadata.parallelToolCalls).toBe(true)
+			expect(manageContextMock.mock.calls[1][0].metadata.parallelToolCalls).toBe(true)
 		})
 	})
 
