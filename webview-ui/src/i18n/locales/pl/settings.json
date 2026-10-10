@@ -705,7 +705,11 @@
 			},
 			"compact": {
 				"label": "Bardzo małe modele: tryb kompaktowy",
-				"description": "Dla małych modeli lokalnych (kilka miliardów parametrów) z oknem kontekstu od 32k do 40k: krótki prompt systemowy, dziewięć narzędzi z prostą zamianą tekstu zamiast apply_diff, jednolinijkowe szczegóły środowiska i niższe limity danych wyjściowych."
+				"description": "Dla małych modeli lokalnych (kilka miliardów parametrów) z oknem kontekstu od 32k do 40k: krótki prompt systemowy, dziewięć narzędzi z prostą zamianą tekstu zamiast apply_diff, jednolinijkowe szczegóły środowiska i niższe limity danych wyjściowych.",
+				"subagents": {
+					"label": "Subagenci",
+					"description": "Wyłączeni dla tego profilu: w trybie kompaktowym nie uruchamia podzadań ani zadań równoległych. Globalne ustawienia subagentów nadal dotyczą wszystkich pozostałych profili."
+				}
 			}
 		}
 	},
@@ -949,7 +953,8 @@
 			"label": "Limit czasu pytania",
 			"description": "Jak długo pytanie subagenta czeka na Twoją odpowiedź, zanim zostanie automatycznie zatwierdzone i subagent ruszy dalej samodzielnie. 0 odpowiada natychmiast (pełna autonomia).",
 			"immediate": "wył."
-		}
+		},
+		"compactNote": "Edytowany profil używa trybu kompaktowego (bardzo małe modele), więc subagenci są dla niego zawsze wyłączeni, niezależnie od tych ustawień. Nadal obowiązują one wszystkie pozostałe profile."
 	},
 	"memory": {
 		"enable": {

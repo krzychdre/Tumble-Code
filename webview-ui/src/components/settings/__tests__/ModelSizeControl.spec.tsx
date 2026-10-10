@@ -18,6 +18,8 @@ vi.mock("@/i18n/TranslationContext", () => ({
 					"MCP tool schemas are usually the biggest part of the tool prompt.",
 				"settings:advanced.modelSize.compact.label": "Very small models: compact mode",
 				"settings:advanced.modelSize.compact.description": "A short system prompt and nine tools.",
+				"settings:advanced.modelSize.compact.subagents.label": "Subagents",
+				"settings:advanced.modelSize.compact.subagents.description": "Off for this profile.",
 			}
 			return translations[key] || key
 		},
@@ -107,7 +109,7 @@ describe("ModelSizeControl", () => {
 		expect(screen.getByRole("checkbox")).toBeChecked()
 
 		rerender(<ModelSizeControl compactProfile={true} onChange={vi.fn()} />)
-		expect(screen.queryByRole("checkbox")).not.toBeInTheDocument()
+		expect(screen.queryByText("Also hide MCP tools")).not.toBeInTheDocument()
 	})
 
 	it("writes slimHidesMcp from the MCP sub-control", () => {
@@ -119,5 +121,21 @@ describe("ModelSizeControl", () => {
 
 		fireEvent.click(hideMcp)
 		expect(onChange).toHaveBeenCalledWith("slimHidesMcp", true)
+	})
+
+	it("shows subagents as off and disabled under compact, writing nothing for them", () => {
+		const onChange = vi.fn()
+		const { rerender } = render(<ModelSizeControl onChange={onChange} />)
+
+		expect(screen.queryByTestId("model-size-compact-subagents")).not.toBeInTheDocument()
+
+		rerender(<ModelSizeControl compactProfile={true} onChange={onChange} />)
+		const subagents = screen.getByTestId("model-size-compact-subagents")
+		expect(subagents).not.toBeChecked()
+		expect(subagents).toBeDisabled()
+		expect(screen.getByText("Off for this profile.")).toBeInTheDocument()
+
+		fireEvent.click(subagents)
+		expect(onChange).not.toHaveBeenCalled()
 	})
 })

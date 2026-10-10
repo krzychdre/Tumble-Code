@@ -705,7 +705,11 @@
 			},
 			"compact": {
 				"label": "Modelos muy pequeños: modo compacto",
-				"description": "Para modelos locales pequeños (unos pocos miles de millones de parámetros) con una ventana de contexto de 32k a 40k: un prompt del sistema corto, nueve herramientas con reemplazo de texto sencillo en lugar de apply_diff, detalles del entorno en una línea y límites de salida más estrictos."
+				"description": "Para modelos locales pequeños (unos pocos miles de millones de parámetros) con una ventana de contexto de 32k a 40k: un prompt del sistema corto, nueve herramientas con reemplazo de texto sencillo en lugar de apply_diff, detalles del entorno en una línea y límites de salida más estrictos.",
+				"subagents": {
+					"label": "Subagentes",
+					"description": "Desactivados para este perfil: en modo compacto nunca inicia subtareas ni tareas en paralelo. La configuración global de subagentes sigue aplicándose a todos los demás perfiles."
+				}
 			}
 		}
 	},
@@ -1003,6 +1007,7 @@
 			"label": "Tiempo de espera de la pregunta",
 			"description": "Cuánto tiempo la pregunta de un subagente espera tu respuesta antes de ser aprobada automáticamente y el subagente continúa por su cuenta. 0 responde inmediatamente (totalmente autónomo).",
 			"immediate": "desactivado"
-		}
+		},
+		"compactNote": "El perfil que se está editando usa el modo compacto (modelos muy pequeños), así que los subagentes siempre están desactivados para él, digan lo que digan estos ajustes. Siguen aplicándose a todos los demás perfiles."
 	}
 }

@@ -6,6 +6,7 @@ import {
 	DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 	MAX_PARALLEL_TASKS_MAX_CONCURRENCY,
 	MIN_PARALLEL_TASKS_CONCURRENCY,
+	isCompactProfile,
 } from "@tumble-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
@@ -28,6 +29,10 @@ export const SubagentSettings = (props: SubagentSettingsProps) => {
 	const { t } = useAppTranslation()
 	const [parallelTasksMaxConcurrency, setParallelTasksMaxConcurrency] = useSetting("parallelTasksMaxConcurrency")
 	const [subagentFollowupTimeoutSec, setSubagentFollowupTimeoutSec] = useSetting("subagentFollowupTimeoutSec")
+	// The profile being edited. A compact profile never starts subagents (its
+	// tasks refuse new_task and run_parallel_tasks), whatever these global
+	// settings say, so the tab says so instead of changing them for everyone.
+	const [apiConfiguration] = useSetting("apiConfiguration")
 
 	const concurrency = parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
 	const followupTimeout = subagentFollowupTimeoutSec ?? DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC
@@ -43,55 +48,56 @@ export const SubagentSettings = (props: SubagentSettingsProps) => {
 
 			<Section>
 				<SettingsCard>
-				<SearchableSetting
-					settingId="subagents-max-concurrency"
-					section="subagents"
-					label={t("settings:subagents.maxConcurrency.label")}>
-					<span className="block font-medium mb-1">{t("settings:subagents.maxConcurrency.label")}</span>
-					<div className="flex items-center gap-2">
-						<Slider
-							min={1}
-							max={MAX_PARALLEL_TASKS_MAX_CONCURRENCY}
-							step={1}
-							value={[concurrency]}
-							onValueChange={([value]) => setParallelTasksMaxConcurrency(value)}
-							data-testid="subagents-max-concurrency-slider"
-						/>
-						<span className="w-10">
-							{concurrency < MIN_PARALLEL_TASKS_CONCURRENCY
-								? t("settings:subagents.maxConcurrency.off")
-								: concurrency}
-						</span>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:subagents.maxConcurrency.description")}
-					</div>
-				</SearchableSetting>
+					{isCompactProfile(apiConfiguration) && (
+						<div className={settingDescription} data-testid="subagents-compact-note">
+							{t("settings:subagents.compactNote")}
+						</div>
+					)}
+					<SearchableSetting
+						settingId="subagents-max-concurrency"
+						section="subagents"
+						label={t("settings:subagents.maxConcurrency.label")}>
+						<span className="block font-medium mb-1">{t("settings:subagents.maxConcurrency.label")}</span>
+						<div className="flex items-center gap-2">
+							<Slider
+								min={1}
+								max={MAX_PARALLEL_TASKS_MAX_CONCURRENCY}
+								step={1}
+								value={[concurrency]}
+								onValueChange={([value]) => setParallelTasksMaxConcurrency(value)}
+								data-testid="subagents-max-concurrency-slider"
+							/>
+							<span className="w-10">
+								{concurrency < MIN_PARALLEL_TASKS_CONCURRENCY
+									? t("settings:subagents.maxConcurrency.off")
+									: concurrency}
+							</span>
+						</div>
+						<div className={settingDescription}>{t("settings:subagents.maxConcurrency.description")}</div>
+					</SearchableSetting>
 
-				<SearchableSetting
-					settingId="subagents-followup-timeout"
-					section="subagents"
-					label={t("settings:subagents.followupTimeout.label")}>
-					<span className="block font-medium mb-1">{t("settings:subagents.followupTimeout.label")}</span>
-					<div className="flex items-center gap-2">
-						<Slider
-							min={0}
-							max={1800}
-							step={30}
-							value={[followupTimeout]}
-							onValueChange={([value]) => setSubagentFollowupTimeoutSec(value)}
-							data-testid="subagents-followup-timeout-slider"
-						/>
-						<span className="w-14">
-							{followupTimeout === 0
-								? t("settings:subagents.followupTimeout.immediate")
-								: `${followupTimeout}s`}
-						</span>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:subagents.followupTimeout.description")}
-					</div>
-				</SearchableSetting>
+					<SearchableSetting
+						settingId="subagents-followup-timeout"
+						section="subagents"
+						label={t("settings:subagents.followupTimeout.label")}>
+						<span className="block font-medium mb-1">{t("settings:subagents.followupTimeout.label")}</span>
+						<div className="flex items-center gap-2">
+							<Slider
+								min={0}
+								max={1800}
+								step={30}
+								value={[followupTimeout]}
+								onValueChange={([value]) => setSubagentFollowupTimeoutSec(value)}
+								data-testid="subagents-followup-timeout-slider"
+							/>
+							<span className="w-14">
+								{followupTimeout === 0
+									? t("settings:subagents.followupTimeout.immediate")
+									: `${followupTimeout}s`}
+							</span>
+						</div>
+						<div className={settingDescription}>{t("settings:subagents.followupTimeout.description")}</div>
+					</SearchableSetting>
 				</SettingsCard>
 			</Section>
 		</div>

@@ -44,6 +44,11 @@ export function modelSizeOf(flags: { slimToolset?: boolean; compactProfile?: boo
  * The MCP sub-checkbox belongs to the slim toolset and only appears while it is
  * selected. It is checked by default there because MCP schemas are the single
  * largest part of the tool prompt; compact always hides MCP.
+ *
+ * Compact also turns subagents off for the profile, so selecting it shows a
+ * disabled, unchecked "Subagents" switch. The global subagent settings
+ * (`parallelTasksMaxConcurrency` and friends) are deliberately not written:
+ * they apply to every profile, and large models must keep them.
  */
 export const ModelSizeControl: React.FC<ModelSizeControlProps> = ({
 	slimToolset,
@@ -103,6 +108,20 @@ export const ModelSizeControl: React.FC<ModelSizeControlProps> = ({
 					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm">
 						{t("settings:advanced.modelSize.slim.hideMcp.description")}
+					</div>
+				</div>
+			)}
+			{selected === "compact" && (
+				<div className="ml-6">
+					{/* Subagents are off for a compact profile at runtime (NewTaskTool and
+					    RunParallelTasksTool refuse), so the switch is shown off and
+					    disabled. The global subagent settings are not touched: they
+					    still apply to every other profile. */}
+					<LabeledCheckbox checked={false} disabled data-testid="model-size-compact-subagents">
+						<span className="font-medium">{t("settings:advanced.modelSize.compact.subagents.label")}</span>
+					</LabeledCheckbox>
+					<div className="text-vscode-descriptionForeground text-sm">
+						{t("settings:advanced.modelSize.compact.subagents.description")}
 					</div>
 				</div>
 			)}

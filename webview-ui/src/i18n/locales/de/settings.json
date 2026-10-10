@@ -705,7 +705,11 @@
 			},
 			"compact": {
 				"label": "Sehr kleine Modelle: Kompaktmodus",
-				"description": "Für kleine lokale Modelle (einige Milliarden Parameter) mit einem Kontextfenster von 32k bis 40k: ein kurzer System-Prompt, neun Werkzeuge mit einfacher Textersetzung statt apply_diff, einzeilige Umgebungsdetails und engere Ausgabegrenzen."
+				"description": "Für kleine lokale Modelle (einige Milliarden Parameter) mit einem Kontextfenster von 32k bis 40k: ein kurzer System-Prompt, neun Werkzeuge mit einfacher Textersetzung statt apply_diff, einzeilige Umgebungsdetails und engere Ausgabegrenzen.",
+				"subagents": {
+					"label": "Subagenten",
+					"description": "Für dieses Profil aus: Im Kompaktmodus startet es nie Unteraufgaben oder parallele Aufgaben. Die globalen Subagenten-Einstellungen gelten weiterhin für alle anderen Profile."
+				}
 			}
 		}
 	},
@@ -1003,6 +1007,7 @@
 			"label": "Fragen-Timeout",
 			"description": "Wie lange die Frage eines Subagenten auf deine Antwort wartet, bevor sie automatisch genehmigt wird und der Subagent selbstständig fortfährt. 0 antwortet sofort (voll autonom).",
 			"immediate": "aus"
-		}
+		},
+		"compactNote": "Das bearbeitete Profil nutzt den Kompaktmodus (sehr kleine Modelle), daher sind Subagenten dafür immer aus, unabhängig von diesen Einstellungen. Für alle anderen Profile gelten sie weiterhin."
 	}
 }

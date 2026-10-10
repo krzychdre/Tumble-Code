@@ -705,7 +705,11 @@
 			},
 			"compact": {
 				"label": "Très petits modèles : mode compact",
-				"description": "Pour les petits modèles locaux (quelques milliards de paramètres) avec une fenêtre de contexte de 32k à 40k : un prompt système court, neuf outils avec un simple remplacement de texte au lieu d'apply_diff, des détails d'environnement sur une ligne et des limites de sortie plus strictes."
+				"description": "Pour les petits modèles locaux (quelques milliards de paramètres) avec une fenêtre de contexte de 32k à 40k : un prompt système court, neuf outils avec un simple remplacement de texte au lieu d'apply_diff, des détails d'environnement sur une ligne et des limites de sortie plus strictes.",
+				"subagents": {
+					"label": "Sous-agents",
+					"description": "Désactivés pour ce profil : en mode compact, il ne lance jamais de sous-tâches ni de tâches parallèles. Les paramètres globaux des sous-agents s'appliquent toujours à tous les autres profils."
+				}
 			}
 		}
 	},
@@ -1003,6 +1007,7 @@
 			"label": "Délai de réponse à la question",
 			"description": "Combien de temps la question d'un sous-agent attend votre réponse avant d'être auto-approuvée et que le sous-agent continue de lui-même. 0 répond immédiatement (totalement autonome).",
 			"immediate": "désactivé"
-		}
+		},
+		"compactNote": "Le profil en cours de modification utilise le mode compact (très petits modèles) : les sous-agents y sont donc toujours désactivés, quels que soient ces paramètres. Ils s'appliquent toujours à tous les autres profils."
 	}
 }
