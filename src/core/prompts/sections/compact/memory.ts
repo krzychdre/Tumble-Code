@@ -12,7 +12,7 @@ export async function getCompactMemorySection(cwd: string): Promise<string> {
 	return loadCompactMemoryPrompt(cwd)
 }
 
-/** The MEMORY.md index capped at 3,000 characters (or "" if disabled / not yet created). */
+/** The MEMORY.md index in the compact line format, capped at 6,000 characters (or "" if disabled / not yet created). */
 export async function getCompactMemoryIndexSection(cwd: string): Promise<string> {
 	return loadCompactMemoryIndex(cwd)
 }

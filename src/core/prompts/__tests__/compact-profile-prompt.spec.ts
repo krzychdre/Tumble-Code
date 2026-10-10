@@ -7,7 +7,7 @@
 //   - at most 4,000 characters without the user's own content (language,
 //     global and mode instructions, the mode's role, rule files, AGENTS.md,
 //     .rooignore) and without the memory index;
-//   - the memory index capped at 3,000 characters.
+//   - the memory index in the compact line format, capped at 6,000 characters.
 //
 // The snapshots in __snapshots__/compact-profile/ are the full compact prompt
 // of every built-in mode, with a memory index above the cap and with MCP,
@@ -40,10 +40,10 @@ vi.mock("os-name", () => ({ default: () => "Linux" }))
 vi.mock("../../../utils/shell", () => ({ getShell: () => "/bin/zsh" }))
 
 const { MEMORY_ROOT, MEMORY_INDEX_FIXTURE, memoryIndex } = vi.hoisted(() => {
-	// 40 index lines of about 100 characters: about 4,000 characters, above the
-	// compact cap of 3,000.
+	// 80 index lines of about 100 characters, about 78 in the compact line
+	// format: about 6,200 characters, above the compact cap of 6,000.
 	const lines: string[] = []
-	for (let i = 1; i <= 40; i++) {
+	for (let i = 1; i <= 80; i++) {
 		const n = String(i).padStart(2, "0")
 		lines.push(`- [Note ${n}](note_${n}.md) - a fixed memory entry that keeps the index above the compact cap`)
 	}
@@ -98,6 +98,7 @@ import type { McpHub } from "../../../services/mcp/McpHub"
 import type { SkillsManager } from "../../../services/skills/SkillsManager"
 import { modes } from "../../../shared/modes"
 import { initMemoryPaths, resetMemoryPaths } from "../../memory/paths"
+import { compactMemoryIndex } from "../../memory/memoryPrompt"
 import { SYSTEM_PROMPT } from "../system"
 import type { SystemPromptSettings } from "../types"
 
@@ -217,7 +218,7 @@ describe("compact system prompt: budget", () => {
 		},
 	)
 
-	it("caps the memory index at 3,000 characters at a line boundary", async () => {
+	it("gives the memory index in the compact line format, capped at 6,000 characters at a line boundary", async () => {
 		const prompt = await build("code")
 		const start = prompt.indexOf("MEMORY.md:\n")
 		const noteStart = prompt.indexOf("\n[MEMORY.md is longer", start)
@@ -225,12 +226,16 @@ describe("compact system prompt: budget", () => {
 		expect(noteStart).toBeGreaterThan(start)
 
 		const body = prompt.slice(start + "MEMORY.md:\n".length, noteStart)
-		expect(MEMORY_INDEX_FIXTURE.length).toBeGreaterThan(3_000)
-		expect(body.length).toBeLessThanOrEqual(3_000)
-		expect(MEMORY_INDEX_FIXTURE.startsWith(body)).toBe(true)
-		expect(MEMORY_INDEX_FIXTURE.charAt(body.length)).toBe("\n")
-		expect(prompt).toContain("Note 01")
-		expect(prompt).not.toContain("Note 40")
+		const compact = compactMemoryIndex(MEMORY_INDEX_FIXTURE)
+		expect(compact.length).toBeGreaterThan(6_000)
+		expect(body.length).toBeLessThanOrEqual(6_000)
+		expect(compact.startsWith(body)).toBe(true)
+		expect(compact.charAt(body.length)).toBe("\n")
+		expect(body.split("\n")[0]).toBe(
+			"- note_01.md: a fixed memory entry that keeps the index above the compact cap",
+		)
+		expect(prompt).not.toContain("note_80.md")
+		expect(prompt.slice(noteStart)).toContain(`call search_files with path "${MEMORY_ROOT}`)
 	})
 
 	it("is a fraction of the long prompt for the same inputs", async () => {

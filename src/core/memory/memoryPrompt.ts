@@ -227,13 +227,59 @@ export async function loadMemoryIndex(cwd: string): Promise<string> {
 // The full prompt above is about 9.7k characters plus an index of up to 25,000
 // bytes, close to half of a 40k-token window before the conversation starts. A
 // compact profile gets a few sentences instead (what the directory is, when to
-// read a note, when and how to save one) and an index capped at 3,000
-// characters. The functions above and their outputs are untouched: only the
-// compact branch of the system prompt calls these.
+// read a note, when and how to save one) and the index in a shorter line format
+// (see compactMemoryIndex), capped at 6,000 characters. The functions above and
+// their outputs are untouched: only the compact branch of the system prompt
+// calls these.
+//
+// MEMORY.md is shared with Claude Code and rewritten by the dream: everything
+// here only reads it and reshapes the copy that goes into the prompt.
 // ---------------------------------------------------------------------------
 
 /** Cap for the MEMORY.md body under the compact profile, in characters. */
-export const COMPACT_MAX_INDEX_CHARS = 3_000
+export const COMPACT_MAX_INDEX_CHARS = 6_000
+
+/** Longest description kept per index line under the compact profile, in characters. */
+export const COMPACT_INDEX_HOOK_CHARS = 110
+
+// "- [Title](file.md) - hook", with "-", "*", an en or em dash, or ":" as the separator.
+const INDEX_LINK_LINE = /^\s*[-*]\s*\[([^\]]*)\]\(([^)\s]+)\)\s*(?:[-:\u2013\u2014]\s*)?(.*)$/
+
+function shortenHook(hook: string): string {
+	if (hook.length <= COMPACT_INDEX_HOOK_CHARS) {
+		return hook
+	}
+	const cut = hook.slice(0, COMPACT_INDEX_HOOK_CHARS)
+	const space = cut.lastIndexOf(" ")
+	return `${(space > COMPACT_INDEX_HOOK_CHARS * 0.6 ? cut.slice(0, space) : cut).trimEnd()}...`
+}
+
+/**
+ * The MEMORY.md body in the compact line format: "- [Title](file.md) - hook"
+ * becomes "- file.md: hook" with the hook cut to {@link COMPACT_INDEX_HOOK_CHARS}
+ * (the title only when there is no hook). The file name is what the model needs
+ * to read the note; the title mostly repeats it. Markdown headings and blank
+ * lines are dropped; any other line is kept, cut to the same length, so an
+ * index written in another format still reaches the model.
+ */
+export function compactMemoryIndex(raw: string): string {
+	const lines: string[] = []
+	for (const line of raw.split(/\r?\n/)) {
+		const trimmed = line.trim()
+		if (trimmed === "" || trimmed.startsWith("#")) {
+			continue
+		}
+		const link = INDEX_LINK_LINE.exec(trimmed)
+		if (link) {
+			const [, title, file, hook] = link
+			const text = shortenHook((hook.trim() || title.trim()).replace(/\s+/g, " "))
+			lines.push(text ? `- ${file}: ${text}` : `- ${file}`)
+		} else {
+			lines.push(shortenHook(trimmed))
+		}
+	}
+	return lines.join("\n")
+}
 
 /**
  * The compact memory instruction: at most 600 characters for a memory path of
@@ -267,16 +313,20 @@ export function buildCompactMemoryInstruction(memoryDir: string): string {
  * at a line boundary and say so in one line when anything was dropped.
  *
  * A single line longer than the cap is cut inside the line rather than
- * dropping the whole index. The note is outside the cap.
+ * dropping the whole index. The note is outside the cap; with `memoryDir` it
+ * names the directory to search, so a small model does not guess the path.
  */
-export function truncateCompactMemoryIndex(raw: string): string {
+export function truncateCompactMemoryIndex(raw: string, memoryDir?: string): string {
 	const trimmed = raw.trim()
 	if (trimmed.length <= COMPACT_MAX_INDEX_CHARS) {
 		return trimmed
 	}
 	const cutAt = trimmed.lastIndexOf("\n", COMPACT_MAX_INDEX_CHARS)
 	const kept = trimmed.slice(0, cutAt > 0 ? cutAt : COMPACT_MAX_INDEX_CHARS).trimEnd()
-	return `${kept}\n[${ENTRYPOINT_NAME} is longer; only its first lines are shown. Search the memory directory for more.]`
+	const search = memoryDir
+		? `To find another note, call search_files with path "${memoryDir}" and a keyword.`
+		: "Search the memory directory for more."
+	return `${kept}\n[${ENTRYPOINT_NAME} is longer; only its first lines are shown. ${search}]`
 }
 
 /**
@@ -302,6 +352,7 @@ export async function loadCompactMemoryIndex(cwd: string): Promise<string> {
 	} catch {
 		return ""
 	}
-	if (!content.trim()) return ""
-	return `${ENTRYPOINT_NAME}:\n${truncateCompactMemoryIndex(content)}`
+	const compact = compactMemoryIndex(content)
+	if (!compact) return ""
+	return `${ENTRYPOINT_NAME}:\n${truncateCompactMemoryIndex(compact, getAutoMemPath(cwd))}`
 }

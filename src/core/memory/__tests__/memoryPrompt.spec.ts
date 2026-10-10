@@ -12,9 +12,11 @@ import {
 	loadMemoryPrompt,
 	buildCompactMemoryInstruction,
 	truncateCompactMemoryIndex,
+	compactMemoryIndex,
 	loadCompactMemoryIndex,
 	loadCompactMemoryPrompt,
 	COMPACT_MAX_INDEX_CHARS,
+	COMPACT_INDEX_HOOK_CHARS,
 } from "../memoryPrompt"
 import { initMemoryPaths, resetMemoryPaths } from "../paths"
 import { scanMemoryFiles } from "../memoryScan"
@@ -189,13 +191,56 @@ describe("memoryPrompt, compact profile variants", () => {
 		})
 	})
 
+	describe("compactMemoryIndex", () => {
+		it("turns link lines into '- file: hook' and drops headings and blank lines", () => {
+			const raw =
+				"# Memory Index\n\n- [Coffee log](project_coffee_log.md) - Coffee goes to zdrowie/dziennik-kawy.md\n"
+			expect(compactMemoryIndex(raw)).toBe("- project_coffee_log.md: Coffee goes to zdrowie/dziennik-kawy.md")
+		})
+
+		it.each(["\u2014", "\u2013", ":", "-"])("accepts %s as the separator", (sep) => {
+			expect(compactMemoryIndex(`- [Scope](scope.md) ${sep} Private matters`)).toBe("- scope.md: Private matters")
+		})
+
+		it("keeps hyphens inside the hook", () => {
+			expect(compactMemoryIndex("- [Server](srv.md) - CPU-bound transfer - not the disk")).toBe(
+				"- srv.md: CPU-bound transfer - not the disk",
+			)
+		})
+
+		it("uses the title when the line has no hook", () => {
+			expect(compactMemoryIndex("- [Run the tests](tests.md)")).toBe("- tests.md: Run the tests")
+		})
+
+		it("cuts a long hook at a word boundary and marks the cut", () => {
+			const hook = Array.from({ length: 40 }, (_, i) => `word${i}`).join(" ")
+			const line = compactMemoryIndex(`- [N](n.md) - ${hook}`)
+			const text = line.slice("- n.md: ".length)
+			expect(text.endsWith("...")).toBe(true)
+			expect(text.length).toBeLessThanOrEqual(COMPACT_INDEX_HOOK_CHARS + 3)
+			expect(hook.startsWith(text.slice(0, -3))).toBe(true)
+			expect(hook[text.length - 3]).toBe(" ")
+		})
+
+		it("keeps a line in another format, cut to the hook length", () => {
+			expect(compactMemoryIndex("Notes about the build live in build.md")).toBe(
+				"Notes about the build live in build.md",
+			)
+			expect(compactMemoryIndex("q".repeat(300))).toBe(`${"q".repeat(COMPACT_INDEX_HOOK_CHARS)}...`)
+		})
+
+		it("never reads past a closing bracket into the file name", () => {
+			expect(compactMemoryIndex("- [A] [B](b.md) - x")).toBe("- [A] [B](b.md) - x")
+		})
+	})
+
 	describe("truncateCompactMemoryIndex", () => {
 		it("keeps a short index unchanged (trimmed)", () => {
 			expect(truncateCompactMemoryIndex("\n- [A](a.md) - one\n")).toBe("- [A](a.md) - one")
 		})
 
 		it("cuts a long index at a line boundary and adds a one-line note", () => {
-			const lines = Array.from({ length: 60 }, (_, i) => `- [Note ${i}](note_${i}.md) - ${"x".repeat(60)}`)
+			const lines = Array.from({ length: 120 }, (_, i) => `- [Note ${i}](note_${i}.md) - ${"x".repeat(60)}`)
 			const raw = lines.join("\n")
 			expect(raw.length).toBeGreaterThan(COMPACT_MAX_INDEX_CHARS)
 
@@ -210,6 +255,11 @@ describe("memoryPrompt, compact profile variants", () => {
 			}
 			expect(note).toMatch(/^\[MEMORY\.md is longer; only its first lines are shown\..*\]$/)
 			expect(note).not.toContain("\n")
+		})
+
+		it("names the memory directory to search when it is given", () => {
+			const result = truncateCompactMemoryIndex("z".repeat(COMPACT_MAX_INDEX_CHARS + 1), "/mem/dir/")
+			expect(result).toContain('call search_files with path "/mem/dir/" and a keyword')
 		})
 
 		it("cuts inside a single line that is longer than the cap", () => {
@@ -247,15 +297,35 @@ describe("memoryPrompt, compact profile variants", () => {
 			expect(await loadCompactMemoryIndex(cwd)).toBe("")
 		})
 
-		it("returns the capped index with its heading when MEMORY.md exists", async () => {
+		it("returns the compact, capped index with its heading when MEMORY.md exists", async () => {
 			await fs.mkdir(memDirFor(tmpBase), { recursive: true })
-			const body = Array.from({ length: 50 }, (_, i) => `- [N${i}](n${i}.md) - ${"z".repeat(80)}`).join("\n")
+			const body = Array.from({ length: 80 }, (_, i) => `- [N${i}](n${i}.md) - ${"z".repeat(80)}`).join("\n")
 			await fs.writeFile(path.join(memDirFor(tmpBase), "MEMORY.md"), body)
 
 			const index = await loadCompactMemoryIndex(cwd)
-			expect(index.startsWith("MEMORY.md:\n- [N0](n0.md)")).toBe(true)
-			expect(index).toContain("[MEMORY.md is longer")
-			expect(index).not.toContain("[N49]")
+			expect(index.startsWith(`MEMORY.md:\n- n0.md: ${"z".repeat(80)}`)).toBe(true)
+			expect(index).toContain(
+				`[MEMORY.md is longer; only its first lines are shown. To find another note, call search_files with path "${memDirFor(tmpBase)}`,
+			)
+			expect(index).not.toContain("n79.md")
+		})
+
+		it("only reads MEMORY.md: the shared file stays byte-identical", async () => {
+			await fs.mkdir(memDirFor(tmpBase), { recursive: true })
+			const file = path.join(memDirFor(tmpBase), "MEMORY.md")
+			const body = "# Memory Index\n\n- [Coffee](coffee.md) \u2014 Coffee goes to zdrowie/dziennik-kawy.md\n"
+			await fs.writeFile(file, body)
+
+			expect(await loadCompactMemoryIndex(cwd)).toBe(
+				"MEMORY.md:\n- coffee.md: Coffee goes to zdrowie/dziennik-kawy.md",
+			)
+			expect(await fs.readFile(file, "utf-8")).toBe(body)
+		})
+
+		it("returns '' when MEMORY.md holds only a heading", async () => {
+			await fs.mkdir(memDirFor(tmpBase), { recursive: true })
+			await fs.writeFile(path.join(memDirFor(tmpBase), "MEMORY.md"), "# Memory Index\n")
+			expect(await loadCompactMemoryIndex(cwd)).toBe("")
 		})
 
 		it("leaves the long index loader unchanged by the compact cap", async () => {
