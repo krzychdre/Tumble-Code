@@ -1,0 +1,241 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "read_file",
+      "description": "Read one file. Returns a header line, then the file's lines exactly as stored, without line numbers. Omit offset and limit to read from the start; use them only to continue a long file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path relative to the workspace"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "1-based line to start at"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of lines"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_files",
+      "description": "List the files and directories in a directory. Top level only unless recursive is true.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path relative to the workspace"
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "true to include subdirectories"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "search_files",
+      "description": "Search file contents under a directory with a regular expression (Rust syntax). Returns the matching lines with some context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path relative to the workspace"
+          },
+          "regex": {
+            "type": "string",
+            "description": "Regular expression to find"
+          },
+          "file_pattern": {
+            "type": "string",
+            "description": "Glob that limits the files, for example *.md"
+          }
+        },
+        "required": [
+          "path",
+          "regex"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "ask_followup_question",
+      "description": "Ask the user a question. Only when no tool can find the answer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question"
+          },
+          "follow_up": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "description": "1 to 4 short suggested answers"
+          }
+        },
+        "required": [
+          "question",
+          "follow_up"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "attempt_completion",
+      "description": "Finish the task and give the user the result. Use it only after your last tool call succeeded.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "description": "The final result, without a question at the end"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "switch_mode",
+      "description": "Switch to another mode, for example code to change files.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode_slug": {
+            "type": "string",
+            "description": "Mode slug, for example code or ask"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why you need the switch"
+          }
+        },
+        "required": [
+          "mode_slug",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "edit",
+      "description": "Replace text in an existing file. Copy old_string exactly from read_file output (no line numbers), with enough lines to match only once, or set replace_all. To add a line after \"- a\": {\"file_path\":\"x.md\",\"old_string\":\"- a\",\"new_string\":\"- a\\n- b\"}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Path relative to the workspace"
+          },
+          "old_string": {
+            "type": "string",
+            "description": "Exact current text"
+          },
+          "new_string": {
+            "type": "string",
+            "description": "Replacement text"
+          },
+          "replace_all": {
+            "type": "boolean",
+            "description": "true to replace every match"
+          }
+        },
+        "required": [
+          "file_path",
+          "old_string",
+          "new_string"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "write_to_file",
+      "description": "Create a file, or replace a whole file. Give the complete content, without line numbers. Use edit to change part of a file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path relative to the workspace"
+          },
+          "content": {
+            "type": "string",
+            "description": "The complete file content"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "execute_command",
+      "description": "Run a shell command and return its output and exit code. Use the syntax of the user's shell.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The command"
+          },
+          "cwd": {
+            "type": "string",
+            "description": "Directory to run in, default the workspace"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+]
