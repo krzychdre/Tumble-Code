@@ -688,17 +688,25 @@
 			"label": "Bật công cụ danh sách việc cần làm",
 			"description": "Khi được bật, Tumble có thể tạo và quản lý danh sách việc cần làm để theo dõi tiến độ công việc. Điều này giúp tổ chức các tác vụ phức tạp thành các bước có thể quản lý được."
 		},
-		"slimToolset": {
-			"label": "Bộ công cụ tinh gọn (mô hình nhỏ)",
-			"description": "Cung cấp cho hồ sơ này một công cụ rõ ràng cho mỗi việc: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, các công cụ web và công cụ tác vụ (ask, complete, switch mode, new task, todo list, skill, load tools). Các động từ chỉnh sửa thừa (edit, search_replace, edit_file, apply_patch), tạo ảnh, tác vụ song song và lệnh slash bị ẩn. Mô hình nhỏ ngừng chọn sai trình chỉnh sửa. Nếu mô hình vẫn gọi một công cụ ẩn, nó vẫn chạy.",
-			"hideMcp": {
-				"label": "Cũng ẩn công cụ MCP",
-				"description": "Lược đồ công cụ MCP thường là phần lớn nhất của prompt công cụ. Giữ bật trừ khi hồ sơ này cần một máy chủ MCP."
+		"modelSize": {
+			"title": "Kích thước mô hình",
+			"description": "Hồ sơ này gửi lời nhắc hệ thống dài bao nhiêu và bao nhiêu công cụ. Hãy chọn tùy chọn phù hợp với mô hình mà hồ sơ này kết nối tới.",
+			"standard": {
+				"label": "Tiêu chuẩn",
+				"description": "Lời nhắc hệ thống đầy đủ và mọi công cụ. Dành cho mô hình lớn."
+			},
+			"slim": {
+				"label": "Mô hình nhỏ hơn: bộ công cụ tinh gọn",
+				"description": "Lời nhắc hệ thống đầy đủ nhưng ít công cụ hơn: mỗi việc một công cụ rõ ràng, không có các công cụ chỉnh sửa thay thế, tạo hình ảnh, tác vụ song song và lệnh gạch chéo. Dành cho mô hình cỡ trung xử lý được lời nhắc dài và apply_diff nhưng hay chọn sai công cụ.",
+				"hideMcp": {
+					"label": "Cũng ẩn công cụ MCP",
+					"description": "Lược đồ công cụ MCP thường là phần lớn nhất của prompt công cụ. Giữ bật trừ khi hồ sơ này cần một máy chủ MCP."
+				}
+			},
+			"compact": {
+				"label": "Mô hình rất nhỏ: chế độ gọn",
+				"description": "Dành cho mô hình cục bộ nhỏ (vài tỷ tham số) có cửa sổ ngữ cảnh từ 32k đến 40k: lời nhắc hệ thống ngắn, chín công cụ dùng thay thế văn bản đơn giản thay cho apply_diff, chi tiết môi trường trên một dòng và giới hạn đầu ra chặt hơn."
 			}
-		},
-		"compactProfile": {
-			"label": "Chế độ gọn cho mô hình nhỏ",
-			"description": "Dành cho mô hình cục bộ có cửa sổ ngữ cảnh từ 32k đến 40k: lời nhắc hệ thống ngắn, bộ công cụ tối thiểu với cách chỉnh sửa đơn giản, chi tiết môi trường ngắn hơn và giới hạn đầu ra chặt hơn. Hãy để tắt với các mô hình lớn."
 		}
 	},
 	"experimental": {

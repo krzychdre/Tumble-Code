@@ -688,17 +688,25 @@
 			"label": "Włącz narzędzie listy zadań",
 			"description": "Po włączeniu Tumble może tworzyć i zarządzać listami zadań do śledzenia postępu zadań. Pomaga to organizować złożone zadania w łatwe do zarządzania kroki."
 		},
-		"slimToolset": {
-			"label": "Odchudzony zestaw narzędzi (małe modele)",
-			"description": "Daje temu profilowi jedno oczywiste narzędzie na każde zadanie: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, narzędzia sieciowe i narzędzia zadań (ask, complete, switch mode, new task, todo list, skill, load tools). Zapasowe czasowniki edycji (edit, search_replace, edit_file, apply_patch), generowanie obrazów, zadania równoległe i polecenia z ukośnikiem są ukryte. Małe modele przestają wybierać niewłaściwy edytor. Jeśli model mimo to wywoła ukryte narzędzie, ono nadal działa.",
-			"hideMcp": {
-				"label": "Ukryj też narzędzia MCP",
-				"description": "Schematy narzędzi MCP to zazwyczaj największa część promptu narzędzi. Utrzymuj to włączone, chyba że ten profil wymaga serwera MCP."
+		"modelSize": {
+			"title": "Wielkość modelu",
+			"description": "Określa, jak obszerny prompt systemowy i ile narzędzi wysyła ten profil. Wybierz opcję pasującą do modelu, z którym łączy się ten profil.",
+			"standard": {
+				"label": "Standardowy",
+				"description": "Pełny prompt systemowy i wszystkie narzędzia. Dla dużych modeli."
+			},
+			"slim": {
+				"label": "Mniejsze modele: odchudzone narzędzia",
+				"description": "Pełny prompt systemowy, ale mniej narzędzi: jedno oczywiste narzędzie do każdego zadania, bez zapasowych narzędzi edycji, generowania obrazów, zadań równoległych i poleceń z ukośnikiem. Dla modeli średniej wielkości, które radzą sobie z długim promptem i apply_diff, ale wybierają niewłaściwe narzędzie.",
+				"hideMcp": {
+					"label": "Ukryj też narzędzia MCP",
+					"description": "Schematy narzędzi MCP to zazwyczaj największa część promptu narzędzi. Utrzymuj to włączone, chyba że ten profil wymaga serwera MCP."
+				}
+			},
+			"compact": {
+				"label": "Bardzo małe modele: tryb kompaktowy",
+				"description": "Dla małych modeli lokalnych (kilka miliardów parametrów) z oknem kontekstu od 32k do 40k: krótki prompt systemowy, dziewięć narzędzi z prostą zamianą tekstu zamiast apply_diff, jednolinijkowe szczegóły środowiska i niższe limity danych wyjściowych."
 			}
-		},
-		"compactProfile": {
-			"label": "Tryb kompaktowy dla małych modeli",
-			"description": "Dla lokalnych modeli z oknem kontekstu od 32k do 40k: krótki prompt systemowy, minimalny zestaw narzędzi z prostą edycją, krótsze szczegóły środowiska i niższe limity danych wyjściowych. Przy dużych modelach zostaw tę opcję wyłączoną."
 		}
 	},
 	"experimental": {

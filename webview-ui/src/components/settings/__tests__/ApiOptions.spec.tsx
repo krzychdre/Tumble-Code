@@ -29,6 +29,7 @@ const { ExtensionStateContextProvider } = ExtensionStateContext
 
 import ApiOptions, { ApiOptionsProps } from "../ApiOptions"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedRadio as RealThemedRadio, ThemedRadioGroup as RealThemedRadioGroup } from "@/components/ui/themed-radio"
 import { Input as RealInput } from "@/components/ui/input"
 
 // Mock VSCode components
@@ -56,6 +57,9 @@ vi.mock("@/components/ui", () => ({
 	Input: (props: any) => <RealInput {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
+	// The real radio group (native radios), used by the model size control.
+	ThemedRadioGroup: (props: any) => <RealThemedRadioGroup {...props} />,
+	ThemedRadio: (props: any) => <RealThemedRadio {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange }: any) => (
 		<div className="select-mock">

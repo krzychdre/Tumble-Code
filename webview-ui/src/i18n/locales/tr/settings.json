@@ -688,17 +688,25 @@
 			"label": "Yapılacaklar listesi aracını etkinleştir",
 			"description": "Etkinleştirildiğinde, Tumble görev ilerlemesini takip etmek için yapılacaklar listeleri oluşturabilir ve yönetebilir. Bu, karmaşık görevleri yönetilebilir adımlara organize etmeye yardımcı olur."
 		},
-		"slimToolset": {
-			"label": "Sade araç seti (küçük modeller)",
-			"description": "Bu profile her iş için belirgin bir araç sunar: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, web araçları ve görev araçları (ask, complete, switch mode, new task, todo list, skill, load tools). Yedek düzenleme fiilleri (edit, search_replace, edit_file, apply_patch), görüntü üretimi, paralel görevler ve slash komutları gizlenir. Küçük modeller yanlış editörü seçmeyi bırakır. Model gizli bir aracı yine de çağırırsa, yine de çalışır.",
-			"hideMcp": {
-				"label": "MCP araçlarını da gizle",
-				"description": "MCP araç şemaları genellikle araç isteminin en büyük parçasıdır. Bu profil bir MCP sunucusu gerektirmedikçe açık tutun."
+		"modelSize": {
+			"title": "Model boyutu",
+			"description": "Bu profilin ne kadar sistem istemi ve kaç araç gönderdiği. Bu profilin bağlandığı modele uyan seçeneği seçin.",
+			"standard": {
+				"label": "Standart",
+				"description": "Tam sistem istemi ve tüm araçlar. Büyük modeller için."
+			},
+			"slim": {
+				"label": "Daha küçük modeller: sade araç seti",
+				"description": "Tam sistem istemi, ancak daha az araç: her iş için tek bir belirgin araç; alternatif düzenleme araçları, görsel oluşturma, paralel görevler ve eğik çizgi komutları yok. Uzun istemle ve apply_diff ile başa çıkabilen ama yanlış aracı seçen orta boy modeller için.",
+				"hideMcp": {
+					"label": "MCP araçlarını da gizle",
+					"description": "MCP araç şemaları genellikle araç isteminin en büyük parçasıdır. Bu profil bir MCP sunucusu gerektirmedikçe açık tutun."
+				}
+			},
+			"compact": {
+				"label": "Çok küçük modeller: kompakt mod",
+				"description": "32k ile 40k arası bağlam penceresine sahip küçük yerel modeller (birkaç milyar parametre) için: kısa bir sistem istemi, apply_diff yerine basit metin değiştirmeli dokuz araç, tek satırlık ortam ayrıntıları ve daha sıkı çıktı sınırları."
 			}
-		},
-		"compactProfile": {
-			"label": "Küçük modeller için kompakt mod",
-			"description": "32k ile 40k arası bağlam penceresine sahip yerel modeller için: kısa bir sistem istemi, basit düzenlemeli minimal bir araç seti, daha kısa ortam ayrıntıları ve daha sıkı çıktı sınırları. Büyük modeller için kapalı bırakın."
 		}
 	},
 	"experimental": {

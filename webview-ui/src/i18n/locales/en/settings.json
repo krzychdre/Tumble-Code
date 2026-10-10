@@ -804,17 +804,25 @@
 			"label": "Enable todo list tool",
 			"description": "When enabled, Tumble can create and manage todo lists to track task progress. This helps organize complex tasks into manageable steps."
 		},
-		"slimToolset": {
-			"label": "Slim toolset (small models)",
-			"description": "Offer this profile one obvious tool per job: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, the web tools, and the task tools (ask, complete, switch mode, new task, todo list, skill, load tools). The spare edit verbs (edit, search_replace, edit_file, apply_patch), image generation, parallel tasks and slash commands are hidden. Small models stop choosing the wrong editor. If the model calls a hidden tool anyway, it still runs.",
-			"hideMcp": {
-				"label": "Also hide MCP tools",
-				"description": "MCP tool schemas are usually the biggest part of the tool prompt. Keep this on unless this profile needs an MCP server."
+		"modelSize": {
+			"title": "Model size",
+			"description": "How much system prompt and how many tools this profile sends. Pick the option that matches the model this profile connects to.",
+			"standard": {
+				"label": "Standard",
+				"description": "The full system prompt and every tool. For large models."
+			},
+			"slim": {
+				"label": "Smaller models: slim toolset",
+				"description": "The full system prompt with fewer tools: one obvious tool for each job, without the alternative editing tools, image generation, parallel tasks and slash commands. For mid-size models that cope with the long prompt and apply_diff but pick the wrong tool.",
+				"hideMcp": {
+					"label": "Also hide MCP tools",
+					"description": "MCP tool schemas are usually the biggest part of the tool prompt. Keep this on unless this profile needs an MCP server."
+				}
+			},
+			"compact": {
+				"label": "Very small models: compact mode",
+				"description": "For small local models (a few billion parameters) with a 32k to 40k context window: a short system prompt, nine tools with simple text replacement instead of apply_diff, one-line environment details and tighter output limits."
 			}
-		},
-		"compactProfile": {
-			"label": "Compact mode for small models",
-			"description": "For local models with a 32k to 40k context window: a short system prompt, a minimal tool set with simple editing, shorter environment details and tighter output limits. Leave it off for large models."
 		}
 	},
 	"experimental": {

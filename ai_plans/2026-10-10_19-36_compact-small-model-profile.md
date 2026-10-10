@@ -144,6 +144,20 @@ Known limits: the orchestrator mode's own instructions still delegate with `new_
 the compact toolset hides, so it can only switch modes under compact. The four tasks are small; multi-file changes
 were not measured. `src/__tests__/single-open-invariant.spec.ts` fails on `main` as well, independent of this branch.
 
+## Settings UI: one model size choice (owner's request, 2026-10-10)
+
+The owner found two checkboxes that both said "small models" (slim toolset and compact mode) confusing, and asked
+for one radio choice that tells smaller models from very small ones. The advanced profile settings now show "Model
+size" with three options: Standard (full prompt and tools, large models), "Smaller models: slim toolset" (full
+prompt, one obvious tool per job, mid-size models) and "Very small models: compact mode" (32k to 40k windows). The
+MCP sub-checkbox appears under the group only for the slim option.
+
+Storage is unchanged: the profile keeps the two flags `slimToolset` and `compactProfile`, so no profile needs a
+migration and the extension's behaviour is the same. `ModelSizeControl` derives the option with compact winning, as
+the tool filter does, and a selection writes only the flags whose effective value changes. It replaces
+`SlimToolsetControl` and `CompactProfileControl`; the locale keys moved to `settings:advanced.modelSize.*` in all 18
+locales, with the existing MCP sub-checkbox translations carried over.
+
 ## Follow-ups outside this branch
 
 - Ungated: route malformed `apply_diff` errors through `toolError` so they carry the minimal example, and stop

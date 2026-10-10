@@ -688,17 +688,25 @@
 			"label": "Takenlijst-tool inschakelen",
 			"description": "Wanneer ingeschakeld, kan Tumble takenlijsten maken en beheren om de voortgang van taken bij te houden. Dit helpt complexe taken te organiseren in beheersbare stappen."
 		},
-		"slimToolset": {
-			"label": "Slanke toolset (kleine modellen)",
-			"description": "Biedt dit profiel één duidelijke tool per taak: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, de webtools en de taaktools (ask, complete, switch mode, new task, todo list, skill, load tools). De overbodige edit-werkwoorden (edit, search_replace, edit_file, apply_patch), beeldgeneratie, parallelle taken en slashopdrachten zijn verborgen. Kleine modellen stoppen met de verkeerde editor kiezen. Als het model toch een verborgen tool aanroept, draait hij alsnog.",
-			"hideMcp": {
-				"label": "Ook MCP-tools verbergen",
-				"description": "MCP-tool-schema's zijn meestal het grootste deel van de tool-prompt. Laat dit aan tenzij dit profiel een MCP-server nodig heeft."
+		"modelSize": {
+			"title": "Modelgrootte",
+			"description": "Hoeveel systeemprompt en hoeveel tools dit profiel verstuurt. Kies de optie die past bij het model waarmee dit profiel verbindt.",
+			"standard": {
+				"label": "Standaard",
+				"description": "De volledige systeemprompt en alle tools. Voor grote modellen."
+			},
+			"slim": {
+				"label": "Kleinere modellen: slanke toolset",
+				"description": "De volledige systeemprompt met minder tools: één duidelijke tool per taak, zonder de alternatieve bewerkingstools, afbeeldingen genereren, parallelle taken en slash-commando's. Voor middelgrote modellen die de lange prompt en apply_diff aankunnen maar de verkeerde tool kiezen.",
+				"hideMcp": {
+					"label": "Ook MCP-tools verbergen",
+					"description": "MCP-tool-schema's zijn meestal het grootste deel van de tool-prompt. Laat dit aan tenzij dit profiel een MCP-server nodig heeft."
+				}
+			},
+			"compact": {
+				"label": "Zeer kleine modellen: compacte modus",
+				"description": "Voor kleine lokale modellen (enkele miljarden parameters) met een contextvenster van 32k tot 40k: een korte systeemprompt, negen tools met eenvoudige tekstvervanging in plaats van apply_diff, omgevingsdetails op één regel en strengere uitvoerlimieten."
 			}
-		},
-		"compactProfile": {
-			"label": "Compacte modus voor kleine modellen",
-			"description": "Voor lokale modellen met een contextvenster van 32k tot 40k: een korte systeemprompt, een minimale set tools met eenvoudig bewerken, kortere omgevingsdetails en strengere uitvoerlimieten. Laat dit uit voor grote modellen."
 		}
 	},
 	"experimental": {

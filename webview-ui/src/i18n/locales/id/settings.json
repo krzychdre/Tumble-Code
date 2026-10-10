@@ -688,17 +688,25 @@
 			"label": "Aktifkan alat daftar tugas",
 			"description": "Saat diaktifkan, Tumble dapat membuat dan mengelola daftar tugas untuk melacak kemajuan tugas. Ini membantu mengatur tugas kompleks menjadi langkah-langkah yang dapat dikelola."
 		},
-		"slimToolset": {
-			"label": "Set alat ramping (model kecil)",
-			"description": "Tawarkan profil ini satu alat yang jelas untuk setiap pekerjaan: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, alat web, dan alat tugas (ask, complete, switch mode, new task, todo list, skill, load tools). Kata kerja edit cadangan (edit, search_replace, edit_file, apply_patch), pembuatan gambar, tugas paralel, dan perintah slash disembunyikan. Model kecil berhenti memilih editor yang salah. Jika model tetap memanggil alat tersembunyi, alat itu tetap berjalan.",
-			"hideMcp": {
-				"label": "Sembunyikan juga alat MCP",
-				"description": "Skema alat MCP biasanya bagian terbesar dari prompt alat. Tetap aktifkan kecuali profil ini memerlukan server MCP."
+		"modelSize": {
+			"title": "Ukuran model",
+			"description": "Seberapa panjang prompt sistem dan berapa banyak alat yang dikirim profil ini. Pilih opsi yang sesuai dengan model yang terhubung ke profil ini.",
+			"standard": {
+				"label": "Standar",
+				"description": "Prompt sistem lengkap dan semua alat. Untuk model besar."
+			},
+			"slim": {
+				"label": "Model lebih kecil: set alat ramping",
+				"description": "Prompt sistem lengkap dengan lebih sedikit alat: satu alat yang jelas untuk setiap tugas, tanpa alat pengeditan alternatif, pembuatan gambar, tugas paralel, dan perintah garis miring. Untuk model berukuran sedang yang sanggup menangani prompt panjang dan apply_diff tetapi memilih alat yang salah.",
+				"hideMcp": {
+					"label": "Sembunyikan juga alat MCP",
+					"description": "Skema alat MCP biasanya bagian terbesar dari prompt alat. Tetap aktifkan kecuali profil ini memerlukan server MCP."
+				}
+			},
+			"compact": {
+				"label": "Model sangat kecil: mode ringkas",
+				"description": "Untuk model lokal kecil (beberapa miliar parameter) dengan jendela konteks 32k hingga 40k: prompt sistem yang pendek, sembilan alat dengan penggantian teks sederhana sebagai ganti apply_diff, detail lingkungan satu baris, dan batas output yang lebih ketat."
 			}
-		},
-		"compactProfile": {
-			"label": "Mode ringkas untuk model kecil",
-			"description": "Untuk model lokal dengan jendela konteks 32k hingga 40k: prompt sistem yang pendek, set alat minimal dengan pengeditan sederhana, detail lingkungan yang lebih singkat, dan batas output yang lebih ketat. Biarkan nonaktif untuk model besar."
 		}
 	},
 	"experimental": {

@@ -688,17 +688,25 @@
 			"label": "Habilitar ferramenta de lista de tarefas",
 			"description": "Quando habilitado, o Tumble pode criar e gerenciar listas de tarefas para acompanhar o progresso das tarefas. Isso ajuda a organizar tarefas complexas em etapas gerenciáveis."
 		},
-		"slimToolset": {
-			"label": "Conjunto de ferramentas enxuto (modelos pequenos)",
-			"description": "Oferece a este perfil uma ferramenta óbvia por tarefa: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, as ferramentas web e as de tarefa (ask, complete, switch mode, new task, todo list, skill, load tools). Os verbos de edição excedentes (edit, search_replace, edit_file, apply_patch), geração de imagens, tarefas paralelas e comandos slash ficam ocultos. Modelos pequenos param de escolher o editor errado. Se o modelo chamar uma ferramenta oculta mesmo assim, ela ainda roda.",
-			"hideMcp": {
-				"label": "Ocultar também ferramentas MCP",
-				"description": "Os esquemas de ferramentas MCP costumam ser a maior parte do prompt de ferramentas. Mantenha isto ativo a menos que este perfil precise de um servidor MCP."
+		"modelSize": {
+			"title": "Tamanho do modelo",
+			"description": "Quanto prompt de sistema e quantas ferramentas este perfil envia. Escolha a opção que corresponde ao modelo ao qual este perfil se conecta.",
+			"standard": {
+				"label": "Padrão",
+				"description": "O prompt de sistema completo e todas as ferramentas. Para modelos grandes."
+			},
+			"slim": {
+				"label": "Modelos menores: conjunto de ferramentas enxuto",
+				"description": "O prompt de sistema completo com menos ferramentas: uma ferramenta clara para cada tarefa, sem as ferramentas de edição alternativas, a geração de imagens, as tarefas paralelas e os comandos de barra. Para modelos médios que lidam com o prompt longo e com apply_diff, mas escolhem a ferramenta errada.",
+				"hideMcp": {
+					"label": "Ocultar também ferramentas MCP",
+					"description": "Os esquemas de ferramentas MCP costumam ser a maior parte do prompt de ferramentas. Mantenha isto ativo a menos que este perfil precise de um servidor MCP."
+				}
+			},
+			"compact": {
+				"label": "Modelos muito pequenos: modo compacto",
+				"description": "Para modelos locais pequenos (alguns bilhões de parâmetros) com janela de contexto de 32k a 40k: um prompt de sistema curto, nove ferramentas com substituição de texto simples em vez de apply_diff, detalhes do ambiente em uma linha e limites de saída mais rígidos."
 			}
-		},
-		"compactProfile": {
-			"label": "Modo compacto para modelos pequenos",
-			"description": "Para modelos locais com janela de contexto de 32k a 40k: um prompt de sistema curto, um conjunto mínimo de ferramentas com edição simples, detalhes do ambiente mais curtos e limites de saída mais rígidos. Deixe desativado para modelos grandes."
 		}
 	},
 	"experimental": {

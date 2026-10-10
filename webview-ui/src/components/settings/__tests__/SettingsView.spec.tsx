@@ -8,6 +8,7 @@ import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 
 import SettingsView from "../SettingsView"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedRadio as RealThemedRadio, ThemedRadioGroup as RealThemedRadioGroup } from "@/components/ui/themed-radio"
 import { Textarea as RealTextarea } from "@/components/ui/textarea"
 import { Input as RealInput } from "@/components/ui/input"
 
@@ -78,6 +79,9 @@ vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
+	// The real radio group (native radios), used by the model size control.
+	ThemedRadioGroup: (props: any) => <RealThemedRadioGroup {...props} />,
+	ThemedRadio: (props: any) => <RealThemedRadio {...props} />,
 	Textarea: (props: any) => <RealTextarea {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (

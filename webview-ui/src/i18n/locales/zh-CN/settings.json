@@ -688,17 +688,25 @@
 			"label": "启用任务清单工具",
 			"description": "启用后，Tumble 可以创建和管理任务清单来跟踪任务进度。这有助于将复杂任务组织成可管理的步骤。"
 		},
-		"slimToolset": {
-			"label": "精简工具集(小模型)",
-			"description": "为此配置在每个任务中提供一个明确的工具:read_file、search_files、list_files、codebase_search、apply_diff、write_to_file、execute_command、read_artifact、网络工具以及任务工具(ask、complete、switch mode、new task、todo list、skill、load tools)。多余的编辑动词(edit、search_replace、edit_file、apply_patch)、图像生成、并行任务和斜杠命令均被隐藏。小模型不再选错编辑器。若模型仍调用了被隐藏的工具,该工具仍会运行。",
-			"hideMcp": {
-				"label": "同时隐藏 MCP 工具",
-				"description": "MCP 工具的 schema 通常是工具提示词中最大的一部分。除非此配置需要 MCP 服务器,否则请保持开启。"
+		"modelSize": {
+			"title": "模型大小",
+			"description": "此配置文件发送的系统提示长度和工具数量。请选择与此配置文件所连接模型相符的选项。",
+			"standard": {
+				"label": "标准",
+				"description": "完整的系统提示和全部工具。适用于大模型。"
+			},
+			"slim": {
+				"label": "较小的模型：精简工具集",
+				"description": "完整的系统提示，但工具更少：每项任务只提供一个明确的工具，不含备用编辑工具、图像生成、并行任务和斜杠命令。适用于能处理长提示和 apply_diff、但常选错工具的中型模型。",
+				"hideMcp": {
+					"label": "同时隐藏 MCP 工具",
+					"description": "MCP 工具的 schema 通常是工具提示词中最大的一部分。除非此配置需要 MCP 服务器,否则请保持开启。"
+				}
+			},
+			"compact": {
+				"label": "非常小的模型：紧凑模式",
+				"description": "适用于上下文窗口为 32k 到 40k 的小型本地模型（数十亿参数）：简短的系统提示、用简单文本替换代替 apply_diff 的九个工具、单行环境详情以及更严格的输出限制。"
 			}
-		},
-		"compactProfile": {
-			"label": "小模型紧凑模式",
-			"description": "适用于上下文窗口为 32k 到 40k 的本地模型：简短的系统提示、仅含简单编辑的最小工具集、更短的环境详情以及更严格的输出限制。大模型请保持关闭。"
 		}
 	},
 	"experimental": {
