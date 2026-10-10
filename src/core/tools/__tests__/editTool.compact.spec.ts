@@ -145,6 +145,46 @@ describe("edit under the compact profile", () => {
 		expect(savedContent()).toBe("a\r\nB\r\nc\r\n")
 	})
 
+	it("changes only the replaced region: mixed line endings and a BOM stay as they are", async () => {
+		await runEdit({ file_path: "m.txt", old_string: "a", new_string: "A" }, { content: "a\r\nb\nc\n" })
+		expect(savedContent()).toBe("A\r\nb\nc\n")
+		await runEdit(
+			{ file_path: "b.yml", old_string: "title: x ", new_string: "title: y" },
+			{ content: "\uFEFFtitle: x\nbody\n" },
+		)
+		expect(savedContent()).toBe("\uFEFFtitle: y\nbody\n")
+	})
+
+	it("review case: a numbered-looking code line with a trailing space edits its own line, without a line-number note", async () => {
+		await runEdit(
+			{ file_path: "flags.py", old_string: "    2 | FLAG_B, ", new_string: "    2 | FLAG_D, " },
+			{ content: "flags = (\n    1 | FLAG_A,\n    2 | FLAG_B,\n)\nmask = FLAG_B, FLAG_C\n" },
+		)
+		expect(savedContent()).toBe("flags = (\n    1 | FLAG_A,\n    2 | FLAG_D, \n)\nmask = FLAG_B, FLAG_C\n")
+		const suffix = mockedApply.mock.calls[0][4]?.resultSuffix
+		expect(suffix).toContain("ignoring whitespace differences")
+		expect(suffix).not.toContain("line numbers")
+	})
+
+	it("review case: refuses a re-indentation it cannot be sure of and quotes the exact file lines", async () => {
+		const { task, result } = await runEdit(
+			{ file_path: "f.py", old_string: "if x:\nreturn 1", new_string: "if x:\nreturn 2" },
+			{ content: "def f(x):\n    if x:\n        return 1\n    return 0\n" },
+		)
+		expect(result).toBe(
+			[
+				"Error: old_string was not found in f.py. The closest text in the file (lines 2-3) is:",
+				"    if x:",
+				"        return 1",
+				"Copy old_string exactly from the file text, without line numbers.",
+				'Example edit call: {"file_path":"f.py","old_string":"    if x:","new_string":"<new text>"}',
+			].join("\n"),
+		)
+		expect(mockedApply).not.toHaveBeenCalled()
+		expect(task.consecutiveMistakeCount).toBe(1)
+		expect(task.recordToolError).toHaveBeenCalledWith("edit", "no_match")
+	})
+
 	it("re-indents new_string to the matched lines", async () => {
 		await runEdit(
 			{ file_path: "f.ts", old_string: "if (x) {\nreturn 1\n}", new_string: "if (x) {\nreturn 2\n}" },

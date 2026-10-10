@@ -18,12 +18,11 @@ import { applyComputedEdit } from "./helpers/applyComputedEdit"
 import { replaceLiteral } from "./helpers/replaceLiteral"
 import {
 	compactReplace,
-	detectLineEnding,
 	findClosestSnippet,
 	lastLines,
 	matchWithContext,
 	normalizeToLF,
-	restoreLineEnding,
+	toMatchText,
 } from "./helpers/compactEdit"
 
 export interface StringReplaceParams {
@@ -286,18 +285,16 @@ async function runCompactEdit(
 			}
 		}
 
-		const eol = detectLineEnding(originalContent)
-		const contentLF = normalizeToLF(originalContent)
-		const oldLF = normalizeToLF(oldString)
-		const newLF = normalizeToLF(newString)
+		// What the model saw in read_file (no BOM, no "\r"): the quotes of the errors come from it.
+		const contentText = toMatchText(originalContent)
 
 		let newContent: string
 		let resultSuffix = ""
-		if (oldLF === "") {
+		if (oldString === "") {
 			// Create a missing file, or fill one that holds nothing but whitespace.
-			if (fileExists && contentLF.trim() !== "") {
+			if (fileExists && contentText.trim() !== "") {
 				host.recordFailure({ error: "empty_old_string" })
-				pushToolResult(compactResponses.editAppendToExistingFile(relPath, lastLines(contentLF, 3)))
+				pushToolResult(compactResponses.editAppendToExistingFile(relPath, lastLines(contentText, 3)))
 				return
 			}
 			if (newString === "") {
@@ -310,17 +307,23 @@ async function runCompactEdit(
 			// old rule (every line, the last one included) says otherwise.
 			newContent = everyLineHasLineNumbers(newString) ? stripLineNumbers(newString) : newString
 		} else {
-			if (oldLF === newLF) {
+			if (normalizeToLF(oldString) === normalizeToLF(newString)) {
 				host.recordFailure()
 				pushToolResult(compactResponses.editIdenticalStrings(relPath))
 				return
 			}
 
-			const result = compactReplace(contentLF, oldLF, newLF, replaceAll)
+			// Works on the file as read: only the replaced region changes (BOM, CRLF and mixed line endings stay).
+			const result = compactReplace(originalContent, oldString, newString, replaceAll)
 
 			if (result.kind === "none") {
 				host.recordFailure({ error: "no_match" })
-				pushToolResult(compactResponses.editNoMatch(relPath, findClosestSnippet(contentLF, result.searched)))
+				pushToolResult(
+					compactResponses.editNoMatch(
+						relPath,
+						result.snippet ?? findClosestSnippet(contentText, result.searched),
+					),
+				)
 				return
 			}
 
@@ -330,13 +333,13 @@ async function runCompactEdit(
 					compactResponses.editMultipleMatches(
 						relPath,
 						result.matches.map((match) => match.startLine),
-						matchWithContext(contentLF, result.matches[0]),
+						matchWithContext(contentText, result.matches[0]),
 					),
 				)
 				return
 			}
 
-			newContent = restoreLineEnding(result.content, eol)
+			newContent = result.content
 			resultSuffix =
 				(result.count > 1 ? ` (${result.count} replacements)` : "") +
 				compactResponses.editMatchNote(result.strippedLineNumbers, result.strategy === "whitespace")
