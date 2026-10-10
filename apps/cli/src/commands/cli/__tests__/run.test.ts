@@ -807,6 +807,9 @@ describe("run provider settings per mode", () => {
 				openAiCustomModelInfo: withEffort("max"),
 				openAiPreserveReasoning: false,
 				openAiTrimOldReasoning: false,
+				slimToolset: false,
+				slimHidesMcp: true,
+				compactProfile: false,
 			},
 			modes: {
 				architect: {
@@ -819,6 +822,9 @@ describe("run provider settings per mode", () => {
 					openAiCustomModelInfo: withEffort("high"),
 					openAiPreserveReasoning: false,
 					openAiTrimOldReasoning: false,
+					slimToolset: false,
+					slimHidesMcp: true,
+					compactProfile: false,
 				},
 			},
 		})
@@ -837,6 +843,9 @@ describe("run provider settings per mode", () => {
 			apiModelId: "gpt-5.6-sol",
 			enableReasoningEffort: true,
 			reasoningEffort: "medium",
+			slimToolset: false,
+			slimHidesMcp: true,
+			compactProfile: false,
 		})
 	})
 

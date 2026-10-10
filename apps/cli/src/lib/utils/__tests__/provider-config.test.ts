@@ -315,6 +315,9 @@ describe("toProviderSettings", () => {
 			},
 			openAiPreserveReasoning: false,
 			openAiTrimOldReasoning: false,
+			slimToolset: false,
+			slimHidesMcp: true,
+			compactProfile: false,
 		})
 	})
 
@@ -446,6 +449,37 @@ describe("toProviderSettings", () => {
 		)
 	})
 
+	it("makes a model compact with any provider", () => {
+		const settings = toProviderSettings({
+			provider: "anthropic",
+			model: "claude-x",
+			apiKey: "k",
+			modelSettings: { modelSize: "compact" },
+		})
+
+		expect(settings).toMatchObject({ compactProfile: true, slimToolset: false })
+	})
+
+	it("gives a slim model the slim toolset, hiding MCP unless hideMcp is false", () => {
+		expect(toProviderSettings({ ...connection, modelSettings: { modelSize: "slim" } })).toMatchObject({
+			slimToolset: true,
+			slimHidesMcp: true,
+			compactProfile: false,
+		})
+		expect(
+			toProviderSettings({ ...connection, modelSettings: { modelSize: "slim", hideMcp: false } }),
+		).toMatchObject({ slimToolset: true, slimHidesMcp: false })
+	})
+
+	it("clears a model size an earlier run left in the extension state", () => {
+		for (const modelSettings of [undefined, { modelSize: "standard" as const }]) {
+			expect(toProviderSettings({ ...connection, modelSettings })).toMatchObject({
+				slimToolset: false,
+				compactProfile: false,
+			})
+		}
+	})
+
 	it("turns reasoning off for disabled and leaves it out for unspecified", () => {
 		expect(toProviderSettings({ ...connection, reasoningEffort: "disabled" })).toMatchObject({
 			enableReasoningEffort: false,
@@ -499,6 +533,9 @@ describe("withModel", () => {
 			openAiCustomModelInfo: null,
 			openAiPreserveReasoning: false,
 			openAiTrimOldReasoning: false,
+			slimToolset: false,
+			slimHidesMcp: true,
+			compactProfile: false,
 		})
 	})
 
@@ -531,6 +568,13 @@ describe("withModel", () => {
 			openAiPreserveReasoning: true,
 			openAiTrimOldReasoning: false,
 		})
+	})
+
+	it("brings the new model's own size", () => {
+		const tiny = withModel(glm, "Qwen3.8-4B", { modelSettings: { modelSize: "compact" } })
+
+		expect(tiny.compactProfile).toBe(true)
+		expect(withModel(tiny, "GLM-5.3-NVFP4", { modelSettings: undefined }).compactProfile).toBe(false)
 	})
 
 	it("writes the model into the provider's own model field", () => {

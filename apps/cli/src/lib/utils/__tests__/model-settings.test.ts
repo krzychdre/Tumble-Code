@@ -23,6 +23,8 @@ describe("listSetModelSettings", () => {
 			"preserveReasoning",
 			"trimOldReasoning",
 		])
+		// Every provider takes these, so they are never reported as ignored.
+		expect(listSetModelSettings({ reasoningEffort: "high", modelSize: "compact", hideMcp: false })).toEqual([])
 		expect(listSetModelSettings({})).toEqual([])
 		expect(listSetModelSettings(undefined)).toEqual([])
 	})
@@ -59,10 +61,26 @@ describe("findModelSettingsProblems", () => {
 		])
 	})
 
-	it.each(["preserveReasoning", "trimOldReasoning"])("accepts %s true or false and rejects anything else", (key) => {
-		expect(findModelSettingsProblems({ m: { [key]: true }, n: { [key]: false } })).toEqual([])
-		expect(findModelSettingsProblems({ m: { [key]: "true" } })).toEqual([
-			`models.m.${key} must be true or false, got "true"`,
+	it.each(["preserveReasoning", "trimOldReasoning", "hideMcp"])(
+		"accepts %s true or false and rejects anything else",
+		(key) => {
+			expect(findModelSettingsProblems({ m: { [key]: true }, n: { [key]: false } })).toEqual([])
+			expect(findModelSettingsProblems({ m: { [key]: "true" } })).toEqual([
+				`models.m.${key} must be true or false, got "true"`,
+			])
+		},
+	)
+
+	it("accepts the three model sizes and rejects anything else", () => {
+		expect(
+			findModelSettingsProblems({
+				a: { modelSize: "standard" },
+				b: { modelSize: "slim" },
+				c: { modelSize: "compact" },
+			}),
+		).toEqual([])
+		expect(findModelSettingsProblems({ m: { modelSize: "small" } })).toEqual([
+			'models.m.modelSize must be one of: standard, slim, compact, got "small"',
 		])
 	})
 

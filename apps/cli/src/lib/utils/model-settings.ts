@@ -21,10 +21,15 @@
  * `reasoningEffort` too, and unlike the others it works with every provider:
  * the levels a model accepts are its own, so one level for all models sent
  * "max" to models that reject it.
+ *
+ * `modelSize` (with `hideMcp`) works with every provider as well: it picks the
+ * system prompt and the tool set for the model, the same choice as "Model
+ * size" in the VS Code profile settings, and becomes the extension's
+ * slimToolset, slimHidesMcp and compactProfile.
  */
 
 import type { CliModelSettings } from "@/types/types.js"
-import { REASONING_EFFORTS } from "@/types/constants.js"
+import { MODEL_SIZES, REASONING_EFFORTS } from "@/types/constants.js"
 
 /** The one provider whose model size and prices the settings file can set. */
 export const MODEL_SETTINGS_PROVIDER = "openai"
@@ -33,7 +38,10 @@ export const MODEL_SETTINGS_PROVIDER = "openai"
 export const MODEL_PRICE_KEYS = ["inputPrice", "outputPrice", "cacheReadsPrice", "cacheWritesPrice"] as const
 
 /** The on/off settings of a model, each true or false. */
-const MODEL_SWITCH_KEYS = ["preserveReasoning", "trimOldReasoning"] as const
+const MODEL_SWITCH_KEYS = ["preserveReasoning", "trimOldReasoning", "hideMcp"] as const
+
+/** The keys every provider takes, so they never count as ignored. */
+const ANY_PROVIDER_KEYS: ReadonlySet<string> = new Set(["reasoningEffort", "modelSize", "hideMcp"])
 
 export function getConfiguredModelSettings(
 	models: Record<string, CliModelSettings> | undefined,
@@ -44,12 +52,12 @@ export function getConfiguredModelSettings(
 
 /**
  * The keys an entry sets that only the openai provider takes, for the warning
- * that names what is ignored with another provider. `reasoningEffort` is not
- * one of them: every provider takes it.
+ * that names what is ignored with another provider. `reasoningEffort`,
+ * `modelSize` and `hideMcp` are not among them: every provider takes them.
  */
 export function listSetModelSettings(entry: CliModelSettings | undefined): string[] {
 	return Object.entries(entry ?? {})
-		.filter(([key, value]) => value !== undefined && key !== "reasoningEffort")
+		.filter(([key, value]) => value !== undefined && !ANY_PROVIDER_KEYS.has(key))
 		.map(([key]) => key)
 }
 
@@ -71,7 +79,7 @@ export function findModelSettingsProblems(models: unknown): string[] {
 			continue
 		}
 
-		const { contextWindow, reasoningEffort } = entry as CliModelSettings
+		const { contextWindow, reasoningEffort, modelSize } = entry as CliModelSettings
 
 		if (contextWindow !== undefined && !(Number.isInteger(contextWindow) && contextWindow > 0)) {
 			problems.push(
@@ -90,6 +98,12 @@ export function findModelSettingsProblems(models: unknown): string[] {
 		if (reasoningEffort !== undefined && !REASONING_EFFORTS.includes(reasoningEffort)) {
 			problems.push(
 				`models.${model}.reasoningEffort must be one of: ${REASONING_EFFORTS.join(", ")}, got ${JSON.stringify(reasoningEffort)}`,
+			)
+		}
+
+		if (modelSize !== undefined && !MODEL_SIZES.includes(modelSize)) {
+			problems.push(
+				`models.${model}.modelSize must be one of: ${MODEL_SIZES.join(", ")}, got ${JSON.stringify(modelSize)}`,
 			)
 		}
 

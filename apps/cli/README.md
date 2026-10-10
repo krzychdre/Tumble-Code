@@ -584,6 +584,33 @@ fills up" in the VS Code settings:
   `openai` provider, and a value other than `true` or `false` fails at startup
   and names the model.
 
+### Model size
+
+A small model gets lost in the full system prompt and the full tool list.
+`modelSize` in the model's `models` entry picks how much of both it gets, the
+same choice as "Model size" in the VS Code profile settings:
+
+```json
+{
+	"models": {
+		"Qwen3.8-4B": { "contextWindow": 32768, "modelSize": "compact" },
+		"Qwen3.8-27B": { "modelSize": "slim", "hideMcp": false }
+	}
+}
+```
+
+| Value      | What the model gets                                                                                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `standard` | the full system prompt and every tool (the default)                                                                                                                        |
+| `slim`     | the full system prompt and one obvious tool per job, without the alternative edit tools, parallel tasks and slash commands; MCP tools are hidden unless `hideMcp` is false |
+| `compact`  | for very small models: a short system prompt, a minimal tool set with simple editing, shorter environment details, tighter output limits and no subtasks or MCP tools      |
+
+- Unlike the size and the prices it works with every provider, and it follows
+  the model through every mode and through `/model`.
+- `/model` lists a `slim` or `compact` model with its size.
+- A value other than these three fails at startup and names the model;
+  `hideMcp` must be `true` or `false`.
+
 ## MCP Servers
 
 The CLI connects the same MCP servers as the VS Code extension, from two files

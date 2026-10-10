@@ -234,6 +234,14 @@ function applyModelSettings(
 		settings.reasoningEffort = effort
 	}
 
+	// The model size picks the prompt and the tool set with every provider.
+	// Written always, like the openai fields below: a compact model must not
+	// leave the extension's persisted state compact for the next model or run.
+	const { modelSize, hideMcp } = config.modelSettings ?? {}
+	settings.slimToolset = modelSize === "slim"
+	settings.slimHidesMcp = hideMcp !== false
+	settings.compactProfile = modelSize === "compact"
+
 	// The openai provider sizes and prices its model from
 	// openAiCustomModelInfo, else from openAiModelInfoSaneDefaults (128,000
 	// tokens, $0): its model list has ids only. The same model info decides

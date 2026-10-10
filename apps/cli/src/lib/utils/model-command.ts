@@ -19,6 +19,9 @@ function describeEntry(entry: CliModelSettings): string {
 	if (entry.contextWindow) {
 		parts.push(`${entry.contextWindow.toLocaleString("en-US")} tokens`)
 	}
+	if (entry.modelSize && entry.modelSize !== "standard") {
+		parts.push(entry.modelSize)
+	}
 	return parts.join(", ")
 }
 

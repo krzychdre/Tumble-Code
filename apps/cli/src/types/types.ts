@@ -1,6 +1,7 @@
 import type { ReasoningEffortExtended } from "@tumble-code/types"
 import type { OutputFormat } from "./json-events.js"
 import type { SupportedProvider } from "@/lib/utils/provider-types.js"
+import type { MODEL_SIZES } from "./constants.js"
 
 export { supportedProviders, isAcceptedProvider } from "@/lib/utils/provider-types.js"
 export type { SupportedProvider } from "@/lib/utils/provider-types.js"
@@ -91,7 +92,24 @@ export interface CliModelSettings {
 	 * Without it the openai provider sends no effort and the others "medium".
 	 */
 	reasoningEffort?: ReasoningEffortFlagOptions
+	/**
+	 * How much system prompt and how many tools the model gets, the same choice
+	 * as "Model size" in the VS Code profile settings: "standard" (the full
+	 * prompt and every tool), "slim" (the full prompt, one obvious tool per
+	 * job) or "compact" (for very small models: a short prompt, a minimal tool
+	 * set with simple editing, shorter environment details, tighter output
+	 * limits, no subtasks). Works with every provider. Defaults to "standard".
+	 */
+	modelSize?: CliModelSize
+	/**
+	 * With modelSize "slim", also hide the MCP tools, whose schemas are usually
+	 * the largest part of the tool prompt. Defaults to true; "compact" always
+	 * hides them.
+	 */
+	hideMcp?: boolean
 }
+
+export type CliModelSize = (typeof MODEL_SIZES)[number]
 
 export interface CliSettings {
 	/** Default mode to use (e.g., "code", "architect", "ask", "debug") */
