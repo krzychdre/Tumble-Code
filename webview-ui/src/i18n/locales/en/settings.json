@@ -821,7 +821,7 @@
 			},
 			"compact": {
 				"label": "Very small models: compact mode",
-				"description": "For small local models (a few billion parameters) with a 32k to 40k context window: a short system prompt, nine tools with simple text replacement instead of apply_diff, one-line environment details and tighter output limits.",
+				"description": "For tiny context window models: a short system prompt, a minimal tool set with simple editing, shorter environment details and tighter output limits. Leave it off for large models.",
 				"subagents": {
 					"label": "Subagents",
 					"description": "Off for this profile: in compact mode it never starts subtasks or parallel tasks. The global subagent settings still apply to every other profile."

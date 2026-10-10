@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Bardzo małe modele: tryb kompaktowy",
-				"description": "Dla małych modeli lokalnych (kilka miliardów parametrów) z oknem kontekstu od 32k do 40k: krótki prompt systemowy, dziewięć narzędzi z prostą zamianą tekstu zamiast apply_diff, jednolinijkowe szczegóły środowiska i niższe limity danych wyjściowych.",
+				"description": "Dla modeli z bardzo małym oknem kontekstu: krótki prompt systemowy, minimalny zestaw narzędzi z prostą edycją, krótsze szczegóły środowiska i niższe limity danych wyjściowych. Przy dużych modelach zostaw tę opcję wyłączoną.",
 				"subagents": {
 					"label": "Subagenci",
 					"description": "Wyłączeni dla tego profilu: w trybie kompaktowym nie uruchamia podzadań ani zadań równoległych. Globalne ustawienia subagentów nadal dotyczą wszystkich pozostałych profili."

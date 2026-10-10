@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Model sangat kecil: mode ringkas",
-				"description": "Untuk model lokal kecil (beberapa miliar parameter) dengan jendela konteks 32k hingga 40k: prompt sistem yang pendek, sembilan alat dengan penggantian teks sederhana sebagai ganti apply_diff, detail lingkungan satu baris, dan batas output yang lebih ketat.",
+				"description": "Untuk model dengan jendela konteks sangat kecil: prompt sistem yang pendek, set alat minimal dengan pengeditan sederhana, detail lingkungan yang lebih singkat, dan batas output yang lebih ketat. Biarkan nonaktif untuk model besar.",
 				"subagents": {
 					"label": "Subagen",
 					"description": "Nonaktif untuk profil ini: dalam mode ringkas profil ini tidak pernah memulai subtugas atau tugas paralel. Pengaturan subagen global tetap berlaku untuk semua profil lain."

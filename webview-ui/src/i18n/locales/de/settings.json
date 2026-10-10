@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Sehr kleine Modelle: Kompaktmodus",
-				"description": "Für kleine lokale Modelle (einige Milliarden Parameter) mit einem Kontextfenster von 32k bis 40k: ein kurzer System-Prompt, neun Werkzeuge mit einfacher Textersetzung statt apply_diff, einzeilige Umgebungsdetails und engere Ausgabegrenzen.",
+				"description": "Für Modelle mit sehr kleinem Kontextfenster: ein kurzer System-Prompt, ein minimaler Werkzeugsatz mit einfacher Bearbeitung, kürzere Umgebungsdetails und engere Ausgabegrenzen. Für große Modelle ausgeschaltet lassen.",
 				"subagents": {
 					"label": "Subagenten",
 					"description": "Für dieses Profil aus: Im Kompaktmodus startet es nie Unteraufgaben oder parallele Aufgaben. Die globalen Subagenten-Einstellungen gelten weiterhin für alle anderen Profile."

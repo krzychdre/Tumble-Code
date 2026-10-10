@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Zeer kleine modellen: compacte modus",
-				"description": "Voor kleine lokale modellen (enkele miljarden parameters) met een contextvenster van 32k tot 40k: een korte systeemprompt, negen tools met eenvoudige tekstvervanging in plaats van apply_diff, omgevingsdetails op één regel en strengere uitvoerlimieten.",
+				"description": "Voor modellen met een zeer klein contextvenster: een korte systeemprompt, een minimale set tools met eenvoudig bewerken, kortere omgevingsdetails en strengere uitvoerlimieten. Laat dit uit voor grote modellen.",
 				"subagents": {
 					"label": "Subagenten",
 					"description": "Uit voor dit profiel: in de compacte modus start het nooit subtaken of parallelle taken. De globale instellingen voor subagenten blijven gelden voor alle andere profielen."

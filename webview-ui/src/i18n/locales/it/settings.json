@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Modelli molto piccoli: modalità compatta",
-				"description": "Per piccoli modelli locali (alcuni miliardi di parametri) con una finestra di contesto da 32k a 40k: un prompt di sistema breve, nove strumenti con una semplice sostituzione di testo al posto di apply_diff, dettagli dell'ambiente su una riga e limiti di output più stretti.",
+				"description": "Per modelli con una finestra di contesto molto piccola: un prompt di sistema breve, un set minimo di strumenti con modifica semplice, dettagli dell'ambiente più brevi e limiti di output più stretti. Lasciala disattivata per i modelli grandi.",
 				"subagents": {
 					"label": "Subagenti",
 					"description": "Disattivati per questo profilo: in modalità compatta non avvia mai sottoattività né attività parallele. Le impostazioni globali dei subagenti continuano a valere per tutti gli altri profili."

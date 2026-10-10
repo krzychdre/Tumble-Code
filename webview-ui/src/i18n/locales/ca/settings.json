@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Models molt petits: mode compacte",
-				"description": "Per a models locals petits (uns quants milers de milions de paràmetres) amb una finestra de context de 32k a 40k: un prompt del sistema curt, nou eines amb substitució de text senzilla en lloc d'apply_diff, detalls de l'entorn en una línia i límits de sortida més estrictes.",
+				"description": "Per a models amb una finestra de context molt petita: un prompt del sistema curt, un conjunt mínim d'eines amb edició senzilla, detalls de l'entorn més breus i límits de sortida més estrictes. Deixa-ho desactivat per als models grans.",
 				"subagents": {
 					"label": "Subagents",
 					"description": "Desactivats per a aquest perfil: en mode compacte mai no inicia subtasques ni tasques en paral·lel. La configuració global de subagents continua aplicant-se a tots els altres perfils."

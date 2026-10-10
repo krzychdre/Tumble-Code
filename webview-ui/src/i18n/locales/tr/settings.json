@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Çok küçük modeller: kompakt mod",
-				"description": "32k ile 40k arası bağlam penceresine sahip küçük yerel modeller (birkaç milyar parametre) için: kısa bir sistem istemi, apply_diff yerine basit metin değiştirmeli dokuz araç, tek satırlık ortam ayrıntıları ve daha sıkı çıktı sınırları.",
+				"description": "Çok küçük bağlam penceresine sahip modeller için: kısa bir sistem istemi, basit düzenlemeli minimal bir araç seti, daha kısa ortam ayrıntıları ve daha sıkı çıktı sınırları. Büyük modeller için kapalı bırakın.",
 				"subagents": {
 					"label": "Alt aracılar",
 					"description": "Bu profil için kapalı: kompakt modda hiçbir zaman alt görev veya paralel görev başlatmaz. Genel alt aracı ayarları diğer tüm profiller için geçerli olmaya devam eder."

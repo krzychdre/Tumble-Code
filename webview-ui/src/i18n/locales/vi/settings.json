@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Mô hình rất nhỏ: chế độ gọn",
-				"description": "Dành cho mô hình cục bộ nhỏ (vài tỷ tham số) có cửa sổ ngữ cảnh từ 32k đến 40k: lời nhắc hệ thống ngắn, chín công cụ dùng thay thế văn bản đơn giản thay cho apply_diff, chi tiết môi trường trên một dòng và giới hạn đầu ra chặt hơn.",
+				"description": "Dành cho mô hình có cửa sổ ngữ cảnh rất nhỏ: lời nhắc hệ thống ngắn, bộ công cụ tối thiểu với cách chỉnh sửa đơn giản, chi tiết môi trường ngắn hơn và giới hạn đầu ra chặt hơn. Hãy để tắt với các mô hình lớn.",
 				"subagents": {
 					"label": "Tác nhân con",
 					"description": "Tắt cho hồ sơ này: ở chế độ gọn, hồ sơ không bao giờ khởi chạy tác vụ con hay tác vụ song song. Cài đặt tác nhân con chung vẫn áp dụng cho mọi hồ sơ khác."

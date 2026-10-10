@@ -705,7 +705,7 @@
 			},
 			"compact": {
 				"label": "Modelos muito pequenos: modo compacto",
-				"description": "Para modelos locais pequenos (alguns bilhões de parâmetros) com janela de contexto de 32k a 40k: um prompt de sistema curto, nove ferramentas com substituição de texto simples em vez de apply_diff, detalhes do ambiente em uma linha e limites de saída mais rígidos.",
+				"description": "Para modelos com janela de contexto muito pequena: um prompt de sistema curto, um conjunto mínimo de ferramentas com edição simples, detalhes do ambiente mais curtos e limites de saída mais rígidos. Deixe desativado para modelos grandes.",
 				"subagents": {
 					"label": "Subagentes",
 					"description": "Desativados para este perfil: no modo compacto ele nunca inicia subtarefas nem tarefas paralelas. As configurações globais de subagentes continuam valendo para todos os outros perfis."
