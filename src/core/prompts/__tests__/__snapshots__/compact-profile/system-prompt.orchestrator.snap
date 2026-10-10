@@ -53,7 +53,11 @@ Workspace directory: /test/path. It is the default directory for every tool and 
 MEMORY
 
 Your memory directory is /mock/settings/path/memory/projects/_test_path/memory/
-It holds notes from earlier conversations, and MEMORY.md there is their index. When an index line looks relevant to the task, read that note with read_file, using its full path in the memory directory. Save a note only when the user asks you to remember something or states a lasting preference: write a new .md file in English there and add one line to MEMORY.md, for example "- [Test command](test-command.md) - run the tests with pnpm test".
+MEMORY.md there indexes your notes from earlier conversations. When an index line is relevant to the task, read that note with read_file at its full path there. Save a note only when the user asks you to remember something or states a lasting preference: write a new .md file in English there, starting with
+---
+description: run the tests with pnpm test
+---
+then add its line to MEMORY.md: "- [Tests](tests.md) - run the tests with pnpm test".
 
 MEMORY.md:
 # Memory Index

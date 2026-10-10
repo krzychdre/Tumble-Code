@@ -17,6 +17,7 @@ import {
 	COMPACT_MAX_INDEX_CHARS,
 } from "../memoryPrompt"
 import { initMemoryPaths, resetMemoryPaths } from "../paths"
+import { scanMemoryFiles } from "../memoryScan"
 
 describe("memoryPrompt", () => {
 	describe("truncateEntrypointContent", () => {
@@ -165,6 +166,26 @@ describe("memoryPrompt, compact profile variants", () => {
 
 		it("contains no en or em dash", () => {
 			expect(buildCompactMemoryInstruction("/mem/dir/")).not.toMatch(/[\u2013\u2014]/)
+		})
+
+		it("shows a note start that recall reads a description from", async () => {
+			// The example frontmatter, as the model would copy it into a new note.
+			const lines = buildCompactMemoryInstruction("/mem/dir/").split("\n")
+			const open = lines.indexOf("---")
+			const close = lines.indexOf("---", open + 1)
+			expect(open).toBeGreaterThan(-1)
+			expect(close).toBeGreaterThan(open)
+			const note = `${lines.slice(open, close + 1).join("\n")}\nRun the tests with pnpm test.\n`
+
+			const dir = await fs.mkdtemp(path.join(os.tmpdir(), "compact-memory-note-"))
+			try {
+				await fs.writeFile(path.join(dir, "tests.md"), note, "utf-8")
+				const [header] = await scanMemoryFiles(dir)
+				expect(header.filename).toBe("tests.md")
+				expect(header.description).toBe("run the tests with pnpm test")
+			} finally {
+				await fs.rm(dir, { recursive: true, force: true })
+			}
 		})
 	})
 

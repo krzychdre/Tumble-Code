@@ -294,6 +294,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 					imageLimits.maxTotalImageSize,
 					imageMemoryTracker,
 					updateFileResult,
+					entry,
 				)
 				return
 			}
@@ -431,7 +432,8 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	}
 
 	/**
-	 * Handle binary file processing (images, PDF, DOCX, etc.).
+	 * Handle binary file processing (images, PDF, DOCX, etc.). `entry` is read only under the
+	 * compact profile, which slices extracted document text like a text file.
 	 */
 	private async handleBinaryFile(
 		task: Task,
@@ -442,6 +444,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		maxTotalImageSize: number,
 		imageMemoryTracker: ImageMemoryTracker,
 		updateFileResult: (path: string, updates: Partial<FileResult>) => void,
+		entry: InternalFileEntry,
 	): Promise<void> {
 		const fileExtension = path.extname(relPath).toLowerCase()
 		const supportedBinaryFormats = getSupportedBinaryFormats()
@@ -493,11 +496,12 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				const content = await extractTextFromFile(fullPath)
 
 				if (isCompactProfile(task.apiConfiguration)) {
-					// The extractors number their lines; the compact format shows raw text.
+					// The extractors number their lines; the compact format shows raw text, sliced by the
+					// entry's offset and limit like a text file, so the truncation line's offset reads on.
 					const raw = hasLineNumberPrefixes(content) ? stripLineNumberPrefixes(content) : content
 					await task.fileContextTracker.trackFileContext(relPath, "read_tool" as RecordSource)
 					updateFileResult(relPath, {
-						nativeContent: formatCompactRead(relPath, raw, 1, compactReadLimit(undefined)),
+						nativeContent: this.processCompactTextFile(relPath, raw, entry),
 					})
 					return
 				}

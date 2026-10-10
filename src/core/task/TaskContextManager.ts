@@ -28,6 +28,7 @@ import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { getMessagesSinceLastSummary, summarizeConversation, getEffectiveApiHistory } from "../condense"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { getCurrentProfileId } from "./currentProfileId"
+import { resolveParallelToolCalls } from "./parallelToolCalls"
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 // The persisted history type itself (not a local copy), so a change in the SDK
@@ -969,7 +970,8 @@ export class TaskContextManager {
 				? {
 						tools: allTools,
 						tool_choice: "auto",
-						parallelToolCalls: true,
+						// One tool call per message under the compact profile, as in the task's requests.
+						parallelToolCalls: resolveParallelToolCalls(this.access.apiConfiguration),
 					}
 				: {}),
 		}

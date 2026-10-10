@@ -14,7 +14,6 @@ import {
 	getApiProtocol,
 	getModelId,
 	isRetiredProvider,
-	isCompactProfile,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	SETTINGS_DEFAULTS,
 } from "@tumble-code/types"
@@ -26,6 +25,7 @@ import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { getCurrentProfileId } from "./currentProfileId"
+import { resolveParallelToolCalls } from "./parallelToolCalls"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { formatResponse } from "../prompts/responses"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
@@ -298,7 +298,12 @@ export class TaskApiLoop {
 			taskId: access.taskId,
 			instanceId: access.instanceId,
 			isBackground: access.isBackground,
-			apiConfiguration: access.apiConfiguration,
+			// A getter, so each request reads the task's CURRENT profile:
+			// Task.updateApiConfiguration replaces the object on a profile switch.
+			// The builder reads it only for the compact flag (system prompt, tools).
+			get apiConfiguration() {
+				return access.apiConfiguration
+			},
 			api: access.api,
 			apiConversationHistory: access.apiConversationHistory,
 			microcompactedIds: access.microcompactedIds,
@@ -1492,7 +1497,7 @@ export class TaskApiLoop {
 
 		// The compact profile asks for one tool call per message (small models lose track of
 		// parallel results); every handler that sends parallel_tool_calls reads it from here.
-		const parallelToolCalls = !isCompactProfile(this.access.apiConfiguration)
+		const parallelToolCalls = resolveParallelToolCalls(this.access.apiConfiguration)
 
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,

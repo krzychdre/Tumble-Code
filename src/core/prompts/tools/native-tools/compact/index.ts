@@ -46,7 +46,7 @@ const pathParam = () => ({ type: "string", description: "Path relative to the wo
 
 const compactReadFile = tool(
 	"read_file",
-	"Read one file. Returns a header line, then the file's lines exactly as stored, without line numbers. " +
+	"Read one file. Returns a header line, then the file's lines without line numbers, as stored except that a line over 2000 characters is cut short. " +
 		"Omit offset and limit to read from the start; use them only to continue a long file.",
 	{
 		path: pathParam(),
