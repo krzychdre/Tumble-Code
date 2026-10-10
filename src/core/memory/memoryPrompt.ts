@@ -219,3 +219,81 @@ export async function loadMemoryIndex(cwd: string): Promise<string> {
 	const t = truncateEntrypointContent(content)
 	return `\nContents of ${entrypoint} (user's auto-memory, persists across conversations):\n\n${t.content}`
 }
+
+// ---------------------------------------------------------------------------
+// Compact profile variants (ai_plans/2026-10-10_19-36_compact-small-model-profile.md,
+// "Memory (owner's choice: variant a)").
+//
+// The full prompt above is about 9.7k characters plus an index of up to 25,000
+// bytes, close to half of a 40k-token window before the conversation starts. A
+// compact profile gets a few sentences instead (what the directory is, when to
+// read a note, when and how to save one) and an index capped at 3,000
+// characters. The functions above and their outputs are untouched: only the
+// compact branch of the system prompt calls these.
+// ---------------------------------------------------------------------------
+
+/** Cap for the MEMORY.md body under the compact profile, in characters. */
+export const COMPACT_MAX_INDEX_CHARS = 3_000
+
+/**
+ * The compact memory instruction: at most 600 characters for a memory path of
+ * ordinary length (the spec pins this with a 120-character path).
+ *
+ * It sits in the compact stable head, which is shared by every mode, so it
+ * names no tool a mode might lack except as the way to do the job; a mode that
+ * cannot write files is told so by the TOOLS IN THIS MODE section.
+ */
+export function buildCompactMemoryInstruction(memoryDir: string): string {
+	return [
+		"====",
+		"",
+		"MEMORY",
+		"",
+		`Your memory directory is ${memoryDir}`,
+		`It holds notes from earlier conversations, and ${ENTRYPOINT_NAME} there is their index. When an index line looks relevant to the task, read that note with read_file, using its full path in the memory directory. Save a note only when the user asks you to remember something or states a lasting preference: write a new .md file in English there and add one line to ${ENTRYPOINT_NAME}, for example "- [Coffee](coffee.md) - user drinks 2 a day".`,
+	].join("\n")
+}
+
+/**
+ * Cut the MEMORY.md body to at most {@link COMPACT_MAX_INDEX_CHARS} characters
+ * at a line boundary and say so in one line when anything was dropped.
+ *
+ * A single line longer than the cap is cut inside the line rather than
+ * dropping the whole index. The note is outside the cap.
+ */
+export function truncateCompactMemoryIndex(raw: string): string {
+	const trimmed = raw.trim()
+	if (trimmed.length <= COMPACT_MAX_INDEX_CHARS) {
+		return trimmed
+	}
+	const cutAt = trimmed.lastIndexOf("\n", COMPACT_MAX_INDEX_CHARS)
+	const kept = trimmed.slice(0, cutAt > 0 ? cutAt : COMPACT_MAX_INDEX_CHARS).trimEnd()
+	return `${kept}\n[${ENTRYPOINT_NAME} is longer; only its first lines are shown. Search the memory directory for more.]`
+}
+
+/**
+ * The compact memory instruction for `cwd`, or "" when memory is disabled.
+ * Same guards and side effect as {@link loadMemoryPrompt}.
+ */
+export async function loadCompactMemoryPrompt(cwd: string): Promise<string> {
+	if (!isMemoryPathsInitialized() || !isAutoMemoryEnabled()) return ""
+	const autoDir = getAutoMemPath(cwd)
+	await ensureMemoryDirExists(autoDir)
+	return buildCompactMemoryInstruction(autoDir)
+}
+
+/**
+ * The compact MEMORY.md index for `cwd`, or "" when memory is disabled or the
+ * index does not exist yet. Same guards as {@link loadMemoryIndex}.
+ */
+export async function loadCompactMemoryIndex(cwd: string): Promise<string> {
+	if (!isMemoryPathsInitialized() || !isAutoMemoryEnabled()) return ""
+	let content = ""
+	try {
+		content = await fs.readFile(getAutoMemEntrypoint(cwd), "utf-8")
+	} catch {
+		return ""
+	}
+	if (!content.trim()) return ""
+	return `${ENTRYPOINT_NAME}:\n${truncateCompactMemoryIndex(content)}`
+}
