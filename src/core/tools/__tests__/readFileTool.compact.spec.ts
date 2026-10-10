@@ -142,6 +142,29 @@ describe("read_file under the compact profile", () => {
 		expect(result).toBe("File: doc.pdf (lines 1-3 of 3)\nInvoice\n\nTotal: 12 EUR")
 	})
 
+	it("slices extracted document text by offset and limit, so the named offset reads on", async () => {
+		mockedIsBinaryFile.mockResolvedValue(true)
+		mockedExtractText.mockResolvedValue(
+			Array.from({ length: 1000 }, (_, i) => `${i + 1} | page line ${i + 1}`).join("\n") + "\n",
+		)
+
+		const first = await read({ path: "report.pdf" }, "")
+		expect(first.result.split("\n")[0]).toBe("File: report.pdf (lines 1-400 of 1000)")
+		expect(first.result.split("\n").at(-1)).toBe(
+			"[Truncated: showing lines 1-400 of 1000. Call read_file with offset=401 to read more.]",
+		)
+
+		const second = await read({ path: "report.pdf", offset: 401 }, "")
+		const secondLines = second.result.split("\n")
+		expect(secondLines[0]).toBe("File: report.pdf (lines 401-800 of 1000)")
+		expect(secondLines[1]).toBe("page line 401")
+
+		const limited = await read({ path: "report.pdf", offset: 998, limit: 2 }, "")
+		expect(limited.result).toBe(
+			"File: report.pdf (lines 998-999 of 1000)\npage line 998\npage line 999\n[Truncated: showing lines 998-999 of 1000. Call read_file with offset=1000 to read more.]",
+		)
+	})
+
 	it("legacy line ranges become compact blocks", async () => {
 		const content = Array.from({ length: 20 }, (_, i) => `l${i + 1}`).join("\n")
 		const { result } = await read({ files: [{ path: "a.txt", lineRanges: [{ start: 2, end: 3 }] }] }, content)
