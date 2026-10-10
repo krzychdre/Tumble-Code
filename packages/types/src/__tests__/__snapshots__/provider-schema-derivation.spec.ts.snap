@@ -26,6 +26,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "anthropic",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -93,6 +96,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "apiProvider": {
           "const": "openrouter",
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -233,6 +239,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "awsUsePromptCache": {
           "type": "boolean",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -303,6 +312,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "apiProvider": {
           "const": "vertex",
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -392,6 +404,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "azureApiVersion": {
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -731,6 +746,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "ollama",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -812,6 +830,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "apiProvider": {
           "const": "vscode-lm",
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -899,6 +920,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "lmstudio",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -982,6 +1006,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "gemini",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1059,6 +1086,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "openai-codex",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1129,6 +1159,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "apiProvider": {
           "const": "openai-native",
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -1215,6 +1248,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "mistral",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1292,6 +1328,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "deepseek",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1368,6 +1407,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "apiProvider": {
           "const": "moonshot",
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -1455,6 +1497,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "minimax",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1538,6 +1583,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "fake-ai",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1610,6 +1658,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "xai",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1680,6 +1731,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "apiProvider": {
           "const": "litellm",
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -1764,6 +1818,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
           "const": "zai",
           "type": "string",
         },
+        "compactProfile": {
+          "type": "boolean",
+        },
         "consecutiveMistakeLimit": {
           "minimum": 0,
           "type": "number",
@@ -1846,6 +1903,9 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "apiProvider": {
           "const": "qwen-code",
           "type": "string",
+        },
+        "compactProfile": {
+          "type": "boolean",
         },
         "consecutiveMistakeLimit": {
           "minimum": 0,
@@ -1935,6 +1995,7 @@ exports[`generated provider settings schemas > keeps the flat schema's keys in o
   "consecutiveMistakeLimit",
   "slimToolset",
   "slimHidesMcp",
+  "compactProfile",
   "enableReasoningEffort",
   "reasoningEffort",
   "modelMaxTokens",
@@ -2176,6 +2237,9 @@ exports[`generated provider settings schemas > keeps the flat schema, property o
     },
     "codebaseIndexOpenRouterApiKey": {
       "type": "string",
+    },
+    "compactProfile": {
+      "type": "boolean",
     },
     "consecutiveMistakeLimit": {
       "minimum": 0,
@@ -2794,6 +2858,7 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "consecutiveMistakeLimit",
   "slimToolset",
   "slimHidesMcp",
+  "compactProfile",
   "enableReasoningEffort",
   "reasoningEffort",
   "modelMaxTokens",

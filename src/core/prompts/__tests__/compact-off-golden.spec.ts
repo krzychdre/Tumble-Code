@@ -208,10 +208,21 @@ interface ProfileCase {
 	shape: Partial<ProviderSettings>
 }
 
-/** The profile shapes users run today. Each owns one snapshot set. */
+/**
+ * The profile shapes users run today, each owning one snapshot set, followed by
+ * the same shapes with the compact flag saved as false. Those reuse the SAME
+ * snapshot files on purpose: an explicit false must produce exactly the bytes of
+ * an absent flag, so they never get snapshots of their own.
+ */
 const PROFILE_CASES: ProfileCase[] = [
 	{ label: "{}", snapshot: "default", shape: {} },
 	{ label: "{ slimToolset: true }", snapshot: "slim", shape: { slimToolset: true } },
+	{ label: "{ compactProfile: false }", snapshot: "default", shape: { compactProfile: false } },
+	{
+		label: "{ slimToolset: true, compactProfile: false }",
+		snapshot: "slim",
+		shape: { slimToolset: true, compactProfile: false },
+	},
 ]
 
 const BUILT_IN_MODES = modes.map((mode) => mode.slug)

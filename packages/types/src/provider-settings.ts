@@ -124,6 +124,14 @@ const baseProviderSettingsSchema = z.object({
 	// `slimToolset` is on, where an undefined value means true (MCP schemas are
 	// the single largest tool-prompt cost).
 	slimHidesMcp: z.boolean().optional(),
+	// Compact profile: one opt-in switch for small local models with a 32k-40k
+	// context window (short system prompt, minimal tool set with simple
+	// editing, shorter environment details, tighter output limits). Read it
+	// only through `isCompactProfile()`, which treats anything but `true` as
+	// off, so an absent or false value keeps every request byte-identical.
+	// Supersedes `slimToolset` when both are on. Plain optional boolean (never
+	// nullish), like the slim flags above.
+	compactProfile: z.boolean().optional(),
 
 	// Model reasoning.
 	enableReasoningEffort: z.boolean().optional(),
@@ -188,6 +196,22 @@ export const providerSettingsSchema = z.object({
 })
 
 export type ProviderSettings = z.infer<typeof providerSettingsSchema>
+
+/**
+ * Whether a provider profile asked for the compact profile (small local models).
+ *
+ * The one way to read the flag: only an explicit `true` turns it on, so an
+ * absent, false or malformed value keeps today's behaviour. Pass the settings of
+ * the profile that serves the request: inside a task that is
+ * `task.apiConfiguration` (the profile its API handler was built from), in a
+ * provider handler `this.options`, never the globally active profile, which may
+ * belong to another task. Structural on purpose, so a `ProviderSettings`, an
+ * `ApiHandlerOptions`, the system-prompt settings or the tool-filter settings can
+ * be passed as they are.
+ */
+export function isCompactProfile(settings?: { compactProfile?: boolean } | null): boolean {
+	return settings?.compactProfile === true
+}
 
 export const providerSettingsWithIdSchema = providerSettingsSchema.extend({ id: z.string().optional() })
 
