@@ -455,18 +455,9 @@
 		"placeholder": "メッセージを編集..."
 	},
 	"slashCommands": {
-		"description": "組み込みスラッシュコマンドを使用するか、よく使用するプロンプトやワークフローに素早くアクセスするためのカスタムスラッシュコマンドを作成します。<DocsLink>ドキュメント</DocsLink>",
-		"manageCommands": "設定でスラッシュコマンドを管理",
-		"globalCommands": "グローバルコマンド",
-		"workspaceCommands": "ワークスペースコマンド",
-		"editCommand": "コマンドを編集",
-		"deleteCommand": "コマンドを削除",
-		"deleteDialog": {
-			"title": "コマンドを削除",
-			"description": "\"{{name}}\" コマンドを削除してもよろしいですか？この操作は元に戻せません。",
-			"cancel": "キャンセル",
-			"confirm": "削除"
-		}
+		"title": "スラッシュコマンド",
+		"description": "組み込みコマンドまたはスキルを実行するか、モードを切り替えます。",
+		"manageSkills": "設定でスキルを管理"
 	},
 	"contextMenu": {
 		"noResults": "結果なし",

@@ -36,7 +36,6 @@
 		"notifications": "Notifications",
 		"contextManagement": "Contexte",
 		"terminal": "Terminal",
-		"slashCommands": "Commandes Slash",
 		"prompts": "Invites",
 		"ui": "UI",
 		"experimental": "Expérimental",
@@ -53,41 +52,6 @@
 			"label": "Activer le mode debug",
 			"description": "Active le mode debug : affiche des boutons supplémentaires dans l'en-tête de la tâche permettant de consulter l'historique de conversation de l'API et les messages de l'interface utilisateur au format JSON dans des fichiers temporaires, et écrit des lignes de débogage détaillées (y compris les compteurs de performance de chaque requête) dans le panneau de sortie de Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Gérez vos commandes slash pour exécuter rapidement des flux de travail et des actions personnalisées.",
-		"workspaceCommands": "Commandes de l'espace de travail",
-		"globalCommands": "Commandes globales",
-		"noWorkspaceCommands": "Aucune commande dans ce projet pour le moment.",
-		"noGlobalCommands": "Aucune commande globale pour le moment.",
-		"addCommand": "Ajouter une commande slash",
-		"editCommand": "Modifier la commande",
-		"deleteCommand": "Supprimer la commande",
-		"deleteDialog": {
-			"title": "Supprimer la commande",
-			"description": "Êtes-vous sûr de vouloir supprimer la commande \"{{name}}\" ? Cette action ne peut pas être annulée.",
-			"confirm": "Supprimer",
-			"cancel": "Annuler"
-		},
-		"createDialog": {
-			"title": "Créer une nouvelle commande slash",
-			"nameLabel": "Nom",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Lettres minuscules, chiffres, tirets et traits de soulignement uniquement",
-			"sourceLabel": "Emplacement",
-			"create": "Créer",
-			"cancel": "Annuler"
-		},
-		"source": {
-			"global": "Global (disponible dans tous les espaces de travail)",
-			"project": "Espace de travail"
-		},
-		"validation": {
-			"nameRequired": "Le nom est obligatoire",
-			"nameTooLong": "Le nom doit contenir 64 caractères ou moins",
-			"nameInvalid": "Le nom ne peut contenir que des lettres, des chiffres, des tirets et des traits de soulignement"
-		},
-		"footer": "Utilisez les commandes slash pour accéder rapidement aux invites et flux de travail fréquemment utilisés."
 	},
 	"prompts": {
 		"description": "Configurez les invites de support utilisées pour les actions rapides comme l'amélioration des invites, l'explication du code et la résolution des problèmes. Ces invites aident Tumble à fournir une meilleure assistance pour les tâches de développement courantes."

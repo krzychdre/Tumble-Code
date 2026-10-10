@@ -235,9 +235,6 @@ vi.mock("../About", () => ({
 vi.mock("../PromptsSettings", () => ({
 	default: vi.fn(() => <div>PromptsSettings</div>),
 }))
-vi.mock("../SlashCommandsSettings", () => ({
-	SlashCommandsSettings: vi.fn(() => <div>SlashCommandsSettings</div>),
-}))
 vi.mock("../UISettings", () => ({
 	UISettings: vi.fn(() => <div>UISettings</div>),
 }))

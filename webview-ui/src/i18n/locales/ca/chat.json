@@ -461,18 +461,9 @@
 		"placeholder": "Edita el teu missatge..."
 	},
 	"slashCommands": {
-		"description": "Utilitza ordres de barra integrades o crea personalitzades per accedir ràpidament a indicacions i fluxos de treball utilitzats amb freqüència. <DocsLink>Documentació</DocsLink>",
-		"manageCommands": "Gestiona les ordres de barra a la configuració",
-		"globalCommands": "Ordres Globals",
-		"workspaceCommands": "Ordres de l'Espai de Treball",
-		"editCommand": "Editar ordre",
-		"deleteCommand": "Eliminar ordre",
-		"deleteDialog": {
-			"title": "Eliminar Ordre",
-			"description": "Estàs segur que vols eliminar l'ordre \"{{name}}\"? Aquesta acció no es pot desfer.",
-			"cancel": "Cancel·lar",
-			"confirm": "Eliminar"
-		}
+		"title": "Comandes de barra",
+		"description": "Executa una ordre integrada o una skill, o canvia de mode.",
+		"manageSkills": "Gestiona les skills a la configuració"
 	},
 	"queuedMessages": {
 		"title": "Missatges en cua",

@@ -57,13 +57,6 @@
 		"share_not_enabled": "La compartició de tasques no està habilitada per a aquesta organització.",
 		"share_task_not_found": "Tasca no trobada o accés denegat.",
 		"task_show_failed": "No s'ha pogut obrir la tasca. Pot haver estat eliminada o corrompuda.",
-		"command_not_found": "Ordre '{{name}}' no trobada",
-		"open_command_file": "Error en obrir el fitxer d'ordres",
-		"delete_command": "Error en eliminar l'ordre",
-		"no_workspace_for_project_command": "No s'ha trobat cap carpeta d'espai de treball per a l'ordre del projecte",
-		"command_already_exists": "L'ordre \"{{commandName}}\" ja existeix",
-		"create_command_failed": "Error en crear l'ordre",
-		"command_template_content": "---\ndescription: \"Breu descripció del que fa aquesta ordre\"\n---\n\nAquesta és una nova ordre slash. Edita aquest fitxer per personalitzar el comportament de l'ordre.",
 		"message": {
 			"no_active_task_to_delete": "No hi ha cap tasca activa de la qual eliminar missatges",
 			"invalid_timestamp_for_deletion": "Marca de temps del missatge no vàlida per a l'eliminació",

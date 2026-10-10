@@ -36,7 +36,6 @@
 		"notifications": "Powiadomienia",
 		"contextManagement": "Kontekst",
 		"terminal": "Terminal",
-		"slashCommands": "Polecenia Slash",
 		"prompts": "Podpowiedzi",
 		"ui": "UI",
 		"experimental": "Eksperymentalne",
@@ -53,41 +52,6 @@
 			"label": "Włącz tryb debugowania",
 			"description": "Włącz tryb debugowania: wyświetla dodatkowe przyciski w nagłówku zadania umożliwiające przeglądanie historii konwersacji API i komunikatów UI jako sformatowany JSON w plikach tymczasowych oraz zapisuje szczegółowe wiersze debugowania (w tym liczniki wydajności każdego żądania) w panelu danych wyjściowych Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Zarządzaj poleceniami slash, aby szybko wykonywać niestandardowe przepływy pracy i akcje.",
-		"workspaceCommands": "Polecenia obszaru roboczego",
-		"globalCommands": "Polecenia globalne",
-		"noWorkspaceCommands": "Brak poleceń w tym projekcie.",
-		"noGlobalCommands": "Brak poleceń globalnych.",
-		"addCommand": "Dodaj polecenie Slash",
-		"editCommand": "Edytuj polecenie",
-		"deleteCommand": "Usuń polecenie",
-		"deleteDialog": {
-			"title": "Usuń polecenie",
-			"description": "Czy na pewno chcesz usunąć polecenie \"{{name}}\"? Tej czynności nie można cofnąć.",
-			"confirm": "Usuń",
-			"cancel": "Anuluj"
-		},
-		"createDialog": {
-			"title": "Utwórz nowe polecenie Slash",
-			"nameLabel": "Nazwa",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Tylko małe litery, cyfry, łączniki i podkreślenia",
-			"sourceLabel": "Lokalizacja",
-			"create": "Utwórz",
-			"cancel": "Anuluj"
-		},
-		"source": {
-			"global": "Globalne (dostępne we wszystkich obszarach roboczych)",
-			"project": "Obszar roboczy"
-		},
-		"validation": {
-			"nameRequired": "Nazwa jest wymagana",
-			"nameTooLong": "Nazwa musi mieć 64 znaki lub mniej",
-			"nameInvalid": "Nazwa może zawierać tylko litery, cyfry, łączniki i podkreślenia"
-		},
-		"footer": "Używaj poleceń slash do szybkiego dostępu do często używanych podpowiedzi i przepływów pracy."
 	},
 	"prompts": {
 		"description": "Skonfiguruj podpowiedzi wsparcia używane do szybkich działań, takich jak ulepszanie podpowiedzi, wyjaśnianie kodu i rozwiązywanie problemów. Te podpowiedzi pomagają Tumble zapewnić lepsze wsparcie dla typowych zadań programistycznych."

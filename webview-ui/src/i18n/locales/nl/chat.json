@@ -455,18 +455,9 @@
 		"placeholder": "Bewerk je bericht..."
 	},
 	"slashCommands": {
-		"description": "Gebruik ingebouwde slash-opdrachten of maak aangepaste voor snelle toegang tot veelgebruikte prompts en workflows. <DocsLink>Documentatie</DocsLink>",
-		"manageCommands": "Beheer slash-opdrachten in instellingen",
-		"globalCommands": "Globale Opdrachten",
-		"workspaceCommands": "Werkruimte Opdrachten",
-		"editCommand": "Opdracht bewerken",
-		"deleteCommand": "Opdracht verwijderen",
-		"deleteDialog": {
-			"title": "Opdracht Verwijderen",
-			"description": "Weet je zeker dat je de opdracht \"{{name}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
-			"cancel": "Annuleren",
-			"confirm": "Verwijderen"
-		}
+		"title": "Slash-opdrachten",
+		"description": "Voer een ingebouwde opdracht of een skill uit, of wissel van modus.",
+		"manageSkills": "Beheer skills in instellingen"
 	},
 	"contextMenu": {
 		"noResults": "Geen resultaten",

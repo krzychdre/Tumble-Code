@@ -461,18 +461,9 @@
 		"placeholder": "Modifica il tuo messaggio..."
 	},
 	"slashCommands": {
-		"description": "Usa comandi slash integrati o crea personalizzati per accedere rapidamente a prompt e flussi di lavoro utilizzati frequentemente. <DocsLink>Documentazione</DocsLink>",
-		"manageCommands": "Gestisci comandi slash nelle impostazioni",
-		"globalCommands": "Comandi Globali",
-		"workspaceCommands": "Comandi dello Spazio di Lavoro",
-		"editCommand": "Modifica comando",
-		"deleteCommand": "Elimina comando",
-		"deleteDialog": {
-			"title": "Elimina Comando",
-			"description": "Sei sicuro di voler eliminare il comando \"{{name}}\"? Questa azione non può essere annullata.",
-			"cancel": "Annulla",
-			"confirm": "Elimina"
-		}
+		"title": "Comandi Slash",
+		"description": "Esegui un comando integrato o una skill, oppure cambia modalità.",
+		"manageSkills": "Gestisci le skill nelle impostazioni"
 	},
 	"contextMenu": {
 		"noResults": "Nessun risultato",

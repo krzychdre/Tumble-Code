@@ -491,18 +491,9 @@
 		"placeholder": "Edytuj swoją wiadomość..."
 	},
 	"slashCommands": {
-		"description": "Używaj wbudowanych poleceń slash lub twórz niestandardowe dla szybkiego dostępu do często używanych promptów i przepływów pracy. <DocsLink>Dokumentacja</DocsLink>",
-		"manageCommands": "Zarządzaj poleceniami slash w ustawieniach",
-		"globalCommands": "Polecenia Globalne",
-		"workspaceCommands": "Polecenia Obszaru Roboczego",
-		"editCommand": "Edytuj polecenie",
-		"deleteCommand": "Usuń polecenie",
-		"deleteDialog": {
-			"title": "Usuń Polecenie",
-			"description": "Czy na pewno chcesz usunąć polecenie \"{{name}}\"? Tej akcji nie można cofnąć.",
-			"cancel": "Anuluj",
-			"confirm": "Usuń"
-		}
+		"title": "Polecenia Slash",
+		"description": "Uruchom wbudowane polecenie lub umiejętność albo przełącz tryb.",
+		"manageSkills": "Zarządzaj umiejętnościami w ustawieniach"
 	},
 	"contextMenu": {
 		"noResults": "Brak wyników",

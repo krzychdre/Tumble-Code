@@ -36,7 +36,6 @@
 		"notifications": "Benachrichtigungen",
 		"contextManagement": "Kontext",
 		"terminal": "Terminal",
-		"slashCommands": "Slash-Befehle",
 		"prompts": "Eingabeaufforderungen",
 		"ui": "UI",
 		"experimental": "Experimentell",
@@ -53,41 +52,6 @@
 			"label": "Debug-Modus aktivieren",
 			"description": "Aktiviere den Debug-Modus: zeigt zusätzliche Buttons im Task-Header zum Anzeigen der API-Konversationshistorie und UI-Nachrichten als formatiertes JSON in temporären Dateien an und schreibt detaillierte Debug-Zeilen (einschließlich der Leistungszähler pro Anfrage) in das Ausgabefenster von Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Verwalte deine Slash-Befehle, um benutzerdefinierte Workflows und Aktionen schnell auszuführen.",
-		"workspaceCommands": "Workspace-Befehle",
-		"globalCommands": "Globale Befehle",
-		"noWorkspaceCommands": "Noch keine Befehle in diesem Projekt.",
-		"noGlobalCommands": "Noch keine globalen Befehle.",
-		"addCommand": "Slash-Befehl hinzufügen",
-		"editCommand": "Befehl bearbeiten",
-		"deleteCommand": "Befehl löschen",
-		"deleteDialog": {
-			"title": "Befehl löschen",
-			"description": "Bist du sicher, dass du den Befehl \"{{name}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
-			"confirm": "Löschen",
-			"cancel": "Abbrechen"
-		},
-		"createDialog": {
-			"title": "Neuen Slash-Befehl erstellen",
-			"nameLabel": "Name",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Nur Kleinbuchstaben, Zahlen, Bindestriche und Unterstriche",
-			"sourceLabel": "Speicherort",
-			"create": "Erstellen",
-			"cancel": "Abbrechen"
-		},
-		"source": {
-			"global": "Global (in allen Workspaces verfügbar)",
-			"project": "Workspace"
-		},
-		"validation": {
-			"nameRequired": "Name ist erforderlich",
-			"nameTooLong": "Name muss 64 Zeichen oder weniger sein",
-			"nameInvalid": "Name darf nur Buchstaben, Zahlen, Bindestriche und Unterstriche enthalten"
-		},
-		"footer": "Nutze Slash-Befehle, um schnell auf häufig verwendete Prompts und Workflows zuzugreifen."
 	},
 	"prompts": {
 		"description": "Konfiguriere Support-Prompts, die für schnelle Aktionen wie das Verbessern von Prompts, das Erklären von Code und das Beheben von Problemen verwendet werden. Diese Prompts helfen Tumble dabei, bessere Unterstützung für häufige Entwicklungsaufgaben zu bieten."

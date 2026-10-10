@@ -36,7 +36,6 @@
 		"notifications": "Notificações",
 		"contextManagement": "Contexto",
 		"terminal": "Terminal",
-		"slashCommands": "Comandos de Barra",
 		"prompts": "Prompts",
 		"ui": "UI",
 		"experimental": "Experimental",
@@ -53,41 +52,6 @@
 			"label": "Ativar modo de debug",
 			"description": "Ative o modo de depuração: mostra botões adicionais no cabeçalho da tarefa para visualizar o histórico de conversação da API e as mensagens da UI como JSON formatado em arquivos temporários e grava linhas de depuração detalhadas (incluindo os contadores de desempenho de cada solicitação) no painel de saída do Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Gerencie seus comandos de barra para executar rapidamente fluxos de trabalho e ações personalizadas.",
-		"workspaceCommands": "Comandos do espaço de trabalho",
-		"globalCommands": "Comandos globais",
-		"noWorkspaceCommands": "Sem comandos neste projeto ainda.",
-		"noGlobalCommands": "Sem comandos globais ainda.",
-		"addCommand": "Adicionar comando de barra",
-		"editCommand": "Editar comando",
-		"deleteCommand": "Excluir comando",
-		"deleteDialog": {
-			"title": "Excluir comando",
-			"description": "Tem certeza de que deseja excluir o comando \"{{name}}\"? Esta ação não pode ser desfeita.",
-			"confirm": "Excluir",
-			"cancel": "Cancelar"
-		},
-		"createDialog": {
-			"title": "Criar novo comando de barra",
-			"nameLabel": "Nome",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Apenas letras minúsculas, números, hífens e sublinhados",
-			"sourceLabel": "Localização",
-			"create": "Criar",
-			"cancel": "Cancelar"
-		},
-		"source": {
-			"global": "Global (disponível em todos os espaços de trabalho)",
-			"project": "Espaço de trabalho"
-		},
-		"validation": {
-			"nameRequired": "Nome é obrigatório",
-			"nameTooLong": "O nome deve ter 64 caracteres ou menos",
-			"nameInvalid": "O nome pode conter apenas letras, números, hífens e sublinhados"
-		},
-		"footer": "Use comandos de barra para acesso rápido a prompts e fluxos de trabalho usados com frequência."
 	},
 	"prompts": {
 		"description": "Configure prompts de suporte usados para ações rápidas como melhorar prompts, explicar código e corrigir problemas. Esses prompts ajudam o Tumble a fornecer melhor assistência para tarefas comuns de desenvolvimento."

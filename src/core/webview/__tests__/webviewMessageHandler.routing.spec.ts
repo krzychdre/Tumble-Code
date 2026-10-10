@@ -337,22 +337,16 @@ vi.mock("../worktree", () => ({
 		message: "include created",
 	})),
 }))
-vi.mock("../../../services/command/commands", () => ({
-	getCommands: h.fn("getCommands", async () => [
+vi.mock("../../../services/command/built-in-commands", () => ({
+	getBuiltInCommands: h.fn("getBuiltInCommands", async () => [
 		{
-			name: "deploy",
-			source: "project",
-			filePath: "/workspace/.roo/commands/deploy.md",
-			description: "Deploy",
-			argumentHint: "env",
+			name: "init",
+			source: "built-in",
+			filePath: "<built-in:init>",
+			description: "Init",
 			content: "body",
 		},
 	]),
-	getCommand: h.fn("getCommand", async (_cwd: string, name: string) => ({
-		name,
-		source: "project",
-		filePath: `/workspace/.roo/commands/${name}.md`,
-	})),
 }))
 vi.mock("../../../integrations/openai-codex/oauth", () => ({
 	openAiCodexOAuthManager: {
@@ -706,10 +700,6 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["deleteSkill", { skillName: "s1", source: "project" }],
 	["updateSkillModes", { skillName: "s1", source: "project", skillModeSlugs: ["code"] }],
 	["openSkillFile", { skillName: "s1", source: "project" }],
-	["openCommandFile", { text: "deploy" }],
-	["deleteCommand", { text: "deploy", values: { source: "project" } }],
-	["createCommand", { text: "/My Command.md", values: { source: "project" } }],
-	["createCommand#global-generated-name", { values: { source: "global" } }],
 	["queueMessage", { text: "later", images: [] }],
 	["removeQueuedMessage", { text: "queued-1" }],
 	["editQueuedMessage", { payload: { id: "queued-1", text: "changed", images: [] } }],
@@ -772,7 +762,7 @@ describe("webviewMessageHandler routing (characterization, CORE-R3)", () => {
 	})
 
 	it("covers every routed message type exactly once in the route list", () => {
-		expect(ROUTED_TYPES).toHaveLength(137)
+		expect(ROUTED_TYPES).toHaveLength(134)
 	})
 
 	it.each(ROUTES)("%s", async (label, fields) => {

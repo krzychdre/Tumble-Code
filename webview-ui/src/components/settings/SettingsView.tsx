@@ -23,7 +23,6 @@ import {
 	Info,
 	MessageSquare,
 	LucideIcon,
-	SquareSlash,
 	Glasses,
 	Plug,
 	Server,
@@ -71,7 +70,6 @@ import { About } from "./About"
 import { Section } from "./Section"
 import { SettingsCard } from "./SettingsCard"
 import PromptsSettings from "./PromptsSettings"
-import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { SkillsSettings } from "./SkillsSettings"
 import { UISettings } from "./UISettings"
 import { WorktreesView } from "../worktrees/WorktreesView"
@@ -114,7 +112,6 @@ export interface SettingsViewRef {
 export const sectionNames = [
 	"providers",
 	"autoApprove",
-	"slashCommands",
 	"skills",
 	"checkpoints",
 	"memory",
@@ -311,7 +308,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "providers", icon: Plug },
 			{ id: "modes", icon: Users2 },
 			{ id: "skills", icon: GraduationCap },
-			{ id: "slashCommands", icon: SquareSlash },
 			{ id: "autoApprove", icon: CheckCheck },
 			{ id: "mcp", icon: Server },
 			{ id: "checkpoints", icon: GitCommitVertical },
@@ -528,45 +524,48 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 									<Section>
 										<SettingsCard>
-										<ApiConfigManager
-											currentApiConfigName={currentApiConfigName}
-											listApiConfigMeta={listApiConfigMeta}
-											onSelectConfig={(configName: string) =>
-												checkUnsaveChanges(() =>
+											<ApiConfigManager
+												currentApiConfigName={currentApiConfigName}
+												listApiConfigMeta={listApiConfigMeta}
+												onSelectConfig={(configName: string) =>
+													checkUnsaveChanges(() =>
+														vscode.postMessage({
+															type: "loadApiConfiguration",
+															text: configName,
+														}),
+													)
+												}
+												onDeleteConfig={(configName: string) =>
 													vscode.postMessage({
-														type: "loadApiConfiguration",
+														type: "deleteApiConfiguration",
 														text: configName,
-													}),
-												)
-											}
-											onDeleteConfig={(configName: string) =>
-												vscode.postMessage({ type: "deleteApiConfiguration", text: configName })
-											}
-											onRenameConfig={(oldName: string, newName: string) => {
-												vscode.postMessage({
-													type: "renameApiConfiguration",
-													values: { oldName, newName },
-													apiConfiguration,
-												})
-												prevApiConfigName.current = newName
-											}}
-											onUpsertConfig={(configName: string) =>
-												vscode.postMessage({
-													type: "upsertApiConfiguration",
-													text: configName,
-													apiConfiguration,
-												})
-											}
-										/>
+													})
+												}
+												onRenameConfig={(oldName: string, newName: string) => {
+													vscode.postMessage({
+														type: "renameApiConfiguration",
+														values: { oldName, newName },
+														apiConfiguration,
+													})
+													prevApiConfigName.current = newName
+												}}
+												onUpsertConfig={(configName: string) =>
+													vscode.postMessage({
+														type: "upsertApiConfiguration",
+														text: configName,
+														apiConfiguration,
+													})
+												}
+											/>
 										</SettingsCard>
 										<SettingsCard>
-										<ApiOptions
-											uriScheme={uriScheme}
-											apiConfiguration={apiConfiguration}
-											setApiConfigurationField={setApiConfigurationField}
-											errorMessage={errorMessage}
-											setErrorMessage={setErrorMessage}
-										/>
+											<ApiOptions
+												uriScheme={uriScheme}
+												apiConfiguration={apiConfiguration}
+												setApiConfigurationField={setApiConfigurationField}
+												errorMessage={errorMessage}
+												setErrorMessage={setErrorMessage}
+											/>
 										</SettingsCard>
 									</Section>
 								</div>
@@ -574,9 +573,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 							{/* Auto-Approve Section */}
 							{renderTab === "autoApprove" && <AutoApproveSettings />}
-
-							{/* Slash Commands Section */}
-							{renderTab === "slashCommands" && <SlashCommandsSettings />}
 
 							{/* Skills Section */}
 							{renderTab === "skills" && <SkillsSettings />}

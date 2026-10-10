@@ -456,18 +456,9 @@
 		"placeholder": "Mesajını düzenle..."
 	},
 	"slashCommands": {
-		"description": "Yerleşik eğik çizgi komutlarını kullanın veya sık kullanılan komut istemleri ve iş akışlarına hızlı erişim için özel komutlar oluşturun. <DocsLink>Belgeler</DocsLink>",
-		"manageCommands": "Ayarlarda eğik çizgi komutlarını yönet",
-		"globalCommands": "Genel Komutlar",
-		"workspaceCommands": "Çalışma Alanı Komutları",
-		"editCommand": "Komutu düzenle",
-		"deleteCommand": "Komutu sil",
-		"deleteDialog": {
-			"title": "Komutu Sil",
-			"description": "\"{{name}}\" komutunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
-			"cancel": "İptal",
-			"confirm": "Sil"
-		}
+		"title": "Eğik Çizgi Komutları",
+		"description": "Yerleşik bir komut veya bir beceri çalıştırın ya da mod değiştirin.",
+		"manageSkills": "Ayarlarda becerileri yönet"
 	},
 	"contextMenu": {
 		"noResults": "Sonuç yok",

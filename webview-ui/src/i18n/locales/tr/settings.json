@@ -36,7 +36,6 @@
 		"notifications": "Bildirimler",
 		"contextManagement": "Bağlam",
 		"terminal": "Terminal",
-		"slashCommands": "Eğik Çizgi Komutları",
 		"prompts": "Promptlar",
 		"ui": "UI",
 		"experimental": "Deneysel",
@@ -53,41 +52,6 @@
 			"label": "Debug modunu etkinleştir",
 			"description": "Debug modunu etkinleştirin: görev başlığında API konuşma geçmişini ve UI mesajlarını geçici dosyalarda biçimlendirilmiş JSON olarak görüntülemek için ek düğmeler gösterir ve ayrıntılı hata ayıklama satırlarını (her isteğin performans sayaçları dahil) Tumble Code çıkış paneline yazar."
 		}
-	},
-	"slashCommands": {
-		"description": "Özel iş akışlarını ve eylemleri hızlı bir şekilde yürütmek için eğik çizgi komutlarınızı yönetin.",
-		"workspaceCommands": "Çalışma Alanı Komutları",
-		"globalCommands": "Genel Komutlar",
-		"noWorkspaceCommands": "Bu projede henüz komut yok.",
-		"noGlobalCommands": "Henüz genel komut yok.",
-		"addCommand": "Eğik Çizgi Komutu Ekle",
-		"editCommand": "Komutu düzenle",
-		"deleteCommand": "Komutu sil",
-		"deleteDialog": {
-			"title": "Komutu sil",
-			"description": "\"{{name}}\" komutunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
-			"confirm": "Sil",
-			"cancel": "İptal"
-		},
-		"createDialog": {
-			"title": "Yeni Eğik Çizgi Komutu Oluştur",
-			"nameLabel": "Ad",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Yalnızca küçük harfler, sayılar, tireleme ve alt çizgi",
-			"sourceLabel": "Konum",
-			"create": "Oluştur",
-			"cancel": "İptal"
-		},
-		"source": {
-			"global": "Genel (tüm çalışma alanlarında mevcut)",
-			"project": "Çalışma Alanı"
-		},
-		"validation": {
-			"nameRequired": "Ad gereklidir",
-			"nameTooLong": "Ad en fazla 64 karakter olmalıdır",
-			"nameInvalid": "Ad yalnızca harfleri, sayıları, tirelemeyi ve alt çizgiyi içerebilir"
-		},
-		"footer": "Sık kullanılan komutlara ve iş akışlarına hızlı erişim için eğik çizgi komutlarını kullanın."
 	},
 	"prompts": {
 		"description": "Prompt geliştirme, kod açıklama ve sorun çözme gibi hızlı eylemler için kullanılan destek promptlarını yapılandırın. Bu promptlar, Tumble'nun yaygın geliştirme görevleri için daha iyi destek sağlamasına yardımcı olur."

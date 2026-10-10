@@ -36,7 +36,6 @@
 		"notifications": "Notificacions",
 		"contextManagement": "Context",
 		"terminal": "Terminal",
-		"slashCommands": "Comandes de barra",
 		"prompts": "Indicacions",
 		"ui": "UI",
 		"experimental": "Experimental",
@@ -53,41 +52,6 @@
 			"label": "Activa el mode de depuració",
 			"description": "Activa el mode de depuració: mostra botons addicionals a la capçalera de la tasca per veure l'historial de conversa de l'API i els missatges de la UI com a JSON formatejat en fitxers temporals, i escriu línies de depuració detallades (inclosos els comptadors de rendiment de cada sol·licitud) al panell de sortida de Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Gestiona les teves comandes de barra per executar ràpidament fluxos de treball i accions personalitzades.",
-		"workspaceCommands": "Comandes de l'espai de treball",
-		"globalCommands": "Comandes globals",
-		"noWorkspaceCommands": "Sense comandes en aquest projecte encara.",
-		"noGlobalCommands": "Sense comandes globals encara.",
-		"addCommand": "Afegir comanda de barra",
-		"editCommand": "Editar comanda",
-		"deleteCommand": "Suprimir comanda",
-		"deleteDialog": {
-			"title": "Suprimir comanda",
-			"description": "Estàs segur que vols suprimir la comanda \"{{name}}\"? Aquesta acció no es pot desfer.",
-			"confirm": "Suprimir",
-			"cancel": "Cancel·lar"
-		},
-		"createDialog": {
-			"title": "Crear una nova comanda de barra",
-			"nameLabel": "Nom",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Només lletres minúscules, números, guions i subratllats",
-			"sourceLabel": "Ubicació",
-			"create": "Crear",
-			"cancel": "Cancel·lar"
-		},
-		"source": {
-			"global": "Global (disponible en tots els espais de treball)",
-			"project": "Espai de treball"
-		},
-		"validation": {
-			"nameRequired": "El nom és obligatori",
-			"nameTooLong": "El nom ha de tenir 64 caràcters o menys",
-			"nameInvalid": "El nom ha de contenir només lletres, números, guions i subratllats"
-		},
-		"footer": "Utilitza comandes de barra per accedir ràpidament a indicacions i fluxos de treball utilitzats freqüentment."
 	},
 	"prompts": {
 		"description": "Configura les indicacions de suport utilitzades per a accions ràpides com millorar indicacions, explicar codi i solucionar problemes. Aquestes indicacions ajuden Tumble a proporcionar millor assistència per a tasques comunes de desenvolupament."

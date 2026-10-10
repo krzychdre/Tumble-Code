@@ -455,18 +455,9 @@
 		"placeholder": "Bearbeite deine Nachricht..."
 	},
 	"slashCommands": {
-		"description": "Verwende eingebaute Slash-Befehle oder erstelle benutzerdefinierte für schnellen Zugriff auf häufig verwendete Prompts und Workflows. <DocsLink>Dokumentation</DocsLink>",
-		"manageCommands": "Slash-Befehle in den Einstellungen verwalten",
-		"globalCommands": "Globale Befehle",
-		"workspaceCommands": "Arbeitsbereich-Befehle",
-		"editCommand": "Befehl bearbeiten",
-		"deleteCommand": "Befehl löschen",
-		"deleteDialog": {
-			"title": "Befehl löschen",
-			"description": "Bist du sicher, dass du den Befehl \"{{name}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
-			"cancel": "Abbrechen",
-			"confirm": "Löschen"
-		}
+		"title": "Slash-Befehle",
+		"description": "Führe einen integrierten Befehl oder einen Skill aus oder wechsle den Modus.",
+		"manageSkills": "Skills in den Einstellungen verwalten"
 	},
 	"contextMenu": {
 		"noResults": "Keine Ergebnisse",

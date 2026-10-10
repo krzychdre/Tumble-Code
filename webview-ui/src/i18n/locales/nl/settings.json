@@ -36,7 +36,6 @@
 		"notifications": "Meldingen",
 		"contextManagement": "Context",
 		"terminal": "Terminal",
-		"slashCommands": "Slash-opdrachten",
 		"prompts": "Prompts",
 		"ui": "UI",
 		"experimental": "Experimenteel",
@@ -53,41 +52,6 @@
 			"label": "Debugmodus inschakelen",
 			"description": "Schakel de debugmodus in: toont extra knoppen in de taakkoptekst voor het bekijken van API-gesprekgeschiedenis en UI-berichten als opgemaakte JSON in tijdelijke bestanden, en schrijft gedetailleerde debugregels (inclusief prestatietellers per verzoek) naar het uitvoerpaneel van Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Beheer je slash-commando's om snel aangepaste workflows en acties uit te voeren.",
-		"workspaceCommands": "Werkruimteopdrachten",
-		"globalCommands": "Globale opdrachten",
-		"noWorkspaceCommands": "Nog geen opdrachten in dit project.",
-		"noGlobalCommands": "Nog geen globale opdrachten.",
-		"addCommand": "Slash-opdracht toevoegen",
-		"editCommand": "Opdracht bewerken",
-		"deleteCommand": "Opdracht verwijderen",
-		"deleteDialog": {
-			"title": "Opdracht verwijderen",
-			"description": "Weet je zeker dat je de opdracht \"{{name}}\" wilt verwijderen? Deze actie kan niet ongedaan gemaakt worden.",
-			"confirm": "Verwijderen",
-			"cancel": "Annuleren"
-		},
-		"createDialog": {
-			"title": "Nieuw slash-commando maken",
-			"nameLabel": "Naam",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Alleen kleine letters, cijfers, streepjes en onderstrepen",
-			"sourceLabel": "Locatie",
-			"create": "Maken",
-			"cancel": "Annuleren"
-		},
-		"source": {
-			"global": "Globaal (beschikbaar in alle werkruimten)",
-			"project": "Werkruimte"
-		},
-		"validation": {
-			"nameRequired": "Naam is vereist",
-			"nameTooLong": "Naam mag max. 64 tekens zijn",
-			"nameInvalid": "Naam mag alleen letters, cijfers, streepjes en onderstrepen bevatten"
-		},
-		"footer": "Gebruik slash-commando's voor snelle toegang tot veelgebruikte prompts en workflows."
 	},
 	"prompts": {
 		"description": "Configureer ondersteuningsprompts die worden gebruikt voor snelle acties zoals het verbeteren van prompts, het uitleggen van code en het oplossen van problemen. Deze prompts helpen Tumble om betere ondersteuning te bieden voor veelvoorkomende ontwikkelingstaken."
