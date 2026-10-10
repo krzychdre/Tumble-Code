@@ -1,19 +1,29 @@
 import fs from "fs/promises"
 import path from "path"
 
-import { type ClineSayTool } from "@tumble-code/types"
+import { type ClineSayTool, isCompactProfile } from "@tumble-code/types"
 
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
-import { formatResponse } from "../prompts/responses"
+import { compactResponses, formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { applyComputedEdit } from "./helpers/applyComputedEdit"
 import { replaceLiteral } from "./helpers/replaceLiteral"
+import {
+	compactReplace,
+	detectLineEnding,
+	findClosestSnippet,
+	lastLines,
+	matchWithContext,
+	normalizeToLF,
+	restoreLineEnding,
+	stripCopiedLineNumbers,
+} from "./helpers/compactEdit"
 
 export interface StringReplaceParams {
 	file_path: string
@@ -190,6 +200,165 @@ export async function runStringReplace(
 	}
 }
 
+/**
+ * `edit` under the compact profile (small local models): the lenient matching
+ * chain of `compactReplace` and short plain-text errors that quote the file.
+ * An empty old_string creates a missing file (or fills an empty one) and
+ * otherwise answers with the file's last lines to append after.
+ *
+ * The mistake counting is the same as in `runStringReplace`: every failed call
+ * goes through `host.recordFailure`, the rooignore block does not, and a saved
+ * edit resets the counter.
+ */
+async function runCompactEdit(
+	host: StringReplaceHost,
+	params: StringReplaceParams,
+	task: Task,
+	callbacks: ToolCallbacks,
+): Promise<void> {
+	const { handleError, pushToolResult } = callbacks
+	const { toolName } = host
+	const filePath = typeof params.file_path === "string" ? params.file_path : ""
+	// A missing old_string is treated as an empty one (create or append), not as a malformed call.
+	const oldString = typeof params.old_string === "string" ? params.old_string : ""
+	const newString = params.new_string
+	// Non-strict schemas under compact: a model may send the boolean as a string.
+	const replaceAll = params.replace_all === true || (params.replace_all as unknown) === "true"
+
+	try {
+		if (!filePath) {
+			host.recordFailure()
+			// Called for its chat row and telemetry; the model gets the short compact text.
+			await task.sayAndCreateMissingParamError(toolName, "file_path")
+			pushToolResult(compactResponses.missingParameter(toolName, "file_path"))
+			return
+		}
+
+		if (typeof newString !== "string") {
+			host.recordFailure()
+			await task.sayAndCreateMissingParamError(toolName, "new_string")
+			pushToolResult(compactResponses.missingParameter(toolName, "new_string"))
+			return
+		}
+
+		const relPath = toWorkspaceRelativePath(task.cwd, filePath)
+
+		if (!task.rooIgnoreController?.validateAccess(relPath)) {
+			await task.say("rooignore_error", relPath)
+			pushToolResult(formatResponse.rooIgnoreError(relPath))
+			return
+		}
+
+		const absolutePath = path.resolve(task.cwd, relPath)
+		const fileExists = await fileExistsAtPath(absolutePath)
+
+		if (!fileExists && oldString !== "") {
+			host.recordFailure()
+			const errorMessage = compactResponses.editFileNotFound(relPath)
+			await task.say("error", errorMessage)
+			pushToolResult(errorMessage)
+			return
+		}
+
+		let originalContent = ""
+		if (fileExists) {
+			try {
+				originalContent = await fs.readFile(absolutePath, "utf8")
+			} catch (error) {
+				host.recordFailure()
+				const errorMessage = compactResponses.editReadFailed(
+					relPath,
+					error instanceof Error ? error.message : String(error),
+				)
+				await task.say("error", errorMessage)
+				pushToolResult(errorMessage)
+				return
+			}
+		}
+
+		const eol = detectLineEnding(originalContent)
+		const contentLF = normalizeToLF(originalContent)
+		const oldLF = normalizeToLF(oldString)
+		const newLF = normalizeToLF(newString)
+
+		let newContent: string
+		let resultSuffix = ""
+		if (oldLF === "") {
+			// Create a missing file, or fill one that holds nothing but whitespace.
+			if (fileExists && contentLF.trim() !== "") {
+				host.recordFailure({ error: "empty_old_string" })
+				pushToolResult(compactResponses.editAppendToExistingFile(relPath, lastLines(contentLF, 3)))
+				return
+			}
+			if (newLF === "") {
+				host.recordFailure()
+				pushToolResult(compactResponses.editEmptyNewString(relPath))
+				return
+			}
+			newContent = restoreLineEnding(stripCopiedLineNumbers(newLF), fileExists ? eol : "\n")
+		} else {
+			if (oldLF === newLF) {
+				host.recordFailure()
+				pushToolResult(compactResponses.editIdenticalStrings(relPath))
+				return
+			}
+
+			const result = compactReplace(contentLF, oldLF, newLF, replaceAll)
+
+			if (result.kind === "none") {
+				host.recordFailure({ error: "no_match" })
+				pushToolResult(compactResponses.editNoMatch(relPath, findClosestSnippet(contentLF, result.searched)))
+				return
+			}
+
+			if (result.kind === "multiple") {
+				host.recordFailure()
+				pushToolResult(
+					compactResponses.editMultipleMatches(
+						relPath,
+						result.matches.map((match) => match.startLine),
+						matchWithContext(contentLF, result.matches[0]),
+					),
+				)
+				return
+			}
+
+			newContent = restoreLineEnding(result.content, eol)
+			resultSuffix =
+				(result.count > 1 ? ` (${result.count} replacements)` : "") +
+				compactResponses.editMatchNote(result.strippedLineNumbers, result.strategy === "whitespace")
+		}
+
+		if (fileExists && newContent === originalContent) {
+			pushToolResult(`No changes needed for '${relPath}'`)
+			return
+		}
+
+		task.consecutiveMistakeCount = 0
+
+		const isNewFile = !fileExists
+		const outcome = await applyComputedEdit(task, relPath, newContent, callbacks, {
+			originalContent,
+			isNewFile,
+			cardTool: isNewFile ? "newFileCreated" : "appliedDiff",
+			resultSuffix,
+		})
+		if (outcome !== "saved") {
+			return
+		}
+
+		task.recordToolUsage(toolName)
+		await task.diffViewProvider.reset()
+		host.resetPartialState()
+
+		task.processQueuedMessages()
+	} catch (error) {
+		await handleError(EDIT_PROFILE.errorAction, error as Error, toolName)
+		await task.diffViewProvider.reset()
+		host.resetPartialState()
+	}
+}
+
 export class EditTool extends BaseTool<"edit"> {
 	readonly name = "edit" as const
 
@@ -198,6 +367,10 @@ export class EditTool extends BaseTool<"edit"> {
 			toolName: this.name,
 			recordFailure: (options) => this.recordFailure(task, this.name, options),
 			resetPartialState: () => this.resetPartialState(task),
+		}
+		if (isCompactProfile(task.apiConfiguration)) {
+			await runCompactEdit(host, params, task, callbacks)
+			return
 		}
 		await runStringReplace(host, params, task, callbacks, EDIT_PROFILE)
 	}

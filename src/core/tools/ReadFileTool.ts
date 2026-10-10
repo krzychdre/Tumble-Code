@@ -13,11 +13,11 @@ import * as fs from "fs/promises"
 import { isBinaryFile } from "isbinaryfile"
 
 import type { ReadFileParams, ReadFileMode, ReadFileToolParams, FileEntry, LineRange } from "@tumble-code/types"
-import { isLegacyReadFileParams, type ClineSayTool } from "@tumble-code/types"
+import { isCompactProfile, isLegacyReadFileParams, type ClineSayTool } from "@tumble-code/types"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
-import { formatResponse } from "../prompts/responses"
+import { compactResponses, formatResponse } from "../prompts/responses"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { getReadablePath } from "../../utils/path"
@@ -37,6 +37,8 @@ import {
 } from "./helpers/imageHelpers"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { describeReadFile } from "./toolDescriptors"
+import { compactReadLimit, compactReadOffset, formatCompactRead } from "./helpers/compactRead"
+import { hasLineNumberPrefixes, stripLineNumberPrefixes } from "./helpers/compactEdit"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,6 +94,10 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		const { pushToolResult, toolCallId } = callbacks
 		const filePath = params.path
 
+		if (isCompactProfile(task.apiConfiguration)) {
+			return this.executeCompact(params, task, callbacks)
+		}
+
 		// Validate input
 		if (!filePath) {
 			this.recordFailure(task, "read_file")
@@ -122,6 +128,32 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			include_siblings: params.indentation?.include_siblings,
 			include_header: params.indentation?.include_header,
 			max_lines: params.indentation?.max_lines,
+		}
+
+		await this.readEntries(task, [fileEntry], pushToolResult, toolCallId)
+	}
+
+	/**
+	 * The single-file format under the compact profile: a plain slice of at most
+	 * `COMPACT_READ_MAX_LINES` lines from `offset` (below 1 reads from line 1);
+	 * `mode` and `indentation` are ignored. The output format is set in
+	 * `readApprovedFile` (see `formatCompactRead`).
+	 */
+	private async executeCompact(params: ReadFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
+		const { pushToolResult, toolCallId } = callbacks
+
+		if (!params.path) {
+			this.recordFailure(task, "read_file")
+			// Called for its chat row and telemetry; the model gets the short compact text.
+			await task.sayAndCreateMissingParamError("read_file", "path")
+			pushToolResult(compactResponses.missingParameter("read_file", "path"))
+			return
+		}
+
+		const fileEntry: InternalFileEntry = {
+			path: params.path,
+			offset: compactReadOffset(params.offset),
+			limit: compactReadLimit(params.limit),
 		}
 
 		await this.readEntries(task, [fileEntry], pushToolResult, toolCallId)
@@ -271,12 +303,14 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			// (they become U+FFFD replacement characters instead of throwing)
 			const buffer = await fs.readFile(fullPath)
 			const fileContent = buffer.toString("utf-8")
-			const result = this.processTextFile(fileContent, entry)
+			const nativeContent = isCompactProfile(task.apiConfiguration)
+				? this.processCompactTextFile(relPath, fileContent, entry)
+				: `File: ${relPath}\n${this.processTextFile(fileContent, entry)}`
 
 			await task.fileContextTracker.trackFileContext(relPath, "read_tool" as RecordSource)
 
 			updateFileResult(relPath, {
-				nativeContent: `File: ${relPath}\n${result}`,
+				nativeContent,
 			})
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error)
@@ -287,6 +321,20 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			})
 			await task.say("error", `Error reading file ${relPath}: ${errorMsg}`)
 		}
+	}
+
+	/**
+	 * A text file in the compact format, header included: raw lines, at most
+	 * `COMPACT_READ_MAX_LINES` lines and `COMPACT_READ_MAX_CHARS` characters per
+	 * slice. Legacy line ranges become one block per range.
+	 */
+	private processCompactTextFile(relPath: string, content: string, entry: InternalFileEntry): string {
+		if (entry.slices && entry.slices.length > 0) {
+			return entry.slices
+				.map((slice) => formatCompactRead(relPath, content, slice.offset, compactReadLimit(slice.limit)))
+				.join("\n\n")
+		}
+		return formatCompactRead(relPath, content, compactReadOffset(entry.offset), compactReadLimit(entry.limit))
 	}
 
 	/**
@@ -443,6 +491,17 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		if (supportedBinaryFormats && supportedBinaryFormats.includes(fileExtension)) {
 			try {
 				const content = await extractTextFromFile(fullPath)
+
+				if (isCompactProfile(task.apiConfiguration)) {
+					// The extractors number their lines; the compact format shows raw text.
+					const raw = hasLineNumberPrefixes(content) ? stripLineNumberPrefixes(content) : content
+					await task.fileContextTracker.trackFileContext(relPath, "read_tool" as RecordSource)
+					updateFileResult(relPath, {
+						nativeContent: formatCompactRead(relPath, raw, 1, compactReadLimit(undefined)),
+					})
+					return
+				}
+
 				const numberedContent = addLineNumbers(content)
 				const lineCount = content.split("\n").length
 
@@ -729,16 +788,24 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	private async executeLegacy(fileEntries: FileEntry[], task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { pushToolResult } = callbacks
 
+		const compact = isCompactProfile(task.apiConfiguration)
+
 		if (!fileEntries || fileEntries.length === 0) {
 			this.recordFailure(task, "read_file")
 			const errorMsg = await task.sayAndCreateMissingParamError("read_file", "files")
-			pushToolResult(`Error: ${errorMsg}`)
+			pushToolResult(compact ? compactResponses.missingParameter("read_file", "path") : `Error: ${errorMsg}`)
 			return
 		}
 
+		const entries = fileEntries.map(legacyEntryToInternal)
+		// Under compact a whole-file entry carries the compact limit, so the approval card names it.
+		const readEntries = compact
+			? entries.map((entry) => (entry.slices ? entry : { ...entry, limit: compactReadLimit(undefined) }))
+			: entries
+
 		// The legacy approval cards never carried the tool-call id: several cards of one call
 		// must not be taken for duplicates of each other.
-		await this.readEntries(task, fileEntries.map(legacyEntryToInternal), pushToolResult)
+		await this.readEntries(task, readEntries, pushToolResult)
 	}
 }
 
