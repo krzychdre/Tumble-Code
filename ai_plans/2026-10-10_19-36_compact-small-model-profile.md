@@ -121,3 +121,82 @@ branch, temperature 0.6 in the test profile. Measured: success, requests, input 
 - Ungated: treat `maxTokens <= 0` as unset when reserving output space.
 - `slimToolset` reads its flags from the globally active profile; background tasks on another profile get the
   foreground flags.
+
+## Foundation (F)
+
+Done on `feat/compact-small-model-profile` (commits `2ff16982c`, `866ea42ee`, `acff04b52`, `65f694e89`). Workstreams
+A to D branch from the commit that adds this section. Nothing reads the flag yet: with it on or off every output
+is today's.
+
+### The flag and the helper
+
+- Field: `compactProfile`, a plain optional boolean (never nullish) in `baseProviderSettingsSchema`
+  (`packages/types/src/provider-settings.ts`), in the strict `sharedProfileSettingsSchema`
+  (`packages/types/src/provider-config/shared.ts`) and in `sharedFieldNames` (`provider-profile.ts`). It is stored
+  in the shared section of a persisted profile and read back flat.
+- Helper: `isCompactProfile(settings?: { compactProfile?: boolean } | null): boolean`, true only for an explicit
+  `true`. Import it as `import { isCompactProfile } from "@tumble-code/types"` (it works in `src`, `packages/core`
+  and `webview-ui`). Never test the field directly; always go through the helper.
+- UI: `webview-ui/src/components/settings/CompactProfileControl.tsx`, after `SlimToolsetControl` in the advanced
+  section of `ApiOptions.tsx`; keys `settings:advanced.compactProfile.{label,description}` in all 18 locales.
+
+### Where to read it (exact expressions)
+
+The flag follows the profile that serves the request: the task's own `apiConfiguration`, the profile its API
+handler was built from. `getState().apiConfiguration` is the panel's active profile and belongs to the focused
+task, so code inside a task must not read the flag from there.
+
+1. Prompt sections (`SYSTEM_PROMPT` and the sections it calls): `isCompactProfile(settings)`, where `settings` is
+   the `SystemPromptSettings` in `options.settings` (`src/core/prompts/types.ts`, field `compactProfile`). It is
+   filled by `buildSystemPromptInput` from `SystemPromptSource.compactProfile`, which the caller resolves: the live
+   path (`ApiRequestBuilder.buildSystemPrompt`) passes `isCompactProfile(this.access.apiConfiguration)`, the
+   preview (`generateSystemPrompt`) passes `isCompactProfile(state.apiConfiguration)`, the same profile it resolves
+   the preview model from. A section that needs the flag gets it passed down from `system.ts`.
+2. Tool filtering: `isCompactProfile(settings)` inside `filterNativeToolsForMode` / `filterMcpToolsForMode`
+   (their `settings` argument is `filterSettings` from `build-tools.ts`, which now carries `compactProfile`), and
+   `isCompactProfile({ compactProfile })` or `filterSettings` inside `buildNativeToolsArrayWithRestrictions`.
+   The value arrives as the `BuildToolsOptions.compactProfile` option, passed by `ApiRequestBuilder.buildToolsArray`
+   as `isCompactProfile(this.access.apiConfiguration)`. It is NOT read from the `apiConfiguration` option, which is
+   the active profile (the slim flags keep reading that one, unchanged). Specs that call
+   `buildNativeToolsArrayWithRestrictions` directly pass `compactProfile: true` as an option.
+3. Code inside a task: `isCompactProfile(task.apiConfiguration)` wherever a `Task` is at hand (tools such as
+   `ReadFileTool`, `EditTool`, `WriteToFileTool`, `ExecuteCommandTool` get `task`; `getEnvironmentDetails` gets
+   `cline`, so `isCompactProfile(cline.apiConfiguration)`); in a helper module on an access interface
+   (`TaskApiLoop`, `TaskContextManager`, `TaskStreamProcessor`, ...): `isCompactProfile(this.access.apiConfiguration)`.
+   Documented on `TaskApiConfigurationAccess` (`src/core/task/access-groups.ts`). `getModelMaxOutputTokens` is
+   already called with `settings: this.access.apiConfiguration` from the task, so inside
+   `packages/core/src/api/model-options.ts` it is `isCompactProfile(settings)`.
+4. Provider handlers: `isCompactProfile(this.options)` (`ApiHandlerOptions` is the task's profile without
+   `apiProvider`, built by `buildApiHandler(task.apiConfiguration)`). `BaseProvider` has no `options`, so
+   `convertToolsForOpenAI` needs the flag passed in by the subclass that calls it.
+
+### How the task profile behaves
+
+- A mode switch to a mode with a bound profile, a profile switch and a saved profile edit all call
+  `ModeProfileBinding.updateTaskApiHandlerIfNeeded(..., { forceRebuild: true })`, which calls
+  `task.updateApiConfiguration`: `task.apiConfiguration` and `task.api` (hence `this.options`) change together,
+  for the focused task only. The non-rebuild branch of that method would update `apiConfiguration` without the
+  handler; no caller reaches it today, keep it that way or `this.options` goes stale.
+- Background subagents (`BackgroundTaskRunner`) and detached parents keep their own profile; the profile-change
+  listener skips them on purpose.
+- Pre-existing, not changed here: `switch_mode` called by a background task runs `provider.handleModeSwitch`,
+  which switches the FOCUSED task's mode and profile, not the caller's.
+- Compact supersedes slim, but the two read different profiles (slim: active, compact: task). For the focused
+  task they are the same profile.
+
+### Golden test
+
+`src/core/prompts/__tests__/compact-off-golden.spec.ts`, snapshots in `__snapshots__/compact-off-golden/`. It pins,
+on the live path, the system prompt and the native tools array for every built-in mode, plus the tools and the
+other request parameters after the OpenAI-compatible handler for code and ask mode, for the profiles `{}` and
+`{ slimToolset: true }`, and checks that `compactProfile: false` gives the same files. The real modes, memory
+(with a MEMORY.md index above 3,000 characters), skills and MCP sections are rendered. Run it, never with `-u`:
+
+```
+cd src && CI=true npx vitest run core/prompts/__tests__/compact-off-golden.spec.ts
+```
+
+`CI=true` makes a missing snapshot fail instead of being written. Snapshot files store en and em dashes as
+`\u2013` / `\u2014` escapes (lossless) and use the `.snap` extension so lint-staged does not reformat the JSON.
+Related guards: `core/prompts/__tests__/system-prompt-parity.spec.ts` (preview equals live, with a compact case),
+`core/task/__tests__/ApiRequestBuilder.compact-profile.spec.ts` (the flag comes from the task, not the panel).
