@@ -45,7 +45,6 @@ exports[`SettingsView Save buffer through the real sections > about: an edit mar
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -163,7 +162,6 @@ exports[`SettingsView Save buffer through the real sections > autoApprove: an ed
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -270,7 +268,6 @@ exports[`SettingsView Save buffer through the real sections > checkpoints: an ed
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -377,7 +374,6 @@ exports[`SettingsView Save buffer through the real sections > contextManagement:
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -483,8 +479,7 @@ exports[`SettingsView Save buffer through the real sections > experimental: an e
         "enterBehavior": "send",
         "experiments": {
           "imageGeneration": false,
-          "preventFocusDisruption": false,
-          "runSlashCommand": true,
+          "preventFocusDisruption": true,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -591,7 +586,6 @@ exports[`SettingsView Save buffer through the real sections > language: an edit 
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -698,7 +692,6 @@ exports[`SettingsView Save buffer through the real sections > memory: an edit ma
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -805,7 +798,6 @@ exports[`SettingsView Save buffer through the real sections > notifications: an 
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -919,7 +911,6 @@ exports[`SettingsView Save buffer through the real sections > prompts: an edit m
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -1026,7 +1017,6 @@ exports[`SettingsView Save buffer through the real sections > subagents: an edit
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -1133,7 +1123,6 @@ exports[`SettingsView Save buffer through the real sections > terminal: an edit 
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -1240,7 +1229,6 @@ exports[`SettingsView Save buffer through the real sections > ui: an edit marks 
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,
@@ -1347,7 +1335,6 @@ exports[`SettingsView Save buffer through the real sections > web: an edit marks
         "experiments": {
           "imageGeneration": false,
           "preventFocusDisruption": false,
-          "runSlashCommand": false,
         },
         "followupAutoApproveTimeoutMs": 45000,
         "imageGenerationProvider": undefined,

@@ -61,7 +61,6 @@ export type NativeToolArgs = {
 	}
 	codebase_search: { query: string; path?: string }
 	generate_image: GenerateImageParams
-	run_slash_command: { command: string; args?: string }
 	skill: { skill: string; args?: string }
 	search_files: { path: string; regex: string; file_pattern?: string | null }
 	search_task_history: { query: string; max_results?: number }

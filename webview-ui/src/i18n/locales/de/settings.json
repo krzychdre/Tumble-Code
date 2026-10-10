@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ OpenRouter API-Schlüssel ist für Bildgenerierung erforderlich. Bitte konfiguriere ihn oben.",
 			"successConfigured": "✓ Bildgenerierung ist konfiguriert und einsatzbereit"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Modellinitierte Slash-Befehle aktivieren",
-			"description": "Wenn aktiviert, kann Tumble deine Slash-Befehle ausführen, um Workflows zu starten."
-		},
 		"CUSTOM_TOOLS": {
 			"name": "Benutzerdefinierte Tools aktivieren",
 			"description": "Wenn aktiviert, kann Tumble benutzerdefinierte TypeScript/JavaScript-Tools aus dem .roo/tools-Verzeichnis deines Projekts oder ~/.roo/tools für globale Tools laden und verwenden. Hinweis: Diese Tools werden automatisch genehmigt.",

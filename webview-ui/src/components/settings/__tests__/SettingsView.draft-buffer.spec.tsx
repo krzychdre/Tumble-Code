@@ -140,7 +140,7 @@ const baseState = () => ({
 	enterBehavior: "send",
 	uiDensity: "comfortable",
 	// Experimental
-	experiments: { preventFocusDisruption: false, imageGeneration: false, runSlashCommand: false },
+	experiments: { preventFocusDisruption: false, imageGeneration: false },
 	// Language
 	language: "en",
 })
@@ -232,7 +232,7 @@ const EDITS: Record<string, Edit> = {
 	experimental: {
 		tab: "experimental",
 		edit: (content) => {
-			fireEvent.click(checkbox(content, "settings:experimental.RUN_SLASH_COMMAND.name"))
+			fireEvent.click(checkbox(content, "settings:experimental.PREVENT_FOCUS_DISRUPTION.name"))
 		},
 	},
 	language: {

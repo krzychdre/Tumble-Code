@@ -1000,29 +1000,6 @@ exports[`strict tool schema characterization (API-3) > native tools > BaseProvid
   {
     "type": "function",
     "function": {
-      "name": "run_slash_command",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string"
-          },
-          "args": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "command",
-          "args"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "skill",
       "strict": true,
       "parameters": {
@@ -1706,30 +1683,6 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiCode
   },
   {
     "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
     "name": "skill",
     "parameters": {
       "type": "object",
@@ -2389,30 +2342,6 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiNati
       "required": [
         "subtasks",
         "maxConcurrency"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
       ],
       "additionalProperties": false
     },
@@ -3081,29 +3010,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
         "required": [
           "subtasks",
           "maxConcurrency"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "run_slash_command",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string"
-          },
-          "args": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "command",
-          "args"
         ],
         "additionalProperties": false
       }
@@ -3795,30 +3701,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
   },
   {
     "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
     "name": "skill",
     "parameters": {
       "type": "object",
@@ -4478,30 +4360,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
       "required": [
         "subtasks",
         "maxConcurrency"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
       ],
       "additionalProperties": false
     },

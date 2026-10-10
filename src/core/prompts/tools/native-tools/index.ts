@@ -13,7 +13,6 @@ import newTask from "./new_task"
 import readArtifact from "./read_artifact"
 import { createReadFileTool, type ReadFileToolOptions } from "./read_file"
 import runParallelTasks from "./run_parallel_tasks"
-import runSlashCommand from "./run_slash_command"
 import skill from "./skill"
 import searchReplace from "./search_replace"
 import edit_file from "./edit_file"
@@ -65,7 +64,6 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		readArtifact,
 		createReadFileTool(readFileOptions),
 		runParallelTasks,
-		runSlashCommand,
 		skill,
 		searchReplace,
 		edit_file,

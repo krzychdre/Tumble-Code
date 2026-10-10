@@ -60,7 +60,10 @@ export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpan
 	)
 }
 
-/** A slash command the model wants to run. */
+/**
+ * A slash command the model ran through the removed run_slash_command tool.
+ * Kept so old task histories still render.
+ */
 export const RunSlashCommandToolRow = ({
 	message,
 	tool: slashCommandInfo,

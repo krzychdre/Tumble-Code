@@ -207,10 +207,6 @@ const CASES: Record<DispatchableToolName | "write_file", Case[]> = {
 		{ label: "array", args: { todos: ["a", "b"] } },
 		{ label: "missing todos", args: { items: "x" } },
 	],
-	run_slash_command: [
-		{ label: "full", args: { command: "review", args: "--strict" } },
-		{ label: "missing command", args: { args: "x" } },
-	],
 	skill: [
 		{ label: "full", args: { skill: "init", args: "fast" } },
 		{ label: "missing skill", args: { args: "x" } },

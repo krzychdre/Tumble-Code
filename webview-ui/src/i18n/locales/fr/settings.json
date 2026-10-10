@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ Une clé API OpenRouter est requise pour la génération d'images. Veuillez la configurer ci-dessus.",
 			"successConfigured": "✓ La génération d'images est configurée et prête à utiliser"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Activer les commandes slash initiées par le modèle",
-			"description": "Lorsque activé, Tumble peut exécuter tes commandes slash pour lancer des workflows."
-		},
 		"CUSTOM_TOOLS": {
 			"name": "Activer les outils personnalisés",
 			"description": "Lorsqu'activé, Tumble peut charger et utiliser des outils TypeScript/JavaScript personnalisés à partir du répertoire .roo/tools de votre projet ou ~/.roo/tools pour des outils globaux. Remarque : ces outils seront automatiquement approuvés.",

@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ Görüntü üretimi için OpenRouter API anahtarı gereklidir. Lütfen yukarıda yapılandırın.",
 			"successConfigured": "✓ Görüntü üretimi yapılandırılmış ve kullanıma hazır"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Model tarafından başlatılan slash komutlarını etkinleştir",
-			"description": "Etkinleştirildiğinde, Tumble iş akışlarını yürütmek için slash komutlarınızı çalıştırabilir."
-		},
 		"CUSTOM_TOOLS": {
 			"name": "Özel araçları etkinleştir",
 			"description": "Etkinleştirildiğinde, Tumble projenizin .roo/tools dizininden veya global araçlar için ~/.roo/tools dizininden özel TypeScript/JavaScript araçlarını yükleyebilir ve kullanabilir. Not: Bu araçlar otomatik olarak onaylanacaktır.",

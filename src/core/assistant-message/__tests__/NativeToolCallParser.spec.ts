@@ -37,7 +37,6 @@ const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string
 	codebase_search: { query: "q" },
 	execute_command: { command: "echo hi" },
 	update_todo_list: { todos: "- [ ] x" },
-	run_slash_command: { command: "review" },
 	skill: { skill: "init" },
 	generate_image: { prompt: "p", path: "out.png" },
 	tools_load: { names: ["mcp--example--tool"] },

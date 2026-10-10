@@ -247,9 +247,6 @@ export const parseGenerateImageArgs: ToolArgParser = (raw, { partial }) =>
 		? built({ prompt: raw.prompt, path: raw.path, image: raw.image })
 		: undefined
 
-export const parseRunSlashCommandArgs: ToolArgParser = (raw) =>
-	raw.command !== undefined ? built({ command: raw.command, args: raw.args }) : undefined
-
 export const parseSkillArgs: ToolArgParser = (raw) =>
 	raw.skill !== undefined ? built({ skill: raw.skill, args: raw.args }) : undefined
 

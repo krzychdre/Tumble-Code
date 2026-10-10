@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ Klucz API OpenRouter jest wymagany do generowania obrazów. Skonfiguruj go powyżej.",
 			"successConfigured": "✓ Generowanie obrazów jest skonfigurowane i gotowe do użycia"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Włącz polecenia slash inicjowane przez model",
-			"description": "Gdy włączone, Tumble może uruchamiać twoje polecenia slash w celu wykonywania przepływów pracy."
-		},
 		"CUSTOM_TOOLS": {
 			"name": "Włącz niestandardowe narzędzia",
 			"description": "Gdy włączone, Tumble może ładować i używać niestandardowych narzędzi TypeScript/JavaScript z katalogu .roo/tools Twojego projektu lub ~/.roo/tools dla narzędzi globalnych. Uwaga: te narzędzia będą automatycznie zatwierdzane.",

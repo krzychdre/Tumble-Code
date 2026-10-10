@@ -391,29 +391,6 @@ exports[`BaseProvider > does not mutate its input (DEF-C10) > sends the native t
   {
     "type": "function",
     "function": {
-      "name": "run_slash_command",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string"
-          },
-          "args": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "command",
-          "args"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "skill",
       "strict": true,
       "parameters": {

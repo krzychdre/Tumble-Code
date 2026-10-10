@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ Khóa API OpenRouter là bắt buộc để tạo hình ảnh. Vui lòng cấu hình ở trên.",
 			"successConfigured": "✓ Tạo hình ảnh đã được cấu hình và sẵn sàng sử dụng"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Bật lệnh slash do mô hình khởi tạo",
-			"description": "Khi được bật, Tumble có thể chạy các lệnh slash của bạn để thực hiện các quy trình làm việc."
-		},
 		"CUSTOM_TOOLS": {
 			"name": "Bật công cụ tùy chỉnh",
 			"description": "Khi được bật, Tumble có thể tải và sử dụng các công cụ TypeScript/JavaScript tùy chỉnh từ thư mục .roo/tools của dự án hoặc ~/.roo/tools cho các công cụ toàn cục. Lưu ý: các công cụ này sẽ được tự động phê duyệt.",

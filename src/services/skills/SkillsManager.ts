@@ -300,8 +300,8 @@ export class SkillsManager {
 	}
 
 	async getSkillContent(name: string, currentMode?: string): Promise<SkillContent | null> {
-		// Callers reach this from the skill tool, run_slash_command and the
-		// `/<skill-name>` mention expansion, all of which can fire before the
+		// Callers reach this from the skill tool and the `/<skill-name>`
+		// mention expansion, both of which can fire before the
 		// initial scan finishes (a one-shot `tumble -p` run starts its task
 		// moments after activation). Waiting here keeps a pending scan from
 		// looking like "no such skill".

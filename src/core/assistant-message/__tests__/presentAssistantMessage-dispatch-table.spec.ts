@@ -38,7 +38,6 @@ const handles = vi.hoisted(() => {
 		newTaskTool: stub(),
 		runParallelTasksTool: stub(),
 		updateTodoListTool: stub(),
-		runSlashCommandTool: stub(),
 		skillTool: stub(),
 		toolsLoadTool: stub(),
 		generateImageTool: stub(),
@@ -77,7 +76,6 @@ vi.mock("../../tools/AttemptCompletionTool", () => ({ attemptCompletionTool: han
 vi.mock("../../tools/NewTaskTool", () => ({ newTaskTool: handles.newTaskTool }))
 vi.mock("../../tools/RunParallelTasksTool", () => ({ runParallelTasksTool: handles.runParallelTasksTool }))
 vi.mock("../../tools/UpdateTodoListTool", () => ({ updateTodoListTool: handles.updateTodoListTool }))
-vi.mock("../../tools/RunSlashCommandTool", () => ({ runSlashCommandTool: handles.runSlashCommandTool }))
 vi.mock("../../tools/SkillTool", () => ({ skillTool: handles.skillTool }))
 vi.mock("../../tools/ToolsLoadTool", () => ({ toolsLoadTool: handles.toolsLoadTool }))
 vi.mock("../../tools/GenerateImageTool", () => ({ generateImageTool: handles.generateImageTool }))
@@ -246,12 +244,6 @@ const DISPATCH: Record<Exclude<ToolName, "custom_tool">, DispatchCase> = {
 		params: { todos: "[ ] a" },
 		description: "[update_todo_list]",
 	},
-	run_slash_command: {
-		handler: "runSlashCommandTool",
-		checkpoint: false,
-		params: { command: "init", args: "fast" },
-		description: "[run_slash_command for 'init' with args: fast]",
-	},
 	skill: {
 		handler: "skillTool",
 		checkpoint: false,
@@ -303,7 +295,6 @@ const EXTRA_DESCRIPTIONS: Array<{
 	{ name: "apply_diff", params: {}, description: "[apply_diff]" },
 	{ name: "search_files", params: { regex: "x" }, description: "[search_files for 'x']" },
 	{ name: "switch_mode", params: { mode_slug: "ask" }, description: "[switch_mode to 'ask']" },
-	{ name: "run_slash_command", params: { command: "init" }, description: "[run_slash_command for 'init']" },
 	{ name: "skill", params: { skill: "deploy" }, description: "[skill for 'deploy']" },
 	{
 		name: "new_task",
