@@ -8,6 +8,7 @@ import {
 	CommandExecutionStatus,
 	DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE,
 	PersistedCommandOutput,
+	isCompactProfile,
 	readCliRuntimeEnv,
 	SETTINGS_DEFAULTS,
 	TelemetryEventName,
@@ -268,8 +269,10 @@ export async function executeCommandInTerminal(
 	const globalStoragePath = provider?.context?.globalStorageUri?.fsPath
 	let interceptor: OutputInterceptor | undefined
 
-	// Create OutputInterceptor if we have storage available
-	if (globalStoragePath) {
+	// Create OutputInterceptor if we have storage available. Not under the compact profile: its
+	// result cites an artifact for read_artifact, which compact does not offer. The output then
+	// stays inline and Task#pushToolResultToUserContent cuts it to the compact cap.
+	if (globalStoragePath && !isCompactProfile(task.apiConfiguration)) {
 		const taskDir = await getTaskDirectoryPath(globalStoragePath, task.taskId)
 		const storageDir = path.join(taskDir, "command-output")
 		const providerState = await provider?.getState()

@@ -57,6 +57,8 @@ import {
 	MAX_MCP_TOOLS_THRESHOLD,
 	type ToolParamName,
 	toolParamNames,
+	isCompactProfile,
+	ARTIFACT_SPILL_DEFAULTS,
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { CloudService } from "@tumble-code/cloud"
@@ -103,7 +105,7 @@ import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 
 // core modules
 import { ArtifactStore, artifactDirForKind } from "../artifacts/ArtifactStore"
-import { applyToolResultSpill, type ToolResultSpillContext } from "../artifacts/spillPolicy"
+import { applyCompactToolResultCap, applyToolResultSpill, type ToolResultSpillContext } from "../artifacts/spillPolicy"
 import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import type { TaskToolStreamState } from "../tools/toolStreamState"
 import { restoreTodoListForTask } from "../tools/UpdateTodoListTool"
@@ -770,6 +772,22 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				`[Task#pushToolResultToUserContent] Skipping duplicate tool_result for tool_use_id: ${toolResult.tool_use_id}`,
 			)
 			return false
+		}
+
+		// Compact profile: no read_artifact to bring a spilled result back, so the result is cut
+		// in place (applyCompactToolResultCap) and never spilled. Read from the task's own profile.
+		if (isCompactProfile(this.apiConfiguration)) {
+			const content =
+				typeof toolResult.content === "string"
+					? applyCompactToolResultCap(
+							toolResult.content,
+							options?.toolName,
+							this.toolResultSpill?.maxInlineBytes ??
+								ARTIFACT_SPILL_DEFAULTS.DEFAULT_INLINE_TOOL_RESULT_BYTES,
+						)
+					: toolResult.content
+			this.userMessageContent.push(content === toolResult.content ? toolResult : { ...toolResult, content })
+			return true
 		}
 
 		this.userMessageContent.push(toolResult)

@@ -14,6 +14,7 @@ import {
 	getApiProtocol,
 	getModelId,
 	isRetiredProvider,
+	isCompactProfile,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	SETTINGS_DEFAULTS,
 } from "@tumble-code/types"
@@ -1489,6 +1490,10 @@ export class TaskApiLoop {
 		this.access.currentRequestAbortController = new AbortController()
 		const abortSignal = this.access.currentRequestAbortController.signal
 
+		// The compact profile asks for one tool call per message (small models lose track of
+		// parallel results); every handler that sends parallel_tool_calls reads it from here.
+		const parallelToolCalls = !isCompactProfile(this.access.apiConfiguration)
+
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,
 			taskId: this.access.taskId,
@@ -1498,7 +1503,7 @@ export class TaskApiLoop {
 				? {
 						tools: allTools,
 						tool_choice: "auto",
-						parallelToolCalls: true,
+						parallelToolCalls,
 						...(allowedFunctionNames ? { allowedFunctionNames } : {}),
 					}
 				: {}),
@@ -1526,7 +1531,7 @@ export class TaskApiLoop {
 				this.access.apiConfiguration.enableReasoningEffort === false
 					? undefined
 					: this.access.apiConfiguration.reasoningEffort,
-			...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls: true } : {}),
+			...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls } : {}),
 		})
 
 		// Kept by reference, and only while error reporting is active (signed in to the
