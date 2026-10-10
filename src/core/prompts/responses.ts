@@ -258,6 +258,144 @@ ${tools}`
 	},
 }
 
+/** Most lines of the file quoted in a compact edit error. */
+const COMPACT_QUOTE_MAX_LINES = 6
+/** Most characters of the file quoted in a compact edit error. */
+const COMPACT_QUOTE_MAX_CHARS = 400
+/** Most characters of a file line used as the old_string of an example call. */
+const COMPACT_EXAMPLE_LINE_MAX_CHARS = 120
+
+/** The leading lines that fit the quote budget (at least one, cut when it alone is too long). */
+function compactQuote(lines: string[]): string[] {
+	const shown: string[] = []
+	let chars = 0
+	for (const line of lines.slice(0, COMPACT_QUOTE_MAX_LINES)) {
+		if (shown.length > 0 && chars + line.length + 1 > COMPACT_QUOTE_MAX_CHARS) {
+			break
+		}
+		shown.push(line.length > COMPACT_QUOTE_MAX_CHARS ? line.slice(0, COMPACT_QUOTE_MAX_CHARS) : line)
+		chars += line.length + 1
+	}
+	return shown
+}
+
+function compactExample(toolName: string, args: Record<string, unknown>): string {
+	return `Example ${toolName} call: ${JSON.stringify(args)}`
+}
+
+/** The minimal example of a tool with its path argument set to the file the model is working on. */
+function compactMinimalExample(toolName: string, overrides: Record<string, unknown>): string {
+	return compactExample(toolName, { ...getToolMinimalExample(toolName), ...overrides })
+}
+
+/**
+ * Tool results for the compact profile (`isCompactProfile`, small local models). Plain
+ * text, short, starting with `Error:` (which the context ledger classifies as an error),
+ * with one example call written as the JSON arguments the model sends. The JSON envelope
+ * of `formatResponse.toolError` would escape the quoted file text a second time, and a
+ * small model cannot copy text back out of that. `formatResponse` is not used for compact
+ * results, so every result without the flag stays as it was.
+ */
+export const compactResponses = {
+	missingParameter: (toolName: string, paramName: string) =>
+		`Error: Missing parameter '${paramName}'.\n${compactMinimalExample(toolName, {})}`,
+
+	editFileNotFound: (relPath: string) =>
+		`Error: ${relPath} does not exist. Check the path with list_files, or create the file with write_to_file.\n${compactMinimalExample("write_to_file", { path: relPath })}`,
+
+	editReadFailed: (relPath: string, reason: string) => `Error: Could not read ${relPath}: ${reason}`,
+
+	editIdenticalStrings: (relPath: string) =>
+		`Error: old_string and new_string are identical, so nothing would change. Put the changed text in new_string.\n${compactMinimalExample("edit", { file_path: relPath })}`,
+
+	editEmptyNewString: (relPath: string) =>
+		`Error: old_string and new_string are both empty, so there is nothing to write to ${relPath}.\n${compactMinimalExample("write_to_file", { path: relPath })}`,
+
+	/**
+	 * old_string was not found. Quotes the closest window of the file as raw text and builds
+	 * the example from its line most like old_string.
+	 */
+	editNoMatch: (relPath: string, snippet: { startLine: number; lines: string[]; bestLine: number } | undefined) => {
+		if (!snippet) {
+			return `Error: old_string was not found in ${relPath}, which is empty. Write its content with write_to_file.\n${compactMinimalExample("write_to_file", { path: relPath })}`
+		}
+		const quoted = compactQuote(snippet.lines)
+		const endLine = snippet.startLine + quoted.length - 1
+		const range = quoted.length > 1 ? `lines ${snippet.startLine}-${endLine}` : `line ${snippet.startLine}`
+		const exampleLine = (quoted[Math.min(snippet.bestLine, quoted.length - 1)] ?? "").slice(
+			0,
+			COMPACT_EXAMPLE_LINE_MAX_CHARS,
+		)
+		return [
+			`Error: old_string was not found in ${relPath}. The closest text in the file (${range}) is:`,
+			...quoted,
+			"Copy old_string exactly from the file text, without line numbers.",
+			// An empty old_string means "create or append" under compact, so never suggest one.
+			...(exampleLine.trim() === ""
+				? []
+				: [compactExample("edit", { file_path: relPath, old_string: exampleLine, new_string: "<new text>" })]),
+		].join("\n")
+	},
+
+	/**
+	 * old_string matched several places and replace_all is off.
+	 *
+	 * @param startLines 1-based first line of each match.
+	 * @param exampleOldString The first match with its neighbouring line, an old_string that tells it apart.
+	 */
+	editMultipleMatches: (relPath: string, startLines: number[], exampleOldString: string) => {
+		const shown = startLines.slice(0, 5).join(", ") + (startLines.length > 5 ? ", ..." : "")
+		return [
+			`Error: old_string matches ${startLines.length} places in ${relPath} (lines ${shown}). Add an unchanged neighbouring line to old_string so it matches only one place, or set replace_all to true to change all of them.`,
+			compactExample("edit", { file_path: relPath, old_string: exampleOldString, new_string: "<new text>" }),
+		].join("\n")
+	},
+
+	/**
+	 * An empty old_string for a file that already has content. Quotes its last lines and
+	 * shows how to append after them.
+	 */
+	editAppendToExistingFile: (relPath: string, last: { startLine: number; lines: string[] }) => {
+		// From the end: the old_string must end where the file ends.
+		const kept: string[] = []
+		let chars = 0
+		for (const line of [...last.lines].reverse()) {
+			if (kept.length > 0 && chars + line.length + 1 > COMPACT_QUOTE_MAX_CHARS) {
+				break
+			}
+			kept.unshift(line)
+			chars += line.length + 1
+		}
+		if (kept.length === 1 && kept[0].length > COMPACT_QUOTE_MAX_CHARS) {
+			// The end of a very long last line still occurs at the end of the file.
+			kept[0] = kept[0].slice(-COMPACT_EXAMPLE_LINE_MAX_CHARS)
+		}
+		const startLine = last.startLine + last.lines.length - kept.length
+		const endLine = last.startLine + last.lines.length - 1
+		const range = kept.length > 1 ? `lines ${startLine}-${endLine}` : `line ${endLine}`
+		const tail = kept.join("\n")
+		return [
+			`Error: old_string is empty, but ${relPath} already exists. To add text at the end, use its last lines as old_string and repeat them at the start of new_string. The file ends with (${range}):`,
+			...kept,
+			compactExample("edit", { file_path: relPath, old_string: tail, new_string: `${tail}\n<new text>` }),
+		].join("\n")
+	},
+
+	/** Appended to a successful edit result when old_string matched only leniently. */
+	editMatchNote: (strippedLineNumbers: boolean, whitespace: boolean) => {
+		const notes: string[] = []
+		if (strippedLineNumbers) {
+			notes.push(
+				"Note: line numbers were removed from old_string and new_string before matching. Never put line numbers in an edit.",
+			)
+		}
+		if (whitespace) {
+			notes.push("Note: old_string matched only after ignoring whitespace differences.")
+		}
+		return notes.length > 0 ? `\n${notes.join("\n")}` : ""
+	},
+}
+
 // to avoid circular dependency
 const formatImagesIntoBlocks = (images?: string[]): Anthropic.ImageBlockParam[] => {
 	return images
