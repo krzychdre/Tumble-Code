@@ -200,3 +200,32 @@ cd src && CI=true npx vitest run core/prompts/__tests__/compact-off-golden.spec.
 `\u2013` / `\u2014` escapes (lossless) and use the `.snap` extension so lint-staged does not reformat the JSON.
 Related guards: `core/prompts/__tests__/system-prompt-parity.spec.ts` (preview equals live, with a compact case),
 `core/task/__tests__/ApiRequestBuilder.compact-profile.spec.ts` (the flag comes from the task, not the panel).
+
+## Review fixes (profile)
+
+Done on `feat/compact-fix-profile` (cut from `73c559fc0`). The compact EDIT findings (`compactEdit.ts`, `EditTool.ts`,
+`WriteToFileTool.ts`) are fixed on a separate branch.
+
+- **Stale profile in the request builder (blocker).** `TaskApiLoop` built its `ApiRequestBuilder` once with a copy of
+  `apiConfiguration`, so after `Task.updateApiConfiguration` the system prompt and the tool filter kept the start
+  profile's compact flag. The builder reads `apiConfiguration` only for the compact flag (`buildSystemPrompt`,
+  `buildToolsArray`), so it is now passed as a getter, like `rooIgnoreController`. Guard:
+  `core/task/__tests__/TaskApiLoop.profile-switch.spec.ts` (switch in both directions, real tool building).
+- **Compact document reads.** PDF, DOCX and other extracted documents now honour `offset` and `limit` under compact
+  (the entry reaches `handleBinaryFile`), so the truncation line's offset reads on instead of repeating lines 1-400.
+- **Condense requests.** `parallelToolCalls` in the condense metadata is false under compact; `TaskApiLoop` and
+  `TaskContextManager` share `resolveParallelToolCalls` (`src/core/task/parallelToolCalls.ts`).
+- **Compact `read_file` description.** No longer promises the lines "exactly as stored": a line over 2,000 characters
+  is cut short. Tool arrays as sent: code mode 4,444 characters, ask mode 2,816 (were 4,399 and 2,771).
+- **Compact memory note.** A note without frontmatter is not ignored but degraded (the recall ranker sees the file name
+  only, the dream merge cannot store its summary, a rebuilt index line has an empty hook). The example note now starts
+  with a `description` frontmatter line; the instruction stays at 598 characters with a 115-character path.
+- **CONTRIBUTING.md line 67.** Not restored: `main`'s own line is not Prettier-clean, and the lint-staged `prettier
+--write` re-indents it on any commit that stages the file (a restore commit ends as an empty commit).
+
+Follow-ups (pre-existing, outside this branch):
+
+- The builder's `api` is the same construction-time copy: after a profile switch `buildSystemPrompt` takes
+  `modelInfo` from the old handler and `buildCleanConversationHistory` decides encrypted reasoning from it.
+  `RetryHandler` holds copies of `apiConfiguration` (rate-limit fallback, telemetry provider) and `api` (model id in
+  logs and telemetry) too. Passing them as getters would change large-model behaviour, so it needs its own change.
