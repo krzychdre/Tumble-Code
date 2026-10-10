@@ -12,7 +12,6 @@ import {
 	parseEditArgs,
 	parseEditFileArgs,
 	parseExecuteCommandArgs,
-	parseGenerateImageArgs,
 	parseListFilesArgs,
 	parseNewTaskArgs,
 	parseReadArtifactArgs,
@@ -113,7 +112,7 @@ export interface ToolDescriptor {
 	/**
 	 * A checkpoint is saved before the tool runs (presentAssistantMessage) and started
 	 * early while its arguments stream (TaskStreamProcessor). Refactor plan decision 9:
-	 * every workspace-writing tool plus `new_task` and `generate_image`.
+	 * every workspace-writing tool plus `new_task`.
 	 */
 	requiresCheckpoint?: boolean
 	/**
@@ -302,14 +301,6 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		compactable: true,
 		ledger: "file-mutation",
 		describe: bare,
-	},
-	// Writes the image file.
-	generate_image: {
-		parseArgs: parseGenerateImageArgs,
-		approvalCategory: "write",
-		approvalActions: ["generateImage"],
-		requiresCheckpoint: true,
-		describe: forParam("path"),
 	},
 
 	// command and MCP

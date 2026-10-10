@@ -6,7 +6,6 @@ import {
 	GLOBAL_SETTINGS_KEYS,
 	SECRET_STATE_KEYS,
 	GLOBAL_STATE_KEYS,
-	GLOBAL_SECRET_KEYS,
 	type ProviderSettings,
 	type GlobalSettings,
 	type SecretState,
@@ -39,6 +38,13 @@ const PASS_THROUGH_STATE_KEYS = [
 ]
 
 export const isPassThroughStateKey = (key: string) => PASS_THROUGH_STATE_KEYS.includes(key)
+
+/**
+ * Secrets written by removed features. Nothing reads them any more, so
+ * initialize() deletes them instead of leaving an API key behind.
+ * `openRouterImageApiKey` belonged to the removed image generation experiment.
+ */
+const REMOVED_SECRET_KEYS = ["openRouterImageApiKey"] as const
 
 const globalSettingsExportSchema = globalSettingsSchema.omit({
 	listApiConfigMeta: true,
@@ -109,12 +115,12 @@ export class ContextProxy {
 					)
 				}
 			}),
-			...GLOBAL_SECRET_KEYS.map(async (key) => {
+			...REMOVED_SECRET_KEYS.map(async (key) => {
 				try {
-					this.secretCache[key] = await this.originalContext.secrets.get(key)
+					await this.originalContext.secrets.delete(key)
 				} catch (error) {
 					logger.error(
-						`Error loading global secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
+						`Error deleting removed secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
 					)
 				}
 			}),
@@ -294,24 +300,12 @@ export class ContextProxy {
 					)
 				}
 			}),
-			...GLOBAL_SECRET_KEYS.map(async (key) => {
-				try {
-					this.secretCache[key] = await this.originalContext.secrets.get(key)
-				} catch (error) {
-					logger.error(
-						`Error refreshing global secret ${key}: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-			}),
 		]
 		await Promise.all(promises)
 	}
 
 	private getAllSecretState(): SecretState {
-		return Object.fromEntries([
-			...SECRET_STATE_KEYS.map((key) => [key, this.getSecret(key as SecretStateKey)]),
-			...GLOBAL_SECRET_KEYS.map((key) => [key, this.getSecret(key as SecretStateKey)]),
-		])
+		return Object.fromEntries([...SECRET_STATE_KEYS.map((key) => [key, this.getSecret(key as SecretStateKey)])])
 	}
 
 	/**
@@ -503,7 +497,6 @@ export class ContextProxy {
 		await Promise.all([
 			...GLOBAL_STATE_KEYS.map((key) => this.originalContext.globalState.update(key, undefined)),
 			...SECRET_STATE_KEYS.map((key) => this.originalContext.secrets.delete(key)),
-			...GLOBAL_SECRET_KEYS.map((key) => this.originalContext.secrets.delete(key)),
 		])
 
 		await this.initialize()

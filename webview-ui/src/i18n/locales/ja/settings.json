@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "スリムなツールセット(小モデル向け)",
-			"description": "このプロファイルには各作業につき一つの分かりやすいツールを提示します: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact、ウェブツール、タスクツール(ask, complete, switch mode, new task, todo list, skill, load tools)。余分な編集動詞(edit, search_replace, edit_file, apply_patch)、画像生成、並列タスク、スラッシュコマンドは非表示になります。小モデルが誤ったエディタを選ぶのを防ぎます。モデルが非表示ツールを呼び出しても、それは実行されます。",
+			"description": "このプロファイルには各作業につき一つの分かりやすいツールを提示します: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact、ウェブツール、タスクツール(ask, complete, switch mode, new task, todo list, skill, load tools)。余分な編集動詞(edit, search_replace, edit_file, apply_patch)、並列タスク、スラッシュコマンドは非表示になります。小モデルが誤ったエディタを選ぶのを防ぎます。モデルが非表示ツールを呼び出しても、それは実行されます。",
 			"hideMcp": {
 				"label": "MCP ツールも非表示",
 				"description": "MCP ツールのスキーマは通常、ツールプロンプトの大部分を占めます。このプロファイルが MCP サーバーを必要としない限り、オンのままにしてください。"
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "新しいタスクには'todos'リストを必須にする",
 			"description": "有効にすると、new_taskツールはtodosパラメータの提供が必須になります。これにより、すべての新しいタスクが明確な目的のリストで開始されることが保証されます。無効（デフォルト）の場合、下位互換性のためにtodosパラメータはオプションのままです。"
-		},
-		"IMAGE_GENERATION": {
-			"name": "AI画像生成を有効にする",
-			"description": "有効にすると、TumbleはOpenRouterの画像生成モデルを使用してテキストプロンプトから画像を生成できます。OpenRouter APIキーの設定が必要です。",
-			"openRouterApiKeyLabel": "OpenRouter APIキー",
-			"openRouterApiKeyPlaceholder": "OpenRouter APIキーを入力してください",
-			"getApiKeyText": "APIキーを取得する場所",
-			"modelSelectionLabel": "画像生成モデル",
-			"modelSelectionDescription": "画像生成に使用するモデルを選択",
-			"warningMissingKey": "⚠️ 画像生成にはOpenRouter APIキーが必要です。上記で設定してください。",
-			"successConfigured": "✓ 画像生成が設定され、使用準備完了です"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "カスタムツールを有効化",

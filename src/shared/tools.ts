@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ClineAsk, ToolProgressStatus, ToolName, GenerateImageParams, ToolParamName } from "@tumble-code/types"
+import type { ClineAsk, ToolProgressStatus, ToolName, ToolParamName } from "@tumble-code/types"
 
 // The tool catalog constants (tool groups, display names, aliases) live in
 // @tumble-code/types. This file holds the extension-side types: it depends on the
@@ -60,7 +60,6 @@ export type NativeToolArgs = {
 		follow_up: Array<{ text: string; mode?: string }>
 	}
 	codebase_search: { query: string; path?: string }
-	generate_image: GenerateImageParams
 	skill: { skill: string; args?: string }
 	search_files: { path: string; regex: string; file_pattern?: string | null }
 	search_task_history: { query: string; max_results?: number }

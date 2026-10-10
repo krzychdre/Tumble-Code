@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "Slanke toolset (kleine modellen)",
-			"description": "Biedt dit profiel één duidelijke tool per taak: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, de webtools en de taaktools (ask, complete, switch mode, new task, todo list, skill, load tools). De overbodige edit-werkwoorden (edit, search_replace, edit_file, apply_patch), beeldgeneratie, parallelle taken en slashopdrachten zijn verborgen. Kleine modellen stoppen met de verkeerde editor kiezen. Als het model toch een verborgen tool aanroept, draait hij alsnog.",
+			"description": "Biedt dit profiel één duidelijke tool per taak: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, de webtools en de taaktools (ask, complete, switch mode, new task, todo list, skill, load tools). De overbodige edit-werkwoorden (edit, search_replace, edit_file, apply_patch), parallelle taken en slashopdrachten zijn verborgen. Kleine modellen stoppen met de verkeerde editor kiezen. Als het model toch een verborgen tool aanroept, draait hij alsnog.",
 			"hideMcp": {
 				"label": "Ook MCP-tools verbergen",
 				"description": "MCP-tool-schema's zijn meestal het grootste deel van de tool-prompt. Laat dit aan tenzij dit profiel een MCP-server nodig heeft."
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "'todos'-lijst vereisen voor nieuwe taken",
 			"description": "Wanneer ingeschakeld, vereist de new_task-tool dat een todos-parameter wordt opgegeven. Dit zorgt ervoor dat alle nieuwe taken beginnen met een duidelijke lijst met doelstellingen. Wanneer uitgeschakeld (standaard), blijft de todos-parameter optioneel voor achterwaartse compatibiliteit."
-		},
-		"IMAGE_GENERATION": {
-			"name": "AI-afbeeldingsgeneratie inschakelen",
-			"description": "Wanneer ingeschakeld, kan Tumble afbeeldingen genereren van tekstprompts met behulp van OpenRouter's afbeeldingsgeneratiemodellen. Vereist een geconfigureerde OpenRouter API-sleutel.",
-			"openRouterApiKeyLabel": "OpenRouter API-sleutel",
-			"openRouterApiKeyPlaceholder": "Voer je OpenRouter API-sleutel in",
-			"getApiKeyText": "Haal je API-sleutel op van",
-			"modelSelectionLabel": "Afbeeldingsgeneratiemodel",
-			"modelSelectionDescription": "Selecteer het model voor afbeeldingsgeneratie",
-			"warningMissingKey": "⚠️ OpenRouter API-sleutel is vereist voor afbeeldingsgeneratie. Configureer deze hierboven.",
-			"successConfigured": "✓ Afbeeldingsgeneratie is geconfigureerd en klaar voor gebruik"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Aangepaste tools inschakelen",

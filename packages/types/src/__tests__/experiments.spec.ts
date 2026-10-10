@@ -16,7 +16,6 @@ describe("experiments", () => {
 		it("returns false when experiment is not enabled", () => {
 			const experiments: Record<ExperimentId, boolean> = {
 				preventFocusDisruption: false,
-				imageGeneration: false,
 				customTools: false,
 				deferredTools: false,
 			}
@@ -26,7 +25,6 @@ describe("experiments", () => {
 		it("returns true when experiment is enabled", () => {
 			const experiments: Record<ExperimentId, boolean> = {
 				preventFocusDisruption: true,
-				imageGeneration: false,
 				customTools: false,
 				deferredTools: false,
 			}
@@ -36,7 +34,6 @@ describe("experiments", () => {
 		it("returns false when experiment is not present", () => {
 			const experiments: Record<ExperimentId, boolean> = {
 				preventFocusDisruption: false,
-				imageGeneration: false,
 				customTools: false,
 				deferredTools: false,
 			}

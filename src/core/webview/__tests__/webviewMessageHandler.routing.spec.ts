@@ -566,7 +566,7 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 				terminalProfile: "zsh",
 				execaShellPath: "/bin/zsh",
 				mcpEnabled: false,
-				experiments: { imageGeneration: true },
+				experiments: { customTools: true },
 				customSupportPrompts: undefined,
 				alwaysAllowReadOnly: true,
 			},

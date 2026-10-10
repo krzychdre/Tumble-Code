@@ -170,13 +170,8 @@ const rows: ParityRow[] = [
 		shows: ["Review Plan(plans/p.md)"],
 	},
 
-	// The rest: GenerateImageToolRow, RunSlashCommandToolRow, SkillToolRow,
+	// The rest: RunSlashCommandToolRow, SkillToolRow,
 	// ReadArtifactSayRow, SearchTaskHistorySayRow.
-	{
-		payload: { tool: "generateImage", path: "img/cat.png", content: "a cat on a mat" },
-		renderer: GenericTool,
-		shows: ["Generate Image(img/cat.png)", "a cat on a mat"],
-	},
 	{
 		payload: {
 			tool: "runSlashCommand",

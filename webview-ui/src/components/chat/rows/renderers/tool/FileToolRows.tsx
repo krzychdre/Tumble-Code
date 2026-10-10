@@ -8,7 +8,7 @@ import CodeAccordion from "@src/components/common/CodeAccordion"
 import { PathTooltip } from "@src/components/ui/PathTooltip"
 import { BatchFilePermission } from "@src/components/chat/BatchFilePermission"
 
-import { headerStyle, protectedIcon, toolIcon } from "../shared"
+import { headerStyle } from "../shared"
 import type { ToolRendererProps } from "../types"
 
 /** A file read, or a batch of reads waiting for approval. */
@@ -140,39 +140,6 @@ export const ListFilesRecursiveToolRow = ({ message, tool, isExpanded, toggleExp
 					onToggleExpand={toggleExpand}
 				/>
 			</div>
-		</>
-	)
-}
-
-/** An image generation, with its prompt and target path while it waits for approval. */
-export const GenerateImageToolRow = ({ message, tool }: ToolRendererProps) => {
-	const { t } = useTranslation()
-	return (
-		<>
-			<div style={headerStyle}>
-				{tool.isProtected ? protectedIcon() : toolIcon("file-media")}
-				<span style={{ fontWeight: "bold" }}>
-					{message.type === "ask"
-						? tool.isProtected
-							? t("chat:fileOperations.wantsToGenerateImageProtected")
-							: tool.isOutsideWorkspace
-								? t("chat:fileOperations.wantsToGenerateImageOutsideWorkspace")
-								: t("chat:fileOperations.wantsToGenerateImage")
-						: t("chat:fileOperations.didGenerateImage")}
-				</span>
-			</div>
-			{message.type === "ask" && (
-				<div className="pl-6">
-					<ToolUseBlock>
-						<div className="p-2">
-							<div className="mb-2 break-words">{tool.content}</div>
-							<div className="flex items-center gap-1 text-xs text-vscode-descriptionForeground">
-								{tool.path}
-							</div>
-						</div>
-					</ToolUseBlock>
-				</div>
-			)}
 		</>
 	)
 }

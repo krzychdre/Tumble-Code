@@ -69,7 +69,6 @@ export const TOOL_MINIMAL_EXAMPLES = {
 	edit: { file_path: "src/app.ts", old_string: "const a = 1", new_string: "const a = 2" },
 	edit_file: { file_path: "src/app.ts", old_string: "const a = 1", new_string: "const a = 2" },
 	execute_command: { command: "npm test", cwd: null, timeout: null },
-	generate_image: { prompt: "a red circle on a white background", path: "assets/circle.png", image: null },
 	list_files: { path: "src", recursive: false },
 	new_task: { mode: "code", message: "Add a retry wrapper to the API client.", todos: null },
 	// The id must satisfy ArtifactStore's ARTIFACT_ID_PATTERN (`<kind>-<digits>.txt`,

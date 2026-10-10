@@ -450,9 +450,6 @@ const populatedState = () => ({
 	parallelTasksMaxConcurrency: 6,
 	subagentFollowupTimeoutSec: 90,
 	profileThresholds: { p1: 55 },
-	imageGenerationProvider: "openrouter",
-	openRouterImageApiKey: "or-key",
-	openRouterImageGenerationSelectedModel: "img-model",
 	experiments: { preventFocusDisruption: true },
 	customSupportPrompts: { ENHANCE: "better" },
 })
@@ -552,9 +549,6 @@ describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20
 			parallelTasksMaxConcurrency: 6,
 			subagentFollowupTimeoutSec: 90,
 			profileThresholds: { p1: 55 },
-			imageGenerationProvider: "openrouter",
-			openRouterImageApiKey: "or-key",
-			openRouterImageGenerationSelectedModel: "img-model",
 			experiments: { preventFocusDisruption: true },
 			customSupportPrompts: { ENHANCE: "better" },
 		})

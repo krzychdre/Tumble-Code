@@ -2,12 +2,7 @@ import type { ToolRendererMap } from "../types"
 
 import { EditFileToolRow, InsertContentToolRow } from "./EditFileToolRow"
 import { CodebaseSearchToolRow, SearchFilesToolRow, WebFetchToolRow, WebSearchToolRow } from "./SearchToolRows"
-import {
-	GenerateImageToolRow,
-	ListFilesRecursiveToolRow,
-	ListFilesTopLevelToolRow,
-	ReadFileToolRow,
-} from "./FileToolRows"
+import { ListFilesRecursiveToolRow, ListFilesTopLevelToolRow, ReadFileToolRow } from "./FileToolRows"
 import {
 	FinishTaskToolRow,
 	NewTaskToolRow,
@@ -47,5 +42,4 @@ export const TOOL_RENDERERS: ToolRendererMap = {
 	finishTask: FinishTaskToolRow,
 	reviewPlan: ReviewPlanToolRow,
 	runSlashCommand: RunSlashCommandToolRow,
-	generateImage: GenerateImageToolRow,
 }

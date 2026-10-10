@@ -770,7 +770,7 @@
 		},
 		"slimToolset": {
 			"label": "Slim toolset (small models)",
-			"description": "Offer this profile one obvious tool per job: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, the web tools, and the task tools (ask, complete, switch mode, new task, todo list, skill, load tools). The spare edit verbs (edit, search_replace, edit_file, apply_patch), image generation, parallel tasks and slash commands are hidden. Small models stop choosing the wrong editor. If the model calls a hidden tool anyway, it still runs.",
+			"description": "Offer this profile one obvious tool per job: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, the web tools, and the task tools (ask, complete, switch mode, new task, todo list, skill, load tools). The spare edit verbs (edit, search_replace, edit_file, apply_patch), parallel tasks and slash commands are hidden. Small models stop choosing the wrong editor. If the model calls a hidden tool anyway, it still runs.",
 			"hideMcp": {
 				"label": "Also hide MCP tools",
 				"description": "MCP tool schemas are usually the biggest part of the tool prompt. Keep this on unless this profile needs an MCP server."
@@ -809,17 +809,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Require 'todos' list for new tasks",
 			"description": "When enabled, the new_task tool will require a todos parameter to be provided. This ensures all new tasks start with a clear list of objectives. When disabled (default), the todos parameter remains optional for backward compatibility."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Enable AI image generation",
-			"description": "When enabled, Tumble can generate images from text prompts using image generation models.",
-			"openRouterApiKeyLabel": "OpenRouter API Key",
-			"openRouterApiKeyPlaceholder": "Enter your OpenRouter API key",
-			"getApiKeyText": "Get your API key from",
-			"modelSelectionLabel": "Image Generation Model",
-			"modelSelectionDescription": "Select the model to use for image generation",
-			"warningMissingKey": "⚠️ OpenRouter API key is required for OpenRouter image generation. Please configure it above.",
-			"successConfigured": "✓ Image generation is configured and ready to use"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Enable custom tools",

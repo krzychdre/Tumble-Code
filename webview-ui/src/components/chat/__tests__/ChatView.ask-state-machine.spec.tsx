@@ -340,11 +340,6 @@ const rows: Row[] = [
 		expected: { ...SAVE_REJECT, ...idle, onPrimary: YES, onSecondary: NO },
 	},
 	{
-		name: "tool generateImage",
-		steps: [withAsk(toolAsk({ tool: "generateImage", path: "a.png" }))],
-		expected: { ...SAVE_REJECT, ...idle, onPrimary: YES, onSecondary: NO },
-	},
-	{
 		name: "tool finishTask",
 		steps: [withAsk(toolAsk({ tool: "finishTask" }))],
 		expected: {

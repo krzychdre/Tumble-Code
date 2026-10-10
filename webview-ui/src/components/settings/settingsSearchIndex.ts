@@ -114,11 +114,6 @@ export const STATIC_SEARCH_INDEX: StaticSearchEntry[] = [
 		labelKey: "settings:experimental.PREVENT_FOCUS_DISRUPTION.name",
 	},
 	{
-		settingId: "experimental-image_generation",
-		section: "experimental",
-		labelKey: "settings:experimental.IMAGE_GENERATION.name",
-	},
-	{
 		settingId: "experimental-custom_tools",
 		section: "experimental",
 		labelKey: "settings:experimental.CUSTOM_TOOLS.name",

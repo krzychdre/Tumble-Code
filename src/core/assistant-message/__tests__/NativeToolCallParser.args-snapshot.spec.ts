@@ -211,11 +211,6 @@ const CASES: Record<DispatchableToolName | "write_file", Case[]> = {
 		{ label: "full", args: { skill: "init", args: "fast" } },
 		{ label: "missing skill", args: { args: "x" } },
 	],
-	generate_image: [
-		{ label: "full", args: { prompt: "a red fox", path: "fox.png", image: "base.png" } },
-		{ label: "missing path", args: { prompt: "a red fox" } },
-		{ label: "path only", args: { path: "fox.png" } },
-	],
 	tools_load: [
 		{ label: "full", args: { names: ["mcp--a--b", 7, "mcp--c--d"] } },
 		{ label: "names as string", args: { names: "mcp--a--b" } },

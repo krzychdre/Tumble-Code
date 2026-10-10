@@ -40,7 +40,6 @@ const handles = vi.hoisted(() => {
 		updateTodoListTool: stub(),
 		skillTool: stub(),
 		toolsLoadTool: stub(),
-		generateImageTool: stub(),
 		applyDiffTool: stub(),
 		codebaseSearchTool: stub(),
 		webSearchTool: stub(),
@@ -78,7 +77,6 @@ vi.mock("../../tools/RunParallelTasksTool", () => ({ runParallelTasksTool: handl
 vi.mock("../../tools/UpdateTodoListTool", () => ({ updateTodoListTool: handles.updateTodoListTool }))
 vi.mock("../../tools/SkillTool", () => ({ skillTool: handles.skillTool }))
 vi.mock("../../tools/ToolsLoadTool", () => ({ toolsLoadTool: handles.toolsLoadTool }))
-vi.mock("../../tools/GenerateImageTool", () => ({ generateImageTool: handles.generateImageTool }))
 vi.mock("../../tools/ApplyDiffTool", () => ({ applyDiffTool: handles.applyDiffTool }))
 vi.mock("../../tools/CodebaseSearchTool", () => ({ codebaseSearchTool: handles.codebaseSearchTool }))
 vi.mock("../../tools/WebSearchTool", () => ({ webSearchTool: handles.webSearchTool }))
@@ -249,12 +247,6 @@ const DISPATCH: Record<Exclude<ToolName, "custom_tool">, DispatchCase> = {
 		checkpoint: false,
 		params: { skill: "deploy", args: "prod" },
 		description: "[skill for 'deploy' with args: prod]",
-	},
-	generate_image: {
-		handler: "generateImageTool",
-		checkpoint: true,
-		params: { path: "img/cat.png", prompt: "a cat" },
-		description: "[generate_image for 'img/cat.png']",
 	},
 	tools_load: {
 		handler: "toolsLoadTool",

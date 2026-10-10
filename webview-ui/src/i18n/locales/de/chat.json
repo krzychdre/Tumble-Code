@@ -214,10 +214,6 @@
 		"wantsToInsertAtEnd": "Tumble möchte Inhalte am Ende dieser Datei anhängen",
 		"wantsToReadMultiple": "Tumble möchte mehrere Dateien lesen",
 		"wantsToApplyBatchChanges": "Tumble möchte Änderungen an mehreren Dateien vornehmen",
-		"wantsToGenerateImage": "Tumble möchte ein Bild generieren",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble möchte ein Bild außerhalb des Arbeitsbereichs generieren",
-		"wantsToGenerateImageProtected": "Tumble möchte ein Bild an einem geschützten Ort generieren",
-		"didGenerateImage": "Tumble hat ein Bild generiert",
 		"userEdits": "Benutzeränderungen"
 	},
 	"directoryOperations": {

@@ -2679,8 +2679,6 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "lastShownAnnouncementId",
   "customInstructions",
   "dismissedUpsells",
-  "imageGenerationProvider",
-  "openRouterImageGenerationSelectedModel",
   "customCondensingPrompt",
   "autoApprovalEnabled",
   "autoApprovalMode",

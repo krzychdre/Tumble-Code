@@ -2,12 +2,7 @@ import { getToolPayloadKind } from "@tumble-code/core/browser"
 
 import { TOOL_RENDERERS } from "../renderers/tool"
 import { EditFileToolRow, InsertContentToolRow } from "../renderers/tool/EditFileToolRow"
-import {
-	GenerateImageToolRow,
-	ListFilesRecursiveToolRow,
-	ListFilesTopLevelToolRow,
-	ReadFileToolRow,
-} from "../renderers/tool/FileToolRows"
+import { ListFilesRecursiveToolRow, ListFilesTopLevelToolRow, ReadFileToolRow } from "../renderers/tool/FileToolRows"
 import {
 	CodebaseSearchToolRow,
 	SearchFilesToolRow,
@@ -56,7 +51,6 @@ describe("tool ask rows by payload tool name", () => {
 			finishTask: FinishTaskToolRow,
 			reviewPlan: ReviewPlanToolRow,
 			runSlashCommand: RunSlashCommandToolRow,
-			generateImage: GenerateImageToolRow,
 		})
 	})
 

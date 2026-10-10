@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "स्लिम टूलसेट (छोटे मॉडल)",
-			"description": "इस प्रोफ़ाइल को प्रत्येक कार्य के लिए एक स्पष्ट उपकरण दें: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, वेब उपकरण और कार्य उपकरण (ask, complete, switch mode, new task, todo list, skill, load tools)। अतिरिक्त संपादन क्रियाएँ (edit, search_replace, edit_file, apply_patch), छवि निर्माण, समानांतर कार्य और स्लैश कमांड छिपे रहते हैं। छोटे मॉडल गलत संपादक चुनना बंद कर देते हैं। यदि मॉडल फिर भी किसी छिपे उपकरण को कॉल करे, तो वह अभी भी चलता है।",
+			"description": "इस प्रोफ़ाइल को प्रत्येक कार्य के लिए एक स्पष्ट उपकरण दें: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, वेब उपकरण और कार्य उपकरण (ask, complete, switch mode, new task, todo list, skill, load tools)। अतिरिक्त संपादन क्रियाएँ (edit, search_replace, edit_file, apply_patch), समानांतर कार्य और स्लैश कमांड छिपे रहते हैं। छोटे मॉडल गलत संपादक चुनना बंद कर देते हैं। यदि मॉडल फिर भी किसी छिपे उपकरण को कॉल करे, तो वह अभी भी चलता है।",
 			"hideMcp": {
 				"label": "MCP उपकरण भी छिपाएँ",
 				"description": "MCP उपकरण स्कीम आमतौर पर टूल प्रॉम्प्ट का सबसे बड़ा हिस्सा होते हैं। इसे चालू रखें जब तक कि इस प्रोफ़ाइल को किसी MCP सर्वर की आवश्यकता न हो।"
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "नए कार्यों के लिए 'todos' सूची की आवश्यकता है",
 			"description": "जब सक्षम किया जाता है, तो new_task टूल को todos पैरामीटर प्रदान करने की आवश्यकता होगी। यह सुनिश्चित करता है कि सभी नए कार्य स्पष्ट उद्देश्यों की सूची के साथ शुरू हों। जब अक्षम किया जाता है (डिफ़ॉल्ट), तो todos पैरामीटर पिछड़े संगतता के लिए वैकल्पिक रहता है।"
-		},
-		"IMAGE_GENERATION": {
-			"name": "AI छवि निर्माण सक्षम करें",
-			"description": "जब सक्षम किया जाता है, तो Tumble OpenRouter के छवि निर्माण मॉडल का उपयोग करके टेक्स्ट प्रॉम्प्ट से छवियां उत्पन्न कर सकता है। एक कॉन्फ़िगर किए गए OpenRouter API कुंजी की आवश्यकता होती है।",
-			"openRouterApiKeyLabel": "OpenRouter API कुंजी",
-			"openRouterApiKeyPlaceholder": "अपनी OpenRouter API कुंजी दर्ज करें",
-			"getApiKeyText": "अपनी API कुंजी प्राप्त करें",
-			"modelSelectionLabel": "छवि निर्माण मॉडल",
-			"modelSelectionDescription": "छवि निर्माण के लिए उपयोग करने वाला मॉडल चुनें",
-			"warningMissingKey": "⚠️ छवि निर्माण के लिए OpenRouter API कुंजी आवश्यक है। कृपया इसे ऊपर कॉन्फ़िगर करें।",
-			"successConfigured": "✓ छवि निर्माण कॉन्फ़िगर है और उपयोग के लिए तैयार है"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "कस्टम टूल्स सक्षम करें",

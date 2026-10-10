@@ -214,10 +214,6 @@
 		"wantsToReadAndXMore": "Tumble はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
 		"wantsToReadMultiple": "Tumbleは複数のファイルを読み取ろうとしています",
 		"wantsToApplyBatchChanges": "Tumbleは複数のファイルに変更を適用したい",
-		"wantsToGenerateImage": "Tumbleは画像を生成したい",
-		"wantsToGenerateImageOutsideWorkspace": "Tumbleはワークスペース外で画像を生成したい",
-		"wantsToGenerateImageProtected": "Tumbleは保護された場所で画像を生成したい",
-		"didGenerateImage": "Tumbleは画像を生成しました",
 		"userEdits": "ユーザーによる編集"
 	},
 	"directoryOperations": {

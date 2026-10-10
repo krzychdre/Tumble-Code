@@ -22,7 +22,6 @@ import { runParallelTasksTool } from "../tools/RunParallelTasksTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
 import { skillTool } from "../tools/SkillTool"
 import { toolsLoadTool } from "../tools/ToolsLoadTool"
-import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool } from "../tools/ApplyDiffTool"
 import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 import { webSearchTool } from "../tools/WebSearchTool"
@@ -54,7 +53,6 @@ const TOOL_HANDLERS: Readonly<Record<DispatchableToolName, BaseTool<any>>> = {
 	search_replace: searchReplaceTool,
 	edit_file: editFileTool,
 	apply_patch: applyPatchTool,
-	generate_image: generateImageTool,
 	execute_command: executeCommandTool,
 	use_mcp_tool: useMcpToolTool,
 	access_mcp_resource: accessMcpResourceTool,

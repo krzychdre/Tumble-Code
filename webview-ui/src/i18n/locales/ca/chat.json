@@ -216,10 +216,6 @@
 		"wantsToReadAndXMore": "En Tumble vol llegir aquest fitxer i {{count}} més",
 		"wantsToReadMultiple": "Tumble vol llegir diversos fitxers",
 		"wantsToApplyBatchChanges": "Tumble vol aplicar canvis a múltiples fitxers",
-		"wantsToGenerateImage": "Tumble vol generar una imatge",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble vol generar una imatge fora de l'espai de treball",
-		"wantsToGenerateImageProtected": "Tumble vol generar una imatge en una ubicació protegida",
-		"didGenerateImage": "Tumble ha generat una imatge",
 		"userEdits": "Edicions de l'usuari"
 	},
 	"directoryOperations": {

@@ -43,8 +43,6 @@ const TOOL_ACTIONS = [
 	"newTask",
 	"finishTask",
 	"reviewPlan",
-	"generateImage",
-	"imageGenerated",
 	"runSlashCommand",
 	"updateTodoList",
 	"skill",
@@ -310,9 +308,7 @@ describe("auto-approval decision matrix (CORE-R4 d characterization)", () => {
 			    "constructor": "------------------AAAA-",
 			    "editedExistingFile": "----A-A-A--------AAAAA-",
 			    "finishTask": "------------AAA--AAAAA-",
-			    "generateImage": "----A-A-A--------AAAAA-",
 			    "hasOwnProperty": "------------------AAAA-",
-			    "imageGenerated": "------------------AAAA-",
 			    "listFiles": "-A-A-------------AAAAA-",
 			    "listFilesRecursive": "-A-A-------------AAAAA-",
 			    "listFilesTopLevel": "-A-A-------------AAAAA-",
@@ -452,7 +448,7 @@ describe("auto-approval decision matrix (CORE-R4 d characterization)", () => {
 				"webFetch",
 				"listFiles",
 			],
-			write: ["editedExistingFile", "appliedDiff", "newFileCreated", "generateImage"],
+			write: ["editedExistingFile", "appliedDiff", "newFileCreated"],
 		})
 		for (const malformed of [{}, { tool: 5 }, { tool: ["readFile"] }, { tool: undefined }]) {
 			expect(isReadOnlyToolAction(malformed as never)).toBe(false)

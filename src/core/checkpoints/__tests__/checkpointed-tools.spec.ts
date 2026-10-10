@@ -5,8 +5,8 @@
 //     (the call site that actually protects the workspace), and
 //  2. TaskStreamProcessor, which starts the same checkpoint early, at tool_call_start,
 //     so it overlaps the streaming of the tool's arguments.
-// They used to keep two hand-written lists that drifted apart (DEF-C7): `new_task` and
-// `generate_image` were checkpointed by (1) but never started early by (2). This spec
+// They used to keep two hand-written lists that drifted apart (DEF-C7): `new_task` was
+// checkpointed by (1) but never started early by (2). This spec
 // measures both behaviours for every known tool name and requires them to agree, so a
 // tool added to one place and not the other fails here.
 
@@ -41,7 +41,6 @@ const handles = vi.hoisted(() => {
 		updateTodoListTool: stub(),
 		skillTool: stub(),
 		toolsLoadTool: stub(),
-		generateImageTool: stub(),
 		applyDiffTool: stub(),
 		codebaseSearchTool: stub(),
 		webSearchTool: stub(),
@@ -71,7 +70,6 @@ vi.mock("../../tools/RunParallelTasksTool", () => ({ runParallelTasksTool: handl
 vi.mock("../../tools/UpdateTodoListTool", () => ({ updateTodoListTool: handles.updateTodoListTool }))
 vi.mock("../../tools/SkillTool", () => ({ skillTool: handles.skillTool }))
 vi.mock("../../tools/ToolsLoadTool", () => ({ toolsLoadTool: handles.toolsLoadTool }))
-vi.mock("../../tools/GenerateImageTool", () => ({ generateImageTool: handles.generateImageTool }))
 vi.mock("../../tools/ApplyDiffTool", () => ({ applyDiffTool: handles.applyDiffTool }))
 vi.mock("../../tools/CodebaseSearchTool", () => ({ codebaseSearchTool: handles.codebaseSearchTool }))
 vi.mock("../../tools/WebSearchTool", () => ({ webSearchTool: handles.webSearchTool }))
@@ -98,7 +96,7 @@ vi.mock("@tumble-code/telemetry", () => ({
 }))
 
 // The owner's decision (refactor plan, decision 9): every workspace-writing tool plus
-// `new_task` and `generate_image`.
+// `new_task`.
 const EXPECTED_CHECKPOINTED_TOOLS: ToolName[] = [
 	"write_to_file",
 	"apply_diff",
@@ -108,7 +106,6 @@ const EXPECTED_CHECKPOINTED_TOOLS: ToolName[] = [
 	"edit_file",
 	"apply_patch",
 	"new_task",
-	"generate_image",
 ]
 
 function makePresentTask(toolName: string) {
@@ -235,8 +232,8 @@ describe("checkpointed tool set (DEF-C7)", () => {
 		expect(toolsCheckpointedEagerly()).toEqual(await toolsCheckpointedAtExecution())
 	})
 
-	it("starts the early checkpoint for new_task and generate_image", () => {
-		for (const name of ["new_task", "generate_image"]) {
+	it("starts the early checkpoint for new_task", () => {
+		for (const name of ["new_task"]) {
 			const task = makeStreamTask()
 			const processor = new TaskStreamProcessor(makeStreamAccess(), task as any)
 			processor.processChunk(startToolCall(name) as any, {} as any)

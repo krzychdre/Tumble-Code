@@ -38,7 +38,6 @@ const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string
 	execute_command: { command: "echo hi" },
 	update_todo_list: { todos: "- [ ] x" },
 	skill: { skill: "init" },
-	generate_image: { prompt: "p", path: "out.png" },
 	tools_load: { names: ["mcp--example--tool"] },
 	web_search: { queries: ["zod 4 migration"] },
 	web_fetch: { url: "https://example.com" },

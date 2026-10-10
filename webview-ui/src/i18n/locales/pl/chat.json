@@ -240,10 +240,6 @@
 		"wantsToReadAndXMore": "Tumble chce przeczytać ten plik i {{count}} więcej",
 		"wantsToReadMultiple": "Tumble chce odczytać wiele plików",
 		"wantsToApplyBatchChanges": "Tumble chce zastosować zmiany do wielu plików",
-		"wantsToGenerateImage": "Tumble chce wygenerować obraz",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble chce wygenerować obraz poza obszarem roboczym",
-		"wantsToGenerateImageProtected": "Tumble chce wygenerować obraz w chronionym miejscu",
-		"didGenerateImage": "Tumble wygenerował obraz",
 		"userEdits": "Edycje użytkownika"
 	},
 	"directoryOperations": {

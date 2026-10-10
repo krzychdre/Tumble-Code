@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "Schmales Werkzeugset (kleine Modelle)",
-			"description": "Bietet diesem Profil ein offensichtliches Werkzeug pro Aufgabe: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, die Web-Werkzeuge und die Aufgaben-Werkzeuge (ask, complete, switch mode, new task, todo list, skill, load tools). Die überzähligen Editierverben (edit, search_replace, edit_file, apply_patch), Bildgenerierung, parallele Aufgaben und Slash-Befehle werden verborgen. Kleine Modelle wählen nicht mehr den falschen Editor. Wenn das Modell trotzdem ein verborgenes Werkzeug aufruft, läuft es dennoch.",
+			"description": "Bietet diesem Profil ein offensichtliches Werkzeug pro Aufgabe: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, die Web-Werkzeuge und die Aufgaben-Werkzeuge (ask, complete, switch mode, new task, todo list, skill, load tools). Die überzähligen Editierverben (edit, search_replace, edit_file, apply_patch), parallele Aufgaben und Slash-Befehle werden verborgen. Kleine Modelle wählen nicht mehr den falschen Editor. Wenn das Modell trotzdem ein verborgenes Werkzeug aufruft, läuft es dennoch.",
 			"hideMcp": {
 				"label": "Auch MCP-Werkzeuge verbergen",
 				"description": "MCP-Werkzeugschemas sind meist der größte Teil des Werkzeug-Prompts. Lass dies an, sofern dieses Profil keinen MCP-Server benötigt."
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "'todos'-Liste für neue Aufgaben anfordern",
 			"description": "Wenn aktiviert, erfordert das new_task-Tool die Angabe eines todos-Parameters. Dies stellt sicher, dass alle neuen Aufgaben mit einer klaren Zielliste beginnen. Wenn deaktiviert (Standard), bleibt der todos-Parameter aus Gründen der Abwärtskompatibilität optional."
-		},
-		"IMAGE_GENERATION": {
-			"name": "KI-Bildgenerierung aktivieren",
-			"description": "Wenn aktiviert, kann Tumble Bilder aus Textprompts mit Bildgenerierungsmodellen erstellen.",
-			"openRouterApiKeyLabel": "OpenRouter API-Schlüssel",
-			"openRouterApiKeyPlaceholder": "Gib deinen OpenRouter API-Schlüssel ein",
-			"getApiKeyText": "Hol dir deinen API-Schlüssel von",
-			"modelSelectionLabel": "Bildgenerierungsmodell",
-			"modelSelectionDescription": "Wähle das Modell für die Bildgenerierung aus",
-			"warningMissingKey": "⚠️ OpenRouter API-Schlüssel ist für Bildgenerierung erforderlich. Bitte konfiguriere ihn oben.",
-			"successConfigured": "✓ Bildgenerierung ist konfiguriert und einsatzbereit"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Benutzerdefinierte Tools aktivieren",

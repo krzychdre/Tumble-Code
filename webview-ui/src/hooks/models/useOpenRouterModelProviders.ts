@@ -58,7 +58,7 @@ async function getOpenRouterProvidersForModel(modelId: string, baseUrl?: string)
 
 		const { description, architecture, endpoints } = result.data.data
 
-		// Skip image generation models (models that output images)
+		// Skip models that output images
 		if (architecture?.output_modalities?.includes("image")) {
 			return models
 		}

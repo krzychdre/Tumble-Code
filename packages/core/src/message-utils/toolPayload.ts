@@ -28,7 +28,6 @@ export type ToolPayloadKind =
 	| "reviewPlan"
 	| "runSlashCommand"
 	| "skill"
-	| "generateImage"
 	| "readArtifact"
 	| "searchTaskHistory"
 	| "runParallelTasks"
@@ -50,8 +49,6 @@ const SAY_TOOL_KINDS: Record<ClineSayTool["tool"], ToolPayloadKind> = {
 	newTask: "newTask",
 	finishTask: "finishTask",
 	reviewPlan: "reviewPlan",
-	generateImage: "generateImage",
-	imageGenerated: "generateImage",
 	runSlashCommand: "runSlashCommand",
 	updateTodoList: "updateTodoList",
 	skill: "skill",
