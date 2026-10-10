@@ -26,6 +26,10 @@
  * system prompt and the tool set for the model, the same choice as "Model
  * size" in the VS Code profile settings, and becomes the extension's
  * slimToolset, slimHidesMcp and compactProfile.
+ *
+ * `provider`, `baseUrl`, `apiKey` and `apiKeyEnv` put the model on its own
+ * connection, for a model served elsewhere than the top level or the mode
+ * says; resolveProviderConfigWithModel layers them under the flags.
  */
 
 import type { CliModelSettings } from "@/types/types.js"
@@ -41,7 +45,18 @@ export const MODEL_PRICE_KEYS = ["inputPrice", "outputPrice", "cacheReadsPrice",
 const MODEL_SWITCH_KEYS = ["preserveReasoning", "trimOldReasoning", "hideMcp"] as const
 
 /** The keys every provider takes, so they never count as ignored. */
-const ANY_PROVIDER_KEYS: ReadonlySet<string> = new Set(["reasoningEffort", "modelSize", "hideMcp"])
+const ANY_PROVIDER_KEYS: ReadonlySet<string> = new Set([
+	"reasoningEffort",
+	"modelSize",
+	"hideMcp",
+	"provider",
+	"baseUrl",
+	"apiKey",
+	"apiKeyEnv",
+])
+
+/** The connection fields of a model, each a non-empty string when set. */
+const MODEL_CONNECTION_KEYS = ["provider", "baseUrl", "apiKey", "apiKeyEnv"] as const
 
 export function getConfiguredModelSettings(
 	models: Record<string, CliModelSettings> | undefined,
@@ -53,7 +68,8 @@ export function getConfiguredModelSettings(
 /**
  * The keys an entry sets that only the openai provider takes, for the warning
  * that names what is ignored with another provider. `reasoningEffort`,
- * `modelSize` and `hideMcp` are not among them: every provider takes them.
+ * `modelSize`, `hideMcp` and the connection fields are not among them: every
+ * provider takes them.
  */
 export function listSetModelSettings(entry: CliModelSettings | undefined): string[] {
 	return Object.entries(entry ?? {})
@@ -105,6 +121,14 @@ export function findModelSettingsProblems(models: unknown): string[] {
 			problems.push(
 				`models.${model}.modelSize must be one of: ${MODEL_SIZES.join(", ")}, got ${JSON.stringify(modelSize)}`,
 			)
+		}
+
+		for (const key of MODEL_CONNECTION_KEYS) {
+			const value = entry[key]
+
+			if (value !== undefined && !(typeof value === "string" && value.trim() !== "")) {
+				problems.push(`models.${model}.${key} must be a non-empty string, got ${JSON.stringify(value)}`)
+			}
 		}
 
 		for (const key of MODEL_PRICE_KEYS) {

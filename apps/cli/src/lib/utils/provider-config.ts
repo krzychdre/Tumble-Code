@@ -5,7 +5,9 @@
  * Sources, highest precedence last in `layers`:
  *  - `fallback`: the CLI's own extension state (~/.vscode-mock, see
  *    vscode-config.ts); used only where no layer supplies a value.
- *  - `layers`: the settings file, then the flags.
+ *  - `layers`: the settings file (top level, then the mode entry), the
+ *    model's own `models` entry when it sets a connection (see
+ *    resolveProviderConfigWithModel), then the flags.
  *
  * Provider-bound values (model, baseUrl, apiKey, apiKeyEnv) belong to the
  * provider of the layer they are written in. A layer that names no provider
@@ -164,6 +166,52 @@ export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfi
 export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigLayer {
 	const { provider, model, baseUrl, apiKey, apiKeyEnv } = source
 	return { provider, model, baseUrl, apiKey, apiKeyEnv }
+}
+
+/**
+ * The connection a `models` entry sets (provider, baseUrl, apiKey,
+ * apiKeyEnv) as a layer that names its model, or undefined when the entry
+ * sets none of them.
+ */
+export function modelConnectionLayer(
+	model: string,
+	entry: CliModelSettings | undefined,
+): ProviderConfigLayer | undefined {
+	const { provider, baseUrl, apiKey, apiKeyEnv } = entry ?? {}
+	if ([provider, baseUrl, apiKey, apiKeyEnv].every((value) => value === undefined)) {
+		return undefined
+	}
+	return { provider, model, baseUrl, apiKey, apiKeyEnv }
+}
+
+/**
+ * resolveProviderConfig with the model's own connection: when the resolved
+ * model's `models` entry sets a provider, base URL or key, the configuration
+ * is resolved again with that entry as a layer between `layers` and `top`
+ * (the flags), so the entry overrides the settings file and the flags still
+ * override the entry. `model` forces the model id, for /model, whose model
+ * must run even where a higher layer names another.
+ */
+export function resolveProviderConfigWithModel({
+	fallback,
+	layers,
+	top,
+	models,
+	model,
+}: ResolveProviderConfigInput & {
+	top?: ProviderConfigLayer
+	models: Record<string, CliModelSettings> | undefined
+	model?: string
+}): ResolvedProviderConfig {
+	const resolved = { ...resolveProviderConfig({ fallback, layers: [...layers, top] }), ...(model ? { model } : {}) }
+	const own = modelConnectionLayer(resolved.model, models?.[resolved.model])
+	if (!own) {
+		return resolved
+	}
+	return {
+		...resolveProviderConfig({ fallback, layers: [...layers, own, top] }),
+		...(model ? { model } : {}),
+	}
 }
 
 /**

@@ -14,11 +14,7 @@
 	"modes": {
 		"architect": { "model": "GLM-5.3-NVFP4" },
 		"debug": { "model": "Qwen3.8-4B" },
-		"ask": {
-			"provider": "anthropic",
-			"model": "claude-sonnet-5-5",
-			"apiKeyEnv": "ANTHROPIC_API_KEY"
-		}
+		"ask": { "model": "claude-sonnet-5-5" }
 	},
 	"models": {
 		"GLM-5.3-Flash-NVFP4": {
@@ -39,11 +35,15 @@
 			"hideMcp": false
 		},
 		"Qwen3.8-4B": {
+			"baseUrl": "http://192.168.50.194:22222/v1",
+			"apiKey": "2222",
 			"contextWindow": 32768,
 			"reasoningEffort": "disabled",
 			"modelSize": "compact"
 		},
 		"claude-sonnet-5-5": {
+			"provider": "anthropic",
+			"apiKeyEnv": "ANTHROPIC_API_KEY",
 			"reasoningEffort": "medium"
 		}
 	}

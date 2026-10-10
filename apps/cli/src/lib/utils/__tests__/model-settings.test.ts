@@ -25,6 +25,7 @@ describe("listSetModelSettings", () => {
 		])
 		// Every provider takes these, so they are never reported as ignored.
 		expect(listSetModelSettings({ reasoningEffort: "high", modelSize: "compact", hideMcp: false })).toEqual([])
+		expect(listSetModelSettings({ provider: "zai", baseUrl: "x", apiKey: "k", apiKeyEnv: "K" })).toEqual([])
 		expect(listSetModelSettings({})).toEqual([])
 		expect(listSetModelSettings(undefined)).toEqual([])
 	})
@@ -82,6 +83,14 @@ describe("findModelSettingsProblems", () => {
 		expect(findModelSettingsProblems({ m: { modelSize: "small" } })).toEqual([
 			'models.m.modelSize must be one of: standard, slim, compact, got "small"',
 		])
+	})
+
+	it.each(["provider", "baseUrl", "apiKey", "apiKeyEnv"])("accepts %s as a non-empty string only", (key) => {
+		expect(findModelSettingsProblems({ m: { [key]: "x" } })).toEqual([])
+		expect(findModelSettingsProblems({ m: { [key]: "" } })).toEqual([
+			`models.m.${key} must be a non-empty string, got ""`,
+		])
+		expect(findModelSettingsProblems({ m: { [key]: 1 } })).toHaveLength(1)
 	})
 
 	it("rejects a map or an entry that is not an object", () => {
