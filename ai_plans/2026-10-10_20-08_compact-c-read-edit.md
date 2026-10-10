@@ -98,3 +98,25 @@ longer prevent it), the prefixes are stripped; also in the streaming preview so 
   calls `addLineNumbers` again).
 - The whitespace helpers of `EditFileTool.ts` are module-private; `helpers/compactEdit.ts` has its own variant
   (line-based, re-indenting, edges trimmed before the substring pattern). `edit_file` could move to it.
+
+## Review fixes (edit safety)
+
+On `feat/compact-fix-edit-safety` (commits `68612d137`, `59e637b10`), after a review that reproduced wrong edits
+reported as success. Rule: when the tool is not sure, it refuses with the closest-snippet error. This supersedes
+the edit chain and the `write_to_file` rule described above.
+
+- Chain order: old_string as sent goes through exact, then the tolerant steps (trailing whitespace, collapsed
+  whitespace, whitespace runs inside a line) before any prefix stripping. The tolerant steps must agree on one
+  place (overlapping matches count); the strictest step that can replace safely does it. A prefix-stripped
+  old_string matches whole lines only; new_string loses prefixes only then, and the result says so.
+- Re-indentation only when old_string's indentation levels map one to one onto the file's (deeper onto deeper);
+  a deeper new line keeps its extra indentation only when the units are the same text. Otherwise refused, quoting
+  the exact file lines. The substring step needs the file's indentation after each line break and never adds lines
+  after a single-line match.
+- Only the replaced region changes: matching runs on a BOM-less LF view, the replacement is mapped back onto the
+  original bytes (BOM, CRLF and mixed line endings kept), new_string takes the region's line ending. Whitespace
+  means spaces and tabs only.
+- `write_to_file` under compact is the non-compact path again; the empty-old_string create path writes new_string
+  the same way (old rule only, line endings as sent). A missing or null old_string is a missing-parameter error.
+- Tests: reviewer cases, indentation and line-ending cases, and a seeded property test (random files with mixed
+  line endings and BOM, every tolerant step) that nothing outside the matched region changes.
