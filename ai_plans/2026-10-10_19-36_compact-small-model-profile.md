@@ -1,7 +1,8 @@
 # Compact profile for small-context models
 
-Status: in progress, proof of concept on branch `feat/compact-small-model-profile` (local only, not pushed, not
-merged). Overview plan; each workstream branch adds its own plan next to this one.
+Status: proof of concept complete and measured on branch `feat/compact-small-model-profile` (local only, not pushed,
+not merged into `main`; the workstream branches are merged into it). Overview plan; each workstream branch adds its own
+plan next to this one.
 
 ## Problem
 
@@ -113,6 +114,35 @@ A short run on the live llama.cpp endpoint, on copies of fixture files under `/t
 answer a question from a diary file, append two rows to its table, a one-line fix in a small source file, find the
 file that defines a function. Baseline: one run per task on `main`. Compact: two runs per task on the integrated
 branch, temperature 0.6 in the test profile. Measured: success, requests, input tokens, wall time, tool errors.
+
+## Results (2026-10-10)
+
+Harness `~/Projekty/QUB-IT/compact-eval/` (Tumble CLI, isolated HOME, fixtures under `/tmp`), live llama.cpp,
+Qwen3.5-4B Q4_K_M, window 40,960, temperature 0.6 unless noted. The CLI prompt is smaller than the VS Code one (no
+global rules, skills, MCP or memory index), so the baseline sizes understate what the extension sends.
+
+| Configuration                                                                  | T1 ask: answer | T2 code: dated append                       | T3 code: bug fix                                   | T4 ask: find | Tool errors |
+| ------------------------------------------------------------------------------ | -------------- | ------------------------------------------- | -------------------------------------------------- | ------------ | ----------- |
+| `main` (1 run each)                                                            | 1/1            | 0/1 (rows under yesterday, success claimed) | 1/1                                                | 1/1          | 1           |
+| compact, before review fixes (2 runs, plus 2 at temperature 0.8 for T2 and T3) | 2/2            | 4/4                                         | 4/4                                                | 2/2          | 0           |
+| compact, after review fixes (2 runs)                                           | 2/2            | 2/2                                         | 2/2 (one ended with an unasked follow-up question) | 2/2          | 0           |
+| compact, after the example and rule fixes below                                |                | 1/2, then 3/3                               | 2/2                                                |              | 0           |
+
+| First request             | `main` ask   | `main` code  | compact ask | compact code |
+| ------------------------- | ------------ | ------------ | ----------- | ------------ |
+| System prompt chars       | 24,787       | 23,409       | 5,333       | 4,375        |
+| Tools (count / chars)     | 12 / 24,081  | 16 / 33,566  | 6 / 2,816   | 9 / 4,444    |
+| Environment details chars | about 700    | about 700    | about 210   | about 210    |
+| Input tokens              | about 11,600 | about 13,700 | about 2,400 | about 2,650  |
+
+Wall time per run fell from 90-171 s to 27-56 s. Prompt fixes found by the measurements: the dated-entry example
+first used a changelog, and the model then offered to add a CHANGELOG.md entry after fixing a bug, so the example now
+uses meeting notes and a rule says to finish without offering extra work; one run logged an undated request under
+yesterday, so the rule now says an entry without a date belongs to today.
+
+Known limits: the orchestrator mode's own instructions still delegate with `new_task` and `run_parallel_tasks`, which
+the compact toolset hides, so it can only switch modes under compact. The four tasks are small; multi-file changes
+were not measured. `src/__tests__/single-open-invariant.spec.ts` fails on `main` as well, independent of this branch.
 
 ## Follow-ups outside this branch
 
