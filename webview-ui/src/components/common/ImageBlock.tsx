@@ -9,7 +9,7 @@ import { ImageViewer } from "./ImageViewer"
 interface ImageBlockProps {
 	/**
 	 * The webview-accessible URI for rendering the image.
-	 * This is the preferred format for new image generation tools.
+	 * This is the preferred format for new code.
 	 * Should be a URI that can be directly loaded in the webview context.
 	 */
 	imageUri?: string

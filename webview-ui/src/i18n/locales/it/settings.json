@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "Set di strumenti ridotto (modelli piccoli)",
-			"description": "Offre a questo profilo uno strumento ovvio per ogni lavoro: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, gli strumenti web e gli strumenti di attività (ask, complete, switch mode, new task, todo list, skill, load tools). I verbi di editazione superflui (edit, search_replace, edit_file, apply_patch), la generazione di immagini, le attività parallele e i comandi slash sono nascosti. I modelli piccoli smettono di scegliere l'editor sbagliato. Se il modello chiama comunque uno strumento nascosto, si esegue ugualmente.",
+			"description": "Offre a questo profilo uno strumento ovvio per ogni lavoro: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, gli strumenti web e gli strumenti di attività (ask, complete, switch mode, new task, todo list, skill, load tools). I verbi di editazione superflui (edit, search_replace, edit_file, apply_patch), le attività parallele e i comandi slash sono nascosti. I modelli piccoli smettono di scegliere l'editor sbagliato. Se il modello chiama comunque uno strumento nascosto, si esegue ugualmente.",
 			"hideMcp": {
 				"label": "Nascondi anche gli strumenti MCP",
 				"description": "Gli schemi degli strumenti MCP sono in genere la parte più grande del prompt degli strumenti. Tienilo attivo a meno che questo profilo non richieda un server MCP."
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Richiedi elenco 'todos' per nuove attività",
 			"description": "Quando abilitato, lo strumento new_task richiederà la fornitura di un parametro todos. Ciò garantisce che tutte le nuove attività inizino con un elenco chiaro di obiettivi. Quando disabilitato (impostazione predefinita), il parametro todos rimane facoltativo per la compatibilità con le versioni precedenti."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Abilita generazione immagini AI",
-			"description": "Quando abilitato, Tumble può generare immagini da prompt di testo utilizzando i modelli di generazione immagini di OpenRouter. Richiede una chiave API OpenRouter configurata.",
-			"openRouterApiKeyLabel": "Chiave API OpenRouter",
-			"openRouterApiKeyPlaceholder": "Inserisci la tua chiave API OpenRouter",
-			"getApiKeyText": "Ottieni la tua chiave API da",
-			"modelSelectionLabel": "Modello di generazione immagini",
-			"modelSelectionDescription": "Seleziona il modello per la generazione di immagini",
-			"warningMissingKey": "⚠️ La chiave API OpenRouter è richiesta per la generazione di immagini. Configurala sopra.",
-			"successConfigured": "✓ La generazione di immagini è configurata e pronta per l'uso"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Abilita strumenti personalizzati",

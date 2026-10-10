@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "Set alat ramping (model kecil)",
-			"description": "Tawarkan profil ini satu alat yang jelas untuk setiap pekerjaan: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, alat web, dan alat tugas (ask, complete, switch mode, new task, todo list, skill, load tools). Kata kerja edit cadangan (edit, search_replace, edit_file, apply_patch), pembuatan gambar, tugas paralel, dan perintah slash disembunyikan. Model kecil berhenti memilih editor yang salah. Jika model tetap memanggil alat tersembunyi, alat itu tetap berjalan.",
+			"description": "Tawarkan profil ini satu alat yang jelas untuk setiap pekerjaan: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, alat web, dan alat tugas (ask, complete, switch mode, new task, todo list, skill, load tools). Kata kerja edit cadangan (edit, search_replace, edit_file, apply_patch), tugas paralel, dan perintah slash disembunyikan. Model kecil berhenti memilih editor yang salah. Jika model tetap memanggil alat tersembunyi, alat itu tetap berjalan.",
 			"hideMcp": {
 				"label": "Sembunyikan juga alat MCP",
 				"description": "Skema alat MCP biasanya bagian terbesar dari prompt alat. Tetap aktifkan kecuali profil ini memerlukan server MCP."
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Membutuhkan daftar 'todos' untuk tugas baru",
 			"description": "Ketika diaktifkan, alat new_task akan membutuhkan parameter todos untuk disediakan. Ini memastikan semua tugas baru dimulai dengan daftar tujuan yang jelas. Ketika dinonaktifkan (default), parameter todos tetap opsional untuk kompatibilitas mundur."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Aktifkan pembuatan gambar AI",
-			"description": "Ketika diaktifkan, Tumble dapat menghasilkan gambar dari prompt teks menggunakan model pembuatan gambar.",
-			"openRouterApiKeyLabel": "Kunci API OpenRouter",
-			"openRouterApiKeyPlaceholder": "Masukkan kunci API OpenRouter Anda",
-			"getApiKeyText": "Dapatkan kunci API Anda dari",
-			"modelSelectionLabel": "Model Pembuatan Gambar",
-			"modelSelectionDescription": "Pilih model untuk pembuatan gambar",
-			"warningMissingKey": "⚠️ Kunci API OpenRouter diperlukan untuk pembuatan gambar. Silakan konfigurasi di atas.",
-			"successConfigured": "✓ Pembuatan gambar dikonfigurasi dan siap digunakan"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Aktifkan tool kustom",

@@ -111,7 +111,7 @@ export async function getOpenRouterModels(options?: ApiHandlerOptions): Promise<
 		for (const model of data) {
 			const { id, architecture, top_provider, supported_parameters = [] } = model
 
-			// Skip image generation models (models that output images)
+			// Skip models that output images
 			if (architecture?.output_modalities?.includes("image")) {
 				continue
 			}
@@ -156,7 +156,7 @@ export async function getOpenRouterModelEndpoints(
 
 		const { id, architecture, endpoints } = data
 
-		// Skip image generation models (models that output images)
+		// Skip models that output images
 		if (architecture?.output_modalities?.includes("image")) {
 			return models
 		}

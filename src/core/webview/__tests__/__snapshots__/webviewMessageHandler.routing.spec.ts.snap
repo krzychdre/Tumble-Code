@@ -3536,7 +3536,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateSetti
       "contextProxy.setValue",
       "experiments",
       {
-        "imageGeneration": true,
+        "customTools": true,
         "preventFocusDisruption": false,
       },
     ],

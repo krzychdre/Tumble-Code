@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "Odchudzony zestaw narzędzi (małe modele)",
-			"description": "Daje temu profilowi jedno oczywiste narzędzie na każde zadanie: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, narzędzia sieciowe i narzędzia zadań (ask, complete, switch mode, new task, todo list, skill, load tools). Zapasowe czasowniki edycji (edit, search_replace, edit_file, apply_patch), generowanie obrazów, zadania równoległe i polecenia z ukośnikiem są ukryte. Małe modele przestają wybierać niewłaściwy edytor. Jeśli model mimo to wywoła ukryte narzędzie, ono nadal działa.",
+			"description": "Daje temu profilowi jedno oczywiste narzędzie na każde zadanie: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, narzędzia sieciowe i narzędzia zadań (ask, complete, switch mode, new task, todo list, skill, load tools). Zapasowe czasowniki edycji (edit, search_replace, edit_file, apply_patch), zadania równoległe i polecenia z ukośnikiem są ukryte. Małe modele przestają wybierać niewłaściwy edytor. Jeśli model mimo to wywoła ukryte narzędzie, ono nadal działa.",
 			"hideMcp": {
 				"label": "Ukryj też narzędzia MCP",
 				"description": "Schematy narzędzi MCP to zazwyczaj największa część promptu narzędzi. Utrzymuj to włączone, chyba że ten profil wymaga serwera MCP."
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Wymagaj listy 'todos' dla nowych zadań",
 			"description": "Gdy włączone, narzędzie new_task będzie wymagało podania parametru todos. Zapewnia to, że wszystkie nowe zadania rozpoczynają się od jasnej listy celów. Gdy wyłączone (domyślnie), parametr todos pozostaje opcjonalny dla zachowania kompatybilności wstecznej."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Włącz generowanie obrazów AI",
-			"description": "Gdy włączone, Tumble może generować obrazy z promptów tekstowych używając modeli generowania obrazów OpenRouter. Wymaga skonfigurowanego klucza API OpenRouter.",
-			"openRouterApiKeyLabel": "Klucz API OpenRouter",
-			"openRouterApiKeyPlaceholder": "Wprowadź swój klucz API OpenRouter",
-			"getApiKeyText": "Uzyskaj swój klucz API od",
-			"modelSelectionLabel": "Model generowania obrazów",
-			"modelSelectionDescription": "Wybierz model do generowania obrazów",
-			"warningMissingKey": "⚠️ Klucz API OpenRouter jest wymagany do generowania obrazów. Skonfiguruj go powyżej.",
-			"successConfigured": "✓ Generowanie obrazów jest skonfigurowane i gotowe do użycia"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Włącz niestandardowe narzędzia",

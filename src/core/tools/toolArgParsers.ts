@@ -242,11 +242,6 @@ export const parseApplyDiffArgs: ToolArgParser = (raw, { partial }) =>
 export const parseCodebaseSearchArgs: ToolArgParser = (raw) =>
 	raw.query !== undefined ? built({ query: raw.query, path: raw.path }) : undefined
 
-export const parseGenerateImageArgs: ToolArgParser = (raw, { partial }) =>
-	hasFields(raw, ["prompt", "path"], partial)
-		? built({ prompt: raw.prompt, path: raw.path, image: raw.image })
-		: undefined
-
 export const parseSkillArgs: ToolArgParser = (raw) =>
 	raw.skill !== undefined ? built({ skill: raw.skill, args: raw.args }) : undefined
 

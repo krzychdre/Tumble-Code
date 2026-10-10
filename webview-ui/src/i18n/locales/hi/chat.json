@@ -214,10 +214,6 @@
 		"wantsToReadAndXMore": "रू इस फ़ाइल को और {{count}} अन्य को पढ़ना चाहता है",
 		"wantsToReadMultiple": "Tumble कई फ़ाइलें पढ़ना चाहता है",
 		"wantsToApplyBatchChanges": "Tumble कई फ़ाइलों में परिवर्तन लागू करना चाहता है",
-		"wantsToGenerateImage": "Tumble एक छवि बनाना चाहता है",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble कार्यक्षेत्र के बाहर एक छवि बनाना चाहता है",
-		"wantsToGenerateImageProtected": "Tumble एक संरक्षित स्थान पर छवि बनाना चाहता है",
-		"didGenerateImage": "Tumble ने एक छवि बनाई",
 		"userEdits": "उपयोगकर्ता संपादन"
 	},
 	"directoryOperations": {

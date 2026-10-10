@@ -214,10 +214,6 @@
 		"wantsToReadAndXMore": "Tumble muốn đọc tệp này và {{count}} tệp khác",
 		"wantsToReadMultiple": "Tumble muốn đọc nhiều tệp",
 		"wantsToApplyBatchChanges": "Tumble muốn áp dụng thay đổi cho nhiều tệp",
-		"wantsToGenerateImage": "Tumble muốn tạo một hình ảnh",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble muốn tạo hình ảnh bên ngoài không gian làm việc",
-		"wantsToGenerateImageProtected": "Tumble muốn tạo hình ảnh ở vị trí được bảo vệ",
-		"didGenerateImage": "Tumble đã tạo một hình ảnh",
 		"userEdits": "Các chỉnh sửa của người dùng"
 	},
 	"directoryOperations": {

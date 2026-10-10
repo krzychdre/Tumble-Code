@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "Облегчённый набор инструментов (маленькие модели)",
-			"description": "Даёт этому профилю один очевидный инструмент на каждое дело: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, веб-инструменты и инструменты задач (ask, complete, switch mode, new task, todo list, skill, load tools). Лишние глаголы редактирования (edit, search_replace, edit_file, apply_patch), генерация изображений, параллельные задачи и слеш-команды скрыты. Маленькие модели перестают выбирать не тот редактор. Если модель всё же вызовет скрытый инструмент, он всё равно сработает.",
+			"description": "Даёт этому профилю один очевидный инструмент на каждое дело: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, веб-инструменты и инструменты задач (ask, complete, switch mode, new task, todo list, skill, load tools). Лишние глаголы редактирования (edit, search_replace, edit_file, apply_patch), параллельные задачи и слеш-команды скрыты. Маленькие модели перестают выбирать не тот редактор. Если модель всё же вызовет скрытый инструмент, он всё равно сработает.",
 			"hideMcp": {
 				"label": "Также скрыть инструменты MCP",
 				"description": "Схемы инструментов MCP обычно составляют большую часть промпта инструментов. Держите это включённым, если только этому профилю не нужен MCP-сервер."
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Требовать список 'todos' для новых задач",
 			"description": "Если включено, инструмент new_task будет требовать предоставления параметра todos. Это гарантирует, что все новые задачи начинаются с четкого списка целей. Когда отключено (по умолчанию), параметр todos остается необязательным для обратной совместимости."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Включить генерацию изображений ИИ",
-			"description": "Когда включено, Tumble может генерировать изображения из текстовых запросов, используя модели генерации изображений OpenRouter. Требует настроенный API-ключ OpenRouter.",
-			"openRouterApiKeyLabel": "API-ключ OpenRouter",
-			"openRouterApiKeyPlaceholder": "Введите ваш API-ключ OpenRouter",
-			"getApiKeyText": "Получите ваш API-ключ от",
-			"modelSelectionLabel": "Модель генерации изображений",
-			"modelSelectionDescription": "Выберите модель для генерации изображений",
-			"warningMissingKey": "⚠️ API-ключ OpenRouter необходим для генерации изображений. Настройте его выше.",
-			"successConfigured": "✓ Генерация изображений настроена и готова к использованию"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Включить пользовательские инструменты",

@@ -183,10 +183,6 @@ export function useAskButtons({
 										setSecondaryButton("reject", "chat:reject.title")
 									}
 									break
-								case "generateImage":
-									setPrimaryButton("save", "chat:save.title")
-									setSecondaryButton("reject", "chat:reject.title")
-									break
 								case "finishTask":
 									setPrimaryButton("completeSubtaskAndReturn", "chat:completeSubtaskAndReturn")
 									setSecondaryButton(undefined, undefined)

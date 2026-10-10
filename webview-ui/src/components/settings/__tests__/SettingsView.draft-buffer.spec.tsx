@@ -140,7 +140,7 @@ const baseState = () => ({
 	enterBehavior: "send",
 	uiDensity: "comfortable",
 	// Experimental
-	experiments: { preventFocusDisruption: false, imageGeneration: false },
+	experiments: { preventFocusDisruption: false },
 	// Language
 	language: "en",
 })

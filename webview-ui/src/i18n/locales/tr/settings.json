@@ -654,7 +654,7 @@
 		},
 		"slimToolset": {
 			"label": "Sade araç seti (küçük modeller)",
-			"description": "Bu profile her iş için belirgin bir araç sunar: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, web araçları ve görev araçları (ask, complete, switch mode, new task, todo list, skill, load tools). Yedek düzenleme fiilleri (edit, search_replace, edit_file, apply_patch), görüntü üretimi, paralel görevler ve slash komutları gizlenir. Küçük modeller yanlış editörü seçmeyi bırakır. Model gizli bir aracı yine de çağırırsa, yine de çalışır.",
+			"description": "Bu profile her iş için belirgin bir araç sunar: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, web araçları ve görev araçları (ask, complete, switch mode, new task, todo list, skill, load tools). Yedek düzenleme fiilleri (edit, search_replace, edit_file, apply_patch), paralel görevler ve slash komutları gizlenir. Küçük modeller yanlış editörü seçmeyi bırakır. Model gizli bir aracı yine de çağırırsa, yine de çalışır.",
 			"hideMcp": {
 				"label": "MCP araçlarını da gizle",
 				"description": "MCP araç şemaları genellikle araç isteminin en büyük parçasıdır. Bu profil bir MCP sunucusu gerektirmedikçe açık tutun."
@@ -693,17 +693,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Yeni görevler için 'todos' listesi gerektir",
 			"description": "Etkinleştirildiğinde, new_task aracı bir todos parametresi sağlanmasını gerektirir. Bu, tüm yeni görevlerin net bir hedef listesiyle başlamasını sağlar. Devre dışı bırakıldığında (varsayılan), todos parametresi geriye dönük uyumluluk için isteğe bağlı kalır."
-		},
-		"IMAGE_GENERATION": {
-			"name": "AI görüntü üretimini etkinleştir",
-			"description": "Etkinleştirildiğinde, Tumble OpenRouter'ın görüntü üretim modellerini kullanarak metin istemlerinden görüntüler üretebilir. Yapılandırılmış bir OpenRouter API anahtarı gerektirir.",
-			"openRouterApiKeyLabel": "OpenRouter API Anahtarı",
-			"openRouterApiKeyPlaceholder": "OpenRouter API anahtarınızı girin",
-			"getApiKeyText": "API anahtarınızı alın",
-			"modelSelectionLabel": "Görüntü Üretim Modeli",
-			"modelSelectionDescription": "Görüntü üretimi için kullanılacak modeli seçin",
-			"warningMissingKey": "⚠️ Görüntü üretimi için OpenRouter API anahtarı gereklidir. Lütfen yukarıda yapılandırın.",
-			"successConfigured": "✓ Görüntü üretimi yapılandırılmış ve kullanıma hazır"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Özel araçları etkinleştir",

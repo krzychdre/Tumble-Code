@@ -93,7 +93,7 @@ async function advertisedToolsForMode(mode: string): Promise<string[]> {
 		cwd: "/test/path",
 		mode,
 		customModes: undefined,
-		experiments: { imageGeneration: true },
+		experiments: {},
 		apiConfiguration,
 		webToolsEnabled: true,
 	})
@@ -108,7 +108,6 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset per profile", () 
 		expect(slim).toContain("write_to_file")
 		expect(slim).toContain("execute_command")
 		expect(slim).not.toContain("run_parallel_tasks")
-		expect(slim).not.toContain("generate_image")
 		expect(slim).not.toContain("access_mcp_resource")
 		// No per-server MCP schema either: slimHidesMcp defaults to true.
 		expect(slim.some((name) => name.includes("docs-server"))).toBe(false)
@@ -191,7 +190,7 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset on the Gemini bra
 			cwd: "/test/path",
 			mode: "code",
 			customModes: undefined,
-			experiments: { imageGeneration: true },
+			experiments: {},
 			apiConfiguration,
 			webToolsEnabled: true,
 			includeAllToolsWithRestrictions: true,
@@ -206,7 +205,6 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset on the Gemini bra
 		expect(result.allowedFunctionNames).toEqual(declared)
 		expect(declared).not.toContain("edit_file")
 		expect(declared).not.toContain("apply_patch")
-		expect(declared).not.toContain("generate_image")
 		expect(declared).not.toContain("run_parallel_tasks")
 		expect(declared).not.toContain("access_mcp_resource")
 		expect(declared.some((name) => name.includes("docs-server"))).toBe(false)
@@ -223,7 +221,6 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset on the Gemini bra
 		// mode-filtered list.
 		expect(declared).toContain("edit_file")
 		expect(declared).toContain("apply_patch")
-		expect(declared).toContain("generate_image")
 		expect(declared.some((name) => name.includes("docs-server"))).toBe(true)
 		expect(result.allowedFunctionNames!.length).toBeLessThan(declared.length)
 		expect(result.allowedFunctionNames).not.toContain("edit_file")

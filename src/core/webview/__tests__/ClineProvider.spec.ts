@@ -942,8 +942,6 @@ describe("ClineProvider", () => {
 			profileThresholds: {},
 			hasOpenedModeSelector: false,
 			diagnosticsEnabled: true,
-			openRouterImageApiKey: undefined,
-			openRouterImageGenerationSelectedModel: undefined,
 			taskSyncEnabled: false,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 		}

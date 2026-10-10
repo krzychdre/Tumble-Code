@@ -42,6 +42,17 @@ type ImportWithProviderOptions = ImportOptions & {
 
 const globalSettingsShape = globalSettingsSchema.shape as Record<keyof GlobalSettings, z.ZodTypeAny>
 
+/**
+ * Settings of removed features. Files exported by older versions still carry
+ * them, so they are dropped without the "Unknown setting" warning.
+ */
+const REMOVED_GLOBAL_SETTINGS_KEYS: ReadonlySet<string> = new Set([
+	// The image generation experiment.
+	"imageGenerationProvider",
+	"openRouterImageApiKey",
+	"openRouterImageGenerationSelectedModel",
+])
+
 function formatZodIssues(error: ZodError): string {
 	return error.issues.map((issue) => `[${issue.path.join(".") || "value"}]: ${issue.message}`).join(", ")
 }
@@ -73,6 +84,10 @@ function sanitizeGlobalSettings(rawGlobalSettings: unknown): {
 	for (const [key, rawValue] of Object.entries(rawGlobalSettings)) {
 		const path = `globalSettings.${key}`
 		const schema = globalSettingsShape[key as keyof GlobalSettings]
+
+		if (REMOVED_GLOBAL_SETTINGS_KEYS.has(key)) {
+			continue
+		}
 
 		if (!schema) {
 			warnings.push(`Setting "${path}" was skipped: Unknown setting.`)

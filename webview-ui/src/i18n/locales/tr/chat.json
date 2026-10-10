@@ -214,10 +214,6 @@
 		"wantsToReadAndXMore": "Tumble bu dosyayı ve {{count}} tane daha okumak istiyor",
 		"wantsToReadMultiple": "Tumble birden fazla dosya okumak istiyor",
 		"wantsToApplyBatchChanges": "Tumble birden fazla dosyaya değişiklik uygulamak istiyor",
-		"wantsToGenerateImage": "Tumble bir görsel oluşturmak istiyor",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble çalışma alanının dışında bir görsel oluşturmak istiyor",
-		"wantsToGenerateImageProtected": "Tumble korumalı bir konumda görsel oluşturmak istiyor",
-		"didGenerateImage": "Tumble bir görsel oluşturdu",
 		"userEdits": "Kullanıcı düzenlemeleri"
 	},
 	"directoryOperations": {

@@ -268,7 +268,7 @@ describe("importExport", () => {
 			})
 		})
 
-		it("skips an invalid imageGenerationProvider value while preserving other global settings", async () => {
+		it("drops the settings of the removed image generation feature without a warning", async () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 			;(fs.readFile as Mock).mockResolvedValue(
 				JSON.stringify({
@@ -282,7 +282,10 @@ describe("importExport", () => {
 						},
 					}),
 					globalSettings: {
-						imageGenerationProvider: "roo", // invalid: only "openrouter" is allowed in our fork
+						imageGenerationProvider: "openrouter",
+						openRouterImageApiKey: "sk-image",
+						openRouterImageGenerationSelectedModel: "google/gemini-2.5-flash-image",
+						experiments: { imageGeneration: true, preventFocusDisruption: true },
 						customInstructions: "Keep this setting",
 					},
 				}),
@@ -304,12 +307,11 @@ describe("importExport", () => {
 			})
 
 			expect(result.success).toBe(true)
-			expect((result as { warnings?: string[] }).warnings).toEqual(
-				expect.arrayContaining([expect.stringContaining("globalSettings.imageGenerationProvider")]),
-			)
-			const imported = (mockContextProxy.setValues as Mock).mock.calls[0][0]
-			expect(imported).not.toHaveProperty("imageGenerationProvider")
-			expect(imported.customInstructions).toBe("Keep this setting")
+			expect((result as { warnings?: string[] }).warnings).toBeUndefined()
+			expect((mockContextProxy.setValues as Mock).mock.calls[0][0]).toEqual({
+				experiments: { preventFocusDisruption: true },
+				customInstructions: "Keep this setting",
+			})
 		})
 
 		it("skips invalid customModes without aborting unrelated settings import", async () => {

@@ -277,10 +277,6 @@
 		"wantsToEditOutsideWorkspace": "Tumble wants to edit this file outside of the workspace",
 		"wantsToEditProtected": "Tumble wants to edit a protected configuration file",
 		"wantsToApplyBatchChanges": "Tumble wants to apply changes to multiple files",
-		"wantsToGenerateImage": "Tumble wants to generate an image",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble wants to generate an image outside of the workspace",
-		"wantsToGenerateImageProtected": "Tumble wants to generate an image in a protected location",
-		"didGenerateImage": "Tumble generated an image",
 		"wantsToInsertWithLineNumber": "Tumble wants to insert content into this file at line {{lineNumber}}",
 		"wantsToInsertAtEnd": "Tumble wants to append content to the end of this file",
 		"userEdits": "User Edits"

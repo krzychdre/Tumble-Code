@@ -382,7 +382,6 @@ describe("mergeExtensionState", () => {
 			apiConfiguration: { modelMaxThinkingTokens: 456, modelTemperature: 0.3 },
 			experiments: {
 				preventFocusDisruption: false,
-				imageGeneration: false,
 				customTools: false,
 			} as Record<ExperimentId, boolean>,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS + 5,
@@ -397,7 +396,6 @@ describe("mergeExtensionState", () => {
 
 		expect(result.experiments).toEqual({
 			preventFocusDisruption: false,
-			imageGeneration: false,
 			customTools: false,
 		})
 	})

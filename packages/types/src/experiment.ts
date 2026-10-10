@@ -6,7 +6,7 @@ import type { Keys, Values, Equals, AssertEqual } from "./type-fu.js"
  * ExperimentId
  */
 
-export const experimentIds = ["preventFocusDisruption", "imageGeneration", "customTools", "deferredTools"] as const
+export const experimentIds = ["preventFocusDisruption", "customTools", "deferredTools"] as const
 
 export const experimentIdsSchema = z.enum(experimentIds)
 
@@ -18,7 +18,6 @@ export type ExperimentId = z.infer<typeof experimentIdsSchema>
 
 export const experimentsSchema = z.object({
 	preventFocusDisruption: z.boolean().optional(),
-	imageGeneration: z.boolean().optional(),
 	customTools: z.boolean().optional(),
 	deferredTools: z.boolean().optional(),
 })
@@ -33,7 +32,6 @@ type _AssertExperiments = AssertEqual<Equals<ExperimentId, Keys<Experiments>>>
 
 export const EXPERIMENT_IDS = {
 	PREVENT_FOCUS_DISRUPTION: "preventFocusDisruption",
-	IMAGE_GENERATION: "imageGeneration",
 	CUSTOM_TOOLS: "customTools",
 	DEFERRED_TOOLS: "deferredTools",
 } as const satisfies Record<string, ExperimentId>
@@ -48,7 +46,6 @@ export interface ExperimentConfig {
 
 export const experimentConfigsMap: Record<ExperimentKey, ExperimentConfig> = {
 	PREVENT_FOCUS_DISRUPTION: { enabled: false },
-	IMAGE_GENERATION: { enabled: false },
 	CUSTOM_TOOLS: { enabled: false },
 	DEFERRED_TOOLS: { enabled: false },
 }

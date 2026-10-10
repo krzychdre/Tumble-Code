@@ -258,10 +258,6 @@
 		"wantsToEditOutsideWorkspace": "Tumble 想要編輯此工作區外的檔案",
 		"wantsToEditProtected": "Tumble 想要編輯受保護的設定檔案",
 		"wantsToApplyBatchChanges": "Tumble 想要對多個檔案套用變更",
-		"wantsToGenerateImage": "Tumble 想要產生圖片",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble 想要在工作區外產生圖片",
-		"wantsToGenerateImageProtected": "Tumble 想要在受保護位置產生圖片",
-		"didGenerateImage": "Tumble 已產生圖片",
 		"wantsToInsertWithLineNumber": "Tumble 想要在此檔案第 {{lineNumber}} 行插入內容",
 		"wantsToInsertAtEnd": "Tumble 想要在此檔案尾端新增內容",
 		"userEdits": "使用者編輯"

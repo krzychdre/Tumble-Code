@@ -130,8 +130,8 @@ export function microcompactTargetChars(tokensOverBudget: number): number {
  *
  * Results from tools NOT in this set (e.g. attempt_completion,
  * ask_followup_question, update_todo_list, switch_mode, new_task, skill,
- * generate_image, tools_load) are ALWAYS preserved — they
- * carry irreplaceable state or are small enough that clearing them is pointless.
+ * tools_load) are ALWAYS preserved: they carry irreplaceable state or are small
+ * enough that clearing them is pointless.
  */
 export const COMPACTABLE_TOOL_NAMES: ReadonlySet<string> = new Set<string>(toolNamesWhere((tool) => tool.compactable))
 

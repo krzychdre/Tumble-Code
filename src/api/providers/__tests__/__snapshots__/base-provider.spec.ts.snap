@@ -180,33 +180,6 @@ exports[`BaseProvider > does not mutate its input (DEF-C10) > sends the native t
   {
     "type": "function",
     "function": {
-      "name": "generate_image",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "prompt": {
-            "type": "string"
-          },
-          "path": {
-            "type": "string"
-          },
-          "image": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "prompt",
-          "path",
-          "image"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "list_files",
       "strict": true,
       "parameters": {

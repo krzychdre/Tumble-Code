@@ -670,7 +670,7 @@
 		},
 		"slimToolset": {
 			"label": "精簡工具集(小模型)",
-			"description": "為此設定檔在每個任務中提供一個明確的工具:read_file、search_files、list_files、codebase_search、apply_diff、write_to_file、execute_command、read_artifact、網路工具以及任務工具(ask、complete、switch mode、new task、todo list、skill、load tools)。多餘的編輯動詞(edit、search_replace、edit_file、apply_patch)、影像生成、並行任務和斜線命令均被隱藏。小模型不再選錯編輯器。若模型仍呼叫被隱藏的工具,該工具仍會執行。",
+			"description": "為此設定檔在每個任務中提供一個明確的工具:read_file、search_files、list_files、codebase_search、apply_diff、write_to_file、execute_command、read_artifact、網路工具以及任務工具(ask、complete、switch mode、new task、todo list、skill、load tools)。多餘的編輯動詞(edit、search_replace、edit_file、apply_patch)、並行任務和斜線命令均被隱藏。小模型不再選錯編輯器。若模型仍呼叫被隱藏的工具,該工具仍會執行。",
 			"hideMcp": {
 				"label": "同時隱藏 MCP 工具",
 				"description": "MCP 工具的 schema 通常是工具提示詞中最大的一部分。除非此設定檔需要 MCP 伺服器,否則請保持開啟。"
@@ -709,17 +709,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "要求新工作提供 'todos' 清單",
 			"description": "啟用後，new_task 工具將需要提供 todos 參數。這可以確保所有新工作都以明確的目標列表開始。停用時（預設），todos 參數保持可選，以實現向後相容。"
-		},
-		"IMAGE_GENERATION": {
-			"name": "啟用 AI 影像生成",
-			"description": "啟用後，Tumble 可以使用 OpenRouter 的影像生成模型，從文字提示產生影像。需要設定 OpenRouter API 金鑰。",
-			"openRouterApiKeyLabel": "OpenRouter API 金鑰",
-			"openRouterApiKeyPlaceholder": "輸入您的 OpenRouter API 金鑰",
-			"getApiKeyText": "取得 API 金鑰請前往",
-			"modelSelectionLabel": "影像生成模型",
-			"modelSelectionDescription": "選擇用於影像生成的模型",
-			"warningMissingKey": "⚠️ 影像生成需要 OpenRouter API 金鑰。請在上方設定。",
-			"successConfigured": "✓ 影像生成已設定完成並準備使用"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "啟用自訂工具",

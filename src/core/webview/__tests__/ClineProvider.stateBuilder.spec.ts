@@ -355,9 +355,6 @@ const FULL_SETTINGS = {
 	maxGitStatusFiles: 12,
 	parallelTasksMaxConcurrency: 5,
 	subagentFollowupTimeoutSec: 60,
-	imageGenerationProvider: "openrouter",
-	openRouterImageApiKey: "sk-image",
-	openRouterImageGenerationSelectedModel: "image-model",
 } as unknown as TumbleCodeSettings
 
 /**

@@ -8,7 +8,7 @@ const MAX_TIMEOUT_SECONDS = 3600
 /**
  * Limit for short control requests: OAuth token exchange and refresh, model lists, usage and rate-limit
  * lookups. These answer in well under a second when the service is up; without a limit a dropped connection
- * leaves the caller waiting forever. Long operations (a model answer, image generation, embeddings) use
+ * leaves the caller waiting forever. Long operations (a model answer, embeddings) use
  * {@link getApiRequestTimeout} instead.
  */
 export const CONTROL_REQUEST_TIMEOUT_MS = 30_000
