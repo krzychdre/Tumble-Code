@@ -156,7 +156,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			stream: true,
 			// Without this the API sends no final usage chunk (and no cache figures).
 			stream_options: { include_usage: true },
-			tools: this.convertToolsForOpenAI(metadata?.tools),
+			tools: this.convertToolsForOpenAI(metadata?.tools, this.options),
 			tool_choice: metadata?.tool_choice,
 			...(this.sendsParallelToolCalls && { parallel_tool_calls: metadata?.parallelToolCalls ?? true }),
 			...this.getExtraStreamParams(),
