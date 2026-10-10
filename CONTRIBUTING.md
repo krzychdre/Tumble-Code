@@ -64,7 +64,7 @@ All contributions start with a GitHub Issue.
 
 - Check for existing reports first.
 - Create a new bug report with: - Clear, numbered reproduction steps - Expected vs actual result - Tumble Code version (required); API provider/model if relevant
-  <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+    <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Development & Submission Process
 
@@ -110,6 +110,10 @@ lists:
   without `command`, `read` or `edit`), modes list, skills, rules, the mode's MODE
   section, user custom instructions, and last of all the deferred-tool catalog. These bytes may
   differ per mode, profile or user.
+
+A profile with `compactProfile` on gets a shorter prompt (`generateCompactPrompt`) with its own
+stable head: it differs from the long head from the first byte, but the same rules apply to it, so
+its bytes are identical for every mode on one workspace and machine.
 
 Four rules:
 

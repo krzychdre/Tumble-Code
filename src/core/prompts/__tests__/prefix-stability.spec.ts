@@ -71,6 +71,17 @@ vi.mock("../sections/memory", () => ({
 	getMemoryIndexSection: vi.fn().mockResolvedValue("\nContents of MEMORY.md:\n\n- [Entry](file.md)"),
 }))
 
+// The compact profile has its own memory sections (sections/compact/memory.ts);
+// fixed bodies for the same reason as above, spelled out twice for the same
+// hoisting reason.
+const COMPACT_MEMORY_BODY_STUB = "====\n\nMEMORY\n\nCompact memory instruction."
+const COMPACT_MEMORY_INDEX_STUB = "MEMORY.md:\n- [Entry](file.md)"
+
+vi.mock("../sections/compact/memory", () => ({
+	getCompactMemorySection: vi.fn().mockResolvedValue("====\n\nMEMORY\n\nCompact memory instruction."),
+	getCompactMemoryIndexSection: vi.fn().mockResolvedValue("MEMORY.md:\n- [Entry](file.md)"),
+}))
+
 vi.mock("../../../services/code-index/manager", () => ({
 	CodeIndexManager: {
 		getInstance: vi.fn(() => ({
@@ -90,6 +101,7 @@ import type { McpHub } from "../../../services/mcp/McpHub"
 import type { ClineProvider } from "../../webview/ClineProvider"
 import { buildNativeToolsArrayWithRestrictions } from "../../task/build-tools"
 import { SYSTEM_PROMPT, STABLE_PROMPT_OPENER } from "../system"
+import { COMPACT_PROMPT_OPENER } from "../sections/compact"
 import type { SystemPromptSettings } from "../types"
 
 const mockContext = {
@@ -767,5 +779,136 @@ describe("advertised tool array order", () => {
 
 		expect(second).toEqual(first)
 		expect(first.some((name) => name.includes("docs-server"))).toBe(false)
+	})
+})
+
+describe("compact profile: its own stable head", () => {
+	/**
+	 * A compact profile (`compactProfile: true`, see
+	 * ai_plans/2026-10-10_20-07_compact-a-prompt.md) builds a different, much
+	 * shorter prompt. It differs from the long prompt from the first byte, which
+	 * costs nothing: one profile always gets the same kind of prompt. What matters
+	 * is the same contract as above, inside the compact family: the compact head
+	 * is byte-stable and shared by every mode, so a mode switch on a local
+	 * llama.cpp server keeps its KV cache.
+	 */
+	const compact: SystemPromptSettings = { ...baseSettings, compactProfile: true }
+
+	const COMPACT_HEAD_MARKERS = [
+		COMPACT_PROMPT_OPENER,
+		"====\n\nTOOLS\n\n",
+		"====\n\nEDITING FILES",
+		"====\n\nDATES",
+		"====\n\nRULES",
+		"====\n\nSYSTEM INFORMATION",
+		COMPACT_MEMORY_BODY_STUB,
+		COMPACT_MEMORY_INDEX_STUB,
+	]
+
+	const COMPACT_TAIL_MARKERS = ["====\n\nMODES", "====\n\nMODE\n\n", "====\n\nUSER'S CUSTOM INSTRUCTIONS"]
+
+	it.each(MODES)("builds byte-identical compact prompts twice for %s mode", async (mode) => {
+		const first = await buildPrompt(mode, compact)
+		const second = await buildPrompt(mode, compact)
+
+		expect(second).toStrictEqual(first)
+	})
+
+	it("shares the whole compact head, and the modes list after it, between every pair of modes", async () => {
+		const prompts = new Map<string, string>()
+		for (const mode of MODES) {
+			prompts.set(mode, await buildPrompt(mode, compact))
+		}
+
+		for (let i = 0; i < MODES.length; i++) {
+			for (let j = i + 1; j < MODES.length; j++) {
+				const a = prompts.get(MODES[i])!
+				const b = prompts.get(MODES[j])!
+				const shared = commonPrefixLength(a, b)
+				const sharedText = a.slice(0, shared)
+
+				const headEnd = a.indexOf(COMPACT_MEMORY_INDEX_STUB) + COMPACT_MEMORY_INDEX_STUB.length
+				expect(headEnd).toBeGreaterThan(COMPACT_MEMORY_INDEX_STUB.length)
+				expect(shared).toBeGreaterThanOrEqual(headEnd)
+				for (const marker of COMPACT_HEAD_MARKERS) {
+					expect(sharedText).toContain(marker)
+				}
+
+				// The modes list is the same for every mode, so it opens the tail and
+				// stays cached too; its last line is inside the shared region.
+				expect(sharedText).toContain("====\n\nMODES")
+				expect(sharedText).toContain("\n- orchestrator: ")
+
+				// Not vacuous: the two prompts do diverge.
+				expect(shared).toBeLessThan(Math.min(a.length, b.length))
+			}
+		}
+	})
+
+	it("emits every compact head section before every compact tail section, in order", async () => {
+		const prompt = await buildPrompt("ask", compact)
+
+		const indexes = [...COMPACT_HEAD_MARKERS, ...COMPACT_TAIL_MARKERS].map((marker) => {
+			const index = prompt.indexOf(marker)
+			expect(index, `compact marker missing: ${marker}`).toBeGreaterThan(-1)
+			return index
+		})
+		for (let i = 1; i < indexes.length; i++) {
+			expect(indexes[i]).toBeGreaterThan(indexes[i - 1])
+		}
+
+		// TOOLS IN THIS MODE is mode-dependent: after the modes list, before MODE.
+		const limits = prompt.indexOf("====\n\nTOOLS IN THIS MODE")
+		expect(limits).toBeGreaterThan(prompt.indexOf("====\n\nMODES"))
+		expect(limits).toBeLessThan(prompt.indexOf("====\n\nMODE\n\n"))
+	})
+
+	it("keeps per-profile and per-request inputs out of the compact head", async () => {
+		const plain = await buildPrompt("code", compact)
+		const variants = [
+			await buildPrompt("code", { ...compact, isStealthModel: true }),
+			await buildPrompt("code", { ...compact, removedTools: ["switch_mode"] }),
+			await buildPrompt("code", compact, mcpHubWithServers, {}, { language: "pl" }),
+			await buildPrompt("code", compact, mcpHubWithServers, { deferredTools: true }),
+		]
+		const headEnd = plain.indexOf(COMPACT_MEMORY_INDEX_STUB) + COMPACT_MEMORY_INDEX_STUB.length
+
+		for (const variant of variants) {
+			expect(commonPrefixLength(plain, variant)).toBeGreaterThanOrEqual(headEnd)
+		}
+	})
+
+	it("ignores the slim flags: compact supersedes slim", async () => {
+		const plain = await buildPrompt("code", compact)
+		const withSlim = await buildPrompt("code", { ...compact, slimToolset: true, slimHidesMcp: true })
+
+		expect(withSlim).toStrictEqual(plain)
+	})
+
+	it("differs from the long prompt, and each stays stable on its own", async () => {
+		const compactPrompt = await buildPrompt("code", compact)
+		const longPrompt = await buildPrompt("code", { ...baseSettings, compactProfile: false })
+
+		expect(compactPrompt.startsWith(COMPACT_PROMPT_OPENER)).toBe(true)
+		expect(longPrompt.startsWith(STABLE_PROMPT_OPENER)).toBe(true)
+		expect(compactPrompt).not.toContain(STABLE_PROMPT_OPENER)
+		expect(compactPrompt.length).toBeLessThan(longPrompt.length)
+		expect(await buildPrompt("code", { ...baseSettings, compactProfile: false })).toStrictEqual(longPrompt)
+	})
+
+	it("keeps the compact opener one plain-ASCII constant", () => {
+		expect(COMPACT_PROMPT_OPENER).toMatch(/^[\x20-\x7E]+$/)
+		expect(COMPACT_PROMPT_OPENER).toContain("MODE section")
+		expect(COMPACT_PROMPT_OPENER).toContain("USER'S CUSTOM INSTRUCTIONS")
+	})
+
+	it.each(MODES)("delivers both sections the compact opener names, in %s mode", async (mode) => {
+		// The language argument is left undefined so the default path runs, as in
+		// the USER'S CUSTOM INSTRUCTIONS guard above.
+		const prompt = await buildPrompt(mode, compact, mcpHubWithServers, {}, { language: undefined })
+
+		expect(prompt.startsWith(COMPACT_PROMPT_OPENER)).toBe(true)
+		expect(prompt).toContain("====\n\nMODE\n\n")
+		expect(prompt).toContain("====\n\nUSER'S CUSTOM INSTRUCTIONS")
 	})
 })

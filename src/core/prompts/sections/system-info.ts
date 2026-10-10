@@ -11,7 +11,7 @@ import { getShell } from "../../../utils/shell"
 // prompt build.
 let cachedOsInfo: string | undefined
 
-function resolveOsInfo(): string {
+export function resolveOsInfo(): string {
 	if (cachedOsInfo === undefined) {
 		// Try to get detailed OS name, fall back to basic info if it fails
 		try {
