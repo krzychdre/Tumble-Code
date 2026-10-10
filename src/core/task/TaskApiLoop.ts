@@ -298,7 +298,12 @@ export class TaskApiLoop {
 			taskId: access.taskId,
 			instanceId: access.instanceId,
 			isBackground: access.isBackground,
-			apiConfiguration: access.apiConfiguration,
+			// A getter, so each request reads the task's CURRENT profile:
+			// Task.updateApiConfiguration replaces the object on a profile switch.
+			// The builder reads it only for the compact flag (system prompt, tools).
+			get apiConfiguration() {
+				return access.apiConfiguration
+			},
 			api: access.api,
 			apiConversationHistory: access.apiConversationHistory,
 			microcompactedIds: access.microcompactedIds,
