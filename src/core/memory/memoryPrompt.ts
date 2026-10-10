@@ -242,6 +242,10 @@ export const COMPACT_MAX_INDEX_CHARS = 3_000
  * It sits in the compact stable head, which is shared by every mode, so it
  * names no tool a mode might lack except as the way to do the job; a mode that
  * cannot write files is told so by the TOOLS IN THIS MODE section.
+ *
+ * The example note starts with a frontmatter `description`: recall
+ * (`scanMemoryFiles`, the relevance ranker) and the dream merge read a note's
+ * summary only from there, so a note without it is listed by file name alone.
  */
 export function buildCompactMemoryInstruction(memoryDir: string): string {
 	return [
@@ -250,7 +254,11 @@ export function buildCompactMemoryInstruction(memoryDir: string): string {
 		"MEMORY",
 		"",
 		`Your memory directory is ${memoryDir}`,
-		`It holds notes from earlier conversations, and ${ENTRYPOINT_NAME} there is their index. When an index line looks relevant to the task, read that note with read_file, using its full path in the memory directory. Save a note only when the user asks you to remember something or states a lasting preference: write a new .md file in English there and add one line to ${ENTRYPOINT_NAME}, for example "- [Test command](test-command.md) - run the tests with pnpm test".`,
+		`${ENTRYPOINT_NAME} there indexes your notes from earlier conversations. When an index line is relevant to the task, read that note with read_file at its full path there. Save a note only when the user asks you to remember something or states a lasting preference: write a new .md file in English there, starting with`,
+		"---",
+		"description: run the tests with pnpm test",
+		"---",
+		`then add its line to ${ENTRYPOINT_NAME}: "- [Tests](tests.md) - run the tests with pnpm test".`,
 	].join("\n")
 }
 
