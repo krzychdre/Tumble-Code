@@ -20,7 +20,6 @@ import { attemptCompletionTool } from "../tools/AttemptCompletionTool"
 import { newTaskTool } from "../tools/NewTaskTool"
 import { runParallelTasksTool } from "../tools/RunParallelTasksTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
-import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
 import { skillTool } from "../tools/SkillTool"
 import { toolsLoadTool } from "../tools/ToolsLoadTool"
 import { generateImageTool } from "../tools/GenerateImageTool"
@@ -67,7 +66,6 @@ const TOOL_HANDLERS: Readonly<Record<DispatchableToolName, BaseTool<any>>> = {
 	new_task: newTaskTool,
 	run_parallel_tasks: runParallelTasksTool,
 	update_todo_list: updateTodoListTool,
-	run_slash_command: runSlashCommandTool,
 	skill: skillTool,
 	tools_load: toolsLoadTool,
 }

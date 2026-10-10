@@ -41,7 +41,6 @@ const PROTOCOL = [
 	"new_task",
 	"run_parallel_tasks",
 	"skill",
-	"run_slash_command",
 	"tools_load",
 	"generate_image",
 ]

@@ -39,7 +39,6 @@ const handles = vi.hoisted(() => {
 		newTaskTool: stub(),
 		runParallelTasksTool: stub(),
 		updateTodoListTool: stub(),
-		runSlashCommandTool: stub(),
 		skillTool: stub(),
 		toolsLoadTool: stub(),
 		generateImageTool: stub(),
@@ -70,7 +69,6 @@ vi.mock("../../tools/AttemptCompletionTool", () => ({ attemptCompletionTool: han
 vi.mock("../../tools/NewTaskTool", () => ({ newTaskTool: handles.newTaskTool }))
 vi.mock("../../tools/RunParallelTasksTool", () => ({ runParallelTasksTool: handles.runParallelTasksTool }))
 vi.mock("../../tools/UpdateTodoListTool", () => ({ updateTodoListTool: handles.updateTodoListTool }))
-vi.mock("../../tools/RunSlashCommandTool", () => ({ runSlashCommandTool: handles.runSlashCommandTool }))
 vi.mock("../../tools/SkillTool", () => ({ skillTool: handles.skillTool }))
 vi.mock("../../tools/ToolsLoadTool", () => ({ toolsLoadTool: handles.toolsLoadTool }))
 vi.mock("../../tools/GenerateImageTool", () => ({ generateImageTool: handles.generateImageTool }))

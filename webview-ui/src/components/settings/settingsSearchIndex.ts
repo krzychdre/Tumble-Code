@@ -124,11 +124,6 @@ export const STATIC_SEARCH_INDEX: StaticSearchEntry[] = [
 		labelKey: "settings:experimental.IMAGE_GENERATION.name",
 	},
 	{
-		settingId: "experimental-run_slash_command",
-		section: "experimental",
-		labelKey: "settings:experimental.RUN_SLASH_COMMAND.name",
-	},
-	{
 		settingId: "experimental-custom_tools",
 		section: "experimental",
 		labelKey: "settings:experimental.CUSTOM_TOOLS.name",

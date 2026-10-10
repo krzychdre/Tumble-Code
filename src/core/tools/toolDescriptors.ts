@@ -18,7 +18,6 @@ import {
 	parseReadArtifactArgs,
 	parseReadFileArgs,
 	parseRunParallelTasksArgs,
-	parseRunSlashCommandArgs,
 	parseSearchFilesArgs,
 	parseSearchReplaceArgs,
 	parseSearchTaskHistoryArgs,
@@ -420,13 +419,6 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		approvalActions: ["updateTodoList"],
 		slimAllowed: true,
 		describe: bare,
-	},
-	run_slash_command: {
-		parseArgs: parseRunSlashCommandArgs,
-		// Loading a command's instructions; a skill found through it asks as `skill`.
-		approvalCategory: "readOnly",
-		approvalActions: ["runSlashCommand"],
-		describe: forParamWithArgs("command"),
 	},
 	skill: {
 		parseArgs: parseSkillArgs,

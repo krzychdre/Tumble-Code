@@ -38,10 +38,10 @@ const WEB_GROUP_TOOLS: readonly string[] = TOOL_GROUPS.web.tools
  *             update_todo_list, skill, tools_load
  *
  * Deliberately absent: the alternative edit verbs (`edit`, `search_replace`,
- * `edit_file`, `apply_patch`), `generate_image`, `run_parallel_tasks` and
- * `run_slash_command` (weak models fan out or expand slash commands instead of
- * doing the work; orchestrating modes run on strong profiles anyway), and the
- * MCP tools, which are governed separately by `slimHidesMcp`.
+ * `edit_file`, `apply_patch`), `generate_image`, `run_parallel_tasks` (weak
+ * models fan out instead of doing the work; orchestrating modes run on strong
+ * profiles anyway), and the MCP tools, which are governed separately by
+ * `slimHidesMcp`.
  *
  * The list is the `slimAllowed` column of the tool descriptor table
  * (`src/core/tools/toolDescriptors.ts`).
@@ -371,11 +371,6 @@ export function filterNativeToolsForMode(
 	// Conditionally exclude generate_image if experiment is not enabled
 	if (!experiments?.imageGeneration) {
 		allowedToolNames.delete("generate_image")
-	}
-
-	// Conditionally exclude run_slash_command if experiment is not enabled
-	if (!experiments?.runSlashCommand) {
-		allowedToolNames.delete("run_slash_command")
 	}
 
 	// The `web` group is gated by a global setting rather than by the mode

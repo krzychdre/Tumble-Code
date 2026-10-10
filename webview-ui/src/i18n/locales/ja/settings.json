@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ 画像生成にはOpenRouter APIキーが必要です。上記で設定してください。",
 			"successConfigured": "✓ 画像生成が設定され、使用準備完了です"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "モデル開始スラッシュコマンドを有効にする",
-			"description": "有効にすると、Tumbleがワークフローを実行するためにあなたのスラッシュコマンドを実行できます。"
-		},
 		"CUSTOM_TOOLS": {
 			"name": "カスタムツールを有効化",
 			"description": "有効にすると、Tumbleはプロジェクトの.roo/toolsディレクトリまたはグローバルツール用の~/.roo/toolsからカスタムTypeScript/JavaScriptツールを読み込んで使用できます。注意：これらのツールは自動的に承認されます。",

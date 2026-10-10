@@ -104,7 +104,7 @@ describe("applySlimToolset", () => {
 
 describe("filterNativeToolsForMode - slim toolset intersection", () => {
 	it("advertises exactly the slim set for a mode carrying every group", () => {
-		const advertised = advertisedForCodeMode(slimSettings, { runSlashCommand: true, imageGeneration: true })
+		const advertised = advertisedForCodeMode(slimSettings, { imageGeneration: true })
 
 		expect(advertised.sort()).toEqual(
 			[
@@ -134,11 +134,11 @@ describe("filterNativeToolsForMode - slim toolset intersection", () => {
 		)
 	})
 
-	it("hides the spare edit verbs, image generation, fan-out and slash commands", () => {
+	it("hides the spare edit verbs, image generation and fan-out", () => {
 		// Ask for every opt-in edit verb through modelInfo.includedTools so the
 		// full profile really does advertise them; the slim profile must not.
 		const includedTools = ["edit", "search_replace", "edit_file", "apply_patch"]
-		const experiments = { runSlashCommand: true, imageGeneration: true }
+		const experiments = { imageGeneration: true }
 
 		const full = advertisedForCodeMode({ ...fullSettings, modelInfo: { includedTools } }, experiments)
 		const slim = advertisedForCodeMode({ ...slimSettings, modelInfo: { includedTools } }, experiments)
@@ -150,7 +150,6 @@ describe("filterNativeToolsForMode - slim toolset intersection", () => {
 			"apply_patch",
 			"generate_image",
 			"run_parallel_tasks",
-			"run_slash_command",
 			// `use_mcp_tool` has no native schema (MCP is advertised per server,
 			// see filterMcpToolsForMode below); `access_mcp_resource` does.
 			"access_mcp_resource",
@@ -185,7 +184,7 @@ describe("filterNativeToolsForMode - slim toolset intersection", () => {
 	})
 
 	it("changes nothing when the profile leaves the slim toolset off", () => {
-		const experiments = { runSlashCommand: true, imageGeneration: true }
+		const experiments = { imageGeneration: true }
 		const base = { ...fullSettings, modelInfo: { includedTools: ["edit_file"] } }
 
 		const withFlagAbsent = advertisedForCodeMode(base, experiments)

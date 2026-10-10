@@ -134,7 +134,7 @@ async function buildAdvertisedToolNames(apiConfiguration: ProviderSettings): Pro
 		cwd: "/test/path",
 		mode: "code",
 		customModes: undefined,
-		experiments: { runSlashCommand: true, imageGeneration: true },
+		experiments: { imageGeneration: true },
 		apiConfiguration,
 		// Opt every alternative edit verb in, so the full profile really does
 		// advertise them and the slim comparison is not vacuous.
@@ -184,7 +184,6 @@ describe("system prompt - slim toolset", () => {
 			"edit",
 			"generate_image",
 			"run_parallel_tasks",
-			"run_slash_command",
 			"access_mcp_resource",
 		]
 

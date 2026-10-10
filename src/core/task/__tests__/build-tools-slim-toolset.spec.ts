@@ -93,7 +93,7 @@ async function advertisedToolsForMode(mode: string): Promise<string[]> {
 		cwd: "/test/path",
 		mode,
 		customModes: undefined,
-		experiments: { runSlashCommand: true, imageGeneration: true },
+		experiments: { imageGeneration: true },
 		apiConfiguration,
 		webToolsEnabled: true,
 	})
@@ -108,7 +108,6 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset per profile", () 
 		expect(slim).toContain("write_to_file")
 		expect(slim).toContain("execute_command")
 		expect(slim).not.toContain("run_parallel_tasks")
-		expect(slim).not.toContain("run_slash_command")
 		expect(slim).not.toContain("generate_image")
 		expect(slim).not.toContain("access_mcp_resource")
 		// No per-server MCP schema either: slimHidesMcp defaults to true.
@@ -125,7 +124,6 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset per profile", () 
 
 		expect(slim).not.toContain("run_parallel_tasks")
 		expect(full).toContain("run_parallel_tasks")
-		expect(full).toContain("run_slash_command")
 		expect(full).toContain("access_mcp_resource")
 		expect(full.some((name) => name.includes("docs-server"))).toBe(true)
 
@@ -193,7 +191,7 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset on the Gemini bra
 			cwd: "/test/path",
 			mode: "code",
 			customModes: undefined,
-			experiments: { runSlashCommand: true, imageGeneration: true },
+			experiments: { imageGeneration: true },
 			apiConfiguration,
 			webToolsEnabled: true,
 			includeAllToolsWithRestrictions: true,
@@ -210,7 +208,6 @@ describe("buildNativeToolsArrayWithRestrictions - slim toolset on the Gemini bra
 		expect(declared).not.toContain("apply_patch")
 		expect(declared).not.toContain("generate_image")
 		expect(declared).not.toContain("run_parallel_tasks")
-		expect(declared).not.toContain("run_slash_command")
 		expect(declared).not.toContain("access_mcp_resource")
 		expect(declared.some((name) => name.includes("docs-server"))).toBe(false)
 		expect(declared).toContain("apply_diff")

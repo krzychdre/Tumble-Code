@@ -47,7 +47,6 @@ describe("tool approval categories (CORE-R4 d)", () => {
 			new_task: "subtask newTask",
 			run_parallel_tasks: "manual",
 			update_todo_list: "alwaysAllowed updateTodoList",
-			run_slash_command: "readOnly runSlashCommand",
 			skill: "alwaysAllowed skill",
 			tools_load: "none",
 		})
@@ -87,7 +86,6 @@ describe("tool approval categories (CORE-R4 d)", () => {
 			newTask: "subtask",
 			readFile: "readOnly",
 			reviewPlan: "planReview",
-			runSlashCommand: "readOnly",
 			searchFiles: "readOnly",
 			skill: "alwaysAllowed",
 			switchMode: "modeSwitch",

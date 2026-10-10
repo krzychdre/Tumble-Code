@@ -87,7 +87,6 @@ export const TOOL_MINIMAL_EXAMPLES = {
 		],
 		maxConcurrency: null,
 	},
-	run_slash_command: { command: "init", args: null },
 	search_and_replace: { file_path: "src/app.ts", old_string: "const a = 1", new_string: "const a = 2" },
 	search_files: { path: "src", regex: "retryPolicy", file_pattern: null },
 	search_replace: { file_path: "src/app.ts", old_string: "const a = 1", new_string: "const a = 2" },

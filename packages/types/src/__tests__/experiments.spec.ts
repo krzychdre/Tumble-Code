@@ -17,7 +17,6 @@ describe("experiments", () => {
 			const experiments: Record<ExperimentId, boolean> = {
 				preventFocusDisruption: false,
 				imageGeneration: false,
-				runSlashCommand: false,
 				customTools: false,
 				deferredTools: false,
 			}
@@ -28,7 +27,6 @@ describe("experiments", () => {
 			const experiments: Record<ExperimentId, boolean> = {
 				preventFocusDisruption: true,
 				imageGeneration: false,
-				runSlashCommand: false,
 				customTools: false,
 				deferredTools: false,
 			}
@@ -39,7 +37,6 @@ describe("experiments", () => {
 			const experiments: Record<ExperimentId, boolean> = {
 				preventFocusDisruption: false,
 				imageGeneration: false,
-				runSlashCommand: false,
 				customTools: false,
 				deferredTools: false,
 			}

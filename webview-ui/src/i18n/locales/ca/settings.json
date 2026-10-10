@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ La clau API d'OpenRouter és necessària per a la generació d'imatges. Si us plau, configura-la a dalt.",
 			"successConfigured": "✓ La generació d'imatges està configurada i llesta per utilitzar"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Habilitar comandes de barra diagonal iniciades pel model",
-			"description": "Quan està habilitat, Tumble pot executar les vostres comandes de barra diagonal per executar fluxos de treball."
-		},
 		"CUSTOM_TOOLS": {
 			"name": "Habilitar eines personalitzades",
 			"description": "Quan està habilitat, Tumble pot carregar i utilitzar eines TypeScript/JavaScript personalitzades des del directori .roo/tools del vostre projecte o ~/.roo/tools per a eines globals. Nota: aquestes eines s'aprovaran automàticament.",

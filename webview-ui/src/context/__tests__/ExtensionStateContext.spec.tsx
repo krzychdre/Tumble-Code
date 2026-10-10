@@ -383,7 +383,6 @@ describe("mergeExtensionState", () => {
 			experiments: {
 				preventFocusDisruption: false,
 				imageGeneration: false,
-				runSlashCommand: false,
 				customTools: false,
 			} as Record<ExperimentId, boolean>,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS + 5,
@@ -399,7 +398,6 @@ describe("mergeExtensionState", () => {
 		expect(result.experiments).toEqual({
 			preventFocusDisruption: false,
 			imageGeneration: false,
-			runSlashCommand: false,
 			customTools: false,
 		})
 	})

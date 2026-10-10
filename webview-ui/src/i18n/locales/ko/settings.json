@@ -741,10 +741,6 @@
 			"warningMissingKey": "⚠️ 이미지 생성에는 OpenRouter API 키가 필요합니다. 위에서 설정해주세요.",
 			"successConfigured": "✓ 이미지 생성이 구성되었으며 사용할 준비가 되었습니다"
 		},
-		"RUN_SLASH_COMMAND": {
-			"name": "모델 시작 슬래시 명령 활성화",
-			"description": "활성화되면 Tumble가 워크플로를 실행하기 위해 슬래시 명령을 실행할 수 있습니다."
-		},
 		"CUSTOM_TOOLS": {
 			"name": "사용자 정의 도구 활성화",
 			"description": "활성화하면 Tumble가 프로젝트의 .roo/tools 디렉터리 또는 전역 도구를 위한 ~/.roo/tools에서 사용자 정의 TypeScript/JavaScript 도구를 로드하고 사용할 수 있습니다. 참고: 이러한 도구는 자동으로 자동 승인됩니다.",
