@@ -1,7 +1,7 @@
 import path from "path"
 import fs from "fs/promises"
 
-import { type ClineSayTool, isCompactProfile } from "@tumble-code/types"
+import type { ClineSayTool } from "@tumble-code/types"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
@@ -17,7 +17,6 @@ import type { ToolUse } from "../../shared/tools"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { getToolStreamState } from "./toolStreamState"
 import { applyComputedEdit } from "./helpers/applyComputedEdit"
-import { stripCopiedLineNumbers } from "./helpers/compactEdit"
 
 interface WriteToFileParams {
 	path: string
@@ -77,7 +76,9 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		}
 
 		// Content copied from read_file output keeps its line numbers.
-		newContent = this.withoutCopiedLineNumbers(task, newContent)
+		if (everyLineHasLineNumbers(newContent)) {
+			newContent = stripLineNumbers(newContent)
+		}
 
 		try {
 			task.consecutiveMistakeCount = 0
@@ -130,20 +131,6 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			await task.diffViewProvider.reset()
 			this.resetPartialState(task)
 		}
-	}
-
-	/**
-	 * `content` without the `N | ` line numbers of the old read_file output.
-	 * Without the compact profile only when every line, empty ones included,
-	 * carries one (as before). Under compact also when only the non-empty lines
-	 * do, so a trailing newline or a blank line no longer keeps the numbers in
-	 * the file. The streaming preview and the saved content use the same rule.
-	 */
-	private withoutCopiedLineNumbers(task: Task, content: string): string {
-		if (isCompactProfile(task.apiConfiguration)) {
-			return stripCopiedLineNumbers(content)
-		}
-		return everyLineHasLineNumbers(content) ? stripLineNumbers(content) : content
 	}
 
 	/**
@@ -270,7 +257,10 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 				await task.diffViewProvider.open(relPath!, fileExists ? "modify" : "create")
 			}
 
-			await task.diffViewProvider.update(this.withoutCopiedLineNumbers(task, newContent), false)
+			await task.diffViewProvider.update(
+				everyLineHasLineNumbers(newContent) ? stripLineNumbers(newContent) : newContent,
+				false,
+			)
 		}
 	}
 }

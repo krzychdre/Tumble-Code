@@ -244,9 +244,29 @@ describe("edit under the compact profile", () => {
 		expect(task.consecutiveMistakeCount).toBe(0)
 	})
 
-	it("a missing old_string counts as empty", async () => {
-		await runEdit({ file_path: "n.md", new_string: "hello" }, { content: null })
-		expect(savedContent()).toBe("hello")
+	it("a missing or null old_string is a missing parameter, not an empty one", async () => {
+		for (const params of [
+			{ file_path: "n.md", new_string: "hello" },
+			{ file_path: "n.md", old_string: null, new_string: "hello" },
+		]) {
+			const { task, result } = await runEdit(params, { content: null })
+			expect(result).toMatch(/^Error: Missing parameter 'old_string'\./)
+			expect(task.sayAndCreateMissingParamError).toHaveBeenCalledWith("edit", "old_string")
+			expect(task.consecutiveMistakeCount).toBe(1)
+		}
+		expect(mockedApply).not.toHaveBeenCalled()
+	})
+
+	it("empty old_string creates the file as write_to_file without the flag would (a pipe table keeps its first column)", async () => {
+		const table = "1 | 08:00 | coffee\n2 | 09:40 | coffee\n"
+		await runEdit({ file_path: "t.md", old_string: "", new_string: table }, { content: null })
+		expect(savedContent()).toBe(table)
+		// The old rule still applies: every line numbered, the last one included.
+		await runEdit({ file_path: "u.md", old_string: "", new_string: "1 | a\n2 | b" }, { content: null })
+		expect(savedContent()).toBe("a\nb")
+		// Line endings as sent.
+		await runEdit({ file_path: "v.md", old_string: "", new_string: "a\r\nb\n" }, { content: null })
+		expect(savedContent()).toBe("a\r\nb\n")
 	})
 
 	it("empty old_string on an existing file quotes its last 3 lines as the old_string to append after", async () => {

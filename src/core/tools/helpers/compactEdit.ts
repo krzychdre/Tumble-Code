@@ -49,13 +49,6 @@ export function restoreLineEnding(contentLF: string, eol: LineEnding): string {
  */
 const LOOSE_LINE_NUMBER_PREFIX = /^[ \t]*\d+[ \t]*\|(?!\|)[ \t]?/
 
-/**
- * The prefix exactly as read_file wrote it (whitespace before the pipe), for
- * `write_to_file`, where a whole file is rewritten on the strength of it and a
- * pipe-separated data file (`1|a`) must not lose its first column.
- */
-const STRICT_LINE_NUMBER_PREFIX = /^[ \t]*\d+[ \t]+\|(?!\|)[ \t]?/
-
 function nonEmptyLines(text: string): string[] {
 	return text.split("\n").filter((line) => line.trim() !== "")
 }
@@ -76,21 +69,6 @@ export function stripLineNumberPrefixes(text: string): string {
 		.split("\n")
 		.map((line) => line.replace(LOOSE_LINE_NUMBER_PREFIX, ""))
 		.join("\n")
-}
-
-/**
- * The content of a `write_to_file` call with read_file's line numbers removed,
- * when every non-empty line carries one (blank lines and a trailing newline do
- * not prevent it, unlike `everyLineHasLineNumbers`). Otherwise unchanged.
- * Line endings are kept.
- */
-export function stripCopiedLineNumbers(content: string): string {
-	const lines = content.split("\n")
-	const nonEmpty = lines.filter((line) => line.replace(/\r$/, "").trim() !== "")
-	if (nonEmpty.length === 0 || !nonEmpty.every((line) => STRICT_LINE_NUMBER_PREFIX.test(line))) {
-		return content
-	}
-	return lines.map((line) => line.replace(STRICT_LINE_NUMBER_PREFIX, "")).join("\n")
 }
 
 // ─── Matching ───────────────────────────────────────────────────────────────

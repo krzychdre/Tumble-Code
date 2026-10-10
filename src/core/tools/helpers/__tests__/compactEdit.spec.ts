@@ -4,7 +4,6 @@ import {
 	hasLineNumberPrefixes,
 	lastLines,
 	matchWithContext,
-	stripCopiedLineNumbers,
 	stripLineNumberPrefixes,
 } from "../compactEdit"
 
@@ -40,16 +39,6 @@ describe("line-number prefixes", () => {
 	it("strips one space after the pipe and keeps the line's own indentation", () => {
 		expect(stripLineNumberPrefixes("  3 |     return x\n  4 | }")).toBe("    return x\n}")
 		expect(stripLineNumberPrefixes("12 | | 08:15 | coffee |")).toBe("| 08:15 | coffee |")
-	})
-
-	it("write_to_file stripping needs every non-empty line in read_file's format", () => {
-		expect(stripCopiedLineNumbers("1 | a\n2 | b\n")).toBe("a\nb\n")
-		expect(stripCopiedLineNumbers("1 | a\n\n3 | c")).toBe("a\n\nc")
-		expect(stripCopiedLineNumbers("1 | a\r\n2 | b\r\n")).toBe("a\r\nb\r\n")
-		// Pipe-separated data without a space before the pipe stays as it is.
-		expect(stripCopiedLineNumbers("1|a\n2|b\n")).toBe("1|a\n2|b\n")
-		expect(stripCopiedLineNumbers("1 | a\nplain\n")).toBe("1 | a\nplain\n")
-		expect(stripCopiedLineNumbers("")).toBe("")
 	})
 })
 

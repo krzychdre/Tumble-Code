@@ -11,6 +11,8 @@ import { compactResponses, formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
 import type { ToolUse } from "../../shared/tools"
 
+import { everyLineHasLineNumbers, stripLineNumbers } from "../../integrations/misc/extract-text"
+
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { applyComputedEdit } from "./helpers/applyComputedEdit"
 import { replaceLiteral } from "./helpers/replaceLiteral"
@@ -22,7 +24,6 @@ import {
 	matchWithContext,
 	normalizeToLF,
 	restoreLineEnding,
-	stripCopiedLineNumbers,
 } from "./helpers/compactEdit"
 
 export interface StringReplaceParams {
@@ -203,8 +204,9 @@ export async function runStringReplace(
 /**
  * `edit` under the compact profile (small local models): the lenient matching
  * chain of `compactReplace` and short plain-text errors that quote the file.
- * An empty old_string creates a missing file (or fills an empty one) and
- * otherwise answers with the file's last lines to append after.
+ * An empty old_string creates a missing file (or fills an empty one) with
+ * new_string as `write_to_file` would write it, and otherwise answers with
+ * the file's last lines to append after.
  *
  * The mistake counting is the same as in `runStringReplace`: every failed call
  * goes through `host.recordFailure`, the rooignore block does not, and a saved
@@ -219,8 +221,7 @@ async function runCompactEdit(
 	const { handleError, pushToolResult } = callbacks
 	const { toolName } = host
 	const filePath = typeof params.file_path === "string" ? params.file_path : ""
-	// A missing old_string is treated as an empty one (create or append), not as a malformed call.
-	const oldString = typeof params.old_string === "string" ? params.old_string : ""
+	const oldString = params.old_string
 	const newString = params.new_string
 	// Non-strict schemas under compact: a model may send the boolean as a string.
 	const replaceAll = params.replace_all === true || (params.replace_all as unknown) === "true"
@@ -231,6 +232,15 @@ async function runCompactEdit(
 			// Called for its chat row and telemetry; the model gets the short compact text.
 			await task.sayAndCreateMissingParamError(toolName, "file_path")
 			pushToolResult(compactResponses.missingParameter(toolName, "file_path"))
+			return
+		}
+
+		// The argument parser lets a call through only with all three fields, but a
+		// non-strict schema still lets a model send null or a number.
+		if (typeof oldString !== "string") {
+			host.recordFailure()
+			await task.sayAndCreateMissingParamError(toolName, "old_string")
+			pushToolResult(compactResponses.missingParameter(toolName, "old_string"))
 			return
 		}
 
@@ -290,12 +300,15 @@ async function runCompactEdit(
 				pushToolResult(compactResponses.editAppendToExistingFile(relPath, lastLines(contentLF, 3)))
 				return
 			}
-			if (newLF === "") {
+			if (newString === "") {
 				host.recordFailure()
 				pushToolResult(compactResponses.editEmptyNewString(relPath))
 				return
 			}
-			newContent = restoreLineEnding(stripCopiedLineNumbers(newLF), fileExists ? eol : "\n")
+			// As write_to_file without the flag writes it: compact read_file shows no line
+			// numbers, so a numbered-looking line is real content (a pipe table) unless the
+			// old rule (every line, the last one included) says otherwise.
+			newContent = everyLineHasLineNumbers(newString) ? stripLineNumbers(newString) : newString
 		} else {
 			if (oldLF === newLF) {
 				host.recordFailure()
