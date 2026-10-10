@@ -70,11 +70,11 @@ DATES
 
 "Today" is the date in "Current time" in environment_details. Put a dated entry under the heading of its date. If that heading does not exist yet, create it in the same format as the other dates. Never put today's entry under another date.
 
-Example. Current time: 2025-03-14 12:05 (Friday), Europe/Warsaw. diary.md ends with:
+Example. Current time: 2025-03-14 12:05 (Friday), Europe/Warsaw. CHANGELOG.md ends with:
 ## 2025-03-13
-- 08:00 coffee
-The user says "add a coffee at 12:00 today". There is no 2025-03-14 heading yet, so call edit with:
-{"file_path": "diary.md", "old_string": "## 2025-03-13\\n- 08:00 coffee", "new_string": "## 2025-03-13\\n- 08:00 coffee\\n\\n## 2025-03-14\\n- 12:00 coffee"}`
+- Fixed the login timeout
+The user says "note that I updated the README today". There is no 2025-03-14 heading yet, so call edit with:
+{"file_path": "CHANGELOG.md", "old_string": "## 2025-03-13\\n- Fixed the login timeout", "new_string": "## 2025-03-13\\n- Fixed the login timeout\\n\\n## 2025-03-14\\n- Updated the README"}`
 }
 
 /** Objective, output efficiency, markdown and path rules in one section. */

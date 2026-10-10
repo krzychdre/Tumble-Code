@@ -250,7 +250,7 @@ export function buildCompactMemoryInstruction(memoryDir: string): string {
 		"MEMORY",
 		"",
 		`Your memory directory is ${memoryDir}`,
-		`It holds notes from earlier conversations, and ${ENTRYPOINT_NAME} there is their index. When an index line looks relevant to the task, read that note with read_file, using its full path in the memory directory. Save a note only when the user asks you to remember something or states a lasting preference: write a new .md file in English there and add one line to ${ENTRYPOINT_NAME}, for example "- [Coffee](coffee.md) - user drinks 2 a day".`,
+		`It holds notes from earlier conversations, and ${ENTRYPOINT_NAME} there is their index. When an index line looks relevant to the task, read that note with read_file, using its full path in the memory directory. Save a note only when the user asks you to remember something or states a lasting preference: write a new .md file in English there and add one line to ${ENTRYPOINT_NAME}, for example "- [Test command](test-command.md) - run the tests with pnpm test".`,
 	].join("\n")
 }
 
