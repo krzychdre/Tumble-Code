@@ -695,6 +695,10 @@
 				"label": "Sembunyikan juga alat MCP",
 				"description": "Skema alat MCP biasanya bagian terbesar dari prompt alat. Tetap aktifkan kecuali profil ini memerlukan server MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Mode ringkas untuk model kecil",
+			"description": "Untuk model lokal dengan jendela konteks 32k hingga 40k: prompt sistem yang pendek, set alat minimal dengan pengeditan sederhana, detail lingkungan yang lebih singkat, dan batas output yang lebih ketat. Biarkan nonaktif untuk model besar."
 		}
 	},
 	"experimental": {

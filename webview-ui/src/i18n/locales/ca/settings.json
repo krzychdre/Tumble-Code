@@ -695,6 +695,10 @@
 				"label": "Amaga també les eines MCP",
 				"description": "Els esquemes d'eines MCP solen ser la part més gran de l'indicador d'eines. Mantén-ho activat tret que aquest perfil necessiti un servidor MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Mode compacte per a models petits",
+			"description": "Per a models locals amb una finestra de context de 32k a 40k: un prompt del sistema curt, un conjunt mínim d'eines amb edició senzilla, detalls de l'entorn més breus i límits de sortida més estrictes. Deixa-ho desactivat per als models grans."
 		}
 	},
 	"experimental": {

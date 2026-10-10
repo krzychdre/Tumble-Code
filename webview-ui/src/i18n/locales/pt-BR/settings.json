@@ -695,6 +695,10 @@
 				"label": "Ocultar também ferramentas MCP",
 				"description": "Os esquemas de ferramentas MCP costumam ser a maior parte do prompt de ferramentas. Mantenha isto ativo a menos que este perfil precise de um servidor MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Modo compacto para modelos pequenos",
+			"description": "Para modelos locais com janela de contexto de 32k a 40k: um prompt de sistema curto, um conjunto mínimo de ferramentas com edição simples, detalhes do ambiente mais curtos e limites de saída mais rígidos. Deixe desativado para modelos grandes."
 		}
 	},
 	"experimental": {

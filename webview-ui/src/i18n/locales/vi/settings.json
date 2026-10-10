@@ -695,6 +695,10 @@
 				"label": "Cũng ẩn công cụ MCP",
 				"description": "Lược đồ công cụ MCP thường là phần lớn nhất của prompt công cụ. Giữ bật trừ khi hồ sơ này cần một máy chủ MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Chế độ gọn cho mô hình nhỏ",
+			"description": "Dành cho mô hình cục bộ có cửa sổ ngữ cảnh từ 32k đến 40k: lời nhắc hệ thống ngắn, bộ công cụ tối thiểu với cách chỉnh sửa đơn giản, chi tiết môi trường ngắn hơn và giới hạn đầu ra chặt hơn. Hãy để tắt với các mô hình lớn."
 		}
 	},
 	"experimental": {

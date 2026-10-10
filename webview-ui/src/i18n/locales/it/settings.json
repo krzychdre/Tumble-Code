@@ -695,6 +695,10 @@
 				"label": "Nascondi anche gli strumenti MCP",
 				"description": "Gli schemi degli strumenti MCP sono in genere la parte più grande del prompt degli strumenti. Tienilo attivo a meno che questo profilo non richieda un server MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Modalità compatta per modelli piccoli",
+			"description": "Per modelli locali con una finestra di contesto da 32k a 40k: un prompt di sistema breve, un set minimo di strumenti con modifica semplice, dettagli dell'ambiente più brevi e limiti di output più stretti. Lasciala disattivata per i modelli grandi."
 		}
 	},
 	"experimental": {

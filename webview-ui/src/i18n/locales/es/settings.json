@@ -695,6 +695,10 @@
 				"label": "Ocultar también las herramientas MCP",
 				"description": "Los esquemas de herramientas MCP suelen ser la mayor parte del indicador de herramientas. Mantén esto activado a menos que este perfil necesite un servidor MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Modo compacto para modelos pequeños",
+			"description": "Para modelos locales con una ventana de contexto de 32k a 40k: un prompt del sistema corto, un conjunto mínimo de herramientas con edición sencilla, detalles del entorno más breves y límites de salida más estrictos. Déjalo desactivado para modelos grandes."
 		}
 	},
 	"experimental": {

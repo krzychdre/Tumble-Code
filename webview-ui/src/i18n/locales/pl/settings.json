@@ -695,6 +695,10 @@
 				"label": "Ukryj też narzędzia MCP",
 				"description": "Schematy narzędzi MCP to zazwyczaj największa część promptu narzędzi. Utrzymuj to włączone, chyba że ten profil wymaga serwera MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Tryb kompaktowy dla małych modeli",
+			"description": "Dla lokalnych modeli z oknem kontekstu od 32k do 40k: krótki prompt systemowy, minimalny zestaw narzędzi z prostą edycją, krótsze szczegóły środowiska i niższe limity danych wyjściowych. Przy dużych modelach zostaw tę opcję wyłączoną."
 		}
 	},
 	"experimental": {

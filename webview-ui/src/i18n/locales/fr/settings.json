@@ -695,6 +695,10 @@
 				"label": "Masquer aussi les outils MCP",
 				"description": "Les schémas d'outils MCP sont généralement la plus grande partie du prompt d'outils. Gardez ceci activé sauf si ce profil a besoin d'un serveur MCP."
 			}
+		},
+		"compactProfile": {
+			"label": "Mode compact pour les petits modèles",
+			"description": "Pour les modèles locaux avec une fenêtre de contexte de 32k à 40k : un prompt système court, un jeu d'outils minimal avec une édition simple, des détails d'environnement plus courts et des limites de sortie plus strictes. Laissez-le désactivé pour les grands modèles."
 		}
 	},
 	"experimental": {

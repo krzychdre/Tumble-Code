@@ -695,6 +695,10 @@
 				"label": "Auch MCP-Werkzeuge verbergen",
 				"description": "MCP-Werkzeugschemas sind meist der größte Teil des Werkzeug-Prompts. Lass dies an, sofern dieses Profil keinen MCP-Server benötigt."
 			}
+		},
+		"compactProfile": {
+			"label": "Kompaktmodus für kleine Modelle",
+			"description": "Für lokale Modelle mit einem Kontextfenster von 32k bis 40k: ein kurzer System-Prompt, ein minimaler Werkzeugsatz mit einfacher Bearbeitung, kürzere Umgebungsdetails und engere Ausgabegrenzen. Für große Modelle ausgeschaltet lassen."
 		}
 	},
 	"experimental": {

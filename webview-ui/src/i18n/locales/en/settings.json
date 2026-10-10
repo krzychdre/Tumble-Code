@@ -811,6 +811,10 @@
 				"label": "Also hide MCP tools",
 				"description": "MCP tool schemas are usually the biggest part of the tool prompt. Keep this on unless this profile needs an MCP server."
 			}
+		},
+		"compactProfile": {
+			"label": "Compact mode for small models",
+			"description": "For local models with a 32k to 40k context window: a short system prompt, a minimal tool set with simple editing, shorter environment details and tighter output limits. Leave it off for large models."
 		}
 	},
 	"experimental": {

@@ -695,6 +695,10 @@
 				"label": "MCP araçlarını da gizle",
 				"description": "MCP araç şemaları genellikle araç isteminin en büyük parçasıdır. Bu profil bir MCP sunucusu gerektirmedikçe açık tutun."
 			}
+		},
+		"compactProfile": {
+			"label": "Küçük modeller için kompakt mod",
+			"description": "32k ile 40k arası bağlam penceresine sahip yerel modeller için: kısa bir sistem istemi, basit düzenlemeli minimal bir araç seti, daha kısa ortam ayrıntıları ve daha sıkı çıktı sınırları. Büyük modeller için kapalı bırakın."
 		}
 	},
 	"experimental": {

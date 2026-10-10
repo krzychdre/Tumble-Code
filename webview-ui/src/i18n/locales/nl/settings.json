@@ -695,6 +695,10 @@
 				"label": "Ook MCP-tools verbergen",
 				"description": "MCP-tool-schema's zijn meestal het grootste deel van de tool-prompt. Laat dit aan tenzij dit profiel een MCP-server nodig heeft."
 			}
+		},
+		"compactProfile": {
+			"label": "Compacte modus voor kleine modellen",
+			"description": "Voor lokale modellen met een contextvenster van 32k tot 40k: een korte systeemprompt, een minimale set tools met eenvoudig bewerken, kortere omgevingsdetails en strengere uitvoerlimieten. Laat dit uit voor grote modellen."
 		}
 	},
 	"experimental": {
