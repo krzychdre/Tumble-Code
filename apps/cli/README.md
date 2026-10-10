@@ -370,6 +370,10 @@ and prints a one-line hint saying where to set one.
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
 | `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
 
+[`examples/cli-settings.example.json`](examples/cli-settings.example.json) sets
+every one of these keys, with each explained in
+[`examples/README.md`](examples/README.md).
+
 Times the CLI shows (`tumble list`, `/export`) and the current time the model
 is told are local. The zone comes from `TZ`, else the system (`/etc/localtime`);
 a container without either runs in UTC. Set `timeZone` there; it overrides `TZ`.
