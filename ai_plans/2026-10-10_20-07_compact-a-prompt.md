@@ -1,7 +1,11 @@
 # Compact profile, workstream A: the compact system prompt
 
-Status: in progress on branch `feat/compact-a-prompt` (local only). Part of
-[the compact profile overview](2026-10-10_19-36_compact-small-model-profile.md), row A.
+Status: implemented on branch `feat/compact-a-prompt` (local only, commits `dd706857f`, `9e95911a0`), waiting for
+integration with B, C and D. Part of [the compact profile overview](2026-10-10_19-36_compact-small-model-profile.md),
+row A.
+
+Measured (built-in modes, no user content, no memory index): 3,292 characters (code, debug) to 3,455 (orchestrator),
+against about 25.6k for the long prompt with the same inputs. The capped memory index adds about 3,100.
 
 ## Goal
 
