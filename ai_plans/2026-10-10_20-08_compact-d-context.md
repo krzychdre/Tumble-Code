@@ -1,6 +1,6 @@
 # Compact profile, workstream D: context budget
 
-Status: in progress on `feat/compact-d-context` (local only). Overview and invariants:
+Status: done on `feat/compact-d-context` (local only, four commits, not merged). Overview and invariants:
 `2026-10-10_19-36_compact-small-model-profile.md` (row D).
 
 Everything below is gated on `isCompactProfile(...)` of the profile that serves the request. With the flag absent
@@ -51,6 +51,27 @@ or false every output is today's (`compact-off-golden.spec.ts` plus the flag-off
 - No artifact spill under compact: a result over the inline budget is truncated in place (head and tail), and
   `execute_command` does not persist its output to a `command-output` artifact.
 
+## Measured
+
+- Environment details: typical first turn 243 characters, worst case with long paths and 12 tabs 2,086, quiet
+  later turn 101.
+- 40,960 window: reservation 4,096, hard limit 32,768 (80 percent), condense from 28,672 (70 percent). The
+  condense request adds 6,332 characters (summary prompt 679, instructions 5,653) plus the compact tools; with a
+  pessimistic 3.5 characters per token it needs 36,006 of 40,960 tokens at the threshold.
+
 ## Tests
 
-Targeted vitest files only; `compact-off-golden.spec.ts` before every commit, never with `-u`.
+Targeted vitest files only; `compact-off-golden.spec.ts` before every commit, never with `-u`. New specs:
+`getEnvironmentDetails.compact.spec.ts` (flag-off string pinned against the code before the change),
+`currentTime.spec.ts`, `model-options.compact.spec.ts`, `openai.compact.spec.ts`,
+`TaskApiLoop.compact-profile.spec.ts`, `TaskContextManager.compact-profile.spec.ts`,
+`context-management/__tests__/compactProfile.spec.ts`, `spillPolicy.compact.spec.ts`,
+`executeCommand.compact.spec.ts`.
+
+## Follow-ups
+
+- LM Studio and native Ollama send no output limit; under compact they should send the reservation
+  (`max_tokens` / `num_predict`).
+- The condense instructions (5,653 characters) ask for an `<analysis>` block and full code snippets; a shorter
+  compact variant would save input and keep the summary inside the 4,096-token output limit.
+- Ungated version of the `-1` reservation fix (overview plan).
