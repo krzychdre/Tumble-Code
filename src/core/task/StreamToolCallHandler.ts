@@ -2,14 +2,14 @@ import { type ToolName } from "@tumble-code/types"
 import type { ToolUse } from "../../shared/tools"
 
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
-import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
+import { isCheckpointedCall } from "../checkpoints/checkpointedTools"
 import { toolNamesWhere } from "../tools/toolDescriptors"
 import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
 
 import type { Task } from "./Task"
 import { captureStreamedToolCall } from "../diagnostics/ErrorReporter"
 import { logger } from "../../utils/logging"
-import { TaskIdAccess } from "./access-groups"
+import { TaskApiConfigurationAccess, TaskIdAccess } from "./access-groups"
 
 // Tools that cannot mutate the workspace (the `workspaceReadOnly` column of the
 // tool descriptor table). An eager pre-edit checkpoint is only safe while every
@@ -26,7 +26,7 @@ const WORKSPACE_READ_ONLY_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(
  * this interface is the typed read/write view, the same seam pattern as
  * `TaskApiLoopAccess` (D3).
  */
-export interface StreamToolCallHandlerAccess extends TaskIdAccess {
+export interface StreamToolCallHandlerAccess extends TaskIdAccess, TaskApiConfigurationAccess {
 	currentStreamingDidCheckpoint: boolean
 	assistantMessageContent: AssistantMessageContent[]
 	userMessageContentReady: boolean
@@ -115,7 +115,7 @@ export class StreamToolCallHandler {
 				// suppresses an unhandled rejection when no write tool ends up
 				// executing this turn).
 				if (
-					isCheckpointedTool(event.name) &&
+					isCheckpointedCall(event.name, this.access.apiConfiguration) &&
 					!this.access.currentStreamingDidCheckpoint &&
 					typeof this._task?.checkpointSave === "function" &&
 					this._task.pendingCheckpointSave === undefined &&

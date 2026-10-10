@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { TodoItem } from "@tumble-code/types"
+import { isCompactProfile, TodoItem } from "@tumble-code/types"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
@@ -8,6 +8,7 @@ import { getModeBySlug } from "../../shared/modes"
 import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import { parseMarkdownChecklist } from "./UpdateTodoListTool"
+import { compactSubagentsOffError } from "./helpers/compactSubagents"
 import { Package } from "../../shared/package"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
@@ -49,6 +50,17 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 							"parent task can continue.",
 					),
 				)
+				return
+			}
+
+			// A compact profile (a very small local model) runs without subagents.
+			// Its toolset hides new_task, but dispatch is tolerant, so a call made
+			// anyway is refused here. Counted as a mistake (without failing the
+			// turn, so attempt_completion stays open), so a model that keeps
+			// retrying reaches the mistake limit instead of looping.
+			if (isCompactProfile(task.apiConfiguration)) {
+				this.recordFailure(task, "new_task")
+				pushToolResult(formatResponse.toolError(compactSubagentsOffError("new_task")))
 				return
 			}
 
@@ -216,6 +228,12 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 	}
 
 	override async handlePartial(task: Task, block: ToolUse<"new_task">): Promise<void> {
+		// Under a compact profile execute refuses the call, so no card for a
+		// subtask that will not start: the refusal is the only answer.
+		if (isCompactProfile(task.apiConfiguration)) {
+			return
+		}
+
 		const mode: string | undefined = block.params.mode
 		const message: string | undefined = block.params.message
 		const todos: string | undefined = block.params.todos
