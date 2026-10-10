@@ -296,7 +296,7 @@ describe("compact system prompt: what it teaches", () => {
 		expect(Object.keys(args)).toEqual(["file_path", "old_string", "new_string"])
 		// The old text is kept and the new date heading follows it.
 		expect(args.new_string.startsWith(args.old_string)).toBe(true)
-		expect(args.new_string).toContain("\n\n## 2025-03-14\n- Updated the README")
+		expect(args.new_string).toContain("\n\n## 2025-03-14\n- Sent the report")
 	})
 
 	it("lists every mode in one line with its slug and name", async () => {

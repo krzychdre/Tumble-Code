@@ -70,11 +70,11 @@ DATES
 
 "Today" is the date in "Current time" in environment_details. Put a dated entry under the heading of its date. If that heading does not exist yet, create it in the same format as the other dates. Never put today's entry under another date.
 
-Example. Current time: 2025-03-14 12:05 (Friday), Europe/Warsaw. CHANGELOG.md ends with:
+Example. Current time: 2025-03-14 12:05 (Friday), Europe/Warsaw. notes.md ends with:
 ## 2025-03-13
-- Fixed the login timeout
-The user says "note that I updated the README today". There is no 2025-03-14 heading yet, so call edit with:
-{"file_path": "CHANGELOG.md", "old_string": "## 2025-03-13\\n- Fixed the login timeout", "new_string": "## 2025-03-13\\n- Fixed the login timeout\\n\\n## 2025-03-14\\n- Updated the README"}`
+- Team meeting at 10:00
+The user says "note that I sent the report today". There is no 2025-03-14 heading yet, so call edit with:
+{"file_path": "notes.md", "old_string": "## 2025-03-13\\n- Team meeting at 10:00", "new_string": "## 2025-03-13\\n- Team meeting at 10:00\\n\\n## 2025-03-14\\n- Sent the report"}`
 }
 
 /** Objective, output efficiency, markdown and path rules in one section. */
@@ -85,6 +85,7 @@ RULES
 
 - Finish every task with attempt_completion. State what you did, or give the answer. This holds in every mode, also when you only answer a question.
 - Ask the user with ask_followup_question only when you cannot do the task otherwise.
+- Do only what the user asked. When it is done, call attempt_completion; do not offer or ask about extra work.
 - Reply in the user's language.
 - Be brief. Write at most one short sentence before a tool call. Do not repeat file contents or tool results.
 - Format replies in Markdown. Name files by their path, for example \`docs/notes.md\`.
