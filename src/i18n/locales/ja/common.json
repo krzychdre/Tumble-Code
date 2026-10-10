@@ -54,13 +54,6 @@
 		"share_task_not_found": "タスクが見つからないか、アクセスが拒否されました。",
 		"task_show_failed": "タスクを開けませんでした。削除されたか破損している可能性があります。",
 		"mode_import_failed": "モードのインポートに失敗しました：{{error}}",
-		"command_not_found": "コマンド '{{name}}' が見つかりません",
-		"open_command_file": "コマンドファイルを開けませんでした",
-		"delete_command": "コマンドの削除に失敗しました",
-		"no_workspace_for_project_command": "プロジェクトコマンド用のワークスペースフォルダが見つかりません",
-		"command_already_exists": "コマンド \"{{commandName}}\" は既に存在します",
-		"create_command_failed": "コマンドの作成に失敗しました",
-		"command_template_content": "---\ndescription: \"このコマンドが何をするかの簡潔な説明\"\n---\n\nこれは新しいスラッシュコマンドです。このファイルを編集してコマンドの動作をカスタマイズしてください。",
 		"message": {
 			"no_active_task_to_delete": "メッセージを削除するアクティブなタスクがありません",
 			"invalid_timestamp_for_deletion": "削除用のメッセージタイムスタンプが無効です",

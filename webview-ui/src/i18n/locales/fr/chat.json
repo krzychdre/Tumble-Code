@@ -213,10 +213,6 @@
 		"wantsToReadAndXMore": "Tumble veut lire ce fichier et {{count}} de plus",
 		"wantsToReadMultiple": "Tumble souhaite lire plusieurs fichiers",
 		"wantsToApplyBatchChanges": "Tumble veut appliquer des modifications à plusieurs fichiers",
-		"wantsToGenerateImage": "Tumble veut générer une image",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble veut générer une image en dehors de l'espace de travail",
-		"wantsToGenerateImageProtected": "Tumble veut générer une image dans un emplacement protégé",
-		"didGenerateImage": "Tumble a généré une image",
 		"userEdits": "Modifications de l'utilisateur"
 	},
 	"instructions": {
@@ -461,18 +457,9 @@
 		"placeholder": "Modifiez votre message..."
 	},
 	"slashCommands": {
-		"description": "Utilisez les commandes slash intégrées ou créez des personnalisées pour accéder rapidement aux prompts et flux de travail fréquemment utilisés. <DocsLink>Documentation</DocsLink>",
-		"manageCommands": "Gérer les commandes slash dans les paramètres",
-		"globalCommands": "Commandes Globales",
-		"workspaceCommands": "Commandes de l'Espace de Travail",
-		"editCommand": "Modifier la commande",
-		"deleteCommand": "Supprimer la commande",
-		"deleteDialog": {
-			"title": "Supprimer la commande",
-			"description": "Êtes-vous sûr de vouloir supprimer la commande \"{{name}}\" ? Cette action ne peut pas être annulée.",
-			"cancel": "Annuler",
-			"confirm": "Supprimer"
-		}
+		"title": "Commandes Slash",
+		"description": "Exécutez une commande intégrée ou une skill, ou changez de mode.",
+		"manageSkills": "Gérer les skills dans les paramètres"
 	},
 	"contextMenu": {
 		"noResults": "Aucun résultat",

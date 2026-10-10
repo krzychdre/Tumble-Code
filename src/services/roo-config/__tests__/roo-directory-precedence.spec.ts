@@ -2,9 +2,7 @@
 //
 // Precedence matrix for every `.roo` directory kind, run against a REAL
 // temporary file system (a fake home directory plus a fake workspace). The
-// matrix pins the order the user sees today; only the slash-command case
-// where two code paths disagreed is pinned to the corrected order (see the
-// "commands" block).
+// matrix pins the order the user sees today.
 
 import * as fs from "fs"
 import * as os from "os"
@@ -44,7 +42,6 @@ vi.mock("../../search/file-search", () => ({
 }))
 
 import { addCustomInstructions, loadRuleFiles } from "../../../core/prompts/sections/custom-instructions"
-import { getCommand, getCommands } from "../../command/commands"
 import { SkillsManager } from "../../skills/SkillsManager"
 import { invalidateRooDirectoryCache } from "../index"
 
@@ -179,70 +176,6 @@ describe(".roo directory precedence matrix", () => {
 			})
 			expect(out.indexOf("ROOT-AGENTS")).toBeGreaterThanOrEqual(0)
 			expect(out.indexOf("SUB-AGENTS")).toBeGreaterThan(out.indexOf("ROOT-AGENTS"))
-		})
-	})
-
-	describe("commands (override: built-in < global < project)", () => {
-		const both = async (name: string) => {
-			const listed = (await getCommands(cwd)).find((c) => c.name === name)
-			const executed = await getCommand(cwd, name)
-			return { listed, executed }
-		}
-
-		it("uses the built-in command when nobody overrides it", async () => {
-			const { listed, executed } = await both("init")
-			expect(listed?.source).toBe("built-in")
-			expect(executed?.source).toBe("built-in")
-		})
-
-		it("project overrides global in the list and on execution", async () => {
-			write(path.join(globalRoo, "commands", "deploy.md"), "GLOBAL-DEPLOY")
-			write(path.join(projectRoo, "commands", "deploy.md"), "PROJECT-DEPLOY")
-			const { listed, executed } = await both("deploy")
-			expect(listed?.content).toBe("PROJECT-DEPLOY")
-			expect(executed?.content).toBe("PROJECT-DEPLOY")
-		})
-
-		it("project overrides a built-in command in the list and on execution", async () => {
-			write(path.join(projectRoo, "commands", "init.md"), "PROJECT-INIT")
-			const { listed, executed } = await both("init")
-			expect(listed?.source).toBe("project")
-			expect(executed?.source).toBe("project")
-		})
-
-		// The two code paths disagreed here: the picker list (getCommands) kept
-		// the built-in /init while execution (getCommand) ran ~/.roo/commands/init.md.
-		// The documented order is project > global > built-in, so both now pick global.
-		it("global overrides a built-in command in the list AND on execution (was: list showed built-in)", async () => {
-			write(path.join(globalRoo, "commands", "init.md"), "GLOBAL-INIT")
-			const { listed, executed } = await both("init")
-			expect(executed?.source).toBe("global")
-			expect(listed?.source).toBe("global")
-			expect(listed?.content).toBe("GLOBAL-INIT")
-		})
-	})
-
-	describe("slash-command list cache (P8: the picker asks on every keystroke)", () => {
-		it("reads the command files once across two list requests, and again after invalidation", async () => {
-			write(path.join(projectRoo, "commands", "deploy.md"), "PROJECT-DEPLOY")
-			const fsp = (await import("fs/promises")).default
-			const readFile = vi.spyOn(fsp, "readFile")
-			const commandReads = () =>
-				readFile.mock.calls.filter(([file]) => String(file).endsWith(`${path.sep}deploy.md`)).length
-
-			try {
-				await getCommands(cwd)
-				await getCommands(cwd)
-				expect(commandReads()).toBe(1)
-
-				write(path.join(projectRoo, "commands", "deploy.md"), "EDITED-DEPLOY")
-				invalidateRooDirectoryCache()
-				const listed = (await getCommands(cwd)).find((c) => c.name === "deploy")
-				expect(listed?.content).toBe("EDITED-DEPLOY")
-				expect(commandReads()).toBe(2)
-			} finally {
-				readFile.mockRestore()
-			}
 		})
 	})
 

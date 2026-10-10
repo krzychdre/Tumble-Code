@@ -78,9 +78,6 @@ const PASSTHROUGH_SETTING_KEYS = [
 	"enhancementApiConfigId",
 	"disabledTools",
 	"customCondensingPrompt",
-	"imageGenerationProvider",
-	"openRouterImageApiKey",
-	"openRouterImageGenerationSelectedModel",
 ] as const satisfies readonly (keyof TumbleCodeSettings)[]
 
 /**

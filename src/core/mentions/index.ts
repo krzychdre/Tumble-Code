@@ -15,7 +15,8 @@ import { DEFAULT_LINE_LIMIT } from "../prompts/tools/native-tools/read_file"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
-import { getCommand, type Command } from "../../services/command/commands"
+import type { Command } from "../../services/command/commands"
+import { getBuiltInCommand } from "../../services/command/built-in-commands"
 import { buildSkillResult, resolveSkillContentForMode, type SkillLookup } from "../../services/skills/skillInvocation"
 import type { SkillContent } from "@tumble-code/types"
 
@@ -112,14 +113,24 @@ export async function parseMentions(
 	const contentBlocks: MentionContentBlock[] = []
 	let commandMode: string | undefined // Track mode from the first slash command that has one
 
-	// First pass: check which command mentions exist and cache the results
+	// First pass: resolve every "/name" mention to a built-in command or a
+	// skill and cache the result.
+	//
+	// Name collisions: a built-in command (built-in-commands.ts, e.g. /init)
+	// wins over a skill of the same name, so the skill is not looked up at all.
+	// Skills resolve through SkillsManager for the task's mode, exactly as the
+	// skill tool does (project beats global, mode-specific beats generic, and a
+	// skill restricted to other modes is not found). Modes are not resolved
+	// here: picking a mode in the "/" menu switches the mode in the chat input
+	// and sends no "/<mode>" text. The "/" menu applies the same rule
+	// (getSlashCommandsAndSkills in webview/messageHandlers/commandsAndSkills.ts).
 	const commandMatches = Array.from(text.matchAll(commandRegexGlobal))
 	const uniqueCommandNames = new Set(commandMatches.map(([, commandName]) => commandName))
 
 	const commandExistenceChecks = await Promise.all(
 		Array.from(uniqueCommandNames).map(async (commandName) => {
 			try {
-				const command = await getCommand(cwd, commandName)
+				const command = await getBuiltInCommand(commandName)
 				if (command) {
 					return { commandName, command, skillContent: null }
 				}
@@ -152,8 +163,10 @@ export async function parseMentions(
 	// Only replace text for commands that actually exist (keep "see below" for commands)
 	let parsedText = text
 	for (const [match, commandName] of commandMatches) {
-		if (validCommands.has(commandName) || validSkills.has(commandName)) {
+		if (validCommands.has(commandName)) {
 			parsedText = parsedText.replace(match, `Command '${commandName}' (see below for command content)`)
+		} else if (validSkills.has(commandName)) {
+			parsedText = parsedText.replace(match, `Skill '${commandName}' (see below for skill instructions)`)
 		}
 	}
 
@@ -245,6 +258,7 @@ export async function parseMentions(
 		}
 	}
 
+	// The same text the skill tool returns when the model loads the skill itself.
 	for (const [skillName, skillContent] of validSkills) {
 		slashCommandHelp += `\n\n${buildSkillResult(skillName, undefined, skillContent)}`
 	}

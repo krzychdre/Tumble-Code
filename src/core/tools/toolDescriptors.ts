@@ -12,13 +12,11 @@ import {
 	parseEditArgs,
 	parseEditFileArgs,
 	parseExecuteCommandArgs,
-	parseGenerateImageArgs,
 	parseListFilesArgs,
 	parseNewTaskArgs,
 	parseReadArtifactArgs,
 	parseReadFileArgs,
 	parseRunParallelTasksArgs,
-	parseRunSlashCommandArgs,
 	parseSearchFilesArgs,
 	parseSearchReplaceArgs,
 	parseSearchTaskHistoryArgs,
@@ -114,7 +112,7 @@ export interface ToolDescriptor {
 	/**
 	 * A checkpoint is saved before the tool runs (presentAssistantMessage) and started
 	 * early while its arguments stream (TaskStreamProcessor). Refactor plan decision 9:
-	 * every workspace-writing tool plus `new_task` and `generate_image`.
+	 * every workspace-writing tool plus `new_task`.
 	 */
 	requiresCheckpoint?: boolean
 	/**
@@ -315,14 +313,6 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		ledger: "file-mutation",
 		describe: bare,
 	},
-	// Writes the image file.
-	generate_image: {
-		parseArgs: parseGenerateImageArgs,
-		approvalCategory: "write",
-		approvalActions: ["generateImage"],
-		requiresCheckpoint: true,
-		describe: forParam("path"),
-	},
 
 	// command and MCP
 	execute_command: {
@@ -437,13 +427,6 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		approvalActions: ["updateTodoList"],
 		slimAllowed: true,
 		describe: bare,
-	},
-	run_slash_command: {
-		parseArgs: parseRunSlashCommandArgs,
-		// Loading a command's instructions; a skill found through it asks as `skill`.
-		approvalCategory: "readOnly",
-		approvalActions: ["runSlashCommand"],
-		describe: forParamWithArgs("command"),
 	},
 	skill: {
 		parseArgs: parseSkillArgs,

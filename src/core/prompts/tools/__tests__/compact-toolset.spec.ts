@@ -36,8 +36,8 @@ function names(tools: OpenAI.Chat.ChatCompletionTool[]): string[] {
 	return tools.map((tool) => (tool as OpenAI.Chat.ChatCompletionFunctionTool).function.name)
 }
 
-/** Every experiment that unlocks an extra tool, so the compact intersection has work to do. */
-const allExperiments = { runSlashCommand: true, imageGeneration: true }
+/** No experiment unlocks a native tool any more (image generation and run_slash_command are gone). */
+const experiments = {}
 
 function advertised(
 	mode: string,
@@ -50,7 +50,7 @@ function advertised(
 			catalog,
 			mode,
 			options.customModes,
-			allExperiments,
+			experiments,
 			liveCodeIndexManager,
 			settings,
 			mcpHubWithResources,
@@ -120,8 +120,6 @@ describe("applyCompactToolset", () => {
 			"tools_load",
 			"skill",
 			"codebase_search",
-			"generate_image",
-			"run_slash_command",
 			"search_task_history",
 			"use_mcp_tool",
 			"access_mcp_resource",

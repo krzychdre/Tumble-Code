@@ -1,16 +1,10 @@
-// Slash commands, skills and custom tools.
+// Slash menu entries (built-in commands and skills), skills and custom tools.
 
 import * as path from "path"
-import * as os from "os"
-import * as fs from "fs/promises"
-import * as vscode from "vscode"
 import type { Command as SlashCommand } from "@tumble-code/types"
 import { customToolRegistry } from "@tumble-code/core"
-import { t } from "../../../i18n"
 import { defaultModeSlug } from "../../../shared/modes"
-import { openFile } from "../../../integrations/misc/open-file"
 import { getRooDirectoriesForCwd } from "../../../services/roo-config/index.js"
-import { invalidateRooDirectoryCache } from "../../../services/roo-config/cache"
 import {
 	handleRequestSkills,
 	handleCreateSkill,
@@ -18,7 +12,7 @@ import {
 	handleUpdateSkillModes,
 	handleOpenSkillFile,
 } from "../skillsMessageHandler"
-import { type HandlerContext, serializeError, logAndToast } from "./context"
+import { type HandlerContext, serializeError } from "./context"
 import type { DomainHandlerMap } from "./types"
 import { logger } from "../../../utils/logging"
 
@@ -46,12 +40,22 @@ const getCurrentMode = async (ctx: HandlerContext): Promise<string> => {
 	return defaultModeSlug
 }
 
-const getDiscoveredCommands = async (ctx: HandlerContext): Promise<SlashCommand[]> => {
+/**
+ * The entries of the chat "/" menu: the built-in commands, then every skill
+ * available in the current mode (SkillsManager.getSkillsForMode, the same
+ * resolution the skill tool and the "/skill-name" expansion use). Skills keep
+ * their "global" or "project" source; only built-in commands are "built-in".
+ *
+ * Name collisions: a built-in command wins over a skill of the same name, so
+ * the skill is left out of the list. parseMentions (core/mentions) expands
+ * "/name" with the same rule. Modes are listed by the webview from its own
+ * mode list and are not part of this one.
+ */
+const getSlashCommandsAndSkills = async (ctx: HandlerContext): Promise<SlashCommand[]> => {
 	const { provider } = ctx
-	const { getCommands } = await import("../../../services/command/commands")
-	const commands = await getCommands(ctx.getCurrentCwd())
+	const { getBuiltInCommands } = await import("../../../services/command/built-in-commands")
 
-	const commandList: SlashCommand[] = commands.map((command) => ({
+	const commandList: SlashCommand[] = (await getBuiltInCommands()).map((command) => ({
 		name: command.name,
 		source: command.source,
 		filePath: command.filePath,
@@ -115,7 +119,7 @@ export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = 
 	requestCommands: async (ctx) => {
 		const { provider } = ctx
 		try {
-			const commandList = await getDiscoveredCommands(ctx)
+			const commandList = await getSlashCommandsAndSkills(ctx)
 			await provider.postMessageToWebview({ type: "commands", commands: commandList })
 		} catch (error) {
 			logger.error(`Error fetching commands: ${serializeError(error)}`)
@@ -146,165 +150,5 @@ export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = 
 	openSkillFile: async (ctx, message) => {
 		const { provider } = ctx
 		await handleOpenSkillFile(provider, message)
-	},
-
-	openCommandFile: async (ctx, message) => {
-		const { provider, getCurrentCwd } = ctx
-		try {
-			if (message.text) {
-				const { getCommand } = await import("../../../services/command/commands")
-				const command = await getCommand(getCurrentCwd(), message.text)
-
-				if (command && command.filePath) {
-					openFile(command.filePath)
-				} else {
-					vscode.window.showErrorMessage(t("common:errors.command_not_found", { name: message.text }))
-				}
-			}
-		} catch (error) {
-			logAndToast(ctx, "Error opening command file: ", error, "common:errors.open_command_file")
-		}
-	},
-
-	deleteCommand: async (ctx, message) => {
-		const { provider, getCurrentCwd } = ctx
-		try {
-			if (message.text && message.values?.source) {
-				const { getCommand } = await import("../../../services/command/commands")
-				const command = await getCommand(getCurrentCwd(), message.text)
-
-				if (command && command.filePath) {
-					// Delete the command file
-					await fs.unlink(command.filePath)
-					invalidateRooDirectoryCache("commands")
-					logger.info(`Deleted command file: ${command.filePath}`)
-				} else {
-					vscode.window.showErrorMessage(t("common:errors.command_not_found", { name: message.text }))
-				}
-			}
-		} catch (error) {
-			logAndToast(ctx, "Error deleting command: ", error, "common:errors.delete_command")
-		}
-	},
-
-	createCommand: async (ctx, message) => {
-		const { provider, getCurrentCwd } = ctx
-		try {
-			const source = message.values?.source as "global" | "project"
-			const fileName = message.text // Custom filename from user input
-
-			if (!source) {
-				logger.warn("Missing source for createCommand")
-				return
-			}
-
-			// Determine the commands directory based on source
-			let commandsDir: string
-			if (source === "global") {
-				const globalConfigDir = path.join(os.homedir(), ".roo")
-				commandsDir = path.join(globalConfigDir, "commands")
-			} else {
-				if (!vscode.workspace.workspaceFolders?.length) {
-					vscode.window.showErrorMessage(t("common:errors.no_workspace"))
-					return
-				}
-				// Project commands
-				const workspaceRoot = getCurrentCwd()
-				if (!workspaceRoot) {
-					vscode.window.showErrorMessage(t("common:errors.no_workspace_for_project_command"))
-					return
-				}
-				commandsDir = path.join(workspaceRoot, ".roo", "commands")
-			}
-
-			// Ensure the commands directory exists
-			await fs.mkdir(commandsDir, { recursive: true })
-
-			// Use provided filename or generate a unique one
-			let commandName: string
-			if (fileName && fileName.trim()) {
-				let cleanFileName = fileName.trim()
-
-				// Strip leading slash if present
-				if (cleanFileName.startsWith("/")) {
-					cleanFileName = cleanFileName.substring(1)
-				}
-
-				// Remove .md extension if present BEFORE slugification
-				if (cleanFileName.toLowerCase().endsWith(".md")) {
-					cleanFileName = cleanFileName.slice(0, -3)
-				}
-
-				// Slugify the command name: lowercase, replace spaces with dashes, remove special characters
-				commandName = cleanFileName
-					.toLowerCase()
-					.replace(/\s+/g, "-") // Replace spaces with dashes
-					.replace(/[^a-z0-9-]/g, "") // Remove special characters except dashes
-					.replace(/-+/g, "-") // Replace multiple dashes with single dash
-					.replace(/^-|-$/g, "") // Remove leading/trailing dashes
-
-				// Ensure we have a valid command name
-				if (!commandName || commandName.length === 0) {
-					commandName = "new-command"
-				}
-			} else {
-				// Generate a unique command name
-				commandName = "new-command"
-				let counter = 1
-				let filePath = path.join(commandsDir, `${commandName}.md`)
-
-				while (
-					await fs
-						.access(filePath)
-						.then(() => true)
-						.catch(() => false)
-				) {
-					commandName = `new-command-${counter}`
-					filePath = path.join(commandsDir, `${commandName}.md`)
-					counter++
-				}
-			}
-
-			const filePath = path.join(commandsDir, `${commandName}.md`)
-
-			// Check if file already exists
-			if (
-				await fs
-					.access(filePath)
-					.then(() => true)
-					.catch(() => false)
-			) {
-				vscode.window.showErrorMessage(t("common:errors.command_already_exists", { commandName }))
-				return
-			}
-
-			// Create the command file with template content
-			const templateContent = t("common:errors.command_template_content")
-
-			await fs.writeFile(filePath, templateContent, "utf8")
-			// The list below must include the new file even if the watcher has not reported it yet.
-			invalidateRooDirectoryCache("commands")
-			logger.info(`Created new command file: ${filePath}`)
-
-			// Open the new file in the editor
-			openFile(filePath)
-
-			// Refresh commands list
-			const { getCommands } = await import("../../../services/command/commands")
-			const commands = await getCommands(getCurrentCwd() || "")
-			const commandList = commands.map((command) => ({
-				name: command.name,
-				source: command.source,
-				filePath: command.filePath,
-				description: command.description,
-				argumentHint: command.argumentHint,
-			}))
-			await provider.postMessageToWebview({
-				type: "commands",
-				commands: commandList,
-			})
-		} catch (error) {
-			logAndToast(ctx, "Error creating command: ", error, "common:errors.create_command_failed")
-		}
 	},
 }

@@ -113,7 +113,7 @@ Two separate rate limits exist: the provider profile's `rateLimitSeconds`, and t
 | Silence on an open stream (first or later chunk)   | `apiRequestTimeout` setting, 10 min by default | `raceNextChunkWithAbort(iterator, signal, idleMs)` |
 | Waiting for the response headers                   | the same setting, passed to the provider SDK   | `BaseProvider.timeoutMs`                           |
 | Short control requests (token refresh, model list) | 30 s, `CONTROL_REQUEST_TIMEOUT_MS`             | `src/api/providers/utils/timeout-config.ts`        |
-| Image generation, embeddings                       | `apiRequestTimeout`                            | `AbortSignal.timeout(getApiRequestTimeout())`      |
+| Embeddings                                         | `apiRequestTimeout`                            | `AbortSignal.timeout(getApiRequestTimeout())`      |
 
 When a stream stays silent past the limit, the loop raises `StreamIdleTimeoutError`, aborts the request's
 `AbortController` (which closes the HTTP connection) and lets the error take the normal retry path above. The

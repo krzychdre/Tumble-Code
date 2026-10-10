@@ -214,10 +214,6 @@
 		"wantsToReadAndXMore": "Tumble はこのファイルと他に {{count}} 個のファイルを読み込もうとしています",
 		"wantsToReadMultiple": "Tumbleは複数のファイルを読み取ろうとしています",
 		"wantsToApplyBatchChanges": "Tumbleは複数のファイルに変更を適用したい",
-		"wantsToGenerateImage": "Tumbleは画像を生成したい",
-		"wantsToGenerateImageOutsideWorkspace": "Tumbleはワークスペース外で画像を生成したい",
-		"wantsToGenerateImageProtected": "Tumbleは保護された場所で画像を生成したい",
-		"didGenerateImage": "Tumbleは画像を生成しました",
 		"userEdits": "ユーザーによる編集"
 	},
 	"directoryOperations": {
@@ -455,18 +451,9 @@
 		"placeholder": "メッセージを編集..."
 	},
 	"slashCommands": {
-		"description": "組み込みスラッシュコマンドを使用するか、よく使用するプロンプトやワークフローに素早くアクセスするためのカスタムスラッシュコマンドを作成します。<DocsLink>ドキュメント</DocsLink>",
-		"manageCommands": "設定でスラッシュコマンドを管理",
-		"globalCommands": "グローバルコマンド",
-		"workspaceCommands": "ワークスペースコマンド",
-		"editCommand": "コマンドを編集",
-		"deleteCommand": "コマンドを削除",
-		"deleteDialog": {
-			"title": "コマンドを削除",
-			"description": "\"{{name}}\" コマンドを削除してもよろしいですか？この操作は元に戻せません。",
-			"cancel": "キャンセル",
-			"confirm": "削除"
-		}
+		"title": "スラッシュコマンド",
+		"description": "組み込みコマンドまたはスキルを実行するか、モードを切り替えます。",
+		"manageSkills": "設定でスキルを管理"
 	},
 	"contextMenu": {
 		"noResults": "結果なし",

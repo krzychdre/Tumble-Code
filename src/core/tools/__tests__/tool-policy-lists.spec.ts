@@ -41,9 +41,7 @@ const PROTOCOL = [
 	"new_task",
 	"run_parallel_tasks",
 	"skill",
-	"run_slash_command",
 	"tools_load",
-	"generate_image",
 ]
 
 describe("per-tool policy lists (CORE-R4)", () => {
@@ -58,7 +56,6 @@ describe("per-tool policy lists (CORE-R4)", () => {
 				"edit_file",
 				"apply_patch",
 				"new_task",
-				"generate_image",
 			]),
 		)
 	})

@@ -36,7 +36,6 @@
 		"notifications": "Meldingen",
 		"contextManagement": "Context",
 		"terminal": "Terminal",
-		"slashCommands": "Slash-opdrachten",
 		"prompts": "Prompts",
 		"ui": "UI",
 		"experimental": "Experimenteel",
@@ -53,41 +52,6 @@
 			"label": "Debugmodus inschakelen",
 			"description": "Schakel de debugmodus in: toont extra knoppen in de taakkoptekst voor het bekijken van API-gesprekgeschiedenis en UI-berichten als opgemaakte JSON in tijdelijke bestanden, en schrijft gedetailleerde debugregels (inclusief prestatietellers per verzoek) naar het uitvoerpaneel van Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Beheer je slash-commando's om snel aangepaste workflows en acties uit te voeren.",
-		"workspaceCommands": "Werkruimteopdrachten",
-		"globalCommands": "Globale opdrachten",
-		"noWorkspaceCommands": "Nog geen opdrachten in dit project.",
-		"noGlobalCommands": "Nog geen globale opdrachten.",
-		"addCommand": "Slash-opdracht toevoegen",
-		"editCommand": "Opdracht bewerken",
-		"deleteCommand": "Opdracht verwijderen",
-		"deleteDialog": {
-			"title": "Opdracht verwijderen",
-			"description": "Weet je zeker dat je de opdracht \"{{name}}\" wilt verwijderen? Deze actie kan niet ongedaan gemaakt worden.",
-			"confirm": "Verwijderen",
-			"cancel": "Annuleren"
-		},
-		"createDialog": {
-			"title": "Nieuw slash-commando maken",
-			"nameLabel": "Naam",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Alleen kleine letters, cijfers, streepjes en onderstrepen",
-			"sourceLabel": "Locatie",
-			"create": "Maken",
-			"cancel": "Annuleren"
-		},
-		"source": {
-			"global": "Globaal (beschikbaar in alle werkruimten)",
-			"project": "Werkruimte"
-		},
-		"validation": {
-			"nameRequired": "Naam is vereist",
-			"nameTooLong": "Naam mag max. 64 tekens zijn",
-			"nameInvalid": "Naam mag alleen letters, cijfers, streepjes en onderstrepen bevatten"
-		},
-		"footer": "Gebruik slash-commando's voor snelle toegang tot veelgebruikte prompts en workflows."
 	},
 	"prompts": {
 		"description": "Configureer ondersteuningsprompts die worden gebruikt voor snelle acties zoals het verbeteren van prompts, het uitleggen van code en het oplossen van problemen. Deze prompts helpen Tumble om betere ondersteuning te bieden voor veelvoorkomende ontwikkelingstaken."
@@ -697,7 +661,7 @@
 			},
 			"slim": {
 				"label": "Kleinere modellen: slanke toolset",
-				"description": "De volledige systeemprompt met minder tools: één duidelijke tool per taak, zonder de alternatieve bewerkingstools, afbeeldingen genereren, parallelle taken en slash-commando's. Voor middelgrote modellen die de lange prompt en apply_diff aankunnen maar de verkeerde tool kiezen.",
+				"description": "De volledige systeemprompt met minder tools: één duidelijke tool per taak, zonder de alternatieve bewerkingstools, parallelle taken en slash-commando's. Voor middelgrote modellen die de lange prompt en apply_diff aankunnen maar de verkeerde tool kiezen.",
 				"hideMcp": {
 					"label": "Ook MCP-tools verbergen",
 					"description": "MCP-tool-schema's zijn meestal het grootste deel van de tool-prompt. Laat dit aan tenzij dit profiel een MCP-server nodig heeft."
@@ -745,21 +709,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "'todos'-lijst vereisen voor nieuwe taken",
 			"description": "Wanneer ingeschakeld, vereist de new_task-tool dat een todos-parameter wordt opgegeven. Dit zorgt ervoor dat alle nieuwe taken beginnen met een duidelijke lijst met doelstellingen. Wanneer uitgeschakeld (standaard), blijft de todos-parameter optioneel voor achterwaartse compatibiliteit."
-		},
-		"IMAGE_GENERATION": {
-			"name": "AI-afbeeldingsgeneratie inschakelen",
-			"description": "Wanneer ingeschakeld, kan Tumble afbeeldingen genereren van tekstprompts met behulp van OpenRouter's afbeeldingsgeneratiemodellen. Vereist een geconfigureerde OpenRouter API-sleutel.",
-			"openRouterApiKeyLabel": "OpenRouter API-sleutel",
-			"openRouterApiKeyPlaceholder": "Voer je OpenRouter API-sleutel in",
-			"getApiKeyText": "Haal je API-sleutel op van",
-			"modelSelectionLabel": "Afbeeldingsgeneratiemodel",
-			"modelSelectionDescription": "Selecteer het model voor afbeeldingsgeneratie",
-			"warningMissingKey": "⚠️ OpenRouter API-sleutel is vereist voor afbeeldingsgeneratie. Configureer deze hierboven.",
-			"successConfigured": "✓ Afbeeldingsgeneratie is geconfigureerd en klaar voor gebruik"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Model-geïnitieerde slash-commando's inschakelen",
-			"description": "Wanneer ingeschakeld, kan Tumble je slash-commando's uitvoeren om workflows uit te voeren."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Aangepaste tools inschakelen",

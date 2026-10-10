@@ -12,9 +12,9 @@ import { toolNamesWhere } from "../tools/toolDescriptors"
  *   streaming, so it overlaps the streaming of the tool's arguments.
  *
  * Derived from the `requiresCheckpoint` column of the tool descriptor table
- * (`src/core/tools/toolDescriptors.ts`). `new_task` and `generate_image` are
- * included by decision (refactor plan, decision 9): a subtask can change the
- * workspace before control returns, and generate_image writes the image file.
+ * (`src/core/tools/toolDescriptors.ts`). `new_task` is included by decision
+ * (refactor plan, decision 9): a subtask can change the workspace before
+ * control returns.
  */
 export const CHECKPOINTED_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(
 	toolNamesWhere((tool) => tool.requiresCheckpoint),

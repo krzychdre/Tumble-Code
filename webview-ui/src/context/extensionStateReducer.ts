@@ -147,8 +147,6 @@ const createInitialExtensionState = (): ExtensionState => ({
 	codebaseIndexModels: { ollama: {}, openai: {} },
 	includeDiagnosticMessages: true,
 	maxDiagnosticMessages: 50,
-	openRouterImageApiKey: "",
-	openRouterImageGenerationSelectedModel: "",
 	includeCurrentTime: true,
 	includeCurrentCost: true,
 	includeTaskHistoryInEnhance: true,

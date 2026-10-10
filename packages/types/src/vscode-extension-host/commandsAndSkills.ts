@@ -13,13 +13,16 @@ export type CommandsAndSkillsWebviewMessageType =
 	| "deleteSkill"
 	| "updateSkillModes"
 	| "openSkillFile"
-	| "openCommandFile"
-	| "deleteCommand"
-	| "createCommand"
 
 /** Slash command, skill and custom tool lists. */
 export type CommandsAndSkillsExtensionMessageType = "commands" | "customToolsResult" | "skills"
 
+/**
+ * An entry of the chat "/" menu (the "commands" message). Either a built-in
+ * command (source "built-in", e.g. /init) or a skill available in the current
+ * mode (source "global" or "project", filePath = its SKILL.md). User-defined
+ * command files are no longer supported.
+ */
 export interface Command {
 	name: string
 	source: "global" | "project" | "built-in"

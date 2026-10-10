@@ -207,18 +207,9 @@ const CASES: Record<DispatchableToolName | "write_file", Case[]> = {
 		{ label: "array", args: { todos: ["a", "b"] } },
 		{ label: "missing todos", args: { items: "x" } },
 	],
-	run_slash_command: [
-		{ label: "full", args: { command: "review", args: "--strict" } },
-		{ label: "missing command", args: { args: "x" } },
-	],
 	skill: [
 		{ label: "full", args: { skill: "init", args: "fast" } },
 		{ label: "missing skill", args: { args: "x" } },
-	],
-	generate_image: [
-		{ label: "full", args: { prompt: "a red fox", path: "fox.png", image: "base.png" } },
-		{ label: "missing path", args: { prompt: "a red fox" } },
-		{ label: "path only", args: { path: "fox.png" } },
 	],
 	tools_load: [
 		{ label: "full", args: { names: ["mcp--a--b", 7, "mcp--c--d"] } },

@@ -789,33 +789,6 @@ exports[`strict tool schema characterization (API-3) > native tools > BaseProvid
   {
     "type": "function",
     "function": {
-      "name": "generate_image",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "prompt": {
-            "type": "string"
-          },
-          "path": {
-            "type": "string"
-          },
-          "image": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "prompt",
-          "path",
-          "image"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "list_files",
       "strict": true,
       "parameters": {
@@ -992,29 +965,6 @@ exports[`strict tool schema characterization (API-3) > native tools > BaseProvid
         "required": [
           "subtasks",
           "maxConcurrency"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "run_slash_command",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string"
-          },
-          "args": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "command",
-          "args"
         ],
         "additionalProperties": false
       }
@@ -1495,34 +1445,6 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiCode
   },
   {
     "type": "function",
-    "name": "generate_image",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "prompt": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "image": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "prompt",
-        "path",
-        "image"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
     "name": "list_files",
     "parameters": {
       "type": "object",
@@ -1699,30 +1621,6 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiCode
       "required": [
         "subtasks",
         "maxConcurrency"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
       ],
       "additionalProperties": false
     },
@@ -2185,34 +2083,6 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiNati
   },
   {
     "type": "function",
-    "name": "generate_image",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "prompt": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "image": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "prompt",
-        "path",
-        "image"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
     "name": "list_files",
     "parameters": {
       "type": "object",
@@ -2389,30 +2259,6 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiNati
       "required": [
         "subtasks",
         "maxConcurrency"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
       ],
       "additionalProperties": false
     },
@@ -2878,33 +2724,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
   {
     "type": "function",
     "function": {
-      "name": "generate_image",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "prompt": {
-            "type": "string"
-          },
-          "path": {
-            "type": "string"
-          },
-          "image": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "prompt",
-          "path",
-          "image"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "list_files",
       "strict": true,
       "parameters": {
@@ -3081,29 +2900,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
         "required": [
           "subtasks",
           "maxConcurrency"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "run_slash_command",
-      "strict": true,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string"
-          },
-          "args": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "command",
-          "args"
         ],
         "additionalProperties": false
       }
@@ -3584,34 +3380,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
   },
   {
     "type": "function",
-    "name": "generate_image",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "prompt": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "image": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "prompt",
-        "path",
-        "image"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
     "name": "list_files",
     "parameters": {
       "type": "object",
@@ -3788,30 +3556,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
       "required": [
         "subtasks",
         "maxConcurrency"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
       ],
       "additionalProperties": false
     },
@@ -4274,34 +4018,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
   },
   {
     "type": "function",
-    "name": "generate_image",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "prompt": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "image": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "prompt",
-        "path",
-        "image"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
     "name": "list_files",
     "parameters": {
       "type": "object",
@@ -4478,30 +4194,6 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
       "required": [
         "subtasks",
         "maxConcurrency"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
-  },
-  {
-    "type": "function",
-    "name": "run_slash_command",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "args": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "required": [
-        "command",
-        "args"
       ],
       "additionalProperties": false
     },

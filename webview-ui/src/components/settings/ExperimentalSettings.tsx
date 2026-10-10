@@ -11,7 +11,6 @@ import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { SettingsCard } from "./SettingsCard"
 import { ExperimentalFeature } from "./ExperimentalFeature"
-import { ImageGenerationSettings } from "./ImageGenerationSettings"
 import { CustomToolsSettings } from "./CustomToolsSettings"
 
 type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement>
@@ -20,11 +19,6 @@ export const ExperimentalSettings = ({ className, ...props }: ExperimentalSettin
 	const { t } = useAppTranslation()
 	const { setExperimentEnabled } = useSettingsDraft()
 	const [experiments] = useSetting("experiments")
-	const [imageGenerationProvider, setImageGenerationProvider] = useSetting("imageGenerationProvider")
-	const [openRouterImageApiKey, setOpenRouterImageApiKey] = useSetting("openRouterImageApiKey")
-	const [openRouterImageGenerationSelectedModel, setImageGenerationSelectedModel] = useSetting(
-		"openRouterImageGenerationSelectedModel",
-	)
 
 	return (
 		<div className={cn("flex flex-col", className)} {...props}>
@@ -32,72 +26,51 @@ export const ExperimentalSettings = ({ className, ...props }: ExperimentalSettin
 
 			<Section>
 				<SettingsCard>
-				{Object.entries(experimentConfigsMap)
-					.filter(([key]) => key in EXPERIMENT_IDS)
-					.map((config) => {
-						// Use the same translation key pattern as ExperimentalFeature
-						const experimentKey = config[0]
-						const label = t(`settings:experimental.${experimentKey}.name`)
+					{Object.entries(experimentConfigsMap)
+						.filter(([key]) => key in EXPERIMENT_IDS)
+						.map((config) => {
+							// Use the same translation key pattern as ExperimentalFeature
+							const experimentKey = config[0]
+							const label = t(`settings:experimental.${experimentKey}.name`)
 
-						if (config[0] === "IMAGE_GENERATION") {
+							if (config[0] === "CUSTOM_TOOLS") {
+								return (
+									<SearchableSetting
+										key={config[0]}
+										settingId={`experimental-${config[0].toLowerCase()}`}
+										section="experimental"
+										label={label}>
+										<CustomToolsSettings
+											enabled={experiments[EXPERIMENT_IDS.CUSTOM_TOOLS] ?? false}
+											onChange={(enabled) =>
+												setExperimentEnabled(EXPERIMENT_IDS.CUSTOM_TOOLS, enabled)
+											}
+										/>
+									</SearchableSetting>
+								)
+							}
 							return (
 								<SearchableSetting
 									key={config[0]}
 									settingId={`experimental-${config[0].toLowerCase()}`}
 									section="experimental"
 									label={label}>
-									<ImageGenerationSettings
-										enabled={experiments[EXPERIMENT_IDS.IMAGE_GENERATION] ?? false}
-										onChange={(enabled) =>
-											setExperimentEnabled(EXPERIMENT_IDS.IMAGE_GENERATION, enabled)
+									<ExperimentalFeature
+										experimentKey={config[0]}
+										enabled={
+											experiments[EXPERIMENT_IDS[config[0] as keyof typeof EXPERIMENT_IDS]] ??
+											false
 										}
-										imageGenerationProvider={imageGenerationProvider}
-										openRouterImageApiKey={openRouterImageApiKey}
-										openRouterImageGenerationSelectedModel={openRouterImageGenerationSelectedModel}
-										setImageGenerationProvider={setImageGenerationProvider}
-										setOpenRouterImageApiKey={setOpenRouterImageApiKey}
-										setImageGenerationSelectedModel={setImageGenerationSelectedModel}
-									/>
-								</SearchableSetting>
-							)
-						}
-						if (config[0] === "CUSTOM_TOOLS") {
-							return (
-								<SearchableSetting
-									key={config[0]}
-									settingId={`experimental-${config[0].toLowerCase()}`}
-									section="experimental"
-									label={label}>
-									<CustomToolsSettings
-										enabled={experiments[EXPERIMENT_IDS.CUSTOM_TOOLS] ?? false}
 										onChange={(enabled) =>
-											setExperimentEnabled(EXPERIMENT_IDS.CUSTOM_TOOLS, enabled)
+											setExperimentEnabled(
+												EXPERIMENT_IDS[config[0] as keyof typeof EXPERIMENT_IDS],
+												enabled,
+											)
 										}
 									/>
 								</SearchableSetting>
 							)
-						}
-						return (
-							<SearchableSetting
-								key={config[0]}
-								settingId={`experimental-${config[0].toLowerCase()}`}
-								section="experimental"
-								label={label}>
-								<ExperimentalFeature
-									experimentKey={config[0]}
-									enabled={
-										experiments[EXPERIMENT_IDS[config[0] as keyof typeof EXPERIMENT_IDS]] ?? false
-									}
-									onChange={(enabled) =>
-										setExperimentEnabled(
-											EXPERIMENT_IDS[config[0] as keyof typeof EXPERIMENT_IDS],
-											enabled,
-										)
-									}
-								/>
-							</SearchableSetting>
-						)
-					})}
+						})}
 				</SettingsCard>
 			</Section>
 		</div>

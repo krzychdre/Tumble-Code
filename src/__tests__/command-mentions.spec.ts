@@ -1,10 +1,11 @@
 import { parseMentions } from "../core/mentions"
-import { getCommand } from "../services/command/commands"
+import { getBuiltInCommand } from "../services/command/built-in-commands"
+import { buildSkillResult } from "../services/skills/skillInvocation"
 
 // Mock the dependencies
-vi.mock("../services/command/commands")
+vi.mock("../services/command/built-in-commands")
 
-const mockGetCommand = vi.mocked(getCommand)
+const mockGetCommand = vi.mocked(getBuiltInCommand)
 
 describe("Command Mentions", () => {
 	beforeEach(() => {
@@ -30,14 +31,14 @@ describe("Command Mentions", () => {
 			mockGetCommand.mockResolvedValue({
 				name: "setup",
 				content: commandContent,
-				source: "project",
-				filePath: "/project/.roo/commands/setup.md",
+				source: "built-in",
+				filePath: "<built-in:setup>",
 			})
 
 			const input = "/setup Please help me set up the project"
 			const result = await callParseMentions(input)
 
-			expect(mockGetCommand).toHaveBeenCalledWith("/test/cwd", "setup")
+			expect(mockGetCommand).toHaveBeenCalledWith("setup")
 			expect(result.slashCommandHelp).toContain('<command name="setup">')
 			expect(result.slashCommandHelp).toContain(commandContent)
 			expect(result.slashCommandHelp).toContain("</command>")
@@ -52,34 +53,34 @@ describe("Command Mentions", () => {
 				.mockResolvedValueOnce({
 					name: "setup",
 					content: setupContent,
-					source: "project",
-					filePath: "/project/.roo/commands/setup.md",
+					source: "built-in",
+					filePath: "<built-in:setup>",
 				})
 				.mockResolvedValueOnce({
 					name: "deploy",
 					content: deployContent,
-					source: "project",
-					filePath: "/project/.roo/commands/deploy.md",
+					source: "built-in",
+					filePath: "<built-in:deploy>",
 				})
 				.mockResolvedValueOnce({
 					name: "setup",
 					content: setupContent,
-					source: "project",
-					filePath: "/project/.roo/commands/setup.md",
+					source: "built-in",
+					filePath: "<built-in:setup>",
 				})
 				.mockResolvedValueOnce({
 					name: "deploy",
 					content: deployContent,
-					source: "project",
-					filePath: "/project/.roo/commands/deploy.md",
+					source: "built-in",
+					filePath: "<built-in:deploy>",
 				})
 
 			// Both commands should be recognized
 			const input = "/setup the project\nThen /deploy later"
 			const result = await callParseMentions(input)
 
-			expect(mockGetCommand).toHaveBeenCalledWith("/test/cwd", "setup")
-			expect(mockGetCommand).toHaveBeenCalledWith("/test/cwd", "deploy")
+			expect(mockGetCommand).toHaveBeenCalledWith("setup")
+			expect(mockGetCommand).toHaveBeenCalledWith("deploy")
 			expect(mockGetCommand).toHaveBeenCalledTimes(2) // Each unique command called once (optimized)
 			expect(result.slashCommandHelp).toContain('<command name="setup">')
 			expect(result.slashCommandHelp).toContain("# Setup Environment")
@@ -94,7 +95,7 @@ describe("Command Mentions", () => {
 			const input = "/nonexistent command"
 			const result = await callParseMentions(input)
 
-			expect(mockGetCommand).toHaveBeenCalledWith("/test/cwd", "nonexistent")
+			expect(mockGetCommand).toHaveBeenCalledWith("nonexistent")
 			// The command should remain unchanged in the text
 			expect(result.text).toBe("/nonexistent command")
 			// Should not contain any command tags
@@ -127,9 +128,9 @@ describe("Command Mentions", () => {
 				"code",
 			)
 
-			expect(mockGetCommand).toHaveBeenCalledWith("/test/cwd", "skill-only")
+			expect(mockGetCommand).toHaveBeenCalledWith("skill-only")
 			expect(skillsManager.getSkillContent).toHaveBeenCalledWith("skill-only", "code")
-			expect(result.text).toContain("Command 'skill-only' (see below for command content)")
+			expect(result.text).toContain("Skill 'skill-only' (see below for skill instructions)")
 			expect(result.slashCommandHelp).toContain("Skill: skill-only")
 			expect(result.slashCommandHelp).toContain("Description: Skill-generated command")
 			expect(result.slashCommandHelp).toContain("Source: project")
@@ -137,12 +138,62 @@ describe("Command Mentions", () => {
 			expect(result.slashCommandHelp).toContain("Use skill workflow")
 		})
 
-		it("should preserve command precedence over skill fallback", async () => {
+		it("expands /skill-name into exactly the text the skill tool returns", async () => {
+			mockGetCommand.mockResolvedValue(undefined)
+
+			const skill = {
+				name: "release",
+				description: "Cut a release",
+				path: "/home/u/.roo/skills/release/SKILL.md",
+				source: "global" as const,
+				instructions: "1. Bump the version\n2. Tag it",
+			}
+			const skillsManager = { getSkillContent: vi.fn().mockResolvedValue(skill) }
+
+			const result = await parseMentions(
+				"/release please",
+				"/test/cwd",
+				undefined,
+				undefined,
+				false,
+				true,
+				50,
+				skillsManager,
+				"architect",
+			)
+
+			expect(skillsManager.getSkillContent).toHaveBeenCalledWith("release", "architect")
+			expect(result.text).toBe("Skill 'release' (see below for skill instructions) please")
+			expect(result.slashCommandHelp).toBe(buildSkillResult("release", undefined, skill))
+		})
+
+		it("leaves /skill-name unchanged when the skill is not available in the current mode", async () => {
+			mockGetCommand.mockResolvedValue(undefined)
+			// SkillsManager.getSkillContent applies the mode rules and returns null.
+			const skillsManager = { getSkillContent: vi.fn().mockResolvedValue(null) }
+
+			const result = await parseMentions(
+				"/code-only now",
+				"/test/cwd",
+				undefined,
+				undefined,
+				false,
+				true,
+				50,
+				skillsManager,
+				"ask",
+			)
+
+			expect(result.text).toBe("/code-only now")
+			expect(result.slashCommandHelp).toBeUndefined()
+		})
+
+		it("a built-in command wins over a skill of the same name", async () => {
 			mockGetCommand.mockResolvedValue({
 				name: "setup",
 				content: "# Command wins",
-				source: "project",
-				filePath: "/project/.roo/commands/setup.md",
+				source: "built-in",
+				filePath: "<built-in:setup>",
 			})
 
 			const skillsManager = {
@@ -190,8 +241,8 @@ describe("Command Mentions", () => {
 			mockGetCommand.mockResolvedValue({
 				name: "error-command",
 				content: "# Error command",
-				source: "project",
-				filePath: "/project/.roo/commands/error-command.md",
+				source: "built-in",
+				filePath: "<built-in:error-command>",
 			})
 
 			const input = "/error-command test"
@@ -206,14 +257,14 @@ describe("Command Mentions", () => {
 			mockGetCommand.mockResolvedValue({
 				name: "setup-dev",
 				content: "# Dev setup",
-				source: "project",
-				filePath: "/project/.roo/commands/setup-dev.md",
+				source: "built-in",
+				filePath: "<built-in:setup-dev>",
 			})
 
 			const input = "/setup-dev for the project"
 			const result = await callParseMentions(input)
 
-			expect(mockGetCommand).toHaveBeenCalledWith("/test/cwd", "setup-dev")
+			expect(mockGetCommand).toHaveBeenCalledWith("setup-dev")
 			expect(result.slashCommandHelp).toContain('<command name="setup-dev">')
 			expect(result.slashCommandHelp).toContain("# Dev setup")
 		})
@@ -237,8 +288,8 @@ npm install
 			mockGetCommand.mockResolvedValue({
 				name: "complex",
 				content: commandContent,
-				source: "project",
-				filePath: "/project/.roo/commands/complex.md",
+				source: "built-in",
+				filePath: "<built-in:complex>",
 			})
 
 			const input = "/complex command"
@@ -257,8 +308,8 @@ npm install
 			mockGetCommand.mockResolvedValue({
 				name: "empty",
 				content: "",
-				source: "project",
-				filePath: "/project/.roo/commands/empty.md",
+				source: "built-in",
+				filePath: "<built-in:empty>",
 			})
 
 			const input = "/empty command"
@@ -340,8 +391,8 @@ npm install
 			mockGetCommand.mockResolvedValue({
 				name: "setup",
 				content: "# Setup instructions",
-				source: "project",
-				filePath: "/project/.roo/commands/setup.md",
+				source: "built-in",
+				filePath: "<built-in:setup>",
 			})
 
 			const input = "/setup the project"
@@ -364,14 +415,14 @@ npm install
 				.mockResolvedValueOnce({
 					name: "setup",
 					content: "# Setup instructions",
-					source: "project",
-					filePath: "/project/.roo/commands/setup.md",
+					source: "built-in",
+					filePath: "<built-in:setup>",
 				})
 				.mockResolvedValueOnce({
 					name: "deploy",
 					content: "# Deploy instructions",
-					source: "project",
-					filePath: "/project/.roo/commands/deploy.md",
+					source: "built-in",
+					filePath: "<built-in:deploy>",
 				})
 
 			const input = "/setup the project\nThen /deploy later"
@@ -385,8 +436,8 @@ npm install
 			mockGetCommand.mockResolvedValue({
 				name: "build",
 				content: "# Build instructions",
-				source: "project",
-				filePath: "/project/.roo/commands/build.md",
+				source: "built-in",
+				filePath: "<built-in:build>",
 			})
 
 			// At the beginning - should match

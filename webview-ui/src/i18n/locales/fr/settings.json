@@ -36,7 +36,6 @@
 		"notifications": "Notifications",
 		"contextManagement": "Contexte",
 		"terminal": "Terminal",
-		"slashCommands": "Commandes Slash",
 		"prompts": "Invites",
 		"ui": "UI",
 		"experimental": "Expérimental",
@@ -53,41 +52,6 @@
 			"label": "Activer le mode debug",
 			"description": "Active le mode debug : affiche des boutons supplémentaires dans l'en-tête de la tâche permettant de consulter l'historique de conversation de l'API et les messages de l'interface utilisateur au format JSON dans des fichiers temporaires, et écrit des lignes de débogage détaillées (y compris les compteurs de performance de chaque requête) dans le panneau de sortie de Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Gérez vos commandes slash pour exécuter rapidement des flux de travail et des actions personnalisées.",
-		"workspaceCommands": "Commandes de l'espace de travail",
-		"globalCommands": "Commandes globales",
-		"noWorkspaceCommands": "Aucune commande dans ce projet pour le moment.",
-		"noGlobalCommands": "Aucune commande globale pour le moment.",
-		"addCommand": "Ajouter une commande slash",
-		"editCommand": "Modifier la commande",
-		"deleteCommand": "Supprimer la commande",
-		"deleteDialog": {
-			"title": "Supprimer la commande",
-			"description": "Êtes-vous sûr de vouloir supprimer la commande \"{{name}}\" ? Cette action ne peut pas être annulée.",
-			"confirm": "Supprimer",
-			"cancel": "Annuler"
-		},
-		"createDialog": {
-			"title": "Créer une nouvelle commande slash",
-			"nameLabel": "Nom",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Lettres minuscules, chiffres, tirets et traits de soulignement uniquement",
-			"sourceLabel": "Emplacement",
-			"create": "Créer",
-			"cancel": "Annuler"
-		},
-		"source": {
-			"global": "Global (disponible dans tous les espaces de travail)",
-			"project": "Espace de travail"
-		},
-		"validation": {
-			"nameRequired": "Le nom est obligatoire",
-			"nameTooLong": "Le nom doit contenir 64 caractères ou moins",
-			"nameInvalid": "Le nom ne peut contenir que des lettres, des chiffres, des tirets et des traits de soulignement"
-		},
-		"footer": "Utilisez les commandes slash pour accéder rapidement aux invites et flux de travail fréquemment utilisés."
 	},
 	"prompts": {
 		"description": "Configurez les invites de support utilisées pour les actions rapides comme l'amélioration des invites, l'explication du code et la résolution des problèmes. Ces invites aident Tumble à fournir une meilleure assistance pour les tâches de développement courantes."
@@ -697,7 +661,7 @@
 			},
 			"slim": {
 				"label": "Modèles plus petits : jeu d'outils réduit",
-				"description": "Le prompt système complet avec moins d'outils : un outil évident par tâche, sans les outils d'édition alternatifs, la génération d'images, les tâches parallèles ni les commandes slash. Pour les modèles de taille moyenne qui gèrent le long prompt et apply_diff mais choisissent le mauvais outil.",
+				"description": "Le prompt système complet avec moins d'outils : un outil évident par tâche, sans les outils d'édition alternatifs, les tâches parallèles ni les commandes slash. Pour les modèles de taille moyenne qui gèrent le long prompt et apply_diff mais choisissent le mauvais outil.",
 				"hideMcp": {
 					"label": "Masquer aussi les outils MCP",
 					"description": "Les schémas d'outils MCP sont généralement la plus grande partie du prompt d'outils. Gardez ceci activé sauf si ce profil a besoin d'un serveur MCP."
@@ -745,21 +709,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Exiger la liste 'todos' pour les nouvelles tâches",
 			"description": "Lorsqu'il est activé, l'outil new_task exigera qu'un paramètre todos soit fourni. Cela garantit que toutes les nouvelles tâches commencent avec une liste claire d'objectifs. Lorsqu'il est désactivé (par défaut), le paramètre todos reste facultatif pour la compatibilité descendante."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Activer la génération d'images IA",
-			"description": "Lorsqu'activé, Tumble peut générer des images à partir de prompts textuels en utilisant les modèles de génération d'images d'OpenRouter. Nécessite qu'une clé API OpenRouter soit configurée.",
-			"openRouterApiKeyLabel": "Clé API OpenRouter",
-			"openRouterApiKeyPlaceholder": "Entrez votre clé API OpenRouter",
-			"getApiKeyText": "Obtenez votre clé API depuis",
-			"modelSelectionLabel": "Modèle de génération d'images",
-			"modelSelectionDescription": "Sélectionnez le modèle pour la génération d'images",
-			"warningMissingKey": "⚠️ Une clé API OpenRouter est requise pour la génération d'images. Veuillez la configurer ci-dessus.",
-			"successConfigured": "✓ La génération d'images est configurée et prête à utiliser"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Activer les commandes slash initiées par le modèle",
-			"description": "Lorsque activé, Tumble peut exécuter tes commandes slash pour lancer des workflows."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Activer les outils personnalisés",

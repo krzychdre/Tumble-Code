@@ -24,8 +24,8 @@ export interface ClineSayTool {
 		| "newTask"
 		| "finishTask"
 		| "reviewPlan"
-		| "generateImage"
-		| "imageGenerated"
+		// Emitted by the removed run_slash_command tool; kept so old task
+		// histories still render.
 		| "runSlashCommand"
 		| "updateTodoList"
 		| "skill"
@@ -80,8 +80,7 @@ export interface ClineSayTool {
 		key: string
 	}>
 	question?: string
-	imageData?: string // Base64 encoded image data for generated images
-	// Properties for runSlashCommand tool
+	// Properties for the legacy runSlashCommand rows
 	command?: string
 	args?: string
 	source?: string

@@ -216,10 +216,6 @@
 		"wantsToReadAndXMore": "Tumble quer ler este arquivo e mais {{count}}",
 		"wantsToReadMultiple": "Tumble deseja ler múltiplos arquivos",
 		"wantsToApplyBatchChanges": "Tumble quer aplicar alterações a múltiplos arquivos",
-		"wantsToGenerateImage": "Tumble quer gerar uma imagem",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble quer gerar uma imagem fora do espaço de trabalho",
-		"wantsToGenerateImageProtected": "Tumble quer gerar uma imagem em um local protegido",
-		"didGenerateImage": "Tumble gerou uma imagem",
 		"userEdits": "Edições do usuário"
 	},
 	"directoryOperations": {
@@ -461,18 +457,9 @@
 		"placeholder": "Edite sua mensagem..."
 	},
 	"slashCommands": {
-		"description": "Use comandos de barra integrados ou crie personalizados para acesso rápido a prompts e fluxos de trabalho usados com frequência. <DocsLink>Documentação</DocsLink>",
-		"manageCommands": "Gerenciar comandos de barra nas configurações",
-		"globalCommands": "Comandos Globais",
-		"workspaceCommands": "Comandos do Espaço de Trabalho",
-		"editCommand": "Editar comando",
-		"deleteCommand": "Excluir comando",
-		"deleteDialog": {
-			"title": "Excluir Comando",
-			"description": "Tem certeza de que deseja excluir o comando \"{{name}}\"? Esta ação não pode ser desfeita.",
-			"cancel": "Cancelar",
-			"confirm": "Excluir"
-		}
+		"title": "Comandos de Barra",
+		"description": "Execute um comando integrado ou um skill, ou troque de modo.",
+		"manageSkills": "Gerenciar skills nas configurações"
 	},
 	"contextMenu": {
 		"noResults": "Nenhum resultado",

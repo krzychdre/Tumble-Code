@@ -36,7 +36,6 @@
 		"notifications": "Powiadomienia",
 		"contextManagement": "Kontekst",
 		"terminal": "Terminal",
-		"slashCommands": "Polecenia Slash",
 		"prompts": "Podpowiedzi",
 		"ui": "UI",
 		"experimental": "Eksperymentalne",
@@ -53,41 +52,6 @@
 			"label": "Włącz tryb debugowania",
 			"description": "Włącz tryb debugowania: wyświetla dodatkowe przyciski w nagłówku zadania umożliwiające przeglądanie historii konwersacji API i komunikatów UI jako sformatowany JSON w plikach tymczasowych oraz zapisuje szczegółowe wiersze debugowania (w tym liczniki wydajności każdego żądania) w panelu danych wyjściowych Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Zarządzaj poleceniami slash, aby szybko wykonywać niestandardowe przepływy pracy i akcje.",
-		"workspaceCommands": "Polecenia obszaru roboczego",
-		"globalCommands": "Polecenia globalne",
-		"noWorkspaceCommands": "Brak poleceń w tym projekcie.",
-		"noGlobalCommands": "Brak poleceń globalnych.",
-		"addCommand": "Dodaj polecenie Slash",
-		"editCommand": "Edytuj polecenie",
-		"deleteCommand": "Usuń polecenie",
-		"deleteDialog": {
-			"title": "Usuń polecenie",
-			"description": "Czy na pewno chcesz usunąć polecenie \"{{name}}\"? Tej czynności nie można cofnąć.",
-			"confirm": "Usuń",
-			"cancel": "Anuluj"
-		},
-		"createDialog": {
-			"title": "Utwórz nowe polecenie Slash",
-			"nameLabel": "Nazwa",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Tylko małe litery, cyfry, łączniki i podkreślenia",
-			"sourceLabel": "Lokalizacja",
-			"create": "Utwórz",
-			"cancel": "Anuluj"
-		},
-		"source": {
-			"global": "Globalne (dostępne we wszystkich obszarach roboczych)",
-			"project": "Obszar roboczy"
-		},
-		"validation": {
-			"nameRequired": "Nazwa jest wymagana",
-			"nameTooLong": "Nazwa musi mieć 64 znaki lub mniej",
-			"nameInvalid": "Nazwa może zawierać tylko litery, cyfry, łączniki i podkreślenia"
-		},
-		"footer": "Używaj poleceń slash do szybkiego dostępu do często używanych podpowiedzi i przepływów pracy."
 	},
 	"prompts": {
 		"description": "Skonfiguruj podpowiedzi wsparcia używane do szybkich działań, takich jak ulepszanie podpowiedzi, wyjaśnianie kodu i rozwiązywanie problemów. Te podpowiedzi pomagają Tumble zapewnić lepsze wsparcie dla typowych zadań programistycznych."
@@ -697,7 +661,7 @@
 			},
 			"slim": {
 				"label": "Mniejsze modele: odchudzone narzędzia",
-				"description": "Pełny prompt systemowy, ale mniej narzędzi: jedno oczywiste narzędzie do każdego zadania, bez zapasowych narzędzi edycji, generowania obrazów, zadań równoległych i poleceń z ukośnikiem. Dla modeli średniej wielkości, które radzą sobie z długim promptem i apply_diff, ale wybierają niewłaściwe narzędzie.",
+				"description": "Pełny prompt systemowy, ale mniej narzędzi: jedno oczywiste narzędzie do każdego zadania, bez zapasowych narzędzi edycji, zadań równoległych i poleceń z ukośnikiem. Dla modeli średniej wielkości, które radzą sobie z długim promptem i apply_diff, ale wybierają niewłaściwe narzędzie.",
 				"hideMcp": {
 					"label": "Ukryj też narzędzia MCP",
 					"description": "Schematy narzędzi MCP to zazwyczaj największa część promptu narzędzi. Utrzymuj to włączone, chyba że ten profil wymaga serwera MCP."
@@ -745,21 +709,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Wymagaj listy 'todos' dla nowych zadań",
 			"description": "Gdy włączone, narzędzie new_task będzie wymagało podania parametru todos. Zapewnia to, że wszystkie nowe zadania rozpoczynają się od jasnej listy celów. Gdy wyłączone (domyślnie), parametr todos pozostaje opcjonalny dla zachowania kompatybilności wstecznej."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Włącz generowanie obrazów AI",
-			"description": "Gdy włączone, Tumble może generować obrazy z promptów tekstowych używając modeli generowania obrazów OpenRouter. Wymaga skonfigurowanego klucza API OpenRouter.",
-			"openRouterApiKeyLabel": "Klucz API OpenRouter",
-			"openRouterApiKeyPlaceholder": "Wprowadź swój klucz API OpenRouter",
-			"getApiKeyText": "Uzyskaj swój klucz API od",
-			"modelSelectionLabel": "Model generowania obrazów",
-			"modelSelectionDescription": "Wybierz model do generowania obrazów",
-			"warningMissingKey": "⚠️ Klucz API OpenRouter jest wymagany do generowania obrazów. Skonfiguruj go powyżej.",
-			"successConfigured": "✓ Generowanie obrazów jest skonfigurowane i gotowe do użycia"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Włącz polecenia slash inicjowane przez model",
-			"description": "Gdy włączone, Tumble może uruchamiać twoje polecenia slash w celu wykonywania przepływów pracy."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Włącz niestandardowe narzędzia",

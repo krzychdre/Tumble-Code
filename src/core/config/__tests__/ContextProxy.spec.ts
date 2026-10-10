@@ -2,12 +2,7 @@
 
 import * as vscode from "vscode"
 
-import {
-	GLOBAL_STATE_KEYS,
-	SECRET_STATE_KEYS,
-	GLOBAL_SECRET_KEYS,
-	REMOVED_PROVIDER_SETTINGS_KEYS,
-} from "@tumble-code/types"
+import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, REMOVED_PROVIDER_SETTINGS_KEYS } from "@tumble-code/types"
 
 import { ContextProxy } from "../ContextProxy"
 
@@ -133,13 +128,15 @@ describe("ContextProxy", () => {
 		})
 
 		it("should initialize secret cache with all secret keys", () => {
-			expect(mockSecrets.get).toHaveBeenCalledTimes(SECRET_STATE_KEYS.length + GLOBAL_SECRET_KEYS.length)
+			expect(mockSecrets.get).toHaveBeenCalledTimes(SECRET_STATE_KEYS.length)
 			for (const key of SECRET_STATE_KEYS) {
 				expect(mockSecrets.get).toHaveBeenCalledWith(key)
 			}
-			for (const key of GLOBAL_SECRET_KEYS) {
-				expect(mockSecrets.get).toHaveBeenCalledWith(key)
-			}
+		})
+
+		it("deletes the API key of the removed image generation feature instead of reading it", () => {
+			expect(mockSecrets.get).not.toHaveBeenCalledWith("openRouterImageApiKey")
+			expect(mockSecrets.delete).toHaveBeenCalledWith("openRouterImageApiKey")
 		})
 	})
 
@@ -524,12 +521,14 @@ describe("ContextProxy", () => {
 			for (const key of SECRET_STATE_KEYS) {
 				expect(mockSecrets.delete).toHaveBeenCalledWith(key)
 			}
-			for (const key of GLOBAL_SECRET_KEYS) {
-				expect(mockSecrets.delete).toHaveBeenCalledWith(key)
-			}
 
-			// Total calls should equal the number of secret keys
-			expect(mockSecrets.delete).toHaveBeenCalledTimes(SECRET_STATE_KEYS.length + GLOBAL_SECRET_KEYS.length)
+			// One call per secret key, plus the removed-feature secret the
+			// re-initialization deletes.
+			const removedSecretDeletes = mockSecrets.delete.mock.calls.filter(
+				([key]: [string]) => key === "openRouterImageApiKey",
+			).length
+			expect(removedSecretDeletes).toBeGreaterThan(0)
+			expect(mockSecrets.delete).toHaveBeenCalledTimes(SECRET_STATE_KEYS.length + removedSecretDeletes)
 		})
 
 		it("should reinitialize caches after reset", async () => {

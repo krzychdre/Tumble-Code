@@ -4,14 +4,5 @@
 		"imageWithSize": "Bilddatei ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Tumble scheint in einer Schleife festzustecken und versucht wiederholt dieselbe Aktion ({{toolName}}). Dies könnte auf ein Problem mit der aktuellen Strategie hindeuten. Überlege dir, die Aufgabe umzuformulieren, genauere Anweisungen zu geben oder Tumble zu einem anderen Ansatz zu führen.",
-	"unknownToolError": "Tumble hat versucht, ein unbekanntes Tool zu verwenden: \"{{toolName}}\". Wiederhole Versuch...",
-	"generateImage": {
-		"openRouterApiKeyRequired": "OpenRouter API-Schlüssel ist für die Bildgenerierung mit OpenRouter-Modellen erforderlich. Bitte konfiguriere ihn in den Experimentellen Einstellungen für Bildgenerierung.",
-		"failedWithStatus": "Bildgenerierung fehlgeschlagen: {{status}} {{statusText}}",
-		"failedWithMessage": "Bildgenerierung fehlgeschlagen: {{message}}",
-		"noImageGenerated": "In der Antwort wurde kein Bild generiert",
-		"invalidImageData": "Ungültige Bilddaten in der Antwort",
-		"invalidImageFormat": "Ungültiges Bildformat erhalten",
-		"unknownError": "Unbekannter Fehler aufgetreten"
-	}
+	"unknownToolError": "Tumble hat versucht, ein unbekanntes Tool zu verwenden: \"{{toolName}}\". Wiederhole Versuch..."
 }

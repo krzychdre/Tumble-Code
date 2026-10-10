@@ -399,10 +399,10 @@ describe("OpenRouter API", () => {
 			expect(result.contextWindow).toBe(128000)
 		})
 
-		it("filters out image generation models", () => {
+		it("filters out models that output images", () => {
 			const mockImageModel = {
 				name: "Image Model",
-				description: "Test image generation model",
+				description: "Test image output model",
 				context_length: 128000,
 				max_completion_tokens: 64000,
 				pricing: {

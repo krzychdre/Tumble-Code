@@ -36,7 +36,6 @@
 		"notifications": "通知",
 		"contextManagement": "コンテキスト",
 		"terminal": "ターミナル",
-		"slashCommands": "スラッシュコマンド",
 		"prompts": "プロンプト",
 		"ui": "UI",
 		"experimental": "実験的",
@@ -53,41 +52,6 @@
 			"label": "デバッグモードを有効にする",
 			"description": "デバッグモードを有効にします。タスクヘッダーにAPI会話履歴とUIメッセージをフォーマットされたJSONとして一時ファイルで表示するための追加ボタンを表示し、詳細なデバッグ行（リクエストごとのパフォーマンスカウンターを含む）をTumble Codeの出力パネルに書き込みます。"
 		}
-	},
-	"slashCommands": {
-		"description": "スラッシュコマンドを管理して、カスタムワークフローやアクションを素早く実行します。",
-		"workspaceCommands": "ワークスペースコマンド",
-		"globalCommands": "グローバルコマンド",
-		"noWorkspaceCommands": "このプロジェクトにはまだコマンドがありません。",
-		"noGlobalCommands": "グローバルコマンドはまだありません。",
-		"addCommand": "スラッシュコマンドを追加",
-		"editCommand": "コマンドを編集",
-		"deleteCommand": "コマンドを削除",
-		"deleteDialog": {
-			"title": "コマンドを削除",
-			"description": "コマンド \"{{name}}\" を削除してもよろしいですか？このアクションは取り消せません。",
-			"confirm": "削除",
-			"cancel": "キャンセル"
-		},
-		"createDialog": {
-			"title": "新しいスラッシュコマンドを作成",
-			"nameLabel": "名前",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "小文字、数字、ハイフン、アンダースコアのみ",
-			"sourceLabel": "場所",
-			"create": "作成",
-			"cancel": "キャンセル"
-		},
-		"source": {
-			"global": "グローバル（すべてのワークスペースで利用可能）",
-			"project": "ワークスペース"
-		},
-		"validation": {
-			"nameRequired": "名前は必須です",
-			"nameTooLong": "名前は64文字以下である必要があります",
-			"nameInvalid": "名前は文字、数字、ハイフン、アンダースコアのみを含める必要があります"
-		},
-		"footer": "スラッシュコマンドを使用して、頻繁に使用するプロンプトとワークフローにすばやくアクセスします。"
 	},
 	"prompts": {
 		"description": "プロンプトの強化、コードの説明、問題の修正などの迅速なアクションに使用されるサポートプロンプトを設定します。これらのプロンプトは、Tumbleが一般的な開発タスクでより良いサポートを提供するのに役立ちます。"
@@ -697,7 +661,7 @@
 			},
 			"slim": {
 				"label": "小さめのモデル: スリムなツールセット",
-				"description": "完全なシステムプロンプトを使い、ツールを絞ります。作業ごとに明確なツールを 1 つだけ提供し、代替の編集ツール、画像生成、並列タスク、スラッシュコマンドは含めません。長いプロンプトと apply_diff は扱えるものの、ツールを選び間違える中型モデル向けです。",
+				"description": "完全なシステムプロンプトを使い、ツールを絞ります。作業ごとに明確なツールを 1 つだけ提供し、代替の編集ツール、並列タスク、スラッシュコマンドは含めません。長いプロンプトと apply_diff は扱えるものの、ツールを選び間違える中型モデル向けです。",
 				"hideMcp": {
 					"label": "MCP ツールも非表示",
 					"description": "MCP ツールのスキーマは通常、ツールプロンプトの大部分を占めます。このプロファイルが MCP サーバーを必要としない限り、オンのままにしてください。"
@@ -745,21 +709,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "新しいタスクには'todos'リストを必須にする",
 			"description": "有効にすると、new_taskツールはtodosパラメータの提供が必須になります。これにより、すべての新しいタスクが明確な目的のリストで開始されることが保証されます。無効（デフォルト）の場合、下位互換性のためにtodosパラメータはオプションのままです。"
-		},
-		"IMAGE_GENERATION": {
-			"name": "AI画像生成を有効にする",
-			"description": "有効にすると、TumbleはOpenRouterの画像生成モデルを使用してテキストプロンプトから画像を生成できます。OpenRouter APIキーの設定が必要です。",
-			"openRouterApiKeyLabel": "OpenRouter APIキー",
-			"openRouterApiKeyPlaceholder": "OpenRouter APIキーを入力してください",
-			"getApiKeyText": "APIキーを取得する場所",
-			"modelSelectionLabel": "画像生成モデル",
-			"modelSelectionDescription": "画像生成に使用するモデルを選択",
-			"warningMissingKey": "⚠️ 画像生成にはOpenRouter APIキーが必要です。上記で設定してください。",
-			"successConfigured": "✓ 画像生成が設定され、使用準備完了です"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "モデル開始スラッシュコマンドを有効にする",
-			"description": "有効にすると、Tumbleがワークフローを実行するためにあなたのスラッシュコマンドを実行できます。"
 		},
 		"CUSTOM_TOOLS": {
 			"name": "カスタムツールを有効化",

@@ -39,7 +39,6 @@ const KIND_DISPLAY_NAMES: Record<ToolPayloadKind, string> = {
 	reviewPlan: "Review Plan",
 	runSlashCommand: "Slash Command",
 	skill: "Load Skill",
-	generateImage: "Generate Image",
 	readArtifact: "Read Artifact",
 	searchTaskHistory: "Search Task History",
 	runParallelTasks: "Run Parallel Tasks",

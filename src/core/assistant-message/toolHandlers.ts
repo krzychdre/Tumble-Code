@@ -20,10 +20,8 @@ import { attemptCompletionTool } from "../tools/AttemptCompletionTool"
 import { newTaskTool } from "../tools/NewTaskTool"
 import { runParallelTasksTool } from "../tools/RunParallelTasksTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
-import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
 import { skillTool } from "../tools/SkillTool"
 import { toolsLoadTool } from "../tools/ToolsLoadTool"
-import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool } from "../tools/ApplyDiffTool"
 import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 import { webSearchTool } from "../tools/WebSearchTool"
@@ -55,7 +53,6 @@ const TOOL_HANDLERS: Readonly<Record<DispatchableToolName, BaseTool<any>>> = {
 	search_replace: searchReplaceTool,
 	edit_file: editFileTool,
 	apply_patch: applyPatchTool,
-	generate_image: generateImageTool,
 	execute_command: executeCommandTool,
 	use_mcp_tool: useMcpToolTool,
 	access_mcp_resource: accessMcpResourceTool,
@@ -67,7 +64,6 @@ const TOOL_HANDLERS: Readonly<Record<DispatchableToolName, BaseTool<any>>> = {
 	new_task: newTaskTool,
 	run_parallel_tasks: runParallelTasksTool,
 	update_todo_list: updateTodoListTool,
-	run_slash_command: runSlashCommandTool,
 	skill: skillTool,
 	tools_load: toolsLoadTool,
 }

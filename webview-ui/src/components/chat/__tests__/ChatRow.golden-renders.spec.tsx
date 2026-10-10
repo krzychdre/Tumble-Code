@@ -352,19 +352,6 @@ const TOOL_CASES: Case[] = [
 		}),
 		isExpanded: true,
 	},
-	{
-		name: "generateImage",
-		message: toolAsk({ tool: "generateImage", path: "img/cat.png", content: "a cat" }),
-	},
-	{
-		name: "generateImage protected",
-		message: toolAsk({ tool: "generateImage", path: "img/cat.png", content: "a cat", isProtected: true }),
-	},
-	{
-		name: "generateImage outside workspace",
-		message: toolAsk({ tool: "generateImage", path: "../cat.png", content: "a cat", isOutsideWorkspace: true }),
-	},
-	{ name: "imageGenerated (no renderer)", message: toolAsk({ tool: "imageGenerated", path: "img/cat.png" }) },
 ]
 
 const SAY_CASES: Case[] = [

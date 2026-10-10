@@ -98,9 +98,3 @@ export function isLegacyReadFileParams(params: ReadFileToolParams): params is Le
 	const hasFilesArray = "files" in params && Array.isArray((params as unknown as Record<string, unknown>).files)
 	return hasLegacyFlag || hasFilesArray
 }
-
-export interface GenerateImageParams {
-	prompt: string
-	path: string
-	image?: string
-}

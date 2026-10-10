@@ -80,13 +80,13 @@ describe("createSettingsDraftStore", () => {
 	})
 
 	it("setExperimentEnabled writes one flag and marks the buffer dirty", () => {
-		const store = seed({ experiments: { runSlashCommand: false } as CachedSettings["experiments"] })
+		const store = seed({ experiments: { preventFocusDisruption: false } as CachedSettings["experiments"] })
 
-		store.setExperimentEnabled("runSlashCommand", false)
+		store.setExperimentEnabled("preventFocusDisruption", false)
 		expect(store.isDirty()).toBe(false)
 
-		store.setExperimentEnabled("runSlashCommand", true)
-		expect(store.getState().experiments?.runSlashCommand).toBe(true)
+		store.setExperimentEnabled("preventFocusDisruption", true)
+		expect(store.getState().experiments?.preventFocusDisruption).toBe(true)
 		expect(store.isDirty()).toBe(true)
 	})
 

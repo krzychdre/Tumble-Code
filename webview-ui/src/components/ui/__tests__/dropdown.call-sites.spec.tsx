@@ -1,9 +1,8 @@
 // The single-choice fields that used to be the toolkit-style dropdown and are
 // now the shared Radix `Select`: the base URL / entrypoint choice of MiniMax,
 // Moonshot and Z.ai (rendered by ProviderDescriptorForm), the embedding model
-// of the codebase index (ModelDropdownField) and the image generation model
-// (ImageGenerationSettings). The trigger is a combobox named by the field's
-// label; the options exist only while the list is open.
+// of the codebase index (ModelDropdownField). The trigger is a combobox named
+// by the field's label; the options exist only while the list is open.
 
 import React, { useState } from "react"
 
@@ -13,7 +12,6 @@ import type { ProviderSettings } from "@tumble-code/types"
 
 import { ProviderDescriptorForm } from "@src/components/settings/providers/ProviderDescriptorForm"
 import { ModelDropdownField, type EmbedderFormContext } from "@src/components/code-index/EmbedderFormFields"
-import { ImageGenerationSettings } from "@src/components/settings/ImageGenerationSettings"
 
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
@@ -190,34 +188,5 @@ describe("Select call site: codebase index embedding model", () => {
 		await choose("custom-model")
 		expect(ctx.updateSetting).toHaveBeenCalledWith("codebaseIndexEmbedderModelId", "custom-model")
 		expect(ctx.updateSetting).toHaveBeenCalledTimes(1)
-	})
-})
-
-describe("Select call site: image generation model", () => {
-	it("shows the stored model and saves another one", async () => {
-		const setModel = vi.fn()
-		render(
-			<ImageGenerationSettings
-				enabled
-				onChange={() => {}}
-				imageGenerationProvider="openrouter"
-				openRouterImageApiKey="key"
-				openRouterImageGenerationSelectedModel={undefined}
-				setImageGenerationProvider={() => {}}
-				setOpenRouterImageApiKey={() => {}}
-				setImageGenerationSelectedModel={setModel}
-			/>,
-		)
-
-		await waitFor(() => expect(selectedText()).toBeTruthy())
-		const texts = await listOptions()
-		expect(texts.length).toBeGreaterThan(1)
-		expect(selectedText()).toBe(texts[0])
-		expect(setModel).not.toHaveBeenCalled()
-
-		await choose(texts[1]!)
-		expect(setModel).toHaveBeenCalledTimes(1)
-		expect(setModel.mock.calls[0][0]).toEqual(expect.any(String))
-		expect(setModel.mock.calls[0][0]).not.toBe("")
 	})
 })

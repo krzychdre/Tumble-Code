@@ -145,11 +145,6 @@ export const globalSettingsSchema = z.object({
 	customInstructions: z.string().optional(),
 	dismissedUpsells: z.array(z.string()).optional(),
 
-	// Image generation settings (experimental) - flattened for simplicity
-	imageGenerationProvider: z.literal("openrouter").optional(),
-	openRouterImageApiKey: z.string().optional(),
-	openRouterImageGenerationSelectedModel: z.string().optional(),
-
 	customCondensingPrompt: z.string().optional(),
 
 	autoApprovalEnabled: z.boolean().optional(),
@@ -437,22 +432,14 @@ export const SECRET_STATE_KEYS: readonly (ProviderCredentialField | (typeof CODE
 	...CODEBASE_INDEX_SECRET_KEYS,
 ]
 
-// Global secrets that are part of GlobalSettings (not ProviderSettings)
-export const GLOBAL_SECRET_KEYS = [
-	"openRouterImageApiKey", // For image generation
-] as const
-
 // Type for the actual secret storage keys
 type ProviderSecretKey = (typeof SECRET_STATE_KEYS)[number]
-type GlobalSecretKey = (typeof GLOBAL_SECRET_KEYS)[number]
 
 // Type representing all secrets that can be stored
-export type SecretState = Pick<ProviderSettings, Extract<ProviderSecretKey, keyof ProviderSettings>> & {
-	[K in GlobalSecretKey]?: string
-}
+export type SecretState = Pick<ProviderSettings, Extract<ProviderSecretKey, keyof ProviderSettings>>
 
 export const isSecretStateKey = (key: string): key is Keys<SecretState> =>
-	SECRET_STATE_KEYS.includes(key as ProviderSecretKey) || GLOBAL_SECRET_KEYS.includes(key as GlobalSecretKey)
+	SECRET_STATE_KEYS.includes(key as ProviderSecretKey)
 
 /**
  * GlobalState

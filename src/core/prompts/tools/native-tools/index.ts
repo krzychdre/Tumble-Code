@@ -7,13 +7,11 @@ import attemptCompletion from "./attempt_completion"
 import codebaseSearch from "./codebase_search"
 import editTool from "./edit"
 import executeCommand from "./execute_command"
-import generateImage from "./generate_image"
 import listFiles from "./list_files"
 import newTask from "./new_task"
 import readArtifact from "./read_artifact"
 import { createReadFileTool, type ReadFileToolOptions } from "./read_file"
 import runParallelTasks from "./run_parallel_tasks"
-import runSlashCommand from "./run_slash_command"
 import skill from "./skill"
 import searchReplace from "./search_replace"
 import edit_file from "./edit_file"
@@ -59,13 +57,11 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		attemptCompletion,
 		codebaseSearch,
 		executeCommand,
-		generateImage,
 		listFiles,
 		newTask,
 		readArtifact,
 		createReadFileTool(readFileOptions),
 		runParallelTasks,
-		runSlashCommand,
 		skill,
 		searchReplace,
 		edit_file,

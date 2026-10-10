@@ -46,9 +46,7 @@ export const toolNames = [
 	"new_task",
 	"codebase_search",
 	"update_todo_list",
-	"run_slash_command",
 	"skill",
-	"generate_image",
 	"custom_tool",
 	"tools_load",
 	"run_parallel_tasks",
@@ -179,9 +177,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	run_parallel_tasks: "run parallel tasks",
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
-	run_slash_command: "run slash command",
 	skill: "load skill",
-	generate_image: "generate images",
 	custom_tool: "use custom tools",
 	tools_load: "load deferred tool schemas",
 	web_search: "search the web",
@@ -199,7 +195,7 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 		tools: ["read_file", "search_files", "list_files", "codebase_search", "search_task_history"],
 	},
 	edit: {
-		tools: ["apply_diff", "write_to_file", "generate_image"],
+		tools: ["apply_diff", "write_to_file"],
 		customTools: ["edit", "search_replace", "edit_file", "apply_patch"],
 	},
 	command: {
@@ -227,7 +223,6 @@ export const ALWAYS_AVAILABLE_TOOLS: ToolName[] = [
 	"switch_mode",
 	"new_task",
 	"update_todo_list",
-	"run_slash_command",
 	"skill",
 	"tools_load",
 	"run_parallel_tasks",
@@ -256,9 +251,7 @@ export const PROTOCOL_TOOL_NAMES: readonly string[] = [
 	"new_task",
 	"run_parallel_tasks",
 	"skill",
-	"run_slash_command",
 	"tools_load",
-	"generate_image",
 ] as const
 
 /**

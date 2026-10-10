@@ -261,10 +261,6 @@
 		"wantsToEditOutsideWorkspace": "Tumble ingin mengedit file ini di luar workspace",
 		"wantsToEditProtected": "Tumble ingin mengedit file konfigurasi yang dilindungi",
 		"wantsToApplyBatchChanges": "Tumble ingin menerapkan perubahan ke beberapa file",
-		"wantsToGenerateImage": "Tumble ingin menghasilkan gambar",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble ingin menghasilkan gambar di luar workspace",
-		"wantsToGenerateImageProtected": "Tumble ingin menghasilkan gambar di lokasi yang dilindungi",
-		"didGenerateImage": "Tumble telah menghasilkan gambar",
 		"wantsToSearchReplace": "Tumble ingin mencari dan mengganti di file ini",
 		"didSearchReplace": "Tumble melakukan pencarian dan penggantian pada file ini",
 		"wantsToInsertWithLineNumber": "Tumble ingin menyisipkan konten ke file ini di baris {{lineNumber}}",
@@ -461,18 +457,9 @@
 		"placeholder": "Edit pesan Anda..."
 	},
 	"slashCommands": {
-		"description": "Gunakan perintah slash bawaan atau buat kustom untuk akses cepat ke prompt dan alur kerja yang sering digunakan. <DocsLink>Dokumentasi</DocsLink>",
-		"manageCommands": "Kelola perintah slash di pengaturan",
-		"globalCommands": "Perintah Global",
-		"workspaceCommands": "Perintah Workspace",
-		"editCommand": "Edit perintah",
-		"deleteCommand": "Hapus perintah",
-		"deleteDialog": {
-			"title": "Hapus Perintah",
-			"description": "Apakah Anda yakin ingin menghapus perintah \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
-			"cancel": "Batal",
-			"confirm": "Hapus"
-		}
+		"title": "Perintah Slash",
+		"description": "Jalankan perintah bawaan atau skill, atau ganti mode.",
+		"manageSkills": "Kelola skills di pengaturan"
 	},
 	"contextMenu": {
 		"noResults": "Tidak ada hasil",

@@ -36,7 +36,6 @@
 		"notifications": "Notificações",
 		"contextManagement": "Contexto",
 		"terminal": "Terminal",
-		"slashCommands": "Comandos de Barra",
 		"prompts": "Prompts",
 		"ui": "UI",
 		"experimental": "Experimental",
@@ -53,41 +52,6 @@
 			"label": "Ativar modo de debug",
 			"description": "Ative o modo de depuração: mostra botões adicionais no cabeçalho da tarefa para visualizar o histórico de conversação da API e as mensagens da UI como JSON formatado em arquivos temporários e grava linhas de depuração detalhadas (incluindo os contadores de desempenho de cada solicitação) no painel de saída do Tumble Code."
 		}
-	},
-	"slashCommands": {
-		"description": "Gerencie seus comandos de barra para executar rapidamente fluxos de trabalho e ações personalizadas.",
-		"workspaceCommands": "Comandos do espaço de trabalho",
-		"globalCommands": "Comandos globais",
-		"noWorkspaceCommands": "Sem comandos neste projeto ainda.",
-		"noGlobalCommands": "Sem comandos globais ainda.",
-		"addCommand": "Adicionar comando de barra",
-		"editCommand": "Editar comando",
-		"deleteCommand": "Excluir comando",
-		"deleteDialog": {
-			"title": "Excluir comando",
-			"description": "Tem certeza de que deseja excluir o comando \"{{name}}\"? Esta ação não pode ser desfeita.",
-			"confirm": "Excluir",
-			"cancel": "Cancelar"
-		},
-		"createDialog": {
-			"title": "Criar novo comando de barra",
-			"nameLabel": "Nome",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Apenas letras minúsculas, números, hífens e sublinhados",
-			"sourceLabel": "Localização",
-			"create": "Criar",
-			"cancel": "Cancelar"
-		},
-		"source": {
-			"global": "Global (disponível em todos os espaços de trabalho)",
-			"project": "Espaço de trabalho"
-		},
-		"validation": {
-			"nameRequired": "Nome é obrigatório",
-			"nameTooLong": "O nome deve ter 64 caracteres ou menos",
-			"nameInvalid": "O nome pode conter apenas letras, números, hífens e sublinhados"
-		},
-		"footer": "Use comandos de barra para acesso rápido a prompts e fluxos de trabalho usados com frequência."
 	},
 	"prompts": {
 		"description": "Configure prompts de suporte usados para ações rápidas como melhorar prompts, explicar código e corrigir problemas. Esses prompts ajudam o Tumble a fornecer melhor assistência para tarefas comuns de desenvolvimento."
@@ -697,7 +661,7 @@
 			},
 			"slim": {
 				"label": "Modelos menores: conjunto de ferramentas enxuto",
-				"description": "O prompt de sistema completo com menos ferramentas: uma ferramenta clara para cada tarefa, sem as ferramentas de edição alternativas, a geração de imagens, as tarefas paralelas e os comandos de barra. Para modelos médios que lidam com o prompt longo e com apply_diff, mas escolhem a ferramenta errada.",
+				"description": "O prompt de sistema completo com menos ferramentas: uma ferramenta clara para cada tarefa, sem as ferramentas de edição alternativas, as tarefas paralelas e os comandos de barra. Para modelos médios que lidam com o prompt longo e com apply_diff, mas escolhem a ferramenta errada.",
 				"hideMcp": {
 					"label": "Ocultar também ferramentas MCP",
 					"description": "Os esquemas de ferramentas MCP costumam ser a maior parte do prompt de ferramentas. Mantenha isto ativo a menos que este perfil precise de um servidor MCP."
@@ -745,21 +709,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Exigir lista de 'todos' para novas tarefas",
 			"description": "Quando ativado, a ferramenta new_task exigirá que um parâmetro todos seja fornecido. Isso garante que todas as novas tarefas comecem com uma lista clara de objetivos. Quando desativado (padrão), o parâmetro todos permanece opcional para compatibilidade com versões anteriores."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Habilitar geração de imagens com IA",
-			"description": "Quando habilitado, Tumble pode gerar imagens a partir de prompts de texto usando os modelos de geração de imagens do OpenRouter. Requer uma chave de API do OpenRouter configurada.",
-			"openRouterApiKeyLabel": "Chave de API do OpenRouter",
-			"openRouterApiKeyPlaceholder": "Digite sua chave de API do OpenRouter",
-			"getApiKeyText": "Obtenha sua chave de API de",
-			"modelSelectionLabel": "Modelo de Geração de Imagens",
-			"modelSelectionDescription": "Selecione o modelo para geração de imagens",
-			"warningMissingKey": "⚠️ A chave de API do OpenRouter é necessária para geração de imagens. Configure-a acima.",
-			"successConfigured": "✓ A geração de imagens está configurada e pronta para uso"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Ativar comandos slash iniciados pelo modelo",
-			"description": "Quando ativado, Tumble pode executar seus comandos slash para executar fluxos de trabalho."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Ativar ferramentas personalizadas",

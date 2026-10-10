@@ -107,7 +107,6 @@ vi.mock("../ExperimentalSettings", () => ({ ExperimentalSettings: () => null }))
 vi.mock("../LanguageSettings", () => ({ LanguageSettings: () => null }))
 vi.mock("../About", () => ({ About: () => null }))
 vi.mock("../PromptsSettings", () => ({ default: () => null }))
-vi.mock("../SlashCommandsSettings", () => ({ SlashCommandsSettings: () => null }))
 vi.mock("../UISettings", () => ({ UISettings: () => null }))
 vi.mock("../SettingsSearch", () => ({ SettingsSearch: () => null }))
 vi.mock("../useSettingsSearch", async (importOriginal) => {

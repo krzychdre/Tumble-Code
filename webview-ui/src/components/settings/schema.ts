@@ -162,9 +162,6 @@ export const SETTINGS_SCHEMA = {
 	parallelTasksMaxConcurrency: onSave,
 	subagentFollowupTimeoutSec: onSave,
 	profileThresholds: { apply: "immediate" },
-	imageGenerationProvider: onSave,
-	openRouterImageApiKey: onSave,
-	openRouterImageGenerationSelectedModel: onSave,
 	experiments: onSave,
 	customSupportPrompts: { apply: "onSave", equals: sameJson },
 } as const satisfies SettingsSchema

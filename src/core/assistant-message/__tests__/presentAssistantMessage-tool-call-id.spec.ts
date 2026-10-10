@@ -17,7 +17,6 @@ const handles = vi.hoisted(() => {
 		use_mcp_tool: stub(),
 		access_mcp_resource: stub(),
 		ask_followup_question: stub(),
-		generate_image: stub(),
 		attempt_completion: stub(),
 	}
 })
@@ -27,7 +26,6 @@ vi.mock("../../tools/ReadArtifactTool", () => ({ readArtifactTool: handles.read_
 vi.mock("../../tools/UseMcpToolTool", () => ({ useMcpToolTool: handles.use_mcp_tool }))
 vi.mock("../../tools/accessMcpResourceTool", () => ({ accessMcpResourceTool: handles.access_mcp_resource }))
 vi.mock("../../tools/AskFollowupQuestionTool", () => ({ askFollowupQuestionTool: handles.ask_followup_question }))
-vi.mock("../../tools/GenerateImageTool", () => ({ generateImageTool: handles.generate_image }))
 vi.mock("../../tools/AttemptCompletionTool", () => ({ attemptCompletionTool: handles.attempt_completion }))
 
 vi.mock("../../task/Task")

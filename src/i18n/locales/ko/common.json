@@ -54,13 +54,6 @@
 		"share_task_not_found": "작업을 찾을 수 없거나 액세스가 거부되었습니다.",
 		"task_show_failed": "작업을 열지 못했습니다. 삭제되었거나 손상되었을 수 있습니다.",
 		"mode_import_failed": "모드 가져오기 실패: {{error}}",
-		"command_not_found": "'{{name}}' 명령을 찾을 수 없습니다",
-		"open_command_file": "명령 파일을 열 수 없습니다",
-		"delete_command": "명령 삭제 실패",
-		"no_workspace_for_project_command": "프로젝트 명령용 워크스페이스 폴더를 찾을 수 없습니다",
-		"command_already_exists": "명령 \"{{commandName}}\"이(가) 이미 존재합니다",
-		"create_command_failed": "명령 생성에 실패했습니다",
-		"command_template_content": "---\ndescription: \"이 명령이 수행하는 작업에 대한 간단한 설명\"\n---\n\n이것은 새로운 슬래시 명령입니다. 이 파일을 편집하여 명령 동작을 사용자 정의하세요.",
 		"message": {
 			"no_active_task_to_delete": "메시지를 삭제할 활성 작업이 없습니다",
 			"invalid_timestamp_for_deletion": "삭제를 위한 메시지 타임스탬프가 유효하지 않습니다",

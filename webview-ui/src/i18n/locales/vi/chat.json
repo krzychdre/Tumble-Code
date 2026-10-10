@@ -214,10 +214,6 @@
 		"wantsToReadAndXMore": "Tumble muốn đọc tệp này và {{count}} tệp khác",
 		"wantsToReadMultiple": "Tumble muốn đọc nhiều tệp",
 		"wantsToApplyBatchChanges": "Tumble muốn áp dụng thay đổi cho nhiều tệp",
-		"wantsToGenerateImage": "Tumble muốn tạo một hình ảnh",
-		"wantsToGenerateImageOutsideWorkspace": "Tumble muốn tạo hình ảnh bên ngoài không gian làm việc",
-		"wantsToGenerateImageProtected": "Tumble muốn tạo hình ảnh ở vị trí được bảo vệ",
-		"didGenerateImage": "Tumble đã tạo một hình ảnh",
 		"userEdits": "Các chỉnh sửa của người dùng"
 	},
 	"directoryOperations": {
@@ -456,18 +452,9 @@
 		"placeholder": "Chỉnh sửa tin nhắn của bạn..."
 	},
 	"slashCommands": {
-		"description": "Sử dụng lệnh gạch chéo tích hợp sẵn hoặc tạo tùy chỉnh để truy cập nhanh vào các lời nhắc và quy trình làm việc thường dùng. <DocsLink>Tài liệu</DocsLink>",
-		"manageCommands": "Quản lý các lệnh slash trong cài đặt",
-		"globalCommands": "Lệnh Toàn Cục",
-		"workspaceCommands": "Lệnh Không Gian Làm Việc",
-		"editCommand": "Chỉnh sửa lệnh",
-		"deleteCommand": "Xóa lệnh",
-		"deleteDialog": {
-			"title": "Xóa Lệnh",
-			"description": "Bạn có chắc chắn muốn xóa lệnh \"{{name}}\" không? Hành động này không thể hoàn tác.",
-			"cancel": "Hủy",
-			"confirm": "Xóa"
-		}
+		"title": "Lệnh Gạch Chéo",
+		"description": "Chạy một lệnh tích hợp hoặc một skill, hoặc chuyển chế độ.",
+		"manageSkills": "Quản lý skills trong cài đặt"
 	},
 	"contextMenu": {
 		"noResults": "Không có kết quả",

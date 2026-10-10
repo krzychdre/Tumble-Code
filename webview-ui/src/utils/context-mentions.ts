@@ -137,7 +137,10 @@ export function getContextMenuOptions(
 		const slashQuery = query.slice(1)
 		const results: ContextMenuQueryItem[] = []
 
-		// Add command suggestions first (prioritize commands at the top)
+		// Built-in commands first, then skills, then modes. The host sends both
+		// commands and skills in `commands` and has already dropped a skill whose
+		// name a built-in command takes; a skill keeps its "global" or "project"
+		// source, so only "built-in" entries are commands.
 		if (commands?.length) {
 			// Create searchable strings array for fzf
 			const searchableCommands = commands.map((command) => ({
@@ -150,22 +153,18 @@ export function getContextMenuOptions(
 				selector: (item) => item.searchStr,
 			})
 
-			// Get fuzzy matching commands
-			const matchingCommands = slashQuery
-				? fzf.find(slashQuery).map((result) => ({
-						type: ContextMenuOptionType.Command,
-						value: result.item.original.name,
-						slashCommand: `/${result.item.original.name}`,
-						description: result.item.original.description,
-						argumentHint: result.item.original.argumentHint,
-					}))
-				: commands.map((command) => ({
-						type: ContextMenuOptionType.Command,
-						value: command.name,
-						slashCommand: `/${command.name}`,
-						description: command.description,
-						argumentHint: command.argumentHint,
-					}))
+			// Get fuzzy matching commands and skills, best match first
+			const matching = slashQuery ? fzf.find(slashQuery).map((result) => result.item.original) : commands
+			const toOption = (command: Command): ContextMenuQueryItem => ({
+				type: ContextMenuOptionType.Command,
+				value: command.name,
+				slashCommand: `/${command.name}`,
+				description: command.description,
+				argumentHint: command.argumentHint,
+			})
+
+			const matchingCommands = matching.filter((command) => command.source === "built-in").map(toOption)
+			const matchingSkills = matching.filter((command) => command.source !== "built-in").map(toOption)
 
 			if (matchingCommands.length > 0) {
 				results.push({
@@ -174,9 +173,17 @@ export function getContextMenuOptions(
 				})
 				results.push(...matchingCommands)
 			}
+
+			if (matchingSkills.length > 0) {
+				results.push({
+					type: ContextMenuOptionType.SectionHeader,
+					label: "Skills",
+				})
+				results.push(...matchingSkills)
+			}
 		}
 
-		// Add mode suggestions second
+		// Add mode suggestions last
 		if (modes?.length) {
 			// Create searchable strings array for fzf
 			const searchableItems = modes.map((mode) => ({

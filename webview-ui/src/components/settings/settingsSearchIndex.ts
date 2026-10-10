@@ -42,11 +42,6 @@ export const STATIC_SEARCH_INDEX: StaticSearchEntry[] = [
 	{ settingId: "tab-providers", section: "providers", labelKey: "settings:sections.providers" },
 	{ settingId: "tab-modes", section: "modes", labelKey: "settings:sections.modes" },
 	{ settingId: "tab-skills", section: "skills", labelKey: "settings:sections.skills" },
-	{
-		settingId: "tab-slashCommands",
-		section: "slashCommands",
-		labelKey: "settings:sections.slashCommands",
-	},
 	{ settingId: "tab-autoApprove", section: "autoApprove", labelKey: "settings:sections.autoApprove" },
 	{ settingId: "tab-mcp", section: "mcp", labelKey: "settings:sections.mcp" },
 	{ settingId: "tab-checkpoints", section: "checkpoints", labelKey: "settings:sections.checkpoints" },
@@ -117,16 +112,6 @@ export const STATIC_SEARCH_INDEX: StaticSearchEntry[] = [
 		settingId: "experimental-prevent_focus_disruption",
 		section: "experimental",
 		labelKey: "settings:experimental.PREVENT_FOCUS_DISRUPTION.name",
-	},
-	{
-		settingId: "experimental-image_generation",
-		section: "experimental",
-		labelKey: "settings:experimental.IMAGE_GENERATION.name",
-	},
-	{
-		settingId: "experimental-run_slash_command",
-		section: "experimental",
-		labelKey: "settings:experimental.RUN_SLASH_COMMAND.name",
 	},
 	{
 		settingId: "experimental-custom_tools",

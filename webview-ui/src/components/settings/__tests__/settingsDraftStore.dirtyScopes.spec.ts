@@ -53,7 +53,7 @@ describe("SettingsDraftStore dirty scopes", () => {
 		const store = createSettingsDraftStore(initial)
 
 		store.setScope("experimental")
-		store.setExperimentEnabled("imageGeneration" as never, true)
+		store.setExperimentEnabled("customTools", true)
 		store.setScope("terminal")
 		store.setDirty(true)
 

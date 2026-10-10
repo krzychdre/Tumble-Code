@@ -54,13 +54,6 @@
 		"share_task_not_found": "Không tìm thấy nhiệm vụ hoặc truy cập bị từ chối.",
 		"task_show_failed": "Không thể mở nhiệm vụ. Nhiệm vụ có thể đã bị xóa hoặc hỏng.",
 		"mode_import_failed": "Nhập chế độ thất bại: {{error}}",
-		"command_not_found": "Không tìm thấy lệnh '{{name}}'",
-		"open_command_file": "Không thể mở tệp lệnh",
-		"delete_command": "Không thể xóa lệnh",
-		"no_workspace_for_project_command": "Không tìm thấy thư mục workspace cho lệnh dự án",
-		"command_already_exists": "Lệnh \"{{commandName}}\" đã tồn tại",
-		"create_command_failed": "Không thể tạo lệnh",
-		"command_template_content": "---\ndescription: \"Mô tả ngắn gọn về chức năng của lệnh này\"\n---\n\nĐây là một lệnh slash mới. Chỉnh sửa tệp này để tùy chỉnh hành vi của lệnh.",
 		"message": {
 			"no_active_task_to_delete": "Không có nhiệm vụ hoạt động để xóa tin nhắn",
 			"invalid_timestamp_for_deletion": "Dấu thời gian tin nhắn không hợp lệ để xóa",

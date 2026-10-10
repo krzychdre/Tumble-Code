@@ -39,7 +39,6 @@
 		"notifications": "Notifications",
 		"contextManagement": "Context",
 		"terminal": "Terminal",
-		"slashCommands": "Slash Commands",
 		"prompts": "Prompts",
 		"ui": "UI",
 		"experimental": "Experimental",
@@ -53,41 +52,6 @@
 			"label": "Enable debug mode",
 			"description": "Enable debug mode: shows additional buttons in the task header for viewing API conversation history and UI messages as prettified JSON in temporary files, and writes detailed debug lines (including per-request performance counters) to the Tumble Code output panel."
 		}
-	},
-	"slashCommands": {
-		"description": "Slash commands are shortcuts for reusable workflows and actions to be used on demand (like creating a PR, running a set of tasks, etc).",
-		"workspaceCommands": "Workspace Commands",
-		"globalCommands": "Global Commands",
-		"noWorkspaceCommands": "No commands in this project yet.",
-		"noGlobalCommands": "No global commands yet.",
-		"addCommand": "Add Slash Command",
-		"editCommand": "Edit command",
-		"deleteCommand": "Delete command",
-		"deleteDialog": {
-			"title": "Delete Command",
-			"description": "Are you sure you want to delete the command \"{{name}}\"? This action cannot be undone.",
-			"confirm": "Delete",
-			"cancel": "Cancel"
-		},
-		"createDialog": {
-			"title": "Create New Slash Command",
-			"nameLabel": "Name",
-			"namePlaceholder": "my-command-name",
-			"nameHint": "Lowercase letters, numbers, hyphens and underscores only",
-			"sourceLabel": "Location",
-			"create": "Create",
-			"cancel": "Cancel"
-		},
-		"source": {
-			"global": "Global (available in all workspaces)",
-			"project": "Workspace"
-		},
-		"validation": {
-			"nameRequired": "Name is required",
-			"nameTooLong": "Name must be 64 characters or less",
-			"nameInvalid": "Name must contain only letters, numbers, hyphens, and underscores"
-		},
-		"footer": "Use slash commands for quick access to frequently used prompts and workflows."
 	},
 	"skills": {
 		"description": "Skills encapsulate contextual instructions and workflows, which the agent can load on-demand. They can include general instructions, specific workflows and even scripts to be run as needed.",
@@ -813,7 +777,7 @@
 			},
 			"slim": {
 				"label": "Smaller models: slim toolset",
-				"description": "The full system prompt with fewer tools: one obvious tool for each job, without the alternative editing tools, image generation, parallel tasks and slash commands. For mid-size models that cope with the long prompt and apply_diff but pick the wrong tool.",
+				"description": "The full system prompt with fewer tools: one obvious tool for each job, without the alternative editing tools, parallel tasks and slash commands. For mid-size models that cope with the long prompt and apply_diff but pick the wrong tool.",
 				"hideMcp": {
 					"label": "Also hide MCP tools",
 					"description": "MCP tool schemas are usually the biggest part of the tool prompt. Keep this on unless this profile needs an MCP server."
@@ -861,21 +825,6 @@
 		"NEW_TASK_REQUIRE_TODOS": {
 			"name": "Require 'todos' list for new tasks",
 			"description": "When enabled, the new_task tool will require a todos parameter to be provided. This ensures all new tasks start with a clear list of objectives. When disabled (default), the todos parameter remains optional for backward compatibility."
-		},
-		"IMAGE_GENERATION": {
-			"name": "Enable AI image generation",
-			"description": "When enabled, Tumble can generate images from text prompts using image generation models.",
-			"openRouterApiKeyLabel": "OpenRouter API Key",
-			"openRouterApiKeyPlaceholder": "Enter your OpenRouter API key",
-			"getApiKeyText": "Get your API key from",
-			"modelSelectionLabel": "Image Generation Model",
-			"modelSelectionDescription": "Select the model to use for image generation",
-			"warningMissingKey": "⚠️ OpenRouter API key is required for OpenRouter image generation. Please configure it above.",
-			"successConfigured": "✓ Image generation is configured and ready to use"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Enable model-initiated slash commands",
-			"description": "When enabled, Tumble can run your slash commands to execute workflows."
 		},
 		"CUSTOM_TOOLS": {
 			"name": "Enable custom tools",

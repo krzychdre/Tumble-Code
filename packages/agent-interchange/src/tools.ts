@@ -59,7 +59,6 @@ const TUMBLE_TOOLS: Record<string, ActionKind> = {
 	fetch_instructions: "other",
 	run_slash_command: "other",
 	skill: "other",
-	generate_image: "other",
 	custom_tool: "other",
 	tools_load: "other",
 }

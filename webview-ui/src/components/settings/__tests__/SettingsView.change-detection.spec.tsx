@@ -234,9 +234,6 @@ vi.mock("../About", () => ({
 vi.mock("../PromptsSettings", () => ({
 	default: () => null,
 }))
-vi.mock("../SlashCommandsSettings", () => ({
-	SlashCommandsSettings: () => null,
-}))
 vi.mock("../UISettings", () => ({
 	UISettings: () => null,
 }))
@@ -304,8 +301,6 @@ describe("SettingsView - Change Detection Fix", () => {
 		includeDiagnosticMessages: false,
 		maxDiagnosticMessages: 50,
 		includeTaskHistoryInEnhance: true,
-		openRouterImageApiKey: undefined,
-		openRouterImageGenerationSelectedModel: undefined,
 		reasoningBlockCollapsed: true,
 		...overrides,
 	})

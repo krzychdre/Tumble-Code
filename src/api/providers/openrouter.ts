@@ -40,7 +40,6 @@ import { BaseProvider } from "./base-provider"
 import type { ApiHandlerCreateMessageMetadata, CompletionResult, SingleCompletionHandler } from "../index"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
-import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
 import { logger } from "../../utils/logging"
 import { wireCaptureFetch } from "./utils/wire-capture"
@@ -507,40 +506,6 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			text: completion.choices[0]?.message?.content || "",
 			usage: openAiCompletionUsage(completion.usage),
 		}
-	}
-
-	/**
-	 * Generate an image using OpenRouter's image generation API (chat completions with modalities)
-	 * Note: OpenRouter only supports the chat completions approach, not the /images/generations endpoint
-	 * @param prompt The text prompt for image generation
-	 * @param model The model to use for generation
-	 * @param apiKey The OpenRouter API key (must be explicitly provided)
-	 * @param inputImage Optional base64 encoded input image data URL
-	 * @returns The generated image data and format, or an error
-	 */
-	async generateImage(
-		prompt: string,
-		model: string,
-		apiKey: string,
-		inputImage?: string,
-	): Promise<ImageGenerationResult> {
-		if (!apiKey) {
-			return {
-				success: false,
-				error: "OpenRouter API key is required for image generation",
-			}
-		}
-
-		const baseURL = this.options.openRouterBaseUrl || "https://openrouter.ai/api/v1"
-
-		// OpenRouter only supports chat completions approach for image generation
-		return generateImageWithProvider({
-			baseURL,
-			authToken: apiKey,
-			model,
-			prompt,
-			inputImage,
-		})
 	}
 }
 
