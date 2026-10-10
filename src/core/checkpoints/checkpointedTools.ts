@@ -1,4 +1,4 @@
-import type { ToolName } from "@tumble-code/types"
+import { isCompactProfile, type ToolName } from "@tumble-code/types"
 
 import { toolNamesWhere } from "../tools/toolDescriptors"
 
@@ -22,4 +22,20 @@ export const CHECKPOINTED_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(
 
 export function isCheckpointedTool(name: string): boolean {
 	return CHECKPOINTED_TOOLS.has(name as ToolName)
+}
+
+/**
+ * Whether a call to `name` by a task on the profile `settings` (the task's own
+ * `apiConfiguration`) gets a checkpoint before it runs. Both call sites go
+ * through this, so they keep agreeing.
+ *
+ * Under a compact profile `new_task` is refused before it acts (subagents are
+ * off there, see `NewTaskTool`), so it gets no checkpoint: the refusal leaves
+ * no trace beyond its tool error. Otherwise the same as `isCheckpointedTool`.
+ */
+export function isCheckpointedCall(name: string, settings?: { compactProfile?: boolean } | null): boolean {
+	if (name === "new_task" && isCompactProfile(settings)) {
+		return false
+	}
+	return isCheckpointedTool(name)
 }
