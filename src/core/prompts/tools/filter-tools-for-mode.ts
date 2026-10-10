@@ -1,7 +1,7 @@
 import type OpenAI from "openai"
 import type { ModeConfig, ToolName, ToolGroup, ModelInfo } from "@tumble-code/types"
-import { getModeBySlug, getToolsForMode } from "../../../shared/modes"
-import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS, TOOL_ALIASES } from "@tumble-code/types"
+import { getGroupName, getModeBySlug, getToolsForMode } from "../../../shared/modes"
+import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS, TOOL_ALIASES, isCompactProfile } from "@tumble-code/types"
 import { defaultModeSlug } from "../../../shared/modes"
 import type { CodeIndexManager } from "../../../services/code-index/manager"
 import type { McpHub } from "../../../services/mcp/McpHub"
@@ -66,8 +66,11 @@ export const SLIM_TOOLSET_ALLOWLIST: readonly string[] = toolNamesWhere((tool) =
  * slim set. Aliases pointing at a hidden tool (`search_and_replace` resolves to
  * `edit`) are correctly left out.
  */
-export const SLIM_TOOLSET_ALLOWSET: ReadonlySet<string> = (() => {
-	const allowset = new Set<string>(SLIM_TOOLSET_ALLOWLIST)
+export const SLIM_TOOLSET_ALLOWSET: ReadonlySet<string> = withAliases(SLIM_TOOLSET_ALLOWLIST)
+
+/** A name list as a lookup set, widened with every alias whose target is in the list. */
+function withAliases(names: readonly string[]): ReadonlySet<string> {
+	const allowset = new Set<string>(names)
 
 	for (const [alias, canonical] of Object.entries(TOOL_ALIASES)) {
 		if (allowset.has(canonical)) {
@@ -76,7 +79,7 @@ export const SLIM_TOOLSET_ALLOWSET: ReadonlySet<string> = (() => {
 	}
 
 	return allowset
-})()
+}
 
 /** MCP tool names, kept only when the slim profile does not hide MCP. */
 const MCP_GROUP_TOOLS: readonly string[] = TOOL_GROUPS.mcp.tools
@@ -151,6 +154,111 @@ export function applySlimToolset(allowedTools: Set<string>, settings?: SlimTools
 	}
 
 	return result
+}
+
+/**
+ * The compact toolset: the only tool names a profile with `compactProfile` on
+ * may advertise, still subject to the mode's groups and the feature gates
+ * (ai_plans/2026-10-10_19-36_compact-small-model-profile.md, "Compact toolset"):
+ *
+ * - read:     read_file, list_files, search_files
+ * - edit:     edit (in place of apply_diff), write_to_file (new files, full rewrites)
+ * - command:  execute_command
+ * - web:      web_search, web_fetch (still gated by `webToolsEnabled`)
+ * - protocol: ask_followup_question, attempt_completion, switch_mode
+ *
+ * The list is the `compactAllowed` column of the tool descriptor table
+ * (`src/core/tools/toolDescriptors.ts`). Not offered: the other edit verbs,
+ * delegation, todo lists, artifacts, skills, slash commands, the deferred-tools
+ * loader, every MCP tool and `access_mcp_resource`. Dispatch stays tolerant, as
+ * with slim: a hidden tool the model calls anyway still runs.
+ */
+export const COMPACT_TOOLSET_ALLOWLIST: readonly string[] = toolNamesWhere((tool) => tool.compactAllowed)
+
+/**
+ * The compact allowlist as a lookup set, widened with the aliases of its tools
+ * (today `write_file` and `search_and_replace`), for the same reason as
+ * SLIM_TOOLSET_ALLOWSET.
+ */
+export const COMPACT_TOOLSET_ALLOWSET: ReadonlySet<string> = withAliases(COMPACT_TOOLSET_ALLOWLIST)
+
+/**
+ * The edit verb a compact profile offers in place of apply_diff. It is an
+ * opt-in tool of the `edit` group (`customTools` in TOOL_GROUPS), which a mode
+ * normally gets only through a model's `includedTools`; under compact every mode
+ * with the edit group gets it.
+ */
+export const COMPACT_EDIT_TOOL = "edit"
+
+/**
+ * Settings subset that drives the compact toolset. Structural, like
+ * SlimToolsetSettings, so the loose filter settings can be passed as they are.
+ */
+export interface CompactToolsetSettings {
+	compactProfile?: boolean
+	modelInfo?: ModelInfo
+}
+
+function modeHasGroup(modeConfig: ModeConfig, group: ToolGroup): boolean {
+	return modeConfig.groups.some((entry) => getGroupName(entry) === group)
+}
+
+/**
+ * Intersect an already mode-resolved tool set with the compact allowlist.
+ *
+ * Runs AFTER mode/group resolution and model customization, so it only removes
+ * names, with one exception: a mode whose groups include `edit` is offered
+ * COMPACT_EDIT_TOOL, the verb that replaces apply_diff. A mode without the edit
+ * group never gains it, and neither does a model that lists it in
+ * `excludedTools`. The feature gates and `disabledTools` run after this in
+ * filterNativeToolsForMode, so they still apply.
+ *
+ * Compact supersedes slim: the caller runs this INSTEAD of applySlimToolset when
+ * the flag is on. Without the flag the input set is returned untouched
+ * (identity), which keeps today's bytes.
+ */
+export function applyCompactToolset(
+	allowedTools: Set<string>,
+	modeConfig: ModeConfig,
+	settings?: CompactToolsetSettings,
+): Set<string> {
+	if (!isCompactProfile(settings)) {
+		return allowedTools
+	}
+
+	const result = new Set<string>()
+
+	for (const tool of allowedTools) {
+		if (COMPACT_TOOLSET_ALLOWSET.has(tool)) {
+			result.add(tool)
+		}
+	}
+
+	const excludedByModel = (settings?.modelInfo?.excludedTools ?? []).some(
+		(tool) => resolveToolAlias(tool) === COMPACT_EDIT_TOOL,
+	)
+	if (modeHasGroup(modeConfig, "edit") && !excludedByModel) {
+		result.add(COMPACT_EDIT_TOOL)
+	}
+
+	return result
+}
+
+/**
+ * The opt-in tools dispatch must accept for a compact profile: the model's own
+ * `includedTools` plus COMPACT_EDIT_TOOL, so the `edit` the compact toolset
+ * advertises passes `isToolAllowedForMode` in a mode with the edit group (and
+ * only there; the group's `fileRegex` still applies). Without the flag the input
+ * is returned untouched, including `undefined`.
+ */
+export function withCompactIncludedTools(
+	includedTools: string[] | undefined,
+	settings?: { compactProfile?: boolean } | null,
+): string[] | undefined {
+	if (!isCompactProfile(settings)) {
+		return includedTools
+	}
+	return [...new Set([...(includedTools ?? []), COMPACT_EDIT_TOOL])]
 }
 
 /**
@@ -353,7 +461,11 @@ export function filterNativeToolsForMode(
 	// model customization, so it can only subtract. Because the active profile
 	// follows the mode through `modeApiConfigs`, switching modes mid-task
 	// recomputes this on the very next request with no persisted state.
-	allowedToolNames = applySlimToolset(allowedToolNames, settings)
+	// Compact supersedes slim: under `compactProfile` (the task's own profile)
+	// the compact intersection runs instead.
+	allowedToolNames = isCompactProfile(settings)
+		? applyCompactToolset(allowedToolNames, modeConfig, settings)
+		: applySlimToolset(allowedToolNames, settings)
 
 	// Conditionally exclude codebase_search if feature is disabled or not configured
 	if (
@@ -450,7 +562,7 @@ function hasAnyMcpResources(mcpHub: McpHub, allowedServers?: string[]): boolean 
  * @param mode - Current mode slug
  * @param customModes - Custom mode configurations
  * @param experiments - Experiment flags
- * @param settings - Additional settings for tool filtering (slim toolset flags)
+ * @param settings - Additional settings for tool filtering (slim toolset and compact profile flags)
  * @returns Filtered array of MCP tools if use_mcp_tool is allowed, empty array otherwise
  */
 export function filterMcpToolsForMode(
@@ -463,8 +575,9 @@ export function filterMcpToolsForMode(
 	const modeSlug = mode ?? defaultModeSlug
 
 	// A slim profile that hides MCP advertises no per-server tool schemas at all.
-	// This is where the bulk of the tool-prompt saving comes from.
-	if (slimToolsetHidesMcp(settings)) {
+	// This is where the bulk of the tool-prompt saving comes from. A compact
+	// profile never advertises MCP.
+	if (isCompactProfile(settings) || slimToolsetHidesMcp(settings)) {
 		return []
 	}
 

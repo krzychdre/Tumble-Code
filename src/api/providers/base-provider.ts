@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ModelInfo } from "@tumble-code/types"
+import { type ModelInfo, isCompactProfile } from "@tumble-code/types"
 
 import type { ApiHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { ApiStream } from "../transform/stream"
@@ -27,15 +27,32 @@ export abstract class BaseProvider implements ApiHandler {
 	 * Converts an array of tools to be compatible with OpenAI's strict mode.
 	 * Filters for function tools, applies schema conversion to their parameters,
 	 * and ensures all tools have consistent strict: true values.
+	 *
+	 * `profile` is the handler's own settings (`this.options`, the profile that
+	 * serves the request); BaseProvider has none of its own. For a compact
+	 * profile every function tool keeps its original schema and is sent with
+	 * `strict: false`: strict mode makes every property required, so a small model
+	 * invents values for parameters it should leave out (read_file's `limit`,
+	 * `mode`, `indentation`). Any other profile gets the strict conversion below,
+	 * unchanged.
 	 */
-	protected convertToolsForOpenAI(tools: any[] | undefined): any[] | undefined {
+	protected convertToolsForOpenAI(
+		tools: any[] | undefined,
+		profile?: { compactProfile?: boolean } | null,
+	): any[] | undefined {
 		if (!tools) {
 			return undefined
 		}
 
+		const compact = isCompactProfile(profile)
+
 		return tools.map((tool) => {
 			if (tool.type !== "function") {
 				return tool
+			}
+
+			if (compact) {
+				return { ...tool, function: { ...tool.function, strict: false } }
 			}
 
 			// MCP tools use the 'mcp--' prefix - disable strict mode for them

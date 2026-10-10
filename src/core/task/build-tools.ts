@@ -2,7 +2,13 @@ import path from "path"
 
 import type OpenAI from "openai"
 
-import type { ProviderSettings, ModeConfig, ModelInfo, CustomModePrompts } from "@tumble-code/types"
+import {
+	type ProviderSettings,
+	type ModeConfig,
+	type ModelInfo,
+	type CustomModePrompts,
+	isCompactProfile,
+} from "@tumble-code/types"
 import { customToolRegistry, formatNative } from "@tumble-code/core"
 
 import type { ClineProvider } from "../webview/ClineProvider"
@@ -10,7 +16,9 @@ import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
 import { getModeAllowedMcpServers, defaultModeSlug } from "../../shared/modes"
 
 import { getNativeTools, getMcpServerTools } from "../prompts/tools/native-tools"
+import { getCompactNativeTools } from "../prompts/tools/native-tools/compact"
 import {
+	COMPACT_TOOLSET_ALLOWSET,
 	applySlimToolset,
 	filterNativeToolsForMode,
 	filterMcpToolsForMode,
@@ -150,10 +158,12 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	// Check if the model supports images for read_file tool description.
 	const supportsImages = modelInfo?.supportsImages ?? false
 
+	// A compact profile advertises its own short definitions (same names and
+	// parsers, minimal schemas); the mode filter below picks from them.
+	const compactActive = isCompactProfile(filterSettings)
+
 	// Build native tools with dynamic read_file tool based on settings.
-	const nativeTools = getNativeTools({
-		supportsImages,
-	})
+	const nativeTools = compactActive ? getCompactNativeTools() : getNativeTools({ supportsImages })
 
 	// Resolve the per-mode MCP allowlist for filtering. Works for built-in modes (override in
 	// customModePrompts) as well as custom modes (allowlist on the ModeConfig).
@@ -198,7 +208,11 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	// Routed through applySlimToolset rather than a length check so the
 	// allowlist stays the single source of truth (a custom tool that happens to
 	// be named like an allowlisted one is kept).
-	if (nativeCustomTools.length > 0 && isSlimToolsetEnabled(filterSettings)) {
+	// Compact supersedes slim and is stricter still: only a custom tool named like
+	// a compact tool survives.
+	if (nativeCustomTools.length > 0 && compactActive) {
+		nativeCustomTools = nativeCustomTools.filter((tool) => COMPACT_TOOLSET_ALLOWSET.has(getToolName(tool)))
+	} else if (nativeCustomTools.length > 0 && isSlimToolsetEnabled(filterSettings)) {
 		const keptCustomToolNames = applySlimToolset(new Set(nativeCustomTools.map(getToolName)), filterSettings)
 		nativeCustomTools = nativeCustomTools.filter((tool) => keptCustomToolNames.has(getToolName(tool)))
 	}
@@ -226,7 +240,9 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		// (a hidden but real tool still executes, aliases still resolve) is simply
 		// not reachable here. Weak models, which is who slim is for, do not run on
 		// Gemini, so this is an accepted trade rather than a behaviour we want.
-		const slimActive = isSlimToolsetEnabled(filterSettings)
+		//
+		// A compact profile is narrowed the same way, for the same reason.
+		const slimActive = isSlimToolsetEnabled(filterSettings) || compactActive
 
 		// Combine ALL tools (unfiltered native + all MCP + custom), or the slim set.
 		const allTools = slimActive ? filteredTools : [...nativeTools, ...mcpTools, ...nativeCustomTools]

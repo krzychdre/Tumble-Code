@@ -172,8 +172,14 @@ export async function rejectInvalidToolUse(
 	// Resolve aliases in includedTools before validation
 	// e.g., "edit_file" should resolve to "apply_diff"
 	const rawIncludedTools = modelInfo?.info?.includedTools
-	const { resolveToolAlias } = await import("../../prompts/tools/filter-tools-for-mode")
-	const includedTools = rawIncludedTools?.map((tool) => resolveToolAlias(tool))
+	const { resolveToolAlias, withCompactIncludedTools } = await import("../../prompts/tools/filter-tools-for-mode")
+	// A compact profile (the task's own) advertises `edit`, an opt-in tool of the
+	// edit group, in every mode with that group; accept it here the same way. It
+	// stays rejected in a mode without the group, and the group's fileRegex applies.
+	const includedTools = withCompactIncludedTools(
+		rawIncludedTools?.map((tool) => resolveToolAlias(tool)),
+		task.apiConfiguration,
+	)
 
 	try {
 		const toolRequirements =
