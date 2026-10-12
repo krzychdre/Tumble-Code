@@ -89,6 +89,11 @@ workspace, or a `data:` URL) are drawn in the printed transcript (`ui/graphics/`
 Only `<Static>` output may carry a marker (`ScrollbackContext`): the live tail is repainted on every frame and shows
 the text fallback `[image: alt] path` instead.
 
+A closed ` ```mermaid ` fence becomes `MermaidBlock` (`ui/graphics/mermaid.ts`, using `beautiful-mermaid`): an SVG
+drawn through `InlineImage` where images are possible, the diagram in box-drawing characters elsewhere, the code when
+the diagram kind is unsupported or the text form is wider than the terminal. resvg understands neither CSS custom
+properties nor `color-mix()`, so `resolveSvgColors` evaluates them into plain colours first.
+
 ## Build
 
 `apps/cli/tsup.config.ts` bundles the CLI to ESM for Node 22, with the workspace packages inlined.
