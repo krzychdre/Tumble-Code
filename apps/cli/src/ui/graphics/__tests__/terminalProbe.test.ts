@@ -41,6 +41,19 @@ describe("parseProbeReplies", () => {
 	})
 })
 
+describe("parseProbeReplies, sixel limits", () => {
+	it("reads the colour registers and the largest sixel image from XTSMGRAPHICS", () => {
+		const replies = parseProbeReplies(`\x1b[?1;0;16S\x1b[?2;0;1000;1000S${DA1_SIXEL}`)
+		expect(replies).toMatchObject({ colors: 16, maxImage: { width: 1000, height: 1000 } })
+	})
+
+	it("ignores a failed XTSMGRAPHICS reply", () => {
+		const replies = parseProbeReplies(`\x1b[?2;3;0S${DA1_SIXEL}`)
+		expect(replies.maxImage).toBeUndefined()
+		expect(replies.colors).toBeUndefined()
+	})
+})
+
 describe("chooseProtocol", () => {
 	const replies = { complete: true, kitty: false, sixel: false }
 

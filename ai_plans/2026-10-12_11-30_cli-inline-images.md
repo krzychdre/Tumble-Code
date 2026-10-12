@@ -29,12 +29,18 @@ Markdown images. The Mermaid half is the next branch.
 - Sixel has no partial alpha: light anti-aliased text on a transparent background was quantized to dark pixels
   (verified by decoding the produced sixel back with `sixel`'s decoder).
 
+- xterm cuts off a sixel image larger than its `maxGraphicSize` (1000x1000 by default) instead of scaling it, and
+  has 16 colour registers by default (`numColorRegisters`); a 256-colour image then comes out in wrong colours. Found
+  with a Mermaid diagram on the next branch: the bottom third (the database node) was missing.
+
 ## Design
 
 - `terminalProbe.ts`: before ink starts, write a kitty graphics query, `CSI 16 t` (cell size), `OSC 11 ?`
   (background) and DA1 (`CSI c`) last; read stdin in raw mode until the DA1 reply or 400 ms. kitty reply wins, then
   iTerm2 (by `TERM_PROGRAM`/`LC_TERMINAL`, it has no query), then sixel (DA1 attribute 4). tmux/screen: text only.
-  `TUMBLE_IMAGES=off|kitty|iterm|sixel` overrides.
+  `TUMBLE_IMAGES=off|kitty|iterm|sixel` overrides. XTSMGRAPHICS (`CSI ? 1 ; 1 ; 0 S`, `CSI ? 2 ; 1 ; 0 S`) asks
+  for the sixel colour registers and the largest sixel image; `placeImage` scales sixel images into that limit and
+  the sixel encoder uses no more colours than there are registers.
 - `imageEncoding.ts`: header-only size of PNG/JPEG/GIF/WebP; `placeImage` scales down to the box (never up);
   resvg renders an SVG, or a bitmap wrapped in a one-element SVG, at the placement width; `encodeImage` writes kitty
   (PNG, 4096-byte chunks, `q=2` so no replies reach stdin), iTerm2 (`width=Npx`), or sixel (256 colours, after

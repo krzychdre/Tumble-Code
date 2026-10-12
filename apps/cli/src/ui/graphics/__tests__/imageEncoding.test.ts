@@ -28,6 +28,18 @@ describe("placeImage", () => {
 		})
 	})
 
+	it("keeps a sixel image within the largest image the terminal accepts", () => {
+		const sixel: TerminalGraphics = { ...graphics, protocol: "sixel", maxImage: { width: 1000, height: 500 } }
+		expect(placeImage({ width: 800, height: 1000 }, { maxColumns: 200, maxRows: 100 }, sixel)).toEqual({
+			width: 400,
+			height: 500,
+			rows: 25,
+		})
+		// The limit is sixel's; kitty scales whatever it gets.
+		const kitty = { ...sixel, protocol: "kitty" as const }
+		expect(placeImage({ width: 800, height: 1000 }, { maxColumns: 200, maxRows: 100 }, kitty)?.height).toBe(1000)
+	})
+
 	it("refuses an empty image or an empty box", () => {
 		expect(placeImage({ width: 0, height: 10 }, { maxColumns: 80, maxRows: 20 }, graphics)).toBeUndefined()
 		expect(placeImage({ width: 10, height: 10 }, { maxColumns: 0, maxRows: 20 }, graphics)).toBeUndefined()
@@ -112,6 +124,18 @@ describe("encodeImage", () => {
 		expect(encodeImage("iterm", raster)).toMatch(
 			new RegExp(`^\\x1b\\]1337;File=inline=1;size=${raster.png.length};width=64px;height=64px;`),
 		)
+	})
+
+	it("uses no more sixel colours than the terminal has registers", () => {
+		const gradient =
+			'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><defs><linearGradient id="g">' +
+			'<stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient></defs>' +
+			'<rect width="64" height="64" fill="url(#g)"/></svg>'
+		const image = rasterizeSvg(gradient, 64)
+		const registers = (sixel: string) => new Set(sixel.match(/#\d+;2;/g)).size
+
+		expect(registers(encodeImage("sixel", image))).toBeGreaterThan(16)
+		expect(registers(encodeImage("sixel", image, { colors: 16 }))).toBeLessThanOrEqual(16)
 	})
 
 	it("produces a sixel DCS sequence with the raster size", () => {

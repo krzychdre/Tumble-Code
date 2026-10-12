@@ -75,7 +75,11 @@ export function prepareImage(source: ImageSource, graphics: GraphicsSettings, bo
 		const raster = rasterizeSvg(svg, placement.width)
 		const known = graphics.cellSizeKnown
 		return registerImage(key, {
-			sequence: encodeImage(protocol, raster, { movesCursor: !known, background: graphics.background }),
+			sequence: encodeImage(protocol, raster, {
+				movesCursor: !known,
+				background: graphics.background,
+				colors: graphics.colors,
+			}),
 			rows: known ? Math.ceil(raster.height / graphics.cellHeight) : undefined,
 		})
 	} catch (error) {

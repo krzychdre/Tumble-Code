@@ -39,10 +39,14 @@ export function placeImage(natural: PixelSize, box: ImageBox, graphics: Terminal
 	if (natural.width <= 0 || natural.height <= 0 || box.maxColumns <= 0 || box.maxRows <= 0) {
 		return undefined
 	}
+	// A sixel terminal cuts off what exceeds its largest image instead of scaling.
+	const limit = graphics.protocol === "sixel" ? graphics.maxImage : undefined
 	const scale = Math.min(
 		1,
 		(box.maxColumns * graphics.cellWidth) / natural.width,
 		(box.maxRows * graphics.cellHeight) / natural.height,
+		limit ? limit.width / natural.width : 1,
+		limit ? limit.height / natural.height : 1,
 	)
 	const width = Math.max(1, Math.floor(natural.width * scale))
 	const height = Math.max(1, Math.floor(natural.height * scale))
@@ -175,13 +179,15 @@ interface EncodeOptions {
 	movesCursor?: boolean
 	/** The terminal background, for the protocols without transparency. */
 	background?: string
+	/** Sixel colour registers; an image with more colours than registers comes out in wrong colours. */
+	colors?: number
 }
 
 /** The escape sequence that draws `raster` at the cursor, in its own pixel size. */
 export function encodeImage(
 	protocol: ImageProtocol,
 	raster: Raster,
-	{ movesCursor = false, background = DEFAULT_BACKGROUND }: EncodeOptions = {},
+	{ movesCursor = false, background = DEFAULT_BACKGROUND, colors = 256 }: EncodeOptions = {},
 ): string {
 	switch (protocol) {
 		case "kitty": {
@@ -204,6 +210,11 @@ export function encodeImage(
 			return `\x1b]1337;File=${args}:${data}\x07`
 		}
 		case "sixel":
-			return image2sixel(flattenOnto(raster.pixels, background), raster.width, raster.height, 256)
+			return image2sixel(
+				flattenOnto(raster.pixels, background),
+				raster.width,
+				raster.height,
+				Math.max(2, Math.min(256, colors)),
+			)
 	}
 }

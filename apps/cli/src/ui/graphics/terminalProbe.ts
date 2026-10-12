@@ -32,6 +32,13 @@ export interface TerminalGraphics {
 	cellSizeKnown: boolean
 	/** Background colour as `#rrggbb`, when the terminal reported it. */
 	background?: string
+	/**
+	 * Sixel only: the largest image the terminal accepts, in pixels. Larger
+	 * images are cut off, not scaled (xterm: 1000x1000 by default).
+	 */
+	maxImage?: { width: number; height: number }
+	/** Sixel only: the colour registers, i.e. the most colours one image may use. */
+	colors?: number
 }
 
 /** Assumed cell size when the terminal does not report one. */
@@ -56,10 +63,18 @@ const KITTY_QUERY_ID = 31
  *   store (`a=q`); kitty-protocol terminals reply `OK`.
  * - `CSI 16 t`: the cell size in pixels, replied as `CSI 6 ; h ; w t`.
  * - `OSC 11 ?`: the background colour, replied as `OSC 11 ; rgb:rrrr/gggg/bbbb`.
+ * - XTSMGRAPHICS `CSI ? 1 ; 1 ; 0 S` and `CSI ? 2 ; 1 ; 0 S`: the sixel colour
+ *   registers and the largest sixel image, replied as `CSI ? 1 ; 0 ; n S` and
+ *   `CSI ? 2 ; 0 ; w ; h S`.
  * - `CSI c` (DA1): `CSI ? 62 ; 4 ; ... c`, where attribute 4 means sixel.
  */
 export const PROBE_QUERIES =
-	`\x1b_Gi=${KITTY_QUERY_ID},s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\` + "\x1b[16t" + "\x1b]11;?\x1b\\" + "\x1b[c"
+	`\x1b_Gi=${KITTY_QUERY_ID},s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\` +
+	"\x1b[16t" +
+	"\x1b]11;?\x1b\\" +
+	"\x1b[?1;1;0S" +
+	"\x1b[?2;1;0S" +
+	"\x1b[c"
 
 export interface ProbeReplies {
 	/** The DA1 reply arrived, so nothing more will. */
@@ -69,6 +84,8 @@ export interface ProbeReplies {
 	cellWidth?: number
 	cellHeight?: number
 	background?: string
+	maxImage?: { width: number; height: number }
+	colors?: number
 }
 
 const KITTY_REPLY_RE = new RegExp(`\\x1b_Gi=${KITTY_QUERY_ID};OK`)
@@ -76,6 +93,10 @@ const KITTY_REPLY_RE = new RegExp(`\\x1b_Gi=${KITTY_QUERY_ID};OK`)
 const CELL_SIZE_RE = /\x1b\[6;(\d+);(\d+)t/
 // eslint-disable-next-line no-control-regex
 const BACKGROUND_RE = /\x1b\]11;rgb:([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})\/([0-9a-fA-F]{1,4})/
+// eslint-disable-next-line no-control-regex
+const SIXEL_COLORS_RE = /\x1b\[\?1;0;(\d+)S/
+// eslint-disable-next-line no-control-regex
+const SIXEL_GEOMETRY_RE = /\x1b\[\?2;0;(\d+);(\d+)S/
 // eslint-disable-next-line no-control-regex
 const DA1_RE = /\x1b\[\?([\d;]*)c/
 
@@ -108,6 +129,18 @@ export function parseProbeReplies(data: string): ProbeReplies {
 
 	if (bg?.[1] && bg[2] && bg[3]) {
 		replies.background = `#${colorByte(bg[1])}${colorByte(bg[2])}${colorByte(bg[3])}`
+	}
+
+	const colors = Number(data.match(SIXEL_COLORS_RE)?.[1])
+	if (colors > 0) {
+		replies.colors = colors
+	}
+
+	const geometry = data.match(SIXEL_GEOMETRY_RE)
+	const maxWidth = Number(geometry?.[1])
+	const maxHeight = Number(geometry?.[2])
+	if (maxWidth > 0 && maxHeight > 0) {
+		replies.maxImage = { width: maxWidth, height: maxHeight }
 	}
 
 	return replies
@@ -189,6 +222,8 @@ export async function probeTerminalGraphics(
 		cellHeight: replies.cellHeight ?? DEFAULT_CELL.height,
 		cellSizeKnown: replies.cellHeight !== undefined,
 		background: replies.background,
+		maxImage: replies.maxImage,
+		colors: replies.colors,
 	}
 }
 
