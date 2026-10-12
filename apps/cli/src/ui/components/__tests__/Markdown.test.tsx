@@ -127,4 +127,26 @@ describe("Markdown", () => {
 		const { lastFrame } = render(<Markdown>{"- _really_ matters"}</Markdown>)
 		expect(lastFrame()).toContain("• really matters")
 	})
+
+	describe("inline math", () => {
+		it.each([
+			["$3x^3$ grows", "3x³ grows"],
+			["on \\((-\\infty, 0]\\) it", "on (-∞, 0] it"],
+			["inline $$\\frac{1}{2}$$ too", "inline ½ too"],
+			["**bold** and $x_1$ and `$code$`", "bold and x₁ and $code$"],
+		])("renders %j as %j", (markdown, text) => {
+			const { lastFrame } = render(<Markdown>{markdown}</Markdown>)
+
+			expect(lastFrame()).toContain(text)
+		})
+
+		it.each(["It costs $5 and $10 today.", "between $ 5 and $ 10", "See \\[1\\] here", "Prices: 5$ and 10$."])(
+			"leaves %j as written",
+			(markdown) => {
+				const { lastFrame } = render(<Markdown>{markdown}</Markdown>)
+
+				expect(lastFrame()).toContain(markdown)
+			},
+		)
+	})
 })
