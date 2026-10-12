@@ -40,6 +40,11 @@ _MIN_CHECKS = {
     "math_checks.html": 12,
     # Diagram image, labels, size, cache across a live update, invalid source kept.
     "mermaid_checks.html": 11,
+    # Copy per row (Markdown as written, fences, no fold), the .md/.json download.
+    "copy_download_checks.html": 17,
+    # Local image paths rewritten to the serve URL, others left alone, live
+    # rows, the retry and the placeholder.
+    "images_checks.html": 14,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
     # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter form.

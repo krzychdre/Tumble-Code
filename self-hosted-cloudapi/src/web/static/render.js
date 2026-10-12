@@ -381,6 +381,84 @@
 		}
 	}
 
+	// A message as Markdown, for "Copy Markdown" on its row and for the
+	// conversation download (plan: 2026-10-12 cloud web copy and download).
+	// The text the model or the user wrote, as written; commands, output and
+	// tool payloads in code fences. "" for rows with nothing to copy.
+	function messageMarkdown(m) {
+		if (!m) return ""
+		const kind = m.say || m.ask || m.type
+		switch (kind) {
+			case "text":
+			case "user_feedback":
+			case "user_feedback_diff":
+				return userMarkdown(m.text)
+			case "reasoning":
+				return String(m.text || m.reasoning || "")
+			case "command":
+				return fence(m.text || "", "sh")
+			case "command_output":
+				return m.text ? fence(m.text, "") : ""
+			case "condense_context":
+				return (m.contextCondense && m.contextCondense.summary) || ""
+			case "api_req_started":
+			case "api_req_finished":
+			case "checkpoint_saved":
+				return ""
+			case "tool": {
+				const obj = tryParse(m.text)
+				if (!obj) return String(m.text || "")
+				const path = obj.path ? "`" + obj.path + "`\n\n" : ""
+				if (obj.diff) return path + fence(obj.diff, "diff")
+				if (obj.content) return path + fence(obj.content, "")
+				return path + fence(JSON.stringify(obj, null, 2), "json")
+			}
+			case "followup": {
+				const obj = tryParse(m.text)
+				if (!obj || !obj.question) return String(m.text || "")
+				const sug = obj.suggest || obj.suggestions
+				const list = Array.isArray(sug)
+					? sug
+							.map(function (s) {
+								return "- " + (typeof s === "string" ? s : (s && s.answer) || "")
+							})
+							.join("\n")
+					: ""
+				return obj.question + (list ? "\n\n" + list : "")
+			}
+			default: {
+				if (!m.text) return ""
+				const obj = tryParse(m.text)
+				return obj ? fence(JSON.stringify(obj, null, 2), "json") : String(m.text)
+			}
+		}
+	}
+
+	// The typed text of a user turn, without the machine-built
+	// <environment_details> and the <task>/<feedback> wrapper (userContentHtml).
+	function userMarkdown(text) {
+		let body = String(text || "")
+		body = body.replace(/<environment_details>[\s\S]*?(?:<\/environment_details>|$)/, "")
+		const wrap = body.match(/<(user_message|task|feedback)>([\s\S]*?)<\/\1>/)
+		return (wrap ? wrap[2] : body).trim()
+	}
+
+	// A fence longer than any backtick run inside, so the content cannot close it.
+	function fence(text, lang) {
+		const runs = String(text).match(/`{3,}/g) || []
+		const longest = runs.reduce(function (n, r) {
+			return Math.max(n, r.length + 1)
+		}, 3)
+		const ticks = "`".repeat(longest)
+		return ticks + lang + "\n" + String(text).replace(/\n$/, "") + "\n" + ticks
+	}
+
+	function copyToClipboard(text) {
+		if (window.TumbleClipboard) return window.TumbleClipboard.copyText(text)
+		if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text)
+		return Promise.reject(new Error("no clipboard"))
+	}
+
 	function images(m) {
 		if (!m.images || !m.images.length) return ""
 		return (
@@ -658,6 +736,8 @@
 		let count = 0
 		let lastCommandTs = null // owning command for trailing command_output rows
 		let firstKey = null // key of the first row: the task's own instruction
+		const order = [] // keys in document order, for the conversation download
+		const headingByKey = {} // key -> "You", "Command · `uv run pytest`", ...
 		// Set by "expand all" / "collapse all". While set it also decides how rows
 		// arriving *afterwards* open, so a live task keeps obeying the choice
 		// instead of reverting to the per-role default on the next message.
@@ -808,9 +888,12 @@
 				container.appendChild(fresh)
 				count++
 				if (ts != null) tail = { ts: ts, key: key, el: fresh }
+				if (key != null) order.push(key)
 			}
 			if (key != null) {
 				byTs[key] = fresh
+				headingByKey[key] = info.label + (info.detail ? " · `" + info.detail + "`" : "")
+				addCopyButton(fresh, key)
 				if (resolvedByTs[key]) applyResolution(fresh, resolvedByTs[key])
 				else if (activeAsk && activeAsk.ts === key) decorateAsk(fresh)
 				// Remember a fold the reader sets, so it survives the next upsert.
@@ -822,6 +905,61 @@
 					})
 				}
 			}
+		}
+
+		// "Copy Markdown" in the row's meta, which patchRow keeps across live
+		// updates; it reads the latest message for the key when clicked. Inside
+		// the <summary>, so the click must not also fold the row.
+		function addCopyButton(el, key) {
+			const meta = el.querySelector(":scope > details > summary > .msg-meta")
+			if (!meta || meta.querySelector(".msg-copy") || !messageMarkdown(rawByTs[key])) return
+			const b = document.createElement("button")
+			b.type = "button"
+			b.className = "msg-copy"
+			b.textContent = "Copy"
+			b.title = "Copy this message as Markdown"
+			b.addEventListener("click", function (e) {
+				e.preventDefault()
+				e.stopPropagation()
+				copyToClipboard(messageMarkdown(rawByTs[key])).then(
+					function () {
+						flash(b, "Copied")
+					},
+					function () {
+						flash(b, "Copy failed")
+					},
+				)
+			})
+			meta.insertBefore(b, meta.firstChild)
+		}
+
+		function flash(button, text) {
+			button.textContent = text
+			setTimeout(function () {
+				button.textContent = "Copy"
+			}, 1500)
+		}
+
+		// The whole conversation as one Markdown document: a heading per row
+		// (role, detail, local time) and the row's Markdown. API rows carry only
+		// figures and are left out.
+		function toMarkdown(title) {
+			const parts = ["# " + (title || "Tumble Code task")]
+			order.forEach(function (key) {
+				const m = rawByTs[key]
+				const text = messageMarkdown(m)
+				if (!text) return
+				const when = m && m.ts != null ? " · " + new Date(m.ts).toLocaleString() : ""
+				parts.push("## " + headingByKey[key] + when + "\n\n" + text)
+			})
+			return parts.join("\n\n") + "\n"
+		}
+
+		// The raw messages, in order, as the task stored them.
+		function toMessages() {
+			return order.map(function (key) {
+				return rawByTs[key]
+			})
 		}
 
 		// Open or close every foldable row at once, and make the choice stick for
@@ -942,6 +1080,8 @@
 			getMetrics: getMetrics,
 			setAllFolds: setAllFolds,
 			roles: roles,
+			toMarkdown: toMarkdown,
+			toMessages: toMessages,
 			get count() {
 				return count
 			},
@@ -996,10 +1136,54 @@
 			folds.appendChild(b)
 		})
 
+		// The whole conversation, built when clicked, so a live task's download
+		// has every message that arrived so far.
+		const title = (document.querySelector(".page-title") || {}).textContent || ""
+		;[
+			["Download .md", "text/markdown", "md"],
+			["Download .json", "application/json", "json"],
+		].forEach(function (spec) {
+			const b = document.createElement("button")
+			b.type = "button"
+			b.className = "btn ghost small btn-download"
+			b.textContent = spec[0]
+			b.addEventListener("click", function () {
+				const text =
+					spec[2] === "md" ? convo.toMarkdown(title.trim()) : JSON.stringify(convo.toMessages(), null, 2) + "\n"
+				download(fileName(title, spec[2]), text, spec[1])
+			})
+			folds.appendChild(b)
+		})
+
 		bar.appendChild(filters)
 		bar.appendChild(folds)
 		host.insertBefore(bar, container)
 	}
+
+	function fileName(title, ext) {
+		const slug = String(title)
+			.trim()
+			.replace(/[^\p{L}\p{N}]+/gu, "-")
+			.replace(/^-+|-+$/g, "")
+			.slice(0, 60)
+		return (slug || "tumble-task") + "." + ext
+	}
+
+	function download(name, text, type) {
+		const url = URL.createObjectURL(new Blob([text], { type: type + ";charset=utf-8" }))
+		const a = document.createElement("a")
+		a.href = url
+		a.download = name
+		document.body.appendChild(a)
+		a.click()
+		a.remove()
+		setTimeout(function () {
+			URL.revokeObjectURL(url)
+		}, 1000)
+	}
+
+	// For the browser checks: the file names and the Markdown of one message.
+	window.TumbleExport = { fileName: fileName, messageMarkdown: messageMarkdown }
 
 	function init() {
 		const container = document.getElementById("conversation")
