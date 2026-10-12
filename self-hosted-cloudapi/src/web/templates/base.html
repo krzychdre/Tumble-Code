@@ -10,6 +10,7 @@
      before the first paint, so a light choice never flashes dark. #}
   <script src="/static/theme.js?v={{ asset_v }}"></script>
   <link rel="stylesheet" href="/static/app.css?v={{ asset_v }}">
+  {% block head %}{% endblock %}
 </head>
 <body{% if page_zone %} data-tz="{{ page_zone }}"{% endif %}>
   {# First thing a keyboard reaches: past the top bar straight to the page. #}
