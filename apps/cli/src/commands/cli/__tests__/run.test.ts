@@ -53,6 +53,7 @@ const mockHost = vi.hoisted(() => ({
 					base: Record<string, unknown>
 					modes: Record<string, Record<string, unknown>>
 				}
+				resolveModelProviderSettings?: (mode: string, model: string) => Record<string, unknown>
 		  },
 }))
 
