@@ -68,14 +68,12 @@ function makeTerminal(
 		id,
 		getLastCommand: vi.fn().mockReturnValue(opts.command),
 		getCurrentWorkingDirectory: vi.fn().mockReturnValue(opts.cwd ?? CWD),
-		getProcessesWithOutput: vi
-			.fn()
-			.mockReturnValue(
-				(opts.processes ?? []).map((p) => ({
-					command: p.command,
-					getUnretrievedOutput: vi.fn().mockReturnValue(p.output),
-				})),
-			),
+		getProcessesWithOutput: vi.fn().mockReturnValue(
+			(opts.processes ?? []).map((p) => ({
+				command: p.command,
+				getUnretrievedOutput: vi.fn().mockReturnValue(p.output),
+			})),
+		),
 		cleanCompletedProcessQueue: vi.fn(),
 	}
 }
@@ -339,6 +337,13 @@ describe("getEnvironmentDetails under the compact profile", () => {
 
 			setEditors([], [])
 			expect(await getEnvironmentDetails(task as Task)).toContain("\nOpen tabs: none\n")
+		})
+
+		it("gives visible files and open tabs with forward slashes, as on Windows", async () => {
+			// path.relative returns backslashes on Windows; both lists must show "/".
+			setEditors(["notes\\coffee.md"], ["notes\\coffee.md"])
+			const first = await getEnvironmentDetails(task as Task, true)
+			expect(first).toContain("\nVisible files: notes/coffee.md\nOpen tabs: notes/coffee.md\n")
 		})
 
 		it("lists recently modified files on one line", async () => {
