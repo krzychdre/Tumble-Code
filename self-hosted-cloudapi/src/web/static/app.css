@@ -2610,6 +2610,23 @@ details.env-details > pre {
 	border: 1px solid var(--line);
 }
 
+/* An image a message points to by path (render.js localImages), and the line
+   that replaces it when the client never uploaded it. */
+.msg-body img {
+	max-width: 100%;
+	height: auto;
+}
+.msg-body img.local-img {
+	border-radius: var(--r-sm);
+	border: 1px solid var(--line);
+}
+.img-missing {
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text-faint);
+	overflow-wrap: anywhere;
+}
+
 /* A mermaid diagram (render.js): an image of the SVG, at most as wide as the row. */
 .mermaid-diagram {
 	margin: var(--s2) 0;

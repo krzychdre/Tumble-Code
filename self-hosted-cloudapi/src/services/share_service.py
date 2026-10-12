@@ -8,7 +8,7 @@ from config.settings import settings
 from src.database import dialect_insert
 from src.models.error_report import ErrorReport
 from src.models.llm_exchange import LlmBlob, LlmExchange
-from src.models.task import Task, TaskMessage, TaskShare
+from src.models.task import Task, TaskImage, TaskMessage, TaskShare
 from src.models.settings import OrganizationSettings
 from src.schemas.share import ShareResponse
 from src.services.task_tree import descendant_ids
@@ -165,6 +165,9 @@ async def delete_tasks(
     )
 
     await db.execute(delete(TaskMessage).where(TaskMessage.task_id.in_(owned)))
+    # The images the messages pointed to. The foreign key cascades too; done
+    # here like every other child, so the delete does not depend on it.
+    await db.execute(delete(TaskImage).where(TaskImage.task_id.in_(owned)))
     # Error reports carry the tail of the task's conversation; they go with
     # it. Not a foreign key (a report can name a task that was never stored),
     # so it is done here, for this user's reports only.

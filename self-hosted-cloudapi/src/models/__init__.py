@@ -4,7 +4,7 @@ from src.models.base import Base, TimestampMixin
 from src.models.user import User, Session, ClientToken, Ticket
 from src.models.organization import Organization, Membership
 from src.models.settings import OrganizationSettings, UserSettings
-from src.models.task import Task, TaskMessage, TaskShare
+from src.models.task import Task, TaskImage, TaskMessage, TaskShare
 from src.models.relation import TaskRelation
 from src.models.event import TelemetryEvent
 from src.models.error_report import ErrorReport
@@ -26,6 +26,7 @@ __all__ = [
     "Task",
     "TaskMessage",
     "TaskShare",
+    "TaskImage",
     "TaskRelation",
     "TelemetryEvent",
     "ErrorReport",

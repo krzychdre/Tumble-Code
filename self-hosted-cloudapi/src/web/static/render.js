@@ -147,6 +147,78 @@
 		)
 	}
 
+	// Images a message points to by workspace path (plan: 2026-10-12 cloud web
+	// task images). `![chart](monitoring/x.png)` names a file on the user's
+	// machine; the client uploads it, and the page asks the server for it by the
+	// message's ts and the path as written (decodeURI of what marked put in src).
+	// The base comes from #conversation's data-image-base: the owner page and
+	// the shared page answer under different URLs. A src with a scheme
+	// (http:, data:, blob:, ...), a protocol-relative one and the panel's own
+	// URLs are left alone; anything else, absolute filesystem paths included,
+	// is the model's local path. A drive letter ("C:\x.png") is a path too.
+	const PANEL_URL_RE = /^\/(app|shared|static)\//
+	const SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
+	const DRIVE_RE = /^[a-zA-Z]:[\\/]/
+	const IMAGE_RETRY_MS = 3000
+
+	function localImagePath(src) {
+		const s = String(src || "").trim()
+		if (!s || s.charAt(0) === "#" || s.startsWith("//") || PANEL_URL_RE.test(s)) return null
+		if (SCHEME_RE.test(s) && !DRIVE_RE.test(s)) return null
+		try {
+			return decodeURI(s)
+		} catch (e) {
+			return s
+		}
+	}
+
+	// Rewrites the local <img> of a rendered (already sanitized) body. Works on
+	// an inert <template>, so no image loads from the old src; the new src is
+	// built from encoded parts, and the path is kept in data-local-path for the
+	// placeholder below.
+	function localImages(html, base, ts) {
+		if (!html || !base || ts == null || html.indexOf("<img") === -1) return html
+		const t = document.createElement("template")
+		t.innerHTML = html
+		let changed = false
+		t.content.querySelectorAll("img").forEach(function (img) {
+			const path = localImagePath(img.getAttribute("src"))
+			if (path == null) return
+			img.setAttribute(
+				"src",
+				base + "?ts=" + encodeURIComponent(String(ts)) + "&path=" + encodeURIComponent(path),
+			)
+			img.setAttribute("data-local-path", path)
+			img.classList.add("local-img")
+			changed = true
+		})
+		return changed ? t.innerHTML : html
+	}
+
+	// A local image that does not load: the upload may still be on its way (a
+	// live row is drawn as soon as the message arrives), so it is tried once
+	// more, then replaced by a line naming the path. One capture-phase listener
+	// for the whole page (error does not bubble; the CSP forbids inline handlers).
+	document.addEventListener(
+		"error",
+		function (e) {
+			const img = e.target
+			if (!img || img.tagName !== "IMG" || !img.hasAttribute("data-local-path")) return
+			if (!img.hasAttribute("data-retried")) {
+				img.setAttribute("data-retried", "1")
+				setTimeout(function () {
+					if (img.isConnected) img.setAttribute("src", img.getAttribute("src") + "&retry=" + Date.now())
+				}, IMAGE_RETRY_MS)
+				return
+			}
+			const note = document.createElement("span")
+			note.className = "img-missing"
+			note.textContent = "image not uploaded: " + img.getAttribute("data-local-path")
+			img.replaceWith(note)
+		},
+		true,
+	)
+
 	// Math (plan: 2026-10-12 cloud web math), the same delimiters as the
 	// extension and the CLI: $$...$$ and \[...\] are display math when they
 	// fill their lines, \(...\) and $...$ (Pandoc's rule: no space inside the
@@ -730,6 +802,7 @@
 		const activeByTs = {} // key -> { ts, label }, for the "executing now" indicator
 		const resolvedByTs = {} // key -> "approved"|"denied", survives row replacement
 		const foldByTs = {} // key -> bool: a fold the reader set, kept across upserts
+		const imageBase = container.getAttribute("data-image-base") || ""
 		const rolesSeen = {} // role -> true, for building the filter chips
 		let activeAsk = null // { ts, onApprove, onDeny, ... } — the pending approval
 		let tail = null // { ts, key, el } — last row in document order, for step duration
@@ -848,6 +921,7 @@
 			if (key != null && key === firstKey && info.kind === "text") {
 				info = { role: "user", label: "You", body: info.body, kind: info.kind }
 			}
+			info.body = localImages(info.body, imageBase, ts)
 			// A row is "running" while its message streams (partial) or, for an API
 			// request, until it reports a cost. The in-place upsert of the final
 			// message clears it automatically. Initial history replay (opts.history)

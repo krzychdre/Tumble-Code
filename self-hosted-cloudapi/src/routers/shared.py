@@ -7,15 +7,17 @@ the task.
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import settings
 from src.auth.web_session import LoginRequired, WebUser, get_web_user_optional
 from src.database import get_db
+from src.routers.task_images import image_response
 from src.routers.web_page import not_found_page
 from src.services.task_access import ShareVerdict, shared_view_access
+from src.services.task_images import load_task_image
 from src.services.task_summary import derive_title
 from src.utils.json_script import json_for_script
 from src.web.presenters.task_detail import (
@@ -75,5 +77,27 @@ async def shared_task(
                 if live
                 else json_for_script({})
             ),
+            "image_base": f"/shared/{task_id}/images",
         },
     )
+
+
+@router.get("/shared/{task_id}/images", response_class=Response)
+async def shared_task_image(
+    task_id: str,
+    ts: int = Query(...),
+    path: str = Query(...),
+    user: Optional[WebUser] = Depends(get_web_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """An image of a shared task, for whoever may open the shared page.
+
+    Same verdict as the page (services/task_access); a reader who may not see
+    the task gets the same bare 404 as an image that was never uploaded.
+    """
+    access = await shared_view_access(db, task_id, user)
+    if access.verdict is ShareVerdict.LOGIN_REQUIRED:
+        raise LoginRequired()
+    if access.verdict is not ShareVerdict.ALLOWED:
+        return image_response(None)
+    return image_response(await load_task_image(db, task_id, ts, path))

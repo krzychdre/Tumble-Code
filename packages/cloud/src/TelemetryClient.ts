@@ -12,11 +12,18 @@ import {
 	TelemetryEventSubscription,
 } from "@tumble-code/types"
 
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+
 import { getTumbleCodeApiUrl } from "./config.js"
 import type { RetryQueue } from "./retry-queue/index.js"
+import { findLocalImageReferences, locateTaskImage } from "./taskImages.js"
 
 const MAX_EXCEPTION_MESSAGE_CHARS = 2_000
 const MAX_EXCEPTION_STACK_CHARS = 4_000
+
+/** How many uploaded images the client remembers, so a file is not sent twice. */
+const MAX_REMEMBERED_TASK_IMAGES = 5_000
 
 function truncate(text: string, max: number): string {
 	return text.length > max ? `${text.slice(0, max)}…` : text
@@ -111,6 +118,12 @@ abstract class BaseTelemetryClient implements TelemetryClient {
 
 export class CloudTelemetryClient extends BaseTelemetryClient {
 	private retryQueue: RetryQueue | null = null
+
+	/**
+	 * `taskId|ts|path|mtimeMs|size` of every image already sent (or being
+	 * sent), oldest first. A changed file has a new key and is sent again.
+	 */
+	private sentTaskImages = new Set<string>()
 
 	constructor(
 		private authService: AuthService,
@@ -210,14 +223,22 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			return
 		}
 
+		let response: Response | undefined
+
 		try {
-			await this.fetch(`events`, {
+			response = await this.fetch(`events`, {
 				method: "POST",
 				body: JSON.stringify(result.data),
 			})
 		} catch (error) {
 			console.error(`[TelemetryClient#capture] Error sending telemetry event: ${error}`)
 			// Error is already queued for retry in the fetch method
+		}
+
+		const data = result.data
+		if (response?.ok && data.type === TelemetryEventName.TASK_MESSAGE && data.properties.message.partial !== true) {
+			// Not awaited: an upload must never hold up or break the event path.
+			void this.uploadTaskImages(data.properties.taskId, [data.properties.message])
 		}
 	}
 
@@ -331,6 +352,9 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 					console.error(
 						`[TelemetryClient#backfillMessages] POST events/backfill -> ${response.status} ${response.statusText}`,
 					)
+				} else {
+					// Not awaited, like the uploads after a live event.
+					void this.uploadTaskImages(taskId, messages)
 				}
 			} catch (fetchError) {
 				console.error(`[TelemetryClient#backfillMessages] Network error: ${fetchError}`)
@@ -338,6 +362,115 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			}
 		} catch (error) {
 			console.error(`[TelemetryClient#backfillMessages] Error uploading messages: ${error}`)
+		}
+	}
+
+	/**
+	 * Uploads the local image files the messages point to with `![alt](path)`
+	 * (`POST /api/tasks/{taskId}/images`), so the cloud web view can show them
+	 * (plan: 2026-10-12 cloud web task images). Relative paths are resolved
+	 * against the task's workspace, as the CLI does when it draws them. Sent
+	 * only where the messages themselves are sent; a file is sent once per
+	 * message until it changes. Failures are logged and dropped, never retried
+	 * here and never thrown.
+	 */
+	private async uploadTaskImages(taskId: string, messages: ClineMessage[]): Promise<void> {
+		try {
+			if (!this.isTelemetryEnabled() || !this.isEventCapturable(TelemetryEventName.TASK_MESSAGE)) {
+				return
+			}
+
+			const workspacePath = this.providerRef?.deref()?.getTelemetryWorkspacePath?.()
+
+			for (const message of messages) {
+				if (message.partial === true || !message.text) {
+					continue
+				}
+
+				for (const target of findLocalImageReferences(message.text)) {
+					const image = await locateTaskImage(target, workspacePath)
+					if (!image) {
+						continue
+					}
+
+					const key = [taskId, message.ts, target, image.mtimeMs, image.size].join("|")
+					if (this.sentTaskImages.has(key)) {
+						continue
+					}
+
+					if (!this.authService.isAuthenticated()) {
+						return
+					}
+
+					const token = this.authService.getSessionToken()
+					if (!token) {
+						console.error(`[TelemetryClient#uploadTaskImages] Unauthorized: No session token available.`)
+						return
+					}
+
+					this.rememberTaskImage(key)
+					const sent = await this.postTaskImage(token, taskId, message.ts, target, image.file, image.mime)
+					if (!sent) {
+						// A transient failure: a later send of this message may try again.
+						this.sentTaskImages.delete(key)
+					}
+				}
+			}
+		} catch (error) {
+			console.error(`[TelemetryClient#uploadTaskImages] Error uploading task images: ${error}`)
+		}
+	}
+
+	private rememberTaskImage(key: string): void {
+		this.sentTaskImages.add(key)
+		if (this.sentTaskImages.size > MAX_REMEMBERED_TASK_IMAGES) {
+			const oldest = this.sentTaskImages.values().next().value
+			if (oldest !== undefined) {
+				this.sentTaskImages.delete(oldest)
+			}
+		}
+	}
+
+	/**
+	 * Posts one image. False when it may be worth sending again later: a network
+	 * error, a server error, or 404 (the task row may not have landed yet).
+	 * Any other refusal (413 too large, 415 not an image) is final.
+	 */
+	private async postTaskImage(
+		token: string,
+		taskId: string,
+		messageTs: number,
+		target: string,
+		file: string,
+		mime: string,
+	): Promise<boolean> {
+		const route = `tasks/${encodeURIComponent(taskId)}/images`
+
+		try {
+			const bytes = await readFile(file)
+			const formData = new FormData()
+			formData.append("messageTs", String(messageTs))
+			formData.append("path", target)
+			formData.append("file", new File([bytes], path.basename(file), { type: mime }))
+
+			const response = await fetch(`${getTumbleCodeApiUrl()}/api/${route}`, {
+				method: "POST",
+				headers: { Authorization: `Bearer ${token}` },
+				body: formData,
+				signal: AbortSignal.timeout(30_000),
+			})
+
+			if (!response.ok) {
+				console.error(
+					`[TelemetryClient#uploadTaskImages] POST ${route} -> ${response.status} ${response.statusText}`,
+				)
+				return response.status < 500 && response.status !== 429 && response.status !== 404
+			}
+
+			return true
+		} catch (error) {
+			console.error(`[TelemetryClient#uploadTaskImages] Network error for POST ${route}: ${error}`)
+			return false
 		}
 	}
 

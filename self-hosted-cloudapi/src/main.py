@@ -21,6 +21,7 @@ from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
 from src.routers import auth, extension, settings as settings_router, events, error_reports, browser, llm_exchanges
+from src.routers import task_images
 from src.routers import shared, web_dataset, web_diagnostics, web_metrics, web_settings, web_tasks
 from src.web.static_files import VersionedStaticFiles
 
@@ -169,6 +170,9 @@ app.include_router(error_reports.router)
 
 # LLM exchange recording (the dataset page reads them)
 app.include_router(llm_exchanges.router)
+
+# Images the task messages point to by path (the task page shows them)
+app.include_router(task_images.router)
 
 
 # Web UI: task list and task page, metrics, diagnostics, retention settings,
