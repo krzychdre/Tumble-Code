@@ -84,6 +84,8 @@
 			else reject(new Error("copy failed"))
 		})
 	}
+	// For render.js, whose per-row "Copy Markdown" buttons need the same fallback.
+	window.TumbleClipboard = { copyText: copyText }
 
 	document.addEventListener("change", function (e) {
 		var field = e.target

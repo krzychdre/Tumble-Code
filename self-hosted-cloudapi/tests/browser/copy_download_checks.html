@@ -1,0 +1,67 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<h1 class="page-title">Wzór: bąk / τ?</h1>
+<div id="page"><div id="conversation"></div></div>
+<!-- "Copy" per row and the conversation download (plan: 2026-10-12 cloud web copy and download). -->
+<script id="messages-data" type="application/json">[
+ {"ts":1,"type":"say","say":"text","text":"<task>Explain **attention** $QK^T$</task>\n<environment_details>mode: code</environment_details>"},
+ {"ts":2,"type":"say","say":"api_req_started","text":"{\"tokensIn\":100,\"tokensOut\":20,\"cost\":0.01}"},
+ {"ts":3,"type":"say","say":"text","text":"It is **$\\mathrm{softmax}(QK^T)$**:\n\n- one\n- two"},
+ {"ts":4,"type":"say","say":"command","text":"uv run pytest"},
+ {"ts":5,"type":"say","say":"command_output","text":"```\n3 passed\n```"},
+ {"ts":6,"type":"say","say":"tool","text":"{\"tool\":\"appliedDiff\",\"path\":\"src/a.py\",\"diff\":\"-a\\n+b\"}"},
+ {"ts":7,"type":"say","say":"completion_result","text":"Done, see `a.py`."}
+]</script>
+<script src="../../src/web/static/vendor/marked.min.js"></script>
+<script src="../../src/web/static/vendor/purify.min.js"></script>
+<script src="../../src/web/static/format.js"></script>
+<script src="../../src/web/static/render.js"></script>
+<script>
+var copied = []
+window.TumbleClipboard = { copyText: function (t) { copied.push(t); return Promise.resolve() } }
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function row(ts) { return document.querySelector('#conversation .msg[data-ts="' + ts + '"]') }
+  function copyOf(ts) { var b = row(ts).querySelector(".msg-copy"); copied = []; b.click(); return copied[0] }
+  var convo = window.__tumbleConversation
+
+  check("an answer has a Copy button", !!row(3).querySelector("summary .msg-copy"))
+  check("an API row has none", !row(2).querySelector(".msg-copy"))
+  check("Copy gives the Markdown as written", copyOf(3) === "It is **$\\mathrm{softmax}(QK^T)$**:\n\n- one\n- two")
+  check("Copy does not fold the row", row(3).querySelector("details").open === true)
+  check("your message without the environment details", copyOf(1) === "Explain **attention** $QK^T$")
+  check("a command in a sh fence", copyOf(4) === "```sh\nuv run pytest\n```")
+  check("output with a fence inside gets a longer fence", copyOf(5) === "````\n```\n3 passed\n```\n````")
+  check("a diff with its path", copyOf(6) === "`src/a.py`\n\n```diff\n-a\n+b\n```")
+
+  convo.upsert({ts:3,type:"say",say:"text",text:"Updated answer"})
+  check("after a live update the button stays and copies the new text", copyOf(3) === "Updated answer")
+
+  var md = convo.toMarkdown("Wzór: bąk / τ?")
+  check("the document starts with the title", md.indexOf("# Wzór: bąk / τ?\n") === 0)
+  check("headings per row, in order", /## You · [^\n]+\n\nExplain[\s\S]*## Assistant · [^\n]+\n\nUpdated answer[\s\S]*## Command · `uv run pytest`[\s\S]*## Result · /.test(md))
+  check("API figures are left out", !/tokensIn|↑100/.test(md))
+  check("the JSON has every message in order", JSON.stringify(convo.toMessages().map(function (m) { return m.ts })) === "[1,2,3,4,5,6,7]")
+  check("file names come from the title", window.TumbleExport.fileName("Wzór: bąk / τ?", "md") === "Wzór-bąk-τ.md" && window.TumbleExport.fileName("", "json") === "tumble-task.json")
+
+  var buttons = Array.prototype.map.call(document.querySelectorAll(".convo-toolbar .btn-download"), function (b) { return b.textContent })
+  check("the toolbar offers both downloads", buttons.join("|") === "Download .md|Download .json")
+
+  // The download itself: catch the blob and the file name it is saved under.
+  var saved = null, origCreate = URL.createObjectURL, origClick = HTMLAnchorElement.prototype.click
+  URL.createObjectURL = function (blob) { saved = { blob: blob }; return "blob:test" }
+  HTMLAnchorElement.prototype.click = function () { if (saved) saved.name = this.download }
+  document.querySelector(".convo-toolbar .btn-download").click()
+  URL.createObjectURL = origCreate
+  HTMLAnchorElement.prototype.click = origClick
+  check("Download .md saves a Markdown file named after the task", !!saved && saved.name === "Wzór-bąk-τ.md" && /text\/markdown/.test(saved.blob.type))
+  saved.blob.text().then(function (text) {
+    check("the saved file is the conversation", text.indexOf("# Wzór: bąk / τ?") === 0 && /Updated answer/.test(text))
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  })
+})
+</script>
+</body></html>

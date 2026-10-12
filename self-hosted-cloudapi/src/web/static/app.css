@@ -2124,6 +2124,8 @@ a.signal-value:hover {
 }
 .convo-folds {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: var(--s1);
 	margin-left: auto;
 }
@@ -2444,6 +2446,22 @@ a.signal-value:hover {
 }
 .msg-time {
 	white-space: nowrap;
+}
+/* "Copy" in a row's header (render.js): the row's Markdown to the clipboard.
+   Quiet like the time beside it, so a long conversation is not a column of buttons. */
+.msg-copy {
+	padding: 0 var(--s1);
+	border: 1px solid transparent;
+	border-radius: var(--r-sm);
+	background: none;
+	color: var(--text-faint);
+	font: inherit;
+	cursor: pointer;
+}
+.msg-copy:hover,
+.msg-copy:focus-visible {
+	color: var(--text);
+	border-color: var(--line);
 }
 .msg-dur {
 	color: var(--text-dim);
