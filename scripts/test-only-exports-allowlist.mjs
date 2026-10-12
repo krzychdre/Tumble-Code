@@ -28,6 +28,7 @@ export const allowlist = [
 	"src/services/code-index/embedders/rate-limit-gate.ts: resetRateLimitGates",
 	"src/services/tree-sitter/index.ts: setMinComponentLines",
 	"src/utils/logging/index.ts: resetLoggerForTests",
+	"apps/cli/src/ui/graphics/inlineImages.ts: resetInlineImages",
 
 	// --- load-bearing public API / protocol contracts ---
 
