@@ -39,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.error_report import ErrorReport
 from src.models.event import TelemetryEvent
 from src.models.retention import RetentionPolicy
-from src.models.task import Task, TaskMessage, TaskShare
+from src.models.task import Task, TaskImage, TaskMessage, TaskShare
 from src.services.share_service import delete_tasks
 from src.services.telemetry_vocab import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
 
@@ -207,6 +207,13 @@ async def plan_sweep(
             .where(TaskMessage.task_id.in_(plan.task_ids))
         )
         plan.message_count, plan.message_bytes = counted.one()
+        if measure_size:
+            # The images the messages point to go with them (delete_tasks),
+            # and can outweigh the text.
+            plan.message_bytes += await db.scalar(
+                select(func.coalesce(func.sum(TaskImage.size), 0))
+                .where(TaskImage.task_id.in_(plan.task_ids))
+            ) or 0
 
     if policy.purge_telemetry and policy.telemetry_max_age_days:
         event_cutoff = now - timedelta(days=policy.telemetry_max_age_days)

@@ -63,6 +63,7 @@ EXPECTED = {
     ("/api/llm-exchanges/config", ("GET",), "llm_exchange_config_endpoint", "APIRoute"),
     ("/api/llm-exchanges", ("POST",), "record_llm_exchange_endpoint", "APIRoute"),
     ("/api/llm-exchanges/outcome", ("POST",), "record_llm_exchange_outcome_endpoint", "APIRoute"),
+    ("/api/tasks/{task_id}/images", ("POST",), "upload_task_image_endpoint", "APIRoute"),
     # The web panel (routers/web.py before CAPI-M5).
     ("/", ("GET",), "root_redirect", "APIRoute"),
     ("/app", ("GET",), "task_list", "APIRoute"),
@@ -78,12 +79,14 @@ EXPECTED = {
     ("/app/dataset/tasks/{task_id}.jsonl", ("GET",), "dataset_task_report", "APIRoute"),
     ("/app/dataset/delete", ("POST",), "dataset_delete_all", "APIRoute"),
     ("/app/tasks/{task_id}", ("GET",), "task_detail", "APIRoute"),
+    ("/app/tasks/{task_id}/images", ("GET",), "task_image", "APIRoute"),
     ("/app/tasks/{task_id}/delete", ("POST",), "delete_task", "APIRoute"),
     ("/app/settings", ("GET",), "settings_page", "APIRoute"),
     ("/app/settings", ("POST",), "save_settings", "APIRoute"),
     ("/app/settings/run", ("POST",), "run_retention_now", "APIRoute"),
     ("/app/tasks/bulk-delete", ("POST",), "bulk_delete_tasks", "APIRoute"),
     ("/shared/{task_id}", ("GET",), "shared_task", "APIRoute"),
+    ("/shared/{task_id}/images", ("GET",), "shared_task_image", "APIRoute"),
     ("/static", (), "static", "Mount"),
     ("/bridge", (), None, "Mount"),
     ("/health", ("GET",), "health_check", "APIRoute"),
@@ -230,6 +233,12 @@ def test_web_routes_keep_their_openapi_operations():
             html,
             (("task_id", "path", True),),
         ),
+        ("/app/tasks/{task_id}/images", "get"): (
+            "task_image_app_tasks__task_id__images_get",
+            ("web",),
+            (),
+            (("task_id", "path", True), ("ts", "query", True), ("path", "query", True)),
+        ),
         ("/app/tasks/{task_id}/delete", "post"): (
             "delete_task_app_tasks__task_id__delete_post",
             ("web",),
@@ -241,4 +250,10 @@ def test_web_routes_keep_their_openapi_operations():
         ("/app/settings/run", "post"): ("run_retention_now_app_settings_run_post", ("web",), json_, ()),
         ("/app/tasks/bulk-delete", "post"): ("bulk_delete_tasks_app_tasks_bulk_delete_post", ("web",), json_, ()),
         ("/shared/{task_id}", "get"): ("shared_task_shared__task_id__get", ("web",), html, (("task_id", "path", True),)),
+        ("/shared/{task_id}/images", "get"): (
+            "shared_task_image_shared__task_id__images_get",
+            ("web",),
+            (),
+            (("task_id", "path", True), ("ts", "query", True), ("path", "query", True)),
+        ),
     }

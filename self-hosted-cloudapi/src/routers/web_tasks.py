@@ -7,7 +7,7 @@ static/render.js from the embedded ClineMessage[] JSON.
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +19,10 @@ from src.routers.web_page import (
     render_page,
     require_web_page,
 )
+from src.routers.task_images import image_response
 from src.services.client_kind import CLIENT_LABELS
 from src.services.share_service import delete_shared_task, delete_tasks
+from src.services.task_images import load_task_image
 from src.services.task_summary import derive_title
 from src.services.task_tree import ancestors, subtree_size, subtrees
 from src.utils.json_script import json_for_script
@@ -247,7 +249,28 @@ async def task_detail(
         # measure instead of the wider scanning column the list uses.
         read_measure=True,
         live_config_json=json_for_script(live_config),
+        # Where render.js asks for the images the messages point to by path.
+        image_base=f"/app/tasks/{task_id}/images",
     )
+
+
+@router.get("/app/tasks/{task_id}/images", response_class=Response)
+async def task_image(
+    task_id: str,
+    ts: int = Query(...),
+    path: str = Query(...),
+    web: WebPage = Depends(require_web_page),
+):
+    """An image a message of the user's task points to (uploaded by the client).
+
+    The task page's rule: the owner only; anything else is the same bare 404
+    as an image that was never uploaded.
+    """
+    db = web["db"]
+    owner = await db.scalar(select(Task.user_id).where(Task.id == task_id))
+    if owner is None or owner != web["user"]["user_id"]:
+        return image_response(None)
+    return image_response(await load_task_image(db, task_id, ts, path))
 
 
 @router.post("/app/tasks/{task_id}/delete")

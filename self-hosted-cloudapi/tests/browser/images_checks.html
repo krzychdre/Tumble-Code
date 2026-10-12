@@ -1,0 +1,56 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<div id="page"><div id="conversation" data-image-base="/app/tasks/t1/images"></div></div>
+<!-- Images a message points to by path (plan: 2026-10-12 cloud web task images). Row 1 is the task. -->
+<script id="messages-data" type="application/json">[
+ {"ts":1,"type":"say","say":"text","text":"Draw the chart"},
+ {"ts":1700000000002,"type":"say","say":"text","text":"Chart:\n\n![PV](monitoring/x.png)\n\n![abs](/home/u/out.png)\n\n![spaced](<./a b.png>)\n\n![amp](a&b.png)"},
+ {"ts":3,"type":"say","say":"completion_result","text":"![web](https://example.com/x.png) ![panel](/static/x.png) ![data](data:image/png;base64,AAAA)"},
+ {"ts":4,"type":"say","say":"text","text":"pasted","images":["data:image/png;base64,BBBB"]}
+]</script>
+<script src="../../src/web/static/vendor/marked.min.js"></script>
+<script src="../../src/web/static/vendor/purify.min.js"></script>
+<script src="../../src/web/static/format.js"></script>
+<script src="../../src/web/static/render.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0, tries = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function row(ts) { return document.querySelector('#conversation .msg[data-ts="' + ts + '"] .msg-body') }
+  function img(ts, alt) { return row(ts).querySelector('img[alt="' + alt + '"]') }
+  var base = "/app/tasks/t1/images?ts=1700000000002&path="
+
+  check("a relative path asks the server by ts and path", img(1700000000002, "PV").getAttribute("src") === base + "monitoring%2Fx.png")
+  check("an absolute filesystem path is local too", img(1700000000002, "abs").getAttribute("src") === base + "%2Fhome%2Fu%2Fout.png")
+  check("marked's %20 is decoded back to the path as written", img(1700000000002, "spaced").getAttribute("data-local-path") === "./a b.png")
+  check("the path is encoded in the query", img(1700000000002, "amp").getAttribute("src") === base + "a%26b.png")
+  check("an https image is left alone", img(3, "web").getAttribute("src") === "https://example.com/x.png")
+  check("the panel's own URL is left alone", img(3, "panel").getAttribute("src") === "/static/x.png")
+  check("a data: image is left alone", /^data:/.test(img(3, "data").getAttribute("src")))
+  check("a pasted attachment is left alone", /^data:image\/png;base64,BBBB/.test(row(4).querySelector(".img-msg img").getAttribute("src")))
+
+  // A live row: rewritten the same way.
+  window.__tumbleConversation.upsert({ts:5,type:"say",say:"text",text:"![live](plots/y.png)"})
+  check("a live row is rewritten too", img(5, "live").getAttribute("src") === "/app/tasks/t1/images?ts=5&path=plots%2Fy.png")
+
+  // Nothing answers under file://: each image fails, is retried once after 3 s,
+  // then becomes a line naming the path.
+  var timer = setInterval(function () {
+    tries++
+    if (document.querySelectorAll("#conversation .img-missing").length < 5 && tries < 150) return
+    clearInterval(timer)
+
+    var notes = Array.prototype.map.call(document.querySelectorAll("#conversation .img-missing"), function (n) { return n.textContent })
+    check("a missing image becomes a placeholder naming its path", notes.indexOf("image not uploaded: monitoring/x.png") !== -1)
+    check("every local image got one", notes.length === 5)
+    check("the placeholder is text, not markup", !document.querySelector("#conversation .img-missing *"))
+    check("no local image is left", !document.querySelector("#conversation img.local-img"))
+    check("remote images are not replaced", !!img(3, "web"))
+
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  }, 100)
+})
+</script>
+</body></html>

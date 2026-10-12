@@ -1,4 +1,4 @@
-"""Task, TaskMessage, and TaskShare models."""
+"""Task, TaskMessage, TaskShare and TaskImage models."""
 
 import uuid
 from sqlalchemy import (
@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     BigInteger,
     Index,
+    LargeBinary,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -178,3 +179,37 @@ class TaskShare(Base):
     )
 
     task = relationship("Task", back_populates="shares")
+
+
+class TaskImage(Base):
+    """An image file a task's message points to by path.
+
+    The CLI and the extension write Markdown like ``![chart](monitoring/x.png)``
+    with a path into the user's workspace; the cloud only ever receives the
+    text, so the client uploads the file itself (POST /api/tasks/{id}/images)
+    and the task page asks for it by the message's ts and the path as written.
+    See ai_plans/2026-10-12_18-00_cloud-web-task-images.md.
+    """
+    __tablename__ = "task_images"
+
+    id = Column(String, primary_key=True, default=lambda: generate_id("img_"))
+    task_id = Column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    # ClineMessage.ts of the message whose text holds the reference.
+    message_ts = Column(BigInteger, nullable=False)
+    # The reference target exactly as the Markdown wrote it, not the resolved
+    # absolute path: that is what the page has in hand when it asks.
+    path = Column(String, nullable=False)
+    # Sniffed from the bytes at upload (services/task_images), never the
+    # declared type.
+    mime = Column(String, nullable=False)
+    size = Column(Integer, nullable=False)
+    sha256 = Column(String, nullable=False)
+    data = Column(LargeBinary, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # One image per (task, message, path); a re-upload replaces it through ON
+    # CONFLICT on these columns. A unique INDEX like uq_task_messages_task_ts,
+    # for the same reason. Its leading task_id also serves the per-task delete.
+    __table_args__ = (
+        Index("uq_task_images_task_ts_path", "task_id", "message_ts", "path", unique=True),
+    )

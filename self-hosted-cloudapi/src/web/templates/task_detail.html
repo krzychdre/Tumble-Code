@@ -167,7 +167,9 @@
   </ul>
 </nav>
 
-<div id="conversation" class="conversation" aria-busy="true">
+{# data-image-base: where render.js asks for the images a message points to
+   by workspace path (the owner page and the shared page answer differently). #}
+<div id="conversation" class="conversation" aria-busy="true"{% if image_base %} data-image-base="{{ image_base }}"{% endif %}>
   {# Placeholder rows while render.js builds the conversation; the words are
      for a screen reader. #}
   <div class="loading skeleton" role="status">
