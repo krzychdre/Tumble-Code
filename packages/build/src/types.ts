@@ -31,7 +31,8 @@ const commandsSchema = z.array(
 		command: z.string(),
 		title: z.string(),
 		category: z.string().optional(),
-		icon: z.string().optional(),
+		// A codicon or one image path, or one image per theme kind.
+		icon: z.union([z.string(), z.object({ light: z.string(), dark: z.string() })]).optional(),
 	}),
 )
 

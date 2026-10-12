@@ -38,6 +38,14 @@ describe("generatePackageJson", () => {
 							icon: "$(edit)",
 						},
 						{
+							command: "tumble-code.editorTitleButtonClicked",
+							title: "%command.openInEditor.title%",
+							icon: {
+								light: "assets/icons/editor-title-light.svg",
+								dark: "assets/icons/editor-title-dark.svg",
+							},
+						},
+						{
 							command: "tumble-code.openInNewTab",
 							title: "%command.openInNewTab.title%",
 							category: "%configuration.title%",
@@ -163,6 +171,14 @@ describe("generatePackageJson", () => {
 						command: "tumble-code-nightly.plusButtonClicked",
 						title: "%command.newTask.title%",
 						icon: "$(edit)",
+					},
+					{
+						command: "tumble-code-nightly.editorTitleButtonClicked",
+						title: "%command.openInEditor.title%",
+						icon: {
+							light: "assets/icons/editor-title-light.svg",
+							dark: "assets/icons/editor-title-dark.svg",
+						},
 					},
 					{
 						command: "tumble-code-nightly.openInNewTab",
