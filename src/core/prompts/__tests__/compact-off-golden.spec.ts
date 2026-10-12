@@ -48,6 +48,12 @@ vi.mock("os", () => {
 vi.mock("default-shell", () => ({ default: "/bin/zsh" }))
 vi.mock("os-name", () => ({ default: () => "Linux" }))
 vi.mock("../../../utils/shell", () => ({ getShell: () => "/bin/zsh" }))
+// The memory paths are built with path.join: give them as on Linux on every
+// platform, like the os stub above, so the pinned bytes match on a Windows runner.
+vi.mock("path", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("path")>()
+	return { ...actual.posix, default: actual.posix }
+})
 
 const { MEMORY_ROOT, MEMORY_INDEX_FIXTURE } = vi.hoisted(() => {
 	// 40 index lines of about 100 characters: about 4,000 characters, above the
