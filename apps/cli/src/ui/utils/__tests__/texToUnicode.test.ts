@@ -28,6 +28,8 @@ describe("texToUnicode", () => {
 		[String.raw`\overset{\text{def}}{=} \underset{n}{\max} \xrightarrow{f}`, "=ᵈᵉᶠ maxₙ →ᶠ"],
 		[String.raw`\phantom{x}\color{red} a \hspace{1em} \textcolor{blue}{b} \tag{1}`, "a b (1)"],
 		[String.raw`\bra{\psi} \ket{\phi} \braket{x}`, "⟨ψ| |ϕ⟩ ⟨x⟩"],
+		// Greek scripts where Unicode has them; θ has no subscript.
+		[String.raw`x_\beta + y^\theta + z_\phi + f_\theta`, "xᵦ + yᶿ + zᵩ + f_θ"],
 		// An unknown command stays as written.
 		[String.raw`\foo{x} + 1`, String.raw`\foo{x} + 1`],
 	])("%s", (tex, text) => {

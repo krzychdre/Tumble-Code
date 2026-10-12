@@ -377,6 +377,11 @@ const SUBSCRIPTS: Record<string, string> = Object.fromEntries(
 	[..."0123456789+-=()aehijklmnoprstuvx"].map((c, i) => [c, [..."₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ"][i]!]),
 )
 
+// The few Greek letters Unicode has script forms for; θ, for one, has no
+// subscript, so `f_\theta` stays `f_θ`.
+Object.assign(SUPERSCRIPTS, { α: "ᵅ", β: "ᵝ", γ: "ᵞ", δ: "ᵟ", ε: "ᵋ", ϵ: "ᵋ", θ: "ᶿ", ι: "ᶥ", ϕ: "ᵠ", φ: "ᵠ", χ: "ᵡ" })
+Object.assign(SUBSCRIPTS, { β: "ᵦ", γ: "ᵧ", ρ: "ᵨ", ϕ: "ᵩ", φ: "ᵩ", χ: "ᵪ" })
+
 const VULGAR_FRACTIONS: Record<string, string> = {
 	"1/2": "½",
 	"1/3": "⅓",
