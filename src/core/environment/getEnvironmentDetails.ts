@@ -62,7 +62,7 @@ function getVisibleFilesText(task: Task, maxWorkspaceFiles: number): string {
 	const visibleFilePaths = vscode.window.visibleTextEditors
 		?.map((editor) => editor.document?.uri?.fsPath)
 		.filter(Boolean)
-		.map((absolutePath) => path.relative(task.cwd, absolutePath))
+		.map((absolutePath) => path.relative(task.cwd, absolutePath).toPosix())
 		.slice(0, maxWorkspaceFiles)
 
 	// Filter paths through rooIgnoreController
