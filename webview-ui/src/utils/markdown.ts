@@ -234,6 +234,92 @@ export function remarkSingleDollarMath(this: { data(): object }) {
 	})
 }
 
+// Fenced code blocks (to the closing fence or the end) and inline code spans:
+// math delimiters inside them are code, not math.
+const CODE_REGION =
+	/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1[^\n]*$|(?![\s\S]))|(`+)[^`][\s\S]*?(?<!`)\2(?!`)/gm
+
+// "\[...\]" and "\(...\)" whose backslash is not itself escaped ("\\[2pt]" is a
+// TeX line break with spacing). "\(...\)" stays within a paragraph.
+const DISPLAY_BRACKETS = /(?<!\\)\\\[([\s\S]+?)(?<!\\)\\\]/g
+const INLINE_PARENS = /(?<!\\)\\\(((?:(?!\n\s*\n)[\s\S])+?)(?<!\\)\\\)/g
+
+// Content that reads as TeX: a command, a script, a relation or an operator.
+// Without this, an escaped "\[1\]" (a literal "[1]") would become math.
+const LOOKS_LIKE_TEX = /\\[a-zA-Z]+|[\^_=<>+]/
+
+/**
+ * Rewrites the LaTeX delimiters "\[...\]" and "\(...\)" to "$$...$$" and
+ * "$...$", which remark-math parses. Many models write the bracket forms, and
+ * in markdown "\[" is an escaped "[", so after parsing the delimiter is gone:
+ * the rewrite has to happen on the source. Code blocks and code spans are left
+ * alone, and so is content that does not look like TeX.
+ */
+export function normalizeMathDelimiters(markdown: string): string {
+	if (!markdown.includes("\\[") && !markdown.includes("\\(")) {
+		return markdown
+	}
+
+	let result = ""
+	let last = 0
+	for (const match of markdown.matchAll(CODE_REGION)) {
+		result += rewriteMathDelimiters(markdown.slice(last, match.index)) + match[0]
+		last = match.index + match[0].length
+	}
+	return result + rewriteMathDelimiters(markdown.slice(last))
+}
+
+function rewriteMathDelimiters(text: string): string {
+	return text
+		.replace(DISPLAY_BRACKETS, (whole, tex: string) => (LOOKS_LIKE_TEX.test(tex) ? `$$${tex}$$` : whole))
+		.replace(INLINE_PARENS, (whole, tex: string) => {
+			const trimmed = tex.trim()
+			// "$...$" holds no "$"; Pandoc's rule needs no space inside the delimiters.
+			return LOOKS_LIKE_TEX.test(trimmed) && !trimmed.includes("$") ? `$${trimmed}$` : whole
+		})
+}
+
+/**
+ * remark plugin: a paragraph that is nothing but one "$$...$$" formula is
+ * display math, as on GitHub. remark-math reads "$$x$$" on a single line as
+ * inline math (only "$$" on lines of their own opens a display block), and
+ * models often write display formulas that way.
+ */
+export function remarkDisplayMathParagraphs() {
+	return (tree: Parameters<typeof visit>[0], file: { value?: unknown }) => {
+		const source = String(file.value ?? "")
+
+		visit(tree, "paragraph", (node: any, index, parent: any) => {
+			const only = node.children?.length === 1 ? node.children[0] : undefined
+			const start = only?.position?.start?.offset
+
+			if (only?.type !== "inlineMath" || start === undefined || !source.startsWith("$$", start)) {
+				return
+			}
+
+			// The node remark-math builds for a "$$" block; its data is what
+			// mdast-util-to-hast turns into <pre><code class="math-display">.
+			parent.children[index!] = {
+				type: "math",
+				value: only.value,
+				meta: null,
+				position: node.position,
+				data: {
+					hName: "pre",
+					hChildren: [
+						{
+							type: "element",
+							tagName: "code",
+							properties: { className: ["language-math", "math-display"] },
+							children: [{ type: "text", value: only.value }],
+						},
+					],
+				},
+			}
+		})
+	}
+}
+
 // "README.md:6" or "a.ts:3-9": a file name with an extension and a line, no
 // slash. Without a slash the text before the colon reads as a URL scheme.
 const FILE_WITH_LINE = /^[^:/?#]+\.[^:/?#]*:\d+(-\d+)?$/

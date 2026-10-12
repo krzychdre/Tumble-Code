@@ -341,6 +341,47 @@ describe("MarkdownBlock", () => {
 		})
 	})
 
+	// Models often write "\(...\)" and "\[...\]" (and display formulas as "$$...$$"
+	// on one line); remark-math knows neither form, so they reached the screen as
+	// "(...)" text or as an inline formula.
+	describe("LaTeX bracket delimiters", () => {
+		beforeAll(async () => {
+			const { container, unmount } = render(<MarkdownBlock markdown="$x$" />)
+			await waitFor(() => expect(container.querySelector(".katex")).not.toBeNull())
+			unmount()
+		})
+
+		const mathSources = (container: HTMLElement, selector: string) =>
+			Array.from(container.querySelectorAll(`${selector} annotation`)).map((node) => node.textContent)
+
+		it("renders \\(...\\) as inline math", () => {
+			const { container } = render(
+				<MarkdownBlock markdown={"Na przedziale \\( (-\\infty, 0] \\) składnik \\(3x^3\\)"} />,
+			)
+
+			expect(mathSources(container, ".katex")).toEqual(["(-\\infty, 0]", "3x^3"])
+			expect(container.querySelector(".katex-display")).toBeNull()
+		})
+
+		it.each([
+			["\\[\n\\int_0^1 x\\,dx\n\\]", "\\int_0^1 x\\,dx"],
+			["\\[ \\frac{3}{4}x^4 \\]", "\\frac{3}{4}x^4"],
+			["$$F(0) = 0$$", "F(0) = 0"],
+		])("renders %j as display math", (markdown, source) => {
+			const { container } = render(<MarkdownBlock markdown={markdown} />)
+
+			expect(mathSources(container, ".katex-display")).toEqual([source])
+		})
+
+		it("leaves code spans, escaped brackets and \\\\[ line breaks alone", () => {
+			const markdown = "See \\[1\\] and `\\(x^2\\)`.\n\n$$\na \\\\[2pt] b\n$$"
+			const { container } = render(<MarkdownBlock markdown={markdown} />)
+
+			expect(container.querySelector("p")?.textContent).toBe("See [1] and \\(x^2\\).")
+			expect(mathSources(container, ".katex-display")).toEqual(["a \\\\[2pt] b"])
+		})
+	})
+
 	// react-markdown's default urlTransform empties every href whose scheme is not
 	// http(s), mailto, irc(s) or xmpp. That also emptied "file://" links and the
 	// "name.ext:line" links the system prompt asks models to write, so the click
