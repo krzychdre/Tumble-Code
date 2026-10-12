@@ -1,7 +1,6 @@
 # CLI: tell the model what the terminal shows
 
-Status: done on `feat/cli-display-prompt` (local only, stacked on `feat/cli-mermaid-diagrams` <- `feat/cli-inline-images`,
-not pushed).
+Status: done, merged as #858 (2026-10-12).
 
 Related plans: `2026-10-12_11-30_cli-inline-images.md`, `2026-10-12_12-40_cli-mermaid-diagrams.md`.
 

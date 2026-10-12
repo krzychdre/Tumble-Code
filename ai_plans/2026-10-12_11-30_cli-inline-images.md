@@ -1,6 +1,6 @@
 # CLI: images in the terminal transcript
 
-Status: done on `feat/cli-inline-images` (first of two stacked branches; `feat/cli-mermaid-diagrams` builds on it).
+Status: done, merged as #856 (2026-10-12).
 
 Related plans: `2026-09-22` cli stream answer into scrollback (the `<Static>` commit model this relies on),
 `2026-09-22` cli incremental render ghost rows (`scrollSafeStdout.ts`, which now also expands image markers).

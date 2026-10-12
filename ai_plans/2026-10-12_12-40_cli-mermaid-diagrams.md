@@ -1,6 +1,6 @@
 # CLI: Mermaid diagrams in the terminal transcript
 
-Status: done on `feat/cli-mermaid-diagrams` (local only, stacked on `feat/cli-inline-images`, not pushed).
+Status: done, merged as #857 (2026-10-12).
 
 Related plans: `2026-10-12_11-30_cli-inline-images.md` (the image pipeline this draws through).
 
@@ -31,7 +31,7 @@ console was not expected to manage; it gets the diagram in box-drawing character
 - At 1x the diagram text is about half the height of terminal text on a HiDPI screen (35-pixel rows). The natural size
   is scaled by `cellHeight / 18`.
 - A tall diagram in xterm lost its bottom third: xterm cuts sixel images at `maxGraphicSize`. Fixed on the images
-  branch (XTSMGRAPHICS limits), commit `33bcaa241`.
+  branch (XTSMGRAPHICS limits), part of #856.
 
 ## Design
 
