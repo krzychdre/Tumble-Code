@@ -225,14 +225,14 @@ In a terminal that can draw images, an image the answer puts on a line of its ow
 path relative to the workspace) is drawn in the transcript. The CLI asks the terminal at startup which image
 protocol it speaks:
 
-| Terminal                                   | Protocol | Notes                                                                                                                |
-| ------------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------- |
-| kitty, Ghostty, WezTerm, Konsole           | kitty    |                                                                                                                      |
-| iTerm2                                     | iTerm2   |                                                                                                                      |
-| VS Code terminal                           | sixel    | Needs `"terminal.integrated.enableImages": true`.                                                                    |
-| GNOME Terminal, Ptyxis (VTE 0.76 or newer) | sixel    | Off by default; GNOME Terminal: `enable-sixel` in the profile (`dconf`/`gsettings`, the preferences do not show it). |
-| xterm                                      | sixel    | Start it with `-ti vt340`; `-xrm 'XTerm*numColorRegisters: 256'` gives full colour.                                  |
-| foot                                       | sixel    |                                                                                                                      |
+| Terminal                         | Protocol | Notes                                                                                         |
+| -------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
+| kitty, Ghostty, WezTerm, Konsole | kitty    |                                                                                               |
+| iTerm2                           | iTerm2   |                                                                                               |
+| VS Code terminal                 | sixel    | Needs `"terminal.integrated.enableImages": true`.                                             |
+| GNOME Terminal, Ptyxis           | none     | VTE 0.84 has no image support: its sixel code is stubbed out and `enable-sixel` does nothing. |
+| xterm                            | sixel    | Start it with `-ti vt340`; `-xrm 'XTerm*numColorRegisters: 256'` gives full colour.           |
+| foot                             | sixel    |                                                                                               |
 
 Elsewhere, and in the live area at the bottom while an answer streams, the image reads `[image: chart] out/chart.png`.
 `TUMBLE_IMAGES=off` turns images off; `TUMBLE_IMAGES=kitty|iterm|sixel` forces a protocol, for example inside tmux

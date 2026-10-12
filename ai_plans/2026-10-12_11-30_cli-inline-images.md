@@ -17,8 +17,11 @@ Markdown images. The Mermaid half is the next branch.
 
 ## Findings that shaped it
 
-- The owner's machine has GNOME Terminal 3.58 and Ptyxis 50 on VTE 0.84. VTE can draw sixel; GNOME Terminal has a
-  hidden per-profile key `enable-sixel` (default `false`, schema `org.gnome.Terminal.Legacy.Profile`). Ptyxis has no
+- The owner's machine has GNOME Terminal 3.58 and Ptyxis 50 on VTE 0.84, and neither can draw images. GNOME Terminal
+  still has a hidden per-profile key `enable-sixel`, but in VTE 0.84 (Debian source 0.84.1-1, `src/vtegtk.cc`)
+  `vte_terminal_set_enable_sixel` only checks its argument, `vte_terminal_get_enable_sixel` returns `FALSE`, and
+  `Terminal::DECSIXEL` in `src/vteseq.cc` is an empty body. Measured with the key set to `true` in a new window: DA1
+  `ESC[?61;1;21;22;28c` (no 4), XTSMGRAPHICS `ESC[?1;1S`/`ESC[?2;1S` (error), no reply to `CSI 16 t`. Ptyxis has no
   such key.
 - Ink cannot carry an image: `Output` measures and wraps every line to the box width, so a 50 kB escape sequence would
   be cut into rows. Static output, however, is written by ink as one plain string (`ink.js`, `renderInteractiveFrame`:
@@ -74,7 +77,8 @@ Markdown images. The Mermaid half is the next branch.
 
 ## Caveats
 
-- Not verified by hand in GNOME Terminal/Ptyxis, kitty or iTerm2 (only xterm sixel); the unit tests pin the
+- Not verified by hand in kitty, Ghostty, foot or iTerm2 (only xterm sixel); GNOME Terminal and Ptyxis cannot draw
+  images at all (see Findings); the unit tests pin the
   sequences.
 - `ClineMessage.images` (images the user attaches) are still not shown; the CLI never mapped them into `TUIMessage`.
 - Remote image URLs are not fetched.

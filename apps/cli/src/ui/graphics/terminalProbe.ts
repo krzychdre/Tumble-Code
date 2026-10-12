@@ -5,9 +5,11 @@
  *
  * - kitty: kitty, Ghostty, WezTerm, Konsole. PNG in, full colour, alpha.
  * - iterm: iTerm2, WezTerm, the VS Code terminal. Any image file in.
- * - sixel: xterm, foot, the VS Code terminal, and VTE terminals (GNOME
- *   Terminal, Ptyxis) once their `enable-sixel` setting is on. A palette
- *   bitmap the program encodes itself.
+ * - sixel: xterm, foot, the VS Code terminal. A palette bitmap the program
+ *   encodes itself.
+ *
+ * GNOME Terminal and Ptyxis draw no images: VTE 0.84 stubbed its sixel code
+ * out, and GNOME Terminal's `enable-sixel` profile key does nothing.
  *
  * Most of this is asked of the terminal, not guessed from the environment:
  * the probe writes a few queries and reads the answers from stdin before ink
