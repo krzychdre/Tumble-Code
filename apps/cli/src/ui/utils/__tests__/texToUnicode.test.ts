@@ -18,6 +18,16 @@ describe("texToUnicode", () => {
 		[String.raw`\alpha \le \beta \Rightarrow \sin\theta \cdot \pi`, "α ≤ β ⇒ sinθ · π"],
 		[String.raw`\begin{pmatrix} a & b \\ c & d \end{pmatrix}`, "( a b ; c d )"],
 		[String.raw`\binom{n}{k} \pmod{p}`, "C(n, k) (mod p)"],
+		// Style commands read their argument as math (the 2026-10-12 spinning top screenshot).
+		[String.raw`\boldsymbol{\tau} = \dot{\mathbf{L}} = \boldsymbol{\Omega}_P \times \mathbf{L}`, "τ = L̇ = Ω_P × L"],
+		[String.raw`\mathrm{d}\theta + \operatorname{tr}(\mathbf{A})`, "dθ + tr(A)"],
+		[String.raw`\text{\alpha}`, String.raw`\alpha`],
+		// Less common symbols, accents and argument commands.
+		[String.raw`\varOmega \leqslant \Longrightarrow \hookrightarrow \bigoplus \dagger \models`, "Ω ⩽ ⟹ ↪ ⨁ † ⊨"],
+		[String.raw`\overline{AB} \perp \check{x}`, "A̅B̅ ⊥ x̌"],
+		[String.raw`\overset{\text{def}}{=} \underset{n}{\max} \xrightarrow{f}`, "=ᵈᵉᶠ maxₙ →ᶠ"],
+		[String.raw`\phantom{x}\color{red} a \hspace{1em} \textcolor{blue}{b} \tag{1}`, "a b (1)"],
+		[String.raw`\bra{\psi} \ket{\phi} \braket{x}`, "⟨ψ| |ϕ⟩ ⟨x⟩"],
 		// An unknown command stays as written.
 		[String.raw`\foo{x} + 1`, String.raw`\foo{x} + 1`],
 	])("%s", (tex, text) => {

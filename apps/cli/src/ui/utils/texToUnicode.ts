@@ -50,6 +50,18 @@ const SYMBOLS: Record<string, string> = {
 	Phi: "Φ",
 	Psi: "Ψ",
 	Omega: "Ω",
+	varGamma: "Γ",
+	varDelta: "Δ",
+	varTheta: "Θ",
+	varLambda: "Λ",
+	varXi: "Ξ",
+	varPi: "Π",
+	varSigma: "Σ",
+	varUpsilon: "Υ",
+	varPhi: "Φ",
+	varPsi: "Ψ",
+	varOmega: "Ω",
+	digamma: "ϝ",
 	// Operators
 	cdot: "·",
 	times: "×",
@@ -71,6 +83,28 @@ const SYMBOLS: Record<string, string> = {
 	vee: "∨",
 	neg: "¬",
 	lnot: "¬",
+	odot: "⊙",
+	ominus: "⊖",
+	oslash: "⊘",
+	dagger: "†",
+	dag: "†",
+	ddagger: "‡",
+	ddag: "‡",
+	amalg: "⨿",
+	sqcup: "⊔",
+	sqcap: "⊓",
+	uplus: "⊎",
+	wr: "≀",
+	diamond: "⋄",
+	bigtriangleup: "△",
+	bigtriangledown: "▽",
+	triangleleft: "◁",
+	triangleright: "▷",
+	lhd: "◁",
+	rhd: "▷",
+	cdotp: "·",
+	centerdot: "·",
+	ldotp: ".",
 	// Relations
 	le: "≤",
 	leq: "≤",
@@ -96,6 +130,35 @@ const SYMBOLS: Record<string, string> = {
 	mid: "∣",
 	parallel: "∥",
 	perp: "⊥",
+	leqslant: "⩽",
+	geqslant: "⩾",
+	nleq: "≰",
+	ngeq: "≱",
+	nless: "≮",
+	ngtr: "≯",
+	lesssim: "≲",
+	gtrsim: "≳",
+	prec: "≺",
+	succ: "≻",
+	preceq: "⪯",
+	succeq: "⪰",
+	sqsubseteq: "⊑",
+	sqsupseteq: "⊒",
+	subsetneq: "⊊",
+	supsetneq: "⊋",
+	nsubseteq: "⊈",
+	nsupseteq: "⊉",
+	approxeq: "≊",
+	asymp: "≍",
+	doteq: "≐",
+	triangleq: "≜",
+	coloneqq: "≔",
+	models: "⊨",
+	vdash: "⊢",
+	dashv: "⊣",
+	bowtie: "⋈",
+	nmid: "∤",
+	nparallel: "∦",
 	// Arrows
 	to: "→",
 	rightarrow: "→",
@@ -113,6 +176,27 @@ const SYMBOLS: Record<string, string> = {
 	downarrow: "↓",
 	longrightarrow: "⟶",
 	longleftarrow: "⟵",
+	longleftrightarrow: "⟷",
+	Longrightarrow: "⟹",
+	Longleftarrow: "⟸",
+	Longleftrightarrow: "⟺",
+	longmapsto: "⟼",
+	updownarrow: "↕",
+	Uparrow: "⇑",
+	Downarrow: "⇓",
+	Updownarrow: "⇕",
+	nearrow: "↗",
+	searrow: "↘",
+	swarrow: "↙",
+	nwarrow: "↖",
+	hookrightarrow: "↪",
+	hookleftarrow: "↩",
+	rightleftharpoons: "⇌",
+	leftrightharpoons: "⇋",
+	leftrightarrows: "⇆",
+	rightleftarrows: "⇄",
+	rightharpoonup: "⇀",
+	leftharpoonup: "↼",
 	// Big operators and other symbols
 	int: "∫",
 	iint: "∬",
@@ -123,6 +207,13 @@ const SYMBOLS: Record<string, string> = {
 	coprod: "∐",
 	bigcup: "⋃",
 	bigcap: "⋂",
+	bigoplus: "⨁",
+	bigotimes: "⨂",
+	bigodot: "⨀",
+	bigsqcup: "⨆",
+	bigvee: "⋁",
+	bigwedge: "⋀",
+	biguplus: "⨄",
 	infty: "∞",
 	partial: "∂",
 	nabla: "∇",
@@ -140,6 +231,33 @@ const SYMBOLS: Record<string, string> = {
 	Re: "ℜ",
 	Im: "ℑ",
 	aleph: "ℵ",
+	beth: "ℶ",
+	wp: "℘",
+	mho: "℧",
+	eth: "ð",
+	imath: "ı",
+	jmath: "ȷ",
+	complement: "∁",
+	top: "⊤",
+	bot: "⊥",
+	flat: "♭",
+	sharp: "♯",
+	natural: "♮",
+	clubsuit: "♣",
+	diamondsuit: "♢",
+	heartsuit: "♡",
+	spadesuit: "♠",
+	Box: "□",
+	square: "□",
+	blacksquare: "■",
+	Diamond: "◇",
+	lozenge: "◊",
+	surd: "√",
+	backslash: "\\",
+	S: "§",
+	P: "¶",
+	copyright: "©",
+	pounds: "£",
 	therefore: "∴",
 	because: "∵",
 	ldots: "…",
@@ -147,8 +265,13 @@ const SYMBOLS: Record<string, string> = {
 	cdots: "⋯",
 	vdots: "⋮",
 	ddots: "⋱",
+	iddots: "⋰",
 	langle: "⟨",
 	rangle: "⟩",
+	lbrace: "{",
+	rbrace: "}",
+	lbrack: "[",
+	rbrack: "]",
 	lceil: "⌈",
 	rceil: "⌉",
 	lfloor: "⌊",
@@ -189,29 +312,49 @@ const FUNCTIONS = new Set(
 
 /** Commands that only change size, style or spacing: dropped. */
 const IGNORED = new Set(
-	"left right middle big Big bigg Bigg bigl bigr Bigl Bigr biggl biggr Biggl Biggr displaystyle textstyle scriptstyle scriptscriptstyle limits nolimits nonumber notag label".split(
+	"left right middle big Big bigg Bigg bigl bigr Bigl Bigr biggl biggr Biggl Biggr displaystyle textstyle scriptstyle scriptscriptstyle limits nolimits nonumber notag".split(
 		" ",
 	),
 )
 
-/** Commands whose argument is shown as it is. */
-const TEXT_COMMANDS = new Set(
-	"text textrm textit textbf textsf texttt textnormal mbox mathrm mathit mathbf mathsf mathtt mathcal mathscr mathfrak boldsymbol bm operatorname".split(
+/** Commands whose argument is prose, shown as it is. */
+const TEXT_COMMANDS = new Set("text textrm textit textbf textsf texttt textnormal mbox hbox".split(" "))
+
+/**
+ * Commands that only style their argument, which is still math:
+ * `\boldsymbol{\tau}` reads `τ`, not `\tau`.
+ */
+const STYLE_COMMANDS = new Set(
+	"mathrm mathit mathbf mathsf mathtt mathcal mathscr mathfrak mathnormal boldsymbol bm operatorname mathbin mathrel mathop mathord boxed cancel bcancel xcancel substack".split(
 		" ",
 	),
 )
+
+/** Commands dropped together with their argument. */
+const IGNORED_WITH_ARGUMENT = new Set("phantom hphantom vphantom vspace color label".split(" "))
 
 const ACCENTS: Record<string, string> = {
 	vec: "⃗",
+	overrightarrow: "⃗",
+	overleftarrow: "⃖",
 	hat: "̂",
 	widehat: "̂",
+	check: "̌",
+	breve: "̆",
+	acute: "́",
+	grave: "̀",
+	mathring: "̊",
 	bar: "̄",
 	overline: "̅",
+	underline: "̲",
 	tilde: "̃",
 	widetilde: "̃",
 	dot: "̇",
 	ddot: "̈",
 }
+
+/** Accents that span their whole argument: `\overline{AB}` reads `A̅B̅`. */
+const SPANNING_ACCENTS = new Set(["overline", "underline"])
 
 const ENVIRONMENT_BRACKETS: Record<string, [string, string]> = {
 	pmatrix: ["(", ")"],
@@ -365,8 +508,18 @@ function readCommand(reader: Reader): string {
 	if (TEXT_COMMANDS.has(name)) {
 		return readRawArgument(reader)
 	}
+	if (STYLE_COMMANDS.has(name)) {
+		return readArgument(reader)
+	}
+	if (IGNORED_WITH_ARGUMENT.has(name)) {
+		readRawArgument(reader)
+		return ""
+	}
 	if (name in ACCENTS) {
 		const base = readArgument(reader)
+		if (SPANNING_ACCENTS.has(name)) {
+			return [...base].map((char) => char + ACCENTS[name]).join("")
+		}
 		return [...base].length === 1 ? base + ACCENTS[name] : base
 	}
 
@@ -395,6 +548,35 @@ function readCommand(reader: Reader): string {
 		}
 		case "pmod":
 			return ` (mod ${readArgument(reader)})`
+		case "overset":
+		case "stackrel": {
+			const over = readArgument(reader)
+			return readArgument(reader) + script(over, SUPERSCRIPTS, "^")
+		}
+		case "underset": {
+			const under = readArgument(reader)
+			return readArgument(reader) + script(under, SUBSCRIPTS, "_")
+		}
+		case "xrightarrow":
+		case "xleftarrow": {
+			readOptional(reader)
+			const label = readArgument(reader)
+			return (name === "xrightarrow" ? "→" : "←") + (label ? script(label, SUPERSCRIPTS, "^") : "")
+		}
+		case "textcolor":
+			readRawArgument(reader)
+			return readArgument(reader)
+		case "hspace":
+			readRawArgument(reader)
+			return " "
+		case "tag":
+			return ` (${readArgument(reader)})`
+		case "bra":
+			return `⟨${readArgument(reader)}|`
+		case "ket":
+			return `|${readArgument(reader)}⟩`
+		case "braket":
+			return `⟨${readArgument(reader)}⟩`
 		case "begin":
 			return ENVIRONMENT_BRACKETS[readRawArgument(reader)]?.[0] ?? ""
 		case "end":
