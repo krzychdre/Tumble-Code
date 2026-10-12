@@ -652,12 +652,28 @@
 			"label": "Habilitar herramienta de lista de tareas",
 			"description": "Cuando está habilitado, Tumble puede crear y gestionar listas de tareas para hacer seguimiento del progreso. Esto ayuda a organizar tareas complejas en pasos manejables."
 		},
-		"slimToolset": {
-			"label": "Conjunto de herramientas reducido (modelos pequeños)",
-			"description": "Ofrece a este perfil una herramienta obvia para cada tarea: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, las herramientas web y las de tarea (ask, complete, switch mode, new task, todo list, skill, load tools). Los verbos de edición de sobra (edit, search_replace, edit_file, apply_patch), las tareas paralelas y los comandos con barra quedan ocultos. Los modelos pequeños dejan de elegir el editor equivocado. Si el modelo llama a una herramienta oculta de todos modos, aún se ejecuta.",
-			"hideMcp": {
-				"label": "Ocultar también las herramientas MCP",
-				"description": "Los esquemas de herramientas MCP suelen ser la mayor parte del indicador de herramientas. Mantén esto activado a menos que este perfil necesite un servidor MCP."
+		"modelSize": {
+			"title": "Tamaño del modelo",
+			"description": "Cuánto prompt del sistema y cuántas herramientas envía este perfil. Elige la opción que corresponda al modelo al que se conecta este perfil.",
+			"standard": {
+				"label": "Estándar",
+				"description": "El prompt del sistema completo y todas las herramientas. Para modelos grandes."
+			},
+			"slim": {
+				"label": "Modelos más pequeños: conjunto de herramientas reducido",
+				"description": "El prompt del sistema completo con menos herramientas: una herramienta clara para cada tarea, sin las herramientas de edición alternativas, las tareas en paralelo ni los comandos con barra. Para modelos medianos que manejan el prompt largo y apply_diff pero eligen la herramienta equivocada.",
+				"hideMcp": {
+					"label": "Ocultar también las herramientas MCP",
+					"description": "Los esquemas de herramientas MCP suelen ser la mayor parte del indicador de herramientas. Mantén esto activado a menos que este perfil necesite un servidor MCP."
+				}
+			},
+			"compact": {
+				"label": "Modelos muy pequeños: modo compacto",
+				"description": "Para modelos con una ventana de contexto muy pequeña: un prompt del sistema corto, un conjunto mínimo de herramientas con edición sencilla, detalles del entorno más breves y límites de salida más estrictos. Déjalo desactivado para modelos grandes.",
+				"subagents": {
+					"label": "Subagentes",
+					"description": "Desactivados para este perfil: en modo compacto nunca inicia subtareas ni tareas en paralelo. La configuración global de subagentes sigue aplicándose a todos los demás perfiles."
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "Tiempo de espera de la pregunta",
 			"description": "Cuánto tiempo la pregunta de un subagente espera tu respuesta antes de ser aprobada automáticamente y el subagente continúa por su cuenta. 0 responde inmediatamente (totalmente autónomo).",
 			"immediate": "desactivado"
-		}
+		},
+		"compactNote": "El perfil que se está editando usa el modo compacto (modelos muy pequeños), así que los subagentes siempre están desactivados para él, digan lo que digan estos ajustes. Siguen aplicándose a todos los demás perfiles."
 	}
 }

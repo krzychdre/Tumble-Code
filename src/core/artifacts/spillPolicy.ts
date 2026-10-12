@@ -258,6 +258,137 @@ export async function applyToolResultSpill(
 	return { text: `${notice}\n${preview.body}`, artifactId, originalBytes: bytes }
 }
 
+// --- Compact profile -------------------------------------------------------
+//
+// The compact profile (small local models, a 40,960-token window) offers no
+// read_artifact, so a spilled result would cite an artifact the model has no
+// tool for. Under compact a result is cut in place instead, at line boundaries,
+// with a note that says how to ask for less.
+
+/** Characters at most an execute_command, search_files or list_files result keeps under the compact profile. */
+export const COMPACT_TOOL_RESULT_MAX_CHARS = 6_000
+
+interface CompactCapRule {
+	/** Command output keeps its start (exit code, first errors) and its end (summary, last errors). */
+	keep: "head" | "headAndTail"
+	/** How to get a smaller result, phrased for the tool. */
+	hint: string
+}
+
+const COMPACT_CAP_RULES: Readonly<Record<string, CompactCapRule>> = {
+	execute_command: {
+		keep: "headAndTail",
+		hint: "Narrow the command, for example filter it through grep or head/tail, or run a more specific command.",
+	},
+	search_files: {
+		keep: "head",
+		hint: "Narrow the search with a more specific regex, a deeper path or a file pattern.",
+	},
+	list_files: {
+		keep: "head",
+		hint: "List a more specific subdirectory, or list without recursion.",
+	},
+}
+
+const GENERIC_COMPACT_HINT = "Ask for a narrower result if you need the rest."
+
+/** Lines from the start of `lines` whose joined length stays within `budget` (at least a slice of the first). */
+function takeHeadLines(lines: string[], budget: number): string[] {
+	const kept: string[] = []
+	let used = 0
+	for (const line of lines) {
+		const cost = line.length + (kept.length > 0 ? 1 : 0)
+		if (used + cost > budget) {
+			break
+		}
+		kept.push(line)
+		used += cost
+	}
+	// A single line longer than the whole budget (minified code, one-line JSON) is cut by characters.
+	return kept.length > 0 || lines.length === 0 ? kept : [lines[0].slice(0, Math.max(0, budget))]
+}
+
+/** Lines from the end of `lines` whose joined length stays within `budget` (at least a slice of the last). */
+function takeTailLines(lines: string[], budget: number): string[] {
+	const kept: string[] = []
+	let used = 0
+	for (let index = lines.length - 1; index >= 0; index--) {
+		const cost = lines[index].length + (kept.length > 0 ? 1 : 0)
+		if (used + cost > budget) {
+			break
+		}
+		kept.unshift(lines[index])
+		used += cost
+	}
+	if (kept.length > 0 || lines.length === 0) {
+		return kept
+	}
+	// slice(-0) would return the whole line, hence the explicit empty case.
+	return [budget > 0 ? lines[lines.length - 1].slice(-budget) : ""]
+}
+
+/**
+ * Cuts `text` to at most `maxChars` characters at line boundaries, the note included.
+ * `head` keeps the start; `headAndTail` keeps two fifths from the start and three fifths from the end.
+ */
+export function truncateToolResultInPlace(
+	text: string,
+	maxChars: number,
+	keep: CompactCapRule["keep"],
+	hint: string,
+): string {
+	if (text.length <= maxChars) {
+		return text
+	}
+
+	const lines = text.split("\n")
+	const where = keep === "head" ? "" : " from the middle"
+	const note = (keptChars: number, keptLines: number) =>
+		`[Output cut: ${lines.length - keptLines} of ${lines.length} lines (${text.length - keptChars} of ` +
+		`${text.length} characters) left out${where}. ${hint}]`
+
+	// Room for the note (sized with the largest numbers it can carry) and the line breaks around it.
+	const budget = Math.max(0, maxChars - note(0, 0).length - 2)
+
+	if (keep === "head") {
+		const head = takeHeadLines(lines, budget)
+		const kept = head.join("\n")
+		return `${kept}\n${note(kept.length, head.length)}`
+	}
+
+	const head = takeHeadLines(lines, Math.floor((budget * 2) / 5))
+	const keptHead = head.join("\n")
+	const tail = takeTailLines(lines.slice(head.length), budget - keptHead.length)
+	const keptTail = tail.join("\n")
+	return `${keptHead}\n${note(keptHead.length + keptTail.length, head.length + tail.length)}\n${keptTail}`
+}
+
+/**
+ * The compact profile's replacement for the spill policy, applied where a tool result
+ * becomes conversation content.
+ *
+ * - execute_command, search_files, list_files: at most COMPACT_TOOL_RESULT_MAX_CHARS characters,
+ *   with a note on how to narrow the query.
+ * - Tools on the spill bypass list (read_file caps itself, protocol tools): unchanged.
+ * - Any other result over the inline budget, where the regular policy would spill it to an
+ *   artifact: cut in place to that budget, keeping start and end.
+ *
+ * @param maxInlineChars - The inline budget (the `maxInlineToolResultBytes` setting), applied as
+ *   characters here.
+ */
+export function applyCompactToolResultCap(text: string, toolName: string | undefined, maxInlineChars: number): string {
+	const rule = toolName ? COMPACT_CAP_RULES[toolName] : undefined
+	if (rule) {
+		return truncateToolResultInPlace(text, COMPACT_TOOL_RESULT_MAX_CHARS, rule.keep, rule.hint)
+	}
+
+	if (toolName && SPILL_BYPASS_TOOLS.has(toolName)) {
+		return text
+	}
+
+	return truncateToolResultInPlace(text, maxInlineChars, "headAndTail", GENERIC_COMPACT_HINT)
+}
+
 /**
  * Returns the spill notice line of a previously spilled tool result, or
  * `undefined` when the text is not one.

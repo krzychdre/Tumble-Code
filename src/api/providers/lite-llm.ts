@@ -207,7 +207,7 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			stream_options: {
 				include_usage: true,
 			},
-			tools: this.convertToolsForOpenAI(metadata?.tools),
+			tools: this.convertToolsForOpenAI(metadata?.tools, this.options),
 			tool_choice: metadata?.tool_choice,
 		}
 

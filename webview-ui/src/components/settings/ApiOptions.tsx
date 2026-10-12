@@ -53,7 +53,7 @@ import { ApiErrorMessage } from "./ApiErrorMessage"
 import { ThinkingBudget } from "./ThinkingBudget"
 import { Verbosity } from "./Verbosity"
 import { TodoListSettingsControl } from "./TodoListSettingsControl"
-import { SlimToolsetControl } from "./SlimToolsetControl"
+import { ModelSizeControl } from "./ModelSizeControl"
 import { TemperatureControl } from "./TemperatureControl"
 import { RateLimitSecondsControl } from "./RateLimitSecondsControl"
 import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl"
@@ -398,9 +398,10 @@ const ApiOptions = ({
 									todoListEnabled={apiConfiguration.todoListEnabled}
 									onChange={(field, value) => setApiConfigurationField(field, value)}
 								/>
-								<SlimToolsetControl
+								<ModelSizeControl
 									slimToolset={apiConfiguration.slimToolset}
 									slimHidesMcp={apiConfiguration.slimHidesMcp}
+									compactProfile={apiConfiguration.compactProfile}
 									onChange={(field, value) => setApiConfigurationField(field, value)}
 								/>
 								{selectedModelInfo?.supportsTemperature !== false && (

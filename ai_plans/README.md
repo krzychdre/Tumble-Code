@@ -38,10 +38,11 @@ plans deploy; they are sources, not plans.
 
 ## Open plans
 
-| Plan                                                                           | State                                                                                                          |
-| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| [`2026-10-01_simplification-round-2.md`](2026-10-01_simplification-round-2.md) | In progress: items A to E, one pull request each. Its Status table says which are merged.                      |
-| [`2026-09-28_p8-measurement.md`](2026-09-28_p8-measurement.md)                 | Parked: JSONL task persistence is not needed yet. The plan lists the measured thresholds that would reopen it. |
+| Plan                                                                                                 | State                                                                                                          |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| [`2026-10-10_19-36_compact-small-model-profile.md`](2026-10-10_19-36_compact-small-model-profile.md) | Proof of concept on the local branch `feat/compact-small-model-profile`, measured, not merged.                 |
+| [`2026-10-01_simplification-round-2.md`](2026-10-01_simplification-round-2.md)                       | In progress: items A to E, one pull request each. Its Status table says which are merged.                      |
+| [`2026-09-28_p8-measurement.md`](2026-09-28_p8-measurement.md)                                       | Parked: JSONL task persistence is not needed yet. The plan lists the measured thresholds that would reopen it. |
 
 ## Roadmaps
 

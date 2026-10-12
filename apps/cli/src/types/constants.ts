@@ -19,6 +19,9 @@ export const MAX_COMMAND_EXECUTION_TIMEOUT_SECONDS = Math.floor((2 ** 31 - 1) / 
 
 export const REASONING_EFFORTS = [...reasoningEffortsExtended, "unspecified", "disabled"]
 
+/** The values of `modelSize` in a `models` entry, the options of "Model size" in the VS Code profile settings. */
+export const MODEL_SIZES = ["standard", "slim", "compact"] as const
+
 /**
  * Default timeout in seconds for auto-approving followup questions.
  * Used in both the TUI (App.tsx) and the extension host (extension-host.ts).

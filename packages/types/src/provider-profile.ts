@@ -149,6 +149,7 @@ const sharedFieldNames = [
 	"consecutiveMistakeLimit",
 	"slimToolset",
 	"slimHidesMcp",
+	"compactProfile",
 	"reasoningEffort",
 	"modelMaxTokens",
 	"modelMaxThinkingTokens",

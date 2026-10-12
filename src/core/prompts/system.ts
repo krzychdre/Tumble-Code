@@ -1,6 +1,12 @@
 import * as vscode from "vscode"
 
-import { type PromptComponent, type CustomModePrompts, formatLanguage } from "@tumble-code/types"
+import {
+	type PromptComponent,
+	type CustomModePrompts,
+	type ModeConfig,
+	formatLanguage,
+	isCompactProfile,
+} from "@tumble-code/types"
 
 import { Mode, modes, defaultModeSlug, getModeBySlug, getGroupName, getModeSelection } from "../../shared/modes"
 import { isEmpty } from "../../utils/object"
@@ -25,6 +31,19 @@ import {
 	getMemorySection,
 	getMemoryIndexSection,
 } from "./sections"
+import {
+	COMPACT_PROMPT_OPENER,
+	getCompactToolsSection,
+	getCompactEditingSection,
+	getCompactDatesSection,
+	getCompactRulesSection,
+	getCompactSystemInfoSection,
+	getCompactMemorySection,
+	getCompactMemoryIndexSection,
+	getCompactModesSection,
+	getCompactModeToolLimitsSection,
+	getCompactVendorConfidentialitySection,
+} from "./sections/compact"
 
 /**
  * The first bytes of every system prompt, in every mode, for every profile.
@@ -131,10 +150,7 @@ async function generatePrompt(
 		cwd,
 		mcpHub,
 		customModes: customModeConfigs,
-		globalCustomInstructions,
 		experiments,
-		language,
-		rooIgnoreInstructions,
 		settings,
 		skillsManager,
 		materializedDeferredTools,
@@ -143,6 +159,13 @@ async function generatePrompt(
 	// Get the full mode config to ensure we have the role definition (used for groups, etc.)
 	const modeConfig = getModeBySlug(mode, customModeConfigs) || modes.find((m) => m.slug === mode) || modes[0]
 	const { roleDefinition, baseInstructions } = getModeSelection(mode, promptComponent, customModeConfigs)
+
+	// The compact profile has its own, much shorter assembly. It branches here,
+	// before any MCP, skills or deferred-tools work, because none of those
+	// sections exist under compact.
+	if (isCompactProfile(settings)) {
+		return generateCompactPrompt(options, mode, modeConfig, roleDefinition, baseInstructions)
+	}
 
 	// Check if MCP functionality should be included.
 	// A slim profile that hides MCP removes the tool schemas from the request, so
@@ -199,17 +222,7 @@ async function generatePrompt(
 	// return "" when memory is disabled.
 	const [memorySection, memoryIndex] = await Promise.all([getMemorySection(cwd), getMemoryIndexSection(cwd)])
 
-	const customInstructionsSection = await addCustomInstructions(
-		baseInstructions,
-		globalCustomInstructions || "",
-		cwd,
-		mode,
-		{
-			language: language ?? formatLanguage(vscode.env.language),
-			rooIgnoreInstructions,
-			settings,
-		},
-	)
+	const customInstructionsSection = await buildCustomInstructionsSection(options, mode, baseInstructions)
 
 	// ------------------------------------------------------------------
 	// STABLE HEAD (WS-F sections 1-7).
@@ -284,12 +297,18 @@ async function generatePrompt(
 		deferredToolsSection,
 	]
 
-	// One canonical separator between sections, and empty sections drop out
-	// entirely. Building the prompt by join instead of by template literal is
-	// what makes an absent optional section cost zero bytes rather than a
-	// varying run of blank lines.
+	return joinSections([...stableHead, ...variableTail])
+}
+
+/**
+ * One canonical separator between sections, and empty sections drop out
+ * entirely. Building the prompt by join instead of by template literal is
+ * what makes an absent optional section cost zero bytes rather than a
+ * varying run of blank lines.
+ */
+function joinSections(sections: string[]): string {
 	return (
-		[...stableHead, ...variableTail]
+		sections
 			// The nullish guard is deliberate: a section builder that returns nothing
 			// (a disabled feature, a stubbed dependency) must drop out of the prompt,
 			// never render the word "undefined" into it, which is what the previous
@@ -298,6 +317,86 @@ async function generatePrompt(
 			.filter((section) => section.length > 0)
 			.join("\n\n")
 	)
+}
+
+/**
+ * USER'S CUSTOM INSTRUCTIONS: language, global and mode instructions, rule
+ * files, AGENTS.md and the .rooignore note. The user's own content, so the
+ * long and the compact prompt render it through the same call.
+ */
+function buildCustomInstructionsSection(
+	options: SystemPromptOptions,
+	mode: Mode,
+	baseInstructions: string,
+): Promise<string> {
+	return addCustomInstructions(baseInstructions, options.globalCustomInstructions || "", options.cwd, mode, {
+		language: options.language ?? formatLanguage(vscode.env.language),
+		rooIgnoreInstructions: options.rooIgnoreInstructions,
+		settings: options.settings,
+	})
+}
+
+/**
+ * Assemble the prompt for a compact profile (`isCompactProfile(settings)`):
+ * a small model with a small window, see
+ * ai_plans/2026-10-10_19-36_compact-small-model-profile.md.
+ *
+ * The user's own content is unchanged: the MODE section with the mode's role,
+ * and USER'S CUSTOM INSTRUCTIONS (language, global and mode instructions, rule
+ * files, AGENTS.md, .rooignore). Everything the extension writes is replaced by
+ * the short sections in `sections/compact/`. MCP, skills and the deferred-tools
+ * catalog are left out, because the compact toolset carries none of their
+ * tools.
+ *
+ * The KV-cache layout follows the long prompt: a compact stable head whose
+ * bytes are the same for every mode, then a tail that may vary per mode,
+ * profile or user. The two heads differ from each other; each is stable on
+ * its own.
+ */
+async function generateCompactPrompt(
+	options: SystemPromptOptions,
+	mode: Mode,
+	modeConfig: ModeConfig,
+	roleDefinition: string,
+	baseInstructions: string,
+): Promise<string> {
+	const { context, cwd, customModes: customModeConfigs, settings } = options
+
+	const [modesSection, memorySection, memoryIndex, customInstructionsSection] = await Promise.all([
+		getCompactModesSection(context),
+		getCompactMemorySection(cwd),
+		getCompactMemoryIndexSection(cwd),
+		buildCustomInstructionsSection(options, mode, baseInstructions),
+	])
+
+	// COMPACT STABLE HEAD: identical for every mode on one workspace and
+	// machine. Constants first, then the machine facts, then memory, which
+	// changes when a note is saved.
+	const stableHead: string[] = [
+		COMPACT_PROMPT_OPENER,
+		getCompactToolsSection(),
+		getCompactEditingSection(),
+		getCompactDatesSection(),
+		getCompactRulesSection(),
+		getCompactSystemInfoSection(cwd),
+		memorySection,
+		memoryIndex,
+	]
+
+	// COMPACT VARIABLE TAIL: the modes list is the same for every mode, so it
+	// comes first; then the mode-dependent and per-profile pieces.
+	const variableTail: string[] = [
+		modesSection,
+		getCompactModeToolLimitsSection(modeConfig.groups, {
+			removedTools: settings?.removedTools,
+			exampleMode: getModeBySlug("code", customModeConfigs),
+		}),
+		getCompactVendorConfidentialitySection(settings?.isStealthModel),
+		getModeSection(roleDefinition),
+		customInstructionsSection,
+	]
+
+	return joinSections([...stableHead, ...variableTail])
 }
 
 /**

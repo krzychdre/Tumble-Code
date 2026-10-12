@@ -668,12 +668,28 @@
 			"label": "啟用待辦事項清單工具",
 			"description": "啟用後，Tumble 可以建立和管理待辦事項清單來追蹤任務進度。這有助於將複雜任務組織成可管理的步驟。"
 		},
-		"slimToolset": {
-			"label": "精簡工具集(小模型)",
-			"description": "為此設定檔在每個任務中提供一個明確的工具:read_file、search_files、list_files、codebase_search、apply_diff、write_to_file、execute_command、read_artifact、網路工具以及任務工具(ask、complete、switch mode、new task、todo list、skill、load tools)。多餘的編輯動詞(edit、search_replace、edit_file、apply_patch)、並行任務和斜線命令均被隱藏。小模型不再選錯編輯器。若模型仍呼叫被隱藏的工具,該工具仍會執行。",
-			"hideMcp": {
-				"label": "同時隱藏 MCP 工具",
-				"description": "MCP 工具的 schema 通常是工具提示詞中最大的一部分。除非此設定檔需要 MCP 伺服器,否則請保持開啟。"
+		"modelSize": {
+			"title": "模型大小",
+			"description": "此設定檔傳送的系統提示長度與工具數量。請選擇與此設定檔所連線模型相符的選項。",
+			"standard": {
+				"label": "標準",
+				"description": "完整的系統提示與所有工具。適用於大型模型。"
+			},
+			"slim": {
+				"label": "較小的模型：精簡工具集",
+				"description": "完整的系統提示，但工具較少：每項工作只提供一個明確的工具，不含替代編輯工具、平行工作與斜線指令。適用於能處理長提示與 apply_diff、但常選錯工具的中型模型。",
+				"hideMcp": {
+					"label": "同時隱藏 MCP 工具",
+					"description": "MCP 工具的 schema 通常是工具提示詞中最大的一部分。除非此設定檔需要 MCP 伺服器,否則請保持開啟。"
+				}
+			},
+			"compact": {
+				"label": "非常小的模型：精簡模式",
+				"description": "適用於上下文視窗很小的模型：簡短的系統提示、只含簡單編輯的最小工具集、更短的環境詳細資訊，以及更嚴格的輸出限制。大型模型請保持關閉。",
+				"subagents": {
+					"label": "子代理",
+					"description": "此設定檔已關閉：精簡模式下它從不啟動子工作或平行工作。子代理的全域設定仍適用於其他所有設定檔。"
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "問題逾時",
 			"description": "子代理的問題在自動核准並由子代理自行繼續之前,等待你回答的時長。0 表示立即作答(完全自主)。",
 			"immediate": "關閉"
-		}
+		},
+		"compactNote": "正在編輯的設定檔使用精簡模式（非常小的模型），因此無論這些設定為何，它的子代理一律關閉。這些設定仍適用於其他所有設定檔。"
 	}
 }

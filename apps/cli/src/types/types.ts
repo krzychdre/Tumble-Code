@@ -1,6 +1,7 @@
 import type { ReasoningEffortExtended } from "@tumble-code/types"
 import type { OutputFormat } from "./json-events.js"
 import type { SupportedProvider } from "@/lib/utils/provider-types.js"
+import type { MODEL_SIZES } from "./constants.js"
 
 export { supportedProviders, isAcceptedProvider } from "@/lib/utils/provider-types.js"
 export type { SupportedProvider } from "@/lib/utils/provider-types.js"
@@ -49,6 +50,17 @@ export interface CliModeSettings {
 /** Facts about one model that the CLI cannot learn from the provider, keyed by model id in cli-settings.json. */
 export interface CliModelSettings {
 	/**
+	 * The connection this model runs on, for a model served elsewhere than the
+	 * top level or the mode says (another server, another provider). Each
+	 * field overrides the top level and the mode entry, and only the flags
+	 * override it. An entry that names a different provider inherits none of
+	 * their base URL or key, as a mode entry does.
+	 */
+	provider?: SupportedProvider
+	baseUrl?: string
+	apiKey?: string
+	apiKeyEnv?: string
+	/**
 	 * Context window in tokens. Used with the openai provider (any
 	 * OpenAI-compatible server), whose model list carries ids only, so the
 	 * extension would otherwise assume 128,000.
@@ -91,7 +103,24 @@ export interface CliModelSettings {
 	 * Without it the openai provider sends no effort and the others "medium".
 	 */
 	reasoningEffort?: ReasoningEffortFlagOptions
+	/**
+	 * How much system prompt and how many tools the model gets, the same choice
+	 * as "Model size" in the VS Code profile settings: "standard" (the full
+	 * prompt and every tool), "slim" (the full prompt, one obvious tool per
+	 * job) or "compact" (for very small models: a short prompt, a minimal tool
+	 * set with simple editing, shorter environment details, tighter output
+	 * limits, no subtasks). Works with every provider. Defaults to "standard".
+	 */
+	modelSize?: CliModelSize
+	/**
+	 * With modelSize "slim", also hide the MCP tools, whose schemas are usually
+	 * the largest part of the tool prompt. Defaults to true; "compact" always
+	 * hides them.
+	 */
+	hideMcp?: boolean
 }
+
+export type CliModelSize = (typeof MODEL_SIZES)[number]
 
 export interface CliSettings {
 	/** Default mode to use (e.g., "code", "architect", "ask", "debug") */

@@ -10,8 +10,10 @@ import { shouldUseReasoningEffort } from "@tumble-code/core"
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 
 import {
+	modelConnectionLayer,
 	pickProviderConfig,
 	resolveProviderConfig,
+	resolveProviderConfigWithModel,
 	resolveReasoningEffort,
 	summarizeProviderSettings,
 	toProviderSettings,
@@ -315,6 +317,9 @@ describe("toProviderSettings", () => {
 			},
 			openAiPreserveReasoning: false,
 			openAiTrimOldReasoning: false,
+			slimToolset: false,
+			slimHidesMcp: true,
+			compactProfile: false,
 		})
 	})
 
@@ -446,6 +451,37 @@ describe("toProviderSettings", () => {
 		)
 	})
 
+	it("makes a model compact with any provider", () => {
+		const settings = toProviderSettings({
+			provider: "anthropic",
+			model: "claude-x",
+			apiKey: "k",
+			modelSettings: { modelSize: "compact" },
+		})
+
+		expect(settings).toMatchObject({ compactProfile: true, slimToolset: false })
+	})
+
+	it("gives a slim model the slim toolset, hiding MCP unless hideMcp is false", () => {
+		expect(toProviderSettings({ ...connection, modelSettings: { modelSize: "slim" } })).toMatchObject({
+			slimToolset: true,
+			slimHidesMcp: true,
+			compactProfile: false,
+		})
+		expect(
+			toProviderSettings({ ...connection, modelSettings: { modelSize: "slim", hideMcp: false } }),
+		).toMatchObject({ slimToolset: true, slimHidesMcp: false })
+	})
+
+	it("clears a model size an earlier run left in the extension state", () => {
+		for (const modelSettings of [undefined, { modelSize: "standard" as const }]) {
+			expect(toProviderSettings({ ...connection, modelSettings })).toMatchObject({
+				slimToolset: false,
+				compactProfile: false,
+			})
+		}
+	})
+
 	it("turns reasoning off for disabled and leaves it out for unspecified", () => {
 		expect(toProviderSettings({ ...connection, reasoningEffort: "disabled" })).toMatchObject({
 			enableReasoningEffort: false,
@@ -454,6 +490,61 @@ describe("toProviderSettings", () => {
 		const unspecified = toProviderSettings({ ...connection, reasoningEffort: "unspecified" })
 		expect(unspecified).not.toHaveProperty("enableReasoningEffort")
 		expect(unspecified).not.toHaveProperty("reasoningEffort")
+	})
+})
+
+describe("resolveProviderConfigWithModel", () => {
+	const settingsLayer = { provider: "openai", baseUrl: "http://a/v1", apiKey: "1111", model: "big" }
+	const models = {
+		big: { contextWindow: 262_144 },
+		small: { baseUrl: "http://b/v1" },
+		claude: { provider: "anthropic" as const, apiKey: "sk-ant" },
+	}
+
+	it("is resolveProviderConfig for a model without a connection of its own", () => {
+		expect(resolveProviderConfigWithModel({ layers: [settingsLayer], models })).toEqual(
+			resolveProviderConfig({ layers: [settingsLayer] }),
+		)
+		expect(modelConnectionLayer("big", models.big)).toBeUndefined()
+	})
+
+	it("puts a model whose entry sets a base URL on that server, keeping the provider and key", () => {
+		expect(resolveProviderConfigWithModel({ layers: [settingsLayer, { model: "small" }], models })).toMatchObject({
+			provider: "openai",
+			model: "small",
+			baseUrl: "http://b/v1",
+			apiKey: "1111",
+		})
+	})
+
+	it("inherits no base URL or key when the entry names another provider", () => {
+		const config = resolveProviderConfigWithModel({ layers: [settingsLayer, { model: "claude" }], models })
+
+		expect(config).toMatchObject({ provider: "anthropic", model: "claude", apiKey: "sk-ant" })
+		// The openai layer's URL; the provider's base-url env var may still apply.
+		expect(config.baseUrl).not.toBe("http://a/v1")
+	})
+
+	it("keeps the flags above the entry", () => {
+		expect(
+			resolveProviderConfigWithModel({
+				layers: [settingsLayer],
+				top: { model: "small", baseUrl: "http://flag/v1" },
+				models,
+			}),
+		).toMatchObject({ model: "small", baseUrl: "http://flag/v1" })
+	})
+
+	it("forces the model it is given, on that model's connection", () => {
+		expect(resolveProviderConfigWithModel({ layers: [settingsLayer], models, model: "claude" })).toMatchObject({
+			provider: "anthropic",
+			model: "claude",
+		})
+		expect(resolveProviderConfigWithModel({ layers: [settingsLayer], models, model: "other" })).toMatchObject({
+			provider: "openai",
+			model: "other",
+			baseUrl: "http://a/v1",
+		})
 	})
 })
 
@@ -499,6 +590,9 @@ describe("withModel", () => {
 			openAiCustomModelInfo: null,
 			openAiPreserveReasoning: false,
 			openAiTrimOldReasoning: false,
+			slimToolset: false,
+			slimHidesMcp: true,
+			compactProfile: false,
 		})
 	})
 
@@ -531,6 +625,13 @@ describe("withModel", () => {
 			openAiPreserveReasoning: true,
 			openAiTrimOldReasoning: false,
 		})
+	})
+
+	it("brings the new model's own size", () => {
+		const tiny = withModel(glm, "Qwen3.8-4B", { modelSettings: { modelSize: "compact" } })
+
+		expect(tiny.compactProfile).toBe(true)
+		expect(withModel(tiny, "GLM-5.3-NVFP4", { modelSettings: undefined }).compactProfile).toBe(false)
 	})
 
 	it("writes the model into the provider's own model field", () => {

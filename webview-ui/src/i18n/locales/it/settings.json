@@ -652,12 +652,28 @@
 			"label": "Abilita strumento lista di cose da fare",
 			"description": "Quando abilitato, Tumble può creare e gestire liste di cose da fare per tracciare il progresso delle attività. Questo aiuta a organizzare attività complesse in passaggi gestibili."
 		},
-		"slimToolset": {
-			"label": "Set di strumenti ridotto (modelli piccoli)",
-			"description": "Offre a questo profilo uno strumento ovvio per ogni lavoro: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, gli strumenti web e gli strumenti di attività (ask, complete, switch mode, new task, todo list, skill, load tools). I verbi di editazione superflui (edit, search_replace, edit_file, apply_patch), le attività parallele e i comandi slash sono nascosti. I modelli piccoli smettono di scegliere l'editor sbagliato. Se il modello chiama comunque uno strumento nascosto, si esegue ugualmente.",
-			"hideMcp": {
-				"label": "Nascondi anche gli strumenti MCP",
-				"description": "Gli schemi degli strumenti MCP sono in genere la parte più grande del prompt degli strumenti. Tienilo attivo a meno che questo profilo non richieda un server MCP."
+		"modelSize": {
+			"title": "Dimensione del modello",
+			"description": "Quanto prompt di sistema e quanti strumenti invia questo profilo. Scegli l'opzione adatta al modello a cui si collega questo profilo.",
+			"standard": {
+				"label": "Standard",
+				"description": "Il prompt di sistema completo e tutti gli strumenti. Per i modelli grandi."
+			},
+			"slim": {
+				"label": "Modelli più piccoli: set di strumenti ridotto",
+				"description": "Il prompt di sistema completo con meno strumenti: uno strumento ovvio per ogni compito, senza gli strumenti di modifica alternativi, le attività parallele e i comandi slash. Per i modelli di medie dimensioni che gestiscono il prompt lungo e apply_diff ma scelgono lo strumento sbagliato.",
+				"hideMcp": {
+					"label": "Nascondi anche gli strumenti MCP",
+					"description": "Gli schemi degli strumenti MCP sono in genere la parte più grande del prompt degli strumenti. Tienilo attivo a meno che questo profilo non richieda un server MCP."
+				}
+			},
+			"compact": {
+				"label": "Modelli molto piccoli: modalità compatta",
+				"description": "Per modelli con una finestra di contesto molto piccola: un prompt di sistema breve, un set minimo di strumenti con modifica semplice, dettagli dell'ambiente più brevi e limiti di output più stretti. Lasciala disattivata per i modelli grandi.",
+				"subagents": {
+					"label": "Subagenti",
+					"description": "Disattivati per questo profilo: in modalità compatta non avvia mai sottoattività né attività parallele. Le impostazioni globali dei subagenti continuano a valere per tutti gli altri profili."
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "Timeout della domanda",
 			"description": "Quanto a lungo la domanda di un subagente attende la tua risposta prima di essere approvata automaticamente e il subagente prosegue da solo. 0 risponde immediatamente (completamente autonomo).",
 			"immediate": "disattivato"
-		}
+		},
+		"compactNote": "Il profilo in modifica usa la modalità compatta (modelli molto piccoli), quindi per esso i subagenti sono sempre disattivati, qualunque cosa dicano queste impostazioni. Continuano a valere per tutti gli altri profili."
 	}
 }

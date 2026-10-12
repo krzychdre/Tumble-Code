@@ -768,12 +768,28 @@
 			"label": "Enable todo list tool",
 			"description": "When enabled, Tumble can create and manage todo lists to track task progress. This helps organize complex tasks into manageable steps."
 		},
-		"slimToolset": {
-			"label": "Slim toolset (small models)",
-			"description": "Offer this profile one obvious tool per job: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, the web tools, and the task tools (ask, complete, switch mode, new task, todo list, skill, load tools). The spare edit verbs (edit, search_replace, edit_file, apply_patch), parallel tasks and slash commands are hidden. Small models stop choosing the wrong editor. If the model calls a hidden tool anyway, it still runs.",
-			"hideMcp": {
-				"label": "Also hide MCP tools",
-				"description": "MCP tool schemas are usually the biggest part of the tool prompt. Keep this on unless this profile needs an MCP server."
+		"modelSize": {
+			"title": "Model size",
+			"description": "How much system prompt and how many tools this profile sends. Pick the option that matches the model this profile connects to.",
+			"standard": {
+				"label": "Standard",
+				"description": "The full system prompt and every tool. For large models."
+			},
+			"slim": {
+				"label": "Smaller models: slim toolset",
+				"description": "The full system prompt with fewer tools: one obvious tool for each job, without the alternative editing tools, parallel tasks and slash commands. For mid-size models that cope with the long prompt and apply_diff but pick the wrong tool.",
+				"hideMcp": {
+					"label": "Also hide MCP tools",
+					"description": "MCP tool schemas are usually the biggest part of the tool prompt. Keep this on unless this profile needs an MCP server."
+				}
+			},
+			"compact": {
+				"label": "Very small models: compact mode",
+				"description": "For tiny context window models: a short system prompt, a minimal tool set with simple editing, shorter environment details and tighter output limits. Leave it off for large models.",
+				"subagents": {
+					"label": "Subagents",
+					"description": "Off for this profile: in compact mode it never starts subtasks or parallel tasks. The global subagent settings still apply to every other profile."
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "Question timeout",
 			"description": "How long a subagent's question waits for your answer before it is auto-approved and the subagent continues on its own. 0 answers immediately (fully autonomous).",
 			"immediate": "off"
-		}
+		},
+		"compactNote": "The profile being edited uses compact mode (very small models), so subagents are always off for it, whatever these settings say. They still apply to every other profile."
 	}
 }

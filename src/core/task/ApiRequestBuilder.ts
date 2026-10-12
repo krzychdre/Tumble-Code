@@ -18,6 +18,7 @@ import {
 	type ClineApiReqInfo,
 	TumbleCodeEventName,
 	getModelId,
+	isCompactProfile,
 } from "@tumble-code/types"
 import { type ApiHandler } from "../../api"
 import { getRuntimeProviderCapabilities } from "../../api/runtime-provider-registry"
@@ -193,6 +194,10 @@ export class ApiRequestBuilder {
 				materializedDeferredTools: this.access.materializedDeferredTools,
 				isBackground: this.access.isBackground,
 				modelInfo: this.access.api.getModel().info,
+				// The task's own profile, the one `this.access.api` was built
+				// from, not `state.apiConfiguration` (the panel's active profile,
+				// which a background task or a detached parent does not share).
+				compactProfile: isCompactProfile(this.access.apiConfiguration),
 				skillsManager: provider.getSkillsManager(),
 			}),
 		)
@@ -231,6 +236,9 @@ export class ApiRequestBuilder {
 			disabledTools,
 			modelInfo,
 			webToolsEnabled: state?.webToolsEnabled,
+			// From the task's own profile, like the system prompt's flag (see
+			// buildSystemPrompt); `apiConfiguration` above is the active one.
+			compactProfile: isCompactProfile(this.access.apiConfiguration),
 			includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
 			materializedDeferredTools: this.access.materializedDeferredTools,
 		})

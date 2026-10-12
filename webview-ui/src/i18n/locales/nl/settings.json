@@ -652,12 +652,28 @@
 			"label": "Takenlijst-tool inschakelen",
 			"description": "Wanneer ingeschakeld, kan Tumble takenlijsten maken en beheren om de voortgang van taken bij te houden. Dit helpt complexe taken te organiseren in beheersbare stappen."
 		},
-		"slimToolset": {
-			"label": "Slanke toolset (kleine modellen)",
-			"description": "Biedt dit profiel één duidelijke tool per taak: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, de webtools en de taaktools (ask, complete, switch mode, new task, todo list, skill, load tools). De overbodige edit-werkwoorden (edit, search_replace, edit_file, apply_patch), parallelle taken en slashopdrachten zijn verborgen. Kleine modellen stoppen met de verkeerde editor kiezen. Als het model toch een verborgen tool aanroept, draait hij alsnog.",
-			"hideMcp": {
-				"label": "Ook MCP-tools verbergen",
-				"description": "MCP-tool-schema's zijn meestal het grootste deel van de tool-prompt. Laat dit aan tenzij dit profiel een MCP-server nodig heeft."
+		"modelSize": {
+			"title": "Modelgrootte",
+			"description": "Hoeveel systeemprompt en hoeveel tools dit profiel verstuurt. Kies de optie die past bij het model waarmee dit profiel verbindt.",
+			"standard": {
+				"label": "Standaard",
+				"description": "De volledige systeemprompt en alle tools. Voor grote modellen."
+			},
+			"slim": {
+				"label": "Kleinere modellen: slanke toolset",
+				"description": "De volledige systeemprompt met minder tools: één duidelijke tool per taak, zonder de alternatieve bewerkingstools, parallelle taken en slash-commando's. Voor middelgrote modellen die de lange prompt en apply_diff aankunnen maar de verkeerde tool kiezen.",
+				"hideMcp": {
+					"label": "Ook MCP-tools verbergen",
+					"description": "MCP-tool-schema's zijn meestal het grootste deel van de tool-prompt. Laat dit aan tenzij dit profiel een MCP-server nodig heeft."
+				}
+			},
+			"compact": {
+				"label": "Zeer kleine modellen: compacte modus",
+				"description": "Voor modellen met een zeer klein contextvenster: een korte systeemprompt, een minimale set tools met eenvoudig bewerken, kortere omgevingsdetails en strengere uitvoerlimieten. Laat dit uit voor grote modellen.",
+				"subagents": {
+					"label": "Subagenten",
+					"description": "Uit voor dit profiel: in de compacte modus start het nooit subtaken of parallelle taken. De globale instellingen voor subagenten blijven gelden voor alle andere profielen."
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "Time-out voor vraag",
 			"description": "Hoe lang de vraag van een subagent op je antwoord wacht voordat deze automatisch wordt goedgekeurd en de subagent zelfstandig doorgaat. 0 antwoordt direct (volledig autonoom).",
 			"immediate": "uit"
-		}
+		},
+		"compactNote": "Het profiel dat je bewerkt gebruikt de compacte modus (zeer kleine modellen), dus subagenten staan er altijd uit, wat deze instellingen ook zeggen. Ze blijven gelden voor alle andere profielen."
 	}
 }

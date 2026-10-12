@@ -25,6 +25,7 @@ import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { getCurrentProfileId } from "./currentProfileId"
+import { resolveParallelToolCalls } from "./parallelToolCalls"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { formatResponse } from "../prompts/responses"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
@@ -297,7 +298,12 @@ export class TaskApiLoop {
 			taskId: access.taskId,
 			instanceId: access.instanceId,
 			isBackground: access.isBackground,
-			apiConfiguration: access.apiConfiguration,
+			// A getter, so each request reads the task's CURRENT profile:
+			// Task.updateApiConfiguration replaces the object on a profile switch.
+			// The builder reads it only for the compact flag (system prompt, tools).
+			get apiConfiguration() {
+				return access.apiConfiguration
+			},
 			api: access.api,
 			apiConversationHistory: access.apiConversationHistory,
 			microcompactedIds: access.microcompactedIds,
@@ -1489,6 +1495,10 @@ export class TaskApiLoop {
 		this.access.currentRequestAbortController = new AbortController()
 		const abortSignal = this.access.currentRequestAbortController.signal
 
+		// The compact profile asks for one tool call per message (small models lose track of
+		// parallel results); every handler that sends parallel_tool_calls reads it from here.
+		const parallelToolCalls = resolveParallelToolCalls(this.access.apiConfiguration)
+
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,
 			taskId: this.access.taskId,
@@ -1498,7 +1508,7 @@ export class TaskApiLoop {
 				? {
 						tools: allTools,
 						tool_choice: "auto",
-						parallelToolCalls: true,
+						parallelToolCalls,
 						...(allowedFunctionNames ? { allowedFunctionNames } : {}),
 					}
 				: {}),
@@ -1526,7 +1536,7 @@ export class TaskApiLoop {
 				this.access.apiConfiguration.enableReasoningEffort === false
 					? undefined
 					: this.access.apiConfiguration.reasoningEffort,
-			...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls: true } : {}),
+			...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls } : {}),
 		})
 
 		// Kept by reference, and only while error reporting is active (signed in to the

@@ -37,8 +37,9 @@ import {
 	providerRequiresModelId,
 } from "@/lib/utils/provider.js"
 import {
+	modelConnectionLayer,
 	pickProviderConfig,
-	resolveProviderConfig,
+	resolveProviderConfigWithModel,
 	resolveReasoningEffort,
 	toProviderSettings,
 	type ResolvedProviderConfig,
@@ -232,7 +233,11 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const settings = await loadSettings()
 	applyTimeZoneSetting(settings, (message) => console.error(`[CLI] Warning: ignoring ${message}`))
 
-	const settingsHoldAKey = [settings, ...Object.values(settings.modes ?? {})].some((entry) => entry.apiKey)
+	const settingsHoldAKey = [
+		settings,
+		...Object.values(settings.modes ?? {}),
+		...Object.values(settings.models ?? {}),
+	].some((entry) => entry?.apiKey)
 	if (settingsHoldAKey && (await isSettingsFileReadableByOthers())) {
 		console.warn(
 			`[CLI] Warning: ${getSettingsPath()} holds an apiKey and other users can read it. Run: chmod 600 ${getSettingsPath()}`,
@@ -258,9 +263,13 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		baseUrl: flagOptions.baseUrl,
 		apiKey: flagOptions.apiKey,
 	}
-	const baseProviderConfig = resolveProviderConfig({
+	// A model whose `models` entry sets a provider, base URL or key runs on
+	// that connection, under the flags.
+	const baseProviderConfig = resolveProviderConfigWithModel({
 		fallback: vsCodeConfig,
-		layers: [settingsProviderConfig, flagProviderConfig],
+		layers: [settingsProviderConfig],
+		top: flagProviderConfig,
+		models: settings.models,
 	})
 
 	// Per-mode overrides from the settings file, each resolved on top of the
@@ -272,9 +281,10 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		: Object.fromEntries(
 				Object.entries(settings.modes ?? {}).map(([modeSlug, modeSettings]) => [
 					modeSlug,
-					resolveProviderConfig({
+					resolveProviderConfigWithModel({
 						fallback: vsCodeConfig,
 						layers: [settingsProviderConfig, pickProviderConfig(modeSettings)],
+						models: settings.models,
 					}),
 				]),
 			)
@@ -292,6 +302,20 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const reasoningEffortFor = (config: ResolvedProviderConfig) =>
 		resolveReasoningEffort(config.provider, modelSettingsFor(config), flagOptions.reasoningEffort)
 	const effectiveReasoningEffort = reasoningEffortFor(providerConfig)
+	// The configuration /model gives `model` in `mode`: the mode's layers (none
+	// under provider flags) with the model's own connection on top, so a model
+	// without one goes back to the mode's connection even after a model that
+	// had its own. The flags stay on top, without their model.
+	const resolveForModel = (mode: string | undefined, model: string) => {
+		const modeSettings = isProviderForcedByFlags || !mode ? undefined : settings.modes?.[mode]
+		return resolveProviderConfigWithModel({
+			fallback: vsCodeConfig,
+			layers: [settingsProviderConfig, ...(modeSettings ? [pickProviderConfig(modeSettings)] : [])],
+			top: { ...flagProviderConfig, model: undefined },
+			models: settings.models,
+			model,
+		})
+	}
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
 	// the current working directory. The workspace is intentionally NEVER read
 	// from persisted settings — `tumble` must follow the directory it is run
@@ -363,6 +387,22 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		debug: flagOptions.debug,
 		exitOnComplete: effectiveExitOnComplete,
 		terminalShell,
+		resolveModelProviderSettings: (mode, model) => {
+			const config = resolveForModel(mode, model)
+			if (providerRequiresApiKey(config.provider) && !config.apiKey) {
+				throw new Error(
+					config.missingApiKeyEnv
+						? `apiKeyEnv names ${config.missingApiKeyEnv}, but that environment variable is empty or unset.`
+						: `${model} runs on ${config.provider}, which needs an API key: set apiKey or apiKeyEnv in its models entry, or ${getEnvVarName(config.provider)}.`,
+				)
+			}
+			return toProviderSettings({
+				...config,
+				apiKey: keyFor(config),
+				reasoningEffort: reasoningEffortFor(config),
+				modelSettings: modelSettingsFor(config),
+			})
+		},
 	}
 
 	// Validations: every configuration this run can switch to is checked now,
@@ -382,6 +422,17 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			.map(
 				([modeSlug, config]) =>
 					[`modes.${modeSlug} in ${getSettingsPath()}`, config] as [string, ResolvedProviderConfig],
+			),
+		// A model with its own connection may only be reached by /model or
+		// --model, so it is checked against the top level as well.
+		...Object.entries(settings.models ?? {})
+			.filter(([model, entry]) => modelConnectionLayer(model, entry) !== undefined)
+			.map(
+				([model]) =>
+					[`models.${model} in ${getSettingsPath()}`, resolveForModel(undefined, model)] as [
+						string,
+						ResolvedProviderConfig,
+					],
 			),
 	]
 

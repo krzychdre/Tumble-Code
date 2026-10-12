@@ -10,6 +10,7 @@ import {
 	type ContextPrune,
 	TumbleCodeEventName,
 	countEnabledMcpTools,
+	isCompactProfile,
 	isPruneBeforeCondenseEnabled,
 	resolvePruneToolResultBudget,
 	SETTINGS_DEFAULTS,
@@ -21,11 +22,13 @@ import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { McpHub } from "../../services/mcp/McpHub"
 import { manageContext, willManageContext } from "../context-management"
+import { resolveGlobalCondensePercent } from "../context-management/compactProfile"
 import { shouldTrimOldReasoning } from "../context-management/reasoningTrim"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { getMessagesSinceLastSummary, summarizeConversation, getEffectiveApiHistory } from "../condense"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { getCurrentProfileId } from "./currentProfileId"
+import { resolveParallelToolCalls } from "./parallelToolCalls"
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 // The persisted history type itself (not a local copy), so a change in the SDK
@@ -478,7 +481,11 @@ export class TaskContextManager {
 				contextWindow,
 				apiHandler: condenseApiHandler,
 				autoCondenseContext: true,
-				autoCondenseContextPercent: FORCED_CONTEXT_REDUCTION_PERCENT,
+				// Under the compact profile the forced pass aims at least as low as a regular one.
+				autoCondenseContextPercent: resolveGlobalCondensePercent(
+					FORCED_CONTEXT_REDUCTION_PERCENT,
+					isCompactProfile(this.access.apiConfiguration),
+				),
 				systemPrompt: await this.access.getSystemPrompt(),
 				taskId: this.access.taskId,
 				profileThresholds,
@@ -572,12 +579,10 @@ export class TaskContextManager {
 		} finally {
 			// Notify webview that context management is complete (removes in-progress spinner)
 			// IMPORTANT: Must always be sent to dismiss the spinner, even on error
-			await this.access.providerRef
-				.deref()
-				?.postMessageForTask(this.access.taskId, {
-					type: "condenseTaskContextResponse",
-					text: this.access.taskId,
-				})
+			await this.access.providerRef.deref()?.postMessageForTask(this.access.taskId, {
+				type: "condenseTaskContextResponse",
+				text: this.access.taskId,
+			})
 		}
 	}
 
@@ -603,6 +608,14 @@ export class TaskContextManager {
 			customCondensingPrompt,
 		} = params
 
+		// The compact profile condenses earlier by default (COMPACT_CONDENSE_THRESHOLD_PERCENT), so
+		// the condense request itself still fits the small window. A valid per-profile threshold
+		// still wins inside resolveCondenseThreshold. The task's own profile decides.
+		const condensePercent = resolveGlobalCondensePercent(
+			autoCondenseContextPercent,
+			isCompactProfile(this.access.apiConfiguration),
+		)
+
 		// Auto-condense circuit breaker: when too many consecutive condense attempts
 		// have failed to reduce context, skip condense entirely (manageContext falls
 		// back to microcompaction + truncation). When open we also skip the condense-
@@ -616,7 +629,7 @@ export class TaskContextManager {
 			contextWindow,
 			maxTokens,
 			autoCondenseContext,
-			autoCondenseContextPercent,
+			autoCondenseContextPercent: condensePercent,
 			profileThresholds,
 			currentProfileId,
 			lastMessageTokens,
@@ -626,12 +639,10 @@ export class TaskContextManager {
 		// Skip when the breaker is open: condense will not run, so a condense spinner would mislead.
 		const willShowCondenseSpinner = contextManagementWillRun && autoCondenseContext && !condenseCircuitOpen
 		if (willShowCondenseSpinner) {
-			await this.access.providerRef
-				.deref()
-				?.postMessageForTask(this.access.taskId, {
-					type: "condenseTaskContextStarted",
-					text: this.access.taskId,
-				})
+			await this.access.providerRef.deref()?.postMessageForTask(this.access.taskId, {
+				type: "condenseTaskContextStarted",
+				text: this.access.taskId,
+			})
 		}
 
 		// Build tools for condensing metadata
@@ -700,7 +711,7 @@ export class TaskContextManager {
 				contextWindow,
 				apiHandler: condenseApiHandler,
 				autoCondenseContext,
-				autoCondenseContextPercent,
+				autoCondenseContextPercent: condensePercent,
 				systemPrompt,
 				taskId: this.access.taskId,
 				customCondensingPrompt,
@@ -840,12 +851,10 @@ export class TaskContextManager {
 			// IMPORTANT: Must always be sent to dismiss the spinner, even on error.
 			// Mirror the start condition so we only dismiss a spinner we actually showed.
 			if (willShowCondenseSpinner) {
-				await this.access.providerRef
-					.deref()
-					?.postMessageForTask(this.access.taskId, {
-						type: "condenseTaskContextResponse",
-						text: this.access.taskId,
-					})
+				await this.access.providerRef.deref()?.postMessageForTask(this.access.taskId, {
+					type: "condenseTaskContextResponse",
+					text: this.access.taskId,
+				})
 			}
 		}
 	}
@@ -894,7 +903,11 @@ export class TaskContextManager {
 		state: ProviderState | undefined,
 		willRun: boolean,
 	): Promise<{ pruneBeforeCondense: boolean; pruneToolResultBudget: number; artifactStore?: ArtifactStore }> {
-		const pruneBeforeCondense = isPruneBeforeCondenseEnabled(state)
+		// The compact profile skips the prune pass: its previews send the model to read_artifact,
+		// which the compact toolset does not offer. Microcompaction (a send-time strip whose
+		// placeholder says to re-read the file or re-run the command) still runs before any summary.
+		const pruneBeforeCondense =
+			isPruneBeforeCondenseEnabled(state) && !isCompactProfile(this.access.apiConfiguration)
 		const pruneToolResultBudget = resolvePruneToolResultBudget(state)
 
 		if (!willRun || !pruneBeforeCondense) {
@@ -943,6 +956,9 @@ export class TaskContextManager {
 				modelInfo,
 				webToolsEnabled,
 				includeAllToolsWithRestrictions: false,
+				// The same compact toolset as the task's requests: the condense call runs on the same
+				// small window and must not carry the full tool array.
+				compactProfile: isCompactProfile(this.access.apiConfiguration),
 			})
 			allTools = toolsResult.tools
 		}
@@ -954,7 +970,8 @@ export class TaskContextManager {
 				? {
 						tools: allTools,
 						tool_choice: "auto",
-						parallelToolCalls: true,
+						// One tool call per message under the compact profile, as in the task's requests.
+						parallelToolCalls: resolveParallelToolCalls(this.access.apiConfiguration),
 					}
 				: {}),
 		}

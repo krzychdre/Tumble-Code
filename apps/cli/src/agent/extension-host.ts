@@ -91,6 +91,14 @@ export interface ExtensionHostOptions {
 	models?: Record<string, CliModelSettings>
 	/** The --reasoning-effort flag: one level for every model of the run, /model included. */
 	forcedReasoningEffort?: ReasoningEffortFlagOptions
+	/**
+	 * The provider settings /model gives `model` in `mode`, resolved from the
+	 * settings file: on the model's own provider and base URL when its
+	 * `models` entry sets them, else on the mode's. Throws with the message
+	 * to show when that connection cannot run. Without it /model keeps the
+	 * mode's current connection and changes only the model.
+	 */
+	resolveModelProviderSettings?: (mode: string, model: string) => ProviderSettings
 	workspacePath: string
 	extensionPath: string
 	/**
@@ -596,7 +604,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	/**
 	 * Run `model` in `mode` for the rest of the session (the TUI's /model):
 	 * the mode's provider settings with the new model and what its `models`
-	 * entry says about it (reasoning effort, size, prices), applied at once.
+	 * entry says about it (reasoning effort, size, prices, and its own
+	 * provider, base URL and key), applied at once.
 	 * Other modes keep theirs, and switching back to `mode` brings the new
 	 * model back. Nothing is written to cli-settings.json. Returns the
 	 * settings the mode now runs with.
@@ -610,10 +619,12 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		const modelSettings = this.options.models?.[model]
 		const current = perMode.modes[mode] ?? perMode.base
 		const provider = current.apiProvider as SupportedProvider
-		const settings = withModel(current, model, {
-			reasoningEffort: resolveReasoningEffort(provider, modelSettings, this.options.forcedReasoningEffort),
-			modelSettings,
-		})
+		const settings =
+			this.options.resolveModelProviderSettings?.(mode, model) ??
+			withModel(current, model, {
+				reasoningEffort: resolveReasoningEffort(provider, modelSettings, this.options.forcedReasoningEffort),
+				modelSettings,
+			})
 
 		this.options.modeProviderSettings = { ...perMode, modes: { ...perMode.modes, [mode]: settings } }
 		this.sendToExtension({

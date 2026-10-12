@@ -4,6 +4,7 @@ import * as path from "path"
 import { worktreeService } from "@tumble-code/core"
 import {
 	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
+	isCompactProfile,
 	isParallelTasksEnabled,
 	TumbleCodeEventName,
 	type HistoryItem,
@@ -16,6 +17,7 @@ import { queuedSubagentId } from "../webview/SubagentRegistry"
 import type { SubagentInfo } from "../webview/BackgroundTaskRunner"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { compactSubagentsOffError } from "./helpers/compactSubagents"
 import type { ToolUse } from "../../shared/tools"
 import { logger } from "../../utils/logging"
 
@@ -557,6 +559,17 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 							"task and finish with attempt_completion so the parent task can continue.",
 					),
 				)
+				return
+			}
+
+			// A compact profile (a very small local model) runs without subagents,
+			// while the concurrency cap below is a global setting. Its toolset
+			// hides this tool, but dispatch is tolerant, so a call made anyway is
+			// refused here and counted as a mistake (without failing the turn), so
+			// a model that keeps retrying reaches the mistake limit.
+			if (isCompactProfile(task.apiConfiguration)) {
+				this.recordFailure(task, "run_parallel_tasks")
+				pushToolResult(formatResponse.toolError(compactSubagentsOffError("run_parallel_tasks")))
 				return
 			}
 

@@ -1,0 +1,50 @@
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"model": "GLM-5.3-Flash-NVFP4",
+	"apiKey": "1111",
+	"mode": "code",
+	"requireApproval": false,
+	"consecutiveMistakeLimit": 10,
+	"commandExecutionTimeout": 300,
+	"oneshot": false,
+	"mcpSettingsPath": "~/.roo/mcp.json",
+	"cloudApiUrl": "https://cloud.example.com",
+	"timeZone": "Europe/Warsaw",
+	"modes": {
+		"architect": { "model": "GLM-5.3-NVFP4" },
+		"debug": { "model": "Qwen3.8-4B" },
+		"ask": { "model": "claude-sonnet-5-5" }
+	},
+	"models": {
+		"GLM-5.3-Flash-NVFP4": {
+			"contextWindow": 1048576,
+			"reasoningEffort": "high",
+			"inputPrice": 0.6,
+			"outputPrice": 2.2,
+			"cacheReadsPrice": 0.11,
+			"cacheWritesPrice": 0.6,
+			"preserveReasoning": true,
+			"trimOldReasoning": true,
+			"modelSize": "standard"
+		},
+		"GLM-5.3-NVFP4": {
+			"contextWindow": 262144,
+			"reasoningEffort": "max",
+			"modelSize": "slim",
+			"hideMcp": false
+		},
+		"Qwen3.8-4B": {
+			"baseUrl": "http://192.168.50.194:22222/v1",
+			"apiKey": "2222",
+			"contextWindow": 32768,
+			"reasoningEffort": "disabled",
+			"modelSize": "compact"
+		},
+		"claude-sonnet-5-5": {
+			"provider": "anthropic",
+			"apiKeyEnv": "ANTHROPIC_API_KEY",
+			"reasoningEffort": "medium"
+		}
+	}
+}

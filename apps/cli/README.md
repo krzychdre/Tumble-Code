@@ -365,10 +365,14 @@ and prints a one-line hint saying where to set one.
 | `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
 | `modes`                   | Settings per mode, see below                                      |
-| `models`                  | Per model: effort, window, prices, returned reasoning, see below  |
+| `models`                  | Per model: connection, effort, window, prices, size, see below    |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
 | `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
+
+[`examples/cli-settings.example.json`](examples/cli-settings.example.json) sets
+every one of these keys, with each explained in
+[`examples/README.md`](examples/README.md).
 
 Times the CLI shows (`tumble list`, `/export`) and the current time the model
 is told are local. The zone comes from `TZ`, else the system (`/etc/localtime`);
@@ -423,6 +427,44 @@ without an entry use the top level.
   that run use one configuration for every mode: the flags on top of the top
   level, with `modes` ignored. `--reasoning-effort` keeps the modes and sets
   the level for every model of the run.
+
+### Connection per model
+
+A model served somewhere else than the top level says, on another server or by
+another provider, carries its own connection in its `models` entry:
+`provider`, `baseUrl`, `apiKey` and `apiKeyEnv`, the same keys as at the top
+level and in `modes`.
+
+```json
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"apiKey": "1111",
+	"model": "GLM-5.3-Flash-NVFP4",
+	"modes": {
+		"debug": { "model": "Qwen3.8-4B" },
+		"ask": { "model": "claude-sonnet-5-5" }
+	},
+	"models": {
+		"Qwen3.8-4B": { "baseUrl": "http://192.168.50.194:22222/v1" },
+		"claude-sonnet-5-5": { "provider": "anthropic", "apiKeyEnv": "ANTHROPIC_API_KEY" }
+	}
+}
+```
+
+- The entry's connection applies wherever the model runs: the top level, a
+  mode entry, `--model` and `/model`. It overrides the top level and the mode
+  entry; only the flags (`--provider`, `--base-url`, `--api-key`) override it.
+- An entry that names only a `baseUrl` or a key keeps the provider of the
+  level it runs in and inherits what it does not set (`Qwen3.8-4B` above keeps
+  `openai` and the key `1111`). An entry that names a different provider
+  inherits no base URL or key, as a mode entry does (`claude-sonnet-5-5` reads
+  its key from `ANTHROPIC_API_KEY`).
+- `/model` switches the connection with the model: to the entry's provider and
+  server, and back to the mode's for a model without a connection of its own.
+- Every entry with a connection is checked at startup, so a missing key or a
+  base URL its provider has no field for fails at once and names the model.
+  An `apiKey` here counts for the `chmod 600` warning like any other.
 
 ### Reasoning effort per model
 
@@ -583,6 +625,33 @@ fills up" in the VS Code settings:
   is nothing to shorten. It defaults to `false`, applies only with the
   `openai` provider, and a value other than `true` or `false` fails at startup
   and names the model.
+
+### Model size
+
+A small model gets lost in the full system prompt and the full tool list.
+`modelSize` in the model's `models` entry picks how much of both it gets, the
+same choice as "Model size" in the VS Code profile settings:
+
+```json
+{
+	"models": {
+		"Qwen3.8-4B": { "contextWindow": 32768, "modelSize": "compact" },
+		"Qwen3.8-27B": { "modelSize": "slim", "hideMcp": false }
+	}
+}
+```
+
+| Value      | What the model gets                                                                                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `standard` | the full system prompt and every tool (the default)                                                                                                                        |
+| `slim`     | the full system prompt and one obvious tool per job, without the alternative edit tools, parallel tasks and slash commands; MCP tools are hidden unless `hideMcp` is false |
+| `compact`  | for very small models: a short system prompt, a minimal tool set with simple editing, shorter environment details, tighter output limits and no subtasks or MCP tools      |
+
+- Unlike the size and the prices it works with every provider, and it follows
+  the model through every mode and through `/model`.
+- `/model` lists a `slim` or `compact` model with its size.
+- A value other than these three fails at startup and names the model;
+  `hideMcp` must be `true` or `false`.
 
 ## MCP Servers
 

@@ -13,6 +13,7 @@ export const sharedProfileSettingsSchema = z
 		consecutiveMistakeLimit: z.number().min(0).optional(),
 		slimToolset: z.boolean().optional(),
 		slimHidesMcp: z.boolean().optional(),
+		compactProfile: z.boolean().optional(),
 		reasoningEffort: reasoningEffortSettingSchema.optional(),
 		modelMaxTokens: z.number().optional(),
 		modelMaxThinkingTokens: z.number().optional(),

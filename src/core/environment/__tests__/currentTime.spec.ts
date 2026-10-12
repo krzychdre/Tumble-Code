@@ -1,4 +1,4 @@
-import { formatCurrentTime } from "../currentTime"
+import { formatCompactCurrentTime, formatCurrentTime } from "../currentTime"
 
 const at = (iso: string, timeZone: string) => formatCurrentTime(new Date(iso), timeZone)
 
@@ -44,5 +44,20 @@ describe("formatCurrentTime", () => {
 		const text = at("2026-12-31T12:00:00.000Z", "UTC")
 		expect(text).toContain("Local time: 2026-12-31 12:00:00 (Thursday), time zone UTC (UTC+00:00)")
 		expect(text).toContain("runs from 2026-12-31T00:00:00Z to 2027-01-01T00:00:00Z (UTC)")
+	})
+})
+
+describe("formatCompactCurrentTime", () => {
+	it("is one line with the local date, the minute, the weekday and the IANA zone", () => {
+		// The same just-after-midnight case: the local date, not the UTC one.
+		expect(formatCompactCurrentTime(new Date("2026-10-04T22:30:59.000Z"), "Europe/Warsaw")).toBe(
+			"Current time: 2026-10-05 00:30 (Monday), Europe/Warsaw",
+		)
+	})
+
+	it("handles a zone behind UTC", () => {
+		expect(formatCompactCurrentTime(new Date("2026-10-05T03:00:00.000Z"), "America/Los_Angeles")).toBe(
+			"Current time: 2026-10-04 20:00 (Sunday), America/Los_Angeles",
+		)
 	})
 })

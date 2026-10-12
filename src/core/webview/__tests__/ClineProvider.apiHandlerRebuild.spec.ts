@@ -442,6 +442,35 @@ describe("ClineProvider - API Handler Rebuild Guard", () => {
 			expect((mockTask as any).apiConfiguration.rateLimitSeconds).toBe(7)
 		})
 
+		test("hands a profile that differs only in compactProfile to the task", async () => {
+			// The compact profile is read off task.apiConfiguration (the profile the
+			// handler was built from), so a switch to a profile with the same model
+			// but the flag on must still reach the task and rebuild its handler.
+			const mockTask = new Task({
+				...defaultTaskOptions,
+				apiConfiguration: { apiProvider: "openai", openAiModelId: "qwen3.5-4b" },
+			})
+			mockTask.api = {
+				getModel: vi.fn().mockReturnValue({ id: "qwen3.5-4b", info: { contextWindow: 40960 } }),
+			} as any
+
+			await provider.setCurrentTask(mockTask)
+			;(provider as any).providerSettingsManager.activateProfile = vi.fn().mockResolvedValue({
+				name: "qwen-compact",
+				id: "qwen-compact-id",
+				apiProvider: "openai",
+				openAiModelId: "qwen3.5-4b",
+				compactProfile: true,
+			})
+
+			await provider.activateProviderProfile({ name: "qwen-compact" })
+
+			expect(mockTask.updateApiConfiguration).toHaveBeenCalledWith(
+				expect.objectContaining({ compactProfile: true }),
+			)
+			expect((mockTask as any).apiConfiguration.compactProfile).toBe(true)
+		})
+
 		test("calls updateApiConfiguration when provider changes and syncs task.apiConfiguration", async () => {
 			const mockTask = new Task({
 				...defaultTaskOptions,

@@ -11,7 +11,7 @@ import { useMcpToolTool } from "../tools/UseMcpToolTool"
 import type { AttemptCompletionCallbacks } from "../tools/AttemptCompletionTool"
 import type { ToolCallbacks } from "../tools/BaseTool"
 import { describeToolUse } from "../tools/toolDescriptors"
-import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
+import { isCheckpointedCall } from "../checkpoints/checkpointedTools"
 
 import { sanitizeToolUseId } from "../../utils/tool-id"
 import { tryAutoMaterializeDirectCall } from "../task/deferred-tools-resolver"
@@ -416,8 +416,9 @@ async function presentToolUse(task: Task, block: ToolUse): Promise<void> {
 	}
 
 	// One list decides which tools get a checkpoint before they run; the
-	// early start in TaskStreamProcessor reads the same list.
-	if (isCheckpointedTool(block.name)) {
+	// early start in TaskStreamProcessor reads the same list. A compact task's
+	// new_task is refused before it acts, so it gets none.
+	if (isCheckpointedCall(block.name, task.apiConfiguration)) {
 		await checkpointSaveAndMark(task)
 	}
 

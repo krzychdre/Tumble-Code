@@ -652,12 +652,28 @@
 			"label": "Habilitar eina de llista de tasques",
 			"description": "Quan està habilitat, Tumble pot crear i gestionar llistes de tasques per fer el seguiment del progrés de les tasques. Això ajuda a organitzar tasques complexes en passos manejables."
 		},
-		"slimToolset": {
-			"label": "Conjunt d'eines reduït (models petits)",
-			"description": "Ofereix a aquest perfil una eina evident per a cada feina: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, les eines web i les eines de tasca (ask, complete, switch mode, new task, todo list, skill, load tools). Els verbs d'edició sobrers (edit, search_replace, edit_file, apply_patch), les tasques paral·leles i les ordres amb barra queden ocults. Els models petits deixen de triar l'editor equivocat. Si el model crida una eina oculta de totes maneres, encara s'executa.",
-			"hideMcp": {
-				"label": "Amaga també les eines MCP",
-				"description": "Els esquemes d'eines MCP solen ser la part més gran de l'indicador d'eines. Mantén-ho activat tret que aquest perfil necessiti un servidor MCP."
+		"modelSize": {
+			"title": "Mida del model",
+			"description": "Quant de prompt del sistema i quantes eines envia aquest perfil. Tria l'opció que correspon al model amb què es connecta aquest perfil.",
+			"standard": {
+				"label": "Estàndard",
+				"description": "El prompt del sistema complet i totes les eines. Per a models grans."
+			},
+			"slim": {
+				"label": "Models més petits: conjunt d'eines reduït",
+				"description": "El prompt del sistema complet amb menys eines: una eina clara per a cada tasca, sense les eines d'edició alternatives, les tasques en paral·lel i les ordres amb barra. Per a models mitjans que gestionen el prompt llarg i apply_diff però trien l'eina equivocada.",
+				"hideMcp": {
+					"label": "Amaga també les eines MCP",
+					"description": "Els esquemes d'eines MCP solen ser la part més gran de l'indicador d'eines. Mantén-ho activat tret que aquest perfil necessiti un servidor MCP."
+				}
+			},
+			"compact": {
+				"label": "Models molt petits: mode compacte",
+				"description": "Per a models amb una finestra de context molt petita: un prompt del sistema curt, un conjunt mínim d'eines amb edició senzilla, detalls de l'entorn més breus i límits de sortida més estrictes. Deixa-ho desactivat per als models grans.",
+				"subagents": {
+					"label": "Subagents",
+					"description": "Desactivats per a aquest perfil: en mode compacte mai no inicia subtasques ni tasques en paral·lel. La configuració global de subagents continua aplicant-se a tots els altres perfils."
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "Temps d'espera de la pregunta",
 			"description": "Quant de temps una pregunta d'un subagent espera la teva resposta abans de ser aprovada automàticament i el subagent continua pel seu compte. 0 respon immediatament (totalment autònom).",
 			"immediate": "desactivat"
-		}
+		},
+		"compactNote": "El perfil que s'està editant fa servir el mode compacte (models molt petits), de manera que els subagents sempre hi estan desactivats, digui el que digui aquesta configuració. Continua aplicant-se a tots els altres perfils."
 	}
 }

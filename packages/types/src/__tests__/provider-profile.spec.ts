@@ -161,6 +161,7 @@ describe("vertex JSON credentials survive a profile save", () => {
 			"consecutiveMistakeLimit",
 			"slimToolset",
 			"slimHidesMcp",
+			"compactProfile",
 			"reasoningEffort",
 			"modelMaxTokens",
 			"modelMaxThinkingTokens",

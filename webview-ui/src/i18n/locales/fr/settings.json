@@ -652,12 +652,28 @@
 			"label": "Activer l'outil de liste de tâches",
 			"description": "Lorsqu'activé, Tumble peut créer et gérer des listes de tâches pour suivre la progression. Cela aide à organiser les tâches complexes en étapes gérables."
 		},
-		"slimToolset": {
-			"label": "Jeu d'outils réduit (petits modèles)",
-			"description": "Offre à ce profil un outil évident par tâche : read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, les outils web et les outils de tâche (ask, complete, switch mode, new task, todo list, skill, load tools). Les verbes d'édition en surplus (edit, search_replace, edit_file, apply_patch), les tâches parallèles et les commandes slash sont masqués. Les petits modèles arrêtent de choisir le mauvais éditeur. Si le modèle appelle un outil masqué malgré tout, il s'exécute quand même.",
-			"hideMcp": {
-				"label": "Masquer aussi les outils MCP",
-				"description": "Les schémas d'outils MCP sont généralement la plus grande partie du prompt d'outils. Gardez ceci activé sauf si ce profil a besoin d'un serveur MCP."
+		"modelSize": {
+			"title": "Taille du modèle",
+			"description": "La longueur du prompt système et le nombre d'outils envoyés par ce profil. Choisissez l'option qui correspond au modèle auquel ce profil se connecte.",
+			"standard": {
+				"label": "Standard",
+				"description": "Le prompt système complet et tous les outils. Pour les grands modèles."
+			},
+			"slim": {
+				"label": "Modèles plus petits : jeu d'outils réduit",
+				"description": "Le prompt système complet avec moins d'outils : un outil évident par tâche, sans les outils d'édition alternatifs, les tâches parallèles ni les commandes slash. Pour les modèles de taille moyenne qui gèrent le long prompt et apply_diff mais choisissent le mauvais outil.",
+				"hideMcp": {
+					"label": "Masquer aussi les outils MCP",
+					"description": "Les schémas d'outils MCP sont généralement la plus grande partie du prompt d'outils. Gardez ceci activé sauf si ce profil a besoin d'un serveur MCP."
+				}
+			},
+			"compact": {
+				"label": "Très petits modèles : mode compact",
+				"description": "Pour les modèles à très petite fenêtre de contexte : un prompt système court, un jeu d'outils minimal avec une édition simple, des détails d'environnement plus courts et des limites de sortie plus strictes. Laissez-le désactivé pour les grands modèles.",
+				"subagents": {
+					"label": "Sous-agents",
+					"description": "Désactivés pour ce profil : en mode compact, il ne lance jamais de sous-tâches ni de tâches parallèles. Les paramètres globaux des sous-agents s'appliquent toujours à tous les autres profils."
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "Délai de réponse à la question",
 			"description": "Combien de temps la question d'un sous-agent attend votre réponse avant d'être auto-approuvée et que le sous-agent continue de lui-même. 0 répond immédiatement (totalement autonome).",
 			"immediate": "désactivé"
-		}
+		},
+		"compactNote": "Le profil en cours de modification utilise le mode compact (très petits modèles) : les sous-agents y sont donc toujours désactivés, quels que soient ces paramètres. Ils s'appliquent toujours à tous les autres profils."
 	}
 }

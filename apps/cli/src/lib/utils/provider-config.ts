@@ -5,7 +5,9 @@
  * Sources, highest precedence last in `layers`:
  *  - `fallback`: the CLI's own extension state (~/.vscode-mock, see
  *    vscode-config.ts); used only where no layer supplies a value.
- *  - `layers`: the settings file, then the flags.
+ *  - `layers`: the settings file (top level, then the mode entry), the
+ *    model's own `models` entry when it sets a connection (see
+ *    resolveProviderConfigWithModel), then the flags.
  *
  * Provider-bound values (model, baseUrl, apiKey, apiKeyEnv) belong to the
  * provider of the layer they are written in. A layer that names no provider
@@ -167,6 +169,52 @@ export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigL
 }
 
 /**
+ * The connection a `models` entry sets (provider, baseUrl, apiKey,
+ * apiKeyEnv) as a layer that names its model, or undefined when the entry
+ * sets none of them.
+ */
+export function modelConnectionLayer(
+	model: string,
+	entry: CliModelSettings | undefined,
+): ProviderConfigLayer | undefined {
+	const { provider, baseUrl, apiKey, apiKeyEnv } = entry ?? {}
+	if ([provider, baseUrl, apiKey, apiKeyEnv].every((value) => value === undefined)) {
+		return undefined
+	}
+	return { provider, model, baseUrl, apiKey, apiKeyEnv }
+}
+
+/**
+ * resolveProviderConfig with the model's own connection: when the resolved
+ * model's `models` entry sets a provider, base URL or key, the configuration
+ * is resolved again with that entry as a layer between `layers` and `top`
+ * (the flags), so the entry overrides the settings file and the flags still
+ * override the entry. `model` forces the model id, for /model, whose model
+ * must run even where a higher layer names another.
+ */
+export function resolveProviderConfigWithModel({
+	fallback,
+	layers,
+	top,
+	models,
+	model,
+}: ResolveProviderConfigInput & {
+	top?: ProviderConfigLayer
+	models: Record<string, CliModelSettings> | undefined
+	model?: string
+}): ResolvedProviderConfig {
+	const resolved = { ...resolveProviderConfig({ fallback, layers: [...layers, top] }), ...(model ? { model } : {}) }
+	const own = modelConnectionLayer(resolved.model, models?.[resolved.model])
+	if (!own) {
+		return resolved
+	}
+	return {
+		...resolveProviderConfig({ fallback, layers: [...layers, own, top] }),
+		...(model ? { model } : {}),
+	}
+}
+
+/**
  * The extension's provider settings for a resolved configuration: the
  * provider's own model/base-url/key fields plus the reasoning switches
  * ("unspecified" leaves reasoning to the model's default, "disabled" turns it
@@ -233,6 +281,14 @@ function applyModelSettings(
 		settings.enableReasoningEffort = true
 		settings.reasoningEffort = effort
 	}
+
+	// The model size picks the prompt and the tool set with every provider.
+	// Written always, like the openai fields below: a compact model must not
+	// leave the extension's persisted state compact for the next model or run.
+	const { modelSize, hideMcp } = config.modelSettings ?? {}
+	settings.slimToolset = modelSize === "slim"
+	settings.slimHidesMcp = hideMcp !== false
+	settings.compactProfile = modelSize === "compact"
 
 	// The openai provider sizes and prices its model from
 	// openAiCustomModelInfo, else from openAiModelInfoSaneDefaults (128,000

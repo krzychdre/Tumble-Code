@@ -24,6 +24,7 @@ const SHARED_FIELD_NAMES = [
 	"consecutiveMistakeLimit",
 	"slimToolset",
 	"slimHidesMcp",
+	"compactProfile",
 	"reasoningEffort",
 	"modelMaxTokens",
 	"modelMaxThinkingTokens",

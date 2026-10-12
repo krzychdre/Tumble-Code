@@ -131,6 +131,12 @@ export interface ToolDescriptor {
 	spillExempt?: boolean
 	/** Offered by a profile with `slimToolset` on (see `SLIM_TOOLSET_ALLOWLIST`). */
 	slimAllowed?: boolean
+	/**
+	 * Offered by a profile with `compactProfile` on (see `COMPACT_TOOLSET_ALLOWLIST`), still
+	 * subject to the mode's groups and the feature gates. Name canonical tools only: aliases
+	 * of a marked tool are folded in by `COMPACT_TOOLSET_ALLOWSET`.
+	 */
+	compactAllowed?: boolean
 	/** How the context ledger reads a call: its subject is a written or a read path. */
 	ledger?: "file-mutation" | "file-read"
 	/** One-line description used in tool results and the completion flow. */
@@ -169,6 +175,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		// Its schema promises whole-file reads and it caps itself.
 		spillExempt: true,
 		slimAllowed: true,
+		compactAllowed: true,
 		ledger: "file-read",
 		describe: (block) => describeReadFile(block.name, block.nativeArgs ? block.nativeArgs : block.params),
 	},
@@ -179,6 +186,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
+		compactAllowed: true,
 		ledger: "file-read",
 		describe: forParam("path"),
 	},
@@ -189,6 +197,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
+		compactAllowed: true,
 		ledger: "file-read",
 		describe: (block) =>
 			`[${block.name} for '${block.params.regex}'${
@@ -244,6 +253,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		requiresCheckpoint: true,
 		compactable: true,
 		slimAllowed: true,
+		compactAllowed: true,
 		ledger: "file-mutation",
 		describe: forParam("path"),
 	},
@@ -263,6 +273,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
 		compactable: true,
+		compactAllowed: true,
 		ledger: "file-mutation",
 		describe: forParam("file_path"),
 	},
@@ -309,6 +320,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		approvalCategory: "execute",
 		compactable: true,
 		slimAllowed: true,
+		compactAllowed: true,
 		describe: forParam("command"),
 	},
 	use_mcp_tool: {
@@ -335,6 +347,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
+		compactAllowed: true,
 		describe: (block) => {
 			const queries = args(block).queries
 			return Array.isArray(queries) && queries.length > 0
@@ -350,6 +363,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
+		compactAllowed: true,
 		describe: (block) => {
 			const url = args(block).url
 			return url ? `[${block.name} for '${url}']` : `[${block.name}]`
@@ -361,6 +375,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		parseArgs: parseAskFollowupQuestionArgs,
 		approvalCategory: "followup",
 		slimAllowed: true,
+		compactAllowed: true,
 		describe: forParam("question"),
 	},
 	attempt_completion: {
@@ -370,6 +385,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		approvalCategory: "subtaskFinish",
 		approvalActions: ["finishTask"],
 		slimAllowed: true,
+		compactAllowed: true,
 		describe: bare,
 	},
 	switch_mode: {
@@ -377,6 +393,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		approvalCategory: "modeSwitch",
 		approvalActions: ["switchMode"],
 		slimAllowed: true,
+		compactAllowed: true,
 		describe: (block) =>
 			`[${block.name} to '${block.params.mode_slug}'${block.params.reason ? ` because: ${block.params.reason}` : ""}]`,
 	},

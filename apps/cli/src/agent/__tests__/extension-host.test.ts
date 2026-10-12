@@ -378,6 +378,20 @@ describe("ExtensionHost", () => {
 			expect(host.switchModel("code", "Qwen3.8-27B").reasoningEffort).toBe("low")
 		})
 
+		it("takes the settings from resolveModelProviderSettings, which can put the model on another provider", () => {
+			const anthropic = { apiProvider: "anthropic" as const, apiModelId: "claude-sonnet-5-5", apiKey: "sk-ant" }
+			const resolveModelProviderSettings = vi.fn(() => anthropic)
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				resolveModelProviderSettings,
+			})
+			host.markWebviewReady()
+
+			expect(host.switchModel("ask", "claude-sonnet-5-5")).toBe(anthropic)
+			expect(resolveModelProviderSettings).toHaveBeenCalledWith("ask", "claude-sonnet-5-5")
+		})
+
 		it("a later switch starts from the mode's current entry", () => {
 			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: {} } })
 			host.markWebviewReady()

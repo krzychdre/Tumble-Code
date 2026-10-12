@@ -19,6 +19,9 @@ function describeEntry(entry: CliModelSettings): string {
 	if (entry.contextWindow) {
 		parts.push(`${entry.contextWindow.toLocaleString("en-US")} tokens`)
 	}
+	if (entry.modelSize && entry.modelSize !== "standard") {
+		parts.push(entry.modelSize)
+	}
 	return parts.join(", ")
 }
 
@@ -49,7 +52,7 @@ export function formatModelList({
 	}
 
 	lines.push(
-		"/model <id> runs another model of the same provider in this mode until the session ends; any id the provider serves works.",
+		"/model <id> runs another model in this mode until the session ends: on the provider and base URL of its models entry when it sets them, else on the mode's, where any id the provider serves works.",
 	)
 	return lines.join("\n")
 }

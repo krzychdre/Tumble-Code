@@ -84,3 +84,16 @@ export function formatCurrentTime(
 		`Logs and databases usually store UTC: convert before reporting, and use the local day above for "today".`,
 	].join("\n")
 }
+
+/**
+ * The compact profile's single time line: local wall-clock time to the minute, the weekday and the IANA zone,
+ * for example `Current time: 2026-10-10 20:15 (Saturday), Europe/Warsaw`. A small model reads the local date
+ * as "today" from it; the UTC bounds of the full block are left out to save the window.
+ */
+export function formatCompactCurrentTime(
+	now: Date,
+	timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string {
+	const w = wallClock(now.getTime(), timeZone)
+	return `Current time: ${w.year}-${pad(w.month)}-${pad(w.day)} ${pad(w.hour)}:${pad(w.minute)} (${w.weekday}), ${timeZone}`
+}

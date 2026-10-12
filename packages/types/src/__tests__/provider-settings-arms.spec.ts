@@ -29,6 +29,7 @@ const LEGACY_SHARED_FIELDS = [
 	"consecutiveMistakeLimit",
 	"slimToolset",
 	"slimHidesMcp",
+	"compactProfile",
 	"enableReasoningEffort",
 	"reasoningEffort",
 	"modelMaxTokens",

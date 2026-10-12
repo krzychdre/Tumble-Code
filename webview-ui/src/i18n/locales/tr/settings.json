@@ -652,12 +652,28 @@
 			"label": "Yapılacaklar listesi aracını etkinleştir",
 			"description": "Etkinleştirildiğinde, Tumble görev ilerlemesini takip etmek için yapılacaklar listeleri oluşturabilir ve yönetebilir. Bu, karmaşık görevleri yönetilebilir adımlara organize etmeye yardımcı olur."
 		},
-		"slimToolset": {
-			"label": "Sade araç seti (küçük modeller)",
-			"description": "Bu profile her iş için belirgin bir araç sunar: read_file, search_files, list_files, codebase_search, apply_diff, write_to_file, execute_command, read_artifact, web araçları ve görev araçları (ask, complete, switch mode, new task, todo list, skill, load tools). Yedek düzenleme fiilleri (edit, search_replace, edit_file, apply_patch), paralel görevler ve slash komutları gizlenir. Küçük modeller yanlış editörü seçmeyi bırakır. Model gizli bir aracı yine de çağırırsa, yine de çalışır.",
-			"hideMcp": {
-				"label": "MCP araçlarını da gizle",
-				"description": "MCP araç şemaları genellikle araç isteminin en büyük parçasıdır. Bu profil bir MCP sunucusu gerektirmedikçe açık tutun."
+		"modelSize": {
+			"title": "Model boyutu",
+			"description": "Bu profilin ne kadar sistem istemi ve kaç araç gönderdiği. Bu profilin bağlandığı modele uyan seçeneği seçin.",
+			"standard": {
+				"label": "Standart",
+				"description": "Tam sistem istemi ve tüm araçlar. Büyük modeller için."
+			},
+			"slim": {
+				"label": "Daha küçük modeller: sade araç seti",
+				"description": "Tam sistem istemi, ancak daha az araç: her iş için tek bir belirgin araç; alternatif düzenleme araçları, paralel görevler ve eğik çizgi komutları yok. Uzun istemle ve apply_diff ile başa çıkabilen ama yanlış aracı seçen orta boy modeller için.",
+				"hideMcp": {
+					"label": "MCP araçlarını da gizle",
+					"description": "MCP araç şemaları genellikle araç isteminin en büyük parçasıdır. Bu profil bir MCP sunucusu gerektirmedikçe açık tutun."
+				}
+			},
+			"compact": {
+				"label": "Çok küçük modeller: kompakt mod",
+				"description": "Çok küçük bağlam penceresine sahip modeller için: kısa bir sistem istemi, basit düzenlemeli minimal bir araç seti, daha kısa ortam ayrıntıları ve daha sıkı çıktı sınırları. Büyük modeller için kapalı bırakın.",
+				"subagents": {
+					"label": "Alt aracılar",
+					"description": "Bu profil için kapalı: kompakt modda hiçbir zaman alt görev veya paralel görev başlatmaz. Genel alt aracı ayarları diğer tüm profiller için geçerli olmaya devam eder."
+				}
 			}
 		}
 	},
@@ -940,6 +956,7 @@
 			"label": "Soru zaman aşımı",
 			"description": "Bir alt aracının sorusu, otomatik onaylanıp alt aracın kendi başına devam etmeden önce cevabınızı ne kadar bekler. 0 anında yanıt verir (tamamen otonom).",
 			"immediate": "kapalı"
-		}
+		},
+		"compactNote": "Düzenlenen profil kompakt modu (çok küçük modeller) kullanıyor; bu yüzden bu ayarlar ne derse desin onun için alt aracılar her zaman kapalıdır. Ayarlar diğer tüm profiller için geçerli olmaya devam eder."
 	}
 }

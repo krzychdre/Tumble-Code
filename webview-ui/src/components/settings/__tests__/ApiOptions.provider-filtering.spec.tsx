@@ -14,6 +14,7 @@ import { useSelectedModel } from "@src/hooks/models/useSelectedModel"
 import ApiOptions from "../ApiOptions"
 import { MODELS_BY_PROVIDER } from "../constants"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedRadio as RealThemedRadio, ThemedRadioGroup as RealThemedRadioGroup } from "@/components/ui/themed-radio"
 import { Input as RealInput } from "@/components/ui/input"
 
 // Mock the extension state context
@@ -74,6 +75,9 @@ vi.mock("@src/components/ui", () => ({
 	Input: (props: any) => <RealInput {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
+	// The real radio group (native radios), used by the model size control.
+	ThemedRadioGroup: (props: any) => <RealThemedRadioGroup {...props} />,
+	ThemedRadio: (props: any) => <RealThemedRadio {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	SearchableSelect: ({ options, ...props }: any) => {
 		// Store the options in a data attribute for testing

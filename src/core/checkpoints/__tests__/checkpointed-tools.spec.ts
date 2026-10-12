@@ -242,6 +242,42 @@ describe("checkpointed tool set (DEF-C7)", () => {
 		}
 	})
 
+	describe("compact profile: new_task is refused, so it gets no checkpoint", () => {
+		const compact = { apiProvider: "openai", compactProfile: true }
+
+		it("presentAssistantMessage saves none for new_task, still one for write_to_file", async () => {
+			const refused = makePresentTask("new_task")
+			refused.apiConfiguration = compact
+			await presentAssistantMessage(refused)
+			expect(refused.checkpointSave).not.toHaveBeenCalled()
+
+			const write = makePresentTask("write_to_file")
+			write.apiConfiguration = compact
+			await presentAssistantMessage(write)
+			expect(write.checkpointSave).toHaveBeenCalled()
+		})
+
+		it("TaskStreamProcessor starts none for new_task, still one for write_to_file", () => {
+			const compactAccess = () =>
+				({ ...makeStreamAccess(), apiConfiguration: compact }) as TaskStreamProcessorAccess
+
+			const refused = makeStreamTask()
+			new TaskStreamProcessor(compactAccess(), refused as any).processChunk(
+				startToolCall("new_task") as any,
+				{} as any,
+			)
+			expect(refused.checkpointSave).not.toHaveBeenCalled()
+			expect(refused.pendingCheckpointSave).toBeUndefined()
+
+			const write = makeStreamTask()
+			new TaskStreamProcessor(compactAccess(), write as any).processChunk(
+				startToolCall("write_to_file") as any,
+				{} as any,
+			)
+			expect(write.checkpointSave).toHaveBeenCalledWith(true)
+		})
+	})
+
 	it("does not treat the removed list_code_definition_names tool as a known read-only tool", () => {
 		// An earlier block the processor does not recognise as read-only must keep the
 		// early checkpoint off (it falls back to the save at execution time).

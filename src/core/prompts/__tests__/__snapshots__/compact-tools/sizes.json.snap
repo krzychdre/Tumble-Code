@@ -1,0 +1,47 @@
+{
+  "architect": {
+    "todayTools": 17,
+    "todayNativeChars": 30769,
+    "todaySentChars": 30875,
+    "compactTools": 8,
+    "compactNativeChars": 3905,
+    "compactSentChars": 4025,
+    "compactWithWebToolsSentChars": 4665
+  },
+  "code": {
+    "todayTools": 19,
+    "todayNativeChars": 36504,
+    "todaySentChars": 36632,
+    "compactTools": 9,
+    "compactNativeChars": 4309,
+    "compactSentChars": 4444,
+    "compactWithWebToolsSentChars": 5084
+  },
+  "ask": {
+    "todayTools": 15,
+    "todayNativeChars": 27055,
+    "todaySentChars": 27147,
+    "compactTools": 6,
+    "compactNativeChars": 2726,
+    "compactSentChars": 2816,
+    "compactWithWebToolsSentChars": 3456
+  },
+  "debug": {
+    "todayTools": 19,
+    "todayNativeChars": 36504,
+    "todaySentChars": 36632,
+    "compactTools": 9,
+    "compactNativeChars": 4309,
+    "compactSentChars": 4444,
+    "compactWithWebToolsSentChars": 5084
+  },
+  "orchestrator": {
+    "todayTools": 8,
+    "todayNativeChars": 13560,
+    "todaySentChars": 13515,
+    "compactTools": 3,
+    "compactNativeChars": 1187,
+    "compactSentChars": 1232,
+    "compactWithWebToolsSentChars": 1232
+  }
+}

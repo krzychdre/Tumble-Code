@@ -53,6 +53,7 @@ const mockHost = vi.hoisted(() => ({
 					base: Record<string, unknown>
 					modes: Record<string, Record<string, unknown>>
 				}
+				resolveModelProviderSettings?: (mode: string, model: string) => Record<string, unknown>
 		  },
 }))
 
@@ -807,6 +808,9 @@ describe("run provider settings per mode", () => {
 				openAiCustomModelInfo: withEffort("max"),
 				openAiPreserveReasoning: false,
 				openAiTrimOldReasoning: false,
+				slimToolset: false,
+				slimHidesMcp: true,
+				compactProfile: false,
 			},
 			modes: {
 				architect: {
@@ -819,6 +823,9 @@ describe("run provider settings per mode", () => {
 					openAiCustomModelInfo: withEffort("high"),
 					openAiPreserveReasoning: false,
 					openAiTrimOldReasoning: false,
+					slimToolset: false,
+					slimHidesMcp: true,
+					compactProfile: false,
 				},
 			},
 		})
@@ -837,6 +844,9 @@ describe("run provider settings per mode", () => {
 			apiModelId: "gpt-5.6-sol",
 			enableReasoningEffort: true,
 			reasoningEffort: "medium",
+			slimToolset: false,
+			slimHidesMcp: true,
+			compactProfile: false,
 		})
 	})
 
@@ -961,6 +971,98 @@ describe("run provider settings per mode", () => {
 		} finally {
 			warnSpy.mockRestore()
 		}
+	})
+
+	describe("a model on its own connection", () => {
+		const elsewhere = {
+			...globalSettings,
+			models: {
+				...globalSettings.models,
+				"Qwen3.8-4B": { baseUrl: "http://192.168.50.194:22222/v1", modelSize: "compact" as const },
+				"claude-sonnet-5-5": { provider: "anthropic" as const, apiKeyEnv: "MY_ANTHROPIC_KEY" },
+			},
+		}
+
+		it("runs a model whose entry sets a base URL on that server, keeping the provider and key", async () => {
+			process.env.MY_ANTHROPIC_KEY = "sk-ant"
+			await saveSettings({ ...elsewhere, model: "Qwen3.8-4B" })
+
+			const { outcome } = await runWithExitThrowing()
+
+			expect(outcome).toBe("ran")
+			expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({
+				apiProvider: "openai",
+				openAiBaseUrl: "http://192.168.50.194:22222/v1",
+				openAiApiKey: "1111",
+				openAiModelId: "Qwen3.8-4B",
+				compactProfile: true,
+			})
+		})
+
+		it("runs a mode's model on the provider its entry names, inheriting no base URL or key", async () => {
+			process.env.MY_ANTHROPIC_KEY = "sk-ant"
+			await saveSettings({ ...elsewhere, modes: { ask: { model: "claude-sonnet-5-5" } } })
+
+			await runWithExitThrowing()
+
+			const ask = mockHost.lastOptions?.modeProviderSettings?.modes.ask
+			expect(ask).toMatchObject({ apiProvider: "anthropic", apiKey: "sk-ant", apiModelId: "claude-sonnet-5-5" })
+			expect(ask).not.toHaveProperty("openAiBaseUrl")
+			expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({ apiProvider: "openai" })
+		})
+
+		it("/model moves to the model's connection and back to the mode's", async () => {
+			process.env.MY_ANTHROPIC_KEY = "sk-ant"
+			await saveSettings(elsewhere)
+			await runWithExitThrowing()
+			const resolve = mockHost.lastOptions!.resolveModelProviderSettings!
+
+			expect(resolve("code", "claude-sonnet-5-5")).toMatchObject({
+				apiProvider: "anthropic",
+				apiModelId: "claude-sonnet-5-5",
+			})
+			expect(resolve("code", "Qwen3.8-4B")).toMatchObject({ openAiBaseUrl: "http://192.168.50.194:22222/v1" })
+			// A model without a connection of its own runs on the mode's again.
+			expect(resolve("code", "GLM-5.3-NVFP4")).toMatchObject({
+				apiProvider: "openai",
+				openAiBaseUrl: "http://192.168.50.194:11111/v1",
+				openAiModelId: "GLM-5.3-NVFP4",
+				compactProfile: false,
+			})
+		})
+
+		it("/model says which key is missing instead of switching", async () => {
+			await saveSettings(elsewhere)
+			// The entry's connection is checked at startup too, so give the key for the start only.
+			process.env.MY_ANTHROPIC_KEY = "sk-ant"
+			await runWithExitThrowing()
+			delete process.env.MY_ANTHROPIC_KEY
+
+			expect(() => mockHost.lastOptions!.resolveModelProviderSettings!("code", "claude-sonnet-5-5")).toThrow(
+				"apiKeyEnv names MY_ANTHROPIC_KEY",
+			)
+		})
+
+		it("lets the flags override the model's connection", async () => {
+			process.env.MY_ANTHROPIC_KEY = "sk-ant"
+			await saveSettings({ ...elsewhere, model: "Qwen3.8-4B" })
+
+			await runWithExitThrowing({ baseUrl: "http://localhost:9999/v1" })
+
+			expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({
+				openAiBaseUrl: "http://localhost:9999/v1",
+				openAiModelId: "Qwen3.8-4B",
+			})
+		})
+
+		it("a model entry whose connection cannot run fails at startup and names the model", async () => {
+			await saveSettings(elsewhere)
+
+			const { outcome, errors } = await runWithExitThrowing()
+
+			expect(outcome).toBe("failed")
+			expect(errors.join("\n")).toMatch(/models\.claude-sonnet-5-5 in .*MY_ANTHROPIC_KEY/)
+		})
 	})
 })
 
