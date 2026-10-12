@@ -1,3 +1,5 @@
+import { expandImageMarkers } from "../graphics/inlineImages.js"
+
 /**
  * Cursor Next Line (`CSI E`): move down one row and to column 1, WITHOUT
  * scrolling. On the bottom row of the screen it does nothing at all.
@@ -26,10 +28,16 @@ const NEWLINE = "\r\n"
  * `\r\n` is exactly the move ink's line count describes everywhere on the
  * screen, so replacing the sequence fixes the bottom row and changes nothing
  * elsewhere. Only string chunks are rewritten; ink never writes buffers.
+ *
+ * The same wrapper draws the images of the printed transcript: ink prints a
+ * marker for each, and the marker becomes the image here (plan: 2026-10-12
+ * cli inline images, see `graphics/inlineImages.ts`). The marker is expanded
+ * after the newline rewrite, so the line feeds that make room for an image are
+ * left alone.
  */
 export function createScrollSafeStdout<T extends NodeJS.WriteStream>(stream: T): T {
 	const write = (chunk: unknown, ...rest: unknown[]): boolean => {
-		const data = typeof chunk === "string" ? chunk.replaceAll(CURSOR_NEXT_LINE, NEWLINE) : chunk
+		const data = typeof chunk === "string" ? expandImageMarkers(chunk.replaceAll(CURSOR_NEXT_LINE, NEWLINE)) : chunk
 		return (stream.write as (...args: unknown[]) => boolean)(data, ...rest)
 	}
 

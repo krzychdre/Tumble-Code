@@ -4,6 +4,7 @@ import { Box, Text } from "ink"
 import { escapeRegExp } from "@tumble-code/core/cli"
 
 import { figures } from "../figures.js"
+import { InlineImage } from "../graphics/InlineImage.js"
 import * as theme from "../theme.js"
 
 type TokenKind = "bold" | "italic" | "code" | "strike" | "linkText" | "linkUrl"
@@ -251,6 +252,24 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 	}
 }
 
+/** A line that is nothing but an image: `![alt](src)`, optionally with a title. */
+const IMAGE_LINE_RE = /^\s*!\[([^\]]*)\]\(<?([^\s)>]+)>?(?:\s+"[^"]*")?\)\s*$/
+
+/**
+ * An image on a line of its own, drawn where the terminal can (plan:
+ * 2026-10-12 cli inline images). Elsewhere it reads `[image: alt] src`; an
+ * embedded `data:` image is not spelled out.
+ */
+function MarkdownImage({ alt, src }: { alt: string; src: string }) {
+	const where = src.startsWith("data:") ? "(embedded)" : src
+	const fallback = (
+		<Text color={theme.faint}>
+			[image{alt ? `: ${alt}` : ""}] {where}
+		</Text>
+	)
+	return <InlineImage source={{ kind: "file", src }} fallback={fallback} />
+}
+
 interface MarkdownProps {
 	children: string
 	dimColor?: boolean
@@ -260,7 +279,8 @@ interface MarkdownProps {
  * Minimal line-based markdown renderer (no dependencies).
  * Supports bold, italic, inline code, strikethrough, headings (1-4),
  * unordered/ordered lists, blockquotes, fenced code blocks, links and
- * horizontal rules. Tables and unknown structures pass through verbatim.
+ * horizontal rules, and images on a line of their own. Tables and unknown
+ * structures pass through verbatim.
  * Never throws on malformed input — each line falls back to raw text.
  */
 function Markdown({ children, dimColor = false }: MarkdownProps) {
@@ -299,6 +319,13 @@ function Markdown({ children, dimColor = false }: MarkdownProps) {
 						))}
 					</Box>,
 				)
+				i += 1
+				continue
+			}
+
+			const imageMatch = (line ?? "").match(IMAGE_LINE_RE)
+			if (imageMatch) {
+				rendered.push(<MarkdownImage key={i} alt={imageMatch[1] ?? ""} src={imageMatch[2] ?? ""} />)
 				i += 1
 				continue
 			}

@@ -1,6 +1,7 @@
 import { Box, Static, Text } from "ink"
 
 import type { StaticItem } from "../transcript.js"
+import { ScrollbackContext } from "../graphics/GraphicsContext.js"
 
 import AssistantMessage from "./messages/AssistantMessage.js"
 import ChatHistoryItem from "./ChatHistoryItem.js"
@@ -24,44 +25,54 @@ interface TranscriptStaticProps {
  * of its own ("8," alone under a paragraph). The dynamic tail never had the
  * problem because it sits in the normal flow of the root, which ink sizes to
  * the terminal.
+ *
+ * Only this region may draw images (`ScrollbackContext`): it is printed once,
+ * while the tail below it is repainted on every frame (plan: 2026-10-12 cli
+ * inline images).
  */
 export default function TranscriptStatic({ items, columns }: TranscriptStaticProps) {
 	return (
-		<Static items={items} style={{ width: columns }}>
-			{(item) => {
-				if (item.kind === "welcome") {
+		<ScrollbackContext.Provider value>
+			<Static items={items} style={{ width: columns }}>
+				{(item) => {
+					if (item.kind === "welcome") {
+						return (
+							<Box key={item.id}>
+								<WelcomeBanner {...item.welcomeProps} />
+							</Box>
+						)
+					}
+					if (item.kind === "divider") {
+						return (
+							<Box key={item.id} marginTop={1}>
+								<Text dimColor>{item.label}</Text>
+							</Box>
+						)
+					}
+					if (item.kind === "chunk") {
+						// A part of an answer printed while it streamed; only the
+						// first part opens the message with its bullet.
+						return (
+							<Box key={item.id}>
+								<AssistantMessage
+									content={item.text}
+									addMargin={item.first}
+									continuation={!item.first}
+								/>
+							</Box>
+						)
+					}
 					return (
 						<Box key={item.id}>
-							<WelcomeBanner {...item.welcomeProps} />
+							{item.continuation ? (
+								<AssistantMessage content={item.message.content} continuation />
+							) : (
+								<ChatHistoryItem message={item.message} expanded={item.expanded} />
+							)}
 						</Box>
 					)
-				}
-				if (item.kind === "divider") {
-					return (
-						<Box key={item.id} marginTop={1}>
-							<Text dimColor>{item.label}</Text>
-						</Box>
-					)
-				}
-				if (item.kind === "chunk") {
-					// A part of an answer printed while it streamed; only the
-					// first part opens the message with its bullet.
-					return (
-						<Box key={item.id}>
-							<AssistantMessage content={item.text} addMargin={item.first} continuation={!item.first} />
-						</Box>
-					)
-				}
-				return (
-					<Box key={item.id}>
-						{item.continuation ? (
-							<AssistantMessage content={item.message.content} continuation />
-						) : (
-							<ChatHistoryItem message={item.message} expanded={item.expanded} />
-						)}
-					</Box>
-				)
-			}}
-		</Static>
+				}}
+			</Static>
+		</ScrollbackContext.Provider>
 	)
 }

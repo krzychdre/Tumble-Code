@@ -219,6 +219,25 @@ The interactive TUI uses a **print-and-forget transcript** model inspired by Cla
 
 User-prompt rows render on a subtle background band. Assistant text is rendered as markdown (bold, italic, inline code, fenced code blocks, lists, blockquotes, links). Tool results are dim and truncated to 5 lines with a `… +N lines` tail. The spinner cycles through a whimsical verb (`Pondering`, `Rummaging`, `Brewing`, `Tumbling`, …) chosen deterministically per turn.
 
+### Images
+
+In a terminal that can draw images, an image the answer puts on a line of its own (`![chart](out/chart.png)`, a
+path relative to the workspace) is drawn in the transcript. The CLI asks the terminal at startup which image
+protocol it speaks:
+
+| Terminal                         | Protocol | Notes                                                                                         |
+| -------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
+| kitty, Ghostty, WezTerm, Konsole | kitty    |                                                                                               |
+| iTerm2                           | iTerm2   |                                                                                               |
+| VS Code terminal                 | sixel    | Needs `"terminal.integrated.enableImages": true`.                                             |
+| GNOME Terminal, Ptyxis           | none     | VTE 0.84 has no image support: its sixel code is stubbed out and `enable-sixel` does nothing. |
+| xterm                            | sixel    | Start it with `-ti vt340`; `-xrm 'XTerm*numColorRegisters: 256'` gives full colour.           |
+| foot                             | sixel    |                                                                                               |
+
+Elsewhere, and in the live area at the bottom while an answer streams, the image reads `[image: chart] out/chart.png`.
+`TUMBLE_IMAGES=off` turns images off; `TUMBLE_IMAGES=kitty|iterm|sixel` forces a protocol, for example inside tmux
+with passthrough enabled.
+
 The theme is the Tumble "Hardcore" palette mapped to Claude Code's semantic key system: brand orange for the `✻` welcome glyph and spinner, permission purple for dialog borders and focused select rows, subtle gray for `❯` prompt chars and `⎿` connectors, and a dark background band for user turns.
 
 ### Keyboard shortcuts
@@ -771,10 +790,11 @@ rejected with a clear error.
 
 **Display Environment Variables:**
 
-| Variable      | Description                                                                              |
-| ------------- | ---------------------------------------------------------------------------------------- |
-| `NO_COLOR`    | Any non-empty value turns colour off ([no-color.org](https://no-color.org))              |
-| `FORCE_COLOR` | Forces colour on (`1`, `2`, `3`: 16, 256 or 16 million colours) and wins over `NO_COLOR` |
+| Variable        | Description                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| `NO_COLOR`      | Any non-empty value turns colour off ([no-color.org](https://no-color.org))              |
+| `FORCE_COLOR`   | Forces colour on (`1`, `2`, `3`: 16, 256 or 16 million colours) and wins over `NO_COLOR` |
+| `TUMBLE_IMAGES` | `off`, or `kitty`/`iterm`/`sixel` to force an image protocol (see [Images](#images))     |
 
 ## Architecture
 

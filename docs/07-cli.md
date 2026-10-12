@@ -72,6 +72,23 @@ splits the screen:
 
 This pipeline, including the `useInsertionEffect` ordering in `TailViewport`, is on the "do not touch" list.
 
+### Images
+
+In a terminal that can draw images, Markdown images on a line of their own (`![alt](path)`, relative to the
+workspace, or a `data:` URL) are drawn in the printed transcript (`ui/graphics/`):
+
+- `terminalProbe.ts` asks the terminal before Ink starts which protocol it speaks (kitty, iTerm2 or sixel), its cell
+  size and its background colour. `TUMBLE_IMAGES` turns images off or forces a protocol. tmux and screen are text only
+  unless a protocol is forced.
+- `InlineImage.tsx` decodes and scales the image with resvg, encodes it (`imageEncoding.ts`) and registers it
+  (`inlineImages.ts`). Ink only ever prints a short private-use marker in its place.
+- `utils/scrollSafeStdout.ts` swaps the marker for the image on its way to the terminal, with the cursor moves that
+  reserve the rows the image covers. When the terminal does not report its cell size (xterm by default), the
+  terminal moves the cursor past the image itself.
+
+Only `<Static>` output may carry a marker (`ScrollbackContext`): the live tail is repainted on every frame and shows
+the text fallback `[image: alt] path` instead.
+
 ## Build
 
 `apps/cli/tsup.config.ts` bundles the CLI to ESM for Node 22, with the workspace packages inlined.

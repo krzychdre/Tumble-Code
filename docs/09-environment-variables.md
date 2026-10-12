@@ -48,6 +48,12 @@ a string literal. `packages/vscode-shim` still reads two `globalThis` slots by l
 | `ROO_EXTENSION_PATH`      | CLI host                         | Path to the built extension (`src/dist`) the host loads.                                                                                |
 | `ROO_RIPGREP_PATH`        | CLI host                         | Path to the bundled ripgrep binary.                                                                                                     |
 
+## CLI terminal display (`apps/cli/src/ui/graphics/terminalProbe.ts`)
+
+| Variable        | What it does                                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TUMBLE_IMAGES` | `off` draws no images; `kitty`, `iterm` or `sixel` forces that protocol (also inside tmux, which needs passthrough); anything else asks the terminal. |
+
 ## CLI provider keys (`apps/cli/src/lib/utils/provider-types.ts`)
 
 The CLI reads `<PROVIDER>_API_KEY` and `<PROVIDER>_BASE_URL` from the environment when neither a flag nor the settings
