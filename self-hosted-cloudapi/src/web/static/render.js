@@ -14,7 +14,57 @@
 
 	function md(text) {
 		if (!text) return ""
-		return DOMPurify.sanitize(marked.parse(String(text)))
+		const math = extractMath(String(text))
+		const html = marked.parse(math.text).replace(MATH_PLACEHOLDER_RE, function (_, i) {
+			return mathHtml(math.formulas[Number(i)])
+		})
+		return DOMPurify.sanitize(html)
+	}
+
+	// Math (plan: 2026-10-12 cloud web math), the same delimiters as the
+	// extension and the CLI: $$...$$ and \[...\] are display math when they
+	// fill their lines, \(...\) and $...$ (Pandoc's rule: no space inside the
+	// dollars, no digit after the closing one, no backtick inside, so "$5 and
+	// $10" stays text) are inline. Code spans and fences are skipped. Each
+	// formula is swapped for a placeholder before marked runs, so marked never
+	// eats its _ * \ or |, and rendered by KaTeX afterwards; DOMPurify still
+	// sees the result.
+	const MATH_RE =
+		/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]+`)|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?=[^\s$])((?:\\.|[^$\\\n`])+?)(?<=\S)\$(?!\d)/g
+	const MATH_PLACEHOLDER_RE = /TUMBLEMATH(\d+)X/g
+	// "\[1\]" is an escaped "[1]", not math: the bracket forms need TeX inside.
+	const LOOKS_LIKE_TEX = /\\[a-zA-Z]+|[\^_=<>+]/
+
+	function extractMath(text) {
+		const formulas = []
+		if (typeof katex === "undefined") return { text: text, formulas: formulas }
+		const out = text.replace(MATH_RE, function (whole, code, dollars, brackets, parens, dollar, offset) {
+			if (code !== undefined) return whole
+			const tex = dollars ?? brackets ?? parens ?? dollar
+			if ((brackets !== undefined || parens !== undefined) && !LOOKS_LIKE_TEX.test(tex)) return whole
+			const before = text.slice(0, offset)
+			const after = text.slice(offset + whole.length)
+			const display =
+				(dollars !== undefined || brackets !== undefined) &&
+				/(^|\n)[ \t]*$/.test(before) &&
+				/^[ \t]*(\n|$)/.test(after)
+			formulas.push({ tex: tex, display: display, source: whole })
+			return "TUMBLEMATH" + (formulas.length - 1) + "X"
+		})
+		return { text: out, formulas: formulas }
+	}
+
+	function mathHtml(formula) {
+		if (!formula) return ""
+		try {
+			return katex.renderToString(formula.tex, {
+				displayMode: formula.display,
+				throwOnError: false,
+				strict: "ignore",
+			})
+		} catch (e) {
+			return escapeHtml(formula.source)
+		}
 	}
 
 	// Roo Code's first user turn (and resumed turns) can arrive wrapped: the typed

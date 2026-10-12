@@ -220,9 +220,13 @@
    what the client sent. #}
 <script id="request-models" type="application/json">{{ request_models_json | default("{}") }}</script>
 {% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v={{ asset_v }}">
+{% endblock %}
 {% block scripts %}
 <script src="/static/vendor/marked.min.js?v={{ asset_v }}"></script>
 <script src="/static/vendor/purify.min.js?v={{ asset_v }}"></script>
+<script src="/static/vendor/katex/katex.min.js?v={{ asset_v }}"></script>
 <script src="/static/format.js?v={{ asset_v }}"></script>
 <script src="/static/render.js?v={{ asset_v }}"></script>
 <script src="/static/timeline.js?v={{ asset_v }}"></script>

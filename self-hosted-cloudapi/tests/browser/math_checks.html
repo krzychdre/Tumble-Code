@@ -1,0 +1,54 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../src/web/static/vendor/katex/katex.min.css">
+</head><body>
+<div id="page"><div id="conversation"></div></div>
+<!-- Math in answers (plan: 2026-10-12 cloud web math). Row 1 is the task. -->
+<script id="messages-data" type="application/json">[
+ {"ts":1,"type":"say","say":"text","text":"Explain the spinning top"},
+ {"ts":2,"type":"say","say":"text","text":"Torque \\(\\boldsymbol{\\tau} = \\boldsymbol{\\Omega}_P \\times \\mathbf{L}\\) and $\\Omega_P = \\frac{Mgl}{I_3\\omega_3}$."},
+ {"ts":3,"type":"say","say":"text","text":"The integral:\n\n$$\n\\int_{-\\infty}^{0} x_1 * x_2 \\, dx\n$$\n\nand\n\\[ a_1 = b_1 \\]"},
+ {"ts":4,"type":"say","say":"text","text":"It costs $5 and $10, see \\[1\\] and `$x$` in code:\n\n```\n$$y$$\n```"},
+ {"ts":5,"type":"say","say":"text","text":"| a | b |\n|---|---|\n| $x \\| y$ | $\\alpha$ |"},
+ {"ts":6,"type":"say","say":"text","text":"Inline $$e^{i\\pi}$$ in a sentence, and $\\href{javascript:alert(1)}{x}$ and $\\frac{1}{$"}
+]</script>
+<script src="../../src/web/static/vendor/marked.min.js"></script>
+<script src="../../src/web/static/vendor/purify.min.js"></script>
+<script src="../../src/web/static/vendor/katex/katex.min.js"></script>
+<script src="../../src/web/static/format.js"></script>
+<script src="../../src/web/static/render.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function row(ts) { return document.querySelector('#conversation .msg[data-ts="' + ts + '"] .msg-body') }
+  function visible(el) { return Array.prototype.map.call(el.querySelectorAll(".katex-html"), function (n) { return n.textContent }).join(" ") }
+
+  var r2 = row(2)
+  check("inline \\(...\\) and $...$ become two inline formulas", r2.querySelectorAll(".katex").length === 2 && !r2.querySelector(".katex-display"))
+  check("bold tau and Omega are drawn, not left as TeX", /τ/.test(visible(r2)) && /Ω/.test(visible(r2)) && !/\\tau|\\Omega/.test(r2.textContent.replace(/\\boldsymbol\{\\tau\}.*?\\mathbf\{L\}|\\Omega_P = \\frac\{Mgl\}\{I_3\\omega_3\}/g, "")))
+  check("the formula's MathML survives the sanitizer", !!r2.querySelector("math"))
+
+  var r3 = row(3)
+  check("$$ and \\[ on their own lines are display math", r3.querySelectorAll(".katex-display").length === 2)
+  check("marked did not eat the * and _ inside a formula", !r3.querySelector("em") && /x1∗x2|x1\s*∗\s*x2/.test(visible(r3).replace(/[\s\u200b]/g, "")))
+
+  var r4 = row(4)
+  check("dollar amounts stay text", /costs \$5 and \$10/.test(r4.textContent) && !r4.querySelector(".katex"))
+  check("an escaped \\[1\\] stays text", /see \[1\]/.test(r4.textContent))
+  check("math inside code is left alone", r4.querySelectorAll("code").length === 2 && /\$\$y\$\$/.test(r4.querySelector("pre").textContent))
+
+  var r5 = row(5)
+  check("a formula in a table cell keeps the table", r5.querySelectorAll("td").length === 2 && r5.querySelectorAll("td .katex").length === 2)
+
+  var r6 = row(6)
+  check("$$...$$ inside a sentence is inline", r6.querySelectorAll(".katex").length >= 1 && !r6.querySelector(".katex-display"))
+  check("\\href does not become a link", !r6.querySelector("a[href^='javascript']") && !r6.querySelector("a"))
+  check("a broken formula does not break the row", /in a sentence/.test(r6.textContent))
+
+  var pre = document.createElement("pre")
+  pre.id = "results"
+  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+  document.body.appendChild(pre)
+})
+</script>
+</body></html>
