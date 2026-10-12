@@ -25,7 +25,7 @@ import type {
 	TumbleCodeSettings,
 	WebviewMessage,
 } from "@tumble-code/types"
-import { CLI_RUNTIME_ENV, clearCliRuntimeGlobals, setCliRuntimeGlobals } from "@tumble-code/types"
+import { CLI_RUNTIME_ENV, type CliDisplay, clearCliRuntimeGlobals, setCliRuntimeGlobals } from "@tumble-code/types"
 import {
 	createVSCodeAPI,
 	IExtensionHost,
@@ -107,6 +107,12 @@ export interface ExtensionHostOptions {
 	 * --ephemeral).
 	 */
 	mcpSettingsPath?: string
+	/**
+	 * What the terminal UI can show of a reply, from its terminal probe; the
+	 * system prompt tells the model (`ROO_CLI_DISPLAY`). Unset in print and
+	 * JSON runs, which draw nothing.
+	 */
+	display?: CliDisplay
 	/**
 	 * Tumble Code Cloud API (`cloudApiUrl` in cli-settings.json), applied as the
 	 * `tumble-code.cloudApiUrl` setting before activation: the extension reads
@@ -267,6 +273,9 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// variable in src/services/mcp/mcpSettingsPath.ts, before activation
 		// is over, which is why it cannot wait for a webview message.
 		this.setProcessEnv(CLI_RUNTIME_ENV.mcpSettingsPath, options.mcpSettingsPath ?? getDefaultMcpSettingsPath())
+		if (options.display) {
+			this.setProcessEnv(CLI_RUNTIME_ENV.display, options.display)
+		}
 
 		// Enable file-based debug logging only when --debug is passed.
 		if (options.debug) {

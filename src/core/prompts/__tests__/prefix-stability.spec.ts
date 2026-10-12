@@ -912,3 +912,31 @@ describe("compact profile: its own stable head", () => {
 		expect(prompt).toContain("====\n\nUSER'S CUSTOM INSTRUCTIONS")
 	})
 })
+
+describe("terminal display section (CLI terminal UI only)", () => {
+	const MARKDOWN_RULES = "====\n\nMARKDOWN RULES"
+	const TERMINAL_DISPLAY = "====\n\nTERMINAL DISPLAY"
+
+	it("is absent when the prompt is not built for the CLI's terminal UI", async () => {
+		expect(await buildPrompt("code")).not.toContain(TERMINAL_DISPLAY)
+	})
+
+	it("follows MARKDOWN RULES and stays in the head every mode shares", async () => {
+		const settings: SystemPromptSettings = { ...baseSettings, cliDisplay: "images" }
+		const prompts = await Promise.all(MODES.map((mode) => buildPrompt(mode, settings)))
+		const code = prompts[0]!
+		const sectionStart = code.indexOf(TERMINAL_DISPLAY)
+
+		expect(sectionStart).toBeGreaterThan(code.indexOf(MARKDOWN_RULES))
+		for (const prompt of prompts.slice(1)) {
+			expect(commonPrefixLength(code, prompt)).toBeGreaterThan(sectionStart + TERMINAL_DISPLAY.length)
+		}
+	})
+
+	it("is in the compact profile's head too, after its rules", async () => {
+		const prompt = await buildPrompt("code", { ...baseSettings, compactProfile: true, cliDisplay: "text" })
+
+		expect(prompt.indexOf(TERMINAL_DISPLAY)).toBeGreaterThan(prompt.indexOf("====\n\nRULES"))
+		expect(prompt).toContain("cannot show images")
+	})
+})

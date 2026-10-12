@@ -21,6 +21,7 @@ describe("CLI runtime contract", () => {
 				cloudAuthOnly: "ROO_CLI_CLOUD_AUTH_ONLY",
 				mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
 				cliVersion: "ROO_CLI_VERSION",
+				display: "ROO_CLI_DISPLAY",
 				cliRoot: "ROO_CLI_ROOT",
 				extensionPath: "ROO_EXTENSION_PATH",
 				ripgrepPath: "ROO_RIPGREP_PATH",
@@ -34,6 +35,7 @@ describe("CLI runtime contract", () => {
 				| "ROO_CLI_CLOUD_AUTH_ONLY"
 				| "ROO_MCP_SETTINGS_PATH"
 				| "ROO_CLI_VERSION"
+				| "ROO_CLI_DISPLAY"
 				| "ROO_CLI_ROOT"
 				| "ROO_EXTENSION_PATH"
 				| "ROO_RIPGREP_PATH"
@@ -49,6 +51,7 @@ describe("CLI runtime contract", () => {
 				cloudAuthOnly: false,
 				mcpSettingsPath: undefined,
 				cliVersion: undefined,
+				display: undefined,
 				cliRoot: undefined,
 				extensionPath: undefined,
 				ripgrepPath: undefined,
@@ -62,6 +65,7 @@ describe("CLI runtime contract", () => {
 				ROO_CLI_CLOUD_AUTH_ONLY: "1",
 				ROO_MCP_SETTINGS_PATH: "  /home/u/.roo/mcp.json  ",
 				ROO_CLI_VERSION: "0.2.0",
+				ROO_CLI_DISPLAY: "images",
 				ROO_CLI_ROOT: "/opt/cli",
 				ROO_EXTENSION_PATH: "/opt/cli/extension",
 				ROO_RIPGREP_PATH: "/opt/cli/bin/rg",
@@ -73,6 +77,7 @@ describe("CLI runtime contract", () => {
 				cloudAuthOnly: true,
 				mcpSettingsPath: "/home/u/.roo/mcp.json",
 				cliVersion: "0.2.0",
+				display: "images",
 				cliRoot: "/opt/cli",
 				extensionPath: "/opt/cli/extension",
 				ripgrepPath: "/opt/cli/bin/rg",
@@ -91,6 +96,12 @@ describe("CLI runtime contract", () => {
 				codexAuthOnly: false,
 				cloudAuthOnly: false,
 			})
+		})
+
+		it("accepts only images and text as the display", () => {
+			expect(readCliRuntimeEnv({ ROO_CLI_DISPLAY: "text" }).display).toBe("text")
+			expect(readCliRuntimeEnv({ ROO_CLI_DISPLAY: "kitty" }).display).toBeUndefined()
+			expect(readCliRuntimeEnv({ ROO_CLI_DISPLAY: "" }).display).toBeUndefined()
 		})
 
 		it("treats empty and blank strings as unset", () => {

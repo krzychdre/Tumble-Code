@@ -23,6 +23,11 @@
  *    - `ROO_CLI_VERSION`: set by the CLI `ExtensionHost` to the CLI package
  *      version; the extension sends it as `clientVersion` with telemetry,
  *      error reports and LLM exchanges.
+ *    - `ROO_CLI_DISPLAY`: set by the CLI `ExtensionHost` for the terminal UI
+ *      only: `images` when the terminal draws images (kitty, iTerm2 or sixel),
+ *      `text` when it does not. The system prompt then tells the model how its
+ *      Markdown images and Mermaid blocks reach the user. Print and JSON runs
+ *      leave it unset: they draw nothing.
  *    - `ROO_CLI_ROOT`, `ROO_EXTENSION_PATH`, `ROO_RIPGREP_PATH`: set by the
  *      release launcher that apps/cli/scripts/build.sh writes; they point at
  *      the unpacked CLI, its extension bundle and its ripgrep binary.
@@ -45,12 +50,16 @@ export const CLI_RUNTIME_ENV = {
 	cloudAuthOnly: "ROO_CLI_CLOUD_AUTH_ONLY",
 	mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
 	cliVersion: "ROO_CLI_VERSION",
+	display: "ROO_CLI_DISPLAY",
 	cliRoot: "ROO_CLI_ROOT",
 	extensionPath: "ROO_EXTENSION_PATH",
 	ripgrepPath: "ROO_RIPGREP_PATH",
 } as const
 
 export type CliRuntimeEnvName = (typeof CLI_RUNTIME_ENV)[keyof typeof CLI_RUNTIME_ENV]
+
+/** What the terminal UI shows of a reply: images and diagrams, or diagrams drawn in characters only. */
+export type CliDisplay = "images" | "text"
 
 /** The parsed view of `CLI_RUNTIME_ENV`; an unset or empty variable is `undefined`. */
 export interface CliRuntimeEnv {
@@ -64,6 +73,8 @@ export interface CliRuntimeEnv {
 	mcpSettingsPath: string | undefined
 	/** Version of the CLI package hosting the extension. */
 	cliVersion: string | undefined
+	/** What the CLI's terminal UI can show; undefined outside it (`ROO_CLI_DISPLAY`). */
+	display: CliDisplay | undefined
 	/** Root of the unpacked CLI release. */
 	cliRoot: string | undefined
 	/** Directory holding the extension bundle (`extension.js`). */
@@ -85,10 +96,16 @@ export function readCliRuntimeEnv(env: Readonly<Record<string, string | undefine
 		cloudAuthOnly: env[CLI_RUNTIME_ENV.cloudAuthOnly] === "1",
 		mcpSettingsPath: env[CLI_RUNTIME_ENV.mcpSettingsPath]?.trim() || undefined,
 		cliVersion: text(CLI_RUNTIME_ENV.cliVersion),
+		display: parseCliDisplay(env[CLI_RUNTIME_ENV.display]),
 		cliRoot: text(CLI_RUNTIME_ENV.cliRoot),
 		extensionPath: text(CLI_RUNTIME_ENV.extensionPath),
 		ripgrepPath: text(CLI_RUNTIME_ENV.ripgrepPath),
 	}
+}
+
+/** `ROO_CLI_DISPLAY` as a `CliDisplay`; any other value counts as unset. */
+export function parseCliDisplay(value: string | undefined): CliDisplay | undefined {
+	return value === "images" || value === "text" ? value : undefined
 }
 
 /** Names of the `globalThis` slots the CLI fills before loading the extension. */

@@ -1,6 +1,6 @@
 import type * as vscode from "vscode"
 
-import type { CustomModePrompts, ModeConfig } from "@tumble-code/types"
+import type { CliDisplay, CustomModePrompts, ModeConfig } from "@tumble-code/types"
 
 import type { McpHub } from "../../services/mcp/McpHub"
 import type { SkillsManager } from "../../services/skills/SkillsManager"
@@ -40,6 +40,12 @@ export interface SystemPromptSettings {
 	 * `switch_mode` when the tool array does not carry them.
 	 */
 	removedTools?: string[]
+	/**
+	 * What the CLI's terminal UI shows of a reply (`ROO_CLI_DISPLAY`); unset in
+	 * VS Code and in the CLI's print and JSON runs, where the prompt does not
+	 * mention it.
+	 */
+	cliDisplay?: CliDisplay
 }
 
 /**

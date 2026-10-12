@@ -6,6 +6,7 @@ import {
 	type ProviderSettings,
 	SETTINGS_DEFAULTS,
 	isParallelTasksEnabled,
+	readCliRuntimeEnv,
 } from "@tumble-code/types"
 
 import type { McpHub } from "../../services/mcp/McpHub"
@@ -129,6 +130,7 @@ export function buildSystemPromptInput(source: SystemPromptSource): SystemPrompt
 			slimToolset: state?.apiConfiguration?.slimToolset,
 			slimHidesMcp: state?.apiConfiguration?.slimHidesMcp,
 			compactProfile: source.compactProfile,
+			cliDisplay: readCliRuntimeEnv(process.env).display,
 			removedTools: [
 				...(getRequestDisabledTools(state, source.isBackground ?? false) ?? []),
 				...(source.modelInfo?.excludedTools ?? []),
