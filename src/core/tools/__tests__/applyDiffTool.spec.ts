@@ -16,14 +16,14 @@ vi.mock("../helpers/toolWriteResult", () => ({
 }))
 
 vi.mock("path", async () => {
-	const originalPath = await vi.importActual("path")
-	return {
-		...originalPath,
-		resolve: vi.fn().mockImplementation((...args) => {
-			const separator = process.platform === "win32" ? "\\" : "/"
-			return args.join(separator)
-		}),
-	}
+	const originalPath = await vi.importActual<typeof import("path")>("path")
+	const resolve = vi.fn().mockImplementation((...args) => {
+		const separator = process.platform === "win32" ? "\\" : "/"
+		return args.join(separator)
+	})
+	// The tool imports the default export: stub resolve there too, or the real
+	// one runs and the absolute path depends on the runner's drive.
+	return { ...originalPath, resolve, default: { ...originalPath, resolve } }
 })
 
 vi.mock("fs/promises", () => ({
