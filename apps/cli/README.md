@@ -235,6 +235,11 @@ protocol it speaks:
 | foot                             | sixel    |                                                                                               |
 
 Elsewhere, and in the live area at the bottom while an answer streams, the image reads `[image: chart] out/chart.png`.
+
+A ` ```mermaid ` block in an answer is drawn as a diagram: as an image in those terminals, and in box-drawing
+characters everywhere else (plain terminals, and the live area while the answer streams). Flowcharts, state,
+sequence, class and ER diagrams and XY charts are supported; other kinds, a diagram wider than the terminal in text
+form, and a block that is still streaming show the code.
 `TUMBLE_IMAGES=off` turns images off; `TUMBLE_IMAGES=kitty|iterm|sixel` forces a protocol, for example inside tmux
 with passthrough enabled.
 

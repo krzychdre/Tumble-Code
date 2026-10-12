@@ -5,6 +5,7 @@ import { escapeRegExp } from "@tumble-code/core/cli"
 
 import { figures } from "../figures.js"
 import { InlineImage } from "../graphics/InlineImage.js"
+import { MermaidBlock } from "../graphics/MermaidBlock.js"
 import * as theme from "../theme.js"
 
 type TokenKind = "bold" | "italic" | "code" | "strike" | "linkText" | "linkUrl"
@@ -279,8 +280,8 @@ interface MarkdownProps {
  * Minimal line-based markdown renderer (no dependencies).
  * Supports bold, italic, inline code, strikethrough, headings (1-4),
  * unordered/ordered lists, blockquotes, fenced code blocks, links and
- * horizontal rules, and images on a line of their own. Tables and unknown
- * structures pass through verbatim.
+ * horizontal rules, images on a line of their own and ```mermaid diagrams.
+ * Tables and unknown structures pass through verbatim.
  * Never throws on malformed input — each line falls back to raw text.
  */
 function Markdown({ children, dimColor = false }: MarkdownProps) {
@@ -309,7 +310,8 @@ function Markdown({ children, dimColor = false }: MarkdownProps) {
 					i += 1
 				}
 
-				rendered.push(
+				const closed = i < lines.length
+				const code = (
 					<Box key={`fence-${rendered.length}`} flexDirection="column">
 						{lang && <Text color={theme.faint}>{lang}</Text>}
 						{block.map((codeLine, codeIndex) => (
@@ -317,7 +319,16 @@ function Markdown({ children, dimColor = false }: MarkdownProps) {
 								<Text color={theme.secondaryText}>{codeLine}</Text>
 							</Box>
 						))}
-					</Box>,
+					</Box>
+				)
+				// A diagram only once its fence is closed: while it streams, the
+				// source is incomplete and laying it out on every chunk is wasted.
+				rendered.push(
+					lang === "mermaid" && closed ? (
+						<MermaidBlock key={`fence-${rendered.length}`} source={block.join("\n")} fallback={code} />
+					) : (
+						code
+					),
 				)
 				i += 1
 				continue
