@@ -1525,8 +1525,13 @@ describe("run --resume", () => {
 
 		await run(undefined, baseFlags({ print: false, resume: true }))
 
-		const boundary = renderMock.mock.calls[0]?.[0] as { props: { children: { props: Record<string, unknown> } } }
-		expect(boundary.props.children.props.openResumePicker).toBe(true)
+		// The App sits under providers and the error boundary; find it by its props.
+		type Element = { props: Record<string, unknown> & { children?: Element } }
+		let element = renderMock.mock.calls[0]?.[0] as Element | undefined
+		while (element && !("openResumePicker" in element.props)) {
+			element = element.props.children
+		}
+		expect(element?.props.openResumePicker).toBe(true)
 	})
 
 	it.each([

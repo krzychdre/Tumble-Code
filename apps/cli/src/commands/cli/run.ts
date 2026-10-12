@@ -589,29 +589,39 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			const { App } = await import("../../ui/App.js")
 			const { createScrollSafeStdout } = await import("../../ui/utils/scrollSafeStdout.js")
 			const { TuiErrorBoundary } = await import("../../ui/components/TuiErrorBoundary.js")
+			const { GraphicsContext } = await import("../../ui/graphics/GraphicsContext.js")
+			const { probeTerminalGraphics } = await import("../../ui/graphics/terminalProbe.js")
+
+			// Asked before ink takes stdin over: the terminal answers on stdin.
+			const graphics = await probeTerminalGraphics({ stdin: process.stdin, stdout: process.stdout })
+			debugLog("[CLI] terminal graphics", graphics)
 
 			const instance = render(
 				createElement(
-					TuiErrorBoundary,
-					{
-						// A render crash is reported once here; the guards'
-						// uncaughtException handler does not fire for it. The
-						// fallback stays on screen, so the hint goes there and
-						// the stack goes into the debug log (a no-op without
-						// --debug, which is what the hint then suggests).
-						onError: (error: Error) => debugLog("[CLI] TUI crashed", error.stack || error.message),
-						hint: formatCrashHint(crashHintOptions),
-					},
-					createElement(App, {
-						...extensionHostOptions,
-						initialPrompt: prompt,
-						initialTaskId: requestedCreateSessionId,
-						initialSessionId: resolvedResumeSessionId,
-						continueSession: false,
-						openResumePicker: flagOptions.resume,
-						version: VERSION,
-						createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
-					}),
+					GraphicsContext.Provider,
+					{ value: { ...graphics, baseDir: effectiveWorkspacePath } },
+					createElement(
+						TuiErrorBoundary,
+						{
+							// A render crash is reported once here; the guards'
+							// uncaughtException handler does not fire for it. The
+							// fallback stays on screen, so the hint goes there and
+							// the stack goes into the debug log (a no-op without
+							// --debug, which is what the hint then suggests).
+							onError: (error: Error) => debugLog("[CLI] TUI crashed", error.stack || error.message),
+							hint: formatCrashHint(crashHintOptions),
+						},
+						createElement(App, {
+							...extensionHostOptions,
+							initialPrompt: prompt,
+							initialTaskId: requestedCreateSessionId,
+							initialSessionId: resolvedResumeSessionId,
+							continueSession: false,
+							openResumePicker: flagOptions.resume,
+							version: VERSION,
+							createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
+						}),
+					),
 				),
 				{
 					// Handle Ctrl+C in App component for double-press exit.
