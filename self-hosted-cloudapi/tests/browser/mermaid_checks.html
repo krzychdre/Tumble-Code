@@ -1,0 +1,54 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<div id="page"><div id="conversation"></div></div>
+<!-- Mermaid diagrams in answers (plan: 2026-10-12 cloud web mermaid). Row 1 is the task. -->
+<script id="messages-data" type="application/json">[
+ {"ts":1,"type":"say","say":"text","text":"Draw the flow"},
+ {"ts":2,"type":"say","say":"text","text":"The flow:\n\n```mermaid\nflowchart LR\n  A[Request] --> B{Cached?}\n  B -->|yes| C[Answer]\n  B -->|no| D[Model]\n```\n\nand code:\n\n```js\nconst a = 1\n```"},
+ {"ts":3,"type":"say","say":"text","text":"```mermaid\nsequenceDiagram\n  Alice->>Bob: Hello \"Bob\" & <you>\n```"},
+ {"ts":4,"type":"say","say":"text","text":"```mermaid\nthis is not a diagram ((\n```"}
+]</script>
+<script src="../../src/web/static/vendor/marked.min.js"></script>
+<script src="../../src/web/static/vendor/purify.min.js"></script>
+<script src="../../src/web/static/format.js"></script>
+<script src="../../src/web/static/render.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0, tries = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function row(ts) { return document.querySelector('#conversation .msg[data-ts="' + ts + '"] .msg-body') }
+  function svgOf(img) { return decodeURIComponent(img.getAttribute("src").replace(/^data:image\/svg\+xml;charset=utf-8,/, "")) }
+
+  check("the source shows until the diagram is drawn", !!row(2).querySelector("pre > code.language-mermaid"))
+
+  // Mermaid loads and draws asynchronously; poll until both diagrams are in.
+  var timer = setInterval(function () {
+    tries++
+    if (document.querySelectorAll("img.mermaid-img").length < 2 && tries < 150) return
+    clearInterval(timer)
+
+    var img = row(2).querySelector(".mermaid-diagram img.mermaid-img")
+    check("a flowchart becomes an image", !!img && /^data:image\/svg\+xml/.test(img.getAttribute("src")))
+    check("the image carries the diagram's labels", !!img && /Request/.test(svgOf(img)) && /Cached\?/.test(svgOf(img)))
+    check("the image has a size, not width 100%", !!img && /<svg[^>]* width="[\d.]+" height="[\d.]+"/.test(svgOf(img)))
+    check("the drawn source is gone", !row(2).querySelector("code.language-mermaid"))
+    check("another code block is left alone", !!row(2).querySelector("pre > code.language-js"))
+
+    var seq = row(3).querySelector("img.mermaid-img")
+    check("a sequence diagram with quotes and <> is drawn", !!seq && /Hello/.test(svgOf(seq)))
+    check("an invalid diagram keeps its source", !!row(4).querySelector("pre > code.language-mermaid") && !row(4).querySelector("img"))
+
+    // A live update of the same message renders from the cache: no flash back to source.
+    var convo = window.__tumbleConversation
+    convo.upsert({ts:2,type:"say",say:"text",text:JSON.parse(document.getElementById("messages-data").textContent)[1].text})
+    check("a live update keeps the diagram", !!row(2).querySelector("img.mermaid-img") && !row(2).querySelector("code.language-mermaid"))
+    check("a bad diagram leaves no error picture on the page", !document.querySelector("body > div[id^='dmermaid-'], body > svg"))
+    check("no script runs inside the page from the diagram", !document.querySelector("#conversation script"))
+
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  }, 50)
+})
+</script>
+</body></html>

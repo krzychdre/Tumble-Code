@@ -18,7 +18,133 @@
 		const html = marked.parse(math.text).replace(MATH_PLACEHOLDER_RE, function (_, i) {
 			return mathHtml(math.formulas[Number(i)])
 		})
-		return DOMPurify.sanitize(html)
+		return DOMPurify.sanitize(html).replace(MERMAID_BLOCK_RE, mermaidHtml)
+	}
+
+	// Mermaid (plan: 2026-10-12 cloud web mermaid). A ```mermaid fence is drawn
+	// as an <img> of the SVG mermaid lays out, not as inline SVG: the SVG carries
+	// a <style> element, which the panel's CSP (style-src 'self') refuses, while
+	// an image is its own document that runs no script. mermaid.min.js (5 MB)
+	// loads on the first diagram. Drawing is asynchronous, so md() shows the
+	// source until the diagram is ready, then the rows showing that source are
+	// updated; later renders of the same source take it from the cache, which
+	// keeps a streaming row's HTML stable between chunks.
+	const MERMAID_BLOCK_RE = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g
+	const MERMAID_URL = (function () {
+		const src = document.currentScript && document.currentScript.src
+		return src ? src.replace(/render\.js(\?|$)/, "vendor/mermaid/mermaid.min.js$1") : null
+	})()
+	const diagrams = {} // theme + "\n" + source -> { img } | { failed: true }
+	const diagramQueue = []
+	let mermaidLoad = null
+	let drawing = false
+
+	function decodeHtml(html) {
+		const t = document.createElement("textarea")
+		t.innerHTML = html
+		return t.value
+	}
+
+	function pageTheme() {
+		const set = document.documentElement.getAttribute("data-theme")
+		if (set) return set === "light" ? "default" : "dark"
+		return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "default" : "dark"
+	}
+
+	function mermaidHtml(block, escaped) {
+		const source = decodeHtml(escaped).trim()
+		const done = diagrams[pageTheme() + "\n" + source]
+		if (done && done.img) return '<div class="mermaid-diagram">' + done.img + "</div>"
+		if (!done && source) queueDiagram(source)
+		return block
+	}
+
+	function queueDiagram(source) {
+		if (!MERMAID_URL || diagramQueue.indexOf(source) !== -1) return
+		diagramQueue.push(source)
+		if (!mermaidLoad) {
+			mermaidLoad = new Promise(function (resolve, reject) {
+				const s = document.createElement("script")
+				s.src = MERMAID_URL
+				s.onload = resolve
+				s.onerror = reject
+				document.head.appendChild(s)
+			})
+		}
+		mermaidLoad.then(drawNext, function () {
+			diagramQueue.length = 0
+		})
+	}
+
+	// One diagram at a time (mermaid keeps global state while it lays out), and
+	// only sources still on the page: a streaming fence queues every chunk.
+	function drawNext() {
+		if (drawing || !diagramQueue.length) return
+		const source = diagramQueue.shift()
+		const blocks = Array.prototype.filter.call(
+			document.querySelectorAll("pre > code.language-mermaid"),
+			function (c) {
+				return c.textContent.trim() === source
+			},
+		)
+		if (!blocks.length) {
+			drawNext()
+			return
+		}
+		drawing = true
+		const theme = pageTheme()
+		mermaid.initialize({
+			startOnLoad: false,
+			securityLevel: "strict",
+			theme: theme,
+			htmlLabels: false,
+			flowchart: { htmlLabels: false },
+		})
+		const id = "mermaid-" + Math.random().toString(36).slice(2)
+		// parse() first: render() of a bad diagram leaves its "Syntax error"
+		// picture at the end of <body>.
+		Promise.resolve(mermaid.parse(source, { suppressErrors: true }))
+			.then(function (valid) {
+				if (!valid) throw new Error("not a diagram")
+				return mermaid.render(id, source)
+			})
+			.then(
+				function (out) {
+					const img = diagramImg(out.svg)
+					diagrams[theme + "\n" + source] = { img: img }
+					blocks.forEach(function (c) {
+						const wrap = document.createElement("div")
+						wrap.className = "mermaid-diagram"
+						wrap.innerHTML = img
+						c.parentNode.replaceWith(wrap)
+					})
+				},
+				function () {
+					// Not a valid diagram (or one still streaming): the source stays.
+					diagrams[theme + "\n" + source] = { failed: true }
+				},
+			)
+			.then(function () {
+				const leftover = document.getElementById("d" + id)
+				if (leftover) leftover.remove()
+				drawing = false
+				drawNext()
+			})
+	}
+
+	// The SVG's size from its viewBox: mermaid writes width="100%", which an
+	// image cannot resolve, so it would shrink to a default 300x150.
+	function diagramImg(svg) {
+		const box = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(svg)
+		let sized = svg
+		if (box) {
+			sized = svg.replace(/<svg([^>]*?) width="100%"/, '<svg$1 width="' + box[1] + '" height="' + box[2] + '"')
+		}
+		return (
+			'<img class="mermaid-img" alt="Mermaid diagram" src="data:image/svg+xml;charset=utf-8,' +
+			encodeURIComponent(sized) +
+			'">'
+		)
 	}
 
 	// Math (plan: 2026-10-12 cloud web math), the same delimiters as the
