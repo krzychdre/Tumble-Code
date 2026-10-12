@@ -1,4 +1,7 @@
+import fs from "fs"
 import { createRequire } from "module"
+
+import { debugLog } from "@tumble-code/core/cli"
 
 import type { PixelSize } from "./imageEncoding.js"
 
@@ -6,67 +9,33 @@ import type { PixelSize } from "./imageEncoding.js"
  * Display formulas as images (plan: 2026-10-12 cli math).
  *
  * MathJax lays TeX out without a browser and writes an SVG whose glyphs are
- * paths, which resvg draws as it is (KaTeX writes HTML and CSS instead). It
- * is loaded on the first formula, not at startup. MathJax fetches the glyphs
- * of rarer alphabets (`\text` letters, `\mathbb`) from separate files on
- * demand; with a synchronous loader it reads them at once, so a formula is
- * drawn in the same render as the rest of the answer: the transcript is
- * printed once and cannot wait for it.
+ * paths, which resvg draws as it is (KaTeX writes HTML and CSS instead).
+ * MathJax and the glyph ranges common math needs are built into their own
+ * file, `mathjax-engine.cjs` next to the bundle (about 4 MB instead of the
+ * 105 MB of the npm packages), and loaded on the first formula, not at
+ * startup. Loading is synchronous: the transcript is printed once, so the
+ * image must exist in the same render as the rest of the answer.
  */
 
-interface MathJaxDocument {
-	convert(tex: string, options: { display: boolean }): unknown
-}
+let engine: { texToSvg(tex: string): string } | null | undefined
 
-interface MathJax {
-	document(source: string, options: object): MathJaxDocument
-	asyncLoad: ((name: string) => unknown) | null
-	asyncIsSynchronous: boolean
-}
-
-let converter: { document: MathJaxDocument; svgOf(node: unknown): string } | null | undefined
-
-/** The MathJax document, or null when MathJax cannot be loaded. */
-function getConverter() {
-	if (converter !== undefined) {
-		return converter
-	}
-	try {
+/** MathJax, or null when it cannot be loaded. */
+function getEngine() {
+	if (engine === undefined) {
 		const load = createRequire(import.meta.url)
-		const { mathjax } = load("@mathjax/src/js/mathjax.js") as { mathjax: MathJax }
-		const { TeX } = load("@mathjax/src/js/input/tex.js")
-		const { SVG } = load("@mathjax/src/js/output/svg.js")
-		const { liteAdaptor } = load("@mathjax/src/js/adaptors/liteAdaptor.js")
-		const { RegisterHTMLHandler } = load("@mathjax/src/js/handlers/html.js")
-		load("@mathjax/src/js/input/tex/base/BaseConfiguration.js")
-		load("@mathjax/src/js/input/tex/ams/AmsConfiguration.js")
-		const { MathJaxNewcmFont } = load("@mathjax/mathjax-newcm-font/js/svg.js")
-
-		// A glyph file that fails to load leaves its characters out; MathJax
-		// would console.warn a thrown error, which would scribble on the TUI.
-		mathjax.asyncLoad = (name) => {
-			try {
-				return load(name)
-			} catch {
-				return undefined
-			}
+		// The built file in dist/, else the source (development and tests,
+		// which Node loads with its TypeScript type stripping).
+		const file = fs.existsSync(new URL("./mathjax-engine.cjs", import.meta.url))
+			? "./mathjax-engine.cjs"
+			: "./mathjax-engine.ts"
+		try {
+			engine = load(file)
+		} catch (error) {
+			debugLog("[CLI] MathJax could not be loaded", error instanceof Error ? error.message : String(error))
+			engine = null
 		}
-		mathjax.asyncIsSynchronous = true
-
-		const adaptor = liteAdaptor()
-		RegisterHTMLHandler(adaptor)
-		converter = {
-			document: mathjax.document("", {
-				InputJax: new TeX({ packages: ["base", "ams"] }),
-				// "none": every glyph is its own path, no <use> references.
-				OutputJax: new SVG({ fontCache: "none", fontData: MathJaxNewcmFont }),
-			}),
-			svgOf: (node) => adaptor.innerHTML(node),
-		}
-	} catch {
-		converter = null
 	}
-	return converter
+	return engine
 }
 
 /**
@@ -79,12 +48,12 @@ export function renderMathImage(
 	foreground: string,
 	emPixels: number,
 ): { svg: string; size: PixelSize } | undefined {
-	const mathjax = getConverter()
+	const mathjax = getEngine()
 	if (!mathjax) {
 		return undefined
 	}
 	try {
-		const svg = mathjax.svgOf(mathjax.document.convert(tex, { display: true }))
+		const svg = mathjax.texToSvg(tex)
 		if (svg.includes("data-mjx-error")) {
 			return undefined
 		}

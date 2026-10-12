@@ -48,10 +48,6 @@
 			"ignoreDependencies": [
 				// Binary copied into the release by apps/cli/scripts/build.sh; external in tsup.config.ts.
 				"@vscode/ripgrep",
-				// Loaded with createRequire on the first formula (src/ui/graphics/math.ts), so
-				// knip sees no import.
-				"@mathjax/src",
-				"@mathjax/mathjax-newcm-font",
 			],
 		},
 		"packages/core": {
