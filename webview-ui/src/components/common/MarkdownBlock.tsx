@@ -5,7 +5,14 @@ import remarkMath from "remark-math"
 import remarkGfm from "remark-gfm"
 
 import { vscode } from "@src/utils/vscode"
-import { type AlertType, markdownUrlTransform, remarkGithubAlerts, remarkSingleDollarMath } from "@src/utils/markdown"
+import {
+	type AlertType,
+	markdownUrlTransform,
+	normalizeMathDelimiters,
+	remarkDisplayMathParagraphs,
+	remarkGithubAlerts,
+	remarkSingleDollarMath,
+} from "@src/utils/markdown"
 import { decodeFilePath, isWindowsAbsolutePath, toOpenFileLinkText } from "@src/utils/windows-file-links"
 
 import CodeBlock from "./CodeBlock"
@@ -86,8 +93,10 @@ interface MarkdownBlockProps {
 	markdown?: string
 }
 
-const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
-	const rehypeKatexPlugin = useRehypeKatex(markdown ?? "")
+const MarkdownBlock = memo(({ markdown: rawMarkdown }: MarkdownBlockProps) => {
+	// "\[...\]" and "\(...\)" become "$$...$$" and "$...$" before parsing.
+	const markdown = useMemo(() => normalizeMathDelimiters(rawMarkdown ?? ""), [rawMarkdown])
+	const rehypeKatexPlugin = useRehypeKatex(markdown)
 	const components = useMemo(
 		() => ({
 			table: ({ children, ...props }: any) => {
@@ -229,6 +238,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 					// "$$...$$" stays with remark-math; "$...$" follows Pandoc's rule so prices stay text.
 					[remarkMath, { singleDollarTextMath: false }],
 					remarkSingleDollarMath,
+					remarkDisplayMathParagraphs,
 					remarkGithubAlerts,
 					() => {
 						return (tree: any) => {
@@ -246,7 +256,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 				// Keeps file:// and "name.ext:line" hrefs for the click handler above.
 				urlTransform={markdownUrlTransform}
 				components={components}>
-				{markdown || ""}
+				{markdown}
 			</ReactMarkdown>
 		</div>
 	)

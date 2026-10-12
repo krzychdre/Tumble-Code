@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { ALERT_TYPES, countMarkdownHeadings, hasComplexMarkdown, remarkGithubAlerts } from "../markdown"
+import {
+	ALERT_TYPES,
+	countMarkdownHeadings,
+	hasComplexMarkdown,
+	normalizeMathDelimiters,
+	remarkGithubAlerts,
+} from "../markdown"
 
 // Minimal mdast builders so we can exercise the plugin without a full parser.
 const text = (value: string) => ({ type: "text", value })
@@ -114,5 +120,40 @@ describe("remarkGithubAlerts", () => {
 
 		const inner = tree.children[0].children[0]
 		expect(inner.data.hProperties["data-alert-type"]).toBe("tip")
+	})
+})
+
+describe("normalizeMathDelimiters", () => {
+	it.each([
+		["\\(x^2\\)", "$x^2$"],
+		["a \\( 3x^3 \\) b", "a $3x^3$ b"],
+		["\\[\\frac{1}{2}\\]", "$$\\frac{1}{2}$$"],
+		["\\[\n\\int f\n\\]", "$$\n\\int f\n$$"],
+		["  - \\[a = b\\]", "  - $$a = b$$"],
+	])("rewrites %j", (input, output) => {
+		expect(normalizeMathDelimiters(input)).toBe(output)
+	})
+
+	it.each([
+		// Escaped brackets and parentheses that are not TeX stay literal.
+		"See \\[1\\] and \\(this\\).",
+		// A TeX line break with spacing inside existing display math.
+		"$$\na \\\\[2pt] b\n$$",
+		// Code spans and fenced code blocks, closed or still streaming.
+		"Use `\\(x^2\\)` here",
+		"```tex\n\\[x^2\\]\n```",
+		"~~~\n\\(x^2\\)",
+		// "\(...\)" does not cross a blank line.
+		"\\(a +\n\nb\\)",
+		// "$...$" cannot hold a "$".
+		"\\(\\text{$x$} + 1\\)",
+	])("leaves %j alone", (input) => {
+		expect(normalizeMathDelimiters(input)).toBe(input)
+	})
+
+	it("rewrites around code", () => {
+		expect(normalizeMathDelimiters("\\(a^2\\) `\\(b^2\\)` \\(c^2\\)\n```\n\\(d^2\\)\n```\n\\(e^2\\)")).toBe(
+			"$a^2$ `\\(b^2\\)` $c^2$\n```\n\\(d^2\\)\n```\n$e^2$",
+		)
 	})
 })
