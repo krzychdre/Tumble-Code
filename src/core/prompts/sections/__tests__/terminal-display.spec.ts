@@ -15,6 +15,7 @@ describe("terminalDisplaySection", () => {
 		expect(section).toContain("exception to the link rule in MARKDOWN RULES")
 		expect(section).toContain("```mermaid")
 		expect(section).toContain("Never say that an image is shown otherwise.")
+		expect(section).toContain("$$\\int_0^1 x\\,dx$$ on a line of its own")
 	})
 
 	it("tells a model in a text terminal that diagrams work and images do not", () => {
@@ -22,6 +23,7 @@ describe("terminalDisplaySection", () => {
 
 		expect(section).toContain("```mermaid")
 		expect(section).toContain("cannot show images")
+		expect(section).toContain("shown as Unicode text")
 		expect(section).not.toContain("![")
 	})
 })

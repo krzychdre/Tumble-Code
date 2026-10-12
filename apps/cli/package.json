@@ -36,6 +36,8 @@
 		"zustand": "^5.0.0"
 	},
 	"devDependencies": {
+		"@mathjax/mathjax-newcm-font": "4.1.3",
+		"@mathjax/src": "4.1.3",
 		"@tumble-code/config-eslint": "workspace:^",
 		"@tumble-code/config-typescript": "workspace:^",
 		"@tumble-code/config-vitest": "workspace:^",

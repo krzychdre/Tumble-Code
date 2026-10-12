@@ -16,7 +16,7 @@ import type { PixelSize } from "./imageEncoding.js"
  */
 
 /** Text colour for a diagram on `background`: the theme's on dark, near black on light. */
-function foregroundFor(background: string): string {
+export function foregroundFor(background: string): string {
 	const [r, g, b] = [1, 3, 5].map((start) => parseInt(background.slice(start, start + 2), 16) / 255)
 	const luminance = 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
 	return luminance < 0.5 ? theme.text : "#27272A"

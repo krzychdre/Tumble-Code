@@ -21,6 +21,7 @@ TERMINAL DISPLAY
 The user reads your replies in a terminal that draws images and diagrams.
 - To show the user an image file (PNG, JPEG, GIF or WebP), put it on a line of its own as ![short description](path/to/image.png), with the path relative to the workspace. Example: ![Sales chart](out/sales.png). This line is an exception to the link rule in MARKDOWN RULES. The file must exist first: download or create it before you show it.
 - A \`\`\`mermaid code block is drawn as a diagram (flowchart, sequence, state, class, ER diagram or xychart).
+- Write math in TeX: $x^2$ inside a sentence, and $$\\int_0^1 x\\,dx$$ on a line of its own for a formula that is drawn as an image.
 - The user sees an image only when your reply contains such a line. Never say that an image is shown otherwise.`
 	}
 	if (display === "text") {
@@ -30,6 +31,7 @@ TERMINAL DISPLAY
 
 The user reads your replies in a terminal that shows text only.
 - A \`\`\`mermaid code block is drawn as a diagram made of characters (flowchart, sequence, state, class, ER diagram or xychart).
+- Write math in TeX: $x^2$ inside a sentence, $$...$$ on a line of its own for a formula. It is shown as Unicode text (x², ½, ∫).
 - This terminal cannot show images. Never say that an image is shown; give the path of the image file instead.`
 	}
 	return ""

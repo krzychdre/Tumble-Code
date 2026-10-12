@@ -5,10 +5,12 @@ import { escapeRegExp } from "@tumble-code/core/cli"
 
 import { figures } from "../figures.js"
 import { InlineImage } from "../graphics/InlineImage.js"
+import { MathBlock } from "../graphics/MathBlock.js"
 import { MermaidBlock } from "../graphics/MermaidBlock.js"
 import * as theme from "../theme.js"
+import { texToUnicode } from "../utils/texToUnicode.js"
 
-type TokenKind = "bold" | "italic" | "code" | "strike" | "linkText" | "linkUrl"
+type TokenKind = "bold" | "italic" | "code" | "math" | "strike" | "linkText" | "linkUrl"
 
 interface Token {
 	kind?: TokenKind
@@ -17,7 +19,17 @@ interface Token {
 
 // `_emphasis_` only at word boundaries, as in CommonMark: otherwise
 // `my_var_name` renders as `myvarname` and `__tests__` as `_tests_`.
-const INLINE_MARKER_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|`[^`]+`|~~[^~]+~~|\[[^\]]*\]\([^)]*\))/
+// Inline math: `$$...$$`, `\(...\)`, `\[...\]` and `$...$` with Pandoc's rule
+// (no space inside the dollars, no digit after the closing one), so the
+// prices in "$5 and $10" stay text.
+const INLINE_MARKER_RE =
+	/(`[^`]+`|\$\$[^$]+\$\$|\\\(.+?\\\)|\\\[.+?\\\]|\$(?=[^\s$])(?:\\.|[^$\\])+?(?<=\S)\$(?!\d)|\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|~~[^~]+~~|\[[^\]]*\]\([^)]*\))/
+
+/** The TeX of a math marker: `$$...$$` (1), a bracket form (2) or `$...$` (3). */
+const MATH_MARKER_RE = /^(?:\$\$([\s\S]+)\$\$|\\[([]([\s\S]+)\\[)\]]|\$([\s\S]+)\$)$/
+
+/** Content that reads as TeX: a command, a script, a relation or an operator. */
+const LOOKS_LIKE_TEX = /\\[a-zA-Z]+|[\^_=<>+]/
 
 function tokenizeInline(line: string): Token[] {
 	try {
@@ -32,7 +44,13 @@ function tokenizeInline(line: string): Token[] {
 				tokens.push({ text: before })
 			}
 
-			if (marker.startsWith("**")) {
+			const math = MATH_MARKER_RE.exec(marker)
+			// "\[1\]" is an escaped "[1]", not math: brackets need TeX inside.
+			if (math && (math[2] === undefined || LOOKS_LIKE_TEX.test(math[2]))) {
+				tokens.push({ kind: "math", text: texToUnicode(math[1] ?? math[2] ?? math[3] ?? "") })
+			} else if (math) {
+				tokens.push({ text: marker })
+			} else if (marker.startsWith("**")) {
 				tokens.push({ kind: "bold", text: marker.slice(2, -2) })
 			} else if (marker.startsWith("*")) {
 				tokens.push({ kind: "italic", text: marker.slice(1, -1) })
@@ -93,6 +111,12 @@ function renderTokens(tokens: Token[], dimColor: boolean, faint = false): ReactN
 				case "code":
 					return (
 						<Text key={index} color={shade(theme.code)}>
+							{token.text}
+						</Text>
+					)
+				case "math":
+					return (
+						<Text key={index} italic color={baseColor}>
 							{token.text}
 						</Text>
 					)
@@ -253,6 +277,12 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 	}
 }
 
+/** A display formula filling a line: `$$...$$` (1) or `\[...\]` (2). */
+const DISPLAY_MATH_LINE_RE = /^\s*(?:\$\$([^$]+)\$\$|\\\[(.+)\\\])\s*$/
+
+/** The opening of a display formula over several lines: `$$` or `\[`, then maybe its first TeX. */
+const DISPLAY_MATH_OPEN_RE = /^\s*(\$\$|\\\[)(.*)$/
+
 /** A line that is nothing but an image: `![alt](src)`, optionally with a title. */
 const IMAGE_LINE_RE = /^\s*!\[([^\]]*)\]\(<?([^\s)>]+)>?(?:\s+"[^"]*")?\)\s*$/
 
@@ -280,7 +310,8 @@ interface MarkdownProps {
  * Minimal line-based markdown renderer (no dependencies).
  * Supports bold, italic, inline code, strikethrough, headings (1-4),
  * unordered/ordered lists, blockquotes, fenced code blocks, links and
- * horizontal rules, images on a line of their own and ```mermaid diagrams.
+ * horizontal rules, images on a line of their own, ```mermaid diagrams and
+ * math (`$...$` and `\(...\)` as text, `$$...$$` and `\[...\]` blocks).
  * Tables and unknown structures pass through verbatim.
  * Never throws on malformed input — each line falls back to raw text.
  */
@@ -332,6 +363,37 @@ function Markdown({ children, dimColor = false }: MarkdownProps) {
 				)
 				i += 1
 				continue
+			}
+
+			const mathLine = (line ?? "").match(DISPLAY_MATH_LINE_RE)
+			if (mathLine && (mathLine[2] === undefined || LOOKS_LIKE_TEX.test(mathLine[2]))) {
+				rendered.push(<MathBlock key={i} tex={mathLine[1] ?? mathLine[2] ?? ""} closed />)
+				i += 1
+				continue
+			}
+
+			// A formula over several lines; while it streams, the closing line has
+			// not arrived and the formula shows as text.
+			const mathOpen = (line ?? "").match(DISPLAY_MATH_OPEN_RE)
+			const closer = mathOpen?.[1] === "$$" ? "$$" : "\\]"
+			// "$$a$$ and $$b$$" closes on its own line: inline math, below.
+			if (mathOpen && !(mathOpen[2] ?? "").includes(closer)) {
+				const body = [mathOpen[2] ?? ""]
+				let j = i + 1
+				while (j < lines.length && !(lines[j] ?? "").includes(closer)) {
+					body.push(lines[j] ?? "")
+					j += 1
+				}
+				const closed = j < lines.length
+				if (closed) {
+					body.push((lines[j] ?? "").slice(0, (lines[j] ?? "").indexOf(closer)))
+				}
+				const tex = body.join("\n").trim()
+				if (closer === "$$" || LOOKS_LIKE_TEX.test(tex)) {
+					rendered.push(<MathBlock key={i} tex={tex} closed={closed} />)
+					i = j + 1
+					continue
+				}
 			}
 
 			const imageMatch = (line ?? "").match(IMAGE_LINE_RE)
