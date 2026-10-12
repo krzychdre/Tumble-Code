@@ -38,6 +38,8 @@ _MIN_CHECKS = {
     "render_checks.html": 37,
     # Inline/display math, dollar amounts, code, tables, KaTeX trust off.
     "math_checks.html": 12,
+    # Diagram image, labels, size, cache across a live update, invalid source kept.
+    "mermaid_checks.html": 11,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
     # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter form.

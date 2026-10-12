@@ -2592,6 +2592,17 @@ details.env-details > pre {
 	border: 1px solid var(--line);
 }
 
+/* A mermaid diagram (render.js): an image of the SVG, at most as wide as the row. */
+.mermaid-diagram {
+	margin: var(--s2) 0;
+	overflow-x: auto;
+}
+.mermaid-diagram img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
 /* ==========================================================================
    Live remote control
    ========================================================================== */
