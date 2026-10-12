@@ -1299,8 +1299,11 @@ input[cmdk-input]:focus {
 	font-weight: 600;
 }
 
+/* --font-mono, not var(--vscode-editor-font-family, monospace): that fallback
+   only covers an undefined variable. An editor font missing from the system
+   (the setting names any font) dropped inline code to the default serif. */
 .markdown-block code:not(pre > code) {
-	font-family: var(--vscode-editor-font-family, monospace);
+	font-family: var(--font-mono);
 	font-size: 0.85em;
 	filter: saturation(110%) brightness(95%);
 	color: var(--vscode-textPreformat-foreground) !important;

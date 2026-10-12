@@ -97,6 +97,11 @@ export default defineConfig(({ mode }) => {
 	]
 
 	return {
+		// Built asset URLs must be relative. The webview serves the build from
+		// a deep vscode-resource path, so the default "/" sent the lazy
+		// KaTeX stylesheet and its fonts to the origin root: the CSS preload
+		// failed with a 404 and chat formulas stayed raw TeX.
+		base: "./",
 		plugins,
 		resolve: {
 			tsconfigPaths: true,

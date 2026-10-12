@@ -334,7 +334,7 @@ describe("MarkdownBlock styles", () => {
 		).toMatchInlineSnapshot(`
 			{
 			  "color": "var(--vscode-textPreformat-foreground)",
-			  "font-family": "var(--vscode-editor-font-family,monospace)",
+			  "font-family": "var(--font-mono)",
 			  "font-size": "13.6px",
 			  "overflow-wrap": "anywhere",
 			  "padding": "1px 2px",
