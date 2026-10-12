@@ -26,6 +26,7 @@ import {
 	getModesSection,
 	addCustomInstructions,
 	markdownFormattingSection,
+	terminalDisplaySection,
 	getSkillsSection,
 	getDeferredToolsSection,
 	getMemorySection,
@@ -236,8 +237,10 @@ async function generatePrompt(
 	const stableHead: string[] = [
 		// 1. Identity, byte-identical everywhere, pointing at the MODE section.
 		STABLE_PROMPT_OPENER,
-		// 2. Formatting rules.
+		// 2. Formatting rules, and what the CLI's terminal shows of a reply
+		//    (empty outside the CLI's terminal UI; constant within a process).
 		markdownFormattingSection(),
+		terminalDisplaySection(settings?.cliDisplay),
 		// 3. Tool-use protocol boilerplate. `toolsCatalog` is always "" (the
 		//    catalog is carried by the native tools array, not by the prompt).
 		getSharedToolUseSection() + toolsCatalog,
@@ -378,6 +381,7 @@ async function generateCompactPrompt(
 		getCompactEditingSection(),
 		getCompactDatesSection(),
 		getCompactRulesSection(),
+		terminalDisplaySection(settings?.cliDisplay),
 		getCompactSystemInfoSection(cwd),
 		memorySection,
 		memoryIndex,

@@ -59,3 +59,23 @@ describe("buildSystemPromptInput removedTools", () => {
 		expect(input.settings?.removedTools).toEqual(["switch_mode", "apply_diff"])
 	})
 })
+
+describe("buildSystemPromptInput cliDisplay", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs()
+	})
+
+	it("takes what the CLI's terminal UI shows from ROO_CLI_DISPLAY", () => {
+		vi.stubEnv("ROO_CLI_DISPLAY", "images")
+		const input = buildSystemPromptInput({ context, cwd: "/test/path", mode: "code", state: {} })
+
+		expect(input.settings?.cliDisplay).toBe("images")
+	})
+
+	it("leaves it unset in VS Code", () => {
+		vi.stubEnv("ROO_CLI_DISPLAY", "")
+		const input = buildSystemPromptInput({ context, cwd: "/test/path", mode: "code", state: {} })
+
+		expect(input.settings?.cliDisplay).toBeUndefined()
+	})
+})

@@ -595,6 +595,8 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			// Asked before ink takes stdin over: the terminal answers on stdin.
 			const graphics = await probeTerminalGraphics({ stdin: process.stdin, stdout: process.stdout })
 			debugLog("[CLI] terminal graphics", graphics)
+			// The model learns from the system prompt what reaches the user.
+			extensionHostOptions.display = graphics.protocol ? "images" : "text"
 
 			const instance = render(
 				createElement(

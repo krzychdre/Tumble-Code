@@ -94,6 +94,10 @@ drawn through `InlineImage` where images are possible, the diagram in box-drawin
 the diagram kind is unsupported or the text form is wider than the terminal. resvg understands neither CSS custom
 properties nor `color-mix()`, so `resolveSvgColors` evaluates them into plain colours first.
 
+The model has to know about both: the TUI passes the probe's verdict to the extension as `ROO_CLI_DISPLAY` (`images`
+or `text`), and the system prompt adds a TERMINAL DISPLAY section with the image syntax and the rule never to claim an
+image is shown without it (`src/core/prompts/sections/terminal-display.ts`). Print and JSON runs leave it out.
+
 ## Build
 
 `apps/cli/tsup.config.ts` bundles the CLI to ESM for Node 22, with the workspace packages inlined.

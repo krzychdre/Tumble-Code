@@ -33,20 +33,21 @@ The same-named VS Code settings take priority over most of the extension variabl
 
 ## CLI runtime contract (`packages/types/src/cli-runtime.ts`)
 
-Seven variables the CLI sets for the extension it hosts. Names come from `CLI_RUNTIME_ENV`; import that constant, never
+Eight variables the CLI sets for the extension it hosts. Names come from `CLI_RUNTIME_ENV`; import that constant, never
 a string literal. `packages/vscode-shim` still reads two `globalThis` slots by literal name; see
 [architecture.md](architecture.md#the-cli-runtime-contract).
 
-| Variable                  | Who sets it                      | What it does                                                                                                                            |
-| ------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROO_CLI_RUNTIME`         | CLI host (`extension-host.ts`)   | `1` marks the process as the CLI runtime (`readCliRuntimeEnv().isCliRuntime`).                                                          |
-| `ROO_CLI_CODEX_AUTH_ONLY` | `tumble auth codex login`        | `1` activates only the OpenAI Codex OAuth manager. Restored to its previous value afterwards.                                           |
-| `ROO_CLI_CLOUD_AUTH_ONLY` | `tumble auth cloud ...`          | `1` starts only the cloud service and returns the cloud sign-in API (`getCloudAuth`). Restored to its previous value afterwards.        |
-| `ROO_CLI_VERSION`         | CLI host                         | The CLI package version; the extension sends it as `clientVersion` with telemetry, error reports and LLM exchanges.                     |
-| `ROO_MCP_SETTINGS_PATH`   | CLI host                         | Overrides the global MCP settings file (default `~/.roo/mcp.json`).                                                                     |
-| `ROO_CLI_ROOT`            | Release wrapper script / harness | Root of the unpacked CLI release; resolves bundled assets (ripgrep, node_modules). Dev mode falls back to walking up to `package.json`. |
-| `ROO_EXTENSION_PATH`      | CLI host                         | Path to the built extension (`src/dist`) the host loads.                                                                                |
-| `ROO_RIPGREP_PATH`        | CLI host                         | Path to the bundled ripgrep binary.                                                                                                     |
+| Variable                  | Who sets it                      | What it does                                                                                                                                                                                              |
+| ------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROO_CLI_RUNTIME`         | CLI host (`extension-host.ts`)   | `1` marks the process as the CLI runtime (`readCliRuntimeEnv().isCliRuntime`).                                                                                                                            |
+| `ROO_CLI_CODEX_AUTH_ONLY` | `tumble auth codex login`        | `1` activates only the OpenAI Codex OAuth manager. Restored to its previous value afterwards.                                                                                                             |
+| `ROO_CLI_CLOUD_AUTH_ONLY` | `tumble auth cloud ...`          | `1` starts only the cloud service and returns the cloud sign-in API (`getCloudAuth`). Restored to its previous value afterwards.                                                                          |
+| `ROO_CLI_VERSION`         | CLI host                         | The CLI package version; the extension sends it as `clientVersion` with telemetry, error reports and LLM exchanges.                                                                                       |
+| `ROO_CLI_DISPLAY`         | CLI host (terminal UI only)      | `images` or `text`: what the terminal UI shows of a reply (terminal probe). The system prompt then adds TERMINAL DISPLAY (`src/core/prompts/sections/terminal-display.ts`). Unset in print and JSON runs. |
+| `ROO_MCP_SETTINGS_PATH`   | CLI host                         | Overrides the global MCP settings file (default `~/.roo/mcp.json`).                                                                                                                                       |
+| `ROO_CLI_ROOT`            | Release wrapper script / harness | Root of the unpacked CLI release; resolves bundled assets (ripgrep, node_modules). Dev mode falls back to walking up to `package.json`.                                                                   |
+| `ROO_EXTENSION_PATH`      | CLI host                         | Path to the built extension (`src/dist`) the host loads.                                                                                                                                                  |
+| `ROO_RIPGREP_PATH`        | CLI host                         | Path to the bundled ripgrep binary.                                                                                                                                                                       |
 
 ## CLI terminal display (`apps/cli/src/ui/graphics/terminalProbe.ts`)
 

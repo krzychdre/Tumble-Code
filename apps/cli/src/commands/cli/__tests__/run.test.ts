@@ -1532,6 +1532,8 @@ describe("run --resume", () => {
 			element = element.props.children
 		}
 		expect(element?.props.openResumePicker).toBe(true)
+		// The fake stdin answers no terminal query, so the prompt hears "text".
+		expect(element?.props.display).toBe("text")
 	})
 
 	it.each([

@@ -313,6 +313,15 @@ describe("ExtensionHost", () => {
 			expect(process.env.ROO_MCP_SETTINGS_PATH).toBe("/custom/mcp_settings.json")
 		})
 
+		it("should tell the extension what the terminal UI shows, and nothing for print runs", () => {
+			delete process.env.ROO_CLI_DISPLAY
+			createTestHost()
+			expect(process.env.ROO_CLI_DISPLAY).toBeUndefined()
+
+			createTestHost({ display: "images" })
+			expect(process.env.ROO_CLI_DISPLAY).toBe("images")
+		})
+
 		it("should set execaShellPath in initialSettings when terminalShell is provided", () => {
 			const host = createTestHost({ terminalShell: "/bin/bash" })
 			const emitSpy = vi.spyOn(host, "emit")
