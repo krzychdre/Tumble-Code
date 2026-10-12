@@ -1,12 +1,13 @@
 import fs from "fs"
 import os from "os"
 import path from "path"
+import zlib from "zlib"
 import type { ReactNode } from "react"
 import { render } from "ink-testing-library"
 
 import Markdown from "../../components/Markdown.js"
 import { GraphicsContext, ScrollbackContext, type GraphicsSettings } from "../GraphicsContext.js"
-import { rasterizeSvg } from "../imageEncoding.js"
+import { MAX_IMAGE_PIXELS, rasterizeSvg } from "../imageEncoding.js"
 import { expandImageMarkers, resetInlineImages } from "../inlineImages.js"
 
 let dir: string
@@ -31,6 +32,29 @@ function renderIn(
 			<ScrollbackContext.Provider value={scrollback}>{node}</ScrollbackContext.Provider>
 		</GraphicsContext.Provider>,
 	)
+}
+
+/** A valid black PNG of `width` x `height`, one bit a pixel, so it stays small in memory. */
+function blackPng(width: number, height: number): Buffer {
+	const chunk = (type: string, data: Buffer) => {
+		const body = Buffer.concat([Buffer.from(type), data])
+		const length = Buffer.alloc(4)
+		length.writeUInt32BE(data.length)
+		const crc = Buffer.alloc(4)
+		crc.writeUInt32BE(zlib.crc32(body))
+		return Buffer.concat([length, body, crc])
+	}
+	const header = Buffer.alloc(13)
+	header.writeUInt32BE(width, 0)
+	header.writeUInt32BE(height, 4)
+	header[8] = 1 // bit depth; colour type 0 (grey) and the rest stay 0
+	const rows = Buffer.alloc((1 + Math.ceil(width / 8)) * height)
+	return Buffer.concat([
+		Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+		chunk("IHDR", header),
+		chunk("IDAT", zlib.deflateSync(rows)),
+		chunk("IEND", Buffer.alloc(0)),
+	])
 }
 
 const answer = "Here it is:\n![sales chart](chart.png)\nDone."
@@ -66,6 +90,20 @@ describe("images in markdown", () => {
 		})
 		expect(lastFrame()).toContain("[image: a] missing.png")
 		expect(lastFrame()).toContain("[image: b] notes.png")
+	})
+
+	it("does not decode an image with more pixels than the limit", () => {
+		// Fits within the limit, so it is drawn...
+		fs.writeFileSync(path.join(dir, "small.png"), blackPng(64, 64))
+		// ...one pixel over it is not: resvg would decode it whole before scaling.
+		const side = Math.ceil(Math.sqrt(MAX_IMAGE_PIXELS + 1))
+		fs.writeFileSync(path.join(dir, "huge.png"), blackPng(side, side))
+		const { lastFrame } = renderIn(<Markdown>{"![a](small.png)\n![b](huge.png)"}</Markdown>, {
+			protocol: "kitty",
+			scrollback: true,
+		})
+		expect(lastFrame()).not.toContain("[image: a]")
+		expect(lastFrame()).toContain("[image: b] huge.png")
 	})
 
 	it("does not spell out an embedded data URL", () => {

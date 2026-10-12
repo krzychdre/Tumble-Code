@@ -54,9 +54,18 @@ export function placeImage(natural: PixelSize, box: ImageBox, graphics: Terminal
 }
 
 /**
+ * The most pixels an image file may have to be drawn: 4096 x 4096, so a 12
+ * megapixel phone photo fits. resvg decodes a bitmap at its full size before
+ * scaling it down, synchronously, 4 bytes a pixel and more: a 380 KB PNG with
+ * a 10000 x 10000 header took 470 MB and a second to draw at 600 x 600. The
+ * path comes from the model's answer, so the header is not to be trusted.
+ */
+export const MAX_IMAGE_PIXELS = 4096 * 4096
+
+/**
  * The pixel size stored in an image file's header, or undefined for a format
- * resvg cannot draw. Only the header is read; the image is decoded later, at
- * the size it is drawn at.
+ * resvg cannot draw. Only the header is read; the whole image is decoded
+ * later (see MAX_IMAGE_PIXELS).
  */
 export function imageFileSize(bytes: Uint8Array): (PixelSize & { mime: string }) | undefined {
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)

@@ -9,6 +9,7 @@ import { GraphicsContext, useImageProtocol, type GraphicsSettings } from "./Grap
 import {
 	encodeImage,
 	imageFileSize,
+	MAX_IMAGE_PIXELS,
 	placeImage,
 	rasterizeSvg,
 	wrapBitmapInSvg,
@@ -29,6 +30,9 @@ const GUTTER_COLUMNS = 4
 /** An image never takes more than this many rows, however tall the terminal. */
 const MAX_IMAGE_ROWS = 40
 
+/** A larger image file is not read at all: it is read in one go, on the render path. */
+const MAX_IMAGE_FILE_BYTES = 32 * 1024 * 1024
+
 /** The bytes of an image file, from a path relative to the workspace or a `data:` URL. */
 function readImageBytes(src: string, baseDir: string): Uint8Array | undefined {
 	const data = src.match(/^data:image\/[\w.+-]+;base64,(.+)$/)
@@ -40,7 +44,8 @@ function readImageBytes(src: string, baseDir: string): Uint8Array | undefined {
 		return undefined
 	}
 	const file = path.resolve(baseDir, src.startsWith("file://") ? new URL(src).pathname : src)
-	return fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file) : undefined
+	const stat = fs.statSync(file, { throwIfNoEntry: false })
+	return stat?.isFile() && stat.size <= MAX_IMAGE_FILE_BYTES ? fs.readFileSync(file) : undefined
 }
 
 /**
@@ -64,6 +69,9 @@ export function prepareImage(source: ImageSource, graphics: GraphicsSettings, bo
 	try {
 		const bytes = source.kind === "file" ? readImageBytes(source.src, graphics.baseDir) : undefined
 		const header = bytes ? imageFileSize(bytes) : undefined
+		if (header && header.width * header.height > MAX_IMAGE_PIXELS) {
+			return undefined
+		}
 		const natural = source.kind === "file" ? header : source.size
 		const placement = natural ? placeImage(natural, box, graphics) : undefined
 		if (!placement) {
