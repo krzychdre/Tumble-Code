@@ -134,6 +134,14 @@ describe("Markdown", () => {
 			["on \\((-\\infty, 0]\\) it", "on (-∞, 0] it"],
 			["inline $$\\frac{1}{2}$$ too", "inline ½ too"],
 			["**bold** and $x_1$ and `$code$`", "bold and x₁ and $code$"],
+			// Math inside emphasis (the 2026-10-12 attention screenshot).
+			[
+				"czyli **ile uwagi token $i$ poświęca tokenowi $j$** - stąd",
+				"czyli ile uwagi token i poświęca tokenowi j - stąd",
+			],
+			["*weight $\\alpha_i$* and ~~$\\beta$~~", "weight αᵢ and β"],
+			["[the $\\pi$ page](https://x.y)", "the π page (https://x.y)"],
+			["**costs $5 and $10**", "costs $5 and $10"],
 		])("renders %j as %j", (markdown, text) => {
 			const { lastFrame } = render(<Markdown>{markdown}</Markdown>)
 

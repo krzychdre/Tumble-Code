@@ -22,14 +22,33 @@ interface Token {
 // Inline math: `$$...$$`, `\(...\)`, `\[...\]` and `$...$` with Pandoc's rule
 // (no space inside the dollars, no digit after the closing one), so the
 // prices in "$5 and $10" stay text.
-const INLINE_MARKER_RE =
-	/(`[^`]+`|\$\$[^$]+\$\$|\\\(.+?\\\)|\\\[.+?\\\]|\$(?=[^\s$])(?:\\.|[^$\\])+?(?<=\S)\$(?!\d)|\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|~~[^~]+~~|\[[^\]]*\]\([^)]*\))/
+const INLINE_MATH = String.raw`\$\$[^$]+\$\$|\\\(.+?\\\)|\\\[.+?\\\]|\$(?=[^\s$])(?:\\.|[^$\\])+?(?<=\S)\$(?!\d)`
+const INLINE_MARKER_RE = new RegExp(
+	String.raw`(\x60[^\x60]+\x60|${INLINE_MATH}|\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|~~[^~]+~~|\[[^\]]*\]\([^)]*\))`,
+)
+
+/** Math inside bold, italic, struck or link text: `**token $i$**` reads `token i`. */
+const NESTED_MATH_RE = new RegExp(INLINE_MATH, "g")
 
 /** The TeX of a math marker: `$$...$$` (1), a bracket form (2) or `$...$` (3). */
 const MATH_MARKER_RE = /^(?:\$\$([\s\S]+)\$\$|\\[([]([\s\S]+)\\[)\]]|\$([\s\S]+)\$)$/
 
 /** Content that reads as TeX: a command, a script, a relation or an operator. */
 const LOOKS_LIKE_TEX = /\\[a-zA-Z]+|[\^_=<>+]/
+
+/** A math marker as Unicode text, or undefined when `marker` is no formula. */
+function mathOf(marker: string): string | undefined {
+	const math = MATH_MARKER_RE.exec(marker)
+	// "\[1\]" is an escaped "[1]", not math: brackets need TeX inside.
+	if (!math || (math[2] !== undefined && !LOOKS_LIKE_TEX.test(math[2]))) {
+		return undefined
+	}
+	return texToUnicode(math[1] ?? math[2] ?? math[3] ?? "")
+}
+
+function withMath(text: string): string {
+	return text.replace(NESTED_MATH_RE, (marker) => mathOf(marker) ?? marker)
+}
 
 function tokenizeInline(line: string): Token[] {
 	try {
@@ -44,24 +63,23 @@ function tokenizeInline(line: string): Token[] {
 				tokens.push({ text: before })
 			}
 
-			const math = MATH_MARKER_RE.exec(marker)
-			// "\[1\]" is an escaped "[1]", not math: brackets need TeX inside.
-			if (math && (math[2] === undefined || LOOKS_LIKE_TEX.test(math[2]))) {
-				tokens.push({ kind: "math", text: texToUnicode(math[1] ?? math[2] ?? math[3] ?? "") })
-			} else if (math) {
+			const math = mathOf(marker)
+			if (math !== undefined) {
+				tokens.push({ kind: "math", text: math })
+			} else if (MATH_MARKER_RE.test(marker)) {
 				tokens.push({ text: marker })
 			} else if (marker.startsWith("**")) {
-				tokens.push({ kind: "bold", text: marker.slice(2, -2) })
+				tokens.push({ kind: "bold", text: withMath(marker.slice(2, -2)) })
 			} else if (marker.startsWith("*")) {
-				tokens.push({ kind: "italic", text: marker.slice(1, -1) })
+				tokens.push({ kind: "italic", text: withMath(marker.slice(1, -1)) })
 			} else if (marker.startsWith("_")) {
-				tokens.push({ kind: "italic", text: marker.slice(1, -1) })
+				tokens.push({ kind: "italic", text: withMath(marker.slice(1, -1)) })
 			} else if (marker.startsWith("`")) {
 				tokens.push({ kind: "code", text: marker.slice(1, -1) })
 			} else if (marker.startsWith("~~")) {
-				tokens.push({ kind: "strike", text: marker.slice(2, -2) })
+				tokens.push({ kind: "strike", text: withMath(marker.slice(2, -2)) })
 			} else if (marker.startsWith("[")) {
-				tokens.push({ kind: "linkText", text: marker.slice(1, marker.indexOf("]")) })
+				tokens.push({ kind: "linkText", text: withMath(marker.slice(1, marker.indexOf("]"))) })
 				const urlStart = marker.indexOf("(") + 1
 				const urlEnd = marker.lastIndexOf(")")
 				if (urlStart > 0 && urlEnd > urlStart) {
