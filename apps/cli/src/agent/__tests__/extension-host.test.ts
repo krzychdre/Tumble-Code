@@ -476,6 +476,32 @@ describe("ExtensionHost", () => {
 		})
 	})
 
+	describe("getModelForMode", () => {
+		const base = { apiProvider: "openai" as const, openAiModelId: "GLM-5.3-NVFP4" }
+		const architect = { apiProvider: "anthropic" as const, apiModelId: "claude-sonnet-5-5" }
+
+		it("names the mode's own model, else the base one", () => {
+			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: { architect } } })
+
+			expect(host.getModelForMode("architect")).toBe("claude-sonnet-5-5")
+			expect(host.getModelForMode("code")).toBe("GLM-5.3-NVFP4")
+		})
+
+		it("follows /model", () => {
+			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: {} } })
+			host.markWebviewReady()
+
+			host.switchModel("code", "Qwen3.8-27B")
+
+			expect(host.getModelForMode("code")).toBe("Qwen3.8-27B")
+			expect(host.getModelForMode("ask")).toBe("GLM-5.3-NVFP4")
+		})
+
+		it("is undefined without per-mode settings", () => {
+			expect(createTestHost({ provider: "openai" }).getModelForMode("code")).toBeUndefined()
+		})
+	})
+
 	describe("webview provider registration", () => {
 		it("should register webview provider without throwing", () => {
 			const host = createTestHost()

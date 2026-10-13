@@ -157,15 +157,16 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		nonInteractive: permissionMode === "allow",
 	})
 
-	const { sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel, switchModel } = useExtensionHost({
-		...hostOptions,
-		initialPrompt,
-		initialTaskId,
-		initialSessionId,
-		continueSession,
-		transcript,
-		createExtensionHost,
-	})
+	const { sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel, switchModel, getModelForMode } =
+		useExtensionHost({
+			...hostOptions,
+			initialPrompt,
+			initialTaskId,
+			initialSessionId,
+			continueSession,
+			transcript,
+			createExtensionHost,
+		})
 
 	// Initialize task submit hook
 	const { handleSubmit, handleSuggestion, handleApprove, handleReject } = useTaskSubmit({
@@ -200,6 +201,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			followupAutocompleteRef,
 			sendToExtension,
 			showInfo,
+			getModelForMode,
 			resetTranscript,
 		})
 
@@ -213,6 +215,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		mode,
 		sendToExtension,
 		showInfo,
+		getModelForMode,
 		exit,
 		cleanup,
 		closePicker: handlePickerClose,

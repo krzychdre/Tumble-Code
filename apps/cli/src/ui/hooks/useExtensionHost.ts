@@ -86,6 +86,8 @@ export interface UseExtensionHostReturn {
 	cloudAuthChannel: CloudAuthChannel
 	/** Run another model in a mode and save the choice (/model); throws before the host exists. */
 	switchModel: (mode: string, model: string) => ModelSwitch
+	/** The model a mode runs with in this session; undefined before the host exists or without one. */
+	getModelForMode: (mode: string) => string | undefined
 }
 
 /**
@@ -299,6 +301,11 @@ export function useExtensionHost({
 		return hostRef.current.switchModel(mode, model)
 	}, [])
 
+	// Stable getModelForMode - uses ref to always access current host.
+	const getModelForMode = useCallback((mode: string): string | undefined => {
+		return hostRef.current?.getModelForMode(mode)
+	}, [])
+
 	// Stable channel for /login and /logout - uses ref to always access current host.
 	const cloudAuthChannel = useMemo<CloudAuthChannel>(
 		() => ({
@@ -328,7 +335,8 @@ export function useExtensionHost({
 			resetTranscript,
 			cloudAuthChannel,
 			switchModel,
+			getModelForMode,
 		}),
-		[sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel, switchModel],
+		[sendToExtension, runTask, cleanup, resetTranscript, cloudAuthChannel, switchModel, getModelForMode],
 	)
 }

@@ -9,6 +9,7 @@ import { useUIStateStore } from "../stores/uiStateStore.js"
 import { useSecretPromptStore } from "../stores/secretPromptStore.js"
 import { useCLIStore } from "../store.js"
 import { CLEAR_TERMINAL } from "../utils/clearTerminal.js"
+import { modeSwitchNotice } from "../utils/modeSwitchNotice.js"
 
 export interface UseGlobalInputOptions {
 	pickerIsOpen: boolean
@@ -17,6 +18,8 @@ export interface UseGlobalInputOptions {
 	mode: string
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	showInfo: (msg: string, duration?: number) => void
+	/** The model a mode runs with (ExtensionHost.getModelForMode), named in the mode-switch toast. */
+	getModelForMode?: (mode: string) => string | undefined
 	exit: () => void
 	cleanup: () => Promise<void>
 	closePicker: () => void
@@ -45,6 +48,7 @@ export function useGlobalInput({
 	mode,
 	sendToExtension,
 	showInfo,
+	getModelForMode,
 	exit,
 	cleanup,
 	closePicker,
@@ -117,7 +121,7 @@ export function useGlobalInput({
 
 			if (nextMode && sendToExtension) {
 				sendToExtension({ type: "mode", text: nextMode.slug })
-				showInfo(`Switched to ${nextMode.name}`, 2000)
+				showInfo(modeSwitchNotice(nextMode.name, getModelForMode?.(nextMode.slug)), 2000)
 			}
 
 			return

@@ -9,6 +9,7 @@ import type {
 } from "../components/autocomplete/index.js"
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
+import { modeSwitchNotice } from "../utils/modeSwitchNotice.js"
 
 export interface UsePickerHandlersOptions {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,6 +18,8 @@ export interface UsePickerHandlersOptions {
 	followupAutocompleteRef: React.RefObject<AutocompleteInputHandle<any> | null>
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	showInfo: (msg: string, duration?: number) => void
+	/** The model a mode runs with (ExtensionHost.getModelForMode), named in the mode-switch toast. */
+	getModelForMode?: (mode: string) => string | undefined
 	/** Forget the transcript bookkeeping of the current task (the client's transcript reader). */
 	resetTranscript: () => void
 }
@@ -45,6 +48,7 @@ export function usePickerHandlers({
 	followupAutocompleteRef,
 	sendToExtension,
 	showInfo,
+	getModelForMode,
 	resetTranscript,
 }: UsePickerHandlersOptions): UsePickerHandlersReturn {
 	const { isLoading, currentTaskId, setCurrentTaskId } = useCLIStore()
@@ -73,6 +77,7 @@ export function usePickerHandlers({
 
 				if (sendToExtension) {
 					sendToExtension({ type: "mode", text: modeItem.slug })
+					showInfo(modeSwitchNotice(modeItem.name, getModelForMode?.(modeItem.slug)), 2000)
 				}
 
 				autocompleteRef.current?.closePicker()
@@ -128,6 +133,7 @@ export function usePickerHandlers({
 			pickerState.activeTrigger,
 			isLoading,
 			showInfo,
+			getModelForMode,
 			currentTaskId,
 			setCurrentTaskId,
 			sendToExtension,
