@@ -4,6 +4,9 @@
 // provider settings (a pinned profile, or a CLI per-mode entry) resolve,
 // through the shared model resolver, to a model with supportsImages. The
 // unsupported-image notice of read_file names exactly these modes.
+//
+// `vision` is a built-in mode; a user custom mode with the same slug overrides
+// it (the owner kept one in the global custom_modes.yaml before it was built in).
 
 import {
 	openAiModelInfoSaneDefaults,
@@ -25,7 +28,8 @@ const withImages: ProviderSettings = {
 	openAiCustomModelInfo: { contextWindow: 128_000, supportsPromptCache: false, supportsImages: true },
 }
 
-const visionMode: ModeConfig = { slug: "vision", name: "Vision", roleDefinition: "Eyes.", groups: ["read"] }
+const customVision: ModeConfig = { slug: "vision", name: "Vision", roleDefinition: "Eyes.", groups: ["read"] }
+const designerMode: ModeConfig = { slug: "designer", name: "Designer", roleDefinition: "Draws.", groups: ["read"] }
 
 interface Setup {
 	profiles?: Record<string, ProviderSettings>
@@ -38,7 +42,7 @@ interface Setup {
 function makeBinding({
 	profiles = { glm: textOnly, qwen: withImages },
 	modeApiConfigs = {},
-	customModes = [visionMode],
+	customModes = [],
 	locked = false,
 	unreadable = [],
 }: Setup = {}) {
@@ -77,8 +81,44 @@ describe("ModeProfileBinding.findImageCapableModes", () => {
 		expect(await binding.findImageCapableModes()).toEqual([])
 	})
 
+	it("offers the built-in vision mode when its pinned profile supports images", async () => {
+		const binding = makeBinding({ modeApiConfigs: { vision: "id-qwen" } })
+
+		expect(await binding.findImageCapableModes()).toEqual([{ slug: "vision", modelId: "qwen3.6-35b" }])
+	})
+
+	it("does not offer the built-in vision mode while its pinned profile is text-only", async () => {
+		const binding = makeBinding({ modeApiConfigs: { vision: "id-glm" } })
+
+		expect(await binding.findImageCapableModes()).toEqual([])
+	})
+
+	it("does not offer the built-in vision mode while nothing is pinned to it", async () => {
+		const binding = makeBinding({ modeApiConfigs: { code: "id-glm" } })
+
+		expect(await binding.findImageCapableModes()).toEqual([])
+	})
+
+	it("lists vision once when a custom mode overrides the built-in one", async () => {
+		const binding = makeBinding({ customModes: [customVision], modeApiConfigs: { vision: "id-qwen" } })
+
+		expect(await binding.findImageCapableModes()).toEqual([{ slug: "vision", modelId: "qwen3.6-35b" }])
+	})
+
+	it("lists an image-capable custom mode after the built-in vision mode", async () => {
+		const binding = makeBinding({
+			customModes: [designerMode],
+			modeApiConfigs: { vision: "id-qwen", designer: "id-qwen" },
+		})
+
+		expect(await binding.findImageCapableModes()).toEqual([
+			{ slug: "vision", modelId: "qwen3.6-35b" },
+			{ slug: "designer", modelId: "qwen3.6-35b" },
+		])
+	})
+
 	it("ignores a pin left behind by a mode that no longer exists", async () => {
-		const binding = makeBinding({ customModes: [], modeApiConfigs: { vision: "id-qwen" } })
+		const binding = makeBinding({ modeApiConfigs: { designer: "id-qwen" } })
 
 		expect(await binding.findImageCapableModes()).toEqual([])
 	})

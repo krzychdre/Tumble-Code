@@ -495,6 +495,11 @@ without an entry use the top level.
   model the new mode runs with, `/model` changes included:
   `Switched to Architect (GLM-5.3-NVFP4)`. The footer shows the model in use
   after any switch, also one the model or a subtask makes.
+- The built-in `vision` mode describes images for modes whose model cannot
+  see them, so it needs a model that can: give it one with an entry such as
+  `"vision": { "model": "qwen3.6-35b" }`. When `read_file` meets an image the
+  current model cannot see, the note it returns names the modes whose model
+  can, and the model can hand the image to one of them with `new_task`.
 
 A model can name its modes itself: `modes` in its `models` entry lists the
 slugs of the modes that run it. This is the same as writing

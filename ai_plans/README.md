@@ -33,8 +33,9 @@ plans (`2026-08-04_cli-bare-run-settings-sync.md`, `2026-08-04_cli-provider-pari
 `2026-08-05_cli-claude-code-style-ui-redesign.md`) that stay until the `apps/cli` comments pointing at them are next
 edited.
 
-`assets/` holds the mode definitions (`reviewer-mode.yaml`, `vision-mode.yaml`) that the reviewer and vision mode
-plans deploy; they are sources, not plans.
+`assets/` holds the mode definition `reviewer-mode.yaml` that the reviewer mode plans deploy; it is a source, not a
+plan. The vision mode is built in since 2026-10-13 (`DEFAULT_MODES` in `packages/types/src/mode.ts`), so its former
+`vision-mode.yaml` is gone.
 
 ## Open plans
 

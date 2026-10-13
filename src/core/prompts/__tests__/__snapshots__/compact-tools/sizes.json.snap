@@ -43,5 +43,14 @@
     "compactNativeChars": 1187,
     "compactSentChars": 1232,
     "compactWithWebToolsSentChars": 1232
+  },
+  "vision": {
+    "todayTools": 15,
+    "todayNativeChars": 31530,
+    "todaySentChars": 31629,
+    "compactTools": 7,
+    "compactNativeChars": 3130,
+    "compactSentChars": 3235,
+    "compactWithWebToolsSentChars": 3235
   }
 }
