@@ -267,37 +267,44 @@ describe("system prompt common prefix across modes", () => {
 	 * Floor for the prefix two different modes share, in bytes, MEASURED WITH AN
 	 * MCP HUB CONNECTED, which is what `buildPrompt` does by default.
 	 *
-	 * The hub matters. With no server connected, the five modes here share 11628
-	 * bytes, because MCP SERVERS is empty for all of them and the shared region
-	 * runs on through MODES and RULES. With a hub connected the worst pair
-	 * is code vs orchestrator: orchestrator has no `mcp` group, so the two
-	 * prompts part company at the MCP SERVERS section and share 8196 bytes, which
-	 * is the stable head plus its trailing separator. That worst case is the
-	 * number this floor guards, because it is the one an orchestrator flow
-	 * actually pays. Before WS-F the same measurement gave 17 bytes.
+	 * The hub matters. With no server connected, MCP SERVERS is empty for every
+	 * mode and the shared region runs on through MODES and RULES. With a hub
+	 * connected the worst pair is any mode vs orchestrator: orchestrator has no
+	 * `mcp` group, so the two prompts part company at the MCP SERVERS section and
+	 * share 7630 bytes, which is the stable head plus its trailing separator. That
+	 * worst case is the number this floor guards, because it is the one an
+	 * orchestrator flow actually pays. Before WS-F the same measurement gave 17
+	 * bytes.
 	 *
-	 * MEASUREMENT LOG, all three numbers from the same pairwise loop below:
+	 * MEASUREMENT LOG, all numbers from the same pairwise loop below:
 	 *
 	 *   8252  WS-F, when the stable head first landed.
 	 *   8186  opener reword v1: the old sentence promised the conditional
 	 *         "Mode-specific Instructions" block, and dropping that promise cost
 	 *         66 bytes (8252 - 66 = 8186).
-	 *   8196  opener reword v2 (this round): the conditional phrasing "if it has
+	 *   8196  opener reword v2: the conditional phrasing "if it has
 	 *         any" and the single-referent bindingness clause add 10 bytes back
 	 *         (8186 + 10 = 8196). The no-hub figure moved by the same 10, from
 	 *         11618 to 11628, because nothing but the opener changed.
+	 *   8109  measured again before the next change: later head edits had moved
+	 *         the worst pair without touching this log, staying above the floor.
+	 *   7630  the TOOL USE rule asking for \uXXXX escapes of non-ASCII text is
+	 *         deleted (8109 - 479 = 7630): models escaped the backslash too and
+	 *         users saw "wy\u0142\u0105cznie" instead of the letters. The floor
+	 *         drops from 8000 to 7400 with it, a deliberate shortening of the
+	 *         stable head.
 	 *
 	 * HOW TO UPDATE THIS NUMBER LEGITIMATELY: it may only ever go UP, unless a PR
 	 * deliberately shortens a stable-head section (deleting text, moving a section
 	 * into the tail because it turned out to be mode-dependent). Lowering it
 	 * because "the test broke" hides exactly the regression this file exists to
-	 * catch: something mode-dependent creeping into the head. The floor stays at
-	 * 8000 through all three measurements above: it never follows head TEXT edits,
-	 * up or down. The remaining gap to the measured 8196 is 196 bytes, kept so
-	 * ordinary edits to head text (a reworded rule) do not fail the suite; the
-	 * computed assertion below, not this floor, is the real guard.
+	 * catch: something mode-dependent creeping into the head. The floor never
+	 * follows head TEXT edits, only deleted sections. The remaining gap to the
+	 * measured 7630 is 230 bytes, kept so ordinary edits to head text (a reworded
+	 * rule) do not fail the suite; the computed assertion below, not this floor,
+	 * is the real guard.
 	 */
-	const MIN_SHARED_PREFIX_BYTES = 8000
+	const MIN_SHARED_PREFIX_BYTES = 7400
 
 	it("shares at least the stable head between every pair of modes", async () => {
 		const prompts = new Map<string, string>()
@@ -338,7 +345,7 @@ describe("system prompt common prefix across modes", () => {
 	})
 
 	it("shares more than the head between modes that agree about MCP", async () => {
-		// Control for the test above: the 8196-byte worst case is caused by the
+		// Control for the test above: the 7630-byte worst case is caused by the
 		// MCP group difference, not by the head being short. Two modes that both
 		// carry the `mcp` group keep sharing well past it.
 		const code = await buildPrompt("code")
