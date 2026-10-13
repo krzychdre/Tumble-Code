@@ -12,19 +12,18 @@ describe("getSharedToolUseSection", () => {
 		expect(getSharedToolUseSection()).toContain("provider-native tool-calling mechanism")
 	})
 
-	it("instructs the model to escape non-ASCII characters as \\uXXXX in JSON arguments", () => {
+	// Models told to write non-ASCII as \uXXXX escaped the backslash too, so the
+	// user saw "wy\u0142\u0105cznie" and files on disk got the same text.
+	it("does not ask the model to escape non-ASCII characters", () => {
 		const section = getSharedToolUseSection()
-		expect(section).toContain("character outside the printable ASCII range")
-		expect(section).toContain("\\uXXXX")
-		// The mitigation is an escape, not a strip: the user must still see real characters.
-		expect(section).toContain("decodes escapes")
+		expect(section).not.toContain("\\uXXXX")
+		expect(section).not.toContain("printable ASCII")
 	})
 
 	// Prompt-prefix stability: the TOOL USE section renders between the stable
 	// opener and the mode sections for every request, so it must itself be a
-	// constant. A non-ASCII character here would defeat the mitigation it
-	// describes (this section is part of the KV-cache prefix) and would add
-	// multi-byte characters to the very prefix whose byte-length we keep stable.
+	// constant. A non-ASCII character here would add multi-byte characters to
+	// the very prefix whose byte-length we keep stable.
 	it("stays printable-ASCII only", () => {
 		expect(getSharedToolUseSection()).toMatch(/^[\x20-\x7E\n\t]*$/)
 	})
