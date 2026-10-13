@@ -118,6 +118,15 @@ export interface CliModelSettings {
 	 * hides them.
 	 */
 	hideMcp?: boolean
+	/**
+	 * The modes that run this model, by slug (e.g. ["code", "debug"]). The
+	 * same as writing `"modes": { "code": { "model": "<this id>" } }` for each
+	 * of them, so a mode listed here runs the model on startup, on every mode
+	 * switch, in subtasks and on resume. Works with every provider. Ignored for
+	 * a run given any of --provider, --model, --base-url or --api-key, like
+	 * `modes`.
+	 */
+	modes?: string[]
 }
 
 export type CliModelSize = (typeof MODEL_SIZES)[number]
@@ -142,7 +151,8 @@ export interface CliSettings {
 	 * names and inherits the rest; an entry that names a different provider
 	 * starts from that provider's defaults (model, baseUrl and key are not
 	 * carried across providers). Ignored for a run given any of --provider,
-	 * --model, --base-url or --api-key.
+	 * --model, --base-url or --api-key. A model can also name its modes in its
+	 * own entry (`models.<id>.modes`), which sets the model of those modes.
 	 */
 	modes?: Record<string, CliModeSettings>
 	/**

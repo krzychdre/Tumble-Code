@@ -1,4 +1,10 @@
-import { findModelSettingsProblems, getConfiguredModelSettings, listSetModelSettings } from "../model-settings.js"
+import {
+	findModeBindingProblems,
+	findModelSettingsProblems,
+	getConfiguredModelSettings,
+	getEffectiveModeSettings,
+	listSetModelSettings,
+} from "../model-settings.js"
 
 describe("getConfiguredModelSettings", () => {
 	const models = { "GLM-5.3-NVFP4": { contextWindow: 262_144, inputPrice: 0.6 }, "Qwen3.8-27B": {} }
@@ -26,6 +32,7 @@ describe("listSetModelSettings", () => {
 		// Every provider takes these, so they are never reported as ignored.
 		expect(listSetModelSettings({ reasoningEffort: "high", modelSize: "compact", hideMcp: false })).toEqual([])
 		expect(listSetModelSettings({ provider: "zai", baseUrl: "x", apiKey: "k", apiKeyEnv: "K" })).toEqual([])
+		expect(listSetModelSettings({ modes: ["code"] })).toEqual([])
 		expect(listSetModelSettings({})).toEqual([])
 		expect(listSetModelSettings(undefined)).toEqual([])
 	})
@@ -93,10 +100,95 @@ describe("findModelSettingsProblems", () => {
 		expect(findModelSettingsProblems({ m: { [key]: 1 } })).toHaveLength(1)
 	})
 
+	it("accepts modes as a list of mode slugs, repeats included, and rejects anything else", () => {
+		expect(findModelSettingsProblems({ m: { modes: ["code", "debug", "code"] }, n: { modes: [] } })).toEqual([])
+		expect(findModelSettingsProblems({ m: { modes: "code" } })).toEqual([
+			'models.m.modes must be a list of mode slugs, e.g. ["code", "debug"], got "code"',
+		])
+		expect(findModelSettingsProblems({ m: { modes: ["code", ""] } })).toHaveLength(1)
+		expect(findModelSettingsProblems({ m: { modes: ["code", 1] } })).toHaveLength(1)
+	})
+
 	it("rejects a map or an entry that is not an object", () => {
 		expect(findModelSettingsProblems([])[0]).toMatch(/^models must be an object keyed by model id/)
 		expect(findModelSettingsProblems({ m: 262_144 })).toEqual([
 			'models.m must be an object, e.g. { "contextWindow": 262144 }',
+		])
+	})
+})
+
+describe("getEffectiveModeSettings", () => {
+	it("is empty without modes or bindings", () => {
+		expect(getEffectiveModeSettings({})).toEqual({})
+		expect(getEffectiveModeSettings({ models: { "GLM-5.3-NVFP4": { contextWindow: 262_144 } } })).toEqual({})
+	})
+
+	it("keeps every modes entry as written", () => {
+		expect(getEffectiveModeSettings({ modes: { ask: { provider: "anthropic" } } })).toEqual({
+			ask: { settings: { provider: "anthropic" }, label: "modes.ask" },
+		})
+	})
+
+	it("gives each mode a models entry lists that model, as if modes.<slug>.model named it", () => {
+		expect(
+			getEffectiveModeSettings({
+				models: { "Qwen3.8-27B": { reasoningEffort: "xhigh", modes: ["code", "debug", "code"] } },
+			}),
+		).toEqual({
+			code: { settings: { model: "Qwen3.8-27B" }, label: "models.Qwen3.8-27B.modes" },
+			debug: { settings: { model: "Qwen3.8-27B" }, label: "models.Qwen3.8-27B.modes" },
+		})
+	})
+
+	it("adds the model to a modes entry that names none, and names both places", () => {
+		expect(
+			getEffectiveModeSettings({
+				modes: { debug: { baseUrl: "http://localhost:11111/v1" } },
+				models: { "Qwen3.8-27B": { modes: ["debug"] } },
+			}),
+		).toEqual({
+			debug: {
+				settings: { baseUrl: "http://localhost:11111/v1", model: "Qwen3.8-27B" },
+				label: "modes.debug and models.Qwen3.8-27B.modes",
+			},
+		})
+	})
+
+	it("never throws on a malformed file", () => {
+		expect(getEffectiveModeSettings({ models: { m: { modes: "code" as never } } })).toEqual({})
+		expect(getEffectiveModeSettings({ models: [] as never })).toEqual({})
+		expect(getEffectiveModeSettings({ models: { m: 1 as never } })).toEqual({})
+	})
+})
+
+describe("findModeBindingProblems", () => {
+	it("accepts one model per mode, the same model in both places and repeats in one list", () => {
+		expect(
+			findModeBindingProblems({
+				modes: { code: { model: "Qwen3.8-27B" }, ask: { model: "GLM-5.3-NVFP4" } },
+				models: { "Qwen3.8-27B": { modes: ["code", "debug", "debug"] }, "GLM-5.3-NVFP4": { modes: [] } },
+			}),
+		).toEqual([])
+	})
+
+	it("names both models that list one mode", () => {
+		expect(
+			findModeBindingProblems({
+				models: { "Qwen3.8-27B": { modes: ["debug"] }, "GLM-5.3-NVFP4": { modes: ["code", "debug"] } },
+			}),
+		).toEqual([
+			'mode "debug" is listed in both models.Qwen3.8-27B.modes and models.GLM-5.3-NVFP4.modes; a mode runs one model, so keep it in one list',
+		])
+	})
+
+	it("names both places when modes.<slug>.model names another model", () => {
+		expect(
+			findModeBindingProblems({
+				modes: { debug: { model: "GLM-5.3-NVFP4" } },
+				models: { "Qwen3.8-27B": { modes: ["debug", "debug"] } },
+			}),
+		).toEqual([
+			'models.Qwen3.8-27B.modes lists "debug", but modes.debug.model names GLM-5.3-NVFP4; keep one of them',
 		])
 	})
 })

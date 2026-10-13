@@ -46,8 +46,10 @@ import {
 } from "@/lib/utils/provider-config.js"
 import {
 	MODEL_SETTINGS_PROVIDER,
+	findModeBindingProblems,
 	findModelSettingsProblems,
 	getConfiguredModelSettings,
+	getEffectiveModeSettings,
 	listSetModelSettings,
 } from "@/lib/utils/model-settings.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
@@ -272,14 +274,16 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		models: settings.models,
 	})
 
-	// Per-mode overrides from the settings file, each resolved on top of the
-	// file's global values. Any provider flag makes this run use one
-	// configuration for every mode, so the overrides are dropped.
+	// Per-mode overrides from the settings file (`modes`, and the modes a
+	// `models` entry lists), each resolved on top of the file's global values.
+	// Any provider flag makes this run use one configuration for every mode,
+	// so the overrides are dropped.
 	const isProviderForcedByFlags = Object.values(flagProviderConfig).some((value) => value !== undefined)
+	const modeEntries = getEffectiveModeSettings(settings)
 	const modeProviderConfigs: Record<string, ResolvedProviderConfig> = isProviderForcedByFlags
 		? {}
 		: Object.fromEntries(
-				Object.entries(settings.modes ?? {}).map(([modeSlug, modeSettings]) => [
+				Object.entries(modeEntries).map(([modeSlug, { settings: modeSettings }]) => [
 					modeSlug,
 					resolveProviderConfigWithModel({
 						fallback: vsCodeConfig,
@@ -307,7 +311,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	// without one goes back to the mode's connection even after a model that
 	// had its own. The flags stay on top, without their model.
 	const resolveForModel = (mode: string | undefined, model: string) => {
-		const modeSettings = isProviderForcedByFlags || !mode ? undefined : settings.modes?.[mode]
+		const modeSettings = isProviderForcedByFlags || !mode ? undefined : modeEntries[mode]?.settings
 		return resolveProviderConfigWithModel({
 			fallback: vsCodeConfig,
 			layers: [settingsProviderConfig, ...(modeSettings ? [pickProviderConfig(modeSettings)] : [])],
@@ -421,7 +425,10 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			.filter(([, config]) => config !== providerConfig)
 			.map(
 				([modeSlug, config]) =>
-					[`modes.${modeSlug} in ${getSettingsPath()}`, config] as [string, ResolvedProviderConfig],
+					[`${modeEntries[modeSlug]!.label} in ${getSettingsPath()}`, config] as [
+						string,
+						ResolvedProviderConfig,
+					],
 			),
 		// A model with its own connection may only be reached by /model or
 		// --model, so it is checked against the top level as well.
@@ -465,7 +472,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		)
 	}
 
-	const modelSettingsProblems = findModelSettingsProblems(settings.models)
+	const modelSettingsProblems = [...findModelSettingsProblems(settings.models), ...findModeBindingProblems(settings)]
 	if (modelSettingsProblems.length > 0) {
 		for (const problem of modelSettingsProblems) {
 			console.error(`[CLI] Error: ${problem} (in ${getSettingsPath()})`)
