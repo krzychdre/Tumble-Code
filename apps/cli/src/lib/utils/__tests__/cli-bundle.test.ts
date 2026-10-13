@@ -17,12 +17,18 @@ const HELPER = path.join(CLI_ROOT, "src/lib/utils/react-production.ts")
  * Bundle `entry` (or the CLI's own entries) with the real tsup.config.ts into
  * `outDir`. It runs in a child process with the CLI as its working directory
  * because tsup reads package.json (which decides what stays external) from
- * the working directory.
+ * the working directory. tsup.config.ts exports a list of builds (the CLI,
+ * then the MathJax engine); only the CLI's own build is used here, the one
+ * whose entries include src/index.ts.
  */
 function bundle(outDir: string, entry?: string) {
 	const script = `
 const { build } = await import("tsup")
-const { default: config } = await import(${JSON.stringify(pathToFileURL(path.join(CLI_ROOT, "tsup.config.ts")).href)})
+const { default: configs } = await import(${JSON.stringify(pathToFileURL(path.join(CLI_ROOT, "tsup.config.ts")).href)})
+const config = [configs].flat().find((build) => [build.entry].flat().includes("src/index.ts"))
+if (!config) {
+	throw new Error("tsup.config.ts has no build with the entry src/index.ts")
+}
 const entry = process.env.PROBE_ENTRY
 await build({
 	...config,
@@ -116,7 +122,9 @@ describe("the CLI bundle", () => {
 				.flatMap((output) => output.imports)
 				.filter((entry) => entry.external)
 				.map((entry) => entry.path)
-				.filter((specifier) => RENDER_CRITICAL.some((name) => specifier === name || specifier.startsWith(`${name}/`)))
+				.filter((specifier) =>
+					RENDER_CRITICAL.some((name) => specifier === name || specifier.startsWith(`${name}/`)),
+				)
 
 			expect([...new Set(external)].sort()).toEqual([])
 		})
