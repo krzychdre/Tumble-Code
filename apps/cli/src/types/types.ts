@@ -96,6 +96,15 @@ export interface CliModelSettings {
 	 */
 	trimOldReasoning?: boolean
 	/**
+	 * Whether the model can see images. false makes the extension treat it as
+	 * text-only: read_file gives it a note instead of the image, naming the
+	 * modes whose model can see images so it can hand the image to one of
+	 * them (a vision mode), and images are left out of what it is sent. Used
+	 * with the openai provider, whose model info otherwise says every model
+	 * sees images. Defaults to true.
+	 */
+	supportsImages?: boolean
+	/**
 	 * The reasoning effort sent with every request to this model, one of the
 	 * levels of --reasoning-effort. Set per model because the levels a model
 	 * accepts are its own (GLM-5.3 takes "max", other models reject it). Works

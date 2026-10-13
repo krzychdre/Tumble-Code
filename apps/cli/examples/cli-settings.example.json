@@ -25,11 +25,13 @@
 			"cacheWritesPrice": 0.6,
 			"preserveReasoning": true,
 			"trimOldReasoning": true,
+			"supportsImages": false,
 			"modelSize": "standard"
 		},
 		"GLM-5.3-NVFP4": {
 			"contextWindow": 262144,
 			"reasoningEffort": "max",
+			"supportsImages": false,
 			"modelSize": "slim",
 			"hideMcp": false
 		},

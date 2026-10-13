@@ -27,6 +27,9 @@ function describeEntry(entry: CliModelSettings): string {
 	if (entry.modelSize && entry.modelSize !== "standard") {
 		parts.push(entry.modelSize)
 	}
+	if (entry.supportsImages === false) {
+		parts.push("text only")
+	}
 	if (entry.modes?.length) {
 		parts.push(`modes ${[...new Set(entry.modes)].join(", ")}`)
 	}

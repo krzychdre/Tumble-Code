@@ -75,11 +75,14 @@ and the mode entry; only the flags override them.
 | `cacheWritesPrice`  | `openai`  | USD per million input tokens written to the prompt cache (defaults to `inputPrice`).                                                                           |
 | `preserveReasoning` | `openai`  | Send the model's earlier reasoning back with every request.                                                                                                    |
 | `trimOldReasoning`  | `openai`  | With `preserveReasoning`, shorten old reasoning once the context fills up.                                                                                     |
+| `supportsImages`    | `openai`  | `false` for a text-only model: it hands images to a mode whose model sees them instead of receiving them ([Text-only models](../README.md#text-only-models)).  |
 | `modes`             | all       | The modes that run this model, e.g. `["debug"]`; the same as `"model"` in each of their `modes` entries ([Settings per mode](../README.md#settings-per-mode)). |
 
 The example gives each size one model: `GLM-5.3-Flash-NVFP4` is a large model
 with the full prompt, prices and returned reasoning; `GLM-5.3-NVFP4` uses the
-slim toolset and keeps MCP; `Qwen3.8-4B` is a small 32k model in compact mode
+slim toolset and keeps MCP; both GLM models are text-only and say so with
+`supportsImages: false`, since every `openai` model is otherwise taken to see
+images; `Qwen3.8-4B` is a small 32k model in compact mode
 without reasoning, served by a second server with its own key (still the
 `openai` provider) and run by the `debug` mode; `claude-sonnet-5-5` runs on Anthropic with the key from
 `ANTHROPIC_API_KEY` and sets only keys every provider takes, since Anthropic

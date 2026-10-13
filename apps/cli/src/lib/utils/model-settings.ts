@@ -18,6 +18,11 @@
  * long reasoning of older turns once the context fills up, goes with it and
  * becomes openAiTrimOldReasoning.
  *
+ * `supportsImages` as well: the openai provider's defaults say every model
+ * sees images, so a text-only model would be handed images it cannot read
+ * and would never pass them on to a mode whose model can. It becomes
+ * openAiCustomModelInfo.supportsImages.
+ *
  * `reasoningEffort` too, and unlike the others it works with every provider:
  * the levels a model accepts are its own, so one level for all models sent
  * "max" to models that reject it.
@@ -46,7 +51,7 @@ export const MODEL_SETTINGS_PROVIDER = "openai"
 export const MODEL_PRICE_KEYS = ["inputPrice", "outputPrice", "cacheReadsPrice", "cacheWritesPrice"] as const
 
 /** The on/off settings of a model, each true or false. */
-const MODEL_SWITCH_KEYS = ["preserveReasoning", "trimOldReasoning", "hideMcp"] as const
+const MODEL_SWITCH_KEYS = ["preserveReasoning", "trimOldReasoning", "hideMcp", "supportsImages"] as const
 
 /** The keys every provider takes, so they never count as ignored. */
 const ANY_PROVIDER_KEYS: ReadonlySet<string> = new Set([

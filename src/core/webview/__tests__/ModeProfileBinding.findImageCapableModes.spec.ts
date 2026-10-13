@@ -5,7 +5,12 @@
 // through the shared model resolver, to a model with supportsImages. The
 // unsupported-image notice of read_file names exactly these modes.
 
-import type { ModeConfig, ProviderSettings, ProviderSettingsEntry } from "@tumble-code/types"
+import {
+	openAiModelInfoSaneDefaults,
+	type ModeConfig,
+	type ProviderSettings,
+	type ProviderSettingsEntry,
+} from "@tumble-code/types"
 
 import { ModeProfileBinding, type ModeProfileBindingHost } from "../ModeProfileBinding"
 
@@ -109,5 +114,50 @@ describe("ModeProfileBinding.findImageCapableModes", () => {
 
 		// The CLI settings replace the profile store: code falls back to the text-only base.
 		expect(await binding.findImageCapableModes()).toEqual([{ slug: "vision", modelId: "qwen3.6-35b" }])
+	})
+
+	describe("with the settings the CLI builds from models.<id>.supportsImages", () => {
+		// The shape apps/cli's toProviderSettings writes for the openai provider:
+		// the sane defaults with the entry's keys on top, or null for an entry
+		// that sets none of them.
+		const cliModel = (id: string, info: ProviderSettings["openAiCustomModelInfo"]): ProviderSettings => ({
+			apiProvider: "openai",
+			openAiModelId: id,
+			openAiBaseUrl: "http://x/v1",
+			openAiCustomModelInfo: info,
+		})
+		const glm = cliModel("GLM-5.3-NVFP4", {
+			...openAiModelInfoSaneDefaults,
+			contextWindow: 262_144,
+			supportsImages: false,
+		})
+		const qwen = cliModel("Qwen3.8-27B", {
+			...openAiModelInfoSaneDefaults,
+			contextWindow: 262_144,
+			supportsImages: true,
+		})
+
+		it("lists only the mode bound to the model that sees images when the base is text-only", async () => {
+			const binding = makeBinding()
+			binding.setCliModeProviderSettings({ base: glm, modes: { vision: qwen, architect: glm } })
+
+			expect(await binding.findImageCapableModes()).toEqual([{ slug: "vision", modelId: "Qwen3.8-27B" }])
+		})
+
+		it("lists every mode on the base when the base sees images, except a text-only one", async () => {
+			const binding = makeBinding()
+			binding.setCliModeProviderSettings({ base: qwen, modes: { code: glm } })
+
+			const slugs = (await binding.findImageCapableModes()).map(({ slug }) => slug)
+			expect(slugs).not.toContain("code")
+			expect(slugs).toEqual(expect.arrayContaining(["architect", "ask", "debug", "vision"]))
+		})
+
+		it("counts a model without model info as seeing images (the openai sane defaults)", async () => {
+			const binding = makeBinding()
+			binding.setCliModeProviderSettings({ base: glm, modes: { vision: cliModel("unlisted", null) } })
+
+			expect(await binding.findImageCapableModes()).toEqual([{ slug: "vision", modelId: "unlisted" }])
+		})
 	})
 })
