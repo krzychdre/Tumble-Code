@@ -8,7 +8,7 @@ import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } fr
 import { getGlobalCommand } from "../../lib/utils/commands.js"
 import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
 import { TuiCloudAuth, type CloudAuthChannel } from "../../lib/auth/tui-cloud-auth.js"
-import { formatModelList, formatModelSwitched } from "../../lib/utils/model-command.js"
+import { buildModelRows, formatModelList, formatModelSwitched, hasOtherModel } from "../../lib/utils/model-command.js"
 import { getSettingsPath } from "../../lib/storage/index.js"
 import type { CliModelSettings } from "../../types/types.js"
 import type { ModelSwitch } from "../../agent/extension-host.js"
@@ -54,6 +54,8 @@ export interface UseTaskSubmitReturn {
 	handleSuggestion: (suggestion: UsableSuggestion, manual: boolean) => void
 	handleApprove: () => void
 	handleReject: () => void
+	/** Enter in the /model list: switches like /model <id>, or just closes on the current model. */
+	pickModel: (model: string) => void
 }
 
 /**
@@ -205,6 +207,53 @@ export function useTaskSubmit({
 	)
 
 	/**
+	 * /model <id> and Enter in the /model list both switch through here, so
+	 * whatever a switch does, and the line that confirms it, is the same for
+	 * the typed command and the list.
+	 */
+	const switchToModel = useCallback(
+		async (requested: string) => {
+			const activeMode = mode ?? "code"
+			let content: string
+
+			if (requested === model) {
+				content = `${activeMode} mode already runs ${requested}.`
+			} else if (!switchModel) {
+				content = "The model cannot be changed before the extension has started."
+			} else {
+				try {
+					// In effect from here on; the line waits for the save only.
+					const { settings, saved } = switchModel(activeMode, requested)
+					content = formatModelSwitched({
+						mode: activeMode,
+						model: requested,
+						settings,
+						hasEntry: configuredModels?.[requested] !== undefined,
+						saved: await saved,
+					})
+				} catch (error) {
+					content = `Could not switch the model: ${error instanceof Error ? error.message : String(error)}`
+				}
+			}
+
+			note(content)
+		},
+		[mode, model, switchModel, configuredModels, note],
+	)
+
+	/** Enter in the /model list; on the model already running it only closes the list. */
+	const pickModel = useCallback(
+		(requested: string) => {
+			useUIStateStore.getState().setShowModelPicker(false)
+
+			if (requested !== model) {
+				void switchToModel(requested)
+			}
+		},
+		[model, switchToModel],
+	)
+
+	/**
 	 * Handle user text submission (from input or followup question)
 	 */
 	const handleSubmit = useCallback(
@@ -265,37 +314,23 @@ export function useTaskSubmit({
 
 					if (globalCommand?.action === "switchModel") {
 						const requested = trimmedText.slice(commandMatch[0].length).trim()
-						const activeMode = mode ?? "code"
-						let content: string
 
-						if (!requested) {
-							content = formatModelList({
-								mode: activeMode,
-								currentModel: model,
-								models: configuredModels,
-								settingsPath: getSettingsPath(),
-							})
-						} else if (requested === model) {
-							content = `${activeMode} mode already runs ${requested}.`
-						} else if (!switchModel) {
-							content = "The model cannot be changed before the extension has started."
+						if (requested) {
+							await switchToModel(requested)
+						} else if (hasOtherModel(buildModelRows(model, configuredModels))) {
+							useUIStateStore.getState().setShowModelPicker(true)
 						} else {
-							try {
-								// In effect from here on; the line waits for the save only.
-								const { settings, saved } = switchModel(activeMode, requested)
-								content = formatModelSwitched({
-									mode: activeMode,
-									model: requested,
-									settings,
-									hasEntry: configuredModels?.[requested] !== undefined,
-									saved: await saved,
-								})
-							} catch (error) {
-								content = `Could not switch the model: ${error instanceof Error ? error.message : String(error)}`
-							}
+							// Nothing to pick besides the model already running: the
+							// printed list says how to add entries.
+							note(
+								formatModelList({
+									mode: mode ?? "code",
+									currentModel: model,
+									models: configuredModels,
+									settingsPath: getSettingsPath(),
+								}),
+							)
 						}
-
-						addMessage({ id: randomUUID(), role: "system", content })
 						return
 					}
 
@@ -398,10 +433,11 @@ export function useTaskSubmit({
 			copyToClipboard,
 			exportTranscript,
 			runCloudAuth,
+			switchToModel,
+			note,
 			mode,
 			model,
 			configuredModels,
-			switchModel,
 		],
 	)
 
@@ -453,5 +489,6 @@ export function useTaskSubmit({
 		handleSuggestion,
 		handleApprove,
 		handleReject,
+		pickModel,
 	}
 }

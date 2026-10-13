@@ -30,8 +30,8 @@ export interface UseGlobalInputOptions {
  *
  * Shortcuts:
  * - Ctrl+C: Double-press to exit
- * - Shift+Tab: Cycle through available modes (only while no picker is open,
- *   because Tab belongs to the picker then)
+ * - Shift+Tab: Cycle through available modes (only while no picker and no
+ *   /model list is open, because Tab belongs to the picker then)
  * - Ctrl+T: Toggle TODO list viewer
  * - Ctrl+O: Toggle the verbose transcript (clears the screen and prints the
  *   promoted transcript again at the new verbosity)
@@ -60,6 +60,7 @@ export function useGlobalInput({
 		setShowTodoViewer,
 		showMcpPanel,
 		setShowMcpPanel,
+		showModelPicker,
 		showExitHint: _showExitHint,
 		setShowExitHint,
 		pendingExit,
@@ -97,8 +98,10 @@ export function useGlobalInput({
 		// Uses centralized global input sequence detection
 		if (matchesGlobalSequence(input, key, "cycle-mode")) {
 			// While a picker is open, Tab accepts the highlighted item, so leave
-			// the whole Tab family to the picker.
-			if (pickerIsOpen) {
+			// the whole Tab family to the picker. The /model list is about the
+			// current mode (its title names it, Enter changes its model), so the
+			// mode must not change under it either.
+			if (pickerIsOpen || showModelPicker) {
 				return
 			}
 
@@ -176,6 +179,12 @@ export function useGlobalInput({
 		// it, the same key must not also cancel the task.
 		if (key.escape && showMcpPanel) {
 			setShowMcpPanel(false)
+			return
+		}
+
+		// The /model list closes itself on Escape (PickerSelect); the key must
+		// not also cancel a task.
+		if (key.escape && showModelPicker) {
 			return
 		}
 

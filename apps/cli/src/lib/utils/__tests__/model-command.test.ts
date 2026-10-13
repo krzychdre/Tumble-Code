@@ -1,4 +1,4 @@
-import { formatModelList } from "../model-command.js"
+import { buildModelRows, formatModelList, hasOtherModel } from "../model-command.js"
 
 describe("formatModelList", () => {
 	it("names a slim or compact size and leaves standard out", () => {
@@ -27,5 +27,36 @@ describe("formatModelList", () => {
 		})
 
 		expect(list).toContain("● Qwen3.8-27B (reasoning xhigh, modes code, debug)")
+	})
+})
+
+describe("buildModelRows", () => {
+	const models = {
+		"GLM-5.3-NVFP4": { reasoningEffort: "max" as const, contextWindow: 262_144 },
+		"Qwen3.8-27B": { modelSize: "slim" as const },
+		"Qwen3.8-4B": {},
+	}
+
+	it("lists every entry in file order with the details of the printed list, the current one marked", () => {
+		expect(buildModelRows("Qwen3.8-27B", models)).toEqual([
+			{ key: "GLM-5.3-NVFP4", details: "reasoning max, 262,144 tokens", current: false },
+			{ key: "Qwen3.8-27B", details: "slim", current: true },
+			{ key: "Qwen3.8-4B", details: "", current: false },
+		])
+	})
+
+	it("puts a current model without an entry first, so the list shows what runs", () => {
+		const rows = buildModelRows("gpt-oss-120b", models)
+
+		expect(rows[0]).toEqual({ key: "gpt-oss-120b", details: "no entry in models", current: true })
+		expect(rows.slice(1).map((row) => row.key)).toEqual(["GLM-5.3-NVFP4", "Qwen3.8-27B", "Qwen3.8-4B"])
+	})
+
+	it("offers a choice only when something besides the current model is listed", () => {
+		expect(hasOtherModel(buildModelRows("Qwen3.8-27B", models))).toBe(true)
+		expect(hasOtherModel(buildModelRows("Qwen3.8-27B", {}))).toBe(false)
+		expect(hasOtherModel(buildModelRows("Qwen3.8-27B", undefined))).toBe(false)
+		expect(hasOtherModel(buildModelRows("Qwen3.8-27B", { "Qwen3.8-27B": {} }))).toBe(false)
+		expect(hasOtherModel(buildModelRows(undefined, { "Qwen3.8-27B": {} }))).toBe(true)
 	})
 })

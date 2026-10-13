@@ -16,6 +16,7 @@ import {
 import type { CloudAuthChannel } from "../../../lib/auth/tui-cloud-auth.js"
 import type { ModelChoiceSave } from "../../../lib/storage/mode-model.js"
 import type { ModelSwitch } from "../../../agent/extension-host.js"
+import type { CliModelSettings } from "../../../types/types.js"
 import { useCLIStore } from "../../store.js"
 import { useUIStateStore } from "../../stores/uiStateStore.js"
 import { useTaskSubmit, type UseTaskSubmitReturn } from "../useTaskSubmit.js"
@@ -408,6 +409,7 @@ describe("useTaskSubmit /model", () => {
 	let runTask: ReturnType<typeof vi.fn<(prompt: string) => Promise<void>>>
 	let switchModel: ReturnType<typeof vi.fn<(mode: string, model: string) => ModelSwitch>>
 	let saved: ModelChoiceSave
+	let configuredModels: Record<string, CliModelSettings>
 
 	function Harness() {
 		api = useTaskSubmit({
@@ -418,17 +420,17 @@ describe("useTaskSubmit /model", () => {
 			onPermissionModeChange: () => {},
 			model: "GLM-5.3-NVFP4",
 			mode: "code",
-			configuredModels: {
-				"GLM-5.3-NVFP4": { reasoningEffort: "max", contextWindow: 262_144 },
-				"Qwen3.8-27B": { contextWindow: 262_144 },
-			},
+			configuredModels,
 			switchModel,
 		})
 		return <Text>harness</Text>
 	}
 
+	const lastMessage = () => useCLIStore.getState().messages.at(-1)?.content
+
 	beforeEach(() => {
 		useCLIStore.getState().reset()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
 		sendToExtension = vi.fn()
 		runTask = vi.fn(async () => undefined)
 		saved = {
@@ -440,65 +442,137 @@ describe("useTaskSubmit /model", () => {
 			settings: { apiProvider: "openai", openAiModelId: model } satisfies ProviderSettings,
 			saved: Promise.resolve(saved),
 		}))
-		render(<Harness />)
+		configuredModels = {
+			"GLM-5.3-NVFP4": { reasoningEffort: "max", contextWindow: 262_144 },
+			"Qwen3.8-27B": { contextWindow: 262_144 },
+		}
 	})
 
-	it("lists the configured models without switching or reaching the model", async () => {
-		await api.handleSubmit("/model")
+	describe("typed", () => {
+		beforeEach(() => {
+			render(<Harness />)
+		})
 
-		expect(switchModel).not.toHaveBeenCalled()
-		expect(runTask).not.toHaveBeenCalled()
-		const [message] = useCLIStore.getState().messages
-		expect(message?.role).toBe("system")
-		expect(message?.content).toContain("Model in code mode: GLM-5.3-NVFP4")
-		expect(message?.content).toContain("● GLM-5.3-NVFP4 (reasoning max, 262,144 tokens)")
-		expect(message?.content).toContain("  Qwen3.8-27B (262,144 tokens)")
+		it("opens the model list without printing, switching or reaching the model", async () => {
+			await api.handleSubmit("/model")
+
+			expect(useUIStateStore.getState().showModelPicker).toBe(true)
+			expect(useCLIStore.getState().messages).toEqual([])
+			expect(switchModel).not.toHaveBeenCalled()
+			expect(sendToExtension).not.toHaveBeenCalled()
+			expect(runTask).not.toHaveBeenCalled()
+		})
+
+		it("switches the model of the current mode, saves it and never sends the command to the model", async () => {
+			await api.handleSubmit("/model Qwen3.8-27B")
+
+			expect(switchModel).toHaveBeenCalledWith("code", "Qwen3.8-27B")
+			expect(runTask).not.toHaveBeenCalled()
+			expect(sendToExtension).not.toHaveBeenCalled()
+			expect(useUIStateStore.getState().showModelPicker).toBe(false)
+			expect(lastMessage()).toBe(
+				"code mode now runs Qwen3.8-27B; the next request goes to it. Saved in /home/someone/.roo/cli-settings.json (models.Qwen3.8-27B.modes), so later sessions run it in code mode too.",
+			)
+		})
+
+		it("says why a switch was not saved", async () => {
+			saved = { outcome: "session-only", reason: "an --ephemeral run saves nothing" }
+
+			await api.handleSubmit("/model Qwen3.8-27B")
+
+			expect(lastMessage()).toBe(
+				"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it. Not saved: an --ephemeral run saves nothing.",
+			)
+		})
+
+		it("keeps the switch and names the error when the save fails", async () => {
+			saved = { outcome: "failed", settingsPath: "/x/cli-settings.json", error: "EACCES: permission denied" }
+
+			await api.handleSubmit("/model Qwen3.8-27B")
+
+			expect(switchModel).toHaveBeenCalledOnce()
+			expect(lastMessage()).toBe(
+				"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it. Saving it in /x/cli-settings.json failed: EACCES: permission denied",
+			)
+		})
+
+		it("warns that an openai model without an entry runs on the defaults", async () => {
+			await api.handleSubmit("/model some-other-model")
+
+			expect(lastMessage()).toContain("It has no entry in models, so it runs with a 128,000-token window")
+		})
+
+		it("does nothing for the model already running", async () => {
+			await api.handleSubmit("/model GLM-5.3-NVFP4")
+
+			expect(switchModel).not.toHaveBeenCalled()
+			expect(lastMessage()).toBe("code mode already runs GLM-5.3-NVFP4.")
+		})
 	})
 
-	it("switches the model of the current mode and never sends the command to the model", async () => {
-		await api.handleSubmit("/model Qwen3.8-27B")
+	describe("with nothing to pick besides the current model", () => {
+		it.each([
+			["no models", {}],
+			["only the current model", { "GLM-5.3-NVFP4": { reasoningEffort: "max" as const } }],
+		])("prints the text list instead of opening an empty choice (%s)", async (_name, models) => {
+			configuredModels = models
+			render(<Harness />)
 
-		expect(switchModel).toHaveBeenCalledWith("code", "Qwen3.8-27B")
-		expect(runTask).not.toHaveBeenCalled()
-		expect(sendToExtension).not.toHaveBeenCalled()
-		expect(useCLIStore.getState().messages.at(-1)?.content).toBe(
-			"code mode now runs Qwen3.8-27B; the next request goes to it. Saved in /home/someone/.roo/cli-settings.json (models.Qwen3.8-27B.modes), so later sessions run it in code mode too.",
-		)
+			await api.handleSubmit("/model")
+
+			expect(useUIStateStore.getState().showModelPicker).toBe(false)
+			expect(switchModel).not.toHaveBeenCalled()
+			const [message] = useCLIStore.getState().messages
+			expect(message?.role).toBe("system")
+			expect(message?.content).toContain("Model in code mode: GLM-5.3-NVFP4")
+			expect(message?.content).toContain("/model <id> runs another model in this mode")
+		})
 	})
 
-	it("says why a switch was not saved", async () => {
-		saved = { outcome: "session-only", reason: "an --ephemeral run saves nothing" }
+	describe("picked from the list", () => {
+		beforeEach(() => {
+			render(<Harness />)
+			useUIStateStore.getState().setShowModelPicker(true)
+		})
 
-		await api.handleSubmit("/model Qwen3.8-27B")
+		it("switches and saves exactly like the typed command, with the same confirmation, and closes the list", async () => {
+			api.pickModel("Qwen3.8-27B")
+			expect(useUIStateStore.getState().showModelPicker).toBe(false)
+			await vi.waitFor(() => expect(useCLIStore.getState().messages).toHaveLength(1))
+			const picked = lastMessage()
 
-		expect(useCLIStore.getState().messages.at(-1)?.content).toBe(
-			"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it. Not saved: an --ephemeral run saves nothing.",
-		)
-	})
+			await api.handleSubmit("/model Qwen3.8-27B")
+			const typed = lastMessage()
 
-	it("keeps the switch and names the error when the save fails", async () => {
-		saved = { outcome: "failed", settingsPath: "/x/cli-settings.json", error: "EACCES: permission denied" }
+			expect(switchModel.mock.calls).toEqual([
+				["code", "Qwen3.8-27B"],
+				["code", "Qwen3.8-27B"],
+			])
+			expect(picked).toBe(typed)
+			expect(picked).toContain("Saved in /home/someone/.roo/cli-settings.json")
+			expect(sendToExtension).not.toHaveBeenCalled()
+			expect(runTask).not.toHaveBeenCalled()
+		})
 
-		await api.handleSubmit("/model Qwen3.8-27B")
+		it("closes with nothing changed and nothing printed on the model already running", () => {
+			api.pickModel("GLM-5.3-NVFP4")
 
-		expect(switchModel).toHaveBeenCalledOnce()
-		expect(useCLIStore.getState().messages.at(-1)?.content).toBe(
-			"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it. Saving it in /x/cli-settings.json failed: EACCES: permission denied",
-		)
-	})
+			expect(useUIStateStore.getState().showModelPicker).toBe(false)
+			expect(switchModel).not.toHaveBeenCalled()
+			expect(useCLIStore.getState().messages).toEqual([])
+		})
 
-	it("warns that an openai model without an entry runs on the defaults", async () => {
-		await api.handleSubmit("/model some-other-model")
+		it("reports a failed switch the way the typed command does", async () => {
+			switchModel.mockImplementation(() => {
+				throw new Error("ANTHROPIC_API_KEY is not set")
+			})
 
-		expect(useCLIStore.getState().messages.at(-1)?.content).toContain(
-			"It has no entry in models, so it runs with a 128,000-token window",
-		)
-	})
+			api.pickModel("Qwen3.8-27B")
 
-	it("does nothing for the model already running", async () => {
-		await api.handleSubmit("/model GLM-5.3-NVFP4")
-
-		expect(switchModel).not.toHaveBeenCalled()
-		expect(useCLIStore.getState().messages.at(-1)?.content).toBe("code mode already runs GLM-5.3-NVFP4.")
+			expect(useUIStateStore.getState().showModelPicker).toBe(false)
+			await vi.waitFor(() =>
+				expect(lastMessage()).toBe("Could not switch the model: ANTHROPIC_API_KEY is not set"),
+			)
+		})
 	})
 })
