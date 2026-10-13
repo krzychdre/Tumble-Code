@@ -21,6 +21,7 @@ import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
 import {
+	createModelChoiceSaver,
 	getSettingsPath,
 	isSettingsFileReadableByOthers,
 	loadSettings,
@@ -407,6 +408,12 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 				modelSettings: modelSettingsFor(config),
 			})
 		},
+		// /model keeps its choice for later sessions, except where this run
+		// ignores the file's mode models or promises to persist nothing.
+		saveModelChoice: createModelChoiceSaver({
+			providerFlags: isProviderForcedByFlags,
+			ephemeral: flagOptions.ephemeral,
+		}),
 	}
 
 	// Validations: every configuration this run can switch to is checked now,

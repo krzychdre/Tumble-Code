@@ -6,14 +6,13 @@ import {
 	type ExtensionMessage,
 	type HistoryItem,
 	type ModelSourceId,
-	type ProviderSettings,
 	type RequestableModelSource,
 	type WebviewMessage,
 	modelSources,
 } from "@tumble-code/types"
 import { arePathsEqual } from "@tumble-code/core/cli"
 
-import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
+import { ExtensionHostInterface, ExtensionHostOptions, type ModelSwitch } from "@/agent/index.js"
 import type { TranscriptSink } from "@/agent/transcript-reader.js"
 import type { CloudAuthChannel } from "@/lib/auth/tui-cloud-auth.js"
 
@@ -85,8 +84,8 @@ export interface UseExtensionHostReturn {
 	resetTranscript: () => void
 	/** The running extension for /login and /logout. */
 	cloudAuthChannel: CloudAuthChannel
-	/** Run another model in a mode for the session (/model); throws before the host exists. */
-	switchModel: (mode: string, model: string) => ProviderSettings
+	/** Run another model in a mode and save the choice (/model); throws before the host exists. */
+	switchModel: (mode: string, model: string) => ModelSwitch
 }
 
 /**
@@ -292,7 +291,7 @@ export function useExtensionHost({
 	}, [])
 
 	// Stable switchModel - uses ref to always access current host.
-	const switchModel = useCallback((mode: string, model: string): ProviderSettings => {
+	const switchModel = useCallback((mode: string, model: string): ModelSwitch => {
 		if (!hostRef.current) {
 			throw new Error("Extension host not ready")
 		}

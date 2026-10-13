@@ -87,7 +87,8 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 	},
 	{
 		name: "model",
-		description: "Show the models of ~/.roo/cli-settings.json; /model <id> runs <id> in this mode for the session",
+		description:
+			"Show the models of ~/.roo/cli-settings.json; /model <id> runs <id> in this mode and saves it there",
 		argumentHint: "[model id]",
 		action: "switchModel",
 	},

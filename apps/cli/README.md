@@ -152,15 +152,33 @@ settings still determine the initial mode of the next session.
 
 To change the model while the session runs, type `/model`: it lists the
 models of `~/.roo/cli-settings.json` (their `models` entries) with the one in
-use marked. `/model <id>` runs `<id>` in the current mode until the session
-ends, with what its `models` entry says (reasoning effort, context window,
-prices, returned reasoning); the next request goes to it, while a reply
-already streaming finishes on the old model. Other modes keep their models,
-the provider and its connection stay, and nothing is written to the settings
-file. Any id the
-provider serves works, also one without an entry (for the `openai` provider it
-then runs with a 128,000-token window, no prices and no reasoning effort, and
-the CLI says so).
+use marked. `/model <id>` runs `<id>` in the current mode at once, with what
+its `models` entry says (reasoning effort, context window, prices, returned
+reasoning); the next request goes to it, while a reply already streaming
+finishes on the old model. Other modes keep their models. Any id the provider
+serves works, also one without an entry (for the `openai` provider it then
+runs with a 128,000-token window, no prices and no reasoning effort, and the
+CLI says so).
+
+Like a mode in VS Code keeps the API profile chosen in it, the mode keeps the
+model: `/model <id>` saves the choice in `~/.roo/cli-settings.json`, so later
+sessions run `<id>` in that mode too, and the confirmation names the key it
+went to:
+
+- where the file names the mode's model in `modes.<mode>.model`, that value
+  is changed in place;
+- otherwise the mode is added to the `modes` list of the model's `models`
+  entry (see [Settings per mode](#settings-per-mode)), creating the entry when
+  needed, and taken out of the list of the model it ran before.
+
+Nothing else in the file changes. The file is read again right before the
+write, so an edit you made during the session is kept, and it is replaced
+atomically with its permissions (a `chmod 600` file stays `600`); it is
+written with tab indentation. `/model` with the model the mode already runs
+writes nothing. A run with `--provider`, `--model`, `--base-url` or
+`--api-key` (which ignores the file's mode models) and an `--ephemeral` run
+switch for the session only and say so. When the write fails, the switch
+still holds for the session and the message names the error.
 
 In approval-required mode:
 
@@ -358,8 +376,9 @@ CLI starts, so restart it after changing `cloudApiUrl`.
 ## Settings File
 
 `~/.roo/cli-settings.json` holds your defaults, so a bare `tumble` needs no
-flags. Only you write it: neither a CLI run nor the VS Code extension changes
-it. Flags apply to the run they are given on and are never saved. When no
+flags. You write it; the CLI changes it in one place only: `/model` saves the
+model it gives a mode (see [Usage](#usage)), and the VS
+Code extension never changes it. Flags apply to the run they are given on and are never saved. When no
 provider is configured anywhere, the interactive session starts on `openrouter`
 and prints a one-line hint saying where to set one.
 
@@ -482,7 +501,8 @@ effort and size:
   `models.<id>.modes`.
 - Like `modes`, the lists are ignored for a run given any of `--provider`,
   `--model`, `--base-url` or `--api-key`.
-- `/model` shows each model's modes next to its other settings.
+- `/model` shows each model's modes next to its other settings, and
+  `/model <id>` writes these lists when it saves a choice.
 
 ### Connection per model
 

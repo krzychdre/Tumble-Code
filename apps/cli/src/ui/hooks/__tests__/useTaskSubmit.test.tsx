@@ -14,6 +14,8 @@ import {
 	type PermissionMode,
 } from "../../../lib/utils/permissions.js"
 import type { CloudAuthChannel } from "../../../lib/auth/tui-cloud-auth.js"
+import type { ModelChoiceSave } from "../../../lib/storage/mode-model.js"
+import type { ModelSwitch } from "../../../agent/extension-host.js"
 import { useCLIStore } from "../../store.js"
 import { useUIStateStore } from "../../stores/uiStateStore.js"
 import { useTaskSubmit, type UseTaskSubmitReturn } from "../useTaskSubmit.js"
@@ -404,7 +406,8 @@ describe("useTaskSubmit /model", () => {
 	let api: UseTaskSubmitReturn
 	let sendToExtension: ReturnType<typeof vi.fn<(message: WebviewMessage) => void>>
 	let runTask: ReturnType<typeof vi.fn<(prompt: string) => Promise<void>>>
-	let switchModel: ReturnType<typeof vi.fn<(mode: string, model: string) => ProviderSettings>>
+	let switchModel: ReturnType<typeof vi.fn<(mode: string, model: string) => ModelSwitch>>
+	let saved: ModelChoiceSave
 
 	function Harness() {
 		api = useTaskSubmit({
@@ -428,7 +431,15 @@ describe("useTaskSubmit /model", () => {
 		useCLIStore.getState().reset()
 		sendToExtension = vi.fn()
 		runTask = vi.fn(async () => undefined)
-		switchModel = vi.fn((_mode: string, model: string) => ({ apiProvider: "openai", openAiModelId: model }))
+		saved = {
+			outcome: "saved",
+			settingsPath: "/home/someone/.roo/cli-settings.json",
+			key: "models.Qwen3.8-27B.modes",
+		}
+		switchModel = vi.fn((_mode: string, model: string) => ({
+			settings: { apiProvider: "openai", openAiModelId: model } satisfies ProviderSettings,
+			saved: Promise.resolve(saved),
+		}))
 		render(<Harness />)
 	})
 
@@ -451,7 +462,28 @@ describe("useTaskSubmit /model", () => {
 		expect(runTask).not.toHaveBeenCalled()
 		expect(sendToExtension).not.toHaveBeenCalled()
 		expect(useCLIStore.getState().messages.at(-1)?.content).toBe(
-			"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it.",
+			"code mode now runs Qwen3.8-27B; the next request goes to it. Saved in /home/someone/.roo/cli-settings.json (models.Qwen3.8-27B.modes), so later sessions run it in code mode too.",
+		)
+	})
+
+	it("says why a switch was not saved", async () => {
+		saved = { outcome: "session-only", reason: "an --ephemeral run saves nothing" }
+
+		await api.handleSubmit("/model Qwen3.8-27B")
+
+		expect(useCLIStore.getState().messages.at(-1)?.content).toBe(
+			"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it. Not saved: an --ephemeral run saves nothing.",
+		)
+	})
+
+	it("keeps the switch and names the error when the save fails", async () => {
+		saved = { outcome: "failed", settingsPath: "/x/cli-settings.json", error: "EACCES: permission denied" }
+
+		await api.handleSubmit("/model Qwen3.8-27B")
+
+		expect(switchModel).toHaveBeenCalledOnce()
+		expect(useCLIStore.getState().messages.at(-1)?.content).toBe(
+			"code mode now runs Qwen3.8-27B for the rest of this session; the next request goes to it. Saving it in /x/cli-settings.json failed: EACCES: permission denied",
 		)
 	})
 

@@ -363,7 +363,7 @@ describe("ExtensionHost", () => {
 			host.markWebviewReady()
 			const emitSpy = vi.spyOn(host, "emit")
 
-			const settings = host.switchModel("code", "Qwen3.8-27B")
+			const { settings } = host.switchModel("code", "Qwen3.8-27B")
 
 			expect(settings).toMatchObject({ openAiModelId: "Qwen3.8-27B", reasoningEffort: "high" })
 			expect(sentModeSettings(emitSpy)).toEqual([
@@ -384,7 +384,7 @@ describe("ExtensionHost", () => {
 			})
 			host.markWebviewReady()
 
-			expect(host.switchModel("code", "Qwen3.8-27B").reasoningEffort).toBe("low")
+			expect(host.switchModel("code", "Qwen3.8-27B").settings.reasoningEffort).toBe("low")
 		})
 
 		it("takes the settings from resolveModelProviderSettings, which can put the model on another provider", () => {
@@ -397,7 +397,7 @@ describe("ExtensionHost", () => {
 			})
 			host.markWebviewReady()
 
-			expect(host.switchModel("ask", "claude-sonnet-5-5")).toBe(anthropic)
+			expect(host.switchModel("ask", "claude-sonnet-5-5").settings).toBe(anthropic)
 			expect(resolveModelProviderSettings).toHaveBeenCalledWith("ask", "claude-sonnet-5-5")
 		})
 
@@ -413,6 +413,66 @@ describe("ExtensionHost", () => {
 			expect(last?.modes.code?.openAiModelId).toBe("Qwen3.8-27B")
 			expect(last?.modes.architect?.openAiModelId).toBe("GLM-5.3-Flash-NVFP4")
 			expect(last?.base).toBe(base)
+		})
+
+		it("switches first, then hands the choice to saveModelChoice once", async () => {
+			const saved = { outcome: "saved" as const, settingsPath: "/x/cli-settings.json", key: "models.Q.modes" }
+			const saveModelChoice = vi.fn(async () => saved)
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				saveModelChoice,
+			})
+			host.markWebviewReady()
+			const emitSpy = vi.spyOn(host, "emit")
+
+			const result = host.switchModel("code", "Q")
+
+			// The extension already has the new settings before the save settles.
+			expect(sentModeSettings(emitSpy)).toHaveLength(1)
+			expect(saveModelChoice).toHaveBeenCalledOnce()
+			expect(saveModelChoice).toHaveBeenCalledWith("code", "Q")
+			await expect(result.saved).resolves.toBe(saved)
+		})
+
+		it("reports a saver that throws as a failed save and keeps the switch", async () => {
+			const saveModelChoice = vi.fn(() => {
+				throw new Error("disk full")
+			})
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				saveModelChoice,
+			})
+			host.markWebviewReady()
+
+			const result = host.switchModel("code", "Q")
+
+			expect(result.settings).toMatchObject({ openAiModelId: "Q" })
+			await expect(result.saved).resolves.toMatchObject({ outcome: "failed", error: "disk full" })
+		})
+
+		it("lasts for the session only without a saver", async () => {
+			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: {} } })
+			host.markWebviewReady()
+
+			await expect(host.switchModel("code", "Q").saved).resolves.toMatchObject({ outcome: "session-only" })
+		})
+
+		it("saves nothing when the switch fails", () => {
+			const saveModelChoice = vi.fn()
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				resolveModelProviderSettings: () => {
+					throw new Error("no key")
+				},
+				saveModelChoice,
+			})
+			host.markWebviewReady()
+
+			expect(() => host.switchModel("code", "Q")).toThrow("no key")
+			expect(saveModelChoice).not.toHaveBeenCalled()
 		})
 	})
 
