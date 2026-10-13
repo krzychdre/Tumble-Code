@@ -1,8 +1,8 @@
 /**
  * The texts of the TUI's /model: the list of the models the settings file
- * describes, and the line that confirms a switch and says whether it was
- * saved. The switch itself is ExtensionHost.switchModel, the save
- * createModelChoiceSaver.
+ * describes (printed, and the rows of the interactive list), and the line
+ * that confirms a switch and says whether it was saved. The switch itself is
+ * ExtensionHost.switchModel, the save createModelChoiceSaver.
  */
 
 import os from "os"
@@ -33,7 +33,45 @@ function describeEntry(entry: CliModelSettings): string {
 	return parts.join(", ")
 }
 
-/** What /model without an argument prints. */
+/** One row of the interactive /model list. */
+export interface ModelRow {
+	/** The model id, which is also the row's key in the picker. */
+	key: string
+	/** What its `models` entry sets, worded as in the printed list. */
+	details: string
+	/** The model the mode runs now. */
+	current: boolean
+}
+
+/**
+ * The rows of the interactive /model list: every `models` entry in file
+ * order, and before them the model the mode runs now when it has no entry
+ * (it came from --model or the provider), so the list always shows what is
+ * running.
+ */
+export function buildModelRows(
+	currentModel: string | undefined,
+	models: Record<string, CliModelSettings> | undefined,
+): ModelRow[] {
+	const rows = Object.entries(models ?? {}).map(([id, entry]) => ({
+		key: id,
+		details: describeEntry(entry),
+		current: id === currentModel,
+	}))
+
+	if (currentModel && !rows.some((row) => row.current)) {
+		rows.unshift({ key: currentModel, details: "no entry in models", current: true })
+	}
+
+	return rows
+}
+
+/** Whether the list offers anything besides the model already running. */
+export function hasOtherModel(rows: ModelRow[]): boolean {
+	return rows.some((row) => !row.current)
+}
+
+/** What /model without an argument prints when there is nothing to pick from. */
 export function formatModelList({
 	mode,
 	currentModel,

@@ -150,20 +150,40 @@ allow` or manual approval with `/permissions ask` without restarting the CLI.
 The command changes only the active session; startup flags and saved CLI
 settings still determine the initial mode of the next session.
 
-To change the model while the session runs, type `/model`: it lists the
-models of `~/.roo/cli-settings.json` (their `models` entries) with the one in
-use marked. `/model <id>` runs `<id>` in the current mode at once, with what
-its `models` entry says (reasoning effort, context window, prices, returned
-reasoning); the next request goes to it, while a reply already streaming
-finishes on the old model. Other modes keep their models. Any id the provider
-serves works, also one without an entry (for the `openai` provider it then
-runs with a 128,000-token window, no prices and no reasoning effort, and the
-CLI says so).
+To change the model while the session runs, type `/model`: it opens a list
+of the models of `~/.roo/cli-settings.json` (their `models` entries, and the
+model in use when it has none), titled with the mode it changes, the one in
+use marked, each with its reasoning effort, context window and size.
+
+```
+╭───────────────────────────────────────────────────╮
+│ Model for code mode                               │
+│ ❯ ● GLM-5.3-NVFP4 (reasoning max, 262,144 tokens) │
+│     Qwen3.8-27B (262,144 tokens)                  │
+│     Qwen3.8-4B (32,768 tokens, compact)           │
+│                                                   │
+│ ↑↓ select · enter switch · esc close              │
+╰───────────────────────────────────────────────────╯
+```
+
+It opens on the model in use. `↑`/`↓` move, `Enter` switches to the
+highlighted model (on the one in use it only closes the list), `Esc` closes
+it without a change; Shift+Tab does not change the mode while the list is
+open. With no `models` entries to choose from, `/model` prints the model in
+use and how to add entries instead.
+
+`/model <id>` does the same switch without the list. Either way `<id>` runs in
+the current mode at once, with what its `models` entry says (reasoning effort,
+context window, prices, returned reasoning, connection); the next request goes
+to it, while a reply already streaming finishes on the old model. Other modes
+keep their models. Any id the provider serves works with `/model <id>`, also
+one without an entry (for the `openai` provider it then runs with a
+128,000-token window, no prices and no reasoning effort, and the CLI says so).
 
 Like a mode in VS Code keeps the API profile chosen in it, the mode keeps the
-model: `/model <id>` saves the choice in `~/.roo/cli-settings.json`, so later
-sessions run `<id>` in that mode too, and the confirmation names the key it
-went to:
+model: a switch from the list or from `/model <id>` saves the choice in
+`~/.roo/cli-settings.json`, so later sessions run `<id>` in that mode too,
+and the confirmation names the key it went to:
 
 - where the file names the mode's model in `modes.<mode>.model`, that value
   is changed in place;
@@ -268,13 +288,13 @@ The theme is the Tumble "Hardcore" palette mapped to Claude Code's semantic key 
 | Key            | Action                                                                |
 | -------------- | --------------------------------------------------------------------- |
 | `Ctrl+C` twice | Exit the CLI                                                          |
-| `Ctrl+M`       | Cycle modes (code → architect → ask → debug → …)                      |
+| `Shift+Tab`    | Cycle modes (code → architect → ask → debug → …)                      |
 | `Ctrl+T`       | Toggle the TODO viewer                                                |
 | `Ctrl+R`       | Search previous prompts (again for older; `Enter` fills the prompt)   |
-| `Esc`          | Cancel a running task, or close the TODO viewer / MCP panel / dialogs |
+| `Esc`          | Cancel a running task, or close the TODO viewer, a panel, or a dialog |
 | `y` / `n`      | Approve / reject in approval dialogs (accelerators)                   |
 | `↑` / `↓`      | Navigate autocomplete picker and dialog lists                         |
-| `1`–`9`        | Jump-select a numbered option in dialogs                              |
+| `1`-`9`        | Jump-select a numbered option in dialogs                              |
 | `Enter`        | Confirm the focused option                                            |
 
 ### Approval dialogs

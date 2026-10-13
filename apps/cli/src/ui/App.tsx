@@ -45,6 +45,7 @@ import ApprovalDialog from "./components/dialogs/ApprovalDialog.js"
 import FollowupDialog from "./components/dialogs/FollowupDialog.js"
 import SecretPromptDialog from "./components/dialogs/SecretPromptDialog.js"
 import McpPanel from "./components/McpPanel.js"
+import ModelPicker from "./components/ModelPicker.js"
 import InputArea, { type AutocompleteInputHandle } from "./components/input/InputArea.js"
 import { type FileResult, type SlashCommandResult, PickerSelect } from "./components/autocomplete/index.js"
 
@@ -119,6 +120,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		isTransitioningToCustomInput,
 		showTodoViewer,
 		showMcpPanel,
+		showModelPicker,
 		pickerState,
 		setIsTransitioningToCustomInput,
 		verboseTranscript,
@@ -169,7 +171,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		})
 
 	// Initialize task submit hook
-	const { handleSubmit, handleSuggestion, handleApprove, handleReject } = useTaskSubmit({
+	const { handleSubmit, handleSuggestion, handleApprove, handleReject, pickModel } = useTaskSubmit({
 		sendToExtension,
 		runTask,
 		resetTranscript,
@@ -307,7 +309,13 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	// Input is owned by whichever dialog is up; the picker renders on top of
 	// the input area only when the input itself is active.
-	const inputActive = !showApprovalDialog && !showFollowupDialog && !showTodoViewer && !showMcpPanel && !secretPrompt
+	const inputActive =
+		!showApprovalDialog &&
+		!showFollowupDialog &&
+		!showTodoViewer &&
+		!showMcpPanel &&
+		!showModelPicker &&
+		!secretPrompt
 
 	// --- Text a command put into the prompt (/resume, --resume) ---------------
 
@@ -327,6 +335,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		autocompleteRef.current.setValue(requestedInput)
 		useUIStateStore.getState().requestInput(null)
 	}, [requestedInput, inputActive, showFollowupCustomInput])
+
+	const closeModelPicker = useCallback(() => useUIStateStore.getState().setShowModelPicker(false), [])
 
 	// --- MCP servers (/mcp panel, failure notice) ------------------------------
 
@@ -469,6 +479,18 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						onRestart={mcpPanel.onRestart}
 						onToggleDisabled={mcpPanel.onToggleDisabled}
 						onReload={mcpPanel.onReload}
+						isActive={!showApprovalDialog && !showFollowupDialog && !secretPrompt}
+					/>
+				)}
+
+				{/* Model list (/model); a dialog that comes up meanwhile takes the keys */}
+				{showModelPicker && (
+					<ModelPicker
+						mode={currentMode || mode}
+						currentModel={activeModel}
+						models={hostOptions.models}
+						onSelect={pickModel}
+						onClose={closeModelPicker}
 						isActive={!showApprovalDialog && !showFollowupDialog && !secretPrompt}
 					/>
 				)}

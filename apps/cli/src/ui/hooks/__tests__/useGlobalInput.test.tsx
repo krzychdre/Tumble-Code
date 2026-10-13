@@ -135,6 +135,18 @@ describe("useGlobalInput escape", () => {
 		expect(sendToExtension).not.toHaveBeenCalled()
 	})
 
+	it("leaves Escape to the open model list instead of cancelling the running task", async () => {
+		useUIStateStore.getState().setShowModelPicker(true)
+		const { stdin } = render(<Harness />)
+
+		stdin.write("\x1b")
+		await new Promise((resolve) => setTimeout(resolve, 60))
+
+		expect(sendToExtension).not.toHaveBeenCalled()
+		// The list closes itself (PickerSelect's Escape), not this hook.
+		expect(useUIStateStore.getState().showModelPicker).toBe(true)
+	})
+
 	it("cancels the running task when no panel is open", async () => {
 		const { stdin } = render(<Harness />)
 
@@ -167,6 +179,9 @@ describe("useGlobalInput shift+tab", () => {
 		return <Text>harness</Text>
 	}
 
+	/** Shift+Tab as a terminal sends it (backtab). */
+	const SHIFT_TAB = "\x1b[Z"
+
 	beforeEach(() => {
 		useCLIStore.getState().reset()
 		useUIStateStore.setState(useUIStateStore.getInitialState())
@@ -178,7 +193,7 @@ describe("useGlobalInput shift+tab", () => {
 		const getModelForMode = vi.fn(() => "GLM-5.3-NVFP4")
 		const { stdin } = render(<Harness getModelForMode={getModelForMode} />)
 
-		stdin.write("\x1b[Z")
+		stdin.write(SHIFT_TAB)
 		await vi.waitFor(() => expect(showInfo).toHaveBeenCalled())
 
 		expect(sendToExtension).toHaveBeenCalledWith({ type: "mode", text: "architect" })
@@ -189,9 +204,21 @@ describe("useGlobalInput shift+tab", () => {
 	it("names the mode only when the model is unknown", async () => {
 		const { stdin } = render(<Harness getModelForMode={() => undefined} />)
 
-		stdin.write("\x1b[Z")
+		stdin.write(SHIFT_TAB)
 		await vi.waitFor(() => expect(showInfo).toHaveBeenCalled())
 
 		expect(showInfo).toHaveBeenCalledWith("Switched to Architect", 2000)
+	})
+
+	it("does not change the mode under the open model list, which is about the current mode", async () => {
+		useUIStateStore.getState().setShowModelPicker(true)
+		const { stdin } = render(<Harness />)
+
+		stdin.write(SHIFT_TAB)
+		await flush()
+		await flush()
+
+		expect(sendToExtension).not.toHaveBeenCalled()
+		expect(showInfo).not.toHaveBeenCalled()
 	})
 })
