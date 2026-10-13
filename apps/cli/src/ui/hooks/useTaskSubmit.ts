@@ -3,12 +3,7 @@ import { randomUUID } from "crypto"
 import fs from "fs/promises"
 import path from "path"
 import { useStdout } from "ink"
-import {
-	suggestionModeToSwitch,
-	type ProviderSettings,
-	type UsableSuggestion,
-	type WebviewMessage,
-} from "@tumble-code/types"
+import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } from "@tumble-code/types"
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
 import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
@@ -16,6 +11,7 @@ import { TuiCloudAuth, type CloudAuthChannel } from "../../lib/auth/tui-cloud-au
 import { formatModelList, formatModelSwitched } from "../../lib/utils/model-command.js"
 import { getSettingsPath } from "../../lib/storage/index.js"
 import type { CliModelSettings } from "../../types/types.js"
+import type { ModelSwitch } from "../../agent/extension-host.js"
 
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
@@ -43,8 +39,8 @@ export interface UseTaskSubmitOptions {
 	mode?: string
 	/** `models` of cli-settings.json, listed by /model. */
 	configuredModels?: Record<string, CliModelSettings>
-	/** Runs another model in a mode for the session (ExtensionHost.switchModel). */
-	switchModel?: ((mode: string, model: string) => ProviderSettings) | null
+	/** Runs another model in a mode and saves the choice (ExtensionHost.switchModel). */
+	switchModel?: ((mode: string, model: string) => ModelSwitch) | null
 	/** The running extension for /login and /logout (absent: they say so). */
 	cloudAuth?: CloudAuthChannel | null
 }
@@ -285,12 +281,14 @@ export function useTaskSubmit({
 							content = "The model cannot be changed before the extension has started."
 						} else {
 							try {
-								const settings = switchModel(activeMode, requested)
+								// In effect from here on; the line waits for the save only.
+								const { settings, saved } = switchModel(activeMode, requested)
 								content = formatModelSwitched({
 									mode: activeMode,
 									model: requested,
 									settings,
 									hasEntry: configuredModels?.[requested] !== undefined,
+									saved: await saved,
 								})
 							} catch (error) {
 								content = `Could not switch the model: ${error instanceof Error ? error.message : String(error)}`

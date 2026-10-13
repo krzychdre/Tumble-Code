@@ -47,7 +47,13 @@ import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permission
 import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
 import { VERSION } from "@/lib/utils/version.js"
 import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
-import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
+import {
+	createEphemeralStorageDir,
+	getDefaultMcpSettingsPath,
+	getSettingsPath,
+	type ModelChoiceSave,
+	type SaveModelChoice,
+} from "@/lib/storage/index.js"
 import { restoreCloudPort } from "@/lib/auth/cloud-api-url.js"
 import { openExternal as openInBrowser } from "@/lib/utils/open-external.js"
 
@@ -99,6 +105,12 @@ export interface ExtensionHostOptions {
 	 * mode's current connection and changes only the model.
 	 */
 	resolveModelProviderSettings?: (mode: string, model: string) => ProviderSettings
+	/**
+	 * Keeps a /model choice for later sessions (run.ts: in cli-settings.json,
+	 * unless the run's flags rule that out). Called once per switch, after
+	 * the switch; without it a switch lasts for the session only.
+	 */
+	saveModelChoice?: SaveModelChoice
 	workspacePath: string
 	extensionPath: string
 	/**
@@ -182,8 +194,16 @@ export interface ExtensionHostInterface extends IExtensionHost<CliExtensionHostE
 	runTask(prompt: string, taskId?: string): Promise<void>
 	resumeTask(taskId: string): Promise<void>
 	sendToExtension(message: WebviewMessage): void
-	switchModel(mode: string, model: string): ProviderSettings
+	switchModel(mode: string, model: string): ModelSwitch
 	dispose(): Promise<void>
+}
+
+/** A /model switch: in effect at once, and the save of the choice, which follows it. */
+export interface ModelSwitch {
+	/** The provider settings the mode now runs with. */
+	settings: ProviderSettings
+	/** Never rejects: a failed save is reported in the result and the switch stands. */
+	saved: Promise<ModelChoiceSave>
 }
 
 export class ExtensionHost extends EventEmitter implements ExtensionHostInterface {
@@ -616,10 +636,12 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	 * entry says about it (reasoning effort, size, prices, and its own
 	 * provider, base URL and key), applied at once.
 	 * Other modes keep theirs, and switching back to `mode` brings the new
-	 * model back. Nothing is written to cli-settings.json. Returns the
-	 * settings the mode now runs with.
+	 * model back. The switch is done when this returns; then the choice is
+	 * handed to saveModelChoice, which keeps it in cli-settings.json for later
+	 * sessions where the run allows that. Returns the settings the mode now
+	 * runs with and the pending save.
 	 */
-	public switchModel(mode: string, model: string): ProviderSettings {
+	public switchModel(mode: string, model: string): ModelSwitch {
 		const perMode = this.options.modeProviderSettings
 		if (!perMode) {
 			throw new Error("This session has no provider settings per mode to change")
@@ -642,7 +664,17 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			bool: true,
 		})
 
-		return settings
+		const save = this.options.saveModelChoice
+		// The async wrapper turns a saver that throws into a failed save.
+		const saved: Promise<ModelChoiceSave> = save
+			? (async () => save(mode, model))().catch((error: unknown) => ({
+					outcome: "failed" as const,
+					settingsPath: getSettingsPath(),
+					error: error instanceof Error ? error.message : String(error),
+				}))
+			: Promise.resolve({ outcome: "session-only" as const, reason: "this session has nowhere to save it" })
+
+		return { settings, saved }
 	}
 
 	public isInInitialSetup(): boolean {

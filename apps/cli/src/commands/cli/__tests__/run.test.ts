@@ -54,6 +54,7 @@ const mockHost = vi.hoisted(() => ({
 					modes: Record<string, Record<string, unknown>>
 				}
 				resolveModelProviderSettings?: (mode: string, model: string) => Record<string, unknown>
+				saveModelChoice?: (mode: string, model: string) => Promise<Record<string, unknown>>
 		  },
 }))
 
@@ -1091,6 +1092,37 @@ describe("run provider settings per mode", () => {
 			} finally {
 				warnSpy.mockRestore()
 			}
+		})
+	})
+
+	describe("/model saves its choice", () => {
+		it("hands the host a saver that keeps the choice in the settings file", async () => {
+			await saveSettings(globalSettings)
+			await runWithExitThrowing()
+
+			await expect(mockHost.lastOptions!.saveModelChoice!("code", "GLM-5.3-NVFP4")).resolves.toMatchObject({
+				outcome: "saved",
+				key: "models.GLM-5.3-NVFP4.modes",
+			})
+			expect((await loadSettings()).models?.["GLM-5.3-NVFP4"]).toEqual({
+				reasoningEffort: "high",
+				modes: ["code"],
+			})
+		})
+
+		it.each([
+			[{ model: "Qwen3.8-27B" }, "--provider, --model, --base-url or --api-key"],
+			[{ ephemeral: true }, "--ephemeral"],
+		])("keeps the choice for the session only with %o", async (flags, reason) => {
+			await saveSettings(globalSettings)
+			const before = fs.readFileSync(getSettingsPath(), "utf-8")
+			await runWithExitThrowing(flags)
+
+			const saved = await mockHost.lastOptions!.saveModelChoice!("code", "GLM-5.3-NVFP4")
+
+			expect(saved).toMatchObject({ outcome: "session-only" })
+			expect(saved.reason).toContain(reason)
+			expect(fs.readFileSync(getSettingsPath(), "utf-8")).toBe(before)
 		})
 	})
 

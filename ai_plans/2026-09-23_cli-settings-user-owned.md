@@ -2,6 +2,9 @@
 
 **Status:** done on `refactor/cli-settings-user-owned` (branch 2 of 4, stacked on
 `fix/cli-flag-defaults-shadow-settings`)
+**Update 2026-10-13:** the owner reversed "nobody" for one case: `/model` now saves the model it gives a mode,
+touching only that mode's binding (`2026-10-13_12-23_cli-model-persist-per-mode.md`). Runs and the extension still
+never write the file.
 **Related plans:** `2026-08-04_cli-bare-run-settings-sync.md` (introduced both writers removed here),
 `2026-09-23_cli-flag-defaults-shadow-settings.md`
 **Touched:** `apps/cli/src/commands/cli/run.ts`, `apps/cli/src/commands/cli/__tests__/run.test.ts`,
