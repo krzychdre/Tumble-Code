@@ -452,6 +452,38 @@ without an entry use the top level.
   level, with `modes` ignored. `--reasoning-effort` keeps the modes and sets
   the level for every model of the run.
 
+A model can name its modes itself: `modes` in its `models` entry lists the
+slugs of the modes that run it. This is the same as writing
+`"modes": { "<slug>": { "model": "<id>" } }` for each of them, so a listed
+mode gets the model when the session starts in it, on every mode switch, in
+subtasks and on resume, together with the model's own connection, reasoning
+effort and size:
+
+```json
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"apiKey": "1111",
+	"model": "GLM-5.3-NVFP4",
+	"models": {
+		"GLM-5.3-NVFP4": { "reasoningEffort": "high" },
+		"Qwen3.8-27B": { "reasoningEffort": "xhigh", "modes": ["code", "debug"] }
+	}
+}
+```
+
+- `code` and `debug` run `Qwen3.8-27B`; every other mode runs the top-level
+  `GLM-5.3-NVFP4`.
+- A `modes` entry for a listed mode still applies; the list only supplies its
+  `model`. Naming the same model in both places is fine.
+- A mode runs one model, so the run stops at startup when two models list the
+  same mode, or when a model lists a mode whose `modes` entry names another
+  model; the error names both places. Errors about a listed mode name
+  `models.<id>.modes`.
+- Like `modes`, the lists are ignored for a run given any of `--provider`,
+  `--model`, `--base-url` or `--api-key`.
+- `/model` shows each model's modes next to its other settings.
+
 ### Connection per model
 
 A model served somewhere else than the top level says, on another server or by

@@ -4,7 +4,7 @@ import fs from "fs"
 import path from "path"
 
 import type { CliSettings } from "@/types/types.js"
-import { findModelSettingsProblems } from "@/lib/utils/model-settings.js"
+import { findModeBindingProblems, findModelSettingsProblems } from "@/lib/utils/model-settings.js"
 
 const cliRoot = path.resolve(__dirname, "../../../..")
 const example = JSON.parse(
@@ -27,6 +27,7 @@ function exampleKeys(): Set<string> {
 describe("cli-settings.example.json", () => {
 	it("has valid model entries", () => {
 		expect(findModelSettingsProblems(example.models)).toEqual([])
+		expect(findModeBindingProblems(example)).toEqual([])
 	})
 
 	it("sets every key of the README's settings table", () => {

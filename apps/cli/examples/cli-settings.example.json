@@ -13,7 +13,6 @@
 	"timeZone": "Europe/Warsaw",
 	"modes": {
 		"architect": { "model": "GLM-5.3-NVFP4" },
-		"debug": { "model": "Qwen3.8-4B" },
 		"ask": { "model": "claude-sonnet-5-5" }
 	},
 	"models": {
@@ -39,7 +38,8 @@
 			"apiKey": "2222",
 			"contextWindow": 32768,
 			"reasoningEffort": "disabled",
-			"modelSize": "compact"
+			"modelSize": "compact",
+			"modes": ["debug"]
 		},
 		"claude-sonnet-5-5": {
 			"provider": "anthropic",

@@ -973,6 +973,127 @@ describe("run provider settings per mode", () => {
 		}
 	})
 
+	describe("a model that names its modes (models.<id>.modes)", () => {
+		const owner = {
+			...globalSettings,
+			models: {
+				...globalSettings.models,
+				"Qwen3.8-27B": { reasoningEffort: "xhigh" as const, modes: ["code", "debug"] },
+				"Qwen3.5-4B": { baseUrl: "http://localhost:11111/v1", modelSize: "compact" as const, modes: ["ask"] },
+			},
+		}
+
+		it("runs the model in every mode it lists, from the first request on", async () => {
+			await saveSettings(owner)
+
+			const { outcome } = await runWithExitThrowing()
+
+			expect(outcome).toBe("ran")
+			// The session starts in code, which the Qwen entry lists.
+			expect(mockHost.lastOptions).toMatchObject({ mode: "code", model: "Qwen3.8-27B", reasoningEffort: "xhigh" })
+			const settings = mockHost.lastOptions?.modeProviderSettings
+			expect(settings?.modes.code).toMatchObject({ openAiModelId: "Qwen3.8-27B", reasoningEffort: "xhigh" })
+			expect(settings?.modes.debug).toMatchObject({ openAiModelId: "Qwen3.8-27B", reasoningEffort: "xhigh" })
+			// The model's own connection comes with it, as for a modes entry.
+			expect(settings?.modes.ask).toMatchObject({
+				openAiModelId: "Qwen3.5-4B",
+				openAiBaseUrl: "http://localhost:11111/v1",
+				openAiApiKey: "1111",
+				compactProfile: true,
+			})
+			// Modes no model lists keep the top level.
+			expect(settings?.modes).not.toHaveProperty("architect")
+			expect(settings?.base).toMatchObject({ openAiModelId: "GLM-5.3-Flash-NVFP4" })
+		})
+
+		it("adds the model to a modes entry that sets only the connection", async () => {
+			await saveSettings({
+				...owner,
+				modes: { debug: { baseUrl: "http://192.168.50.194:22222/v1" } },
+			})
+
+			await runWithExitThrowing()
+
+			expect(mockHost.lastOptions?.modeProviderSettings?.modes.debug).toMatchObject({
+				openAiModelId: "Qwen3.8-27B",
+				openAiBaseUrl: "http://192.168.50.194:22222/v1",
+			})
+		})
+
+		it("/model in a listed mode keeps the mode's layers", async () => {
+			await saveSettings({ ...owner, modes: { debug: { baseUrl: "http://192.168.50.194:22222/v1" } } })
+			await runWithExitThrowing()
+
+			expect(mockHost.lastOptions!.resolveModelProviderSettings!("debug", "GLM-5.3-NVFP4")).toMatchObject({
+				openAiModelId: "GLM-5.3-NVFP4",
+				openAiBaseUrl: "http://192.168.50.194:22222/v1",
+			})
+		})
+
+		it("any provider flag drops the bindings like modes", async () => {
+			await saveSettings(owner)
+
+			await runWithExitThrowing({ baseUrl: "http://localhost:9999/v1" })
+
+			expect(mockHost.lastOptions?.model).toBe("GLM-5.3-Flash-NVFP4")
+			expect(mockHost.lastOptions?.modeProviderSettings?.modes).toEqual({})
+		})
+
+		it("names models.<id>.modes when the mode it binds cannot run", async () => {
+			await saveSettings({
+				...owner,
+				models: { ...owner.models, "claude-x": { provider: "anthropic" as const, modes: ["architect"] } },
+			})
+
+			const { outcome, errors } = await runWithExitThrowing()
+
+			expect(outcome).toBe("failed")
+			expect(errors[0]).toContain("models.claude-x.modes in")
+			expect(errors[0]).toContain("No API key provided")
+		})
+
+		it("stops at startup when two places give one mode different models", async () => {
+			await saveSettings({ ...owner, modes: { debug: { model: "GLM-5.3-NVFP4" } } })
+
+			const { outcome, errors } = await runWithExitThrowing()
+
+			expect(outcome).toBe("failed")
+			expect(errors[0]).toContain(
+				'models.Qwen3.8-27B.modes lists "debug", but modes.debug.model names GLM-5.3-NVFP4; keep one of them',
+			)
+			expect(mockHost.lastOptions).toBeUndefined()
+		})
+
+		it("stops at startup on a malformed list", async () => {
+			await saveSettings({ ...owner, models: { "Qwen3.8-27B": { modes: "code" as never } } })
+
+			const { outcome, errors } = await runWithExitThrowing()
+
+			expect(outcome).toBe("failed")
+			expect(errors[0]).toContain("models.Qwen3.8-27B.modes must be a list of mode slugs")
+		})
+
+		it("never counts modes among the keys another provider ignores", async () => {
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+			try {
+				process.env.ANTHROPIC_API_KEY = "k"
+				await saveSettings({
+					provider: "anthropic",
+					model: "claude-x",
+					models: { "claude-x": { modes: ["code"] } },
+				})
+
+				const { outcome } = await runWithExitThrowing()
+
+				expect(outcome).toBe("ran")
+				expect(warnSpy.mock.calls.map((call) => String(call[0])).join("\n")).not.toContain("is ignored with")
+			} finally {
+				warnSpy.mockRestore()
+			}
+		})
+	})
+
 	describe("a model on its own connection", () => {
 		const elsewhere = {
 			...globalSettings,

@@ -30,9 +30,13 @@
  * `provider`, `baseUrl`, `apiKey` and `apiKeyEnv` put the model on its own
  * connection, for a model served elsewhere than the top level or the mode
  * says; resolveProviderConfigWithModel layers them under the flags.
+ *
+ * `modes` names the modes that run the model, the other way round from
+ * `modes.<slug>.model`; getEffectiveModeSettings folds both into one entry
+ * per mode.
  */
 
-import type { CliModelSettings } from "@/types/types.js"
+import type { CliModeSettings, CliModelSettings, CliSettings } from "@/types/types.js"
 import { MODEL_SIZES, REASONING_EFFORTS } from "@/types/constants.js"
 
 /** The one provider whose model size and prices the settings file can set. */
@@ -53,6 +57,7 @@ const ANY_PROVIDER_KEYS: ReadonlySet<string> = new Set([
 	"baseUrl",
 	"apiKey",
 	"apiKeyEnv",
+	"modes",
 ])
 
 /** The connection fields of a model, each a non-empty string when set. */
@@ -68,8 +73,8 @@ export function getConfiguredModelSettings(
 /**
  * The keys an entry sets that only the openai provider takes, for the warning
  * that names what is ignored with another provider. `reasoningEffort`,
- * `modelSize`, `hideMcp` and the connection fields are not among them: every
- * provider takes them.
+ * `modelSize`, `hideMcp`, the connection fields and `modes` are not among
+ * them: every provider takes them.
  */
 export function listSetModelSettings(entry: CliModelSettings | undefined): string[] {
 	return Object.entries(entry ?? {})
@@ -131,6 +136,12 @@ export function findModelSettingsProblems(models: unknown): string[] {
 			}
 		}
 
+		if (entry.modes !== undefined && !isModeSlugList(entry.modes)) {
+			problems.push(
+				`models.${model}.modes must be a list of mode slugs, e.g. ["code", "debug"], got ${JSON.stringify(entry.modes)}`,
+			)
+		}
+
 		for (const key of MODEL_PRICE_KEYS) {
 			const price = entry[key]
 
@@ -143,6 +154,102 @@ export function findModelSettingsProblems(models: unknown): string[] {
 	}
 
 	return problems
+}
+
+/** One mode's entry as the run uses it, and where in the file its parts were written. */
+export interface EffectiveModeSettings {
+	settings: CliModeSettings
+	/** `modes.<slug>`, `models.<id>.modes` or both, for the messages that name the entry. */
+	label: string
+}
+
+/**
+ * The per-mode entries the file describes: every `modes` entry as written,
+ * plus the model of each mode a `models.<id>.modes` list names, added to the
+ * mode's entry or making one. A mode listed there therefore behaves exactly
+ * as if `modes.<slug>.model` named the model. Where the file contradicts
+ * itself (findModeBindingProblems stops the run then) the `modes` entry and
+ * the first list win, so this never throws on a malformed file.
+ */
+export function getEffectiveModeSettings(settings: CliSettings): Record<string, EffectiveModeSettings> {
+	const entries: Record<string, EffectiveModeSettings> = {}
+
+	for (const [slug, written] of Object.entries(settings.modes ?? {})) {
+		entries[slug] = { settings: written, label: `modes.${slug}` }
+	}
+
+	for (const [slug, model] of Object.entries(listModelBindings(settings.models))) {
+		const label = `models.${model}.modes`
+		const existing = entries[slug]
+
+		if (!existing) {
+			entries[slug] = { settings: { model }, label }
+		} else {
+			entries[slug] = {
+				settings: { ...existing.settings, model: existing.settings.model ?? model },
+				label: `${existing.label} and ${label}`,
+			}
+		}
+	}
+
+	return entries
+}
+
+/**
+ * One message per mode the file gives two different models: listed in the
+ * `modes` of two models, or listed in one while `modes.<slug>.model` names
+ * another. The same model in both places is fine.
+ */
+export function findModeBindingProblems(settings: CliSettings): string[] {
+	const problems: string[] = []
+	const listedBy: Record<string, string> = {}
+
+	for (const [model, slug] of modelModePairs(settings.models)) {
+		const first = listedBy[slug]
+
+		if (first === undefined) {
+			listedBy[slug] = model
+		} else if (first !== model) {
+			problems.push(
+				`mode "${slug}" is listed in both models.${first}.modes and models.${model}.modes; a mode runs one model, so keep it in one list`,
+			)
+		}
+
+		const written = settings.modes?.[slug]?.model
+		if (written !== undefined && written !== model) {
+			problems.push(
+				`models.${model}.modes lists "${slug}", but modes.${slug}.model names ${written}; keep one of them`,
+			)
+		}
+	}
+
+	return problems
+}
+
+/** Mode slug -> the model whose `modes` lists it first. */
+function listModelBindings(models: unknown): Record<string, string> {
+	const bindings: Record<string, string> = {}
+	for (const [model, slug] of modelModePairs(models)) {
+		bindings[slug] ??= model
+	}
+	return bindings
+}
+
+/** Every [model id, mode slug] pair of the well-formed `modes` lists, in file order, a slug repeated in one list once. */
+function modelModePairs(models: unknown): [model: string, slug: string][] {
+	if (!isPlainObject(models)) {
+		return []
+	}
+
+	return Object.entries(models).flatMap(([model, entry]) =>
+		isPlainObject(entry) && isModeSlugList(entry.modes)
+			? [...new Set(entry.modes)].map((slug): [string, string] => [model, slug])
+			: [],
+	)
+}
+
+function isModeSlugList(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((slug) => typeof slug === "string" && slug.trim() !== "")
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

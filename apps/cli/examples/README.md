@@ -32,7 +32,7 @@ full rules; every key below links to them.
 | `mcpSettingsPath`         | `"~/.roo/mcp.json"`                | File with the global MCP servers (the default shown); `~` is the home directory.                                            |
 | `cloudApiUrl`             | `"https://cloud.example.com"`      | Tumble Code Cloud API for `tumble auth cloud login` and telemetry; leave it out without a cloud.                            |
 | `timeZone`                | `"Europe/Warsaw"`                  | IANA zone for the times shown and told to the model; only needed where the system zone is missing.                          |
-| `modes`                   | three entries                      | Provider settings per mode, see below.                                                                                      |
+| `modes`                   | two entries                        | Provider settings per mode, see below.                                                                                      |
 | `models`                  | four entries                       | Facts per model, see below.                                                                                                 |
 
 Not in the example on purpose: a top-level or per-mode `reasoningEffort` is
@@ -45,8 +45,10 @@ An entry may set `provider`, `model`, `baseUrl`, `apiKey` and `apiKeyEnv`, and
 inherits the rest from the top level ([Settings per mode](../README.md#settings-per-mode)).
 
 - Each entry here changes only the model. Where that model runs comes from its
-  `models` entry: `architect` stays on the top-level server, `debug` moves to
-  the server of `Qwen3.8-4B`, and `ask` to Anthropic with `claude-sonnet-5-5`.
+  `models` entry: `architect` stays on the top-level server and `ask` moves to
+  Anthropic with `claude-sonnet-5-5`. `debug` gets its model the other way
+  round, from the `modes` list of `Qwen3.8-4B`, and moves to that model's
+  server.
 - Every entry is checked at startup. The Anthropic model needs
   `ANTHROPIC_API_KEY`; without it, remove `ask` and the `claude-sonnet-5-5`
   entry, or the run stops at startup.
@@ -57,28 +59,29 @@ Keyed by model id. An entry applies wherever the model runs: the top level, a
 mode entry, `--model` or `/model`. Its connection keys override the top level
 and the mode entry; only the flags override them.
 
-| Key                 | Providers | What it does                                                                                                                                              |
-| ------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provider`          | all       | The model's own provider; it then inherits no base URL or key from the top level or the mode ([Connection per model](../README.md#connection-per-model)). |
-| `baseUrl`           | all       | The model's own server; without `provider` it keeps the provider of where it runs.                                                                        |
-| `apiKey`            | all       | The model's own key.                                                                                                                                      |
-| `apiKeyEnv`         | all       | Environment variable holding the model's own key.                                                                                                         |
-| `reasoningEffort`   | all       | Thinking level: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `unspecified` (model default) or `disabled`; the model must accept it.        |
-| `modelSize`         | all       | `standard`, `slim` or `compact`: how much system prompt and how many tools the model gets ([Model size](../README.md#model-size)).                        |
-| `hideMcp`           | all       | With `slim`, `false` keeps the MCP tools (default `true`).                                                                                                |
-| `contextWindow`     | `openai`  | Context window in tokens; without it 128,000 is assumed.                                                                                                  |
-| `inputPrice`        | `openai`  | USD per million input tokens not read from the prompt cache.                                                                                              |
-| `outputPrice`       | `openai`  | USD per million output tokens, reasoning included.                                                                                                        |
-| `cacheReadsPrice`   | `openai`  | USD per million input tokens read from the prompt cache.                                                                                                  |
-| `cacheWritesPrice`  | `openai`  | USD per million input tokens written to the prompt cache (defaults to `inputPrice`).                                                                      |
-| `preserveReasoning` | `openai`  | Send the model's earlier reasoning back with every request.                                                                                               |
-| `trimOldReasoning`  | `openai`  | With `preserveReasoning`, shorten old reasoning once the context fills up.                                                                                |
+| Key                 | Providers | What it does                                                                                                                                                   |
+| ------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provider`          | all       | The model's own provider; it then inherits no base URL or key from the top level or the mode ([Connection per model](../README.md#connection-per-model)).      |
+| `baseUrl`           | all       | The model's own server; without `provider` it keeps the provider of where it runs.                                                                             |
+| `apiKey`            | all       | The model's own key.                                                                                                                                           |
+| `apiKeyEnv`         | all       | Environment variable holding the model's own key.                                                                                                              |
+| `reasoningEffort`   | all       | Thinking level: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `unspecified` (model default) or `disabled`; the model must accept it.             |
+| `modelSize`         | all       | `standard`, `slim` or `compact`: how much system prompt and how many tools the model gets ([Model size](../README.md#model-size)).                             |
+| `hideMcp`           | all       | With `slim`, `false` keeps the MCP tools (default `true`).                                                                                                     |
+| `contextWindow`     | `openai`  | Context window in tokens; without it 128,000 is assumed.                                                                                                       |
+| `inputPrice`        | `openai`  | USD per million input tokens not read from the prompt cache.                                                                                                   |
+| `outputPrice`       | `openai`  | USD per million output tokens, reasoning included.                                                                                                             |
+| `cacheReadsPrice`   | `openai`  | USD per million input tokens read from the prompt cache.                                                                                                       |
+| `cacheWritesPrice`  | `openai`  | USD per million input tokens written to the prompt cache (defaults to `inputPrice`).                                                                           |
+| `preserveReasoning` | `openai`  | Send the model's earlier reasoning back with every request.                                                                                                    |
+| `trimOldReasoning`  | `openai`  | With `preserveReasoning`, shorten old reasoning once the context fills up.                                                                                     |
+| `modes`             | all       | The modes that run this model, e.g. `["debug"]`; the same as `"model"` in each of their `modes` entries ([Settings per mode](../README.md#settings-per-mode)). |
 
 The example gives each size one model: `GLM-5.3-Flash-NVFP4` is a large model
 with the full prompt, prices and returned reasoning; `GLM-5.3-NVFP4` uses the
 slim toolset and keeps MCP; `Qwen3.8-4B` is a small 32k model in compact mode
 without reasoning, served by a second server with its own key (still the
-`openai` provider); `claude-sonnet-5-5` runs on Anthropic with the key from
+`openai` provider) and run by the `debug` mode; `claude-sonnet-5-5` runs on Anthropic with the key from
 `ANTHROPIC_API_KEY` and sets only keys every provider takes, since Anthropic
 sizes and prices its models itself and the `openai`-only keys would be ignored
 with a warning.

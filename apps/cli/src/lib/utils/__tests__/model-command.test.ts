@@ -17,4 +17,15 @@ describe("formatModelList", () => {
 		expect(list).toContain("  Qwen3.8-27B (slim)\n")
 		expect(list).toContain("  GLM-5.3-NVFP4\n")
 	})
+
+	it("names the modes an entry lists", () => {
+		const list = formatModelList({
+			mode: "code",
+			currentModel: "Qwen3.8-27B",
+			models: { "Qwen3.8-27B": { reasoningEffort: "xhigh", modes: ["code", "debug", "code"] } },
+			settingsPath: "cli-settings.json",
+		})
+
+		expect(list).toContain("● Qwen3.8-27B (reasoning xhigh, modes code, debug)")
+	})
 })
