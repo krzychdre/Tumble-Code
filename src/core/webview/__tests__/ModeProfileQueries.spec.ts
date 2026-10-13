@@ -48,6 +48,26 @@ describe("ModeProfileQueries", () => {
 		expect(Object.keys(modes[0]).sort()).toEqual(["name", "slug"])
 	})
 
+	test("getModes lists a custom mode that overrides a built-in once, in the built-in's place", async () => {
+		const { host } = makeHost({
+			getCustomModes: vi.fn().mockResolvedValue([
+				{ slug: "vision", name: "My Vision" },
+				{ slug: "custom", name: "Custom" },
+			]),
+		})
+		const modes = await new ModeProfileQueries(host).getModes()
+		expect(modes.filter((m) => m.slug === "vision")).toEqual([{ slug: "vision", name: "My Vision" }])
+		expect(modes.map((m) => m.slug)).toEqual([
+			"architect",
+			"code",
+			"ask",
+			"debug",
+			"orchestrator",
+			"vision",
+			"custom",
+		])
+	})
+
 	test("getModes falls back to the built-ins when custom modes throw", async () => {
 		const { host } = makeHost({ getCustomModes: vi.fn().mockRejectedValue(new Error("boom")) })
 		const modes = await new ModeProfileQueries(host).getModes()

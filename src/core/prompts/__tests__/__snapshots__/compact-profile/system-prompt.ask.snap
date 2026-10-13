@@ -149,6 +149,7 @@ To change mode, call switch_mode with the mode's slug.
 - ask: ❓ Ask
 - debug: 🪲 Debug
 - orchestrator: 🪃 Orchestrator
+- vision: 👁️ Vision
 
 ====
 

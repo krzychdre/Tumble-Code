@@ -43,7 +43,15 @@ export class ModeProfileQueries {
 	async getModes(): Promise<{ slug: string; name: string }[]> {
 		try {
 			const customModes = await this.host.getCustomModes()
-			return [...DEFAULT_MODES, ...customModes].map(({ slug, name }) => ({ slug, name }))
+			// A custom mode with a built-in slug (a user's own `vision`, say) replaces
+			// that built-in in place, as getAllModes does for the prompt, so the CLI's
+			// mode list and picker show the slug once.
+			const overrides = new Map(customModes.map((mode) => [mode.slug, mode]))
+			const builtInSlugs = new Set(DEFAULT_MODES.map((mode) => mode.slug))
+			return [
+				...DEFAULT_MODES.map((mode) => overrides.get(mode.slug) ?? mode),
+				...customModes.filter((mode) => !builtInSlugs.has(mode.slug)),
+			].map(({ slug, name }) => ({ slug, name }))
 		} catch (error) {
 			return DEFAULT_MODES.map(({ slug, name }) => ({ slug, name }))
 		}

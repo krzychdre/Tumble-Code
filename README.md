@@ -20,7 +20,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 ## What Can Tumble Code Do For YOU?
 
 - Generate Code from natural language descriptions and specs
-- Adapt with Modes: Code, Architect, Ask, Debug, and Custom Modes
+- Adapt with Modes: Code, Architect, Ask, Debug, Vision, and Custom Modes
 - Refactor & Debug existing code
 - Write & Update documentation
 - Answer Questions about your codebase
@@ -36,6 +36,7 @@ Tumble Code adapts to how you work:
 - Architect Mode: plan systems, specs, and migrations
 - Ask Mode: fast answers, explanations, and docs
 - Debug Mode: trace issues, add logs, isolate root causes
+- Vision Mode: describe screenshots, diagrams and charts for models that cannot see images (pin a vision-capable model to it)
 - Custom Modes: build specialized modes for your team or workflow
 
 ## Resources
