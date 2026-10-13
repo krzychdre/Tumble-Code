@@ -41,7 +41,12 @@ import {
 	type ReasoningEffortFlagOptions,
 	type SupportedProvider,
 } from "@/types/index.js"
-import { resolveReasoningEffort, toProviderSettings, withModel } from "@/lib/utils/provider-config.js"
+import {
+	resolveReasoningEffort,
+	summarizeProviderSettings,
+	toProviderSettings,
+	withModel,
+} from "@/lib/utils/provider-config.js"
 import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
@@ -195,6 +200,7 @@ export interface ExtensionHostInterface extends IExtensionHost<CliExtensionHostE
 	resumeTask(taskId: string): Promise<void>
 	sendToExtension(message: WebviewMessage): void
 	switchModel(mode: string, model: string): ModelSwitch
+	getModelForMode(mode: string): string | undefined
 	dispose(): Promise<void>
 }
 
@@ -675,6 +681,17 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			: Promise.resolve({ outcome: "session-only" as const, reason: "this session has nowhere to save it" })
 
 		return { settings, saved }
+	}
+
+	/**
+	 * The model `mode` runs with in this session, as the extension will apply
+	 * it on a switch to that mode (`modes[mode] ?? base`, /model changes
+	 * included), so the TUI can name it next to the mode. Undefined without
+	 * per-mode settings or when they carry no model.
+	 */
+	public getModelForMode(mode: string): string | undefined {
+		const perMode = this.options.modeProviderSettings
+		return perMode ? summarizeProviderSettings(perMode.modes[mode] ?? perMode.base)?.model : undefined
 	}
 
 	public isInInitialSetup(): boolean {

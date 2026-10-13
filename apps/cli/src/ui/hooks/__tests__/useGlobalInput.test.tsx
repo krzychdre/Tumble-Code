@@ -1,6 +1,7 @@
 import { Text } from "ink"
 import { render } from "ink-testing-library"
 
+import type { ModeResult } from "../../components/autocomplete/index.js"
 import { useCLIStore } from "../../store.js"
 import { useUIStateStore } from "../../stores/uiStateStore.js"
 import { useGlobalInput } from "../useGlobalInput.js"
@@ -139,5 +140,58 @@ describe("useGlobalInput escape", () => {
 
 		stdin.write("\x1b")
 		await untilEscape(() => expect(sendToExtension).toHaveBeenCalledWith({ type: "cancelTask" }))
+	})
+})
+
+describe("useGlobalInput shift+tab", () => {
+	const modes: ModeResult[] = [
+		{ key: "code", slug: "code", name: "Code" },
+		{ key: "architect", slug: "architect", name: "Architect" },
+	]
+	const sendToExtension = vi.fn()
+	const showInfo = vi.fn()
+
+	function Harness({ getModelForMode }: { getModelForMode?: (mode: string) => string | undefined }) {
+		useGlobalInput({
+			pickerIsOpen: false,
+			availableModes: modes,
+			currentMode: "code",
+			mode: "code",
+			sendToExtension,
+			showInfo,
+			getModelForMode,
+			exit: vi.fn(),
+			cleanup: vi.fn(async () => undefined),
+			closePicker: vi.fn(),
+		})
+		return <Text>harness</Text>
+	}
+
+	beforeEach(() => {
+		useCLIStore.getState().reset()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
+		sendToExtension.mockClear()
+		showInfo.mockClear()
+	})
+
+	it("names the model the next mode runs with", async () => {
+		const getModelForMode = vi.fn(() => "GLM-5.3-NVFP4")
+		const { stdin } = render(<Harness getModelForMode={getModelForMode} />)
+
+		stdin.write("\x1b[Z")
+		await vi.waitFor(() => expect(showInfo).toHaveBeenCalled())
+
+		expect(sendToExtension).toHaveBeenCalledWith({ type: "mode", text: "architect" })
+		expect(getModelForMode).toHaveBeenCalledWith("architect")
+		expect(showInfo).toHaveBeenCalledWith("Switched to Architect (GLM-5.3-NVFP4)", 2000)
+	})
+
+	it("names the mode only when the model is unknown", async () => {
+		const { stdin } = render(<Harness getModelForMode={() => undefined} />)
+
+		stdin.write("\x1b[Z")
+		await vi.waitFor(() => expect(showInfo).toHaveBeenCalled())
+
+		expect(showInfo).toHaveBeenCalledWith("Switched to Architect", 2000)
 	})
 })

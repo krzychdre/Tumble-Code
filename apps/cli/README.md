@@ -470,6 +470,10 @@ without an entry use the top level.
   that run use one configuration for every mode: the flags on top of the top
   level, with `modes` ignored. `--reasoning-effort` keeps the modes and sets
   the level for every model of the run.
+- When you switch modes (Shift+Tab or the `!` picker), the notice names the
+  model the new mode runs with, `/model` changes included:
+  `Switched to Architect (GLM-5.3-NVFP4)`. The footer shows the model in use
+  after any switch, also one the model or a subtask makes.
 
 A model can name its modes itself: `modes` in its `models` entry lists the
 slugs of the modes that run it. This is the same as writing
