@@ -487,10 +487,11 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
-	// A context window, a price, preserveReasoning or trimOldReasoning set for a
-	// model that some configuration runs on another provider reaches nothing
-	// there; say so instead of letting the gauge, the condensing and the cost
-	// silently keep the provider's own numbers.
+	// A context window, a price, supportsImages, preserveReasoning or
+	// trimOldReasoning set for a model that some configuration runs on another
+	// provider reaches nothing there; say so instead of letting the gauge, the
+	// condensing, the cost and the image handling silently keep the provider's
+	// own numbers.
 	const ignoredModelSettingsWarnings = new Set(
 		providerConfigsToCheck
 			.map(([, config]) => [config, listSetModelSettings(modelSettingsFor(config))] as const)

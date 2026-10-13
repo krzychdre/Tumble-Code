@@ -153,17 +153,18 @@ settings still determine the initial mode of the next session.
 To change the model while the session runs, type `/model`: it opens a list
 of the models of `~/.roo/cli-settings.json` (their `models` entries, and the
 model in use when it has none), titled with the mode it changes, the one in
-use marked, each with its reasoning effort, context window and size.
+use marked, each with its reasoning effort, context window and size, and
+"text only" for a model that cannot see images.
 
 ```
 ╭───────────────────────────────────────────────────╮
 │ Model for code mode                               │
-│ ❯ ● GLM-5.3-NVFP4 (reasoning max, 262,144 tokens) │
-│     Qwen3.8-27B (262,144 tokens)                  │
-│     Qwen3.8-4B (32,768 tokens, compact)           │
-│                                                   │
-│ ↑↓ select · enter switch · esc close              │
-╰───────────────────────────────────────────────────╯
+│ ❯ ● GLM-5.3-NVFP4 (reasoning max, 262,144 tokens, text only) │
+│     Qwen3.8-27B (262,144 tokens)                             │
+│     Qwen3.8-4B (32,768 tokens, compact)                      │
+│                                                              │
+│ ↑↓ select · enter switch · esc close                         │
+╰──────────────────────────────────────────────────────────────╯
 ```
 
 It opens on the model in use. `↑`/`↓` move, `Enter` switches to the
@@ -428,7 +429,7 @@ and prints a one-line hint saying where to set one.
 | `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
 | `modes`                   | Settings per mode, see below                                      |
-| `models`                  | Per model: connection, effort, window, prices, size, see below    |
+| `models`                  | Per model: connection, effort, window, prices, images, size       |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
 | `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
@@ -725,6 +726,42 @@ fills up" in the VS Code settings:
   is nothing to shorten. It defaults to `false`, applies only with the
   `openai` provider, and a value other than `true` or `false` fails at startup
   and names the model.
+
+### Text-only models
+
+An OpenAI-compatible server does not say whether a model can see images, and
+the CLI assumes every `openai` model can. A text-only model such as GLM-5.3
+should say so with `supportsImages: false`, so that it hands an image to a mode
+whose model can see it (a vision mode) instead of receiving an image it cannot
+read:
+
+```json
+{
+	"models": {
+		"GLM-5.3-NVFP4": { "contextWindow": 262144, "supportsImages": false },
+		"Qwen3.8-27B": { "contextWindow": 262144, "supportsImages": true, "modes": ["vision"] }
+	}
+}
+```
+
+- When the text-only model reads an image with `read_file`, it gets a note
+  instead of the image. The note names the modes whose model can see images
+  (here `vision`, which runs `Qwen3.8-27B`) and tells the model to delegate the
+  image there with `new_task`, or, when no mode can, to go on without it.
+- A mode counts as seeing images when the model it runs does: its own model
+  (from `modes.<mode>.model` or a `modes` list in `models`), else the top-level
+  model. With a text-only top-level model, only the modes bound to a model with
+  `supportsImages: true` (or with no `supportsImages` at all) are named.
+- Images already in the conversation, for example from an earlier mode, are
+  replaced with a short text note in every request to a text-only model.
+- An image you name with `@` in the prompt is not shown to a text-only model
+  either: it sees the path, and reading the file gets it the note above.
+- It defaults to `true`. Like the size and the prices it applies only with the
+  `openai` provider: other providers know from their own model lists which
+  models see images, and an entry for one of their models is ignored with a
+  warning at startup. A value other than `true` or `false` fails at startup and
+  names the model.
+- `/model` lists a model with `supportsImages: false` as "text only".
 
 ### Model size
 

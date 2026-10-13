@@ -28,6 +28,21 @@ describe("formatModelList", () => {
 
 		expect(list).toContain("● Qwen3.8-27B (reasoning xhigh, modes code, debug)")
 	})
+
+	it("marks a model that cannot see images as text only", () => {
+		const list = formatModelList({
+			mode: "code",
+			currentModel: "GLM-5.3-NVFP4",
+			models: {
+				"GLM-5.3-NVFP4": { contextWindow: 262_144, supportsImages: false },
+				"Qwen3.8-27B": { supportsImages: true, modes: ["vision"] },
+			},
+			settingsPath: "cli-settings.json",
+		})
+
+		expect(list).toContain("● GLM-5.3-NVFP4 (262,144 tokens, text only)")
+		expect(list).toContain("  Qwen3.8-27B (modes vision)")
+	})
 })
 
 describe("buildModelRows", () => {

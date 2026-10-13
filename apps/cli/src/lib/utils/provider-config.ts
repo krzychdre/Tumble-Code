@@ -219,8 +219,9 @@ export function resolveProviderConfigWithModel({
  * provider's own model/base-url/key fields plus the reasoning switches
  * ("unspecified" leaves reasoning to the model's default, "disabled" turns it
  * off), and for the openai provider the model info that carries the model's
- * context window, its prices and the configured reasoning effort, plus whether
- * the model's earlier reasoning is sent back to it. Throws like
+ * context window, its prices, whether it sees images and the configured
+ * reasoning effort, plus whether the model's earlier reasoning is sent back to
+ * it. Throws like
  * getProviderSettings for a base URL the provider has no field for.
  */
 export function toProviderSettings(
@@ -244,8 +245,8 @@ export function toProviderSettings(
  * The same provider settings running another model of the same provider (the
  * TUI's /model): the provider's model field, and what comes with the model
  * (its reasoning effort and, for the openai provider, its size, prices,
- * preserveReasoning and trimOldReasoning), replacing those of the previous model. The connection
- * (base URL, key) stays.
+ * image support, preserveReasoning and trimOldReasoning), replacing those of
+ * the previous model. The connection (base URL, key) stays.
  */
 export function withModel(
 	settings: ProviderSettings,
@@ -292,15 +293,18 @@ function applyModelSettings(
 
 	// The openai provider sizes and prices its model from
 	// openAiCustomModelInfo, else from openAiModelInfoSaneDefaults (128,000
-	// tokens, $0): its model list has ids only. The same model info decides
-	// whether a reasoning effort is sent: without supportsReasoningEffort or an
-	// effort of its own the handler drops
+	// tokens, $0, sees images): its model list has ids only. The same model
+	// info decides whether a reasoning effort is sent: without
+	// supportsReasoningEffort or an effort of its own the handler drops
 	// the configured effort, so the effort is written there as well (the
 	// settings UI's reasoning level control also stores it in this model
-	// info). The fields are always written, because the startup
-	// settings are merged into the extension's persisted state, where a size, a
-	// price, an effort, a preserveReasoning or a trimOldReasoning from an
-	// earlier run would otherwise outlive the entry that set it.
+	// info). Whether the model sees images is read from it too, by read_file,
+	// by the search for a mode that can look at an image for a text-only one,
+	// and when images are stripped from the history. The fields are always
+	// written, because the startup settings are merged into the extension's
+	// persisted state, where a size, a price, an effort, an image setting, a
+	// preserveReasoning or a trimOldReasoning from an earlier run would
+	// otherwise outlive the entry that set it.
 	if (provider === "openai") {
 		const {
 			contextWindow,
@@ -308,13 +312,19 @@ function applyModelSettings(
 			outputPrice,
 			cacheReadsPrice,
 			cacheWritesPrice,
+			supportsImages,
 			preserveReasoning,
 			trimOldReasoning,
 		} = config.modelSettings ?? {}
 		const configured = Object.fromEntries(
-			Object.entries({ contextWindow, inputPrice, outputPrice, cacheReadsPrice, cacheWritesPrice }).filter(
-				([, value]) => value !== undefined,
-			),
+			Object.entries({
+				contextWindow,
+				inputPrice,
+				outputPrice,
+				cacheReadsPrice,
+				cacheWritesPrice,
+				supportsImages,
+			}).filter(([, value]) => value !== undefined),
 		)
 
 		settings.openAiCustomModelInfo =

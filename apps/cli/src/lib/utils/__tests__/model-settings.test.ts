@@ -29,6 +29,8 @@ describe("listSetModelSettings", () => {
 			"preserveReasoning",
 			"trimOldReasoning",
 		])
+		// Other providers take image support from their own model tables.
+		expect(listSetModelSettings({ supportsImages: false })).toEqual(["supportsImages"])
 		// Every provider takes these, so they are never reported as ignored.
 		expect(listSetModelSettings({ reasoningEffort: "high", modelSize: "compact", hideMcp: false })).toEqual([])
 		expect(listSetModelSettings({ provider: "zai", baseUrl: "x", apiKey: "k", apiKeyEnv: "K" })).toEqual([])
@@ -69,7 +71,7 @@ describe("findModelSettingsProblems", () => {
 		])
 	})
 
-	it.each(["preserveReasoning", "trimOldReasoning", "hideMcp"])(
+	it.each(["preserveReasoning", "trimOldReasoning", "hideMcp", "supportsImages"])(
 		"accepts %s true or false and rejects anything else",
 		(key) => {
 			expect(findModelSettingsProblems({ m: { [key]: true }, n: { [key]: false } })).toEqual([])

@@ -399,6 +399,26 @@ describe("toProviderSettings", () => {
 		expect(settings.openAiCustomModelInfo).not.toHaveProperty("cacheWritesPrice")
 	})
 
+	// openAiModelInfoSaneDefaults says every model sees images, so a
+	// text-only GLM-5.3 was handed images by read_file and never told to pass
+	// them to a mode whose model can see them.
+	it("marks an openai model text-only from its entry, even when the entry sets nothing else", () => {
+		const settings = toProviderSettings({ ...connection, modelSettings: { supportsImages: false } })
+
+		expect(settings.openAiCustomModelInfo).toEqual({ ...openAiModelInfoSaneDefaults, supportsImages: false })
+	})
+
+	it("keeps the sane defaults' image support when the entry leaves supportsImages out", () => {
+		expect(openAiModelInfoSaneDefaults.supportsImages).toBe(true)
+		expect(
+			toProviderSettings({ ...connection, modelSettings: { contextWindow: 262_144 } }).openAiCustomModelInfo
+				?.supportsImages,
+		).toBe(true)
+		expect(
+			toProviderSettings({ ...connection, modelSettings: { supportsImages: true } }).openAiCustomModelInfo,
+		).toEqual(openAiModelInfoSaneDefaults)
+	})
+
 	it("clears a size an earlier run left in the extension state when no contextWindow is set", () => {
 		// The startup settings are merged key by key into persisted state, so an
 		// absent key would keep the old value.
@@ -410,7 +430,13 @@ describe("toProviderSettings", () => {
 			provider: "anthropic",
 			model: "claude-x",
 			apiKey: "k",
-			modelSettings: { contextWindow: 1, inputPrice: 1, preserveReasoning: true, trimOldReasoning: true },
+			modelSettings: {
+				contextWindow: 1,
+				inputPrice: 1,
+				supportsImages: false,
+				preserveReasoning: true,
+				trimOldReasoning: true,
+			},
 		})
 		expect(settings).not.toHaveProperty("openAiCustomModelInfo")
 		expect(settings).not.toHaveProperty("openAiPreserveReasoning")
@@ -625,6 +651,19 @@ describe("withModel", () => {
 			openAiPreserveReasoning: true,
 			openAiTrimOldReasoning: false,
 		})
+	})
+
+	it("brings the new model's own image support, and the defaults' when it sets none", () => {
+		const textOnly = withModel(glm, "GLM-5.3-NVFP4", { modelSettings: { supportsImages: false } })
+		expect(textOnly.openAiCustomModelInfo?.supportsImages).toBe(false)
+
+		const vision = withModel(textOnly, "Qwen3.8-27B", {
+			modelSettings: { supportsImages: true, modes: ["vision"] },
+		})
+		expect(vision.openAiCustomModelInfo?.supportsImages).toBe(true)
+
+		// No entry: the text-only info of the previous model must not stay.
+		expect(withModel(textOnly, "Qwen3.8-27B", { modelSettings: undefined }).openAiCustomModelInfo).toBeNull()
 	})
 
 	it("brings the new model's own size", () => {
