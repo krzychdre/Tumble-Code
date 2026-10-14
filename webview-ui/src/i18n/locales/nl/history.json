@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "Taak verwijderen (Shift + Klik om bevestiging over te slaan)",
 	"copyPrompt": "Prompt kopiëren",
 	"exportTask": "Taak exporteren",
+	"pinTask": "Vastzetten",
+	"unpinTask": "Losmaken",
 	"deleteTask": "Taak verwijderen",
 	"deleteTaskMessage": "Weet je zeker dat je deze taak wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
 	"cancel": "Annuleren",
@@ -51,6 +53,7 @@
 	"today": "Vandaag",
 	"yesterday": "Gisteren",
 	"section": {
+		"pinned": "Vastgezet",
 		"active": "Actief"
 	},
 	"noHistory": "Nog geen taken. Start een gesprek om je geschiedenis op te bouwen.",

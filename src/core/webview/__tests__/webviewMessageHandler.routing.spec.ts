@@ -512,6 +512,7 @@ function createProvider() {
 		revealView: async () => undefined,
 		condenseTaskContext: async () => undefined,
 		deleteTaskWithId: async () => undefined,
+		setTaskPinned: async () => undefined,
 		getTaskWithAggregatedCosts: async (id: string) => ({ historyItem: { id }, aggregatedCosts: { totalCost: 1 } }),
 		resetState: async () => undefined,
 		cancelTask: async () => undefined,
@@ -586,6 +587,7 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["deleteTaskWithId", { text: "task-2" }],
 	["deleteMultipleTasksWithIds", { ids: ["a", "b"] }],
 	["exportTaskWithId", { text: "task-2" }],
+	["setTaskPinned", { text: "task-2", bool: true }],
 	["getTaskWithAggregatedCosts", { text: "task-1" }],
 	["importSettings", {}],
 	["exportSettings", {}],
@@ -763,7 +765,7 @@ describe("webviewMessageHandler routing (characterization, CORE-R3)", () => {
 	})
 
 	it("covers every routed message type exactly once in the route list", () => {
-		expect(ROUTED_TYPES).toHaveLength(134)
+		expect(ROUTED_TYPES).toHaveLength(135)
 	})
 
 	it.each(ROUTES)("%s", async (label, fields) => {

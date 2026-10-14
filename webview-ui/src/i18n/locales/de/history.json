@@ -20,6 +20,8 @@
 	"apiCostLabel": "API-Kosten:",
 	"copyPrompt": "Prompt kopieren",
 	"exportTask": "Aufgabe exportieren",
+	"pinTask": "Anheften",
+	"unpinTask": "Lösen",
 	"deleteTask": "Aufgabe löschen",
 	"deleteTaskMessage": "Bist du sicher, dass du diese Aufgabe löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
 	"cancel": "Abbrechen",
@@ -58,6 +60,7 @@
 	"today": "Heute",
 	"yesterday": "Gestern",
 	"section": {
+		"pinned": "Angeheftet",
 		"active": "Aktiv"
 	},
 	"noHistory": "Noch keine Aufgaben. Beginne eine Unterhaltung, um deinen Verlauf aufzubauen.",

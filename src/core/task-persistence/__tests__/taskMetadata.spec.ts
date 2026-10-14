@@ -86,4 +86,10 @@ describe("taskMetadata isSubagent", () => {
 		expect(await itemWith(false)).not.toHaveProperty("isSubagent")
 		expect(await itemWith(undefined)).not.toHaveProperty("isSubagent")
 	})
+
+	// The store merges a save into the stored record, so a key the save does
+	// not name survives; even `pinnedAt: undefined` would clear the user's pin.
+	it("never names the pin, which belongs to the user", async () => {
+		expect(await itemWith(undefined)).not.toHaveProperty("pinnedAt")
+	})
 })

@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "Görevi Sil (Onayı atlamak için Shift + Tıkla)",
 	"copyPrompt": "Promptu Kopyala",
 	"exportTask": "Görevi Dışa Aktar",
+	"pinTask": "Sabitle",
+	"unpinTask": "Sabitlemeyi kaldır",
 	"deleteTask": "Görevi Sil",
 	"deleteTaskMessage": "Bu görevi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
 	"cancel": "İptal",
@@ -51,6 +53,7 @@
 	"today": "Bugün",
 	"yesterday": "Dün",
 	"section": {
+		"pinned": "Sabitlenmiş",
 		"active": "Etkin"
 	},
 	"noHistory": "Henüz görev yok. Geçmişinizi oluşturmak için bir sohbet başlatın.",

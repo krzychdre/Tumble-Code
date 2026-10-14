@@ -1,4 +1,4 @@
-// Task lifecycle: webview launch, creating, answering, clearing, exporting and deleting tasks, the chat message queue.
+// Task lifecycle: webview launch, creating, answering, clearing, exporting, pinning and deleting tasks, the chat message queue.
 
 import * as vscode from "vscode"
 import type { EditQueuedMessagePayload } from "@tumble-code/types"
@@ -231,6 +231,22 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 			const failCount = results.length - successCount
 			logger.info(
 				`Batch deletion completed: ${successCount}/${ids.length} tasks successful, ${failCount} tasks failed`,
+			)
+		}
+	},
+
+	setTaskPinned: async (ctx, message) => {
+		const { provider } = ctx
+		const taskId = message.text
+		if (!taskId) {
+			return
+		}
+		try {
+			await provider.setTaskPinned(taskId, message.bool === true)
+		} catch (error) {
+			// A task deleted meanwhile has no record left to pin; nothing to show.
+			logger.warn(
+				`[setTaskPinned] Failed for task ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		}
 	},

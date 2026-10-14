@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "Excluir tarefa (Shift + Clique para pular confirmação)",
 	"copyPrompt": "Copiar prompt",
 	"exportTask": "Exportar tarefa",
+	"pinTask": "Fixar",
+	"unpinTask": "Desafixar",
 	"deleteTask": "Excluir tarefa",
 	"deleteTaskMessage": "Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.",
 	"cancel": "Cancelar",
@@ -52,6 +54,7 @@
 	"today": "Hoje",
 	"yesterday": "Ontem",
 	"section": {
+		"pinned": "Fixadas",
 		"active": "Ativas"
 	},
 	"noHistory": "Nenhuma tarefa ainda. Inicie uma conversa para criar seu histórico.",

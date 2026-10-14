@@ -1716,6 +1716,11 @@ export class ClineProvider
 		return this.taskHistory.updateTaskHistory(item, options)
 	}
 
+	/** Pins or unpins a task in the task lists. See {@link TaskHistoryGateway.setTaskPinned}. */
+	setTaskPinned(taskId: string, pinned: boolean): Promise<void> {
+		return this.taskHistory.setTaskPinned(taskId, pinned)
+	}
+
 	/**
 	 * Sends the whole history (sorted, filtered) as one `taskHistoryUpdated`
 	 * message instead of the full state.

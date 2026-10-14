@@ -111,6 +111,7 @@ type ExpectedWebviewMessageType =
 	| "showTaskWithId"
 	| "deleteTaskWithId"
 	| "exportTaskWithId"
+	| "setTaskPinned"
 	| "importSettings"
 	| "exportSettings"
 	| "resetState"

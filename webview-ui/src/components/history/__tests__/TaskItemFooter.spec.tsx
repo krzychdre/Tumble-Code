@@ -72,6 +72,20 @@ describe("TaskItemFooter", () => {
 		}
 	})
 
+	it("offers the pin on a root row in both variants, and unpin on a pinned one", () => {
+		const { rerender } = render(<TaskItemFooter item={mockItem} variant="compact" />)
+		expect(screen.getByRole("button", { name: "history:pinTask" })).toBeInTheDocument()
+
+		rerender(<TaskItemFooter item={{ ...mockItem, pinnedAt: 5 }} variant="full" />)
+		expect(screen.getByRole("button", { name: "history:unpinTask" })).toBeInTheDocument()
+	})
+
+	it("offers no pin on a subtask row, which stays in its tree", () => {
+		render(<TaskItemFooter item={mockItem} variant="full" isSubtask={true} />)
+
+		expect(screen.queryByTestId("pin-task-button")).not.toBeInTheDocument()
+	})
+
 	it("hides export button in compact variant", () => {
 		render(<TaskItemFooter item={mockItem} variant="compact" />)
 
@@ -87,6 +101,7 @@ describe("TaskItemFooter", () => {
 		expect(screen.queryByTestId("copy-prompt-button")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("export")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("delete-task-button")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("pin-task-button")).not.toBeInTheDocument()
 	})
 
 	it("shows delete button when not in selection mode and onDelete is provided", () => {

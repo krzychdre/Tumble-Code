@@ -20,6 +20,8 @@
 	"apiCostLabel": "Biaya API:",
 	"copyPrompt": "Salin Prompt",
 	"exportTask": "Ekspor Tugas",
+	"pinTask": "Sematkan",
+	"unpinTask": "Lepas sematan",
 	"deleteTask": "Hapus Tugas",
 	"deleteTaskMessage": "Apakah kamu yakin ingin menghapus tugas ini? Aksi ini tidak dapat dibatalkan.",
 	"cancel": "Batal",
@@ -60,6 +62,7 @@
 	"today": "Hari ini",
 	"yesterday": "Kemarin",
 	"section": {
+		"pinned": "Disematkan",
 		"active": "Aktif"
 	},
 	"noHistory": "Belum ada tugas. Mulai percakapan untuk membangun riwayat Anda.",

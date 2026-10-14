@@ -123,6 +123,30 @@ describe("HistoryView §2.9", () => {
 		expect(rows).toEqual(["task-item-2", "task-item-1"])
 	})
 
+	it("keeps a pinned task on top under its own header, above the working tasks", () => {
+		renderHistory(
+			[
+				task("1", now - 1000), // today
+				task("2", now - 9 * DAY, { pinnedAt: 1 }), // pinned long ago
+				task("3", now - 2 * DAY), // working
+			],
+			{ "3": "running" },
+		)
+
+		const headers = screen.getAllByTestId(/history-(section|day)-/)
+		expect(headers.map((header) => header.textContent)).toEqual([
+			"history:section.pinned",
+			"history:section.active",
+			"history:today",
+		])
+		const rows = screen.getAllByTestId(/^task-item-/).map((row) => row.dataset.testid)
+		expect(rows).toEqual(["task-item-2", "task-item-3", "task-item-1"])
+
+		fireEvent.click(screen.getAllByRole("button", { name: "history:unpinTask" })[0])
+		expect(mockPostMessage).toHaveBeenCalledWith({ type: "setTaskPinned", text: "2", bool: false })
+		expect(mockPostMessage).not.toHaveBeenCalledWith({ type: "showTaskWithId", text: "2" })
+	})
+
 	it("shows the empty state when there is no history at all", () => {
 		renderHistory([])
 		expect(screen.getByTestId("history-empty-state")).toBeInTheDocument()

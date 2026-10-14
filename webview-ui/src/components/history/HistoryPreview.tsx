@@ -20,8 +20,8 @@ const HistoryPreview = () => {
 	}
 
 	// Show up to 4 groups (parent + subtasks count as 1 block). The groups of a
-	// section (working trees) come first and are all shown, even past 4, so an
-	// older task that works is never cut off.
+	// section (pinned tasks, then working trees) come first and are all shown,
+	// even past 4, so an older pinned or working task is never cut off.
 	const displayGroups = groups.slice(0, Math.max(PREVIEW_GROUPS, groups.filter((g) => listSection(g.parent)).length))
 
 	return (

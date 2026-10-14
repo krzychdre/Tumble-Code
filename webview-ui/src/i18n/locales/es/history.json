@@ -20,6 +20,8 @@
 	"apiCostLabel": "Costo de API:",
 	"copyPrompt": "Copiar prompt",
 	"exportTask": "Exportar tarea",
+	"pinTask": "Fijar",
+	"unpinTask": "Dejar de fijar",
 	"deleteTask": "Eliminar tarea",
 	"deleteTaskMessage": "¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.",
 	"cancel": "Cancelar",
@@ -59,6 +61,7 @@
 	"today": "Hoy",
 	"yesterday": "Ayer",
 	"section": {
+		"pinned": "Fijadas",
 		"active": "Activas"
 	},
 	"noHistory": "Aún no hay tareas. Inicia una conversación para crear tu historial.",
