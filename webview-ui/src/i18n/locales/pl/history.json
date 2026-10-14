@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "Usuń zadanie (Shift + Klik, aby pominąć potwierdzenie)",
 	"copyPrompt": "Kopiuj prompt",
 	"exportTask": "Eksportuj zadanie",
+	"pinTask": "Przypnij",
+	"unpinTask": "Odepnij",
 	"deleteTask": "Usuń zadanie",
 	"deleteTaskMessage": "Czy na pewno chcesz usunąć to zadanie? Tej akcji nie można cofnąć.",
 	"cancel": "Anuluj",
@@ -53,6 +55,7 @@
 	"today": "Dzisiaj",
 	"yesterday": "Wczoraj",
 	"section": {
+		"pinned": "Przypięte",
 		"active": "Aktywne"
 	},
 	"noHistory": "Brak zadań. Rozpocznij rozmowę, aby zbudować historię.",

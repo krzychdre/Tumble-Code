@@ -20,6 +20,8 @@
 	"apiCostLabel": "Coût API:",
 	"copyPrompt": "Copier le prompt",
 	"exportTask": "Exporter la tâche",
+	"pinTask": "Épingler",
+	"unpinTask": "Désépingler",
 	"deleteTask": "Supprimer la tâche",
 	"deleteTaskMessage": "Êtes-vous sûr de vouloir supprimer cette tâche ? Cette action ne peut pas être annulée.",
 	"cancel": "Annuler",
@@ -59,6 +61,7 @@
 	"today": "Aujourd'hui",
 	"yesterday": "Hier",
 	"section": {
+		"pinned": "Épinglées",
 		"active": "Actives"
 	},
 	"noHistory": "Aucune tâche pour le moment. Lancez une conversation pour constituer votre historique.",

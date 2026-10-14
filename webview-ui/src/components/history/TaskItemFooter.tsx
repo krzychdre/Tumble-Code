@@ -4,6 +4,7 @@ import { ExportButton } from "./ExportButton"
 import TaskDetails from "./TaskDetails"
 import type { DisplayHistoryItem } from "./types"
 import { DeleteButton } from "./DeleteButton"
+import { PinButton } from "./PinButton"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Split } from "lucide-react"
 
@@ -45,6 +46,8 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 			{/* Row actions: always visible (keyboard and touch users see them too), in the description colour */}
 			{!isSelectionMode && (
 				<div className="flex flex-row gap-0.5 -mr-1 items-center text-vscode-descriptionForeground">
+					{/* A pin lifts a root row of the lists; a subtask row stays in its tree. */}
+					{!isSubtask && <PinButton itemId={item.id} pinned={item.pinnedAt !== undefined} />}
 					<CopyButton itemTask={item.task} />
 					{variant === "full" && <ExportButton itemId={item.id} />}
 					{onDelete && <DeleteButton itemId={item.id} onDelete={onDelete} />}

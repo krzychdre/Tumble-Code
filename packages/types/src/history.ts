@@ -42,6 +42,12 @@ export const historyItemSchema = z.object({
 	awaitingChildId: z.string().optional(), // Child currently awaited (set when delegated)
 	completedByChildId: z.string().optional(), // Child that completed and resumed this parent
 	completionResultSummary: z.string().optional(), // Summary from completed child
+	// When the user pinned the task to the top of the task lists (epoch ms);
+	// absent while it is not pinned. Set and cleared only by the pin action
+	// (TaskHistoryGateway.setTaskPinned). A task saving its own history item
+	// never sends it, and the store merges a save into the stored record, so
+	// the pin survives the task's saves.
+	pinnedAt: z.number().optional(),
 })
 
 export type HistoryItem = z.infer<typeof historyItemSchema>

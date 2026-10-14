@@ -195,6 +195,28 @@ describe("TaskHistoryStore", () => {
 			expect(result.tokensOut).toBe(200)
 		})
 
+		it("keeps the pin when the running task saves its history item again", async () => {
+			await store.initialize()
+			await store.upsert(makeHistoryItem({ id: "pinned-task", tokensIn: 1 }))
+			await store.atomicReadAndUpdate("pinned-task", (current) => ({ ...current, pinnedAt: 1234 }))
+
+			// The task's own save (taskMetadata) never names pinnedAt.
+			const save = makeHistoryItem({ id: "pinned-task", tokensIn: 900 })
+			expect("pinnedAt" in save).toBe(false)
+			await store.upsert(save)
+
+			expect(store.get("pinned-task")).toMatchObject({ pinnedAt: 1234, tokensIn: 900 })
+
+			// The schema keeps the field when a fresh store reads the disk.
+			const reloaded = new TaskHistoryStore(tmpDir)
+			await reloaded.initialize()
+			try {
+				expect(reloaded.get("pinned-task")?.pinnedAt).toBe(1234)
+			} finally {
+				reloaded.dispose()
+			}
+		})
+
 		it("does not return the full history (callers use getAll)", async () => {
 			await store.initialize()
 

@@ -180,6 +180,23 @@ describe("HistoryPreview", () => {
 		])
 	})
 
+	it("counts the pinned groups with the working ones that are always shown", () => {
+		const groups = createMockGroups(mockTasks).map((group, index) =>
+			index < 3
+				? { ...group, parent: { ...group.parent, pinnedAt: index + 1 } }
+				: index < 5
+					? { ...group, parent: { ...group.parent, runningStatus: "running" } }
+					: group,
+		)
+		mockUseTaskSearch.mockReturnValue({ tasks: mockTasks, searchQuery: "" })
+		mockUseGroupedTasks.mockReturnValue({ groups, flatTasks: null, toggleExpand: vi.fn(), isSearchMode: false })
+
+		render(<HistoryPreview />)
+
+		expect(screen.getAllByTestId(/task-group-/)).toHaveLength(5)
+		expect(screen.queryByTestId("task-group-task-6")).not.toBeInTheDocument()
+	})
+
 	it("renders all groups when there are 4 or fewer", () => {
 		const threeTasks = mockTasks.slice(0, 3)
 		mockUseTaskSearch.mockReturnValue({

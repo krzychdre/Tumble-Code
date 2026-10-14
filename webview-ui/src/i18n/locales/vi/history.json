@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "Xóa nhiệm vụ (Shift + Click để bỏ qua xác nhận)",
 	"copyPrompt": "Sao chép lời nhắc",
 	"exportTask": "Xuất nhiệm vụ",
+	"pinTask": "Ghim",
+	"unpinTask": "Bỏ ghim",
 	"deleteTask": "Xóa nhiệm vụ",
 	"deleteTaskMessage": "Bạn có chắc chắn muốn xóa nhiệm vụ này không? Hành động này không thể hoàn tác.",
 	"cancel": "Hủy",
@@ -51,6 +53,7 @@
 	"today": "Hôm nay",
 	"yesterday": "Hôm qua",
 	"section": {
+		"pinned": "Đã ghim",
 		"active": "Đang hoạt động"
 	},
 	"noHistory": "Chưa có tác vụ nào. Bắt đầu cuộc trò chuyện để xây dựng lịch sử của bạn.",

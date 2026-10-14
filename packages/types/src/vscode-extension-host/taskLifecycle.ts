@@ -21,6 +21,7 @@ export type TaskLifecycleWebviewMessageType =
 	| "deleteTaskWithId"
 	| "deleteMultipleTasksWithIds"
 	| "exportTaskWithId"
+	| "setTaskPinned"
 	| "getTaskWithAggregatedCosts"
 	| "cancelTask"
 	| "cancelAutoApproval"

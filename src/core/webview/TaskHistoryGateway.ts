@@ -711,6 +711,28 @@ export class TaskHistoryGateway {
 	}
 
 	/**
+	 * Pins a task to the top of the task lists (`pinnedAt`, the time of the
+	 * pin) or unpins it, and pushes the stored item to the webview. A read,
+	 * modify and write under the store lock, so it never writes back a stale
+	 * copy of the other fields. Pinning a pinned task keeps its first time,
+	 * so the order of the pinned tasks does not change.
+	 */
+	async setTaskPinned(taskId: string, pinned: boolean): Promise<void> {
+		const taskHistoryStore = await this.getStore()
+		const updated = await taskHistoryStore.atomicReadAndUpdate(
+			taskId,
+			(current) => {
+				const { pinnedAt, ...rest } = current
+				return pinned ? { ...rest, pinnedAt: pinnedAt ?? Date.now() } : rest
+			},
+			this.origin,
+		)
+		if (this.host.isViewLaunched) {
+			await this.host.postMessageToWebview({ type: "taskHistoryItemUpdated", taskHistoryItem: updated })
+		}
+	}
+
+	/**
 	 * Broadcasts a task history update to the webview.
 	 * This sends a lightweight message with just the task history, rather than the full state.
 	 * @param history The task history to broadcast (if not provided, reads from the store)

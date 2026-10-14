@@ -359,6 +359,28 @@ describe("TaskHistoryGateway", () => {
 			])
 		})
 
+		it("setTaskPinned pins with the time of the first pin, unpins, and pushes the stored item", async () => {
+			const { gateway, host, store, records } = await ready()
+			records.set("t", item("t", { tokensIn: 7 }))
+			vi.spyOn(Date, "now").mockReturnValue(5000)
+
+			await gateway.setTaskPinned("t", true)
+			expect(records.get("t")).toEqual(item("t", { tokensIn: 7, pinnedAt: 5000 }))
+			expect(store.atomicReadAndUpdate.mock.calls[0][2]).toBeTypeOf("symbol")
+			expect(messagesOfType(host, "taskHistoryItemUpdated")).toEqual([
+				{ type: "taskHistoryItemUpdated", taskHistoryItem: records.get("t") },
+			])
+
+			vi.spyOn(Date, "now").mockReturnValue(9000)
+			await gateway.setTaskPinned("t", true)
+			expect(records.get("t")?.pinnedAt).toBe(5000)
+
+			await gateway.setTaskPinned("t", false)
+			expect(records.get("t")).toEqual(item("t", { tokensIn: 7 }))
+			expect(records.get("t")).not.toHaveProperty("pinnedAt")
+			vi.mocked(Date.now).mockRestore()
+		})
+
 		it("getTaskWithId parses the conversation file of the task", async () => {
 			const { gateway, records } = await ready()
 			records.set("conv", item("conv"))

@@ -20,6 +20,8 @@
 	"apiCostLabel": "Cost d'API:",
 	"copyPrompt": "Copiar prompt",
 	"exportTask": "Exportar tasca",
+	"pinTask": "Fixa",
+	"unpinTask": "Deixa de fixar",
 	"deleteTask": "Eliminar tasca",
 	"deleteTaskMessage": "Estàs segur que vols eliminar aquesta tasca? Aquesta acció no es pot desfer.",
 	"cancel": "Cancel·lar",
@@ -59,6 +61,7 @@
 	"today": "Avui",
 	"yesterday": "Ahir",
 	"section": {
+		"pinned": "Fixades",
 		"active": "Actives"
 	},
 	"noHistory": "Encara no hi ha tasques. Comença una conversa per crear l'historial.",

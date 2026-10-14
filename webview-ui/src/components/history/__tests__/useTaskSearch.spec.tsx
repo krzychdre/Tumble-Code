@@ -352,7 +352,7 @@ describe("useTaskSearch", () => {
 		expect(result.current.tasks[0].highlight).toBeDefined()
 	})
 
-	describe("working tasks first", () => {
+	describe("pinned and working tasks first", () => {
 		// Three tasks of project1, newest first: b (17th), a (16th), c (15th).
 		const history: HistoryItem[] = [
 			{ ...mockTaskHistory[0], id: "a" },
@@ -398,6 +398,38 @@ describe("useTaskSearch", () => {
 			} as any)
 			const { result } = renderHook(() => useTaskSearch())
 			expect(result.current.tasks.map((task) => task.id)).toEqual(["c", "sub", "b", "a"])
+		})
+
+		it("lists the pinned tasks above the working ones, most recently pinned first", () => {
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: [
+					{ ...history[0], pinnedAt: 10 },
+					history[1],
+					{ ...history[2], pinnedAt: 20 },
+					{ ...mockTaskHistory[0], id: "d", ts: 1 },
+				],
+				cwd: "/workspace/project1",
+				runningTasks: { d: "running", a: "running" },
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+
+			// c pinned last, a pinned first (and working, it keeps its pinned slot),
+			// then the working d, then the resting b.
+			expect(result.current.tasks.map((task) => [task.id, task.runningStatus])).toEqual([
+				["c", undefined],
+				["a", "running"],
+				["d", "running"],
+				["b", undefined],
+			])
+		})
+
+		it("lists pinned tasks first while nothing works, and keeps the list otherwise", () => {
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: [history[0], history[1], { ...history[2], pinnedAt: 1 }],
+				cwd: "/workspace/project1",
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+			expect(result.current.tasks.map((task) => task.id)).toEqual(["c", "b", "a"])
 		})
 
 		it("keeps the relevance order of a search ranked by relevance", () => {

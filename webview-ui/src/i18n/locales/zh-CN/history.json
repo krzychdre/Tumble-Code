@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "删除任务（Shift + 点击跳过确认）",
 	"copyPrompt": "复制提示词",
 	"exportTask": "导出任务",
+	"pinTask": "置顶",
+	"unpinTask": "取消置顶",
 	"deleteTask": "删除任务",
 	"deleteTaskMessage": "确认删除该任务？此操作不可逆。",
 	"cancel": "取消",
@@ -51,6 +53,7 @@
 	"today": "今天",
 	"yesterday": "昨天",
 	"section": {
+		"pinned": "已置顶",
 		"active": "进行中"
 	},
 	"noHistory": "还没有任务。开始一段对话来建立历史记录。",

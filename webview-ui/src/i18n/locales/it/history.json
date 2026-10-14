@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "Elimina attività (Shift + Clic per saltare conferma)",
 	"copyPrompt": "Copia prompt",
 	"exportTask": "Esporta attività",
+	"pinTask": "Fissa",
+	"unpinTask": "Rimuovi fissaggio",
 	"deleteTask": "Elimina attività",
 	"deleteTaskMessage": "Sei sicuro di voler eliminare questa attività? Questa azione non può essere annullata.",
 	"cancel": "Annulla",
@@ -52,6 +54,7 @@
 	"today": "Oggi",
 	"yesterday": "Ieri",
 	"section": {
+		"pinned": "Fissate",
 		"active": "Attive"
 	},
 	"noHistory": "Nessuna attività. Avvia una conversazione per creare la cronologia.",

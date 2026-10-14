@@ -428,6 +428,25 @@ describe("useGroupedTasks", () => {
 			])
 		})
 
+		it("sorts pinned groups above working ones, most recently pinned first", () => {
+			const pinnedOld = createMockTask({ id: "pinned-old", ts: 10, pinnedAt: 1 })
+			const pinnedWorking = {
+				...createMockTask({ id: "pinned-working", ts: 20, pinnedAt: 2 }),
+				runningStatus: "running" as const,
+			}
+			const working = { ...createMockTask({ id: "working", ts: 30 }), runningStatus: "running" as const }
+			const newest = createMockTask({ id: "newest", ts: 300 })
+
+			const { result } = renderHook(() => useGroupedTasks([newest, pinnedOld, working, pinnedWorking], ""))
+
+			expect(result.current.groups.map((group) => group.parent.id)).toEqual([
+				"pinned-working",
+				"pinned-old",
+				"working",
+				"newest",
+			])
+		})
+
 		it("passes the running status through to search results", () => {
 			const { result } = renderHook(() => useGroupedTasks([parentTask, childTask], "task"))
 
@@ -636,8 +655,8 @@ describe("toDayRows", () => {
 	const t = (key: string) => key
 	const noon = new Date().setHours(12, 0, 0, 0)
 	const DAY = 86400000
-	const group = (id: string, ts: number, runningStatus?: "running" | "awaiting_input") => ({
-		parent: { ...createMockTask({ id, ts }), runningStatus },
+	const group = (id: string, ts: number, runningStatus?: "running" | "awaiting_input", pinnedAt?: number) => ({
+		parent: { ...createMockTask({ id, ts, pinnedAt }), runningStatus },
 		subtasks: [],
 		isExpanded: false,
 	})
@@ -663,6 +682,28 @@ describe("toDayRows", () => {
 			"yesterday",
 		])
 		expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length)
+	})
+
+	it("puts the pinned groups under their own header first, a working one included", () => {
+		const rows = toDayRows(
+			[
+				group("pinned-working", noon - 5 * DAY, "running", 2),
+				group("pinned", noon - 9 * DAY, undefined, 1),
+				group("working", noon, "running"),
+				group("today", noon - 1000),
+			],
+			t,
+		)
+
+		expect(rows.map((row) => (row.type === "group" ? row.group.parent.id : row.label))).toEqual([
+			"history:section.pinned",
+			"pinned-working",
+			"pinned",
+			"history:section.active",
+			"working",
+			"history:today",
+			"today",
+		])
 	})
 
 	it("adds no section header when nothing works", () => {

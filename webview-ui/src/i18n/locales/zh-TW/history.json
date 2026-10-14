@@ -13,6 +13,8 @@
 	"deleteTaskTitle": "刪除工作（按住 Shift 並點選可跳過確認）",
 	"copyPrompt": "複製提示詞",
 	"exportTask": "匯出工作",
+	"pinTask": "釘選",
+	"unpinTask": "取消釘選",
 	"deleteTask": "刪除工作",
 	"deleteTaskMessage": "確定要刪除此工作嗎？此操作無法復原。",
 	"cancel": "取消",
@@ -51,6 +53,7 @@
 	"today": "今天",
 	"yesterday": "昨天",
 	"section": {
+		"pinned": "已釘選",
 		"active": "進行中"
 	},
 	"noHistory": "還沒有工作。開始一段對話來建立歷史記錄。",

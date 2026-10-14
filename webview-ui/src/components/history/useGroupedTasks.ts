@@ -89,8 +89,8 @@ export function useGroupedTasks(tasks: HistoryItem[], searchQuery: string): Grou
 			}
 		})
 
-		// Groups whose parent is in a section (a working tree) first, then by
-		// parent timestamp (newest first).
+		// Groups whose parent is in a section (pinned, then a working tree)
+		// first, then by parent timestamp (newest first).
 		taskGroups.sort((a, b) => bySection(a.parent, b.parent) || b.parent.ts - a.parent.ts)
 
 		return taskGroups
@@ -158,12 +158,14 @@ export function dayLabel(ts: number, t: (key: string) => string): string {
 }
 
 const SECTION_LABEL_KEYS: Record<ListSection, string> = {
+	pinned: "history:section.pinned",
 	active: "history:section.active",
 }
 
 /**
- * §2.9: interleave headers into the group list. The groups of a section (a
- * working tree, see `listSection`) come first and get one section header; the
+ * §2.9: interleave headers into the group list. The groups of a section
+ * (pinned, then working trees, see `listSection`) come first and each section
+ * gets one header; the
  * newest-first rest gets a day header where the next group starts a new
  * calendar day. The parent-child grouping is untouched.
  */
