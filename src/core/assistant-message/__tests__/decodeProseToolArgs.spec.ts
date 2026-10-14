@@ -1,5 +1,5 @@
 import { NativeToolCallParser } from "../NativeToolCallParser"
-import { decodeProseToolArgs } from "../decodeProseToolArgs"
+import { decodeProseToolArgs, decodeProseToolUsesInHistory } from "../decodeProseToolArgs"
 
 // The wire text of the attempt_completion call in task 01a134d6: the model escaped
 // the backslash, so JSON parsing leaves the literal ł in the argument.
@@ -54,5 +54,21 @@ describe("NativeToolCallParser with escaped prose", () => {
 			arguments: '{"path":"a.js","content":"const l = \\"\\\\u0142\\""}',
 		})
 		expect((toolUse as any).nativeArgs.content).toBe('const l = "\\u0142"')
+	})
+})
+
+describe("decodeProseToolUsesInHistory", () => {
+	it("returns the same array and messages when no prose tool call needs decoding", () => {
+		const messages = [
+			{ role: "user", content: "Zr\\u00f3b to" },
+			{
+				role: "assistant",
+				content: [
+					{ type: "tool_use", name: "write_to_file", input: { content: "\\u0142" } },
+					{ type: "tool_use", name: "attempt_completion", input: { result: "Gotowe" } },
+				],
+			},
+		]
+		expect(decodeProseToolUsesInHistory(messages)).toBe(messages)
 	})
 })

@@ -54,3 +54,39 @@ function decodeStrings(value: unknown): unknown {
 export function decodeProseToolArgs<T>(toolName: string, args: T): T {
 	return PROSE_TOOLS.has(toolName) ? (decodeStrings(args) as T) : args
 }
+
+/**
+ * The parser above keeps new tool calls clean, but a task saved before it can
+ * still hold escaped prose tool calls in its API history, and the model copies
+ * them in every later turn. Applied when a request is built from the stored
+ * history: decodes the `input` of assistant `tool_use` blocks of prose tools.
+ *
+ * Never mutates its argument (the stored history stays as written). Returns the
+ * same array, and the same message objects, when nothing changed, which is the
+ * common case.
+ */
+export function decodeProseToolUsesInHistory<M extends { role?: string; content?: unknown }>(messages: M[]): M[] {
+	let out: M[] | undefined
+	messages.forEach((msg, index) => {
+		if (msg.role !== "assistant" || !Array.isArray(msg.content)) {
+			return
+		}
+		let blocks: unknown[] | undefined
+		msg.content.forEach((block: unknown, blockIndex: number) => {
+			const toolUse = block as { type?: unknown; name?: unknown; input?: unknown }
+			if (toolUse?.type !== "tool_use" || typeof toolUse.name !== "string") {
+				return
+			}
+			const input = decodeProseToolArgs(toolUse.name, toolUse.input)
+			if (input !== toolUse.input) {
+				blocks ??= [...(msg.content as unknown[])]
+				blocks[blockIndex] = { ...toolUse, input }
+			}
+		})
+		if (blocks) {
+			out ??= [...messages]
+			out[index] = { ...msg, content: blocks }
+		}
+	})
+	return out ?? messages
+}

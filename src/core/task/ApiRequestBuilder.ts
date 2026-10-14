@@ -28,6 +28,7 @@ import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildSystemPromptInput, getRequestDisabledTools, isMcpEnabledForPrompt } from "../prompts/system-prompt-input"
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { applyReasoningTrims } from "../context-management/reasoningTrim"
+import { decodeProseToolUsesInHistory } from "../assistant-message/decodeProseToolArgs"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
@@ -310,10 +311,17 @@ export class ApiRequestBuilder {
 		// fidelity back). No-op (same ref) when the set is empty, which is the
 		// common case.
 		const microcompactedIds = this.access.microcompactedIds
-		const sourceMessages =
+		const compactedMessages =
 			microcompactedIds && microcompactedIds.size > 0
 				? applyReasoningTrims(applyMicrocompactCleared(messages, microcompactedIds), microcompactedIds)
 				: messages
+
+		// A task saved before NativeToolCallParser decoded prose tool arguments
+		// may hold attempt_completion calls with literal \u0142 codes; the model
+		// copies its own earlier calls, so they are sent decoded. Copy only, like
+		// microcompaction above: the stored history stays as written. Same ref
+		// when nothing needs decoding.
+		const sourceMessages = decodeProseToolUsesInHistory(compactedMessages)
 
 		// Encrypted reasoning is OpenAI ciphertext (TaskMessageLog stores it only from a handler
 		// with getEncryptedContent: OpenAI Native and Codex). Only such a handler can read it
