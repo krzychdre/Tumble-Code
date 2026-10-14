@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "편집기 탭에서 Tumble Code 열기"
+		"openTab": "새 편집기 탭에서 Tumble Code 열기"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

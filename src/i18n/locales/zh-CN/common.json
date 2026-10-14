@@ -164,7 +164,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "在编辑器标签页中打开 Tumble Code"
+		"openTab": "在新的编辑器标签页中打开 Tumble Code"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

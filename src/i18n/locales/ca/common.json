@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Obre Tumble Code en una pestanya de l'editor"
+		"openTab": "Obre Tumble Code en una pestanya nova de l'editor"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Otwórz Tumble Code w karcie edytora"
+		"openTab": "Otwórz Tumble Code w nowej karcie edytora"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

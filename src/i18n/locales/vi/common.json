@@ -170,7 +170,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Mở Tumble Code trong một tab trình soạn thảo"
+		"openTab": "Mở Tumble Code trong một tab trình soạn thảo mới"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

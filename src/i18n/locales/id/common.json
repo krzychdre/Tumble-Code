@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Buka Tumble Code di tab editor"
+		"openTab": "Buka Tumble Code di tab editor baru"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

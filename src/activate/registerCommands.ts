@@ -97,15 +97,10 @@ const getCommandsMap = ({
 
 		return openClineInNewTab({ context, outputChannel })
 	},
-	// The button in the title bar of every editor, and the status bar item
-	// (`./statusBar`): shows the Tumble tab, or opens one. The panel registry is
-	// not asked, it forgets the tab as soon as the sidebar view resolves. The
-	// editor title menu passes the editor's URI as the first argument, the
-	// status bar item passes STATUS_BAR_CLICK_SOURCE.
-	editorTitleButtonClicked: async (source?: unknown) => {
-		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, {
-			button: source === STATUS_BAR_CLICK_SOURCE ? STATUS_BAR_CLICK_SOURCE : "editorTitle",
-		})
+	// The button in the title bar of every file editor: shows the Tumble tab
+	// used last, or opens one. Alt+click runs openInNewTab instead.
+	editorTitleButtonClicked: async () => {
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "editorTitle" })
 
 		const tab = ClineProvider.getEditorTab()
 		if (tab) {
@@ -114,7 +109,19 @@ const getCommandsMap = ({
 		}
 		await openClineInNewTab({ context, outputChannel })
 	},
-	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
+	// Always opens another Tumble tab. Run by "Open In New Tab" in a Tumble
+	// tab's title bar, Alt+click on the editor title button, the command
+	// palette, and the status bar item (`./statusBar`), which passes
+	// STATUS_BAR_CLICK_SOURCE so that only its clicks are reported.
+	openInNewTab: (source?: unknown) => {
+		if (source === STATUS_BAR_CLICK_SOURCE) {
+			TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, {
+				button: STATUS_BAR_CLICK_SOURCE,
+			})
+		}
+
+		return openClineInNewTab({ context, outputChannel })
+	},
 	settingsButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog()
 

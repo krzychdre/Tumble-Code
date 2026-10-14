@@ -156,7 +156,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Open Tumble Code in an editor tab"
+		"openTab": "Open Tumble Code in a new editor tab"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

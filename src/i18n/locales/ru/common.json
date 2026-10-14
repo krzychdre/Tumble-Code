@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Открыть Tumble Code во вкладке редактора"
+		"openTab": "Открыть Tumble Code в новой вкладке редактора"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
