@@ -902,18 +902,16 @@ export class ClineProvider
 	/**
 	 * Brings this panel to the front. An editor tab is revealed in the group
 	 * it is in (its group is locked, revealing it in the active group would
-	 * move it out and leave that group empty); the sidebar view is focused.
+	 * move it out and leave that group empty); the sidebar view is focused,
+	 * which also resolves it when it was never shown.
 	 */
 	public async revealView(): Promise<void> {
 		const view = this.view
-		if (!view) {
-			return
-		}
-		if ("onDidChangeViewState" in view) {
+		if (view && "onDidChangeViewState" in view) {
 			if (!view.active) {
 				view.reveal(undefined, false)
 			}
-		} else {
+		} else if (this.renderContext === "sidebar") {
 			await vscode.commands.executeCommand(`${ClineProvider.sideBarId}.focus`)
 		}
 	}

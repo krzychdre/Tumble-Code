@@ -490,6 +490,16 @@ describe("ClineProvider - several editor tabs", () => {
 		expect(vscode.commands.executeCommand).toHaveBeenCalledWith(`${ClineProvider.sideBarId}.focus`)
 	})
 
+	it("revealView focuses the sidebar even before its view was ever resolved", async () => {
+		// The API and the remote-control bridge can run a task in the sidebar
+		// provider before the user ever opened the sidebar.
+		const sidebar = createProvider("sidebar")
+
+		await sidebar.revealView()
+
+		expect(vscode.commands.executeCommand).toHaveBeenCalledWith(`${ClineProvider.sideBarId}.focus`)
+	})
+
 	it("opening a task that another panel runs shows it in that panel instead of starting it twice", async () => {
 		const a = await openTab(1)
 		const b = await openTab(2)
