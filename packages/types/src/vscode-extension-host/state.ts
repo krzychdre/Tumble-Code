@@ -124,8 +124,9 @@ export type ExtensionState = Pick<
 	/** Live memory-system activity (recall prefetches / background writers). */
 	memoryActivity?: { recall: number; write: number }
 	/**
-	 * Tasks of this panel that are working right now, keyed by task id, the
-	 * open one included. A task at rest is absent.
+	 * Tasks that are working right now in any panel of this window (the
+	 * sidebar and every editor tab), keyed by task id, the open one included.
+	 * A task at rest is absent.
 	 */
 	runningTasks?: Record<string, RunningTaskStatus>
 	apiConfiguration: ProviderSettings

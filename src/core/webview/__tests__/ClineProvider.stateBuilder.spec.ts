@@ -766,5 +766,75 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 			expect(postedMaps(post)).toEqual([{ "task-A": "running" }, {}])
 			expect(task.abortTask).toHaveBeenCalledWith(true)
 		})
+
+		describe("several panels in one window (the sidebar and the editor tabs)", () => {
+			it("a panel shows the tasks working in another panel, and is told when their status changes", async () => {
+				const one = await makeProvider({ cloudMode: "signedOut" })
+				const two = await makeProvider({ cloudMode: "signedOut" })
+				const postToTwo = vi.spyOn(two, "postMessageToWebview")
+				const task = makeWorkingTask(one, "task-A")
+
+				await one.setCurrentTask(asTask(task))
+				await flush(0)
+				expect((await two.getStateToPostToWebview()).runningTasks).toEqual({ "task-A": "running" })
+
+				task.taskStatus = TaskStatus.Interactive
+				task.emit(TumbleCodeEventName.TaskInteractive, "task-A")
+				await flush(0)
+				task.clineMessages.push({ ts: 2, type: "ask", ask: "completion_result" })
+				task.emit(TumbleCodeEventName.TaskIdle, "task-A")
+				await flush(0)
+
+				// The first map reached panel two by the state push above.
+				expect(postedMaps(postToTwo)).toEqual([{ "task-A": "running" }, { "task-A": "awaiting_input" }, {}])
+			})
+
+			it("every panel shows the detached tasks and the parallel subagents of every panel", async () => {
+				const one = await makeProvider({ cloudMode: "signedOut" })
+				const two = await makeProvider({ cloudMode: "signedOut" })
+				const left = makeWorkingTask(one, "task-left")
+				const subagent = makeWorkingTask(two, "task-subagent")
+				vi.spyOn((two as any).backgroundTaskRunner, "liveSubagents").mockReturnValue([subagent])
+
+				await one.setCurrentTask(asTask(left))
+				await one.leaveCurrentTask()
+				const open = makeWorkingTask(two, "task-open")
+				open.taskStatus = TaskStatus.Interactive
+				await two.setCurrentTask(asTask(open))
+
+				const expected = { "task-left": "running", "task-subagent": "running", "task-open": "awaiting_input" }
+				expect((await one.getStateToPostToWebview()).runningTasks).toEqual(expected)
+				expect((await two.getStateToPostToWebview()).runningTasks).toEqual(expected)
+			})
+
+			it("a task reported by two panels shows as awaiting input when either waits for the user", async () => {
+				const one = await makeProvider({ cloudMode: "signedOut" })
+				const two = await makeProvider({ cloudMode: "signedOut" })
+				const asking = makeWorkingTask(one, "task-A")
+				asking.taskStatus = TaskStatus.Interactive
+				await one.setCurrentTask(asTask(asking))
+				await two.setCurrentTask(asTask(makeWorkingTask(two, "task-A")))
+
+				expect((await one.getStateToPostToWebview()).runningTasks).toEqual({ "task-A": "awaiting_input" })
+				expect((await two.getStateToPostToWebview()).runningTasks).toEqual({ "task-A": "awaiting_input" })
+			})
+
+			it("a closed panel's tasks leave the other panels at once", async () => {
+				const one = await makeProvider({ cloudMode: "signedOut" })
+				const two = await makeProvider({ cloudMode: "signedOut" })
+				await one.setCurrentTask(asTask(makeWorkingTask(one, "task-A")))
+				await flush(0)
+				const postToTwo = vi.spyOn(two, "postMessageToWebview")
+				const postToOne = vi.spyOn(one, "postMessageToWebview")
+
+				await one.dispose()
+				await flush(0)
+
+				expect(postedMaps(postToTwo)).toEqual([{}])
+				expect((await two.getStateToPostToWebview()).runningTasks).toEqual({})
+				// The closed panel itself is not posted to.
+				expect(postedMaps(postToOne)).toEqual([])
+			})
+		})
 	})
 })

@@ -209,7 +209,8 @@ export class ClineProvider
 
 	/**
 	 * The `runningTasks` map the view was last sent, by a state push or a
-	 * `runningTasksUpdated`, so a task event posts the map only when it changed.
+	 * `runningTasksUpdated`, so a task event (in any panel) posts the map to
+	 * this view only when it changed.
 	 */
 	private runningTasksInView: Record<string, RunningTaskStatus> = {}
 
@@ -320,7 +321,7 @@ export class ClineProvider
 			listSubagents: () => this.subagentRegistry.list(),
 			getMemoryActivity: () => this.backgroundTaskRunner.memoryActivity,
 			// Every built state is posted: note the map as the one the view holds.
-			getRunningTasks: () => (this.runningTasksInView = this.getRunningTasks()),
+			getRunningTasks: () => (this.runningTasksInView = ClineProvider.getRunningTasksOfAllPanels()),
 			getWebview: () => this.view?.webview,
 			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
 			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
@@ -483,12 +484,14 @@ export class ClineProvider
 
 		// The history rows show which tasks work. Each of these events can
 		// change that, for the foreground task and for a detached one (it
-		// keeps its forwarded listeners). Deferred to a microtask: the slot
-		// emits TaskUnfocused before it moves a working task to the detached
-		// set (TaskSlot.clear), and a detached task leaves the set only in
-		// its own TaskIdle/TaskAborted listener, which runs after this one.
+		// keeps its forwarded listeners). Every panel of the window shows the
+		// tasks of all panels, so every panel is told. Deferred to a
+		// microtask: the slot emits TaskUnfocused before it moves a working
+		// task to the detached set (TaskSlot.clear), and a detached task
+		// leaves the set only in its own TaskIdle/TaskAborted listener, which
+		// runs after this one.
 		for (const event of RUNNING_TASK_EVENTS) {
-			this.on(event, () => queueMicrotask(() => void this.postRunningTasksIfChanged()))
+			this.on(event, () => queueMicrotask(() => ClineProvider.postRunningTasksToAllPanels()))
 		}
 
 		// Initialize Roo Code Cloud profile sync. When CloudService is not
@@ -701,13 +704,46 @@ export class ClineProvider
 	}
 
 	/** The working tasks of this panel: the slot's tasks plus the live parallel subagents. */
-	private getRunningTasks(): Record<string, RunningTaskStatus> {
+	private getOwnRunningTasks(): Record<string, RunningTaskStatus> {
 		return this.taskSlot.getRunningTasks(this.backgroundTaskRunner.liveSubagents())
 	}
 
-	/** Posts `runningTasksUpdated` when the working tasks differ from what the view holds. */
-	private async postRunningTasksIfChanged(): Promise<void> {
-		const runningTasks = this.getRunningTasks()
+	/**
+	 * The working tasks of every panel in this window (the sidebar and each
+	 * editor tab), merged, so all panels show the same statuses on their
+	 * history rows and sort their lists the same way. A panel being disposed
+	 * is left out: its tasks are being stopped. A task runs in one panel
+	 * only; should two panels still report the same id, "awaiting_input"
+	 * wins, as it does in the webview's `withAncestors`. Only what is shown
+	 * is shared: which panel owns a task stays with its TaskSlot.
+	 */
+	private static getRunningTasksOfAllPanels(): Record<string, RunningTaskStatus> {
+		const runningTasks: Record<string, RunningTaskStatus> = {}
+		for (const instance of this.activeInstances) {
+			if (instance._disposed) {
+				continue
+			}
+			for (const [taskId, status] of Object.entries(instance.getOwnRunningTasks())) {
+				if (runningTasks[taskId] !== "awaiting_input") {
+					runningTasks[taskId] = status
+				}
+			}
+		}
+		return runningTasks
+	}
+
+	/** Sends every live panel the merged working tasks, each only if its view holds a different map. */
+	private static postRunningTasksToAllPanels(): void {
+		const runningTasks = this.getRunningTasksOfAllPanels()
+		for (const instance of this.activeInstances) {
+			if (!instance._disposed) {
+				void instance.postRunningTasksIfChanged(runningTasks)
+			}
+		}
+	}
+
+	/** Posts `runningTasksUpdated` when `runningTasks` differs from what the view holds. */
+	private async postRunningTasksIfChanged(runningTasks: Record<string, RunningTaskStatus>): Promise<void> {
 		const known = this.runningTasksInView
 		const keys = Object.keys(runningTasks)
 		if (keys.length === Object.keys(known).length && keys.every((id) => runningTasks[id] === known[id])) {
@@ -782,6 +818,9 @@ export class ClineProvider
 
 		this._disposed = true
 		logger.info("Disposing ClineProvider...")
+
+		// The other panels stop showing this panel's tasks, which are stopped below.
+		ClineProvider.postRunningTasksToAllPanels()
 
 		this.sharedSettingsSubscription.dispose()
 		clearTimeout(this.sharedSettingsPushTimer)
