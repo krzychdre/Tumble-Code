@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "Tryb został pomyślnie usunięty, ale nie udało się usunąć folderu reguł w {{rulesFolderPath}}. Może być konieczne ręczne usunięcie."
 		}
 	},
+	"statusBar": {
+		"openTab": "Otwórz Tumble Code w karcie edytora"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Zapobiegaj ukończeniu zadania gdy na liście zadań są nieukończone zadania"

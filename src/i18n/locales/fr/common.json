@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "Le mode a été supprimé avec succès, mais la suppression du dossier de règles à l'adresse {{rulesFolderPath}} a échoué. Vous devrez peut-être le supprimer manuellement."
 		}
 	},
+	"statusBar": {
+		"openTab": "Ouvrir Tumble Code dans un onglet de l'éditeur"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Empêcher la finalisation des tâches lorsqu'il y a des todos incomplets dans la liste de todos"

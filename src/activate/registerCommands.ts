@@ -12,6 +12,7 @@ import { ContextProxy } from "../core/config/ContextProxy"
 import { focusPanel } from "../utils/focusPanel"
 import { getPanel, getSidebarPanel, getTabPanel, setPanel } from "../core/webview/panelRegistry"
 import { handleNewTask } from "./handleTask"
+import { STATUS_BAR_CLICK_SOURCE } from "./statusBar"
 import { CodeIndexManager } from "../services/code-index/manager"
 import { importSettingsWithFeedback } from "../core/config/importExport"
 import { registerRipgrepDiagnosticCommand } from "../services/ripgrep/diagnostic"
@@ -97,11 +98,15 @@ const getCommandsMap = ({
 
 		return openClineInNewTab({ context, outputChannel })
 	},
-	// The button in the title bar of every editor: shows the Tumble tab, or
-	// opens one. The panel registry is not asked, it forgets the tab as soon as
-	// the sidebar view resolves.
-	editorTitleButtonClicked: async () => {
-		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "editorTitle" })
+	// The button in the title bar of every editor, and the status bar item
+	// (`./statusBar`): shows the Tumble tab, or opens one. The panel registry is
+	// not asked, it forgets the tab as soon as the sidebar view resolves. The
+	// editor title menu passes the editor's URI as the first argument, the
+	// status bar item passes STATUS_BAR_CLICK_SOURCE.
+	editorTitleButtonClicked: async (source?: unknown) => {
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, {
+			button: source === STATUS_BAR_CLICK_SOURCE ? STATUS_BAR_CLICK_SOURCE : "editorTitle",
+		})
 
 		const tab = ClineProvider.getEditorTab()
 		if (tab) {

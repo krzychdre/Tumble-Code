@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "Modus succesvol verwijderd, maar het verwijderen van de regelsmap op {{rulesFolderPath}} is mislukt. Je moet deze mogelijk handmatig verwijderen."
 		}
 	},
+	"statusBar": {
+		"openTab": "Tumble Code openen in een editortabblad"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Voorkom taakafronding wanneer er onvolledige todos in de todolijst staan"

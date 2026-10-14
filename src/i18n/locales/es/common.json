@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "El modo se eliminó correctamente, pero no se pudo eliminar la carpeta de reglas en {{rulesFolderPath}}. Es posible que debas eliminarla manually."
 		}
 	},
+	"statusBar": {
+		"openTab": "Abrir Tumble Code en una pestaña del editor"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Prevenir la finalización de tareas cuando hay todos incompletos en la lista de todos"

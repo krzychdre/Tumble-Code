@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "Mode berhasil dihapus, tetapi gagal menghapus folder aturan di {{rulesFolderPath}}. Kamu mungkin perlu menghapusnya secara manual."
 		}
 	},
+	"statusBar": {
+		"openTab": "Buka Tumble Code di tab editor"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Mencegah penyelesaian tugas ketika ada todo yang belum selesai dalam daftar todo"

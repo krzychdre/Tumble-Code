@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "Der Modus wurde erfolgreich entfernt, aber der Regelordner unter {{rulesFolderPath}} konnte nicht gelöscht werden. Möglicherweise musst du ihn manuell löschen."
 		}
 	},
+	"statusBar": {
+		"openTab": "Tumble Code in einem Editor-Tab öffnen"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Aufgabenabschluss verhindern, wenn unvollständige Todos in der Todo-Liste vorhanden sind"

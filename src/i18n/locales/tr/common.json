@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "Mod başarıyla kaldırıldı, ancak {{rulesFolderPath}} konumundaki kurallar klasörü silinemedi. Manuel olarak silmeniz gerekebilir."
 		}
 	},
+	"statusBar": {
+		"openTab": "Tumble Code'u bir düzenleyici sekmesinde aç"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Todo listesinde tamamlanmamış todolar olduğunda görev tamamlanmasını engelle"

@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "La modalità è stata rimossa con successo, ma non è stato possibile eliminare la cartella delle regole in {{rulesFolderPath}}. Potrebbe essere necessario eliminarla manualmente."
 		}
 	},
+	"statusBar": {
+		"openTab": "Apri Tumble Code in una scheda dell'editor"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Impedire il completamento delle attività quando ci sono todo incompleti nella lista dei todo"

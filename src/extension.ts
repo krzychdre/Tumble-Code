@@ -55,6 +55,7 @@ import {
 	registerCommands,
 	replaceOrphanedTabs,
 	registerCodeActions,
+	registerStatusBarItem,
 	registerTerminalActions,
 	CodeActionProvider,
 } from "./activate"
@@ -364,6 +365,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	registerCommands({ context, outputChannel, provider })
+	registerStatusBarItem(context)
 	replaceOrphanedTabs({ context, outputChannel }).catch((error) =>
 		logger.error(
 			`Failed to replace an orphaned editor tab: ${error instanceof Error ? error.message : String(error)}`,

@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "El mode s'ha eliminat correctament, però no s'ha pogut eliminar la carpeta de regles a {{rulesFolderPath}}. És possible que l'hagis d'eliminar manualment."
 		}
 	},
+	"statusBar": {
+		"openTab": "Obre Tumble Code en una pestanya de l'editor"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Evitar la finalització de tasques quan hi ha todos incomplets a la llista de todos"
