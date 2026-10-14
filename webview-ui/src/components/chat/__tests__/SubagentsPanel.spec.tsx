@@ -179,4 +179,33 @@ describe("SubagentsPanel tail of a finished subagent", () => {
 		expect(tail).toHaveTextContent("read the backoff module")
 		expect(tail).not.toHaveTextContent("summary only")
 	})
+
+	// Transcripts saved before #893 hold literal `\u0142` text in completion and question prose.
+	it("shows escaped letters of a stored completion and question as real letters", () => {
+		renderPanel([summary({})], "parent")
+		expandRow()
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: {
+						type: "subagentMessages",
+						sourceTaskId: "child-1",
+						subagentMessages: [
+							{
+								ts: 1,
+								type: "ask",
+								ask: "followup",
+								text: JSON.stringify({ question: "Kt\\u00f3ry plik?" }),
+							},
+							{ ts: 2, type: "say", say: "completion_result", text: "Dok\\u0142adnie tak" },
+						],
+					},
+				}),
+			)
+		})
+
+		const tail = screen.getByTestId("subagent-tail")
+		expect(tail).toHaveTextContent("Który plik?")
+		expect(tail).toHaveTextContent("Dokładnie tak")
+	})
 })
