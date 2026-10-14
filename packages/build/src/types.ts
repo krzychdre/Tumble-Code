@@ -39,6 +39,8 @@ const commandsSchema = z.array(
 const menuItemSchema = z.object({
 	group: z.string(),
 	command: z.string().optional(),
+	// The command run on Alt+click instead of `command`.
+	alt: z.string().optional(),
 	submenu: z.string().optional(),
 	when: z.string().optional(),
 })

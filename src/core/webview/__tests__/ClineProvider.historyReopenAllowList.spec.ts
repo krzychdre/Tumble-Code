@@ -188,6 +188,9 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 			globalStorageUri: context.globalStorageUri,
 		}
 
+		// Providers of earlier tests are never disposed and still hold their
+		// tasks; showTaskWithId would show a task there instead of here.
+		;(ClineProvider as any).activeInstances.clear()
 		provider = new ClineProvider(context, { appendLine: vi.fn(), dispose: vi.fn() } as any, "sidebar", contextProxy)
 		provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
 		provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)

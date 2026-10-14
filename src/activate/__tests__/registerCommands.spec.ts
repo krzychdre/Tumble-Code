@@ -159,6 +159,104 @@ describe("replaceOrphanedTabs", () => {
 		expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith("workbench.action.newGroupRight")
 		expect(vi.mocked(ClineProvider).mock.instances[0].resolveWebviewView).toHaveBeenCalled()
 	})
+
+	it("replaces every orphaned tab, each in its own group", async () => {
+		const first = tab(`mainThreadWebview-${ClineProvider.tabPanelId}`, 2)
+		const second = tab(`mainThreadWebview-${ClineProvider.tabPanelId}`, 3)
+		setTabs([first, second])
+
+		await replaceOrphanedTabs(options)
+
+		expect(vscode.window.tabGroups.close).toHaveBeenCalledWith([first, second])
+		const columns = vi.mocked(vscode.window.createWebviewPanel).mock.calls.map(([, , column]) => column)
+		expect(columns).toEqual([2, 3])
+	})
+})
+
+/** Registers the commands and runs the one whose id ends with `.${name}`. */
+const runRegisteredCommand = async (name: string, provider = {} as ClineProvider, ...args: unknown[]) => {
+	registerCommands({
+		context: { subscriptions: [], extensionUri: {} } as unknown as vscode.ExtensionContext,
+		outputChannel: { appendLine: vi.fn() } as unknown as vscode.OutputChannel,
+		provider,
+	})
+	const call = vi.mocked(vscode.commands.registerCommand).mock.calls.find(([id]) => id.endsWith(`.${name}`))
+	expect(call).toBeDefined()
+	await call![1](...args)
+}
+
+describe("openInNewTab", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		;(vscode.window as unknown as { visibleTextEditors: unknown[] }).visibleTextEditors = []
+	})
+
+	it("opens a second tab beside the Tumble tab used last, without an empty new group", async () => {
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue({ viewColumn: 3 } as unknown as vscode.WebviewPanel)
+
+		await runRegisteredCommand("openInNewTab")
+
+		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
+			ClineProvider.tabPanelId,
+			"Tumble Code",
+			3,
+			expect.anything(),
+		)
+		expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith("workbench.action.newGroupRight")
+	})
+
+	it("opens the first tab in a new group to the right when no editor is visible", async () => {
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+
+		await runRegisteredCommand("openInNewTab")
+
+		expect(vscode.commands.executeCommand).toHaveBeenCalledWith("workbench.action.newGroupRight")
+		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
+			ClineProvider.tabPanelId,
+			"Tumble Code",
+			2,
+			expect.anything(),
+		)
+	})
+})
+
+describe("focusPanel and focusInput", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("focusPanel reveals the panel the user was in last", async () => {
+		const host = { revealView: vi.fn() }
+		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(host as unknown as ClineProvider)
+
+		await runRegisteredCommand("focusPanel")
+
+		expect(host.revealView).toHaveBeenCalledTimes(1)
+	})
+
+	it("focusPanel opens the sidebar when no panel is open", async () => {
+		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(undefined)
+
+		await runRegisteredCommand("focusPanel")
+
+		expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+			expect.stringMatching(/^workbench\.view\.extension\./),
+		)
+	})
+
+	it("focusInput asks the sidebar to focus its input only when the sidebar was used last", async () => {
+		const sidebar = { revealView: vi.fn(), postMessageToWebview: vi.fn() }
+		const tab = { revealView: vi.fn(), postMessageToWebview: vi.fn() }
+
+		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(tab as unknown as ClineProvider)
+		await runRegisteredCommand("focusInput", sidebar as unknown as ClineProvider)
+		expect(tab.revealView).toHaveBeenCalledTimes(1)
+		expect(sidebar.postMessageToWebview).not.toHaveBeenCalled()
+
+		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(sidebar as unknown as ClineProvider)
+		await runRegisteredCommand("focusInput", sidebar as unknown as ClineProvider)
+		expect(sidebar.postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "focusInput" })
+	})
 })
 
 describe("editorTitleButtonClicked", () => {
