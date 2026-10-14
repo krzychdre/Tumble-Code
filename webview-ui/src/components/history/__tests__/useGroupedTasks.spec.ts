@@ -2,7 +2,7 @@ import { renderHook, act } from "@/utils/test-utils"
 
 import type { HistoryItem } from "@tumble-code/types"
 
-import { useGroupedTasks, buildSubtree } from "../useGroupedTasks"
+import { useGroupedTasks, buildSubtree, toDayRows } from "../useGroupedTasks"
 import { countAllSubtasks } from "../types"
 
 const createMockTask = (overrides: Partial<HistoryItem> = {}): HistoryItem => ({
@@ -412,6 +412,22 @@ describe("useGroupedTasks", () => {
 			expect(result.current.groups[0].subtasks[0].item.runningStatus).toBe("running")
 		})
 
+		it("sorts the groups of working trees first, then by parent timestamp", () => {
+			const older = { ...createMockTask({ id: "older", ts: 100 }), runningStatus: "running" as const }
+			const oldest = { ...createMockTask({ id: "oldest", ts: 50 }), runningStatus: "awaiting_input" as const }
+			const newest = createMockTask({ id: "newest", ts: 300 })
+			const middle = createMockTask({ id: "middle", ts: 200 })
+
+			const { result } = renderHook(() => useGroupedTasks([oldest, middle, newest, older], ""))
+
+			expect(result.current.groups.map((group) => group.parent.id)).toEqual([
+				"older",
+				"oldest",
+				"newest",
+				"middle",
+			])
+		})
+
 		it("passes the running status through to search results", () => {
 			const { result } = renderHook(() => useGroupedTasks([parentTask, childTask], "task"))
 
@@ -613,5 +629,44 @@ describe("countAllSubtasks", () => {
 		]
 		// a (1) + a1 (1) + a1i (1) + a2 (1) + b (1) = 5
 		expect(countAllSubtasks(nodes)).toBe(5)
+	})
+})
+
+describe("toDayRows", () => {
+	const t = (key: string) => key
+	const noon = new Date().setHours(12, 0, 0, 0)
+	const DAY = 86400000
+	const group = (id: string, ts: number, runningStatus?: "running" | "awaiting_input") => ({
+		parent: { ...createMockTask({ id, ts }), runningStatus },
+		subtasks: [],
+		isExpanded: false,
+	})
+
+	it("puts the working groups under one section header above the day headers", () => {
+		const rows = toDayRows(
+			[
+				group("old-working", noon - 3 * DAY, "running"),
+				group("waiting", noon, "awaiting_input"),
+				group("today", noon - 1000),
+				group("yesterday", noon - DAY),
+			],
+			t,
+		)
+
+		expect(rows.map((row) => (row.type === "group" ? row.group.parent.id : row.label))).toEqual([
+			"history:section.active",
+			"old-working",
+			"waiting",
+			"history:today",
+			"today",
+			"history:yesterday",
+			"yesterday",
+		])
+		expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length)
+	})
+
+	it("adds no section header when nothing works", () => {
+		const rows = toDayRows([group("today", noon)], t)
+		expect(rows.map((row) => row.type)).toEqual(["day-header", "group"])
 	})
 })

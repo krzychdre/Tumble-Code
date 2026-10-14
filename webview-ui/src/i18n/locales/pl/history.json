@@ -52,6 +52,9 @@
 	"collapseSubtasks": "Zwiń podzadania",
 	"today": "Dzisiaj",
 	"yesterday": "Wczoraj",
+	"section": {
+		"active": "Aktywne"
+	},
 	"noHistory": "Brak zadań. Rozpocznij rozmowę, aby zbudować historię.",
 	"noSearchResults": "Żadne zadanie nie pasuje do tego wyszukiwania.",
 	"clearSearch": "Wyczyść wyszukiwanie",

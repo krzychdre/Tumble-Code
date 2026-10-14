@@ -50,6 +50,9 @@
 	"collapseSubtasks": "Collapse subtasks",
 	"today": "Today",
 	"yesterday": "Yesterday",
+	"section": {
+		"active": "Active"
+	},
 	"noHistory": "No tasks yet. Start a conversation to build your history.",
 	"noSearchResults": "No tasks match this search.",
 	"clearSearch": "Clear search",

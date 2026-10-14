@@ -352,6 +352,79 @@ describe("useTaskSearch", () => {
 		expect(result.current.tasks[0].highlight).toBeDefined()
 	})
 
+	describe("working tasks first", () => {
+		// Three tasks of project1, newest first: b (17th), a (16th), c (15th).
+		const history: HistoryItem[] = [
+			{ ...mockTaskHistory[0], id: "a" },
+			{ ...mockTaskHistory[1], id: "b" },
+			{ ...mockTaskHistory[2], id: "c", workspace: "/workspace/project1" },
+		]
+
+		const idsWith = (runningTasks: Record<string, string>, configure?: (hook: any) => void) => {
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: history,
+				cwd: "/workspace/project1",
+				runningTasks,
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+			if (configure) {
+				act(() => configure(result.current))
+			}
+			return result.current.tasks.map((task) => task.id)
+		}
+
+		it("lists a working task first even when it is the oldest", () => {
+			expect(idsWith({ c: "running" })).toEqual(["c", "b", "a"])
+		})
+
+		it("lists a task that waits for the user first too", () => {
+			expect(idsWith({ a: "awaiting_input" })).toEqual(["a", "b", "c"])
+		})
+
+		it("keeps the sort order within the working and the resting tasks", () => {
+			expect(idsWith({ c: "running", a: "running" })).toEqual(["a", "c", "b"])
+			expect(idsWith({ c: "running", a: "running" }, (hook) => hook.setSortOption("oldest"))).toEqual([
+				"c",
+				"a",
+				"b",
+			])
+		})
+
+		it("lists the root of a working subtask first", () => {
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: [...history, { ...mockTaskHistory[1], id: "sub", ts: 1, parentTaskId: "c" }],
+				cwd: "/workspace/project1",
+				runningTasks: { sub: "running" },
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+			expect(result.current.tasks.map((task) => task.id)).toEqual(["c", "sub", "b", "a"])
+		})
+
+		it("keeps the relevance order of a search ranked by relevance", () => {
+			// Both match "deploy"; the exact one ranks first although the other works.
+			mockUseExtensionState.mockReturnValue({
+				taskHistory: [
+					{ ...mockTaskHistory[0], id: "exact", task: "deploy" },
+					{ ...mockTaskHistory[1], id: "fuzzy", task: "d e p l o y later" },
+				],
+				cwd: "/workspace/project1",
+				runningTasks: { fuzzy: "running" },
+			} as any)
+			const { result } = renderHook(() => useTaskSearch())
+			// HistoryView switches to mostRelevant when the user starts to type.
+			act(() => {
+				result.current.setSearchQuery("deploy")
+				result.current.setSortOption("mostRelevant")
+			})
+			expect(result.current.tasks.map((task) => task.id)).toEqual(["exact", "fuzzy"])
+
+			act(() => {
+				result.current.setSortOption("oldest")
+			})
+			expect(result.current.tasks.map((task) => task.id)).toEqual(["fuzzy", "exact"])
+		})
+	})
+
 	describe("a working subtask", () => {
 		// root -> child -> grandchild, plus an unrelated task-1 at rest.
 		const tree: HistoryItem[] = [

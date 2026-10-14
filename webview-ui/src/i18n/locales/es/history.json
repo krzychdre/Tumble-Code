@@ -58,6 +58,9 @@
 	"collapseSubtasks": "Contraer subtareas",
 	"today": "Hoy",
 	"yesterday": "Ayer",
+	"section": {
+		"active": "Activas"
+	},
 	"noHistory": "Aún no hay tareas. Inicia una conversación para crear tu historial.",
 	"noSearchResults": "Ninguna tarea coincide con esta búsqueda.",
 	"clearSearch": "Borrar búsqueda",

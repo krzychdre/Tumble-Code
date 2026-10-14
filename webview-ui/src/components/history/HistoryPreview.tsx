@@ -6,6 +6,9 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useTaskSearch } from "./useTaskSearch"
 import { useGroupedTasks } from "./useGroupedTasks"
 import TaskGroupItem from "./TaskGroupItem"
+import { listSection } from "./types"
+
+const PREVIEW_GROUPS = 4
 
 const HistoryPreview = () => {
 	const { tasks, searchQuery } = useTaskSearch()
@@ -16,8 +19,10 @@ const HistoryPreview = () => {
 		vscode.postMessage({ type: "switchTab", tab: "history" })
 	}
 
-	// Show up to 4 groups (parent + subtasks count as 1 block)
-	const displayGroups = groups.slice(0, 4)
+	// Show up to 4 groups (parent + subtasks count as 1 block). The groups of a
+	// section (working trees) come first and are all shown, even past 4, so an
+	// older task that works is never cut off.
+	const displayGroups = groups.slice(0, Math.max(PREVIEW_GROUPS, groups.filter((g) => listSection(g.parent)).length))
 
 	return (
 		<div className="flex flex-col gap-2">

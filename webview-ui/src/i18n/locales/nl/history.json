@@ -50,6 +50,9 @@
 	"collapseSubtasks": "Subtaken samenvouwen",
 	"today": "Vandaag",
 	"yesterday": "Gisteren",
+	"section": {
+		"active": "Actief"
+	},
 	"noHistory": "Nog geen taken. Start een gesprek om je geschiedenis op te bouwen.",
 	"noSearchResults": "Geen taken komen overeen met deze zoekopdracht.",
 	"clearSearch": "Zoekopdracht wissen",

@@ -22,6 +22,31 @@ export interface SubtreeUsage {
 }
 
 /**
+ * The list section a task row belongs to, above the plain rows: a task that
+ * works or waits for the user is "active". A root whose subtask works counts
+ * too, because `useTaskSearch` marks every ancestor of a working task.
+ */
+export type ListSection = "active"
+
+export const listSection = (item: DisplayHistoryItem): ListSection | undefined =>
+	item.runningStatus ? "active" : undefined
+
+/** The sections from the top of a list down; rows in no section come last. */
+const SECTION_ORDER: readonly ListSection[] = ["active"]
+
+const sectionRank = (item: DisplayHistoryItem): number => {
+	const section = listSection(item)
+	return section ? SECTION_ORDER.indexOf(section) : SECTION_ORDER.length
+}
+
+/**
+ * Comparator that moves the rows of a section in front of the others. Array
+ * sort is stable, so the rows of one section keep the order they had before
+ * (the chosen sort option).
+ */
+export const bySection = (a: DisplayHistoryItem, b: DisplayHistoryItem): number => sectionRank(a) - sectionRank(b)
+
+/**
  * A node in the subtask tree, representing a task and its recursively nested children.
  */
 export interface SubtaskTreeNode {

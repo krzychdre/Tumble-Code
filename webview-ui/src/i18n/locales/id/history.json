@@ -59,6 +59,9 @@
 	"collapseSubtasks": "Tutup subtask",
 	"today": "Hari ini",
 	"yesterday": "Kemarin",
+	"section": {
+		"active": "Aktif"
+	},
 	"noHistory": "Belum ada tugas. Mulai percakapan untuk membangun riwayat Anda.",
 	"noSearchResults": "Tidak ada tugas yang cocok dengan pencarian ini.",
 	"clearSearch": "Hapus pencarian",

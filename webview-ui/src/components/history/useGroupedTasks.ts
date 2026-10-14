@@ -1,6 +1,14 @@
 import { useState, useMemo, useCallback } from "react"
 import type { HistoryItem } from "@tumble-code/types"
-import type { DisplayHistoryItem, SubtaskTreeNode, TaskGroup, GroupedTasksResult } from "./types"
+import {
+	bySection,
+	listSection,
+	type DisplayHistoryItem,
+	type ListSection,
+	type SubtaskTreeNode,
+	type TaskGroup,
+	type GroupedTasksResult,
+} from "./types"
 
 /**
  * Recursively builds a subtask tree node for the given task.
@@ -81,8 +89,9 @@ export function useGroupedTasks(tasks: HistoryItem[], searchQuery: string): Grou
 			}
 		})
 
-		// Sort groups by parent timestamp (newest first)
-		taskGroups.sort((a, b) => b.parent.ts - a.parent.ts)
+		// Groups whose parent is in a section (a working tree) first, then by
+		// parent timestamp (newest first).
+		taskGroups.sort((a, b) => bySection(a.parent, b.parent) || b.parent.ts - a.parent.ts)
 
 		return taskGroups
 	}, [tasks, taskMap, isSearchMode, expandedIds])
@@ -126,6 +135,7 @@ export function useGroupedTasks(tasks: HistoryItem[], searchQuery: string): Grou
  */
 export type HistoryRow =
 	| { type: "day-header"; key: string; label: string; day: string }
+	| { type: "section-header"; key: string; label: string; section: ListSection }
 	| { type: "group"; key: string; group: TaskGroup }
 
 const dayKey = (ts: number): string => {
@@ -147,19 +157,37 @@ export function dayLabel(ts: number, t: (key: string) => string): string {
 	return new Date(ts).toLocaleDateString()
 }
 
+const SECTION_LABEL_KEYS: Record<ListSection, string> = {
+	active: "history:section.active",
+}
+
 /**
- * §2.9: interleave day headers into the (newest-first) group list. The
- * parent-child grouping is untouched — a header row is inserted only where
- * the next group starts a new calendar day.
+ * §2.9: interleave headers into the group list. The groups of a section (a
+ * working tree, see `listSection`) come first and get one section header; the
+ * newest-first rest gets a day header where the next group starts a new
+ * calendar day. The parent-child grouping is untouched.
  */
 export function toDayRows(groups: TaskGroup[], t: (key: string) => string): HistoryRow[] {
 	const rows: HistoryRow[] = []
-	let lastDay: string | undefined
+	let lastHeader: string | undefined
 	for (const group of groups) {
-		const day = dayKey(group.parent.ts)
-		if (day !== lastDay) {
-			rows.push({ type: "day-header", key: `day-${day}`, label: dayLabel(group.parent.ts, t), day })
-			lastDay = day
+		const section = listSection(group.parent)
+		if (section) {
+			if (section !== lastHeader) {
+				rows.push({
+					type: "section-header",
+					key: `section-${section}`,
+					label: t(SECTION_LABEL_KEYS[section]),
+					section,
+				})
+				lastHeader = section
+			}
+		} else {
+			const day = dayKey(group.parent.ts)
+			if (day !== lastHeader) {
+				rows.push({ type: "day-header", key: `day-${day}`, label: dayLabel(group.parent.ts, t), day })
+				lastHeader = day
+			}
 		}
 		rows.push({ type: "group", key: group.parent.id, group })
 	}
