@@ -216,8 +216,9 @@ export interface ExtensionMessage {
 	 */
 	memoryActivity?: { recall: number; write: number }
 	/**
-	 * Tasks of this panel that are working right now (`runningTasksUpdated`
-	 * pushes and state): the full map, replacing the previous one.
+	 * Tasks that are working right now in any panel of this window
+	 * (`runningTasksUpdated` pushes and state): the full map, replacing the
+	 * previous one.
 	 */
 	runningTasks?: Record<string, RunningTaskStatus>
 	mcpServers?: McpServer[]

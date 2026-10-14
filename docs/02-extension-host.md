@@ -90,8 +90,13 @@ chat view (`TaskMessageLog` posts nothing for it, checkpoint and condense posts 
 nor follow the panel's profile changes. Delegation follows the placement: a detached parent hands over to a
 detached child in the child's own mode and profile, and a detached child that completes resumes its parent off
 screen unless the user is looking at it. `TaskSlot.getRunningTasks` (the slot occupant plus the detached tasks
-that work) reaches the webview as `runningTasks`, which the history rows show as a spinner or an attention icon.
-See `ai_plans/2026-10-07_12-31_keep-tasks-running-in-background.md`.
+that work, plus the panel's live parallel subagents) gives each panel's own working tasks;
+`ClineProvider.getRunningTasksOfAllPanels` merges them over every live panel of the window, and that merged map
+reaches every webview as `runningTasks`, which the history rows show as a spinner or an attention icon. A task
+event in any panel (and the start of a panel's dispose) asks every panel to post `runningTasksUpdated` when its
+view holds a different map. Only the display is shared: which panel owns a task stays with its `TaskSlot`.
+See `ai_plans/2026-10-07_12-31_keep-tasks-running-in-background.md` and
+`ai_plans/2026-10-14_16-02_running-tasks-across-panels.md`.
 
 ### Several panels at once
 
@@ -103,7 +108,9 @@ commands use return the most recent one: `getEditorTab` (the reveal of the edito
 title-bar buttons) and `getLastActiveInstance` (the focus commands). A provider whose tab closed is skipped at once,
 before its async dispose ends. A click in a tab's webview (`focusPanelRequest`) reveals that tab itself. A task runs
 in one panel only: `showTaskWithId` for a task that another panel runs shows it there (`findTaskHost`) instead of
-building a second `Task` with the same id. See `ai_plans/2026-10-14_14-45_multiple-editor-tabs.md`.
+building a second `Task` with the same id. The task history is one shared `TaskHistoryStore`: a write
+through one panel's `TaskHistoryGateway` (a new task, a pin, a delete) is echoed by the store to the other panels'
+gateways, which push it to their webviews as `taskHistoryItemUpdated` / `taskHistoryItemDeleted`. See `ai_plans/2026-10-14_14-45_multiple-editor-tabs.md`.
 
 ### Getting state to the panel
 
