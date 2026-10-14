@@ -116,7 +116,8 @@
 			{
 				"command": "tumble-code.openInNewTab",
 				"title": "%command.openInNewTab.title%",
-				"category": "%configuration.title%"
+				"category": "%configuration.title%",
+				"icon": "$(empty-window)"
 			},
 			{
 				"command": "tumble-code.explainCode",
@@ -299,17 +300,18 @@
 					"when": "activeWebviewPanelId == tumble-code.TabPanelProvider"
 				},
 				{
+					"command": "tumble-code.openInNewTab",
+					"group": "navigation@5",
+					"when": "activeWebviewPanelId == tumble-code.TabPanelProvider"
+				},
+				{
 					"command": "tumble-code.historyButtonClicked",
 					"group": "overflow@1",
 					"when": "activeWebviewPanelId == tumble-code.TabPanelProvider"
 				},
 				{
-					"command": "tumble-code.popoutButtonClicked",
-					"group": "overflow@2",
-					"when": "activeWebviewPanelId == tumble-code.TabPanelProvider"
-				},
-				{
 					"command": "tumble-code.editorTitleButtonClicked",
+					"alt": "tumble-code.openInNewTab",
 					"group": "navigation@100",
 					"when": "activeWebviewPanelId != tumble-code.TabPanelProvider"
 				},
