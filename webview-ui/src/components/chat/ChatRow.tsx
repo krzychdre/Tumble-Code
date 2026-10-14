@@ -10,6 +10,7 @@ import type { RowRendererProps, ToolAskKind } from "./rows/renderers/types"
 import { TOOL_RENDERERS } from "./rows/renderers/tool"
 import { SAY_RENDERERS, DefaultSayRow } from "./rows/renderers/say"
 import { ASK_RENDERERS } from "./rows/renderers/ask"
+import { decodeStoredProse, decodeProseTool } from "./rows/decodeStoredProse"
 import { chatRowPropsEqual } from "./chatRowPropsEqual"
 import type { ChatRowProps } from "./chatRowProps"
 
@@ -62,7 +63,7 @@ const ChatRow = memo(
 export default ChatRow
 
 export const ChatRowContent = ({
-	message,
+	message: storedMessage,
 	lastModifiedMessage,
 	isExpanded,
 	isLast,
@@ -77,6 +78,9 @@ export const ChatRowContent = ({
 	onJumpToPreviousCheckpoint,
 	meta = EMPTY_META,
 }: ChatRowContentProps) => {
+	// Tasks saved before #893 may hold escaped letters in their prose: show them decoded.
+	const message = useMemo(() => decodeStoredProse(storedMessage), [storedMessage])
+
 	// Memoized callback to prevent re-renders caused by inline arrow functions.
 	// The target state is passed explicitly and derived from what is on screen,
 	// not from the parent's map: a row that opens by default (a command ask
@@ -88,7 +92,7 @@ export const ChatRowContent = ({
 	}, [onToggleExpand, message.ts, isExpanded])
 
 	const tool = useMemo(
-		() => (message.ask === "tool" ? safeJsonParse<ClineSayTool>(message.text) : null),
+		() => (message.ask === "tool" ? decodeProseTool(safeJsonParse<ClineSayTool>(message.text)) : null),
 		[message.ask, message.text],
 	)
 

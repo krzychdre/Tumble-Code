@@ -23,6 +23,7 @@ import { vscode } from "@src/utils/vscode"
 import MarkdownBlock from "../common/MarkdownBlock"
 import { ProgressIndicator } from "./ProgressIndicator"
 import { onExtensionMessage } from "@src/utils/extensionBus"
+import { decodeStoredProse } from "./rows/decodeStoredProse"
 
 interface SubagentsPanelProps {
 	subagents: SubagentSummary[] | undefined
@@ -58,7 +59,8 @@ const StatusIcon = ({ status }: { status: SubagentSummary["status"] }) => {
 }
 
 /** Message types worth showing in a compact live tail. */
-function tailEntryFor(message: ClineMessage): { kind: "markdown" | "dim" | "error" | "label"; text: string } | null {
+function tailEntryFor(stored: ClineMessage): { kind: "markdown" | "dim" | "error" | "label"; text: string } | null {
+	const message = decodeStoredProse(stored)
 	const text = message.text ?? ""
 	if (message.type === "say") {
 		switch (message.say) {
@@ -217,7 +219,8 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 	}, [awaitingInput, messages])
 
 	// Suggestions with a blank, missing or non-string answer are dropped (weak models emit them).
-	const usableSuggestions = pendingAsk?.ask === "followup" ? parseFollowUpData(pendingAsk.text).suggestions : []
+	const usableSuggestions =
+		pendingAsk?.ask === "followup" ? parseFollowUpData(decodeStoredProse(pendingAsk).text).suggestions : []
 	const pendingPermission =
 		pendingAsk && (pendingAsk.ask === "tool" || pendingAsk.ask === "command" || pendingAsk.ask === "use_mcp_server")
 			? pendingAsk

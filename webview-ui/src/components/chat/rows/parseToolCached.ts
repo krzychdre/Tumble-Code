@@ -2,6 +2,8 @@ import type { ClineMessage, ClineSayTool } from "@tumble-code/types"
 
 import { parseToolPayloadText } from "@tumble-code/core/browser"
 
+import { decodeProseTool } from "./decodeStoredProse"
+
 /** A parsed tool payload. Shared between callers: read it, never mutate it. */
 export type ParsedTool = Readonly<Partial<ClineSayTool>> & Readonly<Record<string, unknown>>
 
@@ -41,7 +43,8 @@ export function parseToolCached(message: Pick<ClineMessage, "ts" | "text">): Par
 		return hit.tool
 	}
 
-	const tool = parseToolPayloadText(text) as ParsedTool | undefined
+	// Decoded here so the todo list header, the todo diff and the rows agree.
+	const tool = decodeProseTool(parseToolPayloadText(text)) as ParsedTool | undefined
 	if (hit !== undefined) {
 		// Keep the insertion order honest: a re-parsed entry counts as new.
 		cache.delete(message.ts)
