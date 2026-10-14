@@ -14,6 +14,7 @@ import type {
 import { MCP_TOOL_PREFIX, MCP_TOOL_SEPARATOR, parseMcpToolName, normalizeMcpToolName } from "../../utils/mcp-name"
 import { logger } from "../../utils/logging"
 import { recoverGluedToolArgs } from "./recoverGluedToolArgs"
+import { decodeProseToolArgs } from "./decodeProseToolArgs"
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -367,6 +368,9 @@ export class NativeToolCallParser {
 		partial: boolean,
 		originalName?: string,
 	): ToolUse | null {
+		// Streamed prose shows real letters too, not only the final call.
+		partialArgs = decodeProseToolArgs(name, partialArgs)
+
 		// Build stringified params for display/partial-progress UI.
 		// NOTE: For streaming partial updates, we MUST populate params even for complex types
 		// because tool.handlePartial() methods rely on params to show UI updates.
@@ -443,10 +447,13 @@ export class NativeToolCallParser {
 			// Parse the arguments JSON string, then put back an argument a GLM server glued
 			// onto the previous one, before any required-parameter check sees the call.
 			const parsedArgs = toolCall.arguments === "" ? {} : JSON.parse(toolCall.arguments)
-			const args = recoverGluedToolArgs(resolvedName, parsedArgs) as Record<string, unknown>
-			if (args !== parsedArgs) {
+			const recoveredArgs = recoverGluedToolArgs(resolvedName, parsedArgs) as Record<string, unknown>
+			if (recoveredArgs !== parsedArgs) {
 				logger.warn(`Recovered tool arguments glued onto another argument for tool '${resolvedName}'`)
 			}
+			// Prose arguments lose literal \uXXXX escapes here, so the chat and the
+			// API history (built from nativeArgs) both hold the real letters.
+			const args = decodeProseToolArgs(resolvedName, recoveredArgs)
 
 			// Build stringified params for display/logging.
 			// Tool execution MUST use nativeArgs (typed) and does not support legacy fallbacks.
