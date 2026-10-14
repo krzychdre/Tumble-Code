@@ -12,6 +12,7 @@
 - `src/activate/registerCommands.ts` (`focusInput`, `focusPanel`, `replaceOrphanedTabs`, `openClineInNewTab`)
 - `src/utils/focusPanel.ts`, `src/core/webview/messageHandlers/settings.ts` (`focusPanelRequest`)
 - `src/package.json` (icon for `openInNewTab`, `editor/title` button, `alt` on the Tumble button)
+- `packages/build/src/types.ts`, `packages/build/src/esbuild.ts` (the nightly package keeps and renames `alt`)
 - `scripts/test-only-exports-allowlist.mjs`, `src/__tests__/layering.spec.ts`, `docs/architecture.md`,
   `docs/02-extension-host.md`
 - tests: `src/core/webview/__tests__/ClineProvider.multipleTabs.spec.ts` (new),
@@ -99,6 +100,9 @@ several things went wrong.
   file editors gets `"alt": "tumble-code.openInNewTab"`, so Alt+click opens a fresh tab. The existing command
   (title "Open In New Tab", translated in every locale) is reused rather than adding a second command that does the
   same thing.
+- **Nightly package:** `generatePackageJson` (`packages/build`) parses menu items with a zod schema that listed
+  `command`, `submenu` and `when` only, so it dropped `alt` from the nightly `package.json`, and would not have
+  renamed it to `tumble-code-nightly.*` anyway. The schema keeps `alt` and the transform renames it.
 
 ## Tests
 
@@ -114,6 +118,8 @@ several things went wrong.
 - Before the fix, a scratch spec on main failed on items 2 and 4 (`getEditorTab()` returned B after focusing A;
   the registry did not return A after closing B). The new `openInNewTab`, orphan and `focusPanelRequest` tests
   assert the opposite of the old code paths quoted above.
+- `packages/build/src/__tests__/index.test.ts`: a menu item with `alt` keeps it, renamed for the nightly (failed
+  before the schema change: the key was missing from the output).
 - Stand-in providers in `ClineProvider.task-slot.spec.ts` and `task-resume-ui.spec.ts` gained `findLiveTask`;
   `ClineProvider.historyReopenAllowList.spec.ts` clears `activeInstances` per test, because providers of earlier
   tests were never disposed and still held a task with the same id.

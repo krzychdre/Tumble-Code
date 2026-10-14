@@ -77,6 +77,7 @@ describe("generatePackageJson", () => {
 							},
 							{
 								command: "tumble-code.accountButtonClicked",
+								alt: "tumble-code.plusButtonClicked",
 								group: "navigation@6",
 								when: "activeWebviewPanelId == tumble-code.TabPanelProvider",
 							},
@@ -212,6 +213,7 @@ describe("generatePackageJson", () => {
 						},
 						{
 							command: "tumble-code-nightly.accountButtonClicked",
+							alt: "tumble-code-nightly.plusButtonClicked",
 							group: "navigation@6",
 							when: "activeWebviewPanelId == tumble-code-nightly.TabPanelProvider",
 						},

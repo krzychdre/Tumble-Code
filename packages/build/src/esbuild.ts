@@ -309,7 +309,7 @@ export function generatePackageJson({
 			viewsContainers: transformArrayRecord<ViewsContainer>(viewsContainers, from, to, ["id"]),
 			views: transformArrayRecord<Views>(views, from, to, ["id"]),
 			commands: transformArray(commands, from, to, "command"),
-			menus: transformArrayRecord<Menus>(menus, from, to, ["command", "submenu", "when"]),
+			menus: transformArrayRecord<Menus>(menus, from, to, ["command", "alt", "submenu", "when"]),
 			submenus: transformArray(submenus, from, to, "id"),
 			configuration: {
 				title: configuration.title,
