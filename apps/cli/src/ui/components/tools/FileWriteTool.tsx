@@ -2,14 +2,14 @@ import { Box, Text, useStdout } from "ink"
 
 import { toolPayloadDiffText } from "@tumble-code/core/cli"
 
-import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
 import Bullet from "../primitives/Bullet.js"
 import ResultRow, { ElbowGutter } from "../primitives/ResultRow.js"
 
 import type { ToolRendererProps } from "./types.js"
 import { toolStatusFromMessage } from "./types.js"
-import { sanitizeContent, parseAnyDiff, isDiffText, type DiffHunk } from "./utils.js"
+import { bandSegments, pairHunkLines, type DiffLine } from "./diffBand.js"
+import { sanitizeContent, parseAnyDiff, isDiffText } from "./utils.js"
 
 const MAX_HUNK_LINES = 8
 const MAX_HUNKS = 2
@@ -17,9 +17,10 @@ const MAX_HUNKS = 2
 /**
  * Widest colour band we paint, gutter included. Lines are padded to the widest
  * line in their hunk so the band is a rectangle instead of a ragged edge, and
- * this caps that padding on very wide terminals. Anything longer is truncated
- * by `wrap="truncate-end"` rather than wrapped: a wrapped diff line would spill
- * a half-coloured second row and blow the dynamic tail's row budget.
+ * this caps that padding on very wide terminals. Anything longer is cut by
+ * `bandSegments` rather than wrapped: a wrapped diff line would spill a
+ * half-coloured second row and blow the dynamic tail's row budget. The cut
+ * keeps the changed columns of a modified line in view (see diffBand.ts).
  */
 const MAX_DIFF_WIDTH = 100
 
@@ -31,28 +32,10 @@ const MAX_DIFF_WIDTH = 100
  */
 const DIFF_INSET = 2 + 5 + 1
 
-const DIFF_GUTTER: Record<"added" | "removed" | "context" | "header", string> = {
-	added: "+",
-	removed: "-",
-	context: " ",
-	header: " ",
-}
-
 /** Rendered width of a hunk's body, so every line can be padded to it. */
-function hunkBandWidth(lines: DiffHunk["lines"], columns: number): number {
+function hunkBandWidth(lines: DiffLine[], columns: number): number {
 	const widest = lines.reduce((max, line) => Math.max(max, line.content.length + 1), 0)
 	return Math.max(1, Math.min(widest, MAX_DIFF_WIDTH, columns - DIFF_INSET))
-}
-
-/**
- * One diff line as an exactly `width`-wide band. Padding and truncation are
- * done here rather than left to ink: ink's own `truncate-end` hands the text
- * one column more than the row has left, which pushes the band onto a second
- * row and quietly eats a line of the tail's row budget.
- */
-function bandLine(line: DiffHunk["lines"][number], width: number): string {
-	const text = `${DIFF_GUTTER[line.type]}${line.content}`
-	return text.length > width ? `${text.slice(0, Math.max(0, width - 1))}${figures.ellipsis}` : text.padEnd(width)
 }
 
 export function FileWriteTool({ toolData, message, expanded = false }: ToolRendererProps) {
@@ -130,34 +113,56 @@ export function FileWriteTool({ toolData, message, expanded = false }: ToolRende
 					</Text>
 
 					{/* Diff preview: every removed line on a red band, every added
-					    line on a green band, context faint and unbanded. */}
+					    line on a green band, context faint and unbanded. The columns
+					    a modified line differs in get a stronger shade, and a band cut
+					    at the width is shifted so those columns stay in view. */}
 					{visibleHunks.length > 0 && (
 						<Box flexDirection="row">
 							<ElbowGutter />
 							<Box flexDirection="column" flexGrow={1}>
 								{visibleHunks.map((hunk, hunkIndex) => {
-									const visibleLines = hunk.lines.slice(0, maxHunkLines)
-									const bandWidth = hunkBandWidth(visibleLines, columns)
+									const visibleLines = pairHunkLines(hunk.lines).slice(0, maxHunkLines)
+									const bandWidth = hunkBandWidth(
+										visibleLines.map((view) => view.line),
+										columns,
+									)
 									const hiddenLines = hunk.lines.length - visibleLines.length
 
 									return (
 										<Box key={hunkIndex} flexDirection="column">
 											{hunk.header ? <Text color={theme.faint}>{hunk.header}</Text> : null}
-											{visibleLines.map((line, lineIndex) => (
-												<Text
-													key={lineIndex}
-													wrap="truncate-end"
-													backgroundColor={
-														line.type === "added"
-															? theme.diffAdded
-															: line.type === "removed"
-																? theme.diffRemoved
-																: undefined
-													}
-													color={line.type === "context" ? theme.faint : theme.text}>
-													{bandLine(line, bandWidth)}
-												</Text>
-											))}
+											{visibleLines.map((view, lineIndex) => {
+												const { line } = view
+												const band = bandSegments(view, bandWidth)
+												const added = line.type === "added"
+												const removed = line.type === "removed"
+												return (
+													<Text
+														key={lineIndex}
+														wrap="truncate-end"
+														backgroundColor={
+															added
+																? theme.diffAdded
+																: removed
+																	? theme.diffRemoved
+																	: undefined
+														}
+														color={line.type === "context" ? theme.faint : theme.text}>
+														{band.before}
+														{band.changed ? (
+															<Text
+																backgroundColor={
+																	added
+																		? theme.diffAddedStrong
+																		: theme.diffRemovedStrong
+																}>
+																{band.changed}
+															</Text>
+														) : null}
+														{band.after}
+													</Text>
+												)
+											})}
 											{hiddenLines > 0 && (
 												<Text color={theme.faint}>{`… +${hiddenLines} more lines`}</Text>
 											)}

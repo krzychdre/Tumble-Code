@@ -31,6 +31,9 @@ export const theme = {
 	diffRemoved: "#7A2936",
 	diffAddedDimmed: "#47584A",
 	diffRemovedDimmed: "#69474D",
+	// The columns a modified line differs in, on top of the line's band.
+	diffAddedStrong: "#3A8A45",
+	diffRemovedStrong: "#AE3F50",
 	code: "#E6DB74", // inline code spans
 } as const
 
@@ -75,4 +78,6 @@ export const suggestion = theme.suggestion
 export const planMode = theme.planMode
 export const diffAdded = theme.diffAdded
 export const diffRemoved = theme.diffRemoved
+export const diffAddedStrong = theme.diffAddedStrong
+export const diffRemovedStrong = theme.diffRemovedStrong
 export const code = theme.code

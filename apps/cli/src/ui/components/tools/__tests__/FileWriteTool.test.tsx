@@ -162,6 +162,49 @@ describe("FileWriteTool", () => {
 		})
 	})
 
+	describe("a change beyond the band width", () => {
+		// The owner's 2026-10-14 report: a typo fixed in column ~300 of a
+		// 400-column sentence showed a removed band and an added band that read
+		// exactly the same, as if a duplicate line had been added.
+		const sentence = "Średnia (n=11): ~137,4/74 (HR ~76) SYS wyraźnie powyżej celu <135/85, DIA na granicy; "
+		const before = `${sentence.repeat(3)}sesja wykonana 26 h po dawce`
+		const after = `${sentence.repeat(3)}sesja wykonana 26 h po ostatniej dawce`
+		const props: ToolRendererProps = {
+			toolData: {
+				tool: "editedExistingFile",
+				path: "zdrowie/dziennik-cisnien.md",
+				content: ["@@ -80,1 +80,1 @@", `-${before}`, `+${after}`].join("\n"),
+				diffStats: { added: 1, removed: 1 },
+			},
+		}
+
+		it("shifts both bands so the changed words are in view", () => {
+			const rows = (render(<FileWriteTool {...props} />).lastFrame() ?? "").split("\n")
+			const removedRow = rows.find((row) => row.includes("-…"))
+			const addedRow = rows.find((row) => row.includes("+…"))
+
+			expect(removedRow).toContain("po dawce")
+			expect(addedRow).toContain("po ostatniej dawce")
+			expect(removedRow).not.toContain("Średnia")
+			for (const row of rows) {
+				expect(stringWidth(row)).toBeLessThanOrEqual(100)
+			}
+		})
+
+		it("leaves a change that is already in view where it is", () => {
+			const output = render(
+				<FileWriteTool
+					{...props}
+					toolData={{ ...props.toolData, content: ["@@ -1,1 +1,1 @@", "-a = 1", "+a = 2"].join("\n") }}
+				/>,
+			).lastFrame()
+
+			expect(output).toContain("-a = 1")
+			expect(output).toContain("+a = 2")
+			expect(output).not.toContain("…")
+		})
+	})
+
 	describe("fallbacks", () => {
 		it("prints a payload that is not a diff raw", () => {
 			const props: ToolRendererProps = {
