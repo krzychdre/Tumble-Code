@@ -509,6 +509,7 @@ function createProvider() {
 		clearTask: async () => undefined,
 		exportTaskWithId: async () => undefined,
 		showTaskWithId: async () => undefined,
+		revealView: async () => undefined,
 		condenseTaskContext: async () => undefined,
 		deleteTaskWithId: async () => undefined,
 		getTaskWithAggregatedCosts: async (id: string) => ({ historyItem: { id }, aggregatedCosts: { totalCost: 1 } }),

@@ -10,7 +10,6 @@ import { getCommand } from "../utils/commands"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { ContextProxy } from "../core/config/ContextProxy"
 import { focusPanel } from "../utils/focusPanel"
-import { getPanel, getSidebarPanel, getTabPanel, setPanel } from "../core/webview/panelRegistry"
 import { handleNewTask } from "./handleTask"
 import { STATUS_BAR_CLICK_SOURCE } from "./statusBar"
 import { CodeIndexManager } from "../services/code-index/manager"
@@ -168,11 +167,12 @@ const getCommandsMap = ({
 	},
 	focusInput: async () => {
 		try {
-			await focusPanel(getTabPanel(), getSidebarPanel())
+			const host = ClineProvider.getLastActiveInstance()
+			await focusPanel(host)
 
-			// Send focus input message only for sidebar panels
-			const sidebarPanel = getSidebarPanel()
-			if (sidebarPanel && getPanel() === sidebarPanel) {
+			// Send focus input message only for the sidebar (`provider`); a
+			// tab focuses its input itself when it comes into view.
+			if (host === provider) {
 				provider.postMessageToWebview({ type: "action", action: "focusInput" })
 			}
 		} catch (error) {
@@ -181,7 +181,7 @@ const getCommandsMap = ({
 	},
 	focusPanel: async () => {
 		try {
-			await focusPanel(getTabPanel(), getSidebarPanel())
+			await focusPanel(ClineProvider.getLastActiveInstance())
 		} catch (error) {
 			logger.error(`Error focusing panel: ${error}`)
 		}
@@ -244,7 +244,8 @@ const getCommandsMap = ({
  * nothing. The old host cannot close it, by the time `deactivate` runs its
  * messages no longer reach the window, and a panel serializer only revives
  * tabs restored with a window. So the new host closes those tabs and opens a
- * working one. Call it before this host opens a tab of its own.
+ * working one for each, in the same group. Call it before this host opens a
+ * tab of its own.
  */
 export const replaceOrphanedTabs = async (options: Omit<RegisterCommandOptions, "provider">) => {
 	const orphans = vscode.window.tabGroups.all
@@ -256,13 +257,19 @@ export const replaceOrphanedTabs = async (options: Omit<RegisterCommandOptions, 
 	if (orphans.length === 0) {
 		return
 	}
-	// The old tab's group is locked, so it stays open, empty; reuse it.
-	const viewColumn = orphans[0].group.viewColumn
+	// The old tabs' groups are locked, so they stay open, empty; reuse them.
+	const viewColumns = orphans.map((orphan) => orphan.group.viewColumn)
 	await vscode.window.tabGroups.close(orphans)
-	await openClineInNewTab(options, viewColumn)
+	for (const viewColumn of viewColumns) {
+		await openClineInNewTab(options, viewColumn)
+	}
 }
 
-/** Opens Tumble Code in an editor tab, in `viewColumn` if given, else right of the open editors. */
+/**
+ * Opens Tumble Code in a new editor tab: in `viewColumn` if given, else next
+ * to the Tumble tab used last (in its locked group), else right of the open
+ * editors.
+ */
 export const openClineInNewTab = async (
 	{ context, outputChannel }: Omit<RegisterCommandOptions, "provider">,
 	viewColumn?: vscode.ViewColumn,
@@ -273,6 +280,13 @@ export const openClineInNewTab = async (
 	// https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 	const contextProxy = await ContextProxy.getInstance(context)
 	const codeIndexManager = CodeIndexManager.getInstance(context)
+
+	// Another Tumble tab is open: open the new one beside it, in its group.
+	// Without this, with no text editor visible, a second tab went through
+	// newGroupRight (a new group right of the active one) and then into
+	// column two: with the first Tumble tab in column two, that is its own
+	// group, and the new group stayed empty.
+	viewColumn ??= ClineProvider.getEditorTab()?.viewColumn
 
 	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy)
 	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
@@ -293,9 +307,6 @@ export const openClineInNewTab = async (
 		localResourceRoots: [context.extensionUri],
 	})
 
-	// Save as tab type panel.
-	setPanel(newPanel, "tab")
-
 	// TODO: Use better svg icon with light and dark variants (see
 	// https://stackoverflow.com/questions/58365687/vscode-extension-iconpath).
 	newPanel.iconPath = {
@@ -305,16 +316,8 @@ export const openClineInNewTab = async (
 
 	// resolveWebviewView also sends didBecomeVisible when the panel comes back
 	// on screen; a second listener here would fire on every focus change.
+	// It also disposes the provider when the tab is closed.
 	await tabProvider.resolveWebviewView(newPanel)
-
-	// Handle panel closing events.
-	newPanel.onDidDispose(
-		() => {
-			setPanel(undefined, "tab")
-		},
-		null,
-		context.subscriptions, // Also register dispose listener
-	)
 
 	// Lock the editor group so clicking on files doesn't open them over the panel.
 	await delay(100)

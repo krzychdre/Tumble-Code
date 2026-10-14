@@ -215,6 +215,7 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		// No live parallel subagent with the opened id.
 		getBackgroundTask: vi.fn().mockReturnValue(undefined),
+		findLiveTask: ClineProvider.prototype.findLiveTask,
 		...overrides,
 	}
 	provider.taskSlot = new TaskSlot({

@@ -24,7 +24,6 @@ export const allowlist = [
 	"src/services/search/file-search.ts: clearWorkspaceFileListCacheForTests",
 	"src/core/prompts/sections/system-info.ts: resetOsInfoCacheForTests",
 	"src/core/task/RetryHandler.ts: resetGlobalApiRequestTime",
-	"src/core/webview/panelRegistry.ts: clearPanels",
 	"src/services/code-index/embedders/rate-limit-gate.ts: resetRateLimitGates",
 	"src/services/tree-sitter/index.ts: setMinComponentLines",
 	"src/utils/logging/index.ts: resetLoggerForTests",

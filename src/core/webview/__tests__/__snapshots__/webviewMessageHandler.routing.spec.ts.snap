@@ -1177,8 +1177,7 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > focusPanelR
 {
   "events": [
     [
-      "vscode.commands.executeCommand",
-      "tumble-code.focusPanel",
+      "provider.revealView",
     ],
   ],
   "outcome": "resolved",

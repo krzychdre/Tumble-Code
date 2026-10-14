@@ -14,7 +14,6 @@ import {
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
 import { Package } from "../../../shared/package"
-import { getCommand } from "../../../utils/commands"
 import { sanitizeCommandList } from "../../auto-approval/sanitizeCommandList"
 import { exportSettings, importSettingsWithFeedback } from "../../config/importExport"
 import type { DomainHandlerMap } from "./types"
@@ -270,9 +269,11 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 		await provider.postStateToWebview()
 	},
 
-	focusPanelRequest: async () => {
-		// Execute the focusPanel command to focus the WebView
-		await vscode.commands.executeCommand(getCommand("focusPanel"))
+	// An editor tab's webview asks after a click in it. Focus that tab, not
+	// the panel the focusPanel command picks: with several tabs open that is
+	// another tab, revealed over the one the user clicked in.
+	focusPanelRequest: async ({ provider }) => {
+		await provider.revealView()
 	},
 
 	switchTab: async (ctx, message) => {

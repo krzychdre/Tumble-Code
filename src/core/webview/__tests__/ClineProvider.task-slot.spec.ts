@@ -474,6 +474,7 @@ describe("showTaskWithId puts a task running off screen back on screen", () => {
 		const provider = makeProvider() as ProviderStandIn & Record<string, any>
 		Object.assign(provider, {
 			showTaskWithId: ClineProvider.prototype.showTaskWithId,
+			findLiveTask: ClineProvider.prototype.findLiveTask,
 			reattachTask: (ClineProvider.prototype as any).reattachTask,
 			setCurrentTask: ClineProvider.prototype.setCurrentTask,
 			getHistoryItem: vi.fn(async (id: string) => ({ id, mode: "code" })),

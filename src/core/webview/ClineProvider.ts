@@ -57,8 +57,6 @@ import { getWorkspacePath } from "../../utils/path"
 import { perfCounters } from "../../utils/perfCounters"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
 
-import { setPanel } from "./panelRegistry"
-
 import { t } from "../../i18n"
 
 import { buildApiHandler } from "../../api"
@@ -124,6 +122,11 @@ export class ClineProvider
 	public static readonly sideBarId = `${Package.name}.SidebarProvider`
 	public static readonly tabPanelId = `${Package.name}.TabPanelProvider`
 	private static activeInstances: Set<ClineProvider> = new Set()
+	// Bumped each time a panel is resolved, focused (an editor tab) or shown
+	// (the sidebar). With several editor tabs open, "reveal", "focus" and the
+	// title-bar buttons act on the panel the user was in last.
+	private static activationCount = 0
+	private activatedAt = 0
 	private static instanceObservers: Set<(provider: ClineProvider) => void> = new Set()
 	private disposables: vscode.Disposable[] = []
 	private webviewDisposables: vscode.Disposable[] = []
@@ -850,20 +853,69 @@ export class ClineProvider
 
 	/** The provider (sidebar or editor tab) that has a live task by this id. */
 	public static findTaskHost(taskId: string): ClineProvider | undefined {
-		return findLast(Array.from(this.activeInstances), (instance) => instance.findLiveTask(taskId) !== undefined)
+		return findLast(
+			Array.from(this.activeInstances),
+			(instance) => !instance._disposed && instance.findLiveTask(taskId) !== undefined,
+		)
 	}
 
-	/** The newest editor tab Tumble Code is open in, if any. */
+	/**
+	 * The live provider matching `filter` that the user was in last. Ties (never
+	 * activated) go to the newest, as `findLast` did. A provider being disposed
+	 * stays in the set until its async cleanup ends, so it is skipped here: its
+	 * panel is already closed.
+	 */
+	private static mostRecentlyActive(filter: (instance: ClineProvider) => boolean): ClineProvider | undefined {
+		let best: ClineProvider | undefined
+		for (const instance of this.activeInstances) {
+			if (!instance._disposed && filter(instance) && (!best || instance.activatedAt >= best.activatedAt)) {
+				best = instance
+			}
+		}
+		return best
+	}
+
+	/** The editor tab Tumble Code was focused in last, if any tab is open. */
 	public static getEditorTab(): vscode.WebviewPanel | undefined {
-		const host = findLast(
-			Array.from(this.activeInstances),
-			(instance) => instance.view !== undefined && "onDidChangeViewState" in instance.view,
-		)
+		const host = this.mostRecentlyActive((instance) => instance.isEditorTab())
 		return host?.view as vscode.WebviewPanel | undefined
 	}
 
+	/** Of the panels on screen, the one the user was in last. */
 	public static getVisibleInstance(): ClineProvider | undefined {
-		return findLast(Array.from(this.activeInstances), (instance) => instance.view?.visible === true)
+		return this.mostRecentlyActive((instance) => instance.view?.visible === true)
+	}
+
+	/** The panel (sidebar or editor tab) the user was in last, visible or not. */
+	public static getLastActiveInstance(): ClineProvider | undefined {
+		return this.mostRecentlyActive((instance) => instance.view !== undefined)
+	}
+
+	private isEditorTab(): boolean {
+		return this.view !== undefined && "onDidChangeViewState" in this.view
+	}
+
+	private markActivated(): void {
+		this.activatedAt = ++ClineProvider.activationCount
+	}
+
+	/**
+	 * Brings this panel to the front. An editor tab is revealed in the group
+	 * it is in (its group is locked, revealing it in the active group would
+	 * move it out and leave that group empty); the sidebar view is focused.
+	 */
+	public async revealView(): Promise<void> {
+		const view = this.view
+		if (!view) {
+			return
+		}
+		if ("onDidChangeViewState" in view) {
+			if (!view.active) {
+				view.reveal(undefined, false)
+			}
+		} else {
+			await vscode.commands.executeCommand(`${ClineProvider.sideBarId}.focus`)
+		}
 	}
 
 	/**
@@ -907,12 +959,7 @@ export class ClineProvider
 		this.forgetWebviewTaskHistory()
 		this.setWebviewAcceptsMessageAdded(false)
 		const inTabMode = "onDidChangeViewState" in webviewView
-
-		if (inTabMode) {
-			setPanel(webviewView, "tab")
-		} else if ("onDidChangeVisibility" in webviewView) {
-			setPanel(webviewView, "sidebar")
-		}
+		this.markActivated()
 
 		// Initialize out-of-scope variables that need to receive persistent
 		// global state values.
@@ -988,6 +1035,9 @@ export class ClineProvider
 			// focus straight back into the panel.
 			let wasVisible = webviewView.visible
 			const viewStateDisposable = webviewView.onDidChangeViewState(() => {
+				if (webviewView.active) {
+					this.markActivated()
+				}
 				const isVisible = this.view?.visible ?? false
 				if (isVisible === wasVisible) {
 					return
@@ -1005,6 +1055,7 @@ export class ClineProvider
 			// sidebar
 			const visibilityDisposable = webviewView.onDidChangeVisibility(() => {
 				if (this.view?.visible) {
+					this.markActivated()
 					this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 				} else {
 					this.logWebviewHiddenDiagnostics()
@@ -1437,6 +1488,16 @@ export class ClineProvider
 
 	async showTaskWithId(id: string): Promise<void> {
 		if (id !== this.getCurrentTask()?.taskId) {
+			// Another panel (the sidebar or another editor tab) runs this task:
+			// rebuilding it here would start a second Task with the same id,
+			// both writing the same task files. Show it in that panel instead.
+			const host = this.findLiveTask(id) ? undefined : ClineProvider.findTaskHost(id)
+			if (host) {
+				await host.showTaskWithId(id)
+				await host.revealView()
+				return
+			}
+
 			// A parallel subagent still running is a headless background task:
 			// rebuilding it from history would start a second Task with the
 			// same id. Its parent's subagents panel shows it live instead.

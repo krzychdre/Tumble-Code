@@ -4,7 +4,8 @@
 //
 // 1. ClineProvider must not import from src/activate: activate/registerCommands
 //    constructs ClineProvider, so the edge back is a real runtime cycle. The
-//    panel references live in core/webview/panelRegistry instead.
+//    commands ask ClineProvider's static lookups (getEditorTab,
+//    getLastActiveInstance) for the panels instead.
 // 2. src/shared is bundled into the webview (the `@shared/*` alias), so no file
 //    in it may import `vscode` or extension code (CORE-R10 fixed shared/modes.ts,
 //    SVC-16 moved the last two vscode-bound files out and widened the check).
