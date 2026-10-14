@@ -38,12 +38,12 @@ describe("registerStatusBarItem", () => {
 		expect(item.tooltip).toBe("translated:common:statusBar.openTab")
 	})
 
-	it("runs the editor title command with the status bar as the source", () => {
+	it("runs the open-in-new-tab command with the status bar as the source", () => {
 		const { item } = register()
 
 		expect(item.command).toEqual({
 			title: "translated:common:statusBar.openTab",
-			command: "tumble-code.editorTitleButtonClicked",
+			command: "tumble-code.openInNewTab",
 			arguments: [STATUS_BAR_CLICK_SOURCE],
 		})
 	})

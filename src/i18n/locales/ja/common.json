@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Tumble Code をエディタータブで開く"
+		"openTab": "Tumble Code を新しいエディタータブで開く"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

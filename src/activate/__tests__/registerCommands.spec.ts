@@ -218,6 +218,40 @@ describe("openInNewTab", () => {
 			expect.anything(),
 		)
 	})
+
+	it("opens another tab from the status bar item even when a Tumble tab is open, and reports the click", async () => {
+		const panel = { reveal: vi.fn(), viewColumn: 3 }
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
+
+		await runRegisteredCommand("openInNewTab", undefined, STATUS_BAR_CLICK_SOURCE)
+
+		expect(panel.reveal).not.toHaveBeenCalled()
+		expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
+			ClineProvider.tabPanelId,
+			"Tumble Code",
+			3,
+			expect.anything(),
+		)
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TITLE_BUTTON_CLICKED, {
+			button: "statusBar",
+		})
+	})
+
+	it("opens the first tab from the status bar item when none is open", async () => {
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+
+		await runRegisteredCommand("openInNewTab", undefined, STATUS_BAR_CLICK_SOURCE)
+
+		expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1)
+	})
+
+	it("does not report runs from the Tumble tab's title bar or the command palette", async () => {
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+
+		await runRegisteredCommand("openInNewTab")
+
+		expect(TelemetryService.instance.capture).not.toHaveBeenCalled()
+	})
 })
 
 describe("focusPanel and focusInput", () => {
@@ -303,26 +337,5 @@ describe("editorTitleButtonClicked", () => {
 		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TITLE_BUTTON_CLICKED, {
 			button: "editorTitle",
 		})
-	})
-
-	it("reports a click from the status bar item and reveals the open tab", async () => {
-		const panel = { reveal: vi.fn() }
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
-
-		await runCommand(STATUS_BAR_CLICK_SOURCE)
-
-		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TITLE_BUTTON_CLICKED, {
-			button: "statusBar",
-		})
-		expect(panel.reveal).toHaveBeenCalledTimes(1)
-		expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled()
-	})
-
-	it("opens a new tab from the status bar item when none is open", async () => {
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
-
-		await runCommand(STATUS_BAR_CLICK_SOURCE)
-
-		expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1)
 	})
 })

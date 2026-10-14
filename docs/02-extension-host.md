@@ -96,10 +96,10 @@ See `ai_plans/2026-10-07_12-31_keep-tasks-running-in-background.md`.
 ### Several panels at once
 
 The sidebar and any number of editor tabs can be open together, one `ClineProvider` each, all sharing one
-`ContextProxy`. The "Open In New Tab" button in a Tumble tab's title bar (and Alt+click on the Tumble button of a
-file editor) opens another tab, in the group of the tab used last. Each provider records when the user was last in
-its panel (resolved, a tab focused, the sidebar shown); the static lookups the commands use return the most recent
-one: `getEditorTab` (the reveal of the editor title button and the status bar item), `getVisibleInstance` (the
+`ContextProxy`. The "Open In New Tab" button in a Tumble tab's title bar, Alt+click on the Tumble button of a
+file editor and the "Tumble Code" status bar item open another tab, in the group of the tab used last. Each provider
+records when the user was last in its panel (resolved, a tab focused, the sidebar shown); the static lookups the
+commands use return the most recent one: `getEditorTab` (the reveal of the editor title button), `getVisibleInstance` (the
 title-bar buttons) and `getLastActiveInstance` (the focus commands). A provider whose tab closed is skipped at once,
 before its async dispose ends. A click in a tab's webview (`focusPanelRequest`) reveals that tab itself. A task runs
 in one panel only: `showTaskWithId` for a task that another panel runs shows it there (`findTaskHost`) instead of

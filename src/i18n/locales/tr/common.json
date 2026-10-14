@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Tumble Code'u bir düzenleyici sekmesinde aç"
+		"openTab": "Tumble Code'u yeni bir düzenleyici sekmesinde aç"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

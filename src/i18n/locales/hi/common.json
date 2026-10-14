@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "Tumble Code को एडिटर टैब में खोलें"
+		"openTab": "Tumble Code को एक नए एडिटर टैब में खोलें"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {

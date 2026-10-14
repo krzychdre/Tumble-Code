@@ -159,7 +159,7 @@
 		}
 	},
 	"statusBar": {
-		"openTab": "在編輯器分頁中開啟 Tumble Code"
+		"openTab": "在新的編輯器分頁中開啟 Tumble Code"
 	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
