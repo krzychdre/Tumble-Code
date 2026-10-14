@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "मोड सफलतापूर्वक हटा दिया गया, लेकिन {{rulesFolderPath}} पर नियम फ़ोल्डर को हटाने में विफल रहा। आपको इसे मैन्युअल रूप से हटाना पड़ सकता है।"
 		}
 	},
+	"statusBar": {
+		"openTab": "Tumble Code को एडिटर टैब में खोलें"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "जब टूडू सूची में अधूरे टूडू हों तो कार्य पूर्ण होने से रोकें"

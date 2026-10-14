@@ -155,6 +155,9 @@
 			"rulesCleanupFailed": "Mode removed successfully, but failed to delete rules folder at {{rulesFolderPath}}. You may need to delete it manually."
 		}
 	},
+	"statusBar": {
+		"openTab": "Open Tumble Code in an editor tab"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Prevent task completion when there are incomplete todos in the todo list"

@@ -169,6 +169,7 @@ vi.mock("../activate", () => ({
 	registerCommands: vi.fn(),
 	replaceOrphanedTabs: vi.fn().mockResolvedValue(undefined),
 	registerCodeActions: vi.fn(),
+	registerStatusBarItem: vi.fn(),
 	registerTerminalActions: vi.fn(),
 	CodeActionProvider: vi.fn().mockImplementation(function () {
 		return {

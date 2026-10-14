@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "Режим успешно удален, но не удалось удалить папку правил в {{rulesFolderPath}}. Возможно, вам придется удалить ее вручную."
 		}
 	},
+	"statusBar": {
+		"openTab": "Открыть Tumble Code во вкладке редактора"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Предотвратить завершение задач при наличии незавершенных дел в списке дел"

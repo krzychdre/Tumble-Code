@@ -2,7 +2,11 @@ import type { Mock } from "vitest"
 import * as vscode from "vscode"
 import { ClineProvider } from "../../core/webview/ClineProvider"
 
+import { TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
+
 import { getVisibleProviderOrLog, registerCommands, replaceOrphanedTabs } from "../registerCommands"
+import { STATUS_BAR_CLICK_SOURCE } from "../statusBar"
 import { logger } from "../../utils/logging"
 
 vi.mock("execa", () => ({
@@ -158,7 +162,7 @@ describe("replaceOrphanedTabs", () => {
 })
 
 describe("editorTitleButtonClicked", () => {
-	const runCommand = async () => {
+	const runCommand = async (...args: unknown[]) => {
 		registerCommands({
 			context: { subscriptions: [], extensionUri: {} } as unknown as vscode.ExtensionContext,
 			outputChannel: { appendLine: vi.fn() } as unknown as vscode.OutputChannel,
@@ -168,7 +172,7 @@ describe("editorTitleButtonClicked", () => {
 			.mocked(vscode.commands.registerCommand)
 			.mock.calls.find(([id]) => id.endsWith(".editorTitleButtonClicked"))
 		expect(call).toBeDefined()
-		await call![1]()
+		await call![1](...args)
 	}
 
 	beforeEach(() => {
@@ -189,6 +193,37 @@ describe("editorTitleButtonClicked", () => {
 		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
 
 		await runCommand()
+
+		expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1)
+	})
+
+	it("reports a click from the editor title bar, which passes the editor's URI", async () => {
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+
+		await runCommand({ scheme: "file", path: "/mock/workspace/a.ts" })
+
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TITLE_BUTTON_CLICKED, {
+			button: "editorTitle",
+		})
+	})
+
+	it("reports a click from the status bar item and reveals the open tab", async () => {
+		const panel = { reveal: vi.fn() }
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
+
+		await runCommand(STATUS_BAR_CLICK_SOURCE)
+
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TITLE_BUTTON_CLICKED, {
+			button: "statusBar",
+		})
+		expect(panel.reveal).toHaveBeenCalledTimes(1)
+		expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled()
+	})
+
+	it("opens a new tab from the status bar item when none is open", async () => {
+		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+
+		await runCommand(STATUS_BAR_CLICK_SOURCE)
 
 		expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(1)
 	})

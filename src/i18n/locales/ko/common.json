@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "모드가 성공적으로 제거되었지만 {{rulesFolderPath}}의 규칙 폴더를 삭제하지 못했습니다. 수동으로 삭제해야 할 수도 있습니다."
 		}
 	},
+	"statusBar": {
+		"openTab": "편집기 탭에서 Tumble Code 열기"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "할 일 목록에 미완료된 할 일이 있을 때 작업 완료를 방지"

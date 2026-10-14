@@ -158,6 +158,9 @@
 			"rulesCleanupFailed": "O modo foi removido com sucesso, mas falhou ao excluir a pasta de regras em {{rulesFolderPath}}. Você pode precisar excluí-la manualmente."
 		}
 	},
+	"statusBar": {
+		"openTab": "Abrir o Tumble Code em uma aba do editor"
+	},
 	"commands": {
 		"preventCompletionWithOpenTodos": {
 			"description": "Impedir a conclusão de tarefas quando há todos incompletos na lista de todos"
