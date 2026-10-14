@@ -51,6 +51,9 @@
 	"collapseSubtasks": "Recolher subtarefas",
 	"today": "Hoje",
 	"yesterday": "Ontem",
+	"section": {
+		"active": "Ativas"
+	},
 	"noHistory": "Nenhuma tarefa ainda. Inicie uma conversa para criar seu histórico.",
 	"noSearchResults": "Nenhuma tarefa corresponde a esta pesquisa.",
 	"clearSearch": "Limpar pesquisa",

@@ -50,6 +50,9 @@
 	"collapseSubtasks": "收起子工作",
 	"today": "今天",
 	"yesterday": "昨天",
+	"section": {
+		"active": "進行中"
+	},
 	"noHistory": "還沒有工作。開始一段對話來建立歷史記錄。",
 	"noSearchResults": "沒有工作符合此搜尋。",
 	"clearSearch": "清除搜尋",

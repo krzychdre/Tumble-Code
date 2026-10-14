@@ -50,6 +50,9 @@
 	"collapseSubtasks": "Thu gọn tác vụ con",
 	"today": "Hôm nay",
 	"yesterday": "Hôm qua",
+	"section": {
+		"active": "Đang hoạt động"
+	},
 	"noHistory": "Chưa có tác vụ nào. Bắt đầu cuộc trò chuyện để xây dựng lịch sử của bạn.",
 	"noSearchResults": "Không có tác vụ nào khớp với tìm kiếm này.",
 	"clearSearch": "Xóa tìm kiếm",

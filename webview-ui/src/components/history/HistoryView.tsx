@@ -44,7 +44,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 
 	// Use grouped tasks hook
 	const { groups, flatTasks, toggleExpand, isSearchMode } = useGroupedTasks(tasks, searchQuery)
-	// §2.9: day headers interleaved with the (unchanged) parent-child groups.
+	// §2.9: section and day headers interleaved with the (unchanged) parent-child groups.
 	const dayRows = useMemo(() => toDayRows(groups, t), [groups, t])
 	// §2.9: `tasks` is already search-filtered, so an empty search result set
 	// also reads as tasks.length === 0, so check the search-empty state first.
@@ -146,7 +146,10 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 							}
 						}}
 						start={
-							<span className="codicon codicon-search mt-0.5 text-vscode-descriptionForeground text-sm!" aria-hidden="true" />
+							<span
+								className="codicon codicon-search mt-0.5 text-vscode-descriptionForeground text-sm!"
+								aria-hidden="true"
+							/>
 						}
 						end={
 							searchQuery ? (
@@ -297,8 +300,9 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 						)}
 					/>
 				) : (
-					// Grouped mode (§2.9): day headers interleaved with the
-					// parent-child groups; subtask trees unchanged.
+					// Grouped mode (§2.9): the working trees under a section header,
+					// then day headers interleaved with the parent-child groups;
+					// subtask trees unchanged.
 					<Virtuoso
 						className="flex-1 overflow-y-scroll"
 						data={dayRows}
@@ -310,10 +314,14 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 							)),
 						}}
 						itemContent={(_index, row) =>
-							row.type === "day-header" ? (
+							row.type !== "group" ? (
 								<div
 									key={row.key}
-									data-testid={`history-day-${row.day}`}
+									data-testid={
+										row.type === "day-header"
+											? `history-day-${row.day}`
+											: `history-section-${row.section}`
+									}
 									className="px-4 pt-4 pb-1 text-[length:var(--text-meta)] uppercase tracking-wide text-vscode-descriptionForeground select-none">
 									{row.label}
 								</div>

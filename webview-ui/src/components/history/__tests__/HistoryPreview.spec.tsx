@@ -161,6 +161,25 @@ describe("HistoryPreview", () => {
 		expect(screen.queryByTestId("task-group-task-6")).not.toBeInTheDocument()
 	})
 
+	it("renders every working group, even past 4, then fills up to 4", () => {
+		// useGroupedTasks puts the working groups first; here five of six work.
+		const groups = createMockGroups(mockTasks).map((group, index) =>
+			index < 5 ? { ...group, parent: { ...group.parent, runningStatus: "running" } } : group,
+		)
+		mockUseTaskSearch.mockReturnValue({ tasks: mockTasks, searchQuery: "" })
+		mockUseGroupedTasks.mockReturnValue({ groups, flatTasks: null, toggleExpand: vi.fn(), isSearchMode: false })
+
+		render(<HistoryPreview />)
+
+		expect(screen.getAllByTestId(/task-group-/).map((el) => el.dataset.testid)).toEqual([
+			"task-group-task-1",
+			"task-group-task-2",
+			"task-group-task-3",
+			"task-group-task-4",
+			"task-group-task-5",
+		])
+	})
+
 	it("renders all groups when there are 4 or fewer", () => {
 		const threeTasks = mockTasks.slice(0, 3)
 		mockUseTaskSearch.mockReturnValue({

@@ -50,6 +50,9 @@
 	"collapseSubtasks": "Alt görevleri daralt",
 	"today": "Bugün",
 	"yesterday": "Dün",
+	"section": {
+		"active": "Etkin"
+	},
 	"noHistory": "Henüz görev yok. Geçmişinizi oluşturmak için bir sohbet başlatın.",
 	"noSearchResults": "Bu aramayla eşleşen görev yok.",
 	"clearSearch": "Aramayı temizle",

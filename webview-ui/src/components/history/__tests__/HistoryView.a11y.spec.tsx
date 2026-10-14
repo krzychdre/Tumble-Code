@@ -61,18 +61,14 @@ const task = (id: string, ts: number, extra: Record<string, unknown> = {}) => ({
 	...extra,
 })
 
-const setState = (taskHistory: any[]) => {
-	;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
-		taskHistory,
-		cwd: "/test/workspace",
-	})
-	;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
-		selector({ taskHistory, cwd: "/test/workspace" }),
-	)
+const setState = (taskHistory: any[], runningTasks?: Record<string, string>) => {
+	const state = { taskHistory, cwd: "/test/workspace", runningTasks }
+	;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue(state)
+	;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) => selector(state))
 }
 
-const renderHistory = (taskHistory: any[]) => {
-	setState(taskHistory)
+const renderHistory = (taskHistory: any[], runningTasks?: Record<string, string>) => {
+	setState(taskHistory, runningTasks)
 	return render(<HistoryView onDone={() => {}} />)
 }
 
@@ -109,6 +105,22 @@ describe("HistoryView §2.9", () => {
 		// The parent-child tree survives: the subtask renders under its parent
 		// group (via TaskGroupItem -> SubtaskCollapsibleRow -> SubtaskRow).
 		expect(screen.getByTestId("subtask-row-3")).toBeInTheDocument()
+	})
+
+	it("lists a working task from an earlier day first, under its own header", () => {
+		renderHistory(
+			[
+				task("1", now - 1000), // today
+				task("2", now - 3 * DAY), // three days ago, its subtask works
+				task("3", now - 2000, { parentTaskId: "2" }),
+			],
+			{ "3": "running" },
+		)
+
+		const headers = screen.getAllByTestId(/history-(section|day)-/)
+		expect(headers.map((header) => header.textContent)).toEqual(["history:section.active", "history:today"])
+		const rows = screen.getAllByTestId(/^task-item-/).map((row) => row.dataset.testid)
+		expect(rows).toEqual(["task-item-2", "task-item-1"])
 	})
 
 	it("shows the empty state when there is no history at all", () => {

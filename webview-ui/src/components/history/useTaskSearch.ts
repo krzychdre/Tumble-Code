@@ -6,7 +6,7 @@ import type { HistoryItem, RunningTaskStatus } from "@tumble-code/types"
 import { highlightFzfMatch } from "@/utils/highlight"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
-import type { DisplayHistoryItem, SubtreeUsage } from "./types"
+import { bySection, type DisplayHistoryItem, type SubtreeUsage } from "./types"
 
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
 
@@ -217,17 +217,20 @@ export const useTaskSearch = () => {
 	}, [presentableTasks, searchQuery, fzf, sortOption])
 
 	// Kept apart from the sort so a status change does not search and sort again;
-	// rows of tasks at rest keep their object identity.
+	// rows of tasks at rest keep their object identity. The working tasks then
+	// move to the top (a stable partition, so both parts keep the sort order),
+	// except in a search ranked by relevance: there the best match stays first.
 	const tasks = useMemo((): DisplayHistoryItem[] => {
 		if (Object.keys(runningTasks).length === 0) {
 			return sortedTasks
 		}
 		const marked = withAncestors(runningTasks, taskHistory)
-		return sortedTasks.map((item) => {
+		const withStatus = sortedTasks.map((item) => {
 			const runningStatus = marked[item.id]
 			return runningStatus ? { ...item, runningStatus } : item
 		})
-	}, [sortedTasks, runningTasks, taskHistory])
+		return searchQuery && sortOption === "mostRelevant" ? withStatus : withStatus.sort(bySection)
+	}, [sortedTasks, runningTasks, taskHistory, searchQuery, sortOption])
 
 	return {
 		tasks,
