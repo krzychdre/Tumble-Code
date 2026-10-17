@@ -13,6 +13,7 @@
 			"claude-fable-5-1",
 			"claude-fable-5",
 			"claude-opus-4-5-20251101",
+			"claude-haiku-5-5",
 			"claude-haiku-4-5-20251001"
 		],
 		"models": {
@@ -52,7 +53,7 @@
 				"inputPrice": 2,
 				"outputPrice": 10,
 				"cacheWritesPrice": 2.5,
-				"cacheReadsPrice": 0.2,
+				"cacheReadsPrice": 0.1,
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
@@ -101,7 +102,8 @@
 						"cacheWritesPrice": 7.5,
 						"cacheReadsPrice": 0.6
 					}
-				]
+				],
+				"deprecated": true
 			},
 			"claude-opus-4-6": {
 				"maxTokens": 128000,
@@ -179,6 +181,27 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true
 			},
+			"claude-haiku-5-5": {
+				"maxTokens": 128000,
+				"contextWindow": 1000000,
+				"supportsImages": true,
+				"supportsPromptCache": true,
+				"inputPrice": 0.1,
+				"outputPrice": 0.5,
+				"cacheWritesPrice": 0.125,
+				"cacheReadsPrice": 0.01,
+				"longContextPricing": {
+					"thresholdTokens": 100000,
+					"inputPriceMultiplier": 5,
+					"outputPriceMultiplier": 5,
+					"cacheWritesPriceMultiplier": 5,
+					"cacheReadsPriceMultiplier": 5
+				},
+				"supportsReasoningBudget": true,
+				"supportsReasoningBinary": true,
+				"supportsTemperature": false,
+				"description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks."
+			},
 			"claude-haiku-4-5-20251001": {
 				"maxTokens": 64000,
 				"contextWindow": 200000,
@@ -219,6 +242,7 @@
 			"claude-sonnet-4@20250514",
 			"claude-sonnet-4-5@20250929",
 			"claude-sonnet-4-6",
+			"claude-haiku-5-5",
 			"claude-haiku-4-5@20251001",
 			"claude-opus-4-6",
 			"claude-opus-4-7",
@@ -292,6 +316,27 @@
 				"cacheWritesPrice": 3.75,
 				"cacheReadsPrice": 0.3,
 				"supportsReasoningBudget": true
+			},
+			"claude-haiku-5-5": {
+				"maxTokens": 128000,
+				"contextWindow": 1000000,
+				"supportsImages": true,
+				"supportsPromptCache": true,
+				"inputPrice": 0.1,
+				"outputPrice": 0.5,
+				"cacheWritesPrice": 0.125,
+				"cacheReadsPrice": 0.01,
+				"longContextPricing": {
+					"thresholdTokens": 100000,
+					"inputPriceMultiplier": 5,
+					"outputPriceMultiplier": 5,
+					"cacheWritesPriceMultiplier": 5,
+					"cacheReadsPriceMultiplier": 5
+				},
+				"supportsReasoningBudget": true,
+				"supportsReasoningBinary": true,
+				"supportsTemperature": false,
+				"description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks."
 			},
 			"claude-haiku-4-5@20251001": {
 				"maxTokens": 64000,
@@ -377,7 +422,7 @@
 				"inputPrice": 2,
 				"outputPrice": 10,
 				"cacheWritesPrice": 2.5,
-				"cacheReadsPrice": 0.2,
+				"cacheReadsPrice": 0.1,
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
@@ -469,6 +514,7 @@
 			"anthropic.claude-fable-5",
 			"anthropic.claude-opus-4-5-20251101-v1:0",
 			"anthropic.claude-opus-4-20250514-v1:0",
+			"anthropic.claude-haiku-5-5",
 			"anthropic.claude-haiku-4-5-20251001-v1:0",
 			"deepseek.r1-v1:0",
 			"openai.gpt-oss-20b-1:0",
@@ -640,7 +686,7 @@
 				"inputPrice": 2,
 				"outputPrice": 10,
 				"cacheWritesPrice": 2.5,
-				"cacheReadsPrice": 0.2,
+				"cacheReadsPrice": 0.1,
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
@@ -724,6 +770,30 @@
 				"cacheWritesPrice": 18.75,
 				"cacheReadsPrice": 1.5,
 				"supportsReasoningBudget": true,
+				"minTokensPerCachePoint": 1024,
+				"maxCachePoints": 4,
+				"cachableFields": ["system", "messages", "tools"]
+			},
+			"anthropic.claude-haiku-5-5": {
+				"maxTokens": 128000,
+				"contextWindow": 1000000,
+				"supportsImages": true,
+				"supportsPromptCache": true,
+				"inputPrice": 0.1,
+				"outputPrice": 0.5,
+				"cacheWritesPrice": 0.125,
+				"cacheReadsPrice": 0.01,
+				"longContextPricing": {
+					"thresholdTokens": 100000,
+					"inputPriceMultiplier": 5,
+					"outputPriceMultiplier": 5,
+					"cacheWritesPriceMultiplier": 5,
+					"cacheReadsPriceMultiplier": 5
+				},
+				"supportsReasoningBudget": true,
+				"supportsReasoningBinary": true,
+				"supportsTemperature": false,
+				"description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
 				"cachableFields": ["system", "messages", "tools"]

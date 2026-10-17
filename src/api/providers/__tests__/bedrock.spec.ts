@@ -1580,6 +1580,8 @@ describe("AwsBedrockHandler", () => {
 				expect(isAdaptiveThinkingModel("anthropic.claude-opus-5-5")).toBe(true)
 				expect(isAdaptiveThinkingModel("anthropic.claude-fable-5-1")).toBe(true)
 				expect(isAdaptiveThinkingModel("global.anthropic.claude-opus-5-5")).toBe(true)
+				expect(isAdaptiveThinkingModel("anthropic.claude-haiku-5-5")).toBe(true)
+				expect(isAdaptiveThinkingModel("global.anthropic.claude-haiku-5-5")).toBe(true)
 			})
 
 			it("returns true when the id carries a cross-region or global prefix", () => {
@@ -1593,6 +1595,7 @@ describe("AwsBedrockHandler", () => {
 				expect(isAdaptiveThinkingModel("anthropic.claude-opus-4-6-v1")).toBe(false)
 				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-4-6")).toBe(false)
 				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-4-5-20250929-v1:0")).toBe(false)
+				expect(isAdaptiveThinkingModel("anthropic.claude-haiku-4-5-20251001-v1:0")).toBe(false)
 				expect(isAdaptiveThinkingModel("amazon.nova-lite-v1:0")).toBe(false)
 			})
 		})

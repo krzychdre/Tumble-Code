@@ -68,7 +68,7 @@ export const claudeModels = {
 		inputPrice: 2.0, // $2 per million input tokens
 		outputPrice: 10.0, // $10 per million output tokens
 		cacheWritesPrice: 2.5, // $2.50 per million tokens (5-minute TTL)
-		cacheReadsPrice: 0.2, // $0.20 per million tokens
+		cacheReadsPrice: 0.1, // $0.10 per million tokens (0.05x input, pricing page 2026-10-17)
 		// Adaptive thinking is on by default. `{type: "disabled"}` and `budget_tokens`
 		// are rejected; turning the toggle off omits the parameter, which the API runs
 		// as adaptive thinking, so no request is rejected. Non-default sampling values
@@ -232,6 +232,34 @@ export const claudeModels = {
 		cacheWritesPrice: 18.75, // $18.75 per million tokens
 		cacheReadsPrice: 1.5, // $1.50 per million tokens
 		supportsReasoningBudget: true,
+	},
+	"haiku-5-5": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000, // 1M native, no beta header.
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.1, // $0.10 per million input tokens (prompts up to 100K tokens)
+		outputPrice: 0.5, // $0.50 per million output tokens (prompts up to 100K tokens)
+		cacheWritesPrice: 0.125, // $0.125 per million tokens (1.25x input, 5-minute TTL)
+		cacheReadsPrice: 0.01, // $0.01 per million tokens (0.1x input)
+		// A request whose prompt (uncached input plus cache writes and reads) is over 100K tokens
+		// pays five times every price: $0.50 input, $2.50 output, $0.625 cache writes, $0.05 cache
+		// reads. The whole request is billed at the higher prices, as `calculateApiCost` does.
+		longContextPricing: {
+			thresholdTokens: 100_000,
+			inputPriceMultiplier: 5,
+			outputPriceMultiplier: 5,
+			cacheWritesPriceMultiplier: 5,
+			cacheReadsPriceMultiplier: 5,
+		},
+		// Adaptive thinking is on by default. `budget_tokens` is rejected, so the UI presents a
+		// binary toggle; turning it off omits the parameter. Non-default sampling values and an
+		// assistant prefill are rejected too.
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
 	},
 	"haiku-4-5": {
 		maxTokens: 64_000,

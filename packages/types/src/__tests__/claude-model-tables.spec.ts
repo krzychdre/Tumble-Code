@@ -32,6 +32,7 @@ const CLAUDE_MODEL_LIMITS = [
 	["claude-sonnet-4-6", "claude-sonnet-4-6", "anthropic.claude-sonnet-4-6", 128_000, 1_000_000],
 	["claude-fable-5-1", "claude-fable-5-1", "anthropic.claude-fable-5-1", 128_000, 1_000_000],
 	["claude-fable-5", "claude-fable-5", "anthropic.claude-fable-5", 128_000, 1_000_000],
+	["claude-haiku-5-5", "claude-haiku-5-5", "anthropic.claude-haiku-5-5", 128_000, 1_000_000],
 	[
 		"claude-haiku-4-5-20251001",
 		"claude-haiku-4-5@20251001",
@@ -95,6 +96,44 @@ describe("Claude model tables", () => {
 		expect(bedrockModels["anthropic.claude-opus-4-20250514-v1:0"]).toBeDefined()
 	})
 
+	// Claude Sonnet 4.5 is deprecated on the Claude API (2026-09-30, retirement 2026-11-30). Bedrock and Vertex
+	// keep their own schedules and default to it, so only the Anthropic entry is marked.
+	it("mark the models deprecated on the Claude API in the Anthropic table only", () => {
+		expect(
+			Object.entries(anthropicModels as Record<string, ModelInfo>)
+				.filter(([, info]) => info.deprecated)
+				.map(([id]) => id),
+		).toEqual(["claude-sonnet-4-5"])
+		expect(claudeModels["sonnet-4-5"]).not.toHaveProperty("deprecated")
+		expect(vertexModels["claude-sonnet-4-5@20250929"]).not.toHaveProperty("deprecated")
+		expect(bedrockModels["anthropic.claude-sonnet-4-5-20250929-v1:0"]).not.toHaveProperty("deprecated")
+	})
+
+	// Haiku 5.5 is priced by prompt length: over 100K prompt tokens every price is five times higher
+	// (pricing page, 2026-10-17). The same record serves all three platforms.
+	it("prices the Claude Haiku 5.5 long prompt tier on every platform", () => {
+		const longContextPricing = {
+			thresholdTokens: 100_000,
+			inputPriceMultiplier: 5,
+			outputPriceMultiplier: 5,
+			cacheWritesPriceMultiplier: 5,
+			cacheReadsPriceMultiplier: 5,
+		}
+		for (const info of [
+			anthropicModels["claude-haiku-5-5"],
+			vertexModels["claude-haiku-5-5"],
+			bedrockModels["anthropic.claude-haiku-5-5"],
+		]) {
+			expect(info).toMatchObject({
+				inputPrice: 0.1,
+				outputPrice: 0.5,
+				cacheWritesPrice: 0.125,
+				cacheReadsPrice: 0.01,
+				longContextPricing,
+			})
+		}
+	})
+
 	// Vertex and Bedrock serve the same models with the same limits as the direct Anthropic API;
 	// the tables listed 8192 output there, which capped the max output slider far below what the
 	// models accept, and a 200K window with a priced 1M beta for models that serve 1M natively.
@@ -155,11 +194,12 @@ describe("Claude model tables", () => {
 		)
 	})
 
-	// Bedrock sends adaptive thinking for Opus 4.7+ by model id (isAdaptiveThinkingModel), the same
+	// Bedrock sends adaptive thinking for Opus 4.7+ and Haiku 5.5 by model id (isAdaptiveThinkingModel), the same
 	// request it sends for the Claude 5 models, so the settings show the same on/off toggle there.
 	it.each([
 		["claude-opus-4-7", "claude-opus-4-7", "anthropic.claude-opus-4-7"],
 		["claude-opus-4-8", "claude-opus-4-8", "anthropic.claude-opus-4-8"],
+		["claude-haiku-5-5", "claude-haiku-5-5", "anthropic.claude-haiku-5-5"],
 	] as const)("%s has the same reasoning flags on every platform", (anthropicId, vertexId, bedrockId) => {
 		const flags = (info: ModelInfo) => ({
 			supportsReasoningBudget: info.supportsReasoningBudget,

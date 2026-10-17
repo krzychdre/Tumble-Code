@@ -99,6 +99,7 @@ export const bedrockModels = {
 	"anthropic.claude-fable-5": { ...claudeModels["fable-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-4-5-20251101-v1:0": { ...claudeModels["opus-4-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-4-20250514-v1:0": { ...claudeModels["opus-4"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-haiku-5-5": { ...claudeModels["haiku-5-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-haiku-4-5-20251001-v1:0": {
 		...withoutFields(claudeModels["haiku-4-5"], "description"),
 		...BEDROCK_CLAUDE_CACHE_POINTS,
@@ -359,6 +360,7 @@ export const BEDROCK_1M_CONTEXT_MODEL_IDS: readonly string[] = oneMillionContext
 // - Claude Sonnet 5 and 5.5
 // - Claude Opus 5 and 5.5
 // - Claude Fable 5 and 5.1 (cross-region inference only, can only be used through an inference profile)
+// - Claude Haiku 5.5
 export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
 	"anthropic.claude-sonnet-4-20250514-v1:0",
 	"anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -374,6 +376,7 @@ export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
 	"anthropic.claude-opus-5-5",
 	"anthropic.claude-fable-5-1",
 	"anthropic.claude-fable-5",
+	"anthropic.claude-haiku-5-5",
 ] as const
 
 // Amazon Bedrock Service Tier types
