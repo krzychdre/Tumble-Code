@@ -297,6 +297,7 @@ export const vertexModels = {
 	"claude-sonnet-4@20250514": { ...claudeModels["sonnet-4"] },
 	"claude-sonnet-4-5@20250929": { ...claudeModels["sonnet-4-5"] },
 	"claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"] },
+	"claude-haiku-5-5": { ...claudeModels["haiku-5-5"] },
 	"claude-haiku-4-5@20251001": { ...withoutFields(claudeModels["haiku-4-5"], "description") },
 	"claude-opus-4-6": { ...claudeModels["opus-4-6"] },
 	"claude-opus-4-7": { ...claudeModels["opus-4-7"] },

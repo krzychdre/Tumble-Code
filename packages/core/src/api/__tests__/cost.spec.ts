@@ -1,6 +1,6 @@
 // npx vitest run src/api/__tests__/cost.spec.ts
 
-import type { ModelInfo } from "@tumble-code/types"
+import { anthropicModels, type ModelInfo } from "@tumble-code/types"
 
 import { calculateApiCost, selectTierPrices } from "../cost.js"
 
@@ -668,6 +668,38 @@ describe("Cost Utility", () => {
 			expect(
 				calculateApiCost("anthropic", claude, { inputTokens: 1_000, outputTokens: 0 }).totalCost,
 			).toBeCloseTo((1_000 * 2) / 1_000_000, 12)
+		})
+	})
+
+	// Claude Haiku 5.5 is priced by prompt length (pricing page, 2026-10-17): a request whose prompt is
+	// over 100K tokens, cache reads and writes included, pays five times every price.
+	describe("Claude Haiku 5.5 prompt-length pricing", () => {
+		const haiku = anthropicModels["claude-haiku-5-5"]
+
+		it("bills a 100K-token prompt at the base prices", () => {
+			const result = calculateApiCost("anthropic", haiku, {
+				inputTokens: 50_000,
+				outputTokens: 2_000,
+				cacheWriteTokens: 10_000,
+				cacheReadTokens: 40_000,
+			})
+
+			// Input 50000 x $0.10 + writes 10000 x $0.125 + reads 40000 x $0.01 + output 2000 x $0.50, per million.
+			expect(result.totalInputTokens).toBe(100_000)
+			expect(result.totalCost).toBeCloseTo(0.005 + 0.00125 + 0.0004 + 0.001, 12)
+		})
+
+		it("bills the whole request at the higher prices once the prompt is over 100K tokens", () => {
+			const result = calculateApiCost("anthropic", haiku, {
+				inputTokens: 50_001,
+				outputTokens: 2_000,
+				cacheWriteTokens: 10_000,
+				cacheReadTokens: 40_000,
+			})
+
+			// Input 50001 x $0.50 + writes 10000 x $0.625 + reads 40000 x $0.05 + output 2000 x $2.50, per million.
+			expect(result.totalInputTokens).toBe(100_001)
+			expect(result.totalCost).toBeCloseTo(0.0250005 + 0.00625 + 0.002 + 0.005, 12)
 		})
 	})
 })

@@ -362,6 +362,7 @@ describe("AnthropicHandler", () => {
 			"claude-sonnet-5",
 			"claude-fable-5-1",
 			"claude-fable-5",
+			"claude-haiku-5-5",
 		])("should send cache breakpoints and adaptive thinking for %s", async (modelId) => {
 			const claude5Handler = new AnthropicHandler({
 				apiKey: "test-api-key",
@@ -391,26 +392,30 @@ describe("AnthropicHandler", () => {
 
 		// Sonnet 5.5 rejects `thinking: {type: "disabled"}` (and budget_tokens): with the toggle off the
 		// parameter must be omitted, which the API runs as adaptive thinking.
-		it("omits the thinking parameter for Claude Sonnet 5.5 when reasoning is off", async () => {
-			const sonnet55Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-5-5",
-				enableReasoningEffort: false,
-			})
+		// Haiku 5.5 rejects `budget_tokens` and non-default sampling values the same way.
+		it.each(["claude-sonnet-5-5", "claude-haiku-5-5"])(
+			"omits the thinking parameter for %s when reasoning is off",
+			async (modelId) => {
+				const sonnet55Handler = new AnthropicHandler({
+					apiKey: "test-api-key",
+					apiModelId: modelId,
+					enableReasoningEffort: false,
+				})
 
-			const stream = sonnet55Handler.createMessage(systemPrompt, [
-				{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
-			])
+				const stream = sonnet55Handler.createMessage(systemPrompt, [
+					{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
+				])
 
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
+				for await (const _chunk of stream) {
+					// Consume stream
+				}
 
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			// undefined is dropped when the body is serialized
-			expect(requestBody?.thinking).toBeUndefined()
-			expect(requestBody?.temperature).toBeUndefined()
-		})
+				const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
+				// undefined is dropped when the body is serialized
+				expect(requestBody?.thinking).toBeUndefined()
+				expect(requestBody?.temperature).toBeUndefined()
+			},
+		)
 
 		it("should not require the 1M context beta header for Claude Opus 4.8", async () => {
 			const opus48Handler = new AnthropicHandler({
@@ -596,6 +601,22 @@ describe("AnthropicHandler", () => {
 			expect(model.info.supportsPromptCache).toBe(true)
 			expect(model.info.supportsTemperature).toBe(false)
 			expect(model.reasoningBudget).toBeUndefined()
+		})
+
+		it("should handle Claude Haiku 5.5 model correctly", () => {
+			const handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "claude-haiku-5-5",
+			})
+			const model = handler.getModel()
+			expect(model.id).toBe("claude-haiku-5-5")
+			expect(model.info.maxTokens).toBe(128000)
+			expect(model.info.contextWindow).toBe(1000000)
+			expect(model.maxTokens).toBe(8192)
+			expect(model.info.supportsReasoningBinary).toBe(true)
+			expect(model.info.supportsTemperature).toBe(false)
+			expect(model.info.inputPrice).toBe(0.1)
+			expect(model.info.longContextPricing?.thresholdTokens).toBe(100_000)
 		})
 
 		it("should enable 1M context for Claude 4.5 Sonnet when beta flag is set", () => {
@@ -1196,6 +1217,32 @@ describe("AnthropicHandler cost accounting", () => {
 		const costChunk = await collectCostChunk(handler)
 
 		expect(costChunk.totalCost).toBeCloseTo(expectedCost(handler, 1000, 500), 12)
+	})
+
+	// Claude Haiku 5.5 bills a prompt over 100K tokens (cache reads and writes included) at five times
+	// every price, so the cost chunk must use the higher prices for the whole request.
+	it("bills a Claude Haiku 5.5 prompt over 100K tokens at the long prompt prices", async () => {
+		const haikuHandler = new AnthropicHandler({ apiKey: "test-api-key", apiModelId: "claude-haiku-5-5" })
+		scriptedStream([
+			{
+				type: "message_start",
+				message: {
+					usage: {
+						input_tokens: 1_000,
+						output_tokens: 1,
+						cache_creation_input_tokens: 0,
+						cache_read_input_tokens: 120_000,
+					},
+				},
+			},
+			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
+			{ type: "message_stop" },
+		])
+
+		const costChunk = await collectCostChunk(haikuHandler)
+
+		// Input 1000 x $0.50 + reads 120000 x $0.05 + output 500 x $2.50, per million.
+		expect(costChunk.totalCost).toBeCloseTo((1_000 * 0.5 + 120_000 * 0.05 + 500 * 2.5) / 1_000_000, 12)
 	})
 
 	it("keeps the message_start output count when no message_delta arrives", async () => {

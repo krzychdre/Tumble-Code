@@ -159,7 +159,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	 * (temperature/top_p/top_k) and replaced budget_tokens-based thinking with
 	 * `thinking.type: "adaptive"` plus `output_config.effort`. The migration guide
 	 * from 4.7 → 4.8 confirms there are no further breaking API changes, and the
-	 * Claude 5 family (Sonnet 5, Opus 5 / 5.5, Fable 5 / 5.1) keeps the same
+	 * Claude 5 family (Sonnet 5, Opus 5 / 5.5, Fable 5 / 5.1, Haiku 5.5) keeps the same
 	 * contract, so a single guard matches every generation. Shared by createMessage and completePrompt so
 	 * both request paths omit temperature for these models (sending it causes a 400).
 	 *
@@ -175,7 +175,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			baseModelId.includes("fable-5") || // also matches fable-5-1
 			baseModelId.includes("sonnet-4-7") ||
 			baseModelId.includes("sonnet-4-8") ||
-			baseModelId.includes("sonnet-5")
+			baseModelId.includes("sonnet-5") ||
+			baseModelId.includes("haiku-5") // Haiku 5.5
 		)
 	}
 
