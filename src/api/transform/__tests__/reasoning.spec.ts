@@ -1,11 +1,17 @@
 // npx vitest run src/api/transform/__tests__/reasoning.spec.ts
 
-import type { ModelInfo, ProviderSettings, ReasoningEffortWithMinimal } from "@tumble-code/types"
+import {
+	type ModelInfo,
+	type ProviderSettings,
+	type ReasoningEffortWithMinimal,
+	anthropicModels,
+} from "@tumble-code/types"
 
 import {
 	getOpenRouterReasoning,
 	getAnthropicReasoning,
 	getAnthropicProviderReasoning,
+	getAnthropicEffort,
 	getOpenAiReasoning,
 	getGeminiReasoning,
 	GetModelReasoningOptions,
@@ -508,6 +514,50 @@ describe("reasoning.ts", () => {
 
 			expect(result).toEqual({ type: "enabled", budget_tokens: 1000 })
 		})
+	})
+
+	describe("getAnthropicEffort", () => {
+		const opus55 = anthropicModels["claude-opus-5-5"]
+		const opus46 = anthropicModels["claude-opus-4-6"]
+		const opus45 = anthropicModels["claude-opus-4-5-20251101"]
+
+		it("returns the chosen level when the model lists it", () => {
+			expect(getAnthropicEffort({ model: opus55, settings: { reasoningEffort: "xhigh" } })).toBe("xhigh")
+			expect(getAnthropicEffort({ model: opus46, settings: { reasoningEffort: "max" } })).toBe("max")
+			expect(getAnthropicEffort({ model: opus45, settings: { reasoningEffort: "low" } })).toBe("low")
+		})
+
+		it("is independent of the thinking toggle", () => {
+			expect(
+				getAnthropicEffort({
+					model: opus55,
+					settings: { enableReasoningEffort: false, reasoningEffort: "low" },
+				}),
+			).toBe("low")
+		})
+
+		it("omits the field when nothing is chosen, so the API uses the model default", () => {
+			expect(getAnthropicEffort({ model: opus55, settings: {} })).toBeUndefined()
+		})
+
+		it.each([
+			["xhigh on Opus 4.6", opus46, "xhigh"],
+			["max on Opus 4.5", opus45, "max"],
+			["minimal carried over from another model", opus55, "minimal"],
+			["none carried over from another model", opus55, "none"],
+			["disable from the generic effort select", opus55, "disable"],
+		] as const)("drops a level the model does not offer: %s", (_name, model, reasoningEffort) => {
+			expect(getAnthropicEffort({ model, settings: { reasoningEffort } })).toBeUndefined()
+		})
+
+		it.each(["claude-sonnet-4-5", "claude-haiku-4-5-20251001"] as const)(
+			"never sends effort for %s, which rejects it",
+			(id) => {
+				expect(getAnthropicEffort({ model: anthropicModels[id], settings: { reasoningEffort: "high" } })).toBe(
+					undefined,
+				)
+			},
+		)
 	})
 
 	describe("getOpenAiReasoning", () => {

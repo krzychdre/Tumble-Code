@@ -435,6 +435,8 @@
 			"warning": "⚠️ Instellen op 0 staat onbeperkte nieuwe pogingen toe, wat aanzienlijk API-gebruik kan verbruiken"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (standaard van het model)",
+			"anthropicHint": "Bepaalt hoeveel moeite het model in elk antwoord steekt, ook als redeneren uit staat. Wijzigen tijdens een taak laat het volgende verzoek de promptcache opnieuw opbouwen.",
 			"label": "Model redeneervermogen",
 			"none": "Geen",
 			"minimal": "Minimaal (Snelst)",

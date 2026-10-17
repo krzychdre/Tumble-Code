@@ -2,7 +2,7 @@
 
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
-import type { ModelInfo } from "@tumble-code/types"
+import { type ModelInfo, anthropicModels } from "@tumble-code/types"
 
 import { ThinkingBudget } from "../ThinkingBudget"
 
@@ -18,8 +18,9 @@ vi.mock("@/components/ui", () => ({
 			onChange={(e) => onValueChange([parseInt(e.target.value)])}
 		/>
 	),
-	Select: ({ children, value, onValueChange: _onValueChange }: any) => (
+	Select: ({ children, value, onValueChange }: any) => (
 		<div data-testid="select" data-value={value}>
+			<input data-testid="select-input" onChange={(e) => onValueChange(e.target.value)} />
 			{children}
 		</div>
 	),
@@ -476,6 +477,108 @@ describe("ThinkingBudget", () => {
 			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "xhigh")
 			expect(screen.getByTestId("select-item-xhigh")).toBeInTheDocument()
 			expect(screen.queryByTestId("select-item-max")).not.toBeInTheDocument()
+		})
+	})
+
+	describe("Claude effort select (thinking toggle plus output_config.effort)", () => {
+		it.each([
+			["binary thinking toggle", "claude-opus-5-5", "medium"],
+			["budget thinking toggle", "claude-opus-4-6", "high"],
+		] as const)("shows the select next to the %s, even with thinking off", (_name, id, modelDefault) => {
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ apiModelId: id, enableReasoningEffort: false }}
+					modelInfo={anthropicModels[id]}
+				/>,
+			)
+
+			expect(screen.getByText("settings:providers.useReasoning")).toBeInTheDocument()
+			expect(screen.getByTestId("anthropic-reasoning-effort")).toBeInTheDocument()
+			// Unset shows the model default, which the API applies when the field is omitted.
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", modelDefault)
+			expect(screen.queryByTestId("reasoning-effort")).not.toBeInTheDocument()
+		})
+
+		it("offers exactly the model's levels", () => {
+			render(<ThinkingBudget {...defaultProps} modelInfo={anthropicModels["claude-opus-4-6"]} />)
+
+			expect(screen.getByTestId("select-item-max")).toBeInTheDocument()
+			expect(screen.queryByTestId("select-item-xhigh")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("select-item-disable")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("select-item-minimal")).not.toBeInTheDocument()
+		})
+
+		it("shows the stored level when the model offers it", () => {
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ reasoningEffort: "xhigh" }}
+					modelInfo={anthropicModels["claude-opus-5-5"]}
+				/>,
+			)
+
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "xhigh")
+		})
+
+		it("shows the default for a carried-over level the model does not offer, without writing anything", () => {
+			const setApiConfigurationField = vi.fn()
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ reasoningEffort: "xhigh" }}
+					setApiConfigurationField={setApiConfigurationField}
+					modelInfo={anthropicModels["claude-sonnet-4-6"]}
+				/>,
+			)
+
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "high")
+			expect(setApiConfigurationField).not.toHaveBeenCalled()
+		})
+
+		it("never turns thinking on by itself", () => {
+			const setApiConfigurationField = vi.fn()
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ enableReasoningEffort: false }}
+					setApiConfigurationField={setApiConfigurationField}
+					modelInfo={anthropicModels["claude-opus-4-8"]}
+				/>,
+			)
+
+			expect(setApiConfigurationField).not.toHaveBeenCalled()
+		})
+
+		it("stores only the chosen level, leaving the thinking toggle alone", () => {
+			const setApiConfigurationField = vi.fn()
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					setApiConfigurationField={setApiConfigurationField}
+					modelInfo={anthropicModels["claude-fable-5-1"]}
+				/>,
+			)
+
+			fireEvent.change(screen.getByTestId("select-input"), { target: { value: "max" } })
+
+			expect(setApiConfigurationField).toHaveBeenCalledTimes(1)
+			expect(setApiConfigurationField).toHaveBeenCalledWith("reasoningEffort", "max")
+		})
+
+		it("marks the model default in the option labels", () => {
+			render(<ThinkingBudget {...defaultProps} modelInfo={anthropicModels["claude-opus-5-5"]} />)
+
+			expect(screen.getByTestId("select-item-medium")).toHaveTextContent(
+				"settings:providers.reasoningEffort.modelDefault",
+			)
+			expect(screen.getByTestId("select-item-high")).toHaveTextContent("settings:providers.reasoningEffort.high")
+		})
+
+		it("shows no effort select for a Claude model without effort levels", () => {
+			render(<ThinkingBudget {...defaultProps} modelInfo={anthropicModels["claude-sonnet-4-5"]} />)
+
+			expect(screen.queryByTestId("anthropic-reasoning-effort")).not.toBeInTheDocument()
 		})
 	})
 

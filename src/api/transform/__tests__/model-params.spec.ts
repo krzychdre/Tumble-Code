@@ -1,6 +1,6 @@
 // npx vitest run api/transform/__tests__/model-params.spec.ts
 
-import { type ModelInfo, ANTHROPIC_DEFAULT_MAX_TOKENS } from "@tumble-code/types"
+import { type ModelInfo, ANTHROPIC_DEFAULT_MAX_TOKENS, anthropicModels } from "@tumble-code/types"
 
 import { getModelParams } from "../model-params"
 import {
@@ -1016,6 +1016,38 @@ describe("getModelParams", () => {
 
 			expect(result.verbosity).toBe("high")
 			expect(result.reasoningBudget).toBe(8192) // Default thinking tokens
+		})
+	})
+
+	// Claude records list effort levels next to the thinking budget: the budget path must keep
+	// winning while the toggle is on, and the toggle must still turn the budget off.
+	describe("Claude models with both a thinking budget and effort levels", () => {
+		const opus46 = anthropicModels["claude-opus-4-6"]
+
+		it("keeps budget thinking when the toggle is on", () => {
+			const result = getModelParams({
+				...anthropicParams,
+				modelId: "claude-opus-4-6",
+				model: opus46,
+				settings: { enableReasoningEffort: true, reasoningEffort: "max", modelMaxThinkingTokens: 4096 },
+			})
+
+			expect(result.reasoning).toEqual({ type: "enabled", budget_tokens: 4096 })
+			expect(result.maxTokens).toBe(DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS)
+			expect(result.temperature).toBe(1.0)
+		})
+
+		it("sends no budget when the toggle is off", () => {
+			const result = getModelParams({
+				...anthropicParams,
+				modelId: "claude-opus-4-6",
+				model: opus46,
+				settings: { enableReasoningEffort: false, reasoningEffort: "max" },
+			})
+
+			expect(result.reasoning).toBeUndefined()
+			expect(result.reasoningBudget).toBeUndefined()
+			expect(result.maxTokens).toBe(ANTHROPIC_DEFAULT_MAX_TOKENS)
 		})
 	})
 })

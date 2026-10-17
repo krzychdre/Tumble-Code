@@ -435,6 +435,8 @@
 			"warning": "⚠️ Establir a 0 permet reintents il·limitats que poden consumir un ús significatiu de l'API"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (per defecte del model)",
+			"anthropicHint": "Defineix quant d'esforç dedica el model a cada resposta, també amb el raonament desactivat. Canviar-lo durant una tasca fa que la següent sol·licitud reconstrueixi la memòria cau del prompt.",
 			"label": "Esforç de raonament del model",
 			"none": "Cap",
 			"minimal": "Mínim (el més ràpid)",

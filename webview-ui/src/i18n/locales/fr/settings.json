@@ -435,6 +435,8 @@
 			"warning": "⚠️ Mettre à 0 autorise des réessais illimités, ce qui peut consommer une utilisation importante de l'API"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (par défaut du modèle)",
+			"anthropicHint": "Définit l'effort que le modèle consacre à chaque réponse, même lorsque le raisonnement est désactivé. Le modifier pendant une tâche oblige la requête suivante à reconstruire le cache du prompt.",
 			"label": "Effort de raisonnement du modèle",
 			"none": "Aucun",
 			"minimal": "Minimal (le plus rapide)",

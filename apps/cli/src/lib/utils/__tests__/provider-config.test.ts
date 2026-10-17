@@ -277,6 +277,18 @@ describe("resolveReasoningEffort", () => {
 		expect(resolveReasoningEffort("openai", { contextWindow: 262_144 })).toBe("unspecified")
 		expect(resolveReasoningEffort("zai", undefined)).toBe(DEFAULT_FLAGS.reasoningEffort)
 	})
+
+	it("defaults a Claude model to the level it lists as its own default", () => {
+		expect(resolveReasoningEffort("anthropic", undefined, undefined, "claude-opus-5-5")).toBe("medium")
+		expect(resolveReasoningEffort("anthropic", undefined, undefined, "claude-sonnet-5-5")).toBe("high")
+		expect(resolveReasoningEffort("anthropic", { reasoningEffort: "low" }, undefined, "claude-sonnet-5-5")).toBe(
+			"low",
+		)
+		// A model without effort levels keeps the old default, which turns thinking on.
+		expect(resolveReasoningEffort("anthropic", undefined, undefined, "claude-haiku-4-5-20251001")).toBe(
+			DEFAULT_FLAGS.reasoningEffort,
+		)
+	})
 })
 
 describe("pickProviderConfig", () => {

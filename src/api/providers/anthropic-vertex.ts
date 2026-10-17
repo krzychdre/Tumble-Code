@@ -9,7 +9,7 @@ import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { ApiStream } from "../transform/stream"
 import { addCacheBreakpoints } from "../transform/caching/vertex"
 import { getModelParams } from "../transform/model-params"
-import { getAnthropicProviderReasoning } from "../transform/reasoning"
+import { getAnthropicEffort, getAnthropicProviderReasoning } from "../transform/reasoning"
 import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
 import { processAnthropicStream } from "../transform/anthropic-stream"
 import {
@@ -120,7 +120,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const { id, info, temperature, maxTokens, reasoning: thinking, betas } = this.getModel()
+		const { id, info, temperature, maxTokens, reasoning: thinking, effort, betas } = this.getModel()
 
 		const { supportsPromptCache } = info
 
@@ -150,6 +150,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
 			temperature,
 			thinking,
+			...(effort ? { output_config: { effort } } : {}),
 			// Cache the system prompt if caching is enabled.
 			system: supportsPromptCache
 				? [{ text: systemPrompt, type: "text" as const, cache_control: { type: "ephemeral" } }]
@@ -208,6 +209,8 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			betas: betas.length > 0 ? betas : undefined,
 			...params,
 			reasoning: thinking,
+			// Sent as `output_config.effort`, apart from the thinking toggle (see getAnthropicEffort).
+			effort: getAnthropicEffort({ model: info, settings: this.options }),
 		}
 	}
 
@@ -223,6 +226,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				temperature,
 				maxTokens = ANTHROPIC_DEFAULT_MAX_TOKENS,
 				reasoning: thinking,
+				effort,
 			} = this.getModel()
 
 			const params = {
@@ -230,6 +234,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				max_tokens: maxTokens,
 				temperature,
 				thinking,
+				...(effort ? { output_config: { effort } } : {}),
 				messages: [
 					{
 						role: "user",

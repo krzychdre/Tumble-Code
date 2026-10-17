@@ -497,6 +497,8 @@
 			"warning": "⚠️ Setting to 0 allows unlimited retries which may consume significant API usage"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (model default)",
+			"anthropicHint": "Sets how much effort the model spends on each answer, also when reasoning is off. Changing it during a task makes the next request rebuild the prompt cache.",
 			"label": "Model Reasoning Effort",
 			"none": "None",
 			"minimal": "Minimal (Fastest)",

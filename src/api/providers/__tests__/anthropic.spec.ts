@@ -479,6 +479,93 @@ describe("AnthropicHandler", () => {
 		})
 	})
 
+	describe("reasoning effort (output_config.effort)", () => {
+		const lastRequestBody = () => mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
+
+		const send = async (options: ApiHandlerOptions) => {
+			const stream = new AnthropicHandler({ apiKey: "test-api-key", ...options }).createMessage("System", [
+				{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
+			])
+			for await (const _chunk of stream) {
+				// Consume stream
+			}
+			return lastRequestBody()
+		}
+
+		it("sends the chosen level with the thinking toggle off (Opus 5.5 cannot disable thinking)", async () => {
+			const body = await send({
+				apiModelId: "claude-opus-5-5",
+				enableReasoningEffort: false,
+				reasoningEffort: "xhigh",
+			})
+
+			expect(body?.output_config).toEqual({ effort: "xhigh" })
+			expect(body?.thinking).toBeUndefined()
+		})
+
+		it("sends the chosen level next to adaptive thinking", async () => {
+			const body = await send({
+				apiModelId: "claude-opus-4-7",
+				enableReasoningEffort: true,
+				reasoningEffort: "low",
+			})
+
+			expect(body?.thinking).toEqual({ type: "adaptive" })
+			expect(body?.output_config).toEqual({ effort: "low" })
+		})
+
+		it("sends the chosen level next to budget thinking (Opus 4.6)", async () => {
+			const body = await send({
+				apiModelId: "claude-opus-4-6",
+				enableReasoningEffort: true,
+				reasoningEffort: "max",
+				modelMaxThinkingTokens: 4096,
+			})
+
+			expect(body?.thinking).toEqual({ type: "enabled", budget_tokens: 4096 })
+			expect(body?.output_config).toEqual({ effort: "max" })
+		})
+
+		it("omits output_config when no level is chosen", async () => {
+			const body = await send({ apiModelId: "claude-opus-5-5", enableReasoningEffort: true })
+
+			expect(body).not.toHaveProperty("output_config")
+		})
+
+		it.each([
+			["claude-opus-5-5", "minimal"],
+			["claude-opus-5-5", "none"],
+			["claude-opus-4-6", "xhigh"],
+			["claude-opus-4-5-20251101", "max"],
+		] as const)(
+			"omits output_config for %s when the carried level %s is not offered",
+			async (apiModelId, level) => {
+				const body = await send({ apiModelId, enableReasoningEffort: true, reasoningEffort: level })
+
+				expect(body).not.toHaveProperty("output_config")
+			},
+		)
+
+		it.each(["claude-sonnet-4-5", "claude-haiku-4-5-20251001"])(
+			"never sends effort to %s, which rejects it",
+			async (apiModelId) => {
+				const body = await send({ apiModelId, reasoningEffort: "high" })
+
+				expect(body).not.toHaveProperty("output_config")
+			},
+		)
+
+		it("sends the chosen level from completePrompt", async () => {
+			await new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "claude-sonnet-5-5",
+				reasoningEffort: "medium",
+			}).completePrompt("Test prompt")
+
+			expect(lastRequestBody()?.output_config).toEqual({ effort: "medium" })
+		})
+	})
+
 	describe("getModel", () => {
 		it("should return default model if no model ID is provided", () => {
 			const handlerWithoutModel = new AnthropicHandler({

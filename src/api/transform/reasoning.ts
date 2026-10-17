@@ -62,6 +62,41 @@ export const getAnthropicReasoning = ({
 }: GetModelReasoningOptions): AnthropicReasoningParams | undefined =>
 	shouldUseReasoningBudget({ model, settings }) ? { type: "enabled", budget_tokens: reasoningBudget! } : undefined
 
+/** The effort levels the Anthropic Messages API accepts in `output_config.effort`. */
+const ANTHROPIC_EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const
+
+export type AnthropicEffort = (typeof ANTHROPIC_EFFORT_LEVELS)[number]
+
+/**
+ * The `output_config.effort` to send for a Claude model, or undefined to omit it (the API then
+ * runs the model's own default). Effort is independent of the thinking toggle: it also sets the
+ * depth when thinking is off, and on Opus 5.5, Sonnet 5.5 and Fable 5.x it is the only depth
+ * control because thinking cannot be disabled there.
+ *
+ * Only a level the model lists in `supportsReasoningEffort` is sent. A value carried over from
+ * another model or provider ("minimal", "none", "disable", or "xhigh" on a model without it) is
+ * dropped instead of being sent, because the API rejects an unsupported level with a 400. Models
+ * without a level list (Sonnet 4.5, Sonnet 4, Opus 4, Haiku 4.5) never get the field.
+ */
+export const getAnthropicEffort = ({
+	model,
+	settings,
+}: {
+	model: ModelInfo
+	settings: ProviderSettings
+}): AnthropicEffort | undefined => {
+	const levels = model.supportsReasoningEffort
+	const selected = settings.reasoningEffort
+
+	if (!Array.isArray(levels) || !selected) {
+		return undefined
+	}
+
+	return levels.includes(selected) && (ANTHROPIC_EFFORT_LEVELS as readonly string[]).includes(selected)
+		? (selected as AnthropicEffort)
+		: undefined
+}
+
 export const getAnthropicProviderReasoning = ({
 	model,
 	reasoningBudget,

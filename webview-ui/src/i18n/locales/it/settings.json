@@ -435,6 +435,8 @@
 			"warning": "⚠️ L'impostazione a 0 consente tentativi illimitati che possono consumare un notevole utilizzo dell'API"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (predefinito del modello)",
+			"anthropicHint": "Imposta quanto impegno il modello dedica a ogni risposta, anche con il ragionamento disattivato. Cambiarlo durante un'attività fa ricostruire la cache del prompt alla richiesta successiva.",
 			"label": "Sforzo di ragionamento del modello",
 			"none": "Nessuno",
 			"minimal": "Minimo (più veloce)",

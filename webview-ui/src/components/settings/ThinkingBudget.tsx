@@ -29,6 +29,15 @@ Defaults (required or optional reasoning):
 - If unset, use modelInfo.reasoningEffort when the model declares one; otherwise "medium" when
   reasoning is required and "disable" when it is optional.
 
+Claude models (Anthropic, Vertex, Bedrock):
+- A model with a thinking toggle (supportsReasoningBinary or supportsReasoningBudget) that also
+  lists effort levels in supportsReasoningEffort gets a separate effort select next to the toggle.
+- The select only writes reasoningEffort; it never touches enableReasoningEffort, and nothing is
+  written back on render. Unset means "send no effort", which the API runs as the model default,
+  so the model's reasoningEffort is shown preselected and marked as the default.
+- A stored level the model does not list (carried over from another model) shows the default; the
+  request builders drop it too (getAnthropicEffort).
+
 Notes:
 - Current selection is normalized to the capability: an unsupported persisted value is replaced by
   the default (or the first offered value), and the shown value is written back unless it is "disable".
@@ -102,6 +111,16 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 	// 1. requiredReasoningEffort is not true, AND
 	// 2. supportsReasoningEffort is boolean true (not an explicit array)
 	// When the model provides an explicit array, respect those exact values.
+	// Claude models: a thinking toggle plus an independent effort level (output_config.effort).
+	const anthropicEffortLevels: ReadonlyArray<ReasoningEffortExtended> =
+		Array.isArray(supports) && (isReasoningSupported || isReasoningBudgetSupported)
+			? (supports.filter((level) => level !== "disable") as ReasoningEffortExtended[])
+			: []
+	const hasAnthropicEffort = anthropicEffortLevels.length > 0
+	// The generic effort select below couples the level to enableReasoningEffort and writes the
+	// shown value back; neither applies to the Claude effort select.
+	const usesEffortSelect = !!isReasoningEffortSupported && !hasAnthropicEffort
+
 	const shouldAutoAddDisable =
 		!modelInfo?.requiredReasoningEffort && supports === true && !baseAvailableOptions.includes("disable")
 	const availableOptions: ReadonlyArray<ReasoningEffortOption> = shouldAutoAddDisable
@@ -132,24 +151,24 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 	// already means "no reasoning" when the model declares no default.
 	useEffect(() => {
 		if (
-			isReasoningEffortSupported &&
+			usesEffortSelect &&
 			storedReasoningEffort !== currentReasoningEffort &&
 			currentReasoningEffort !== "disable"
 		) {
 			setApiConfigurationField("reasoningEffort", currentReasoningEffort, false)
 		}
-	}, [isReasoningEffortSupported, storedReasoningEffort, currentReasoningEffort, setApiConfigurationField])
+	}, [usesEffortSelect, storedReasoningEffort, currentReasoningEffort, setApiConfigurationField])
 
 	// Sync enableReasoningEffort based on selection
 	// "disable" turns off reasoning; "none" is a valid level (reasoning enabled)
 	useEffect(() => {
-		if (!isReasoningEffortSupported) return
+		if (!usesEffortSelect) return
 		const shouldEnable = modelInfo?.requiredReasoningEffort || currentReasoningEffort !== "disable"
 		if (shouldEnable && apiConfiguration.enableReasoningEffort !== true) {
 			setApiConfigurationField("enableReasoningEffort", true, false)
 		}
 	}, [
-		isReasoningEffortSupported,
+		usesEffortSelect,
 		modelInfo?.requiredReasoningEffort,
 		currentReasoningEffort,
 		apiConfiguration.enableReasoningEffort,
@@ -216,6 +235,44 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 			? renderMaxTokensSlider(1024, modelInfo.maxTokens, standaloneMaxOutputTokens, "max-output-tokens")
 			: null
 
+	// Claude effort select: shown whether thinking is on or off, because effort also sets the
+	// depth without thinking (and is the only depth control where thinking cannot be disabled).
+	const anthropicDefaultEffort = anthropicEffortLevels.find((level) => level === modelInfo.reasoningEffort)
+	const anthropicEffort =
+		anthropicEffortLevels.find((level) => level === storedReasoningEffort) ?? anthropicDefaultEffort
+	const anthropicEffortLabel = (level: ReasoningEffortExtended) =>
+		level === anthropicDefaultEffort
+			? t("settings:providers.reasoningEffort.modelDefault", {
+					level: t(`settings:providers.reasoningEffort.${level}`),
+				})
+			: t(`settings:providers.reasoningEffort.${level}`)
+	const anthropicEffortControl = hasAnthropicEffort ? (
+		<div className="flex flex-col gap-1" data-testid="anthropic-reasoning-effort">
+			<label className="block font-medium mb-1">{t("settings:providers.reasoningEffort.label")}</label>
+			<Select
+				value={anthropicEffort ?? ""}
+				onValueChange={(value: ReasoningEffortExtended) => setApiConfigurationField("reasoningEffort", value)}>
+				<SelectTrigger className="w-full">
+					<SelectValue
+						placeholder={
+							anthropicEffort ? anthropicEffortLabel(anthropicEffort) : t("settings:common.select")
+						}
+					/>
+				</SelectTrigger>
+				<SelectContent>
+					{anthropicEffortLevels.map((level) => (
+						<SelectItem key={level} value={level}>
+							{anthropicEffortLabel(level)}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			<div className="text-sm text-vscode-descriptionForeground">
+				{t("settings:providers.reasoningEffort.anthropicHint")}
+			</div>
+		</div>
+	) : null
+
 	// Models with supportsReasoningBinary (binary reasoning) show a simple on/off toggle.
 	// A binary-reasoning model can still advertise `supportsMaxTokens`, so surface the
 	// standalone max-output slider alongside the toggle when it applies.
@@ -232,6 +289,7 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 						{t("settings:providers.useReasoning")}
 					</LabeledCheckbox>
 				</div>
+				{anthropicEffortControl}
 			</>
 		)
 	}
@@ -275,6 +333,7 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 					</div>
 				</>
 			)}
+			{anthropicEffortControl}
 		</>
 	) : isReasoningEffortSupported ? (
 		<>

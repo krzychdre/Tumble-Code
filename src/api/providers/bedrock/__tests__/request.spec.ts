@@ -111,6 +111,73 @@ describe("bedrock request builders", () => {
 			).toEqual({ thinking: { type: "adaptive", display: "summarized" }, output_config: { effort: "xhigh" } })
 		})
 
+		describe("chosen effort level", () => {
+			const adaptiveInfo: ModelInfo = {
+				...info,
+				supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+			}
+			const adaptiveModel = { id: "anthropic.claude-opus-4-8", info: adaptiveInfo }
+
+			it("replaces the xhigh default on adaptive models", () => {
+				expect(
+					buildThinkingFields({
+						model: adaptiveModel,
+						settings: { reasoningEffort: "medium" },
+						thinking: { enabled: true },
+						isAdaptiveThinkingModel: true,
+					}),
+				).toEqual({
+					thinking: { type: "adaptive", display: "summarized" },
+					output_config: { effort: "medium" },
+				})
+			})
+
+			it("keeps xhigh when the stored level is not offered", () => {
+				expect(
+					buildThinkingFields({
+						model: adaptiveModel,
+						settings: { reasoningEffort: "minimal" },
+						thinking: { enabled: true },
+						isAdaptiveThinkingModel: true,
+					})?.output_config,
+				).toEqual({ effort: "xhigh" })
+			})
+
+			it("is sent alone when thinking is off", () => {
+				expect(
+					buildThinkingFields({
+						model: adaptiveModel,
+						settings: { enableReasoningEffort: false, reasoningEffort: "low" },
+						isAdaptiveThinkingModel: true,
+					}),
+				).toEqual({ output_config: { effort: "low" } })
+			})
+
+			it("is sent next to budget thinking", () => {
+				expect(
+					buildThinkingFields({
+						model: {
+							...model,
+							info: { ...info, supportsReasoningEffort: ["low", "medium", "high", "max"] },
+						},
+						settings: { reasoningEffort: "max" },
+						thinking: { enabled: true, maxThinkingTokens: 2048 },
+						isAdaptiveThinkingModel: false,
+					}),
+				).toEqual({ thinking: { type: "enabled", budget_tokens: 2048 }, output_config: { effort: "max" } })
+			})
+
+			it("is never sent to a model without effort levels", () => {
+				expect(
+					buildThinkingFields({
+						model,
+						settings: { reasoningEffort: "high" },
+						isAdaptiveThinkingModel: false,
+					}),
+				).toBeUndefined()
+			})
+		})
+
 		it("ignores the request when the model has no reasoning budget support", () => {
 			expect(
 				buildThinkingFields({
@@ -256,6 +323,23 @@ describe("bedrock request builders", () => {
 				anthropic_version: "bedrock-2023-05-31",
 				toolConfig: { tools: [], toolChoice: { auto: {} } },
 			})
+		})
+
+		it("sends an effort level without thinking and without anthropic_version", () => {
+			const payload = buildConverseStreamPayload({
+				model: {
+					id: "anthropic.claude-opus-5-5",
+					info: { ...info, supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"] },
+				},
+				baseModelId: "anthropic.claude-opus-5-5",
+				isAdaptiveThinkingModel: true,
+				settings: { enableReasoningEffort: false, reasoningEffort: "high" },
+				formatted: { system: [{ text: "sys" }], messages: [] },
+				toolConfig: { tools: [], toolChoice: { auto: {} } },
+			})
+			expect(payload.additionalModelRequestFields?.output_config).toEqual({ effort: "high" })
+			expect(payload.additionalModelRequestFields?.thinking).toBeUndefined()
+			expect(payload).not.toHaveProperty("anthropic_version")
 		})
 	})
 })

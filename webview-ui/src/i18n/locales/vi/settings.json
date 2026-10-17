@@ -435,6 +435,8 @@
 			"warning": "⚠️ Đặt thành 0 cho phép thử lại không giới hạn, điều này có thể tiêu tốn mức sử dụng API đáng kể"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (mặc định của mô hình)",
+			"anthropicHint": "Đặt mức nỗ lực mô hình dành cho mỗi câu trả lời, kể cả khi tắt suy luận. Thay đổi giữa chừng một tác vụ khiến yêu cầu tiếp theo phải dựng lại bộ nhớ đệm prompt.",
 			"label": "Nỗ lực suy luận của mô hình",
 			"none": "Không",
 			"minimal": "Tối thiểu (nhanh nhất)",
