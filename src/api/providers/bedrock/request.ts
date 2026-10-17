@@ -224,12 +224,12 @@ export function buildThinkingFields(options: {
 		// Claude 4.7+ (incl. 4.8) uses adaptive thinking with effort levels:
 		// budget_tokens causes a 400 error.
 		// display: "summarized" surfaces thinking content in the UI.
-		// Without a chosen level, effort "xhigh" remains the recommended level for
-		// agentic coding tasks across both 4.7 and 4.8 (4.8 changed the API default
-		// to "high" but the model continues to honour "xhigh" for deeper reasoning).
+		// Without a chosen (or valid) level the effort is omitted, so the API runs the
+		// model's own default: the level the settings select shows as "(model default)".
+		// The same rule as the Anthropic and Vertex handlers.
 		fields = {
 			thinking: { type: "adaptive", display: "summarized" },
-			output_config: { effort: effort ?? "xhigh" },
+			...(effort ? { output_config: { effort } } : {}),
 		}
 	} else {
 		fields = {
