@@ -20,6 +20,7 @@ import {
 	openAiModelInfoSaneDefaults,
 	openRouterDefaultModelId,
 	openRouterDefaultModelInfo,
+	openRouterFallbackModelInfo,
 	resolvePortableProviderModel,
 	resolveProviderModelSelection,
 	vertexDefaultModelId,
@@ -206,12 +207,12 @@ const cases: [string, ProviderSettings, { id: string; info: ModelInfo } | undefi
 	[
 		"openrouter unknown",
 		{ apiProvider: "openrouter", openRouterModelId: "vendor/api6" },
-		{ id: "vendor/api6", info: openRouterDefaultModelInfo },
+		{ id: "vendor/api6", info: openRouterFallbackModelInfo("vendor/api6") },
 	],
 	[
 		"openrouter empty",
 		{ apiProvider: "openrouter", openRouterModelId: "" },
-		{ id: "", info: openRouterDefaultModelInfo },
+		{ id: "", info: openRouterFallbackModelInfo("") },
 	],
 	[
 		"openrouter unset",
@@ -350,7 +351,7 @@ describe("resolveProviderModelSelection policies", () => {
 		[
 			"openrouter (stand-in)",
 			{ apiProvider: "openrouter", openRouterModelId: "vendor/api6" },
-			openRouterDefaultModelInfo,
+			openRouterFallbackModelInfo("vendor/api6"),
 		],
 		["litellm (stand-in)", { apiProvider: "litellm", litellmModelId: "vendor/api6" }, litellmDefaultModelInfo],
 	] as const)("an unknown id keeps stand-in info and is not known: %s", (_, settings, info) => {
