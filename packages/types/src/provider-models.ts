@@ -2,7 +2,7 @@ import type { ModelInfo } from "./model.js"
 import type { ModelIdKey } from "./provider-settings.js"
 import type { ActiveProviderDefinition } from "./provider-registry.js"
 import { anthropicDefaultModelId, anthropicModels } from "./providers/anthropic.js"
-import { bedrockDefaultModelId, bedrockModels } from "./providers/bedrock.js"
+import { bedrockDefaultModelId, bedrockModels, bedrockUnknownModelStandInId } from "./providers/bedrock.js"
 import { deepSeekDefaultModelId, deepSeekModelAliases, deepSeekModels } from "./providers/deepseek.js"
 import { geminiDefaultModelId, geminiModels } from "./providers/gemini.js"
 import { litellmDefaultModelId } from "./providers/lite-llm.js"
@@ -13,7 +13,7 @@ import { openAiCodexDefaultModelId, openAiCodexModels } from "./providers/openai
 import { openAiNativeDefaultModelId, openAiNativeModels } from "./providers/openai.js"
 import { openRouterDefaultModelId } from "./providers/openrouter.js"
 import { qwenCodeDefaultModelId, qwenCodeModels } from "./providers/qwen-code.js"
-import { vertexDefaultModelId, vertexModels } from "./providers/vertex.js"
+import { vertexDefaultModelId, vertexModels, vertexUnknownModelStandInId } from "./providers/vertex.js"
 import { vscodeLlmDefaultModelId } from "./providers/vscode-llm.js"
 import { xaiDefaultModelId, xaiModels } from "./providers/xai.js"
 import { internationalZAiDefaultModelId, internationalZAiModels } from "./providers/zai.js"
@@ -24,7 +24,8 @@ import { internationalZAiDefaultModelId, internationalZAiModels } from "./provid
  * replaced by the default model; the settings UI warns that the id is unknown.
  *
  * - `keep-id`: the id is sent with the default model's info (capabilities
- *   and prices).
+ *   and prices), or with the `unknownModelInfoId` model's info when the
+ *   provider names one.
  * - `honor-custom`: the id is sent with the info the provider derives from it
  *   (`customModelInfo`: Anthropic and Bedrock guess from the model family,
  *   Gemini drops the prices it cannot verify), or with the default model's
@@ -54,6 +55,12 @@ export type ProviderModelDefinition = {
 	readonly modelAliases?: Readonly<Record<string, string>>
 	/** The model used when the profile names none; "" when the user must pick one. */
 	readonly defaultModelId?: string
+	/**
+	 * The listed model whose info stands in for an unknown id, when it is not
+	 * the default model's (Vertex and Bedrock keep Claude Sonnet 4.5 here, so
+	 * moving the default to Opus 5 did not change what unknown ids are sent with).
+	 */
+	readonly unknownModelInfoId?: string
 	readonly unknownModelPolicy: UnknownModelPolicy
 }
 
@@ -104,6 +111,7 @@ export const providerModelDefinitions = {
 		modelIdField: "apiModelId",
 		models: bedrockModels,
 		defaultModelId: bedrockDefaultModelId,
+		unknownModelInfoId: bedrockUnknownModelStandInId,
 		// The handler guesses the info from the model family.
 		unknownModelPolicy: "honor-custom",
 	},
@@ -153,6 +161,7 @@ export const providerModelDefinitions = {
 		modelIdField: "apiModelId",
 		models: vertexModels,
 		defaultModelId: vertexDefaultModelId,
+		unknownModelInfoId: vertexUnknownModelStandInId,
 		unknownModelPolicy: "keep-id",
 	},
 	xai: {
@@ -195,11 +204,12 @@ export const resolveCatalogModel = (
 		models: Readonly<Record<string, ModelInfo>>
 		modelAliases?: Readonly<Record<string, string>>
 		defaultModelId: string
+		unknownModelInfoId?: string
 		unknownModelPolicy: UnknownModelPolicy
 	},
 	options: { customModelInfo?: (modelId: string) => ModelInfo | undefined } = {},
 ): CatalogModelResolution => {
-	const { models, modelAliases, defaultModelId, unknownModelPolicy } = catalog
+	const { models, modelAliases, defaultModelId, unknownModelInfoId, unknownModelPolicy } = catalog
 	const defaultInfo = models[defaultModelId]!
 
 	if (!modelId) {
@@ -217,5 +227,5 @@ export const resolveCatalogModel = (
 
 	const customInfo = unknownModelPolicy === "honor-custom" ? options.customModelInfo?.(modelId) : undefined
 
-	return { id: modelId, info: customInfo ?? defaultInfo, known: false }
+	return { id: modelId, info: customInfo ?? models[unknownModelInfoId ?? defaultModelId]!, known: false }
 }

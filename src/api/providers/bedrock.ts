@@ -19,6 +19,7 @@ import {
 	bedrockDefaultModelId,
 	bedrockModels,
 	bedrockDefaultPromptRouterModelId,
+	bedrockUnknownModelStandInId,
 	BEDROCK_DEFAULT_TEMPERATURE,
 	BEDROCK_MAX_TOKENS,
 	BEDROCK_DEFAULT_CONTEXT,
@@ -572,7 +573,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			model = {
 				id: baseModelId,
 				info: {
-					...JSON.parse(JSON.stringify(bedrockModels[bedrockDefaultModelId])),
+					...JSON.parse(JSON.stringify(bedrockModels[bedrockUnknownModelStandInId])),
 					...guessed,
 				},
 			}

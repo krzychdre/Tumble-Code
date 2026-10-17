@@ -23,6 +23,7 @@ import {
 	resolvePortableProviderModel,
 	resolveProviderModelSelection,
 	vertexDefaultModelId,
+	vertexUnknownModelStandInId,
 	vertexModels,
 	xaiDefaultModelId,
 	xaiModels,
@@ -138,7 +139,13 @@ const cases: [string, ProviderSettings, { id: string; info: ModelInfo } | undefi
 	[
 		"vertex unknown",
 		{ apiProvider: "vertex", apiModelId: "vertex-api6" },
-		{ id: "vertex-api6", info: models(vertexModels)[vertexDefaultModelId]! },
+		{ id: "vertex-api6", info: models(vertexModels)[vertexUnknownModelStandInId]! },
+	],
+	// An unknown Claude id runs on the Anthropic Vertex handler with the same stand-in (not the Opus 5 default).
+	[
+		"vertex unknown claude",
+		{ apiProvider: "vertex", apiModelId: "claude-next-preview" },
+		{ id: "claude-next-preview", info: models(vertexModels)[vertexUnknownModelStandInId]! },
 	],
 	[
 		"vertex empty",

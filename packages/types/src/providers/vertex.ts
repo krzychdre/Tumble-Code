@@ -5,7 +5,12 @@ import { claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 export type VertexModelId = keyof typeof vertexModels
 
-export const vertexDefaultModelId: VertexModelId = "claude-sonnet-4-5@20250929"
+export const vertexDefaultModelId: VertexModelId = "claude-opus-5"
+
+// Info stand-in for a model id that is not in the table (a Gemini or Claude id we do not list). It is
+// kept on Claude Sonnet 4.5 when the default moved to Opus 5: Opus 5 info would send an effort/thinking
+// level and drop temperature for models that may not accept them. Only the info is used, never the id.
+export const vertexUnknownModelStandInId: VertexModelId = "claude-sonnet-4-5@20250929"
 
 export const vertexModels = {
 	"gemini-3.5-flash": {
