@@ -685,6 +685,32 @@ describe("AwsBedrockHandler", () => {
 			expect(typeof model.info.supportsPromptCache).toBe("boolean")
 		})
 
+		// The default is Claude Opus 5, but an unknown id or ARN keeps the Claude Sonnet 4.5 stand-in info:
+		// Opus 5 info would drop temperature and add effort support for models that may not accept them.
+		it.each([
+			[{ apiModelId: "mistral.some-new-model-v1:0" }, "mistral.some-new-model-v1:0"],
+			[
+				{ awsCustomArn: "arn:aws:bedrock:us-east-1:123456789012:imported-model/abc" },
+				"arn:aws:bedrock:us-east-1:123456789012:imported-model/abc",
+			],
+		])("sizes an unknown model with the stand-in info, not the Opus 5 default (%o)", (settings, id) => {
+			const handler = new AwsBedrockHandler({
+				...settings,
+				awsAccessKey: "test",
+				awsSecretKey: "test",
+				awsRegion: "us-east-1",
+			})
+
+			const model = handler.getModel()
+			expect(model.id).toBe(id)
+			expect(model.temperature).toBe(0.3)
+			expect(model.reasoning).toBeUndefined()
+			expect(model.info.supportsTemperature).not.toBe(false)
+			expect(model.info.supportsReasoningEffort).toBeUndefined()
+			expect(model.info.reasoningEffort).toBeUndefined()
+			expect(model.info.inputPrice).toBe(3)
+		})
+
 		it("should return Claude Fable 5 model info", () => {
 			const handler = new AwsBedrockHandler({
 				apiModelId: "anthropic.claude-fable-5",

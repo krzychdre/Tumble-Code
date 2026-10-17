@@ -28,6 +28,7 @@ import {
 	openAiModelInfoSaneDefaults,
 	openRouterDefaultModelId,
 	resolveProviderModelSelection,
+	vertexDefaultModelId,
 	vertexModels,
 	vscodeLlmDefaultModelId,
 	vscodeLlmModels,
@@ -153,14 +154,14 @@ const cases: [string, ProviderSettings, Expected][] = [
 		{ apiProvider: "vertex", apiModelId: vertexGemini, vertex1MContext: true },
 		{ id: vertexGemini, info: models(vertexModels)[vertexGemini], isUnknownModel: false },
 	],
-	// The settings show the default Claude model with its 1M tier (the host routes by the configured id and
-	// does not apply it).
+	// The settings show the default Claude model (Opus 5). It serves 1M natively and has no 1M tier, so the
+	// toggle changes nothing (the host routes by the configured id and does not apply it either).
 	[
 		"vertex unset with 1M",
 		{ apiProvider: "vertex", vertex1MContext: true },
 		{
-			id: "claude-sonnet-4-5@20250929",
-			info: firstTier(models(vertexModels)["claude-sonnet-4-5@20250929"]!),
+			id: vertexDefaultModelId,
+			info: models(vertexModels)[vertexDefaultModelId]!,
 			isUnknownModel: false,
 		},
 	],

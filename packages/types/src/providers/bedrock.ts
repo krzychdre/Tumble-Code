@@ -6,7 +6,12 @@ import { claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
 
 export type BedrockModelId = keyof typeof bedrockModels
 
-export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-opus-5"
+
+// Info stand-in for a model id or custom ARN that is not in the table, before the handler's guess from
+// the model family. It is kept on Claude Sonnet 4.5 when the default moved to Opus 5: Opus 5 info would
+// drop temperature and add effort support for models (Mistral, imported models) that may not accept them.
+export const bedrockUnknownModelStandInId: BedrockModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 // Priced stand-in for a prompt router until the router reports the model it invoked.
 export const bedrockDefaultPromptRouterModelId: BedrockModelId = "anthropic.claude-sonnet-4-5-20250929-v1:0"
