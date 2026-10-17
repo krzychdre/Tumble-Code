@@ -15,7 +15,7 @@ dropped the open `-maas` models from the table, so the "open" family has no list
 - `webview-ui/src/hooks/models/useSelectedModel.ts` (the Vertex special case in `settingsForSharedResolver` is
   gone: the shared resolver now resolves an unset id the same way)
 - tests: new `packages/types/src/__tests__/vertex-model-family.spec.ts`, new
-  `src/api/providers/__tests__/vertex-model-family-characterization.spec.ts` (+ snapshot), and updates in
+  `src/api/providers/__tests__/vertex-model-family-characterization.spec.ts`, and updates in
   `provider-model-resolution.spec.ts`, `vertex.spec.ts`, `runtime-provider-registry.spec.ts`,
   `provider-definitions.spec.ts`
 
@@ -63,7 +63,7 @@ Derived from the family:
 
 Known limitation, not changed here: `getGeminiReasoning` also turns an explicit `reasoningEffort` left in the
 profile into a `thinkingLevel` for any model without an effort list. That already holds for the listed Gemini
-1.5 and 2.0 ids (pinned in the characterization snapshot), so the stand-in cannot do better than them.
+1.5 and 2.0 ids (it was pinned in the temporary characterization snapshot), so the stand-in cannot do better than them.
 
 ## Can an empty `apiModelId` be saved for Vertex?
 
@@ -91,7 +91,11 @@ Either way the runtime now resolves the default before it picks the handler, so 
   two settings variants (plain; 1M on with reasoning effort high), the handler class, `getModel()`, the
   registry's `resolveModel` and the settings-side resolution. Generated on main before the refactor; the
   refactored code matched it byte for byte. After the rebase onto #901 the entries of the 8 deleted ids were
-  pruned (they were obsolete, the remaining 76 matched unchanged).
+  pruned (they were obsolete, the remaining 76 matched unchanged). The 6,199-line snapshot was then deleted
+  before merging: it pinned every price and limit of the table, so every later model or price change would
+  have rewritten thousands of snapshot lines. The spec now checks the rule instead: for every table key the
+  family's handler runs it, under its own id (a `:thinking` variant under its base id), with its own record's
+  price and context window, and the registry and the settings UI resolve the same id.
 - Regression for defect 1: `runtime-provider-registry.spec.ts` and `provider-definitions.spec.ts` (no id and
   `""` build `AnthropicVertexHandler`, and its `getModel()` equals `resolveModel`).
 - Regression for defect 2: `vertex-model-family.spec.ts`, `provider-definitions.spec.ts`, `vertex.spec.ts`
