@@ -36,7 +36,7 @@
 	"commands.preventCompletionWithOpenTodos.description": "Prevent task completion when there are incomplete todos in the todo list",
 	"settings.vsCodeLmModelSelector.description": "Settings for VSCode Language Model API",
 	"settings.vsCodeLmModelSelector.vendor.description": "The vendor of the language model (e.g. copilot)",
-	"settings.vsCodeLmModelSelector.family.description": "The family of the language model (e.g. gpt-4)",
+	"settings.vsCodeLmModelSelector.family.description": "The family of the language model (e.g. gpt-5-mini)",
 	"settings.customStoragePath.description": "Custom storage path. Leave empty to use the default location. Supports absolute paths (e.g. 'D:\\TumbleCodeStorage')",
 	"settings.enableCodeActions.description": "Enable Tumble Code quick fixes",
 	"settings.autoImportSettingsPath.description": "Path to a Tumble Code configuration file to automatically import on extension startup. Supports absolute paths and paths relative to the home directory (e.g. '~/Documents/tumble-code-settings.json'). Leave empty to disable auto-import.",

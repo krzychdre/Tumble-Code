@@ -30,7 +30,6 @@ import {
 	resolveProviderModelSelection,
 	vertexDefaultModelId,
 	vertexModels,
-	vscodeLlmDefaultModelId,
 	vscodeLlmModels,
 	xaiDefaultModelId,
 	xaiModels,
@@ -298,25 +297,18 @@ const cases: [string, ProviderSettings, Expected][] = [
 	["openai unset", { apiProvider: "openai" }, { id: "", info: openAiModelInfoSaneDefaults, isUnknownModel: false }],
 	[
 		"vscode-lm selector",
-		{ apiProvider: "vscode-lm", vsCodeLmModelSelector: { vendor: "copilot", family: "gpt-4o" } },
+		{ apiProvider: "vscode-lm", vsCodeLmModelSelector: { vendor: "copilot", family: "gpt-5-mini" } },
 		{
-			id: "copilot/gpt-4o",
-			info: { ...openAiModelInfoSaneDefaults, ...models(vscodeLlmModels)["gpt-4o"], supportsImages: false },
+			id: "copilot/gpt-5-mini",
+			info: { ...openAiModelInfoSaneDefaults, ...models(vscodeLlmModels)["gpt-5-mini"], supportsImages: false },
 			isUnknownModel: false,
 		},
 	],
 	[
 		"vscode-lm unset",
 		{ apiProvider: "vscode-lm" },
-		{
-			id: vscodeLlmDefaultModelId,
-			info: {
-				...openAiModelInfoSaneDefaults,
-				...models(vscodeLlmModels)[vscodeLlmDefaultModelId],
-				supportsImages: false,
-			},
-			isUnknownModel: false,
-		},
+		// No default model: the handler runs the first model VS Code returns.
+		{ id: "", info: { ...openAiModelInfoSaneDefaults, supportsImages: false }, isUnknownModel: false },
 	],
 
 	// Bedrock (a handler-only provider on the host).
