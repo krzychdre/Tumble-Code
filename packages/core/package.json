@@ -2,7 +2,7 @@
 	"name": "@tumble-code/core",
 	"private": true,
 	"description": "Platform agnostic core functionality for Tumble Code.",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
