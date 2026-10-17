@@ -538,9 +538,6 @@ describe("AwsBedrockHandler.createMessage characterization (API-18)", () => {
 				    "anthropic_beta": [
 				      "fine-grained-tool-streaming-2025-05-14",
 				    ],
-				    "output_config": {
-				      "effort": "xhigh",
-				    },
 				    "thinking": {
 				      "display": "summarized",
 				      "type": "adaptive",

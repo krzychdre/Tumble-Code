@@ -1386,7 +1386,7 @@ describe("AwsBedrockHandler", () => {
 
 		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
 
-		it("should send adaptive thinking with effort xhigh for Claude Opus 4.7 when reasoning is enabled", async () => {
+		it("should send adaptive thinking without effort for Claude Opus 4.7 when no level is chosen", async () => {
 			const opus47Handler = new AwsBedrockHandler({
 				apiModelId: "anthropic.claude-opus-4-7",
 				awsAccessKey: "test-access-key",
@@ -1406,12 +1406,13 @@ describe("AwsBedrockHandler", () => {
 				type: "adaptive",
 				display: "summarized",
 			})
-			expect(commandArg.additionalModelRequestFields?.output_config).toEqual({ effort: "xhigh" })
+			// No chosen level: effort is omitted so the API runs the model default.
+			expect(commandArg.additionalModelRequestFields?.output_config).toBeUndefined()
 			// 4.7+ rejects sampling parameters: temperature must be omitted entirely.
 			expect(commandArg.inferenceConfig?.temperature).toBeUndefined()
 		})
 
-		it("should send adaptive thinking with effort xhigh for Claude Opus 4.8 when reasoning is enabled", async () => {
+		it("should send adaptive thinking without effort for Claude Opus 4.8 when no level is chosen", async () => {
 			const opus48Handler = new AwsBedrockHandler({
 				apiModelId: "anthropic.claude-opus-4-8",
 				awsAccessKey: "test-access-key",
@@ -1431,9 +1432,52 @@ describe("AwsBedrockHandler", () => {
 				type: "adaptive",
 				display: "summarized",
 			})
-			expect(commandArg.additionalModelRequestFields?.output_config).toEqual({ effort: "xhigh" })
+			// No chosen level: effort is omitted so the API runs the model default.
+			expect(commandArg.additionalModelRequestFields?.output_config).toBeUndefined()
 			// Sampling parameters are still rejected on 4.8, temperature must be absent.
 			expect(commandArg.inferenceConfig?.temperature).toBeUndefined()
+		})
+
+		it("should send the chosen effort level for Claude Opus 4.8", async () => {
+			const opus48Handler = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-opus-4-8",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				enableReasoningEffort: true,
+				reasoningEffort: "max",
+			})
+
+			const generator = opus48Handler.createMessage("System prompt", messages)
+			await generator.next()
+
+			const commandArg = mockConverseStreamCommand.mock.calls[0][0] as any
+			expect(commandArg.additionalModelRequestFields?.thinking).toEqual({
+				type: "adaptive",
+				display: "summarized",
+			})
+			expect(commandArg.additionalModelRequestFields?.output_config).toEqual({ effort: "max" })
+		})
+
+		it("should omit an effort level carried over that Claude Opus 4.8 does not offer", async () => {
+			const opus48Handler = new AwsBedrockHandler({
+				apiModelId: "anthropic.claude-opus-4-8",
+				awsAccessKey: "test-access-key",
+				awsSecretKey: "test-secret-key",
+				awsRegion: "us-east-1",
+				enableReasoningEffort: true,
+				reasoningEffort: "minimal",
+			})
+
+			const generator = opus48Handler.createMessage("System prompt", messages)
+			await generator.next()
+
+			const commandArg = mockConverseStreamCommand.mock.calls[0][0] as any
+			expect(commandArg.additionalModelRequestFields?.thinking).toEqual({
+				type: "adaptive",
+				display: "summarized",
+			})
+			expect(commandArg.additionalModelRequestFields?.output_config).toBeUndefined()
 		})
 
 		it("should omit thinking and temperature for Claude Opus 4.8 when reasoning is disabled", async () => {

@@ -100,7 +100,7 @@ describe("bedrock request builders", () => {
 			).toEqual({ thinking: { type: "enabled", budget_tokens: 4096 } })
 		})
 
-		it("uses adaptive thinking with xhigh effort for adaptive models", () => {
+		it("uses adaptive thinking and leaves effort to the model default when none is chosen", () => {
 			expect(
 				buildThinkingFields({
 					model,
@@ -108,7 +108,7 @@ describe("bedrock request builders", () => {
 					thinking: { enabled: true },
 					isAdaptiveThinkingModel: true,
 				}),
-			).toEqual({ thinking: { type: "adaptive", display: "summarized" }, output_config: { effort: "xhigh" } })
+			).toEqual({ thinking: { type: "adaptive", display: "summarized" } })
 		})
 
 		describe("chosen effort level", () => {
@@ -118,7 +118,7 @@ describe("bedrock request builders", () => {
 			}
 			const adaptiveModel = { id: "anthropic.claude-opus-4-8", info: adaptiveInfo }
 
-			it("replaces the xhigh default on adaptive models", () => {
+			it("sends the chosen level on adaptive models", () => {
 				expect(
 					buildThinkingFields({
 						model: adaptiveModel,
@@ -132,15 +132,15 @@ describe("bedrock request builders", () => {
 				})
 			})
 
-			it("keeps xhigh when the stored level is not offered", () => {
+			it("omits effort when the stored level is not offered", () => {
 				expect(
 					buildThinkingFields({
 						model: adaptiveModel,
 						settings: { reasoningEffort: "minimal" },
 						thinking: { enabled: true },
 						isAdaptiveThinkingModel: true,
-					})?.output_config,
-				).toEqual({ effort: "xhigh" })
+					}),
+				).toEqual({ thinking: { type: "adaptive", display: "summarized" } })
 			})
 
 			it("is sent alone when thinking is off", () => {
