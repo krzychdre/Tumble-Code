@@ -23,7 +23,8 @@ import {
 	resolvePortableProviderModel,
 	resolveProviderModelSelection,
 	vertexDefaultModelId,
-	vertexUnknownModelStandInId,
+	vertexUnknownClaudeModelStandInId,
+	vertexUnknownGeminiModelStandInId,
 	vertexModels,
 	xaiDefaultModelId,
 	xaiModels,
@@ -130,22 +131,31 @@ const cases: [string, ProviderSettings, { id: string; info: ModelInfo } | undefi
 		{ apiProvider: "vertex", apiModelId: vertexGemini, vertex1MContext: true },
 		{ id: vertexGemini, info: models(vertexModels)[vertexGemini]! },
 	],
-	// An unset id runs the default (a Claude model) on the Gemini handler, chosen by the configured id: no tier.
+	// An unset id runs the default (a Claude model) on the Anthropic Vertex handler, like the settings show.
+	// It used to run on the Gemini handler, because the handler was picked by the configured id and the
+	// info by the default. (Opus 5 has a 1M window of its own, so there is no tier to apply.)
 	[
 		"vertex unset with 1M",
 		{ apiProvider: "vertex", vertex1MContext: true },
 		{ id: vertexDefaultModelId, info: models(vertexModels)[vertexDefaultModelId]! },
 	],
+	// Unknown ids get a stand-in of their own family: an open model or Gemini id runs on the Gemini
+	// handler with Gemini 2.0 Flash info (it used to get Claude Sonnet 4.5 info there).
 	[
 		"vertex unknown",
 		{ apiProvider: "vertex", apiModelId: "vertex-api6" },
-		{ id: "vertex-api6", info: models(vertexModels)[vertexUnknownModelStandInId]! },
+		{ id: "vertex-api6", info: models(vertexModels)[vertexUnknownGeminiModelStandInId]! },
 	],
-	// An unknown Claude id runs on the Anthropic Vertex handler with the same stand-in (not the Opus 5 default).
+	[
+		"vertex unknown gemini",
+		{ apiProvider: "vertex", apiModelId: "gemini-9-ultra" },
+		{ id: "gemini-9-ultra", info: models(vertexModels)[vertexUnknownGeminiModelStandInId]! },
+	],
+	// An unknown Claude id runs on the Anthropic Vertex handler with Claude Sonnet 4.5 (not the Opus 5 default).
 	[
 		"vertex unknown claude",
 		{ apiProvider: "vertex", apiModelId: "claude-next-preview" },
-		{ id: "claude-next-preview", info: models(vertexModels)[vertexUnknownModelStandInId]! },
+		{ id: "claude-next-preview", info: models(vertexModels)[vertexUnknownClaudeModelStandInId]! },
 	],
 	[
 		"vertex empty",

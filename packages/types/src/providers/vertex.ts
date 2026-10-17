@@ -7,10 +7,13 @@ export type VertexModelId = keyof typeof vertexModels
 
 export const vertexDefaultModelId: VertexModelId = "claude-opus-5"
 
-// Info stand-in for a model id that is not in the table (a Gemini or Claude id we do not list). It is
-// kept on Claude Sonnet 4.5 when the default moved to Opus 5: Opus 5 info would send an effort/thinking
-// level and drop temperature for models that may not accept them. Only the info is used, never the id.
-export const vertexUnknownModelStandInId: VertexModelId = "claude-sonnet-4-5@20250929"
+// Info stand-ins for a model id that is not in the table, one per handler (see `vertexModelFamily`).
+// Only the info is used, never the id. An unknown Claude id gets Claude Sonnet 4.5: it lists no effort
+// levels and accepts temperature, so a newer Claude we know nothing about gets neither an effort nor a
+// dropped temperature. An unknown Gemini (or open) id gets Gemini 2.0 Flash: it has no reasoning budget
+// and no effort levels, so the Gemini handler sends no thinking config an older Gemini would reject.
+export const vertexUnknownClaudeModelStandInId: VertexModelId = "claude-sonnet-4-5@20250929"
+export const vertexUnknownGeminiModelStandInId: VertexModelId = "gemini-2.0-flash-001"
 
 export const vertexModels = {
 	"gemini-3.5-flash": {

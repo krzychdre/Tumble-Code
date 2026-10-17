@@ -113,6 +113,23 @@ describe("runtimeProviderRegistry", () => {
 		})
 	})
 
+	// Regression (defect 1): an unset or empty id runs the default model, a Claude model, so it must be
+	// built on the Anthropic Vertex handler. It used to get the Gemini handler with the Claude id.
+	it.each([
+		["no model id", {}],
+		["an empty model id", { apiModelId: "" }],
+	])("builds the Anthropic Vertex handler for %s (the default is a Claude model)", (_, modelSettings) => {
+		const handler = asMockHandler(buildApiHandler({ apiProvider: "vertex", ...modelSettings }))
+
+		expect(handler.providerClass).toBe("AnthropicVertexHandler")
+	})
+
+	it.each(["gemini-9-ultra", "llama-9-maas"])("keeps the unknown non-Claude id %s on the Vertex handler", (id) => {
+		expect(asMockHandler(buildApiHandler({ apiProvider: "vertex", apiModelId: id })).providerClass).toBe(
+			"VertexHandler",
+		)
+	})
+
 	it("defaults an undefined provider to Anthropic", () => {
 		const handler = asMockHandler(buildApiHandler({ apiModelId: "claude-default" }))
 

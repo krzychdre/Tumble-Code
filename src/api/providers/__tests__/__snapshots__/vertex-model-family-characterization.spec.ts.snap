@@ -1,0 +1,6199 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-fable-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-fable-5",
+    "info": {
+      "cacheReadsPrice": 1,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-fable-5",
+    "info": {
+      "cacheReadsPrice": 1,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-fable-5",
+    "info": {
+      "cacheReadsPrice": 1,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-fable-5-1 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-fable-5-1",
+    "info": {
+      "cacheReadsPrice": 0.25,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-fable-5-1",
+    "info": {
+      "cacheReadsPrice": 0.25,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-fable-5-1",
+    "info": {
+      "cacheReadsPrice": 0.25,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-haiku-4-5@20251001 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-haiku-4-5@20251001",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 1.25,
+      "contextWindow": 200000,
+      "inputPrice": 1,
+      "maxTokens": 64000,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "budget_tokens": 8192,
+      "type": "enabled",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-haiku-4-5@20251001",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 1.25,
+      "contextWindow": 200000,
+      "inputPrice": 1,
+      "maxTokens": 64000,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-haiku-4-5@20251001",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 1.25,
+      "contextWindow": 200000,
+      "inputPrice": 1,
+      "maxTokens": 64000,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-haiku-5-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-haiku-5-5",
+    "info": {
+      "cacheReadsPrice": 0.01,
+      "cacheWritesPrice": 0.125,
+      "contextWindow": 1000000,
+      "description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
+      "inputPrice": 0.1,
+      "longContextPricing": {
+        "cacheReadsPriceMultiplier": 5,
+        "cacheWritesPriceMultiplier": 5,
+        "inputPriceMultiplier": 5,
+        "outputPriceMultiplier": 5,
+        "thresholdTokens": 100000,
+      },
+      "maxTokens": 128000,
+      "outputPrice": 0.5,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-haiku-5-5",
+    "info": {
+      "cacheReadsPrice": 0.01,
+      "cacheWritesPrice": 0.125,
+      "contextWindow": 1000000,
+      "description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
+      "inputPrice": 0.1,
+      "longContextPricing": {
+        "cacheReadsPriceMultiplier": 5,
+        "cacheWritesPriceMultiplier": 5,
+        "inputPriceMultiplier": 5,
+        "outputPriceMultiplier": 5,
+        "thresholdTokens": 100000,
+      },
+      "maxTokens": 128000,
+      "outputPrice": 0.5,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-haiku-5-5",
+    "info": {
+      "cacheReadsPrice": 0.01,
+      "cacheWritesPrice": 0.125,
+      "contextWindow": 1000000,
+      "description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
+      "inputPrice": 0.1,
+      "longContextPricing": {
+        "cacheReadsPriceMultiplier": 5,
+        "cacheWritesPriceMultiplier": 5,
+        "inputPriceMultiplier": 5,
+        "outputPriceMultiplier": 5,
+        "thresholdTokens": 100000,
+      },
+      "maxTokens": 128000,
+      "outputPrice": 0.5,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-opus-4@20250514 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-4@20250514",
+    "info": {
+      "cacheReadsPrice": 1.5,
+      "cacheWritesPrice": 18.75,
+      "contextWindow": 200000,
+      "inputPrice": 15,
+      "maxTokens": 32000,
+      "outputPrice": 75,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 32000,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4@20250514",
+    "info": {
+      "cacheReadsPrice": 1.5,
+      "cacheWritesPrice": 18.75,
+      "contextWindow": 200000,
+      "inputPrice": 15,
+      "maxTokens": 32000,
+      "outputPrice": 75,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4@20250514",
+    "info": {
+      "cacheReadsPrice": 1.5,
+      "cacheWritesPrice": 18.75,
+      "contextWindow": 200000,
+      "inputPrice": 15,
+      "maxTokens": 32000,
+      "outputPrice": 75,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-opus-4-5@20251101 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-opus-4-5@20251101",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 200000,
+      "inputPrice": 5,
+      "maxTokens": 64000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "budget_tokens": 8192,
+      "type": "enabled",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-5@20251101",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 200000,
+      "inputPrice": 5,
+      "maxTokens": 64000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-5@20251101",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 200000,
+      "inputPrice": 5,
+      "maxTokens": 64000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-opus-4-6 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-opus-4-6",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "budget_tokens": 8192,
+      "type": "enabled",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-6",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-6",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-opus-4-7 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-opus-4-7",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-7",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-7",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-opus-4-8 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-opus-4-8",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-8",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-8",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-opus-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-opus-5",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-5",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-5",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-opus-5-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-opus-5-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 5,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+      "inputPrice": 4,
+      "maxTokens": 128000,
+      "outputPrice": 20,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-5-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 5,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+      "inputPrice": 4,
+      "maxTokens": 128000,
+      "outputPrice": 20,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-5-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 5,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+      "inputPrice": 4,
+      "maxTokens": 128000,
+      "outputPrice": 20,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-sonnet-4@20250514 1`] = `
+{
+  "getModel": {
+    "betas": [
+      "context-1m-2025-08-07",
+    ],
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-sonnet-4@20250514",
+    "info": {
+      "cacheReadsPrice": 0.6,
+      "cacheWritesPrice": 7.5,
+      "contextWindow": 1000000,
+      "inputPrice": 6,
+      "maxTokens": 64000,
+      "outputPrice": 22.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "budget_tokens": 8192,
+      "type": "enabled",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-4@20250514",
+    "info": {
+      "cacheReadsPrice": 0.6,
+      "cacheWritesPrice": 7.5,
+      "contextWindow": 1000000,
+      "inputPrice": 6,
+      "maxTokens": 64000,
+      "outputPrice": 22.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": true,
+    "id": "claude-sonnet-4@20250514",
+    "info": {
+      "cacheReadsPrice": 0.6,
+      "cacheWritesPrice": 7.5,
+      "contextWindow": 1000000,
+      "inputPrice": 6,
+      "maxTokens": 64000,
+      "outputPrice": 22.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-sonnet-4-5@20250929 1`] = `
+{
+  "getModel": {
+    "betas": [
+      "context-1m-2025-08-07",
+    ],
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-sonnet-4-5@20250929",
+    "info": {
+      "cacheReadsPrice": 0.6,
+      "cacheWritesPrice": 7.5,
+      "contextWindow": 1000000,
+      "inputPrice": 6,
+      "maxTokens": 64000,
+      "outputPrice": 22.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "budget_tokens": 8192,
+      "type": "enabled",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-4-5@20250929",
+    "info": {
+      "cacheReadsPrice": 0.6,
+      "cacheWritesPrice": 7.5,
+      "contextWindow": 1000000,
+      "inputPrice": 6,
+      "maxTokens": 64000,
+      "outputPrice": 22.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": true,
+    "id": "claude-sonnet-4-5@20250929",
+    "info": {
+      "cacheReadsPrice": 0.6,
+      "cacheWritesPrice": 7.5,
+      "contextWindow": 1000000,
+      "inputPrice": 6,
+      "maxTokens": 64000,
+      "outputPrice": 22.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-sonnet-4-6 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-sonnet-4-6",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 1000000,
+      "inputPrice": 3,
+      "maxTokens": 128000,
+      "outputPrice": 15,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "budget_tokens": 8192,
+      "type": "enabled",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-4-6",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 1000000,
+      "inputPrice": 3,
+      "maxTokens": 128000,
+      "outputPrice": 15,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-4-6",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 1000000,
+      "inputPrice": 3,
+      "maxTokens": 128000,
+      "outputPrice": 15,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-sonnet-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-sonnet-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > claude-sonnet-5-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": "high",
+    "format": "anthropic",
+    "id": "claude-sonnet-5-5",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "type": "adaptive",
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-5-5",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-5-5",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-1.5-flash-002 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-1.5-flash-002",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 8192,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-1.5-flash-002",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-1.5-flash-002",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-1.5-pro-002 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-1.5-pro-002",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.25,
+      "maxTokens": 8192,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-1.5-pro-002",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.25,
+      "maxTokens": 8192,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-1.5-pro-002",
+    "info": {
+      "contextWindow": 2097152,
+      "inputPrice": 1.25,
+      "maxTokens": 8192,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.0-flash-001 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-flash-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 8192,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 8192,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-flash-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 8192,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-flash-001",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxTokens": 8192,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.0-flash-lite-001 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-flash-lite-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-flash-lite-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-flash-lite-001",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.0-flash-thinking-exp-01-21 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-flash-thinking-exp-01-21",
+    "info": {
+      "contextWindow": 32768,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 6554,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-flash-thinking-exp-01-21",
+    "info": {
+      "contextWindow": 32768,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-flash-thinking-exp-01-21",
+    "info": {
+      "contextWindow": 32768,
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.0-pro-exp-02-05 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-pro-exp-02-05",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-pro-exp-02-05",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-pro-exp-02-05",
+    "info": {
+      "contextWindow": 2097152,
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-flash 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.075,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.3,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 2.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 8192,
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.075,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.3,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 2.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.075,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "inputPrice": 0.3,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 2.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-flash-lite-preview-06-17 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-lite-preview-06-17",
+    "info": {
+      "cacheReadsPrice": 0.025,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.1,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 0.4,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 8192,
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-lite-preview-06-17",
+    "info": {
+      "cacheReadsPrice": 0.025,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.1,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 0.4,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-lite-preview-06-17",
+    "info": {
+      "cacheReadsPrice": 0.025,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "inputPrice": 0.1,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 0.4,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-flash-preview-04-17 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 65535,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-flash-preview-04-17:thinking 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 8192,
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-04-17:thinking",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-flash-preview-05-20 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 65535,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-flash-preview-05-20:thinking 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 8192,
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-05-20:thinking",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-pro 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.31,
+          "contextWindow": 200000,
+          "inputPrice": 1.25,
+          "outputPrice": 10,
+        },
+        {
+          "cacheReadsPrice": 0.625,
+          "contextWindow": Infinity,
+          "inputPrice": 2.5,
+          "outputPrice": 15,
+        },
+      ],
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 128,
+    },
+    "reasoningBudget": 128,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.31,
+          "contextWindow": 200000,
+          "inputPrice": 1.25,
+          "outputPrice": 10,
+        },
+        {
+          "cacheReadsPrice": 0.625,
+          "contextWindow": Infinity,
+          "inputPrice": 2.5,
+          "outputPrice": 15,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.31,
+          "contextWindow": 200000,
+          "inputPrice": 1.25,
+          "outputPrice": 10,
+        },
+        {
+          "cacheReadsPrice": 0.625,
+          "contextWindow": Infinity,
+          "inputPrice": 2.5,
+          "outputPrice": 15,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-pro-exp-03-25 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-exp-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 65535,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 65535,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-exp-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 65535,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-exp-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0,
+      "maxTokens": 65535,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-pro-preview-03-25 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-preview-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 65535,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-preview-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-preview-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-pro-preview-05-06 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-preview-05-06",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 65535,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-preview-05-06",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-preview-05-06",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-2.5-pro-preview-06-05 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-preview-06-05",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 128,
+    },
+    "reasoningBudget": 128,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-preview-06-05",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-preview-06-05",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-3.1-pro-preview 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3.1-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3.1-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3.1-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-3.1-pro-preview-customtools 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3.1-pro-preview-customtools",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3.1-pro-preview-customtools",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3.1-pro-preview-customtools",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-3.5-flash 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.15,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.5,
+      "maxTokens": 65536,
+      "outputPrice": 9,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": false,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.15,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.5,
+      "maxTokens": 65536,
+      "outputPrice": 9,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": false,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.15,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "inputPrice": 1.5,
+      "maxTokens": 65536,
+      "outputPrice": 9,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": false,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-3-flash-preview 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3-flash-preview",
+    "info": {
+      "cacheReadsPrice": 0.05,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.5,
+      "maxTokens": 65536,
+      "outputPrice": 3,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3-flash-preview",
+    "info": {
+      "cacheReadsPrice": 0.05,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.5,
+      "maxTokens": 65536,
+      "outputPrice": 3,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3-flash-preview",
+    "info": {
+      "cacheReadsPrice": 0.05,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 0.5,
+      "maxTokens": 65536,
+      "outputPrice": 3,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > 1M, reasoning effort high > gemini-3-pro-preview 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "high",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-fable-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-fable-5",
+    "info": {
+      "cacheReadsPrice": 1,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-fable-5",
+    "info": {
+      "cacheReadsPrice": 1,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-fable-5",
+    "info": {
+      "cacheReadsPrice": 1,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-fable-5-1 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-fable-5-1",
+    "info": {
+      "cacheReadsPrice": 0.25,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-fable-5-1",
+    "info": {
+      "cacheReadsPrice": 0.25,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-fable-5-1",
+    "info": {
+      "cacheReadsPrice": 0.25,
+      "cacheWritesPrice": 12.5,
+      "contextWindow": 1000000,
+      "description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+      "inputPrice": 10,
+      "maxTokens": 128000,
+      "outputPrice": 50,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-haiku-4-5@20251001 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-haiku-4-5@20251001",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 1.25,
+      "contextWindow": 200000,
+      "inputPrice": 1,
+      "maxTokens": 64000,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-haiku-4-5@20251001",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 1.25,
+      "contextWindow": 200000,
+      "inputPrice": 1,
+      "maxTokens": 64000,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-haiku-4-5@20251001",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 1.25,
+      "contextWindow": 200000,
+      "inputPrice": 1,
+      "maxTokens": 64000,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-haiku-5-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-haiku-5-5",
+    "info": {
+      "cacheReadsPrice": 0.01,
+      "cacheWritesPrice": 0.125,
+      "contextWindow": 1000000,
+      "description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
+      "inputPrice": 0.1,
+      "longContextPricing": {
+        "cacheReadsPriceMultiplier": 5,
+        "cacheWritesPriceMultiplier": 5,
+        "inputPriceMultiplier": 5,
+        "outputPriceMultiplier": 5,
+        "thresholdTokens": 100000,
+      },
+      "maxTokens": 128000,
+      "outputPrice": 0.5,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "medium",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-haiku-5-5",
+    "info": {
+      "cacheReadsPrice": 0.01,
+      "cacheWritesPrice": 0.125,
+      "contextWindow": 1000000,
+      "description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
+      "inputPrice": 0.1,
+      "longContextPricing": {
+        "cacheReadsPriceMultiplier": 5,
+        "cacheWritesPriceMultiplier": 5,
+        "inputPriceMultiplier": 5,
+        "outputPriceMultiplier": 5,
+        "thresholdTokens": 100000,
+      },
+      "maxTokens": 128000,
+      "outputPrice": 0.5,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-haiku-5-5",
+    "info": {
+      "cacheReadsPrice": 0.01,
+      "cacheWritesPrice": 0.125,
+      "contextWindow": 1000000,
+      "description": "Claude Haiku 5.5 is Anthropic's fastest and cheapest model, for high-volume, latency-sensitive work such as classification, extraction, routing and subagent tasks.",
+      "inputPrice": 0.1,
+      "longContextPricing": {
+        "cacheReadsPriceMultiplier": 5,
+        "cacheWritesPriceMultiplier": 5,
+        "inputPriceMultiplier": 5,
+        "outputPriceMultiplier": 5,
+        "thresholdTokens": 100000,
+      },
+      "maxTokens": 128000,
+      "outputPrice": 0.5,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-opus-4@20250514 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-4@20250514",
+    "info": {
+      "cacheReadsPrice": 1.5,
+      "cacheWritesPrice": 18.75,
+      "contextWindow": 200000,
+      "inputPrice": 15,
+      "maxTokens": 32000,
+      "outputPrice": 75,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 32000,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4@20250514",
+    "info": {
+      "cacheReadsPrice": 1.5,
+      "cacheWritesPrice": 18.75,
+      "contextWindow": 200000,
+      "inputPrice": 15,
+      "maxTokens": 32000,
+      "outputPrice": 75,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4@20250514",
+    "info": {
+      "cacheReadsPrice": 1.5,
+      "cacheWritesPrice": 18.75,
+      "contextWindow": 200000,
+      "inputPrice": 15,
+      "maxTokens": 32000,
+      "outputPrice": 75,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-opus-4-5@20251101 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-4-5@20251101",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 200000,
+      "inputPrice": 5,
+      "maxTokens": 64000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-5@20251101",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 200000,
+      "inputPrice": 5,
+      "maxTokens": 64000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-5@20251101",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 200000,
+      "inputPrice": 5,
+      "maxTokens": 64000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-opus-4-6 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-4-6",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-6",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-6",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-opus-4-7 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-4-7",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-7",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-7",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-opus-4-8 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-4-8",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-4-8",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-4-8",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-opus-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-5",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-5",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-5",
+    "info": {
+      "cacheReadsPrice": 0.5,
+      "cacheWritesPrice": 6.25,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+      "inputPrice": 5,
+      "maxTokens": 128000,
+      "outputPrice": 25,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-opus-5-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-opus-5-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 5,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+      "inputPrice": 4,
+      "maxTokens": 128000,
+      "outputPrice": 20,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "medium",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-opus-5-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 5,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+      "inputPrice": 4,
+      "maxTokens": 128000,
+      "outputPrice": 20,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-opus-5-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 5,
+      "contextWindow": 1000000,
+      "description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+      "inputPrice": 4,
+      "maxTokens": 128000,
+      "outputPrice": 20,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-sonnet-4@20250514 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-sonnet-4@20250514",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 200000,
+      "inputPrice": 3,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-4@20250514",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 200000,
+      "inputPrice": 3,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-4@20250514",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 200000,
+      "inputPrice": 3,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-sonnet-4-5@20250929 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-sonnet-4-5@20250929",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 200000,
+      "inputPrice": 3,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-4-5@20250929",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 200000,
+      "inputPrice": 3,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-4-5@20250929",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 200000,
+      "inputPrice": 3,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.6,
+          "cacheWritesPrice": 7.5,
+          "contextWindow": 1000000,
+          "inputPrice": 6,
+          "outputPrice": 22.5,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-sonnet-4-6 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-sonnet-4-6",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 1000000,
+      "inputPrice": 3,
+      "maxTokens": 128000,
+      "outputPrice": 15,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": 0,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-4-6",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 1000000,
+      "inputPrice": 3,
+      "maxTokens": 128000,
+      "outputPrice": 15,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-4-6",
+    "info": {
+      "cacheReadsPrice": 0.3,
+      "cacheWritesPrice": 3.75,
+      "contextWindow": 1000000,
+      "inputPrice": 3,
+      "maxTokens": 128000,
+      "outputPrice": 15,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "max",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-sonnet-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-sonnet-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-5",
+    "info": {
+      "cacheReadsPrice": 0.2,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > claude-sonnet-5-5 1`] = `
+{
+  "getModel": {
+    "betas": undefined,
+    "effort": undefined,
+    "format": "anthropic",
+    "id": "claude-sonnet-5-5",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": "high",
+    "temperature": undefined,
+    "verbosity": undefined,
+  },
+  "handler": "AnthropicVertexHandler",
+  "resolveModel": {
+    "id": "claude-sonnet-5-5",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+  },
+  "settingsUi": {
+    "enable1MContext": false,
+    "id": "claude-sonnet-5-5",
+    "info": {
+      "cacheReadsPrice": 0.1,
+      "cacheWritesPrice": 2.5,
+      "contextWindow": 1000000,
+      "description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+      "inputPrice": 2,
+      "maxTokens": 128000,
+      "outputPrice": 10,
+      "reasoningEffort": "high",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBinary": true,
+      "supportsReasoningBudget": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "supportsTemperature": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-1.5-flash-002 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-1.5-flash-002",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-1.5-flash-002",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-1.5-flash-002",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-1.5-pro-002 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-1.5-pro-002",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.25,
+      "maxTokens": 8192,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-1.5-pro-002",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.25,
+      "maxTokens": 8192,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-1.5-pro-002",
+    "info": {
+      "contextWindow": 2097152,
+      "inputPrice": 1.25,
+      "maxTokens": 8192,
+      "outputPrice": 5,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.0-flash-001 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-flash-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 8192,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-flash-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 8192,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-flash-001",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxTokens": 8192,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.0-flash-lite-001 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-flash-lite-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-flash-lite-001",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-flash-lite-001",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.075,
+      "maxTokens": 8192,
+      "outputPrice": 0.3,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.0-flash-thinking-exp-01-21 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-flash-thinking-exp-01-21",
+    "info": {
+      "contextWindow": 32768,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 6554,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-flash-thinking-exp-01-21",
+    "info": {
+      "contextWindow": 32768,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-flash-thinking-exp-01-21",
+    "info": {
+      "contextWindow": 32768,
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.0-pro-exp-02-05 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.0-pro-exp-02-05",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 8192,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.0-pro-exp-02-05",
+    "info": {
+      "contextWindow": 2097152,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.0-pro-exp-02-05",
+    "info": {
+      "contextWindow": 2097152,
+      "inputPrice": 0,
+      "maxTokens": 8192,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-flash 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.075,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.3,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 2.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 64000,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.075,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.3,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 2.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.075,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "inputPrice": 0.3,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 2.5,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-flash-lite-preview-06-17 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-lite-preview-06-17",
+    "info": {
+      "cacheReadsPrice": 0.025,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.1,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 0.4,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 64000,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-lite-preview-06-17",
+    "info": {
+      "cacheReadsPrice": 0.025,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.1,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 0.4,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-lite-preview-06-17",
+    "info": {
+      "cacheReadsPrice": 0.025,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "inputPrice": 0.1,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 64000,
+      "outputPrice": 0.4,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-flash-preview-04-17 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 65535,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-flash-preview-04-17:thinking 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 8192,
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-04-17",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-04-17:thinking",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-flash-preview-05-20 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 65535,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxTokens": 65535,
+      "outputPrice": 0.6,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-flash-preview-05-20:thinking 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 8192,
+    },
+    "reasoningBudget": 8192,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-flash-preview-05-20",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-flash-preview-05-20:thinking",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0.15,
+      "maxThinkingTokens": 24576,
+      "maxTokens": 65535,
+      "outputPrice": 3.5,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-pro 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.31,
+          "contextWindow": 200000,
+          "inputPrice": 1.25,
+          "outputPrice": 10,
+        },
+        {
+          "cacheReadsPrice": 0.625,
+          "contextWindow": Infinity,
+          "inputPrice": 2.5,
+          "outputPrice": 15,
+        },
+      ],
+    },
+    "maxTokens": 16384,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingBudget": 128,
+    },
+    "reasoningBudget": 128,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.31,
+          "contextWindow": 200000,
+          "inputPrice": 1.25,
+          "outputPrice": 10,
+        },
+        {
+          "cacheReadsPrice": 0.625,
+          "contextWindow": Infinity,
+          "inputPrice": 2.5,
+          "outputPrice": 15,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 64000,
+      "outputPrice": 15,
+      "requiredReasoningBudget": true,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.31,
+          "contextWindow": 200000,
+          "inputPrice": 1.25,
+          "outputPrice": 10,
+        },
+        {
+          "cacheReadsPrice": 0.625,
+          "contextWindow": Infinity,
+          "inputPrice": 2.5,
+          "outputPrice": 15,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-pro-exp-03-25 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-exp-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 65535,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "maxTokens": 65535,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-exp-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0,
+      "maxTokens": 65535,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-exp-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 0,
+      "maxTokens": 65535,
+      "outputPrice": 0,
+      "supportsImages": true,
+      "supportsPromptCache": false,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-pro-preview-03-25 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-preview-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 65535,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-preview-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-preview-03-25",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-pro-preview-05-06 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-preview-05-06",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "maxTokens": 65535,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-preview-05-06",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-preview-05-06",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-2.5-pro-preview-06-05 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-2.5-pro-preview-06-05",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "maxTokens": 65535,
+    "reasoning": undefined,
+    "reasoningBudget": undefined,
+    "reasoningEffort": undefined,
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-2.5-pro-preview-06-05",
+    "info": {
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-2.5-pro-preview-06-05",
+    "info": {
+      "contextWindow": 1048576,
+      "inputPrice": 2.5,
+      "maxThinkingTokens": 32768,
+      "maxTokens": 65535,
+      "outputPrice": 15,
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-3.1-pro-preview 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3.1-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "low",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "low",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3.1-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3.1-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-3.1-pro-preview-customtools 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3.1-pro-preview-customtools",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "low",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "low",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3.1-pro-preview-customtools",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3.1-pro-preview-customtools",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "cacheWritesPrice": 4.5,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-3.5-flash 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.15,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.5,
+      "maxTokens": 65536,
+      "outputPrice": 9,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": false,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "medium",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "medium",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.15,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 1.5,
+      "maxTokens": 65536,
+      "outputPrice": 9,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": false,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3.5-flash",
+    "info": {
+      "cacheReadsPrice": 0.15,
+      "cacheWritesPrice": 1,
+      "contextWindow": 1048576,
+      "inputPrice": 1.5,
+      "maxTokens": 65536,
+      "outputPrice": 9,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningBudget": false,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-3-flash-preview 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3-flash-preview",
+    "info": {
+      "cacheReadsPrice": 0.05,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.5,
+      "maxTokens": 65536,
+      "outputPrice": 3,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "medium",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "medium",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3-flash-preview",
+    "info": {
+      "cacheReadsPrice": 0.05,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 0.5,
+      "maxTokens": 65536,
+      "outputPrice": 3,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3-flash-preview",
+    "info": {
+      "cacheReadsPrice": 0.05,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 0.5,
+      "maxTokens": 65536,
+      "outputPrice": 3,
+      "reasoningEffort": "medium",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+      ],
+      "supportsTemperature": true,
+    },
+    "known": true,
+  },
+}
+`;
+
+exports[`Vertex known model ids (characterization) > plain > gemini-3-pro-preview 1`] = `
+{
+  "getModel": {
+    "format": "gemini",
+    "id": "gemini-3-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "maxTokens": 65536,
+    "reasoning": {
+      "includeThoughts": true,
+      "thinkingLevel": "low",
+    },
+    "reasoningBudget": undefined,
+    "reasoningEffort": "low",
+    "temperature": 1,
+    "verbosity": undefined,
+  },
+  "handler": "VertexHandler",
+  "resolveModel": {
+    "id": "gemini-3-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "excludedTools": [
+        "apply_diff",
+      ],
+      "includedTools": [
+        "edit",
+      ],
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+  },
+  "settingsUi": {
+    "id": "gemini-3-pro-preview",
+    "info": {
+      "cacheReadsPrice": 0.4,
+      "contextWindow": 1048576,
+      "defaultTemperature": 1,
+      "inputPrice": 4,
+      "maxTokens": 65536,
+      "outputPrice": 18,
+      "reasoningEffort": "low",
+      "supportsImages": true,
+      "supportsPromptCache": true,
+      "supportsReasoningEffort": [
+        "low",
+        "high",
+      ],
+      "supportsTemperature": true,
+      "tiers": [
+        {
+          "cacheReadsPrice": 0.2,
+          "contextWindow": 200000,
+          "inputPrice": 2,
+          "outputPrice": 12,
+        },
+        {
+          "cacheReadsPrice": 0.4,
+          "contextWindow": Infinity,
+          "inputPrice": 4,
+          "outputPrice": 18,
+        },
+      ],
+    },
+    "known": true,
+  },
+}
+`;

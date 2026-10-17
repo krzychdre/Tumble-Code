@@ -286,22 +286,11 @@ function getSelectedModel({
 
 /**
  * The profile the shared resolver sees for the settings, where the settings resolve a provider unlike
- * its request (kept on purpose, S4 slice d; see ai_plans/2026-09-28_s4-model-resolution.md):
- * - fake-ai shows the plain Anthropic list, without the 1M tier;
- * - Vertex shows an unset id as the default model routed as that id (a Claude model, with its 1M tier);
- *   the request routes by the configured id and runs the Gemini handler without the tier.
+ * its request (kept on purpose, S4 slice d; see ai_plans/2026-09-28_s4-model-resolution.md): fake-ai
+ * shows the plain Anthropic list, without the 1M tier.
  */
 function settingsForSharedResolver(provider: ProviderName, apiConfiguration: ProviderSettings): ProviderSettings {
-	switch (provider) {
-		case "fake-ai":
-			return { ...apiConfiguration, apiProvider: "anthropic", anthropicBeta1MContext: undefined }
-		case "vertex":
-			return {
-				...apiConfiguration,
-				apiProvider: provider,
-				apiModelId: apiConfiguration.apiModelId ?? providerModelDefinitions.vertex.defaultModelId,
-			}
-		default:
-			return { ...apiConfiguration, apiProvider: provider }
-	}
+	return provider === "fake-ai"
+		? { ...apiConfiguration, apiProvider: "anthropic", anthropicBeta1MContext: undefined }
+		: { ...apiConfiguration, apiProvider: provider }
 }

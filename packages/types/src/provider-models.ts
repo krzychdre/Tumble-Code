@@ -13,7 +13,7 @@ import { openAiCodexDefaultModelId, openAiCodexModels } from "./providers/openai
 import { openAiNativeDefaultModelId, openAiNativeModels } from "./providers/openai.js"
 import { openRouterDefaultModelId } from "./providers/openrouter.js"
 import { qwenCodeDefaultModelId, qwenCodeModels } from "./providers/qwen-code.js"
-import { vertexDefaultModelId, vertexModels, vertexUnknownModelStandInId } from "./providers/vertex.js"
+import { vertexDefaultModelId, vertexModels } from "./providers/vertex.js"
 import { vscodeLlmDefaultModelId } from "./providers/vscode-llm.js"
 import { xaiDefaultModelId, xaiModels } from "./providers/xai.js"
 import { internationalZAiDefaultModelId, internationalZAiModels } from "./providers/zai.js"
@@ -57,8 +57,9 @@ export type ProviderModelDefinition = {
 	readonly defaultModelId?: string
 	/**
 	 * The listed model whose info stands in for an unknown id, when it is not
-	 * the default model's (Vertex and Bedrock keep Claude Sonnet 4.5 here, so
-	 * moving the default to Opus 5 did not change what unknown ids are sent with).
+	 * the default model's (Bedrock keeps Claude Sonnet 4.5 here, so moving the
+	 * default to Opus 5 did not change what unknown ids are sent with; Vertex
+	 * picks one per model family, see `vertexModelCatalog`).
 	 */
 	readonly unknownModelInfoId?: string
 	readonly unknownModelPolicy: UnknownModelPolicy
@@ -161,7 +162,8 @@ export const providerModelDefinitions = {
 		modelIdField: "apiModelId",
 		models: vertexModels,
 		defaultModelId: vertexDefaultModelId,
-		unknownModelInfoId: vertexUnknownModelStandInId,
+		// The unknown-id stand-in depends on the model family (Claude or Gemini handler), so the
+		// Vertex resolver (`vertexModelCatalog`) adds `unknownModelInfoId` per family.
 		unknownModelPolicy: "keep-id",
 	},
 	xai: {

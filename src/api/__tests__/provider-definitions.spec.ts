@@ -11,6 +11,9 @@ import {
 	xaiDefaultModelId,
 	bedrockDefaultModelId,
 	deepSeekModels,
+	vertexDefaultModelId,
+	vertexUnknownClaudeModelStandInId,
+	vertexUnknownGeminiModelStandInId,
 } from "@tumble-code/types"
 
 import { ProfileValidator } from "../../shared/ProfileValidator"
@@ -178,6 +181,34 @@ describe("resolveModel matches the handler's getModel()", () => {
 		const entry = runtimeProviderRegistry.vertex
 
 		expect(outcome(() => entry.resolveModel(settings))).toEqual(outcome(() => entry.factory(settings).getModel()))
+	})
+
+	// Regression (defects 1 and 3): the handler and the info used to come from two sources, so an unset id
+	// built the Gemini handler while the info and id named the Claude default.
+	it.each([
+		["no model id", {}],
+		["an empty model id", { apiModelId: "" }],
+	])("vertex with %s runs the default Claude model on the Anthropic Vertex handler", (_, settings) => {
+		const entry = runtimeProviderRegistry.vertex
+		const handler = entry.factory(settings)
+
+		expect(handler.constructor.name).toBe("AnthropicVertexHandler")
+		expect(handler.getModel().id).toBe(vertexDefaultModelId)
+		expect(outcome(() => entry.resolveModel(settings))).toEqual(outcome(() => handler.getModel()))
+	})
+
+	// Regression (defect 2): unknown Gemini ids used to be sized with a Claude record.
+	it.each([
+		["gemini-9-ultra", "VertexHandler", vertexUnknownGeminiModelStandInId],
+		["claude-next-preview", "AnthropicVertexHandler", vertexUnknownClaudeModelStandInId],
+	])("vertex sizes the unknown id %s with its family's stand-in", (apiModelId, handlerClass, standInId) => {
+		const entry = runtimeProviderRegistry.vertex
+		const handler = entry.factory({ apiModelId })
+		const standIn = runtimeProviderRegistry.vertex.factory({ apiModelId: standInId }).getModel()
+
+		expect(handler.constructor.name).toBe(handlerClass)
+		expect(handler.getModel()).toEqual({ ...standIn, id: apiModelId })
+		expect(outcome(() => entry.resolveModel({ apiModelId }))).toEqual(outcome(() => handler.getModel()))
 	})
 
 	it("resolveProviderModel falls back like buildApiHandler", () => {

@@ -154,21 +154,28 @@ describe("VertexHandler", () => {
 			expect(modelInfo.info.contextWindow).toBe(1048576)
 		})
 
-		// The default is Claude Opus 5, but an unknown id keeps the Claude Sonnet 4.5 stand-in info: Opus 5
-		// info would send a thinking level and drop temperature for a Gemini model that may reject both.
-		it("sizes an unknown Gemini id with the stand-in info, not the Opus 5 default", () => {
+		// An unknown Gemini id gets the Gemini 2.0 Flash stand-in, not the Opus 5 default (which would send a
+		// thinking level and drop temperature) and no longer the Claude Sonnet 4.5 record it shared with
+		// unknown Claude ids (40k output tokens, 200k context and, with reasoning on, a thinking budget,
+		// which Gemini 1.5 and 2.0 reject).
+		it.each([
+			["plain settings", {}],
+			["reasoning on", { enableReasoningEffort: true }],
+		])("sizes an unknown Gemini id with the Gemini stand-in info (%s)", (_, reasoningSettings) => {
 			const testHandler = new VertexHandler({
 				apiModelId: "gemini-1.5-pro-001",
 				vertexProjectId: "test-project",
 				vertexRegion: "us-central1",
+				...reasoningSettings,
 			})
 
 			const model = testHandler.getModel()
 			expect(model.id).toBe("gemini-1.5-pro-001")
-			expect(model.maxTokens).toBe(40_000)
+			expect(model.maxTokens).toBe(8192)
 			expect(model.temperature).toBe(1)
 			expect(model.reasoning).toBeUndefined()
-			expect(model.info.contextWindow).toBe(200_000)
+			expect(model.reasoningBudget).toBeUndefined()
+			expect(model.info.contextWindow).toBe(1_048_576)
 			expect(model.info.supportsTemperature).not.toBe(false)
 		})
 
