@@ -562,8 +562,7 @@ describe("Cost Utility", () => {
 			// cache writes:
 			// - openAiNativeModels: OpenAI reports only cached_tokens (and under the
 			//   OpenAI protocol a write at the input price costs what plain input does).
-			// - geminiModels, vertexModels (Gemini and MaaS ids): Gemini usage has no
-			//   write field, and the MaaS models have no prompt cache.
+			// - geminiModels, vertexModels (Gemini ids): Gemini usage has no write field.
 			// - moonshotModels: the handler hardcodes cacheWriteTokens 0.
 			// - bedrockModels, mistralModels: only models without prompt caching.
 			const neverWrites = new Set([
