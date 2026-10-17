@@ -39,8 +39,13 @@ vi.mock("@src/components/ui", () => ({
 }))
 
 // Mock other components
+// Shows the default model id it is given (the picker writes it into an empty profile).
 vi.mock("../../ModelPicker", () => ({
-	ModelPicker: () => <div data-testid="model-picker">Model Picker</div>,
+	ModelPicker: ({ defaultModelId }: any) => (
+		<div data-testid="model-picker" data-default-model-id={defaultModelId}>
+			Model Picker
+		</div>
+	),
 }))
 
 // Lists the reasoning effort options it is offered.
@@ -302,6 +307,13 @@ describe("OpenAICompatible Component - reasoning", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+	})
+
+	it("gives the model picker no default model, so an empty profile is not filled with one", () => {
+		// An OpenAI-compatible endpoint has no common model; the user names one.
+		renderWith({})
+
+		expect(screen.getByTestId("model-picker").getAttribute("data-default-model-id")).toBe("")
 	})
 
 	it("renders the return-reasoning checkbox with its description, unchecked by default", () => {

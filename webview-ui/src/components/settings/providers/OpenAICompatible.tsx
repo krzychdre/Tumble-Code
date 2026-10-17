@@ -172,7 +172,7 @@ export const OpenAICompatible = ({
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField}
-				defaultModelId="gpt-4o"
+				defaultModelId=""
 				models={openAiModels}
 				modelIdKey="openAiModelId"
 				serviceName="OpenAI"
@@ -192,9 +192,7 @@ export const OpenAICompatible = ({
 					onCheckedChange={handleInputChange("includeMaxTokens", noTransform)}>
 					{t("settings:includeMaxOutputTokens")}
 				</LabeledCheckbox>
-				<div className={checkboxDescription}>
-					{t("settings:includeMaxOutputTokensDescription")}
-				</div>
+				<div className={checkboxDescription}>{t("settings:includeMaxOutputTokensDescription")}</div>
 			</div>
 			<LabeledCheckbox
 				checked={apiConfiguration?.openAiUseAzure ?? false}
@@ -310,9 +308,7 @@ export const OpenAICompatible = ({
 					onCheckedChange={handleInputChange("openAiPreserveReasoning", noTransform)}>
 					{t("settings:providers.preserveReasoning.label")}
 				</LabeledCheckbox>
-				<div className={checkboxDescription}>
-					{t("settings:providers.preserveReasoning.description")}
-				</div>
+				<div className={checkboxDescription}>{t("settings:providers.preserveReasoning.description")}</div>
 				{/* Trimming only acts on reasoning that is sent back, so the option
 				    is offered only while "Return reasoning to the model" is on. */}
 				{apiConfiguration?.openAiPreserveReasoning && (
