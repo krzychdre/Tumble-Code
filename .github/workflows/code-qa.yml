@@ -44,6 +44,11 @@ jobs:
             # place a static default may live.
             - name: Check settings defaults at call sites
               run: node scripts/check-settings-defaults.mjs
+            # `changeset version` (run only by Changeset Release, after the merge)
+            # refuses a changeset that mixes an ignored or unversioned package
+            # (@tumble-code/cli, @tumble-code/vscode-webview) with a released one.
+            - name: Check changesets for mixed packages
+              run: node scripts/check-changesets.mjs
             # R3-3a: no English webview key may be unreferenced — the unused
             # keys are deleted, not silenced.
             - name: Check for unused i18n keys
