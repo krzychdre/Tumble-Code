@@ -750,6 +750,67 @@ describe("VertexHandler", () => {
 		})
 	})
 
+	describe("reasoning effort (output_config.effort)", () => {
+		const makeHandler = (options: Record<string, unknown>) =>
+			new AnthropicVertexHandler({ vertexProjectId: "test-project", vertexRegion: "us-central1", ...options })
+
+		const lastRequestBody = (h: AnthropicVertexHandler) => {
+			const calls = vitest.mocked(h["client"].messages.create).mock.calls
+			return calls[calls.length - 1]?.[0] as unknown as Record<string, unknown>
+		}
+
+		const send = async (h: AnthropicVertexHandler) => {
+			for await (const _chunk of h.createMessage("System", [{ role: "user", content: "Hello" }])) {
+				// Consume stream
+			}
+			return lastRequestBody(h)
+		}
+
+		it("sends the chosen level next to adaptive thinking", async () => {
+			const h = makeHandler({
+				apiModelId: "claude-opus-4-8",
+				enableReasoningEffort: true,
+				reasoningEffort: "max",
+			})
+
+			const body = await send(h)
+
+			expect(body.thinking).toEqual({ type: "adaptive" })
+			expect(body.output_config).toEqual({ effort: "max" })
+		})
+
+		it("sends the chosen level with the thinking toggle off", async () => {
+			const h = makeHandler({
+				apiModelId: "claude-sonnet-5-5",
+				enableReasoningEffort: false,
+				reasoningEffort: "low",
+			})
+
+			const body = await send(h)
+
+			expect(body.thinking).toBeUndefined()
+			expect(body.output_config).toEqual({ effort: "low" })
+		})
+
+		it("omits output_config when unset, or when the level is not offered", async () => {
+			expect(await send(makeHandler({ apiModelId: "claude-opus-5-5" }))).not.toHaveProperty("output_config")
+			expect(
+				await send(makeHandler({ apiModelId: "claude-sonnet-4-6", reasoningEffort: "xhigh" })),
+			).not.toHaveProperty("output_config")
+			expect(
+				await send(makeHandler({ apiModelId: "claude-sonnet-4-5@20250929", reasoningEffort: "high" })),
+			).not.toHaveProperty("output_config")
+		})
+
+		it("sends the chosen level from completePrompt", async () => {
+			const h = makeHandler({ apiModelId: "claude-opus-5", reasoningEffort: "high" })
+
+			await h.completePrompt("Test prompt")
+
+			expect(lastRequestBody(h).output_config).toEqual({ effort: "high" })
+		})
+	})
+
 	describe("completePrompt", () => {
 		it("should complete prompt successfully for Claude", async () => {
 			handler = new AnthropicVertexHandler({

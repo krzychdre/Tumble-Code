@@ -26,6 +26,7 @@ import {
 
 import { logger } from "../../../utils/logging"
 import { shouldUseReasoningBudget } from "@tumble-code/core/browser"
+import { getAnthropicEffort } from "../../transform/reasoning"
 import { normalizeToolSchema } from "../../../utils/json-schema"
 import { MultiPointStrategy } from "../../transform/cache-strategy/multi-point-strategy"
 import type { CachePointPlacement, ModelInfo as CacheModelInfo } from "../../transform/cache-strategy/types"
@@ -194,9 +195,10 @@ export function buildInferenceConfig(
 }
 
 /**
- * Thinking fields, or undefined when thinking is off. Thinking is on when the request metadata
- * asks for it (direct request) or the settings enable a reasoning budget
- * (enableReasoningEffort), and the model supports a reasoning budget.
+ * Thinking and effort fields, or undefined when neither applies. Thinking is on when the request
+ * metadata asks for it (direct request) or the settings enable a reasoning budget
+ * (enableReasoningEffort), and the model supports a reasoning budget. An effort level the user
+ * chose and the model lists goes into `output_config.effort` whether thinking is on or off.
  */
 export function buildThinkingFields(options: {
 	model: BedrockRequestModel
@@ -210,8 +212,11 @@ export function buildThinkingFields(options: {
 	const isThinkingEnabledBySettings =
 		shouldUseReasoningBudget({ model: model.info, settings }) && model.reasoning && model.reasoningBudget
 
+	// Undefined when unset, or when the stored level is not one this model offers.
+	const effort = getAnthropicEffort({ model: model.info, settings })
+
 	if (!((isThinkingExplicitlyEnabled || isThinkingEnabledBySettings) && model.info.supportsReasoningBudget)) {
-		return undefined
+		return effort ? { output_config: { effort } } : undefined
 	}
 
 	let fields: BedrockAdditionalModelFields
@@ -219,12 +224,12 @@ export function buildThinkingFields(options: {
 		// Claude 4.7+ (incl. 4.8) uses adaptive thinking with effort levels:
 		// budget_tokens causes a 400 error.
 		// display: "summarized" surfaces thinking content in the UI.
-		// effort "xhigh" remains the recommended level for agentic coding tasks
-		// across both 4.7 and 4.8 (4.8 changed the API default to "high" but
-		// the model continues to honour "xhigh" for deeper reasoning).
+		// Without a chosen level, effort "xhigh" remains the recommended level for
+		// agentic coding tasks across both 4.7 and 4.8 (4.8 changed the API default
+		// to "high" but the model continues to honour "xhigh" for deeper reasoning).
 		fields = {
 			thinking: { type: "adaptive", display: "summarized" },
-			output_config: { effort: "xhigh" },
+			output_config: { effort: effort ?? "xhigh" },
 		}
 	} else {
 		fields = {
@@ -232,6 +237,7 @@ export function buildThinkingFields(options: {
 				type: "enabled",
 				budget_tokens: thinking?.maxThinkingTokens || model.reasoningBudget || 4096,
 			},
+			...(effort ? { output_config: { effort } } : {}),
 		}
 	}
 	logger.info("Extended thinking enabled for Bedrock request", {
@@ -337,7 +343,7 @@ export function buildConverseStreamPayload(options: {
 	const { model, baseModelId, isAdaptiveThinkingModel, settings, formatted, thinking, toolConfig } = options
 
 	let additionalModelRequestFields = buildThinkingFields({ model, settings, thinking, isAdaptiveThinkingModel })
-	const thinkingEnabled = additionalModelRequestFields !== undefined
+	const thinkingEnabled = additionalModelRequestFields?.thinking !== undefined
 
 	const inferenceConfig = buildInferenceConfig(
 		model,

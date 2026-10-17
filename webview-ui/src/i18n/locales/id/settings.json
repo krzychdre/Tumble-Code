@@ -435,6 +435,8 @@
 			"warning": "⚠️ Mengatur ke 0 memungkinkan percobaan ulang tak terbatas yang dapat menghabiskan penggunaan API yang signifikan"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (default model)",
+			"anthropicHint": "Mengatur seberapa besar upaya model untuk setiap jawaban, juga saat penalaran dimatikan. Mengubahnya di tengah tugas membuat permintaan berikutnya membangun ulang cache prompt.",
 			"label": "Upaya Reasoning Model",
 			"none": "Tidak Ada",
 			"minimal": "Minimal (Tercepat)",

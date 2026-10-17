@@ -36,6 +36,8 @@ export const claudeModels = {
 		// rejected. Forced tool_choice (`any`/`tool`) is also rejected; we only
 		// ever send `auto`.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "medium",
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 		description:
@@ -55,6 +57,8 @@ export const claudeModels = {
 		// existing token-cap handling and expose reasoning as a binary toggle, the
 		// same convention Opus 4.7+ uses on the direct Anthropic provider path.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 		description:
@@ -74,6 +78,8 @@ export const claudeModels = {
 		// as adaptive thinking, so no request is rejected. Non-default sampling values
 		// and forced tool_choice (`any`/`tool`) are rejected too; we only send `auto`.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 		description:
@@ -91,6 +97,8 @@ export const claudeModels = {
 		// Adaptive thinking is on by default; manual budget_tokens payloads are
 		// rejected, so the UI presents a binary toggle here too.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 		description:
@@ -106,6 +114,8 @@ export const claudeModels = {
 		cacheWritesPrice: 3.75, // $3.75 per million tokens
 		cacheReadsPrice: 0.3, // $0.30 per million tokens
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "max"],
+		reasoningEffort: "high",
 	},
 	"sonnet-4-5": {
 		maxTokens: 64_000, // Overridden to 8k if `enableReasoningEffort` is false.
@@ -141,6 +151,8 @@ export const claudeModels = {
 		cacheWritesPrice: 6.25, // $6.25 per million tokens
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "max"],
+		reasoningEffort: "high",
 	},
 	"opus-4-7": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
@@ -154,6 +166,8 @@ export const claudeModels = {
 		// Keep the hybrid-reasoning capability so Anthropic token-cap handling and
 		// stored max-token overrides behave the same as before.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
 		// Direct Anthropic Opus 4.7 no longer accepts budget-token thinking payloads,
 		// so the UI should still present a simple on/off toggle on this provider path.
 		supportsReasoningBinary: true,
@@ -172,6 +186,8 @@ export const claudeModels = {
 		// API changes. supportsReasoningBudget is kept true so the existing token-cap
 		// handling and max-token overrides behave identically.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
 		// 4.8 still rejects budget_tokens-style thinking payloads, so the UI must
 		// expose reasoning as a binary on/off toggle on this provider path.
 		supportsReasoningBinary: true,
@@ -189,6 +205,8 @@ export const claudeModels = {
 		// Same always-on thinking contract as Fable 5; additionally rejects forced
 		// tool_choice (`any`/`tool`), which we never send.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 		description:
@@ -206,6 +224,8 @@ export const claudeModels = {
 		// Fable 5 uses the same adaptive-thinking / binary-toggle convention as
 		// Opus 4.7+ on the direct Anthropic provider path.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 		description:
@@ -221,6 +241,8 @@ export const claudeModels = {
 		cacheWritesPrice: 6.25, // $6.25 per million tokens
 		cacheReadsPrice: 0.5, // $0.50 per million tokens
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high"],
+		reasoningEffort: "high",
 	},
 	"opus-4": {
 		maxTokens: 32_000, // Overridden to 8k if `enableReasoningEffort` is false.

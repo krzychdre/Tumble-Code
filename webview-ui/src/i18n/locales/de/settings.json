@@ -435,6 +435,8 @@
 			"warning": "⚠️ Das Setzen auf 0 erlaubt unbegrenzte Wiederholungen, was zu erheblichem API-Verbrauch führen kann"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (Modellstandard)",
+			"anthropicHint": "Legt fest, wie viel Aufwand das Modell in jede Antwort steckt, auch wenn das Reasoning aus ist. Eine Änderung während einer Aufgabe lässt die nächste Anfrage den Prompt-Cache neu aufbauen.",
 			"label": "Modell-Denkaufwand",
 			"none": "Keine",
 			"minimal": "Minimal (schnellste)",

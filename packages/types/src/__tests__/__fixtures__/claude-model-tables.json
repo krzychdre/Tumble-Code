@@ -29,7 +29,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price."
+				"description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "medium"
 			},
 			"claude-opus-5": {
 				"maxTokens": 128000,
@@ -43,7 +45,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks."
+				"description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-sonnet-5-5": {
 				"maxTokens": 128000,
@@ -57,7 +61,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work."
+				"description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-sonnet-5": {
 				"maxTokens": 128000,
@@ -71,7 +77,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work."
+				"description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-sonnet-4-6": {
 				"maxTokens": 128000,
@@ -82,7 +90,9 @@
 				"outputPrice": 15,
 				"cacheWritesPrice": 3.75,
 				"cacheReadsPrice": 0.3,
-				"supportsReasoningBudget": true
+				"supportsReasoningBudget": true,
+				"supportsReasoningEffort": ["low", "medium", "high", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-sonnet-4-5": {
 				"maxTokens": 64000,
@@ -114,7 +124,9 @@
 				"outputPrice": 25,
 				"cacheWritesPrice": 6.25,
 				"cacheReadsPrice": 0.5,
-				"supportsReasoningBudget": true
+				"supportsReasoningBudget": true,
+				"supportsReasoningEffort": ["low", "medium", "high", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-4-7": {
 				"maxTokens": 128000,
@@ -127,7 +139,9 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
-				"supportsTemperature": false
+				"supportsTemperature": false,
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-4-8": {
 				"maxTokens": 128000,
@@ -140,7 +154,9 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
-				"supportsTemperature": false
+				"supportsTemperature": false,
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-fable-5-1": {
 				"maxTokens": 128000,
@@ -154,7 +170,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research."
+				"description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-fable-5": {
 				"maxTokens": 128000,
@@ -168,7 +186,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work."
+				"description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-4-5-20251101": {
 				"maxTokens": 64000,
@@ -179,7 +199,9 @@
 				"outputPrice": 25,
 				"cacheWritesPrice": 6.25,
 				"cacheReadsPrice": 0.5,
-				"supportsReasoningBudget": true
+				"supportsReasoningBudget": true,
+				"supportsReasoningEffort": ["low", "medium", "high"],
+				"reasoningEffort": "high"
 			},
 			"claude-haiku-5-5": {
 				"maxTokens": 128000,
@@ -315,7 +337,9 @@
 				"outputPrice": 15,
 				"cacheWritesPrice": 3.75,
 				"cacheReadsPrice": 0.3,
-				"supportsReasoningBudget": true
+				"supportsReasoningBudget": true,
+				"supportsReasoningEffort": ["low", "medium", "high", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-haiku-5-5": {
 				"maxTokens": 128000,
@@ -358,7 +382,9 @@
 				"outputPrice": 25,
 				"cacheWritesPrice": 6.25,
 				"cacheReadsPrice": 0.5,
-				"supportsReasoningBudget": true
+				"supportsReasoningBudget": true,
+				"supportsReasoningEffort": ["low", "medium", "high", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-4-7": {
 				"maxTokens": 128000,
@@ -371,7 +397,9 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
-				"supportsTemperature": false
+				"supportsTemperature": false,
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-4-8": {
 				"maxTokens": 128000,
@@ -384,7 +412,9 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
-				"supportsTemperature": false
+				"supportsTemperature": false,
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-5-5": {
 				"maxTokens": 128000,
@@ -398,7 +428,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price."
+				"description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "medium"
 			},
 			"claude-opus-5": {
 				"maxTokens": 128000,
@@ -412,7 +444,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks."
+				"description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-sonnet-5-5": {
 				"maxTokens": 128000,
@@ -426,7 +460,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work."
+				"description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-sonnet-5": {
 				"maxTokens": 128000,
@@ -440,7 +476,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work."
+				"description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-fable-5-1": {
 				"maxTokens": 128000,
@@ -454,7 +492,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research."
+				"description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-fable-5": {
 				"maxTokens": 128000,
@@ -468,7 +508,9 @@
 				"supportsReasoningBudget": true,
 				"supportsReasoningBinary": true,
 				"supportsTemperature": false,
-				"description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work."
+				"description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-4-5@20251101": {
 				"maxTokens": 64000,
@@ -479,7 +521,9 @@
 				"outputPrice": 25,
 				"cacheWritesPrice": 6.25,
 				"cacheReadsPrice": 0.5,
-				"supportsReasoningBudget": true
+				"supportsReasoningBudget": true,
+				"supportsReasoningEffort": ["low", "medium", "high"],
+				"reasoningEffort": "high"
 			},
 			"claude-opus-4@20250514": {
 				"maxTokens": 32000,
@@ -573,7 +617,9 @@
 				"supportsReasoningBudget": true,
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-sonnet-4-20250514-v1:0": {
 				"maxTokens": 64000,
@@ -610,7 +656,9 @@
 				"supportsReasoningBudget": true,
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-opus-4-7": {
 				"maxTokens": 128000,
@@ -626,7 +674,9 @@
 				"supportsTemperature": false,
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-opus-4-8": {
 				"maxTokens": 128000,
@@ -642,7 +692,9 @@
 				"supportsTemperature": false,
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-opus-5-5": {
 				"maxTokens": 128000,
@@ -659,7 +711,9 @@
 				"description": "Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "medium"
 			},
 			"anthropic.claude-opus-5": {
 				"maxTokens": 128000,
@@ -676,7 +730,9 @@
 				"description": "Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-sonnet-5-5": {
 				"maxTokens": 128000,
@@ -693,7 +749,9 @@
 				"description": "Claude Sonnet 5.5 succeeds Sonnet 5 as the best combination of speed and intelligence, for everyday coding, agentic and enterprise work.",
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-sonnet-5": {
 				"maxTokens": 128000,
@@ -710,7 +768,9 @@
 				"description": "Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-fable-5-1": {
 				"maxTokens": 128000,
@@ -727,7 +787,9 @@
 				"description": "Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-fable-5": {
 				"maxTokens": 128000,
@@ -744,7 +806,9 @@
 				"description": "Claude Fable 5 is Anthropic's most capable widely released model for the most demanding reasoning and long-horizon agentic work.",
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high", "xhigh", "max"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-opus-4-5-20251101-v1:0": {
 				"maxTokens": 64000,
@@ -758,7 +822,9 @@
 				"supportsReasoningBudget": true,
 				"minTokensPerCachePoint": 1024,
 				"maxCachePoints": 4,
-				"cachableFields": ["system", "messages", "tools"]
+				"cachableFields": ["system", "messages", "tools"],
+				"supportsReasoningEffort": ["low", "medium", "high"],
+				"reasoningEffort": "high"
 			},
 			"anthropic.claude-opus-4-20250514-v1:0": {
 				"maxTokens": 32000,

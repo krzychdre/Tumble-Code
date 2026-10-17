@@ -435,6 +435,8 @@
 			"warning": "⚠️ 设置为 0 允许无限重试，这可能会消耗大量 API 使用量"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}}（模型默认）",
+			"anthropicHint": "设置模型在每次回答上投入的努力程度，推理关闭时同样生效。在任务进行中更改会使下一次请求重建提示缓存。",
 			"label": "模型推理强度",
 			"none": "无",
 			"minimal": "最小 (最快)",

@@ -435,6 +435,8 @@
 			"warning": "⚠️ 0'a ayarlamak, önemli API kullanımına neden olabilecek sınırsız yeniden denemeye izin verir"
 		},
 		"reasoningEffort": {
+			"modelDefault": "{{level}} (model varsayılanı)",
+			"anthropicHint": "Modelin her yanıta ne kadar çaba harcayacağını belirler, akıl yürütme kapalıyken de. Görev sırasında değiştirmek, sonraki isteğin istem önbelleğini yeniden oluşturmasına yol açar.",
 			"label": "Model Akıl Yürütme Çabası",
 			"none": "Yok",
 			"minimal": "Minimal (en hızlı)",

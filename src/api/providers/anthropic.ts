@@ -16,7 +16,7 @@ import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
-import { getAnthropicProviderReasoning } from "../transform/reasoning"
+import { getAnthropicEffort, getAnthropicProviderReasoning } from "../transform/reasoning"
 import { addAnthropicCacheControl, processAnthropicStream } from "../transform/anthropic-stream"
 
 import { BaseProvider } from "./base-provider"
@@ -63,6 +63,10 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			reasoningEffort: undefined,
 			settings: this.options,
 		})
+		// The chosen effort level, sent apart from the thinking toggle. Omitted when unset or not
+		// offered by this model, so the API runs the model's default.
+		const effort = getAnthropicEffort({ model: info, settings: this.options })
+		const outputConfig = effort ? { output_config: { effort } } : {}
 
 		// Filter out non-Anthropic blocks (reasoning, thoughtSignature, etc.) before sending to the API
 		const sanitizedMessages = filterNonAnthropicBlocks(messages)
@@ -87,6 +91,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
 					temperature,
 					thinking,
+					...outputConfig,
 					// Setting cache breakpoint for system prompt so new tasks can reuse it.
 					system: [{ text: systemPrompt, type: "text", cache_control: cacheControl }],
 					// Cache breakpoints on the last two user messages: the latest
@@ -124,6 +129,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
 					temperature,
 					thinking,
+					...outputConfig,
 					system: [{ text: systemPrompt, type: "text" }],
 					messages: sanitizedMessages,
 					stream: true,
@@ -168,7 +174,8 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	}
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		const { id: model, temperature } = this.getModel()
+		const { id: model, temperature, info } = this.getModel()
+		const effort = getAnthropicEffort({ model: info, settings: this.options })
 
 		let message
 		try {
@@ -176,6 +183,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				model,
 				max_tokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
 				thinking: undefined,
+				...(effort ? { output_config: { effort } } : {}),
 				temperature,
 				messages: [{ role: "user", content: prompt }],
 				stream: false,
