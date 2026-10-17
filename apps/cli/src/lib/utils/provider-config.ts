@@ -26,7 +26,12 @@
  * provider's base-url env var (e.g. OPENAI_BASE_URL), then the fallback's.
  */
 
-import { getProviderDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@tumble-code/types"
+import {
+	getProviderDefaultModelId,
+	getProviderModelDefinition,
+	openAiModelInfoSaneDefaults,
+	type ProviderSettings,
+} from "@tumble-code/types"
 
 import type { CliModelSettings, ReasoningEffortFlagOptions } from "@/types/types.js"
 import { DEFAULT_FLAGS } from "@/types/constants.js"
@@ -103,18 +108,31 @@ function defaultModelFor(provider: SupportedProvider): string {
  *
  * The default is "unspecified" (nothing is sent) for the openai provider,
  * which talks to any OpenAI-compatible server and knows nothing about its
- * model, and "medium" for every other provider.
+ * model, the model's own default level for a Claude model (Opus 5.5 runs at
+ * "medium", most others at "high"), and "medium" for every other provider.
  */
 export function resolveReasoningEffort(
 	provider: SupportedProvider,
 	modelSettings: CliModelSettings | undefined,
 	flagReasoningEffort?: ReasoningEffortFlagOptions,
+	model?: string,
 ): ReasoningEffortFlagOptions {
 	return (
 		flagReasoningEffort ??
 		modelSettings?.reasoningEffort ??
+		claudeDefaultReasoningEffort(provider, model) ??
 		(provider === "openai" ? "unspecified" : DEFAULT_FLAGS.reasoningEffort)
 	)
+}
+
+const CLAUDE_PROVIDERS: readonly string[] = ["anthropic", "vertex", "bedrock"]
+
+/** The default effort a Claude model lists, so the CLI does not pin every Claude model to "medium". */
+function claudeDefaultReasoningEffort(provider: SupportedProvider, model: string | undefined) {
+	if (!model || !CLAUDE_PROVIDERS.includes(provider)) {
+		return undefined
+	}
+	return getProviderModelDefinition(provider)?.models?.[model]?.reasoningEffort
 }
 
 export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfigInput): ResolvedProviderConfig {

@@ -96,11 +96,12 @@ thinking cannot be disabled, so the toggle did nothing there and the user had no
   `enableReasoningEffort = true`. Its level list is `reasoningEffortsExtended`, which includes xhigh and max, so
   every Claude level can be chosen and `/model` keeps the per-model value. An invalid level for the model is
   dropped by the handler.
-- Behaviour change to note: the CLI default "medium" now reaches Claude. Before, the anthropic, vertex and
-  bedrock providers ignored it; now Claude models that default to high run at medium in the CLI unless the user
-  sets a level (`--reasoning-effort high` or `models.<id>.reasoningEffort`). If that is not wanted, the fix is to
-  make `resolveReasoningEffort` (`apps/cli/src/lib/utils/provider-config.ts`) keep thinking on but leave the level
-  unset for those three providers. Not done here; left for the owner to decide.
+- Fixed after review: the CLI default "medium" would have reached Claude, so Claude models that default to
+  high would have run at medium. `resolveReasoningEffort` (`apps/cli/src/lib/utils/provider-config.ts`) now
+  takes the model id and, for the anthropic, vertex and bedrock providers, falls back to the level the model
+  lists as its default (`reasoningEffort` on the record) before the CLI default. That pins the API default
+  explicitly, which costs nothing in cache terms, and keeps thinking on as before. A Claude model without effort
+  levels (Haiku 4.5) keeps the old "medium" fallback, which only turns thinking on; the handler drops the level.
 
 ## Bedrock and Vertex caveats
 
@@ -128,16 +129,8 @@ thinking cannot be disabled, so the toggle did nothing there and the user had no
   stored level shown, carried invalid level shows the default without writes, no automatic toggle change, a
   choice writes only `reasoningEffort`, the default label, no select for Sonnet 4.5.
 
-## For the lead after rebasing on `feat/anthropic-models-2026-10`
+## Haiku 5.5 (after rebasing on `feat/anthropic-models-2026-10`, merged as #896)
 
-Add to the `haiku-5-5` record in `claude.ts`, right after its `supportsReasoningBudget: true,` line:
-
-```ts
-supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
-reasoningEffort: "medium",
-```
-
-and the same two keys to every `claude-haiku-5-5` entry of the frozen fixture (anthropic, vertex and bedrock
-tables, whichever carry it). If the Haiku 5.5 record has no `supportsReasoningBinary` and no
-`supportsReasoningBudget`, the settings UI falls back to the generic effort select instead of the Claude one; give it
-the same thinking flags as Sonnet 5.5 in that case.
+The `haiku-5-5` record and the three `claude-haiku-5-5` fixture entries got
+`supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"]` and `reasoningEffort: "medium"`. The record
+already carries the binary thinking flags, so the settings UI shows the Claude effort select.

@@ -659,7 +659,12 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		const settings =
 			this.options.resolveModelProviderSettings?.(mode, model) ??
 			withModel(current, model, {
-				reasoningEffort: resolveReasoningEffort(provider, modelSettings, this.options.forcedReasoningEffort),
+				reasoningEffort: resolveReasoningEffort(
+					provider,
+					modelSettings,
+					this.options.forcedReasoningEffort,
+					model,
+				),
 				modelSettings,
 			})
 

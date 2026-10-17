@@ -305,7 +305,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const modelSettingsFor = (config: ResolvedProviderConfig) =>
 		getConfiguredModelSettings(settings.models, config.model)
 	const reasoningEffortFor = (config: ResolvedProviderConfig) =>
-		resolveReasoningEffort(config.provider, modelSettingsFor(config), flagOptions.reasoningEffort)
+		resolveReasoningEffort(config.provider, modelSettingsFor(config), flagOptions.reasoningEffort, config.model)
 	const effectiveReasoningEffort = reasoningEffortFor(providerConfig)
 	// The configuration /model gives `model` in `mode`: the mode's layers (none
 	// under provider flags) with the model's own connection on top, so a model

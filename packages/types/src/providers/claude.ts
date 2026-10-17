@@ -276,8 +276,10 @@ export const claudeModels = {
 		},
 		// Adaptive thinking is on by default. `budget_tokens` is rejected, so the UI presents a
 		// binary toggle; turning it off omits the parameter. Non-default sampling values and an
-		// assistant prefill are rejected too.
+		// assistant prefill are rejected too. Effort defaults to `medium`, like Opus 5.5.
 		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "medium",
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 		description:
