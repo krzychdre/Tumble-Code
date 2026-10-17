@@ -1,9 +1,31 @@
 import type { ModelInfo } from "../model.js"
 
 // https://openrouter.ai/models?order=newest&supported_parameters=tools
-export const openRouterDefaultModelId = "anthropic/claude-sonnet-4.5"
+export const openRouterDefaultModelId = "anthropic/claude-opus-5"
 
+// The default model's info until the model list is fetched, in the shape
+// `parseOpenRouterModel` gives it once the list is there.
 export const openRouterDefaultModelInfo: ModelInfo = {
+	maxTokens: 128_000,
+	contextWindow: 1_000_000,
+	supportsImages: true,
+	supportsPromptCache: true,
+	inputPrice: 5.0,
+	outputPrice: 25.0,
+	cacheWritesPrice: 6.25,
+	cacheReadsPrice: 0.5,
+	supportsReasoningBudget: true,
+	supportsReasoningBinary: true,
+	supportsTemperature: false,
+	description:
+		"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+}
+
+// The info a model id gets when the fetched list does not have it (or the
+// list could not be fetched). It is a plain chat model with no Claude 5
+// contract, so an unknown GPT or Gemini id keeps its temperature and gets no
+// reasoning settings.
+const openRouterUnknownModelInfo: ModelInfo = {
 	maxTokens: 8192,
 	contextWindow: 200_000,
 	supportsImages: true,
@@ -12,9 +34,11 @@ export const openRouterDefaultModelInfo: ModelInfo = {
 	outputPrice: 15.0,
 	cacheWritesPrice: 3.75,
 	cacheReadsPrice: 0.3,
-	description:
-		"Claude Sonnet 4.5 is Anthropic's Sonnet model for coding and agentic work, with extended thinking, vision and prompt caching.",
 }
+
+/** The info for a model id the fetched list does not have. */
+export const openRouterFallbackModelInfo = (id: string): ModelInfo =>
+	id === openRouterDefaultModelId ? openRouterDefaultModelInfo : openRouterUnknownModelInfo
 
 export const OPENROUTER_DEFAULT_PROVIDER_NAME = "[default]"
 

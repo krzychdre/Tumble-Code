@@ -7,7 +7,7 @@ import {
 	type ModelRecord,
 	ApiProviderError,
 	openRouterDefaultModelId,
-	openRouterDefaultModelInfo,
+	openRouterFallbackModelInfo,
 	OPENROUTER_DEFAULT_PROVIDER_NAME,
 	OPEN_ROUTER_PROMPT_CACHING_MODELS,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
@@ -520,7 +520,7 @@ export function resolveOpenRouterModel(
 	endpoints: ModelRecord = {},
 ): { id: string; info: ModelInfo } {
 	const id = options.openRouterModelId ?? openRouterDefaultModelId
-	let info = models[id] ?? openRouterDefaultModelInfo
+	let info = models[id] ?? openRouterFallbackModelInfo(id)
 
 	// If a specific provider is requested, use the endpoint for that provider.
 	if (options.openRouterSpecificProvider && endpoints[options.openRouterSpecificProvider]) {

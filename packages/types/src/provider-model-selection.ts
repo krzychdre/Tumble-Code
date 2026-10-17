@@ -10,7 +10,7 @@ import {
 import { geminiDefaultModelId, geminiModels } from "./providers/gemini.js"
 import { litellmDefaultModelId, litellmDefaultModelInfo } from "./providers/lite-llm.js"
 import { openAiModelInfoSaneDefaults } from "./providers/openai.js"
-import { openRouterDefaultModelId, openRouterDefaultModelInfo } from "./providers/openrouter.js"
+import { openRouterDefaultModelId, openRouterFallbackModelInfo } from "./providers/openrouter.js"
 import {
 	VERTEX_1M_CONTEXT_MODEL_IDS,
 	vertexDefaultModelId,
@@ -302,7 +302,7 @@ export function resolveProviderModelSelection(
 	switch (settings.apiProvider) {
 		case "openrouter": {
 			const id = settings.openRouterModelId ?? openRouterDefaultModelId
-			return { id, info: fetchedModels[id] ?? openRouterDefaultModelInfo, known: isFetched(id) }
+			return { id, info: fetchedModels[id] ?? openRouterFallbackModelInfo(id), known: isFetched(id) }
 		}
 		case "litellm": {
 			const id = settings.litellmModelId || litellmDefaultModelId

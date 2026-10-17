@@ -1,9 +1,10 @@
-import { reasoningEffortsExtended } from "@tumble-code/types"
+import { openRouterDefaultModelId, reasoningEffortsExtended } from "@tumble-code/types"
 
 export const DEFAULT_FLAGS = {
 	mode: "code",
 	reasoningEffort: "medium" as const,
-	model: "anthropic/claude-opus-4.6",
+	/** The extension's OpenRouter default, so both run the same model. */
+	model: openRouterDefaultModelId,
 	provider: "openrouter" as const,
 	consecutiveMistakeLimit: 10,
 	/** Seconds a shell command may run before it is stopped (0: no limit). */

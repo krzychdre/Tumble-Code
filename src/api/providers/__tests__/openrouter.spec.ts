@@ -12,6 +12,7 @@ import OpenAI from "openai"
 import { OpenRouterHandler } from "../openrouter"
 import { isRetryableApiError } from "../../apiErrors"
 import { ApiHandlerOptions } from "@tumble-code/core/browser"
+import { openRouterDefaultModelId, openRouterDefaultModelInfo } from "@tumble-code/types"
 import { Package } from "../../../shared/package"
 import { wireCaptureFetch } from "../utils/wire-capture"
 
@@ -141,8 +142,21 @@ describe("OpenRouterHandler", () => {
 		it("returns default model info when options are not provided", async () => {
 			const handler = new OpenRouterHandler({})
 			const result = await handler.fetchModel()
-			expect(result.id).toBe("anthropic/claude-sonnet-4.5")
-			expect(result.info.supportsPromptCache).toBe(true)
+			expect(result.id).toBe(openRouterDefaultModelId)
+			expect(result.info).toEqual(openRouterDefaultModelInfo)
+			// The fetched list has no entry for it yet: the Claude 5 contract still applies.
+			expect(result.temperature).toBeUndefined()
+			expect(result.maxTokens).toBe(8192)
+		})
+
+		it("gives an id missing from the fetched list a plain stand-in, not the default's Claude 5 info", async () => {
+			const handler = new OpenRouterHandler({ openRouterModelId: "openai/gpt-api6" })
+			const result = await handler.fetchModel()
+			expect(result.id).toBe("openai/gpt-api6")
+			expect(result.info.supportsTemperature).toBeUndefined()
+			expect(result.info.supportsReasoningBinary).toBeUndefined()
+			expect(result.info.inputPrice).toBe(3)
+			expect(result.temperature).toBe(0)
 		})
 
 		it("honors custom maxTokens for thinking models", async () => {
