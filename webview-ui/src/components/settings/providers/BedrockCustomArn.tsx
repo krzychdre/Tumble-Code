@@ -29,9 +29,7 @@ export const BedrockCustomArn = ({ apiConfiguration, setApiConfigurationField }:
 			<div className={settingDescription}>
 				{t("settings:providers.awsCustomArnUse")}
 				<ul className="list-disc pl-5 mt-1">
-					<li>
-						arn:aws:bedrock:eu-west-1:123456789012:inference-profile/eu.anthropic.claude-sonnet-4-5-20250929-v1:0
-					</li>
+					<li>arn:aws:bedrock:eu-west-1:123456789012:inference-profile/eu.anthropic.claude-opus-5</li>
 					<li>arn:aws:bedrock:us-west-2:123456789012:provisioned-model/my-provisioned-model</li>
 					<li>arn:aws:bedrock:us-east-1:123456789012:default-prompt-router/anthropic.claude:1</li>
 				</ul>

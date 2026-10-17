@@ -102,7 +102,7 @@ body:
     id: model
     attributes:
       label: Model Used (optional)
-      description: Exact model name (e.g., Claude 3.7 Sonnet). Use N/A if irrelevant.
+      description: Exact model name (e.g., Claude Opus 5). Use N/A if irrelevant.
 
   - type: textarea
     id: roo-code-tasks
