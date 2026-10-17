@@ -36,7 +36,7 @@
 	"commands.preventCompletionWithOpenTodos.description": "Empêcher l'achèvement des tâches lorsqu'il y a des todos incomplets dans la liste de todos",
 	"settings.vsCodeLmModelSelector.description": "Paramètres pour l'API du modèle de langage VSCode",
 	"settings.vsCodeLmModelSelector.vendor.description": "Le fournisseur du modèle de langage (ex: copilot)",
-	"settings.vsCodeLmModelSelector.family.description": "La famille du modèle de langage (ex: gpt-4)",
+	"settings.vsCodeLmModelSelector.family.description": "La famille du modèle de langage (ex: gpt-5-mini)",
 	"settings.customStoragePath.description": "Chemin de stockage personnalisé. Laisser vide pour utiliser l'emplacement par défaut. Prend en charge les chemins absolus (ex: 'D:\\TumbleCodeStorage')",
 	"settings.enableCodeActions.description": "Activer les correctifs rapides de Tumble Code.",
 	"settings.autoImportSettingsPath.description": "Chemin d'accès à un fichier de configuration Tumble Code à importer automatiquement au démarrage de l'extension. Prend en charge les chemins absolus et les chemins relatifs au répertoire de base (par exemple, '~/Documents/tumble-code-settings.json'). Laisser vide pour désactiver l'importation automatique.",

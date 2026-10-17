@@ -36,7 +36,7 @@
 	"commands.preventCompletionWithOpenTodos.description": "Taakvoltooiing voorkomen wanneer er onvolledige todos in de todo-lijst staan",
 	"settings.vsCodeLmModelSelector.description": "Instellingen voor VSCode Language Model API",
 	"settings.vsCodeLmModelSelector.vendor.description": "De leverancier van het taalmodel (bijv. copilot)",
-	"settings.vsCodeLmModelSelector.family.description": "De familie van het taalmodel (bijv. gpt-4)",
+	"settings.vsCodeLmModelSelector.family.description": "De familie van het taalmodel (bijv. gpt-5-mini)",
 	"settings.customStoragePath.description": "Aangepast opslagpad. Laat leeg om de standaardlocatie te gebruiken. Ondersteunt absolute paden (bijv. 'D:\\TumbleCodeStorage')",
 	"settings.enableCodeActions.description": "Snelle correcties van Tumble Code inschakelen.",
 	"settings.autoImportSettingsPath.description": "Pad naar een Tumble Code-configuratiebestand om automatisch te importeren bij het opstarten van de extensie. Ondersteunt absolute paden en paden ten opzichte van de thuismap (bijv. '~/Documents/tumble-code-settings.json'). Laat leeg om automatisch importeren uit te schakelen.",

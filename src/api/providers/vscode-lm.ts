@@ -50,7 +50,7 @@ function convertToVsCodeLmTools(tools: OpenAI.Chat.ChatCompletionTool[]): vscode
  * @example
  * ```typescript
  * const options = {
- *   vsCodeLmModelSelector: { vendor: "copilot", family: "gpt-4" }
+ *   vsCodeLmModelSelector: { vendor: "copilot", family: "gpt-5-mini" }
  * };
  * const handler = new VsCodeLmHandler(options);
  *
@@ -129,7 +129,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 	 * @throws Error when no matching models are found with the given selector
 	 *
 	 * @example
-	 * const selector = { vendor: "copilot", family: "gpt-4o" };
+	 * const selector = { vendor: "copilot", family: "gpt-5-mini" };
 	 * const chatClient = await createClient(selector);
 	 */
 	async createClient(selector: vscode.LanguageModelChatSelector): Promise<vscode.LanguageModelChat> {

@@ -64,12 +64,9 @@ describe("providerRequiresApiKey", () => {
 })
 
 describe("providerRequiresModelId", () => {
-	it.each([...activeProviderIds].filter((id) => id !== "vscode-lm"))(
-		"%s: a model id is required exactly when there is no default model",
-		(provider) => {
-			expect(providerRequiresModelId(provider)).toBe(getProviderModelDefinition(provider)?.defaultModelId === "")
-		},
-	)
+	it.each([...activeProviderIds])("%s: a model id is required exactly when there is no default model", (provider) => {
+		expect(providerRequiresModelId(provider)).toBe(getProviderModelDefinition(provider)?.defaultModelId === "")
+	})
 
 	it("every required field is a field of the provider's settings", () => {
 		for (const provider of activeProviderIds) {

@@ -36,7 +36,7 @@
 	"commands.preventCompletionWithOpenTodos.description": "Evitar la finalització de tasques quan hi ha tasques pendents incompletes a la llista de tasques",
 	"settings.vsCodeLmModelSelector.description": "Configuració per a l'API del model de llenguatge VSCode",
 	"settings.vsCodeLmModelSelector.vendor.description": "El proveïdor del model de llenguatge (p. ex. copilot)",
-	"settings.vsCodeLmModelSelector.family.description": "La família del model de llenguatge (p. ex. gpt-4)",
+	"settings.vsCodeLmModelSelector.family.description": "La família del model de llenguatge (p. ex. gpt-5-mini)",
 	"settings.customStoragePath.description": "Ruta d'emmagatzematge personalitzada. Deixeu-la buida per utilitzar la ubicació predeterminada. Admet rutes absolutes (p. ex. 'D:\\TumbleCodeStorage')",
 	"settings.enableCodeActions.description": "Habilitar correccions ràpides de Tumble Code.",
 	"settings.autoImportSettingsPath.description": "Ruta a un fitxer de configuració de Tumble Code per importar automàticament en iniciar l'extensió. Admet rutes absolutes i rutes relatives al directori d'inici (per exemple, '~/Documents/tumble-code-settings.json'). Deixeu-ho en blanc per desactivar la importació automàtica.",
