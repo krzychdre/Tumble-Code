@@ -11,7 +11,12 @@ import { geminiDefaultModelId, geminiModels } from "./providers/gemini.js"
 import { litellmDefaultModelId, litellmDefaultModelInfo } from "./providers/lite-llm.js"
 import { openAiModelInfoSaneDefaults } from "./providers/openai.js"
 import { openRouterDefaultModelId, openRouterDefaultModelInfo } from "./providers/openrouter.js"
-import { VERTEX_1M_CONTEXT_MODEL_IDS } from "./providers/vertex.js"
+import {
+	VERTEX_1M_CONTEXT_MODEL_IDS,
+	vertexDefaultModelId,
+	vertexUnknownClaudeModelStandInId,
+	vertexUnknownGeminiModelStandInId,
+} from "./providers/vertex.js"
 import {
 	internationalZAiDefaultModelId,
 	internationalZAiModels,
@@ -148,6 +153,40 @@ function resolveAnthropicModel(
 }
 
 /**
+ * The handler family of a Vertex model. Claude models run on the Anthropic Vertex handler; Gemini models
+ * run on the Gemini-based Vertex handler, and so does any other id ("open": the open `-maas` models, which
+ * the table no longer lists because the Gemini path cannot call them; a saved one still loads).
+ */
+export type VertexModelFamily = "claude" | "gemini" | "open"
+
+/**
+ * The family of the model a Vertex profile runs, decided once: the handler, the model info and the
+ * unknown-id stand-in are all derived from it, so they cannot disagree. The id is resolved first (no id
+ * or "" runs the default model), then the family is read from the id's prefix: `claude` is Claude,
+ * `gemini` is Gemini, anything else is an open model. For a listed model that id is the table key, and
+ * an unlisted id is judged by the same rule.
+ */
+export function vertexModelFamily(settings: ModelSelectionSettings): VertexModelFamily {
+	const id = settings.apiModelId || vertexDefaultModelId
+
+	return id.startsWith("claude") ? "claude" : id.startsWith("gemini") ? "gemini" : "open"
+}
+
+/** The stand-in an unknown id is sized with: a record of a model that runs on the same handler. */
+const vertexUnknownModelStandInIds: Record<VertexModelFamily, string> = {
+	claude: vertexUnknownClaudeModelStandInId,
+	gemini: vertexUnknownGeminiModelStandInId,
+	// Open models run on the Gemini handler, so they get its conservative stand-in.
+	open: vertexUnknownGeminiModelStandInId,
+}
+
+/** The Vertex model list with the unknown-id stand-in of the profile's model family. */
+const vertexModelCatalog = (family: VertexModelFamily) => ({
+	...providerModelDefinitions.vertex,
+	unknownModelInfoId: vertexUnknownModelStandInIds[family],
+})
+
+/**
  * The Claude model a Vertex profile selects, before request parameters, with
  * the 1M context tier applied when that beta is enabled for the model.
  */
@@ -163,7 +202,7 @@ function resolveAnthropicVertexModel(
 	settings: ModelSelectionSettings,
 	emptyModelId: EmptyModelIdPolicy,
 ): ProviderModelResolution & { enable1MContext: boolean } {
-	const resolved = resolveFromCatalog(settings.apiModelId, providerModelDefinitions.vertex, emptyModelId)
+	const resolved = resolveFromCatalog(settings.apiModelId, vertexModelCatalog("claude"), emptyModelId)
 	const supports1MContext = (VERTEX_1M_CONTEXT_MODEL_IDS as readonly string[]).includes(resolved.id)
 	const enable1MContext = Boolean(supports1MContext && settings.vertex1MContext)
 
@@ -198,16 +237,15 @@ const resolveGeminiModel = (settings: ModelSelectionSettings, emptyModelId: Empt
 		customModelInfo: unknownGeminiModelInfo,
 	})
 
-/** The Gemini model a Vertex profile selects, before request parameters. */
+/** The Gemini or open model a Vertex profile selects, before request parameters. */
 export function selectVertexModel(settings: ModelSelectionSettings): SelectedModel {
-	const { id, info } = resolveCatalogModel(settings.apiModelId, providerModelDefinitions.vertex)
+	const { id, info } = resolveVertexGeminiModel(settings, "default-model")
 
 	return { id, info }
 }
 
-/** Whether a Vertex profile runs a Claude model (on the Anthropic Vertex handler). */
-export const isVertexClaudeModel = (settings: ModelSelectionSettings): boolean =>
-	settings.apiModelId?.startsWith("claude") ?? false
+const resolveVertexGeminiModel = (settings: ModelSelectionSettings, emptyModelId: EmptyModelIdPolicy) =>
+	resolveFromCatalog(settings.apiModelId, vertexModelCatalog(vertexModelFamily(settings)), emptyModelId)
 
 /** The Z.ai model list of the profile's API line: the mainland line has its own list and default. */
 export function zaiModelCatalog(settings: ModelSelectionSettings) {
@@ -291,9 +329,9 @@ export function resolveProviderModelSelection(
 		case "gemini":
 			return resolveGeminiModel(settings, emptyModelId)
 		case "vertex":
-			return isVertexClaudeModel(settings)
+			return vertexModelFamily(settings) === "claude"
 				? resolveAnthropicVertexModel(settings, emptyModelId)
-				: resolveFromCatalog(settings.apiModelId, providerModelDefinitions.vertex, emptyModelId)
+				: resolveVertexGeminiModel(settings, emptyModelId)
 		case "zai":
 			return resolveFromCatalog(settings.apiModelId, zaiModelCatalog(settings), emptyModelId)
 		case "deepseek":

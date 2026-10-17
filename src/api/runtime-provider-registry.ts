@@ -4,9 +4,9 @@ import {
 	type ProviderModelDefinition,
 	litellmDefaultModelId,
 	litellmDefaultModelInfo,
-	isVertexClaudeModel,
 	providerModelDefinitions,
 	resolveCatalogModel,
+	vertexModelFamily,
 } from "@tumble-code/types"
 
 import type { ApiHandlerOptions } from "@tumble-code/core/browser"
@@ -212,11 +212,14 @@ export const runtimeProviderRegistry = {
 		factory: (options) => new QwenCodeHandler(options),
 		resolveModel: resolveListedModel("qwen-code"),
 	}),
+	// One model family picks both the handler and the model info (an unset id runs the default, a Claude model).
 	vertex: defineRuntimeProvider("vertex", {
 		factory: (options) =>
-			isVertexClaudeModel(options) ? new AnthropicVertexHandler(options) : new VertexHandler(options),
+			vertexModelFamily(options) === "claude" ? new AnthropicVertexHandler(options) : new VertexHandler(options),
 		resolveModel: (options) =>
-			isVertexClaudeModel(options) ? resolveAnthropicVertexModel(options) : resolveVertexModel(options),
+			vertexModelFamily(options) === "claude"
+				? resolveAnthropicVertexModel(options)
+				: resolveVertexModel(options),
 	}),
 	xai: defineRuntimeProvider("xai", {
 		factory: (options) => new XAIHandler(options),
