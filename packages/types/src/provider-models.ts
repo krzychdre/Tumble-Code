@@ -8,7 +8,7 @@ import { geminiDefaultModelId, geminiModels } from "./providers/gemini.js"
 import { litellmDefaultModelId } from "./providers/lite-llm.js"
 import { minimaxDefaultModelId, minimaxModels } from "./providers/minimax.js"
 import { mistralDefaultModelId, mistralModels } from "./providers/mistral.js"
-import { moonshotDefaultModelId, moonshotModels } from "./providers/moonshot.js"
+import { moonshotDefaultModelId, moonshotModels, moonshotUnknownModelStandInId } from "./providers/moonshot.js"
 import { openAiCodexDefaultModelId, openAiCodexModels } from "./providers/openai-codex.js"
 import { openAiNativeDefaultModelId, openAiNativeModels } from "./providers/openai.js"
 import { openRouterDefaultModelId } from "./providers/openrouter.js"
@@ -132,6 +132,7 @@ export const providerModelDefinitions = {
 		modelIdField: "apiModelId",
 		models: moonshotModels,
 		defaultModelId: moonshotDefaultModelId,
+		unknownModelInfoId: moonshotUnknownModelStandInId,
 		unknownModelPolicy: "keep-id",
 	},
 	minimax: {

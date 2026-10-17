@@ -2,7 +2,7 @@
 // answer is pinned at the HTTP level in moonshot-wire.spec.ts and
 // moonshot-stream-errors.spec.ts (API-4).
 
-import { moonshotDefaultModelId } from "@tumble-code/types"
+import { moonshotDefaultModelId, moonshotModels, moonshotUnknownModelStandInId } from "@tumble-code/types"
 
 import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
@@ -15,7 +15,7 @@ describe("MoonshotHandler", () => {
 	beforeEach(() => {
 		mockOptions = {
 			moonshotApiKey: "test-api-key",
-			apiModelId: "moonshot-chat",
+			apiModelId: "kimi-k2.6",
 			moonshotBaseUrl: "https://api.moonshot.ai/v1",
 		}
 		handler = new MoonshotHandler(mockOptions)
@@ -59,13 +59,14 @@ describe("MoonshotHandler", () => {
 			const model = handler.getModel()
 			expect(model.id).toBe(mockOptions.apiModelId)
 			expect(model.info).toBeDefined()
-			expect(model.info.maxTokens).toBe(16384)
-			expect(model.info.contextWindow).toBe(262144)
-			expect(model.info.supportsImages).toBe(false)
+			expect(model.info.maxTokens).toBe(32_768)
+			expect(model.info.contextWindow).toBe(262_144)
+			expect(model.info.supportsImages).toBe(true)
+			expect(model.info.supportsTemperature).toBe(false)
 			expect(model.info.supportsPromptCache).toBe(true)
 		})
 
-		it("should return provided model ID with default model info if model does not exist", () => {
+		it("should return provided model ID with the stand-in info if model does not exist", () => {
 			const handlerWithInvalidModel = new MoonshotHandler({
 				...mockOptions,
 				apiModelId: "invalid-model",
@@ -73,8 +74,8 @@ describe("MoonshotHandler", () => {
 			const model = handlerWithInvalidModel.getModel()
 			expect(model.id).toBe("invalid-model") // Returns provided ID
 			expect(model.info).toBeDefined()
-			// Should have the same base properties as default model
-			expect(model.info.contextWindow).toBe(handler.getModel().info.contextWindow)
+			// Not Kimi K3's info: the K2 line rejects its reasoning_effort
+			expect(model.info).toEqual(moonshotModels[moonshotUnknownModelStandInId])
 			expect(model.info.supportsPromptCache).toBe(true)
 		})
 

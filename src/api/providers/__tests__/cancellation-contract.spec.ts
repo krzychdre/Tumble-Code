@@ -243,7 +243,7 @@ const cases: HandlerCase[] = [
 	{
 		name: "Moonshot",
 		build: (sdk) => {
-			const handler = new MoonshotHandler({ apiModelId: "kimi-k2-0905-preview", moonshotApiKey: "k" })
+			const handler = new MoonshotHandler({ apiModelId: "kimi-k2.6", moonshotApiKey: "k" })
 			Reflect.set(handler, "client", chatClient(sdk))
 			return handler
 		},

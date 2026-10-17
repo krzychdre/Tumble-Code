@@ -665,17 +665,17 @@ first question",
 }
 `;
 
-exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.5: one-shot request 1`] = `
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.6: one-shot request 1`] = `
 {
   "body": {
-    "max_tokens": 16384,
+    "max_tokens": 32768,
     "messages": [
       {
         "content": "one shot",
         "role": "user",
       },
     ],
-    "model": "kimi-k2.5",
+    "model": "kimi-k2.6",
   },
   "path": undefined,
   "requestOptions": [
@@ -684,10 +684,10 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.
 }
 `;
 
-exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.5: stream request 1`] = `
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.6: stream request 1`] = `
 {
   "body": {
-    "max_tokens": 16384,
+    "max_tokens": 32768,
     "messages": [
       {
         "content": "system prompt",
@@ -721,12 +721,11 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.
         "role": "user",
       },
     ],
-    "model": "kimi-k2.5",
+    "model": "kimi-k2.6",
     "stream": true,
     "stream_options": {
       "include_usage": true,
     },
-    "temperature": 1,
     "tools": [
       {
         "function": {
@@ -757,18 +756,18 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2.
 }
 `;
 
-exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2-0905-preview, user temperature and max tokens: one-shot request 1`] = `
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k3, user temperature and max tokens: one-shot request 1`] = `
 {
   "body": {
-    "max_tokens": 16384,
+    "max_tokens": 131072,
     "messages": [
       {
         "content": "one shot",
         "role": "user",
       },
     ],
-    "model": "kimi-k2-0905-preview",
-    "temperature": 0.5,
+    "model": "kimi-k3",
+    "reasoning_effort": "max",
   },
   "path": undefined,
   "requestOptions": [
@@ -777,10 +776,10 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2-
 }
 `;
 
-exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2-0905-preview, user temperature and max tokens: stream request 1`] = `
+exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k3, user temperature and max tokens: stream request 1`] = `
 {
   "body": {
-    "max_tokens": 16384,
+    "max_tokens": 131072,
     "messages": [
       {
         "content": "system prompt",
@@ -814,12 +813,12 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2-
         "role": "user",
       },
     ],
-    "model": "kimi-k2-0905-preview",
+    "model": "kimi-k3",
+    "reasoning_effort": "max",
     "stream": true,
     "stream_options": {
       "include_usage": true,
     },
-    "temperature": 0.5,
     "tools": [
       {
         "function": {
@@ -853,7 +852,7 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot kimi-k2-
 exports[`OpenAI-compatible request bodies (characterization) > moonshot unknown model: one-shot request 1`] = `
 {
   "body": {
-    "max_tokens": 16384,
+    "max_tokens": 32768,
     "messages": [
       {
         "content": "one shot",
@@ -872,7 +871,7 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot unknown 
 exports[`OpenAI-compatible request bodies (characterization) > moonshot unknown model: stream request 1`] = `
 {
   "body": {
-    "max_tokens": 16384,
+    "max_tokens": 32768,
     "messages": [
       {
         "content": "system prompt",
@@ -911,7 +910,6 @@ exports[`OpenAI-compatible request bodies (characterization) > moonshot unknown 
     "stream_options": {
       "include_usage": true,
     },
-    "temperature": 0,
     "tools": [
       {
         "function": {
