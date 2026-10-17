@@ -96,7 +96,7 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 	function makeHandler(options: Record<string, unknown> = {}) {
 		return new MoonshotHandler({
 			moonshotApiKey: "test-key",
-			apiModelId: "kimi-k2-0905-preview",
+			apiModelId: "kimi-k2.6",
 			moonshotBaseUrl: "https://api.moonshot.ai/v1",
 			...options,
 		})
@@ -149,13 +149,15 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 			expect(calls[0].url).toBe("https://api.moonshot.cn/v1/chat/completions")
 		})
 
-		it("sends model, max_tokens, temperature, a streaming flag and the system prompt first", async () => {
+		it("sends model, max_tokens, a streaming flag and the system prompt first", async () => {
 			await drain(makeHandler())
 
 			const body = calls[0].body
-			expect(body.model).toBe("kimi-k2-0905-preview")
-			expect(body.max_tokens).toBe(16_384)
-			expect(body.temperature).toBe(0)
+			expect(body.model).toBe("kimi-k2.6")
+			expect(body.max_tokens).toBe(32_768)
+			// The Kimi models fix temperature server-side and reject any value.
+			expect(body).not.toHaveProperty("temperature")
+			expect(body).not.toHaveProperty("reasoning_effort")
 			expect(body.stream).toBe(true)
 			expect(body.messages).toEqual([
 				{ role: "system", content: systemPrompt },
@@ -164,16 +166,25 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 			])
 		})
 
-		it("uses the catalog default temperature of the model (kimi-k2.5: 1.0)", async () => {
-			await drain(makeHandler({ apiModelId: "kimi-k2.5" }))
-
-			expect(calls[0].body.temperature).toBe(1)
-		})
-
-		it("uses the user's temperature when one is set", async () => {
+		it("sends no temperature even when the user set one", async () => {
 			await drain(makeHandler({ modelTemperature: 0.3 }))
 
-			expect(calls[0].body.temperature).toBe(0.3)
+			expect(calls[0].body).not.toHaveProperty("temperature")
+		})
+
+		it("sends Kimi K3's reasoning_effort, max (the API default) unless the user picked one", async () => {
+			await drain(makeHandler({ apiModelId: "kimi-k3" }))
+			await drain(makeHandler({ apiModelId: "kimi-k3", reasoningEffort: "low" }))
+
+			expect(calls[0].body.reasoning_effort).toBe("max")
+			expect(calls[1].body.reasoning_effort).toBe("low")
+			expect(calls[0].body).not.toHaveProperty("temperature")
+		})
+
+		it("sends no reasoning_effort for an effort Kimi K3 does not take", async () => {
+			await drain(makeHandler({ apiModelId: "kimi-k3", reasoningEffort: "medium" }))
+
+			expect(calls[0].body).not.toHaveProperty("reasoning_effort")
 		})
 
 		it("keeps an unknown model id and sends it as typed", async () => {
@@ -248,8 +259,8 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 		// Moonshot models have no max-output slider, so modelMaxTokens can only be a
 		// leftover from another model; the shared rule caps it.
 		const cases = [
-			{ modelId: "kimi-k2-0711-preview", stale: 131_072, expected: 26_215 },
-			{ modelId: "kimi-k2.5", stale: 131_072, expected: 16_384 },
+			{ modelId: "kimi-k2.6", stale: 131_072, expected: 32_768 },
+			{ modelId: "kimi-k3", stale: 1_048_576, expected: 131_072 },
 		] as const
 
 		for (const { modelId, stale, expected } of cases) {
@@ -292,7 +303,7 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 				]),
 			)
 
-			const { chunks } = await drain(makeHandler({ apiModelId: "kimi-k2-thinking" }))
+			const { chunks } = await drain(makeHandler({ apiModelId: "kimi-k2.7-code" }))
 
 			const visible = chunks.filter((c) => c.type === "reasoning" || c.type === "text")
 			expect(visible.map((c) => [c.type, c.text])).toEqual([
@@ -406,16 +417,17 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 			expect(calls[0].body.stream).toBeFalsy()
 		})
 
-		it("completePrompt sends a temperature only when the user set one", async () => {
+		it("completePrompt sends no temperature, and Kimi K3's reasoning_effort", async () => {
 			const reply = () =>
 				json({ id: "1", choices: [{ index: 0, message: { role: "assistant", content: "ok" } }] })
 			respondWith(reply)
 
-			await makeHandler().completePrompt("p")
 			await makeHandler({ modelTemperature: 0.3 }).completePrompt("p")
+			await makeHandler({ apiModelId: "kimi-k3" }).completePrompt("p")
 
 			expect(calls[0].body).not.toHaveProperty("temperature")
-			expect(calls[1].body.temperature).toBe(0.3)
+			expect(calls[0].body).not.toHaveProperty("reasoning_effort")
+			expect(calls[1].body.reasoning_effort).toBe("max")
 		})
 	})
 
@@ -488,7 +500,7 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 			expect((result as Awaited<ReturnType<typeof drain>>).thrown).toBeDefined()
 		}, 12_000)
 
-		it("sends the preserved reasoning back as reasoning_content on the assistant tool call (kimi-k2-thinking)", async () => {
+		it("sends the preserved reasoning back as reasoning_content on the assistant tool call (kimi-k2.7-code)", async () => {
 			// With preserveReasoning the task keeps the reasoning block in the assistant
 			// message; Moonshot expects it back as reasoning_content during a tool loop.
 			const history = [
@@ -503,7 +515,7 @@ describe("MoonshotHandler on the wire (API-4)", () => {
 				{ role: "user", content: [{ type: "tool_result", tool_use_id: "call_1", content: "export {}" }] },
 			] as unknown as Anthropic.Messages.MessageParam[]
 
-			await drain(makeHandler({ apiModelId: "kimi-k2-thinking" }), history)
+			await drain(makeHandler({ apiModelId: "kimi-k2.7-code" }), history)
 
 			const assistant = calls[0].body.messages.find((m: any) => m.role === "assistant")
 			expect(assistant).toMatchObject({

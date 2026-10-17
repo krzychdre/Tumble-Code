@@ -38,7 +38,7 @@ describe("MoonshotHandler stream errors (DEF-C14, real client library)", () => {
 		vi.stubGlobal("fetch", fetchMock)
 		handler = new MoonshotHandler({
 			moonshotApiKey: "test-key",
-			apiModelId: "kimi-k2-0905-preview",
+			apiModelId: "kimi-k2.6",
 			moonshotBaseUrl: "https://api.moonshot.ai/v1",
 		})
 	})

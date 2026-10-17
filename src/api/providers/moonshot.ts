@@ -92,14 +92,19 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 		return [{ role: "system", content: systemPrompt }, ...convertToR1Format(messages)]
 	}
 
+	// The Kimi models that fix temperature server-side reject any value, so none is sent.
 	protected override getSamplingParams() {
-		const { maxTokens, temperature } = this.getModel()
-		return { max_tokens: maxTokens ?? undefined, temperature }
+		const { info, maxTokens, temperature } = this.getModel()
+		return {
+			max_tokens: maxTokens ?? undefined,
+			temperature: info.supportsTemperature === false ? undefined : temperature,
+		}
 	}
 
-	// Moonshot has no binary reasoning switch.
+	// No binary reasoning switch; Kimi K3 takes a top-level reasoning_effort.
 	protected override getExtraStreamParams() {
-		return {}
+		const { reasoningEffort } = this.getModel()
+		return reasoningEffort ? { reasoning_effort: reasoningEffort } : {}
 	}
 
 	/**
@@ -167,16 +172,19 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 
 	/**
 	 * One-shot completion (condensing, prompt enhancement). Like the AI SDK path it
-	 * replaced: max_tokens always, temperature only when the user set one.
+	 * replaced: max_tokens always, temperature only when the user set one and the
+	 * model takes one.
 	 */
 	override async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		const { id: model, maxTokens } = this.getModel()
+		const { id: model, info, maxTokens, reasoningEffort } = this.getModel()
 
 		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 			model,
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: maxTokens ?? undefined,
-			...(this.options.modelTemperature != null && { temperature: this.options.modelTemperature }),
+			...(this.options.modelTemperature != null &&
+				info.supportsTemperature !== false && { temperature: this.options.modelTemperature }),
+			...(reasoningEffort && { reasoning_effort: reasoningEffort }),
 		}
 
 		const response = await this.sendCompletion(params)

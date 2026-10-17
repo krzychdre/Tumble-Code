@@ -113,13 +113,13 @@ const CASES: Array<[string, () => Handler, Record<string, unknown>?]> = [
 		{ parallelToolCalls: false, tool_choice: "required" },
 	],
 	["base, binary reasoning off", () => new TestCompatibleProvider({ apiModelId: "binary" })],
-	["moonshot kimi-k2.5", () => new MoonshotHandler({ moonshotApiKey: "k", apiModelId: "kimi-k2.5" })],
+	["moonshot kimi-k2.6", () => new MoonshotHandler({ moonshotApiKey: "k", apiModelId: "kimi-k2.6" })],
 	[
-		"moonshot kimi-k2-0905-preview, user temperature and max tokens",
+		"moonshot kimi-k3, user temperature and max tokens",
 		() =>
 			new MoonshotHandler({
 				moonshotApiKey: "k",
-				apiModelId: "kimi-k2-0905-preview",
+				apiModelId: "kimi-k3",
 				modelTemperature: 0.5,
 				modelMaxTokens: 1000,
 				enableReasoningEffort: true,

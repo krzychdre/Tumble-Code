@@ -202,7 +202,7 @@ const cases: HandlerCase[] = [
 		// Own createStream and completePromptWithUsage on the OpenAI-compatible base (API-4).
 		name: "Moonshot",
 		build: (status) => {
-			const handler = new MoonshotHandler({ apiModelId: "kimi-k2-0905-preview", moonshotApiKey: "k" })
+			const handler = new MoonshotHandler({ apiModelId: "kimi-k2.6", moonshotApiKey: "k" })
 			Reflect.set(handler, "client", chatClient(rejectWith(openAiSdkError(status))))
 			return handler
 		},
