@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { vscode } from "@src/utils/vscode"
 
 import SubtaskRow from "../SubtaskRow"
+import { SubagentTranscriptContext } from "../../chat/SubagentTranscriptContext"
 import type { SubtaskTreeNode, DisplayHistoryItem } from "../types"
 
 vi.mock("@src/utils/vscode")
@@ -129,6 +130,21 @@ describe("SubtaskRow", () => {
 				type: "showTaskWithId",
 				text: "task-42",
 			})
+		})
+
+		it("a parallel subagent opens its transcript instead of becoming the open task", () => {
+			const open = vi.fn()
+			const node = createMockNode({ id: "sub-1", task: "Subagent task", isSubagent: true })
+
+			render(
+				<SubagentTranscriptContext.Provider value={open}>
+					<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />
+				</SubagentTranscriptContext.Provider>,
+			)
+			fireEvent.click(screen.getByRole("button"))
+
+			expect(open).toHaveBeenCalledWith("sub-1")
+			expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "showTaskWithId" }))
 		})
 
 		it("calls onToggleExpand with correct task ID when collapsible row is clicked", () => {

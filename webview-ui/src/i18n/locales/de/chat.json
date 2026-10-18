@@ -540,6 +540,11 @@
 		"noOutput": "Noch keine Ausgabe.",
 		"tokens": "Verwendete Token",
 		"cancel": "Diesen Subagenten abbrechen",
+		"openTranscript": "Vollständiges Protokoll öffnen",
+		"transcript": {
+			"back": "Zurück",
+			"subtask": "Aufgabe für den Subagenten"
+		},
 		"send": "Senden",
 		"answerPlaceholder": "Frage des Subagenten beantworten…",
 		"guidancePlaceholder": "Anleitung senden (beim nächsten Halt zugestellt)…",

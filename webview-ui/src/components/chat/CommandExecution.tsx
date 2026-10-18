@@ -15,6 +15,7 @@ import { Button, StandardTooltip } from "@src/components/ui"
 import CodeBlock from "@src/components/common/CodeBlock"
 
 import { CommandPatternSelector } from "./CommandPatternSelector"
+import { useReadOnlyRows } from "./rows/ReadOnlyRowsContext"
 import { TerminalOutput } from "./TerminalOutput"
 import { useExtensionMessage } from "@src/utils/extensionBus"
 
@@ -65,6 +66,8 @@ export const CommandExecution = ({
 	// Initialize from the module-level cache so that components mounting after
 	// the "started" event was delivered still show the running indicator.
 	const [status, setStatus] = useState<CommandExecutionStatus | null>(() => statusCache.get(executionId) ?? null)
+	// Abort reaches the open task's terminal, not a subagent's (see ReadOnlyRowsContext).
+	const readOnly = useReadOnlyRows()
 
 	// The command's output can either come from the text associated with the
 	// task message (this is the case for completed commands) or from the
@@ -226,8 +229,7 @@ export const CommandExecution = ({
 						</StandardTooltip>
 					)}
 					{status?.status === "exited" && (
-						<StandardTooltip
-							content={t("chat:commandExecution.exitStatus", { exitCode: status.exitCode })}>
+						<StandardTooltip content={t("chat:commandExecution.exitStatus", { exitCode: status.exitCode })}>
 							<div className="flex flex-row items-center gap-1.5 font-mono text-xs text-vscode-descriptionForeground shrink-0">
 								<div
 									className={cn(
@@ -255,7 +257,7 @@ export const CommandExecution = ({
 				</div>
 				<div className=" flex flex-row items-center justify-between gap-2 px-1">
 					<div className="flex flex-row items-center gap-1">
-						{status?.status === "started" && (
+						{status?.status === "started" && !readOnly && (
 							<div className="flex flex-row items-center gap-2 font-mono text-xs">
 								{status.pid && <div className="whitespace-nowrap">(PID: {status.pid})</div>}
 								<StandardTooltip content={t("chat:commandExecution.abort")}>

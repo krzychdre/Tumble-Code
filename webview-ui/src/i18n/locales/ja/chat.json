@@ -540,6 +540,11 @@
 		"noOutput": "まだ出力はありません。",
 		"tokens": "使用トークン",
 		"cancel": "このサブエージェントをキャンセル",
+		"openTranscript": "トランスクリプト全体を開く",
+		"transcript": {
+			"back": "戻る",
+			"subtask": "サブエージェントに渡したタスク"
+		},
 		"send": "送信",
 		"answerPlaceholder": "サブエージェントの質問に答える…",
 		"guidancePlaceholder": "ガイダンスを送信(次の停止時に配信)…",

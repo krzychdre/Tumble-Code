@@ -540,6 +540,11 @@
 		"noOutput": "아직 출력이 없습니다.",
 		"tokens": "사용된 토큰",
 		"cancel": "이 하위 에이전트 취소",
+		"openTranscript": "전체 기록 열기",
+		"transcript": {
+			"back": "뒤로",
+			"subtask": "서브에이전트에게 준 작업"
+		},
 		"send": "보내기",
 		"answerPlaceholder": "하위 에이전트의 질문에 답하기…",
 		"guidancePlaceholder": "지침 보내기 (다음 정지 시점에 전달)…",

@@ -540,6 +540,11 @@
 		"noOutput": "Nog geen uitvoer.",
 		"tokens": "Tokens gebruikt",
 		"cancel": "Deze subagent annuleren",
+		"openTranscript": "Volledig transcript openen",
+		"transcript": {
+			"back": "Terug",
+			"subtask": "Taak voor de subagent"
+		},
 		"send": "Verzenden",
 		"answerPlaceholder": "Beantwoord de vraag van de subagent…",
 		"guidancePlaceholder": "Stuur aanwijzingen (geleverd bij het volgende stoppunt)…",

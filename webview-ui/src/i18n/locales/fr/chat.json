@@ -548,6 +548,11 @@
 		"noOutput": "Pas encore de sortie.",
 		"tokens": "Jetons utilisés",
 		"cancel": "Annuler ce sous-agent",
+		"openTranscript": "Ouvrir la transcription complète",
+		"transcript": {
+			"back": "Retour",
+			"subtask": "Tâche confiée au sous-agent"
+		},
 		"send": "Envoyer",
 		"answerPlaceholder": "Répondre à la question du sous-agent…",
 		"guidancePlaceholder": "Envoyer des instructions (remises au prochain point d'arrêt)…",

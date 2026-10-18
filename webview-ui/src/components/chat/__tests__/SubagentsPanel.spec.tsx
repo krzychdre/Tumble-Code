@@ -1,18 +1,13 @@
 // pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/SubagentsPanel.spec.tsx
 
-import { act, fireEvent, render, screen } from "@/utils/test-utils"
+import { fireEvent, render, screen } from "@/utils/test-utils"
 
 import type { SubagentSummary } from "@tumble-code/types"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
 
-import { vscode } from "@src/utils/vscode"
-
 import SubagentsPanel from "../SubagentsPanel"
-
-vi.mock("../../common/MarkdownBlock", () => ({
-	default: ({ markdown }: { markdown: string }) => <div>{markdown}</div>,
-}))
+import { SubagentTranscriptContext } from "../SubagentTranscriptContext"
 
 vi.mock("@src/utils/vscode", () => ({
 	vscode: { postMessage: vi.fn() },
@@ -182,71 +177,52 @@ describe("SubagentsPanel with several runs", () => {
 	})
 })
 
-describe("SubagentsPanel tail of a finished subagent", () => {
-	const expandRow = () => {
+describe("SubagentsPanel rows", () => {
+	const renderWithOpen = (subagents: SubagentSummary[]) => {
+		const open = vi.fn()
+		render(
+			<TooltipProvider>
+				<SubagentTranscriptContext.Provider value={open}>
+					<SubagentsPanel subagents={subagents} taskId="parent" />
+				</SubagentTranscriptContext.Provider>
+			</TooltipProvider>,
+		)
 		expandPanel()
-		fireEvent.click(screen.getByRole("button", { expanded: false, name: /first subtask/ }))
+		return open
 	}
 
-	// Regression: the final-message fallback rendered outside any height cap, so
-	// a long result ran past the panel with no scrollbar.
-	it("shows the final message inside the capped scrolling box", () => {
-		renderPanel([summary({ finalMessage: "R3-4a completed and merged." })], "parent")
-		expandRow()
+	it("a click opens the subagent's whole transcript", () => {
+		const open = renderWithOpen([summary({})])
 
-		const tail = screen.getByTestId("subagent-tail")
-		expect(tail).toHaveClass("max-h-64", "overflow-y-auto")
-		expect(tail).toHaveTextContent("R3-4a completed and merged.")
+		fireEvent.click(screen.getByRole("button", { name: /first subtask/ }))
+
+		expect(open).toHaveBeenCalledWith("child-1")
 	})
 
-	it("asks for the transcript and shows it instead of the final message", () => {
-		renderPanel([summary({ finalMessage: "summary only" })], "parent")
-		expandRow()
+	it("a queued placeholder has no task yet: nothing to open", () => {
+		const open = renderWithOpen([summary({ taskId: "queued:parent:r1:0", status: "queued" })])
 
-		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "subscribeSubagentMessages", taskId: "child-1" })
-		act(() => {
-			window.dispatchEvent(
-				new MessageEvent("message", {
-					data: {
-						type: "subagentMessages",
-						sourceTaskId: "child-1",
-						subagentMessages: [{ ts: 1, type: "say", say: "text", text: "read the backoff module" }],
-					},
-				}),
-			)
-		})
-
-		const tail = screen.getByTestId("subagent-tail")
-		expect(tail).toHaveTextContent("read the backoff module")
-		expect(tail).not.toHaveTextContent("summary only")
+		const row = screen.getByRole("button", { name: /first subtask/ })
+		expect(row).toBeDisabled()
+		fireEvent.click(row)
+		expect(open).not.toHaveBeenCalled()
 	})
 
-	// Transcripts saved before #893 hold literal `\u0142` text in completion and question prose.
-	it("shows escaped letters of a stored completion and question as real letters", () => {
-		renderPanel([summary({})], "parent")
-		expandRow()
-		act(() => {
-			window.dispatchEvent(
-				new MessageEvent("message", {
-					data: {
-						type: "subagentMessages",
-						sourceTaskId: "child-1",
-						subagentMessages: [
-							{
-								ts: 1,
-								type: "ask",
-								ask: "followup",
-								text: JSON.stringify({ question: "Kt\\u00f3ry plik?" }),
-							},
-							{ ts: 2, type: "say", say: "completion_result", text: "Dok\\u0142adnie tak" },
-						],
-					},
-				}),
-			)
-		})
+	it("a running subagent shows what it does now", () => {
+		renderWithOpen([summary({ status: "running", activity: "$ npm test" })])
 
-		const tail = screen.getByTestId("subagent-tail")
-		expect(tail).toHaveTextContent("Który plik?")
-		expect(tail).toHaveTextContent("Dokładnie tak")
+		expect(screen.getByTestId("subagent-row-detail")).toHaveTextContent("$ npm test")
+	})
+
+	it("a failed subagent shows why it stopped", () => {
+		renderWithOpen([summary({ status: "failed", activity: "$ npm test", finalMessage: "Stopped as stuck: x" })])
+
+		expect(screen.getByTestId("subagent-row-detail")).toHaveTextContent("Stopped as stuck: x")
+	})
+
+	it("a completed subagent shows no detail line", () => {
+		renderWithOpen([summary({ finalMessage: "all done", activity: "$ npm test" })])
+
+		expect(screen.queryByTestId("subagent-row-detail")).not.toBeInTheDocument()
 	})
 })

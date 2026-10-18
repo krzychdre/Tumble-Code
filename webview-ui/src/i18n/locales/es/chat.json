@@ -548,6 +548,11 @@
 		"noOutput": "Aún no hay salida.",
 		"tokens": "Tokens usados",
 		"cancel": "Cancelar este subagente",
+		"openTranscript": "Abrir la transcripción completa",
+		"transcript": {
+			"back": "Volver",
+			"subtask": "Tarea encomendada al subagente"
+		},
 		"send": "Enviar",
 		"answerPlaceholder": "Responde a la pregunta del subagente…",
 		"guidancePlaceholder": "Envía orientación (entregada en el próximo punto de parada)…",

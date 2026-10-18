@@ -51,6 +51,11 @@
 		"noOutput": "No output yet.",
 		"tokens": "Tokens used",
 		"cancel": "Cancel this subagent",
+		"openTranscript": "Open the full transcript",
+		"transcript": {
+			"back": "Back",
+			"subtask": "Subtask given to the subagent"
+		},
 		"send": "Send",
 		"answerPlaceholder": "Answer the subagent's question…",
 		"guidancePlaceholder": "Send guidance (delivered at the next stopping point)…",

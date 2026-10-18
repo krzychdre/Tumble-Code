@@ -541,6 +541,11 @@
 		"noOutput": "暂无输出。",
 		"tokens": "已用 token",
 		"cancel": "取消此子代理",
+		"openTranscript": "打开完整记录",
+		"transcript": {
+			"back": "返回",
+			"subtask": "交给子代理的任务"
+		},
 		"send": "发送",
 		"answerPlaceholder": "回答子代理的问题…",
 		"guidancePlaceholder": "发送指导(在下一个停止点送达)…",

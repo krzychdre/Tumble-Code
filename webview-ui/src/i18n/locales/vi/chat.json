@@ -541,6 +541,11 @@
 		"noOutput": "Chưa có kết xuất.",
 		"tokens": "Token đã dùng",
 		"cancel": "Huỷ tác nhân con này",
+		"openTranscript": "Mở toàn bộ bản ghi",
+		"transcript": {
+			"back": "Quay lại",
+			"subtask": "Nhiệm vụ giao cho tác tử con"
+		},
 		"send": "Gửi",
 		"answerPlaceholder": "Trả lời câu hỏi của tác nhân con…",
 		"guidancePlaceholder": "Gửi hướng dẫn (giao tại điểm dừng tiếp theo)…",

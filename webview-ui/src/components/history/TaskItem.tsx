@@ -9,6 +9,7 @@ import { LabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import TaskItemFooter from "./TaskItemFooter"
 import RunningStatusIndicator from "./RunningStatusIndicator"
 import { StandardTooltip } from "../ui"
+import { useOpenSubagentTranscript } from "../chat/SubagentTranscriptContext"
 
 interface TaskItemProps {
 	item: DisplayHistoryItem
@@ -36,12 +37,16 @@ const TaskItem = ({
 	className,
 }: TaskItemProps) => {
 	const isCompact = variant === "compact"
+	const openSubagentTranscript = useOpenSubagentTranscript()
 	const statusId = useId()
 	const detailsId = useId()
 
 	const handleClick = () => {
 		if (isSelectionMode && onToggleSelection) {
 			onToggleSelection(item.id, !isSelected)
+		} else if (item.isSubagent) {
+			// A parallel subagent opens as its transcript: the open task stays as it is.
+			openSubagentTranscript(item.id)
 		} else {
 			vscode.postMessage({ type: "showTaskWithId", text: item.id })
 		}

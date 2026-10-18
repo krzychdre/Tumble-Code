@@ -47,6 +47,11 @@ export const subagentSummarySchema = z.object({
 	startedAt: z.number(),
 	lastActivityAt: z.number(),
 	/**
+	 * What it did last, in one short line (a command, a tool and its path),
+	 * shown on its panel row while it works.
+	 */
+	activity: z.string().optional(),
+	/**
 	 * Terminal-state payload: the child's attempt_completion text (completed)
 	 * or failure reason (failed), truncated for transport. Lets the panel show
 	 * outcomes after the child task instance has been disposed.

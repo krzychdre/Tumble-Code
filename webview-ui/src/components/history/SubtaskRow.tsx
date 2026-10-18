@@ -8,6 +8,7 @@ import { StandardTooltip } from "../ui"
 import SubtaskCollapsibleRow from "./SubtaskCollapsibleRow"
 import RunningStatusIndicator from "./RunningStatusIndicator"
 import TaskDetails from "./TaskDetails"
+import { useOpenSubagentTranscript } from "../chat/SubagentTranscriptContext"
 
 interface SubtaskRowProps {
 	/** The subtask tree node to display */
@@ -31,8 +32,15 @@ const SubtaskRow = ({ node, depth, onToggleExpand, className }: SubtaskRowProps)
 	const statusId = useId()
 	const detailsId = useId()
 
+	const openSubagentTranscript = useOpenSubagentTranscript()
+
+	// A parallel subagent opens as its transcript: the open task stays as it is.
 	const handleClick = () => {
-		vscode.postMessage({ type: "showTaskWithId", text: item.id })
+		if (item.isSubagent) {
+			openSubagentTranscript(item.id)
+		} else {
+			vscode.postMessage({ type: "showTaskWithId", text: item.id })
+		}
 	}
 
 	return (
