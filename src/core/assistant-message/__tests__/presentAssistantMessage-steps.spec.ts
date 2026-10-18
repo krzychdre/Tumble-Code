@@ -266,6 +266,50 @@ describe("tool_use steps", () => {
 		expect(handle).not.toHaveBeenCalled()
 	})
 
+	it("in a background subagent: no ask, an error result that warns of the stop", async () => {
+		const handle = vi.fn()
+		vi.mocked(getToolHandler).mockReturnValue({ handle } as any)
+		task.isBackground = true
+		task.stopStuckBackgroundTask = vi.fn()
+		task.toolRepetitionDetector.check.mockReturnValue({
+			allowExecution: false,
+			askUser: { messageKey: "mistake_limit_reached", messageDetail: "Repeated {toolName}" },
+			repeatedTrip: false,
+		})
+		task.assistantMessageContent = [block()]
+
+		await presentAssistantMessage(task)
+
+		expect(task.askSay.ask).not.toHaveBeenCalled()
+		expect(task.stopStuckBackgroundTask).not.toHaveBeenCalled()
+		expect(task.pushToolResultToUserContent).toHaveBeenCalledWith(
+			expect.objectContaining({ content: expect.stringContaining("will stop this task") }),
+			{ toolName: "write_to_file" },
+		)
+		expect(handle).not.toHaveBeenCalled()
+	})
+
+	it("in a background subagent: the same call stopped twice stops the task as stuck", async () => {
+		const handle = vi.fn()
+		vi.mocked(getToolHandler).mockReturnValue({ handle } as any)
+		task.isBackground = true
+		task.stopStuckBackgroundTask = vi.fn()
+		task.toolRepetitionDetector.check.mockReturnValue({
+			allowExecution: false,
+			askUser: { messageKey: "mistake_limit_reached", messageDetail: "Repeated {toolName}" },
+			repeatedTrip: true,
+		})
+		task.assistantMessageContent = [block()]
+
+		await presentAssistantMessage(task)
+
+		expect(task.askSay.ask).not.toHaveBeenCalled()
+		expect(task.stopStuckBackgroundTask).toHaveBeenCalledWith(
+			"It kept calling write_to_file with the same arguments, even after a hint to try something else.",
+		)
+		expect(handle).not.toHaveBeenCalled()
+	})
+
 	it("tells the model a deferred tool it called directly is available next turn", async () => {
 		experiments = { deferredTools: true }
 		vi.mocked(tryAutoMaterializeDirectCall).mockReturnValue({ kind: "ready" } as any)

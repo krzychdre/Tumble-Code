@@ -253,6 +253,26 @@ export async function stopRepeatedToolCall(
 		return false
 	}
 
+	// A background task (parallel subagent) has nobody to ask. The first stop
+	// is a hint (the error below); stopping the same call again ends the task.
+	if (task.isBackground) {
+		if (repetitionCheck.repeatedTrip) {
+			await task.stopStuckBackgroundTask(
+				`It kept calling ${block.name} with the same arguments, even after a hint to try something else.`,
+			)
+			return true
+		}
+		noteToolCallKind(task, "mistake_limit")
+		pushToolResult(
+			formatResponse.toolError(
+				`Tool call repetition limit reached for ${block.name}. Please try a different approach. ` +
+					"Repeating this call again will stop this task.",
+				block.name,
+			),
+		)
+		return true
+	}
+
 	// Handle repetition similar to mistake_limit_reached pattern.
 	const { response, text, images } = await task.askSay.ask(
 		repetitionCheck.askUser.messageKey as ClineAsk,

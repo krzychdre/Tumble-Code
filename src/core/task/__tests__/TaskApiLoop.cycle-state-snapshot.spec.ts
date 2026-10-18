@@ -100,7 +100,6 @@ function makeAccess(providerStateOverrides: () => Record<string, unknown> = () =
 		consecutiveMistakeLimit: 3,
 		consecutiveNoToolUseCount: 0,
 		consecutiveNoAssistantMessagesCount: 0,
-		agentTurnCount: 0,
 		isStreaming: false,
 		isWaitingForFirstChunk: false,
 		didFinishAbortingStream: false,

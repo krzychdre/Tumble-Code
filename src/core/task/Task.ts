@@ -196,12 +196,6 @@ export interface TaskOptions extends CreateTaskOptions {
 	 */
 	historyLineage?: TaskHistoryLineage
 	/**
-	 * Hard cap on assistant turns for a background task. When the loop reaches
-	 * this many assistant turns the task aborts cleanly. `undefined` = no cap
-	 * (normal foreground behavior).
-	 */
-	maxAgentTurns?: number
-	/**
 	 * Per-task auto-approval override, checked before the global auto-approval
 	 * state. Returns `"approve"` / `"deny"` to resolve an ask without user
 	 * interaction, or `undefined` to fall through to normal handling. Lets a
@@ -381,6 +375,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * of a parallel subagent and the memory-writer log can say why it stopped.
 	 */
 	apiFailureMessage?: string
+	/**
+	 * Set when a background task is stopped as stuck (see
+	 * {@link stopStuckBackgroundTask}): one line saying what it kept doing.
+	 */
+	stuckMessage?: string
 	isInitialized = false
 	isPaused: boolean = false
 
@@ -917,10 +916,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// All default to the inert foreground values so normal tasks are unaffected.
 	readonly isBackground: boolean
 	readonly historyLineage?: TaskHistoryLineage
-	readonly maxAgentTurns?: number
 	autoApprovalOverride?: AutoApprovalOverride
-	/** Assistant-turn counter used to enforce `maxAgentTurns`. */
-	agentTurnCount = 0
 	/**
 	 * A finished parallel subagent reopened from history: shown, never
 	 * resumed. It ran in a git worktree that may be gone, and resuming it
@@ -953,7 +949,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		taskMode,
 		isBackground = false,
 		historyLineage,
-		maxAgentTurns,
 		autoApprovalOverride,
 	}: TaskOptions) {
 		super()
@@ -1021,7 +1016,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.isBackground = isBackground
 		this.historyLineage = historyLineage
 		this.isReadOnlySubagent = !!historyItem?.isSubagent
-		this.maxAgentTurns = maxAgentTurns
 		this.autoApprovalOverride = autoApprovalOverride
 
 		// Store the task's mode and API config name when it's created.
@@ -1075,7 +1069,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Listen for provider profile changes to update parser state
 		this.lifecycle.setupProviderProfileChangeListener(provider)
 
-		this.toolRepetitionDetector = new ToolRepetitionDetector(this.consecutiveMistakeLimit)
+		// A background task has nobody to lift a limit of 0 ("no limit") for:
+		// it keeps the default so a call repeated forever still stops it.
+		this.toolRepetitionDetector = new ToolRepetitionDetector(
+			this.consecutiveMistakeLimit > 0 || !isBackground
+				? this.consecutiveMistakeLimit
+				: DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
+		)
 
 		// Initialize todo list if provided
 		if (initialTodos && initialTodos.length > 0) {
@@ -1495,6 +1495,20 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	public async abortTask(isAbandoned = false): Promise<void> {
 		return this.lifecycle.abortTask(isAbandoned)
+	}
+
+	/**
+	 * End a background task (parallel subagent) that is stuck: it kept failing
+	 * tool calls, or kept repeating one call, after a hint to change course.
+	 * A background task has nobody to ask, so this is what stops it; it runs
+	 * for as many turns as its work needs otherwise. `message` says what it
+	 * kept doing and reaches the fan-out parent through awaitTaskCompletion.
+	 */
+	public async stopStuckBackgroundTask(message: string): Promise<void> {
+		this.stuckMessage = message
+		logger.warn(`[Task#${this.taskId}.${this.instanceId}] Background task stopped as stuck: ${message}`)
+		this.abortReason = "stuck"
+		await this.abortTask()
 	}
 
 	/**

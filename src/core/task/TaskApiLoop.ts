@@ -160,10 +160,8 @@ export interface TaskApiLoopAccess
 	apiLoopIteration?: number
 	// isBackground (TaskBackgroundFlagAccess): background tasks must not
 	// receive delegation tools (no nested fan-outs).
-	// Headless turn cap for background tasks (undefined = no cap / foreground).
-	maxAgentTurns?: number
-	// Assistant-turn counter enforced against `maxAgentTurns`.
-	agentTurnCount: number
+	/** Ends a stuck background task, see Task#stopStuckBackgroundTask. */
+	stopStuckBackgroundTask(message: string): Promise<void>
 
 	// Methods needed
 	emit: (event: any, ...args: any[]) => boolean
@@ -282,6 +280,9 @@ export class TaskApiLoop {
 	// they were built for is kept too: after a mode switch the names are stale.
 	private lastRequestToolNames: string[] = []
 	private lastRequestToolsMode: string | undefined
+	// A background task got the "change course" hint for its current run of
+	// mistakes (see handleBackgroundMistakeLimit). Cleared once the run ends.
+	private backgroundMistakeHintSent = false
 
 	/**
 	 * The access object IS the owning Task (Task.ts constructs this class with
@@ -432,29 +433,15 @@ export class TaskApiLoop {
 				)
 			}
 
-			// Headless turn cap: a background task (parallel subagent) aborts
-			// cleanly once it exhausts its assistant-turn budget.
-			// Foreground tasks pass `maxAgentTurns === undefined` and are unaffected.
-			if (this.access.maxAgentTurns !== undefined) {
-				if (this.access.agentTurnCount >= this.access.maxAgentTurns) {
-					logger.info(
-						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
-					)
-					// Use a distinct abortReason so callers can distinguish
-					// "turn budget exhausted" from "streaming_failed" (a genuine
-					// provider outage). The primary guard is the isBackground
-					// check in abortTask, but a distinct reason makes the intent
-					// explicit and belt-and-suspenders safe against the
-					// isUserCancelled guard.
-					this.access.abortReason = "max_turns_reached"
-					await this.access.abortTask()
+			// Handle consecutive mistake limit. A background task has no turn
+			// cap: being stuck on mistakes is what ends it.
+			if (this.access.isBackground) {
+				if (await this.handleBackgroundMistakeLimit(currentUserContent)) {
 					return true
 				}
-				this.access.agentTurnCount += 1
+			} else {
+				await this.handleConsecutiveMistakeLimit(currentUserContent)
 			}
-
-			// Handle consecutive mistake limit
-			await this.handleConsecutiveMistakeLimit(currentUserContent)
 
 			// Prepare and execute the API request. With the debug setting on,
 			// log the host-side work the cycle caused (CORE-R7 step 1).
@@ -490,6 +477,73 @@ export class TaskApiLoop {
 		return false
 	}
 
+	/** Telemetry of a task that reached its consecutive mistake limit. */
+	private reportMistakeLimitReached(limit: number): void {
+		TelemetryService.instance.capture(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {
+			taskId: this.access.taskId,
+		})
+		reportMistakeLimit(this.task, {
+			limit,
+			lastToolName: this.access.lastToolErrorName,
+		})
+		TelemetryService.instance.captureException(
+			new ConsecutiveMistakeError(
+				`Task reached consecutive mistake limit (${limit})`,
+				this.access.taskId,
+				this.access.consecutiveMistakeCount,
+				limit,
+				"no_tools_used",
+				this.access.apiConfiguration.apiProvider,
+				getModelId(this.access.apiConfiguration),
+			),
+		)
+	}
+
+	/**
+	 * The mistake limit of a background task (parallel subagent), which has
+	 * nobody to ask. At the limit the model gets one hint to change course; at
+	 * twice the limit, with no successful tool call in between (a success
+	 * resets the count), the task is stopped as stuck. A profile limit of 0
+	 * ("no limit") does not apply here: without it a stuck subagent would run
+	 * forever. Returns true when the task was stopped.
+	 */
+	private async handleBackgroundMistakeLimit(
+		currentUserContent: Anthropic.Messages.ContentBlockParam[],
+	): Promise<boolean> {
+		const limit =
+			this.access.consecutiveMistakeLimit > 0
+				? this.access.consecutiveMistakeLimit
+				: DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
+		const count = this.access.consecutiveMistakeCount
+		if (count < limit) {
+			this.backgroundMistakeHintSent = false
+			return false
+		}
+		const failedToolName = this.access.lastToolErrorName
+		if (count >= limit * 2 && this.backgroundMistakeHintSent) {
+			await this.access.stopStuckBackgroundTask(
+				`It made ${count} mistakes in a row` +
+					(failedToolName ? ` (last failing tool: ${failedToolName})` : "") +
+					", even after a hint to change course.",
+			)
+			return true
+		}
+		if (!this.backgroundMistakeHintSent) {
+			this.reportMistakeLimitReached(limit)
+			this.backgroundMistakeHintSent = true
+			currentUserContent.push({
+				type: "text",
+				text: formatResponse.tooManyMistakes(
+					`You made ${count} mistakes in a row. Change your approach now: check the tool's ` +
+						"parameters, or use a different tool. If you cannot go on, call attempt_completion " +
+						"and say what is done and what is left. More mistakes in a row will stop this task.",
+					failedToolName,
+				),
+			})
+		}
+		return false
+	}
+
 	/**
 	 * Handle consecutive mistake limit check and user feedback
 	 */
@@ -500,25 +554,7 @@ export class TaskApiLoop {
 			this.access.consecutiveMistakeLimit > 0 &&
 			this.access.consecutiveMistakeCount >= this.access.consecutiveMistakeLimit
 		) {
-			// Track consecutive mistake errors in telemetry
-			TelemetryService.instance.capture(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {
-				taskId: this.access.taskId,
-			})
-			reportMistakeLimit(this.task, {
-				limit: this.access.consecutiveMistakeLimit,
-				lastToolName: this.access.lastToolErrorName,
-			})
-			TelemetryService.instance.captureException(
-				new ConsecutiveMistakeError(
-					`Task reached consecutive mistake limit (${this.access.consecutiveMistakeLimit})`,
-					this.access.taskId,
-					this.access.consecutiveMistakeCount,
-					this.access.consecutiveMistakeLimit,
-					"no_tools_used",
-					this.access.apiConfiguration.apiProvider,
-					getModelId(this.access.apiConfiguration),
-				),
-			)
+			this.reportMistakeLimitReached(this.access.consecutiveMistakeLimit)
 
 			const { response, text, images } = await this.access.askSay.ask(
 				"mistake_limit_reached",
@@ -1167,15 +1203,23 @@ export class TaskApiLoop {
 		const retryUserContent = await this.withEmptyResponseRetryNote(currentUserContent)
 
 		// A background task never asks (its approval policy would approve the
-		// api_req_failed ask at once, a retry with no delay): it backs off.
-		// Each retry is a new loop turn, so maxAgentTurns bounds it.
+		// api_req_failed ask at once, a retry with no delay): it backs off, and
+		// ends after the same number of retries as a failed request.
 		if (state?.autoApprovalEnabled || this.access.isBackground) {
-			await this.retryHandler.backoffAndAnnounce(
-				currentItem.retryAttempt ?? 0,
-				new Error(
-					"Unexpected API Response: The language model did not provide any assistant messages. This may indicate an issue with the API or the model's output.",
-				),
+			const emptyResponseError = new Error(
+				"Unexpected API Response: The language model did not provide any assistant messages. This may indicate an issue with the API or the model's output.",
 			)
+			const retryAttempt = currentItem.retryAttempt ?? 0
+			if (
+				(await this.retryHandler.endTaskOnTerminalStreamError(
+					emptyResponseError,
+					retryAttempt,
+					currentItem.rateLimitRetries ?? 0,
+				)) === "ended"
+			) {
+				return "return_true"
+			}
+			await this.retryHandler.backoffAndAnnounce(retryAttempt, emptyResponseError)
 
 			if (this.access.abort) {
 				logger.info(

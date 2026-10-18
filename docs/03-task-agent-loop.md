@@ -65,7 +65,7 @@ sequenceDiagram
   participant X as presentAssistantMessage
   participant A as TaskAskSay
 
-  L->>L: max turns and consecutive-mistake checks
+  L->>L: consecutive-mistake checks (a background task stops when stuck)
   L->>L: wait for provider rate limit
   L->>A: say("api_req_started")
   L->>L: prepareUserContent (environment details, memory recall)

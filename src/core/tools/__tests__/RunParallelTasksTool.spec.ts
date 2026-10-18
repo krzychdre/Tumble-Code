@@ -71,6 +71,7 @@ import {
 	validateParallelParams,
 	runWithConcurrency,
 	formatParallelResults,
+	describeSubtaskFailure,
 	worktreeNamesFor,
 	subtaskLockReason,
 	subtaskLockOwner,
@@ -411,6 +412,16 @@ describe("RunParallelTasksTool helpers", () => {
 			expect(out).toContain("worktree: /wt/b")
 		})
 
+		it("shows a failed subtask's last message, so the parent sees how far it got", () => {
+			const results: ParallelSubtaskResult[] = [
+				{ index: 0, mode: "code", status: "failed", error: "Stopped as stuck", message: "Solver done." },
+				{ index: 1, mode: "code", status: "failed", error: "boom" },
+			]
+			const out = formatParallelResults(results)
+			expect(out).toContain("Its last message before it stopped:\n\nSolver done.")
+			expect(out.match(/Its last message/g)).toHaveLength(1)
+		})
+
 		it("shows 'cleaned up (no changes)' for cleaned subtasks", () => {
 			const results: ParallelSubtaskResult[] = [
 				{
@@ -426,6 +437,29 @@ describe("RunParallelTasksTool helpers", () => {
 			const out = formatParallelResults(results)
 			expect(out).toContain("cleaned up (no changes)")
 			expect(out).not.toContain("/wt/a")
+		})
+	})
+
+	describe("describeSubtaskFailure", () => {
+		it("a stuck subagent: says what it kept doing and points at its worktree", () => {
+			const text = describeSubtaskFailure({
+				abortReason: "stuck",
+				failureMessage: "It kept calling read_file with the same arguments.",
+			})
+			expect(text).toMatch(/^Stopped as stuck: It kept calling read_file/)
+			expect(text).toContain("worktree")
+			expect(text).not.toContain("Retrying will not help")
+		})
+
+		it("an API failure: tells the parent that retrying will not help", () => {
+			const text = describeSubtaskFailure({ abortReason: "streaming_failed", failureMessage: "API error 401." })
+			expect(text).toMatch(/^API error 401\. Retrying will not help/)
+		})
+
+		it("no recorded reason: never the bare 'aborted before completion'", () => {
+			const text = describeSubtaskFailure({})
+			expect(text).not.toContain("aborted before completion")
+			expect(text).toContain("worktree")
 		})
 	})
 

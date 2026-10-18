@@ -108,9 +108,8 @@ class ApiRetryDeclinedError extends Error {
  * Retries a background task gets for a retryable API error (400, 5xx, no
  * status) before it ends: 6 backoffs of 5, 10, 20, 40, 80 and 160 s at the
  * default 5 s base (315 s in total), so 7 requests. Foreground tasks have no
- * cap (the user sees the countdown and can cancel). The first-chunk retry
- * recurses inside the request generator and never counts against maxAgentTurns,
- * so without this cap a background task would retry forever.
+ * cap (the user sees the countdown and can cancel). Without this cap a
+ * background task would retry forever: it has no turn limit.
  *
  * HTTP 429 (too many requests) is not capped (owner decision 2026-09-25): the
  * provider is up and asks us to slow down, so the task keeps backing off (one

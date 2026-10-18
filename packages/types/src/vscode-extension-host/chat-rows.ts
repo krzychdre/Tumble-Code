@@ -119,4 +119,8 @@ export interface ClineApiReqInfo {
 	apiProtocol?: "anthropic" | "openai"
 }
 
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "max_turns_reached"
+/**
+ * Why a task's request loop ended early. `stuck`: a background task (parallel
+ * subagent) kept failing tool calls, or repeated one call, after a hint.
+ */
+export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "stuck"
