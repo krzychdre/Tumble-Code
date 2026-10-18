@@ -541,4 +541,32 @@ describe("ToolRepetitionDetector", () => {
 			expect(result.askUser).toBeDefined()
 		})
 	})
+
+	// ===== Repeated trips (background tasks stop on the second one) =====
+	describe("repeatedTrip", () => {
+		const tripOnce = (detector: ToolRepetitionDetector, call: ToolUse) => {
+			for (;;) {
+				const result = detector.check(call)
+				if (!result.allowExecution) return result
+			}
+		}
+
+		it("is false on the first trip and true when the same call trips again", () => {
+			const detector = new ToolRepetitionDetector(3)
+			const call = createToolUse("read_file", undefined, { path: "a.ts" })
+
+			expect(tripOnce(detector, call).repeatedTrip).toBe(false)
+			expect(tripOnce(detector, call).repeatedTrip).toBe(true)
+		})
+
+		it("a different call between the trips starts over", () => {
+			const detector = new ToolRepetitionDetector(3)
+			const call = createToolUse("read_file", undefined, { path: "a.ts" })
+
+			tripOnce(detector, call)
+			detector.check(createToolUse("read_file", undefined, { path: "b.ts" }))
+
+			expect(tripOnce(detector, call).repeatedTrip).toBe(false)
+		})
+	})
 })

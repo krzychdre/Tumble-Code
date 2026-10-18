@@ -14,8 +14,8 @@
  * - `followup` asks → `undefined` (interactive: surfaced in the subagents
  *   panel, answerable by the user, auto-APPROVED after the fallback window);
  * - other non-`tool`/`command`/`use_mcp_server` asks (completion_result,
- *   api_req_failed, resume, …) → `"approve"` (autonomy; retries stay bounded
- *   by `maxAgentTurns`);
+ *   api_req_failed, resume, …) → `"approve"` (autonomy; RetryHandler caps
+ *   the retries);
  * - read-only tool actions → `"approve"` (reads/searches are safe anywhere);
  * - everything else (file writes — INCLUDING inside the worktree — commands,
  *   MCP) → consult `checkAutoApproval` with the user's live settings:
@@ -69,7 +69,7 @@ export function buildSubagentApprovalPolicy(options: SubagentApprovalOptions): A
 			return undefined
 		}
 
-		// Non-actionable asks: autonomy (retries bounded by maxAgentTurns).
+		// Non-actionable asks: autonomy (retries are capped by RetryHandler).
 		if (ask !== "tool" && ask !== "command" && ask !== "use_mcp_server") {
 			return "approve"
 		}

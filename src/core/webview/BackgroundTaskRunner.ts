@@ -19,7 +19,6 @@ import type { PostMessageHostMember } from "./host-groups"
 export interface BackgroundTaskOptions {
 	taskMode?: string
 	workspacePath?: string
-	maxAgentTurns?: number
 	autoApprovalOverride?: AutoApprovalOverride
 	initialTodos?: TodoItem[]
 	apiConfiguration?: ProviderSettings
@@ -48,8 +47,9 @@ export interface BackgroundTaskOutcome {
 	writtenPaths: string[]
 	abortReason?: string
 	/**
-	 * Why the task stopped when its API request failed with 401, 403 or 404
-	 * (Task#apiFailureMessage): status, reason, provider and model in one line.
+	 * Why the task stopped, in one line: its API request failed for good
+	 * (Task#apiFailureMessage: status, reason, provider and model), or it was
+	 * stopped as stuck (Task#stuckMessage, `abortReason` "stuck").
 	 */
 	failureMessage?: string
 }
@@ -125,7 +125,8 @@ export class BackgroundTaskRunner {
 	 *   webview stay bound to the foreground task;
 	 * - runs autonomously via `autoApprovalOverride` (interactive asks never block
 	 *   it: the task isn't the current task, so no webview response would arrive);
-	 * - is bounded by `maxAgentTurns`;
+	 * - runs until it completes, is cancelled, or is stopped as stuck (see
+	 *   Task#stopStuckBackgroundTask) or by an API failure;
 	 * - can run in its own `workspacePath` (a git worktree) and `taskMode`
 	 *   (e.g. a write-sandboxed mode).
 	 *
@@ -172,7 +173,6 @@ export class BackgroundTaskRunner {
 				// The default -1 would end up in the history item's number.
 				taskNumber: 1,
 			}),
-			maxAgentTurns: options.maxAgentTurns,
 			autoApprovalOverride: options.autoApprovalOverride,
 			initialTodos: options.initialTodos,
 			// Start explicitly below (after registry insert), never via the stack.
@@ -265,8 +265,8 @@ export class BackgroundTaskRunner {
 	 * subagent's history item. An optional `signal` aborts the task early.
 	 *
 	 * `abortReason` is propagated so callers can tell a provider failure
-	 * (`"streaming_failed"`) from turn-budget exhaustion
-	 * (`"max_turns_reached"`) and user cancellation (`"user_cancelled"`).
+	 * (`"streaming_failed"`) from a stuck task (`"stuck"`) and user
+	 * cancellation (`"user_cancelled"`).
 	 */
 	public awaitTaskCompletion(task: Task, options: { signal?: AbortSignal } = {}): Promise<BackgroundTaskOutcome> {
 		return new Promise((resolve) => {
@@ -321,14 +321,21 @@ export class BackgroundTaskRunner {
 			// Capture the abortReason at abort time so the caller can classify
 			// the failure (Claim 3). task.abortReason is set by TaskApiLoop
 			// before abortTask() fires TaskAborted.
-			// A background task that hit 401/403/404 records why (TaskApiLoop
-			// ends it at once instead of retrying): pass that on too.
-			const onAborted = () =>
+			// A background task that hit 401/403/404, or was stopped as stuck,
+			// records why: pass that on too. Its last words tell the parent how
+			// far the work got.
+			const onAborted = () => {
+				const failureMessage = task.stuckMessage ?? task.apiFailureMessage
+				const lastText = [...task.clineMessages]
+					.reverse()
+					.find((m) => m.type === "say" && m.say === "text" && !m.partial && m.text?.trim())
 				finish({
 					completed: false,
 					abortReason: task.abortReason,
-					...(task.apiFailureMessage ? { failureMessage: task.apiFailureMessage } : {}),
+					...(lastText ? { lastMessage: lastText.text } : {}),
+					...(failureMessage ? { failureMessage } : {}),
 				})
+			}
 
 			task.on(TumbleCodeEventName.TaskCompleted, onCompleted)
 			task.on(TumbleCodeEventName.TaskAborted, onAborted)

@@ -36,9 +36,10 @@ type FakeTask = EventEmitter & {
 	instanceId: string
 	cwd: string
 	options: Record<string, any>
-	clineMessages: Array<{ type: string; say?: string; text?: string }>
+	clineMessages: Array<{ type: string; say?: string; text?: string; partial?: boolean }>
 	abortReason?: string
 	apiFailureMessage?: string
+	stuckMessage?: string
 	start: ReturnType<typeof vi.fn>
 	setTaskApiConfigName: ReturnType<typeof vi.fn>
 	abortTask: ReturnType<typeof vi.fn>
@@ -137,7 +138,6 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		const task = (await runner.createBackgroundTask("extract", {
 			taskMode: "code",
 			workspacePath: "/mem",
-			maxAgentTurns: 4,
 		})) as unknown as FakeTask
 
 		expect(task.options).toMatchObject({
@@ -150,7 +150,6 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 			taskMode: "code",
 			workspacePath: "/mem",
 			isBackground: true,
-			maxAgentTurns: 4,
 			startTask: false,
 			onCreated,
 		})
@@ -342,10 +341,10 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		const task = await started(runner)
 		const pending = runner.awaitTaskCompletion(task as never)
 
-		task.abortReason = "max_turns_reached"
+		task.abortReason = "streaming_failed"
 		task.emit(TumbleCodeEventName.TaskAborted)
 
-		await expect(pending).resolves.toMatchObject({ completed: false, abortReason: "max_turns_reached" })
+		await expect(pending).resolves.toMatchObject({ completed: false, abortReason: "streaming_failed" })
 		expect(runner.getBackgroundTask(task.taskId)).toBeUndefined()
 		await new Promise((resolve) => setTimeout(resolve, 0))
 		expect(task.abortTask).not.toHaveBeenCalled()
@@ -368,6 +367,28 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 			completed: false,
 			abortReason: "streaming_failed",
 			failureMessage,
+		})
+	})
+
+	it("abort as stuck: reports what it kept doing and its last finished text", async () => {
+		const runner = new BackgroundTaskRunner(makeHost().host)
+		const task = await started(runner)
+		const pending = runner.awaitTaskCompletion(task as never)
+
+		task.clineMessages.push(
+			{ type: "say", say: "text", text: "Ladder solver done, wiring player.js next." },
+			{ type: "say", say: "reasoning", text: "thinking" },
+			{ type: "say", say: "text", text: "half a sent", partial: true },
+		)
+		task.abortReason = "stuck"
+		task.stuckMessage = "It made 6 mistakes in a row, even after a hint to change course."
+		task.emit(TumbleCodeEventName.TaskAborted)
+
+		await expect(pending).resolves.toMatchObject({
+			completed: false,
+			abortReason: "stuck",
+			failureMessage: "It made 6 mistakes in a row, even after a hint to change course.",
+			lastMessage: "Ladder solver done, wiring player.js next.",
 		})
 	})
 

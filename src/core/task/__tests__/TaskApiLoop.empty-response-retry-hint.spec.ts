@@ -250,4 +250,27 @@ describe("TaskApiLoop: the retry of an empty answer names the callable tools", (
 		expect(stack[0].userContent).toEqual([{ type: "tool_result", tool_use_id: "t2", content: "ok" }])
 		expect(notesIn(stack[0].userContent)).toEqual([])
 	})
+
+	// A background task has no turn limit: empty answers end it after as many
+	// retries as a failed request (BACKGROUND_MAX_API_RETRIES).
+	it.each([
+		[5, "continue", false],
+		[6, "return_true", true],
+	])("background, retry %i: %s", async (retryAttempt, expected, ended) => {
+		const { loop, access, buildToolsArray } = makeLoop({ autoApprovalEnabled: false })
+		access.isBackground = true
+		buildToolsArray.mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
+		const stack: any[] = []
+
+		const result = await loop.handleEmptyAssistantResponse({ retryAttempt }, [], stack)
+
+		expect(result).toBe(expected)
+		expect(stack).toHaveLength(ended ? 0 : 1)
+		expect(access.abortTask).toHaveBeenCalledTimes(ended ? 1 : 0)
+		if (ended) {
+			expect(access.abortReason).toBe("streaming_failed")
+			expect(access.apiFailureMessage).toContain("after 7 attempts")
+		}
+		expect(access.askSay.ask).not.toHaveBeenCalled()
+	})
 })

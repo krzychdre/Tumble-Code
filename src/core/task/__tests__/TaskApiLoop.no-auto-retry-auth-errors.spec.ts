@@ -297,8 +297,8 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 			expect(stack).toHaveLength(1)
 		})
 
-		// Backoff alone is not a bound: the first-chunk retry recurses inside
-		// attemptApiRequest and never counts against maxAgentTurns. After
+		// Backoff alone is not a bound: a background task has no turn limit,
+		// and the first-chunk retry recurses inside attemptApiRequest. After
 		// BACKGROUND_MAX_API_RETRIES retries (5+10+20+40+80+160 s = 315 s of
 		// backoff at the default 5 s base) the task ends like a 401 does.
 		it.each([true, false])(

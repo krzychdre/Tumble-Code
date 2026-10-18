@@ -186,9 +186,9 @@ describe("TaskLifecycle.abortTask — background tasks skip writers and drain", 
 
 	it("does NOT fire memory writers or drain when isBackground is true even if not user-cancelled", async () => {
 		// Belt-and-suspenders: isBackground guard must be independent of
-		// the isUserCancelled guard. A background task aborted via
-		// maxAgentTurns has no abortReason set, so the isUserCancelled
-		// check alone would let writers fire.
+		// the isUserCancelled guard. A background task torn down without a
+		// reason has no abortReason set, so the isUserCancelled check alone
+		// would let writers fire.
 		const access = buildAccessStub({ isBackground: true, abortReason: undefined })
 		const lifecycle = new TaskLifecycle(access)
 

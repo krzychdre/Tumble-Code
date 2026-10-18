@@ -10,6 +10,9 @@ export class ToolRepetitionDetector {
 	private previousToolCallJson: string | null = null
 	private consecutiveIdenticalToolCallCount: number = 0
 	private readonly consecutiveIdenticalToolCallLimit: number
+	// The call stopped by the last trip, kept until a different call comes:
+	// a second trip on it means the hint after the first one did not help.
+	private lastTrippedToolCallJson: string | null = null
 
 	/**
 	 * Creates a new ToolRepetitionDetector
@@ -32,9 +35,14 @@ export class ToolRepetitionDetector {
 			messageKey: string
 			messageDetail: string
 		}
+		/** The same call was already stopped once, with no other call since. */
+		repeatedTrip?: boolean
 	} {
 		// Serialize the block to a canonical JSON string for comparison
 		const currentToolCallJson = this.serializeToolUse(currentToolCallBlock)
+		if (this.lastTrippedToolCallJson !== null && this.lastTrippedToolCallJson !== currentToolCallJson) {
+			this.lastTrippedToolCallJson = null
+		}
 
 		// Compare with previous tool call
 		if (this.previousToolCallJson === currentToolCallJson) {
@@ -52,6 +60,8 @@ export class ToolRepetitionDetector {
 			// Reset counters to allow recovery if user guides the AI past this point
 			this.consecutiveIdenticalToolCallCount = 0
 			this.previousToolCallJson = null
+			const repeatedTrip = this.lastTrippedToolCallJson === currentToolCallJson
+			this.lastTrippedToolCallJson = currentToolCallJson
 
 			// Return result indicating execution should not be allowed
 			return {
@@ -60,6 +70,7 @@ export class ToolRepetitionDetector {
 					messageKey: "mistake_limit_reached",
 					messageDetail: t("tools:toolRepetitionLimitReached", { toolName: currentToolCallBlock.name }),
 				},
+				repeatedTrip,
 			}
 		}
 

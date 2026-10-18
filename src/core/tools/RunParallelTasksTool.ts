@@ -60,8 +60,6 @@ const DEFAULT_MAX_CONCURRENCY = DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
  * long-horizon work that belongs in the parent task itself.
  */
 export const DISALLOWED_SUBTASK_MODES = ["architect", "orchestrator"] as const
-/** Turn cap per subagent: a runaway backstop, generous enough for real work. */
-export const SUBAGENT_MAX_TURNS = 50
 
 /**
  * Validate & normalize the raw tool args. Returns either normalized subtasks +
@@ -170,6 +168,9 @@ export function formatParallelResults(results: ReadonlyArray<ParallelSubtaskResu
 			lines.push("", "Cancelled before completion.")
 		} else {
 			lines.push("", `Failed: ${r.error ?? "unknown error"}`)
+			if (r.message?.trim()) {
+				lines.push("", "Its last message before it stopped:", "", r.message.trim())
+			}
 		}
 		lines.push("", "---", "")
 	}
@@ -306,7 +307,6 @@ interface SubtaskProvider {
 		options: {
 			taskMode?: string
 			workspacePath?: string
-			maxAgentTurns?: number
 			autoApprovalOverride?: AutoApprovalOverride
 			subagentInfo?: SubagentInfo
 		},
@@ -314,7 +314,13 @@ interface SubtaskProvider {
 	awaitTaskCompletion(
 		task: Task,
 		options: { signal?: AbortSignal },
-	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[]; failureMessage?: string }>
+	): Promise<{
+		completed: boolean
+		lastMessage?: string
+		writtenPaths: string[]
+		abortReason?: string
+		failureMessage?: string
+	}>
 	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number }>
 	subagentRegistry: SubtaskRegistry
 	getLiveTaskInstance(taskId: string): { messageQueueService: { addMessage(text: string): unknown } } | undefined
@@ -398,7 +404,6 @@ async function runOneSubtask({
 		const child = await provider.createBackgroundTask(subtask.message, {
 			taskMode: subtask.mode,
 			workspacePath: worktreePath,
-			maxAgentTurns: SUBAGENT_MAX_TURNS,
 			// Subagents follow the user's auto-approval settings; worktree
 			// writes and reads are pre-approved; anything that would ask the
 			// user is denied (a headless child has no user to ask).
@@ -436,7 +441,7 @@ async function runOneSubtask({
 			registry.markTerminal(registryId, "cancelled")
 			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
 		}
-		const error = outcome.completed ? undefined : describeSubtaskFailure(outcome.failureMessage)
+		const error = outcome.completed ? undefined : describeSubtaskFailure(outcome)
 		registry.markTerminal(
 			registryId,
 			outcome.completed ? "completed" : "failed",
@@ -466,16 +471,28 @@ async function runOneSubtask({
 }
 
 /**
- * The parent's view of a child that ended without completing. A child that
- * hit 401, 403 or 404, or kept failing until the background retry cap, stops
- * (TaskApiLoop) and says why; the hint keeps a weak parent model from
- * starting the same subtask again.
+ * The parent's view of a child that ended without completing, with what to
+ * do next so a weak parent model does not just start the same subtask again.
+ * A child stopped as stuck says what it kept doing; one that hit 401, 403 or
+ * 404, or kept failing until the background retry cap, says why (TaskApiLoop).
  */
-function describeSubtaskFailure(failureMessage: string | undefined): string {
-	if (!failureMessage) return "subtask aborted before completion"
+export function describeSubtaskFailure(outcome: { abortReason?: string; failureMessage?: string }): string {
+	const { abortReason, failureMessage } = outcome
+	if (abortReason === "stuck") {
+		return (
+			`Stopped as stuck: ${failureMessage ?? "it kept making mistakes."} Its partial work is in its ` +
+			"worktree: check it, then finish the rest yourself or start a subtask with narrower, clearer instructions."
+		)
+	}
+	if (failureMessage) {
+		return (
+			`${failureMessage} Retrying will not help now (the API key, model or profile needs fixing, ` +
+			"or the provider is down): do this work yourself in this task, or tell the user."
+		)
+	}
 	return (
-		`${failureMessage} Retrying will not help now (the API key, model or profile needs fixing, ` +
-		"or the provider is down): do this work yourself in this task, or tell the user."
+		"Stopped before finishing (its task was torn down, for example by an editor restart). " +
+		"Its partial work is in its worktree: check it before you redo anything."
 	)
 }
 
