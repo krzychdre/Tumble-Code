@@ -546,6 +546,11 @@
 		"noOutput": "Belum ada keluaran.",
 		"tokens": "Token digunakan",
 		"cancel": "Batalkan subagen ini",
+		"openTranscript": "Buka transkrip lengkap",
+		"transcript": {
+			"back": "Kembali",
+			"subtask": "Tugas yang diberikan ke subagen"
+		},
 		"send": "Kirim",
 		"answerPlaceholder": "Jawab pertanyaan subagen…",
 		"guidancePlaceholder": "Kirim panduan (disampaikan pada titik berhenti berikutnya)…",

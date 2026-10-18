@@ -12,6 +12,7 @@ import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import Thumbnails from "@src/components/common/Thumbnails"
 import { Mention } from "@src/components/chat/Mention"
 import { ChatTextArea } from "@src/components/chat/ChatTextArea"
+import { useReadOnlyRows } from "@src/components/chat/rows/ReadOnlyRowsContext"
 import { MAX_IMAGES_PER_MESSAGE } from "@src/components/chat/ChatView"
 
 import { headerStyle } from "../shared"
@@ -22,6 +23,8 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 	const { t } = useTranslation()
 	// P1: narrow slice.
 	const mode = useExtensionSelector((s) => s.mode)
+	// In another task's transcript an edit or delete would reach the open task.
+	const readOnly = useReadOnlyRows()
 	const [isEditing, setIsEditing] = useState(false)
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
@@ -114,14 +117,14 @@ export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRen
 							className="flex-grow px-[10px] py-2 wrap-anywhere transition-colors"
 							onClick={(e) => {
 								e.stopPropagation()
-								if (!isStreaming) {
+								if (!isStreaming && !readOnly) {
 									handleEditClick()
 								}
 							}}
-							title={t("chat:queuedMessages.clickToEdit")}>
+							title={readOnly ? undefined : t("chat:queuedMessages.clickToEdit")}>
 							<Mention text={message.text} withShadow />
 						</div>
-						<div className="flex items-start gap-2 pr-[10px] pt-2">
+						<div className={cn("flex items-start gap-2 pr-[10px] pt-2", readOnly && "hidden")}>
 							<button
 								type="button"
 								className="block p-0 bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground cursor-pointer shrink-0 focus-ring"

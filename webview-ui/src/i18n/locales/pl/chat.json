@@ -55,6 +55,11 @@
 		"noOutput": "Brak danych wyjściowych.",
 		"tokens": "Zużyte tokeny",
 		"cancel": "Anuluj tego subagenta",
+		"openTranscript": "Otwórz pełny transkrypt",
+		"transcript": {
+			"back": "Wróć",
+			"subtask": "Zadanie przekazane subagentowi"
+		},
 		"send": "Wyślij",
 		"answerPlaceholder": "Odpowiedz na pytanie subagenta…",
 		"guidancePlaceholder": "Wyślij wskazówkę (dostarczona przy najbliższym punkcie zatrzymania)…",

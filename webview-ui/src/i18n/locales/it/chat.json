@@ -548,6 +548,11 @@
 		"noOutput": "Nessun output ancora.",
 		"tokens": "Token usati",
 		"cancel": "Annulla questo subagente",
+		"openTranscript": "Apri la trascrizione completa",
+		"transcript": {
+			"back": "Indietro",
+			"subtask": "Compito affidato al subagente"
+		},
 		"send": "Invia",
 		"answerPlaceholder": "Rispondi alla domanda del subagente…",
 		"guidancePlaceholder": "Invia indicazioni (consegnate al prossimo punto di arresto)…",

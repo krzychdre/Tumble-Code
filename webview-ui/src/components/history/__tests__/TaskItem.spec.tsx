@@ -1,6 +1,9 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
+import { vscode } from "@src/utils/vscode"
+
 import TaskItem from "../TaskItem"
+import { SubagentTranscriptContext } from "../../chat/SubagentTranscriptContext"
 
 vi.mock("@src/utils/vscode")
 // TaskDetails reads the custom modes to name a task's mode.
@@ -49,6 +52,20 @@ describe("TaskItem", () => {
 
 		expect(screen.getByText("Test task")).toBeInTheDocument()
 		expect(screen.getByText("$0.00")).toBeInTheDocument() // Component shows $0.00 for small amounts
+	})
+
+	it("a parallel subagent opens its transcript instead of becoming the open task", () => {
+		const open = vi.fn()
+		render(
+			<SubagentTranscriptContext.Provider value={open}>
+				<TaskItem item={{ ...mockTask, isSubagent: true }} variant="full" />
+			</SubagentTranscriptContext.Provider>,
+		)
+
+		fireEvent.click(screen.getByTestId("task-item-1"))
+
+		expect(open).toHaveBeenCalledWith("1")
+		expect(vscode.postMessage).not.toHaveBeenCalled()
 	})
 
 	it("handles selection in selection mode", () => {

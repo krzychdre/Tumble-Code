@@ -12,6 +12,8 @@ import { lazyTab } from "./utils/lazyTab"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionSelector } from "./context/ExtensionStateContext"
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
+import SubagentTranscriptView from "./components/chat/SubagentTranscriptView"
+import { SubagentTranscriptContext } from "./components/chat/SubagentTranscriptContext"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeViewProvider"
@@ -45,7 +47,7 @@ const TabLoadingFallback = () => {
 	)
 }
 
-type Tab = "settings" | "history" | "chat" | "marketplace" | "cloud"
+type Tab = "settings" | "history" | "chat" | "marketplace" | "cloud" | "subagent"
 
 interface DeleteMessageDialogState {
 	isOpen: boolean
@@ -127,6 +129,17 @@ const App = () => {
 
 	const [currentSection, setCurrentSection] = useState<string | undefined>(undefined)
 	const [currentMarketplaceTab, setCurrentMarketplaceTab] = useState<string | undefined>(undefined)
+
+	// The subagent whose transcript is open, and the view to go back to (the
+	// chat from the subagents panel, the history from a history row).
+	const [subagentTranscript, setSubagentTranscript] = useState<{ taskId: string; returnTab: Tab }>()
+	const openSubagentTranscript = useCallback(
+		(taskId: string) => {
+			setSubagentTranscript({ taskId, returnTab: tab === "subagent" ? "chat" : tab })
+			switchTab("subagent")
+		},
+		[tab, switchTab],
+	)
 
 	const onMessage = useCallback(
 		(message: ExtensionMessage) => {
@@ -244,8 +257,15 @@ const App = () => {
 	return isSetupGatedTab ? (
 		<WelcomeView />
 	) : (
-		<>
+		<SubagentTranscriptContext.Provider value={openSubagentTranscript}>
 			{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
+			{tab === "subagent" && subagentTranscript && (
+				<SubagentTranscriptView
+					key={subagentTranscript.taskId}
+					taskId={subagentTranscript.taskId}
+					onDone={() => switchTab(subagentTranscript.returnTab)}
+				/>
+			)}
 			{tab === "settings" && (
 				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
 			)}
@@ -333,7 +353,7 @@ const App = () => {
 					}}
 				/>
 			)}
-		</>
+		</SubagentTranscriptContext.Provider>
 	)
 }
 

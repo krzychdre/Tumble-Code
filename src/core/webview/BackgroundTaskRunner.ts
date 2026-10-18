@@ -12,6 +12,7 @@ import type { ClineProvider } from "./ClineProvider"
 import type { ProviderState } from "./ProviderStateBuilder"
 import type { SubagentRegistry } from "./SubagentRegistry"
 import { profileTaskOptions } from "./profileTaskOptions"
+import { subagentActivity } from "./subagentActivity"
 import { logger } from "../../utils/logging"
 import type { PostMessageHostMember } from "./host-groups"
 
@@ -70,7 +71,7 @@ export interface MemoryActivityCounts {
 export interface BackgroundTaskHost extends PostMessageHostMember {
 	/** The provider every background Task is created for. */
 	readonly provider: ClineProvider
-	readonly subagentRegistry: Pick<SubagentRegistry, "register">
+	readonly subagentRegistry: Pick<SubagentRegistry, "register" | "update">
 	/** Attaches the provider's task-event forwarding to a new Task. */
 	readonly taskCreationCallback: (task: Task) => void
 	getState(): Promise<
@@ -205,6 +206,14 @@ export class BackgroundTaskRunner {
 				totalCost: 0,
 				startedAt: now,
 				lastActivityAt: now,
+			})
+			// The row says what the subagent is doing (a command, a tool). The
+			// listener goes with the task: it is disposed when it ends.
+			task.on(TumbleCodeEventName.Message, ({ message }) => {
+				const activity = subagentActivity(message)
+				if (activity) {
+					this.host.subagentRegistry.update(task.taskId, { activity })
+				}
 			})
 		}
 		logger.info(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)

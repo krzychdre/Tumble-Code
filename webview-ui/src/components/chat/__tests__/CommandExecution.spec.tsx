@@ -4,6 +4,7 @@ import React from "react"
 import { render, screen, fireEvent, act } from "@testing-library/react"
 
 import { CommandExecution } from "../CommandExecution"
+import { ReadOnlyRowsContext } from "../rows/ReadOnlyRowsContext"
 import { TooltipProvider } from "../../ui/tooltip"
 
 // Mock dependencies
@@ -743,6 +744,27 @@ Output:
 
 			// Pulsing dot must appear after the started status arrives
 			expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
+		})
+
+		// In a subagent's transcript the abort would reach the open task's terminal.
+		it("hides the abort button in a read-only transcript", async () => {
+			render(
+				<ExtensionStateWrapper>
+					<ReadOnlyRowsContext.Provider value={true}>
+						<CommandExecution executionId="exec-readonly" text="npm start" />
+					</ReadOnlyRowsContext.Provider>
+					<CommandExecution executionId="exec-writable" text="npm start" />
+				</ExtensionStateWrapper>,
+			)
+
+			await act(async () => {
+				sendStatusMessage("exec-readonly", { status: "started", command: "npm start", pid: 1 })
+				sendStatusMessage("exec-writable", { status: "started", command: "npm start", pid: 2 })
+			})
+
+			expect(screen.getAllByLabelText("chat:commandExecution.abort")).toHaveLength(1)
+			expect(screen.getByText("(PID: 2)")).toBeInTheDocument()
+			expect(screen.queryByText("(PID: 1)")).not.toBeInTheDocument()
 		})
 
 		it("should not show the pulsing dot for a different executionId", async () => {

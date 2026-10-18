@@ -93,6 +93,7 @@ const ACTIVE: ProviderSettings = { apiProvider: "anthropic", apiModelId: "claude
 
 function makeHost(overrides: Partial<BackgroundTaskHost> = {}) {
 	const register = vi.fn((summary: { taskId: string }) => events.push(`register:${summary.taskId}`))
+	const update = vi.fn()
 	const postMessageToWebview = vi.fn(async () => {})
 	const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 	loggerWarnSpy.mockClear()
@@ -100,7 +101,7 @@ function makeHost(overrides: Partial<BackgroundTaskHost> = {}) {
 	const onCreated = vi.fn()
 	const host: BackgroundTaskHost = {
 		provider: provider as never,
-		subagentRegistry: { register },
+		subagentRegistry: { register, update },
 		taskCreationCallback: onCreated,
 		getState: vi.fn(async () => ({
 			apiConfiguration: ACTIVE,
@@ -115,7 +116,7 @@ function makeHost(overrides: Partial<BackgroundTaskHost> = {}) {
 		postMessageToWebview,
 		...overrides,
 	}
-	return { host, register, postMessageToWebview, loggerWarnSpy, provider, onCreated }
+	return { host, register, update, postMessageToWebview, loggerWarnSpy, provider, onCreated }
 }
 
 function lastTask(): FakeTask {
@@ -190,6 +191,21 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 			}),
 		)
 		expect(task.options.apiConfiguration).toBe(pinned)
+	})
+
+	it("keeps the subagent's row activity up to date from its messages", async () => {
+		const { host, update } = makeHost()
+		const runner = new BackgroundTaskRunner(host)
+		const task = (await runner.createBackgroundTask("work", { subagentInfo: SUBAGENT_INFO })) as unknown as FakeTask
+
+		task.emit(TumbleCodeEventName.Message, {
+			action: "created",
+			message: { ts: 1, type: "ask", ask: "command", text: "npm test\nmore" },
+		})
+		task.emit(TumbleCodeEventName.Message, { action: "created", message: { ts: 2, type: "say", say: "text" } })
+
+		expect(update).toHaveBeenCalledTimes(1)
+		expect(update).toHaveBeenCalledWith(task.taskId, { activity: "$ npm test" })
 	})
 
 	// The subagent's history item is a subtask of the fan-out parent, shown in

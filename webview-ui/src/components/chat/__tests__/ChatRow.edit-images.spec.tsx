@@ -7,6 +7,7 @@ import { act, fireEvent, render, screen } from "@/utils/test-utils"
 import type { ClineMessage } from "@tumble-code/types"
 
 import { ChatRowContent } from "../ChatRow"
+import { ReadOnlyRowsContext } from "../rows/ReadOnlyRowsContext"
 
 const mockPostMessage = vi.fn()
 vi.mock("@src/utils/vscode", () => ({
@@ -95,5 +96,30 @@ describe("ChatRow in-place edit: images from the host", () => {
 		postFromHost({ type: "state", context: "edit", messageTs: TS, images: ["z.png"] })
 
 		expect(editImages()).toBe("a.png")
+	})
+})
+
+// A subagent's transcript is shown outside its task: editing or deleting a
+// message there would act on the open task instead.
+describe("ChatRow user message in a read-only transcript", () => {
+	beforeEach(() => mockPostMessage.mockClear())
+
+	it("offers no edit or delete, and a click does not start editing", () => {
+		render(
+			<ReadOnlyRowsContext.Provider value={true}>
+				<ChatRowContent
+					message={feedback}
+					isExpanded={false}
+					isLast={false}
+					isStreaming={false}
+					onToggleExpand={() => {}}
+				/>
+			</ReadOnlyRowsContext.Provider>,
+		)
+
+		fireEvent.click(screen.getByText("please fix it"))
+
+		expect(screen.queryByTestId("edit-text-area")).not.toBeInTheDocument()
+		expect(screen.getByLabelText("common:confirmation.deleteMessage").closest("div")).toHaveClass("hidden")
 	})
 })
