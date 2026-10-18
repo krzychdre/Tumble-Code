@@ -39,6 +39,7 @@ describe("SubagentRegistry", () => {
 	it("replaces the queued placeholder for the same (parent, index) slot", () => {
 		registry.registerQueued({
 			parentTaskId: "parent-1",
+			runId: "r1",
 			index: 0,
 			mode: "ask",
 			description: "d",
@@ -48,10 +49,10 @@ describe("SubagentRegistry", () => {
 			startedAt: 1,
 			lastActivityAt: 1,
 		})
-		expect(registry.get(queuedSubagentId("parent-1", 0))?.status).toBe("queued")
+		expect(registry.get(queuedSubagentId("parent-1", "r1", 0))?.status).toBe("queued")
 
-		registry.register(makeSummary())
-		expect(registry.has(queuedSubagentId("parent-1", 0))).toBe(false)
+		registry.register(makeSummary({ runId: "r1" }))
+		expect(registry.has(queuedSubagentId("parent-1", "r1", 0))).toBe(false)
 		expect(registry.list()).toHaveLength(1)
 		expect(registry.get("task-1")?.status).toBe("running")
 	})
@@ -59,6 +60,7 @@ describe("SubagentRegistry", () => {
 	it("carries a watch flag from the placeholder to the real task id", () => {
 		registry.registerQueued({
 			parentTaskId: "parent-1",
+			runId: "r1",
 			index: 0,
 			mode: "ask",
 			description: "d",
@@ -68,20 +70,30 @@ describe("SubagentRegistry", () => {
 			startedAt: 1,
 			lastActivityAt: 1,
 		})
-		registry.watch(queuedSubagentId("parent-1", 0))
-		registry.register(makeSummary())
+		registry.watch(queuedSubagentId("parent-1", "r1", 0))
+		registry.register(makeSummary({ runId: "r1" }))
 		expect(registry.isWatched("task-1")).toBe(true)
-		expect(registry.isWatched(queuedSubagentId("parent-1", 0))).toBe(false)
+		expect(registry.isWatched(queuedSubagentId("parent-1", "r1", 0))).toBe(false)
 	})
 
-	it("beginFanOut drops only the given parent's entries and their watch flags", () => {
-		registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))
-		registry.register(makeSummary({ taskId: "b", parentTaskId: "p2" }))
+	// Regression: a second fan-out of a task wiped the rows of its first, so
+	// the panel never listed the earlier subagents.
+	it("beginFanOut keeps the rows of the parent's earlier fan-outs", () => {
+		registry.register(makeSummary({ taskId: "a", parentTaskId: "p1", runId: "r1", status: "completed" }))
 		registry.watch("a")
 		registry.beginFanOut("p1")
-		expect(registry.has("a")).toBe(false)
-		expect(registry.isWatched("a")).toBe(false)
-		expect(registry.has("b")).toBe(true)
+		registry.registerQueued({ ...makeSummary({ parentTaskId: "p1", runId: "r2", index: 0 }) })
+		expect(registry.has("a")).toBe(true)
+		expect(registry.isWatched("a")).toBe(true)
+		expect(registry.list().map((s) => s.taskId)).toEqual(["a", queuedSubagentId("p1", "r2", 0)])
+	})
+
+	it("placeholders of two fan-outs of one parent do not collide", () => {
+		registry.registerQueued({ ...makeSummary({ parentTaskId: "p1", runId: "r1", index: 0 }) })
+		registry.registerQueued({ ...makeSummary({ parentTaskId: "p1", runId: "r2", index: 0 }) })
+		registry.register(makeSummary({ taskId: "second", parentTaskId: "p1", runId: "r2", index: 0 }))
+		expect(registry.has(queuedSubagentId("p1", "r1", 0))).toBe(true)
+		expect(registry.has(queuedSubagentId("p1", "r2", 0))).toBe(false)
 	})
 
 	it("setLiveStatus toggles running/awaiting_input but never resurrects a terminal entry", () => {
@@ -123,10 +135,12 @@ describe("SubagentRegistry", () => {
 		expect(posted).toHaveLength(0)
 	})
 
-	it("list orders by parent then index", () => {
-		registry.register(makeSummary({ taskId: "b", parentTaskId: "p1", index: 1 }))
-		registry.register(makeSummary({ taskId: "a", parentTaskId: "p1", index: 0 }))
-		expect(registry.list().map((s) => s.taskId)).toEqual(["a", "b"])
+	it("list orders by parent, then run in start order (rows without a run first), then index", () => {
+		registry.register(makeSummary({ taskId: "r2-0", parentTaskId: "p1", runId: "mve0fsca", index: 0 }))
+		registry.register(makeSummary({ taskId: "r1-1", parentTaskId: "p1", runId: "mvdzd7jg", index: 1 }))
+		registry.register(makeSummary({ taskId: "r1-0", parentTaskId: "p1", runId: "mvdzd7jg", index: 0 }))
+		registry.register(makeSummary({ taskId: "legacy", parentTaskId: "p1", index: 5 }))
+		expect(registry.list().map((s) => s.taskId)).toEqual(["legacy", "r1-0", "r1-1", "r2-0"])
 	})
 
 	describe("clearSettled", () => {
@@ -184,16 +198,17 @@ describe("SubagentRegistry", () => {
 	})
 
 	describe("snapshot", () => {
-		it("returns a copy of every summary in panel order", () => {
+		it("returns a copy of the parent's summaries in panel order", () => {
 			registry.register(makeSummary({ taskId: "b", parentTaskId: "p1", index: 1 }))
 			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1", index: 0 }))
-			const snap = registry.snapshot()
+			registry.register(makeSummary({ taskId: "other", parentTaskId: "p2", index: 0 }))
+			const snap = registry.snapshot("p1")
 			expect(snap.map((s) => s.taskId)).toEqual(["a", "b"])
 		})
 
 		it("returns fresh objects so mutating a snapshot does not affect the registry", () => {
 			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))
-			const snap = registry.snapshot()
+			const snap = registry.snapshot("p1")
 			snap[0].taskId = "mutated"
 			expect(registry.get("a")?.taskId).toBe("a")
 		})
@@ -212,11 +227,17 @@ describe("SubagentRegistry", () => {
 			expect(posted).toHaveLength(0)
 		})
 
-		it("drops existing entries for the same parent first (idempotent re-rehydrate)", () => {
-			registry.register(makeSummary({ taskId: "old", parentTaskId: "p1", index: 0 }))
-			registry.restore("p1", [makeSummary({ taskId: "new", parentTaskId: "p1", index: 0 })])
-			expect(registry.has("old")).toBe(false)
-			expect(registry.list().map((s) => s.taskId)).toEqual(["new"])
+		it("merges: a row already in the registry wins, new rows are added (idempotent re-rehydrate)", () => {
+			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1", index: 0, status: "completed" }))
+			registry.restore("p1", [
+				makeSummary({ taskId: "a", parentTaskId: "p1", index: 0, status: "running" }),
+				makeSummary({ taskId: "b", parentTaskId: "p1", index: 1, status: "failed" }),
+			])
+			registry.restore("p1", [makeSummary({ taskId: "b", parentTaskId: "p1", index: 1, status: "failed" })])
+			expect(registry.list().map((s) => [s.taskId, s.status])).toEqual([
+				["a", "completed"],
+				["b", "failed"],
+			])
 		})
 
 		it("ignores summaries that belong to a different parent (corrupt sidecar guard)", () => {
@@ -227,22 +248,23 @@ describe("SubagentRegistry", () => {
 			expect(registry.list().map((s) => s.taskId)).toEqual(["good"])
 		})
 
-		it("leaves the live rows of a fan-out still in progress untouched", () => {
+		it("adds the earlier fan-outs next to the live rows of a fan-out still in progress", () => {
 			registry.beginFanOut("p1")
-			registry.register(makeSummary({ taskId: "live", parentTaskId: "p1", index: 0 }))
+			registry.register(makeSummary({ taskId: "live", parentTaskId: "p1", runId: "r2", index: 0 }))
 
-			registry.restore("p1", [makeSummary({ taskId: "previous", parentTaskId: "p1", status: "completed" })])
+			registry.restore("p1", [
+				makeSummary({ taskId: "previous", parentTaskId: "p1", runId: "r1", status: "completed" }),
+			])
 
-			expect(registry.list().map((s) => s.taskId)).toEqual(["live"])
+			expect(registry.list().map((s) => s.taskId)).toEqual(["previous", "live"])
+			expect(registry.get("live")?.status).toBe("running")
 		})
 
 		it("is a no-op for an empty list", () => {
 			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))
 			posted.length = 0
 			registry.restore("p1", [])
-			// Empty restore still drops existing entries for the parent
-			// (idempotent re-rehydrate with no persisted children).
-			expect(registry.has("a")).toBe(false)
+			expect(registry.has("a")).toBe(true)
 			expect(posted).toHaveLength(0)
 		})
 	})

@@ -19,6 +19,7 @@ import { parseFollowUpData } from "@tumble-code/types"
 import { Button, Collapsible, CollapsibleContent, CollapsibleTrigger, Input, StandardTooltip } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
+import { formatTimestamp } from "@src/utils/format"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { ProgressIndicator } from "./ProgressIndicator"
@@ -480,10 +481,72 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 	)
 }
 
+/** The rows of one `run_parallel_tasks` call, in panel order. */
+interface SubagentRun {
+	/** SubagentSummary.runId, "" for rows whose run is unknown. */
+	runId: string
+	rows: SubagentSummary[]
+}
+
+/** Split the panel-ordered rows (run, then index) into their runs. */
+function groupByRun(subagents: SubagentSummary[]): SubagentRun[] {
+	const runs: SubagentRun[] = []
+	for (const summary of subagents) {
+		const runId = summary.runId ?? ""
+		const last = runs.at(-1)
+		if (last?.runId === runId) {
+			last.rows.push(summary)
+		} else {
+			runs.push({ runId, rows: [summary] })
+		}
+	}
+	return runs
+}
+
+const rowKey = (summary: SubagentSummary) => `${summary.runId ?? ""}:${summary.index}`
+
 /**
- * Panel above the chat input listing the parallel background subagents of the
- * latest `run_parallel_tasks` fan-out: live status per child, an expandable
- * streaming tail, question answering, mid-run guidance, and per-child cancel.
+ * One run of a task that fanned out several times: a header with the run's
+ * number, start time and progress, over its rows. Starts open when it is the
+ * latest run or still has live rows; earlier finished runs start closed.
+ */
+const SubagentRunGroup = ({ run, number, isLatest }: { run: SubagentRun; number: number; isLatest: boolean }) => {
+	const { t } = useTranslation()
+	const anyLive = run.rows.some(isLive)
+	const [open, setOpen] = useState(isLatest || anyLive)
+	const finished = run.rows.filter((summary) => !isLive(summary)).length
+	const startedAt = Math.min(...run.rows.map((summary) => summary.startedAt))
+	const counts = { finished, total: run.rows.length }
+
+	return (
+		<div className="shrink-0 flex flex-col gap-1">
+			<button
+				type="button"
+				onClick={() => setOpen((prev) => !prev)}
+				aria-expanded={open}
+				className={cn(
+					"flex items-center gap-1 min-h-[22px] px-1 text-left text-xs text-vscode-descriptionForeground",
+					"bg-transparent border-0 rounded-control cursor-pointer hover:bg-surface-hover focus-ring",
+				)}>
+				{open ? (
+					<ChevronDown className="size-3 shrink-0" aria-hidden />
+				) : (
+					<ChevronRight className="size-3 shrink-0" aria-hidden />
+				)}
+				{run.runId
+					? t("chat:subagents.runHeader", { number, time: formatTimestamp(startedAt), ...counts })
+					: t("chat:subagents.runEarlier", counts)}
+			</button>
+			{open && run.rows.map((summary) => <SubagentRow key={rowKey(summary)} summary={summary} />)}
+		</div>
+	)
+}
+
+/**
+ * Panel above the chat input listing the parallel background subagents of
+ * every `run_parallel_tasks` fan-out of the open task (grouped by run when
+ * there are several): live status per child, an expandable streaming tail,
+ * question answering, mid-run guidance, and per-child cancel.
  * Renders nothing when the open task has no fan-out.
  *
  * The panel belongs to the task that fanned out, like the edited-files bar
@@ -517,6 +580,10 @@ const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: Sub
 		return byStatus
 	}, [subagents])
 	const anyLive = counts.running + counts.queued + counts.awaiting_input > 0
+	const runs = useMemo(() => groupByRun(subagents), [subagents])
+	// Runs with a known id are numbered in start order; rows of an unknown
+	// run (saved before runs were told apart) come first and get no number.
+	const firstNumbered = runs[0]?.runId ? 0 : 1
 
 	const handleOpenChange = useCallback((open: boolean) => setPanelExpanded(open), [])
 
@@ -556,9 +623,16 @@ const SubagentsPanel = memo(({ subagents: allSubagents, taskId, className }: Sub
 				<div
 					data-testid="subagents-list"
 					className="flex flex-col gap-1 pb-2 pl-6 max-h-[50vh] overflow-y-auto">
-					{subagents.map((summary) => (
-						<SubagentRow key={`${summary.parentTaskId}:${summary.index}`} summary={summary} />
-					))}
+					{runs.length === 1
+						? runs[0].rows.map((summary) => <SubagentRow key={rowKey(summary)} summary={summary} />)
+						: runs.map((run, i) => (
+								<SubagentRunGroup
+									key={run.runId}
+									run={run}
+									number={i - firstNumbered + 1}
+									isLatest={i === runs.length - 1}
+								/>
+							))}
 				</div>
 			</CollapsibleContent>
 		</Collapsible>

@@ -535,6 +535,8 @@
 		"headerQueued": "대기 중: {{count}}",
 		"headerAwaitingInput": "입력 대기: {{count}}",
 		"headerDone": "하위 에이전트: {{total}}개 완료",
+		"runHeader": "실행 {{number}} · {{time}} · {{finished}}/{{total}} 완료",
+		"runEarlier": "이전 서브에이전트 · {{finished}}/{{total}} 완료",
 		"noOutput": "아직 출력이 없습니다.",
 		"tokens": "사용된 토큰",
 		"cancel": "이 하위 에이전트 취소",

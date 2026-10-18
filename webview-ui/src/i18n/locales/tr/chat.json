@@ -536,6 +536,8 @@
 		"headerQueued": "sırada: {{count}}",
 		"headerAwaitingInput": "yanıt bekliyor: {{count}}",
 		"headerDone": "Alt aracılar: {{total}} tamamlandı",
+		"runHeader": "Tur {{number}} · {{time}} · {{finished}}/{{total}} bitti",
+		"runEarlier": "Önceki alt ajanlar · {{finished}}/{{total}} bitti",
 		"noOutput": "Henüz çıktı yok.",
 		"tokens": "Kullanılan token",
 		"cancel": "Bu alt aracıyı iptal et",

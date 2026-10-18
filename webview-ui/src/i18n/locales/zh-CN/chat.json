@@ -536,6 +536,8 @@
 		"headerQueued": "排队中:{{count}}",
 		"headerAwaitingInput": "等待输入:{{count}}",
 		"headerDone": "子代理:{{total}} 个已完成",
+		"runHeader": "第 {{number}} 轮 · {{time}} · 已完成 {{finished}}/{{total}}",
+		"runEarlier": "更早的子代理 · 已完成 {{finished}}/{{total}}",
 		"noOutput": "暂无输出。",
 		"tokens": "已用 token",
 		"cancel": "取消此子代理",

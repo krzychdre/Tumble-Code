@@ -535,6 +535,8 @@
 		"headerQueued": "in Warteschlange: {{count}}",
 		"headerAwaitingInput": "warten auf Eingabe: {{count}}",
 		"headerDone": "Subagenten: {{total}} abgeschlossen",
+		"runHeader": "Durchlauf {{number}} · {{time}} · {{finished}}/{{total}} beendet",
+		"runEarlier": "Frühere Subagenten · {{finished}}/{{total}} beendet",
 		"noOutput": "Noch keine Ausgabe.",
 		"tokens": "Verwendete Token",
 		"cancel": "Diesen Subagenten abbrechen",

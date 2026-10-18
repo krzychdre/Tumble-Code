@@ -50,6 +50,8 @@
 		"headerQueued": "oczekujące: {{count}}",
 		"headerAwaitingInput": "czeka na odpowiedź: {{count}}",
 		"headerDone": "Subagenci: {{total}} zakończonych",
+		"runHeader": "Tura {{number}} · {{time}} · ukończone {{finished}}/{{total}}",
+		"runEarlier": "Wcześniejsi subagenci · ukończone {{finished}}/{{total}}",
 		"noOutput": "Brak danych wyjściowych.",
 		"tokens": "Zużyte tokeny",
 		"cancel": "Anuluj tego subagenta",

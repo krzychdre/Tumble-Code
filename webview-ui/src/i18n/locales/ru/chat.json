@@ -554,6 +554,8 @@
 		"headerQueued": "в очереди: {{count}}",
 		"headerAwaitingInput": "ждут ответа: {{count}}",
 		"headerDone": "Субагенты: {{total}} завершено",
+		"runHeader": "Запуск {{number}} · {{time}} · завершено {{finished}}/{{total}}",
+		"runEarlier": "Ранее запущенные субагенты · завершено {{finished}}/{{total}}",
 		"noOutput": "Пока нет вывода.",
 		"tokens": "Использовано токенов",
 		"cancel": "Отменить этого субагента",

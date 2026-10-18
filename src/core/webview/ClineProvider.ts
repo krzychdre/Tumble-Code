@@ -2407,15 +2407,18 @@ export class ClineProvider
 
 	/**
 	 * Rehydrate the parallel-subagent panel for a parent task being restored
-	 * from history. Reads `parallelChildIds` from the parent's history item
-	 * (the persisted parent→child relation written by `run_parallel_tasks`),
-	 * loads the matching terminal summaries from the parent's sidecar
-	 * (`tasks/<parentId>/subagents.json`), and registers them so the panel
-	 * renders the historical fan-out.
+	 * from history or put back on screen. Reads `parallelChildIds` from the
+	 * parent's history item (the persisted parent→child relation written by
+	 * `run_parallel_tasks`, one id per subagent of every fan-out), loads the
+	 * matching summaries from the parent's sidecar
+	 * (`tasks/<parentId>/subagents.json`), rebuilds a row from the child's
+	 * own history item for each subagent the sidecar lacks (see
+	 * subagentBackfill), and merges them into the registry. Rows the registry
+	 * already holds (a fan-out still running) are kept as they are.
 	 *
 	 * Graceful degradation: if `parallelChildIds` is absent (pre-fix history
-	 * item) or the sidecar is missing/corrupt, the panel stays empty — the
-	 * task is NOT marked corrupt and no error is thrown.
+	 * item) or the sidecar is missing/corrupt, the panel shows what can be
+	 * rebuilt; the task is NOT marked corrupt and no error is thrown.
 	 *
 	 * Posts a single `subagentsUpdated` carrying the restored list (and the
 	 * current task id as `sourceTaskId`). Called after the parent Task is on
@@ -2439,7 +2442,20 @@ export class ClineProvider
 			// crashed run could carry stale entries; this guard keeps the
 			// panel honest.
 			const allowed = new Set(parallelChildIds)
-			const restored = summaries.filter((s) => allowed.has(s.taskId))
+			const saved = summaries.filter((s) => allowed.has(s.taskId))
+			const savedIds = new Set(saved.map((s) => s.taskId))
+			const missingIds = parallelChildIds.filter((id) => !savedIds.has(id) && !this.subagentRegistry.has(id))
+			const childHistoryItems = (
+				await Promise.all(missingIds.map((id) => this.getHistoryItem(id).catch(() => undefined)))
+			).filter((item): item is HistoryItem => item !== undefined)
+			const needsRuns = childHistoryItems.length > 0 || saved.some((s) => s.runId === undefined)
+			const { completeSubagentRows, fanOutStartTimes } = await import("./subagentBackfill")
+			const restored = completeSubagentRows(
+				historyItem.id,
+				saved,
+				childHistoryItems,
+				needsRuns ? fanOutStartTimes(await this.readParentMessages(historyItem.id)) : [],
+			)
 			this.subagentRegistry.restore(historyItem.id, restored)
 			await this.postMessageToWebview({
 				type: "subagentsUpdated",
@@ -2455,6 +2471,16 @@ export class ClineProvider
 				}`,
 			)
 		}
+	}
+
+	/** A task's chat messages: the live instance's when it is on screen, else from disk. */
+	private async readParentMessages(taskId: string): Promise<ClineMessage[]> {
+		const current = this.getCurrentTask()
+		if (current?.taskId === taskId && current.clineMessages.length > 0) {
+			return current.clineMessages
+		}
+		const { readTaskMessages } = await import("../task-persistence")
+		return readTaskMessages({ taskId, globalStoragePath: this.contextProxy.globalStorageUri.fsPath })
 	}
 
 	// Clear the current task without treating it as a subtask.

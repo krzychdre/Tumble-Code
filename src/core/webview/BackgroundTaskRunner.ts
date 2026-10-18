@@ -36,6 +36,8 @@ export interface SubagentInfo {
 	parentTaskId: string
 	rootTaskId: string
 	workspace: string
+	/** The fan-out the subagent belongs to, see SubagentSummary.runId. */
+	runId: string
 	index: number
 	description: string
 }
@@ -192,6 +194,7 @@ export class BackgroundTaskRunner {
 			this.host.subagentRegistry.register({
 				taskId: task.taskId,
 				parentTaskId: options.subagentInfo.parentTaskId,
+				runId: options.subagentInfo.runId,
 				index: options.subagentInfo.index,
 				mode: options.taskMode ?? state.mode,
 				description: options.subagentInfo.description,

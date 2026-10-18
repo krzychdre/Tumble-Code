@@ -46,6 +46,8 @@
 		"headerQueued": "{{count}} queued",
 		"headerAwaitingInput": "{{count}} awaiting input",
 		"headerDone": "Subagents: {{total}} finished",
+		"runHeader": "Run {{number}} · {{time}} · {{finished}}/{{total}} finished",
+		"runEarlier": "Earlier subagents · {{finished}}/{{total}} finished",
 		"noOutput": "No output yet.",
 		"tokens": "Tokens used",
 		"cancel": "Cancel this subagent",

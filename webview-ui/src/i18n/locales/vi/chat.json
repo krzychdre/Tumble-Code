@@ -536,6 +536,8 @@
 		"headerQueued": "đang chờ: {{count}}",
 		"headerAwaitingInput": "chờ phản hồi: {{count}}",
 		"headerDone": "Tác nhân con: {{total}} đã xong",
+		"runHeader": "Lượt {{number}} · {{time}} · {{finished}}/{{total}} đã xong",
+		"runEarlier": "Các tác tử con trước đó · {{finished}}/{{total}} đã xong",
 		"noOutput": "Chưa có kết xuất.",
 		"tokens": "Token đã dùng",
 		"cancel": "Huỷ tác nhân con này",

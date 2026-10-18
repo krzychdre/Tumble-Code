@@ -535,6 +535,8 @@
 		"headerQueued": "कतार में: {{count}}",
 		"headerAwaitingInput": "इनपुट की प्रतीक्षा में: {{count}}",
 		"headerDone": "उप-एजेंट: {{total}} समाप्त",
+		"runHeader": "दौर {{number}} · {{time}} · {{finished}}/{{total}} पूरे",
+		"runEarlier": "पहले के सबएजेंट · {{finished}}/{{total}} पूरे",
 		"noOutput": "अभी तक कोई आउटपुट नहीं।",
 		"tokens": "उपयोग किए गए टोकन",
 		"cancel": "इस उप-एजेंट को रद्द करें",
