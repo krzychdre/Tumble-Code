@@ -917,10 +917,16 @@ describe("RunParallelTasksTool.execute", () => {
 			expect(parentItem.delegatedToId).toBeUndefined()
 		})
 
-		it("writes the subagents.json sidecar after the fan-out settles", async () => {
+		it("writes the subagents.json sidecar after the fan-out settles, keeping earlier runs", async () => {
 			const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "rpt-sidecar-"))
 			const provider = makeFakeProvider()
 			provider.globalStoragePath = tmpRoot
+			const sidecarDir = path.join(tmpRoot, "tasks", "parent-12345678")
+			await fs.mkdir(sidecarDir, { recursive: true })
+			await fs.writeFile(
+				path.join(sidecarDir, "subagents.json"),
+				JSON.stringify([{ taskId: "child-old", parentTaskId: "parent-12345678", runId: "r0", index: 0 }]),
+			)
 			provider.subagentRegistry.snapshot.mockReturnValue([
 				{
 					taskId: "child-x",
@@ -957,8 +963,27 @@ describe("RunParallelTasksTool.execute", () => {
 			expect(exists).toBe(true)
 			const raw = await fs.readFile(sidecarPath, "utf8")
 			const parsed = JSON.parse(raw)
-			expect(Array.isArray(parsed)).toBe(true)
-			expect(parsed[0].taskId).toBe("child-x")
+			expect(parsed.map((row: { taskId: string }) => row.taskId)).toEqual(["child-old", "child-x"])
+			expect(provider.subagentRegistry.snapshot).toHaveBeenCalledWith("parent-12345678")
+		})
+
+		it("gives every placeholder and child of one call the same run id", async () => {
+			const provider = makeFakeProvider()
+			const parent = makeFakeParentTask(provider)
+
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				makeCallbacks(),
+			)
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			provider.children.forEach((c) => c.complete())
+			await execPromise
+
+			const queuedRuns = provider.subagentRegistry.registerQueued.mock.calls.map(([row]) => row.runId)
+			const childRuns = provider.createBackgroundTask.mock.calls.map(([, opts]) => opts.subagentInfo.runId)
+			expect(queuedRuns[0]).toEqual(expect.any(String))
+			expect(new Set([...queuedRuns, ...childRuns])).toEqual(new Set([queuedRuns[0]]))
 		})
 
 		// The registry keeps an in-progress fan-out's rows across task switches;

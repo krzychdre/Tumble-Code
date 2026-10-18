@@ -535,6 +535,8 @@
 		"headerQueued": "待機中: {{count}}",
 		"headerAwaitingInput": "入力待ち: {{count}}",
 		"headerDone": "サブエージェント: {{total}} 件完了",
+		"runHeader": "実行 {{number}} · {{time}} · {{finished}}/{{total}} 件完了",
+		"runEarlier": "以前のサブエージェント · {{finished}}/{{total}} 件完了",
 		"noOutput": "まだ出力はありません。",
 		"tokens": "使用トークン",
 		"cancel": "このサブエージェントをキャンセル",

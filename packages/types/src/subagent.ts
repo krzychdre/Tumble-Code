@@ -8,8 +8,8 @@ import { z } from "zod"
  * - "running": the child is streaming/working.
  * - "awaiting_input": the child asked a question and is blocked on the user
  *   (interactive followup; a fallback timer keeps unattended runs bounded).
- * - "completed" / "failed" / "cancelled": terminal — kept visible until the
- *   fan-out result returns to the parent or a new fan-out starts.
+ * - "completed" / "failed" / "cancelled": terminal, kept visible with the
+ *   rest of the task's subagents.
  */
 export const subagentStatuses = ["queued", "running", "awaiting_input", "completed", "failed", "cancelled"] as const
 
@@ -26,6 +26,13 @@ export const subagentSummarySchema = z.object({
 	taskId: z.string(),
 	/** Task that fanned out (`run_parallel_tasks` caller). */
 	parentTaskId: z.string(),
+	/**
+	 * The `run_parallel_tasks` call (fan-out) that started it: the call's start
+	 * time in base 36, so ids sort in start order. A task that fanned out
+	 * several times keeps the rows of every run. Missing on rows saved before
+	 * runs were told apart, when the run cannot be worked out.
+	 */
+	runId: z.string().optional(),
 	/** 0-based position within the fan-out, stable for display ordering. */
 	index: z.number(),
 	mode: z.string(),

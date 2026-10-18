@@ -541,6 +541,8 @@
 		"headerQueued": "antre: {{count}}",
 		"headerAwaitingInput": "menunggu input: {{count}}",
 		"headerDone": "Subagen: {{total}} selesai",
+		"runHeader": "Putaran {{number}} · {{time}} · {{finished}}/{{total}} selesai",
+		"runEarlier": "Subagen sebelumnya · {{finished}}/{{total}} selesai",
 		"noOutput": "Belum ada keluaran.",
 		"tokens": "Token digunakan",
 		"cancel": "Batalkan subagen ini",

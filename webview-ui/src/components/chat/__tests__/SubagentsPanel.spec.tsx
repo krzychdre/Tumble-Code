@@ -141,6 +141,47 @@ describe("SubagentsPanel task scope", () => {
 	})
 })
 
+// Regression: every fan-out of a task replaced the panel rows of the one
+// before, so a task that fanned out three times listed only the last run.
+describe("SubagentsPanel with several runs", () => {
+	const runs = [
+		summary({ taskId: "a", runId: "r1", index: 0, description: "run one first", startedAt: 1000 }),
+		summary({ taskId: "b", runId: "r1", index: 1, description: "run one second", status: "failed" }),
+		summary({ taskId: "c", runId: "r2", index: 0, description: "run two first", status: "running" }),
+	]
+
+	it("lists every run under its own header; earlier finished runs start closed", () => {
+		renderPanel(runs, "parent")
+		expandPanel()
+
+		expect(screen.getByText(/chat:subagents.runHeader {"number":1,.*"finished":2,"total":2}/)).toBeInTheDocument()
+		expect(screen.getByText(/chat:subagents.runHeader {"number":2,.*"finished":0,"total":1}/)).toBeInTheDocument()
+		expect(screen.queryByText("run one first")).not.toBeInTheDocument()
+		expect(screen.getByText("run two first")).toBeInTheDocument()
+
+		fireEvent.click(screen.getByText(/chat:subagents.runHeader {"number":1/))
+		expect(screen.getByText("run one first")).toBeInTheDocument()
+		expect(screen.getByText("run one second")).toBeInTheDocument()
+	})
+
+	it("puts rows of an unknown run first, under their own unnumbered header", () => {
+		renderPanel([summary({ taskId: "old", description: "old one" }), ...runs], "parent")
+		expandPanel()
+
+		expect(screen.getByText(/chat:subagents.runEarlier/)).toBeInTheDocument()
+		expect(screen.getByText(/chat:subagents.runHeader {"number":1,/)).toBeInTheDocument()
+		expect(screen.getByText(/chat:subagents.runHeader {"number":2,/)).toBeInTheDocument()
+	})
+
+	it("a single run has no run header", () => {
+		renderPanel([runs[0], runs[1]], "parent")
+		expandPanel()
+
+		expect(screen.queryByText(/chat:subagents.runHeader/)).not.toBeInTheDocument()
+		expect(screen.getByText("run one first")).toBeInTheDocument()
+	})
+})
+
 describe("SubagentsPanel tail of a finished subagent", () => {
 	const expandRow = () => {
 		expandPanel()

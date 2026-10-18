@@ -535,6 +535,8 @@
 		"headerQueued": "in wachtrij: {{count}}",
 		"headerAwaitingInput": "wachten op invoer: {{count}}",
 		"headerDone": "Subagenten: {{total}} voltooid",
+		"runHeader": "Ronde {{number}} · {{time}} · {{finished}}/{{total}} klaar",
+		"runEarlier": "Eerdere subagents · {{finished}}/{{total}} klaar",
 		"noOutput": "Nog geen uitvoer.",
 		"tokens": "Tokens gebruikt",
 		"cancel": "Deze subagent annuleren",

@@ -9,18 +9,29 @@ const TERMINAL_STATUSES: ReadonlySet<SubagentStatus> = new Set(["completed", "fa
  * Deterministic placeholder id for a subtask registered at fan-out time,
  * before its child Task exists (queued behind the concurrency limit or still
  * creating its worktree). Replaced by the real taskId via {@link
- * SubagentRegistry.register}.
+ * SubagentRegistry.register}. The run id keeps the placeholders of two
+ * fan-outs of one parent apart.
  */
-export function queuedSubagentId(parentTaskId: string, index: number): string {
-	return `queued:${parentTaskId}:${index}`
+export function queuedSubagentId(parentTaskId: string, runId: string | undefined, index: number): string {
+	return `queued:${parentTaskId}:${runId ?? ""}:${index}`
+}
+
+/** Panel order: parent, then run (run ids sort in start order), then index. */
+function comparePanelOrder(a: SubagentSummary, b: SubagentSummary): number {
+	if (a.parentTaskId !== b.parentTaskId) return a.parentTaskId < b.parentTaskId ? -1 : 1
+	const runA = a.runId ?? ""
+	const runB = b.runId ?? ""
+	if (runA !== runB) return runA < runB ? -1 : 1
+	return a.index - b.index
 }
 
 /**
  * In-memory registry of parallel background subagents (`run_parallel_tasks`
  * children), the source of truth for the webview subagents panel.
  *
- * Holds one lightweight {@link SubagentSummary} per subtask of the most recent
- * fan-out per parent, plus the set of subagents whose live message tail the
+ * Holds one lightweight {@link SubagentSummary} per subtask of every fan-out
+ * of a parent (a parent can call `run_parallel_tasks` several times), plus
+ * the set of subagents whose live message tail the
  * webview is currently subscribed to. Every mutation pushes the full summary
  * list to the webview (`subagentsUpdated`) — the list is small (fan-outs are
  * a handful of subtasks) and full pushes keep the webview merge trivial.
@@ -52,23 +63,24 @@ export class SubagentRegistry {
 	) {}
 
 	/**
-	 * Snapshot of every currently-registered summary, in panel order. The
+	 * Snapshot of the summaries of `parentTaskId`, in panel order. The
 	 * returned array is a deep-enough copy (each entry is a fresh object
 	 * spread) so a caller persisting it cannot be racing with a later
 	 * mutation that swaps fields in place. Used by `run_parallel_tasks` to
-	 * write the sidecar after the fan-out settles.
+	 * write the parent's sidecar after the fan-out settles.
 	 */
-	snapshot(): SubagentSummary[] {
-		return this.list().map((summary) => ({ ...summary }))
+	snapshot(parentTaskId: string): SubagentSummary[] {
+		return this.list()
+			.filter((summary) => summary.parentTaskId === parentTaskId)
+			.map((summary) => ({ ...summary }))
 	}
 
 	/**
-	 * Start a new fan-out for `parentTaskId`: drop the previous fan-out's
-	 * entries (and their watch flags) so the panel only ever shows the live
-	 * generation. The fan-out counts as in progress until {@link endFanOut}.
+	 * Start a new fan-out for `parentTaskId`. The rows of its earlier
+	 * fan-outs stay: the panel lists every subagent of the task. The fan-out
+	 * counts as in progress until {@link endFanOut}.
 	 */
 	beginFanOut(parentTaskId: string): void {
-		this.dropParent(parentTaskId)
 		this.inProgress.add(parentTaskId)
 	}
 
@@ -123,34 +135,20 @@ export class SubagentRegistry {
 
 	/**
 	 * Re-populate the registry from persisted summaries (rehydration from
-	 * history). Existing entries for the same parent are dropped first so
-	 * rehydrating the same task idempotently replaces rather than duplicates.
-	 * Entries are inserted as-is (status already terminal); the panel renders
-	 * them like a finished fan-out. Does NOT broadcast — the caller is
-	 * responsible for posting the matching `subagentsUpdated` after the
-	 * parent task is on the stack, so the webview's `currentTaskId` is set
-	 * before the message arrives.
+	 * history). A row already in the registry wins: it is at least as new as
+	 * the persisted one (a fan-out still in progress keeps reporting into
+	 * it), so re-rehydrating a task never doubles or rolls back a row. Does
+	 * NOT broadcast: the caller posts the matching `subagentsUpdated` after
+	 * the parent task is on the stack, so the webview's `currentTaskId` is
+	 * set before the message arrives.
 	 */
 	restore(parentTaskId: string, summaries: SubagentSummary[]): void {
-		// The live rows of a fan-out still in progress are newer than any
-		// sidecar (which holds the previous fan-out, if any).
-		if (this.inProgress.has(parentTaskId)) {
-			return
-		}
-		// Drop any live or stale entries for this parent first (idempotent
-		// re-rehydrate of the same task should not double the panel).
-		for (const [taskId, summary] of this.summaries) {
-			if (summary.parentTaskId === parentTaskId) {
-				this.summaries.delete(taskId)
-				this.watched.delete(taskId)
-			}
-		}
 		for (const summary of summaries) {
 			// Only restore entries that actually belong to this parent; the
 			// sidecar is written by us and should never mix parents, but the
 			// guard is cheap and keeps a corrupt sidecar from polluting the
 			// panel with rows from another task.
-			if (summary.parentTaskId === parentTaskId) {
+			if (summary.parentTaskId === parentTaskId && !this.summaries.has(summary.taskId)) {
 				this.summaries.set(summary.taskId, { ...summary })
 			}
 		}
@@ -166,7 +164,7 @@ export class SubagentRegistry {
 	 * exists. No-op if an entry with that placeholder id is already present.
 	 */
 	registerQueued(summary: Omit<SubagentSummary, "taskId" | "status">): void {
-		const taskId = queuedSubagentId(summary.parentTaskId, summary.index)
+		const taskId = queuedSubagentId(summary.parentTaskId, summary.runId, summary.index)
 		if (this.summaries.has(taskId)) {
 			return
 		}
@@ -180,7 +178,7 @@ export class SubagentRegistry {
 	 * placeholder keeps streaming once the child starts.
 	 */
 	register(summary: SubagentSummary): void {
-		const placeholderId = queuedSubagentId(summary.parentTaskId, summary.index)
+		const placeholderId = queuedSubagentId(summary.parentTaskId, summary.runId, summary.index)
 		if (this.summaries.delete(placeholderId) && this.watched.delete(placeholderId)) {
 			this.watched.add(summary.taskId)
 		}
@@ -254,11 +252,9 @@ export class SubagentRegistry {
 		return this.summaries.has(taskId)
 	}
 
-	/** Panel ordering: fan-out registration order (parent, then index). */
+	/** Panel ordering: parent, then fan-out in start order, then index. */
 	list(): SubagentSummary[] {
-		return [...this.summaries.values()].sort(
-			(a, b) => a.parentTaskId.localeCompare(b.parentTaskId) || a.index - b.index,
-		)
+		return [...this.summaries.values()].sort(comparePanelOrder)
 	}
 
 	watch(taskId: string): void {

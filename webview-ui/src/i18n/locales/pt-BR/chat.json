@@ -543,6 +543,8 @@
 		"headerQueued": "na fila: {{count}}",
 		"headerAwaitingInput": "aguardando resposta: {{count}}",
 		"headerDone": "Subagentes: {{total}} concluídos",
+		"runHeader": "Rodada {{number}} · {{time}} · {{finished}}/{{total}} concluídos",
+		"runEarlier": "Subagentes anteriores · {{finished}}/{{total}} concluídos",
 		"noOutput": "Ainda não há saída.",
 		"tokens": "Tokens usados",
 		"cancel": "Cancelar este subagente",

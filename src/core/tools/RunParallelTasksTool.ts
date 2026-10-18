@@ -285,6 +285,7 @@ export interface SubtaskRegistry {
 	endFanOut(parentTaskId: string): void
 	registerQueued(summary: {
 		parentTaskId: string
+		runId: string
 		index: number
 		mode: string
 		description: string
@@ -296,8 +297,8 @@ export interface SubtaskRegistry {
 	}): void
 	markTerminal(taskId: string, status: "completed" | "failed" | "cancelled", finalMessage?: string): void
 	get(taskId: string): { status: string } | undefined
-	/** Snapshot of every registered summary in panel order (for sidecar persistence). */
-	snapshot(): SubagentSummary[]
+	/** Snapshot of one parent's summaries in panel order (for sidecar persistence). */
+	snapshot(parentTaskId: string): SubagentSummary[]
 }
 
 /** Provider surface needed by a single subtask worker. */
@@ -376,7 +377,7 @@ async function runOneSubtask({
 	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, runId, index)
 	const registry = provider.subagentRegistry
 	// Until the child Task exists, panel updates target the queued placeholder.
-	let registryId = queuedSubagentId(parentTaskId, index)
+	let registryId = queuedSubagentId(parentTaskId, runId, index)
 
 	if (signal.aborted) {
 		registry.markTerminal(registryId, "cancelled")
@@ -417,6 +418,7 @@ async function runOneSubtask({
 				parentTaskId,
 				rootTaskId,
 				workspace: cwd,
+				runId,
 				index,
 				description: subagentDescription(subtask.message),
 			},
@@ -539,14 +541,15 @@ async function persistParallelChildId(
  * Best-effort persistence of the terminal subagent summaries to the parent
  * task's sidecar (`tasks/<parentTaskId>/subagents.json`). Called once after
  * the whole fan-out settles so rehydration can repopulate the panel without
- * re-reading each child's messages. Never throws: a missing/corrupt sidecar
- * only means the historical panel stays empty for this run.
+ * re-reading each child's messages. Merged into the rows already saved, so
+ * the sidecar keeps every fan-out of the task. Never throws: rehydration
+ * rebuilds a row the sidecar lacks from the child's history item.
  */
 async function persistSubagentSummariesSidecar(provider: SubtaskProvider, parentTaskId: string): Promise<void> {
 	try {
-		const { saveSubagentSummaries } = await import("../task-persistence/subagentSummariesStore")
-		const summaries = provider.subagentRegistry.snapshot()
-		await saveSubagentSummaries(provider.globalStoragePath, parentTaskId, summaries)
+		const { mergeSubagentSummaries } = await import("../task-persistence/subagentSummariesStore")
+		const summaries = provider.subagentRegistry.snapshot(parentTaskId)
+		await mergeSubagentSummaries(provider.globalStoragePath, parentTaskId, summaries)
 	} catch (error) {
 		// Non-fatal: see persistParallelChildId. The live panel is unaffected.
 		logger.warn(
@@ -649,14 +652,15 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			await sweepOrphanedSubtaskWorktrees(cwd)
 			const runId = newFanOutRunId()
 
-			// Seed the webview subagents panel: previous fan-out entries for
-			// this parent are dropped, every subtask appears immediately as
-			// "queued" and transitions as its worker picks it up.
+			// Seed the webview subagents panel: every subtask appears
+			// immediately as "queued" (next to the rows of the parent's earlier
+			// fan-outs) and transitions as its worker picks it up.
 			const fanOutStartedAt = Date.now()
 			provider.subagentRegistry.beginFanOut(task.taskId)
 			for (let i = 0; i < subtasks.length; i++) {
 				provider.subagentRegistry.registerQueued({
 					parentTaskId: task.taskId,
+					runId,
 					index: i,
 					mode: subtasks[i].mode,
 					description: subagentDescription(subtasks[i].message),

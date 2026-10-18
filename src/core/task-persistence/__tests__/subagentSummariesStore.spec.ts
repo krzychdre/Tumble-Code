@@ -20,7 +20,7 @@ vi.mock("vscode", () => ({
 }))
 
 import {
-	saveSubagentSummaries,
+	mergeSubagentSummaries,
 	loadSubagentSummaries,
 	getSubagentSummariesFilePath,
 	SUBAGENTS_SIDECAR_FILENAME,
@@ -53,13 +53,13 @@ describe("subagentSummariesStore", () => {
 		tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "subagent-store-"))
 	})
 
-	describe("saveSubagentSummaries + loadSubagentSummaries round-trip", () => {
+	describe("mergeSubagentSummaries + loadSubagentSummaries round-trip", () => {
 		it("persists and reloads a list of summaries", async () => {
 			const summaries = [
 				makeSummary({ taskId: "c1", index: 0, status: "completed" }),
 				makeSummary({ taskId: "c2", index: 1, status: "failed", finalMessage: "boom" }),
 			]
-			await saveSubagentSummaries(tmpRoot, "parent-1", summaries)
+			await mergeSubagentSummaries(tmpRoot, "parent-1", summaries)
 
 			const loaded = await loadSubagentSummaries(tmpRoot, "parent-1")
 			expect(loaded).toHaveLength(2)
@@ -68,16 +68,34 @@ describe("subagentSummariesStore", () => {
 			expect(loaded[1].finalMessage).toBe("boom")
 		})
 
-		it("overwrites a previous sidecar for the same parent (beginFanOut semantics)", async () => {
-			await saveSubagentSummaries(tmpRoot, "parent-1", [makeSummary({ taskId: "old", index: 0 })])
-			await saveSubagentSummaries(tmpRoot, "parent-1", [makeSummary({ taskId: "new", index: 0 })])
+		it("keeps the rows of earlier fan-outs and replaces a row with the same task id", async () => {
+			await mergeSubagentSummaries(tmpRoot, "parent-1", [
+				makeSummary({ taskId: "run1-a", runId: "r1", index: 0 }),
+				makeSummary({ taskId: "run1-b", runId: "r1", index: 1, status: "running" }),
+			])
+			await mergeSubagentSummaries(tmpRoot, "parent-1", [
+				makeSummary({ taskId: "run1-b", runId: "r1", index: 1, status: "failed" }),
+				makeSummary({ taskId: "run2-a", runId: "r2", index: 0 }),
+			])
 			const loaded = await loadSubagentSummaries(tmpRoot, "parent-1")
-			expect(loaded.map((s) => s.taskId)).toEqual(["new"])
+			expect(loaded.map((s) => [s.taskId, s.status])).toEqual([
+				["run1-a", "completed"],
+				["run1-b", "failed"],
+				["run2-a", "completed"],
+			])
+		})
+
+		it("does not save queued placeholders", async () => {
+			await mergeSubagentSummaries(tmpRoot, "parent-1", [
+				makeSummary({ taskId: "queued:parent-1:r1:0", status: "cancelled" }),
+				makeSummary({ taskId: "c1" }),
+			])
+			expect((await loadSubagentSummaries(tmpRoot, "parent-1")).map((s) => s.taskId)).toEqual(["c1"])
 		})
 
 		it("keeps sidecars for different parents independent", async () => {
-			await saveSubagentSummaries(tmpRoot, "parent-1", [makeSummary({ taskId: "c1" })])
-			await saveSubagentSummaries(tmpRoot, "parent-2", [makeSummary({ taskId: "c2", parentTaskId: "parent-2" })])
+			await mergeSubagentSummaries(tmpRoot, "parent-1", [makeSummary({ taskId: "c1" })])
+			await mergeSubagentSummaries(tmpRoot, "parent-2", [makeSummary({ taskId: "c2", parentTaskId: "parent-2" })])
 			expect((await loadSubagentSummaries(tmpRoot, "parent-1")).map((s) => s.taskId)).toEqual(["c1"])
 			expect((await loadSubagentSummaries(tmpRoot, "parent-2")).map((s) => s.taskId)).toEqual(["c2"])
 		})
@@ -131,7 +149,7 @@ describe("subagentSummariesStore", () => {
 		it("creates the parent task directory if it does not exist", async () => {
 			const filePath = await getSubagentSummariesFilePath(tmpRoot, "parent-1")
 			// The file does not need to exist, but the directory must have
-			// been created (saveSubagentSummaries relies on this).
+			// been created (mergeSubagentSummaries relies on this).
 			const dir = path.dirname(filePath)
 			const stat = await fs.stat(dir)
 			expect(stat.isDirectory()).toBe(true)
@@ -141,7 +159,7 @@ describe("subagentSummariesStore", () => {
 			// `path.join("", "tasks", id)` is relative, which would create the
 			// sidecar under the process cwd (the repo, when running tests).
 			await expect(getSubagentSummariesFilePath("", "parent-1")).rejects.toThrow(/globalStoragePath is required/)
-			await expect(saveSubagentSummaries("", "parent-1", [makeSummary()])).rejects.toThrow(
+			await expect(mergeSubagentSummaries("", "parent-1", [makeSummary()])).rejects.toThrow(
 				/globalStoragePath is required/,
 			)
 			expect(await loadSubagentSummaries("", "parent-1")).toEqual([])

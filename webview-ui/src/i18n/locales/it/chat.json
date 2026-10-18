@@ -543,6 +543,8 @@
 		"headerQueued": "in coda: {{count}}",
 		"headerAwaitingInput": "in attesa di risposta: {{count}}",
 		"headerDone": "Subagenti: {{total}} completati",
+		"runHeader": "Turno {{number}} · {{time}} · {{finished}}/{{total}} terminati",
+		"runEarlier": "Subagenti precedenti · {{finished}}/{{total}} terminati",
 		"noOutput": "Nessun output ancora.",
 		"tokens": "Token usati",
 		"cancel": "Annulla questo subagente",

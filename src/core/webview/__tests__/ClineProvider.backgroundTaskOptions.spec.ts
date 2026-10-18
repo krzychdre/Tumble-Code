@@ -87,7 +87,14 @@ describe("ClineProvider.createBackgroundTask profile rules (DEF-C6)", () => {
 		await expect(
 			provider.createBackgroundTask("do work", {
 				taskMode: "code",
-				subagentInfo: { parentTaskId: "parent", rootTaskId: "parent", workspace: "/project", index: 0, description: "do work" },
+				subagentInfo: {
+					parentTaskId: "parent",
+					rootTaskId: "parent",
+					workspace: "/project",
+					runId: "run1",
+					index: 0,
+					description: "do work",
+				},
 			}),
 		).rejects.toBeInstanceOf(OrganizationAllowListViolationError)
 
@@ -131,7 +138,14 @@ describe("ClineProvider.createBackgroundTask profile rules (DEF-C6)", () => {
 
 		await provider.createBackgroundTask("do work", {
 			taskMode: "code",
-			subagentInfo: { parentTaskId: "parent", rootTaskId: "parent", workspace: "/project", index: 0, description: "do work" },
+			subagentInfo: {
+				parentTaskId: "parent",
+				rootTaskId: "parent",
+				workspace: "/project",
+				runId: "run1",
+				index: 0,
+				description: "do work",
+			},
 		})
 
 		// The limit follows the profile the subagent actually runs on (the

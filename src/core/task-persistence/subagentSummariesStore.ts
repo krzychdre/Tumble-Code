@@ -38,20 +38,28 @@ export async function getSubagentSummariesFilePath(globalStoragePath: string, pa
 }
 
 /**
- * Atomically persist the terminal summaries of a parent's most recent
- * parallel fan-out. Overwrites any previous sidecar for that parent —
- * `beginFanOut` semantics mean only the latest fan-out is relevant.
+ * Atomically merge the terminal summaries of a parent's latest parallel
+ * fan-out into its sidecar. A summary replaces the saved one with the same
+ * task id; the rows of the parent's earlier fan-outs stay, so the sidecar
+ * holds every subagent of the task. Queued placeholders (a subtask cancelled
+ * before its task existed) have no task of their own and are not saved.
  *
  * Failures are caught by the caller (the tool logs a warning and continues);
  * this helper throws on I/O errors so the caller can decide policy.
  */
-export async function saveSubagentSummaries(
+export async function mergeSubagentSummaries(
 	globalStoragePath: string,
 	parentTaskId: string,
 	summaries: SubagentSummary[],
 ): Promise<void> {
 	const filePath = await getSubagentSummariesFilePath(globalStoragePath, parentTaskId)
-	await safeWriteJson(filePath, summaries)
+	const merged = new Map<string, SubagentSummary>()
+	for (const summary of [...(await loadSubagentSummaries(globalStoragePath, parentTaskId)), ...summaries]) {
+		if (!summary.taskId.startsWith("queued:")) {
+			merged.set(summary.taskId, summary)
+		}
+	}
+	await safeWriteJson(filePath, [...merged.values()])
 }
 
 /**

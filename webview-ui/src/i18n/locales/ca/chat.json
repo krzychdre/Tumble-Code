@@ -543,6 +543,8 @@
 		"headerQueued": "en cua: {{count}}",
 		"headerAwaitingInput": "esperant resposta: {{count}}",
 		"headerDone": "Subagents: {{total}} finalitzats",
+		"runHeader": "Ronda {{number}} · {{time}} · {{finished}}/{{total}} acabats",
+		"runEarlier": "Subagents anteriors · {{finished}}/{{total}} acabats",
 		"noOutput": "Encara no hi ha sortida.",
 		"tokens": "Tokens utilitzats",
 		"cancel": "Cancel·la aquest subagent",

@@ -543,6 +543,8 @@
 		"headerQueued": "en file d'attente : {{count}}",
 		"headerAwaitingInput": "en attente de réponse : {{count}}",
 		"headerDone": "Sous-agents : {{total}} terminés",
+		"runHeader": "Vague {{number}} · {{time}} · {{finished}}/{{total}} terminés",
+		"runEarlier": "Sous-agents précédents · {{finished}}/{{total}} terminés",
 		"noOutput": "Pas encore de sortie.",
 		"tokens": "Jetons utilisés",
 		"cancel": "Annuler ce sous-agent",

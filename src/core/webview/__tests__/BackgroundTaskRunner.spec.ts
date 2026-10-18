@@ -83,6 +83,7 @@ const SUBAGENT_INFO = {
 	parentTaskId: "parent",
 	rootTaskId: "root",
 	workspace: "/project",
+	runId: "run1",
 	index: 2,
 	description: "part two",
 }
@@ -180,6 +181,7 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 			expect.objectContaining({
 				taskId: task.taskId,
 				parentTaskId: "parent",
+				runId: "run1",
 				index: 2,
 				mode: "ask",
 				description: "part two",
@@ -260,6 +262,7 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 				parentTaskId: "parent",
 				rootTaskId: "parent",
 				workspace: "/repo",
+				runId: "run1",
 				index: 0,
 				description: "part one",
 			},
