@@ -1,8 +1,8 @@
 {
   "architect": {
     "todayTools": 18,
-    "todayNativeChars": 31770,
-    "todaySentChars": 31876,
+    "todayNativeChars": 31695,
+    "todaySentChars": 31801,
     "compactTools": 8,
     "compactNativeChars": 3905,
     "compactSentChars": 4025,
@@ -10,8 +10,8 @@
   },
   "code": {
     "todayTools": 20,
-    "todayNativeChars": 37505,
-    "todaySentChars": 37633,
+    "todayNativeChars": 37430,
+    "todaySentChars": 37558,
     "compactTools": 9,
     "compactNativeChars": 4309,
     "compactSentChars": 4444,
@@ -19,8 +19,8 @@
   },
   "ask": {
     "todayTools": 16,
-    "todayNativeChars": 28056,
-    "todaySentChars": 28148,
+    "todayNativeChars": 27981,
+    "todaySentChars": 28073,
     "compactTools": 6,
     "compactNativeChars": 2726,
     "compactSentChars": 2816,
@@ -28,8 +28,8 @@
   },
   "debug": {
     "todayTools": 20,
-    "todayNativeChars": 37505,
-    "todaySentChars": 37633,
+    "todayNativeChars": 37430,
+    "todaySentChars": 37558,
     "compactTools": 9,
     "compactNativeChars": 4309,
     "compactSentChars": 4444,
@@ -37,8 +37,8 @@
   },
   "orchestrator": {
     "todayTools": 9,
-    "todayNativeChars": 14561,
-    "todaySentChars": 14516,
+    "todayNativeChars": 14486,
+    "todaySentChars": 14441,
     "compactTools": 3,
     "compactNativeChars": 1187,
     "compactSentChars": 1232,
@@ -46,8 +46,8 @@
   },
   "vision": {
     "todayTools": 16,
-    "todayNativeChars": 32531,
-    "todaySentChars": 32630,
+    "todayNativeChars": 32456,
+    "todaySentChars": 32555,
     "compactTools": 7,
     "compactNativeChars": 3130,
     "compactSentChars": 3235,

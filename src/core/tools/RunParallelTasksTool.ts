@@ -85,9 +85,8 @@ export function validateParallelParams(
 				ok: false,
 				error:
 					`Subtask #${i + 1} uses mode "${mode}", which is not allowed for parallel subtasks. ` +
-					`Parallel subtasks are small one-shot jobs (answering a question in ask mode, web research, ` +
-					`a small scoped code edit, running tests), so do the ${mode} work yourself in this task and ` +
-					`fan out only the small independent pieces.`,
+					`Planning and orchestration stay in this task: do the ${mode} work yourself here and give ` +
+					`subagents the self-contained jobs it produces (questions, research, test runs, edits).`,
 			}
 		}
 		subtasks.push({ message, mode })
@@ -96,12 +95,14 @@ export function validateParallelParams(
 		Number.isFinite(maxConcurrencyCap) && maxConcurrencyCap >= 1
 			? Math.floor(maxConcurrencyCap)
 			: DEFAULT_MAX_CONCURRENCY
-	let maxConcurrency = params?.maxConcurrency ?? Math.min(DEFAULT_MAX_CONCURRENCY, cap)
+	// No value means the user's cap: the settings (and each profile's
+	// maxConcurrentRequests) decide how many subagents run, not the model.
+	let maxConcurrency = params?.maxConcurrency ?? cap
 	// Below 2 is treated as invalid, not honored: "parallel with concurrency 1"
 	// defeats the tool's purpose, so a nonsensical request falls back to the
-	// default instead of degrading the fan-out to a sequential queue.
+	// cap instead of degrading the fan-out to a sequential queue.
 	if (typeof maxConcurrency !== "number" || !Number.isFinite(maxConcurrency) || maxConcurrency < 2) {
-		maxConcurrency = Math.min(DEFAULT_MAX_CONCURRENCY, cap)
+		maxConcurrency = cap
 	}
 	return { ok: true, subtasks, maxConcurrency: Math.min(Math.floor(maxConcurrency), cap, subtasks.length) }
 }
