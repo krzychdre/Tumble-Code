@@ -24,6 +24,7 @@ vi.mock("../../task/Task", () => ({
 			options,
 			start: vi.fn(),
 			setTaskApiConfigName: vi.fn(),
+			on: vi.fn(),
 		}
 	}),
 }))
