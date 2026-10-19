@@ -658,6 +658,54 @@ describe("attemptCompletionTool", () => {
 	// (ask("completion_result")). The gate keys on the durable `awaitingChildId` signal so a
 	// background-drain save that clobbers the parent status "delegated" -> "active" does not
 	// break the return. See ai_plans/archive/2026-06/2026-06-08_delegated-subtask-no-return.md.
+	describe("background subagents gate", () => {
+		const callbacks = (): AttemptCompletionCallbacks => ({
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+			askFinishSubTaskApproval: mockAskFinishSubTaskApproval,
+			toolDescription: mockToolDescription,
+		})
+		const withSubagents = (running: number, unread: number) => {
+			;(mockTask as any).providerRef = {
+				deref: () => ({
+					backgroundSubagents: {
+						hasWork: () => running + unread > 0,
+						running: () => Array.from({ length: running }),
+						unreadCount: () => unread,
+					},
+				}),
+			}
+		}
+
+		it.each([
+			["subagents still running", 2, 0],
+			["results not read yet", 0, 1],
+		])("refuses to complete with %s and points at wait_for_subagents", async (_label, running, unread) => {
+			withSubagents(running, unread)
+
+			await attemptCompletionTool.execute({ result: "done" }, mockTask as Task, callbacks())
+
+			expect(mockTask.consecutiveMistakeCount).toBe(1)
+			expect(mockTask.recordToolError).toHaveBeenCalledWith("attempt_completion")
+			const error = mockPushToolResult.mock.calls[0][0] as string
+			expect(error).toContain(`${running} subagent(s) are still running`)
+			expect(error).toContain(`${unread} finished subagent result(s)`)
+			expect(error).toContain("Call wait_for_subagents")
+			expect(mockTask.say).not.toHaveBeenCalledWith("completion_result", expect.anything(), undefined, false)
+			expect(mockTask.ask).not.toHaveBeenCalled()
+		})
+
+		it("completes once every subagent reported", async () => {
+			withSubagents(0, 0)
+
+			await attemptCompletionTool.execute({ result: "done" }, mockTask as Task, callbacks())
+
+			expect(mockTask.recordToolError).not.toHaveBeenCalled()
+			expect(mockTask.ask).toHaveBeenCalledWith("completion_result", "", false)
+		})
+	})
+
 	describe("subtask delegation gate", () => {
 		const CHILD_ID = "task_1"
 		const PARENT_ID = "parent_1"

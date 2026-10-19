@@ -595,6 +595,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble искал в истории этой задачи"
 	},
+	"waitForSubagents": {
+		"title": "Tumble ждёт своих субагентов"
+	},
 	"memoryActivity": {
 		"recalling": "Вызов памяти…",
 		"writing": "Запись памяти…",

@@ -73,6 +73,7 @@ import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@tumble-code/types"
 import type { TaskHistoryStore } from "../task-persistence"
 import { SubagentRegistry } from "./SubagentRegistry"
+import { BackgroundSubagents } from "./BackgroundSubagents"
 import { PendingEditOperations, type PendingEditOperation } from "./PendingEditOperations"
 import {
 	ProviderStateBuilder,
@@ -90,7 +91,12 @@ import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOption
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
 import { TelemetryPropertiesSource } from "./TelemetryPropertiesSource"
 import { ModeProfileQueries } from "./ModeProfileQueries"
-import { BackgroundTaskRunner, type BackgroundTaskOptions, type BackgroundTaskOutcome } from "./BackgroundTaskRunner"
+import {
+	BackgroundTaskRunner,
+	type BackgroundTaskOptions,
+	type BackgroundTaskOutcome,
+	type SubagentProfile,
+} from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
 
@@ -150,6 +156,12 @@ export class ClineProvider
 		},
 		() => this.getCurrentTask()?.taskId,
 	)
+	// The running parallel subagents of every parent task and the results
+	// the parent model has not read yet (wait_for_subagents), plus the slot
+	// pool that caps how many subagents run at once in this provider.
+	public readonly backgroundSubagents = new BackgroundSubagents({
+		getLiveTaskInstance: (taskId) => this.getLiveTaskInstance(taskId),
+	})
 	private codeIndexStatusSubscription?: vscode.Disposable
 	private codeIndexManager?: CodeIndexManager
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
@@ -441,6 +453,10 @@ export class ClineProvider
 			getProfile: (params) => this.providerSettingsManager.getProfile(params),
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
 		})
+		// A parent whose turn ended (idle or resumable ask) gets the subagent
+		// results that arrived meanwhile as a queued message, which wakes it.
+		this.on(TumbleCodeEventName.TaskIdle, (taskId) => this.backgroundSubagents.deliverIfIdle(taskId))
+		this.on(TumbleCodeEventName.TaskResumable, (taskId) => this.backgroundSubagents.deliverIfIdle(taskId))
 
 		this.customModesManager = new CustomModesManager(this.context, async () => {
 			await this.postStateToWebviewWithoutClineMessages()
@@ -2093,6 +2109,14 @@ export class ClineProvider
 	 */
 	public createBackgroundTask(text: string, options: BackgroundTaskOptions = {}): Promise<Task> {
 		return this.backgroundTaskRunner.createBackgroundTask(text, options)
+	}
+
+	/**
+	 * The API profile a subagent in `taskMode` runs on; see
+	 * {@link BackgroundTaskRunner.resolveSubagentProfile}.
+	 */
+	public resolveSubagentProfile(taskMode: string): Promise<SubagentProfile> {
+		return this.backgroundTaskRunner.resolveSubagentProfile(taskMode)
 	}
 
 	/** Look up a live headless background task (parallel subagent) by id. */

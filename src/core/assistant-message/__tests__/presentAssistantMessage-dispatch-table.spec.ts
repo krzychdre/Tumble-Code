@@ -37,6 +37,7 @@ const handles = vi.hoisted(() => {
 		attemptCompletionTool: stub(),
 		newTaskTool: stub(),
 		runParallelTasksTool: stub(),
+		waitForSubagentsTool: stub(),
 		updateTodoListTool: stub(),
 		skillTool: stub(),
 		toolsLoadTool: stub(),
@@ -74,6 +75,7 @@ vi.mock("../../tools/SwitchModeTool", () => ({ switchModeTool: handles.switchMod
 vi.mock("../../tools/AttemptCompletionTool", () => ({ attemptCompletionTool: handles.attemptCompletionTool }))
 vi.mock("../../tools/NewTaskTool", () => ({ newTaskTool: handles.newTaskTool }))
 vi.mock("../../tools/RunParallelTasksTool", () => ({ runParallelTasksTool: handles.runParallelTasksTool }))
+vi.mock("../../tools/WaitForSubagentsTool", () => ({ waitForSubagentsTool: handles.waitForSubagentsTool }))
 vi.mock("../../tools/UpdateTodoListTool", () => ({ updateTodoListTool: handles.updateTodoListTool }))
 vi.mock("../../tools/SkillTool", () => ({ skillTool: handles.skillTool }))
 vi.mock("../../tools/ToolsLoadTool", () => ({ toolsLoadTool: handles.toolsLoadTool }))
@@ -259,6 +261,12 @@ const DISPATCH: Record<Exclude<ToolName, "custom_tool">, DispatchCase> = {
 		checkpoint: false,
 		nativeArgs: { subtasks: [{}, {}, {}] },
 		description: "[run_parallel_tasks: 3 subtask(s)]",
+	},
+	wait_for_subagents: {
+		handler: "waitForSubagentsTool",
+		checkpoint: false,
+		nativeArgs: {},
+		description: "[wait_for_subagents]",
 	},
 	web_search: {
 		handler: "webSearchTool",

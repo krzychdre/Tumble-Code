@@ -192,6 +192,10 @@ const CASES: Record<DispatchableToolName | "write_file", Case[]> = {
 		{ label: "subtasks stringified", args: { subtasks: JSON.stringify([{ message: "one", mode: "code" }]) } },
 		{ label: "maxConcurrency as string", args: { subtasks: [], maxConcurrency: "3" } },
 	],
+	wait_for_subagents: [
+		{ label: "no arguments", args: {} },
+		{ label: "stray argument", args: { reason: "waiting" } },
+	],
 	codebase_search: [
 		{ label: "full", args: { query: "auth middleware", path: "src/server" } },
 		{ label: "path null", args: { query: "auth", path: null } },

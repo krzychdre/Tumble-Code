@@ -31,6 +31,7 @@ export interface ClineSayTool {
 		| "skill"
 		| "webSearch"
 		| "webFetch"
+		| "waitForSubagents"
 	path?: string
 	// For readArtifact (and the legacy readCommandOutput)
 	readStart?: number

@@ -397,11 +397,8 @@ export function useTaskSubmit({
 					setError(err instanceof Error ? err.message : String(err))
 					setLoading(false)
 				}
-			} else {
-				if (isComplete) {
-					setComplete(false)
-				}
-
+			} else if (isComplete) {
+				setComplete(false)
 				setLoading(true)
 				addMessage({ id: randomUUID(), role: "user", content: trimmedText })
 
@@ -410,6 +407,16 @@ export function useTaskSubmit({
 					askResponse: "messageResponse",
 					text: trimmedText,
 				})
+			} else {
+				// The task is working and asks nothing: queue the message, as
+				// the VS Code chat does. The task takes it at its next ask, and
+				// a task waiting for its subagents (wait_for_subagents) takes
+				// it at once and answers. An askResponse here would only be
+				// read by whatever the task asks next.
+				setLoading(true)
+				addMessage({ id: randomUUID(), role: "user", content: trimmedText })
+
+				sendToExtension({ type: "queueMessage", text: trimmedText })
 			}
 		},
 		[

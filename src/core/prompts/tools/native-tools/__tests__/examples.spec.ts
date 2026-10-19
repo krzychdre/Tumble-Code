@@ -19,12 +19,16 @@ describe("TOOL_MINIMAL_EXAMPLES", () => {
 		expect(missing.sort()).toEqual([...DYNAMIC_TOOL_NAMES].sort())
 	})
 
-	it.each(Object.entries(TOOL_MINIMAL_EXAMPLES))("%s is a non-empty plain JSON object", (_name, example) => {
-		expect(Array.isArray(example)).toBe(false)
-		expect(Object.keys(example).length).toBeGreaterThan(0)
-		// Round-trips as JSON so it can be embedded as a nested object in a tool result.
-		expect(JSON.parse(JSON.stringify(example))).toEqual(example)
-	})
+	it.each(Object.entries(TOOL_MINIMAL_EXAMPLES))(
+		"%s is a plain JSON object, empty only without parameters",
+		(name, example) => {
+			expect(Array.isArray(example)).toBe(false)
+			// wait_for_subagents takes no parameters: its only valid call is `{}`.
+			expect(Object.keys(example).length > 0).toBe(name !== "wait_for_subagents")
+			// Round-trips as JSON so it can be embedded as a nested object in a tool result.
+			expect(JSON.parse(JSON.stringify(example))).toEqual(example)
+		},
+	)
 
 	it("never uses an em dash or en dash", () => {
 		expect(JSON.stringify(TOOL_MINIMAL_EXAMPLES)).not.toMatch(/[\u2013\u2014]/)

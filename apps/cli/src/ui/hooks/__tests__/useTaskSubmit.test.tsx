@@ -230,6 +230,52 @@ describe("useTaskSubmit conversation commands", () => {
 
 // UI plan §4: /copy puts the last answer (or its last code block) on the
 // clipboard with OSC 52; /export writes the transcript to a Markdown file.
+describe("useTaskSubmit messages typed during a task", () => {
+	let api: UseTaskSubmitReturn
+	let sendToExtension: ReturnType<typeof vi.fn<(message: WebviewMessage) => void>>
+
+	function Harness() {
+		api = useTaskSubmit({
+			sendToExtension,
+			runTask: vi.fn(async () => undefined),
+			resetTranscript: vi.fn(),
+			permissionMode: "ask",
+			onPermissionModeChange: vi.fn(),
+		})
+		return <Text>harness</Text>
+	}
+
+	beforeEach(() => {
+		useCLIStore.getState().reset()
+		useUIStateStore.setState(useUIStateStore.getInitialState())
+		sendToExtension = vi.fn()
+		useCLIStore.getState().setHasStartedTask(true)
+	})
+
+	// A task waiting for its subagents (wait_for_subagents) listens to its
+	// message queue: the message must land there to be answered right away.
+	it("queues a message typed while the task works and shows it in the transcript", async () => {
+		render(<Harness />)
+		await api.handleSubmit("how far are the subagents?")
+
+		expect(sendToExtension).toHaveBeenCalledWith({ type: "queueMessage", text: "how far are the subagents?" })
+		expect(useCLIStore.getState().messages).toMatchObject([{ role: "user", content: "how far are the subagents?" }])
+	})
+
+	it("answers the completion of a finished task with the message", async () => {
+		useCLIStore.getState().setComplete(true)
+		render(<Harness />)
+		await api.handleSubmit("one more thing")
+
+		expect(sendToExtension).toHaveBeenCalledWith({
+			type: "askResponse",
+			askResponse: "messageResponse",
+			text: "one more thing",
+		})
+		expect(useCLIStore.getState().isComplete).toBe(false)
+	})
+})
+
 describe("useTaskSubmit /copy and /export", () => {
 	let api: UseTaskSubmitReturn
 	let sendToExtension: ReturnType<typeof vi.fn<(message: WebviewMessage) => void>>

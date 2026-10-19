@@ -172,4 +172,25 @@ sequenceDiagram
 ```
 
 `run_parallel_tasks` is different: `BackgroundTaskRunner` starts headless child tasks that run beside the parent,
-and `SubagentRegistry` shows their progress in the panel.
+and `SubagentRegistry` shows their progress in the panel. The parent is not blocked while they run:
+
+- `BackgroundSubagents` (`src/core/webview/`, one per provider) keeps, per parent task id, the subagents still
+  running and the finished results the parent model has not read. It is keyed by task id, not by `Task` instance,
+  so a parent rebuilt from history sees the subagents its earlier instance started.
+- `SubagentSlotPool` (owned by `BackgroundSubagents`) caps the subagents running at once across every fan-out of
+  the provider by `parallelTasksMaxConcurrency`, first in, first out. A subagent's API profile is resolved
+  (`BackgroundTaskRunner.resolveSubagentProfile`) before it waits for a slot, and it takes the slot before its
+  worktree and task are created.
+- `run_parallel_tasks` asks for approval, starts the subagents in the background and then waits like
+  `wait_for_subagents`. The wait (`waitForSubagents` in `src/core/tools/WaitForSubagentsTool.ts`) returns on the
+  first finished result (all unread results, the ones still running, the next step), on a user message taken from
+  `task.messageQueueService` (shown as `user_feedback`, the subagents keep running), when nothing is left, or when
+  the parent aborts. One subtask per call is allowed: it is how a follow-up starts after a result.
+- A result that finishes while nobody waits stays unread. When the parent's live instance sits at an idle or
+  resumable ask, the results are queued to it as a user message (the provider also retries on `TaskIdle` and
+  `TaskResumable`). Otherwise the environment details list the running subagents and the unread count, a text-only
+  turn gets a reminder instead of completing the task (`TaskApiLoop`), and `attempt_completion` is refused until
+  every subagent has reported.
+- An explicit user cancel of the parent cancels its subagents and drops their results; abandoning the parent
+  (history switch, rehydrate) leaves them running. The `subagents.json` sidecar is written after each subagent
+  ends.

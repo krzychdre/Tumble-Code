@@ -42,6 +42,7 @@ const KIND_DISPLAY_NAMES: Record<ToolPayloadKind, string> = {
 	readArtifact: "Read Artifact",
 	searchTaskHistory: "Search Task History",
 	runParallelTasks: "Run Parallel Tasks",
+	waitForSubagents: "Wait for Subagents",
 }
 
 /**

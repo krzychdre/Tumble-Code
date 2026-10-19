@@ -1264,6 +1264,19 @@ exports[`strict tool schema characterization (API-3) > native tools > BaseProvid
       },
       "strict": true
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "wait_for_subagents",
+      "strict": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
   }
 ]"
 `;
@@ -1902,6 +1915,17 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiCode
       "additionalProperties": false
     },
     "strict": true
+  },
+  {
+    "type": "function",
+    "name": "wait_for_subagents",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "strict": true
   }
 ]"
 `;
@@ -2537,6 +2561,17 @@ exports[`strict tool schema characterization (API-3) > native tools > OpenAiNati
         "query",
         "max_results"
       ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "wait_for_subagents",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
       "additionalProperties": false
     },
     "strict": true
@@ -3199,6 +3234,19 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
       },
       "strict": true
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "wait_for_subagents",
+      "strict": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
   }
 ]"
 `;
@@ -3837,6 +3885,17 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
       "additionalProperties": false
     },
     "strict": true
+  },
+  {
+    "type": "function",
+    "name": "wait_for_subagents",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "strict": true
   }
 ]"
 `;
@@ -4472,6 +4531,17 @@ exports[`strict tool schema characterization (API-3) > nativeWithImages tools > 
         "query",
         "max_results"
       ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "wait_for_subagents",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
       "additionalProperties": false
     },
     "strict": true

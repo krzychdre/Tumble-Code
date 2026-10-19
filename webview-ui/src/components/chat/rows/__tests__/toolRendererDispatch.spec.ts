@@ -17,7 +17,12 @@ import {
 	UpdateTodoListToolRow,
 } from "../renderers/tool/TaskToolRows"
 import { RunSlashCommandToolRow, SkillToolRow } from "../renderers/tool/ExpandableToolRows"
-import { ReadArtifactSayRow, SAY_TOOL_RENDERERS, SearchTaskHistorySayRow } from "../renderers/say/SayToolRows"
+import {
+	ReadArtifactSayRow,
+	SAY_TOOL_RENDERERS,
+	SearchTaskHistorySayRow,
+	WaitForSubagentsSayRow,
+} from "../renderers/say/SayToolRows"
 
 // Which row a tool payload renders as, by its `tool` value (CLI-5 slice 1
 // pins this before the tool names move into the shared payload table in
@@ -69,6 +74,7 @@ describe("say tool rows by payload tool name", () => {
 			searchTaskHistory: SearchTaskHistorySayRow,
 			readArtifact: ReadArtifactSayRow,
 			readCommandOutput: ReadArtifactSayRow,
+			waitForSubagents: WaitForSubagentsSayRow,
 		})
 	})
 })

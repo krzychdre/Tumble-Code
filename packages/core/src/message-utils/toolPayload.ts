@@ -31,6 +31,7 @@ export type ToolPayloadKind =
 	| "readArtifact"
 	| "searchTaskHistory"
 	| "runParallelTasks"
+	| "waitForSubagents"
 
 /** Every name of the ClineSayTool union: a name added there does not compile until it has a kind. */
 const SAY_TOOL_KINDS: Record<ClineSayTool["tool"], ToolPayloadKind> = {
@@ -54,6 +55,7 @@ const SAY_TOOL_KINDS: Record<ClineSayTool["tool"], ToolPayloadKind> = {
 	skill: "skill",
 	webSearch: "webSearch",
 	webFetch: "webFetch",
+	waitForSubagents: "waitForSubagents",
 }
 
 /**
@@ -357,6 +359,7 @@ export function toolPayloadSubject(payload: Omit<ToolPayload, "subject">): strin
 		case "finishTask":
 		case "updateTodoList":
 		case "runParallelTasks":
+		case "waitForSubagents":
 			return undefined
 		default:
 			// The file tools, and any name no row knows.

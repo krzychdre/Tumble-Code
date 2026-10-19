@@ -14,11 +14,14 @@ import {
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
 import { queuedSubagentId } from "../webview/SubagentRegistry"
-import type { SubagentInfo } from "../webview/BackgroundTaskRunner"
+import type { SubagentInfo, SubagentProfile } from "../webview/BackgroundTaskRunner"
+import type { BackgroundSubagents } from "../webview/BackgroundSubagents"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { compactSubagentsOffError } from "./helpers/compactSubagents"
-import type { ToolUse } from "../../shared/tools"
+import type { ParallelSubtaskResult } from "./helpers/subagentResults"
+import { waitForSubagents } from "./WaitForSubagentsTool"
+import type { ToolResponse, ToolUse } from "../../shared/tools"
 import { logger } from "../../utils/logging"
 
 /** One requested subtask. */
@@ -36,19 +39,6 @@ export interface NormalizedSubtask {
 interface RunParallelTasksParams {
 	subtasks: ParallelSubtask[]
 	maxConcurrency?: number | null
-}
-
-/** Outcome of a single subtask run, used for the aggregated report. */
-export interface ParallelSubtaskResult {
-	index: number
-	mode: string
-	status: "completed" | "failed" | "cancelled"
-	worktreePath?: string
-	branch?: string
-	message?: string
-	error?: string
-	/** Worktree + branch removed because nothing reviewable was produced. */
-	cleaned?: boolean
 }
 
 const DEFAULT_MODE = "code"
@@ -74,16 +64,12 @@ export function validateParallelParams(
 	maxConcurrencyCap: number = DEFAULT_MAX_CONCURRENCY,
 ): { ok: true; subtasks: NormalizedSubtask[]; maxConcurrency: number } | { ok: false; error: string } {
 	const raw = params?.subtasks
+	// One subtask is fine: it is how a follow-up job starts after a result,
+	// while the other subagents keep running.
 	if (!Array.isArray(raw) || raw.length === 0) {
-		return { ok: false, error: "run_parallel_tasks requires a non-empty `subtasks` array." }
-	}
-	if (raw.length < 2) {
 		return {
 			ok: false,
-			error:
-				"run_parallel_tasks requires AT LEAST 2 subtasks: its whole value is running several independent " +
-				"jobs at the same time. For a single job, do the work directly in this task (or delegate it via " +
-				"new_task if it needs a different specialist mode).",
+			error: "run_parallel_tasks requires a non-empty `subtasks` array (one subtask or more).",
 		}
 	}
 	const subtasks: NormalizedSubtask[] = []
@@ -140,41 +126,6 @@ export async function runWithConcurrency<T, R>(
 	const runners = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, () => runNext())
 	await Promise.all(runners)
 	return results
-}
-
-/** Render the per-subtask outcomes into a single delimited tool result. */
-export function formatParallelResults(results: ReadonlyArray<ParallelSubtaskResult>): string {
-	const completed = results.filter((r) => r.status === "completed").length
-	const failed = results.filter((r) => r.status === "failed").length
-	const cancelled = results.filter((r) => r.status === "cancelled").length
-
-	const summaryParts = [`${completed} completed`, `${failed} failed`]
-	if (cancelled > 0) summaryParts.push(`${cancelled} cancelled`)
-	const lines: string[] = [
-		`Ran ${results.length} parallel subtask(s): ${summaryParts.join(", ")}.`,
-		"Worktrees with changes are kept for review; empty ones were removed. Nothing was merged.",
-		"",
-	]
-	for (const r of results) {
-		lines.push(`### Subtask ${r.index + 1}: ${r.status.toUpperCase()} (${r.mode} mode)`)
-		if (r.cleaned) {
-			lines.push("- worktree: cleaned up (no changes)")
-		} else if (r.worktreePath) {
-			lines.push(`- worktree: ${r.worktreePath}${r.branch ? ` (branch: ${r.branch})` : ""}`)
-		}
-		if (r.status === "completed") {
-			lines.push("", r.message?.trim() || "(no result message)")
-		} else if (r.status === "cancelled") {
-			lines.push("", "Cancelled before completion.")
-		} else {
-			lines.push("", `Failed: ${r.error ?? "unknown error"}`)
-			if (r.message?.trim()) {
-				lines.push("", "Its last message before it stopped:", "", r.message.trim())
-			}
-		}
-		lines.push("", "---", "")
-	}
-	return lines.join("\n").trimEnd()
 }
 
 /** A fresh id for one run_parallel_tasks call, so a retry never reuses a name. */
@@ -310,8 +261,12 @@ interface SubtaskProvider {
 			workspacePath?: string
 			autoApprovalOverride?: AutoApprovalOverride
 			subagentInfo?: SubagentInfo
+			apiConfiguration?: SubagentProfile["apiConfiguration"]
+			apiConfigName?: string
 		},
 	): Promise<Task>
+	/** The profile a subagent in `taskMode` runs on (see BackgroundTaskRunner.resolveSubagentProfile). */
+	resolveSubagentProfile(taskMode: string): Promise<SubagentProfile>
 	awaitTaskCompletion(
 		task: Task,
 		options: { signal?: AbortSignal },
@@ -324,7 +279,8 @@ interface SubtaskProvider {
 	}>
 	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number }>
 	subagentRegistry: SubtaskRegistry
-	getLiveTaskInstance(taskId: string): { messageQueueService: { addMessage(text: string): unknown } } | undefined
+	/** The running subagents per parent and the provider-wide slot pool. */
+	readonly backgroundSubagents: BackgroundSubagents
 	/**
 	 * Atomically read the parent's `HistoryItem`, apply `updater`, and write
 	 * it back. Used to record `parallelChildIds` as each child is spawned.
@@ -357,12 +313,15 @@ interface RunOneSubtaskArgs {
 	subtask: NormalizedSubtask
 	index: number
 	signal: AbortSignal
+	/** `parallelTasksMaxConcurrency`: the provider-wide cap on running subagents. */
+	globalLimit: number
 }
 
 /**
- * Run a single subtask: create its worktree, spawn a headless child, and await
- * completion. Checks `signal.aborted` before each side-effecting step so that
- * a parent abort cancels pending workers without orphaning children.
+ * Run a single subtask: wait for a free slot, create its worktree, spawn a
+ * headless child, and await completion. Checks `signal.aborted` before each
+ * side-effecting step so that a parent abort cancels pending workers without
+ * orphaning children.
  */
 async function runOneSubtask({
 	provider,
@@ -373,15 +332,35 @@ async function runOneSubtask({
 	subtask,
 	index,
 	signal,
+	globalLimit,
 }: RunOneSubtaskArgs): Promise<ParallelSubtaskResult> {
 	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, runId, index)
 	const registry = provider.subagentRegistry
 	// Until the child Task exists, panel updates target the queued placeholder.
 	let registryId = queuedSubagentId(parentTaskId, runId, index)
-
-	if (signal.aborted) {
+	const cancelled = (): ParallelSubtaskResult => {
 		registry.markTerminal(registryId, "cancelled")
 		return { index, mode: subtask.mode, status: "cancelled" }
+	}
+
+	if (signal.aborted) {
+		return cancelled()
+	}
+
+	let releaseSlot: () => void
+	let profile: SubagentProfile
+	try {
+		// The profile is known before the slot is taken, so a slot can
+		// depend on the profile the subagent will run on.
+		profile = await provider.resolveSubagentProfile(subtask.mode)
+		releaseSlot = await provider.backgroundSubagents.slots.acquire({ globalLimit }, signal)
+	} catch (error) {
+		if (signal.aborted) {
+			return cancelled()
+		}
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		registry.markTerminal(registryId, "failed", errorMessage)
+		return { index, mode: subtask.mode, status: "failed", error: errorMessage }
 	}
 
 	try {
@@ -422,14 +401,16 @@ async function runOneSubtask({
 				index,
 				description: subagentDescription(subtask.message),
 			},
+			apiConfiguration: profile.apiConfiguration,
+			apiConfigName: profile.name,
 		})
 		registryId = child.taskId
 		// Persist the parent→child relation on the parent's HistoryItem so
 		// rehydration from history can discover this fan-out's children.
 		// Mirror of `delegateParentAndOpenChild`'s `atomicReadAndUpdate`, but
 		// WITHOUT setting `status: "delegated"` / `awaitingChildId`: the
-		// parent is NOT delegated to a parallel subagent, it waits inline on
-		// the tool result. Best-effort: a failure to persist the relation
+		// parent is NOT delegated to a parallel subagent, it keeps working
+		// and collects the result with wait_for_subagents. Best-effort: a failure to persist the relation
 		// must not break the fan-out (the sidecar write below and the live
 		// panel still work; only rehydration of this run would be affected).
 		await persistParallelChildId(provider, parentTaskId, child.taskId)
@@ -469,6 +450,8 @@ async function runOneSubtask({
 			branch,
 			error: errorMessage,
 		})
+	} finally {
+		releaseSlot()
 	}
 }
 
@@ -539,9 +522,10 @@ async function persistParallelChildId(
 
 /**
  * Best-effort persistence of the terminal subagent summaries to the parent
- * task's sidecar (`tasks/<parentTaskId>/subagents.json`). Called once after
- * the whole fan-out settles so rehydration can repopulate the panel without
- * re-reading each child's messages. Merged into the rows already saved, so
+ * task's sidecar (`tasks/<parentTaskId>/subagents.json`). Called after each
+ * subagent ends (the parent keeps working meanwhile, so there is no single
+ * "fan-out settled" moment it waits for) so rehydration can repopulate the
+ * panel without re-reading each child's messages. Merged into the rows already saved, so
  * the sidecar keeps every fan-out of the task. Never throws: rehydration
  * rebuilds a row the sidecar lacks from the child's history item.
  */
@@ -650,81 +634,18 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			}
 
 			await sweepOrphanedSubtaskWorktrees(cwd)
-			const runId = newFanOutRunId()
-
-			// Seed the webview subagents panel: every subtask appears
-			// immediately as "queued" (next to the rows of the parent's earlier
-			// fan-outs) and transitions as its worker picks it up.
-			const fanOutStartedAt = Date.now()
-			provider.subagentRegistry.beginFanOut(task.taskId)
-			for (let i = 0; i < subtasks.length; i++) {
-				provider.subagentRegistry.registerQueued({
-					parentTaskId: task.taskId,
-					runId,
-					index: i,
-					mode: subtasks[i].mode,
-					description: subagentDescription(subtasks[i].message),
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-					startedAt: fanOutStartedAt,
-					lastActivityAt: fanOutStartedAt,
-				})
-			}
-
-			const controller = new AbortController()
-			const onParentAborted = () => {
-				// Only an EXPLICIT user cancel cascades to the children.
-				// Abandonment aborts (task switch via history, in-place
-				// rehydrate on cancel of another op, streaming-failure
-				// rehydrate) detach the fan-out instead: the children keep
-				// running, stay visible in the panel (individually
-				// cancellable), and the report is delivered to the parent's
-				// rehydrated instance below.
-				if (task.abortReason === "user_cancelled") {
-					controller.abort()
-				}
-			}
-			task.on(TumbleCodeEventName.TaskAborted, onParentAborted)
-			try {
-				const results = await runWithConcurrency(subtasks, maxConcurrency, (subtask, index) =>
-					runOneSubtask({
-						provider,
-						cwd,
-						parentTaskId: task.taskId,
-						rootTaskId: task.rootTaskId ?? task.taskId,
-						runId,
-						subtask,
-						index,
-						signal: controller.signal,
-					}),
-				)
-				const report = formatParallelResults(results)
-				if ((task.abort || task.abandoned) && task.abortReason !== "user_cancelled") {
-					// The original tool context is dead (parent was abandoned
-					// mid-fan-out). Queue the report into the live rehydrated
-					// instance of the same task: its pending resume_task ask
-					// drains the queue, so the orchestrator auto-resumes with
-					// the results the moment they are ready.
-					provider
-						.getLiveTaskInstance(task.taskId)
-						?.messageQueueService.addMessage(
-							`All parallel subtasks launched by run_parallel_tasks finished while this task was paused. Results:\n\n${report}`,
-						)
-				}
-				pushToolResult(report)
-				// Persist the terminal subagent summaries to the parent's
-				// sidecar so rehydration from history can repopulate the
-				// panel. Best-effort: never throws (see helper). Done after
-				// the report is pushed so a sidecar write failure cannot
-				// block the tool result. Runs in both the normal and the
-				// abandoned-parent paths, because the rehydrated parent needs the
-				// summaries either way.
-				await persistSubagentSummariesSidecar(provider, task.taskId)
-			} finally {
-				task.off(TumbleCodeEventName.TaskAborted, onParentAborted)
-				provider.subagentRegistry.endFanOut(task.taskId)
-			}
+			const started = startFanOut({
+				provider,
+				task,
+				subtasks,
+				maxConcurrency,
+				globalLimit: maxConcurrencyCap,
+			})
+			// The subagents run in the background. Wait the way
+			// wait_for_subagents does: return on the first result or on a user
+			// message, so the user never waits for the slowest subagent.
+			const waited = await waitForSubagents(task, provider.backgroundSubagents)
+			pushToolResult(prependText(`${started}\n\n`, waited))
 		} catch (error) {
 			await handleError("running parallel tasks", error, this.name)
 		}
@@ -733,6 +654,109 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 	override async handlePartial(_task: Task, _block: ToolUse<"run_parallel_tasks">): Promise<void> {
 		// No streaming card: the fan-out only acts once args are complete.
 	}
+}
+
+/** `text` in front of a tool result, which may carry images. */
+function prependText(text: string, result: ToolResponse): ToolResponse {
+	if (typeof result === "string") {
+		return text + result
+	}
+	return [{ type: "text", text }, ...result]
+}
+
+/** Arguments for {@link startFanOut}. */
+interface StartFanOutArgs {
+	provider: SubtaskProvider
+	task: Task
+	subtasks: NormalizedSubtask[]
+	/** The model's per-call bound (`maxConcurrency`), at most the global cap. */
+	maxConcurrency: number
+	/** `parallelTasksMaxConcurrency`: the cap on running subagents across the provider. */
+	globalLimit: number
+}
+
+/**
+ * Start the subagents of one run_parallel_tasks call in the background and
+ * return the line that tells the model they started. Each result goes to
+ * the provider's BackgroundSubagents the moment its subagent ends; the
+ * parent reads it with wait_for_subagents.
+ */
+function startFanOut({ provider, task, subtasks, maxConcurrency, globalLimit }: StartFanOutArgs): string {
+	const parentTaskId = task.taskId
+	const cwd = task.cwd
+	const runId = newFanOutRunId()
+	const subagents = provider.backgroundSubagents
+	const registry = provider.subagentRegistry
+
+	// Seed the webview subagents panel: every subtask appears immediately as
+	// "queued" (next to the rows of the parent's earlier fan-outs) and
+	// transitions as its worker picks it up.
+	const fanOutStartedAt = Date.now()
+	registry.beginFanOut(parentTaskId)
+	const refs = subtasks.map((subtask, i) => {
+		const description = subagentDescription(subtask.message)
+		registry.registerQueued({
+			parentTaskId,
+			runId,
+			index: i,
+			mode: subtask.mode,
+			description,
+			tokensIn: 0,
+			tokensOut: 0,
+			totalCost: 0,
+			startedAt: fanOutStartedAt,
+			lastActivityAt: fanOutStartedAt,
+		})
+		return subagents.start(parentTaskId, { description, mode: subtask.mode })
+	})
+
+	const controller = new AbortController()
+	const onParentAborted = () => {
+		// Only an EXPLICIT user cancel cascades to the children. Abandonment
+		// aborts (task switch via history, in-place rehydrate on cancel of
+		// another op, streaming-failure rehydrate) detach the fan-out
+		// instead: the children keep running, stay visible in the panel
+		// (individually cancellable), and their results reach the parent's
+		// rehydrated instance through BackgroundSubagents.
+		if (task.abortReason === "user_cancelled") {
+			controller.abort()
+		}
+	}
+	task.on(TumbleCodeEventName.TaskAborted, onParentAborted)
+
+	const runAll = runWithConcurrency(subtasks, maxConcurrency, async (subtask, index) => {
+		const result = await runOneSubtask({
+			provider,
+			cwd,
+			parentTaskId,
+			rootTaskId: task.rootTaskId ?? parentTaskId,
+			runId,
+			subtask,
+			index,
+			signal: controller.signal,
+			globalLimit,
+		})
+		// A user-cancelled parent gets no results: nobody should be woken up
+		// to read the cancellations it asked for.
+		subagents.finish(parentTaskId, refs[index].number, controller.signal.aborted ? undefined : result)
+		// Best-effort, never throws (see helper). Written per subagent so a
+		// rehydrated parent sees every finished row.
+		await persistSubagentSummariesSidecar(provider, parentTaskId)
+		return result
+	})
+	void runAll
+		.catch((error) => {
+			logger.error(
+				`[run_parallel_tasks] Fan-out of ${parentTaskId} failed: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		})
+		.finally(() => {
+			task.off(TumbleCodeEventName.TaskAborted, onParentAborted)
+			registry.endFanOut(parentTaskId)
+		})
+
+	const numbers = refs.map((ref) => `#${ref.number}`).join(", ")
+	return `Started ${refs.length} subagent(s) in the background: ${numbers}.`
 }
 
 export const runParallelTasksTool = new RunParallelTasksTool()

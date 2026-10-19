@@ -46,8 +46,11 @@ function comparePanelOrder(a: SubagentSummary, b: SubagentSummary): number {
 export class SubagentRegistry {
 	private summaries = new Map<string, SubagentSummary>()
 	private watched = new Set<string>()
-	/** Parents whose fan-out has begun and not yet settled. */
-	private inProgress = new Set<string>()
+	/**
+	 * Parents with fan-outs that began and have not settled, with how many:
+	 * a parent can start a follow-up fan-out while an earlier one runs.
+	 */
+	private inProgress = new Map<string, number>()
 
 	/**
 	 * @param post Broadcast an extension message to the webview.
@@ -67,7 +70,7 @@ export class SubagentRegistry {
 	 * returned array is a deep-enough copy (each entry is a fresh object
 	 * spread) so a caller persisting it cannot be racing with a later
 	 * mutation that swaps fields in place. Used by `run_parallel_tasks` to
-	 * write the parent's sidecar after the fan-out settles.
+	 * write the parent's sidecar after each subagent ends.
 	 */
 	snapshot(parentTaskId: string): SubagentSummary[] {
 		return this.list()
@@ -81,15 +84,21 @@ export class SubagentRegistry {
 	 * counts as in progress until {@link endFanOut}.
 	 */
 	beginFanOut(parentTaskId: string): void {
-		this.inProgress.add(parentTaskId)
+		this.inProgress.set(parentTaskId, (this.inProgress.get(parentTaskId) ?? 0) + 1)
 	}
 
 	/**
-	 * The fan-out of `parentTaskId` settled and its sidecar is written. Its
-	 * rows stay until the next task boundary ({@link clearSettled}).
+	 * One fan-out of `parentTaskId` settled and its sidecar is written. The
+	 * parent counts as in progress until its last fan-out settles. Its rows
+	 * stay until the next task boundary ({@link clearSettled}).
 	 */
 	endFanOut(parentTaskId: string): void {
-		this.inProgress.delete(parentTaskId)
+		const count = (this.inProgress.get(parentTaskId) ?? 0) - 1
+		if (count > 0) {
+			this.inProgress.set(parentTaskId, count)
+		} else {
+			this.inProgress.delete(parentTaskId)
+		}
 	}
 
 	private dropParent(parentTaskId: string): void {

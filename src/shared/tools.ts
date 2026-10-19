@@ -55,6 +55,7 @@ export type NativeToolArgs = {
 		subtasks: Array<{ message: string; mode?: string | null }>
 		maxConcurrency?: number | null
 	}
+	wait_for_subagents: Record<string, never>
 	ask_followup_question: {
 		question: string
 		follow_up: Array<{ text: string; mode?: string }>

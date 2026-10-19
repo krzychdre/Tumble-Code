@@ -580,6 +580,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble mencari di riwayat tugas ini"
 	},
+	"waitForSubagents": {
+		"title": "Tumble sedang menunggu subagennya"
+	},
 	"memoryActivity": {
 		"recalling": "Mengingat memori…",
 		"writing": "Menulis memori…",

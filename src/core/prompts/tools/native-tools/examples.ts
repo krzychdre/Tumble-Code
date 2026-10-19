@@ -76,9 +76,8 @@ export const TOOL_MINIMAL_EXAMPLES = {
 	read_artifact: { artifact_id: "cmd-1706119234567.txt" },
 	read_command_output: { artifact_id: "cmd-1706119234567.txt" },
 	read_file: { path: "src/app.ts" },
-	// TWO subtasks, not one: `validateParallelParams` rejects a single-subtask call
-	// outright (RunParallelTasksTool.ts), so a one-element example taught a call that
-	// can never succeed. The schema sets no maxItems, so two is as minimal as valid gets.
+	// Two subtasks show the array shape; one subtask is a valid call too (a follow-up
+	// started after a result).
 	run_parallel_tasks: {
 		subtasks: [
 			{ message: "Update the README.", mode: null },
@@ -98,6 +97,7 @@ export const TOOL_MINIMAL_EXAMPLES = {
 	switch_mode: { mode_slug: "code", reason: "The plan is approved and needs implementing." },
 	tools_load: { names: ["web_search"] },
 	update_todo_list: { todos: "[x] Read the failing test\n[-] Fix the retry wrapper\n[ ] Run the suite" },
+	wait_for_subagents: {},
 	web_fetch: { url: "https://example.com/docs/quickstart" },
 	web_search: { queries: ["vitest mock fs promises"] },
 	write_to_file: { path: "src/app.ts", content: "export const a = 1\n" },

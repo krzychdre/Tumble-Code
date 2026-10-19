@@ -574,6 +574,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble doorzocht de geschiedenis van deze taak"
 	},
+	"waitForSubagents": {
+		"title": "Tumble wacht op zijn subagents"
+	},
 	"memoryActivity": {
 		"recalling": "Geheugen wordt opgehaald…",
 		"writing": "Geheugen wordt geschreven…",

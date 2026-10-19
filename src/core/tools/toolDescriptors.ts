@@ -25,6 +25,7 @@ import {
 	parseToolsLoadArgs,
 	parseUpdateTodoListArgs,
 	parseUseMcpToolArgs,
+	parseWaitForSubagentsArgs,
 	parseWebFetchArgs,
 	parseWebSearchArgs,
 	parseWriteToFileArgs,
@@ -420,6 +421,12 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 			const count = Array.isArray(subtasks) ? subtasks.length : 0
 			return `[${block.name}: ${count} subtask(s)]`
 		},
+	},
+	wait_for_subagents: {
+		parseArgs: parseWaitForSubagentsArgs,
+		// Only waits for the task's own subagents or the user's next message.
+		approvalCategory: "none",
+		describe: bare,
 	},
 	update_todo_list: {
 		parseArgs: parseUpdateTodoListArgs,

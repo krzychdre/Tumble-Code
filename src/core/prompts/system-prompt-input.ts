@@ -77,10 +77,17 @@ export function isMcpEnabledForPrompt(state: Pick<SystemPromptState, "mcpEnabled
 	return state?.mcpEnabled ?? SETTINGS_DEFAULTS.mcpEnabled
 }
 
+/** The tools that start and collect parallel subagents: one switch hides both. */
+const SUBAGENT_TOOLS = ["run_parallel_tasks", "wait_for_subagents"]
+
+/** Delegation tools a background task never gets. */
+const BACKGROUND_DISABLED_TOOLS = ["new_task", ...SUBAGENT_TOOLS]
+
 /**
  * The `disabledTools` list a request hands to the tool filter: the user's
  * setting, plus the delegation tools a background task never gets, plus
- * run_parallel_tasks when the concurrency cap turns the feature off.
+ * the subagent tools (run_parallel_tasks, wait_for_subagents) when the
+ * concurrency cap turns the feature off.
  *
  * One function for the tools array (ApiRequestBuilder.buildToolsArray) and for
  * the prompt, so the prompt cannot suggest a tool the array no longer carries.
@@ -91,16 +98,16 @@ export function getRequestDisabledTools(
 ): string[] | undefined {
 	// Background tasks (parallel subagents, memory writers) never get
 	// delegation tools: a subtask is a small one-shot job that must return
-	// to its parent, not fan out further. Foreground tasks lose
-	// run_parallel_tasks when the user's concurrency cap turns the feature
+	// to its parent, not fan out further. Foreground tasks lose the
+	// subagent tools when the user's concurrency cap turns the feature
 	// Off (< 2). Routed through disabledTools so the existing
 	// alias-resolving filter removes them.
 	const disabledTools = state?.disabledTools
 	if (isBackground) {
-		return [...(disabledTools ?? []), "new_task", "run_parallel_tasks"]
+		return [...(disabledTools ?? []), ...BACKGROUND_DISABLED_TOOLS]
 	}
 	if (!isParallelTasksEnabled(state?.parallelTasksMaxConcurrency)) {
-		return [...(disabledTools ?? []), "run_parallel_tasks"]
+		return [...(disabledTools ?? []), ...SUBAGENT_TOOLS]
 	}
 	return disabledTools
 }

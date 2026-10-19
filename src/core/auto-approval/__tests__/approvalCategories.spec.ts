@@ -45,6 +45,7 @@ describe("tool approval categories (CORE-R4 d)", () => {
 			switch_mode: "modeSwitch switchMode",
 			new_task: "subtask newTask",
 			run_parallel_tasks: "manual",
+			wait_for_subagents: "none",
 			update_todo_list: "alwaysAllowed updateTodoList",
 			skill: "alwaysAllowed skill",
 			tools_load: "none",
