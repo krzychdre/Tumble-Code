@@ -337,7 +337,7 @@ describe("RunParallelTasksTool helpers", () => {
 				expect(r.ok).toBe(false)
 				if (!r.ok) {
 					expect(r.error).toContain(`"${mode}"`)
-					expect(r.error).toContain("one-shot")
+					expect(r.error).toContain("do the")
 				}
 			}
 			// Lightweight modes stay allowed.
@@ -356,14 +356,16 @@ describe("RunParallelTasksTool helpers", () => {
 			expect(validateParallelParams({ subtasks: many, maxConcurrency: 8 }, 2)).toMatchObject({
 				maxConcurrency: 2,
 			})
-			// The model may lower concurrency below the cap — but never under 2
-			// (a sequential "parallel" run is nonsense; invalid → default).
+			// The model may lower concurrency below the cap, but never under 2
+			// (a sequential "parallel" run is nonsense; invalid means the cap).
 			expect(validateParallelParams({ subtasks: many, maxConcurrency: 2 }, 4)).toMatchObject({
 				maxConcurrency: 2,
 			})
 			expect(validateParallelParams({ subtasks: many, maxConcurrency: 1 }, 4)).toMatchObject({
-				maxConcurrency: 3,
+				maxConcurrency: 4,
 			})
+			// No value means the user's cap, also above the built-in default of 3.
+			expect(validateParallelParams({ subtasks: many }, 8)).toMatchObject({ maxConcurrency: 8 })
 			// Default request under a cap tighter than the built-in default.
 			expect(validateParallelParams({ subtasks: many }, 2)).toMatchObject({ maxConcurrency: 2 })
 			// A nonsensical cap falls back to the built-in default.
