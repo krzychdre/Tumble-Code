@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Włączono nieograniczone próby (automatyczne kontynuowanie). Okno dialogowe nigdy się nie pojawi.",
 			"warning": "⚠️ Ustawienie na 0 pozwala na nieograniczone próby, co może zużyć znaczną ilość API"
 		},
+		"maxConcurrentRequests": {
+			"label": "Maks. równoczesnych zapytań",
+			"description": "Ile zapytań ten dostawca i model obsłużą jednocześnie (na przykład liczba równoległych slotów lokalnego serwera). Każdy subagent działający na tym profilu zajmuje jedno miejsce, a główne zadanie zajmuje jedno, gdy działa na tym samym profilu. Zostaw puste, aby nie ograniczać tego profilu: obowiązuje wtedy tylko globalne ustawienie \"Maks. równoległych subagentów\".",
+			"unlimited": "Bez limitu",
+			"slotsWithMainTask": "Miejsca dla subagentów, gdy główne zadanie działa na tym profilu: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (domyślny modelu)",
 			"anthropicHint": "Określa, ile wysiłku model wkłada w każdą odpowiedź, także przy wyłączonym rozumowaniu. Zmiana w trakcie zadania sprawia, że następne żądanie odbudowuje pamięć podręczną promptu.",

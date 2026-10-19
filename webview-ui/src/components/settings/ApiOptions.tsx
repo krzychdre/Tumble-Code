@@ -57,6 +57,7 @@ import { ModelSizeControl } from "./ModelSizeControl"
 import { TemperatureControl } from "./TemperatureControl"
 import { RateLimitSecondsControl } from "./RateLimitSecondsControl"
 import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl"
+import { MaxConcurrentRequestsControl } from "./MaxConcurrentRequestsControl"
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
 import { type SetApiConfigurationField, useProviderField } from "./providers/shared"
 import { ExternalLink } from "lucide-react"
@@ -423,6 +424,10 @@ const ApiOptions = ({
 											: DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
 									}
 									onChange={(value) => setApiConfigurationField("consecutiveMistakeLimit", value)}
+								/>
+								<MaxConcurrentRequestsControl
+									value={apiConfiguration.maxConcurrentRequests}
+									onChange={(value) => setApiConfigurationField("maxConcurrentRequests", value)}
 								/>
 								{selectedProvider === "openrouter" &&
 									openRouterModelProviders &&

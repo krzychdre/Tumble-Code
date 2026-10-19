@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Percobaan ulang tak terbatas diaktifkan (lanjut otomatis). Dialog tidak akan pernah muncul.",
 			"warning": "⚠️ Mengatur ke 0 memungkinkan percobaan ulang tak terbatas yang dapat menghabiskan penggunaan API yang signifikan"
 		},
+		"maxConcurrentRequests": {
+			"label": "Maksimum permintaan bersamaan",
+			"description": "Berapa banyak permintaan yang diterima penyedia dan model ini sekaligus (misalnya slot paralel server lokal). Setiap subagen yang berjalan pada profil ini memakai satu slot, dan tugas utama memakai satu slot saat berjalan pada profil yang sama. Biarkan kosong agar profil ini tidak dibatasi: hanya pengaturan global \"Maksimum subagen paralel\" yang berlaku.",
+			"unlimited": "Tanpa batas",
+			"slotsWithMainTask": "Slot tersisa untuk subagen saat tugas utama berjalan pada profil ini: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (default model)",
 			"anthropicHint": "Mengatur seberapa besar upaya model untuk setiap jawaban, juga saat penalaran dimatikan. Mengubahnya di tengah tugas membuat permintaan berikutnya membangun ulang cache prompt.",

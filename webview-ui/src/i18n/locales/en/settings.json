@@ -496,6 +496,12 @@
 			"unlimitedDescription": "Unlimited retries enabled (auto-proceed). The dialog will never appear.",
 			"warning": "⚠️ Setting to 0 allows unlimited retries which may consume significant API usage"
 		},
+		"maxConcurrentRequests": {
+			"label": "Max concurrent requests",
+			"description": "How many requests this provider and model take at once (for example the parallel slots of a local server). Each subagent running on this profile takes one, and the main task takes one when it runs on the same profile. Leave empty for no limit on this profile: only the global \"Max parallel subagents\" setting applies.",
+			"unlimited": "No limit",
+			"slotsWithMainTask": "Slots left for subagents when the main task runs on this profile: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (model default)",
 			"anthropicHint": "Sets how much effort the model spends on each answer, also when reasoning is off. Changing it during a task makes the next request rebuild the prompt cache.",

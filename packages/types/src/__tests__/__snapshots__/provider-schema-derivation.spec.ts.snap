@@ -39,6 +39,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -109,6 +114,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -252,6 +262,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -325,6 +340,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -417,6 +437,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -759,6 +784,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -843,6 +873,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -945,6 +980,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "lmStudioSpeculativeDecodingEnabled": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -1025,6 +1065,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -1099,6 +1144,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -1172,6 +1222,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -1261,6 +1316,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "mistralApiKey": {
           "type": "string",
         },
@@ -1347,6 +1407,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -1420,6 +1485,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -1510,6 +1580,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "minimaxApiKey": {
           "type": "string",
         },
@@ -1597,6 +1672,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -1670,6 +1750,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -1757,6 +1842,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "litellmUsePromptCache": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -1830,6 +1920,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         },
         "includeMaxTokens": {
           "type": "boolean",
+        },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "modelMaxThinkingTokens": {
           "type": "number",
@@ -1917,6 +2012,11 @@ exports[`generated provider settings schemas > keeps the discriminated legacy ar
         "includeMaxTokens": {
           "type": "boolean",
         },
+        "maxConcurrentRequests": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
+        },
         "modelMaxThinkingTokens": {
           "type": "number",
         },
@@ -1993,6 +2093,7 @@ exports[`generated provider settings schemas > keeps the flat schema's keys in o
   "modelTemperature",
   "rateLimitSeconds",
   "consecutiveMistakeLimit",
+  "maxConcurrentRequests",
   "slimToolset",
   "slimHidesMcp",
   "compactProfile",
@@ -2287,6 +2388,11 @@ exports[`generated provider settings schemas > keeps the flat schema, property o
     },
     "lmStudioSpeculativeDecodingEnabled": {
       "type": "boolean",
+    },
+    "maxConcurrentRequests": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "type": "integer",
     },
     "minimaxApiKey": {
       "type": "string",
@@ -2854,6 +2960,7 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "modelTemperature",
   "rateLimitSeconds",
   "consecutiveMistakeLimit",
+  "maxConcurrentRequests",
   "slimToolset",
   "slimHidesMcp",
   "compactProfile",

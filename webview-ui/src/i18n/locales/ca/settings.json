@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Reintents il·limitats habilitats (procediment automàtic). El diàleg no apareixerà mai.",
 			"warning": "⚠️ Establir a 0 permet reintents il·limitats que poden consumir un ús significatiu de l'API"
 		},
+		"maxConcurrentRequests": {
+			"label": "Màxim de sol·licituds simultànies",
+			"description": "Quantes sol·licituds accepten alhora aquest proveïdor i aquest model (per exemple, les ranures paral·leles d'un servidor local). Cada subagent que s'executa amb aquest perfil n'ocupa una, i la tasca principal n'ocupa una quan s'executa amb el mateix perfil. Deixa-ho buit per no limitar aquest perfil: només s'aplica l'opció global \"Màxim de subagents en paral·lel\".",
+			"unlimited": "Sense límit",
+			"slotsWithMainTask": "Places lliures per a subagents quan la tasca principal s'executa amb aquest perfil: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (per defecte del model)",
 			"anthropicHint": "Defineix quant d'esforç dedica el model a cada resposta, també amb el raonament desactivat. Canviar-lo durant una tasca fa que la següent sol·licitud reconstrueixi la memòria cau del prompt.",

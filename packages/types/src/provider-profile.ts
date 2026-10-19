@@ -147,6 +147,7 @@ const sharedFieldNames = [
 	"modelTemperature",
 	"rateLimitSeconds",
 	"consecutiveMistakeLimit",
+	"maxConcurrentRequests",
 	"slimToolset",
 	"slimHidesMcp",
 	"compactProfile",

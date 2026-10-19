@@ -362,10 +362,25 @@ describe("ApiOptions", () => {
 		expect(screen.getByTestId("rate-limit-seconds-control")).toBeInTheDocument()
 	})
 
+	it("writes the profile's max concurrent requests through setApiConfigurationField", () => {
+		const setApiConfigurationField = vi.fn()
+		renderApiOptions({ apiConfiguration: { maxConcurrentRequests: 2 }, setApiConfigurationField })
+
+		const input = screen.getByTestId("max-concurrent-requests-input")
+		expect(input).toHaveValue("2")
+
+		fireEvent.change(input, { target: { value: "4" } })
+		expect(setApiConfigurationField).toHaveBeenCalledWith("maxConcurrentRequests", 4)
+
+		fireEvent.change(input, { target: { value: "" } })
+		expect(setApiConfigurationField).toHaveBeenLastCalledWith("maxConcurrentRequests", undefined)
+	})
+
 	it("hides all controls when fromWelcomeView is true", () => {
 		renderApiOptions({ fromWelcomeView: true })
 		expect(screen.queryByTestId("temperature-control")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("rate-limit-seconds-control")).not.toBeInTheDocument()
+		expect(screen.queryByTestId("max-concurrent-requests-input")).not.toBeInTheDocument()
 	})
 
 	describe("thinking functionality", () => {

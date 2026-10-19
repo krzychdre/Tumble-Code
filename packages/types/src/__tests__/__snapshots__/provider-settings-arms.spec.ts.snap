@@ -203,6 +203,11 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
     "lmStudioSpeculativeDecodingEnabled": {
       "type": "boolean",
     },
+    "maxConcurrentRequests": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "type": "integer",
+    },
     "minimaxApiKey": {
       "type": "string",
     },

@@ -63,6 +63,12 @@ The chunk types (`src/api/transform/stream.ts`): `text`, `reasoning`, `thinking_
 Providers that speak the Chat Completions wire format share `chat-completions-stream.ts`; Anthropic, Bedrock,
 Gemini, the Responses API and a few others keep their own parsers because their wire formats differ.
 
+A profile also carries limits that belong to the provider and model rather than to one request.
+`maxConcurrentRequests` (whole number, 1 or more, unset = no limit of its own) says how many requests the provider
+serves at once. Each subagent of `run_parallel_tasks` takes one slot of the profile it runs on, and the parent task
+takes one when it runs on the same profile; `subagentSlotsForProfile` in `packages/types/src/provider-concurrency.ts`
+does that arithmetic. The global `parallelTasksMaxConcurrency` still caps the subagents of a task across profiles.
+
 ### Adding a provider today
 
 About 15 code files, plus one translation key per label in each locale: the portable tables in `packages/types`

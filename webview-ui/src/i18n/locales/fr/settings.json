@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Réessais illimités activés (poursuite automatique). La boîte de dialogue n'apparaîtra jamais.",
 			"warning": "⚠️ Mettre à 0 autorise des réessais illimités, ce qui peut consommer une utilisation importante de l'API"
 		},
+		"maxConcurrentRequests": {
+			"label": "Maximum de requêtes simultanées",
+			"description": "Nombre de requêtes que ce fournisseur et ce modèle acceptent en même temps (par exemple les emplacements parallèles d'un serveur local). Chaque sous-agent qui s'exécute sur ce profil en occupe une, et la tâche principale en occupe une lorsqu'elle s'exécute sur le même profil. Laissez vide pour ne pas limiter ce profil : seul le paramètre global \"Maximum de sous-agents en parallèle\" s'applique.",
+			"unlimited": "Aucune limite",
+			"slotsWithMainTask": "Places restantes pour les sous-agents quand la tâche principale s'exécute sur ce profil : {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (par défaut du modèle)",
 			"anthropicHint": "Définit l'effort que le modèle consacre à chaque réponse, même lorsque le raisonnement est désactivé. Le modifier pendant une tâche oblige la requête suivante à reconstruire le cache du prompt.",

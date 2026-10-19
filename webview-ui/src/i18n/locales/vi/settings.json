@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Đã bật thử lại không giới hạn (tự động tiếp tục). Hộp thoại sẽ không bao giờ xuất hiện.",
 			"warning": "⚠️ Đặt thành 0 cho phép thử lại không giới hạn, điều này có thể tiêu tốn mức sử dụng API đáng kể"
 		},
+		"maxConcurrentRequests": {
+			"label": "Số yêu cầu đồng thời tối đa",
+			"description": "Số yêu cầu mà nhà cung cấp và mô hình này nhận cùng lúc (ví dụ số khe song song của một máy chủ cục bộ). Mỗi tác nhân con chạy trên hồ sơ này chiếm một khe, và tác vụ chính chiếm một khe khi chạy trên cùng hồ sơ. Để trống nếu không muốn giới hạn hồ sơ này: khi đó chỉ áp dụng cài đặt chung \"Số tác nhân con song song tối đa\".",
+			"unlimited": "Không giới hạn",
+			"slotsWithMainTask": "Số khe còn lại cho tác nhân con khi tác vụ chính chạy trên hồ sơ này: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (mặc định của mô hình)",
 			"anthropicHint": "Đặt mức nỗ lực mô hình dành cho mỗi câu trả lời, kể cả khi tắt suy luận. Thay đổi giữa chừng một tác vụ khiến yêu cầu tiếp theo phải dựng lại bộ nhớ đệm prompt.",
