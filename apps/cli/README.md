@@ -416,23 +416,24 @@ and prints a one-line hint saying where to set one.
 }
 ```
 
-| Key                       | Meaning                                                                  |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `provider`                | Provider id, as for `--provider`                                         |
-| `model`                   | Model id; used only while `provider` is the active provider              |
-| `baseUrl`                 | Base URL; used only while `provider` is the active provider              |
-| `apiKey`                  | API key; used only while `provider` is the active provider               |
-| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`                 |
-| `mode`                    | Mode a new session starts in                                             |
-| `requireApproval`         | `true` asks before actions, as `--require-approval`                      |
-| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                                     |
-| `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below        |
-| `oneshot`                 | `true` exits when the task completes, as `--oneshot`                     |
-| `modes`                   | Settings per mode, see below                                             |
-| `models`                  | Per model: connection, effort, window, prices, images, size, concurrency |
-| `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers)        |
-| `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)               |
-| `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below                    |
+| Key                       | Meaning                                                                   |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `provider`                | Provider id, as for `--provider`                                          |
+| `model`                   | Model id; used only while `provider` is the active provider               |
+| `baseUrl`                 | Base URL; used only while `provider` is the active provider               |
+| `apiKey`                  | API key; used only while `provider` is the active provider                |
+| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`                  |
+| `mode`                    | Mode a new session starts in                                              |
+| `requireApproval`         | `true` asks before actions, as `--require-approval`                       |
+| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                                      |
+| `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below         |
+| `maxParallelSubagents`    | Subagents running at once in the run (default 3, at most 8; 0 or 1 = off) |
+| `oneshot`                 | `true` exits when the task completes, as `--oneshot`                      |
+| `modes`                   | Settings per mode, see below                                              |
+| `models`                  | Per model: connection, effort, window, prices, images, size, concurrency  |
+| `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers)         |
+| `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)                |
+| `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below                     |
 
 [`examples/cli-settings.example.json`](examples/cli-settings.example.json) sets
 every one of these keys, with each explained in
@@ -819,8 +820,11 @@ settings:
 - A subagent runs on the model of its mode, so the limit that counts is the
   one of the model that mode runs, from `modes.<mode>.model`, a `modes` list in
   `models` or the top level.
-- Without it the model has no limit of its own; the global limit of parallel
-  subagents (3) still applies.
+- Without it the model has no limit of its own. The global limit of parallel
+  subagents still applies to all models together: `maxParallelSubagents` at
+  the top level of cli-settings.json (default 3, at most 8, 0 or 1 turns
+  subagents off), the same as "Max parallel subagents" in VS Code. Raise it
+  when your models take more than 3 subagents together.
 - It works with every provider and follows the model through every mode and
   through `/model`. A value that is not a whole number of 1 or more fails at
   startup and names the model.

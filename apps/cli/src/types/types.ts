@@ -183,6 +183,13 @@ export interface CliSettings {
 	consecutiveMistakeLimit?: number
 	/** Seconds a shell command may run before it is stopped; 0 means no limit (default 300) */
 	commandExecutionTimeout?: number
+	/**
+	 * How many parallel subagents may run at once in the whole run (default 3,
+	 * at most 8; 0 or 1 turns subagents off), the extension's "Max parallel
+	 * subagents". `models.<id>.maxConcurrentRequests` caps them further per
+	 * model.
+	 */
+	maxParallelSubagents?: number
 	/** Require manual approval for tools/commands/browser/MCP actions */
 	requireApproval?: boolean
 	/** @deprecated Legacy inverse setting kept for backward compatibility */

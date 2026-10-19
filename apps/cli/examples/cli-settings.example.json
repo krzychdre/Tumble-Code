@@ -7,6 +7,7 @@
 	"requireApproval": false,
 	"consecutiveMistakeLimit": 10,
 	"commandExecutionTimeout": 300,
+	"maxParallelSubagents": 6,
 	"oneshot": false,
 	"mcpSettingsPath": "~/.roo/mcp.json",
 	"cloudApiUrl": "https://cloud.example.com",

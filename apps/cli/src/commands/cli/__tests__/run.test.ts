@@ -48,6 +48,7 @@ const mockHost = vi.hoisted(() => ({
 				apiKey?: string
 				modelSettings?: { contextWindow?: number; inputPrice?: number }
 				commandExecutionTimeout?: number
+				maxParallelSubagents?: number
 				mcpSettingsPath?: string
 				modeProviderSettings?: {
 					base: Record<string, unknown>
@@ -1486,6 +1487,22 @@ describe("run command execution timeout", () => {
 
 		expect(outcome).toBe("failed")
 		expect(errors[0]).toContain(`commandExecutionTimeout in ${getSettingsPath()} must be a whole number of seconds`)
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("passes maxParallelSubagents from the settings file", async () => {
+		await saveSettings({ provider: "openrouter", maxParallelSubagents: 6 })
+		await runWithExitThrowing()
+		expect(mockHost.lastOptions?.maxParallelSubagents).toBe(6)
+	})
+
+	it.each([9, -1, 2.5, "4"])("rejects maxParallelSubagents %j", async (value) => {
+		await saveSettings({ provider: "openrouter", maxParallelSubagents: value as never })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain(`Invalid maxParallelSubagents in ${getSettingsPath()}`)
 		expect(mockHost.lastOptions).toBeUndefined()
 	})
 

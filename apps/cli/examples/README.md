@@ -17,23 +17,24 @@ full rules; every key below links to them.
 
 ## Top level
 
-| Key                       | In the example                     | What it does                                                                                                                |
-| ------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `provider`                | `"openai"`                         | Provider id, as for `--provider` (`openai` is any OpenAI-compatible server).                                                |
-| `baseUrl`                 | `"http://192.168.50.194:11111/v1"` | The server's base URL, for providers that have one.                                                                         |
-| `model`                   | `"GLM-5.3-Flash-NVFP4"`            | Model id exactly as the provider names it.                                                                                  |
-| `apiKey`                  | `"1111"`                           | The key. Keep the file readable only by you, or use `apiKeyEnv` instead.                                                    |
-| `apiKeyEnv`               | (used in `models`)                 | Name of an environment variable holding the key; the run stops naming it when it is unset. `apiKey` wins when both are set. |
-| `mode`                    | `"code"`                           | Mode a new session starts in (`tumble list modes`).                                                                         |
-| `requireApproval`         | `false`                            | `true` asks before every action, as `--require-approval`.                                                                   |
-| `consecutiveMistakeLimit` | `10`                               | Mistakes in a row before the CLI asks for guidance.                                                                         |
-| `commandExecutionTimeout` | `300`                              | Seconds a shell command may run; `0` means no limit, at most 2147483.                                                       |
-| `oneshot`                 | `false`                            | `true` exits when the task completes, as `--oneshot`.                                                                       |
-| `mcpSettingsPath`         | `"~/.roo/mcp.json"`                | File with the global MCP servers (the default shown); `~` is the home directory.                                            |
-| `cloudApiUrl`             | `"https://cloud.example.com"`      | Tumble Code Cloud API for `tumble auth cloud login` and telemetry; leave it out without a cloud.                            |
-| `timeZone`                | `"Europe/Warsaw"`                  | IANA zone for the times shown and told to the model; only needed where the system zone is missing.                          |
-| `modes`                   | two entries                        | Provider settings per mode, see below.                                                                                      |
-| `models`                  | four entries                       | Facts per model, see below.                                                                                                 |
+| Key                       | In the example                     | What it does                                                                                                                                          |
+| ------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provider`                | `"openai"`                         | Provider id, as for `--provider` (`openai` is any OpenAI-compatible server).                                                                          |
+| `baseUrl`                 | `"http://192.168.50.194:11111/v1"` | The server's base URL, for providers that have one.                                                                                                   |
+| `model`                   | `"GLM-5.3-Flash-NVFP4"`            | Model id exactly as the provider names it.                                                                                                            |
+| `apiKey`                  | `"1111"`                           | The key. Keep the file readable only by you, or use `apiKeyEnv` instead.                                                                              |
+| `apiKeyEnv`               | (used in `models`)                 | Name of an environment variable holding the key; the run stops naming it when it is unset. `apiKey` wins when both are set.                           |
+| `mode`                    | `"code"`                           | Mode a new session starts in (`tumble list modes`).                                                                                                   |
+| `requireApproval`         | `false`                            | `true` asks before every action, as `--require-approval`.                                                                                             |
+| `consecutiveMistakeLimit` | `10`                               | Mistakes in a row before the CLI asks for guidance.                                                                                                   |
+| `commandExecutionTimeout` | `300`                              | Seconds a shell command may run; `0` means no limit, at most 2147483.                                                                                 |
+| `maxParallelSubagents`    | `6`                                | Subagents running at once in the whole run (default 3, at most 8; `0` or `1` turns them off). Each model's `maxConcurrentRequests` caps them further. |
+| `oneshot`                 | `false`                            | `true` exits when the task completes, as `--oneshot`.                                                                                                 |
+| `mcpSettingsPath`         | `"~/.roo/mcp.json"`                | File with the global MCP servers (the default shown); `~` is the home directory.                                                                      |
+| `cloudApiUrl`             | `"https://cloud.example.com"`      | Tumble Code Cloud API for `tumble auth cloud login` and telemetry; leave it out without a cloud.                                                      |
+| `timeZone`                | `"Europe/Warsaw"`                  | IANA zone for the times shown and told to the model; only needed where the system zone is missing.                                                    |
+| `modes`                   | two entries                        | Provider settings per mode, see below.                                                                                                                |
+| `models`                  | four entries                       | Facts per model, see below.                                                                                                                           |
 
 Not in the example on purpose: a top-level or per-mode `reasoningEffort` is
 ignored with a warning (the level is set per model, in `models`), and

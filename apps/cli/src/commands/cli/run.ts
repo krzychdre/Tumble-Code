@@ -5,6 +5,7 @@ import { fileURLToPath } from "url"
 import { createElement } from "react"
 
 import { setLogger } from "@tumble-code/vscode-shim"
+import { MAX_PARALLEL_TASKS_MAX_CONCURRENCY } from "@tumble-code/types"
 import { debugLog, getDebugLogPath } from "@tumble-code/core/cli"
 
 import {
@@ -358,6 +359,21 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
+	const { maxParallelSubagents } = settings
+	if (
+		maxParallelSubagents !== undefined &&
+		!(
+			Number.isInteger(maxParallelSubagents) &&
+			maxParallelSubagents >= 0 &&
+			maxParallelSubagents <= MAX_PARALLEL_TASKS_MAX_CONCURRENCY
+		)
+	) {
+		console.error(
+			`[CLI] Error: Invalid maxParallelSubagents in ${getSettingsPath()}: ${JSON.stringify(maxParallelSubagents)}; must be a whole number from 0 to ${MAX_PARALLEL_TASKS_MAX_CONCURRENCY} (0 or 1 turns subagents off)`,
+		)
+		process.exit(1)
+	}
+
 	let terminalShell: string | undefined
 	if (flagOptions.terminalShell !== undefined) {
 		const validatedTerminalShell = await validateTerminalShellPath(flagOptions.terminalShell)
@@ -376,6 +392,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		reasoningEffort: effectiveReasoningEffort === "unspecified" ? undefined : effectiveReasoningEffort,
 		consecutiveMistakeLimit: effectiveConsecutiveMistakeLimit,
 		commandExecutionTimeout: effectiveCommandExecutionTimeout,
+		maxParallelSubagents,
 		provider: effectiveProvider,
 		model: effectiveModel,
 		modelSettings: modelSettingsFor(providerConfig),
