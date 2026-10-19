@@ -583,6 +583,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble ha cercato nello storico di questa attività"
 	},
+	"waitForSubagents": {
+		"title": "Tumble sta aspettando i suoi subagenti"
+	},
 	"memoryActivity": {
 		"recalling": "Richiamo della memoria…",
 		"writing": "Scrittura della memoria…",

@@ -23,13 +23,15 @@ describe("getRequestDisabledTools", () => {
 		expect(getRequestDisabledTools({ parallelTasksMaxConcurrency: 4 }, true)).toEqual([
 			"new_task",
 			"run_parallel_tasks",
+			"wait_for_subagents",
 		])
 	})
 
-	it("removes run_parallel_tasks when the concurrency cap turns the feature off", () => {
+	it("removes the subagent tools when the concurrency cap turns the feature off", () => {
 		expect(getRequestDisabledTools({ disabledTools: ["x"], parallelTasksMaxConcurrency: 1 }, false)).toEqual([
 			"x",
 			"run_parallel_tasks",
+			"wait_for_subagents",
 		])
 	})
 })

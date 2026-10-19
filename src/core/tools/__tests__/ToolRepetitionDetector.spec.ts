@@ -569,4 +569,20 @@ describe("ToolRepetitionDetector", () => {
 			expect(tripOnce(detector, call).repeatedTrip).toBe(false)
 		})
 	})
+
+	// Every wait_for_subagents call has the same (empty) arguments but a
+	// different result: repeating it is its normal use.
+	describe("wait_for_subagents", () => {
+		it("never trips on repeated calls, and does not count toward another tool's run", () => {
+			const detector = new ToolRepetitionDetector(2)
+			for (let i = 0; i < 5; i++) {
+				expect(detector.check(createToolUse("wait_for_subagents")).allowExecution).toBe(true)
+			}
+			expect(detector.check(createToolUse("read_file")).allowExecution).toBe(true)
+			expect(detector.check(createToolUse("wait_for_subagents")).allowExecution).toBe(true)
+			expect(detector.check(createToolUse("read_file")).allowExecution).toBe(true)
+			expect(detector.check(createToolUse("read_file")).allowExecution).toBe(true)
+			expect(detector.check(createToolUse("read_file")).allowExecution).toBe(false)
+		})
+	})
 })

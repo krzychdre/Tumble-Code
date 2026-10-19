@@ -575,6 +575,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble 搜索了此任务的历史"
 	},
+	"waitForSubagents": {
+		"title": "Tumble 正在等待其子代理"
+	},
 	"memoryActivity": {
 		"recalling": "正在回忆记忆…",
 		"writing": "正在写入记忆…",

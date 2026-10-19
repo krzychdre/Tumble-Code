@@ -574,6 +574,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble이 이 작업의 기록을 검색했습니다"
 	},
+	"waitForSubagents": {
+		"title": "Tumble이 하위 에이전트를 기다리는 중입니다"
+	},
 	"memoryActivity": {
 		"recalling": "메모리 불러오는 중…",
 		"writing": "메모리 쓰는 중…",

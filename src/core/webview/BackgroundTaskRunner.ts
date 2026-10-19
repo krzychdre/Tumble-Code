@@ -23,6 +23,8 @@ export interface BackgroundTaskOptions {
 	autoApprovalOverride?: AutoApprovalOverride
 	initialTodos?: TodoItem[]
 	apiConfiguration?: ProviderSettings
+	/** The name of the profile `apiConfiguration` came from (history and panel show it). */
+	apiConfigName?: string
 	/**
 	 * Registers the child in the subagent registry so it is visible in
 	 * the webview subagents panel, and writes its history item as a subtask
@@ -41,6 +43,13 @@ export interface SubagentInfo {
 	runId: string
 	index: number
 	description: string
+}
+
+/** The API profile a background task runs on, see {@link BackgroundTaskRunner.resolveSubagentProfile}. */
+export interface SubagentProfile {
+	apiConfiguration: ProviderSettings
+	/** The profile's name; undefined when the state has no current profile name. */
+	name?: string
 }
 
 /** The terminal state of a background task, see {@link BackgroundTaskRunner.awaitTaskCompletion}. */
@@ -138,18 +147,16 @@ export class BackgroundTaskRunner {
 	public async createBackgroundTask(text: string, options: BackgroundTaskOptions = {}): Promise<Task> {
 		const state = await this.host.getState()
 		// Model resolution, most specific wins: explicit apiConfiguration from
-		// the caller, then the subtask mode's pinned API profile (same binding a
-		// foreground mode switch applies), then the currently active profile.
-		// Mode resolution is scoped to panel-visible subagents so other
-		// background tasks keep their explicit/current config.
+		// the caller (run_parallel_tasks resolves it before it takes a slot),
+		// then the subtask mode's pinned API profile, then the currently active
+		// profile. Mode resolution is scoped to panel-visible subagents so
+		// other background tasks keep their explicit/current config.
 		let apiConfiguration = options.apiConfiguration
-		let apiConfigName = options.apiConfiguration ? undefined : state.currentApiConfigName
+		let apiConfigName = options.apiConfiguration ? options.apiConfigName : state.currentApiConfigName
 		if (!apiConfiguration && options.subagentInfo && options.taskMode) {
-			const resolved = await this.host.getApiConfigurationForMode(options.taskMode)
-			if (resolved) {
-				apiConfiguration = resolved.apiConfiguration
-				apiConfigName = resolved.name
-			}
+			const resolved = await this.resolveSubagentProfile(options.taskMode)
+			apiConfiguration = resolved.apiConfiguration
+			apiConfigName = resolved.name
 		}
 		apiConfiguration ??= state.apiConfiguration
 		const { experiments, organizationAllowList } = state
@@ -219,6 +226,21 @@ export class BackgroundTaskRunner {
 		logger.info(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
 		task.start()
 		return task
+	}
+
+	/**
+	 * The API profile a subagent in `taskMode` runs on: the profile pinned to
+	 * that mode (the same binding a foreground mode switch applies), else the
+	 * currently active one. run_parallel_tasks resolves it before the
+	 * subagent waits for a slot, so the slot can depend on the profile.
+	 */
+	public async resolveSubagentProfile(taskMode: string): Promise<SubagentProfile> {
+		const pinned = await this.host.getApiConfigurationForMode(taskMode)
+		if (pinned) {
+			return { apiConfiguration: pinned.apiConfiguration, name: pinned.name }
+		}
+		const state = await this.host.getState()
+		return { apiConfiguration: state.apiConfiguration, name: state.currentApiConfigName }
 	}
 
 	/**

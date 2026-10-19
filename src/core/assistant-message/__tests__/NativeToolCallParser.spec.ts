@@ -34,6 +34,7 @@ const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string
 	switch_mode: { mode_slug: "code", reason: "r" },
 	new_task: { mode: "code", message: "m" },
 	run_parallel_tasks: { subtasks: [{ message: "m", mode: "code" }], maxConcurrency: 2 },
+	wait_for_subagents: {},
 	codebase_search: { query: "q" },
 	execute_command: { command: "echo hi" },
 	update_todo_list: { todos: "- [ ] x" },
@@ -489,8 +490,11 @@ describe("NativeToolCallParser", () => {
 			if (result?.type === "tool_use") {
 				expect(result.nativeArgs).toBeDefined()
 				// Reject the empty-object case — that's the "fell into default,
-				// nothing populated" symptom this test exists to catch.
-				expect(Object.keys(result.nativeArgs as object).length).toBeGreaterThan(0)
+				// nothing populated" symptom this test exists to catch. A tool
+				// without parameters (wait_for_subagents) has nothing to populate.
+				if (toolName !== "wait_for_subagents") {
+					expect(Object.keys(result.nativeArgs as object).length).toBeGreaterThan(0)
+				}
 			}
 		})
 	})

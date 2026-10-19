@@ -574,6 +574,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble はこのタスクの履歴を検索しました"
 	},
+	"waitForSubagents": {
+		"title": "Tumble はサブエージェントを待っています"
+	},
 	"memoryActivity": {
 		"recalling": "メモリを呼び出し中…",
 		"writing": "メモリを書き込み中…",

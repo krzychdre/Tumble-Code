@@ -42,6 +42,7 @@ describe("getToolPayloadKind", () => {
 			skill: "skill",
 			webSearch: "webSearch",
 			webFetch: "webFetch",
+			waitForSubagents: "waitForSubagents",
 			runParallelTasks: "runParallelTasks",
 		})
 	})

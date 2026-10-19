@@ -322,6 +322,9 @@ export const parseRunParallelTasksArgs: ToolArgParser = (raw, { partial }) => {
 		: undefined
 }
 
+/** No parameters: every call parses, whatever a weak model put in the arguments. */
+export const parseWaitForSubagentsArgs: ToolArgParser = () => built({})
+
 /** A complete call always parses (an empty list gets guidance from the tool); streaming waits for `names`. */
 export const parseToolsLoadArgs: ToolArgParser = (raw, { partial }) =>
 	partial && raw.names === undefined

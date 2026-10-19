@@ -13330,6 +13330,176 @@ exports[`NativeToolCallParser argument parsing (characterization) > use_mcp_tool
 ]
 `;
 
+exports[`NativeToolCallParser argument parsing (characterization) > wait_for_subagents > complete parse, including weak-model inputs 1`] = `
+[
+  {
+    "errors": [],
+    "label": "no arguments",
+    "result": {
+      "name": "wait_for_subagents",
+      "nativeArgs": {},
+      "params": {},
+      "partial": false,
+      "type": "tool_use",
+    },
+    "warnings": [],
+  },
+  {
+    "errors": [],
+    "label": "stray argument",
+    "result": {
+      "name": "wait_for_subagents",
+      "nativeArgs": {},
+      "params": {
+        "reason": "waiting",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "warnings": [],
+  },
+]
+`;
+
+exports[`NativeToolCallParser argument parsing (characterization) > wait_for_subagents > partial parse over growing chunks 1`] = `
+[
+  {
+    "finalized": {
+      "name": "wait_for_subagents",
+      "nativeArgs": {},
+      "params": {},
+      "partial": false,
+      "type": "tool_use",
+    },
+    "label": "no arguments",
+    "partials": [
+      {
+        "received": "{",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{}",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+  {
+    "finalized": {
+      "name": "wait_for_subagents",
+      "nativeArgs": {},
+      "params": {
+        "reason": "waiting",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "label": "stray argument",
+    "partials": [
+      {
+        "received": "{"r",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"rea",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"reason",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"reason":",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"reason":"wa",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {
+            "reason": "wa",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"reason":"wait",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {
+            "reason": "wait",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"reason":"waiting",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {
+            "reason": "waiting",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"reason":"waiting"}",
+        "result": {
+          "name": "wait_for_subagents",
+          "nativeArgs": {},
+          "params": {
+            "reason": "waiting",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+]
+`;
+
 exports[`NativeToolCallParser argument parsing (characterization) > web_fetch > complete parse, including weak-model inputs 1`] = `
 [
   {

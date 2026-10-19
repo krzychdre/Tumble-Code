@@ -169,6 +169,28 @@ describe("getEnvironmentDetails", () => {
 		expect(consolidateTokenUsage).toHaveBeenCalled()
 	})
 
+	it("lists the task's background subagents, so it keeps collecting their results", async () => {
+		const environmentSection = vi.fn().mockReturnValue("# Background Subagents\nStill running (1):\n- #1 job")
+		mockCline.providerRef!.deref = vi.fn().mockReturnValue({
+			...mockProvider,
+			backgroundSubagents: { environmentSection },
+		})
+
+		const result = await getEnvironmentDetails(mockCline as Task)
+
+		expect(environmentSection).toHaveBeenCalledWith(mockCline.taskId)
+		expect(result).toContain("# Background Subagents\nStill running (1):\n- #1 job")
+	})
+
+	it("has no subagents section for a task without background subagents", async () => {
+		mockCline.providerRef!.deref = vi.fn().mockReturnValue({
+			...mockProvider,
+			backgroundSubagents: { environmentSection: vi.fn().mockReturnValue(undefined) },
+		})
+
+		expect(await getEnvironmentDetails(mockCline as Task)).not.toContain("Background Subagents")
+	})
+
 	it("should include file details when includeFileDetails is true", async () => {
 		const result = await getEnvironmentDetails(mockCline as Task, true)
 		expect(result).toContain("# Current Workspace Directory")

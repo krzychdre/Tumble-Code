@@ -20,6 +20,7 @@ import searchTaskHistory from "./search_task_history"
 import switchMode from "./switch_mode"
 import toolsLoad from "./tools_load"
 import updateTodoList from "./update_todo_list"
+import waitForSubagents from "./wait_for_subagents"
 import webFetch from "./web_fetch"
 import webSearch from "./web_search"
 import writeToFile from "./write_to_file"
@@ -78,6 +79,7 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		// inserted in the middle would move every schema after it and cost
 		// existing users their tool-array cache hit. New tools go last.
 		searchTaskHistory,
+		waitForSubagents,
 	] satisfies OpenAI.Chat.ChatCompletionTool[]
 }
 

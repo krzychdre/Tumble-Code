@@ -574,6 +574,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble ने इस कार्य के इतिहास में खोज की"
 	},
+	"waitForSubagents": {
+		"title": "Tumble अपने सबएजेंट्स की प्रतीक्षा कर रहा है"
+	},
 	"memoryActivity": {
 		"recalling": "स्मृति प्रत्याहरण…",
 		"writing": "स्मृति लिखी जा रही है…",

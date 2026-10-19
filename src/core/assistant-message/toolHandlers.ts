@@ -20,6 +20,7 @@ import { attemptCompletionTool } from "../tools/AttemptCompletionTool"
 import { newTaskTool } from "../tools/NewTaskTool"
 import { runParallelTasksTool } from "../tools/RunParallelTasksTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
+import { waitForSubagentsTool } from "../tools/WaitForSubagentsTool"
 import { skillTool } from "../tools/SkillTool"
 import { toolsLoadTool } from "../tools/ToolsLoadTool"
 import { applyDiffTool } from "../tools/ApplyDiffTool"
@@ -63,6 +64,7 @@ const TOOL_HANDLERS: Readonly<Record<DispatchableToolName, BaseTool<any>>> = {
 	switch_mode: switchModeTool,
 	new_task: newTaskTool,
 	run_parallel_tasks: runParallelTasksTool,
+	wait_for_subagents: waitForSubagentsTool,
 	update_todo_list: updateTodoListTool,
 	skill: skillTool,
 	tools_load: toolsLoadTool,

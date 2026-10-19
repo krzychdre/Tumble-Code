@@ -600,6 +600,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble przeszukał historię tego zadania"
 	},
+	"waitForSubagents": {
+		"title": "Tumble czeka na swoich podagentów"
+	},
 	"thumbnailAlt": "Miniatura {{index}}",
 	"removeImage": "Usuń obraz {{index}}",
 	"apiConfigGroups": {

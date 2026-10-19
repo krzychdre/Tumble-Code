@@ -50,6 +50,7 @@ export const toolNames = [
 	"custom_tool",
 	"tools_load",
 	"run_parallel_tasks",
+	"wait_for_subagents",
 	"web_search",
 	"web_fetch",
 ] as const
@@ -175,6 +176,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	switch_mode: "switch modes",
 	new_task: "create new task",
 	run_parallel_tasks: "run parallel tasks",
+	wait_for_subagents: "wait for subagents",
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
 	skill: "load skill",
@@ -205,7 +207,7 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 		tools: ["use_mcp_tool", "access_mcp_resource"],
 	},
 	modes: {
-		tools: ["switch_mode", "new_task", "run_parallel_tasks"],
+		tools: ["switch_mode", "new_task", "run_parallel_tasks", "wait_for_subagents"],
 		alwaysAvailable: true,
 	},
 	// Gated by the global `webToolsEnabled` setting: when it is off the group
@@ -226,6 +228,7 @@ export const ALWAYS_AVAILABLE_TOOLS: ToolName[] = [
 	"skill",
 	"tools_load",
 	"run_parallel_tasks",
+	"wait_for_subagents",
 ] as const
 
 /**
@@ -250,6 +253,7 @@ export const PROTOCOL_TOOL_NAMES: readonly string[] = [
 	"switch_mode",
 	"new_task",
 	"run_parallel_tasks",
+	"wait_for_subagents",
 	"skill",
 	"tools_load",
 ] as const

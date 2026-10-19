@@ -992,7 +992,11 @@ export class TaskApiLoop {
 				// accident. See
 				// ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5)
 				// and ai_plans/archive/2026-09/2026-09-10_text-completion-single-result.md.
-				const fallback = await this.tryTextCompletionFallback()
+				// While background subagents run, a text-only turn is the model
+				// answering the user, not the end of the task: skip the
+				// completion fallback and remind it to collect the results.
+				const subagentsReminder = this.backgroundSubagentsReminder()
+				const fallback = subagentsReminder ? "skipped" : await this.tryTextCompletionFallback()
 
 				if (fallback === "completed") {
 					// Same downstream flow as an accepted attempt_completion:
@@ -1017,7 +1021,7 @@ export class TaskApiLoop {
 
 					this.access.userMessageContent.push({
 						type: "text",
-						text: formatResponse.noToolsUsed(),
+						text: subagentsReminder ?? formatResponse.noToolsUsed(),
 					})
 				}
 				// "feedback": the user's completion feedback is already in
@@ -1041,6 +1045,24 @@ export class TaskApiLoop {
 			// No assistant response - handle error
 			return this.handleEmptyAssistantResponse(currentItem, currentUserContent, stack)
 		}
+	}
+
+	/**
+	 * The reminder a text-only turn gets while the task has background
+	 * subagents running or results it has not read; undefined otherwise.
+	 */
+	private backgroundSubagentsReminder(): string | undefined {
+		const subagents = this.access.providerRef.deref()?.backgroundSubagents
+		if (!subagents?.hasWork(this.access.taskId)) {
+			return undefined
+		}
+		const running = subagents.running(this.access.taskId).length
+		const unread = subagents.unreadCount(this.access.taskId)
+		return (
+			`The user can read your message. Your subagents are not done: ${running} still running, ` +
+			`${unread} result(s) not read yet. Call wait_for_subagents to collect their results. ` +
+			"Do not call attempt_completion before every subagent has reported."
+		)
 	}
 
 	/**

@@ -49,6 +49,7 @@ const TUMBLE_TOOLS: Record<string, ActionKind> = {
 	ask_followup_question: "question",
 	new_task: "delegate",
 	run_parallel_tasks: "delegate",
+	wait_for_subagents: "delegate",
 	attempt_completion: "complete",
 	browser_action: "web",
 	web_search: "web",

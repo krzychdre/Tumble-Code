@@ -146,6 +146,34 @@ describe("TaskApiLoop text-completion fallback", () => {
 		await expect(loop.tryTextCompletionFallback()).resolves.toBe("skipped")
 	})
 
+	// While background subagents work, a text-only turn answers the user: it
+	// must not complete the task, and the model is told to collect results.
+	describe("background subagents reminder", () => {
+		const withSubagents = (running: number, unread: number) => ({
+			providerRef: {
+				deref: () => ({
+					backgroundSubagents: {
+						hasWork: (id: string) => id === "task-1" && running + unread > 0,
+						running: () => Array.from({ length: running }),
+						unreadCount: () => unread,
+					},
+				}),
+			},
+		})
+
+		it("reminds the model to call wait_for_subagents while subagents run or results wait", () => {
+			const { loop } = makeLoop(withSubagents(2, 1))
+			const reminder = loop.backgroundSubagentsReminder() as string
+			expect(reminder).toContain("2 still running, 1 result(s) not read yet")
+			expect(reminder).toContain("Call wait_for_subagents")
+		})
+
+		it("gives no reminder without background subagents", () => {
+			expect(makeLoop(withSubagents(0, 0)).loop.backgroundSubagentsReminder()).toBeUndefined()
+			expect(makeLoop().loop.backgroundSubagentsReminder()).toBeUndefined()
+		})
+	})
+
 	describe("merging the streamed text into the result block", () => {
 		const apiReqStarted = { ts: 100, type: "say", say: "api_req_started", text: "{}" }
 		const streamed = { ts: 300, type: "say", say: "text", text: "All done. The fix is in place.\n", partial: false }

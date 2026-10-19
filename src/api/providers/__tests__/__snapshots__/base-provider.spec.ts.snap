@@ -655,6 +655,19 @@ exports[`BaseProvider > does not mutate its input (DEF-C10) > sends the native t
       },
       "strict": true
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "wait_for_subagents",
+      "strict": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
   }
 ]"
 `;

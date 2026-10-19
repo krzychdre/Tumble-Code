@@ -186,6 +186,22 @@ describe("SubagentRegistry", () => {
 			expect(registry.get("running")?.status).toBe("completed")
 		})
 
+		// A follow-up fan-out can start while an earlier one of the same
+		// parent still runs: the parent is in progress until both ended.
+		it("keeps the rows until the last of two overlapping fan-outs ended", () => {
+			registry.beginFanOut("p1")
+			registry.beginFanOut("p1")
+			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))
+			registry.endFanOut("p1")
+
+			registry.clearSettled()
+			expect(registry.list().map((s) => s.taskId)).toEqual(["a"])
+
+			registry.endFanOut("p1")
+			registry.clearSettled()
+			expect(registry.list()).toEqual([])
+		})
+
 		it("drops the rows once the fan-out has ended", () => {
 			registry.beginFanOut("p1")
 			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))

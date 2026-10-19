@@ -40,6 +40,7 @@ const PROTOCOL = [
 	"switch_mode",
 	"new_task",
 	"run_parallel_tasks",
+	"wait_for_subagents",
 	"skill",
 	"tools_load",
 ]

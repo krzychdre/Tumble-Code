@@ -38,6 +38,16 @@ export class ToolRepetitionDetector {
 		/** The same call was already stopped once, with no other call since. */
 		repeatedTrip?: boolean
 	} {
+		// wait_for_subagents takes no arguments, so every call looks the same,
+		// yet each returns a different result (the next subagent that
+		// finished). Calling it again and again is its normal use. A model
+		// that calls it with nothing to wait for counts a mistake in the tool.
+		if (currentToolCallBlock.name === "wait_for_subagents") {
+			this.previousToolCallJson = null
+			this.consecutiveIdenticalToolCallCount = 0
+			return { allowExecution: true }
+		}
+
 		// Serialize the block to a canonical JSON string for comparison
 		const currentToolCallJson = this.serializeToolUse(currentToolCallBlock)
 		if (this.lastTrippedToolCallJson !== null && this.lastTrippedToolCallJson !== currentToolCallJson) {

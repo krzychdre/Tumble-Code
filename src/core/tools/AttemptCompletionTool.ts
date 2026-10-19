@@ -53,6 +53,24 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			return
 		}
 
+		// The parent of background subagents finishes only after all of them
+		// reported: their results may change the answer, and a finished task
+		// would leave them running with nobody to read their results.
+		const subagents = task.providerRef?.deref()?.backgroundSubagents
+		if (!task.isBackground && subagents?.hasWork(task.taskId)) {
+			this.recordFailure(task, "attempt_completion")
+			const running = subagents.running(task.taskId).length
+			const unread = subagents.unreadCount(task.taskId)
+			pushToolResult(
+				formatResponse.toolError(
+					`Cannot complete the task yet: ${running} subagent(s) are still running and ${unread} ` +
+						"finished subagent result(s) are not read yet. Call wait_for_subagents to collect " +
+						"their results. Call attempt_completion only after every subagent has reported.",
+				),
+			)
+			return
+		}
+
 		const preventCompletionWithOpenTodos = vscode.workspace
 			.getConfiguration(Package.name)
 			.get<boolean>("preventCompletionWithOpenTodos", false)

@@ -583,6 +583,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble ha cercat a l'historial d'aquesta tasca"
 	},
+	"waitForSubagents": {
+		"title": "Tumble està esperant els seus subagents"
+	},
 	"memoryActivity": {
 		"recalling": "S'està recol·lectant memòria…",
 		"writing": "S'està escrivint memòria…",

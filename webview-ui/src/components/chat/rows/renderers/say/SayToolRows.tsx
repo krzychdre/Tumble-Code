@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { FileCode2, History } from "lucide-react"
+import { FileCode2, History, Hourglass } from "lucide-react"
 
 import type { ClineSayTool } from "@tumble-code/types"
 
@@ -46,6 +46,17 @@ export const ReadArtifactSayRow = ({ tool: sayTool }: ToolRendererProps) => {
 	)
 }
 
+/** The parent task waits for its parallel subagents (wait_for_subagents). */
+export const WaitForSubagentsSayRow = () => {
+	const { t } = useTranslation()
+	return (
+		<div style={headerStyle}>
+			<Hourglass className="w-4 shrink-0" aria-hidden="true" />
+			<span style={{ fontWeight: "bold" }}>{t("chat:waitForSubagents.title")}</span>
+		</div>
+	)
+}
+
 /** Renderers for a say "tool" message, by the payload's `tool`. A tool with no entry renders nothing. */
 export const SAY_TOOL_RENDERERS: SayToolRendererMap = {
 	// The same row as the tool ask: the say kind only changes the title to "ran".
@@ -53,6 +64,7 @@ export const SAY_TOOL_RENDERERS: SayToolRendererMap = {
 	searchTaskHistory: SearchTaskHistorySayRow,
 	readArtifact: ReadArtifactSayRow,
 	readCommandOutput: ReadArtifactSayRow,
+	waitForSubagents: WaitForSubagentsSayRow,
 }
 
 /** A say "tool" message: dispatches on the payload's tool name. */

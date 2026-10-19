@@ -290,6 +290,13 @@ export async function getEnvironmentDetails(
 		details += terminalDetails
 	}
 
+	// The parent of background subagents sees every turn which still run and
+	// how many results wait, so it keeps collecting them (wait_for_subagents).
+	const subagentsSection = task.providerRef?.deref()?.backgroundSubagents?.environmentSection(task.taskId)
+	if (subagentsSection) {
+		details += `\n\n${subagentsSection}`
+	}
+
 	// Time and cost are churn: they differ every turn while adding nothing the
 	// task needs, so by default both are on (SETTINGS_DEFAULTS) but the
 	// per-turn emission below only fires when enabled. Time is still emitted on

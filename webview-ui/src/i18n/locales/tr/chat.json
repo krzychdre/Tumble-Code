@@ -575,6 +575,9 @@
 	"searchTaskHistory": {
 		"title": "Tumble bu görevin geçmişini aradı"
 	},
+	"waitForSubagents": {
+		"title": "Tumble alt ajanlarını bekliyor"
+	},
 	"memoryActivity": {
 		"recalling": "Bellek geri çağrılıyor…",
 		"writing": "Bellek yazılıyor…",
