@@ -59,24 +59,25 @@ Keyed by model id. An entry applies wherever the model runs: the top level, a
 mode entry, `--model` or `/model`. Its connection keys override the top level
 and the mode entry; only the flags override them.
 
-| Key                 | Providers | What it does                                                                                                                                                   |
-| ------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provider`          | all       | The model's own provider; it then inherits no base URL or key from the top level or the mode ([Connection per model](../README.md#connection-per-model)).      |
-| `baseUrl`           | all       | The model's own server; without `provider` it keeps the provider of where it runs.                                                                             |
-| `apiKey`            | all       | The model's own key.                                                                                                                                           |
-| `apiKeyEnv`         | all       | Environment variable holding the model's own key.                                                                                                              |
-| `reasoningEffort`   | all       | Thinking level: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `unspecified` (model default) or `disabled`; the model must accept it.             |
-| `modelSize`         | all       | `standard`, `slim` or `compact`: how much system prompt and how many tools the model gets ([Model size](../README.md#model-size)).                             |
-| `hideMcp`           | all       | With `slim`, `false` keeps the MCP tools (default `true`).                                                                                                     |
-| `contextWindow`     | `openai`  | Context window in tokens; without it 128,000 is assumed.                                                                                                       |
-| `inputPrice`        | `openai`  | USD per million input tokens not read from the prompt cache.                                                                                                   |
-| `outputPrice`       | `openai`  | USD per million output tokens, reasoning included.                                                                                                             |
-| `cacheReadsPrice`   | `openai`  | USD per million input tokens read from the prompt cache.                                                                                                       |
-| `cacheWritesPrice`  | `openai`  | USD per million input tokens written to the prompt cache (defaults to `inputPrice`).                                                                           |
-| `preserveReasoning` | `openai`  | Send the model's earlier reasoning back with every request.                                                                                                    |
-| `trimOldReasoning`  | `openai`  | With `preserveReasoning`, shorten old reasoning once the context fills up.                                                                                     |
-| `supportsImages`    | `openai`  | `false` for a text-only model: it hands images to a mode whose model sees them instead of receiving them ([Text-only models](../README.md#text-only-models)).  |
-| `modes`             | all       | The modes that run this model, e.g. `["debug"]`; the same as `"model"` in each of their `modes` entries ([Settings per mode](../README.md#settings-per-mode)). |
+| Key                     | Providers | What it does                                                                                                                                                   |
+| ----------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provider`              | all       | The model's own provider; it then inherits no base URL or key from the top level or the mode ([Connection per model](../README.md#connection-per-model)).      |
+| `baseUrl`               | all       | The model's own server; without `provider` it keeps the provider of where it runs.                                                                             |
+| `apiKey`                | all       | The model's own key.                                                                                                                                           |
+| `apiKeyEnv`             | all       | Environment variable holding the model's own key.                                                                                                              |
+| `reasoningEffort`       | all       | Thinking level: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `unspecified` (model default) or `disabled`; the model must accept it.             |
+| `modelSize`             | all       | `standard`, `slim` or `compact`: how much system prompt and how many tools the model gets ([Model size](../README.md#model-size)).                             |
+| `hideMcp`               | all       | With `slim`, `false` keeps the MCP tools (default `true`).                                                                                                     |
+| `maxConcurrentRequests` | all       | Requests the server takes for this model at once; caps the subagents on it ([Concurrent requests per model](../README.md#concurrent-requests-per-model)).      |
+| `contextWindow`         | `openai`  | Context window in tokens; without it 128,000 is assumed.                                                                                                       |
+| `inputPrice`            | `openai`  | USD per million input tokens not read from the prompt cache.                                                                                                   |
+| `outputPrice`           | `openai`  | USD per million output tokens, reasoning included.                                                                                                             |
+| `cacheReadsPrice`       | `openai`  | USD per million input tokens read from the prompt cache.                                                                                                       |
+| `cacheWritesPrice`      | `openai`  | USD per million input tokens written to the prompt cache (defaults to `inputPrice`).                                                                           |
+| `preserveReasoning`     | `openai`  | Send the model's earlier reasoning back with every request.                                                                                                    |
+| `trimOldReasoning`      | `openai`  | With `preserveReasoning`, shorten old reasoning once the context fills up.                                                                                     |
+| `supportsImages`        | `openai`  | `false` for a text-only model: it hands images to a mode whose model sees them instead of receiving them ([Text-only models](../README.md#text-only-models)).  |
+| `modes`                 | all       | The modes that run this model, e.g. `["debug"]`; the same as `"model"` in each of their `modes` entries ([Settings per mode](../README.md#settings-per-mode)). |
 
 The example gives each size one model: `GLM-5.3-Flash-NVFP4` is a large model
 with the full prompt, prices and returned reasoning; `GLM-5.3-NVFP4` uses the
@@ -88,3 +89,8 @@ without reasoning, served by a second server with its own key (still the
 `ANTHROPIC_API_KEY` and sets only keys every provider takes, since Anthropic
 sizes and prices its models itself and the `openai`-only keys would be ignored
 with a warning.
+
+`maxConcurrentRequests` gives each model what its server takes at once: the
+Flash server serves 4 requests in parallel, the larger GLM server 2, the small
+Qwen server 1 and the Anthropic plan 8, so a fan-out of subagents never sends a
+server more requests than it serves.

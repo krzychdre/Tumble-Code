@@ -26,14 +26,16 @@
 			"preserveReasoning": true,
 			"trimOldReasoning": true,
 			"supportsImages": false,
-			"modelSize": "standard"
+			"modelSize": "standard",
+			"maxConcurrentRequests": 4
 		},
 		"GLM-5.3-NVFP4": {
 			"contextWindow": 262144,
 			"reasoningEffort": "max",
 			"supportsImages": false,
 			"modelSize": "slim",
-			"hideMcp": false
+			"hideMcp": false,
+			"maxConcurrentRequests": 2
 		},
 		"Qwen3.8-4B": {
 			"baseUrl": "http://192.168.50.194:22222/v1",
@@ -41,12 +43,14 @@
 			"contextWindow": 32768,
 			"reasoningEffort": "disabled",
 			"modelSize": "compact",
+			"maxConcurrentRequests": 1,
 			"modes": ["debug"]
 		},
 		"claude-sonnet-5-5": {
 			"provider": "anthropic",
 			"apiKeyEnv": "ANTHROPIC_API_KEY",
-			"reasoningEffort": "medium"
+			"reasoningEffort": "medium",
+			"maxConcurrentRequests": 8
 		}
 	}
 }

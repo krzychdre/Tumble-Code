@@ -416,23 +416,23 @@ and prints a one-line hint saying where to set one.
 }
 ```
 
-| Key                       | Meaning                                                           |
-| ------------------------- | ----------------------------------------------------------------- |
-| `provider`                | Provider id, as for `--provider`                                  |
-| `model`                   | Model id; used only while `provider` is the active provider       |
-| `baseUrl`                 | Base URL; used only while `provider` is the active provider       |
-| `apiKey`                  | API key; used only while `provider` is the active provider        |
-| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`          |
-| `mode`                    | Mode a new session starts in                                      |
-| `requireApproval`         | `true` asks before actions, as `--require-approval`               |
-| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                              |
-| `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below |
-| `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
-| `modes`                   | Settings per mode, see below                                      |
-| `models`                  | Per model: connection, effort, window, prices, images, size       |
-| `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
-| `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)        |
-| `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below             |
+| Key                       | Meaning                                                                  |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `provider`                | Provider id, as for `--provider`                                         |
+| `model`                   | Model id; used only while `provider` is the active provider              |
+| `baseUrl`                 | Base URL; used only while `provider` is the active provider              |
+| `apiKey`                  | API key; used only while `provider` is the active provider               |
+| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`                 |
+| `mode`                    | Mode a new session starts in                                             |
+| `requireApproval`         | `true` asks before actions, as `--require-approval`                      |
+| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                                     |
+| `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below        |
+| `oneshot`                 | `true` exits when the task completes, as `--oneshot`                     |
+| `modes`                   | Settings per mode, see below                                             |
+| `models`                  | Per model: connection, effort, window, prices, images, size, concurrency |
+| `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers)        |
+| `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)               |
+| `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below                    |
 
 [`examples/cli-settings.example.json`](examples/cli-settings.example.json) sets
 every one of these keys, with each explained in
@@ -794,6 +794,36 @@ same choice as "Model size" in the VS Code profile settings:
 - `/model` lists a `slim` or `compact` model with its size.
 - A value other than these three fails at startup and names the model;
   `hideMcp` must be `true` or `false`.
+
+### Concurrent requests per model
+
+A server serves a limited number of requests at once: a local vLLM or
+llama.cpp server has a fixed number of parallel slots, and a hosted plan has a
+concurrency limit. `maxConcurrentRequests` in the model's `models` entry says
+how many, the same as "Max concurrent requests" in the VS Code profile
+settings:
+
+```json
+{
+	"models": {
+		"GLM-5.3-Flash-NVFP4": { "maxConcurrentRequests": 4 },
+		"Qwen3.8-4B": { "maxConcurrentRequests": 1 }
+	}
+}
+```
+
+- It caps the subagents that `run_parallel_tasks` starts on the model: each one
+  sends its own requests, so each takes one. The main task takes one too when
+  it runs on the same model, so a limit of 4 leaves 3 subagents beside it, and
+  a limit of 1 leaves none (the model then does the work itself).
+- A subagent runs on the model of its mode, so the limit that counts is the
+  one of the model that mode runs, from `modes.<mode>.model`, a `modes` list in
+  `models` or the top level.
+- Without it the model has no limit of its own; the global limit of parallel
+  subagents (3) still applies.
+- It works with every provider and follows the model through every mode and
+  through `/model`. A value that is not a whole number of 1 or more fails at
+  startup and names the model.
 
 ## MCP Servers
 

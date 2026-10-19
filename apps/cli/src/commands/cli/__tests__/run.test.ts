@@ -832,6 +832,27 @@ describe("run provider settings per mode", () => {
 		})
 	})
 
+	it("each mode's profile carries the request limit of the model that mode runs", async () => {
+		await saveSettings({
+			...globalSettings,
+			models: {
+				"GLM-5.3-Flash-NVFP4": { reasoningEffort: "max" as const, maxConcurrentRequests: 4 },
+				"GLM-5.3-NVFP4": { reasoningEffort: "high" as const, maxConcurrentRequests: 2 },
+			},
+			modes: { architect: { model: "GLM-5.3-NVFP4" }, ask: { provider: "openai-codex" } },
+		})
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		const settings = mockHost.lastOptions?.modeProviderSettings
+		// A subagent in a mode gets that mode's profile, so the limit follows the model.
+		expect(settings?.base.maxConcurrentRequests).toBe(4)
+		expect(settings?.modes.architect?.maxConcurrentRequests).toBe(2)
+		// A model without a limit leaves the profile without one.
+		expect(settings?.modes.ask?.maxConcurrentRequests).toBeUndefined()
+	})
+
 	// Before 2026-10-06 the top-level "max" went with it: an effort was shared
 	// by every model, whether the model had that level or not.
 	it("a mode entry naming another provider carries over no model, base URL, key or reasoning effort", async () => {
