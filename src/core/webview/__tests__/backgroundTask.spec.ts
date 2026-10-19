@@ -76,7 +76,13 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 
 		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
 
-		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
+		// A task that stops early still reports its last message (#908).
+		await expect(promise).resolves.toEqual({
+			completed: false,
+			lastMessage: "working",
+			writtenPaths: [],
+			abortReason: undefined,
+		})
 		expect(task.abortTask).not.toHaveBeenCalled() // aborted tasks are already torn down
 		expect(backgroundTasks.has("bg-1")).toBe(false)
 	})
@@ -101,7 +107,13 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		// The task's own abortTask -> TaskAborted would normally fire; simulate it.
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
 		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
-		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
+		// A task that stops early still reports its last message (#908).
+		await expect(promise).resolves.toEqual({
+			completed: false,
+			lastMessage: "working",
+			writtenPaths: [],
+			abortReason: undefined,
+		})
 	})
 
 	it("aborts immediately if the signal is already aborted", async () => {
@@ -111,7 +123,13 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 		const { promise } = invokeAwait(task, { signal: controller.signal })
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
 		;(task as unknown as EventEmitter).emit(TumbleCodeEventName.TaskAborted, "bg-1")
-		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
+		// A task that stops early still reports its last message (#908).
+		await expect(promise).resolves.toEqual({
+			completed: false,
+			lastMessage: "working",
+			writtenPaths: [],
+			abortReason: undefined,
+		})
 	})
 })
 
