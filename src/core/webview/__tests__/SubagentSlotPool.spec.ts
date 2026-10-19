@@ -87,4 +87,42 @@ describe("SubagentSlotPool", () => {
 		await pool.acquire({ globalLimit: 0 })
 		expect(pool.running).toBe(1)
 	})
+	it("caps the subagents of one profile by its own limit", async () => {
+		const pool = new SubagentSlotPool()
+		const granted: string[] = []
+		for (const name of ["a1", "a2", "a3"]) {
+			void pool.acquire({ globalLimit: 8, profileKey: "A", profileLimit: 2 }).then(() => granted.push(name))
+		}
+		await flush()
+		expect(granted).toEqual(["a1", "a2"])
+		expect(pool.waiting).toBe(1)
+	})
+
+	// A waiter held back by its profile does not block another profile's waiter.
+	it("starts a waiter on another profile while a full profile waits", async () => {
+		const pool = new SubagentSlotPool()
+		const releaseA = await pool.acquire({ globalLimit: 8, profileKey: "A", profileLimit: 1 })
+		const granted: string[] = []
+		const secondA = pool.acquire({ globalLimit: 8, profileKey: "A", profileLimit: 1 }).then((release) => {
+			granted.push("a2")
+			return release
+		})
+		void pool.acquire({ globalLimit: 8, profileKey: "B", profileLimit: 1 }).then(() => granted.push("b1"))
+		await flush()
+		expect(granted).toEqual(["b1"])
+
+		releaseA()
+		await secondA
+		expect(granted).toEqual(["b1", "a2"])
+	})
+
+	it("keeps the global limit over the profile limits", async () => {
+		const pool = new SubagentSlotPool()
+		const granted: string[] = []
+		for (const key of ["A", "B", "C"]) {
+			void pool.acquire({ globalLimit: 2, profileKey: key, profileLimit: 4 }).then(() => granted.push(key))
+		}
+		await flush()
+		expect(granted).toEqual(["A", "B"])
+	})
 })

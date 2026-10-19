@@ -128,6 +128,15 @@ export interface CliModelSettings {
 	 */
 	hideMcp?: boolean
 	/**
+	 * How many requests the provider serves for this model at once (a local
+	 * server's parallel slots, a plan's concurrency limit), a whole number of 1
+	 * or more. Caps the subagents run_parallel_tasks starts on the model: each
+	 * takes one request, and the main task takes one when it runs on the same
+	 * model. Works with every provider. Without it only the global subagent
+	 * limit applies.
+	 */
+	maxConcurrentRequests?: number
+	/**
 	 * The modes that run this model, by slug (e.g. ["code", "debug"]). The
 	 * same as writing `"modes": { "code": { "model": "<this id>" } }` for each
 	 * of them, so a mode listed here runs the model on startup, on every mode
@@ -174,6 +183,13 @@ export interface CliSettings {
 	consecutiveMistakeLimit?: number
 	/** Seconds a shell command may run before it is stopped; 0 means no limit (default 300) */
 	commandExecutionTimeout?: number
+	/**
+	 * How many parallel subagents may run at once in the whole run (default 3,
+	 * at most 8; 0 or 1 turns subagents off), the extension's "Max parallel
+	 * subagents". `models.<id>.maxConcurrentRequests` caps them further per
+	 * model.
+	 */
+	maxParallelSubagents?: number
 	/** Require manual approval for tools/commands/browser/MCP actions */
 	requireApproval?: boolean
 	/** @deprecated Legacy inverse setting kept for backward compatibility */

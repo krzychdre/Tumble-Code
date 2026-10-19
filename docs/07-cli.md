@@ -29,6 +29,12 @@ sequenceDiagram
 The runtime contract (six environment variables and two `globalThis` slots) is defined once in
 `packages/types/src/cli-runtime.ts`. See [architecture.md](architecture.md).
 
+`cliModeProviderSettings` is one `ProviderSettings` per mode plus a base, built by `toProviderSettings`
+(`apps/cli/src/lib/utils/provider-config.ts`) from the model each mode runs and that model's `models.<id>` entry in
+`cli-settings.json`. The model-level keys that work with every provider (`reasoningEffort`, `modelSize`,
+`maxConcurrentRequests`) land in every profile that runs the model, so a subagent started in a mode gets the limits
+of that mode's model.
+
 ## Message flow
 
 The shim's webview object is an event emitter. The CLI plays the part of the chat panel: what the user types (or

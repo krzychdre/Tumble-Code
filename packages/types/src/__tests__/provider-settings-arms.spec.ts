@@ -27,6 +27,7 @@ const LEGACY_SHARED_FIELDS = [
 	"modelTemperature",
 	"rateLimitSeconds",
 	"consecutiveMistakeLimit",
+	"maxConcurrentRequests",
 	"slimToolset",
 	"slimHidesMcp",
 	"compactProfile",

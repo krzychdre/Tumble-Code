@@ -48,6 +48,7 @@ const mockHost = vi.hoisted(() => ({
 				apiKey?: string
 				modelSettings?: { contextWindow?: number; inputPrice?: number }
 				commandExecutionTimeout?: number
+				maxParallelSubagents?: number
 				mcpSettingsPath?: string
 				modeProviderSettings?: {
 					base: Record<string, unknown>
@@ -832,6 +833,27 @@ describe("run provider settings per mode", () => {
 		})
 	})
 
+	it("each mode's profile carries the request limit of the model that mode runs", async () => {
+		await saveSettings({
+			...globalSettings,
+			models: {
+				"GLM-5.3-Flash-NVFP4": { reasoningEffort: "max" as const, maxConcurrentRequests: 4 },
+				"GLM-5.3-NVFP4": { reasoningEffort: "high" as const, maxConcurrentRequests: 2 },
+			},
+			modes: { architect: { model: "GLM-5.3-NVFP4" }, ask: { provider: "openai-codex" } },
+		})
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		const settings = mockHost.lastOptions?.modeProviderSettings
+		// A subagent in a mode gets that mode's profile, so the limit follows the model.
+		expect(settings?.base.maxConcurrentRequests).toBe(4)
+		expect(settings?.modes.architect?.maxConcurrentRequests).toBe(2)
+		// A model without a limit leaves the profile without one.
+		expect(settings?.modes.ask?.maxConcurrentRequests).toBeUndefined()
+	})
+
 	// Before 2026-10-06 the top-level "max" went with it: an effort was shared
 	// by every model, whether the model had that level or not.
 	it("a mode entry naming another provider carries over no model, base URL, key or reasoning effort", async () => {
@@ -1465,6 +1487,22 @@ describe("run command execution timeout", () => {
 
 		expect(outcome).toBe("failed")
 		expect(errors[0]).toContain(`commandExecutionTimeout in ${getSettingsPath()} must be a whole number of seconds`)
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("passes maxParallelSubagents from the settings file", async () => {
+		await saveSettings({ provider: "openrouter", maxParallelSubagents: 6 })
+		await runWithExitThrowing()
+		expect(mockHost.lastOptions?.maxParallelSubagents).toBe(6)
+	})
+
+	it.each([9, -1, 2.5, "4"])("rejects maxParallelSubagents %j", async (value) => {
+		await saveSettings({ provider: "openrouter", maxParallelSubagents: value as never })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain(`Invalid maxParallelSubagents in ${getSettingsPath()}`)
 		expect(mockHost.lastOptions).toBeUndefined()
 	})
 

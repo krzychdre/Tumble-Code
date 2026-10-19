@@ -11,6 +11,7 @@ export const sharedProfileSettingsSchema = z
 		modelTemperature: z.number().nullish(),
 		rateLimitSeconds: z.number().optional(),
 		consecutiveMistakeLimit: z.number().min(0).optional(),
+		maxConcurrentRequests: z.number().int().min(1).optional(),
 		slimToolset: z.boolean().optional(),
 		slimHidesMcp: z.boolean().optional(),
 		compactProfile: z.boolean().optional(),

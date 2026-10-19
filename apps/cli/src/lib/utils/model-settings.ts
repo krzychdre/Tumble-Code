@@ -32,6 +32,12 @@
  * size" in the VS Code profile settings, and becomes the extension's
  * slimToolset, slimHidesMcp and compactProfile.
  *
+ * `maxConcurrentRequests` works with every provider too: how many requests
+ * the provider serves for the model at once (a local server's parallel slots,
+ * a plan's concurrency limit). It becomes the extension's
+ * maxConcurrentRequests, the cap on the subagents that run on the model, where
+ * the main task takes one request when it runs on the same model.
+ *
  * `provider`, `baseUrl`, `apiKey` and `apiKeyEnv` put the model on its own
  * connection, for a model served elsewhere than the top level or the mode
  * says; resolveProviderConfigWithModel layers them under the flags.
@@ -58,6 +64,7 @@ const ANY_PROVIDER_KEYS: ReadonlySet<string> = new Set([
 	"reasoningEffort",
 	"modelSize",
 	"hideMcp",
+	"maxConcurrentRequests",
 	"provider",
 	"baseUrl",
 	"apiKey",
@@ -78,8 +85,8 @@ export function getConfiguredModelSettings(
 /**
  * The keys an entry sets that only the openai provider takes, for the warning
  * that names what is ignored with another provider. `reasoningEffort`,
- * `modelSize`, `hideMcp`, the connection fields and `modes` are not among
- * them: every provider takes them.
+ * `modelSize`, `hideMcp`, `maxConcurrentRequests`, the connection fields and
+ * `modes` are not among them: every provider takes them.
  */
 export function listSetModelSettings(entry: CliModelSettings | undefined): string[] {
 	return Object.entries(entry ?? {})
@@ -105,11 +112,20 @@ export function findModelSettingsProblems(models: unknown): string[] {
 			continue
 		}
 
-		const { contextWindow, reasoningEffort, modelSize } = entry as CliModelSettings
+		const { contextWindow, maxConcurrentRequests, reasoningEffort, modelSize } = entry as CliModelSettings
 
 		if (contextWindow !== undefined && !(Number.isInteger(contextWindow) && contextWindow > 0)) {
 			problems.push(
 				`models.${model}.contextWindow must be a whole number of tokens greater than 0, got ${JSON.stringify(contextWindow)}`,
+			)
+		}
+
+		if (
+			maxConcurrentRequests !== undefined &&
+			!(Number.isInteger(maxConcurrentRequests) && maxConcurrentRequests > 0)
+		) {
+			problems.push(
+				`models.${model}.maxConcurrentRequests must be a whole number of requests greater than 0, got ${JSON.stringify(maxConcurrentRequests)}`,
 			)
 		}
 

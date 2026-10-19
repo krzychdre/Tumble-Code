@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Onbeperkt aantal nieuwe pogingen ingeschakeld (automatisch doorgaan). Het dialoogvenster zal nooit verschijnen.",
 			"warning": "⚠️ Instellen op 0 staat onbeperkte nieuwe pogingen toe, wat aanzienlijk API-gebruik kan verbruiken"
 		},
+		"maxConcurrentRequests": {
+			"label": "Maximaal aantal gelijktijdige verzoeken",
+			"description": "Hoeveel verzoeken deze provider en dit model tegelijk aannemen (bijvoorbeeld de parallelle slots van een lokale server). Elke subagent die op dit profiel draait neemt er een in, en de hoofdtaak neemt er een in wanneer die op hetzelfde profiel draait. Laat leeg om dit profiel niet te beperken: dan geldt alleen de algemene instelling \"Maximale parallelle subagenten\".",
+			"unlimited": "Geen limiet",
+			"slotsWithMainTask": "Vrije plaatsen voor subagenten als de hoofdtaak op dit profiel draait: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (standaard van het model)",
 			"anthropicHint": "Bepaalt hoeveel moeite het model in elk antwoord steekt, ook als redeneren uit staat. Wijzigen tijdens een taak laat het volgende verzoek de promptcache opnieuw opbouwen.",

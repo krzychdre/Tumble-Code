@@ -85,6 +85,8 @@ export interface ExtensionHostOptions {
 	consecutiveMistakeLimit?: number
 	/** Seconds a shell command may run before the extension stops it; 0 means no limit. */
 	commandExecutionTimeout?: number
+	/** `maxParallelSubagents` of cli-settings.json, the extension's parallelTasksMaxConcurrency. */
+	maxParallelSubagents?: number
 	provider: SupportedProvider
 	apiKey?: string
 	model: string
@@ -360,6 +362,9 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			mode: this.options.mode,
 			consecutiveMistakeLimit: this.options.consecutiveMistakeLimit ?? DEFAULT_FLAGS.consecutiveMistakeLimit,
 			commandExecutionTimeout: this.options.commandExecutionTimeout ?? DEFAULT_FLAGS.commandExecutionTimeout,
+			...(this.options.maxParallelSubagents !== undefined && {
+				parallelTasksMaxConcurrency: this.options.maxParallelSubagents,
+			}),
 			enableCheckpoints: false,
 			experiments: {
 				customTools: true,

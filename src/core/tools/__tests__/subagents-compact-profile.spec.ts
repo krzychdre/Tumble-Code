@@ -49,6 +49,7 @@ function makeProvider() {
 		delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
 		createBackgroundTask: vi.fn(),
 		handleModeSwitch: vi.fn(),
+		resolveSubagentProfile: vi.fn().mockResolvedValue({ apiConfiguration: { apiProvider: "openai" } }),
 	}
 }
 

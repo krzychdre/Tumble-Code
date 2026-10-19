@@ -450,6 +450,12 @@
 			"unlimitedDescription": "已啟用無限重試（自動繼續）。對話方塊將永遠不會出現。",
 			"warning": "⚠️ 設定為 0 允許無限重試，這可能會消耗大量 API 使用量"
 		},
+		"maxConcurrentRequests": {
+			"label": "最大並行請求數",
+			"description": "此提供者和模型可同時處理的請求數 (例如本機伺服器的並行槽位數)。在此設定檔上執行的每個子代理佔用一個，主要工作在同一設定檔上執行時也佔用一個。留空表示此設定檔不設上限：此時只適用全域設定「最大並行子代理數」。",
+			"unlimited": "無限制",
+			"slotsWithMainTask": "主要工作在此設定檔上執行時，子代理可用的槽位：{{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}}（模型預設）",
 			"anthropicHint": "設定模型在每次回答上投入的努力程度，推理關閉時同樣生效。在任務進行中變更會使下一次請求重建提示快取。",

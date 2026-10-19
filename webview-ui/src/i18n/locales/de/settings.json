@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Unbegrenzte Wiederholungen aktiviert (automatisches Fortfahren). Der Dialog wird niemals angezeigt.",
 			"warning": "⚠️ Das Setzen auf 0 erlaubt unbegrenzte Wiederholungen, was zu erheblichem API-Verbrauch führen kann"
 		},
+		"maxConcurrentRequests": {
+			"label": "Maximale gleichzeitige Anfragen",
+			"description": "Wie viele Anfragen dieser Anbieter und dieses Modell gleichzeitig verarbeiten (zum Beispiel die parallelen Slots eines lokalen Servers). Jeder Subagent auf diesem Profil belegt einen Platz, und die Hauptaufgabe belegt einen, wenn sie auf demselben Profil läuft. Leer lassen, um dieses Profil nicht zu begrenzen: Dann gilt nur die globale Einstellung \"Maximale parallele Subagenten\".",
+			"unlimited": "Kein Limit",
+			"slotsWithMainTask": "Freie Plätze für Subagenten, wenn die Hauptaufgabe auf diesem Profil läuft: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (Modellstandard)",
 			"anthropicHint": "Legt fest, wie viel Aufwand das Modell in jede Antwort steckt, auch wenn das Reasoning aus ist. Eine Änderung während einer Aufgabe lässt die nächste Anfrage den Prompt-Cache neu aufbauen.",

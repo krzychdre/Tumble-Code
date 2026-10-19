@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Sınırsız yeniden deneme etkin (otomatik devam et). Diyalog asla görünmeyecek.",
 			"warning": "⚠️ 0'a ayarlamak, önemli API kullanımına neden olabilecek sınırsız yeniden denemeye izin verir"
 		},
+		"maxConcurrentRequests": {
+			"label": "Maksimum eşzamanlı istek",
+			"description": "Bu sağlayıcının ve modelin aynı anda kabul ettiği istek sayısı (örneğin yerel bir sunucunun paralel yuvaları). Bu profilde çalışan her alt araç bir yuva kullanır, ana görev de aynı profilde çalışıyorsa bir yuva kullanır. Bu profili sınırlamamak için boş bırakın: o zaman yalnızca genel \"Maksimum paralel alt aracı\" ayarı geçerli olur.",
+			"unlimited": "Sınırsız",
+			"slotsWithMainTask": "Ana görev bu profilde çalışırken alt araçlara kalan yuva: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (model varsayılanı)",
 			"anthropicHint": "Modelin her yanıta ne kadar çaba harcayacağını belirler, akıl yürütme kapalıyken de. Görev sırasında değiştirmek, sonraki isteğin istem önbelleğini yeniden oluşturmasına yol açar.",

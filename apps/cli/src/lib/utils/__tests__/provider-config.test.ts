@@ -520,6 +520,27 @@ describe("toProviderSettings", () => {
 		}
 	})
 
+	it("passes the model's request limit to the profile with any provider", () => {
+		expect(
+			toProviderSettings({
+				provider: "anthropic",
+				model: "claude-x",
+				apiKey: "k",
+				modelSettings: { maxConcurrentRequests: 8 },
+			}).maxConcurrentRequests,
+		).toBe(8)
+		expect(toProviderSettings({ ...connection, modelSettings: { maxConcurrentRequests: 2 } })).toMatchObject({
+			maxConcurrentRequests: 2,
+		})
+	})
+
+	it("clears a request limit an earlier run left in the extension state", () => {
+		const settings = toProviderSettings({ ...connection, modelSettings: undefined })
+
+		// Written as undefined, not left out, so merging it into the state removes the old value.
+		expect(settings).toHaveProperty("maxConcurrentRequests", undefined)
+	})
+
 	it("turns reasoning off for disabled and leaves it out for unspecified", () => {
 		expect(toProviderSettings({ ...connection, reasoningEffort: "disabled" })).toMatchObject({
 			enableReasoningEffort: false,
@@ -683,6 +704,13 @@ describe("withModel", () => {
 
 		expect(tiny.compactProfile).toBe(true)
 		expect(withModel(tiny, "GLM-5.3-NVFP4", { modelSettings: undefined }).compactProfile).toBe(false)
+	})
+
+	it("brings the new model's own request limit", () => {
+		const local = withModel(glm, "Qwen3.8-4B", { modelSettings: { maxConcurrentRequests: 1 } })
+
+		expect(local.maxConcurrentRequests).toBe(1)
+		expect(withModel(local, "GLM-5.3-NVFP4", { modelSettings: undefined }).maxConcurrentRequests).toBeUndefined()
 	})
 
 	it("writes the model into the provider's own model field", () => {

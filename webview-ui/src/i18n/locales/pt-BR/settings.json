@@ -434,6 +434,12 @@
 			"unlimitedDescription": "Tentativas ilimitadas ativadas (prosseguimento automático). O diálogo nunca aparecerá.",
 			"warning": "⚠️ Definir como 0 permite tentativas ilimitadas, o que pode consumir um uso significativo da API"
 		},
+		"maxConcurrentRequests": {
+			"label": "Máximo de requisições simultâneas",
+			"description": "Quantas requisições este provedor e este modelo aceitam ao mesmo tempo (por exemplo, os slots paralelos de um servidor local). Cada subagente executado neste perfil ocupa um, e a tarefa principal ocupa um quando é executada no mesmo perfil. Deixe vazio para não limitar este perfil: vale apenas a configuração global \"Máximo de subagentes paralelos\".",
+			"unlimited": "Sem limite",
+			"slotsWithMainTask": "Vagas livres para subagentes quando a tarefa principal é executada neste perfil: {{slots}}"
+		},
 		"reasoningEffort": {
 			"modelDefault": "{{level}} (padrão do modelo)",
 			"anthropicHint": "Define quanto esforço o modelo dedica a cada resposta, também com o raciocínio desativado. Alterá-lo durante uma tarefa faz a próxima solicitação reconstruir o cache do prompt.",

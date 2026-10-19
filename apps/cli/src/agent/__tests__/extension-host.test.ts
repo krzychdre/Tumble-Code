@@ -1192,6 +1192,16 @@ describe("ExtensionHost", () => {
 			)
 		})
 
+		it("passes maxParallelSubagents as parallelTasksMaxConcurrency, and leaves it out when unset", () => {
+			const host = createTestHost({ maxParallelSubagents: 6 })
+			const defaultHost = createTestHost()
+
+			expect(getPrivate<Record<string, unknown>>(host, "initialSettings").parallelTasksMaxConcurrency).toBe(6)
+			expect(getPrivate<Record<string, unknown>>(defaultHost, "initialSettings")).not.toHaveProperty(
+				"parallelTasksMaxConcurrency",
+			)
+		})
+
 		it("should enable auto-approval in non-interactive mode", () => {
 			const host = createTestHost({ nonInteractive: true })
 

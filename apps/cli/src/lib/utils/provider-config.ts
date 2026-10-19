@@ -309,6 +309,11 @@ function applyModelSettings(
 	settings.slimHidesMcp = hideMcp !== false
 	settings.compactProfile = modelSize === "compact"
 
+	// How many requests the provider takes for this model at once, the cap on
+	// the subagents that run on it. Written always (undefined clears it), for
+	// the same reason as the model size.
+	settings.maxConcurrentRequests = config.modelSettings?.maxConcurrentRequests
+
 	// The openai provider sizes and prices its model from
 	// openAiCustomModelInfo, else from openAiModelInfoSaneDefaults (128,000
 	// tokens, $0, sees images): its model list has ids only. The same model

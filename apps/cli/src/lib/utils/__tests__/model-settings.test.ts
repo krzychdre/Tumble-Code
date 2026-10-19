@@ -33,6 +33,7 @@ describe("listSetModelSettings", () => {
 		expect(listSetModelSettings({ supportsImages: false })).toEqual(["supportsImages"])
 		// Every provider takes these, so they are never reported as ignored.
 		expect(listSetModelSettings({ reasoningEffort: "high", modelSize: "compact", hideMcp: false })).toEqual([])
+		expect(listSetModelSettings({ maxConcurrentRequests: 4 })).toEqual([])
 		expect(listSetModelSettings({ provider: "zai", baseUrl: "x", apiKey: "k", apiKeyEnv: "K" })).toEqual([])
 		expect(listSetModelSettings({ modes: ["code"] })).toEqual([])
 		expect(listSetModelSettings({})).toEqual([])
@@ -55,6 +56,18 @@ describe("findModelSettingsProblems", () => {
 
 	it.each([0, -1, 1.5])("rejects %s", (contextWindow) => {
 		expect(findModelSettingsProblems({ m: { contextWindow } })).toHaveLength(1)
+	})
+
+	it("accepts a whole number of concurrent requests from 1", () => {
+		expect(findModelSettingsProblems({ a: { maxConcurrentRequests: 1 }, b: { maxConcurrentRequests: 8 } })).toEqual(
+			[],
+		)
+	})
+
+	it.each([0, -1, 1.5, "4"])("rejects %s concurrent requests and names the field", (maxConcurrentRequests) => {
+		expect(findModelSettingsProblems({ m: { maxConcurrentRequests } })).toEqual([
+			`models.m.maxConcurrentRequests must be a whole number of requests greater than 0, got ${JSON.stringify(maxConcurrentRequests)}`,
+		])
 	})
 
 	it("accepts prices of 0 or more, fractions included", () => {

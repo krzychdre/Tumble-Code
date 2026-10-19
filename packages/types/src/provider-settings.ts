@@ -111,6 +111,12 @@ const baseProviderSettingsSchema = z.object({
 	modelTemperature: z.number().nullish(),
 	rateLimitSeconds: z.number().optional(),
 	consecutiveMistakeLimit: z.number().min(0).optional(),
+	// How many requests this provider and model take at once (a local server's
+	// parallel slots, a plan's concurrency limit). Each subagent running on this
+	// profile takes one slot, and the parent task takes one when it runs on the
+	// same profile. Unset means no per-profile cap: only the global
+	// `parallelTasksMaxConcurrency` applies. See `subagentSlotsForProfile()`.
+	maxConcurrentRequests: z.number().int().min(1).optional(),
 
 	// Slim toolset: a profile-level switch that intersects the advertised tool
 	// set down to a small, unambiguous allowlist. Small models pick the wrong
