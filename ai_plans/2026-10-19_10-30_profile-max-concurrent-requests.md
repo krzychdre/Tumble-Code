@@ -1,6 +1,6 @@
 # Max concurrent requests per provider profile (configuration)
 
-**Status:** configuration implemented on `feat/profile-max-concurrent-requests`; enforcement pending (see Notes)
+**Status:** done on `feat/profile-max-concurrent-requests` (configuration, enforcement, CLI global cap)
 **Related plans:** `2026-10-19_10-00_subagents-background-wait.md` (branch 2 of that plan)
 **Touched:** `packages/types/src/provider-settings.ts`, `provider-config/shared.ts`, `provider-profile.ts`,
 `provider-concurrency.ts` (new), `index.ts`, type tests and snapshots;
@@ -38,6 +38,14 @@ so the small server queues requests (or times out) and the large one is underuse
   base profile and every per-mode profile in `cliModeProviderSettings` carry the limit of the model that mode runs.
   A subagent started in mode X gets `modes[X] ?? base` (`ModeProfileBinding`), so it gets that model's limit.
 - Example settings: GLM-5.3-Flash-NVFP4 4, GLM-5.3-NVFP4 2, Qwen3.8-4B 1, claude-sonnet-5-5 8.
+- Enforcement (after `feat/subagents-background-wait`, #911): `SlotRequest` carries `profileKey` (the profile name)
+  and `profileLimit`; `SubagentSlotPool` counts running subagents per profile and serves waiters first in, first out
+  among those that fit, so a waiter held back by a full profile does not block a waiter on another profile. The
+  global cap still bounds all of them. `placeSubtasks` (RunParallelTasksTool.ts) resolves every subtask's profile
+  before approval, computes `subagentSlotsForProfile` with the parent counted when its profile name matches (a task
+  without a profile name of its own runs on the current profile), and refuses a fan-out whose profile leaves 0 slots.
+- CLI global cap: top-level `maxParallelSubagents` (0 to 8, default 3, 0 or 1 = off) becomes
+  `parallelTasksMaxConcurrency`, so per-model limits above 3 can take effect. Validated at startup in `run.ts`.
 
 ## Tests
 
@@ -52,10 +60,15 @@ so the small server queues requests (or times out) and the large one is underuse
   carry and clear the field in `provider-config.test.ts`; `run.test.ts` checks that the base and per-mode profiles get
   the limit of their own model; `settings-example.test.ts` keeps the example and both READMEs in step.
 
+- Enforcement: `SubagentSlotPool.spec.ts` (per-profile cap, another profile not blocked, global cap over profile
+  caps); `RunParallelTasksTool.spec.ts` (at most the profile's limit run, the parent counted on its own profile, a
+  fan-out refused before approval when the profile leaves no slot). Verified by disabling the per-profile check:
+  2 specs failed.
+- CLI: `maxParallelSubagents` passed through and rejected when out of range (`run.test.ts`), mapped to
+  `parallelTasksMaxConcurrency` and left out when unset (`extension-host.test.ts`).
+
 ## Notes
 
-- Enforcement lands after `feat/subagents-background-wait`: that branch adds the slot pool `run_parallel_tasks` will
-  draw from, and branch 2 then caps each profile with `subagentSlotsForProfile` and refuses a fan-out that could never
-  start (limit 1 with the parent on the profile) with a message telling the model to do the work itself. Until then the
-  field is stored and shown but does not limit anything.
-- The CLI has no way to set the global `parallelTasksMaxConcurrency`; a CLI run uses the default (3).
+- The parent is counted by profile name only. Two foreground tasks on one profile (two editor tabs) count as one.
+- Other requests to the same server (memory writers, condensing, other windows) are not counted; the limit bounds
+  subagents, it is not a request semaphore in the API layer.

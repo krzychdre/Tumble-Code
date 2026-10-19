@@ -738,6 +738,69 @@ describe("RunParallelTasksTool.execute", () => {
 		})
 	})
 
+	describe("maxConcurrentRequests of the subagent's profile", () => {
+		const profileWithLimit = (limit: number) => async (mode: string) => ({
+			apiConfiguration: { apiProvider: "fake", mode, maxConcurrentRequests: limit },
+			name: "shared",
+		})
+
+		it("runs no more subagents on a profile than its limit allows", async () => {
+			const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 8, currentApiConfigName: "main" })
+			provider.resolveSubagentProfile.mockImplementation(profileWithLimit(2))
+			const parent = makeFakeParentTask(provider)
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "a" }, { message: "b" }, { message: "c" }], maxConcurrency: 8 },
+				parent,
+				makeCallbacks(),
+			)
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			expect(provider.children.length).toBe(2)
+
+			provider.children[0].complete()
+			await execPromise
+			await vi.waitFor(() => expect(provider.children.length).toBe(3))
+			provider.children[1].complete()
+			provider.children[2].complete()
+			await settled(provider)
+		})
+
+		it("counts the parent when it runs on the same profile", async () => {
+			const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 8 })
+			provider.resolveSubagentProfile.mockImplementation(profileWithLimit(2))
+			const parent = makeFakeParentTask(provider, { taskApiConfigName: "shared" })
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "a" }, { message: "b" }], maxConcurrency: 8 },
+				parent,
+				makeCallbacks(),
+			)
+			await vi.waitFor(() => expect(provider.children.length).toBe(1))
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			expect(provider.children.length).toBe(1)
+
+			provider.children[0].complete()
+			await execPromise
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			provider.children[1].complete()
+			await settled(provider)
+		})
+
+		it("refuses before approval when the profile leaves no slot for subagents", async () => {
+			const provider = makeFakeProvider()
+			provider.resolveSubagentProfile.mockImplementation(profileWithLimit(1))
+			const parent = makeFakeParentTask(provider, { taskApiConfigName: "shared" })
+			const callbacks = makeCallbacks()
+
+			await runParallelTasksTool.execute({ subtasks: [{ message: "a" }] }, parent, callbacks)
+
+			expect(callbacks.askApproval).not.toHaveBeenCalled()
+			expect(provider.createBackgroundTask).not.toHaveBeenCalled()
+			const result = String(callbacks.pushToolResult.mock.calls[0][0])
+			expect(result).toContain('API profile "shared" allows 1 request(s) at once')
+			expect(result).toContain("Do this work directly in this task")
+		})
+	})
+
 	it("a user message ends the wait: the subagents keep running", async () => {
 		const provider = makeFakeProvider()
 		const parent = makeFakeParentTask(provider)

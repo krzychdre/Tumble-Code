@@ -5,6 +5,14 @@ export interface SlotRequest {
 	 * `parallelTasksMaxConcurrency`, read when the fan-out started.
 	 */
 	globalLimit: number
+	/** The profile the subagent runs on, see {@link profileLimit}. */
+	profileKey?: string
+	/**
+	 * How many subagents may run at once on `profileKey`: the profile's
+	 * `maxConcurrentRequests` less the parent's own request (see
+	 * subagentSlotsForProfile). Unset = no per-profile cap.
+	 */
+	profileLimit?: number
 }
 
 interface Waiter {
@@ -26,12 +34,16 @@ export class SlotWaitAbortedError extends Error {
  * not each get the full cap. A subagent takes a slot before its worktree and
  * its task are created and gives it back when it ends.
  *
- * Waiters are served first in, first out. Each request carries its own
- * limits, so a later branch can add a per-profile limit to {@link SlotRequest}
- * without changing the callers' shape.
+ * A request may also carry a per-profile limit (the profile's
+ * `maxConcurrentRequests`), so subagents on a server that takes few requests
+ * at once wait while subagents on other profiles still start.
+ *
+ * Waiters are served first in, first out among those that fit: a waiter
+ * blocked by its profile's limit does not hold up a waiter on another profile.
  */
 export class SubagentSlotPool {
 	private runningCount = 0
+	private readonly runningByProfile = new Map<string, number>()
 	private readonly queue: Waiter[] = []
 
 	/** How many subagents hold a slot now. */
@@ -77,20 +89,38 @@ export class SubagentSlotPool {
 
 	/** Hand free slots to the waiters at the head of the queue. */
 	private grantFreeSlots(): void {
-		while (this.queue.length > 0 && this.fits(this.queue[0].request)) {
-			const waiter = this.queue.shift()!
-			this.runningCount++
+		for (let i = 0; i < this.queue.length; ) {
+			const { request, grant } = this.queue[i]
+			if (!this.fits(request)) {
+				i++
+				continue
+			}
+			this.queue.splice(i, 1)
+			this.take(request.profileKey, +1)
 			let released = false
-			waiter.grant(() => {
+			grant(() => {
 				if (released) return
 				released = true
-				this.runningCount--
+				this.take(request.profileKey, -1)
 				this.grantFreeSlots()
 			})
 		}
 	}
 
+	private take(profileKey: string | undefined, delta: 1 | -1): void {
+		this.runningCount += delta
+		if (profileKey !== undefined) {
+			this.runningByProfile.set(profileKey, (this.runningByProfile.get(profileKey) ?? 0) + delta)
+		}
+	}
+
 	private fits(request: SlotRequest): boolean {
-		return this.runningCount < Math.max(1, request.globalLimit)
+		if (this.runningCount >= Math.max(1, request.globalLimit)) {
+			return false
+		}
+		if (request.profileKey === undefined || request.profileLimit === undefined) {
+			return true
+		}
+		return (this.runningByProfile.get(request.profileKey) ?? 0) < request.profileLimit
 	}
 }

@@ -6,6 +6,7 @@ import {
 	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
 	isCompactProfile,
 	isParallelTasksEnabled,
+	subagentSlotsForProfile,
 	TumbleCodeEventName,
 	type HistoryItem,
 	type SubagentSummary,
@@ -277,7 +278,7 @@ interface SubtaskProvider {
 		abortReason?: string
 		failureMessage?: string
 	}>
-	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number }>
+	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number; currentApiConfigName?: string }>
 	subagentRegistry: SubtaskRegistry
 	/** The running subagents per parent and the provider-wide slot pool. */
 	readonly backgroundSubagents: BackgroundSubagents
@@ -301,6 +302,49 @@ export function subagentDescription(message: string): string {
 	return firstLine.length > 200 ? `${firstLine.slice(0, 200)}…` : firstLine
 }
 
+/** Where a subagent runs: its profile and how many subagents that profile takes at once. */
+export interface SubagentPlacement {
+	profile: SubagentProfile
+	/** The profile's name, the key of its slots in the SubagentSlotPool. */
+	profileKey: string
+	/** Subagent slots of the profile (see subagentSlotsForProfile); unset = no per-profile cap. */
+	profileLimit?: number
+}
+
+/**
+ * Resolve the profile of every subtask before the fan-out starts, so each
+ * subagent waits for a slot of its own profile, and so a fan-out that could
+ * never start is refused up front. The parent takes one request of its
+ * profile's `maxConcurrentRequests`, because it keeps working (and answering
+ * the user) while the subagents run. Returns the error text for the model
+ * when a profile leaves no slot for subagents.
+ */
+export async function placeSubtasks(
+	provider: Pick<SubtaskProvider, "resolveSubagentProfile">,
+	parentProfileName: string | undefined,
+	subtasks: ReadonlyArray<NormalizedSubtask>,
+): Promise<{ ok: true; placements: SubagentPlacement[] } | { ok: false; error: string }> {
+	const placements: SubagentPlacement[] = []
+	for (const subtask of subtasks) {
+		const profile = await provider.resolveSubagentProfile(subtask.mode)
+		const profileKey = profile.name ?? ""
+		const maxConcurrentRequests = profile.apiConfiguration.maxConcurrentRequests
+		const profileLimit = subagentSlotsForProfile(maxConcurrentRequests, profileKey === (parentProfileName ?? ""))
+		if (profileLimit === 0) {
+			const name = profile.name ? `"${profile.name}"` : "of this task"
+			return {
+				ok: false,
+				error:
+					`No subagent can run in ${subtask.mode} mode: the API profile ${name} allows ` +
+					`${maxConcurrentRequests} request(s) at once and this task already uses it. ` +
+					"Do this work directly in this task.",
+			}
+		}
+		placements.push({ profile, profileKey, profileLimit })
+	}
+	return { ok: true, placements }
+}
+
 /** Arguments for {@link runOneSubtask}. */
 interface RunOneSubtaskArgs {
 	provider: SubtaskProvider
@@ -315,6 +359,8 @@ interface RunOneSubtaskArgs {
 	signal: AbortSignal
 	/** `parallelTasksMaxConcurrency`: the provider-wide cap on running subagents. */
 	globalLimit: number
+	/** The profile the subagent runs on and its subagent slots, see {@link SubagentPlacement}. */
+	placement: SubagentPlacement
 }
 
 /**
@@ -333,6 +379,7 @@ async function runOneSubtask({
 	index,
 	signal,
 	globalLimit,
+	placement,
 }: RunOneSubtaskArgs): Promise<ParallelSubtaskResult> {
 	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, runId, index)
 	const registry = provider.subagentRegistry
@@ -347,13 +394,13 @@ async function runOneSubtask({
 		return cancelled()
 	}
 
+	const { profile, profileKey, profileLimit } = placement
 	let releaseSlot: () => void
-	let profile: SubagentProfile
 	try {
-		// The profile is known before the slot is taken, so a slot can
-		// depend on the profile the subagent will run on.
-		profile = await provider.resolveSubagentProfile(subtask.mode)
-		releaseSlot = await provider.backgroundSubagents.slots.acquire({ globalLimit }, signal)
+		releaseSlot = await provider.backgroundSubagents.slots.acquire(
+			{ globalLimit, profileKey, profileLimit },
+			signal,
+		)
 	} catch (error) {
 		if (signal.aborted) {
 			return cancelled()
@@ -619,6 +666,16 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			}
 
 			const { subtasks, maxConcurrency } = validated
+			// A task started in a mode without a pinned profile has no profile
+			// name of its own and runs on the current one.
+			await task.taskApiConfigReady
+			const parentProfileName = task.taskApiConfigName ?? (await provider.getState()).currentApiConfigName
+			const placed = await placeSubtasks(provider, parentProfileName, subtasks)
+			if (!placed.ok) {
+				this.recordFailure(task, "run_parallel_tasks")
+				pushToolResult(formatResponse.toolError(placed.error))
+				return
+			}
 			const approvalMessage = JSON.stringify({
 				tool: "runParallelTasks",
 				count: subtasks.length,
@@ -640,6 +697,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 				subtasks,
 				maxConcurrency,
 				globalLimit: maxConcurrencyCap,
+				placements: placed.placements,
 			})
 			// The subagents run in the background. Wait the way
 			// wait_for_subagents does: return on the first result or on a user
@@ -673,6 +731,8 @@ interface StartFanOutArgs {
 	maxConcurrency: number
 	/** `parallelTasksMaxConcurrency`: the cap on running subagents across the provider. */
 	globalLimit: number
+	/** One per subtask, in order, see {@link placeSubtasks}. */
+	placements: SubagentPlacement[]
 }
 
 /**
@@ -681,7 +741,7 @@ interface StartFanOutArgs {
  * the provider's BackgroundSubagents the moment its subagent ends; the
  * parent reads it with wait_for_subagents.
  */
-function startFanOut({ provider, task, subtasks, maxConcurrency, globalLimit }: StartFanOutArgs): string {
+function startFanOut({ provider, task, subtasks, maxConcurrency, globalLimit, placements }: StartFanOutArgs): string {
 	const parentTaskId = task.taskId
 	const cwd = task.cwd
 	const runId = newFanOutRunId()
@@ -735,6 +795,7 @@ function startFanOut({ provider, task, subtasks, maxConcurrency, globalLimit }: 
 			index,
 			signal: controller.signal,
 			globalLimit,
+			placement: placements[index],
 		})
 		// A user-cancelled parent gets no results: nobody should be woken up
 		// to read the cancellations it asked for.
