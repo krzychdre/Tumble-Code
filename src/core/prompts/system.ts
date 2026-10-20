@@ -17,6 +17,7 @@ import {
 	getRulesSection,
 	getSystemInfoSection,
 	getObjectiveSection,
+	getDoingTasksSection,
 	getSharedToolUseSection,
 	getToolUseGuidelinesSection,
 	getOutputEfficiencySection,
@@ -247,8 +248,10 @@ async function generatePrompt(
 		getToolUseGuidelinesSection(),
 		// 4. Conciseness steering.
 		getOutputEfficiencySection(),
-		// 5. The loop's objective. Constant text, no inputs at all.
+		// 5. The loop's objective and the engineering defaults for the code the
+		//    agent writes. Constant text, no inputs at all.
 		getObjectiveSection(),
+		getDoingTasksSection(),
 		// 6. Capabilities and machine facts. Vary with the workspace and the
 		//    machine, never with the mode, so they still share across modes.
 		getCapabilitiesSection(cwd),
