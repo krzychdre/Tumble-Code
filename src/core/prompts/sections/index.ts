@@ -1,6 +1,7 @@
 export { getRulesSection } from "./rules"
 export { getSystemInfoSection } from "./system-info"
 export { getObjectiveSection } from "./objective"
+export { getDoingTasksSection } from "./doing-tasks"
 export { addCustomInstructions } from "./custom-instructions"
 export { getSharedToolUseSection } from "./tool-use"
 export { getToolUseGuidelinesSection } from "./tool-use-guidelines"

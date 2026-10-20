@@ -203,6 +203,7 @@ const STABLE_HEAD_MARKERS = [
 	"# Tool Use Guidelines",
 	"# Output Efficiency",
 	"====\n\nOBJECTIVE",
+	"====\n\nDOING TASKS",
 	"====\n\nCAPABILITIES",
 	"====\n\nSYSTEM INFORMATION",
 	MEMORY_BODY_STUB,
@@ -271,7 +272,7 @@ describe("system prompt common prefix across modes", () => {
 	 * mode and the shared region runs on through MODES and RULES. With a hub
 	 * connected the worst pair is any mode vs orchestrator: orchestrator has no
 	 * `mcp` group, so the two prompts part company at the MCP SERVERS section and
-	 * share 7630 bytes, which is the stable head plus its trailing separator. That
+	 * share 9915 bytes, which is the stable head plus its trailing separator. That
 	 * worst case is the number this floor guards, because it is the one an
 	 * orchestrator flow actually pays. Before WS-F the same measurement gave 17
 	 * bytes.
@@ -293,6 +294,9 @@ describe("system prompt common prefix across modes", () => {
 	 *         users saw "wy\u0142\u0105cznie" instead of the letters. The floor
 	 *         drops from 8000 to 7400 with it, a deliberate shortening of the
 	 *         stable head.
+	 *   9915  the DOING TASKS section (engineering defaults) joins the head
+	 *         after OBJECTIVE: 2283 bytes plus its separator (7630 + 2285 =
+	 *         9915). The floor rises from 7400 to 9680.
 	 *
 	 * HOW TO UPDATE THIS NUMBER LEGITIMATELY: it may only ever go UP, unless a PR
 	 * deliberately shortens a stable-head section (deleting text, moving a section
@@ -300,11 +304,11 @@ describe("system prompt common prefix across modes", () => {
 	 * because "the test broke" hides exactly the regression this file exists to
 	 * catch: something mode-dependent creeping into the head. The floor never
 	 * follows head TEXT edits, only deleted sections. The remaining gap to the
-	 * measured 7630 is 230 bytes, kept so ordinary edits to head text (a reworded
+	 * measured 9915 is 235 bytes, kept so ordinary edits to head text (a reworded
 	 * rule) do not fail the suite; the computed assertion below, not this floor,
 	 * is the real guard.
 	 */
-	const MIN_SHARED_PREFIX_BYTES = 7400
+	const MIN_SHARED_PREFIX_BYTES = 9680
 
 	it("shares at least the stable head between every pair of modes", async () => {
 		const prompts = new Map<string, string>()
