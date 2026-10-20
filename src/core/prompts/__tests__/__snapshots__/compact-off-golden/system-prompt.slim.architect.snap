@@ -184,7 +184,7 @@ type: {{user, feedback, project, reference}}
 
 **Step 2** \u2014 add a pointer to that file in `MEMORY.md`. `MEMORY.md` is an index, not a memory \u2014 each entry should be one line, under ~150 characters: `- [Title](file.md) \u2014 one-line hook`. It has no frontmatter. Never write memory content directly into `MEMORY.md`.
 
-Write memory files in English, whatever language the conversation uses. Keep the user's own words in quotes in their original language, and keep names, paths and code as they are.
+Write memory files entirely in English, whatever language the conversation uses. Do not quote the user in their original language: render the meaning and the tone of their words (firmness, impatience, irony) in English. A word in another language stays only when the word itself is the subject of the note. Keep names, paths and code as they are.
 
 - `MEMORY.md` is always loaded into your conversation context \u2014 lines after 200 will be truncated, so keep the index concise
 - Keep the name, description, and type fields in memory files up-to-date with the content

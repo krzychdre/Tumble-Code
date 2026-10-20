@@ -137,7 +137,7 @@ export function buildMemoryLines(
 		"",
 		`**Step 2** — add a pointer to that file in \`${ENTRYPOINT_NAME}\`. \`${ENTRYPOINT_NAME}\` is an index, not a memory — each entry should be one line, under ~150 characters: \`- [Title](file.md) — one-line hook\`. It has no frontmatter. Never write memory content directly into \`${ENTRYPOINT_NAME}\`.`,
 		"",
-		"Write memory files in English, whatever language the conversation uses. Keep the user's own words in quotes in their original language, and keep names, paths and code as they are.",
+		"Write memory files entirely in English, whatever language the conversation uses. Do not quote the user in their original language: render the meaning and the tone of their words (firmness, impatience, irony) in English. A word in another language stays only when the word itself is the subject of the note. Keep names, paths and code as they are.",
 		"",
 		`- \`${ENTRYPOINT_NAME}\` is always loaded into your conversation context — lines after ${MAX_ENTRYPOINT_LINES} will be truncated, so keep the index concise`,
 		"- Keep the name, description, and type fields in memory files up-to-date with the content",

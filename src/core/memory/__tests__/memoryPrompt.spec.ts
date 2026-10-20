@@ -73,13 +73,13 @@ describe("memoryPrompt", () => {
 
 		it("tells the model to write memory files in English, right after the two save steps", () => {
 			const lines = buildMemoryLines("auto memory", "/mem/dir/", "/proj")
-			const rule = lines.findIndex((l) => l.startsWith("Write memory files in English"))
+			const rule = lines.findIndex((l) => l.startsWith("Write memory files entirely in English"))
 			const step2 = lines.findIndex((l) => l.startsWith("**Step 2**"))
 			expect(step2).toBeGreaterThan(-1)
 			expect(rule).toBeGreaterThan(step2)
 			expect(rule - step2).toBeLessThanOrEqual(2)
 			expect(lines[rule]).toContain("whatever language the conversation uses")
-			expect(lines[rule]).toContain("user's own words in quotes")
+			expect(lines[rule]).toContain("render the meaning and the tone of their words")
 		})
 	})
 
