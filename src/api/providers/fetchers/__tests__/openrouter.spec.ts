@@ -2,10 +2,11 @@
 
 import * as path from "path"
 
-import { back as nockBack } from "nock"
+import nock from "nock"
 
 import { getOpenRouterModelEndpoints, getOpenRouterModels, parseOpenRouterModel } from "../openrouter"
 
+const nockBack = nock.back
 nockBack.fixtures = path.join(__dirname, "fixtures")
 nockBack.setMode("lockdown")
 
