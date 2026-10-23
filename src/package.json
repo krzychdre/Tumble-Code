@@ -536,7 +536,7 @@
 		"@tumble-code/types": "workspace:^",
 		"async-mutex": "^0.5.0",
 		"axios": "catalog:",
-		"chokidar": "^5.0.0",
+		"chokidar": "^6.0.0",
 		"clone-deep": "^4.0.1",
 		"delay": "^7.0.0",
 		"diff": "catalog:",
