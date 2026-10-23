@@ -6,13 +6,17 @@ export interface SlotRequest {
 	 */
 	globalLimit: number
 	/** The profile the subagent runs on, see {@link profileLimit}. */
-	profileKey?: string
+	profileKey: string
 	/**
 	 * How many subagents may run at once on `profileKey`: the profile's
 	 * `maxConcurrentRequests` less the parent's own request (see
 	 * subagentSlotsForProfile). Unset = no per-profile cap.
 	 */
 	profileLimit?: number
+	/** The run_parallel_tasks call the subagent belongs to, see {@link fanOutLimit}. */
+	fanOutKey: string
+	/** How many subagents of `fanOutKey` may run at once: the call's `maxConcurrency`. */
+	fanOutLimit: number
 }
 
 interface Waiter {
@@ -34,9 +38,10 @@ export class SlotWaitAbortedError extends Error {
  * not each get the full cap. A subagent takes a slot before its worktree and
  * its task are created and gives it back when it ends.
  *
- * A request may also carry a per-profile limit (the profile's
+ * A request also carries a per-profile limit (the profile's
  * `maxConcurrentRequests`), so subagents on a server that takes few requests
- * at once wait while subagents on other profiles still start.
+ * at once wait while subagents on other profiles still start, and the
+ * per-call limit of its run_parallel_tasks call.
  *
  * Waiters are served first in, first out among those that fit: a waiter
  * blocked by its profile's limit does not hold up a waiter on another profile.
@@ -44,6 +49,7 @@ export class SlotWaitAbortedError extends Error {
 export class SubagentSlotPool {
 	private runningCount = 0
 	private readonly runningByProfile = new Map<string, number>()
+	private readonly runningByFanOut = new Map<string, number>()
 	private readonly queue: Waiter[] = []
 
 	/** How many subagents hold a slot now. */
@@ -96,31 +102,43 @@ export class SubagentSlotPool {
 				continue
 			}
 			this.queue.splice(i, 1)
-			this.take(request.profileKey, +1)
+			this.take(request, +1)
 			let released = false
 			grant(() => {
 				if (released) return
 				released = true
-				this.take(request.profileKey, -1)
+				this.take(request, -1)
 				this.grantFreeSlots()
 			})
 		}
 	}
 
-	private take(profileKey: string | undefined, delta: 1 | -1): void {
+	private take(request: SlotRequest, delta: 1 | -1): void {
 		this.runningCount += delta
-		if (profileKey !== undefined) {
-			this.runningByProfile.set(profileKey, (this.runningByProfile.get(profileKey) ?? 0) + delta)
-		}
+		addCount(this.runningByProfile, request.profileKey, delta)
+		addCount(this.runningByFanOut, request.fanOutKey, delta)
 	}
 
 	private fits(request: SlotRequest): boolean {
 		if (this.runningCount >= Math.max(1, request.globalLimit)) {
 			return false
 		}
-		if (request.profileKey === undefined || request.profileLimit === undefined) {
-			return true
+		if ((this.runningByFanOut.get(request.fanOutKey) ?? 0) >= request.fanOutLimit) {
+			return false
 		}
-		return (this.runningByProfile.get(request.profileKey) ?? 0) < request.profileLimit
+		return (
+			request.profileLimit === undefined ||
+			(this.runningByProfile.get(request.profileKey) ?? 0) < request.profileLimit
+		)
+	}
+}
+
+/** Add `delta` to the count under `key`; a count that drops to 0 leaves the map. */
+function addCount(counts: Map<string, number>, key: string, delta: number): void {
+	const next = (counts.get(key) ?? 0) + delta
+	if (next === 0) {
+		counts.delete(key)
+	} else {
+		counts.set(key, next)
 	}
 }

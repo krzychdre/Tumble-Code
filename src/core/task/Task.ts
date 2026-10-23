@@ -1543,7 +1543,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	public dispose(): void {
 		// If no terminal event has fired, emit TaskAborted now so waiters
-		// (awaitTaskCompletion, runWithConcurrency, provider event forwarding)
+		// (awaitTaskCompletion, provider event forwarding)
 		// resolve. This MUST happen before removeAllListeners() so the handlers
 		// are still attached and can run.
 		if (!this.terminalEventEmitted) {

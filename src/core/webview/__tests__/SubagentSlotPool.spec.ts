@@ -1,16 +1,25 @@
 import { describe, it, expect } from "vitest"
 
-import { SlotWaitAbortedError, SubagentSlotPool } from "../SubagentSlotPool"
+import { SlotWaitAbortedError, SubagentSlotPool, type SlotRequest } from "../SubagentSlotPool"
 
 /** Let pending promise callbacks run. */
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+/** A request bound only by what the test names: one profile and one call without their own limits. */
+const req = (overrides: Partial<SlotRequest>): SlotRequest => ({
+	globalLimit: 8,
+	profileKey: "p",
+	fanOutKey: "call",
+	fanOutLimit: 8,
+	...overrides,
+})
 
 describe("SubagentSlotPool", () => {
 	it("grants slots up to the global limit, then queues", async () => {
 		const pool = new SubagentSlotPool()
 		const granted: string[] = []
 		for (const name of ["a", "b", "c"]) {
-			void pool.acquire({ globalLimit: 2 }).then(() => granted.push(name))
+			void pool.acquire(req({ globalLimit: 2 })).then(() => granted.push(name))
 		}
 		await flush()
 		expect(granted).toEqual(["a", "b"])
@@ -20,13 +29,13 @@ describe("SubagentSlotPool", () => {
 
 	it("serves waiters first in, first out as slots free up", async () => {
 		const pool = new SubagentSlotPool()
-		const releaseFirst = await pool.acquire({ globalLimit: 1 })
+		const releaseFirst = await pool.acquire(req({ globalLimit: 1 }))
 		const order: string[] = []
-		const second = pool.acquire({ globalLimit: 1 }).then((release) => {
+		const second = pool.acquire(req({ globalLimit: 1 })).then((release) => {
 			order.push("second")
 			return release
 		})
-		const third = pool.acquire({ globalLimit: 1 }).then((release) => {
+		const third = pool.acquire(req({ globalLimit: 1 })).then((release) => {
 			order.push("third")
 			return release
 		})
@@ -46,7 +55,7 @@ describe("SubagentSlotPool", () => {
 		let active = 0
 		let peak = 0
 		const job = async () => {
-			const release = await pool.acquire({ globalLimit: 3 })
+			const release = await pool.acquire(req({ globalLimit: 3 }))
 			active++
 			peak = Math.max(peak, active)
 			await new Promise((resolve) => setTimeout(resolve, 5))
@@ -61,8 +70,8 @@ describe("SubagentSlotPool", () => {
 
 	it("a release called twice frees one slot only", async () => {
 		const pool = new SubagentSlotPool()
-		const release = await pool.acquire({ globalLimit: 2 })
-		await pool.acquire({ globalLimit: 2 })
+		const release = await pool.acquire(req({ globalLimit: 2 }))
+		await pool.acquire(req({ globalLimit: 2 }))
 		release()
 		release()
 		expect(pool.running).toBe(1)
@@ -70,28 +79,30 @@ describe("SubagentSlotPool", () => {
 
 	it("an aborted waiter leaves the queue and rejects", async () => {
 		const pool = new SubagentSlotPool()
-		const release = await pool.acquire({ globalLimit: 1 })
+		const release = await pool.acquire(req({ globalLimit: 1 }))
 		const controller = new AbortController()
-		const waiting = pool.acquire({ globalLimit: 1 }, controller.signal)
+		const waiting = pool.acquire(req({ globalLimit: 1 }), controller.signal)
 		controller.abort()
 		await expect(waiting).rejects.toBeInstanceOf(SlotWaitAbortedError)
 		expect(pool.waiting).toBe(0)
 
 		release()
 		expect(pool.running).toBe(0)
-		await expect(pool.acquire({ globalLimit: 1 }, controller.signal)).rejects.toBeInstanceOf(SlotWaitAbortedError)
+		await expect(pool.acquire(req({ globalLimit: 1 }), controller.signal)).rejects.toBeInstanceOf(
+			SlotWaitAbortedError,
+		)
 	})
 
 	it("treats a limit below 1 as 1, so a subagent can always start", async () => {
 		const pool = new SubagentSlotPool()
-		await pool.acquire({ globalLimit: 0 })
+		await pool.acquire(req({ globalLimit: 0 }))
 		expect(pool.running).toBe(1)
 	})
 	it("caps the subagents of one profile by its own limit", async () => {
 		const pool = new SubagentSlotPool()
 		const granted: string[] = []
 		for (const name of ["a1", "a2", "a3"]) {
-			void pool.acquire({ globalLimit: 8, profileKey: "A", profileLimit: 2 }).then(() => granted.push(name))
+			void pool.acquire(req({ profileKey: "A", profileLimit: 2 })).then(() => granted.push(name))
 		}
 		await flush()
 		expect(granted).toEqual(["a1", "a2"])
@@ -101,13 +112,13 @@ describe("SubagentSlotPool", () => {
 	// A waiter held back by its profile does not block another profile's waiter.
 	it("starts a waiter on another profile while a full profile waits", async () => {
 		const pool = new SubagentSlotPool()
-		const releaseA = await pool.acquire({ globalLimit: 8, profileKey: "A", profileLimit: 1 })
+		const releaseA = await pool.acquire(req({ profileKey: "A", profileLimit: 1 }))
 		const granted: string[] = []
-		const secondA = pool.acquire({ globalLimit: 8, profileKey: "A", profileLimit: 1 }).then((release) => {
+		const secondA = pool.acquire(req({ profileKey: "A", profileLimit: 1 })).then((release) => {
 			granted.push("a2")
 			return release
 		})
-		void pool.acquire({ globalLimit: 8, profileKey: "B", profileLimit: 1 }).then(() => granted.push("b1"))
+		void pool.acquire(req({ profileKey: "B", profileLimit: 1 })).then(() => granted.push("b1"))
 		await flush()
 		expect(granted).toEqual(["b1"])
 
@@ -120,9 +131,38 @@ describe("SubagentSlotPool", () => {
 		const pool = new SubagentSlotPool()
 		const granted: string[] = []
 		for (const key of ["A", "B", "C"]) {
-			void pool.acquire({ globalLimit: 2, profileKey: key, profileLimit: 4 }).then(() => granted.push(key))
+			void pool.acquire(req({ globalLimit: 2, profileKey: key, profileLimit: 4 })).then(() => granted.push(key))
 		}
 		await flush()
 		expect(granted).toEqual(["A", "B"])
+	})
+
+	it("caps the subagents of one call by its fan-out limit", async () => {
+		const pool = new SubagentSlotPool()
+		const granted: string[] = []
+		for (const name of ["a1", "a2", "a3"]) {
+			void pool.acquire(req({ fanOutKey: "A", fanOutLimit: 2 })).then(() => granted.push(name))
+		}
+		await flush()
+		expect(granted).toEqual(["a1", "a2"])
+		expect(pool.waiting).toBe(1)
+	})
+
+	// A call at its own limit does not hold up a later call's waiter.
+	it("starts another call's waiter while a full call waits", async () => {
+		const pool = new SubagentSlotPool()
+		const releaseA = await pool.acquire(req({ fanOutKey: "A", fanOutLimit: 1 }))
+		const granted: string[] = []
+		const secondA = pool.acquire(req({ fanOutKey: "A", fanOutLimit: 1 })).then((release) => {
+			granted.push("a2")
+			return release
+		})
+		void pool.acquire(req({ fanOutKey: "B", fanOutLimit: 1 })).then(() => granted.push("b1"))
+		await flush()
+		expect(granted).toEqual(["b1"])
+
+		releaseA()
+		await secondA
+		expect(granted).toEqual(["b1", "a2"])
 	})
 })
