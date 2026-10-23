@@ -241,6 +241,19 @@ describe("App characterization (recorded message sequences)", () => {
 		}
 	})
 
+	it("shows the mode the extension reports, not the one the session started in", async () => {
+		const h = await start()
+
+		await h.emit("mode switched", {
+			type: "state",
+			state: { ...(state([PROMPT_ECHO]) as { state: object }).state, mode: "architect" },
+		} as unknown as ExtensionMessage)
+
+		expect(h.frames[0]!.frame).not.toContain("architect")
+		expect(h.frames.at(-1)!.frame).toContain("architect")
+		h.unmount()
+	})
+
 	it("streams a plain answer", async () => {
 		const h = await start()
 		expect(h.host.runs).toEqual(["Say hi"])
