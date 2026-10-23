@@ -74,7 +74,9 @@ def is_loopback_host(hostname: Optional[str]) -> bool:
 
 def public_host() -> Optional[str]:
     """The hostname of ``WEB_PUBLIC_URL``, or None when it is not set."""
-    return urlsplit(settings.web_public_url).hostname if settings.web_public_url else None
+    return (
+        urlsplit(settings.web_public_url).hostname if settings.web_public_url else None
+    )
 
 
 def arrived_on_public_host(request_host: Optional[str]) -> bool:
@@ -122,7 +124,9 @@ def front_channel(request_host: Optional[str] = None) -> FrontChannel:
     is reachable as it is and stays as configured.
     """
     if not arrived_on_public_host(request_host):
-        return FrontChannel(settings.authentik_base_url, settings.authentik_redirect_uri)
+        return FrontChannel(
+            settings.authentik_base_url, settings.authentik_redirect_uri
+        )
 
     public = public_host()
     authentik = urlsplit(settings.authentik_base_url)

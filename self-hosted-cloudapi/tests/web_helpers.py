@@ -81,7 +81,11 @@ async def _summarize(session, *task_ids: str) -> None:
     The counterpart of the refresh that ``backfill_messages`` /
     ``upsert_task_message`` perform after every write.
     """
-    from src.services.task_summary import derive_prompt, derive_title, refresh_task_summary
+    from src.services.task_summary import (
+        derive_prompt,
+        derive_title,
+        refresh_task_summary,
+    )
 
     await session.flush()
     for task_id in task_ids:

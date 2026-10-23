@@ -78,4 +78,3 @@ async def bridge_config_endpoint(
         user_id=current_user["user_id"],
         org_id=current_user.get("org_id"),
     )
-

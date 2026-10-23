@@ -16,7 +16,11 @@ from src.database import get_db
 from src.dependencies import get_current_user
 from src.schemas.telemetry import TelemetryEventRequest
 from src.services.client_kind import client_kind_from
-from src.services.telemetry_service import TaskNotOwnedError, record_event, backfill_messages
+from src.services.telemetry_service import (
+    TaskNotOwnedError,
+    record_event,
+    backfill_messages,
+)
 from src.realtime.hub import registry
 from config.settings import settings
 
@@ -68,7 +72,9 @@ def _backfill_client_kind(properties) -> str | None:
         fields = json.loads(properties)
     except json.JSONDecodeError:
         return None
-    if not isinstance(fields, dict) or not ("clientKind" in fields or "editorName" in fields):
+    if not isinstance(fields, dict) or not (
+        "clientKind" in fields or "editorName" in fields
+    ):
         return None
     return client_kind_from(fields)
 
@@ -152,5 +158,7 @@ async def backfill_events_endpoint(
     except TaskNotOwnedError:
         # Same answer as /api/extension/share for a task the caller does not
         # own: 404, so the response does not reveal that the id is taken.
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
     return {"status": "ok"}

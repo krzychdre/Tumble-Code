@@ -45,14 +45,52 @@ PRIVATE_KEY = "[REDACTED_PRIVATE_KEY]"
 
 # Names that are not anybody's: never learned as a user name.
 _GENERIC_USERS = {
-    "user", "users", "root", "runner", "ubuntu", "admin", "administrator", "public", "shared", "default",
-    "node", "vscode", "app", "guest", "workspace", "home", "linuxbrew",
+    "user",
+    "users",
+    "root",
+    "runner",
+    "ubuntu",
+    "admin",
+    "administrator",
+    "public",
+    "shared",
+    "default",
+    "node",
+    "vscode",
+    "app",
+    "guest",
+    "workspace",
+    "home",
+    "linuxbrew",
 }
 # Words too common to replace everywhere even when they are someone's user
 # name or a project folder (they are still replaced inside paths).
 _COMMON_WORDS = {
-    "dev", "test", "tests", "src", "lib", "data", "work", "code", "main", "master", "app", "api", "web", "docs",
-    "project", "projects", "repo", "temp", "tmp", "build", "dist", "server", "client", "backend", "frontend",
+    "dev",
+    "test",
+    "tests",
+    "src",
+    "lib",
+    "data",
+    "work",
+    "code",
+    "main",
+    "master",
+    "app",
+    "api",
+    "web",
+    "docs",
+    "project",
+    "projects",
+    "repo",
+    "temp",
+    "tmp",
+    "build",
+    "dist",
+    "server",
+    "client",
+    "backend",
+    "frontend",
 }
 
 # Account names that are placeholders, not a person (a "Test User" account).
@@ -63,9 +101,20 @@ _MIN_WORD_TOKEN = 5
 # The most text the per-export cache keeps (characters of input).
 _CACHE_CHARS = 20_000_000
 
-_NOT_NAMES = _GENERIC_USERS | {"test", "tester", "owner", "dev", "developer", "unknown", "none", "null"}
+_NOT_NAMES = _GENERIC_USERS | {
+    "test",
+    "tester",
+    "owner",
+    "dev",
+    "developer",
+    "unknown",
+    "none",
+    "null",
+}
 
-_PRIVATE_KEY_RE = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----")
+_PRIVATE_KEY_RE = re.compile(
+    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----"
+)
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}")
 _BEARER_RE = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}")
 _KEY_SHAPES = [
@@ -83,10 +132,13 @@ _SECRET_KEY_NAME = (
 )
 # key: "value" / key = 'value' / "key": "value"
 _QUOTED_PAIR_RE = re.compile(
-    rf"""(["']?\b{_SECRET_KEY_NAME}["']?\s*[:=]\s*)(["'])([^"'\s]{{6,}})(\2)""", re.IGNORECASE
+    rf"""(["']?\b{_SECRET_KEY_NAME}["']?\s*[:=]\s*)(["'])([^"'\s]{{6,}})(\2)""",
+    re.IGNORECASE,
 )
 # key: value / key=value without quotes: only a value that looks like a secret.
-_BARE_PAIR_RE = re.compile(rf"""(\b{_SECRET_KEY_NAME}\s*[:=]\s*)([A-Za-z0-9_\-+/=.~]{{8,}})""", re.IGNORECASE)
+_BARE_PAIR_RE = re.compile(
+    rf"""(\b{_SECRET_KEY_NAME}\s*[:=]\s*)([A-Za-z0-9_\-+/=.~]{{8,}})""", re.IGNORECASE
+)
 # .env and shell lines: FOO_TOKEN=..., export DB_PASSWORD="..."
 # Upper-case names only (the .env convention), and a literal value: an
 # expression such as $(cat f), os.environ[...] or ${X} is code, not a secret.
@@ -94,26 +146,46 @@ _ENV_LINE_RE = re.compile(
     r"""(?m)^(\s*(?:export\s+)?[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIALS?)"""
     r"""[A-Z0-9_]*\s*=\s*)(["']?)([^\s"'#()\[\]{}$]+)(\2)(?=\s|$)"""
 )
-_URL_CREDENTIALS_RE = re.compile(r"\b([a-z][a-z0-9+.-]*://)([^/\s:@\"']+):([^/\s@\"']+)@", re.IGNORECASE)
-_URL_KEY_PARAM_RE = re.compile(
-    r"([?&](?:key|api[-_]?key|token|access_token|auth|sig|signature|password)=)[^&\s\"'#]+", re.IGNORECASE
+_URL_CREDENTIALS_RE = re.compile(
+    r"\b([a-z][a-z0-9+.-]*://)([^/\s:@\"']+):([^/\s@\"']+)@", re.IGNORECASE
 )
-_PLACEHOLDER_RE = re.compile(r"^(?:<.*>|\$\{.*\}|\{\{.*\}\}|x+|\*+|your[-_].*|changeme|example.*|test.*|\[.*\])$", re.I)
+_URL_KEY_PARAM_RE = re.compile(
+    r"([?&](?:key|api[-_]?key|token|access_token|auth|sig|signature|password)=)[^&\s\"'#]+",
+    re.IGNORECASE,
+)
+_PLACEHOLDER_RE = re.compile(
+    r"^(?:<.*>|\$\{.*\}|\{\{.*\}\}|x+|\*+|your[-_].*|changeme|example.*|test.*|\[.*\])$",
+    re.I,
+)
 
-_HOME_RE = re.compile(r"(?<![\w.-])(/home/|/Users/|[A-Za-z]:(?:\\\\|\\|/)Users(?:\\\\|\\|/))([A-Za-z0-9._-]+)")
-_EMAIL_RE = re.compile(r"(?<![\w.+-])([A-Za-z0-9._%+-]+)@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})\b")
+_HOME_RE = re.compile(
+    r"(?<![\w.-])(/home/|/Users/|[A-Za-z]:(?:\\\\|\\|/)Users(?:\\\\|\\|/))([A-Za-z0-9._-]+)"
+)
+_EMAIL_RE = re.compile(
+    r"(?<![\w.+-])([A-Za-z0-9._%+-]+)@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})\b"
+)
 _IPV4_RE = re.compile(r"(?<![\w.])(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?![\w.])")
-_IPV6_RE = re.compile(r"(?<![\w:])((?:[0-9A-Fa-f]{1,4}:){1,7}:?(?:[0-9A-Fa-f]{1,4})?(?::[0-9A-Fa-f]{1,4}){0,6})(?![\w:])")
+_IPV6_RE = re.compile(
+    r"(?<![\w:])((?:[0-9A-Fa-f]{1,4}:){1,7}:?(?:[0-9A-Fa-f]{1,4})?(?::[0-9A-Fa-f]{1,4}){0,6})(?![\w:])"
+)
 _PESEL_RE = re.compile(r"(?<!\d)(\d{11})(?!\d)")
 _IBAN_RE = re.compile(r"\b([A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?)\b")
-_CARD_RE = re.compile(r"(?<![\d-])((?:4\d{3}|5[1-5]\d{2}|2[2-7]\d{2}|6011|65\d{2}|3[47]\d{2})(?:[ -]?\d{2,4}){3,4})(?![\d-])")
-_PHONE_RE = re.compile(r"(?<![\w+])\+\d{1,3}[ -]?\(?\d{1,4}\)?(?:[ -]?\d{2,4}){2,4}(?!\d)")
+_CARD_RE = re.compile(
+    r"(?<![\d-])((?:4\d{3}|5[1-5]\d{2}|2[2-7]\d{2}|6011|65\d{2}|3[47]\d{2})(?:[ -]?\d{2,4}){3,4})(?![\d-])"
+)
+_PHONE_RE = re.compile(
+    r"(?<![\w+])\+\d{1,3}[ -]?\(?\d{1,4}\)?(?:[ -]?\d{2,4}){2,4}(?!\d)"
+)
 
 
 def _looks_secret(value: str) -> bool:
     if _PLACEHOLDER_RE.match(value):
         return False
-    return bool(re.search(r"\d", value)) and bool(re.search(r"[A-Za-z]", value)) and len(value) >= 8
+    return (
+        bool(re.search(r"\d", value))
+        and bool(re.search(r"[A-Za-z]", value))
+        and len(value) >= 8
+    )
 
 
 def _pesel_valid(digits: str) -> bool:
@@ -196,26 +268,36 @@ def _path_spellings(path: str) -> list[str]:
 class Anonymizer:
     """Consistent pseudonyms for one export; see the module docstring."""
 
-    def __init__(self, identity: Iterable[tuple[str, str]] = (), terms: Iterable[str] = ()):
+    def __init__(
+        self, identity: Iterable[tuple[str, str]] = (), terms: Iterable[str] = ()
+    ):
         """``identity``: (kind, value) pairs, kind "email" or "name". ``terms``: the user's own list."""
         self._maps: dict[str, dict[str, str]] = {}
         self.audit: Counter = Counter()
         self._workspaces: dict[str, str] = {}
         self._workspace_spellings: list[tuple[str, str]] = []
         self._users: set[str] = set()
-        self._token_rules: list[tuple[re.Pattern, str, str]] = []  # (pattern, category, pseudonym base)
+        self._token_rules: list[
+            tuple[re.Pattern, str, str]
+        ] = []  # (pattern, category, pseudonym base)
         self._cache: dict[str, str] = {}
         self._cache_chars = 0
         # Every identity value is the same person: one pseudonym for all of them.
         for kind, value in identity:
             value = (value or "").strip()
             if kind == "email" and "@" in value:
-                self._remember("email", value.lower(), self._email_pseudonym(value.lower()))
+                self._remember(
+                    "email", value.lower(), self._email_pseudonym(value.lower())
+                )
                 local = value.split("@", 1)[0]
                 if len(local) >= _MIN_WORD_TOKEN and local.lower() not in _COMMON_WORDS:
-                    self._add_token(local, "identity", "person", fixed="person1", word=True)
+                    self._add_token(
+                        local, "identity", "person", fixed="person1", word=True
+                    )
             elif kind == "name" and len(value) >= 3 and value.lower() not in _NOT_NAMES:
-                self._add_token(value, "identity", "person", fixed="person1", proper_noun=True)
+                self._add_token(
+                    value, "identity", "person", fixed="person1", proper_noun=True
+                )
         for term in terms:
             term = term.strip()
             if len(term) >= 3:
@@ -247,7 +329,9 @@ class Anonymizer:
     ) -> None:
         key = value.lower()
         pattern = _bounded(value, proper_noun, word)
-        if any(existing.pattern == pattern.pattern for existing, _, _ in self._token_rules):
+        if any(
+            existing.pattern == pattern.pattern for existing, _, _ in self._token_rules
+        ):
             return
         if fixed:
             pseudonym = self._remember(category, key, fixed)
@@ -263,7 +347,9 @@ class Anonymizer:
 
     # --- learning from the data ------------------------------------------------------
 
-    def learn(self, system: Optional[str] = None, workspace_path: Optional[str] = None) -> None:
+    def learn(
+        self, system: Optional[str] = None, workspace_path: Optional[str] = None
+    ) -> None:
         """Pick up the workspace and home folder of an exchange before its text is processed."""
         paths = [workspace_path] if workspace_path else []
         if system:
@@ -272,7 +358,9 @@ class Anonymizer:
                     paths.append(line.split(":", 1)[1].strip())
                 elif line.startswith("Home Directory:"):
                     home = line.split(":", 1)[1].strip()
-                    match = _HOME_RE.match(home if home.endswith(("/", "\\")) else home + "/")
+                    match = _HOME_RE.match(
+                        home if home.endswith(("/", "\\")) else home + "/"
+                    )
                     if match:
                         self._learn_user(match.group(2))
         for path in paths:
@@ -296,10 +384,16 @@ class Anonymizer:
         self.forget_texts()
 
     def _learn_user(self, name: str) -> None:
-        if len(name) >= 3 and name.lower() not in _GENERIC_USERS and name not in self._users:
+        if (
+            len(name) >= 3
+            and name.lower() not in _GENERIC_USERS
+            and name not in self._users
+        ):
             self._users.add(name)
             if len(name) >= _MIN_WORD_TOKEN and name.lower() not in _COMMON_WORDS:
-                self._token_rules.append((_bounded(name, word=True), "username", "user"))
+                self._token_rules.append(
+                    (_bounded(name, word=True), "username", "user")
+                )
                 self._remember("username", name.lower(), "user")
             self.forget_texts()
 
@@ -310,11 +404,18 @@ class Anonymizer:
             def apply(match: re.Match) -> str:
                 self._count(category, match.group(0), replacement)
                 return replacement
+
             return apply
 
         text = _PRIVATE_KEY_RE.sub(counted("private_key", PRIVATE_KEY), text)
         text = _JWT_RE.sub(counted("secret", SECRET), text)
-        text = _BEARER_RE.sub(lambda m: (self._count("secret", m.group(0), f"Bearer {SECRET}"), f"Bearer {SECRET}")[1], text)
+        text = _BEARER_RE.sub(
+            lambda m: (
+                self._count("secret", m.group(0), f"Bearer {SECRET}"),
+                f"Bearer {SECRET}",
+            )[1],
+            text,
+        )
         for pattern in _KEY_SHAPES:
             text = pattern.sub(counted("secret", SECRET), text)
 
@@ -325,7 +426,11 @@ class Anonymizer:
             return f"{m.group(1)}{m.group(2)}{SECRET}{m.group(4)}"
 
         def quoted(m: re.Match) -> str:
-            if _PLACEHOLDER_RE.match(m.group(3)) or not _looks_secret(m.group(3)) and len(m.group(3)) < 16:
+            if (
+                _PLACEHOLDER_RE.match(m.group(3))
+                or not _looks_secret(m.group(3))
+                and len(m.group(3)) < 16
+            ):
                 return m.group(0)
             self._count("secret", m.group(3), SECRET)
             return f"{m.group(1)}{m.group(2)}{SECRET}{m.group(4)}"
@@ -355,8 +460,11 @@ class Anonymizer:
         for spelling, alias in self._workspace_spellings:
             if spelling in text:
                 # Keep the spelling's separator style for what follows the root.
-                replacement = alias.replace("/", "\\\\") if "\\\\" in spelling else (
-                    alias.replace("/", "\\") if "\\" in spelling else alias)
+                replacement = (
+                    alias.replace("/", "\\\\")
+                    if "\\\\" in spelling
+                    else (alias.replace("/", "\\") if "\\" in spelling else alias)
+                )
                 self._count("workspace", spelling, replacement)
                 text = text.replace(spelling, replacement)
 
@@ -373,17 +481,27 @@ class Anonymizer:
     def _learn_user_late(self, name: str) -> None:
         # A home path met in the text (not in the system prompt): learn the name
         # without dropping the cache mid-string.
-        if len(name) >= 3 and name.lower() not in _GENERIC_USERS and name not in self._users:
+        if (
+            len(name) >= 3
+            and name.lower() not in _GENERIC_USERS
+            and name not in self._users
+        ):
             self._users.add(name)
             if len(name) >= _MIN_WORD_TOKEN and name.lower() not in _COMMON_WORDS:
-                self._token_rules.append((_bounded(name, word=True), "username", "user"))
+                self._token_rules.append(
+                    (_bounded(name, word=True), "username", "user")
+                )
                 self._remember("username", name.lower(), "user")
 
     def _tokens(self, text: str) -> str:
         # E-mail addresses first, so an identity token inside one is not split.
         def email(m: re.Match) -> str:
             local, domain = m.group(1), m.group(2).lower()
-            if local.lower() == "git" or re.match(r"^example\.(?:com|org|net)$", domain) or domain.endswith(".example"):
+            if (
+                local.lower() == "git"
+                or re.match(r"^example\.(?:com|org|net)$", domain)
+                or domain.endswith(".example")
+            ):
                 return m.group(0)
             pseudonym = self._email_pseudonym(m.group(0).lower())
             self._count("email", m.group(0), pseudonym)
@@ -391,10 +509,12 @@ class Anonymizer:
 
         text = _EMAIL_RE.sub(email, text)
         for pattern, category, pseudonym in self._token_rules:
+
             def token(m: re.Match, category=category, pseudonym=pseudonym) -> str:
                 replacement = _like_case(m.group(0), pseudonym)
                 self._count(category, m.group(0), replacement)
                 return replacement
+
             text = pattern.sub(token, text)
         return text
 
@@ -402,23 +522,36 @@ class Anonymizer:
         def ipv4(m: re.Match) -> str:
             octets = [int(g) for g in m.groups()]
             original = m.group(0)
-            if any(o > 255 for o in octets) or octets[0] in (0, 127) or octets == [255, 255, 255, 255]:
+            if (
+                any(o > 255 for o in octets)
+                or octets[0] in (0, 127)
+                or octets == [255, 255, 255, 255]
+            ):
                 return original
-            before = text[max(0, m.start() - 8):m.start()].lower()
+            before = text[max(0, m.start() - 8) : m.start()].lower()
             if re.search(r"(?:\bv|version\s?)$", before):
                 return original
-            pseudonym = self._pseudonym("ip", original, lambda n: f"192.0.2.{n}" if n < 255 else f"198.51.100.{n % 254 + 1}")
+            pseudonym = self._pseudonym(
+                "ip",
+                original,
+                lambda n: f"192.0.2.{n}" if n < 255 else f"198.51.100.{n % 254 + 1}",
+            )
             self._count("ip", original, pseudonym)
             return pseudonym
 
         def ipv6(m: re.Match) -> str:
             original = m.group(1)
             groups = [g for g in original.split(":") if g]
-            if original in ("::1", "::") or ("::" not in original and len(groups) < 8) or (
-                "::" in original and len(groups) < 2
-            ) or not re.search(r"[A-Fa-f]|::", original):
+            if (
+                original in ("::1", "::")
+                or ("::" not in original and len(groups) < 8)
+                or ("::" in original and len(groups) < 2)
+                or not re.search(r"[A-Fa-f]|::", original)
+            ):
                 return original
-            pseudonym = self._pseudonym("ip", original.lower(), lambda n: f"2001:db8::{n:x}")
+            pseudonym = self._pseudonym(
+                "ip", original.lower(), lambda n: f"2001:db8::{n:x}"
+            )
             self._count("ip", original, pseudonym)
             return pseudonym
 
@@ -503,7 +636,10 @@ class Anonymizer:
             for original, copy in zip(tools, cleaned):
                 if not isinstance(original, dict):
                     continue
-                if isinstance(original.get("function"), dict) and "name" in original["function"]:
+                if (
+                    isinstance(original.get("function"), dict)
+                    and "name" in original["function"]
+                ):
                     copy["function"]["name"] = original["function"]["name"]
                 if "name" in original:
                     copy["name"] = original["name"]
@@ -527,7 +663,12 @@ class Anonymizer:
     def report(self) -> list[dict]:
         """Every replacement made: category, original, replacement, count (most frequent first)."""
         rows = [
-            {"category": category, "original": original, "replacement": replacement, "count": count}
+            {
+                "category": category,
+                "original": original,
+                "replacement": replacement,
+                "count": count,
+            }
             for (category, original, replacement), count in self.audit.items()
         ]
         rows.sort(key=lambda row: (row["category"], -row["count"], row["original"]))

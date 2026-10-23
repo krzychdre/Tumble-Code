@@ -50,7 +50,9 @@ async def _seed_state(
     return row
 
 
-async def _seed_session(db, user_id: str, *, expires_at=None, is_active=True) -> SessionModel:
+async def _seed_session(
+    db, user_id: str, *, expires_at=None, is_active=True
+) -> SessionModel:
     session = SessionModel(user_id=user_id, expires_at=expires_at, is_active=is_active)
     db.add(session)
     await db.flush()
@@ -58,7 +60,9 @@ async def _seed_session(db, user_id: str, *, expires_at=None, is_active=True) ->
 
 
 async def _session_id_of(db, user_id: str) -> str:
-    return await db.scalar(select(SessionModel.id).where(SessionModel.user_id == user_id))
+    return await db.scalar(
+        select(SessionModel.id).where(SessionModel.user_id == user_id)
+    )
 
 
 def _web_cookie(user_id: str, session_id: str) -> dict:
@@ -79,7 +83,9 @@ async def test_get_oauth_state_consumes_the_row(db_session):
     assert first.state == "state-live"
 
     remaining = await db_session.scalar(
-        select(func.count()).select_from(AuthentikStateStore).where(AuthentikStateStore.state == "state-live")
+        select(func.count())
+        .select_from(AuthentikStateStore)
+        .where(AuthentikStateStore.state == "state-live")
     )
     assert remaining == 0, "the state row must be deleted on use"
 
@@ -102,7 +108,9 @@ async def test_get_oauth_state_with_an_unknown_state_deletes_nothing(db_session)
 
 async def test_get_oauth_state_still_refuses_an_expired_row(db_session):
     await _seed_state(
-        db_session, "state-old", expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)
+        db_session,
+        "state-old",
+        expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
     )
     assert await get_oauth_state(db_session, "state-old") is None
 
@@ -119,7 +127,11 @@ async def _seed_purge_fodder(db):
     user = await _seed_user(db)
     session = await _seed_session(db, user.id)
 
-    await _seed_state(db, "state-expired", expires_at=datetime.now(timezone.utc) - timedelta(minutes=1))
+    await _seed_state(
+        db,
+        "state-expired",
+        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+    )
     await _seed_state(db, "state-live")
 
     db.add(
@@ -149,7 +161,9 @@ async def _seed_purge_fodder(db):
             expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
         )
     )
-    db.add(ClientToken(session_id=session.id, token_hash="hash-live", expires_at=expiry))
+    db.add(
+        ClientToken(session_id=session.id, token_hash="hash-live", expires_at=expiry)
+    )
     await db.commit()
     return session
 
@@ -163,13 +177,18 @@ async def test_purge_removes_only_expired_rows(db_session):
     # The three expired rows are gone; the live ones all survive.
     assert purged == 3, "one expired state, ticket and client token"
 
-    states = {r[0] for r in (await db_session.execute(select(AuthentikStateStore.state))).all()}
+    states = {
+        r[0]
+        for r in (await db_session.execute(select(AuthentikStateStore.state))).all()
+    }
     assert states == {"state-live"}
 
     tickets = {r[0] for r in (await db_session.execute(select(Ticket.code))).all()}
     assert tickets == {"ticket-live"}
 
-    hashes = {r[0] for r in (await db_session.execute(select(ClientToken.token_hash))).all()}
+    hashes = {
+        r[0] for r in (await db_session.execute(select(ClientToken.token_hash))).all()
+    }
     assert "hash-expired" not in hashes
     assert "hash-live" in hashes
 
@@ -216,13 +235,17 @@ async def test_purge_never_touches_tokens_when_expiry_is_off(db_session, monkeyp
     await purge_expired_auth_rows(db_session)
     await db_session.commit()
 
-    hashes = {r[0] for r in (await db_session.execute(select(ClientToken.token_hash))).all()}
+    hashes = {
+        r[0] for r in (await db_session.execute(select(ClientToken.token_hash))).all()
+    }
     assert hashes == {"hash-old"}
 
 
 async def test_purge_counts_the_deleted_rows(db_session):
     await _seed_state(
-        db_session, "state-expired", expires_at=datetime.now(timezone.utc) - timedelta(minutes=1)
+        db_session,
+        "state-expired",
+        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
     )
     await purge_expired_auth_rows(db_session)
     # Nothing left to delete: a second run reports zero.
@@ -237,10 +260,14 @@ async def test_purge_counts_the_deleted_rows(db_session):
 async def test_an_expired_session_does_not_resolve_a_web_user(db_session):
     user = await _seed_user(db_session)
     await _seed_session(
-        db_session, user.id, expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)
+        db_session,
+        user.id,
+        expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
     )
 
-    cookie = _serializer.dumps({"sid": await _session_id_of(db_session, user.id), "uid": user.id})
+    cookie = _serializer.dumps(
+        {"sid": await _session_id_of(db_session, user.id), "uid": user.id}
+    )
     assert await resolve_web_user(cookie, db_session) is None
 
 
@@ -250,7 +277,9 @@ async def test_a_live_session_still_resolves_a_web_user(db_session):
         db_session, user.id, expires_at=datetime.now(timezone.utc) + timedelta(days=1)
     )
 
-    cookie = _serializer.dumps({"sid": await _session_id_of(db_session, user.id), "uid": user.id})
+    cookie = _serializer.dumps(
+        {"sid": await _session_id_of(db_session, user.id), "uid": user.id}
+    )
     resolved = await resolve_web_user(cookie, db_session)
     assert resolved is not None
     assert resolved["user_id"] == user.id
@@ -262,7 +291,9 @@ async def test_a_session_without_expiry_still_resolves_a_web_user(db_session):
     user = await _seed_user(db_session)
     await _seed_session(db_session, user.id, expires_at=None)
 
-    cookie = _serializer.dumps({"sid": await _session_id_of(db_session, user.id), "uid": user.id})
+    cookie = _serializer.dumps(
+        {"sid": await _session_id_of(db_session, user.id), "uid": user.id}
+    )
     assert await resolve_web_user(cookie, db_session) is not None
 
 
@@ -278,7 +309,9 @@ async def test_post_logout_deactivates_the_session(client, db_session):
     session_id = session.id
     await db_session.commit()
 
-    resp = client.post("/app/logout", cookies=_web_cookie(user_id, session_id), follow_redirects=False)
+    resp = client.post(
+        "/app/logout", cookies=_web_cookie(user_id, session_id), follow_redirects=False
+    )
     assert resp.status_code == 303
     assert resp.headers["location"] == "/app/signed-out"
 
@@ -291,7 +324,9 @@ async def test_post_logout_deactivates_the_session(client, db_session):
 
     # A request with the same cookie is sent to the login page: the session no
     # longer resolves, so require_web_user raises LoginRequired.
-    follow = client.get("/app", cookies=_web_cookie(user_id, session_id), follow_redirects=False)
+    follow = client.get(
+        "/app", cookies=_web_cookie(user_id, session_id), follow_redirects=False
+    )
     assert follow.status_code == 303
     assert follow.headers["location"] == "/app/login"
 
@@ -301,7 +336,9 @@ async def test_post_logout_clears_the_cookie(client, db_session):
     session = await _seed_session(db_session, user.id)
     await db_session.commit()
 
-    resp = client.post("/app/logout", cookies=_web_cookie(user.id, session.id), follow_redirects=False)
+    resp = client.post(
+        "/app/logout", cookies=_web_cookie(user.id, session.id), follow_redirects=False
+    )
     set_cookie = resp.headers.get("set-cookie", "")
     assert COOKIE_NAME in set_cookie
     assert "max-age=0" in set_cookie.lower()
@@ -325,7 +362,9 @@ async def test_logout_redirects_never_leave_the_panel_origin(client, db_session)
     session = await _seed_session(db_session, user.id)
     await db_session.commit()
 
-    resp = client.post("/app/logout", cookies=_web_cookie(user.id, session.id), follow_redirects=False)
+    resp = client.post(
+        "/app/logout", cookies=_web_cookie(user.id, session.id), follow_redirects=False
+    )
     hops = 0
     while resp.is_redirect:
         location = resp.headers["location"]

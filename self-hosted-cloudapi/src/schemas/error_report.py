@@ -31,7 +31,10 @@ TEXT_MAX = 8000
 
 class _Wire(BaseModel):
     model_config = ConfigDict(
-        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True, extra="ignore",
+        populate_by_name=True,
+        alias_generator=to_camel,
+        serialize_by_alias=True,
+        extra="ignore",
         # NaN and Infinity are not JSON; a client that sends them is broken.
         allow_inf_nan=False,
     )

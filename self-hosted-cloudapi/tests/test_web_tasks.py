@@ -55,7 +55,9 @@ async def test_app_lists_owned_tasks(client, db_session, session_factory):
     assert "Build me a feature" in resp.text
 
 
-async def test_title_strips_environment_details_wrapper(client, db_session, session_factory):
+async def test_title_strips_environment_details_wrapper(
+    client, db_session, session_factory
+):
     """A first turn in Tumble Code's API-prompt form (typed text wrapped in
     <user_message>, trailed by a machine <environment_details> block) yields a
     title of just the user's query - no mode/file-tree leakage."""
@@ -123,7 +125,9 @@ async def test_app_list_and_detail_show_workspace(client, db_session, session_fa
     assert ws in detail_resp.text
 
 
-async def test_app_list_without_workspace_renders_cleanly(client, db_session, session_factory):
+async def test_app_list_without_workspace_renders_cleanly(
+    client, db_session, session_factory
+):
     """A task with no workspace_path (legacy / bridge-off share) renders without a
     project badge and does not error."""
     await _seed_user(db_session)
@@ -360,7 +364,9 @@ async def test_delete_task_removes_task_messages_and_share(
         ).scalar_one()
         msgs = (
             await s.execute(
-                select(func.count(TaskMessage.id)).where(TaskMessage.task_id == "task-del")
+                select(func.count(TaskMessage.id)).where(
+                    TaskMessage.task_id == "task-del"
+                )
             )
         ).scalar_one()
         shares = (
@@ -478,7 +484,9 @@ async def test_shared_nonowner_stays_readonly(
 # --- task summary (denormalized display columns) ----------------------------
 
 
-async def test_backfill_fills_the_task_summary_columns(client, db_session, session_factory):
+async def test_backfill_fills_the_task_summary_columns(
+    client, db_session, session_factory
+):
     """The list renders from columns on the task row, so the write path must fill
     them. Before this existed the list re-parsed every message on every view."""
     await _seed_user(db_session)
@@ -490,7 +498,13 @@ async def test_backfill_fills_the_task_summary_columns(client, db_session, sessi
             "type": "say",
             "say": "api_req_started",
             "text": json.dumps(
-                {"tokensIn": 1200, "tokensOut": 300, "cacheReads": 900, "cacheWrites": 100, "cost": 0.0125}
+                {
+                    "tokensIn": 1200,
+                    "tokensOut": 300,
+                    "cacheReads": 900,
+                    "cacheWrites": 100,
+                    "cost": 0.0125,
+                }
             ),
         },
         {"ts": 50, "type": "say", "say": "completion_result", "text": "Done"},
@@ -538,17 +552,28 @@ async def test_a_trailing_resume_marker_does_not_extend_the_session_span(
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        await _backfill(client, "span-resume", [
-            {"ts": 10, "type": "say", "say": "text", "text": "Fix the harness"},
-            {"ts": 20, "type": "say", "say": "api_req_started", "text": "{}"},
-            {"ts": 190_252, "type": "say", "say": "completion_result", "text": "done"},
-            _resume_ask(190_252 + 4 * _HOUR),
-        ])
+        await _backfill(
+            client,
+            "span-resume",
+            [
+                {"ts": 10, "type": "say", "say": "text", "text": "Fix the harness"},
+                {"ts": 20, "type": "say", "say": "api_req_started", "text": "{}"},
+                {
+                    "ts": 190_252,
+                    "type": "say",
+                    "say": "completion_result",
+                    "text": "done",
+                },
+                _resume_ask(190_252 + 4 * _HOUR),
+            ],
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "span-resume"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "span-resume"))
+        ).scalar_one()
     assert task.first_ts == 10
     assert task.last_ts == 190_252
     assert duration_ms(task.first_ts, task.last_ts) == 190_242
@@ -569,12 +594,21 @@ async def test_time_spent_waiting_for_the_user_stays_in_the_span(
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        await _backfill(client, "span-mid", [
-            {"ts": 10, "type": "say", "say": "text", "text": "Fix the harness"},
-            {"ts": 20, "type": "say", "say": "api_req_started", "text": "{}"},
-            _resume_ask(_HOUR),
-            {"ts": 2 * _HOUR, "type": "say", "say": "completion_result", "text": "done"},
-        ])
+        await _backfill(
+            client,
+            "span-mid",
+            [
+                {"ts": 10, "type": "say", "say": "text", "text": "Fix the harness"},
+                {"ts": 20, "type": "say", "say": "api_req_started", "text": "{}"},
+                _resume_ask(_HOUR),
+                {
+                    "ts": 2 * _HOUR,
+                    "type": "say",
+                    "say": "completion_result",
+                    "text": "done",
+                },
+            ],
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -597,7 +631,9 @@ async def test_a_task_of_nothing_but_resume_markers_reports_no_duration(
         client.app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "span-empty"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "span-empty"))
+        ).scalar_one()
     assert task.first_ts is None
     assert task.last_ts is None
     assert duration_ms(task.first_ts, task.last_ts) == 0
@@ -617,20 +653,32 @@ async def test_a_resume_marker_is_classified_but_is_not_a_quality_signal(
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        await _backfill(client, "span-kind", [
-            {"ts": 10, "type": "say", "say": "text", "text": "Fix the harness"},
-            {"ts": 20, "type": "say", "say": "api_req_started", "text": "{}"},
-            {"ts": 30, "type": "say", "say": "completion_result", "text": "done"},
-            _resume_ask(40),
-        ])
+        await _backfill(
+            client,
+            "span-kind",
+            [
+                {"ts": 10, "type": "say", "say": "text", "text": "Fix the harness"},
+                {"ts": 20, "type": "say", "say": "api_req_started", "text": "{}"},
+                {"ts": 30, "type": "say", "say": "completion_result", "text": "done"},
+                _resume_ask(40),
+            ],
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "span-kind"))).scalar_one()
-        kinds = (await s.execute(
-            select(TaskMessage.q_kind).where(TaskMessage.task_id == "span-kind")
-        )).scalars().all()
+        task = (
+            await s.execute(select(Task).where(Task.id == "span-kind"))
+        ).scalar_one()
+        kinds = (
+            (
+                await s.execute(
+                    select(TaskMessage.q_kind).where(TaskMessage.task_id == "span-kind")
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     assert kinds.count(KIND_RESUME) == 1
     q = quality_of(task)
@@ -715,29 +763,46 @@ async def test_backfill_stores_the_prompt_excerpt(client, db_session, session_fa
     messages = [{"ts": 10, "type": "say", "say": "text", "text": _LONG_PROMPT}]
     files, data = _backfill_files("task-prompt", messages)
     try:
-        assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+        assert (
+            client.post("/api/events/backfill", files=files, data=data).status_code
+            == 200
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-prompt"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-prompt"))
+        ).scalar_one()
         assert "take a page number" in task.prompt_excerpt
         assert "environment_details" not in task.prompt_excerpt
 
 
-async def test_resharing_replaces_the_prompt_excerpt(client, db_session, session_factory):
+async def test_resharing_replaces_the_prompt_excerpt(
+    client, db_session, session_factory
+):
     """A re-share replaces the conversation wholesale; the excerpt must follow
     the title rather than describe a message that is no longer stored."""
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        first = [{"ts": 1, "type": "say", "say": "text", "text": "Wire up the old thing"}]
+        first = [
+            {"ts": 1, "type": "say", "say": "text", "text": "Wire up the old thing"}
+        ]
         files, data = _backfill_files("task-reshare-prompt", first)
-        assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+        assert (
+            client.post("/api/events/backfill", files=files, data=data).status_code
+            == 200
+        )
 
-        second = [{"ts": 1, "type": "say", "say": "text", "text": "Wire up the new thing"}]
+        second = [
+            {"ts": 1, "type": "say", "say": "text", "text": "Wire up the new thing"}
+        ]
         files, data = _backfill_files("task-reshare-prompt", second)
-        assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+        assert (
+            client.post("/api/events/backfill", files=files, data=data).status_code
+            == 200
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -789,7 +854,11 @@ async def test_hover_wraps_a_paragraph_and_caps_its_height():
     """Native tooltips do not wrap: an unbroken 1000-character paragraph would
     render one line wider than the screen. And a prompt of many short lines is
     within the character cap but taller than a hover should be."""
-    from src.web.presenters.task_rows import _PROMPT_WRAP_COLS, _PROMPT_WRAP_LINES, _wrap_prompt
+    from src.web.presenters.task_rows import (
+        _PROMPT_WRAP_COLS,
+        _PROMPT_WRAP_LINES,
+        _wrap_prompt,
+    )
 
     lines = _wrap_prompt("Refactor the scheduler carefully. " * 30)
     assert max(len(line) for line in lines) <= _PROMPT_WRAP_COLS
@@ -805,7 +874,9 @@ async def test_hover_wraps_a_paragraph_and_caps_its_height():
     assert max(len(line) for line in dense) <= _PROMPT_WRAP_COLS
 
 
-async def test_a_task_with_no_figures_still_gets_a_hover(client, db_session, session_factory):
+async def test_a_task_with_no_figures_still_gets_a_hover(
+    client, db_session, session_factory
+):
     """A run that never reached the model has nothing to report but its request -
     which is when reading it back matters most. The old tooltip was suppressed
     entirely, and rendered the literal string "None"."""
@@ -834,7 +905,9 @@ async def test_a_task_with_no_figures_still_gets_a_hover(client, db_session, ses
     assert 'title="None"' not in resp.text
 
 
-async def test_resharing_a_task_does_not_double_count(client, db_session, session_factory):
+async def test_resharing_a_task_does_not_double_count(
+    client, db_session, session_factory
+):
     """Backfill replaces the conversation, so re-sharing must recompute - not add.
 
     The summary is re-summed from the stored rows rather than accumulated, which
@@ -854,18 +927,25 @@ async def test_resharing_a_task_does_not_double_count(client, db_session, sessio
     try:
         for _ in range(3):
             files, data = _backfill_files("task-idem", messages)
-            assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+            assert (
+                client.post("/api/events/backfill", files=files, data=data).status_code
+                == 200
+            )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-idem"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-idem"))
+        ).scalar_one()
         assert task.message_count == 2
         assert task.tokens_in == 500
         assert task.cost == pytest.approx(0.01)
 
 
-async def test_live_upsert_replaces_metrics_instead_of_adding(db_session, session_factory):
+async def test_live_upsert_replaces_metrics_instead_of_adding(
+    db_session, session_factory
+):
     """A streamed api_req_started only learns its cost in its final revision.
 
     The row is upserted in place and the task total re-summed, so the interim
@@ -895,7 +975,9 @@ async def test_live_upsert_replaces_metrics_instead_of_adding(db_session, sessio
         await s.commit()
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-live-sum"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-live-sum"))
+        ).scalar_one()
         assert task.message_count == 1
         assert task.tokens_in == 100
         assert task.tokens_out == 250
@@ -944,7 +1026,9 @@ async def _seed_pages(session_factory, count, user_id="user_test", prefix="task-
         await s.commit()
 
 
-async def test_pager_links_every_page_in_the_window(client, session_factory, db_session, monkeypatch):
+async def test_pager_links_every_page_in_the_window(
+    client, session_factory, db_session, monkeypatch
+):
     """Reaching page 5 must cost one click, not four of "Older"."""
     monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
@@ -988,7 +1072,9 @@ async def test_pager_jump_box_appears_only_when_numbers_stop_covering_the_range(
     assert 'max="10"' in long.text
 
 
-async def test_pager_jumps_straight_to_a_far_page(client, session_factory, db_session, monkeypatch):
+async def test_pager_jumps_straight_to_a_far_page(
+    client, session_factory, db_session, monkeypatch
+):
     monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)
@@ -1027,7 +1113,9 @@ async def test_pager_out_of_range_lands_on_the_nearest_real_page(
     assert 'aria-label="Pagination, page 1 of 10"' in below.text
 
 
-async def test_pager_links_carry_the_search_encoded(client, session_factory, db_session, monkeypatch):
+async def test_pager_links_carry_the_search_encoded(
+    client, session_factory, db_session, monkeypatch
+):
     """Paging must keep the filter, and a search containing & must not truncate
     the URL at the ampersand."""
     monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
@@ -1046,11 +1134,20 @@ async def test_pager_links_carry_the_search_encoded(client, session_factory, db_
     assert "q=a%26b" in amp.text
 
 
-async def test_task_list_search_filters_by_title_and_workspace(client, db_session, session_factory):
+async def test_task_list_search_filters_by_title_and_workspace(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     async with session_factory() as s:
         s.add(Task(id="t-a", user_id="user_test", title="Refactor the parser"))
-        s.add(Task(id="t-b", user_id="user_test", title="Unrelated", workspace_path="/home/k/parser-lab"))
+        s.add(
+            Task(
+                id="t-b",
+                user_id="user_test",
+                title="Unrelated",
+                workspace_path="/home/k/parser-lab",
+            )
+        )
         s.add(Task(id="t-c", user_id="user_test", title="Something else"))
         await s.commit()
 
@@ -1106,7 +1203,9 @@ async def test_task_list_search_matches_wildcards_literally(
     assert shown == expected
 
 
-async def test_task_list_does_not_read_message_bodies(client, db_session, session_factory, monkeypatch):
+async def test_task_list_does_not_read_message_bodies(
+    client, db_session, session_factory, monkeypatch
+):
     """The whole point of the summary columns: rendering the list must never touch
     the message corpus. Guards against a future change quietly reintroducing the
     N+1 read that cost 2.47s per page view on the live deployment."""
@@ -1114,7 +1213,14 @@ async def test_task_list_does_not_read_message_bodies(client, db_session, sessio
 
     await _seed_user(db_session)
     async with session_factory() as s:
-        s.add(Task(id="task-noread", user_id="user_test", title="Cheap render", message_count=3))
+        s.add(
+            Task(
+                id="task-noread",
+                user_id="user_test",
+                title="Cheap render",
+                message_count=3,
+            )
+        )
         await s.flush()
         await _add_message(s, "task-noread", _msgs()[0])
         await s.commit()
@@ -1166,7 +1272,9 @@ async def test_parent_link_survives_event_arriving_before_the_task(
 
         async with session_factory() as s:
             rel = (
-                await s.execute(select(TaskRelation).where(TaskRelation.child_task_id == "child-1"))
+                await s.execute(
+                    select(TaskRelation).where(TaskRelation.child_task_id == "child-1")
+                )
             ).scalar_one()
             assert rel.parent_task_id == "parent-1"
             assert (await s.execute(select(func.count(Task.id)))).scalar_one() == 0
@@ -1174,7 +1282,10 @@ async def test_parent_link_survives_event_arriving_before_the_task(
         # 2. Parent shared, then child shared.
         for tid in ("parent-1", "child-1"):
             files, data = _backfill_files(tid, _msgs())
-            assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+            assert (
+                client.post("/api/events/backfill", files=files, data=data).status_code
+                == 200
+            )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -1196,23 +1307,35 @@ async def test_child_stored_before_its_parent_is_adopted_later(
         # Child first: its parent has no row, so the stamp must be deferred
         # rather than written as a dangling foreign key.
         files, data = _backfill_files("child-2", _msgs())
-        assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+        assert (
+            client.post("/api/events/backfill", files=files, data=data).status_code
+            == 200
+        )
 
         async with session_factory() as s:
-            child = (await s.execute(select(Task).where(Task.id == "child-2"))).scalar_one()
+            child = (
+                await s.execute(select(Task).where(Task.id == "child-2"))
+            ).scalar_one()
             assert child.parent_task_id is None
 
         files, data = _backfill_files("parent-2", _msgs())
-        assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+        assert (
+            client.post("/api/events/backfill", files=files, data=data).status_code
+            == 200
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
         child = (await s.execute(select(Task).where(Task.id == "child-2"))).scalar_one()
-        assert child.parent_task_id == "parent-2", "parent's arrival must claim waiting children"
+        assert child.parent_task_id == "parent-2", (
+            "parent's arrival must claim waiting children"
+        )
 
 
-async def test_relation_is_recorded_once_across_many_events(client, db_session, session_factory):
+async def test_relation_is_recorded_once_across_many_events(
+    client, db_session, session_factory
+):
     """Every later event repeats parentTaskId; the link must not accumulate."""
     from src.models.relation import TaskRelation
 
@@ -1220,7 +1343,9 @@ async def test_relation_is_recorded_once_across_many_events(client, db_session, 
     _override_current_user(client.app)
     try:
         for evt in ("Task Created", "LLM Completion", "Tool Used", "Task Message"):
-            assert (await _post_event(client, "child-3", "parent-3", evt)).status_code == 200
+            assert (
+                await _post_event(client, "child-3", "parent-3", evt)
+            ).status_code == 200
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -1260,7 +1385,9 @@ async def _seed_tree(session_factory, *specs, user_id="user_test"):
         await s.commit()
 
 
-async def test_run_view_nests_subtasks_under_their_run(client, db_session, session_factory):
+async def test_run_view_nests_subtasks_under_their_run(
+    client, db_session, session_factory
+):
     """150 of 387 tasks on the live deployment are subtasks. Listed flat they
     buried the runs among their own fragments; hidden, they left no way to see
     what a run delegated without opening it. The run view nests them instead,
@@ -1331,7 +1458,9 @@ async def test_subtrees_groups_by_parent_oldest_first_within_the_users_tasks(
     )
     # Written directly: the write paths never link across users, which is why
     # the read path must not rely on it.
-    await _seed_tree(session_factory, ("foreign", "root", "Not yours"), user_id="user_other")
+    await _seed_tree(
+        session_factory, ("foreign", "root", "Not yours"), user_id="user_other"
+    )
 
     async with session_factory() as s:
         tree = await subtrees(s, ["root"], "user_test")
@@ -1343,7 +1472,9 @@ async def test_subtrees_groups_by_parent_oldest_first_within_the_users_tasks(
     assert subtree_size(tree, "grand") == 0
 
 
-async def test_subtree_walk_survives_a_cycle_on_the_page(client, db_session, session_factory):
+async def test_subtree_walk_survives_a_cycle_on_the_page(
+    client, db_session, session_factory
+):
     """Parent links come from a client. A cycle must neither hang the walk nor
     render a task inside its own subtree."""
     from src.services.task_tree import subtrees
@@ -1356,14 +1487,18 @@ async def test_subtree_walk_survives_a_cycle_on_the_page(client, db_session, ses
     )
     async with session_factory() as s:
         await s.execute(
-            Task.__table__.update().where(Task.id == "loop-a").values(parent_task_id="loop-b")
+            Task.__table__.update()
+            .where(Task.id == "loop-a")
+            .values(parent_task_id="loop-b")
         )
         await s.commit()
 
     await _seed_tree(session_factory, ("self-loop", None, "Its own parent"))
     async with session_factory() as s:
         await s.execute(
-            Task.__table__.update().where(Task.id == "self-loop").values(parent_task_id="self-loop")
+            Task.__table__.update()
+            .where(Task.id == "self-loop")
+            .values(parent_task_id="self-loop")
         )
         await s.commit()
 
@@ -1371,7 +1506,9 @@ async def test_subtree_walk_survives_a_cycle_on_the_page(client, db_session, ses
         return {parent: [t.id for t in kids] for parent, kids in tree.items()}
 
     async with session_factory() as s:
-        assert edges(await subtrees(s, ["loop-a"], "user_test")) == {"loop-a": ["loop-b"]}
+        assert edges(await subtrees(s, ["loop-a"], "user_test")) == {
+            "loop-a": ["loop-b"]
+        }
         # Both ends asked for at once, as the flat view does: the loop is cut
         # at the edge that would close it, so exactly one of the two remains.
         both = edges(await subtrees(s, ["loop-a", "loop-b", "self-loop"], "user_test"))
@@ -1415,7 +1552,11 @@ async def test_the_tree_costs_the_same_queries_whatever_the_runs_or_depth(
 
     await _seed_tree(
         session_factory,
-        *[spec for n in range(5) for spec in ((f"r{n}", None, f"Run {n}"), (f"c{n}", f"r{n}", f"Sub {n}"))],
+        *[
+            spec
+            for n in range(5)
+            for spec in ((f"r{n}", None, f"Run {n}"), (f"c{n}", f"r{n}", f"Sub {n}"))
+        ],
     )
     _override_web_user(client.app)
     try:
@@ -1494,7 +1635,12 @@ async def _seed_priced_run(session_factory):
             await s.execute(
                 Task.__table__.update()
                 .where(Task.id == task_id)
-                .values(cost=cost, tokens_in=tokens_in, tokens_out=tokens_out, cache_reads=10)
+                .values(
+                    cost=cost,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    cache_reads=10,
+                )
             )
         await s.commit()
 
@@ -1505,7 +1651,9 @@ def _row(page: str, task_id: str) -> str:
     return page[start : page.index('class="task-delete"', start)]
 
 
-async def test_a_run_row_shows_what_the_whole_run_cost(client, db_session, session_factory):
+async def test_a_run_row_shows_what_the_whole_run_cost(
+    client, db_session, session_factory
+):
     """The list showed a run's own cost only: on the live corpus a $0.1656 row
     whose two subtasks cost $1.2434 more. A task that delegated now shows its
     whole subtree, marked as a sum, with the split in the cell's hover."""
@@ -1522,8 +1670,12 @@ async def test_a_run_row_shows_what_the_whole_run_cost(client, db_session, sessi
     run = _row(roots, "run")
     assert '<span class="rollup-mark">Σ</span>$2.0000' in run
     assert '<span class="rollup-mark">Σ</span>9.9k<span class="unit">tok</span>' in run
-    assert 'title="$2.0000 for the run: $0.2500 this task + $1.7500 in 3 subtasks"' in run
-    assert 'title="9,900 tokens for the run: 1,100 this task + 8,800 in 3 subtasks"' in run
+    assert (
+        'title="$2.0000 for the run: $0.2500 this task + $1.7500 in 3 subtasks"' in run
+    )
+    assert (
+        'title="9,900 tokens for the run: 1,100 this task + 8,800 in 3 subtasks"' in run
+    )
 
     # A subtask that delegated further is a run of its own, one level down.
     sub_b = _row(roots, "sub-b")
@@ -1590,7 +1742,9 @@ async def test_the_run_hover_separates_the_task_from_its_subtasks(
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
     run = _row(page, "run")
-    hover = run[run.index('class="task-link"') :].split('title="', 1)[1].split('"', 1)[0]
+    hover = (
+        run[run.index('class="task-link"') :].split('title="', 1)[1].split('"', 1)[0]
+    )
     assert hover.index("This task") < hover.index("$ Cost: $0.2500")
     assert hover.index("$ Cost: $0.2500") < hover.index("Σ With its 3 subtasks")
     assert hover.index("Σ With its 3 subtasks") < hover.index("$ Cost: $2.0000")
@@ -1613,7 +1767,9 @@ def _live_config(page: str) -> dict:
     return json.loads(page[start : page.index("</script>", start)])
 
 
-async def test_the_task_page_states_the_run_total(client, db_session, session_factory, monkeypatch):
+async def test_the_task_page_states_the_run_total(
+    client, db_session, session_factory, monkeypatch
+):
     """The page showed this task's own $0.1656 at the top and the run's $1.4090
     in the subtask panel's header, with nothing saying which was which, while
     the list showed $1.4090 for the same row. The top now states the run as the
@@ -1634,15 +1790,28 @@ async def test_the_task_page_states_the_run_total(client, db_session, session_fa
     # The run first, then its parts, which add up to it.
     order = [page.index(f'class="spend-{row}"') for row in ("run", "own", "subtasks")]
     assert order == sorted(order)
-    assert (_cell(page, "hdr-run-cost"), _cell(page, "hdr-run-tokens")) == ("$2.0000", "9.9k")
+    assert (_cell(page, "hdr-run-cost"), _cell(page, "hdr-run-tokens")) == (
+        "$2.0000",
+        "9.9k",
+    )
     assert (_cell(page, "hdr-run-in"), _cell(page, "hdr-run-out")) == ("9k", "900")
-    assert (_cell(page, "hdr-own-cost"), _cell(page, "hdr-own-tokens")) == ("$0.2500", "1.1k")
-    assert (_cell(page, "hdr-subtasks-cost"), _cell(page, "hdr-subtasks-tokens")) == ("$1.7500", "8.8k")
+    assert (_cell(page, "hdr-own-cost"), _cell(page, "hdr-own-tokens")) == (
+        "$0.2500",
+        "1.1k",
+    )
+    assert (_cell(page, "hdr-subtasks-cost"), _cell(page, "hdr-subtasks-tokens")) == (
+        "$1.7500",
+        "8.8k",
+    )
     # Every subtask beneath the run is counted, not only the direct ones.
     assert '<a href="#subtasks">3 subtasks</a>' in page
     # live.js keeps the run row current by adding the subtasks' part to this
     # task's live figures, so it ships with the page.
-    assert _live_config(page)["subtasks"] == {"tokensIn": 8000, "tokensOut": 800, "cost": 1.75}
+    assert _live_config(page)["subtasks"] == {
+        "tokensIn": 8000,
+        "tokensOut": 800,
+        "cost": 1.75,
+    }
 
     # The subtask panel no longer carries a second total; its rows keep the
     # list's rule (a subtask with its own subtasks shows its subtree, marked).
@@ -1653,8 +1822,14 @@ async def test_the_task_page_states_the_run_total(client, db_session, session_fa
     assert "This task's own conversation only" in page
 
     # A task with no subtasks is its own run: one row, no split, no scope note.
-    assert (_cell(leaf_page, "hdr-own-cost"), _cell(leaf_page, "hdr-own-tokens")) == ("$0.2500", "1.1k")
-    assert 'class="spend-run"' not in leaf_page and 'class="spend-subtasks"' not in leaf_page
+    assert (_cell(leaf_page, "hdr-own-cost"), _cell(leaf_page, "hdr-own-tokens")) == (
+        "$0.2500",
+        "1.1k",
+    )
+    assert (
+        'class="spend-run"' not in leaf_page
+        and 'class="spend-subtasks"' not in leaf_page
+    )
     assert "own conversation only" not in leaf_page
     assert "subtasks" not in _live_config(leaf_page)
 
@@ -1663,7 +1838,14 @@ def test_subtree_spend_adds_every_level_and_nothing_else():
     from src.services.task_tree import Spend, subtree_spend
 
     def task(task_id, cost, tokens_in):
-        return Task(id=task_id, cost=cost, tokens_in=tokens_in, tokens_out=0, cache_reads=0, cache_writes=0)
+        return Task(
+            id=task_id,
+            cost=cost,
+            tokens_in=tokens_in,
+            tokens_out=0,
+            cache_reads=0,
+            cache_writes=0,
+        )
 
     root, a, b, leaf, stranger = (
         task("root", 0.25, 100),
@@ -1680,14 +1862,30 @@ def test_subtree_spend_adds_every_level_and_nothing_else():
     assert subtree_spend(tree, root) - Spend.of(root) == Spend(cost=1.75, tokens_in=900)
 
 
-async def test_task_detail_links_up_and_down_the_tree(client, db_session, session_factory):
+async def test_task_detail_links_up_and_down_the_tree(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     async with session_factory() as s:
         s.add(Task(id="root-x", user_id="user_test", title="Root run"))
         await s.flush()
-        s.add(Task(id="mid-x", user_id="user_test", title="Middle task", parent_task_id="root-x"))
+        s.add(
+            Task(
+                id="mid-x",
+                user_id="user_test",
+                title="Middle task",
+                parent_task_id="root-x",
+            )
+        )
         await s.flush()
-        s.add(Task(id="leaf-x", user_id="user_test", title="Leaf task", parent_task_id="mid-x"))
+        s.add(
+            Task(
+                id="leaf-x",
+                user_id="user_test",
+                title="Leaf task",
+                parent_task_id="mid-x",
+            )
+        )
         await s.commit()
 
     _override_web_user(client.app)
@@ -1717,10 +1915,14 @@ async def test_ancestor_walk_survives_a_cycle(db_session, session_factory):
         # Forced directly: the write paths never create this, which is exactly
         # why the read path has to defend itself.
         await s.execute(
-            Task.__table__.update().where(Task.id == "cyc-a").values(parent_task_id="cyc-b")
+            Task.__table__.update()
+            .where(Task.id == "cyc-a")
+            .values(parent_task_id="cyc-b")
         )
         await s.execute(
-            Task.__table__.update().where(Task.id == "cyc-b").values(parent_task_id="cyc-a")
+            Task.__table__.update()
+            .where(Task.id == "cyc-b")
+            .values(parent_task_id="cyc-a")
         )
         await s.commit()
 
@@ -1745,7 +1947,9 @@ async def _seed_tasks(session_factory, *specs):
         for task_id, _, parent in specs:
             if parent:
                 await s.execute(
-                    Task.__table__.update().where(Task.id == task_id).values(parent_task_id=parent)
+                    Task.__table__.update()
+                    .where(Task.id == task_id)
+                    .values(parent_task_id=parent)
                 )
         await s.commit()
 
@@ -1759,13 +1963,18 @@ async def _remaining(session_factory):
 async def test_bulk_delete_removes_the_selection(client, db_session, session_factory):
     await _seed_user(db_session)
     await _seed_tasks(
-        session_factory, ("b1", "user_test", None), ("b2", "user_test", None), ("b3", "user_test", None)
+        session_factory,
+        ("b1", "user_test", None),
+        ("b2", "user_test", None),
+        ("b3", "user_test", None),
     )
 
     _override_web_user(client.app)
     try:
         resp = client.post(
-            "/app/tasks/bulk-delete", data={"task_ids": ["b1", "b3"]}, follow_redirects=False
+            "/app/tasks/bulk-delete",
+            data={"task_ids": ["b1", "b3"]},
+            follow_redirects=False,
         )
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
@@ -1777,7 +1986,9 @@ async def test_bulk_delete_removes_the_selection(client, db_session, session_fac
     async with session_factory() as s:
         left = (
             await s.execute(
-                select(func.count(TaskMessage.id)).where(TaskMessage.task_id.in_(["b1", "b3"]))
+                select(func.count(TaskMessage.id)).where(
+                    TaskMessage.task_id.in_(["b1", "b3"])
+                )
             )
         ).scalar_one()
     assert left == 0
@@ -1823,7 +2034,9 @@ async def test_bulk_delete_leaves_subtasks_alone_unless_asked(
     _override_web_user(client.app)
     try:
         resp = client.post(
-            "/app/tasks/bulk-delete", data={"task_ids": ["parent"]}, follow_redirects=False
+            "/app/tasks/bulk-delete",
+            data={"task_ids": ["parent"]},
+            follow_redirects=False,
         )
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
@@ -1835,7 +2048,9 @@ async def test_bulk_delete_leaves_subtasks_alone_unless_asked(
     assert child.parent_task_id is None
 
 
-async def test_bulk_delete_can_include_the_whole_subtree(client, db_session, session_factory):
+async def test_bulk_delete_can_include_the_whole_subtree(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_tasks(
         session_factory,
@@ -1856,7 +2071,9 @@ async def test_bulk_delete_can_include_the_whole_subtree(client, db_session, ses
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
     assert resp.status_code == 303
-    assert await _remaining(session_factory) == {"unrelated"}, "the walk must reach every depth"
+    assert await _remaining(session_factory) == {"unrelated"}, (
+        "the walk must reach every depth"
+    )
 
 
 async def test_bulk_delete_reaches_below_twenty_levels(db_session, session_factory):
@@ -1886,10 +2103,14 @@ async def test_subtree_walk_survives_a_cycle(db_session, session_factory):
     from src.services.share_service import delete_tasks
 
     await _seed_user(db_session)
-    await _seed_tasks(session_factory, ("cy-a", "user_test", None), ("cy-b", "user_test", "cy-a"))
+    await _seed_tasks(
+        session_factory, ("cy-a", "user_test", None), ("cy-b", "user_test", "cy-a")
+    )
     async with session_factory() as s:
         await s.execute(
-            Task.__table__.update().where(Task.id == "cy-a").values(parent_task_id="cy-b")
+            Task.__table__.update()
+            .where(Task.id == "cy-a")
+            .values(parent_task_id="cy-b")
         )
         await s.commit()
 
@@ -1901,7 +2122,9 @@ async def test_subtree_walk_survives_a_cycle(db_session, session_factory):
     assert await _remaining(session_factory) == set()
 
 
-async def test_bulk_delete_with_no_selection_is_a_no_op(client, db_session, session_factory):
+async def test_bulk_delete_with_no_selection_is_a_no_op(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_tasks(session_factory, ("keep", "user_test", None))
 
@@ -1928,7 +2151,9 @@ async def test_bulk_delete_requires_a_session(client, db_session, session_factor
     assert await _remaining(session_factory) == {"guarded"}
 
 
-async def test_bulk_delete_returns_to_the_current_view(client, db_session, session_factory):
+async def test_bulk_delete_returns_to_the_current_view(
+    client, db_session, session_factory
+):
     """Deleting from a filtered view must not dump the reader back to page 1 of
     an unfiltered list."""
     await _seed_user(db_session)

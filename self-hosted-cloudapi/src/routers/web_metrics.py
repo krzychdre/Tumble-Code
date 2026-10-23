@@ -48,7 +48,9 @@ async def metrics_page(
         remembered = request.cookies.get(PERIOD_COOKIE)
         period = remembered if remembered in PERIODS else DEFAULT_PERIOD
     client = parse_client(client)
-    metrics = await compute_user_metrics(db, user_id, period, client=client, zone=web["zone"])
+    metrics = await compute_user_metrics(
+        db, user_id, period, client=client, zone=web["zone"]
+    )
     periods = [
         {"key": key, "label": label, "active": key == metrics["period"]}
         for key, label in PERIOD_LABELS.items()

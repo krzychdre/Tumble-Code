@@ -83,7 +83,9 @@ async def load_task_image(
     return await _find(db, task_id, message_ts, path)
 
 
-async def _find(db: AsyncSession, task_id: str, message_ts: int, path: str) -> Optional[TaskImage]:
+async def _find(
+    db: AsyncSession, task_id: str, message_ts: int, path: str
+) -> Optional[TaskImage]:
     result = await db.execute(
         select(TaskImage).where(
             TaskImage.task_id == task_id,

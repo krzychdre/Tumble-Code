@@ -46,7 +46,13 @@ async def race(tmp_path):
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as s:
         for user_id in (OWNER, OTHER):
-            s.add(User(id=user_id, authentik_id=f"ak_{user_id}", email=f"{user_id}@example.com"))
+            s.add(
+                User(
+                    id=user_id,
+                    authentik_id=f"ak_{user_id}",
+                    email=f"{user_id}@example.com",
+                )
+            )
         await s.commit()
 
     rival = {"owner": None, "fired": False}
@@ -111,7 +117,9 @@ async def test_a_chunk_that_loses_the_task_row_race_still_persists(race, link_ca
     assert owned is True
     assert await _stored(factory) == [_final(1, "hello")]
     async with factory() as s:
-        tasks = (await s.execute(select(func.count(Task.id)).where(Task.id == TASK))).scalar_one()
+        tasks = (
+            await s.execute(select(func.count(Task.id)).where(Task.id == TASK))
+        ).scalar_one()
         task = (await s.execute(select(Task).where(Task.id == TASK))).scalar_one()
     assert tasks == 1
     assert task.user_id == OWNER

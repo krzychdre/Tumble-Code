@@ -40,11 +40,30 @@ async def test_side_calls_are_counted_and_broken_out_by_kind(db_session):
     db_session.add_all(
         [
             _llm_event(task_id="t1", model="GLM-5.2", tin=10_000, tout=500, cost=0.1),
-            _llm_event(task_id="t1", model="GLM-5.2", tin=12_000, tout=400, cost=0.1, kind="task"),
             _llm_event(
-                task_id="t1", model="background", tin=40_000, tout=900, cost=0.4, kind="condense"
+                task_id="t1",
+                model="GLM-5.2",
+                tin=12_000,
+                tout=400,
+                cost=0.1,
+                kind="task",
             ),
-            _llm_event(task_id="t1", model="GLM-5.2", tin=3_000, tout=20, cost=0.0, kind="memory"),
+            _llm_event(
+                task_id="t1",
+                model="background",
+                tin=40_000,
+                tout=900,
+                cost=0.4,
+                kind="condense",
+            ),
+            _llm_event(
+                task_id="t1",
+                model="GLM-5.2",
+                tin=3_000,
+                tout=20,
+                cost=0.0,
+                kind="memory",
+            ),
         ]
     )
     await db_session.commit()
@@ -75,8 +94,22 @@ async def test_calls_the_provider_could_not_price_are_counted_not_hidden(db_sess
     await _seed_user(db_session)
     db_session.add_all(
         [
-            _llm_event(task_id="t1", model="m", tin=0, tout=0, kind="enhance", usage_reported=False),
-            _llm_event(task_id="t1", model="m", tin=100, tout=10, kind="task", usage_reported=True),
+            _llm_event(
+                task_id="t1",
+                model="m",
+                tin=0,
+                tout=0,
+                kind="enhance",
+                usage_reported=False,
+            ),
+            _llm_event(
+                task_id="t1",
+                model="m",
+                tin=100,
+                tout=10,
+                kind="task",
+                usage_reported=True,
+            ),
         ]
     )
     await db_session.commit()
@@ -101,7 +134,9 @@ async def test_embeddings_are_reported_apart_from_the_token_total(db_session):
 
     m = await compute_user_metrics(db_session, "user_test", period="all")
 
-    assert m["totals"]["total_tokens"] == 1_100, "embeddings stay out of the completion total"
+    assert m["totals"]["total_tokens"] == 1_100, (
+        "embeddings stay out of the completion total"
+    )
     assert m["embeddings"]["tokens"] == 501_200
     assert m["embeddings"]["calls"] == 2
     assert [s["name"] for s in m["embeddings"]["by_source"]] == ["index-scan", "search"]
@@ -140,8 +175,16 @@ async def test_metrics_page_shows_the_indexing_tile_and_no_kind_split(
         await _seed_user(s)
         s.add_all(
             [
-                _llm_event(task_id="t1", model="GLM-5.2", tin=10_000, tout=500, kind="task"),
-                _llm_event(task_id="t1", model="background", tin=40_000, tout=900, kind="condense"),
+                _llm_event(
+                    task_id="t1", model="GLM-5.2", tin=10_000, tout=500, kind="task"
+                ),
+                _llm_event(
+                    task_id="t1",
+                    model="background",
+                    tin=40_000,
+                    tout=900,
+                    kind="condense",
+                ),
                 _embedding_event(prompt_tokens=250_000),
             ]
         )

@@ -42,17 +42,20 @@ def _hostile_messages() -> list[dict]:
     return [
         {"ts": 1, "type": "say", "say": "text", "text": f"Build {BREAKOUT} please"},
         {"ts": 2, "type": "say", "say": "text", "text": f"{COMMENT} still text"},
-        {"ts": 3, "type": "say", "say": "text", "text": f"A & B > C, {LINE_SEPARATORS}"},
+        {
+            "ts": 3,
+            "type": "say",
+            "say": "text",
+            "text": f"A & B > C, {LINE_SEPARATORS}",
+        },
     ]
 
 
 def _island(html: str, element_id: str):
     """Parse one island exactly as the browser's tokenizer delimits it."""
-    opening = re.search(
-        rf'<script id="{element_id}" type="application/json">', html
-    )
+    opening = re.search(rf'<script id="{element_id}" type="application/json">', html)
     assert opening is not None, f"island #{element_id} is missing"
-    rest = html[opening.end():]
+    rest = html[opening.end() :]
     end = re.search(r"</script", rest, re.IGNORECASE)
     assert end is not None, f"island #{element_id} is never closed"
     return json.loads(rest[: end.start()])
@@ -84,7 +87,9 @@ def _assert_islands_hold(html: str) -> None:
     assert "</script><img" not in html
     messages = _island(html, "messages-data")
     assert messages[:3] == _hostile_messages()
-    assert _island(html, "request-models") == {"10": {"model": BREAKOUT, "mode": "code"}}
+    assert _island(html, "request-models") == {
+        "10": {"model": BREAKOUT, "mode": "code"}
+    }
 
 
 async def test_shared_page_islands_survive_hostile_message_text(
@@ -155,7 +160,10 @@ def test_json_for_script_output_is_pinned():
     """The exact text, so a faster implementation cannot drift from it."""
     from src.utils.json_script import json_for_script
 
-    data = {"text": f"{BREAKOUT} {COMMENT} & {LINE_SEPARATORS} ]]>", "n": [1, 2.5, None]}
+    data = {
+        "text": f"{BREAKOUT} {COMMENT} & {LINE_SEPARATORS} ]]>",
+        "n": [1, 2.5, None],
+    }
 
     assert str(json_for_script(data)) == (
         '{"text": "\\u003c/script\\u003e\\u003cimg src=x onerror=alert(1)\\u003e '
@@ -217,7 +225,9 @@ async def test_another_users_telemetry_cannot_name_the_model_of_my_task(
         client.app.dependency_overrides.pop(get_web_user_optional, None)
     assert resp.status_code == 200
     assert BREAKOUT not in resp.text
-    assert _island(resp.text, "request-models") == {"1": {"model": "mine", "mode": "code"}}
+    assert _island(resp.text, "request-models") == {
+        "1": {"model": "mine", "mode": "code"}
+    }
 
 
 async def test_completions_for_task_without_an_owner_finds_nothing(db_session):
@@ -228,4 +238,3 @@ async def test_completions_for_task_without_an_owner_finds_nothing(db_session):
     await db_session.commit()
 
     assert await completions_for_task(db_session, "task-orphan", None) == []
-

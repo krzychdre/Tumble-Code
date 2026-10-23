@@ -42,9 +42,15 @@ def test_side_calls_summary_labels_known_and_unknown_kinds():
     Completion = model_attribution.Completion
     rows = model_attribution.side_calls_summary(
         [
-            Completion(model="m", mode=None, input_tokens=10, output_tokens=1, kind="task"),
-            Completion(model="m", mode=None, input_tokens=5, output_tokens=1, kind="condense"),
-            Completion(model="m", mode=None, input_tokens=3, output_tokens=1, kind="brand-new"),
+            Completion(
+                model="m", mode=None, input_tokens=10, output_tokens=1, kind="task"
+            ),
+            Completion(
+                model="m", mode=None, input_tokens=5, output_tokens=1, kind="condense"
+            ),
+            Completion(
+                model="m", mode=None, input_tokens=3, output_tokens=1, kind="brand-new"
+            ),
         ]
     )
     assert [(r["kind"], r["label"]) for r in rows] == [
@@ -98,7 +104,9 @@ def test_completion_kind_on_the_task_detail_page(raw, kind):
     assert completion.kind == kind
 
 
-async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_turn(db_session):
+async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_turn(
+    db_session,
+):
     """A numeric, boolean, list or empty kind lands in the Conversation row,
     exactly as the task detail page counts it, instead of a row of its own."""
     from tests.web_helpers import _seed_user
@@ -111,13 +119,20 @@ async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_
                 user_id="user_test",
                 event_type="LLM Completion",
                 properties=json.dumps(
-                    {"modelId": "m", "inputTokens": 1, "outputTokens": 0, "completionKind": kind}
+                    {
+                        "modelId": "m",
+                        "inputTokens": 1,
+                        "outputTokens": 0,
+                        "completionKind": kind,
+                    }
                 ),
             )
         )
     await db_session.commit()
 
-    m = await metrics_service.compute_user_metrics(db_session, "user_test", period="all")
+    m = await metrics_service.compute_user_metrics(
+        db_session, "user_test", period="all"
+    )
     rows = {row["name"]: (row["label"], row["tokens"]) for row in m["by_kind"]}
     assert rows == {"task": ("Conversation", 4), "memory": ("Memory recall", 1)}
 
@@ -125,7 +140,9 @@ async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_
 # --- characterization: skipping undecodable payloads ------------------------
 
 
-async def test_metrics_and_attribution_skip_payloads_that_are_not_json_objects(db_session):
+async def test_metrics_and_attribution_skip_payloads_that_are_not_json_objects(
+    db_session,
+):
     from tests.web_helpers import _seed_user
     from src.models.event import TelemetryEvent
 
@@ -142,24 +159,38 @@ async def test_metrics_and_attribution_skip_payloads_that_are_not_json_objects(d
         )
     for payload in ("{", '"x"', json.dumps({"promptTokens": 9, "source": "s"})):
         db_session.add(
-            TelemetryEvent(user_id="user_test", event_type="Embedding Usage", properties=payload)
+            TelemetryEvent(
+                user_id="user_test", event_type="Embedding Usage", properties=payload
+            )
         )
     await db_session.commit()
 
-    m = await metrics_service.compute_user_metrics(db_session, "user_test", period="all")
+    m = await metrics_service.compute_user_metrics(
+        db_session, "user_test", period="all"
+    )
     # ``None`` decodes as ``{}``: an empty completion is still a completion.
     assert m["totals"]["completions"] == 2
     assert m["totals"]["total_tokens"] == 10
     assert m["embeddings"]["calls"] == 1
     assert m["embeddings"]["tokens"] == 9
 
-    completions = await model_attribution.completions_for_task(db_session, "t1", "user_test")
-    assert [(c.model, c.input_tokens, c.output_tokens) for c in completions] == [("m", 7, 3)]
+    completions = await model_attribution.completions_for_task(
+        db_session, "t1", "user_test"
+    )
+    assert [(c.model, c.input_tokens, c.output_tokens) for c in completions] == [
+        ("m", 7, 3)
+    ]
 
 
 # --- characterization: the two api_req_started parsers ----------------------
 
-_REQ = {"tokensIn": 100, "tokensOut": 20, "cacheReads": 7, "cacheWrites": 3, "cost": 0.25}
+_REQ = {
+    "tokensIn": 100,
+    "tokensOut": 20,
+    "cacheReads": 7,
+    "cacheWrites": 3,
+    "cost": 0.25,
+}
 
 
 @pytest.mark.parametrize(
@@ -172,16 +203,36 @@ _REQ = {"tokensIn": 100, "tokensOut": 20, "cacheReads": 7, "cacheWrites": 3, "co
             (100, 20, 7, 3, 0.25),
         ),
         # Still in flight: no figures, so no token pair to match on.
-        ({"type": "say", "say": "api_req_started", "text": "{}"}, None, (0, 0, 0, 0, 0.0)),
-        ({"type": "say", "say": "api_req_started", "text": ""}, None, (0, 0, 0, 0, 0.0)),
+        (
+            {"type": "say", "say": "api_req_started", "text": "{}"},
+            None,
+            (0, 0, 0, 0, 0.0),
+        ),
+        (
+            {"type": "say", "say": "api_req_started", "text": ""},
+            None,
+            (0, 0, 0, 0, 0.0),
+        ),
         ({"type": "say", "say": "api_req_started"}, None, (0, 0, 0, 0, 0.0)),
         # A partial whose text is not valid JSON yet.
-        ({"type": "say", "say": "api_req_started", "text": '{"tokensIn": 1'}, None, (0, 0, 0, 0, 0.0)),
+        (
+            {"type": "say", "say": "api_req_started", "text": '{"tokensIn": 1'},
+            None,
+            (0, 0, 0, 0, 0.0),
+        ),
         # Valid JSON that is not an object.
-        ({"type": "say", "say": "api_req_started", "text": "[1]"}, None, (0, 0, 0, 0, 0.0)),
+        (
+            {"type": "say", "say": "api_req_started", "text": "[1]"},
+            None,
+            (0, 0, 0, 0, 0.0),
+        ),
         ({"type": "say", "say": "api_req_started", "text": 5}, None, (0, 0, 0, 0, 0.0)),
         # Not a request at all.
-        ({"type": "say", "say": "text", "text": json.dumps(_REQ)}, None, (0, 0, 0, 0, 0.0)),
+        (
+            {"type": "say", "say": "text", "text": json.dumps(_REQ)},
+            None,
+            (0, 0, 0, 0, 0.0),
+        ),
         # The one disagreement: ``type`` is only checked by task_summary. A
         # request under a non-"say" type still yields a token pair for the
         # attribution join but contributes nothing to the task totals.
@@ -195,7 +246,13 @@ _REQ = {"tokensIn": 100, "tokensOut": 20, "cacheReads": 7, "cacheWrites": 3, "co
 def test_the_two_api_req_started_readers(msg, pair, metrics):
     assert model_attribution._request_tokens(msg) == pair
     got = task_summary.message_metrics(msg)
-    assert (got.tokens_in, got.tokens_out, got.cache_reads, got.cache_writes, got.cost) == metrics
+    assert (
+        got.tokens_in,
+        got.tokens_out,
+        got.cache_reads,
+        got.cache_writes,
+        got.cost,
+    ) == metrics
 
 
 # --- the shared module ------------------------------------------------------

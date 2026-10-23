@@ -53,13 +53,17 @@ def upgrade() -> None:
         sa.Column("payload", sa.Text(), nullable=False),
     )
     op.create_index("ix_error_reports_user_id", "error_reports", ["user_id"])
-    op.create_index("ix_error_reports_organization_id", "error_reports", ["organization_id"])
+    op.create_index(
+        "ix_error_reports_organization_id", "error_reports", ["organization_id"]
+    )
     op.create_index("ix_error_reports_task_id", "error_reports", ["task_id"])
     op.create_index("ix_error_reports_category", "error_reports", ["category"])
     op.create_index("ix_error_reports_model_id", "error_reports", ["model_id"])
     op.create_index("ix_error_reports_signature", "error_reports", ["signature"])
     op.create_index("ix_error_reports_created_at", "error_reports", ["created_at"])
-    op.create_index("ix_error_reports_user_created", "error_reports", ["user_id", "created_at"])
+    op.create_index(
+        "ix_error_reports_user_created", "error_reports", ["user_id", "created_at"]
+    )
 
 
 def downgrade() -> None:

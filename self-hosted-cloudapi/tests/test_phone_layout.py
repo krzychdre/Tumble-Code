@@ -137,9 +137,13 @@ def _lay_out_on_a_phone(html: str, tmp_path: Path, width: int = PHONE_WIDTH) -> 
     browser = _find_browser()
     if browser is None:
         pytest.skip("no headless Chrome/Chromium available")
-    page = html.replace('"/static/', f'"{_STATIC.as_uri()}/').replace("</body>", _MEASURE + "</body>")
+    page = html.replace('"/static/', f'"{_STATIC.as_uri()}/').replace(
+        "</body>", _MEASURE + "</body>"
+    )
     (tmp_path / "page.html").write_text(page, encoding="utf-8")
-    (tmp_path / "frame.html").write_text(_FRAME.replace("WIDTH", str(width)), encoding="utf-8")
+    (tmp_path / "frame.html").write_text(
+        _FRAME.replace("WIDTH", str(width)), encoding="utf-8"
+    )
     result = subprocess.run(
         [
             browser,
@@ -157,7 +161,9 @@ def _lay_out_on_a_phone(html: str, tmp_path: Path, width: int = PHONE_WIDTH) -> 
         timeout=120,
     )
     match = re.search(r'<pre id="results">(.*?)</pre>', result.stdout, re.DOTALL)
-    assert match, f"the page never reported its layout. stderr:\n{result.stderr[-2000:]}"
+    assert match, (
+        f"the page never reported its layout. stderr:\n{result.stderr[-2000:]}"
+    )
     return json.loads(match.group(1).replace("&quot;", '"').replace("&amp;", "&"))
 
 
@@ -174,8 +180,13 @@ _REPORT_PATH = "/home/someone/Projekty/ITKONTEKST/customer/lids-uniform-api-with
 def _open_problem_rows(html: str) -> str:
     """Every problem row of /app/diagnostics expanded: they start closed, and a
     closed row's body is not laid out, so it would never be measured."""
-    opened = html.replace('<details>\n        <summary class="diag-row">', '<details open>\n        <summary class="diag-row">')
-    assert opened.count("<details open>") >= html.count('<summary class="diag-row">'), "problem rows not opened"
+    opened = html.replace(
+        '<details>\n        <summary class="diag-row">',
+        '<details open>\n        <summary class="diag-row">',
+    )
+    assert opened.count("<details open>") >= html.count('<summary class="diag-row">'), (
+        "problem rows not opened"
+    )
     return opened
 
 
@@ -184,23 +195,37 @@ def _long_error_report() -> ErrorReport:
     a model id, a path, an unbroken token, raw JSON and a stack trace."""
     from datetime import datetime, timezone
 
-    summary = f"Error reading file {_REPORT_PATH}: ENOENT: no such file or directory " + "x" * 120
+    summary = (
+        f"Error reading file {_REPORT_PATH}: ENOENT: no such file or directory "
+        + "x" * 120
+    )
     payload = {
         "summary": summary,
-        "errorMessage": "Error: ENOENT\n    at Object.stat (" + _REPORT_PATH + ":12:34)\n" * 8,
+        "errorMessage": "Error: ENOENT\n    at Object.stat ("
+        + _REPORT_PATH
+        + ":12:34)\n" * 8,
         "modelId": _REPORT_MODEL,
         "contextWindow": 262144,
         "contextTokens": 250000,
         "request": {
             "systemPromptChars": 48211,
             "systemPromptSha256": "ab" * 32,
-            "toolNames": ["read_file", "apply_diff", "execute_command", "search_files"] * 5,
+            "toolNames": ["read_file", "apply_diff", "execute_command", "search_files"]
+            * 5,
             "params": {"temperature": 0.2, "nested": {"long": "y" * 300}},
-            "messages": [{"role": "user", "content": json.dumps({"k" * 50: "v" * 500})}],
+            "messages": [
+                {"role": "user", "content": json.dumps({"k" * 50: "v" * 500})}
+            ],
         },
         "response": {
             "text": "z" * 600,
-            "toolCalls": [{"id": "call_" + "9" * 60, "name": "read_file", "arguments": json.dumps({"path": _REPORT_PATH * 3})}],
+            "toolCalls": [
+                {
+                    "id": "call_" + "9" * 60,
+                    "name": "read_file",
+                    "arguments": json.dumps({"path": _REPORT_PATH * 3}),
+                }
+            ],
             "stopReason": "tool_calls",
             "errorBody": "{" + '"error":' * 40 + "}",
         },
@@ -239,7 +264,12 @@ async def _seed_a_phone_sized_problem(session_factory):
         )
         await s.flush()
         s.add(
-            Task(id="sub", user_id="user_test", title="Write the analysis document " * 4, parent_task_id="run")
+            Task(
+                id="sub",
+                user_id="user_test",
+                title="Write the analysis document " * 4,
+                parent_task_id="run",
+            )
         )
         await s.flush()
         messages = [
@@ -248,7 +278,9 @@ async def _seed_a_phone_sized_problem(session_factory):
                 "ts": 2,
                 "type": "say",
                 "say": "api_req_started",
-                "text": json.dumps({"tokensIn": 16462, "tokensOut": 358, "cost": 0.0245}),
+                "text": json.dumps(
+                    {"tokensIn": 16462, "tokensOut": 358, "cost": 0.0245}
+                ),
             },
             {
                 "ts": 3,
@@ -266,8 +298,19 @@ async def _seed_a_phone_sized_problem(session_factory):
         for message in messages:
             await _add_message(s, "run", message)
         figures = json.dumps({"tokensIn": 3000, "tokensOut": 50, "cost": 1.2})
-        await _add_message(s, "sub", {"ts": 5, "type": "say", "say": "api_req_started", "text": figures})
-        s.add(_llm_event(task_id="run", model="GLM-5.3-NVFP4-with-a-long-local-suffix", tin=16462, tout=358))
+        await _add_message(
+            s,
+            "sub",
+            {"ts": 5, "type": "say", "say": "api_req_started", "text": figures},
+        )
+        s.add(
+            _llm_event(
+                task_id="run",
+                model="GLM-5.3-NVFP4-with-a-long-local-suffix",
+                tin=16462,
+                tout=358,
+            )
+        )
         s.add(_long_error_report())
         await _summarize(s, "run", "sub")
         await s.commit()
@@ -280,14 +323,21 @@ async def _seed_a_phone_sized_recording(session_factory):
     from src.models.llm_exchange import LlmExchange
 
     async with session_factory() as s:
-        s.add(LlmExchange(
-            id="phone-exchange", user_id="user_test", task_id="0f6c2a1e-1111-4a5b-9c8d-" + "e" * 12,
-            sequence=0, occurred_at=datetime.now(timezone.utc), status="completed",
-            model_id="hf.co/unsloth/GLM-5.3-Flash-NVFP4-A8-with-an-even-longer-local-quantization-suffix:latest",
-            provider="openai", issues="missing_parameter,tool_call_in_text",
-            workspace_path="/home/someone/Projekty/a-client-with-a-very-long-name/monorepo-with-many-packages/apps/web",
-            payload="{}",
-        ))
+        s.add(
+            LlmExchange(
+                id="phone-exchange",
+                user_id="user_test",
+                task_id="0f6c2a1e-1111-4a5b-9c8d-" + "e" * 12,
+                sequence=0,
+                occurred_at=datetime.now(timezone.utc),
+                status="completed",
+                model_id="hf.co/unsloth/GLM-5.3-Flash-NVFP4-A8-with-an-even-longer-local-quantization-suffix:latest",
+                provider="openai",
+                issues="missing_parameter,tool_call_in_text",
+                workspace_path="/home/someone/Projekty/a-client-with-a-very-long-name/monorepo-with-many-packages/apps/web",
+                payload="{}",
+            )
+        )
         await s.commit()
 
 
@@ -307,7 +357,9 @@ async def _seed_a_phone_sized_recording(session_factory):
         ("/app/dataset", None),
     ],
 )
-async def test_every_page_fits_a_phone(path, rendered, client, session_factory, monkeypatch, tmp_path):
+async def test_every_page_fits_a_phone(
+    path, rendered, client, session_factory, monkeypatch, tmp_path
+):
     from config.settings import settings as app_settings
 
     # The owner's live controls are part of the task page a phone shows.
@@ -329,9 +381,14 @@ async def test_every_page_fits_a_phone(path, rendered, client, session_factory, 
     if rendered:
         assert layout["rendered"][rendered] > 0, layout
     if path == "/app/tasks/run":
-        assert layout["rendered"]["spendTable"] == 1 and layout["rendered"]["controls"] == 1, layout
+        assert (
+            layout["rendered"]["spendTable"] == 1
+            and layout["rendered"]["controls"] == 1
+        ), layout
 
-    assert layout["wide"] == [], f"{path} reaches past a {layout['contentWidth']}px screen: {layout['wide']}"
+    assert layout["wide"] == [], (
+        f"{path} reaches past a {layout['contentWidth']}px screen: {layout['wide']}"
+    )
     assert layout["scrollWidth"] <= layout["contentWidth"], layout
 
 
@@ -346,7 +403,10 @@ _LONG_PATH = (
     "/home/someone/Projekty/ITKONTEKST/customer/data-products-molecular/services/ingestion"
     "/very_long_directory_name_without_any_breaks/src/main/kotlin/IngestionController.kt"
 )
-_LONG_URL = "https://example.com/QUB-IT/Roo-Code/blob/main/app.css?very_long_query_param=" + "abcdefghij" * 6
+_LONG_URL = (
+    "https://example.com/QUB-IT/Roo-Code/blob/main/app.css?very_long_query_param="
+    + "abcdefghij" * 6
+)
 
 
 async def _seed_hostile_text(session_factory):
@@ -358,34 +418,130 @@ async def _seed_hostile_text(session_factory):
         await _seed_user(s)
         s.add(Task(id="run", user_id="user_test", workspace_path=_LONG_PATH))
         await s.flush()
-        s.add(Task(id="sub1", user_id="user_test", parent_task_id="run", workspace_path=_LONG_PATH))
+        s.add(
+            Task(
+                id="sub1",
+                user_id="user_test",
+                parent_task_id="run",
+                workspace_path=_LONG_PATH,
+            )
+        )
         await s.flush()
-        s.add(Task(id="sub2", user_id="user_test", parent_task_id="sub1", workspace_path=_LONG_PATH))
+        s.add(
+            Task(
+                id="sub2",
+                user_id="user_test",
+                parent_task_id="sub1",
+                workspace_path=_LONG_PATH,
+            )
+        )
         await s.flush()
-        table = "| " + " | ".join(f"column_{i}_with_a_long_header" for i in range(6)) + " |\n"
-        table += "|" + "---|" * 6 + "\n| " + " | ".join(_LONG_MODEL for _ in range(6)) + " |"
+        table = (
+            "| "
+            + " | ".join(f"column_{i}_with_a_long_header" for i in range(6))
+            + " |\n"
+        )
+        table += (
+            "|" + "---|" * 6 + "\n| " + " | ".join(_LONG_MODEL for _ in range(6)) + " |"
+        )
         conversation = [
             {"ts": 1, "type": "say", "say": "text", "text": _NOSPACE + " " + _LONG_URL},
-            {"ts": 2, "type": "say", "say": "api_req_started",
-             "text": json.dumps({"tokensIn": 1234567890, "tokensOut": 987654321, "cost": 12345.6789})},
-            {"ts": 3, "type": "ask", "ask": "command", "text": "cd " + _LONG_PATH + " && uv run pytest -q -k 'a or b' 2>&1 | tail -n 200"},
-            {"ts": 4, "type": "ask", "ask": "tool",
-             "text": json.dumps({"tool": "readFileWithAVeryLongToolNameThatNeverEnds", "path": _LONG_PATH, "content": _LONG_PATH})},
-            {"ts": 5, "type": "say", "say": "some_unknown_kind_with_a_very_long_name_that_has_no_label", "text": "{}"},
-            {"ts": 6, "type": "say", "say": "error", "text": "Error: 400 " + _NOSPACE + " " + _LONG_URL},
-            {"ts": 7, "type": "say", "say": "text", "text": "A table:\n\n" + table + "\n\nInline `" + _NOSPACE + "`"},
+            {
+                "ts": 2,
+                "type": "say",
+                "say": "api_req_started",
+                "text": json.dumps(
+                    {"tokensIn": 1234567890, "tokensOut": 987654321, "cost": 12345.6789}
+                ),
+            },
+            {
+                "ts": 3,
+                "type": "ask",
+                "ask": "command",
+                "text": "cd "
+                + _LONG_PATH
+                + " && uv run pytest -q -k 'a or b' 2>&1 | tail -n 200",
+            },
+            {
+                "ts": 4,
+                "type": "ask",
+                "ask": "tool",
+                "text": json.dumps(
+                    {
+                        "tool": "readFileWithAVeryLongToolNameThatNeverEnds",
+                        "path": _LONG_PATH,
+                        "content": _LONG_PATH,
+                    }
+                ),
+            },
+            {
+                "ts": 5,
+                "type": "say",
+                "say": "some_unknown_kind_with_a_very_long_name_that_has_no_label",
+                "text": "{}",
+            },
+            {
+                "ts": 6,
+                "type": "say",
+                "say": "error",
+                "text": "Error: 400 " + _NOSPACE + " " + _LONG_URL,
+            },
+            {
+                "ts": 7,
+                "type": "say",
+                "say": "text",
+                "text": "A table:\n\n" + table + "\n\nInline `" + _NOSPACE + "`",
+            },
         ]
         for message in conversation:
             await _add_message(s, "run", message)
         for i, task_id in enumerate(("sub1", "sub2")):
-            await _add_message(s, task_id, {"ts": 10 + i, "type": "say", "say": "text", "text": f"Subtask{i}_" + _NOSPACE})
-            figures = json.dumps({"tokensIn": 99999999, "tokensOut": 8888888, "cost": 2999.97})
-            await _add_message(s, task_id, {"ts": 20 + i, "type": "say", "say": "api_req_started", "text": figures})
-        for model in (_LONG_MODEL, "openrouter/anthropic/claude-opus-5.5-20261001-thinking-extended-context-1m"):
+            await _add_message(
+                s,
+                task_id,
+                {
+                    "ts": 10 + i,
+                    "type": "say",
+                    "say": "text",
+                    "text": f"Subtask{i}_" + _NOSPACE,
+                },
+            )
+            figures = json.dumps(
+                {"tokensIn": 99999999, "tokensOut": 8888888, "cost": 2999.97}
+            )
+            await _add_message(
+                s,
+                task_id,
+                {
+                    "ts": 20 + i,
+                    "type": "say",
+                    "say": "api_req_started",
+                    "text": figures,
+                },
+            )
+        for model in (
+            _LONG_MODEL,
+            "openrouter/anthropic/claude-opus-5.5-20261001-thinking-extended-context-1m",
+        ):
             for task_id in ("run", "sub1"):
-                s.add(_llm_event(task_id=task_id, model=model, mode="architect-reviewer-with-a-long-custom-slug",
-                                 provider="openai-compatible-self-hosted-gateway", tin=123456789, tout=1234567, cost=1234.56))
-        s.add(TaskShare(task_id="run", visibility="public", share_url="http://testserver/shared/run"))
+                s.add(
+                    _llm_event(
+                        task_id=task_id,
+                        model=model,
+                        mode="architect-reviewer-with-a-long-custom-slug",
+                        provider="openai-compatible-self-hosted-gateway",
+                        tin=123456789,
+                        tout=1234567,
+                        cost=1234.56,
+                    )
+                )
+        s.add(
+            TaskShare(
+                task_id="run",
+                visibility="public",
+                share_url="http://testserver/shared/run",
+            )
+        )
         s.add(_long_error_report())
         await _summarize(s, "run", "sub1", "sub2")
         await s.commit()
@@ -410,7 +566,9 @@ async def _seed_hostile_text(session_factory):
         "/shared/run",
     ],
 )
-async def test_long_text_stays_inside_its_box(path, width, client, session_factory, monkeypatch, tmp_path):
+async def test_long_text_stays_inside_its_box(
+    path, width, client, session_factory, monkeypatch, tmp_path
+):
     from config.settings import settings as app_settings
 
     monkeypatch.setattr(app_settings, "bridge_enabled", True)
@@ -433,9 +591,13 @@ async def test_long_text_stays_inside_its_box(path, width, client, session_facto
     layout = _lay_out_on_a_phone(_open_problem_rows(response.text), tmp_path, width)
 
     assert layout["viewport"] == width
-    assert layout["wide"] == [], f"{path} at {width}px reaches past the screen: {layout['wide']}"
+    assert layout["wide"] == [], (
+        f"{path} at {width}px reaches past the screen: {layout['wide']}"
+    )
     assert layout["scrollWidth"] <= layout["contentWidth"], layout
-    assert layout["spill"] == [], f"{path} at {width}px: text outside its box: {layout['spill']}"
+    assert layout["spill"] == [], (
+        f"{path} at {width}px: text outside its box: {layout['spill']}"
+    )
 
 
 # --- The rules that keep it there -------------------------------------------
@@ -448,7 +610,9 @@ _CSS = (_STATIC / "app.css").read_text(encoding="utf-8")
 
 def _rule(selector: str) -> str:
     """The body of the first rule whose selector list is exactly ``selector``."""
-    match = re.search(r"(?:^|\})\s*" + re.escape(selector) + r"\s*\{([^}]*)\}", _CSS, re.MULTILINE)
+    match = re.search(
+        r"(?:^|\})\s*" + re.escape(selector) + r"\s*\{([^}]*)\}", _CSS, re.MULTILINE
+    )
     assert match, f"app.css has no rule for {selector}"
     return match.group(1)
 

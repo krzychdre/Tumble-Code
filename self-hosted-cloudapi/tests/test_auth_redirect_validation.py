@@ -151,8 +151,10 @@ def test_validator_rejects_everything_else(value):
 
 @pytest.fixture
 def mocked_sign_in():
-    with patch("src.routers.browser.store_oauth_state", new_callable=AsyncMock) as store, \
-         patch("src.routers.browser.get_authorize_url") as authorize:
+    with (
+        patch("src.routers.browser.store_oauth_state", new_callable=AsyncMock) as store,
+        patch("src.routers.browser.get_authorize_url") as authorize,
+    ):
         authorize.return_value = "https://auth.example.com/authorize?x=1"
         yield store
 
@@ -182,7 +184,9 @@ def test_sign_in_routes_accept_editor_callback(client, mocked_sign_in, route, va
         "http://localhost:99999",
     ],
 )
-def test_sign_in_routes_reject_other_redirects_with_400(client, mocked_sign_in, route, value):
+def test_sign_in_routes_reject_other_redirects_with_400(
+    client, mocked_sign_in, route, value
+):
     resp = client.get(
         route,
         params={"state": "s", "auth_redirect": value},
@@ -206,12 +210,14 @@ def test_sign_in_routes_reject_other_redirects_with_400(client, mocked_sign_in, 
 def test_callback_refuses_a_stored_foreign_redirect(client, stored):
     """Defense in depth: a state row stored before this fix (or written by any
     other path) with a foreign redirect must not receive a ticket."""
-    with patch("src.routers.browser.get_oauth_state") as get_state, \
-         patch("src.routers.browser.exchange_code_for_tokens") as exchange, \
-         patch("src.routers.browser.get_userinfo") as userinfo, \
-         patch("src.routers.browser.get_or_create_user") as create_user, \
-         patch("src.routers.browser.create_session") as create_session, \
-         patch("src.routers.browser.create_ticket") as create_ticket:
+    with (
+        patch("src.routers.browser.get_oauth_state") as get_state,
+        patch("src.routers.browser.exchange_code_for_tokens") as exchange,
+        patch("src.routers.browser.get_userinfo") as userinfo,
+        patch("src.routers.browser.get_or_create_user") as create_user,
+        patch("src.routers.browser.create_session") as create_session,
+        patch("src.routers.browser.create_ticket") as create_ticket,
+    ):
         get_state.return_value = MagicMock(auth_redirect=stored, code_verifier="v")
         exchange.return_value = {"access_token": "a"}
         userinfo.return_value = {"sub": "ak-1", "email": "e@example.com"}
@@ -234,12 +240,14 @@ def test_callback_redirects_a_loopback_redirect_with_303(client, redirect):
     """The CLI's loopback redirect gets a plain 303 to its listener, not the
     editor's success page: a browser follows an http 3xx, and on a remote shell
     the failed navigation leaves the callback URL in the address bar."""
-    with patch("src.routers.browser.get_oauth_state") as get_state, \
-         patch("src.routers.browser.exchange_code_for_tokens") as exchange, \
-         patch("src.routers.browser.get_userinfo") as userinfo, \
-         patch("src.routers.browser.get_or_create_user") as create_user, \
-         patch("src.routers.browser.create_session") as create_session, \
-         patch("src.routers.browser.create_ticket") as create_ticket:
+    with (
+        patch("src.routers.browser.get_oauth_state") as get_state,
+        patch("src.routers.browser.exchange_code_for_tokens") as exchange,
+        patch("src.routers.browser.get_userinfo") as userinfo,
+        patch("src.routers.browser.get_or_create_user") as create_user,
+        patch("src.routers.browser.create_session") as create_session,
+        patch("src.routers.browser.create_ticket") as create_ticket,
+    ):
         get_state.return_value = MagicMock(auth_redirect=redirect, code_verifier="v")
         exchange.return_value = {"access_token": "a"}
         userinfo.return_value = {"sub": "ak-1", "email": "e@example.com"}
@@ -263,13 +271,17 @@ def test_callback_redirects_a_loopback_redirect_with_303(client, redirect):
 def test_editor_redirect_still_gets_the_success_page(client):
     """The editor's custom scheme keeps the HTML page: browsers block a 3xx to
     vscode://."""
-    with patch("src.routers.browser.get_oauth_state") as get_state, \
-         patch("src.routers.browser.exchange_code_for_tokens") as exchange, \
-         patch("src.routers.browser.get_userinfo") as userinfo, \
-         patch("src.routers.browser.get_or_create_user") as create_user, \
-         patch("src.routers.browser.create_session") as create_session, \
-         patch("src.routers.browser.create_ticket") as create_ticket:
-        get_state.return_value = MagicMock(auth_redirect=EXTENSION_REDIRECT, code_verifier="v")
+    with (
+        patch("src.routers.browser.get_oauth_state") as get_state,
+        patch("src.routers.browser.exchange_code_for_tokens") as exchange,
+        patch("src.routers.browser.get_userinfo") as userinfo,
+        patch("src.routers.browser.get_or_create_user") as create_user,
+        patch("src.routers.browser.create_session") as create_session,
+        patch("src.routers.browser.create_ticket") as create_ticket,
+    ):
+        get_state.return_value = MagicMock(
+            auth_redirect=EXTENSION_REDIRECT, code_verifier="v"
+        )
         exchange.return_value = {"access_token": "a"}
         userinfo.return_value = {"sub": "ak-1", "email": "e@example.com"}
         create_user.return_value = MagicMock(id="user-1")
@@ -301,10 +313,18 @@ async def test_loopback_sign_in_end_to_end(client):
     )
     assert start.status_code in (302, 307), start.text
 
-    with patch("src.routers.browser.exchange_code_for_tokens", new_callable=AsyncMock) as exchange, \
-         patch("src.routers.browser.get_userinfo", new_callable=AsyncMock) as userinfo:
+    with (
+        patch(
+            "src.routers.browser.exchange_code_for_tokens", new_callable=AsyncMock
+        ) as exchange,
+        patch("src.routers.browser.get_userinfo", new_callable=AsyncMock) as userinfo,
+    ):
         exchange.return_value = {"access_token": "a"}
-        userinfo.return_value = {"sub": "ak-cli-1", "email": "cli@example.com", "name": "Cli User"}
+        userinfo.return_value = {
+            "sub": "ak-cli-1",
+            "email": "cli@example.com",
+            "name": "Cli User",
+        }
         resp = client.get(
             "/auth/clerk/callback",
             params={"code": "authentik-code", "state": state},
@@ -327,8 +347,12 @@ async def test_loopback_sign_in_end_to_end(client):
     )
     assert replay.status_code == 400
 
-    first = client.post("/v1/client/sign_ins", data={"strategy": "ticket", "ticket": ticket})
+    first = client.post(
+        "/v1/client/sign_ins", data={"strategy": "ticket", "ticket": ticket}
+    )
     assert first.status_code == 200, first.text
     assert first.headers.get("authorization")
-    second = client.post("/v1/client/sign_ins", data={"strategy": "ticket", "ticket": ticket})
+    second = client.post(
+        "/v1/client/sign_ins", data={"strategy": "ticket", "ticket": ticket}
+    )
     assert second.status_code == 401

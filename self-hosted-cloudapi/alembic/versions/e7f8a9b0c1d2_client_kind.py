@@ -56,7 +56,10 @@ def _is_cli(fields) -> bool:
 def upgrade() -> None:
     for table in TABLES:
         op.add_column(
-            table, sa.Column("client_kind", sa.String(), nullable=False, server_default="vscode")
+            table,
+            sa.Column(
+                "client_kind", sa.String(), nullable=False, server_default="vscode"
+            ),
         )
 
     _backfill()
@@ -97,7 +100,9 @@ def _backfill() -> None:
                     cli_ids.append({"row_id": row_id})
             if cli_ids:
                 conn.execute(
-                    sa.text(f"UPDATE {table} SET client_kind = 'cli' WHERE id = :row_id"),
+                    sa.text(
+                        f"UPDATE {table} SET client_kind = 'cli' WHERE id = :row_id"
+                    ),
                     cli_ids,
                 )
 

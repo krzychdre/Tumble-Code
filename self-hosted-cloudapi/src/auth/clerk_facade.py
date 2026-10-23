@@ -10,11 +10,14 @@ def format_sign_in_response(session_id: str, client_token: str) -> Tuple[dict, s
 
     Returns a tuple of (response body dict, Authorization header value).
     """
-    return ({
-        "response": {
-            "created_session_id": session_id,
-        }
-    }, client_token)
+    return (
+        {
+            "response": {
+                "created_session_id": session_id,
+            }
+        },
+        client_token,
+    )
 
 
 def format_session_token_response(jwt: str) -> dict:
@@ -60,8 +63,12 @@ def format_org_memberships_response(memberships: list) -> dict:
                     "slug": m.organization.slug,
                     "image_url": m.organization.image_url,
                     "has_image": m.organization.has_image,
-                    "created_at": int(m.organization.created_at.timestamp()) if m.organization.created_at else None,
-                    "updated_at": int(m.organization.updated_at.timestamp()) if m.organization.updated_at else None,
+                    "created_at": int(m.organization.created_at.timestamp())
+                    if m.organization.created_at
+                    else None,
+                    "updated_at": int(m.organization.updated_at.timestamp())
+                    if m.organization.updated_at
+                    else None,
                 },
             }
             for m in memberships

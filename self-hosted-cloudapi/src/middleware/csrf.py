@@ -61,7 +61,9 @@ class CsrfOriginMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "http" and cross_site_refusal(scope["method"], Headers(scope=scope)):
+        if scope["type"] == "http" and cross_site_refusal(
+            scope["method"], Headers(scope=scope)
+        ):
             response = PlainTextResponse("Cross-site request refused", status_code=403)
             await response(scope, receive, send)
             return

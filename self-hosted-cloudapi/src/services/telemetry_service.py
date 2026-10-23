@@ -21,8 +21,17 @@ from src.services.session_quality import (
     classify_message,
     tool_path_of,
 )
-from src.services.task_summary import derive_prompt, derive_title, message_metrics, refresh_task_summary
-from src.services.task_tree import adopt_from_relations, link_pending_children, record_relation
+from src.services.task_summary import (
+    derive_prompt,
+    derive_title,
+    message_metrics,
+    refresh_task_summary,
+)
+from src.services.task_tree import (
+    adopt_from_relations,
+    link_pending_children,
+    record_relation,
+)
 from src.services.telemetry_vocab import LLM_COMPLETION_EVENT
 
 
@@ -56,7 +65,11 @@ async def _live_quality_kind(db, task_id: str, message: dict, ts) -> str | None:
         .order_by(desc(TaskMessage.message_ts))
         .limit(1)
     )
-    return KIND_COMPLETION_REPLY if result.scalar_one_or_none() == KIND_COMPLETION else KIND_INTERVENTION
+    return (
+        KIND_COMPLETION_REPLY
+        if result.scalar_one_or_none() == KIND_COMPLETION
+        else KIND_INTERVENTION
+    )
 
 
 async def _link_task_tree(db, task_id: str) -> None:
@@ -72,7 +85,9 @@ async def _link_task_tree(db, task_id: str) -> None:
     await link_pending_children(db, task_id)
 
 
-async def _get_or_create_task(db, task_id: str, user_id: str, client_kind: str | None = None):
+async def _get_or_create_task(
+    db, task_id: str, user_id: str, client_kind: str | None = None
+):
     """Return ``(task, created)``, creating the row for ``user_id`` when missing.
 
     ``client_kind`` is the client the caller knows the task comes from (a
@@ -155,7 +170,9 @@ async def stamp_task_client(db, task_id: str, user_id: str, client_kind: str) ->
         return
     await db.execute(
         update(Task)
-        .where(Task.id == task_id, Task.user_id == user_id, Task.client_kind != CLIENT_CLI)
+        .where(
+            Task.id == task_id, Task.user_id == user_id, Task.client_kind != CLIENT_CLI
+        )
         .values(client_kind=CLIENT_CLI)
         # Task rows loaded in this session are not refreshed; nothing on the
         # ingest paths reads the column back.
@@ -332,7 +349,9 @@ async def backfill_messages(
     # Replace any existing messages for this task (idempotent re-share).
     await db.execute(delete(TaskMessage).where(TaskMessage.task_id == task_id))
 
-    rows, title, prompt = await anyio.to_thread.run_sync(_build_backfill_rows, task_id, messages)
+    rows, title, prompt = await anyio.to_thread.run_sync(
+        _build_backfill_rows, task_id, messages
+    )
     if rows:
         # One Core INSERT executed with the whole list (executemany): no ORM
         # object, identity-map entry or unit-of-work step per row. SQLAlchemy
@@ -447,9 +466,9 @@ async def upsert_task_message(
             # final bypasses this (authoritative, one per ts) — it may legitimately
             # be a few bytes shorter than the last partial once `partial:true` is
             # dropped.
-            on_conflict["where"] = func.length(base.excluded.message_data) >= func.length(
-                TaskMessage.message_data
-            )
+            on_conflict["where"] = func.length(
+                base.excluded.message_data
+            ) >= func.length(TaskMessage.message_data)
         stmt = base.on_conflict_do_update(**on_conflict)
         await db.execute(stmt)
         await db.flush()
@@ -457,7 +476,11 @@ async def upsert_task_message(
         return True
 
     # ts is None (legacy/backfill) or an exotic dialect: just append.
-    db.add(TaskMessage(task_id=task_id, message_data=payload, message_ts=ts, **metrics, **quality))
+    db.add(
+        TaskMessage(
+            task_id=task_id, message_data=payload, message_ts=ts, **metrics, **quality
+        )
+    )
     await db.flush()
     await _refresh_after_live_write(db, task_id, message, not message.get("partial"))
     return True

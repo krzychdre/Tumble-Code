@@ -90,8 +90,15 @@ def _hand_signed(claims: dict, secret: str, alg: str = "HS256") -> str:
 
 def _claims(**overrides) -> dict:
     now = int(time.time())
-    claims = {"iss": "rcc", "sub": "u1", "exp": now + 60, "iat": now, "nbf": now, "v": 1,
-              "r": {"u": "u1", "t": "auth"}}
+    claims = {
+        "iss": "rcc",
+        "sub": "u1",
+        "exp": now + 60,
+        "iat": now,
+        "nbf": now,
+        "v": 1,
+        "r": {"u": "u1", "t": "auth"},
+    }
     claims.update(overrides)
     return claims
 
@@ -139,15 +146,29 @@ def test_a_hand_signed_token_verifies(legacy_secret):
 @pytest.mark.parametrize(
     "token_factory",
     [
-        pytest.param(lambda: _hand_signed(_claims(exp=int(time.time()) - 10), LEGACY_SECRET), id="expired"),
-        pytest.param(lambda: _hand_signed(_claims(nbf=int(time.time()) + 3600), LEGACY_SECRET), id="not-yet-valid"),
-        pytest.param(lambda: _hand_signed(_claims(), "another-secret-of-sufficient-length-000"), id="wrong-key"),
-        pytest.param(lambda: _hand_signed(_claims(), LEGACY_SECRET, alg="HS512"), id="other-algorithm"),
         pytest.param(
-            lambda: _b64(json.dumps({"alg": "none", "typ": "JWT"}).encode())
-            + "."
-            + _b64(json.dumps(_claims()).encode())
-            + ".",
+            lambda: _hand_signed(_claims(exp=int(time.time()) - 10), LEGACY_SECRET),
+            id="expired",
+        ),
+        pytest.param(
+            lambda: _hand_signed(_claims(nbf=int(time.time()) + 3600), LEGACY_SECRET),
+            id="not-yet-valid",
+        ),
+        pytest.param(
+            lambda: _hand_signed(_claims(), "another-secret-of-sufficient-length-000"),
+            id="wrong-key",
+        ),
+        pytest.param(
+            lambda: _hand_signed(_claims(), LEGACY_SECRET, alg="HS512"),
+            id="other-algorithm",
+        ),
+        pytest.param(
+            lambda: (
+                _b64(json.dumps({"alg": "none", "typ": "JWT"}).encode())
+                + "."
+                + _b64(json.dumps(_claims()).encode())
+                + "."
+            ),
             id="alg-none",
         ),
         pytest.param(lambda: LEGACY_TOKEN[:-2] + "AA", id="tampered-signature"),
@@ -161,7 +182,9 @@ def test_bad_tokens_are_refused(legacy_secret, token_factory):
 @pytest.mark.parametrize(
     "claims",
     [
-        pytest.param({k: v for k, v in _claims().items() if k != "iss"}, id="missing-iss"),
+        pytest.param(
+            {k: v for k, v in _claims().items() if k != "iss"}, id="missing-iss"
+        ),
         pytest.param(_claims(iss="someone-else"), id="wrong-iss"),
         pytest.param({k: v for k, v in _claims().items() if k != "v"}, id="missing-v"),
         pytest.param(_claims(v=2), id="wrong-v"),
@@ -184,9 +207,13 @@ def test_rs256_round_trip(monkeypatch):
         serialization.PrivateFormat.PKCS8,
         serialization.NoEncryption(),
     ).decode()
-    public_pem = key.public_key().public_bytes(
-        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode()
+    public_pem = (
+        key.public_key()
+        .public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        .decode()
+    )
     monkeypatch.setattr(settings, "jwt_algorithm", "RS256")
     monkeypatch.setattr(settings, "jwt_private_key", private_pem)
     monkeypatch.setattr(settings, "jwt_public_key", public_pem)

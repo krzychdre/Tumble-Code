@@ -57,10 +57,23 @@ ISSUE_LABELS: dict[str, str] = {
 }
 
 # Issues that keep an exchange out of every dataset: the answer itself is wrong.
-DROP_DEFAULT: frozenset[str] = frozenset({
-    API_ERROR, ABORTED, UNKNOWN_STATUS, EMPTY_RESPONSE, TRUNCATED, INTERRUPTED, MALFORMED_ARGUMENTS,
-    UNKNOWN_TOOL, MISSING_PARAMETER, TOOL_CALL_IN_TEXT, INVALID_TOOL_CALL, MISTAKE_LIMIT, INCOMPLETE,
-})
+DROP_DEFAULT: frozenset[str] = frozenset(
+    {
+        API_ERROR,
+        ABORTED,
+        UNKNOWN_STATUS,
+        EMPTY_RESPONSE,
+        TRUNCATED,
+        INTERRUPTED,
+        MALFORMED_ARGUMENTS,
+        UNKNOWN_TOOL,
+        MISSING_PARAMETER,
+        TOOL_CALL_IN_TEXT,
+        INVALID_TOOL_CALL,
+        MISTAKE_LIMIT,
+        INCOMPLETE,
+    }
+)
 # Strict also drops a well-formed call that did not work out (a guessed path,
 # a diff that did not apply) and one the user did not want.
 DROP_STRICT: frozenset[str] = DROP_DEFAULT | {TOOL_FAILED, REJECTED}
@@ -87,9 +100,13 @@ def offered_tools(tools: Any) -> dict[str, dict]:
     for tool in tools:
         if not isinstance(tool, dict):
             continue
-        function = tool.get("function") if isinstance(tool.get("function"), dict) else None
+        function = (
+            tool.get("function") if isinstance(tool.get("function"), dict) else None
+        )
         name = (function or tool).get("name")
-        schema = (function or {}).get("parameters") if function else tool.get("input_schema")
+        schema = (
+            (function or {}).get("parameters") if function else tool.get("input_schema")
+        )
         if isinstance(name, str) and name:
             offered[name] = schema if isinstance(schema, dict) else {}
     return offered
@@ -167,7 +184,11 @@ def static_issues(status: str, response: dict, tools: Any) -> list[str]:
         name = call.get("name")
         if offered and name not in offered:
             issues.add(UNKNOWN_TOOL)
-        elif args is not None and name in offered and missing_parameters(offered[name], args):
+        elif (
+            args is not None
+            and name in offered
+            and missing_parameters(offered[name], args)
+        ):
             issues.add(MISSING_PARAMETER)
 
     if text and (_MARKUP.search(text) or any(f"<{name}>" in text for name in offered)):
@@ -186,7 +207,11 @@ _OUTCOME_ISSUES = {
 
 def outcome_issues(tool_results: Iterable[dict]) -> list[str]:
     """Issues from the extension's tool-call outcomes ("ok" and unknown statuses add none)."""
-    found = {_OUTCOME_ISSUES[r.get("status")] for r in tool_results if r.get("status") in _OUTCOME_ISSUES}
+    found = {
+        _OUTCOME_ISSUES[r.get("status")]
+        for r in tool_results
+        if r.get("status") in _OUTCOME_ISSUES
+    }
     return sorted(found)
 
 
@@ -200,7 +225,9 @@ def tool_result_failed(block: dict) -> bool:
     content = block.get("content")
     if isinstance(content, list):
         content = "\n".join(
-            part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") == "text"
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
         )
     return isinstance(content, str) and bool(_ERROR_RESULT.match(content))
 

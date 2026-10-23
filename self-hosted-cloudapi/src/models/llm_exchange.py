@@ -12,7 +12,17 @@ See ai_plans/2026-10-02_llm-exchange-dataset.md.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 
 from src.models.base import Base, TimestampMixin
 
@@ -36,8 +46,12 @@ class LlmExchange(Base):
     id = Column(String, primary_key=True)
     # CASCADE: an exchange carries a whole conversation, which must not outlive
     # the account it belongs to.
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    organization_id = Column(
+        String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
+    )
     # Not a FK: exchanges are recorded whether or not the task is synced as a
     # row. Deleting a stored task deletes its exchanges explicitly
     # (services/share_service.delete_tasks).
@@ -46,13 +60,17 @@ class LlmExchange(Base):
     base_id = Column(String, nullable=True)
     sequence = Column(Integer, nullable=False, default=0)
     occurred_at = Column(DateTime(timezone=True), nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, index=True, default=_now)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, index=True, default=_now
+    )
     provider = Column(String, nullable=True)
     model_id = Column(String, nullable=True, index=True)
     mode = Column(String, nullable=True)
     workspace_path = Column(String, nullable=True)
     # "vscode" or "cli" (services/client_kind): which client recorded it.
-    client_kind = Column(String, nullable=False, default="vscode", server_default="vscode")
+    client_kind = Column(
+        String, nullable=False, default="vscode", server_default="vscode"
+    )
     # completed, error or aborted (an unknown value from a newer client is kept).
     status = Column(String, nullable=False)
     finish_reason = Column(String, nullable=True)
@@ -81,7 +99,9 @@ class LlmBlob(Base):
 
     __tablename__ = "llm_blobs"
 
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     task_id = Column(String, primary_key=True)
     sha256 = Column(String, primary_key=True)
     content = Column(Text, nullable=False)
@@ -93,10 +113,14 @@ class DatasetSettings(Base, TimestampMixin):
 
     __tablename__ = "dataset_settings"
 
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     # Off until the user switches it on: a recording carries every prompt and
     # every file the model read.
-    recording_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
+    recording_enabled = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     # The user's own terms the anonymizer replaces (company, client, product
     # names), one per line.
     anonymize_terms = Column(Text, nullable=True)

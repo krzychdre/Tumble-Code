@@ -9,7 +9,9 @@ from sqlalchemy.orm import DeclarativeBase
 from config.settings import settings
 
 # DATABASE_URL with the async driver; alembic/env.py uses the same value.
-ASYNC_DATABASE_URL = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
+ASYNC_DATABASE_URL = settings.database_url.replace(
+    "postgresql://", "postgresql+asyncpg://"
+)
 # pool_pre_ping: a transparent round-trip before each checkout, so a
 # connection dropped by the server (restart, idle timeout) is replaced
 # instead of surfacing as "connection already closed" on the first query.
@@ -46,6 +48,7 @@ def dialect_insert(db: AsyncSession) -> Optional[Callable]:
 
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
+
     pass
 
 

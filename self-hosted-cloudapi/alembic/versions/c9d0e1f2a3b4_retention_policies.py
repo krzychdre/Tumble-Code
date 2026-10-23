@@ -37,7 +37,9 @@ def upgrade() -> None:
         sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("max_age_days", sa.Integer(), nullable=True),
         sa.Column("max_tasks", sa.Integer(), nullable=True),
-        sa.Column("keep_shared", sa.Boolean(), nullable=False, server_default=sa.true()),
+        sa.Column(
+            "keep_shared", sa.Boolean(), nullable=False, server_default=sa.true()
+        ),
         sa.Column(
             "purge_telemetry", sa.Boolean(), nullable=False, server_default=sa.false()
         ),
@@ -50,10 +52,16 @@ def upgrade() -> None:
             "last_deleted_events", sa.Integer(), nullable=False, server_default="0"
         ),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
         ),
     )
 

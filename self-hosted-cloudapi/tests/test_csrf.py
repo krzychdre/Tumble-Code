@@ -60,7 +60,9 @@ async def signed_in(db_session, session_factory):
 
     app.dependency_overrides[get_db] = override_get_db
     client = TestClient(app, follow_redirects=False)
-    client.cookies.set("tumble_session", _serializer.dumps({"sid": "sess_csrf", "uid": "user_csrf"}))
+    client.cookies.set(
+        "tumble_session", _serializer.dumps({"sid": "sess_csrf", "uid": "user_csrf"})
+    )
     yield client
     app.dependency_overrides.pop(get_db, None)
 
@@ -112,7 +114,9 @@ async def test_a_same_origin_post_still_works(signed_in, session_factory):
 
 
 async def test_a_same_origin_referer_still_works(signed_in, session_factory):
-    resp = signed_in.post("/app/tasks/task-csrf/delete", headers={"referer": f"{OWN}/app/tasks/task-csrf"})
+    resp = signed_in.post(
+        "/app/tasks/task-csrf/delete", headers={"referer": f"{OWN}/app/tasks/task-csrf"}
+    )
     assert resp.status_code == 303
     assert not await _task_exists(session_factory)
 
@@ -121,7 +125,9 @@ async def test_the_public_url_and_the_browsers_own_address_work(
     signed_in, session_factory, monkeypatch
 ):
     monkeypatch.setattr(settings, "web_public_url", PUBLIC_URL)
-    resp = signed_in.post("/app/settings", data={"max_tasks": "5"}, headers={"origin": PUBLIC_URL})
+    resp = signed_in.post(
+        "/app/settings", data={"max_tasks": "5"}, headers={"origin": PUBLIC_URL}
+    )
     assert resp.status_code == 303
 
     # The panel opened under an address missing from the list (the DHCP
@@ -144,7 +150,9 @@ async def test_no_origin_and_no_referer_is_let_through(signed_in, session_factor
 async def test_requests_without_the_session_cookie_are_not_checked(client):
     """The extension's Bearer-token API carries no cookie, so CSRF cannot ride
     on it; the check stays out of its way whatever the Origin."""
-    resp = client.post("/app/tasks/x/delete", headers={"origin": FOREIGN}, follow_redirects=False)
+    resp = client.post(
+        "/app/tasks/x/delete", headers={"origin": FOREIGN}, follow_redirects=False
+    )
     assert resp.status_code == 303 and resp.headers["location"] == "/app/login"
 
 
@@ -158,7 +166,11 @@ async def test_reading_the_panel_is_not_checked(signed_in):
 
 
 def _session_cookie_header(resp) -> str:
-    [cookie] = [c for c in resp.headers.get_list("set-cookie") if c.startswith("tumble_session=")]
+    [cookie] = [
+        c
+        for c in resp.headers.get_list("set-cookie")
+        if c.startswith("tumble_session=")
+    ]
     return cookie.lower()
 
 
@@ -171,7 +183,10 @@ def test_the_cookie_is_not_secure_over_http(local_stack, client_from, callback_m
 
 
 def test_the_cookie_is_secure_when_the_public_url_is_https(
-    local_stack, client_from, callback_mocks, monkeypatch  # noqa: F811
+    local_stack,  # noqa: F811
+    client_from,  # noqa: F811
+    callback_mocks,  # noqa: F811
+    monkeypatch,
 ):
     """Behind a TLS-terminating proxy the request reaches uvicorn as http, so
     the configured https address of the host is what tells."""
@@ -183,7 +198,10 @@ def test_the_cookie_is_secure_when_the_public_url_is_https(
     assert "; secure" in _session_cookie_header(resp)
 
 
-def test_the_cookie_is_secure_when_the_request_is_https(callback_mocks, session_factory):  # noqa: F811
+def test_the_cookie_is_secure_when_the_request_is_https(
+    callback_mocks,  # noqa: F811
+    session_factory,
+):
     https = TestClient(app, base_url="https://testserver", follow_redirects=False)
     resp = https.get("/auth/clerk/callback?code=c&state=s")
     assert resp.status_code == 303

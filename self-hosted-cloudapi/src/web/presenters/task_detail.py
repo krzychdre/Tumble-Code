@@ -53,18 +53,30 @@ def _quality_panel(task: Task) -> dict:
             {"label": "Turns", "value": q.requests, "tone": "neutral"},
             {"label": "Tool calls", "value": q.tools, "tone": "neutral"},
             {"label": "Your corrections", "value": q.interventions, "tone": "bad"},
-            {"label": "Replies to a result", "value": q.completion_replies, "tone": "neutral"},
+            {
+                "label": "Replies to a result",
+                "value": q.completion_replies,
+                "tone": "neutral",
+            },
             {"label": "Errors", "value": q.errors, "tone": "bad"},
             {"label": "Provider retries", "value": q.retries, "tone": "bad"},
             {"label": "Context condensed", "value": q.condense, "tone": "warn"},
             {"label": "Repeated tool calls", "value": q.repeated_work, "tone": "warn"},
         ],
         "efficiency": [
-            {"label": "Tokens / turn", "value": fmt_int(per_request) if per_request else "\u2014"},
-            {"label": "From cache", "value": f"{cache_share}%" if cache_share is not None else "\u2014"},
+            {
+                "label": "Tokens / turn",
+                "value": fmt_int(per_request) if per_request else "\u2014",
+            },
+            {
+                "label": "From cache",
+                "value": f"{cache_share}%" if cache_share is not None else "\u2014",
+            },
             {
                 "label": "Cost / turn",
-                "value": fmt_cost(task.cost / q.requests) if q.requests and task.cost else "\u2014",
+                "value": fmt_cost(task.cost / q.requests)
+                if q.requests and task.cost
+                else "\u2014",
             },
         ],
     }
@@ -139,7 +151,6 @@ def _spend_summary(task: Task, tree: dict[str, list[Task]]) -> dict:
     }
 
 
-
 def _parse_messages(payloads: Iterable[Optional[str]]) -> list[dict]:
     """Decode and sort stored ``message_data`` blobs into ClineMessage dicts."""
     parsed: list[dict] = []
@@ -188,7 +199,9 @@ async def _model_context(
         # real models that are not turns, so they are named apart from the
         # conversation rather than mixed into it.
         "side_calls": side_calls_summary(completions),
-        "request_models_json": json_for_script(attribute_requests(messages, completions)),
+        "request_models_json": json_for_script(
+            attribute_requests(messages, completions)
+        ),
     }
 
 

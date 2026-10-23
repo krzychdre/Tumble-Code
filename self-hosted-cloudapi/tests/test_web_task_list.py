@@ -85,7 +85,6 @@ async def test_the_count_names_what_it_counts(client, db_session, session_factor
     assert pill(_get(client, "/app", scope="all", q="Sub").text) == "1 task"
 
 
-
 async def test_every_column_has_a_header(client, db_session, session_factory):
     """Seven columns, and once only the title and the date were labelled.
 
@@ -97,11 +96,17 @@ async def test_every_column_has_a_header(client, db_session, session_factory):
 
     html = _get(client, "/app").text
 
-    head = html[html.index('class="task-head"'):html.index('class="task-list"')]
+    head = html[html.index('class="task-head"') : html.index('class="task-list"')]
     for label in ("Messages", "Duration", "Tokens", "Cost", "Grade", "Updated"):
         assert f">{label}<" in head, label
-    title_head = re.search(r'<span class="head-label head-title">(.*?)</span></span>', head).group(1)
-    assert title_head.startswith("Task<") and "project" in title_head and "model" in title_head
+    title_head = re.search(
+        r'<span class="head-label head-title">(.*?)</span></span>', head
+    ).group(1)
+    assert (
+        title_head.startswith("Task<")
+        and "project" in title_head
+        and "model" in title_head
+    )
     # A header row, not a data row: the per-row tests count class="task-item".
     assert html.count('class="task-item"') == 1
 
@@ -113,15 +118,23 @@ async def test_the_title_gets_the_free_width_and_project_and_model_ride_under_it
     badge columns (project, model) took 17rem of the row. The title's track is
     the only elastic one, and the badges sit in the same cell, under it."""
     await _seed_user(db_session)
-    await _seed(session_factory, {"id": "t1", "title": "One", "workspace_path": "/home/a/proj"})
+    await _seed(
+        session_factory, {"id": "t1", "title": "One", "workspace_path": "/home/a/proj"}
+    )
 
     html = _get(client, "/app").text
 
-    row = html[html.index('class="task-link"'):]
-    row = row[:row.index("</a>")]
-    main = re.search(r'<span class="cell-main">(.*?)</span>\s*</span>\s*<span class="cell-num">', row, re.DOTALL)
+    row = html[html.index('class="task-link"') :]
+    row = row[: row.index("</a>")]
+    main = re.search(
+        r'<span class="cell-main">(.*?)</span>\s*</span>\s*<span class="cell-num">',
+        row,
+        re.DOTALL,
+    )
     assert main, row
-    assert 'class="cell-title"' in main.group(1) and 'class="badge badge-workspace"' in main.group(1)
+    assert 'class="cell-title"' in main.group(
+        1
+    ) and 'class="badge badge-workspace"' in main.group(1)
     # No badge columns left beside the title.
     assert "cell-workspace" not in html and "cell-model" not in html
 
@@ -133,7 +146,9 @@ async def test_the_title_gets_the_free_width_and_project_and_model_ride_under_it
     assert css.count("grid-template-columns: var(--task-cols);") == 2
 
 
-async def test_sortable_headers_link_to_the_sorted_list(client, db_session, session_factory):
+async def test_sortable_headers_link_to_the_sorted_list(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed(session_factory, {"id": "t1", "title": "One"})
 
@@ -146,7 +161,10 @@ async def test_sortable_headers_link_to_the_sorted_list(client, db_session, sess
     for key in ("cost", "tokens", "messages"):
         assert f"/app?scope=roots&sort={key}&dir=desc" in hrefs, key
     # The active column says so in words too, not only with an arrow.
-    assert re.search(r'<a[^>]*sort=updated[^>]*>Updated<span class="sr-only">, sorted descending</span>', html)
+    assert re.search(
+        r'<a[^>]*sort=updated[^>]*>Updated<span class="sr-only">, sorted descending</span>',
+        html,
+    )
 
 
 # --- sorting ------------------------------------------------------------------
@@ -156,36 +174,94 @@ async def test_sort_by_cost_tokens_and_messages(client, db_session, session_fact
     await _seed_user(db_session)
     await _seed(
         session_factory,
-        {"id": "cheap", "title": "Cheap", "cost": 0.01, "tokens_in": 900, "tokens_out": 10, "message_count": 50},
-        {"id": "dear", "title": "Dear", "cost": 2.5, "tokens_in": 100, "tokens_out": 5, "message_count": 3},
-        {"id": "mid", "title": "Mid", "cost": 0.4, "tokens_in": 5000, "tokens_out": 50, "message_count": 10},
+        {
+            "id": "cheap",
+            "title": "Cheap",
+            "cost": 0.01,
+            "tokens_in": 900,
+            "tokens_out": 10,
+            "message_count": 50,
+        },
+        {
+            "id": "dear",
+            "title": "Dear",
+            "cost": 2.5,
+            "tokens_in": 100,
+            "tokens_out": 5,
+            "message_count": 3,
+        },
+        {
+            "id": "mid",
+            "title": "Mid",
+            "cost": 0.4,
+            "tokens_in": 5000,
+            "tokens_out": 50,
+            "message_count": 10,
+        },
     )
 
-    assert _order(_get(client, "/app", sort="cost", dir="desc").text) == ["dear", "mid", "cheap"]
-    assert _order(_get(client, "/app", sort="cost", dir="asc").text) == ["cheap", "mid", "dear"]
-    assert _order(_get(client, "/app", sort="tokens", dir="desc").text) == ["mid", "cheap", "dear"]
-    assert _order(_get(client, "/app", sort="messages", dir="desc").text) == ["cheap", "mid", "dear"]
+    assert _order(_get(client, "/app", sort="cost", dir="desc").text) == [
+        "dear",
+        "mid",
+        "cheap",
+    ]
+    assert _order(_get(client, "/app", sort="cost", dir="asc").text) == [
+        "cheap",
+        "mid",
+        "dear",
+    ]
+    assert _order(_get(client, "/app", sort="tokens", dir="desc").text) == [
+        "mid",
+        "cheap",
+        "dear",
+    ]
+    assert _order(_get(client, "/app", sort="messages", dir="desc").text) == [
+        "cheap",
+        "mid",
+        "dear",
+    ]
     # Updated: newest first by default, oldest first on request.
     assert _order(_get(client, "/app").text) == ["cheap", "dear", "mid"]
-    assert _order(_get(client, "/app", sort="updated", dir="asc").text) == ["mid", "dear", "cheap"]
+    assert _order(_get(client, "/app", sort="updated", dir="asc").text) == [
+        "mid",
+        "dear",
+        "cheap",
+    ]
 
 
-async def test_run_view_sorts_by_what_the_row_shows(client, db_session, session_factory):
+async def test_run_view_sorts_by_what_the_row_shows(
+    client, db_session, session_factory
+):
     """A run row shows its whole run (itself plus every subtask, marked Σ), so
     sorting by cost must use that figure, or the column would read out of order."""
     await _seed_user(db_session)
     await _seed(
         session_factory,
         {"id": "parent", "title": "Parent", "cost": 0.1, "tokens_in": 10},
-        {"id": "child", "title": "Child", "cost": 5.0, "tokens_in": 90000, "parent_task_id": "parent"},
-        {"id": "grandchild", "title": "Grandchild", "cost": 1.0, "tokens_in": 1, "parent_task_id": "child"},
+        {
+            "id": "child",
+            "title": "Child",
+            "cost": 5.0,
+            "tokens_in": 90000,
+            "parent_task_id": "parent",
+        },
+        {
+            "id": "grandchild",
+            "title": "Grandchild",
+            "cost": 1.0,
+            "tokens_in": 1,
+            "parent_task_id": "child",
+        },
         {"id": "solo", "title": "Solo", "cost": 1.0, "tokens_in": 50000},
     )
 
     roots = _get(client, "/app", sort="cost", dir="desc").text
     assert [t for t in _order(roots) if t in ("parent", "solo")] == ["parent", "solo"]
     roots_tokens = _get(client, "/app", sort="tokens", dir="desc").text
-    assert [t for t in _order(roots_tokens) if t in ("parent", "solo")] == ["parent", "solo"]
+    assert [t for t in _order(roots_tokens) if t in ("parent", "solo")] == [
+        "parent",
+        "solo",
+    ]
 
 
 async def test_a_cycle_does_not_break_the_run_sort(client, db_session, session_factory):
@@ -218,7 +294,9 @@ async def test_a_cycle_does_not_break_the_run_sort(client, db_session, session_f
         {"sort": "cost", "dir": "DESC; --"},
     ],
 )
-async def test_only_allow_listed_sorts_are_honoured(params, client, db_session, session_factory):
+async def test_only_allow_listed_sorts_are_honoured(
+    params, client, db_session, session_factory
+):
     """Anything outside the allow-list falls back to the default instead of
     reaching the query or failing the page."""
     await _seed_user(db_session)
@@ -238,12 +316,17 @@ async def test_only_allow_listed_sorts_are_honoured(params, client, db_session, 
             assert all(bad not in h for h in _hrefs(resp.text)), bad
 
 
-async def test_pager_links_keep_the_sort_and_filters(client, db_session, session_factory, monkeypatch):
+async def test_pager_links_keep_the_sort_and_filters(
+    client, db_session, session_factory, monkeypatch
+):
     monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed(
         session_factory,
-        *({"id": f"t{i}", "title": f"Task {i}", "cost": float(i), "models": "glm-5.3"} for i in range(10)),
+        *(
+            {"id": f"t{i}", "title": f"Task {i}", "cost": float(i), "models": "glm-5.3"}
+            for i in range(10)
+        ),
     )
 
     html = _get(client, "/app", sort="cost", dir="asc", model="glm", page="2").text
@@ -257,8 +340,8 @@ async def test_pager_links_keep_the_sort_and_filters(client, db_session, session
     # The jump form keeps them too (only rendered past the numbered window).
     monkeypatch.setattr(task_list, "PAGE_SIZE", 1)
     jump = _get(client, "/app", sort="cost", dir="asc", model="glm").text
-    form = jump[jump.index('class="pager-jump"'):]
-    form = form[:form.index("</form>")]
+    form = jump[jump.index('class="pager-jump"') :]
+    form = form[: form.index("</form>")]
     assert 'name="sort" value="cost"' in form and 'name="model" value="glm"' in form
 
 
@@ -303,7 +386,13 @@ async def _seed_filterable(session_factory):
             "q_completed": False,
             "age": 0,
         },
-        {"id": "kid", "title": "Kid", "parent_task_id": "unfinished", "q_completed": True, "age": 1},
+        {
+            "id": "kid",
+            "title": "Kid",
+            "parent_task_id": "unfinished",
+            "q_completed": True,
+            "age": 1,
+        },
     )
 
 
@@ -320,14 +409,19 @@ async def _seed_filterable(session_factory):
         ({"until": "2026-05-30"}, ["friction", "clean"]),
         ({"since": "2026-05-23", "until": "2026-05-31"}, ["friction"]),
         ({"subtasks": "1"}, ["unfinished"]),
-        ({"project": "beta", "model": "glm", "grade": "friction"}, ["repeats", "friction"]),
+        (
+            {"project": "beta", "model": "glm", "grade": "friction"},
+            ["repeats", "friction"],
+        ),
         # Unusable values are ignored rather than failing the page.
         ({"grade": "excellent"}, ["unfinished", "repeats", "friction", "clean"]),
         ({"since": "yesterday"}, ["unfinished", "repeats", "friction", "clean"]),
         ({"subtasks": "maybe"}, ["unfinished", "repeats", "friction", "clean"]),
     ],
 )
-async def test_filters_narrow_the_list(params, expected, client, db_session, session_factory):
+async def test_filters_narrow_the_list(
+    params, expected, client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
 
@@ -337,7 +431,9 @@ async def test_filters_narrow_the_list(params, expected, client, db_session, ses
     assert [t for t in _order(resp.text) if t != "kid"] == expected
 
 
-async def test_project_and_model_filters_match_wildcards_literally(client, db_session, session_factory):
+async def test_project_and_model_filters_match_wildcards_literally(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed(
         session_factory,
@@ -354,8 +450,8 @@ async def test_the_filter_form_is_a_plain_get_form(client, db_session, session_f
     await _seed_filterable(session_factory)
 
     html = _get(client, "/app", sort="cost", dir="asc", scope="all").text
-    form = html[html.index('id="filter-form"'):]
-    form = form[:form.index("</form>")]
+    form = html[html.index('id="filter-form"') :]
+    form = form[: form.index("</form>")]
     assert 'method="get"' in form and 'action="/app"' in form
     for name in ("q", "project", "model", "grade", "since", "until", "subtasks"):
         assert f'name="{name}"' in form, name
@@ -369,19 +465,43 @@ async def test_the_filter_form_is_a_plain_get_form(client, db_session, session_f
     assert '<option value="claude-opus-5">' in html
 
 
-async def test_active_filters_show_as_removable_chips(client, db_session, session_factory):
+async def test_active_filters_show_as_removable_chips(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
 
-    html = _get(client, "/app", project="beta", grade="friction", q="run", sort="cost", dir="asc").text
-    chips = re.findall(r'<a class="filter-chip" href="([^"]+)"[^>]*>(.*?)</a>', html, re.DOTALL)
-    by_label = {re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", label)).strip(): unescape(href) for href, label in chips}
+    html = _get(
+        client,
+        "/app",
+        project="beta",
+        grade="friction",
+        q="run",
+        sort="cost",
+        dir="asc",
+    ).text
+    chips = re.findall(
+        r'<a class="filter-chip" href="([^"]+)"[^>]*>(.*?)</a>', html, re.DOTALL
+    )
+    by_label = {
+        re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", label)).strip(): unescape(href)
+        for href, label in chips
+    }
 
     assert set(by_label) == {"Search: run ✕", "Project: beta ✕", "Grade: Friction ✕"}
     # Each chip drops its own filter and keeps everything else.
-    assert by_label["Project: beta ✕"] == "/app?scope=roots&q=run&grade=friction&sort=cost&dir=asc"
-    assert by_label["Grade: Friction ✕"] == "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc"
-    assert by_label["Search: run ✕"] == "/app?scope=roots&project=beta&grade=friction&sort=cost&dir=asc"
+    assert (
+        by_label["Project: beta ✕"]
+        == "/app?scope=roots&q=run&grade=friction&sort=cost&dir=asc"
+    )
+    assert (
+        by_label["Grade: Friction ✕"]
+        == "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc"
+    )
+    assert (
+        by_label["Search: run ✕"]
+        == "/app?scope=roots&project=beta&grade=friction&sort=cost&dir=asc"
+    )
     # And one link clears them all, keeping the scope and sort.
     assert "/app?scope=roots&sort=cost&dir=asc" in _hrefs(html)
 
@@ -392,19 +512,23 @@ async def test_no_chips_without_filters(client, db_session, session_factory):
     assert 'class="filter-chip"' not in _get(client, "/app").text
 
 
-async def test_a_filtered_empty_list_offers_the_way_back(client, db_session, session_factory):
+async def test_a_filtered_empty_list_offers_the_way_back(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
 
     html = _get(client, "/app", project="nowhere", grade="clean").text
     assert _order(html) == []
     assert "No tasks match these filters" in html
-    empty = html[html.index('class="empty"'):]
+    empty = html[html.index('class="empty"') :]
     assert 'class="filter-chip"' in empty
     assert "/app?scope=roots" in _hrefs(empty)
 
 
-async def test_the_results_are_one_swappable_region(client, db_session, session_factory):
+async def test_the_results_are_one_swappable_region(
+    client, db_session, session_factory
+):
     """tasklist.js re-fetches the same page and swaps these regions by id, so
     the filter form (and the caret in it) is never replaced."""
     await _seed_user(db_session)
@@ -414,33 +538,56 @@ async def test_the_results_are_one_swappable_region(client, db_session, session_
     results = html.index('id="task-results"')
     assert html.index('id="filter-form"') < results
     assert html.index('id="bulk-form"') > results
-    assert 'data-swap' in html[results - 200:results + 50]
+    assert "data-swap" in html[results - 200 : results + 50]
     assert re.search(r'id="list-count"[^>]*data-swap', html)
 
 
-async def test_bulk_delete_returns_to_the_same_view(client, db_session, session_factory):
+async def test_bulk_delete_returns_to_the_same_view(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
 
     _override_web_user(client.app)
     try:
-        page = client.get("/app", params={"project": "beta", "sort": "cost", "dir": "asc", "q": "run"}).text
-        form = page[page.index('id="bulk-form"'):]
-        hidden = dict(re.findall(r'<input type="hidden" name="(\w+)" value="([^"]*)"', form[:form.index("<ul")]))
-        assert hidden == {"scope": "roots", "q": "run", "project": "beta", "sort": "cost", "dir": "asc"}
+        page = client.get(
+            "/app", params={"project": "beta", "sort": "cost", "dir": "asc", "q": "run"}
+        ).text
+        form = page[page.index('id="bulk-form"') :]
+        hidden = dict(
+            re.findall(
+                r'<input type="hidden" name="(\w+)" value="([^"]*)"',
+                form[: form.index("<ul")],
+            )
+        )
+        assert hidden == {
+            "scope": "roots",
+            "q": "run",
+            "project": "beta",
+            "sort": "cost",
+            "dir": "asc",
+        }
         resp = client.post(
             "/app/tasks/bulk-delete",
-            data={"task_ids": ["friction"], **{k: unescape(v) for k, v in hidden.items()}},
+            data={
+                "task_ids": ["friction"],
+                **{k: unescape(v) for k, v in hidden.items()},
+            },
             follow_redirects=False,
         )
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc"
+    assert (
+        resp.headers["location"]
+        == "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc"
+    )
 
 
-async def test_select_mode_and_density_controls_are_on_the_page(client, db_session, session_factory):
+async def test_select_mode_and_density_controls_are_on_the_page(
+    client, db_session, session_factory
+):
     """Select mode (the phone layout hides the checkboxes until it is on) is a
     real checkbox, so it works without scripting; the density toggle is a
     preference and is revealed by the script that implements it."""
@@ -449,4 +596,7 @@ async def test_select_mode_and_density_controls_are_on_the_page(client, db_sessi
 
     html = _get(client, "/app").text
     assert re.search(r'<input type="checkbox" id="select-mode"[^>]*>', html)
-    assert re.search(r'<button type="button" id="density-toggle"[^>]*aria-pressed="false"[^>]*hidden', html)
+    assert re.search(
+        r'<button type="button" id="density-toggle"[^>]*aria-pressed="false"[^>]*hidden',
+        html,
+    )

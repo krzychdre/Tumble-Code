@@ -277,7 +277,10 @@ def _seed_legacy_rows(db_file: Path) -> None:
         conn.executemany(
             "INSERT INTO task_messages (id, task_id, message_data) VALUES (?, 'task_1', ?)",
             [
-                ("msg_1", '{"ts": 1000, "type": "say", "say": "text", "text": "hello"}'),
+                (
+                    "msg_1",
+                    '{"ts": 1000, "type": "say", "say": "text", "text": "hello"}',
+                ),
                 ("msg_2", '{"ts": 2000, "type": "say", "say": "text", "text": "done"}'),
             ],
         )
@@ -326,7 +329,10 @@ def test_migrate_script_on_a_legacy_database_stamps_the_baseline_first(migrate_e
     assert _scalar(db_file, "SELECT count(*) FROM task_messages") == 2
     # The expected SQLite stop, not some other failure.
     assert result.returncode != 0
-    assert "ALTER TABLE authentik_state_store ALTER COLUMN created_at TYPE" in result.stderr
+    assert (
+        "ALTER TABLE authentik_state_store ALTER COLUMN created_at TYPE"
+        in result.stderr
+    )
 
 
 def test_migrate_script_on_a_managed_database_upgrades_to_head(migrate_env):
@@ -429,7 +435,11 @@ def test_client_kind_backfill_marks_the_clis_records_and_tasks(migrate_env):
     events = {
         "evt_cli_kind": {"clientKind": "cli", "taskId": "task_cli"},
         "evt_cli_editor": {"editorName": cli_editor, "taskId": "task_old_cli"},
-        "evt_kind_wins": {"clientKind": "vscode", "editorName": cli_editor, "taskId": "task_code"},
+        "evt_kind_wins": {
+            "clientKind": "vscode",
+            "editorName": cli_editor,
+            "taskId": "task_code",
+        },
         "evt_code": {"editorName": "Visual Studio Code", "taskId": "task_code"},
         # Mentions "cli" but is neither: parsed and left alone.
         "evt_mention": {"editorName": "Visual Studio Code", "note": "clicked"},
@@ -448,7 +458,12 @@ def test_client_kind_backfill_marks_the_clis_records_and_tasks(migrate_env):
             "INSERT INTO telemetry_events (id, user_id, event_type, task_id, properties) "
             "VALUES (?, ?, 'LLM Completion', ?, ?)",
             [
-                (row_id, "user_2" if row_id == "evt_foreign" else "user_1", props.get("taskId"), json.dumps(props))
+                (
+                    row_id,
+                    "user_2" if row_id == "evt_foreign" else "user_1",
+                    props.get("taskId"),
+                    json.dumps(props),
+                )
                 for row_id, props in events.items()
             ]
             + [("evt_broken", "user_1", None, "{cli not json")],

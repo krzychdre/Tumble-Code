@@ -23,7 +23,9 @@ except ImportError:  # pragma: no cover - older FastAPI flattens on include
 def _flatten(routes, prefix=""):
     for route in routes:
         if _IncludedRouter and isinstance(route, _IncludedRouter):
-            yield from _flatten(route.original_router.routes, prefix + route.include_context.prefix)
+            yield from _flatten(
+                route.original_router.routes, prefix + route.include_context.prefix
+            )
         else:
             yield prefix, route
 
@@ -43,10 +45,25 @@ EXPECTED = {
     ("/docs/oauth2-redirect", ("GET", "HEAD"), "swagger_ui_redirect", "Route"),
     ("/redoc", ("GET", "HEAD"), "redoc_html", "Route"),
     ("/v1/client/sign_ins", ("POST",), "sign_in", "APIRoute"),
-    ("/v1/client/sessions/{session_id}/tokens", ("POST",), "create_session_token", "APIRoute"),
+    (
+        "/v1/client/sessions/{session_id}/tokens",
+        ("POST",),
+        "create_session_token",
+        "APIRoute",
+    ),
     ("/v1/me", ("GET",), "get_me", "APIRoute"),
-    ("/v1/me/organization_memberships", ("GET",), "get_organization_memberships", "APIRoute"),
-    ("/v1/client/sessions/{session_id}/remove", ("POST",), "remove_session", "APIRoute"),
+    (
+        "/v1/me/organization_memberships",
+        ("GET",),
+        "get_organization_memberships",
+        "APIRoute",
+    ),
+    (
+        "/v1/client/sessions/{session_id}/remove",
+        ("POST",),
+        "remove_session",
+        "APIRoute",
+    ),
     ("/extension/sign-in", ("GET",), "sign_in_page", "APIRoute"),
     ("/app/login", ("GET",), "web_login", "APIRoute"),
     ("/app/logout", ("POST",), "web_logout", "APIRoute"),
@@ -62,16 +79,36 @@ EXPECTED = {
     ("/api/error-reports", ("POST",), "record_error_report_endpoint", "APIRoute"),
     ("/api/llm-exchanges/config", ("GET",), "llm_exchange_config_endpoint", "APIRoute"),
     ("/api/llm-exchanges", ("POST",), "record_llm_exchange_endpoint", "APIRoute"),
-    ("/api/llm-exchanges/outcome", ("POST",), "record_llm_exchange_outcome_endpoint", "APIRoute"),
-    ("/api/tasks/{task_id}/images", ("POST",), "upload_task_image_endpoint", "APIRoute"),
+    (
+        "/api/llm-exchanges/outcome",
+        ("POST",),
+        "record_llm_exchange_outcome_endpoint",
+        "APIRoute",
+    ),
+    (
+        "/api/tasks/{task_id}/images",
+        ("POST",),
+        "upload_task_image_endpoint",
+        "APIRoute",
+    ),
     # The web panel (routers/web.py before CAPI-M5).
     ("/", ("GET",), "root_redirect", "APIRoute"),
     ("/app", ("GET",), "task_list", "APIRoute"),
     ("/app/metrics", ("GET",), "metrics_page", "APIRoute"),
     ("/app/diagnostics", ("GET",), "diagnostics_page", "APIRoute"),
     ("/app/diagnostics/report.md", ("GET",), "diagnostics_markdown", "APIRoute"),
-    ("/app/diagnostics/problems/{key}/brief.md", ("GET",), "diagnostics_problem_brief", "APIRoute"),
-    ("/app/diagnostics/reports/{report_id}", ("GET",), "diagnostics_report", "APIRoute"),
+    (
+        "/app/diagnostics/problems/{key}/brief.md",
+        ("GET",),
+        "diagnostics_problem_brief",
+        "APIRoute",
+    ),
+    (
+        "/app/diagnostics/reports/{report_id}",
+        ("GET",),
+        "diagnostics_report",
+        "APIRoute",
+    ),
     ("/app/dataset", ("GET",), "dataset_page", "APIRoute"),
     ("/app/dataset/settings", ("POST",), "save_dataset_settings_endpoint", "APIRoute"),
     ("/app/dataset/export.jsonl", ("GET",), "dataset_export", "APIRoute"),
@@ -108,14 +145,16 @@ def test_overlapping_routes_keep_their_order():
     partial match in Starlette, which still decides between a 405 and the next
     route, so the pair's order is pinned either way.
     """
-    routes = [route for _prefix, route in _routes() if isinstance(route, (APIRoute, Mount))]
+    routes = [
+        route for _prefix, route in _routes() if isinstance(route, (APIRoute, Mount))
+    ]
 
     def concrete(path):
         return re.sub(r"\{[^}]+\}", "x", path)
 
     overlaps = []
     for i, first in enumerate(routes):
-        for second in routes[i + 1:]:
+        for second in routes[i + 1 :]:
             if first.path_regex.match(concrete(second.path)) or second.path_regex.match(
                 concrete(first.path)
             ):
@@ -153,15 +192,38 @@ def test_web_routes_keep_their_openapi_operations():
         if not path.startswith(("/app", "/shared")):
             continue
         for method, op in methods.items():
-            params = tuple((p["name"], p["in"], p.get("required", False)) for p in op.get("parameters", []))
+            params = tuple(
+                (p["name"], p["in"], p.get("required", False))
+                for p in op.get("parameters", [])
+            )
             content = tuple(sorted(op["responses"]["200"].get("content", {})))
-            ops[(path, method)] = (op["operationId"], tuple(op.get("tags", [])), content, params)
+            ops[(path, method)] = (
+                op["operationId"],
+                tuple(op.get("tags", [])),
+                content,
+                params,
+            )
 
     html, json_ = ("text/html",), ("application/json",)
     assert ops == {
-        ("/app/login", "get"): ("web_login_app_login_get", ("browser-auth",), json_, ()),
-        ("/app/logout", "post"): ("web_logout_app_logout_post", ("browser-auth",), json_, ()),
-        ("/app/signed-out", "get"): ("web_signed_out_app_signed_out_get", ("browser-auth",), html, ()),
+        ("/app/login", "get"): (
+            "web_login_app_login_get",
+            ("browser-auth",),
+            json_,
+            (),
+        ),
+        ("/app/logout", "post"): (
+            "web_logout_app_logout_post",
+            ("browser-auth",),
+            json_,
+            (),
+        ),
+        ("/app/signed-out", "get"): (
+            "web_signed_out_app_signed_out_get",
+            ("browser-auth",),
+            html,
+            (),
+        ),
         ("/app", "get"): (
             "task_list_app_get",
             ("web",),
@@ -185,7 +247,11 @@ def test_web_routes_keep_their_openapi_operations():
             "metrics_page_app_metrics_get",
             ("web",),
             html,
-            (("period", "query", False), ("client", "query", False), ("day_page", "query", False)),
+            (
+                ("period", "query", False),
+                ("client", "query", False),
+                ("day_page", "query", False),
+            ),
         ),
         ("/app/diagnostics", "get"): (
             "diagnostics_page_app_diagnostics_get",
@@ -215,18 +281,42 @@ def test_web_routes_keep_their_openapi_operations():
             "dataset_page_app_dataset_get",
             ("web",),
             html,
-            (("period", "query", False), ("client", "query", False), ("deleted", "query", False)),
+            (
+                ("period", "query", False),
+                ("client", "query", False),
+                ("deleted", "query", False),
+            ),
         ),
-        ("/app/dataset/settings", "post"): ("save_dataset_settings_endpoint_app_dataset_settings_post", ("web",), json_, ()),
-        ("/app/dataset/export.jsonl", "get"): ("dataset_export_app_dataset_export_jsonl_get", ("web",), json_, ()),
-        ("/app/dataset/audit", "get"): ("dataset_audit_app_dataset_audit_get", ("web",), html, ()),
+        ("/app/dataset/settings", "post"): (
+            "save_dataset_settings_endpoint_app_dataset_settings_post",
+            ("web",),
+            json_,
+            (),
+        ),
+        ("/app/dataset/export.jsonl", "get"): (
+            "dataset_export_app_dataset_export_jsonl_get",
+            ("web",),
+            json_,
+            (),
+        ),
+        ("/app/dataset/audit", "get"): (
+            "dataset_audit_app_dataset_audit_get",
+            ("web",),
+            html,
+            (),
+        ),
         ("/app/dataset/tasks/{task_id}.jsonl", "get"): (
             "dataset_task_report_app_dataset_tasks__task_id__jsonl_get",
             ("web",),
             json_,
             (("task_id", "path", True),),
         ),
-        ("/app/dataset/delete", "post"): ("dataset_delete_all_app_dataset_delete_post", ("web",), json_, ()),
+        ("/app/dataset/delete", "post"): (
+            "dataset_delete_all_app_dataset_delete_post",
+            ("web",),
+            json_,
+            (),
+        ),
         ("/app/tasks/{task_id}", "get"): (
             "task_detail_app_tasks__task_id__get",
             ("web",),
@@ -245,11 +335,36 @@ def test_web_routes_keep_their_openapi_operations():
             json_,
             (("task_id", "path", True),),
         ),
-        ("/app/settings", "get"): ("settings_page_app_settings_get", ("web",), html, (("ran", "query", False), ("size", "query", False))),
-        ("/app/settings", "post"): ("save_settings_app_settings_post", ("web",), json_, ()),
-        ("/app/settings/run", "post"): ("run_retention_now_app_settings_run_post", ("web",), json_, ()),
-        ("/app/tasks/bulk-delete", "post"): ("bulk_delete_tasks_app_tasks_bulk_delete_post", ("web",), json_, ()),
-        ("/shared/{task_id}", "get"): ("shared_task_shared__task_id__get", ("web",), html, (("task_id", "path", True),)),
+        ("/app/settings", "get"): (
+            "settings_page_app_settings_get",
+            ("web",),
+            html,
+            (("ran", "query", False), ("size", "query", False)),
+        ),
+        ("/app/settings", "post"): (
+            "save_settings_app_settings_post",
+            ("web",),
+            json_,
+            (),
+        ),
+        ("/app/settings/run", "post"): (
+            "run_retention_now_app_settings_run_post",
+            ("web",),
+            json_,
+            (),
+        ),
+        ("/app/tasks/bulk-delete", "post"): (
+            "bulk_delete_tasks_app_tasks_bulk_delete_post",
+            ("web",),
+            json_,
+            (),
+        ),
+        ("/shared/{task_id}", "get"): (
+            "shared_task_shared__task_id__get",
+            ("web",),
+            html,
+            (("task_id", "path", True),),
+        ),
         ("/shared/{task_id}/images", "get"): (
             "shared_task_image_shared__task_id__images_get",
             ("web",),

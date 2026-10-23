@@ -38,7 +38,9 @@ def report_row(user_id: str, org_id: Optional[str], report: ErrorReportRequest) 
     tool = _short(report.tool_name)
     # The summary is what the extension chose to say in one line; the error
     # message is the fallback for a report that left the summary empty.
-    headline_source = report.summary if report.summary.strip() else (report.error_message or "")
+    headline_source = (
+        report.summary if report.summary.strip() else (report.error_message or "")
+    )
     return {
         "id": report.id,
         "user_id": user_id,
@@ -49,11 +51,15 @@ def report_row(user_id: str, org_id: Optional[str], report: ErrorReportRequest) 
         "model_id": _short(report.model_id),
         "mode": _short(report.mode),
         "app_version": _short(report.app_version),
-        "client_kind": client_kind_from({"clientKind": report.client_kind, "editorName": report.editor_name}),
+        "client_kind": client_kind_from(
+            {"clientKind": report.client_kind, "editorName": report.editor_name}
+        ),
         "tool_name": tool,
         "summary": report.summary,
         "signature": problem_signature(report.category, tool, headline_source),
-        "occurred_at": datetime.fromtimestamp(report.occurred_at / 1000.0, tz=timezone.utc),
+        "occurred_at": datetime.fromtimestamp(
+            report.occurred_at / 1000.0, tz=timezone.utc
+        ),
         "created_at": datetime.now(timezone.utc),
         # Exactly what was validated, in the wire's camelCase: unknown fields
         # are already gone, absent ones are not written as null.
@@ -73,7 +79,9 @@ async def record_error_report(
     upsert_insert = dialect_insert(db)
     if upsert_insert is None:
         # No portable ON CONFLICT: look first, then insert.
-        exists = await db.scalar(select(ErrorReport.id).where(ErrorReport.id == report.id))
+        exists = await db.scalar(
+            select(ErrorReport.id).where(ErrorReport.id == report.id)
+        )
         if exists is not None:
             return False
         db.add(ErrorReport(**values))
@@ -81,6 +89,8 @@ async def record_error_report(
         return True
 
     result = await db.execute(
-        upsert_insert(ErrorReport).values(**values).on_conflict_do_nothing(index_elements=["id"])
+        upsert_insert(ErrorReport)
+        .values(**values)
+        .on_conflict_do_nothing(index_elements=["id"])
     )
     return result.rowcount == 1

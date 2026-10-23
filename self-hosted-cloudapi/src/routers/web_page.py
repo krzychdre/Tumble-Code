@@ -60,7 +60,12 @@ def render_page(
     return templates.TemplateResponse(
         request,
         template_name,
-        {"user": page["user"], "nav_active": nav_active, "page_zone": page["zone"].key, **context},
+        {
+            "user": page["user"],
+            "nav_active": nav_active,
+            "page_zone": page["zone"].key,
+            **context,
+        },
     )
 
 

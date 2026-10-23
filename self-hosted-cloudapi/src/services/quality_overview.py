@@ -36,7 +36,11 @@ _QUALITY_COLUMNS = (
 
 
 async def quality_overview(
-    db: AsyncSession, user_id: str, period: str, client: str | None = None, zone: ZoneInfo = UTC
+    db: AsyncSession,
+    user_id: str,
+    period: str,
+    client: str | None = None,
+    zone: ZoneInfo = UTC,
 ) -> dict:
     """How the user's runs went over the period, in aggregate.
 

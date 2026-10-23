@@ -18,9 +18,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-for-the-test-suite-only")
 os.environ.setdefault("API_BASE_URL", "http://testserver")
 os.environ.setdefault("AUTHENTIK_BASE_URL", "http://authentik-test.local")
 os.environ.setdefault("AUTHENTIK_CLIENT_ID", "test-client-id")
-os.environ.setdefault(
-    "AUTHENTIK_REDIRECT_URI", "http://testserver/auth/clerk/callback"
-)
+os.environ.setdefault("AUTHENTIK_REDIRECT_URI", "http://testserver/auth/clerk/callback")
 os.environ.setdefault("JWT_ALGORITHM", "HS256")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-please-ignore-0123456789")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
@@ -35,6 +33,7 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from src.database import Base, get_db  # noqa: E402
+
 # Importing src.models populates Base.metadata with all tables.
 import src.models  # noqa: E402, F401
 

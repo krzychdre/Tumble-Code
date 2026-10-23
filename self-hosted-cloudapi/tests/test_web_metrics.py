@@ -40,12 +40,36 @@ async def test_compute_user_metrics_aggregates_dimensions(db_session):
     base = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
     db_session.add_all(
         [
-            _llm_event(model="gpt-a", mode="code", task_id="t1", tin=1000, tout=200,
-                       cwrite=50, cread=10, cost=0.02, created_at=base),
-            _llm_event(model="gpt-a", mode="code", task_id="t1", tin=500, tout=100,
-                       cost=0.01, created_at=base + timedelta(minutes=5)),
-            _llm_event(model="llama-b", mode="architect", provider="openai",
-                       task_id="t2", tin=300, tout=50, cost=0.0, created_at=base),
+            _llm_event(
+                model="gpt-a",
+                mode="code",
+                task_id="t1",
+                tin=1000,
+                tout=200,
+                cwrite=50,
+                cread=10,
+                cost=0.02,
+                created_at=base,
+            ),
+            _llm_event(
+                model="gpt-a",
+                mode="code",
+                task_id="t1",
+                tin=500,
+                tout=100,
+                cost=0.01,
+                created_at=base + timedelta(minutes=5),
+            ),
+            _llm_event(
+                model="llama-b",
+                mode="architect",
+                provider="openai",
+                task_id="t2",
+                tin=300,
+                tout=50,
+                cost=0.0,
+                created_at=base,
+            ),
         ]
     )
     await db_session.commit()
@@ -82,8 +106,9 @@ async def test_compute_user_metrics_period_filters_old_events(db_session):
     db_session.add_all(
         [
             _llm_event(task_id="recent", tin=100, tout=10, created_at=now),
-            _llm_event(task_id="old", tin=9999, tout=9999,
-                       created_at=now - timedelta(days=40)),
+            _llm_event(
+                task_id="old", tin=9999, tout=9999, created_at=now - timedelta(days=40)
+            ),
         ]
     )
     await db_session.commit()
@@ -112,8 +137,16 @@ async def test_compute_user_metrics_scopes_to_user(db_session):
 async def test_metrics_page_renders_dimensions(client, db_session, session_factory):
     await _seed_user(db_session)
     async with session_factory() as s:
-        s.add(_llm_event(model="nvidia/nemotron", mode="orchestrator",
-                         provider="openrouter", tin=96941, tout=3365, cost=0.1234))
+        s.add(
+            _llm_event(
+                model="nvidia/nemotron",
+                mode="orchestrator",
+                provider="openrouter",
+                tin=96941,
+                tout=3365,
+                cost=0.1234,
+            )
+        )
         await s.commit()
 
     from src.main import app
@@ -139,7 +172,9 @@ async def test_metrics_page_remembers_the_picked_period(client, db_session):
     from src.main import app
 
     def active(body):
-        return body.split('period-opt active" href="/app/metrics?period=')[1].split('"')[0]
+        return body.split('period-opt active" href="/app/metrics?period=')[1].split(
+            '"'
+        )[0]
 
     _override_web_user(app)
     try:
@@ -236,31 +271,55 @@ def _quality_msgs(**counts):
     msgs = [{"ts": 1, "type": "say", "say": "text", "text": "Do the thing"}]
     ts = 10
     for _ in range(counts.get("requests", 1)):
-        msgs.append({"ts": ts, "type": "say", "say": "api_req_started",
-                     "text": json.dumps({"tokensIn": 1000, "tokensOut": 100, "cost": 0.01})})
+        msgs.append(
+            {
+                "ts": ts,
+                "type": "say",
+                "say": "api_req_started",
+                "text": json.dumps({"tokensIn": 1000, "tokensOut": 100, "cost": 0.01}),
+            }
+        )
         ts += 10
     for _ in range(counts.get("errors", 0)):
         msgs.append({"ts": ts, "type": "say", "say": "error", "text": "boom"})
         ts += 10
     for _ in range(counts.get("retries", 0)):
-        msgs.append({"ts": ts, "type": "say", "say": "api_req_retry_delayed", "text": "waiting"})
+        msgs.append(
+            {"ts": ts, "type": "say", "say": "api_req_retry_delayed", "text": "waiting"}
+        )
         ts += 10
     for _ in range(counts.get("condense", 0)):
-        msgs.append({"ts": ts, "type": "say", "say": "condense_context",
-                     "contextCondense": {"summary": "s", "cost": 0.001}})
+        msgs.append(
+            {
+                "ts": ts,
+                "type": "say",
+                "say": "condense_context",
+                "contextCondense": {"summary": "s", "cost": 0.001},
+            }
+        )
         ts += 10
     for _ in range(counts.get("interventions", 0)):
         # Preceded by a request, so it is a mid-run correction, not a rejection.
         msgs.append({"ts": ts, "type": "say", "say": "api_req_started", "text": "{}"})
         ts += 10
-        msgs.append({"ts": ts, "type": "say", "say": "user_feedback", "text": "no, like this"})
+        msgs.append(
+            {"ts": ts, "type": "say", "say": "user_feedback", "text": "no, like this"}
+        )
         ts += 10
     for path in counts.get("tool_paths", []):
-        msgs.append({"ts": ts, "type": "say", "say": "tool",
-                     "text": json.dumps({"tool": "readFile", "path": path})})
+        msgs.append(
+            {
+                "ts": ts,
+                "type": "say",
+                "say": "tool",
+                "text": json.dumps({"tool": "readFile", "path": path}),
+            }
+        )
         ts += 10
     if counts.get("completed", True):
-        msgs.append({"ts": ts, "type": "say", "say": "completion_result", "text": "done"})
+        msgs.append(
+            {"ts": ts, "type": "say", "say": "completion_result", "text": "done"}
+        )
     return msgs
 
 
@@ -270,10 +329,18 @@ async def test_quality_counts_every_marker(client, db_session, session_factory):
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        await _backfill(client, "q-all", _quality_msgs(
-            requests=3, errors=2, retries=1, condense=1, interventions=2,
-            tool_paths=["a.py", "b.py", "a.py"],
-        ))
+        await _backfill(
+            client,
+            "q-all",
+            _quality_msgs(
+                requests=3,
+                errors=2,
+                retries=1,
+                condense=1,
+                interventions=2,
+                tool_paths=["a.py", "b.py", "a.py"],
+            ),
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -306,17 +373,41 @@ async def test_reply_to_a_finished_result_is_not_a_mid_run_correction(
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        await _backfill(client, "q-reject", [
-            {"ts": 1, "type": "say", "say": "text", "text": "Do it"},
-            {"ts": 2, "type": "say", "say": "api_req_started", "text": "{}"},
-            {"ts": 3, "type": "say", "say": "completion_result", "text": "All done"},
-            # No request/tool in between: the completion is still awaiting an answer.
-            {"ts": 4, "type": "say", "say": "user_feedback", "text": "no, it is not"},
-            {"ts": 5, "type": "say", "say": "api_req_started", "text": "{}"},
-            # This one follows a request, so it is an ordinary correction.
-            {"ts": 6, "type": "say", "say": "user_feedback", "text": "also change this"},
-            {"ts": 7, "type": "say", "say": "completion_result", "text": "Now done"},
-        ])
+        await _backfill(
+            client,
+            "q-reject",
+            [
+                {"ts": 1, "type": "say", "say": "text", "text": "Do it"},
+                {"ts": 2, "type": "say", "say": "api_req_started", "text": "{}"},
+                {
+                    "ts": 3,
+                    "type": "say",
+                    "say": "completion_result",
+                    "text": "All done",
+                },
+                # No request/tool in between: the completion is still awaiting an answer.
+                {
+                    "ts": 4,
+                    "type": "say",
+                    "say": "user_feedback",
+                    "text": "no, it is not",
+                },
+                {"ts": 5, "type": "say", "say": "api_req_started", "text": "{}"},
+                # This one follows a request, so it is an ordinary correction.
+                {
+                    "ts": 6,
+                    "type": "say",
+                    "say": "user_feedback",
+                    "text": "also change this",
+                },
+                {
+                    "ts": 7,
+                    "type": "say",
+                    "say": "completion_result",
+                    "text": "Now done",
+                },
+            ],
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -324,7 +415,9 @@ async def test_reply_to_a_finished_result_is_not_a_mid_run_correction(
         task = (await s.execute(select(Task).where(Task.id == "q-reject"))).scalar_one()
         q = quality_of(task)
 
-    assert q.completion_replies == 1, "a reply to an attempt_completion must be counted as one"
+    assert q.completion_replies == 1, (
+        "a reply to an attempt_completion must be counted as one"
+    )
     assert q.interventions == 1, "the mid-run correction must stay a correction"
 
 
@@ -366,7 +459,9 @@ async def test_grade_rules(client, db_session, session_factory):
     try:
         await _backfill(client, "g-clean", _quality_msgs(requests=2))
         await _backfill(client, "g-friction", _quality_msgs(requests=2, errors=1))
-        await _backfill(client, "g-unfinished", _quality_msgs(requests=2, completed=False))
+        await _backfill(
+            client, "g-unfinished", _quality_msgs(requests=2, completed=False)
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -388,7 +483,9 @@ async def test_grade_reasons_name_what_happened(client, db_session, session_fact
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        await _backfill(client, "g-why", _quality_msgs(requests=1, errors=2, condense=1))
+        await _backfill(
+            client, "g-why", _quality_msgs(requests=1, errors=2, condense=1)
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
@@ -400,7 +497,9 @@ async def test_grade_reasons_name_what_happened(client, db_session, session_fact
     assert "context condensed 1 time" in reasons
 
 
-async def test_resharing_does_not_inflate_quality_counts(client, db_session, session_factory):
+async def test_resharing_does_not_inflate_quality_counts(
+    client, db_session, session_factory
+):
     from src.services.session_quality import quality_of
 
     await _seed_user(db_session)
@@ -421,7 +520,9 @@ async def test_resharing_does_not_inflate_quality_counts(client, db_session, ses
     assert q.tools == 1
 
 
-async def test_quality_shows_on_list_detail_and_metrics(client, db_session, session_factory):
+async def test_quality_shows_on_list_detail_and_metrics(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
@@ -457,7 +558,9 @@ async def test_quality_overview_excludes_subtasks(client, db_session, session_fa
 
     async with session_factory() as s:
         await s.execute(
-            Task.__table__.update().where(Task.id == "qo-child").values(parent_task_id="qo-parent")
+            Task.__table__.update()
+            .where(Task.id == "qo-child")
+            .values(parent_task_id="qo-parent")
         )
         await s.commit()
 
@@ -485,19 +588,35 @@ async def test_replying_to_a_result_does_not_count_as_friction(
     await _seed_user(db_session)
     _override_current_user(client.app)
     try:
-        await _backfill(client, "q-followup", [
-            {"ts": 1, "type": "say", "say": "text", "text": "Do it"},
-            {"ts": 2, "type": "say", "say": "api_req_started", "text": "{}"},
-            {"ts": 3, "type": "say", "say": "completion_result", "text": "Done"},
-            {"ts": 4, "type": "say", "say": "user_feedback", "text": "great, now also add tests"},
-            {"ts": 5, "type": "say", "say": "api_req_started", "text": "{}"},
-            {"ts": 6, "type": "say", "say": "completion_result", "text": "Tests added"},
-        ])
+        await _backfill(
+            client,
+            "q-followup",
+            [
+                {"ts": 1, "type": "say", "say": "text", "text": "Do it"},
+                {"ts": 2, "type": "say", "say": "api_req_started", "text": "{}"},
+                {"ts": 3, "type": "say", "say": "completion_result", "text": "Done"},
+                {
+                    "ts": 4,
+                    "type": "say",
+                    "say": "user_feedback",
+                    "text": "great, now also add tests",
+                },
+                {"ts": 5, "type": "say", "say": "api_req_started", "text": "{}"},
+                {
+                    "ts": 6,
+                    "type": "say",
+                    "say": "completion_result",
+                    "text": "Tests added",
+                },
+            ],
+        )
     finally:
         client.app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "q-followup"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "q-followup"))
+        ).scalar_one()
         q = quality_of(task)
 
     assert q.completion_replies == 1

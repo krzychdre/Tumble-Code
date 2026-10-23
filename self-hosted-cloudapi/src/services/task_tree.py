@@ -69,7 +69,11 @@ async def record_relation(
         # which holds the same link (a task never changes parent).
         upsert_insert = dialect_insert(db)
         if upsert_insert is None:
-            db.add(TaskRelation(child_task_id=child, parent_task_id=parent, user_id=user_id))
+            db.add(
+                TaskRelation(
+                    child_task_id=child, parent_task_id=parent, user_id=user_id
+                )
+            )
             await db.flush()
         else:
             await db.execute(
@@ -132,7 +136,9 @@ async def link_pending_children(db: AsyncSession, parent_task_id: str) -> None:
     When the parent finally lands, claim them.
     """
     result = await db.execute(
-        select(TaskRelation.child_task_id).where(TaskRelation.parent_task_id == parent_task_id)
+        select(TaskRelation.child_task_id).where(
+            TaskRelation.parent_task_id == parent_task_id
+        )
     )
     children = [row[0] for row in result.all()]
     if not children:
@@ -207,7 +213,9 @@ async def subtrees(
         )
         frontier = []
         for child in level:
-            if child.id in parent_of or _is_at_or_above(parent_of, child.parent_task_id, child.id):
+            if child.id in parent_of or _is_at_or_above(
+                parent_of, child.parent_task_id, child.id
+            ):
                 continue
             parent_of[child.id] = child.parent_task_id
             tree.setdefault(child.parent_task_id, []).append(child)
@@ -215,7 +223,9 @@ async def subtrees(
     return tree
 
 
-def _is_at_or_above(parent_of: dict[str, str], task_id: Optional[str], candidate: str) -> bool:
+def _is_at_or_above(
+    parent_of: dict[str, str], task_id: Optional[str], candidate: str
+) -> bool:
     """Is ``candidate`` ``task_id`` itself or one of its ancestors so far?
 
     Terminates because ``parent_of`` never gains the edge that would close a

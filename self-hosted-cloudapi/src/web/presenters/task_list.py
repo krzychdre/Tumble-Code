@@ -25,7 +25,12 @@ from sqlalchemy.orm import aliased
 from src.models.task import Task
 from src.services.client_kind import CLIENT_LABELS, parse_client
 from src.services.model_attribution import split_models_label
-from src.services.session_quality import GRADE_CLEAN, GRADE_FRICTION, GRADE_LABELS, GRADE_UNFINISHED
+from src.services.session_quality import (
+    GRADE_CLEAN,
+    GRADE_FRICTION,
+    GRADE_LABELS,
+    GRADE_UNFINISHED,
+)
 from src.services.task_tree import subtrees
 from src.utils.clientzone import UTC, day_start_utc
 from src.utils.pagination import page_window
@@ -42,7 +47,16 @@ GRADES = (GRADE_CLEAN, GRADE_FRICTION, GRADE_UNFINISHED)
 
 # The order parameters appear in every URL this module writes, so the same
 # view always has the same URL.
-_FILTER_FIELDS = ("q", "project", "model", "client", "grade", "since", "until", "subtasks")
+_FILTER_FIELDS = (
+    "q",
+    "project",
+    "model",
+    "client",
+    "grade",
+    "since",
+    "until",
+    "subtasks",
+)
 
 _MAX_TEXT = 200
 
@@ -144,7 +158,9 @@ class ListView:
 
     def hidden_fields(self, *, keep_filters: bool = True) -> list[tuple[str, str]]:
         """Hidden inputs that make a form submission keep this view."""
-        return [(k, v) for k, v in self.params() if keep_filters or k not in _FILTER_FIELDS]
+        return [
+            (k, v) for k, v in self.params() if keep_filters or k not in _FILTER_FIELDS
+        ]
 
     def sort_url(self, key: str) -> str:
         """The header link for ``key``: flips the direction on the active
@@ -155,8 +171,13 @@ class ListView:
             direction = "desc"
         # Spelled out even when it is the default, so the header always says
         # which way it will sort.
-        base = [(k, v) for k, v in replace(self, sort=DEFAULT_SORT, dir=DEFAULT_DIR).params()]
-        return "/app?" + urlencode(base + [("sort", key), ("dir", direction)], quote_via=quote)
+        base = [
+            (k, v)
+            for k, v in replace(self, sort=DEFAULT_SORT, dir=DEFAULT_DIR).params()
+        ]
+        return "/app?" + urlencode(
+            base + [("sort", key), ("dir", direction)], quote_via=quote
+        )
 
     def scope_url(self, scope: str) -> str:
         """The same view (search, filters, sort) over the other scope."""
@@ -180,7 +201,15 @@ class ListView:
     def cleared_url(self) -> str:
         """Same scope and sort, no filters."""
         return replace(
-            self, q="", project="", model="", client="", grade="", since=None, until=None, subtasks=False
+            self,
+            q="",
+            project="",
+            model="",
+            client="",
+            grade="",
+            since=None,
+            until=None,
+            subtasks=False,
         ).url()
 
     def chips(self) -> list[dict]:
@@ -249,11 +278,15 @@ class ListView:
             out.append(Task.updated_at >= day_start_utc(self.since, zone))
         if self.until:
             # Inclusive: "to 30 May" keeps everything on the 30th.
-            out.append(Task.updated_at < day_start_utc(self.until + timedelta(days=1), zone))
+            out.append(
+                Task.updated_at < day_start_utc(self.until + timedelta(days=1), zone)
+            )
         if self.subtasks:
             child = aliased(Task)
             out.append(
-                exists().where(child.parent_task_id == Task.id, child.user_id == user_id)
+                exists().where(
+                    child.parent_task_id == Task.id, child.user_id == user_id
+                )
             )
         return out
 
@@ -314,7 +347,11 @@ def _run_totals(user_id: str):
     child = aliased(Task)
     members = members.union(
         select(members.c.run_id, child.id).join(
-            members, and_(child.parent_task_id == members.c.member_id, child.user_id == literal(user_id))
+            members,
+            and_(
+                child.parent_task_id == members.c.member_id,
+                child.user_id == literal(user_id),
+            ),
         )
     )
     member = aliased(Task)
@@ -330,7 +367,9 @@ def _run_totals(user_id: str):
     )
 
 
-async def list_page(db: AsyncSession, view: ListView, user_id: str, zone: ZoneInfo, page: int) -> dict:
+async def list_page(
+    db: AsyncSession, view: ListView, user_id: str, zone: ZoneInfo, page: int
+) -> dict:
     """The template context of one page of the list: its rows, the pager and
     the filter suggestions.
 
@@ -346,7 +385,9 @@ async def list_page(db: AsyncSession, view: ListView, user_id: str, zone: ZoneIn
     query = select(Task).where(*filters)
     if rollup is not None:
         query = query.outerjoin(rollup, rollup.c.run_id == Task.id)
-    result = await db.execute(query.order_by(*order).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE))
+    result = await db.execute(
+        query.order_by(*order).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE)
+    )
 
     page_tasks = list(result.scalars().all())
     # One query per tree level for the whole page rather than a lookup per row.
@@ -363,7 +404,9 @@ async def list_page(db: AsyncSession, view: ListView, user_id: str, zone: ZoneIn
         pages=page_window(page, page_count),
         total=total,
         # Shown on the scope toggle so the cost of switching is visible up front.
-        all_total=await db.scalar(select(func.count(Task.id)).where(Task.user_id == user_id)),
+        all_total=await db.scalar(
+            select(func.count(Task.id)).where(Task.user_id == user_id)
+        ),
         **await _filter_suggestions(db, user_id),
     )
 

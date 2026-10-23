@@ -52,7 +52,11 @@ def upgrade() -> None:
     # create_all path never exercises anyway.
     with op.batch_alter_table("tasks") as batch:
         batch.create_foreign_key(
-            "fk_tasks_parent_task_id", "tasks", ["parent_task_id"], ["id"], ondelete="SET NULL"
+            "fk_tasks_parent_task_id",
+            "tasks",
+            ["parent_task_id"],
+            ["id"],
+            ondelete="SET NULL",
         )
 
     _backfill()

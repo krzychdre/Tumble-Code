@@ -25,7 +25,11 @@ from config.settings import settings
     ],
 )
 def test_former_proxy_paths_return_404(client, method, path):
-    body = {"model": "openai/gpt-4o", "messages": [{"role": "user", "content": "hi"}], "prompt": "a cat"}
+    body = {
+        "model": "openai/gpt-4o",
+        "messages": [{"role": "user", "content": "hi"}],
+        "prompt": "a cat",
+    }
     response = client.request(method, path, json=body if method == "POST" else None)
     assert response.status_code == 404
 
@@ -33,7 +37,11 @@ def test_former_proxy_paths_return_404(client, method, path):
 def test_streaming_chat_completion_is_not_served(client):
     response = client.post(
         "/v1/chat/completions",
-        json={"model": "openai/gpt-4o", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+        json={
+            "model": "openai/gpt-4o",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": True,
+        },
     )
     assert response.status_code == 404
     assert "text/event-stream" not in response.headers.get("content-type", "")
@@ -41,7 +49,13 @@ def test_streaming_chat_completion_is_not_served(client):
 
 @pytest.mark.parametrize(
     "name",
-    ["default_llm_provider", "openai_api_key", "anthropic_api_key", "google_api_key", "xai_api_key"],
+    [
+        "default_llm_provider",
+        "openai_api_key",
+        "anthropic_api_key",
+        "google_api_key",
+        "xai_api_key",
+    ],
 )
 def test_proxy_only_settings_are_gone(name):
     # Settings uses extra="ignore", so a leftover OPENAI_API_KEY in an old .env

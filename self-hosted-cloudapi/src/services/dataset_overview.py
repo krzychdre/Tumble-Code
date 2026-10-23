@@ -26,7 +26,11 @@ RECENT_TASKS = 20
 
 
 async def dataset_overview(
-    db: AsyncSession, user_id: str, period: str, client: Optional[str] = None, zone: ZoneInfo = UTC
+    db: AsyncSession,
+    user_id: str,
+    period: str,
+    client: Optional[str] = None,
+    zone: ZoneInfo = UTC,
 ) -> dict:
     """The page's figures over ``period``; ``client`` ("vscode" or "cli") keeps
     what that client recorded, None both. The period starts at the reader's
@@ -51,7 +55,13 @@ async def dataset_overview(
         .group_by(LlmExchange.model_id, LlmExchange.provider, LlmExchange.issues)
     )
     models: dict[tuple, dict] = defaultdict(
-        lambda: {"exchanges": 0, "clean": 0, "strict": 0, "output_tokens": 0, "issues": Counter()}
+        lambda: {
+            "exchanges": 0,
+            "clean": 0,
+            "strict": 0,
+            "output_tokens": 0,
+            "issues": Counter(),
+        }
     )
     issues: Counter = Counter()
     totals = {"exchanges": 0, "clean": 0, "strict": 0, "wire": 0}
@@ -72,24 +82,39 @@ async def dataset_overview(
             issues[issue] += count
 
     model_rows = []
-    for (model_id, provider), row in sorted(models.items(), key=lambda item: -item[1]["exchanges"]):
+    for (model_id, provider), row in sorted(
+        models.items(), key=lambda item: -item[1]["exchanges"]
+    ):
         top = row["issues"].most_common(1)
-        model_rows.append({
-            "model": model_id,
-            "provider": provider,
-            "exchanges": row["exchanges"],
-            "clean": row["clean"],
-            "strict": row["strict"],
-            "clean_pct": round(100 * row["clean"] / row["exchanges"]) if row["exchanges"] else 0,
-            "output_tokens": row["output_tokens"],
-            "top_issue": ISSUE_LABELS.get(top[0][0], top[0][0]) if top else None,
-            "top_issue_count": top[0][1] if top else 0,
-        })
+        model_rows.append(
+            {
+                "model": model_id,
+                "provider": provider,
+                "exchanges": row["exchanges"],
+                "clean": row["clean"],
+                "strict": row["strict"],
+                "clean_pct": round(100 * row["clean"] / row["exchanges"])
+                if row["exchanges"]
+                else 0,
+                "output_tokens": row["output_tokens"],
+                "top_issue": ISSUE_LABELS.get(top[0][0], top[0][0]) if top else None,
+                "top_issue_count": top[0][1] if top else 0,
+            }
+        )
 
-    task_count = await db.scalar(select(func.count(func.distinct(LlmExchange.task_id))).where(*scope)) or 0
+    task_count = (
+        await db.scalar(
+            select(func.count(func.distinct(LlmExchange.task_id))).where(*scope)
+        )
+        or 0
+    )
     workspace_rows = (
         await db.execute(
-            select(LlmExchange.workspace_path, func.count(), func.count(func.distinct(LlmExchange.task_id)))
+            select(
+                LlmExchange.workspace_path,
+                func.count(),
+                func.count(func.distinct(LlmExchange.task_id)),
+            )
             .where(*scope)
             .group_by(LlmExchange.workspace_path)
             .order_by(func.count().desc())
@@ -102,16 +127,21 @@ async def dataset_overview(
         "totals": {**totals, "tasks": int(task_count)},
         "models": model_rows,
         "issues": [
-            {"key": key, "label": ISSUE_LABELS.get(key, key), "count": count} for key, count in issues.most_common()
+            {"key": key, "label": ISSUE_LABELS.get(key, key), "count": count}
+            for key, count in issues.most_common()
         ],
         "workspaces": [
-            {"path": path, "exchanges": count, "tasks": tasks} for path, count, tasks in workspace_rows if path
+            {"path": path, "exchanges": count, "tasks": tasks}
+            for path, count, tasks in workspace_rows
+            if path
         ],
         "recent": await recent_tasks(db, user_id, since, client),
     }
 
 
-async def recent_tasks(db: AsyncSession, user_id: str, since=None, client: Optional[str] = None) -> list[dict]:
+async def recent_tasks(
+    db: AsyncSession, user_id: str, since=None, client: Optional[str] = None
+) -> list[dict]:
     """The tasks recorded most recently, each with its title when the task is synced too."""
     query = (
         select(
@@ -131,16 +161,34 @@ async def recent_tasks(db: AsyncSession, user_id: str, since=None, client: Optio
         query = query.where(LlmExchange.client_kind == client)
     rows = (await db.execute(query)).all()
     ids = [row[0] for row in rows]
-    titles = dict(
-        (await db.execute(select(Task.id, Task.title).where(Task.id.in_(ids), Task.user_id == user_id))).all()
-    ) if ids else {}
+    titles = (
+        dict(
+            (
+                await db.execute(
+                    select(Task.id, Task.title).where(
+                        Task.id.in_(ids), Task.user_id == user_id
+                    )
+                )
+            ).all()
+        )
+        if ids
+        else {}
+    )
     return [
-        {"task_id": task_id, "last": last, "exchanges": count, "model": model, "title": titles.get(task_id)}
+        {
+            "task_id": task_id,
+            "last": last,
+            "exchanges": count,
+            "model": model,
+            "title": titles.get(task_id),
+        }
         for task_id, last, count, model in rows
     ]
 
 
-async def delete_recordings(db: AsyncSession, user_id: str, task_ids: Optional[list[str]] = None) -> int:
+async def delete_recordings(
+    db: AsyncSession, user_id: str, task_ids: Optional[list[str]] = None
+) -> int:
     """Delete the user's exchanges and blobs (all, or of the given tasks). Returns the exchanges removed."""
     exchanges = delete(LlmExchange).where(LlmExchange.user_id == user_id)
     blobs = delete(LlmBlob).where(LlmBlob.user_id == user_id)

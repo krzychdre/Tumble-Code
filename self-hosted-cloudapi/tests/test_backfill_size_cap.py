@@ -28,7 +28,9 @@ def _big_messages(size: int) -> list[dict]:
 def _multipart(task_id: str, messages: list[dict]) -> tuple[bytes, str]:
     """The exact multipart body and content type the test client would send."""
     files, data = _backfill_files(task_id, messages)
-    request = httpx.Request("POST", "http://testserver/api/events/backfill", files=files, data=data)
+    request = httpx.Request(
+        "POST", "http://testserver/api/events/backfill", files=files, data=data
+    )
     return request.read(), request.headers["content-type"]
 
 
@@ -64,7 +66,9 @@ async def test_upload_under_the_cap_is_stored(client, db_session, small_cap):
     assert resp.json() == {"status": "ok"}
 
 
-async def test_declared_length_over_the_cap_is_413(client, db_session, small_cap, no_backfill):
+async def test_declared_length_over_the_cap_is_413(
+    client, db_session, small_cap, no_backfill
+):
     await _seed_user(db_session)
     _override_current_user(client.app)
     files, data = _backfill_files("task-big", _big_messages(LIMIT * 2))
@@ -119,7 +123,9 @@ async def test_declared_length_over_the_cap_is_refused_before_reading_the_body(
     assert no_backfill == []
 
 
-async def test_streamed_body_over_the_cap_is_413(client, db_session, small_cap, no_backfill):
+async def test_streamed_body_over_the_cap_is_413(
+    client, db_session, small_cap, no_backfill
+):
     """No Content-Length (chunked upload): the bytes are counted as they arrive."""
     await _seed_user(db_session)
     _override_current_user(client.app)
@@ -158,8 +164,9 @@ async def test_streamed_body_under_the_cap_is_stored(client, db_session, small_c
 
     rows = (
         await db_session.execute(
-            select(TaskMessage.message_data).where(TaskMessage.task_id == "task-streamed")
+            select(TaskMessage.message_data).where(
+                TaskMessage.task_id == "task-streamed"
+            )
         )
     ).all()
     assert [json.loads(r[0]) for r in rows] == messages
-

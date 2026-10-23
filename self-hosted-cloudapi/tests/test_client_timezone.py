@@ -103,8 +103,18 @@ async def _seed_night(db_session):
     await _seed_user(db_session)
     db_session.add_all(
         [
-            _llm_event(task_id="night", tin=1000, tout=0, created_at=datetime(2026, 10, 4, 23, 30, tzinfo=timezone.utc)),
-            _llm_event(task_id="evening", tin=10, tout=0, created_at=datetime(2026, 10, 4, 21, 30, tzinfo=timezone.utc)),
+            _llm_event(
+                task_id="night",
+                tin=1000,
+                tout=0,
+                created_at=datetime(2026, 10, 4, 23, 30, tzinfo=timezone.utc),
+            ),
+            _llm_event(
+                task_id="evening",
+                tin=10,
+                tout=0,
+                created_at=datetime(2026, 10, 4, 21, 30, tzinfo=timezone.utc),
+            ),
         ]
     )
     await db_session.commit()
@@ -113,18 +123,27 @@ async def _seed_night(db_session):
 async def test_today_counts_the_local_night(db_session):
     await _seed_night(db_session)
 
-    local = await compute_user_metrics(db_session, "user_test", "today", now=NOW, zone=WARSAW)
+    local = await compute_user_metrics(
+        db_session, "user_test", "today", now=NOW, zone=WARSAW
+    )
     assert local["totals"]["input"] == 1000
 
-    utc = await compute_user_metrics(db_session, "user_test", "today", now=NOW, zone=UTC)
+    utc = await compute_user_metrics(
+        db_session, "user_test", "today", now=NOW, zone=UTC
+    )
     assert utc["totals"]["input"] == 0
 
 
 async def test_daily_buckets_are_local_days(db_session):
     await _seed_night(db_session)
 
-    local = await compute_user_metrics(db_session, "user_test", "all", now=NOW, zone=WARSAW)
-    assert [(d["day"], d["tokens"]) for d in local["by_day"]] == [("2026-10-04", 10), ("2026-10-05", 1000)]
+    local = await compute_user_metrics(
+        db_session, "user_test", "all", now=NOW, zone=WARSAW
+    )
+    assert [(d["day"], d["tokens"]) for d in local["by_day"]] == [
+        ("2026-10-04", 10),
+        ("2026-10-05", 1000),
+    ]
 
     utc = await compute_user_metrics(db_session, "user_test", "all", now=NOW, zone=UTC)
     assert [(d["day"], d["tokens"]) for d in utc["by_day"]] == [("2026-10-04", 1010)]
@@ -135,7 +154,13 @@ async def test_daily_buckets_are_local_days(db_session):
 
 def test_problem_reach_counts_local_days():
     def occurrence(stamp):
-        return Occurrence(source=SOURCE_TELEMETRY, category="index", tool=None, text="boom", when=stamp)
+        return Occurrence(
+            source=SOURCE_TELEMETRY,
+            category="index",
+            tool=None,
+            text="boom",
+            when=stamp,
+        )
 
     members = [
         occurrence(datetime(2026, 10, 4, 21, 30, tzinfo=timezone.utc)),
@@ -163,7 +188,9 @@ def _page(client, path, zone=None, **params):
     "cookie, rendered",
     [(None, "UTC"), ("Europe/Warsaw", "Europe/Warsaw"), ("Not/AZone", "UTC")],
 )
-async def test_pages_say_which_zone_they_were_computed_in(client, db_session, cookie, rendered):
+async def test_pages_say_which_zone_they_were_computed_in(
+    client, db_session, cookie, rendered
+):
     await _seed_user(db_session)
     body = _page(client, "/app/metrics", cookie).text
     assert f'<body data-tz="{rendered}">' in body
@@ -174,7 +201,9 @@ async def test_metrics_page_today_uses_the_cookie_zone(client, db_session, monke
 
     await _seed_night(db_session)
     real_today = metrics_service.today
-    monkeypatch.setattr(metrics_service, "today", lambda zone, now=None: real_today(zone, NOW))
+    monkeypatch.setattr(
+        metrics_service, "today", lambda zone, now=None: real_today(zone, NOW)
+    )
 
     warsaw = _page(client, "/app/metrics", "Europe/Warsaw", period="today").text
     utc = _page(client, "/app/metrics", None, period="today").text
@@ -187,11 +216,22 @@ async def test_task_list_dates_are_local_days(client, db_session, session_factor
     async with session_factory() as session:
         # 00:30 on 1 June in Warsaw, 31 May in UTC.
         stamp = datetime(2026, 5, 31, 22, 30, tzinfo=timezone.utc)
-        session.add(Task(id="night", user_id="user_test", title="Night", created_at=stamp, updated_at=stamp))
+        session.add(
+            Task(
+                id="night",
+                user_id="user_test",
+                title="Night",
+                created_at=stamp,
+                updated_at=stamp,
+            )
+        )
         await session.commit()
 
     def listed(zone, **params):
-        return 'name="task_ids" value="night"' in _page(client, "/app", zone, **params).text
+        return (
+            'name="task_ids" value="night"'
+            in _page(client, "/app", zone, **params).text
+        )
 
     assert listed("Europe/Warsaw", since="2026-06-01")
     assert not listed("Europe/Warsaw", until="2026-05-31")
@@ -208,23 +248,57 @@ def test_fmt_local_names_the_zone():
     stamp = datetime(2026, 10, 4, 23, 30)  # naive, as SQLite returns it
     assert fmt_local(stamp, WARSAW) == "2026-10-05 01:30 CEST"
     assert fmt_local(stamp, UTC) == "2026-10-04 23:30 UTC"
-    assert fmt_local(datetime(2026, 12, 1, 12, 0, tzinfo=timezone.utc), WARSAW) == "2026-12-01 13:00 CET"
+    assert (
+        fmt_local(datetime(2026, 12, 1, 12, 0, tzinfo=timezone.utc), WARSAW)
+        == "2026-12-01 13:00 CET"
+    )
 
 
 def test_problem_times_are_the_readers():
     stamp = datetime(2026, 10, 4, 23, 30, tzinfo=timezone.utc)
-    view = _group_view("sig", [Occurrence(source=SOURCE_TELEMETRY, category="index", tool=None, text="x", when=stamp)], zone=WARSAW)
-    assert view["first_seen"] == view["last_seen"] == view["sample"]["when"] == "2026-10-05 01:30 CEST"
+    view = _group_view(
+        "sig",
+        [
+            Occurrence(
+                source=SOURCE_TELEMETRY,
+                category="index",
+                tool=None,
+                text="x",
+                when=stamp,
+            )
+        ],
+        zone=WARSAW,
+    )
+    assert (
+        view["first_seen"]
+        == view["last_seen"]
+        == view["sample"]["when"]
+        == "2026-10-05 01:30 CEST"
+    )
 
 
 async def test_task_list_prints_local_times(client, db_session, session_factory):
     await _seed_user(db_session)
     async with session_factory() as session:
         stamp = datetime(2026, 5, 31, 22, 30, tzinfo=timezone.utc)
-        session.add(Task(id="night", user_id="user_test", title="Night", created_at=stamp, updated_at=stamp))
+        session.add(
+            Task(
+                id="night",
+                user_id="user_test",
+                title="Night",
+                created_at=stamp,
+                updated_at=stamp,
+            )
+        )
         await session.commit()
 
     warsaw = _page(client, "/app", "Europe/Warsaw").text
-    assert '<span class="cell-date" title="2026-06-01 00:30 CEST">2026-06-01 00:30</span>' in warsaw
+    assert (
+        '<span class="cell-date" title="2026-06-01 00:30 CEST">2026-06-01 00:30</span>'
+        in warsaw
+    )
     utc = _page(client, "/app", None).text
-    assert '<span class="cell-date" title="2026-05-31 22:30 UTC">2026-05-31 22:30</span>' in utc
+    assert (
+        '<span class="cell-date" title="2026-05-31 22:30 UTC">2026-05-31 22:30</span>'
+        in utc
+    )

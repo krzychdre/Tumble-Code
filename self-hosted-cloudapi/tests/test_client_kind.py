@@ -24,7 +24,12 @@ from src.services.metrics_service import compute_user_metrics
 from src.services.quality_overview import quality_overview
 from src.services.telemetry_service import upsert_task_message
 
-from tests.web_helpers import _llm_event, _override_current_user, _override_web_user, _seed_user
+from tests.web_helpers import (
+    _llm_event,
+    _override_current_user,
+    _override_web_user,
+    _seed_user,
+)
 
 CLI_EDITOR = "wrapper|cli|cli|0.2.0"
 
@@ -84,7 +89,11 @@ def _event(client, props, event_type="LLM Completion"):
 
 async def _events(session_factory):
     async with session_factory() as s:
-        rows = (await s.execute(select(TelemetryEvent.properties, TelemetryEvent.client_kind))).all()
+        rows = (
+            await s.execute(
+                select(TelemetryEvent.properties, TelemetryEvent.client_kind)
+            )
+        ).all()
     return {json.loads(props)["n"]: kind for props, kind in rows}
 
 
@@ -102,14 +111,22 @@ async def test_record_event_stamps_the_client(authed, db_session, session_factor
     _event(authed, {"n": 4, "editorName": "Visual Studio Code"})
     _event(authed, {"n": 5})
 
-    assert await _events(session_factory) == {1: "cli", 2: "vscode", 3: "cli", 4: "vscode", 5: "vscode"}
+    assert await _events(session_factory) == {
+        1: "cli",
+        2: "vscode",
+        3: "cli",
+        4: "vscode",
+        5: "vscode",
+    }
 
 
 def _message(ts=1):
     return {"ts": ts, "type": "say", "say": "text", "text": "hello"}
 
 
-async def test_a_bridge_task_turns_cli_with_its_first_cli_event(authed, db_session, session_factory):
+async def test_a_bridge_task_turns_cli_with_its_first_cli_event(
+    authed, db_session, session_factory
+):
     """The bridge creates the row from a message, which names no client."""
     await _seed_user(db_session)
     async with session_factory() as s:
@@ -128,7 +145,9 @@ async def test_a_bridge_task_turns_cli_with_its_first_cli_event(authed, db_sessi
     assert await _task_client(session_factory, "t-bridge") == "cli"
 
 
-async def test_a_task_created_after_its_cli_events_is_the_clis(authed, db_session, session_factory):
+async def test_a_task_created_after_its_cli_events_is_the_clis(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
     _event(authed, {"n": 1, "taskId": "t-late", "editorName": CLI_EDITOR})
 
@@ -139,12 +158,21 @@ async def test_a_task_created_after_its_cli_events_is_the_clis(authed, db_sessio
     assert await _task_client(session_factory, "t-late") == "cli"
 
 
-async def test_another_users_cli_event_does_not_touch_the_task(authed, db_session, session_factory):
+async def test_another_users_cli_event_does_not_touch_the_task(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_user(db_session, user_id="user_other", email="o@example.com")
     async with session_factory() as s:
         await upsert_task_message(s, "t-mine", "user_test", _message())
-        s.add(TelemetryEvent(user_id="user_other", event_type="Task Created", task_id="t-late2", client_kind="cli"))
+        s.add(
+            TelemetryEvent(
+                user_id="user_other",
+                event_type="Task Created",
+                task_id="t-late2",
+                client_kind="cli",
+            )
+        )
         await s.commit()
     _override_current_user(authed.app, user_id="user_other")
 
@@ -170,7 +198,9 @@ def _backfill(client, task_id, properties):
 async def test_a_backfill_names_the_tasks_client(authed, db_session, session_factory):
     await _seed_user(db_session)
 
-    _backfill(authed, "t-cli", json.dumps({"clientKind": "cli", "editorName": CLI_EDITOR}))
+    _backfill(
+        authed, "t-cli", json.dumps({"clientKind": "cli", "editorName": CLI_EDITOR})
+    )
     _backfill(authed, "t-old-cli", json.dumps({"editorName": CLI_EDITOR}))
     _backfill(authed, "t-code", json.dumps({"editorName": "Visual Studio Code"}))
     _backfill(authed, "t-none", "{}")
@@ -203,11 +233,15 @@ def _report(report_id, **fields):
     }
 
 
-async def test_error_reports_are_stamped_and_take_the_new_fields(authed, db_session, session_factory):
+async def test_error_reports_are_stamped_and_take_the_new_fields(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
 
     for body in (
-        _report("r-cli", clientKind="cli", clientVersion="0.2.0", editorName=CLI_EDITOR),
+        _report(
+            "r-cli", clientKind="cli", clientVersion="0.2.0", editorName=CLI_EDITOR
+        ),
         _report("r-old-cli", editorName=CLI_EDITOR),
         _report("r-code", clientKind="vscode", editorName="Visual Studio Code"),
         _report("r-none"),
@@ -258,7 +292,9 @@ def _exchange(exchange_id, **fields):
     }
 
 
-async def test_llm_exchanges_are_stamped_and_take_the_new_fields(authed, db_session, session_factory):
+async def test_llm_exchanges_are_stamped_and_take_the_new_fields(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
     db_session.add(DatasetSettings(user_id="user_test", recording_enabled=True))
     await db_session.commit()
@@ -277,8 +313,15 @@ async def test_llm_exchanges_are_stamped_and_take_the_new_fields(authed, db_sess
         assert resp.json()["stored"] is True, resp.text
 
     async with session_factory() as s:
-        rows = {r.id: r.client_kind for r in (await s.scalars(select(LlmExchange))).all()}
-    assert rows == {"ex-cli": "cli", "ex-old-cli": "cli", "ex-code": "vscode", "ex-odd": "vscode"}
+        rows = {
+            r.id: r.client_kind for r in (await s.scalars(select(LlmExchange))).all()
+        }
+    assert rows == {
+        "ex-cli": "cli",
+        "ex-old-cli": "cli",
+        "ex-code": "vscode",
+        "ex-odd": "vscode",
+    }
 
 
 # --- the metrics page -------------------------------------------------------------
@@ -288,9 +331,20 @@ async def _seed_two_clients(db_session):
     await _seed_user(db_session)
     db_session.add_all(
         [
-            _llm_event(model="code-model", task_id="t-code", tin=1000, tout=0, cost=0.5),
-            _llm_event(model="code-model", task_id="t-code", tin=1000, tout=0, cost=0.5),
-            _llm_event(model="cli-model", task_id="t-cli", tin=300, tout=0, cost=0.25, client_kind="cli"),
+            _llm_event(
+                model="code-model", task_id="t-code", tin=1000, tout=0, cost=0.5
+            ),
+            _llm_event(
+                model="code-model", task_id="t-code", tin=1000, tout=0, cost=0.5
+            ),
+            _llm_event(
+                model="cli-model",
+                task_id="t-cli",
+                tin=300,
+                tout=0,
+                cost=0.25,
+                client_kind="cli",
+            ),
             TelemetryEvent(
                 user_id="user_test",
                 event_type="Embedding Usage",
@@ -298,8 +352,21 @@ async def _seed_two_clients(db_session):
                 properties=json.dumps({"promptTokens": 70, "source": "index-scan"}),
                 created_at=datetime.now(timezone.utc),
             ),
-            Task(id="t-code", user_id="user_test", title="Code run", q_requests=1, q_errors=3),
-            Task(id="t-cli", user_id="user_test", title="CLI run", client_kind="cli", q_requests=1, q_errors=4),
+            Task(
+                id="t-code",
+                user_id="user_test",
+                title="Code run",
+                q_requests=1,
+                q_errors=3,
+            ),
+            Task(
+                id="t-cli",
+                user_id="user_test",
+                title="CLI run",
+                client_kind="cli",
+                q_requests=1,
+                q_errors=4,
+            ),
         ]
     )
     await db_session.commit()
@@ -310,19 +377,25 @@ async def test_metrics_filter_and_break_down_by_client(db_session):
 
     both = await compute_user_metrics(db_session, "user_test", period="all")
     assert both["totals"]["completions"] == 3
-    assert [(r["name"], r["label"], r["tokens"], r["count"]) for r in both["by_client"]] == [
+    assert [
+        (r["name"], r["label"], r["tokens"], r["count"]) for r in both["by_client"]
+    ] == [
         ("vscode", "VS Code", 2000, 2),
         ("cli", "CLI", 300, 1),
     ]
     assert both["embeddings"]["tokens"] == 70
 
-    cli = await compute_user_metrics(db_session, "user_test", period="all", client="cli")
+    cli = await compute_user_metrics(
+        db_session, "user_test", period="all", client="cli"
+    )
     assert cli["totals"]["completions"] == 1
     assert [r["name"] for r in cli["by_model"]] == ["cli-model"]
     assert [r["name"] for r in cli["by_client"]] == ["cli"]
     assert cli["embeddings"]["tokens"] == 70
 
-    code = await compute_user_metrics(db_session, "user_test", period="all", client="vscode")
+    code = await compute_user_metrics(
+        db_session, "user_test", period="all", client="vscode"
+    )
     assert code["totals"]["completions"] == 2
     assert code["embeddings"]["has_data"] is False
 
@@ -336,7 +409,9 @@ async def test_quality_overview_follows_the_client_filter(db_session):
     assert [r["title"] for r in cli["roughest"]] == ["CLI run"]
 
 
-async def test_metrics_page_client_filter_keeps_itself_on_every_link(client, db_session):
+async def test_metrics_page_client_filter_keeps_itself_on_every_link(
+    client, db_session
+):
     await _seed_two_clients(db_session)
     _override_web_user(client.app)
     try:
@@ -348,7 +423,9 @@ async def test_metrics_page_client_filter_keeps_itself_on_every_link(client, db_
 
     # The filter picks the CLI's figures and marks its option.
     assert "cli-model" in body and "code-model" not in body
-    assert 'period-opt active" href="/app/metrics?period=30d&amp;client=cli">CLI<' in body
+    assert (
+        'period-opt active" href="/app/metrics?period=30d&amp;client=cli">CLI<' in body
+    )
     # The period links carry the client; the client links carry the period.
     assert 'href="/app/metrics?period=7d&amp;client=cli"' in body
     assert 'href="/app/metrics?period=30d&amp;client=vscode">VS Code<' in body
@@ -357,5 +434,7 @@ async def test_metrics_page_client_filter_keeps_itself_on_every_link(client, db_
     assert "By client" in everything
     assert ">VS Code</td>" in everything and ">CLI</td>" in everything
     # No filter: both, with "All clients" active; an unknown value is no filter.
-    assert 'period-opt active" href="/app/metrics?period=30d">All clients<' in everything
+    assert (
+        'period-opt active" href="/app/metrics?period=30d">All clients<' in everything
+    )
     assert "cli-model" in bogus and "code-model" in bogus

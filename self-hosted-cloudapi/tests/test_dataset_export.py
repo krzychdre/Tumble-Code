@@ -19,21 +19,38 @@ from src.models.user import User
 
 from tests.web_helpers import _override_current_user, _override_web_user
 
-FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "llm_exchanges_recorder.json").read_text())
+FIXTURE = json.loads(
+    (Path(__file__).parent / "fixtures" / "llm_exchanges_recorder.json").read_text()
+)
 IDS = [item["body"]["id"] for item in FIXTURE["exchanges"]]
 
 
 def _post(client, path, body):
     data = gzip.compress(json.dumps(body).encode())
-    return client.post(path, content=data, headers={"Content-Type": "application/json", "Content-Encoding": "gzip"})
+    return client.post(
+        path,
+        content=data,
+        headers={"Content-Type": "application/json", "Content-Encoding": "gzip"},
+    )
 
 
 @pytest.fixture
 async def recorded(client, db_session):
-    db_session.add(User(id="user_test", authentik_id="ak_user_test", email="alice@acme.com",
-                        first_name="Alice", last_name="Smith"))
+    db_session.add(
+        User(
+            id="user_test",
+            authentik_id="ak_user_test",
+            email="alice@acme.com",
+            first_name="Alice",
+            last_name="Smith",
+        )
+    )
     await db_session.commit()
-    db_session.add(DatasetSettings(user_id="user_test", recording_enabled=True, anonymize_terms="Globex"))
+    db_session.add(
+        DatasetSettings(
+            user_id="user_test", recording_enabled=True, anonymize_terms="Globex"
+        )
+    )
     await db_session.commit()
     _override_current_user(client.app)
     for item in FIXTURE["exchanges"]:
@@ -69,16 +86,37 @@ def test_turns_hold_one_sample_per_clean_answer(recorded):
         "role": "assistant",
         "content": "Reading the login code.",
         "reasoning_content": "The bug is probably in login.ts.",
-        "tool_calls": [{"id": "call_1", "type": "function", "function": {
-            "name": "read_file", "arguments": '{"path": "/home/alice/work/acme-portal/src/login.ts"}'}}],
+        "tool_calls": [
+            {
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "read_file",
+                    "arguments": '{"path": "/home/alice/work/acme-portal/src/login.ts"}',
+                },
+            }
+        ],
         "weight": 1,
     }
     last = samples[-1]["messages"]
     roles = [m["role"] for m in last]
-    assert roles == ["system", "user", "assistant", "tool", "user", "assistant", "tool", "assistant"]
+    assert roles == [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "user",
+        "assistant",
+        "tool",
+        "assistant",
+    ]
     assert [m.get("weight") for m in last if m["role"] == "assistant"] == [0, 0, 1]
     tool_message = last[3]
-    assert tool_message == {"role": "tool", "tool_call_id": "call_1", "content": "[Old tool result content cleared]"}
+    assert tool_message == {
+        "role": "tool",
+        "tool_call_id": "call_1",
+        "content": "[Old tool result content cleared]",
+    }
 
 
 def test_strict_leaves_out_the_failing_tool_and_reasoning_can_be_left_out(recorded):
@@ -105,10 +143,15 @@ def test_trajectories_train_on_the_clean_answers_of_one_run(recorded):
     assistants = [m for m in first if m["role"] == "assistant"]
     assert [m["weight"] for m in assistants] == [1, 1]
     # The earlier answer is the exact one (raw arguments), not the history's re-serialization.
-    assert assistants[0]["tool_calls"][0]["function"]["arguments"] == '{"path": "/home/alice/work/acme-portal/src/login.ts"}'
+    assert (
+        assistants[0]["tool_calls"][0]["function"]["arguments"]
+        == '{"path": "/home/alice/work/acme-portal/src/login.ts"}'
+    )
     assert first[-1]["role"] == "assistant"
 
-    strict = _export(recorded, format="trajectories", anonymize="0", metadata="1", strict="1")
+    strict = _export(
+        recorded, format="trajectories", anonymize="0", metadata="1", strict="1"
+    )
     assert [s["metadata"]["trained"] for s in strict] == [[IDS[0]], [IDS[4]]]
     # The failing call stays out of training: the run ends at the last clean answer.
     assert strict[0]["messages"][-1]["tool_calls"][0]["id"] == "call_1"
@@ -117,7 +160,14 @@ def test_trajectories_train_on_the_clean_answers_of_one_run(recorded):
 def test_the_export_is_anonymized_by_default(recorded):
     text = "\n".join(json.dumps(s, ensure_ascii=False) for s in _export(recorded))
 
-    for leaked in ("alice", "Alice", "acme-portal", "sk-proj-", "/home/alice", "alice@acme.com"):
+    for leaked in (
+        "alice",
+        "Alice",
+        "acme-portal",
+        "sk-proj-",
+        "/home/alice",
+        "alice@acme.com",
+    ):
         assert leaked not in text, leaked
     assert "/workspace/project1/src/login.ts" in text
     assert "[REDACTED_SECRET]" in text
@@ -160,7 +210,11 @@ def test_the_page_counts_and_offers_the_export(recorded):
 
 
 async def test_the_switch_and_the_terms_are_saved(recorded, session_factory):
-    resp = recorded.post("/app/dataset/settings", data={"terms": " Globex \n\nInitech\n"}, follow_redirects=False)
+    resp = recorded.post(
+        "/app/dataset/settings",
+        data={"terms": " Globex \n\nInitech\n"},
+        follow_redirects=False,
+    )
 
     assert resp.status_code == 303
     async with session_factory() as s:

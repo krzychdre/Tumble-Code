@@ -62,7 +62,9 @@ async def dataset_page(
     db = web["db"]
     period = _period(period)
     picked = parse_client(client)
-    overview = await dataset_overview(db, web["user"]["user_id"], period, picked, zone=web["zone"])
+    overview = await dataset_overview(
+        db, web["user"]["user_id"], period, picked, zone=web["zone"]
+    )
     settings_row = await read_dataset_settings(db, web["user"]["user_id"])
     return render_page(
         request,

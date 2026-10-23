@@ -95,7 +95,9 @@ async def test_metrics_aggregation_runs_off_the_loop(db_session, monkeypatch):
     db_session.add(_llm_event())
     await db_session.commit()
 
-    result = await metrics_service.compute_user_metrics(db_session, "user_test", period="all")
+    result = await metrics_service.compute_user_metrics(
+        db_session, "user_test", period="all"
+    )
 
     assert result["totals"]["completions"] == 1
     assert len(calls) == 1

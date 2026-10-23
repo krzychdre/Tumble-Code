@@ -45,7 +45,11 @@ def run_migrations_offline():
 
 def do_run_migrations(connection):
     """Run migrations with a given connection."""
-    context.configure(connection=connection, target_metadata=target_metadata, include_name=include_name)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_name=include_name,
+    )
     with context.begin_transaction():
         context.run_migrations()
 

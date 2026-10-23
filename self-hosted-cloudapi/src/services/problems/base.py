@@ -55,7 +55,9 @@ MESSAGE_KEYS = ("errorMessage", "error")
 # but are left out of the model fit table, where they would read as the chat
 # model's fault (1743 code-index errors against "openai (unknown)" on the live
 # deployment).
-NOT_MODEL_CATEGORIES = frozenset({"code_index", "shell_integration", "settings_invalid", "model_list_empty"})
+NOT_MODEL_CATEGORIES = frozenset(
+    {"code_index", "shell_integration", "settings_invalid", "model_list_empty"}
+)
 
 UNKNOWN_MODEL = "(unknown)"
 MAX_GROUPS = 60
@@ -119,4 +121,4 @@ def prop_text(props: dict, keys: Sequence[str]) -> str:
 
 def chunks(items: list, size: int = IN_CHUNK) -> Iterable[list]:
     for start in range(0, len(items), size):
-        yield items[start:start + size]
+        yield items[start : start + size]

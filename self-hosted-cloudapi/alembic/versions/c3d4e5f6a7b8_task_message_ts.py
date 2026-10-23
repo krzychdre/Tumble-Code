@@ -27,9 +27,7 @@ def upgrade() -> None:
         "task_messages",
         sa.Column("message_ts", sa.BigInteger(), nullable=True),
     )
-    op.create_index(
-        "ix_task_messages_message_ts", "task_messages", ["message_ts"]
-    )
+    op.create_index("ix_task_messages_message_ts", "task_messages", ["message_ts"])
 
 
 def downgrade() -> None:

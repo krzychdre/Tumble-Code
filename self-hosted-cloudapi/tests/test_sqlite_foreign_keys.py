@@ -39,8 +39,13 @@ async def test_on_delete_rules_apply_like_postgres(db_session):
     """``ON DELETE SET NULL`` on ``tasks.parent_task_id`` and ``ON DELETE CASCADE``
     on ``task_messages.task_id`` both fire when the parent row goes away."""
     db_session.add(
-        User(id="u1", authentik_id="ak_u1", email="u1@example.com",
-             first_name="U", last_name="One")
+        User(
+            id="u1",
+            authentik_id="ak_u1",
+            email="u1@example.com",
+            first_name="U",
+            last_name="One",
+        )
     )
     # One flush per level: no ORM relationship orders these inserts.
     await db_session.flush()
@@ -55,7 +60,9 @@ async def test_on_delete_rules_apply_like_postgres(db_session):
     await db_session.commit()
     db_session.expire_all()
 
-    child = (await db_session.execute(select(Task).where(Task.id == "child"))).scalar_one()
+    child = (
+        await db_session.execute(select(Task).where(Task.id == "child"))
+    ).scalar_one()
     assert child.parent_task_id is None
     remaining = (await db_session.execute(select(TaskMessage))).scalars().all()
     assert remaining == []

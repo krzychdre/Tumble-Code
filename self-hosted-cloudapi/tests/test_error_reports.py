@@ -53,7 +53,13 @@ def _report(**overrides):
         "response": {
             "text": "",
             "reasoning": "I will edit the file.",
-            "toolCalls": [{"id": "call_1", "name": "apply_diff", "arguments": '{"diff": "<<<<<<< SEARCH"}'}],
+            "toolCalls": [
+                {
+                    "id": "call_1",
+                    "name": "apply_diff",
+                    "arguments": '{"diff": "<<<<<<< SEARCH"}',
+                }
+            ],
             "stopReason": "tool_calls",
             "usage": {"inputTokens": 131072, "outputTokens": 120},
         },
@@ -80,24 +86,36 @@ async def _reports(session_factory):
 
 def test_a_report_needs_the_bearer_token(client):
     assert client.post("/api/error-reports", json=_report()).status_code == 401
-    bad = client.post("/api/error-reports", json=_report(), headers={"Authorization": "Bearer garbage"})
+    bad = client.post(
+        "/api/error-reports",
+        json=_report(),
+        headers={"Authorization": "Bearer garbage"},
+    )
     assert bad.status_code == 401
 
 
-async def test_a_session_token_is_accepted_like_on_the_events_endpoint(client, db_session, session_factory):
+async def test_a_session_token_is_accepted_like_on_the_events_endpoint(
+    client, db_session, session_factory
+):
     from src.auth.jwt_issuer import issue_session_token
 
     await _seed_user(db_session)
     token = issue_session_token("user_test", None)
 
-    resp = client.post("/api/error-reports", json=_report(), headers={"Authorization": f"Bearer {token}"})
+    resp = client.post(
+        "/api/error-reports",
+        json=_report(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
 
     assert resp.status_code == 200
     [row] = await _reports(session_factory)
     assert row.user_id == "user_test"
 
 
-async def test_a_report_is_stored_with_its_columns_and_payload(authed, db_session, session_factory):
+async def test_a_report_is_stored_with_its_columns_and_payload(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
 
     resp = authed.post("/api/error-reports", json=_report())
@@ -106,23 +124,51 @@ async def test_a_report_is_stored_with_its_columns_and_payload(authed, db_sessio
     assert resp.json() == {"success": True}
     [row] = await _reports(session_factory)
     assert row.user_id == "user_test"
-    assert (row.category, row.tool_name, row.model_id, row.provider, row.mode, row.task_id) == (
-        "invalid_tool_call", "apply_diff", "GLM-5.3-Flash-NVFP4", "openai", "code", "task-1",
+    assert (
+        row.category,
+        row.tool_name,
+        row.model_id,
+        row.provider,
+        row.mode,
+        row.task_id,
+    ) == (
+        "invalid_tool_call",
+        "apply_diff",
+        "GLM-5.3-Flash-NVFP4",
+        "openai",
+        "code",
+        "task-1",
     )
     assert row.signature == (
         "invalid_tool_call | apply_diff | "
         "Roo tried to use apply_diff without value for required parameter 'path'. Retrying..."
     )
-    occurred = row.occurred_at if row.occurred_at.tzinfo else row.occurred_at.replace(tzinfo=timezone.utc)
+    occurred = (
+        row.occurred_at
+        if row.occurred_at.tzinfo
+        else row.occurred_at.replace(tzinfo=timezone.utc)
+    )
     assert occurred == datetime.fromtimestamp(NOW_MS / 1000, tz=timezone.utc)
     payload = json.loads(row.payload)
-    assert payload["request"]["messages"][1] == {"role": "assistant", "content": "Reading the file."}
-    assert payload["response"]["toolCalls"][0]["arguments"] == '{"diff": "<<<<<<< SEARCH"}'
+    assert payload["request"]["messages"][1] == {
+        "role": "assistant",
+        "content": "Reading the file.",
+    }
+    assert (
+        payload["response"]["toolCalls"][0]["arguments"] == '{"diff": "<<<<<<< SEARCH"}'
+    )
 
 
-async def test_only_the_four_required_fields_are_required(authed, db_session, session_factory):
+async def test_only_the_four_required_fields_are_required(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
-    minimal = {"id": "r-min", "occurredAt": NOW_MS, "category": "api_error", "summary": "Connection error."}
+    minimal = {
+        "id": "r-min",
+        "occurredAt": NOW_MS,
+        "category": "api_error",
+        "summary": "Connection error.",
+    }
 
     assert authed.post("/api/error-reports", json=minimal).status_code == 200
 
@@ -132,7 +178,9 @@ async def test_only_the_four_required_fields_are_required(authed, db_session, se
     assert json.loads(row.payload) == minimal
 
 
-async def test_a_duplicate_id_is_a_success_without_a_second_row(authed, db_session, session_factory):
+async def test_a_duplicate_id_is_a_success_without_a_second_row(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
 
     first = authed.post("/api/error-reports", json=_report())
@@ -144,7 +192,9 @@ async def test_a_duplicate_id_is_a_success_without_a_second_row(authed, db_sessi
     assert row.summary.startswith("Roo tried to use apply_diff")
 
 
-async def test_unknown_fields_are_ignored_and_unknown_categories_kept(authed, db_session, session_factory):
+async def test_unknown_fields_are_ignored_and_unknown_categories_kept(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
     body = _report(category="quota_exhausted", futureField={"x": 1})
     body["response"]["futureNested"] = True
@@ -174,7 +224,9 @@ async def test_unknown_fields_are_ignored_and_unknown_categories_kept(authed, db
         {"contextWindow": "big"},
     ],
 )
-async def test_a_report_outside_the_contract_is_refused(authed, db_session, session_factory, change):
+async def test_a_report_outside_the_contract_is_refused(
+    authed, db_session, session_factory, change
+):
     await _seed_user(db_session)
     body = _report()
     for key, value in change.items():
@@ -191,21 +243,31 @@ async def test_a_report_outside_the_contract_is_refused(authed, db_session, sess
 
 async def test_a_body_that_is_not_json_is_refused(authed, db_session):
     await _seed_user(db_session)
-    resp = authed.post("/api/error-reports", content=b"{not json", headers={"content-type": "application/json"})
+    resp = authed.post(
+        "/api/error-reports",
+        content=b"{not json",
+        headers={"content-type": "application/json"},
+    )
     assert resp.status_code == 422
 
 
-async def test_a_body_over_a_megabyte_is_refused_with_413(authed, db_session, session_factory):
+async def test_a_body_over_a_megabyte_is_refused_with_413(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
     body = json.dumps(_report(response={"text": "x" * (1024 * 1024)})).encode()
 
-    resp = authed.post("/api/error-reports", content=body, headers={"content-type": "application/json"})
+    resp = authed.post(
+        "/api/error-reports", content=body, headers={"content-type": "application/json"}
+    )
 
     assert resp.status_code == 413
     assert await _reports(session_factory) == []
 
 
-async def test_nothing_is_stored_when_the_deployment_takes_no_telemetry(authed, db_session, session_factory, monkeypatch):
+async def test_nothing_is_stored_when_the_deployment_takes_no_telemetry(
+    authed, db_session, session_factory, monkeypatch
+):
     from config.settings import settings
 
     await _seed_user(db_session)

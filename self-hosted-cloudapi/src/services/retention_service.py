@@ -188,7 +188,11 @@ async def plan_sweep(
         if cutoff is not None and updated_at is not None:
             # Rows can come back naive from SQLite; compare like with like
             # rather than raising on the first task the sweep looks at.
-            stamp = updated_at if updated_at.tzinfo else updated_at.replace(tzinfo=timezone.utc)
+            stamp = (
+                updated_at
+                if updated_at.tzinfo
+                else updated_at.replace(tzinfo=timezone.utc)
+            )
             if stamp < cutoff:
                 reason = f"older than {policy.max_age_days} days"
         if reason is None and policy.max_tasks and index >= policy.max_tasks:
@@ -203,28 +207,35 @@ async def plan_sweep(
 
     if plan.task_ids:
         counted = await db.execute(
-            _count_and_size(TaskMessage.id, TaskMessage.message_data, measure_size)
-            .where(TaskMessage.task_id.in_(plan.task_ids))
+            _count_and_size(
+                TaskMessage.id, TaskMessage.message_data, measure_size
+            ).where(TaskMessage.task_id.in_(plan.task_ids))
         )
         plan.message_count, plan.message_bytes = counted.one()
         if measure_size:
             # The images the messages point to go with them (delete_tasks),
             # and can outweigh the text.
-            plan.message_bytes += await db.scalar(
-                select(func.coalesce(func.sum(TaskImage.size), 0))
-                .where(TaskImage.task_id.in_(plan.task_ids))
-            ) or 0
+            plan.message_bytes += (
+                await db.scalar(
+                    select(func.coalesce(func.sum(TaskImage.size), 0)).where(
+                        TaskImage.task_id.in_(plan.task_ids)
+                    )
+                )
+                or 0
+            )
 
     if policy.purge_telemetry and policy.telemetry_max_age_days:
         event_cutoff = now - timedelta(days=policy.telemetry_max_age_days)
         counted = await db.execute(
-            _count_and_size(TelemetryEvent.id, TelemetryEvent.properties, measure_size)
-            .where(*_telemetry_filters(user_id, event_cutoff))
+            _count_and_size(
+                TelemetryEvent.id, TelemetryEvent.properties, measure_size
+            ).where(*_telemetry_filters(user_id, event_cutoff))
         )
         plan.event_count, plan.event_bytes = counted.one()
         counted = await db.execute(
-            _count_and_size(ErrorReport.id, ErrorReport.payload, measure_size)
-            .where(*_report_filters(user_id, event_cutoff))
+            _count_and_size(ErrorReport.id, ErrorReport.payload, measure_size).where(
+                *_report_filters(user_id, event_cutoff)
+            )
         )
         plan.report_count, report_bytes = counted.one()
         plan.event_count += plan.report_count
@@ -286,8 +297,12 @@ async def apply_sweep(
 
     if plan.event_count and policy.purge_telemetry and policy.telemetry_max_age_days:
         event_cutoff = now - timedelta(days=policy.telemetry_max_age_days)
-        await db.execute(delete(TelemetryEvent).where(*_telemetry_filters(user_id, event_cutoff)))
-        await db.execute(delete(ErrorReport).where(*_report_filters(user_id, event_cutoff)))
+        await db.execute(
+            delete(TelemetryEvent).where(*_telemetry_filters(user_id, event_cutoff))
+        )
+        await db.execute(
+            delete(ErrorReport).where(*_report_filters(user_id, event_cutoff))
+        )
 
     policy.last_run_at = now
     policy.last_deleted_tasks = plan.task_count

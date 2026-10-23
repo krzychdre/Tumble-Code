@@ -58,14 +58,18 @@ def _inflate(body: bytes, encoding: str) -> bytes:
     if encoding in ("", "identity"):
         return body
     if encoding != "gzip":
-        raise HTTPException(status_code=415, detail=f"Unsupported Content-Encoding: {encoding}")
+        raise HTTPException(
+            status_code=415, detail=f"Unsupported Content-Encoding: {encoding}"
+        )
     inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
     try:
         data = inflater.decompress(body, MAX_INFLATED_BYTES)
     except zlib.error:
         raise HTTPException(status_code=400, detail="Body is not valid gzip")
     if inflater.unconsumed_tail:
-        raise HTTPException(status_code=413, detail=f"Body inflates past {MAX_INFLATED_BYTES} bytes")
+        raise HTTPException(
+            status_code=413, detail=f"Body inflates past {MAX_INFLATED_BYTES} bytes"
+        )
     return data
 
 
@@ -82,7 +86,9 @@ def _parse(body: bytes, encoding: str, model: type[BaseModel]):
     try:
         return raw, model.model_validate(raw)
     except ValidationError as exc:
-        raise RequestValidationError(exc.errors(include_url=False, include_context=False))
+        raise RequestValidationError(
+            exc.errors(include_url=False, include_context=False)
+        )
 
 
 async def _read(request: Request, model: type[BaseModel]):
@@ -122,9 +128,13 @@ async def record_llm_exchange_endpoint(
     # chain begun on another account) cannot be rebuilt: it is stored, marked
     # incomplete by the reconstruction, and the extension is asked to send a
     # full snapshot next.
-    resnapshot = bool(exchange.base_id) and not await base_exists(db, user_id, exchange.base_id)
+    resnapshot = bool(exchange.base_id) and not await base_exists(
+        db, user_id, exchange.base_id
+    )
     try:
-        stored = await record_exchange(db, user_id, current_user.get("org_id"), raw, exchange)
+        stored = await record_exchange(
+            db, user_id, current_user.get("org_id"), raw, exchange
+        )
     except BlobHashMismatch as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     answer = {"success": True, "stored": stored, "recording": True}

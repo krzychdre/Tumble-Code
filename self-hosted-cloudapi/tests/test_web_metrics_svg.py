@@ -45,7 +45,10 @@ async def test_the_charts_are_inline_svg_and_chart_js_is_gone(client, session_fa
     html = await _page(
         client,
         session_factory,
-        [_llm_event(created_at=d, tin=1000 * (i + 1), cost=0.01 * (i + 1)) for i, d in enumerate(_days(3))],
+        [
+            _llm_event(created_at=d, tin=1000 * (i + 1), cost=0.01 * (i + 1))
+            for i, d in enumerate(_days(3))
+        ],
     )
     assert "chart.umd.min.js" not in html
     assert "/static/metrics.js" not in html
@@ -55,7 +58,7 @@ async def test_the_charts_are_inline_svg_and_chart_js_is_gone(client, session_fa
     # Tokens and cost per day on one plot, then models and modes.
     assert len(charts) == 3
     for svg in charts:
-        opening = svg[:svg.index(">")]
+        opening = svg[: svg.index(">")]
         assert 'role="img"' in opening and 'aria-label="' in opening
         # Colour comes from the stylesheet (theme, print), never the markup.
         assert not re.search(r'\b(fill|stroke)="(?!none)[^"]*"', svg)
@@ -73,11 +76,15 @@ async def test_each_chart_points_at_the_table_with_its_figures(client, session_f
 
 def _dot_heights(svg: str, series: str) -> list[float]:
     """How far up the plot each day's dot sits (0 = baseline, 100 = top)."""
-    ys = re.findall(rf'<path class="chart-dot [^"]*{series}" d="M[\d.]+,([\d.]+)h0"', svg)
+    ys = re.findall(
+        rf'<path class="chart-dot [^"]*{series}" d="M[\d.]+,([\d.]+)h0"', svg
+    )
     return [round(100 - float(y), 2) for y in ys]
 
 
-async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(client, session_factory):
+async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(
+    client, session_factory
+):
     html = await _page(
         client,
         session_factory,
@@ -94,9 +101,25 @@ async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(cl
     assert _dot_heights(daily, "series-cost") == [83.33, 16.67, 33.33]
     # One smooth line per series, each over its own area.
     for series in ("tokens", "cost"):
-        assert len(re.findall(rf'<path class="chart-line chart-line-{series} series-{series}" d="M[^"]+C', daily)) == 1
-        assert len(re.findall(rf'<path class="chart-area chart-area-{series} series-{series}" d="M[^"]+Z"', daily)) == 1
-    assert "<rect class=\"chart-bar" not in daily
+        assert (
+            len(
+                re.findall(
+                    rf'<path class="chart-line chart-line-{series} series-{series}" d="M[^"]+C',
+                    daily,
+                )
+            )
+            == 1
+        )
+        assert (
+            len(
+                re.findall(
+                    rf'<path class="chart-area chart-area-{series} series-{series}" d="M[^"]+Z"',
+                    daily,
+                )
+            )
+            == 1
+        )
+    assert '<rect class="chart-bar' not in daily
     titles = [unescape(t) for t in re.findall(r"<title>(.*?)</title>", daily)]
     assert titles == [
         "2026-09-20: 1k tokens, $0.5000",
@@ -104,7 +127,11 @@ async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(cl
         "2026-09-22: 2k tokens, $0.2000",
     ]
     summary = unescape(re.search(r'aria-label="([^"]+)"', daily).group(1))
-    assert "highest tokens 4k on 2026-09-21" in summary and "highest cost $0.5000 on 2026-09-20" in summary
+    assert (
+        "highest tokens 4k on 2026-09-21" in summary
+        and "highest cost $0.5000 on 2026-09-20" in summary
+    )
+
     # Two axes of five ticks each, top down, so the gridlines are shared.
     def axis(cls: str) -> list[str]:
         ticks = re.search(rf'class="chart-yaxis {cls}"[^>]*>(.*?)</div>', html).group(1)
@@ -114,10 +141,19 @@ async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(cl
     assert axis("axis-cost") == ["$0.6", "$0.45", "$0.3", "$0.15", "$0"]
     # The legend toggles are real checkboxes, checked by default.
     for series in ("tokens", "cost"):
-        assert re.search(rf'<input type="checkbox" class="series-toggle toggle-{series}" checked>', html)
+        assert re.search(
+            rf'<input type="checkbox" class="series-toggle toggle-{series}" checked>',
+            html,
+        )
     # The same figures as a table, newest day first, closed and unpaged.
-    table = re.search(r'<table[^>]*id="table-daily".*?</table>', html, re.DOTALL).group(0)
-    assert re.findall(r'<td class="bd-name">([\d-]+)</td>', table) == ["2026-09-22", "2026-09-21", "2026-09-20"]
+    table = re.search(r'<table[^>]*id="table-daily".*?</table>', html, re.DOTALL).group(
+        0
+    )
+    assert re.findall(r'<td class="bd-name">([\d-]+)</td>', table) == [
+        "2026-09-22",
+        "2026-09-21",
+        "2026-09-20",
+    ]
     assert "$0.1000" in table
     assert '<details class="chart-table" id="daily-table">' in html
     assert "chart-table-pager" not in html
@@ -131,10 +167,18 @@ def test_quiet_days_are_zeros_on_the_chart_but_not_rows_in_the_table():
         {"day": "2026-10-01", "tokens": 300, "cost": 0.5},
     ]
     chart = daily(days)
-    assert [s["title"].split(":")[0] for s in chart["slots"]] == ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01"]
+    assert [s["title"].split(":")[0] for s in chart["slots"]] == [
+        "2026-09-28",
+        "2026-09-29",
+        "2026-09-30",
+        "2026-10-01",
+    ]
     assert [s["tokens"][1] for s in chart["slots"]][1:3] == ["100", "100"]
     assert "2 active days" in chart["summary"]
-    assert [r["day"] for r in day_table(days, 1)["rows"]] == ["2026-10-01", "2026-09-28"]
+    assert [r["day"] for r in day_table(days, 1)["rows"]] == [
+        "2026-10-01",
+        "2026-09-28",
+    ]
 
 
 def _curve_ys(path: str) -> list[tuple[float, list[float]]]:
@@ -145,7 +189,13 @@ def _curve_ys(path: str) -> list[tuple[float, list[float]]]:
     out = []
     for i in range(0, len(rest), 6):
         _, c1, _, c2, _, y1 = rest[i : i + 6]
-        ys = [(1 - t) ** 3 * y0 + 3 * (1 - t) ** 2 * t * c1 + 3 * (1 - t) * t**2 * c2 + t**3 * y1 for t in (k / 20 for k in range(21))]
+        ys = [
+            (1 - t) ** 3 * y0
+            + 3 * (1 - t) ** 2 * t * c1
+            + 3 * (1 - t) * t**2 * c2
+            + t**3 * y1
+            for t in (k / 20 for k in range(21))
+        ]
         out.append(((y0, y1), ys))
         y0 = y1
     return out
@@ -157,7 +207,10 @@ def test_the_line_is_smooth_but_never_swings_past_its_points():
     # A busy day between quiet ones: a plain spline would dip below zero
     # (below the baseline at y=100) next to the peak.
     values = [0, 0, 900, 0, 50, 400, 380, 0]
-    days = [{"day": f"2026-09-{i + 10}", "tokens": v, "cost": 0} for i, v in enumerate(values)]
+    days = [
+        {"day": f"2026-09-{i + 10}", "tokens": v, "cost": 0}
+        for i, v in enumerate(values)
+    ]
     line = daily(days)["tokens"]["line"]
     assert line.startswith("M5,100 C")
     for (a, b), ys in _curve_ys(line):
@@ -182,7 +235,14 @@ def test_dots_show_only_under_the_pointer_on_a_long_range():
     from src.web.presenters.charts import DOT_LIMIT, daily
 
     def days(n):
-        return [{"day": (datetime(2026, 1, 1) + timedelta(days=i)).date().isoformat(), "tokens": 1, "cost": 0} for i in range(n)]
+        return [
+            {
+                "day": (datetime(2026, 1, 1) + timedelta(days=i)).date().isoformat(),
+                "tokens": 1,
+                "cost": 0,
+            }
+            for i in range(n)
+        ]
 
     assert daily(days(DOT_LIMIT))["dense"] is False
     assert daily(days(DOT_LIMIT + 1))["dense"] is True
@@ -191,7 +251,14 @@ def test_dots_show_only_under_the_pointer_on_a_long_range():
 def test_day_table_pages_newest_first_and_clamps_the_page():
     from src.web.presenters.charts import TABLE_PAGE, day_table
 
-    days = [{"day": (datetime(2026, 1, 1) + timedelta(days=i)).date().isoformat(), "tokens": i, "cost": 0} for i in range(40)]
+    days = [
+        {
+            "day": (datetime(2026, 1, 1) + timedelta(days=i)).date().isoformat(),
+            "tokens": i,
+            "cost": 0,
+        }
+        for i in range(40)
+    ]
     first = day_table(days, 1)
     assert first["page_count"] == 3 and len(first["rows"]) == TABLE_PAGE
     assert first["rows"][0]["day"] == "2026-02-09" and first["pages"] == [1, 2, 3]
@@ -201,9 +268,14 @@ def test_day_table_pages_newest_first_and_clamps_the_page():
     assert day_table([], 1) == {"rows": [], "page": 1, "page_count": 1, "pages": [1]}
 
 
-async def test_the_daily_table_pager_keeps_the_period_and_opens_the_table(client, session_factory):
+async def test_the_daily_table_pager_keeps_the_period_and_opens_the_table(
+    client, session_factory
+):
     base = datetime(2026, 1, 1, 12, tzinfo=timezone.utc)
-    events = [_llm_event(created_at=base + timedelta(days=i), tin=1000, tout=0) for i in range(20)]
+    events = [
+        _llm_event(created_at=base + timedelta(days=i), tin=1000, tout=0)
+        for i in range(20)
+    ]
     async with session_factory() as s:
         await _seed_user(s)
         s.add_all(events)
@@ -217,13 +289,19 @@ async def test_the_daily_table_pager_keeps_the_period_and_opens_the_table(client
 
     # A plain visit: page 1, closed, the pager links to page 2 of the same period.
     assert '<details class="chart-table" id="daily-table">' in plain
-    assert 'href="/app/metrics?period=all&amp;day_page=2#daily-table" rel="next"' in plain
+    assert (
+        'href="/app/metrics?period=all&amp;day_page=2#daily-table" rel="next"' in plain
+    )
     rows = re.findall(r'<td class="bd-name">([\d-]+)</td>', plain)
     assert rows[0] == "2026-01-20" and len(rows) == 14
     # Following the pager: the older days, and the table opens.
     assert '<details class="chart-table" id="daily-table" open>' in paged
-    table = re.search(r'<table[^>]*id="table-daily".*?</table>', paged, re.DOTALL).group(0)
-    assert re.findall(r'<td class="bd-name">([\d-]+)</td>', table) == [f"2026-01-{d:02d}" for d in range(6, 0, -1)]
+    table = re.search(
+        r'<table[^>]*id="table-daily".*?</table>', paged, re.DOTALL
+    ).group(0)
+    assert re.findall(r'<td class="bd-name">([\d-]+)</td>', table) == [
+        f"2026-01-{d:02d}" for d in range(6, 0, -1)
+    ]
     assert '<span class="pager-num current" aria-current="page">2</span>' in paged
 
 
@@ -249,16 +327,26 @@ def test_day_labels_thin_out_on_a_long_period():
 
 
 async def test_ranked_bars_fold_the_tail_and_escape_names(client, session_factory):
-    events = [_llm_event(model=f"model-{i}", tin=1000 * (12 - i), tout=0) for i in range(11)]
+    events = [
+        _llm_event(model=f"model-{i}", tin=1000 * (12 - i), tout=0) for i in range(11)
+    ]
     events.append(_llm_event(model="<script>alert(1)</script>", tin=50000, tout=0))
     html = await _page(client, session_factory, events)
     models = next(s for s in _svgs(html) if "chart-models" in s)
     assert "<script>" not in models and "&lt;script&gt;" in models
-    labels = [unescape(t) for t in re.findall(r'<text class="chart-label"[^>]*>(.*?)</text>', models)]
+    labels = [
+        unescape(t)
+        for t in re.findall(r'<text class="chart-label"[^>]*>(.*?)</text>', models)
+    ]
     # The eight biggest, then everything else as one row.
     assert len(labels) == 9 and labels[0] == "<script>alert(1)</script>"
     assert labels[-1] == "4 others"
-    widths = [float(w) for w in re.findall(r'<rect class="chart-bar[^"]*"[^>]*width="([\d.]+)%"', models)]
+    widths = [
+        float(w)
+        for w in re.findall(
+            r'<rect class="chart-bar[^"]*"[^>]*width="([\d.]+)%"', models
+        )
+    ]
     assert widths[0] == max(widths)
     assert widths[1] < widths[0]
 

@@ -24,7 +24,9 @@ from src.services.share_service import delete_tasks
 
 from tests.web_helpers import _override_current_user, _seed_user
 
-FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "llm_exchanges_recorder.json").read_text())
+FIXTURE = json.loads(
+    (Path(__file__).parent / "fixtures" / "llm_exchanges_recorder.json").read_text()
+)
 
 
 def _sha(text: str) -> str:
@@ -93,7 +95,9 @@ def test_every_endpoint_needs_the_bearer_token(client):
     assert _post(client, "/api/llm-exchanges/outcome", {}).status_code == 401
 
 
-async def test_recording_is_off_until_the_user_switches_it_on(authed, db_session, session_factory):
+async def test_recording_is_off_until_the_user_switches_it_on(
+    authed, db_session, session_factory
+):
     await _seed_user(db_session)
 
     assert authed.get("/api/llm-exchanges/config").json() == {"enabled": False}
@@ -106,7 +110,9 @@ async def test_recording_is_off_until_the_user_switches_it_on(authed, db_session
     assert authed.get("/api/llm-exchanges/config").json() == {"enabled": True}
 
 
-async def test_a_deployment_without_telemetry_records_nothing(authed, db_session, session_factory, monkeypatch):
+async def test_a_deployment_without_telemetry_records_nothing(
+    authed, db_session, session_factory, monkeypatch
+):
     from config.settings import settings as app_settings
 
     await _record_on(db_session)
@@ -120,7 +126,9 @@ async def test_a_deployment_without_telemetry_records_nothing(authed, db_session
 # --- ingestion ---------------------------------------------------------------------
 
 
-async def test_an_exchange_is_stored_with_its_columns_and_its_blobs_apart(authed, db_session, session_factory):
+async def test_an_exchange_is_stored_with_its_columns_and_its_blobs_apart(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
 
     resp = _post(authed, "/api/llm-exchanges", _exchange())
@@ -130,17 +138,31 @@ async def test_an_exchange_is_stored_with_its_columns_and_its_blobs_apart(authed
         row = await s.get(LlmExchange, "ex-1")
         blobs = {b.sha256: b.content for b in (await s.scalars(select(LlmBlob))).all()}
     assert (row.task_id, row.model_id, row.provider, row.mode, row.status) == (
-        "task-1", "glm-5.3", "openai", "code", "completed",
+        "task-1",
+        "glm-5.3",
+        "openai",
+        "code",
+        "completed",
     )
-    assert (row.input_tokens, row.output_tokens, row.issues, row.has_wire) == (10, 2, "", False)
+    assert (row.input_tokens, row.output_tokens, row.issues, row.has_wire) == (
+        10,
+        2,
+        "",
+        False,
+    )
     assert blobs == {_sha("sys"): "sys", _sha("[]"): "[]"}
     payload = json.loads(row.payload)
     # The texts live in llm_blobs; the payload keeps the references.
     assert payload["request"]["system"] == {"sha256": _sha("sys")}
-    assert payload["request"]["messages"] == {"keep": 0, "append": [{"role": "user", "content": "hi"}]}
+    assert payload["request"]["messages"] == {
+        "keep": 0,
+        "append": [{"role": "user", "content": "hi"}],
+    }
 
 
-async def test_a_plain_json_body_is_accepted_and_a_duplicate_ignored(authed, db_session, session_factory):
+async def test_a_plain_json_body_is_accepted_and_a_duplicate_ignored(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
 
     first = _post(authed, "/api/llm-exchanges", _exchange(), compress=False)
@@ -159,7 +181,12 @@ async def test_broken_bodies_are_refused(authed, db_session, monkeypatch):
     await _record_on(db_session)
     headers = {"Content-Type": "application/json", "Content-Encoding": "gzip"}
 
-    assert authed.post("/api/llm-exchanges", content=b"not gzip", headers=headers).status_code == 400
+    assert (
+        authed.post(
+            "/api/llm-exchanges", content=b"not gzip", headers=headers
+        ).status_code
+        == 400
+    )
     assert _post(authed, "/api/llm-exchanges", {"id": "x"}).status_code == 422
     wrong = _exchange()
     wrong["request"]["system"] = {"sha256": _sha("other"), "text": "sys"}
@@ -167,16 +194,36 @@ async def test_broken_bodies_are_refused(authed, db_session, monkeypatch):
 
     monkeypatch.setattr(llm_exchanges, "MAX_INFLATED_BYTES", 1000)
     bomb = gzip.compress(b"{" + b" " * 100_000 + b"}")
-    assert authed.post("/api/llm-exchanges", content=bomb, headers=headers).status_code == 413
+    assert (
+        authed.post("/api/llm-exchanges", content=bomb, headers=headers).status_code
+        == 413
+    )
     monkeypatch.setattr(llm_exchanges, "MAX_BODY_BYTES", 100)
     assert _post(authed, "/api/llm-exchanges", _exchange()).status_code == 413
 
 
 async def test_the_static_check_runs_at_ingest(authed, db_session, session_factory):
     await _record_on(db_session)
-    tools = json.dumps([{"type": "function", "function": {"name": "read_file", "parameters": {
-        "type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}])
-    body = _exchange(response={"toolCalls": [{"id": "c", "name": "read_file", "arguments": '{"mode":"x"}'}]})
+    tools = json.dumps(
+        [
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_file",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"path": {"type": "string"}},
+                        "required": ["path"],
+                    },
+                },
+            }
+        ]
+    )
+    body = _exchange(
+        response={
+            "toolCalls": [{"id": "c", "name": "read_file", "arguments": '{"mode":"x"}'}]
+        }
+    )
     body["request"]["tools"] = {"sha256": _sha(tools), "text": tools}
 
     _post(authed, "/api/llm-exchanges", body)
@@ -185,20 +232,35 @@ async def test_the_static_check_runs_at_ingest(authed, db_session, session_facto
         assert (await s.get(LlmExchange, "ex-1")).issues == "missing_parameter"
 
 
-async def test_an_outcome_refreshes_the_issues_and_the_usage(authed, db_session, session_factory):
+async def test_an_outcome_refreshes_the_issues_and_the_usage(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
     _post(authed, "/api/llm-exchanges", _exchange())
 
-    resp = _post(authed, "/api/llm-exchanges/outcome", {
-        "exchangeId": "ex-1",
-        "taskId": "task-1",
-        "toolResults": [
-            {"toolCallId": "c1", "toolName": "read_file", "status": "ok"},
-            {"toolCallId": "c2", "toolName": "apply_diff", "status": "diff_error", "note": "No match"},
-        ],
-        "usage": {"inputTokens": 11, "outputTokens": 7},
-    })
-    unknown = _post(authed, "/api/llm-exchanges/outcome", {"exchangeId": "nope", "taskId": "t", "toolResults": []})
+    resp = _post(
+        authed,
+        "/api/llm-exchanges/outcome",
+        {
+            "exchangeId": "ex-1",
+            "taskId": "task-1",
+            "toolResults": [
+                {"toolCallId": "c1", "toolName": "read_file", "status": "ok"},
+                {
+                    "toolCallId": "c2",
+                    "toolName": "apply_diff",
+                    "status": "diff_error",
+                    "note": "No match",
+                },
+            ],
+            "usage": {"inputTokens": 11, "outputTokens": 7},
+        },
+    )
+    unknown = _post(
+        authed,
+        "/api/llm-exchanges/outcome",
+        {"exchangeId": "nope", "taskId": "t", "toolResults": []},
+    )
 
     assert resp.json() == {"success": True, "stored": True, "recording": True}
     assert unknown.json()["stored"] is False
@@ -207,18 +269,27 @@ async def test_an_outcome_refreshes_the_issues_and_the_usage(authed, db_session,
     assert row.issues == "tool_failed"
     assert (row.input_tokens, row.output_tokens) == (11, 7)
     assert json.loads(row.outcome)["toolResults"][1] == {
-        "toolCallId": "c2", "toolName": "apply_diff", "status": "diff_error", "note": "No match",
+        "toolCallId": "c2",
+        "toolName": "apply_diff",
+        "status": "diff_error",
+        "note": "No match",
     }
 
 
-async def test_an_outcome_for_someone_elses_exchange_is_not_stored(authed, db_session, session_factory):
+async def test_an_outcome_for_someone_elses_exchange_is_not_stored(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
     await _record_on(db_session, user_id="user_other")
     _override_current_user(authed.app, user_id="user_other")
     _post(authed, "/api/llm-exchanges", _exchange())
     _override_current_user(authed.app)
 
-    resp = _post(authed, "/api/llm-exchanges/outcome", {"exchangeId": "ex-1", "taskId": "task-1", "toolResults": []})
+    resp = _post(
+        authed,
+        "/api/llm-exchanges/outcome",
+        {"exchangeId": "ex-1", "taskId": "task-1", "toolResults": []},
+    )
 
     assert resp.json()["stored"] is False
 
@@ -226,16 +297,24 @@ async def test_an_outcome_for_someone_elses_exchange_is_not_stored(authed, db_se
 # --- the contract with the extension --------------------------------------------------
 
 
-async def test_the_recorders_uploads_reconstruct_every_request_exactly(authed, db_session, session_factory):
+async def test_the_recorders_uploads_reconstruct_every_request_exactly(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
     for item in FIXTURE["exchanges"]:
         if item["accepted"]:
-            assert _post(authed, "/api/llm-exchanges", item["body"]).json()["stored"] is True
+            assert (
+                _post(authed, "/api/llm-exchanges", item["body"]).json()["stored"]
+                is True
+            )
     for outcome in FIXTURE["outcomes"]:
         _post(authed, "/api/llm-exchanges/outcome", outcome)
 
     async with session_factory() as s:
-        rebuilt = {e.id: e for e in await load_task(s, "user_test", "task-contract", verify_wire=True)}
+        rebuilt = {
+            e.id: e
+            for e in await load_task(s, "user_test", "task-contract", verify_wire=True)
+        }
 
     accepted = {item["body"]["id"] for item in FIXTURE["exchanges"] if item["accepted"]}
     assert set(rebuilt) == accepted
@@ -261,9 +340,13 @@ async def test_the_recorders_uploads_reconstruct_every_request_exactly(authed, d
     assert by_sequence[4].base_id is None
 
 
-async def test_a_missing_base_makes_the_chain_incomplete(authed, db_session, session_factory):
+async def test_a_missing_base_makes_the_chain_incomplete(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
-    first, second, third = (copy.deepcopy(item["body"]) for item in FIXTURE["exchanges"][:3])
+    first, second, third = (
+        copy.deepcopy(item["body"]) for item in FIXTURE["exchanges"][:3]
+    )
     # The first never arrived: the second and third build on it.
     _post(authed, "/api/llm-exchanges", second)
     _post(authed, "/api/llm-exchanges", third)
@@ -279,7 +362,9 @@ async def test_a_missing_base_makes_the_chain_incomplete(authed, db_session, ses
 # --- deletion --------------------------------------------------------------------------
 
 
-async def test_deleting_a_task_deletes_its_recordings(authed, db_session, session_factory):
+async def test_deleting_a_task_deletes_its_recordings(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
     db_session.add(Task(id="task-1", user_id="user_test"))
     await db_session.commit()
@@ -291,11 +376,17 @@ async def test_deleting_a_task_deletes_its_recordings(authed, db_session, sessio
         await s.commit()
 
     async with session_factory() as s:
-        assert [r.id for r in (await s.scalars(select(LlmExchange))).all()] == ["ex-other"]
-        assert {b.task_id for b in (await s.scalars(select(LlmBlob))).all()} == {"task-2"}
+        assert [r.id for r in (await s.scalars(select(LlmExchange))).all()] == [
+            "ex-other"
+        ]
+        assert {b.task_id for b in (await s.scalars(select(LlmBlob))).all()} == {
+            "task-2"
+        }
 
 
-async def test_deleting_the_user_deletes_everything(authed, db_session, session_factory):
+async def test_deleting_the_user_deletes_everything(
+    authed, db_session, session_factory
+):
     await _record_on(db_session)
     _post(authed, "/api/llm-exchanges", _exchange())
 
@@ -308,16 +399,25 @@ async def test_deleting_the_user_deletes_everything(authed, db_session, session_
     assert await _count(session_factory, DatasetSettings) == 0
 
 
-async def test_half_an_emoji_does_not_break_the_upload(authed, db_session, session_factory):
+async def test_half_an_emoji_does_not_break_the_upload(
+    authed, db_session, session_factory
+):
     """JavaScript can cut a string between the halves of a surrogate pair; JSON.stringify writes the half escaped."""
     await _record_on(db_session)
     system = "sys \ufffd"  # how Node hashes a lone half: as U+FFFD
     body = json.dumps(_exchange()).replace('"hello"', '"cut \\ud83d"')
-    body = body.replace(json.dumps({"sha256": _sha("sys"), "text": "sys"}),
-                        json.dumps({"sha256": _sha(system), "text": "sys \\ud83d"}).replace("\\\\", "\\"))
+    body = body.replace(
+        json.dumps({"sha256": _sha("sys"), "text": "sys"}),
+        json.dumps({"sha256": _sha(system), "text": "sys \\ud83d"}).replace(
+            "\\\\", "\\"
+        ),
+    )
 
-    resp = authed.post("/api/llm-exchanges", content=gzip.compress(body.encode()),
-                       headers={"Content-Type": "application/json", "Content-Encoding": "gzip"})
+    resp = authed.post(
+        "/api/llm-exchanges",
+        content=gzip.compress(body.encode()),
+        headers={"Content-Type": "application/json", "Content-Encoding": "gzip"},
+    )
 
     assert resp.status_code == 200, resp.text
     async with session_factory() as s:

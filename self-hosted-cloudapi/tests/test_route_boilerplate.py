@@ -28,7 +28,9 @@ from src.models.user import Session as SessionModel, Ticket, User
 
 async def _signed_in(client, db_session) -> tuple[User, SessionModel, str]:
     """Seed a user with a ticket, sign in, and return the raw client token."""
-    user = User(authentik_id="ak_m6", email="m6@example.com", first_name="M", last_name="Six")
+    user = User(
+        authentik_id="ak_m6", email="m6@example.com", first_name="M", last_name="Six"
+    )
     db_session.add(user)
     await db_session.flush()
     session = SessionModel(user_id=user.id)
@@ -42,7 +44,9 @@ async def _signed_in(client, db_session) -> tuple[User, SessionModel, str]:
         )
     )
     await db_session.commit()
-    resp = client.post("/v1/client/sign_ins", data={"strategy": "ticket", "ticket": "m6_ticket"})
+    resp = client.post(
+        "/v1/client/sign_ins", data={"strategy": "ticket", "ticket": "m6_ticket"}
+    )
     assert resp.status_code == 200, resp.text
     return user, session, resp.headers["Authorization"].removeprefix("Bearer ")
 
@@ -74,7 +78,9 @@ def _call(client, method, url, data, headers):
         {"Authorization": "Bearer"},
     ],
 )
-async def test_bearer_routes_refuse_a_missing_or_malformed_header(client, db_session, index, headers):
+async def test_bearer_routes_refuse_a_missing_or_malformed_header(
+    client, db_session, index, headers
+):
     _, session, _ = await _signed_in(client, db_session)
     method, url, data = _bearer_routes(session.id)[index]
     resp = _call(client, method, url, data, headers)
@@ -84,7 +90,9 @@ async def test_bearer_routes_refuse_a_missing_or_malformed_header(client, db_ses
 
 @pytest.mark.parametrize("index", range(4))
 @pytest.mark.parametrize("token", ["not-a-token", "", " spaced"])
-async def test_bearer_routes_refuse_an_unknown_client_token(client, db_session, index, token):
+async def test_bearer_routes_refuse_an_unknown_client_token(
+    client, db_session, index, token
+):
     _, session, _ = await _signed_in(client, db_session)
     method, url, data = _bearer_routes(session.id)[index]
     resp = _call(client, method, url, data, {"Authorization": f"Bearer {token}"})
@@ -96,7 +104,11 @@ async def test_bearer_routes_accept_the_client_token(client, db_session):
     user, session, token = await _signed_in(client, db_session)
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = client.post(f"/v1/client/sessions/{session.id}/tokens", data={"_is_native": "1"}, headers=headers)
+    resp = client.post(
+        f"/v1/client/sessions/{session.id}/tokens",
+        data={"_is_native": "1"},
+        headers=headers,
+    )
     assert resp.status_code == 200 and resp.json()["jwt"]
 
     resp = client.get("/v1/me", headers=headers)
@@ -105,7 +117,11 @@ async def test_bearer_routes_accept_the_client_token(client, db_session):
     resp = client.get("/v1/me/organization_memberships", headers=headers)
     assert resp.status_code == 200 and resp.json() == {"response": []}
 
-    resp = client.post(f"/v1/client/sessions/{session.id}/remove", data={"_is_native": "1"}, headers=headers)
+    resp = client.post(
+        f"/v1/client/sessions/{session.id}/remove",
+        data={"_is_native": "1"},
+        headers=headers,
+    )
     assert resp.status_code == 200 and resp.json() == {"response": "Session removed"}
 
     # The session is over, so the same token no longer opens anything.
@@ -118,7 +134,10 @@ async def test_bearer_routes_check_the_session_after_the_token(client, db_sessio
     """A good token naming someone else's session id is a 404, not a 401."""
     _, _, token = await _signed_in(client, db_session)
     headers = {"Authorization": f"Bearer {token}"}
-    for url in ("/v1/client/sessions/sess_other/tokens", "/v1/client/sessions/sess_other/remove"):
+    for url in (
+        "/v1/client/sessions/sess_other/tokens",
+        "/v1/client/sessions/sess_other/remove",
+    ):
         resp = client.post(url, data={"_is_native": "1"}, headers=headers)
         assert resp.status_code == 404
         assert resp.json() == {"detail": "Session not found"}
@@ -175,13 +194,20 @@ def test_web_routes_ignore_a_forged_session_cookie(client, method, url):
 async def _web_login(client, db_session) -> User:
     from src.auth.web_session import COOKIE_NAME, _serializer
 
-    user = User(authentik_id="ak_web_m6", email="web@example.com", first_name="Web", last_name="Reader")
+    user = User(
+        authentik_id="ak_web_m6",
+        email="web@example.com",
+        first_name="Web",
+        last_name="Reader",
+    )
     db_session.add(user)
     await db_session.flush()
     session = SessionModel(user_id=user.id)
     db_session.add(session)
     await db_session.commit()
-    client.cookies.set(COOKIE_NAME, _serializer.dumps({"sid": session.id, "uid": user.id}))
+    client.cookies.set(
+        COOKIE_NAME, _serializer.dumps({"sid": session.id, "uid": user.id})
+    )
     return user
 
 
@@ -209,7 +235,9 @@ async def _web_login(client, db_session) -> User:
         ("POST", "/app/tasks/bulk-delete", 303, "/app?scope=roots"),
     ],
 )
-async def test_web_routes_serve_a_signed_in_reader(client, db_session, method, url, status, location):
+async def test_web_routes_serve_a_signed_in_reader(
+    client, db_session, method, url, status, location
+):
     await _web_login(client, db_session)
     resp = client.request(method, url, follow_redirects=False)
     assert resp.status_code == status, resp.text
@@ -219,7 +247,9 @@ async def test_web_routes_serve_a_signed_in_reader(client, db_session, method, u
 async def test_a_logged_out_session_is_sent_to_the_login_page(client, db_session):
     user = await _web_login(client, db_session)
     await db_session.execute(
-        SessionModel.__table__.update().where(SessionModel.user_id == user.id).values(is_active=False)
+        SessionModel.__table__.update()
+        .where(SessionModel.user_id == user.id)
+        .values(is_active=False)
     )
     await db_session.commit()
     resp = client.get("/app", follow_redirects=False)
@@ -228,8 +258,13 @@ async def test_a_logged_out_session_is_sent_to_the_login_page(client, db_session
 
 
 def test_the_login_page_itself_is_not_behind_the_login_check(client):
-    with patch("src.routers.browser.store_oauth_state", new_callable=AsyncMock), \
-         patch("src.routers.browser.get_authorize_url", return_value="https://auth.example/authorize?x=1"):
+    with (
+        patch("src.routers.browser.store_oauth_state", new_callable=AsyncMock),
+        patch(
+            "src.routers.browser.get_authorize_url",
+            return_value="https://auth.example/authorize?x=1",
+        ),
+    ):
         resp = client.get("/app/login", follow_redirects=False)
     assert resp.status_code == 307
     assert resp.headers["location"] == "https://auth.example/authorize?x=1"
@@ -243,10 +278,20 @@ SIGN_IN_ROUTES = [
 
 
 @pytest.mark.parametrize("route,suffix", SIGN_IN_ROUTES)
-def test_sign_in_routes_store_the_state_and_redirect_to_the_provider(client, route, suffix):
-    with patch("src.routers.browser.store_oauth_state", new_callable=AsyncMock) as store, \
-         patch("src.routers.browser.generate_pkce_pair", return_value=("verifier", "challenge")), \
-         patch("src.routers.browser.get_authorize_url", return_value="https://auth.example/authorize?x=1") as url:
+def test_sign_in_routes_store_the_state_and_redirect_to_the_provider(
+    client, route, suffix
+):
+    with (
+        patch("src.routers.browser.store_oauth_state", new_callable=AsyncMock) as store,
+        patch(
+            "src.routers.browser.generate_pkce_pair",
+            return_value=("verifier", "challenge"),
+        ),
+        patch(
+            "src.routers.browser.get_authorize_url",
+            return_value="https://auth.example/authorize?x=1",
+        ) as url,
+    ):
         resp = client.get(
             route,
             params={"state": "st", "auth_redirect": "vscode://QUB-IT.tumble-code"},
@@ -264,7 +309,9 @@ def test_sign_in_routes_store_the_state_and_redirect_to_the_provider(client, rou
 
 
 @pytest.mark.parametrize("route,_", SIGN_IN_ROUTES)
-@pytest.mark.parametrize("params", [{"state": "st"}, {"auth_redirect": "vscode://QUB-IT.tumble-code"}])
+@pytest.mark.parametrize(
+    "params", [{"state": "st"}, {"auth_redirect": "vscode://QUB-IT.tumble-code"}]
+)
 def test_sign_in_routes_require_state_and_auth_redirect(client, route, _, params):
     resp = client.get(route, params=params, follow_redirects=False)
     assert resp.status_code == 422
@@ -272,7 +319,9 @@ def test_sign_in_routes_require_state_and_auth_redirect(client, route, _, params
 
 @pytest.mark.parametrize("route,_", SIGN_IN_ROUTES)
 def test_sign_in_routes_refuse_a_foreign_redirect_with_the_error_page(client, route, _):
-    resp = client.get(route, params={"state": "st", "auth_redirect": "https://evil.example"})
+    resp = client.get(
+        route, params={"state": "st", "auth_redirect": "https://evil.example"}
+    )
     assert resp.status_code == 400
     page = _parse(resp.text)
     assert page.title == "Tumble Code - Authentication Error"
@@ -419,7 +468,11 @@ def test_auth_error_route_renders_the_error_page(client, reason, message):
 
 def _jwt(claims: dict) -> str:
     now = int(time.time())
-    return jwt.encode({"exp": now + 60, "iat": now, "nbf": now, **claims}, get_jwt_key(), settings.jwt_algorithm)
+    return jwt.encode(
+        {"exp": now + 60, "iat": now, "nbf": now, **claims},
+        get_jwt_key(),
+        settings.jwt_algorithm,
+    )
 
 
 # The JWT case is a callable, so the token is minted when the test runs. Built
@@ -432,7 +485,11 @@ def _jwt(claims: dict) -> str:
         ({}, 401, "Missing authentication token"),
         ({"Authorization": "Basic abc"}, 401, "Missing authentication token"),
         ({"Authorization": "Bearer garbage"}, 401, "Invalid or expired token"),
-        (lambda: {"Authorization": "Bearer " + _jwt({"iss": "rcc", "v": 1})}, 401, "Invalid token: missing user ID"),
+        (
+            lambda: {"Authorization": "Bearer " + _jwt({"iss": "rcc", "v": 1})},
+            401,
+            "Invalid token: missing user ID",
+        ),
     ],
 )
 def test_extension_routes_refuse_a_bad_token(client, headers, status, detail):
@@ -446,18 +503,29 @@ def test_extension_routes_refuse_a_bad_token(client, headers, status, detail):
 def test_extension_routes_refuse_an_expired_token(client):
     now = int(time.time())
     token = jwt.encode(
-        {"iss": "rcc", "v": 1, "sub": "u1", "exp": now - 10, "iat": now - 70, "nbf": now - 70},
+        {
+            "iss": "rcc",
+            "v": 1,
+            "sub": "u1",
+            "exp": now - 10,
+            "iat": now - 70,
+            "nbf": now - 70,
+        },
         get_jwt_key(),
         settings.jwt_algorithm,
     )
-    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        "/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 401
     assert resp.json() == {"detail": "Invalid or expired token"}
 
 
 def test_extension_routes_accept_a_session_token(client):
     token = issue_session_token("user_x", "org_y")
-    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        "/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     assert resp.json()["userId"] == "user_x"
 
@@ -474,7 +542,11 @@ async def test_get_current_user_result(claims):
 
     creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=_jwt(claims))
     r = claims.get("r", {})
-    expected = {"user_id": r.get("u") or claims.get("sub"), "org_id": r.get("o"), "token_type": r.get("t", "auth")}
+    expected = {
+        "user_id": r.get("u") or claims.get("sub"),
+        "org_id": r.get("o"),
+        "token_type": r.get("t", "auth"),
+    }
     assert await get_current_user(creds) == expected
 
 
@@ -495,7 +567,10 @@ FOREIGN_CLAIMS = [
 
 @pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
 def test_extension_routes_refuse_a_token_without_our_issuer_and_version(client, claims):
-    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {_jwt(claims)}"})
+    resp = client.get(
+        "/api/extension/bridge/config",
+        headers={"Authorization": f"Bearer {_jwt(claims)}"},
+    )
     assert resp.status_code == 401
     assert resp.json() == {"detail": "Invalid or expired token"}
 
@@ -515,8 +590,17 @@ async def test_get_current_user_refuses_a_token_without_our_issuer_and_version(c
 def test_extension_routes_accept_a_static_token(client):
     # The shape the retired issue_static_token gave long-lived
     # TUMBLE_CODE_CLOUD_TOKEN values, some of which users still hold.
-    token = _jwt({"iss": "rcc", "v": 1, "sub": "cj_user_static", "r": {"u": "user_static", "o": "org_s", "t": "cj"}})
-    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
+    token = _jwt(
+        {
+            "iss": "rcc",
+            "v": 1,
+            "sub": "cj_user_static",
+            "r": {"u": "user_static", "o": "org_s", "t": "cj"},
+        }
+    )
+    resp = client.get(
+        "/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     assert resp.json()["userId"] == "user_static"
 
@@ -535,6 +619,8 @@ def test_the_extension_token_check_opens_no_database_session(client):
 
     client.app.dependency_overrides[get_db] = counting_get_db
     token = issue_session_token("user_x")
-    resp = client.get("/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        "/api/extension/bridge/config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     assert opened == []

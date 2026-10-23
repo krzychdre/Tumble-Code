@@ -33,6 +33,7 @@ import src.models  # noqa: F401 -- registers every table on Base.metadata
 async def classify_and_seed(engine: AsyncEngine) -> str:
     """Classify ``engine``'s database; create_all when it has no app tables."""
     async with engine.begin() as conn:
+
         def probe(sync_conn):
             insp = inspect(sync_conn)
             return insp.has_table("alembic_version"), insp.has_table("users")

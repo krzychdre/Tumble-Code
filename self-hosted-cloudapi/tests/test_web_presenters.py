@@ -16,7 +16,12 @@ from src.models.task import Task
 from src.services.quality_overview import quality_overview as _quality_overview
 from src.services.task_tree import Spend
 from src.web.presenters.task_detail import _spend_summary
-from src.web.presenters.task_rows import _PROMPT_WRAP_COLS, _PROMPT_WRAP_LINES, _list_row, _row_tooltip
+from src.web.presenters.task_rows import (
+    _PROMPT_WRAP_COLS,
+    _PROMPT_WRAP_LINES,
+    _list_row,
+    _row_tooltip,
+)
 
 from tests.web_helpers import _seed_user
 
@@ -64,7 +69,15 @@ def _ado_run() -> tuple[Task, dict[str, list[Task]]]:
         q_requests=4,
         q_completed=True,
     )
-    a = _task("a", "root", tokens_in=1000, tokens_out=500, cost=1.194, q_completed=True, q_errors=1)
+    a = _task(
+        "a",
+        "root",
+        tokens_in=1000,
+        tokens_out=500,
+        cost=1.194,
+        q_completed=True,
+        q_errors=1,
+    )
     b = _task("b", "root", tokens_in=10, tokens_out=5, cost=0.0493)
     c = _task("c", "a", tokens_in=1, tokens_out=1, cost=0.0001)
     return root, {"root": [a, b], "a": [c]}
@@ -145,7 +158,12 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
         "hover_title": _ROOT_HOVER,
         "workspace": "/home/me/Roo-Code/",
         "workspace_label": "Roo-Code",
-        "models": {"count": 3, "more": "+2", "name": "glm-5.3", "title": "glm-5.3, qwen3, llama"},
+        "models": {
+            "count": 3,
+            "more": "+2",
+            "name": "glm-5.3",
+            "title": "glm-5.3, qwen3, llama",
+        },
         "client": "cli",
         # Direct children for the pill, the whole subtree for the bulk delete.
         "child_count": 2,
@@ -279,7 +297,13 @@ def test_row_tooltip_with_only_figures_has_no_heading():
 
 def test_row_tooltip_with_a_run_heads_the_own_figures_and_adds_the_run():
     root, _tree = _ado_run()
-    total = Spend(cost=1.4090, tokens_in=299_000, tokens_out=6_400, cache_reads=100_000, cache_writes=2_000)
+    total = Spend(
+        cost=1.4090,
+        tokens_in=299_000,
+        tokens_out=6_400,
+        cache_reads=100_000,
+        cache_writes=2_000,
+    )
 
     assert _row_tooltip(root, total, 3) == (
         "Fix the bug\n\n- step one\n\n"
@@ -311,7 +335,9 @@ def test_row_tooltip_wraps_and_caps_a_long_prompt():
 # --- _quality_overview ----------------------------------------------------------------------------------------
 
 
-def _graded(task_id: str, *, user_id="user_test", parent=None, age_days=1, **quality) -> Task:
+def _graded(
+    task_id: str, *, user_id="user_test", parent=None, age_days=1, **quality
+) -> Task:
     return Task(
         id=task_id,
         user_id=user_id,
@@ -324,7 +350,9 @@ def _graded(task_id: str, *, user_id="user_test", parent=None, age_days=1, **qua
 
 async def test_quality_overview_without_tasks_has_no_data(db_session):
     await _seed_user(db_session)
-    assert await _quality_overview(db_session, "user_test", "all") == {"has_data": False}
+    assert await _quality_overview(db_session, "user_test", "all") == {
+        "has_data": False
+    }
 
 
 async def test_quality_overview_grades_runs_in_the_period(db_session):
@@ -333,8 +361,22 @@ async def test_quality_overview_grades_runs_in_the_period(db_session):
     db_session.add_all(
         [
             _graded("clean", q_completed=True, q_requests=3, q_completion_replies=1),
-            _graded("rough", q_completed=True, q_requests=5, q_errors=2, q_retries=1, q_interventions=1),
-            _graded("stuck", title=None, q_requests=2, q_condense=1, q_tool_paths=4, q_distinct_tool_paths=2),
+            _graded(
+                "rough",
+                q_completed=True,
+                q_requests=5,
+                q_errors=2,
+                q_retries=1,
+                q_interventions=1,
+            ),
+            _graded(
+                "stuck",
+                title=None,
+                q_requests=2,
+                q_condense=1,
+                q_tool_paths=4,
+                q_distinct_tool_paths=2,
+            ),
             _graded("unfinished-quiet", q_requests=1, title=None),
             # A subtask of "rough": graded with its run, never on its own.
             _graded("sub", parent="rough", q_errors=9, q_completed=True),
@@ -396,4 +438,9 @@ async def test_quality_overview_lists_at_most_eight_roughest_runs(db_session):
 
     assert overview["total"] == 10
     assert [r["friction"] for r in overview["roughest"]] == [10, 9, 8, 7, 6, 5, 4, 3]
-    assert overview["grades"][1] == {"key": "friction", "label": "Friction", "count": 10, "share": 100}
+    assert overview["grades"][1] == {
+        "key": "friction",
+        "label": "Friction",
+        "count": 10,
+        "share": 100,
+    }

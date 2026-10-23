@@ -65,7 +65,9 @@ def cookie_should_be_secure(request: Request) -> bool:
     return False
 
 
-def set_session_cookie(response: Response, session_id: str, user_id: str, *, secure: bool = False) -> None:
+def set_session_cookie(
+    response: Response, session_id: str, user_id: str, *, secure: bool = False
+) -> None:
     """Attach a signed session cookie to a response. Pass
     ``secure=cookie_should_be_secure(request)``."""
     token = _serializer.dumps({"sid": session_id, "uid": user_id})
@@ -82,7 +84,9 @@ def set_session_cookie(response: Response, session_id: str, user_id: str, *, sec
 
 def clear_session_cookie(response: Response, *, secure: bool = False) -> None:
     """Remove the session cookie (logout)."""
-    response.delete_cookie(key=COOKIE_NAME, path="/", httponly=True, samesite="lax", secure=secure)
+    response.delete_cookie(
+        key=COOKIE_NAME, path="/", httponly=True, samesite="lax", secure=secure
+    )
 
 
 def _decode_cookie(raw: str) -> Optional[dict]:
@@ -92,7 +96,9 @@ def _decode_cookie(raw: str) -> Optional[dict]:
         return None
 
 
-async def resolve_web_user(raw_cookie: Optional[str], db: AsyncSession) -> Optional[WebUser]:
+async def resolve_web_user(
+    raw_cookie: Optional[str], db: AsyncSession
+) -> Optional[WebUser]:
     """Validate a raw signed session cookie value against the DB → WebUser | None.
 
     Shared by the HTTP dependency (`get_web_user_optional`) and the socket.io

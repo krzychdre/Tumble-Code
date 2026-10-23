@@ -86,7 +86,9 @@ def _js_number(value: float) -> str:
     if value.is_integer() and abs(value) < 1e21:
         # Past 2**53 JavaScript writes the shortest digits padded with zeros,
         # not the exact binary value.
-        return str(int(value)) if abs(value) < 2**53 else format(Decimal(repr(value)), "f")
+        return (
+            str(int(value)) if abs(value) < 2**53 else format(Decimal(repr(value)), "f")
+        )
     text = repr(value)
     if "e" not in text:
         return text
@@ -115,7 +117,14 @@ def js_json(value: Any) -> str:
     if isinstance(value, list):
         return "[" + ",".join(js_json(item) for item in value) + "]"
     if isinstance(value, dict):
-        return "{" + ",".join(f"{json.dumps(str(k), ensure_ascii=False)}:{js_json(v)}" for k, v in value.items()) + "}"
+        return (
+            "{"
+            + ",".join(
+                f"{json.dumps(str(k), ensure_ascii=False)}:{js_json(v)}"
+                for k, v in value.items()
+            )
+            + "}"
+        )
     raise TypeError(f"not JSON: {type(value).__name__}")
 
 
@@ -124,7 +133,9 @@ def _verify(body: dict, wire: dict) -> bool:
         text = js_json(body).encode("utf-8")
     except (TypeError, UnicodeEncodeError, RecursionError):
         return False
-    return len(text) == wire.get("bodyBytes") and hashlib.sha256(text).hexdigest() == wire.get("bodySha256")
+    return len(text) == wire.get("bodyBytes") and hashlib.sha256(
+        text
+    ).hexdigest() == wire.get("bodySha256")
 
 
 # --- resolution ----------------------------------------------------------------------
@@ -153,7 +164,9 @@ def _apply(base_list: Optional[list], delta: Any) -> Optional[list]:
     return base_list[:keep] + delta["append"]
 
 
-def _build(row: LlmExchange, base: Optional[Exchange], blobs: dict[str, str], verify_wire: bool) -> Exchange:
+def _build(
+    row: LlmExchange, base: Optional[Exchange], blobs: dict[str, str], verify_wire: bool
+) -> Exchange:
     payload = json.loads(row.payload)
     request = payload.get("request") or {}
     complete = True
@@ -161,7 +174,9 @@ def _build(row: LlmExchange, base: Optional[Exchange], blobs: dict[str, str], ve
         complete = False
 
     system_ref = request.get("system") or {}
-    system = blobs.get(system_ref.get("sha256")) if isinstance(system_ref, dict) else None
+    system = (
+        blobs.get(system_ref.get("sha256")) if isinstance(system_ref, dict) else None
+    )
     if system is None:
         complete = False
     ok, tools = _blob_json(blobs, request.get("tools"))
@@ -198,7 +213,9 @@ def _build(row: LlmExchange, base: Optional[Exchange], blobs: dict[str, str], ve
 
     wire = request.get("wire")
     if isinstance(wire, dict):
-        exchange.wire = {k: wire.get(k) for k in ("url", "format", "bodySha256", "bodyBytes")}
+        exchange.wire = {
+            k: wire.get(k) for k in ("url", "format", "bodySha256", "bodyBytes")
+        }
         fields = wire.get("fields")
         if isinstance(fields, list):
             body: dict = {}
@@ -236,7 +253,9 @@ def _time_key(row: LlmExchange):
     return (row.occurred_at, row.sequence, row.created_at)
 
 
-def reconstruct(rows: Iterable[LlmExchange], blobs: dict[str, str], verify_wire: bool = False) -> list[Exchange]:
+def reconstruct(
+    rows: Iterable[LlmExchange], blobs: dict[str, str], verify_wire: bool = False
+) -> list[Exchange]:
     """Every exchange of one task, rebuilt, in time order."""
     ordered = sorted(rows, key=_time_key)
     by_id = {row.id: row for row in ordered}
@@ -254,7 +273,12 @@ def reconstruct(rows: Iterable[LlmExchange], blobs: dict[str, str], verify_wire:
         for link in reversed(chain):
             if link.id in done:
                 continue
-            done[link.id] = _build(link, done.get(link.base_id) if link.base_id else None, blobs, verify_wire)
+            done[link.id] = _build(
+                link,
+                done.get(link.base_id) if link.base_id else None,
+                blobs,
+                verify_wire,
+            )
     rebuilt = [done[row.id] for row in ordered]
     _judge(rebuilt)
     return rebuilt
@@ -271,7 +295,11 @@ def tool_results_index(exchanges: Iterable[Exchange]) -> dict[str, dict]:
             if not isinstance(content, list):
                 continue
             for block in content:
-                if isinstance(block, dict) and block.get("type") == "tool_result" and block.get("tool_use_id"):
+                if (
+                    isinstance(block, dict)
+                    and block.get("type") == "tool_result"
+                    and block.get("tool_use_id")
+                ):
                     results[block["tool_use_id"]] = block
     return results
 
@@ -288,19 +316,25 @@ def _judge(exchanges: list[Exchange]) -> None:
         exchange.issues = sorted(issues)
 
 
-async def load_task(db: AsyncSession, user_id: str, task_id: str, verify_wire: bool = False) -> list[Exchange]:
+async def load_task(
+    db: AsyncSession, user_id: str, task_id: str, verify_wire: bool = False
+) -> list[Exchange]:
     """The user's exchanges of one task, rebuilt (empty when there are none)."""
     rows = list(
         (
             await db.scalars(
-                select(LlmExchange).where(LlmExchange.user_id == user_id, LlmExchange.task_id == task_id)
+                select(LlmExchange).where(
+                    LlmExchange.user_id == user_id, LlmExchange.task_id == task_id
+                )
             )
         ).all()
     )
     if not rows:
         return []
     blob_rows = await db.execute(
-        select(LlmBlob.sha256, LlmBlob.content).where(LlmBlob.user_id == user_id, LlmBlob.task_id == task_id)
+        select(LlmBlob.sha256, LlmBlob.content).where(
+            LlmBlob.user_id == user_id, LlmBlob.task_id == task_id
+        )
     )
     blobs = {sha: content for sha, content in blob_rows.all()}
     return reconstruct(rows, blobs, verify_wire)

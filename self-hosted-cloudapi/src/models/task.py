@@ -22,11 +22,16 @@ from src.models.base import Base, TimestampMixin, generate_id
 
 class Task(Base, TimestampMixin):
     """Task model for tracking shared tasks."""
+
     __tablename__ = "tasks"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    organization_id = Column(
+        String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
+    )
     # Absolute path of the VS Code workspace folder (worktree root) the task was
     # attached to, captured from the bridge's extension:register `workspacePath`
     # or the share/backfill payload. Nullable: legacy rows and tasks created
@@ -38,7 +43,9 @@ class Task(Base, TimestampMixin):
     # "vscode" and the first record of the task from the CLI (a telemetry
     # event, a backfill) turns it to "cli". Never back: a task lives in one
     # client's storage only. See telemetry_service.stamp_task_client.
-    client_kind = Column(String, nullable=False, default="vscode", server_default="vscode")
+    client_kind = Column(
+        String, nullable=False, default="vscode", server_default="vscode"
+    )
 
     # The task that spawned this one, when it is a subtask. Denormalized from
     # task_relations (which is written from telemetry, often before either task
@@ -92,37 +99,48 @@ class Task(Base, TimestampMixin):
     q_errors = Column(Integer, nullable=False, default=0, server_default="0")
     q_retries = Column(Integer, nullable=False, default=0, server_default="0")
     q_interventions = Column(Integer, nullable=False, default=0, server_default="0")
-    q_completion_replies = Column(Integer, nullable=False, default=0, server_default="0")
+    q_completion_replies = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     q_condense = Column(Integer, nullable=False, default=0, server_default="0")
     q_tools = Column(Integer, nullable=False, default=0, server_default="0")
     # Total and distinct (tool, path) pairs; their difference is repeated work.
     q_tool_paths = Column(Integer, nullable=False, default=0, server_default="0")
-    q_distinct_tool_paths = Column(Integer, nullable=False, default=0, server_default="0")
+    q_distinct_tool_paths = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     q_completed = Column(Boolean, nullable=False, default=False, server_default="0")
 
-    messages = relationship("TaskMessage", back_populates="task", cascade="all, delete-orphan")
-    shares = relationship("TaskShare", back_populates="task", cascade="all, delete-orphan")
+    messages = relationship(
+        "TaskMessage", back_populates="task", cascade="all, delete-orphan"
+    )
+    shares = relationship(
+        "TaskShare", back_populates="task", cascade="all, delete-orphan"
+    )
 
     # The list is always "this user's tasks, newest first" — a composite index
     # makes that an index-ordered scan of just the page being shown, instead of
     # sorting every row the user owns on each request.
-    __table_args__ = (
-        Index("ix_tasks_user_updated", "user_id", "updated_at"),
-    )
+    __table_args__ = (Index("ix_tasks_user_updated", "user_id", "updated_at"),)
 
 
 class TaskMessage(Base):
     """Task message model for backfill."""
+
     __tablename__ = "task_messages"
 
     id = Column(String, primary_key=True, default=lambda: generate_id("msg_"))
-    task_id = Column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    task_id = Column(
+        String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     message_data = Column(Text, nullable=False)
     # ClineMessage.ts of the stored message. Lets the live bridge upsert a
     # streaming message in place (created → partial updates → final) instead of
     # appending duplicate rows. Nullable for legacy/backfilled rows.
     message_ts = Column(BigInteger, nullable=True, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     # --- per-message token/cost contribution -------------------------------
     # Parsed once from `message_data` at write time (services/task_summary.
@@ -162,15 +180,20 @@ class TaskMessage(Base):
 
 class TaskShare(Base):
     """Task share model."""
+
     __tablename__ = "task_shares"
 
     id = Column(String, primary_key=True, default=lambda: generate_id("sh_"))
-    task_id = Column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    task_id = Column(
+        String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     visibility = Column(String, default="organization")
     share_url = Column(String, nullable=True)
     manage_url = Column(String, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     # One share row per task, ever. POST /api/extension/share used to be a
     # non-atomic select-then-insert, so two concurrent requests both inserted
@@ -179,9 +202,7 @@ class TaskShare(Base):
     # (not a UniqueConstraint) exactly like uq_task_messages_task_ts above, so a
     # fresh create_all database and a migrated one hold the same object, and the
     # service can upsert with ON CONFLICT naming index_elements.
-    __table_args__ = (
-        Index("uq_task_shares_task_id", "task_id", unique=True),
-    )
+    __table_args__ = (Index("uq_task_shares_task_id", "task_id", unique=True),)
 
     task = relationship("Task", back_populates="shares")
 
@@ -195,6 +216,7 @@ class TaskImage(Base):
     and the task page asks for it by the message's ts and the path as written.
     See ai_plans/2026-10-12_18-00_cloud-web-task-images.md.
     """
+
     __tablename__ = "task_images"
 
     id = Column(String, primary_key=True, default=lambda: generate_id("img_"))
@@ -210,11 +232,15 @@ class TaskImage(Base):
     size = Column(Integer, nullable=False)
     sha256 = Column(String, nullable=False)
     data = Column(LargeBinary, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     # One image per (task, message, path); a re-upload replaces it through ON
     # CONFLICT on these columns. A unique INDEX like uq_task_messages_task_ts,
     # for the same reason. Its leading task_id also serves the per-task delete.
     __table_args__ = (
-        Index("uq_task_images_task_ts_path", "task_id", "message_ts", "path", unique=True),
+        Index(
+            "uq_task_images_task_ts_path", "task_id", "message_ts", "path", unique=True
+        ),
     )

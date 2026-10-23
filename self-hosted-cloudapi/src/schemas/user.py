@@ -10,7 +10,10 @@ class CloudUserInfo(BaseModel):
 
     NOTE: Currently unused but part of the API contract — reserved for future use.
     """
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     id: Optional[str] = None
     name: Optional[str] = None

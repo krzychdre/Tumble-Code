@@ -75,7 +75,9 @@ _BLANK_RUN_RE = re.compile(r"\n\s*\n(?:\s*\n)+")
 # <environment_details> block (current mode, open tabs, file tree, cost…). None
 # of the environment block is the user's query, so strip it before deriving a
 # title. Match the trailing/unclosed case too (the block is always last).
-_ENV_DETAILS_RE = re.compile(r"<environment_details>.*?(?:</environment_details>|\Z)", re.DOTALL)
+_ENV_DETAILS_RE = re.compile(
+    r"<environment_details>.*?(?:</environment_details>|\Z)", re.DOTALL
+)
 _MSG_WRAPPER_RE = re.compile(r"<(user_message|task|feedback)>(.*?)</\1>", re.DOTALL)
 
 
@@ -234,11 +236,14 @@ async def refresh_task_summary(
     with the title under that one decision, so the two can never end up
     describing different messages.
     """
+
     # One pass over the task's rows produces both the token totals and the
     # quality counts: the markers are stored per message (see
     # services/session_quality), so grading a run is a COUNT, not a re-read.
     def _kind(kind: str):
-        return func.coalesce(func.sum(case((TaskMessage.q_kind == kind, 1), else_=0)), 0)
+        return func.coalesce(
+            func.sum(case((TaskMessage.q_kind == kind, 1), else_=0)), 0
+        )
 
     # The span is measured over the run's own messages only. A `resume_task` ask
     # is written when the user reopens a task from history — on the live corpus
@@ -246,7 +251,9 @@ async def refresh_task_summary(
     # the list reported the 4h26m. Idle time *inside* a run is deliberately kept:
     # waiting for the user to answer is time the task took. What is dropped is
     # only the marker that says the user came back, after the work had stopped.
-    span_ts = case((TaskMessage.q_kind.is_distinct_from(KIND_RESUME), TaskMessage.message_ts))
+    span_ts = case(
+        (TaskMessage.q_kind.is_distinct_from(KIND_RESUME), TaskMessage.message_ts)
+    )
 
     aggregate = await db.execute(
         select(
@@ -271,9 +278,24 @@ async def refresh_task_summary(
         ).where(TaskMessage.task_id == task_id)
     )
     (
-        count, t_in, t_out, c_read, c_write, cost, first_ts, last_ts,
-        q_requests, q_errors, q_retries, q_interventions, q_completion_replies,
-        q_condense, q_tools, q_tool_paths, q_distinct_paths, q_completions,
+        count,
+        t_in,
+        t_out,
+        c_read,
+        c_write,
+        cost,
+        first_ts,
+        last_ts,
+        q_requests,
+        q_errors,
+        q_retries,
+        q_interventions,
+        q_completion_replies,
+        q_condense,
+        q_tools,
+        q_tool_paths,
+        q_distinct_paths,
+        q_completions,
     ) = aggregate.one()
 
     values = {

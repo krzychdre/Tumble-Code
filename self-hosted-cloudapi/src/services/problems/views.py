@@ -73,7 +73,10 @@ def _sample_view(o: Occurrence, zone: ZoneInfo = UTC) -> dict:
 
 
 def _group_view(
-    signature: str, members: list[Occurrence], rule: Optional[Rule] = None, zone: ZoneInfo = UTC
+    signature: str,
+    members: list[Occurrence],
+    rule: Optional[Rule] = None,
+    zone: ZoneInfo = UTC,
 ) -> dict:
     """One row of the problem list: the members of a signature, summarized."""
     latest = max(members, key=lambda o: o.when)
@@ -88,12 +91,16 @@ def _group_view(
     providers = Counter(o.provider for o in members if o.provider)
     tools = Counter(o.tool for o in members if o.tool)
     known_models = Counter(o.model for o in members if o.model)
-    top_model = next((m for (_p, m), _n in models.most_common() if m != UNKNOWN_MODEL), None)
+    top_model = next(
+        (m for (_p, m), _n in models.most_common() if m != UNKNOWN_MODEL), None
+    )
     top_provider = providers.most_common(1)[0][0] if providers else None
     tool = tools.most_common(1)[0][0] if tools else latest.tool
 
     rule = rule or classify(latest.category, latest.tool, latest.text)
-    reports = sorted((o for o in members if o.report_id), key=lambda o: o.when, reverse=True)
+    reports = sorted(
+        (o for o in members if o.report_id), key=lambda o: o.when, reverse=True
+    )
     return {
         "signature": signature,
         "key": group_key(signature),
@@ -123,7 +130,10 @@ def _group_view(
         "modes": _counted(Counter(o.mode for o in members if o.mode)),
         "versions": _counted(Counter(o.app_version for o in members if o.app_version)),
         "sources": sorted({SOURCE_LABELS[o.source] for o in members}),
-        "reports": [{"id": o.report_id, "when": fmt_when(o.when, zone)} for o in reports[:MAX_GROUP_REPORTS]],
+        "reports": [
+            {"id": o.report_id, "when": fmt_when(o.when, zone)}
+            for o in reports[:MAX_GROUP_REPORTS]
+        ],
         "sample": _sample_view(latest, zone),
         "samples": [_sample_view(o, zone) for o in pick_samples(members, zone=zone)],
     }
@@ -138,20 +148,32 @@ def report_view(row: ErrorReport, zone: ZoneInfo = UTC) -> dict:
     if not isinstance(payload, dict):
         payload = {}
     request = payload.get("request") if isinstance(payload.get("request"), dict) else {}
-    response = payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    response = (
+        payload.get("response") if isinstance(payload.get("response"), dict) else {}
+    )
 
     window = _num(payload.get("contextWindow"))
     used = _num(payload.get("contextTokens"))
     percent = round(used * 100.0 / window, 1) if window and used is not None else None
 
     messages = [
-        m for m in (request.get("messages") or []) if isinstance(m, dict) and isinstance(m.get("content"), str)
+        m
+        for m in (request.get("messages") or [])
+        if isinstance(m, dict) and isinstance(m.get("content"), str)
     ]
     tool_calls = [c for c in (response.get("toolCalls") or []) if isinstance(c, dict)]
-    rule = classify(row.category, row.tool_name, "\n".join(filter(None, [row.summary, payload.get("errorMessage")])))
+    rule = classify(
+        row.category,
+        row.tool_name,
+        "\n".join(filter(None, [row.summary, payload.get("errorMessage")])),
+    )
 
     def pretty(value) -> str:
-        return json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True) if value else ""
+        return (
+            json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True)
+            if value
+            else ""
+        )
 
     return {
         "id": row.id,
@@ -177,10 +199,19 @@ def report_view(row: ErrorReport, zone: ZoneInfo = UTC) -> dict:
                 ("Editor", payload.get("editorName")),
                 ("Platform", payload.get("platform")),
                 ("Context window", f"{int(window):,}" if window else None),
-                ("Context used", f"{int(used):,} tokens" + (f" ({percent}%)" if percent is not None else "")
-                 if used is not None else None),
-                ("Max output tokens", f"{int(_num(payload.get('maxOutputTokens'))):,}"
-                 if _num(payload.get('maxOutputTokens')) else None),
+                (
+                    "Context used",
+                    f"{int(used):,} tokens"
+                    + (f" ({percent}%)" if percent is not None else "")
+                    if used is not None
+                    else None,
+                ),
+                (
+                    "Max output tokens",
+                    f"{int(_num(payload.get('maxOutputTokens'))):,}"
+                    if _num(payload.get("maxOutputTokens"))
+                    else None,
+                ),
                 ("Messages in context", payload.get("messageCount")),
                 ("HTTP status", payload.get("httpStatus")),
                 ("Retry attempt", payload.get("retryAttempt")),
@@ -192,15 +223,24 @@ def report_view(row: ErrorReport, zone: ZoneInfo = UTC) -> dict:
         "request": {
             "system_prompt_chars": _num(request.get("systemPromptChars")),
             "system_prompt_sha256": request.get("systemPromptSha256") or "",
-            "tool_names": [t for t in (request.get("toolNames") or []) if isinstance(t, str)],
+            "tool_names": [
+                t for t in (request.get("toolNames") or []) if isinstance(t, str)
+            ],
             "params": pretty(request.get("params")),
-            "messages": [{"role": str(m.get("role") or "?"), "content": m["content"]} for m in messages],
+            "messages": [
+                {"role": str(m.get("role") or "?"), "content": m["content"]}
+                for m in messages
+            ],
         },
         "response": {
             "text": response.get("text") or "",
             "reasoning": response.get("reasoning") or "",
             "tool_calls": [
-                {"id": c.get("id") or "", "name": str(c.get("name") or "?"), "arguments": str(c.get("arguments") or "")}
+                {
+                    "id": c.get("id") or "",
+                    "name": str(c.get("name") or "?"),
+                    "arguments": str(c.get("arguments") or ""),
+                }
                 for c in tool_calls
             ],
             "stop_reason": response.get("stopReason") or "",

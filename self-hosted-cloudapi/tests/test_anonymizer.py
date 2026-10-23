@@ -16,7 +16,12 @@ SYSTEM = (
 @pytest.fixture
 def anon():
     a = Anonymizer(
-        identity=[("email", "alice.smith@corp.io"), ("name", "Alice Smith"), ("name", "Alice"), ("name", "Smith")],
+        identity=[
+            ("email", "alice.smith@corp.io"),
+            ("name", "Alice Smith"),
+            ("name", "Alice"),
+            ("name", "Smith"),
+        ],
         terms=["QUB-IT", "Globex Corp"],
     )
     a.learn(SYSTEM, "/home/jsmith/work/acme-portal")
@@ -27,36 +32,66 @@ def test_the_workspace_home_and_user_name(anon):
     assert anon.text(SYSTEM) == (
         "Operating System: Linux\nHome Directory: /home/user\nCurrent Workspace Directory: /workspace/project1\n"
     )
-    assert anon.text("cat /home/jsmith/work/acme-portal/src/a.ts ~/x /home/jsmith/.bashrc") == (
-        "cat /workspace/project1/src/a.ts ~/x /home/user/.bashrc"
-    )
+    assert anon.text(
+        "cat /home/jsmith/work/acme-portal/src/a.ts ~/x /home/jsmith/.bashrc"
+    ) == ("cat /workspace/project1/src/a.ts ~/x /home/user/.bashrc")
     assert anon.text("jsmith@laptop:~$ whoami\njsmith") == "user@laptop:~$ whoami\nuser"
     # The project folder's name, wherever it appears.
-    assert anon.text('"name": "acme-portal", import "@acme-portal/ui"') == '"name": "project1", import "@project1/ui"'
+    assert (
+        anon.text('"name": "acme-portal", import "@acme-portal/ui"')
+        == '"name": "project1", import "@project1/ui"'
+    )
 
 
 def test_windows_and_json_escaped_paths():
     a = Anonymizer()
-    a.learn("Home Directory: C:/Users/Bob\nCurrent Workspace Directory: C:/Users/Bob/src/shop", None)
-    assert a.text("C:\\Users\\Bob\\src\\shop\\main.py") == "\\workspace\\project1\\main.py"
-    assert a.text('{"path": "C:\\\\Users\\\\Bob\\\\src\\\\shop\\\\a.py"}') == '{"path": "\\\\workspace\\\\project1\\\\a.py"}'
-    assert a.text("c:/Users/Bob/Desktop/notes.txt and D:\\Users\\Carol\\x") == "c:/Users/user/Desktop/notes.txt and D:\\Users\\user\\x"
+    a.learn(
+        "Home Directory: C:/Users/Bob\nCurrent Workspace Directory: C:/Users/Bob/src/shop",
+        None,
+    )
+    assert (
+        a.text("C:\\Users\\Bob\\src\\shop\\main.py") == "\\workspace\\project1\\main.py"
+    )
+    assert (
+        a.text('{"path": "C:\\\\Users\\\\Bob\\\\src\\\\shop\\\\a.py"}')
+        == '{"path": "\\\\workspace\\\\project1\\\\a.py"}'
+    )
+    assert (
+        a.text("c:/Users/Bob/Desktop/notes.txt and D:\\Users\\Carol\\x")
+        == "c:/Users/user/Desktop/notes.txt and D:\\Users\\user\\x"
+    )
 
 
 def test_identity_and_terms_share_a_pseudonym_and_keep_the_case(anon):
-    assert anon.text("Author: Alice Smith <alice.smith@corp.io>") == "Author: Person1 <user1@example.com>"
+    assert (
+        anon.text("Author: Alice Smith <alice.smith@corp.io>")
+        == "Author: Person1 <user1@example.com>"
+    )
     # Only as a name is written: an upper-case word is more likely a constant.
     assert anon.text("thanks Alice, SMITH said") == "thanks Person1, SMITH said"
     assert anon.text("QUB-IT, qub_it, QubIt and qub it; Globex Corp / GLOBEX-CORP") == (
         "ACME1, acme1, Acme1 and acme1; Acme2 / ACME2"
     )
     # Not inside a longer word, and a name only as a name is written.
-    assert anon.text("Alicetown and smithy, the smith") == "Alicetown and smithy, the smith"
+    assert (
+        anon.text("Alicetown and smithy, the smith")
+        == "Alicetown and smithy, the smith"
+    )
 
 
 def test_a_placeholder_account_name_rewrites_nothing():
-    a = Anonymizer(identity=[("name", "Test User"), ("name", "Test"), ("name", "User"), ("name", "Will")])
-    assert a.text("Test the User-Agent; you will see") == "Test the User-Agent; you will see"
+    a = Anonymizer(
+        identity=[
+            ("name", "Test User"),
+            ("name", "Test"),
+            ("name", "User"),
+            ("name", "Will"),
+        ]
+    )
+    assert (
+        a.text("Test the User-Agent; you will see")
+        == "Test the User-Agent; you will see"
+    )
     assert a.text("Will wrote it") == "Person1 wrote it"
 
 
@@ -96,9 +131,9 @@ def test_contact_and_network_data(anon):
     assert anon.text("someone@example.com and git@github.com:org/repo.git") == (
         "someone@example.com and git@github.com:org/repo.git"
     )
-    assert anon.text("hosts 10.0.0.5, 192.168.1.20, 10.0.0.5; local 127.0.0.1, 0.0.0.0") == (
-        "hosts 192.0.2.1, 192.0.2.2, 192.0.2.1; local 127.0.0.1, 0.0.0.0"
-    )
+    assert anon.text(
+        "hosts 10.0.0.5, 192.168.1.20, 10.0.0.5; local 127.0.0.1, 0.0.0.0"
+    ) == ("hosts 192.0.2.1, 192.0.2.2, 192.0.2.1; local 127.0.0.1, 0.0.0.0")
     # One numbering for every address of the export (two IPv4 addresses came first).
     assert anon.text("fe80::1ff:fe23:4567:890a and ::1") == "2001:db8::3 and ::1"
     assert anon.text("call +48 600 700 800") == "call +00 000 000 000"
@@ -107,7 +142,10 @@ def test_contact_and_network_data(anon):
 def test_checksummed_numbers_only_when_the_checksum_holds(anon):
     assert anon.text("PESEL 44051401359 / 44051401358") == "PESEL [PESEL] / 44051401358"
     assert anon.text("PL61 1090 1014 0000 0712 1981 2874") == "[IBAN]"
-    assert anon.text("card 4111 1111 1111 1111, 4111 1111 1111 1112") == "card [CARD], 4111 1111 1111 1112"
+    assert (
+        anon.text("card 4111 1111 1111 1111, 4111 1111 1111 1112")
+        == "card [CARD], 4111 1111 1111 1112"
+    )
 
 
 def test_what_looks_similar_but_is_not_personal_survives(anon):
@@ -136,12 +174,17 @@ def test_values_and_the_report(anon):
     categories = {row["category"] for row in anon.report()}
     assert "workspace" in categories
     row = next(r for r in anon.report() if r["category"] == "workspace")
-    assert row["original"] == "/home/jsmith/work/acme-portal" and row["replacement"] == "/workspace/project1"
+    assert (
+        row["original"] == "/home/jsmith/work/acme-portal"
+        and row["replacement"] == "/workspace/project1"
+    )
 
 
 def test_short_user_names_and_names_leave_code_alone():
     a = Anonymizer(identity=[("email", "max@corp.io"), ("name", "Max")])
-    a.learn("Home Directory: /home/max\nCurrent Workspace Directory: /home/max/x/shop", None)
+    a.learn(
+        "Home Directory: /home/max\nCurrent Workspace Directory: /home/max/x/shop", None
+    )
     code = "Math.max(a, b); params.max_tokens = MAX_RETRIES; max = 3"
     assert a.text(code) == code
     assert a.text("Max wrote /home/max/notes") == "Person1 wrote /home/user/notes"
@@ -149,11 +192,19 @@ def test_short_user_names_and_names_leave_code_alone():
 
 def test_tool_names_and_keys_are_never_renamed():
     a = Anonymizer(terms=["file", "acme"])
-    tools = [{"type": "function", "function": {
-        "name": "mcp--acme_server--read_file",
-        "description": "Reads a file from acme",
-        "parameters": {"type": "object", "properties": {"acme_id": {"type": "string"}}},
-    }}]
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "mcp--acme_server--read_file",
+                "description": "Reads a file from acme",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"acme_id": {"type": "string"}},
+                },
+            },
+        }
+    ]
     cleaned = a.tools(tools)
     assert cleaned[0]["function"]["name"] == "mcp--acme_server--read_file"
     assert cleaned[0]["function"]["description"] == "Reads a acme1 from acme2"

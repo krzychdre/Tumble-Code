@@ -59,8 +59,13 @@ async def bridge(monkeypatch, session_factory, db_session):
     monkeypatch.setattr(sio_module, "async_session_factory", session_factory)
     monkeypatch.setattr(sio_module.sio, "emit", _noop)
     db_session.add(
-        User(id=USER, authentik_id=f"ak_{USER}", email="o@example.com",
-             first_name="O", last_name="Wner")
+        User(
+            id=USER,
+            authentik_id=f"ak_{USER}",
+            email="o@example.com",
+            first_name="O",
+            last_name="Wner",
+        )
     )
     await db_session.commit()
     registry.attach("ext_owner", "extension", USER)
@@ -120,7 +125,10 @@ async def _relation(session_factory, child: str, parent: str) -> None:
     """The telemetry event through which a subtask names its parent."""
     async with session_factory() as db:
         await record_event(
-            db, USER, None, "Task Created",
+            db,
+            USER,
+            None,
+            "Task Created",
             {"taskId": child, "parentTaskId": parent, "isSubtask": True},
         )
         await db.commit()
@@ -143,7 +151,9 @@ async def test_the_test_database_enforces_the_parent_foreign_key(bridge):
             await db.flush()
 
 
-async def test_a_relation_for_a_stored_child_whose_parent_is_not_stored_yet_is_kept(bridge):
+async def test_a_relation_for_a_stored_child_whose_parent_is_not_stored_yet_is_kept(
+    bridge,
+):
     """DEF-C47: the child streams (its row exists), then its relation event
     arrives while the parent has no row yet. Stamping the child's
     ``parent_task_id`` then would violate the foreign key and roll back the
@@ -156,11 +166,16 @@ async def test_a_relation_for_a_stored_child_whose_parent_is_not_stored_yet_is_k
     async with bridge() as db:
         relation = (
             await db.execute(
-                select(TaskRelation.parent_task_id).where(TaskRelation.child_task_id == CHILD)
+                select(TaskRelation.parent_task_id).where(
+                    TaskRelation.child_task_id == CHILD
+                )
             )
         ).scalar_one_or_none()
         events = (
-            await db.execute(text("SELECT count(*) FROM telemetry_events WHERE task_id = :t"), {"t": CHILD})
+            await db.execute(
+                text("SELECT count(*) FROM telemetry_events WHERE task_id = :t"),
+                {"t": CHILD},
+            )
         ).scalar_one()
     assert relation == PARENT
     assert events == 1
@@ -174,7 +189,9 @@ async def test_a_relation_for_a_stored_child_whose_parent_is_not_stored_yet_is_k
 STEPS = ("parent_streams", "child_streams", "relation")
 
 
-@pytest.mark.parametrize("order", list(itertools.permutations(STEPS)), ids="-then-".join)
+@pytest.mark.parametrize(
+    "order", list(itertools.permutations(STEPS)), ids="-then-".join
+)
 async def test_the_child_ends_up_under_its_parent_in_every_arrival_order(bridge, order):
     for step in order:
         if step == "parent_streams":
