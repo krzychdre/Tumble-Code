@@ -70,7 +70,8 @@ export class ProviderSettingsManager {
 	constructor(context: ExtensionContext) {
 		this.context = context
 
-		// TODO: We really shouldn't have async methods in the constructor.
+		// Not awaited: initialize() runs under the config lock, so every read or
+		// write queues behind it.
 		this.initialize().catch((error) => logger.error(error))
 	}
 

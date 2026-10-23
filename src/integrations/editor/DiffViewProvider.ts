@@ -44,7 +44,6 @@ interface ActiveEdit {
 	isStale: boolean
 }
 
-// TODO: https://github.com/cline/cline/pull/3354
 export class DiffViewProvider {
 	// Results of the last save, read by the tool layer's write result
 	// (core/tools/helpers/toolWriteResult.ts).
