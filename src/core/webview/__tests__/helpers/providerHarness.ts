@@ -1,5 +1,5 @@
 // Shared fakes for the ClineProvider specs: a stateful extension context, an
-// output channel, a webview view, and a provider built on them.
+// output channel, webview views and panels, and a provider built on them.
 // The `vscode` module itself comes from src/__mocks__/vscode.js.
 
 import * as vscode from "vscode"
@@ -59,21 +59,36 @@ const createMockOutputChannel = () =>
 		dispose: vi.fn(),
 	}) as unknown as vscode.OutputChannel
 
+type PostMessage = ReturnType<typeof vi.fn>
+
+/** The fields a WebviewView and a WebviewPanel share. */
+export const mockWebviewFields = (postMessage: PostMessage = vi.fn().mockResolvedValue(true)) => ({
+	webview: {
+		postMessage,
+		html: "",
+		options: {},
+		onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })),
+		asWebviewUri: vi.fn(),
+		cspSource: "vscode-webview://test-csp-source",
+	},
+	visible: true,
+})
+
 /** The sidebar: a WebviewView. */
-export const createMockWebviewView = () =>
+export const createMockWebviewView = (postMessage?: PostMessage) =>
 	({
-		webview: {
-			postMessage: vi.fn().mockResolvedValue(true),
-			html: "",
-			options: {},
-			onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })),
-			asWebviewUri: vi.fn(),
-			cspSource: "vscode-webview://test-csp-source",
-		},
-		visible: true,
+		...mockWebviewFields(postMessage),
 		onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
 		onDidChangeVisibility: vi.fn(() => ({ dispose: vi.fn() })),
 	}) as unknown as vscode.WebviewView
+
+/** An editor tab: a WebviewPanel. */
+export const createMockWebviewPanel = (postMessage?: PostMessage) =>
+	({
+		...mockWebviewFields(postMessage),
+		onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
+		onDidChangeViewState: vi.fn(() => ({ dispose: vi.fn() })),
+	}) as unknown as vscode.WebviewPanel
 
 const mcpHubStub = () => ({
 	listTools: vi.fn().mockResolvedValue([]),
@@ -84,8 +99,12 @@ const mcpHubStub = () => ({
 })
 
 /** A provider on the given context, with an MCP hub that has no servers. */
-export const createTestProvider = (context: vscode.ExtensionContext) => {
-	const provider = new ClineProvider(context, createMockOutputChannel(), "sidebar", new ContextProxy(context))
+export const createTestProvider = (
+	context: vscode.ExtensionContext,
+	renderContext: "sidebar" | "editor" = "sidebar",
+	contextProxy = new ContextProxy(context),
+) => {
+	const provider = new ClineProvider(context, createMockOutputChannel(), renderContext, contextProxy)
 	provider.getMcpHub = vi.fn().mockReturnValue(mcpHubStub())
 	return provider
 }

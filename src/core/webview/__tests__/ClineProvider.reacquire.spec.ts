@@ -4,8 +4,7 @@ import * as vscode from "vscode"
 import type { ExtensionState } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { ContextProxy } from "../../config/ContextProxy"
-import { ClineProvider } from "../ClineProvider"
+import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
 import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../../task-persistence"
 
 // Mock setup (mirrors ClineProvider.storageError.spec.ts)
@@ -113,53 +112,6 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 	}),
 }))
 
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	CodeActionKind: {
-		QuickFix: { value: "quickfix" },
-		RefactorRewrite: { value: "refactor.rewrite" },
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
-
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn().mockReturnValue({
 		getModel: vi.fn().mockReturnValue({
@@ -262,7 +214,6 @@ afterAll(() => {
 
 describe("ClineProvider TaskHistoryStore reacquire", () => {
 	let mockContext: vscode.ExtensionContext
-	let mockOutputChannel: vscode.OutputChannel
 	let mockWebviewView: vscode.WebviewView
 	let mockPostMessage: ReturnType<typeof vi.fn>
 
@@ -317,63 +268,9 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 			TelemetryService.createInstance([])
 		}
 
-		const globalState: Record<string, any> = {
-			mode: "code",
-			currentApiConfigName: "current-config",
-		}
-
-		const secrets: Record<string, string | undefined> = {}
-
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => globalState[key]),
-				update: vi.fn().mockImplementation((key: string, value: any) => {
-					globalState[key] = value
-				}),
-				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((key: string) => secrets[key]),
-				store: vi.fn().mockImplementation((key: string, value: string | undefined) => (secrets[key] = value)),
-				delete: vi.fn().mockImplementation((key: string) => delete secrets[key]),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			subscriptions: [],
-			extension: {
-				packageJSON: { version: "1.0.0" },
-			},
-			globalStorageUri: {
-				fsPath: "/test/storage/path",
-			},
-		} as unknown as vscode.ExtensionContext
-
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
 		mockPostMessage = vi.fn()
-
-		mockWebviewView = {
-			webview: {
-				postMessage: mockPostMessage,
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
+		mockContext = createMockContext()
+		mockWebviewView = createMockWebviewView(mockPostMessage)
 	})
 
 	afterEach(() => {
@@ -386,7 +283,7 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 			.spyOn(TaskHistoryStore, "acquire")
 			.mockRejectedValueOnce(new Error("deterministic acquire failure"))
 			.mockResolvedValueOnce(handle)
-		const provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		const provider = createTestProvider(mockContext)
 		await provider.resolveWebviewView(mockWebviewView).catch(() => {})
 		await flush()
 
@@ -416,7 +313,7 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 
 	it("rethrows the remembered error within the cooldown window without a second acquire", async () => {
 		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockRejectedValueOnce(new Error("storage path broken"))
-		const provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		const provider = createTestProvider(mockContext)
 		await flush()
 
 		// The eager constructor acquire consumed the only mock rejection.
@@ -434,7 +331,7 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 
 	it("degrades getStateToPostToWebview to an empty history instead of throwing", async () => {
 		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockRejectedValue(new Error("storage down"))
-		const provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		const provider = createTestProvider(mockContext)
 		await flush()
 
 		const state = await provider.getStateToPostToWebview({ includeTaskHistory: true })
@@ -454,7 +351,7 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 		const pending = deferred<TaskHistoryStoreHandle>()
 		const handle = makeHandle()
 		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockReturnValueOnce(pending.promise)
-		const provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		const provider = createTestProvider(mockContext)
 
 		// Three parallel callers (including the eager constructor acquire)
 		// must share a single acquire attempt.
@@ -478,7 +375,7 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 		const pending = deferred<TaskHistoryStoreHandle>()
 		const handle = makeHandle()
 		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockReturnValueOnce(pending.promise)
-		const provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		const provider = createTestProvider(mockContext)
 
 		await provider.dispose()
 		pending.resolve(handle)

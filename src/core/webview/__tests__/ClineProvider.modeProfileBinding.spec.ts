@@ -11,57 +11,10 @@
 import * as vscode from "vscode"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
+import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
 import type { CliModeProviderSettings, HistoryItem } from "@tumble-code/types"
 
-import { ContextProxy } from "../../config/ContextProxy"
 import { getModeBySlug } from "../../../shared/modes"
-
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	CodeActionKind: {
-		QuickFix: { value: "quickfix" },
-		RefactorRewrite: { value: "refactor.rewrite" },
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
 
 vi.mock("../../task/Task", () => ({
 	Task: vi.fn().mockImplementation(function (options) {
@@ -261,8 +214,6 @@ const CODE_MODE = {
 describe("ClineProvider - mode to profile binding (characterization)", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
-	let workspaceState: Record<string, unknown>
-	let globalState: Record<string, unknown>
 	let architectId: string
 	let defaultId: string
 	const previousCliRuntime = process.env.ROO_CLI_RUNTIME
@@ -293,70 +244,9 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 		delete process.env.ROO_CLI_RUNTIME
 		vi.mocked(getModeBySlug).mockReturnValue(CODE_MODE as never)
 
-		globalState = { mode: "code", currentApiConfigName: "default-profile" }
-		workspaceState = {}
-		const secrets: Record<string, string | undefined> = {}
-
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => globalState[key]),
-				update: vi.fn().mockImplementation((key: string, value: unknown) => {
-					globalState[key] = value
-					return Promise.resolve()
-				}),
-				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((key: string) => secrets[key]),
-				store: vi.fn().mockImplementation((key: string, value: string | undefined) => {
-					secrets[key] = value
-					return Promise.resolve()
-				}),
-				delete: vi.fn().mockImplementation((key: string) => {
-					delete secrets[key]
-					return Promise.resolve()
-				}),
-			},
-			workspaceState: {
-				get: vi.fn().mockImplementation((key: string, defaultValue?: unknown) => {
-					return key in workspaceState ? workspaceState[key] : defaultValue
-				}),
-				update: vi.fn().mockImplementation((key: string, value: unknown) => {
-					workspaceState[key] = value
-					return Promise.resolve()
-				}),
-				keys: vi.fn().mockImplementation(() => Object.keys(workspaceState)),
-			},
-			subscriptions: [],
-			extension: { packageJSON: { version: "1.0.0" } },
-			globalStorageUri: { fsPath: "/test/storage/path" },
-		} as unknown as vscode.ExtensionContext
-
-		const outputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
-		const webviewView = {
-			webview: {
-				postMessage: vi.fn(),
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
-
-		provider = new ClineProvider(mockContext, outputChannel, "sidebar", new ContextProxy(mockContext))
-		provider.getMcpHub = vi.fn().mockReturnValue({ getAllServers: vi.fn().mockReturnValue([]) })
-		await provider.resolveWebviewView(webviewView)
+		mockContext = createMockContext()
+		provider = createTestProvider(mockContext)
+		await provider.resolveWebviewView(createMockWebviewView())
 
 		// Two usable profiles; the current one is "default-profile". Every mode
 		// starts bound to the store's built-in "default" profile.
@@ -385,7 +275,7 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 		it("activates the profile bound to the mode", async () => {
 			await provider.handleModeSwitch("architect")
 
-			expect(globalState.mode).toBe("architect")
+			expect(mockContext.globalState.get("mode")).toBe("architect")
 			expect(currentProfileName()).toBe("architect-profile")
 			expect(currentProvider()).toMatchObject({ apiProvider: "openai", openAiModelId: "architect-model" })
 		})
@@ -427,25 +317,27 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 		it("refreshes listApiConfigMeta before resolving the binding", async () => {
 			await provider.handleModeSwitch("architect")
 
-			const names = (globalState.listApiConfigMeta as { name: string }[]).map(({ name }) => name)
+			const names = (mockContext.globalState.get("listApiConfigMeta") as { name: string }[]).map(
+				({ name }) => name,
+			)
 			expect(names).toEqual(expect.arrayContaining(["default-profile", "architect-profile"]))
 		})
 
 		it("does not touch the profile store while lockApiConfigAcrossModes is on", async () => {
-			workspaceState.lockApiConfigAcrossModes = true
+			await mockContext.workspaceState.update("lockApiConfigAcrossModes", true)
 			const getModeConfigId = vi.spyOn(manager(), "getModeConfigId")
 			const setModeConfig = vi.spyOn(manager(), "setModeConfig")
 
 			await provider.handleModeSwitch("architect")
 
-			expect(globalState.mode).toBe("architect")
+			expect(mockContext.globalState.get("mode")).toBe("architect")
 			expect(getModeConfigId).not.toHaveBeenCalled()
 			expect(setModeConfig).not.toHaveBeenCalled()
 			expect(currentProfileName()).toBe("default-profile")
 		})
 
 		it("applies CLI per-mode settings before the lock and the profile store", async () => {
-			workspaceState.lockApiConfigAcrossModes = true
+			await mockContext.workspaceState.update("lockApiConfigAcrossModes", true)
 			provider.setCliModeProviderSettings(cliSettings)
 			const getModeConfigId = vi.spyOn(manager(), "getModeConfigId")
 
@@ -476,7 +368,7 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 			await manager().setModeConfig("architect", retiredId)
 
 			await expect(provider.handleModeSwitch("architect")).rejects.toThrow(/unavailable/)
-			expect(globalState.mode).toBe("architect")
+			expect(mockContext.globalState.get("mode")).toBe("architect")
 			expect(currentProfileName()).toBe("default-profile")
 		})
 	})
@@ -521,13 +413,13 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 		})
 
 		it("returns undefined while lockApiConfigAcrossModes is on", async () => {
-			workspaceState.lockApiConfigAcrossModes = true
+			await mockContext.workspaceState.update("lockApiConfigAcrossModes", true)
 
 			expect(await provider.getApiConfigurationForMode("architect")).toBeUndefined()
 		})
 
 		it("returns the CLI settings under the current profile name, even when locked", async () => {
-			workspaceState.lockApiConfigAcrossModes = true
+			await mockContext.workspaceState.update("lockApiConfigAcrossModes", true)
 			provider.setCliModeProviderSettings(cliSettings)
 
 			expect(await provider.getApiConfigurationForMode("architect")).toEqual({
@@ -554,7 +446,7 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 		it("activates the profile bound to the saved mode when the item has no profile name", async () => {
 			await provider.createTaskWithHistoryItem(historyItem())
 
-			expect(globalState.mode).toBe("architect")
+			expect(mockContext.globalState.get("mode")).toBe("architect")
 			expect(currentProfileName()).toBe("architect-profile")
 			expect(currentProvider()).toMatchObject({ apiProvider: "openai", openAiModelId: "architect-model" })
 		})
@@ -566,7 +458,7 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 			await provider.createTaskWithHistoryItem(item)
 
 			expect(item.mode).toBe("code")
-			expect(globalState.mode).toBe("code")
+			expect(mockContext.globalState.get("mode")).toBe("code")
 			// "code" is still bound to the store's built-in "default" profile.
 			expect(currentProfileName()).toBe("default")
 		})
@@ -609,7 +501,7 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 		})
 
 		it("ignores the mode binding while lockApiConfigAcrossModes is on", async () => {
-			workspaceState.lockApiConfigAcrossModes = true
+			await mockContext.workspaceState.update("lockApiConfigAcrossModes", true)
 			const getModeConfigId = vi.spyOn(manager(), "getModeConfigId")
 
 			await provider.createTaskWithHistoryItem(historyItem())
@@ -642,7 +534,7 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 
 		it("applies the saved mode's CLI settings in the CLI runtime, even when locked", async () => {
 			process.env.ROO_CLI_RUNTIME = "1"
-			workspaceState.lockApiConfigAcrossModes = true
+			await mockContext.workspaceState.update("lockApiConfigAcrossModes", true)
 			provider.setCliModeProviderSettings(cliSettings)
 
 			await provider.createTaskWithHistoryItem(historyItem())

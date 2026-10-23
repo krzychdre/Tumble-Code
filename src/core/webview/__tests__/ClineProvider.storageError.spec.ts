@@ -5,8 +5,8 @@ import * as path from "path"
 import type { ExtensionState } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { ContextProxy } from "../../config/ContextProxy"
 import { ClineProvider } from "../ClineProvider"
+import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
 import { TaskHistoryStore } from "../../task-persistence"
 
 // Mock setup (mirrors ClineProvider.taskHistory.spec.ts)
@@ -114,53 +114,6 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 	}),
 }))
 
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	CodeActionKind: {
-		QuickFix: { value: "quickfix" },
-		RefactorRewrite: { value: "refactor.rewrite" },
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
-
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn().mockReturnValue({
 		getModel: vi.fn().mockReturnValue({
@@ -264,7 +217,6 @@ afterAll(() => {
 describe("ClineProvider persistent storage error state", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
-	let mockOutputChannel: vscode.OutputChannel
 	let mockWebviewView: vscode.WebviewView
 	let mockPostMessage: ReturnType<typeof vi.fn>
 
@@ -299,65 +251,11 @@ describe("ClineProvider persistent storage error state", () => {
 			TelemetryService.createInstance([])
 		}
 
-		const globalState: Record<string, any> = {
-			mode: "code",
-			currentApiConfigName: "current-config",
-		}
-
-		const secrets: Record<string, string | undefined> = {}
-
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => globalState[key]),
-				update: vi.fn().mockImplementation((key: string, value: any) => {
-					globalState[key] = value
-				}),
-				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((key: string) => secrets[key]),
-				store: vi.fn().mockImplementation((key: string, value: string | undefined) => (secrets[key] = value)),
-				delete: vi.fn().mockImplementation((key: string) => delete secrets[key]),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			subscriptions: [],
-			extension: {
-				packageJSON: { version: "1.0.0" },
-			},
-			globalStorageUri: {
-				fsPath: "/test/storage/path",
-			},
-		} as unknown as vscode.ExtensionContext
-
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
 		mockPostMessage = vi.fn()
+		mockContext = createMockContext()
+		mockWebviewView = createMockWebviewView(mockPostMessage)
 
-		mockWebviewView = {
-			webview: {
-				postMessage: mockPostMessage,
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
-
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		provider = createTestProvider(mockContext)
 
 		// Wait for the async TaskHistoryStore initialization to complete
 		// (fire-and-forget from the constructor; microtasks need to flush)
@@ -369,15 +267,6 @@ describe("ClineProvider persistent storage error state", () => {
 			getCustomModes: vi.fn().mockResolvedValue([]),
 			dispose: vi.fn(),
 		}
-
-		// Mock getMcpHub
-		provider.getMcpHub = vi.fn().mockReturnValue({
-			listTools: vi.fn().mockResolvedValue([]),
-			callTool: vi.fn().mockResolvedValue({ content: [] }),
-			listResources: vi.fn().mockResolvedValue([]),
-			readResource: vi.fn().mockResolvedValue({ contents: [] }),
-			getAllServers: vi.fn().mockReturnValue([]),
-		})
 	})
 
 	afterEach(() => {
@@ -388,12 +277,7 @@ describe("ClineProvider persistent storage error state", () => {
 		const acquire = vi
 			.spyOn(TaskHistoryStore, "acquire")
 			.mockRejectedValueOnce(new Error("deterministic acquire failure"))
-		const failedProvider = new ClineProvider(
-			mockContext,
-			mockOutputChannel,
-			"editor",
-			new ContextProxy(mockContext),
-		)
+		const failedProvider = createTestProvider(mockContext, "editor")
 
 		// Attach the view synchronously (resolveWebviewView sets `this.view`
 		// before its first await) so the error-state push is captured even

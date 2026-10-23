@@ -8,6 +8,7 @@ import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ContextProxy } from "../../config/ContextProxy"
 import { ClineProvider } from "../ClineProvider"
+import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
 import { TaskHistoryGateway } from "../TaskHistoryGateway"
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import { TaskHistoryStore } from "../../task-persistence"
@@ -135,53 +136,6 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 	}),
 }))
 
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	CodeActionKind: {
-		QuickFix: { value: "quickfix" },
-		RefactorRewrite: { value: "refactor.rewrite" },
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
-
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn().mockReturnValue({
 		getModel: vi.fn().mockReturnValue({
@@ -287,7 +241,6 @@ afterAll(() => {
 describe("ClineProvider Task History Synchronization", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
-	let mockOutputChannel: vscode.OutputChannel
 	let mockWebviewView: vscode.WebviewView
 	let mockPostMessage: ReturnType<typeof vi.fn>
 
@@ -298,68 +251,11 @@ describe("ClineProvider Task History Synchronization", () => {
 			TelemetryService.createInstance([])
 		}
 
-		const globalState: Record<string, any> = {
-			mode: "code",
-			currentApiConfigName: "current-config",
-		}
-
-		const secrets: Record<string, string | undefined> = {}
-
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => globalState[key]),
-				update: vi.fn().mockImplementation((key: string, value: any) => {
-					globalState[key] = value
-				}),
-				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((key: string) => secrets[key]),
-				store: vi.fn().mockImplementation((key: string, value: string | undefined) => (secrets[key] = value)),
-				delete: vi.fn().mockImplementation((key: string) => delete secrets[key]),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			subscriptions: [],
-			extension: {
-				packageJSON: { version: "1.0.0" },
-			},
-			globalStorageUri: {
-				fsPath: "/test/storage/path",
-			},
-		} as unknown as vscode.ExtensionContext
-
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
 		mockPostMessage = vi.fn()
+		mockContext = createMockContext()
+		mockWebviewView = createMockWebviewView(mockPostMessage)
 
-		mockWebviewView = {
-			webview: {
-				postMessage: mockPostMessage,
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn().mockImplementation((callback) => {
-				callback()
-				return { dispose: vi.fn() }
-			}),
-			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
-
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		provider = createTestProvider(mockContext)
 
 		// Wait for the async TaskHistoryStore initialization to complete
 		// (fire-and-forget from the constructor; microtasks need to flush)
@@ -371,15 +267,6 @@ describe("ClineProvider Task History Synchronization", () => {
 			getCustomModes: vi.fn().mockResolvedValue([]),
 			dispose: vi.fn(),
 		}
-
-		// Mock getMcpHub
-		provider.getMcpHub = vi.fn().mockReturnValue({
-			listTools: vi.fn().mockResolvedValue([]),
-			callTool: vi.fn().mockResolvedValue({ content: [] }),
-			listResources: vi.fn().mockResolvedValue([]),
-			readResource: vi.fn().mockResolvedValue({ contents: [] }),
-			getAllServers: vi.fn().mockReturnValue([]),
-		})
 	})
 
 	afterEach(() => {
@@ -403,23 +290,6 @@ describe("ClineProvider Task History Synchronization", () => {
 	const findCallsByType = (calls: any[][], type: string) => {
 		return calls.filter((call) => call[0]?.type === type)
 	}
-
-	// Helper to build a mock WebviewView with the given postMessage spy. Used
-	// to construct a second provider's view in the cross-provider tests.
-	const makeMockWebviewView = (postMessage: ReturnType<typeof vi.fn>): vscode.WebviewView =>
-		({
-			webview: {
-				postMessage,
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		}) as unknown as vscode.WebviewView
 
 	const deferred = <T>() => {
 		let resolve!: (value: T) => void
@@ -447,12 +317,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("waits for delayed acquire before an early operation dereferences the store", async () => {
 			const pending = deferred<ReturnType<typeof makeReadyStoreHandle>>()
 			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockReturnValueOnce(pending.promise)
-			const earlyProvider = new ClineProvider(
-				mockContext,
-				mockOutputChannel,
-				"editor",
-				new ContextProxy(mockContext),
-			)
+			const earlyProvider = createTestProvider(mockContext, "editor")
 			const item = createHistoryItem({ id: "early-write", task: "Early write" })
 
 			const operation = earlyProvider.updateTaskHistory(item, { broadcast: false })
@@ -470,12 +335,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const acquire = vi
 				.spyOn(TaskHistoryStore, "acquire")
 				.mockRejectedValueOnce(new Error("deterministic acquire failure"))
-			const failedProvider = new ClineProvider(
-				mockContext,
-				mockOutputChannel,
-				"editor",
-				new ContextProxy(mockContext),
-			)
+			const failedProvider = createTestProvider(mockContext, "editor")
 
 			await expect(
 				failedProvider.updateTaskHistory(createHistoryItem({ id: "failed", task: "Failed" }), {
@@ -490,12 +350,7 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("releases a late store without subscribing or migrating when disposed before acquire resolves", async () => {
 			const pending = deferred<ReturnType<typeof makeReadyStoreHandle>>()
 			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockReturnValueOnce(pending.promise)
-			const disposedProvider = new ClineProvider(
-				mockContext,
-				mockOutputChannel,
-				"editor",
-				new ContextProxy(mockContext),
-			)
+			const disposedProvider = createTestProvider(mockContext, "editor")
 			await disposedProvider.dispose()
 			const handle = makeReadyStoreHandle()
 
@@ -513,20 +368,10 @@ describe("ClineProvider Task History Synchronization", () => {
 				.spyOn(TaskHistoryStore, "acquire")
 				.mockRejectedValueOnce(new Error("first provider failed"))
 				.mockResolvedValueOnce(handle)
-			const failedProvider = new ClineProvider(
-				mockContext,
-				mockOutputChannel,
-				"editor",
-				new ContextProxy(mockContext),
-			)
+			const failedProvider = createTestProvider(mockContext, "editor")
 			await expect(failedProvider.getTaskHistory()).rejects.toThrow("first provider failed")
 
-			const retryProvider = new ClineProvider(
-				mockContext,
-				mockOutputChannel,
-				"editor",
-				new ContextProxy(mockContext),
-			)
+			const retryProvider = createTestProvider(mockContext, "editor")
 			await expect(retryProvider.getTaskHistory()).resolves.toEqual([])
 
 			await failedProvider.dispose()
@@ -956,9 +801,9 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("routes concurrent same-ID writes by origin token without cross-suppressing providers", async () => {
 			await provider.resolveWebviewView(mockWebviewView)
 			provider.isViewLaunched = true
-			const providerB = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const providerB = createTestProvider(mockContext, "editor")
 			const mockPostMessageB = vi.fn()
-			await providerB.resolveWebviewView(makeMockWebviewView(mockPostMessageB))
+			await providerB.resolveWebviewView(createMockWebviewView(mockPostMessageB))
 			providerB.isViewLaunched = true
 			mockPostMessage.mockClear()
 			mockPostMessageB.mockClear()
@@ -981,23 +826,16 @@ describe("ClineProvider Task History Synchronization", () => {
 			provider.isViewLaunched = true
 
 			// Second provider on the same storage path -> same shared store.
-			const providerB = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const providerB = createTestProvider(mockContext, "editor")
 			await new Promise((resolve) => setTimeout(resolve, 10))
 			const mockPostMessageB = vi.fn()
-			await providerB.resolveWebviewView(makeMockWebviewView(mockPostMessageB))
+			await providerB.resolveWebviewView(createMockWebviewView(mockPostMessageB))
 			providerB.isViewLaunched = true
 			;(providerB as any).customModesManager = {
 				updateCustomMode: vi.fn().mockResolvedValue(undefined),
 				getCustomModes: vi.fn().mockResolvedValue([]),
 				dispose: vi.fn(),
 			}
-			providerB.getMcpHub = vi.fn().mockReturnValue({
-				listTools: vi.fn().mockResolvedValue([]),
-				callTool: vi.fn().mockResolvedValue({ content: [] }),
-				listResources: vi.fn().mockResolvedValue([]),
-				readResource: vi.fn().mockResolvedValue({ contents: [] }),
-				getAllServers: vi.fn().mockReturnValue([]),
-			})
 
 			// Both share the same store instance.
 			expect(await (providerB as any).getTaskHistoryStore()).toBe(await (provider as any).getTaskHistoryStore())
@@ -1040,23 +878,16 @@ describe("ClineProvider Task History Synchronization", () => {
 			})
 			expect((await (provider as any).getTaskHistoryStore()).get("shared-del")).toBeDefined()
 
-			const providerB = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const providerB = createTestProvider(mockContext, "editor")
 			await new Promise((resolve) => setTimeout(resolve, 10))
 			const mockPostMessageB = vi.fn()
-			await providerB.resolveWebviewView(makeMockWebviewView(mockPostMessageB))
+			await providerB.resolveWebviewView(createMockWebviewView(mockPostMessageB))
 			providerB.isViewLaunched = true
 			;(providerB as any).customModesManager = {
 				updateCustomMode: vi.fn().mockResolvedValue(undefined),
 				getCustomModes: vi.fn().mockResolvedValue([]),
 				dispose: vi.fn(),
 			}
-			providerB.getMcpHub = vi.fn().mockReturnValue({
-				listTools: vi.fn().mockResolvedValue([]),
-				callTool: vi.fn().mockResolvedValue({ content: [] }),
-				listResources: vi.fn().mockResolvedValue([]),
-				readResource: vi.fn().mockResolvedValue({ contents: [] }),
-				getAllServers: vi.fn().mockReturnValue([]),
-			})
 
 			mockPostMessage.mockClear()
 			mockPostMessageB.mockClear()
@@ -1088,23 +919,16 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.resolveWebviewView(mockWebviewView)
 			provider.isViewLaunched = true
 
-			const providerB = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const providerB = createTestProvider(mockContext, "editor")
 			await new Promise((resolve) => setTimeout(resolve, 10))
 			const mockPostMessageB = vi.fn()
-			await providerB.resolveWebviewView(makeMockWebviewView(mockPostMessageB))
+			await providerB.resolveWebviewView(createMockWebviewView(mockPostMessageB))
 			providerB.isViewLaunched = true
 			;(providerB as any).customModesManager = {
 				updateCustomMode: vi.fn().mockResolvedValue(undefined),
 				getCustomModes: vi.fn().mockResolvedValue([]),
 				dispose: vi.fn(),
 			}
-			providerB.getMcpHub = vi.fn().mockReturnValue({
-				listTools: vi.fn().mockResolvedValue([]),
-				callTool: vi.fn().mockResolvedValue({ content: [] }),
-				listResources: vi.fn().mockResolvedValue([]),
-				readResource: vi.fn().mockResolvedValue({ contents: [] }),
-				getAllServers: vi.fn().mockReturnValue([]),
-			})
 
 			// Dispose A. The shared store must keep running for B (B's
 			// subscription stays alive; this is the last-consumer refcount
@@ -1353,9 +1177,9 @@ describe("ClineProvider Task History Synchronization", () => {
 				},
 			)
 			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockResolvedValueOnce(observable.handle)
-			const atomic = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const atomic = createTestProvider(mockContext, "editor")
 			const post = vi.fn()
-			await launch(atomic, makeMockWebviewView(post))
+			await launch(atomic, createMockWebviewView(post))
 			await atomic.updateTaskHistory(current, { broadcast: false })
 			post.mockClear()
 
@@ -1375,9 +1199,9 @@ describe("ClineProvider Task History Synchronization", () => {
 		it("routes store change events: own origin skipped, foreign upsert/delete targeted, external as a full broadcast", async () => {
 			const observable = makeObservableStoreHandle()
 			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockResolvedValueOnce(observable.handle)
-			const routed = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const routed = createTestProvider(mockContext, "editor")
 			const post = vi.fn()
-			await launch(routed, makeMockWebviewView(post))
+			await launch(routed, createMockWebviewView(post))
 			;(routed as any).customModesManager = { getCustomModes: vi.fn().mockResolvedValue([]), dispose: vi.fn() }
 
 			// Learn this provider's origin token from its own write.
@@ -1431,7 +1255,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			vi.spyOn(contextProxy, "getLegacyTaskHistory").mockReturnValue(legacy)
 			const clearKeys = vi.spyOn(contextProxy, "clearLegacyTaskHistoryKeys").mockResolvedValue(undefined)
 
-			const migrating = new ClineProvider(mockContext, mockOutputChannel, "editor", contextProxy)
+			const migrating = createTestProvider(mockContext, "editor", contextProxy)
 			await migrating.getTaskHistory()
 
 			expect(observable.handle.store.migrateFromLegacyHistory).toHaveBeenCalledWith(legacy)
@@ -1448,7 +1272,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			vi.spyOn(contextProxy, "getLegacyTaskHistory").mockReturnValue([])
 			const clearKeys = vi.spyOn(contextProxy, "clearLegacyTaskHistoryKeys").mockResolvedValue(undefined)
 
-			const migrating = new ClineProvider(mockContext, mockOutputChannel, "editor", contextProxy)
+			const migrating = createTestProvider(mockContext, "editor", contextProxy)
 			await migrating.getTaskHistory()
 
 			expect(observable.handle.store.migrateFromLegacyHistory).not.toHaveBeenCalled()
@@ -1618,7 +1442,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.postStateToWebview()
 
 			const newPost = vi.fn()
-			await launchView(provider, makeMockWebviewView(newPost))
+			await launchView(provider, createMockWebviewView(newPost))
 			await provider.postStateToWebview()
 
 			expect(historyIds(lastState(newPost))).toEqual(["push-b", "push-a"])
@@ -1628,11 +1452,11 @@ describe("ClineProvider Task History Synchronization", () => {
 			await launchView()
 			await provider.postStateToWebview()
 
-			const tab = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const tab = createTestProvider(mockContext, "editor")
 			;(tab as any).customModesManager = (provider as any).customModesManager
 			tab.getMcpHub = provider.getMcpHub
 			const tabPost = vi.fn()
-			await launchView(tab, makeMockWebviewView(tabPost))
+			await launchView(tab, createMockWebviewView(tabPost))
 			await tab.postStateToWebview()
 
 			expect(historyIds(lastState(tabPost))).toEqual(["push-b", "push-a"])
@@ -1808,7 +1632,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			current = makeTask("task-1", 3)
 			await launch({ acceptsMessageAdded: true })
 
-			await provider.resolveWebviewView(makeMockWebviewView(vi.fn()))
+			await provider.resolveWebviewView(createMockWebviewView(vi.fn()))
 			await expect(add(current, "four").appended).resolves.toBe(false)
 		})
 
@@ -1818,7 +1642,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const newPost = vi.fn()
 
 			const { appended } = add(current, "four")
-			void provider.resolveWebviewView(makeMockWebviewView(newPost))
+			void provider.resolveWebviewView(createMockWebviewView(newPost))
 			await expect(appended).resolves.toBe(true)
 
 			expect(ofType("messageAdded", newPost)).toHaveLength(0)
