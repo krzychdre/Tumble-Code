@@ -46,11 +46,11 @@ const mockContext = {
 const LARGE: ProviderSettings = { apiProvider: "openai", openAiModelId: "large-model" }
 const COMPACT: ProviderSettings = { apiProvider: "openai", openAiModelId: "qwen3.5-4b", compactProfile: true }
 
-function makeApi() {
+function makeApi(info: Record<string, unknown> = {}) {
 	return {
 		getModel: vi.fn().mockReturnValue({
 			id: "model",
-			info: { contextWindow: 40960, maxTokens: -1, supportsPromptCache: false },
+			info: { contextWindow: 40960, maxTokens: -1, supportsPromptCache: false, ...info },
 		}),
 		countTokens: vi.fn().mockResolvedValue(0),
 		createMessage: vi.fn(async function* (
@@ -110,9 +110,9 @@ function makeTask(initial: ProviderSettings) {
 	vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
 
 	/** What Task.updateApiConfiguration does: a new profile object and a handler built from it. */
-	const switchProfile = (next: ProviderSettings) => {
+	const switchProfile = (next: ProviderSettings, modelInfo?: Record<string, unknown>) => {
 		task.apiConfiguration = next
-		task.api = makeApi()
+		task.api = makeApi(modelInfo)
 		state.apiConfiguration = next
 	}
 
@@ -168,5 +168,16 @@ describe("TaskApiLoop: the compact flag follows a mid-task profile switch", () =
 		expect(after.names).toContain("apply_diff")
 		expect(after.names).not.toContain("edit")
 		expect(after.parallelToolCalls).toBe(true)
+	})
+
+	// The handler is replaced too: the system prompt reads the new model's info.
+	it("the system prompt reads the model of the handler the switch built", async () => {
+		const { switchProfile, nextRequest } = makeTask(LARGE)
+		await nextRequest()
+
+		switchProfile(LARGE, { isStealthModel: true })
+		await nextRequest()
+
+		expect(systemPromptMock.mock.calls.at(-1)![0].settings).toMatchObject({ isStealthModel: true })
 	})
 })
