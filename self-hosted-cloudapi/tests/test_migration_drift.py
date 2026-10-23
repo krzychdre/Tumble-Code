@@ -28,6 +28,9 @@ What SQLite cannot check (Postgres only, untested here):
   (``DELETE ... USING``) in d4e5f6a7b8c9, and the ``conn.dialect.name ==
   "postgresql"`` SQL in e1f2a3b4c5d6 and f6a7b8c9d0e1. Their SQLite branches
   run here.
+* a9b0c1d2e3f4, which renames Postgres' default name of the parent-task
+  foreign key, and b2c3d4e5f6a7 skipping provider_configs on a create_all
+  database (both checked by hand on PostgreSQL 16.15).
 * Differences compare_metadata does not see on SQLite: the timezone flag of
   DateTime, and a length added to a plain String (VARCHAR vs VARCHAR(64)).
   Checked by hand to be detected: a new column, table or index, a changed
@@ -491,3 +494,16 @@ def test_client_kind_backfill_marks_the_clis_records_and_tasks(migrate_env):
         "task_code": "vscode",
         "task_foreign": "vscode",
     }
+
+
+def test_a_fresh_database_downgrades_through_the_chain(migrate_env):
+    """Every downgrade finds what it drops on a create_all database too: the
+    model names each object the way its migration does (a7b8c9d0e1f2 drops
+    fk_tasks_parent_task_id by name)."""
+    db_file, run = migrate_env
+    assert run("sh", "./db-migrate.sh").returncode == 0
+
+    _alembic(run, "downgrade", SQLITE_START_REVISION)
+
+    assert _alembic_version(db_file) == SQLITE_START_REVISION
+    assert "task_relations" not in _tables(db_file)

@@ -44,9 +44,14 @@ class Task(Base, TimestampMixin):
     # task_relations (which is written from telemetry, often before either task
     # row exists) so the list and detail views can render the hierarchy without
     # a lookup per row. ON DELETE SET NULL: deleting a parent orphans its
-    # children rather than cascading their conversations away.
+    # children rather than cascading their conversations away. Named like
+    # migration a7b8c9d0e1f2 names it, so its downgrade finds the key on a
+    # create_all database too.
     parent_task_id = Column(
-        String, ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True, index=True
+        String,
+        ForeignKey("tasks.id", ondelete="SET NULL", name="fk_tasks_parent_task_id"),
+        nullable=True,
+        index=True,
     )
 
     # --- denormalized display summary -------------------------------------
