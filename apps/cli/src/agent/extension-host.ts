@@ -40,6 +40,7 @@ import { summarizeProviderSettings, toProviderSettings } from "@/lib/utils/provi
 import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
+import { resolveRipgrepPath } from "@/lib/utils/ripgrep.js"
 import { VERSION } from "@/lib/utils/version.js"
 import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import {
@@ -63,8 +64,7 @@ import { AskDispatcher } from "./ask-dispatcher.js"
 // Pre-configured logger for CLI message activity debugging.
 const cliLogger = new DebugLogger("CLI")
 
-// The CLI package root (for finding node_modules/@vscode/ripgrep); see
-// getCliPackageRoot. `tumble doctor` resolves it the same way.
+// The CLI package root, the extension's appRoot; see getCliPackageRoot.
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const CLI_PACKAGE_ROOT = getCliPackageRoot(__dirname)
@@ -491,6 +491,14 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		if (this.options.ephemeral) {
 			this.ephemeralStorageDir = await createEphemeralStorageDir()
 			storageDir = this.ephemeralStorageDir
+		}
+
+		// The extension takes ripgrep from ROO_RIPGREP_PATH first: the
+		// @vscode/ripgrep platform package is not under the CLI root with pnpm.
+		const ripgrepPath = await resolveRipgrepPath()
+
+		if (ripgrepPath) {
+			this.setProcessEnv(CLI_RUNTIME_ENV.ripgrepPath, ripgrepPath)
 		}
 
 		// Create VSCode API mock.

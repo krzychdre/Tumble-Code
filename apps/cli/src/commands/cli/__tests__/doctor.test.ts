@@ -14,7 +14,6 @@ import {
 	checkNodeVersion,
 	checkRipgrep,
 	formatDoctorReport,
-	ripgrepCandidates,
 	runDoctor,
 	type DoctorCheckResult,
 } from "../doctor.js"
@@ -66,23 +65,18 @@ describe("checkExtensionBundle", () => {
 describe("checkRipgrep", () => {
 	const binName = process.platform === "win32" ? "rg.exe" : "rg"
 
-	it("looks where the extension looks: the override, then the CLI's node_modules", () => {
-		const candidates = ripgrepCandidates(tempDir, path.join(tempDir, "custom", binName))
-
-		expect(candidates[0]).toBe(path.join(tempDir, "custom", binName))
-		expect(candidates).toContain(path.join(tempDir, "node_modules", "@vscode", "ripgrep", "bin", binName))
-		expect(candidates).toContain(
-			path.join(tempDir, "node_modules", `@vscode/ripgrep-${process.platform}-${process.arch}`, "bin", binName),
-		)
-	})
-
-	it("passes with the version of the first binary that exists and runs", async () => {
-		const binary = path.join(tempDir, "node_modules", "@vscode", "ripgrep", "bin", binName)
+	function writeBinary(): string {
+		const binary = path.join(tempDir, "bin", binName)
 		fs.mkdirSync(path.dirname(binary), { recursive: true })
 		fs.writeFileSync(binary, "")
+		return binary
+	}
+
+	it("passes with the first line of the binary's version", async () => {
+		const binary = writeBinary()
 		const runVersion = vi.fn(async () => "ripgrep 14.1.1\nfeatures:+pcre2")
 
-		const result = await checkRipgrep({ cliRoot: tempDir, runVersion })
+		const result = await checkRipgrep({ binary, runVersion })
 
 		expect(runVersion).toHaveBeenCalledWith(binary)
 		expect(result.status).toBe("pass")
@@ -90,20 +84,20 @@ describe("checkRipgrep", () => {
 		expect(result.detail).not.toContain("features")
 	})
 
-	it("fails when no binary exists", async () => {
-		const result = await checkRipgrep({ cliRoot: tempDir, runVersion: async () => "never" })
+	it.each([
+		["no binary resolved", () => undefined, "no ROO_RIPGREP_PATH"],
+		["a missing file", () => path.join(tempDir, "missing", binName), path.join("missing", binName)],
+	])("fails on %s", async (_name, binary, detail) => {
+		const result = await checkRipgrep({ binary: binary(), runVersion: async () => "never" })
 
 		expect(result.status).toBe("fail")
 		expect(result.detail).toContain("not found")
+		expect(result.detail).toContain(detail)
 	})
 
 	it("fails when the binary does not run", async () => {
-		const binary = path.join(tempDir, "node_modules", "@vscode", "ripgrep", "bin", binName)
-		fs.mkdirSync(path.dirname(binary), { recursive: true })
-		fs.writeFileSync(binary, "")
-
 		const result = await checkRipgrep({
-			cliRoot: tempDir,
+			binary: writeBinary(),
 			runVersion: async () => {
 				throw new Error("EACCES")
 			},

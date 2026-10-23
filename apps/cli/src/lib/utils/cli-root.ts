@@ -4,8 +4,7 @@ import path from "path"
 import { readCliRuntimeEnv } from "@tumble-code/types"
 
 /**
- * The CLI package root: the directory whose node_modules holds
- * @vscode/ripgrep, and the extension's `appRoot`. The release launcher sets
+ * The CLI package root, the extension's `appRoot`. The release launcher sets
  * ROO_CLI_ROOT; otherwise walk up from `dirname` to the nearest package.json,
  * which works from dist/ (bundled) and from src/ (tsx dev) alike.
  */

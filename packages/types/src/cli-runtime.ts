@@ -30,7 +30,9 @@
  *      leave it unset: they draw nothing.
  *    - `ROO_CLI_ROOT`, `ROO_EXTENSION_PATH`, `ROO_RIPGREP_PATH`: set by the
  *      release launcher that apps/cli/scripts/build.sh writes; they point at
- *      the unpacked CLI, its extension bundle and its ripgrep binary.
+ *      the unpacked CLI, its extension bundle and its ripgrep binary. Without
+ *      the launcher the CLI `ExtensionHost` sets `ROO_RIPGREP_PATH` to the
+ *      binary of the @vscode/ripgrep platform package.
  *
  * 2. `globalThis` slots (`CLI_RUNTIME_GLOBAL_SLOTS`), written with
  *    `setCliRuntimeGlobals` and removed with `clearCliRuntimeGlobals`:

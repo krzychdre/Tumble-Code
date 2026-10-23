@@ -17,13 +17,12 @@ function createTarball(dir: string): string {
 	const releaseName = "tumble-cli-release"
 	const root = path.join(dir, releaseName)
 	fs.mkdirSync(path.join(root, "bin"), { recursive: true })
-	fs.mkdirSync(path.join(root, "node_modules", "@vscode", "ripgrep", "bin"), { recursive: true })
 	fs.writeFileSync(
 		path.join(root, "package.json"),
 		JSON.stringify({ name: "tumble-cli", version: "1.2.3", dependencies: { "left-pad": "1.3.0" } }),
 	)
 	fs.writeFileSync(path.join(root, "bin", "tumble"), "#!/bin/sh\necho 1.2.3\n")
-	fs.writeFileSync(path.join(root, "node_modules", "@vscode", "ripgrep", "bin", "rg"), "#!/bin/sh\n")
+	fs.writeFileSync(path.join(root, "bin", "rg"), "#!/bin/sh\n")
 	const tarball = path.join(dir, "tumble-cli-fake.tar.gz")
 	const result = spawnSync("tar", ["-czf", tarball, "-C", dir, releaseName])
 	if (result.status !== 0) {
