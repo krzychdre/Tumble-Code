@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { SubagentRegistry } from "../core/webview/SubagentRegistry"
 import { API } from "../extension/api"
 import * as ProfileValidatorMod from "../shared/ProfileValidator"
 
@@ -52,6 +53,7 @@ describe("Single-open-task invariant", () => {
 			clearCurrentTask,
 			leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
 			setCurrentTask,
+			subagentRegistry: new SubagentRegistry(() => {}),
 			setProviderProfile: vi.fn(),
 			getStateToPostToWebview: vi.fn(),
 			providerSettingsManager: { getModeConfigId: vi.fn(), listConfig: vi.fn() },
@@ -112,11 +114,7 @@ describe("Single-open-task invariant", () => {
 				setProviderSettings: vi.fn(),
 				getProviderSettings: vi.fn(() => ({})),
 			},
-			// The real method rather than a stub. The history items these tests use
-			// carry no `parallelChildIds`, so it returns at its first guard and
-			// touches nothing — while a double that has drifted from the class
-			// still fails here loudly instead of at "is not a function".
-			rehydrateSubagents: (ClineProvider.prototype as any).rehydrateSubagents,
+			subagentRegistry: new SubagentRegistry(() => {}),
 			newTaskFromHistory: (ClineProvider.prototype as any).newTaskFromHistory,
 			postStateToWebview: vi.fn(),
 		} as unknown as ClineProvider

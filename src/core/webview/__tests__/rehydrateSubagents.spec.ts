@@ -1,107 +1,112 @@
 // npx vitest run core/webview/__tests__/rehydrateSubagents.spec.ts
 
-import type { HistoryItem } from "@tumble-code/types"
+import type { ClineMessage, ExtensionMessage, HistoryItem, SubagentSummary } from "@tumble-code/types"
 
-import { ClineProvider } from "../ClineProvider"
+import { rehydrateSubagents } from "../subagentBackfill"
+import { SubagentRegistry } from "../SubagentRegistry"
 import { logger } from "../../../utils/logging"
 
 const loadSubagentSummaries = vi.fn()
+const readTaskMessages = vi.fn()
 
 vi.mock("../../task-persistence/subagentSummariesStore", () => ({
 	loadSubagentSummaries: (...args: unknown[]) => loadSubagentSummaries(...args),
 }))
 
+vi.mock("../../task-persistence", () => ({
+	readTaskMessages: (...args: unknown[]) => readTaskMessages(...args),
+}))
+
+const FAN_OUT_ASK: ClineMessage = { ts: 1000, type: "ask", ask: "tool", text: '{"tool":"runParallelTasks"}' }
+
+function row(taskId: string, overrides: Partial<SubagentSummary> = {}): SubagentSummary {
+	return {
+		taskId,
+		parentTaskId: "parent-1",
+		runId: "r1",
+		index: 0,
+		mode: "code",
+		description: taskId,
+		status: "completed",
+		tokensIn: 0,
+		tokensOut: 0,
+		totalCost: 0,
+		startedAt: 1,
+		lastActivityAt: 1,
+		...overrides,
+	}
+}
+
 /**
  * `rehydrateSubagents` restores the parallel-subagent panel when a task is
- * reopened from history. It had no coverage of its own, which is how the
- * provider doubles in the resume specs came to be missing it entirely — the
- * only thing that ever exercised it was those tests, indirectly, and they broke
- * with "is not a function" rather than with anything about subagents.
+ * reopened from history or put back on screen.
  */
-describe("ClineProvider.rehydrateSubagents", () => {
-	function makeFakeThis(overrides: Record<string, unknown> = {}) {
-		return {
-			contextProxy: { globalStorageUri: { fsPath: "/tmp/storage" } },
-			subagentRegistry: {
-				restore: vi.fn(),
-				has: vi.fn().mockReturnValue(false),
-				list: vi.fn().mockReturnValue([{ taskId: "child-a" }]),
-			},
-			getCurrentTask: vi.fn().mockReturnValue({ taskId: "parent-1" }),
+describe("rehydrateSubagents", () => {
+	function makeHost(overrides: Record<string, unknown> = {}) {
+		const posted: ExtensionMessage[] = []
+		const host = {
+			subagentRegistry: new SubagentRegistry(
+				(message) => posted.push(message),
+				() => "parent-1",
+			),
+			globalStoragePath: "/tmp/storage",
+			getCurrentTask: vi.fn().mockReturnValue({ taskId: "parent-1", clineMessages: [] }),
 			getHistoryItem: vi.fn().mockRejectedValue(new Error("Task not found")),
-			readParentMessages: vi.fn().mockResolvedValue([]),
-			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 			...overrides,
 		}
+		return { host, posted }
 	}
 
 	const historyItem = (parallelChildIds?: string[]) =>
 		({ id: "parent-1", parallelChildIds }) as unknown as HistoryItem
 
-	const rehydrate = (fakeThis: unknown, item: HistoryItem) =>
-		(ClineProvider.prototype as any).rehydrateSubagents.call(fakeThis, item)
+	const taskIds = (message: ExtensionMessage) => message.subagents?.map((s) => s.taskId)
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+		readTaskMessages.mockResolvedValue([])
 	})
 
-	it("does nothing for a task that never fanned out", async () => {
-		const fakeThis = makeFakeThis()
+	it.each([
+		["never fanned out", undefined],
+		["has an empty child list", []],
+	])("does nothing for a task that %s", async (_label, childIds) => {
+		const { host, posted } = makeHost()
 
-		await rehydrate(fakeThis, historyItem(undefined))
+		await rehydrateSubagents(host, historyItem(childIds))
 
 		expect(loadSubagentSummaries).not.toHaveBeenCalled()
-		expect(fakeThis.postMessageToWebview).not.toHaveBeenCalled()
+		expect(posted).toHaveLength(0)
 	})
 
-	it("does nothing for an empty child list", async () => {
-		const fakeThis = makeFakeThis()
+	it("restores the children the task actually spawned, and posts them once", async () => {
+		loadSubagentSummaries.mockResolvedValue([row("child-a"), row("child-b", { index: 1 })])
+		const { host, posted } = makeHost()
 
-		await rehydrate(fakeThis, historyItem([]))
-
-		expect(loadSubagentSummaries).not.toHaveBeenCalled()
-	})
-
-	it("restores the children the task actually spawned, and posts them", async () => {
-		loadSubagentSummaries.mockResolvedValue([
-			{ taskId: "child-a", runId: "r1" },
-			{ taskId: "child-b", runId: "r1" },
-		])
-		const fakeThis = makeFakeThis()
-
-		await rehydrate(fakeThis, historyItem(["child-a", "child-b"]))
+		await rehydrateSubagents(host, historyItem(["child-a", "child-b"]))
 
 		expect(loadSubagentSummaries).toHaveBeenCalledWith("/tmp/storage", "parent-1")
-		expect(fakeThis.subagentRegistry.restore).toHaveBeenCalledWith("parent-1", [
-			{ taskId: "child-a", runId: "r1" },
-			{ taskId: "child-b", runId: "r1" },
-		])
 		// Every row has its run: the parent's messages are not read.
-		expect(fakeThis.readParentMessages).not.toHaveBeenCalled()
-		expect(fakeThis.postMessageToWebview).toHaveBeenCalledWith({
-			type: "subagentsUpdated",
-			sourceTaskId: "parent-1",
-			subagents: [{ taskId: "child-a" }],
-		})
+		expect(readTaskMessages).not.toHaveBeenCalled()
+		expect(posted).toHaveLength(1)
+		expect(posted[0]).toMatchObject({ type: "subagentsUpdated", sourceTaskId: "parent-1" })
+		expect(taskIds(posted[0])).toEqual(["child-a", "child-b"])
 	})
 
 	it("drops a summary the parent never listed, so a half-written sidecar cannot invent rows", async () => {
-		loadSubagentSummaries.mockResolvedValue([
-			{ taskId: "child-a", runId: "r1" },
-			{ taskId: "child-from-a-crashed-run", runId: "r1" },
-		])
-		const fakeThis = makeFakeThis()
+		loadSubagentSummaries.mockResolvedValue([row("child-a"), row("child-from-a-crashed-run", { index: 1 })])
+		const { host } = makeHost()
 
-		await rehydrate(fakeThis, historyItem(["child-a"]))
+		await rehydrateSubagents(host, historyItem(["child-a"]))
 
-		expect(fakeThis.subagentRegistry.restore).toHaveBeenCalledWith("parent-1", [{ taskId: "child-a", runId: "r1" }])
+		expect(host.subagentRegistry.list().map((s) => s.taskId)).toEqual(["child-a"])
 	})
 
 	// Regression: each fan-out overwrote the sidecar, so a task reopened after
 	// several fan-outs listed only the last one.
 	it("rebuilds a child the sidecar lacks from its history item, in the run it was created in", async () => {
-		loadSubagentSummaries.mockResolvedValue([{ taskId: "child-a", runId: "r1" }])
-		const fakeThis = makeFakeThis({
+		loadSubagentSummaries.mockResolvedValue([row("child-a")])
+		const { host } = makeHost({
 			getHistoryItem: vi.fn(async (id: string) => {
 				if (id !== "child-old") throw new Error("Task not found")
 				return {
@@ -114,37 +119,45 @@ describe("ClineProvider.rehydrateSubagents", () => {
 					outcome: "completed",
 				}
 			}),
-			readParentMessages: vi
-				.fn()
-				.mockResolvedValue([{ ts: 1000, type: "ask", ask: "tool", text: '{"tool":"runParallelTasks"}' }]),
+			getCurrentTask: vi.fn().mockReturnValue({ taskId: "parent-1", clineMessages: [FAN_OUT_ASK] }),
 		})
-		fakeThis.subagentRegistry.has.mockImplementation((id: string) => id === "child-live")
+		host.subagentRegistry.register(row("child-live", { status: "running", runId: "r2" }))
 
-		await rehydrate(fakeThis, historyItem(["child-old", "child-a", "child-live", "child-gone"]))
+		await rehydrateSubagents(host, historyItem(["child-old", "child-a", "child-live", "child-gone"]))
 
-		expect(fakeThis.getHistoryItem).not.toHaveBeenCalledWith("child-live")
-		expect(fakeThis.readParentMessages).toHaveBeenCalledWith("parent-1")
-		const [, rows] = fakeThis.subagentRegistry.restore.mock.calls[0]
-		expect(rows).toEqual([
-			{ taskId: "child-a", runId: "r1" },
-			expect.objectContaining({
-				taskId: "child-old",
-				parentTaskId: "parent-1",
-				runId: (1000).toString(36),
-				status: "completed",
-				description: "old work",
-			}),
-		])
+		expect(host.getHistoryItem).not.toHaveBeenCalledWith("child-live")
+		// The parent is on screen: its live messages are used, not the disk.
+		expect(readTaskMessages).not.toHaveBeenCalled()
+		expect(host.subagentRegistry.get("child-old")).toMatchObject({
+			parentTaskId: "parent-1",
+			runId: (1000).toString(36),
+			status: "completed",
+			description: "old work",
+		})
+		// A row the registry already held stays as it is.
+		expect(host.subagentRegistry.get("child-live")?.status).toBe("running")
+		expect(host.subagentRegistry.has("child-gone")).toBe(false)
 	})
 
-	it("survives an unreadable sidecar — restoring the parent must not depend on it", async () => {
+	it("reads the parent's messages from disk when it is not on screen", async () => {
+		loadSubagentSummaries.mockResolvedValue([row("child-a", { runId: undefined, startedAt: 1500 })])
+		readTaskMessages.mockResolvedValue([FAN_OUT_ASK])
+		const { host } = makeHost({ getCurrentTask: vi.fn().mockReturnValue(undefined) })
+
+		await rehydrateSubagents(host, historyItem(["child-a"]))
+
+		expect(readTaskMessages).toHaveBeenCalledWith({ taskId: "parent-1", globalStoragePath: "/tmp/storage" })
+		expect(host.subagentRegistry.get("child-a")?.runId).toBe((1000).toString(36))
+	})
+
+	it("survives an unreadable sidecar: restoring the parent must not depend on it", async () => {
 		loadSubagentSummaries.mockRejectedValue(new Error("ENOENT"))
-		const fakeThis = makeFakeThis()
+		const { host, posted } = makeHost()
 		const loggerWarnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
 
-		await expect(rehydrate(fakeThis, historyItem(["child-a"]))).resolves.toBeUndefined()
+		await expect(rehydrateSubagents(host, historyItem(["child-a"]))).resolves.toBeUndefined()
 		expect(loggerWarnSpy).toHaveBeenCalledWith(expect.stringContaining("[rehydrateSubagents]"))
-		expect(fakeThis.postMessageToWebview).not.toHaveBeenCalled()
+		expect(posted).toHaveLength(0)
 		loggerWarnSpy.mockRestore()
 	})
 })

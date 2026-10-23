@@ -73,6 +73,7 @@ import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@tumble-code/types"
 import type { TaskHistoryStore } from "../task-persistence"
 import { SubagentRegistry } from "./SubagentRegistry"
+import { rehydrateSubagents } from "./subagentBackfill"
 import { BackgroundSubagents } from "./BackgroundSubagents"
 import { PendingEditOperations, type PendingEditOperation } from "./PendingEditOperations"
 import {
@@ -1160,11 +1161,7 @@ export class ClineProvider
 			// the scope guard). Historical subagents for the task we are
 			// about to rehydrate are restored AFTER the new Task is on the
 			// stack, via `rehydrateSubagents` below.
-			try {
-				await this.resetSubagentPanel()
-			} catch {
-				// Non-fatal: panel reset is best-effort.
-			}
+			this.subagentRegistry.clearSettled()
 			await this.leaveCurrentTask()
 		}
 
@@ -1226,7 +1223,7 @@ export class ClineProvider
 		// and before the eager state push so the push carries the restored
 		// rows. Best-effort: a missing/corrupt sidecar never breaks the
 		// parent rehydration.
-		await this.rehydrateSubagents(historyItem)
+		await rehydrateSubagents(this, historyItem)
 
 		// Eager state push so the webview shows the new task immediately;
 		// resumeTaskFromHistory pushes further updates asynchronously.
@@ -2014,11 +2011,7 @@ export class ClineProvider
 			// pop there is no current task and the post would be dropped by
 			// the scope guard). Subagents from the previous task never leak
 			// into the new task's panel.
-			try {
-				await this.resetSubagentPanel()
-			} catch {
-				// Non-fatal: panel reset is best-effort.
-			}
+			this.subagentRegistry.clearSettled()
 			try {
 				await this.leaveCurrentTask()
 			} catch {
@@ -2406,107 +2399,6 @@ export class ClineProvider
 		return true
 	}
 
-	/**
-	 * Single source of truth for resetting the parallel-subagent panel at a
-	 * task boundary: drops the rows of finished fan-outs (see
-	 * `SubagentRegistry.clearSettled`) and broadcasts what is left. A fan-out
-	 * still running off screen keeps its rows, so its parent shows them again
-	 * when reopened; the webview panel lists only the open task's rows.
-	 * Called from every entry point that changes the foreground task
-	 * (`createTask` for a user-initiated top-level task, `clearTask`,
-	 * `createTaskWithHistoryItem` for a rehydrated root, `reattachTask`).
-	 *
-	 * The broadcast is best-effort: if the webview is not yet mounted the
-	 * post is dropped silently, and the next `postStateToWebview` carries
-	 * the `subagents` slice via the state payload anyway.
-	 */
-	private async resetSubagentPanel(): Promise<void> {
-		this.subagentRegistry.clearSettled()
-		await this.postMessageToWebview({
-			type: "subagentsUpdated",
-			sourceTaskId: this.getCurrentTask()?.taskId,
-			subagents: this.subagentRegistry.list(),
-		})
-	}
-
-	/**
-	 * Rehydrate the parallel-subagent panel for a parent task being restored
-	 * from history or put back on screen. Reads `parallelChildIds` from the
-	 * parent's history item (the persisted parent→child relation written by
-	 * `run_parallel_tasks`, one id per subagent of every fan-out), loads the
-	 * matching summaries from the parent's sidecar
-	 * (`tasks/<parentId>/subagents.json`), rebuilds a row from the child's
-	 * own history item for each subagent the sidecar lacks (see
-	 * subagentBackfill), and merges them into the registry. Rows the registry
-	 * already holds (a fan-out still running) are kept as they are.
-	 *
-	 * Graceful degradation: if `parallelChildIds` is absent (pre-fix history
-	 * item) or the sidecar is missing/corrupt, the panel shows what can be
-	 * rebuilt; the task is NOT marked corrupt and no error is thrown.
-	 *
-	 * Posts a single `subagentsUpdated` carrying the restored list (and the
-	 * current task id as `sourceTaskId`). Called after the parent Task is on
-	 * the stack so `getCurrentTask()` matches the parent we just restored.
-	 */
-	private async rehydrateSubagents(historyItem: HistoryItem): Promise<void> {
-		const parallelChildIds = historyItem.parallelChildIds
-		if (!parallelChildIds || parallelChildIds.length === 0) {
-			// Pre-fix history item or a task that never fanned out — nothing
-			// to restore. The panel was already cleared by
-			// `resetSubagentPanel` at the top of the rehydrate path.
-			return
-		}
-		try {
-			const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
-			const { loadSubagentSummaries } = await import("../task-persistence/subagentSummariesStore")
-			const summaries = await loadSubagentSummaries(globalStoragePath, historyItem.id)
-			// Only keep summaries whose taskId is in the persisted
-			// parent→child list. The sidecar and `parallelChildIds` are
-			// written together, but a partially-written sidecar from a
-			// crashed run could carry stale entries; this guard keeps the
-			// panel honest.
-			const allowed = new Set(parallelChildIds)
-			const saved = summaries.filter((s) => allowed.has(s.taskId))
-			const savedIds = new Set(saved.map((s) => s.taskId))
-			const missingIds = parallelChildIds.filter((id) => !savedIds.has(id) && !this.subagentRegistry.has(id))
-			const childHistoryItems = (
-				await Promise.all(missingIds.map((id) => this.getHistoryItem(id).catch(() => undefined)))
-			).filter((item): item is HistoryItem => item !== undefined)
-			const needsRuns = childHistoryItems.length > 0 || saved.some((s) => s.runId === undefined)
-			const { completeSubagentRows, fanOutStartTimes } = await import("./subagentBackfill")
-			const restored = completeSubagentRows(
-				historyItem.id,
-				saved,
-				childHistoryItems,
-				needsRuns ? fanOutStartTimes(await this.readParentMessages(historyItem.id)) : [],
-			)
-			this.subagentRegistry.restore(historyItem.id, restored)
-			await this.postMessageToWebview({
-				type: "subagentsUpdated",
-				sourceTaskId: this.getCurrentTask()?.taskId,
-				subagents: this.subagentRegistry.list(),
-			})
-		} catch (error) {
-			// Sidecar loading is best-effort. A missing/corrupt sidecar must
-			// never break rehydration of the parent task itself.
-			logger.warn(
-				`[rehydrateSubagents] Failed to restore subagents for task ${historyItem.id} (non-fatal): ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-		}
-	}
-
-	/** A task's chat messages: the live instance's when it is on screen, else from disk. */
-	private async readParentMessages(taskId: string): Promise<ClineMessage[]> {
-		const current = this.getCurrentTask()
-		if (current?.taskId === taskId && current.clineMessages.length > 0) {
-			return current.clineMessages
-		}
-		const { readTaskMessages } = await import("../task-persistence")
-		return readTaskMessages({ taskId, globalStoragePath: this.contextProxy.globalStorageUri.fsPath })
-	}
-
 	// Clear the current task without treating it as a subtask.
 	// This is used when the user cancels a task that is not a subtask.
 	public async clearTask(): Promise<void> {
@@ -2514,7 +2406,7 @@ export class ClineProvider
 		// still carries the about-to-be-cleared task's id as `sourceTaskId`
 		// (the webview scopes by currentTaskId; after the pop there is no
 		// current task and the post would be dropped by the scope guard).
-		await this.resetSubagentPanel()
+		this.subagentRegistry.clearSettled()
 		const current = this.taskSlot.current
 		if (current) {
 			logger.info(`[clearTask] clearing task ${current.taskId}.${current.instanceId}`)
@@ -2529,17 +2421,13 @@ export class ClineProvider
 	 * live instance instead of a new one.
 	 */
 	private async reattachTask(task: Task, historyItem: HistoryItem): Promise<void> {
-		try {
-			await this.resetSubagentPanel()
-		} catch {
-			// Non-fatal: panel reset is best-effort.
-		}
+		this.subagentRegistry.clearSettled()
 		await this.leaveCurrentTask()
 		// Install first: the profile restore below then updates this task,
 		// which already runs on that profile.
 		await this.setCurrentTask(task)
 		await this.modeProfiles.restoreForHistoryItem(historyItem)
-		await this.rehydrateSubagents(historyItem)
+		await rehydrateSubagents(this, historyItem)
 		await this.postStateToWebview()
 		logger.info(`[reattachTask] task ${task.taskId}.${task.instanceId} is back on screen`)
 	}
