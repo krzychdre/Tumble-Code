@@ -19,12 +19,17 @@ from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, exists, func, literal, not_, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from src.models.task import Task
 from src.services.client_kind import CLIENT_LABELS, parse_client
+from src.services.model_attribution import split_models_label
 from src.services.session_quality import GRADE_CLEAN, GRADE_FRICTION, GRADE_LABELS, GRADE_UNFINISHED
+from src.services.task_tree import subtrees
 from src.utils.clientzone import UTC, day_start_utc
+from src.utils.pagination import page_window
+from src.web.presenters.task_rows import _list_row, _workspace_label
 
 # Column key -> what the column header says. Only these can be sorted by;
 # anything else in ``?sort=`` falls back to the default.
@@ -40,6 +45,11 @@ GRADES = (GRADE_CLEAN, GRADE_FRICTION, GRADE_UNFINISHED)
 _FILTER_FIELDS = ("q", "project", "model", "client", "grade", "since", "until", "subtasks")
 
 _MAX_TEXT = 200
+
+# How many tasks one page of the list shows. The corpus on a working
+# deployment runs to hundreds of tasks; rendering all of them was never a
+# deliberate choice, just the absence of paging.
+PAGE_SIZE = 25
 
 
 def _text(value: Optional[str]) -> str:
@@ -318,3 +328,66 @@ def _run_totals(user_id: str):
         .group_by(members.c.run_id)
         .subquery("run_totals")
     )
+
+
+async def list_page(db: AsyncSession, view: ListView, user_id: str, zone: ZoneInfo, page: int) -> dict:
+    """The template context of one page of the list: its rows, the pager and
+    the filter suggestions.
+
+    ``page`` is clamped to the real pages, so a typed out-of-range number lands
+    on the nearest one.
+    """
+    filters = view.conditions(user_id, zone)
+    total = await db.scalar(select(func.count(Task.id)).where(*filters))
+    page_count = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(max(page, 1), page_count)
+
+    order, rollup = view.order_by(user_id)
+    query = select(Task).where(*filters)
+    if rollup is not None:
+        query = query.outerjoin(rollup, rollup.c.run_id == Task.id)
+    result = await db.execute(query.order_by(*order).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE))
+
+    page_tasks = list(result.scalars().all())
+    # One query per tree level for the whole page rather than a lookup per row.
+    tree = await subtrees(db, [t.id for t in page_tasks], user_id)
+    nest = view.scope == "roots"
+
+    return dict(
+        tasks=[_list_row(task, tree, nest) for task in page_tasks],
+        tree_view=nest,
+        page=page,
+        page_count=page_count,
+        # Numbered links, so any page is one click away rather than N
+        # clicks of "Older"; None entries render as an ellipsis.
+        pages=page_window(page, page_count),
+        total=total,
+        # Shown on the scope toggle so the cost of switching is visible up front.
+        all_total=await db.scalar(select(func.count(Task.id)).where(Task.user_id == user_id)),
+        **await _filter_suggestions(db, user_id),
+    )
+
+
+async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
+    """The user's own projects and models, offered as the filter fields'
+    suggestions (a <datalist>, so any other text can still be typed).
+
+    Two DISTINCT reads over the user's rows; the project is offered by its
+    badge label (the last path segment), which is what the filter matches.
+    """
+    paths = await db.scalars(
+        select(Task.workspace_path)
+        .where(Task.user_id == user_id, Task.workspace_path.is_not(None))
+        .distinct()
+    )
+    labels = {label for label in (_workspace_label(p) for p in paths.all()) if label}
+    joined = await db.scalars(
+        select(Task.models)
+        .where(Task.user_id == user_id, Task.models.is_not(None))
+        .distinct()
+    )
+    models = {m for value in joined.all() for m in split_models_label(value)}
+    return {
+        "project_options": sorted(labels, key=str.lower),
+        "model_options": sorted(models, key=str.lower),
+    }

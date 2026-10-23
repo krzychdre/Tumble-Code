@@ -15,6 +15,7 @@ import pytest
 
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task
+from src.web.presenters import task_list
 from tests.web_helpers import _override_web_user, _seed_user
 
 BASE = datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc)
@@ -238,9 +239,7 @@ async def test_only_allow_listed_sorts_are_honoured(params, client, db_session, 
 
 
 async def test_pager_links_keep_the_sort_and_filters(client, db_session, session_factory, monkeypatch):
-    from src.routers import web_tasks
-
-    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed(
         session_factory,
@@ -256,7 +255,7 @@ async def test_pager_links_keep_the_sort_and_filters(client, db_session, session
     # The compact pager a phone shows.
     assert re.search(r'class="pager-status"[^>]*>\s*2 / 5\s*<', html)
     # The jump form keeps them too (only rendered past the numbered window).
-    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 1)
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 1)
     jump = _get(client, "/app", sort="cost", dir="asc", model="glm").text
     form = jump[jump.index('class="pager-jump"'):]
     form = form[:form.index("</form>")]
