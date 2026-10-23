@@ -139,7 +139,7 @@ g. **Small majors with no API we use beyond the default export:** `@vscode/test-
 10 to 11, `isbinaryfile` 5 to 6, `p-wait-for` 5 to 7, `safe-stable-stringify` 2 to 3, `serialize-error` 12 to
 13, `debounce` 2 to 3, `fuzzysort` 3 to 4, `@vscode/codicons` 0.0.36 to 0.0.46, `katex` 0.18 to 0.19,
 `ovsx` 1.3. One PR for the lot, read each changelog's breaking section while doing it. **Effort:** S to M.
-**Status:** #989 and #990 (nock 15). Deferred: `mocha` 12 with `@vscode/test-electron` 3 (mocha 12 is ESM-only, the e2e suite is CommonJS), `serialize-error` 13 (changes the tool error text the model sees), `@dotenvx/dotenvx` 2 (adds 2 MB to the bundle), `google-auth-library` 11 (the SDKs still depend on ^10), `isbinaryfile` 6 (needs Node 24).
+**Status:** #989 and #990 (nock 15); `mocha` 12 with `@vscode/test-electron` 3 in #1019, `serialize-error` 13 in #1021 (keeps the error texts for thrown non-Errors). Deferred: `@dotenvx/dotenvx` 2 (adds 2 MB to the bundle), `google-auth-library` 11 (the SDKs still depend on ^10), `isbinaryfile` 6 (needs Node 24).
 h. **`web-tree-sitter` 0.25 to 0.27 with `tree-sitter-wasms` 0.1.13.** The grammar WASM files must match the
 runtime's ABI (`languageGrammars.ts:49` already documents one ABI mismatch). Verify in a worktree with the
 tree-sitter spec family before merging. **Effort:** S. **Risk:** medium.
@@ -776,35 +776,48 @@ call first). The Code QA run on `main` after #997 then showed two more timing fl
 `Spinner` test read the frame before React rendered the clock's update (React's scheduler runs on a real
 macrotask that fake timers never reach; `act()` now renders it), and `RunParallelTasksTool.spec` waited 1 s for
 sidecar writes whose lock retries back off for up to 2.5 s (red on Windows twice in a row). #999 also gives `pnpm install` in CI the `GITHUB_TOKEN` again: the
-`@vscode/ripgrep` 1.17 postinstall downloads `rg` from the GitHub API and got HTTP 403 without it. Still open:
+`@vscode/ripgrep` 1.17 postinstall downloads `rg` from the GitHub API and got HTTP 403 without it.
 
-- Moving the CLI to `@vscode/ripgrep` 1.18: the per-platform package layout needs the lookup in
-  `src/services/ripgrep/index.ts` and `apps/cli/src/commands/cli/doctor.ts`, `apps/cli/scripts/build.sh`,
-  `.github/workflows/cli-release.yml` and `apps/cli/install.sh` to read `@vscode/ripgrep-<platform>-<arch>/bin`; the
-  `GITHUB_TOKEN` of the setup action can then go.
+Done in the night wave of 2026-10-24 (#1000 to #1021):
+
+- `@vscode/ripgrep` 1.18 in the CLI, with the lookup, doctor, build, install and release scripts reading the
+  per-platform packages and without the setup action's `GITHUB_TOKEN`: #1010.
+- The temperature slider is hidden for Claude on Anthropic and Vertex (API version 2026-10-21 rejects
+  `temperature`): #1002.
+- `gemini-3-pro-preview` flagged deprecated on Vertex too: #1005; then #1020 dropped the Gemini models Google has
+  shut down from the Gemini and Vertex tables.
+- `ApiRequestBuilder.describeRequestParams` has a direct spec: #1008.
+- The openai-compatible descriptor checks the URL and the key once, and `doesConfigChangeRequireRestart` rule 1 is
+  pinned by a test: #1009.
+- The two code-index `orchestrator.ts` blocks share one scan helper: #1012.
+- The unused `BaseTelemetryClient` copy is deleted: #1015.
+- The `NotificationSettings` bug (the "custom sound too long" message cleared on a sound reset) was proven and
+  fixed: #1018.
+- The follow-up countdown cancelled by an arrow key has a CLI test (#1000), and the hint says so (#1013).
+- The App characterization spec renders inside `act()` (#1004), and the `--oneshot` exit delay runs on a fake clock
+  (#1011).
+- The `.prettierrc.json` `ignore` key, the dead `js-cookie` allowlist entry, the `brace-expansion` and `glob`
+  overrides and the `body-parser` audit finding: #1003.
+- Dependabot: #998 merged; #954 replaced by #1014 (`@types/node` 22.20.5, and Dependabot ignores `@types/vscode`
+  and Python minors); #955 (Python 3.14 image) closed.
+- Patched `browserslist` and `launch-editor` in the dev tree: #1016.
+- lint-staged formats `.mjs` and `.cjs`: #1017.
+- `alembic downgrade` works on a database built by `create_all`: #1001.
+- The cloud service is ruff-formatted (#1006), and `make lint` checks the format (#1007).
+- The live cloud api image was rebuilt on 2026-10-24 00:48 at `47ad0a5ca`, with migration `a9b0c1d2e3f4` applied.
+- VSIX smoke test for the newly compiled `App`, `MermaidButton`, `useCodeIndexSettings` and `useScrollLifecycle`:
+  the e2e suite is green on VS Code 1.102.
+
+Still open:
+
 - The `minimumReleaseAgeExclude` entries in `pnpm-workspace.yaml` can go after 2026-10-24T14:27Z.
-- `.prettierrc.json` has an unknown `ignore` key (Prettier reads `.prettierignore`).
-- `scripts/audit-allowlist.mjs` keeps a dead `js-cookie` entry.
-- The temperature slider is inert for Claude on Anthropic and Vertex: API version 2026-10-21 rejects `temperature`.
-- `gemini-3-pro-preview` is marked deprecated in `gemini.ts` but not in `vertex.ts`.
-- Clones outside this plan: the cloud `TelemetryClient` against the telemetry `BaseTelemetryClient`, and two blocks
-  in the code-index `orchestrator.ts`.
-- The openai-compatible descriptor checks the URL and the key twice.
-- `doesConfigChangeRequireRestart` rule 1 is reachable another way.
-- Suspected `NotificationSettings` bug: the too-long-file message is cleared on a sound reset (not reproduced).
-- The follow-up countdown interrupted by the arrow keys has no CLI test.
-- `ApiRequestBuilder.describeRequestParams` has no direct spec.
-- `alembic downgrade` fails on databases built by `create_all` (constraint name `fk_tasks_parent_task_id`); the same
-  on SQLAlchemy 2.0.
-- The `brace-expansion` and `glob` overrides are no longer needed for the patched versions.
-- The live cloud api image rebuild is owed to the owner.
-- A VSIX smoke test is owed for `App`, `MermaidButton`, `useCodeIndexSettings` and `useScrollLifecycle`, which the
-  React Compiler now compiles.
 - TypeScript 7: revisit when `typescript-eslint` supports it (typescript-eslint#10940).
 - `web-tree-sitter` 0.26+: revisit when `tree-sitter-wasms` ships grammars with `dylink.0`.
-- Dependabot is running: #954 (type definitions), #955 (cloud api image on Python 3.14, which the CI matrix does
-  not test yet) and #998 (`google-auth-library` 10.9.1) are open and left for the owner; it closed its other first
-  PRs (#958, #961, #965, #966, #969) on its own at 20:48 UTC.
+- `react-hooks/set-state-in-effect` stays off with 34 findings.
+- Two e2e log nits that predate this round: the source-map lookup tries `index.map.json` and `index.sourcemap`, and
+  `CustomModesManager` logs ENOENT on a fresh profile.
+- Newer Gemini and Vertex models are not added yet (a separate model refresh).
+- The open "Changeset version bump" PR #522 is left for the owner.
 
 ## NOT worth doing (decided in this round)
 
