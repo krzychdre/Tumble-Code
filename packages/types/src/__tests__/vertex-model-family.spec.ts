@@ -40,17 +40,40 @@ describe("vertexModelFamily", () => {
 		expect(vertexModelFamily({ apiModelId: vertexDefaultModelId })).toBe("claude")
 	})
 
-	// Google shuts a Gemini model down on the Gemini API and on Vertex alike (gemini-3-pro-preview: shut down on
-	// 2026-03-09, no longer listed on Vertex), so the picker must hide it on both.
+	// A Gemini model that Google retires on both platforms must be hidden by the picker on both.
 	it("a Gemini id both tables list is deprecated on Vertex exactly when it is in the Gemini table", () => {
 		const shared = Object.entries(geminiModels as Record<string, ModelInfo>).filter(([id]) =>
 			Object.hasOwn(table, id),
 		)
 
-		expect(shared.map(([id]) => id)).toContain("gemini-3-pro-preview")
+		expect(shared.length).toBeGreaterThan(0)
 		for (const [id, info] of shared) {
 			expect(table[id]!.deprecated, id).toBe(info.deprecated)
 		}
+	})
+})
+
+// Shut down by Google (Gemini API deprecations page and the Vertex model versions page, read 2026-10-24); see
+// ai_plans/2026-10-24_01-10_r4-fu-gemini-vertex-shut-down-models.md. Vertex also retired Gemini 2.5 on 2026-10-20.
+const SHUT_DOWN_GEMINI_ID = /^gemini-(1\.5|2\.0)-|^gemini-2\.5-.*(preview|exp)|^gemini-3-pro-preview$/
+
+describe("Gemini model tables", () => {
+	it("offer no model Google has shut down", () => {
+		const ids = [...Object.keys(geminiModels), ...Object.keys(table)]
+
+		expect(ids.filter((id) => SHUT_DOWN_GEMINI_ID.test(id))).toEqual([])
+		expect(Object.keys(table).filter((id) => id.startsWith("gemini-2.5"))).toEqual([])
+	})
+
+	// A profile that still selects a removed id keeps it (the settings warn about an unknown model).
+	it.each([
+		["gemini", "gemini-2.5-pro-preview-06-05"],
+		["vertex", "gemini-2.5-pro"],
+	] as const)("%s keeps the removed id %s as an unknown model", (apiProvider, apiModelId) => {
+		expect(resolveProviderModelSelection({ apiProvider, apiModelId })).toMatchObject({
+			id: apiModelId,
+			known: false,
+		})
 	})
 })
 
@@ -70,15 +93,17 @@ describe("Vertex unknown-id stand-ins", () => {
 		expect(info.reasoningEffort).toBeUndefined()
 	})
 
-	// getGeminiReasoning sends a thinking budget only for budget models and a thinking level only from an
-	// effort; an older Gemini (1.5, 2.0) rejects both, so the stand-in must ask for neither.
-	it("the Gemini stand-in asks for no thinking config", () => {
+	// Vertex serves only Gemini 3 and later, so an unknown Gemini id is a newer one: it gets no thinking budget
+	// (a 2.5-only parameter) and a default thinking level every listed Gemini accepts.
+	it("the Gemini stand-in asks for no thinking budget and a thinking level every listed Gemini takes", () => {
 		const info = table[vertexUnknownGeminiModelStandInId]!
+		const geminiIds = Object.keys(table).filter((id) => vertexModelFamily({ apiModelId: id }) === "gemini")
 
 		expect(info.supportsReasoningBudget).toBeUndefined()
 		expect(info.requiredReasoningBudget).toBeUndefined()
-		expect(info.supportsReasoningEffort).toBeUndefined()
-		expect(info.reasoningEffort).toBeUndefined()
+		for (const id of geminiIds) {
+			expect(table[id]!.supportsReasoningEffort, id).toContain(info.reasoningEffort)
+		}
 	})
 
 	// Regression (defect 2): one Claude record used to stand in for unknown Gemini ids too.

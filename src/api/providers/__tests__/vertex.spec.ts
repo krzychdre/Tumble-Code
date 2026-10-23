@@ -141,39 +141,38 @@ describe("VertexHandler", () => {
 		it("should return correct model info for Gemini", () => {
 			// Create a new instance with specific model ID
 			const testHandler = new VertexHandler({
-				apiModelId: "gemini-2.0-flash-001",
+				apiModelId: "gemini-3-flash-preview",
 				vertexProjectId: "test-project",
 				vertexRegion: "us-central1",
 			})
 
 			// Don't mock getModel here as we want to test the actual implementation
 			const modelInfo = testHandler.getModel()
-			expect(modelInfo.id).toBe("gemini-2.0-flash-001")
+			expect(modelInfo.id).toBe("gemini-3-flash-preview")
 			expect(modelInfo.info).toBeDefined()
-			expect(modelInfo.info.maxTokens).toBe(8192)
+			expect(modelInfo.info.maxTokens).toBe(65_536)
 			expect(modelInfo.info.contextWindow).toBe(1048576)
 		})
 
-		// An unknown Gemini id gets the Gemini 2.0 Flash stand-in, not the Opus 5 default (which would send a
-		// thinking level and drop temperature) and no longer the Claude Sonnet 4.5 record it shared with
-		// unknown Claude ids (40k output tokens, 200k context and, with reasoning on, a thinking budget,
-		// which Gemini 1.5 and 2.0 reject).
+		// An unknown Gemini id gets the Gemini 3.1 Pro stand-in, not the Opus 5 default (which would drop
+		// temperature) and no longer the Claude Sonnet 4.5 record it shared with unknown Claude ids (40k
+		// output tokens, 200k context and, with reasoning on, a thinking budget, which Gemini 3 rejects).
 		it.each([
 			["plain settings", {}],
 			["reasoning on", { enableReasoningEffort: true }],
 		])("sizes an unknown Gemini id with the Gemini stand-in info (%s)", (_, reasoningSettings) => {
 			const testHandler = new VertexHandler({
-				apiModelId: "gemini-1.5-pro-001",
+				apiModelId: "gemini-9-ultra",
 				vertexProjectId: "test-project",
 				vertexRegion: "us-central1",
 				...reasoningSettings,
 			})
 
 			const model = testHandler.getModel()
-			expect(model.id).toBe("gemini-1.5-pro-001")
-			expect(model.maxTokens).toBe(8192)
+			expect(model.id).toBe("gemini-9-ultra")
+			expect(model.maxTokens).toBe(65_536)
 			expect(model.temperature).toBe(1)
-			expect(model.reasoning).toBeUndefined()
+			expect(model.reasoning).toEqual({ thinkingLevel: "low", includeThoughts: true })
 			expect(model.reasoningBudget).toBeUndefined()
 			expect(model.info.contextWindow).toBe(1_048_576)
 			expect(model.info.supportsTemperature).not.toBe(false)
@@ -181,7 +180,7 @@ describe("VertexHandler", () => {
 
 		it("should exclude apply_diff and include edit in tool preferences", () => {
 			const testHandler = new VertexHandler({
-				apiModelId: "gemini-2.0-flash-001",
+				apiModelId: "gemini-3-flash-preview",
 				vertexProjectId: "test-project",
 				vertexRegion: "us-central1",
 			})
@@ -193,7 +192,7 @@ describe("VertexHandler", () => {
 
 		it("should not duplicate tool entries if already present", () => {
 			const testHandler = new VertexHandler({
-				apiModelId: "gemini-2.0-flash-001",
+				apiModelId: "gemini-3-flash-preview",
 				vertexProjectId: "test-project",
 				vertexRegion: "us-central1",
 			})

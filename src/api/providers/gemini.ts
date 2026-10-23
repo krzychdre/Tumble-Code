@@ -222,7 +222,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 		// For hybrid/budget reasoning models (e.g. Gemini 2.5 Pro), respect user-configured
 		// modelMaxTokens so the ThinkingBudget slider can control the cap. For effort-only or
-		// standard models (like gemini-3-pro-preview), ignore any stale modelMaxTokens and
+		// standard models (like gemini-3.1-pro-preview), ignore any stale modelMaxTokens and
 		// default to the model's computed maxTokens from getModelMaxOutputTokens.
 		const isHybridReasoningModel = info.supportsReasoningBudget || info.requiredReasoningBudget
 		const maxOutputTokens = isHybridReasoningModel
