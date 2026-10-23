@@ -19,7 +19,7 @@ export const vertexModels = {
 	"gemini-3.5-flash": { ...geminiModels["gemini-3.5-flash"] },
 	"gemini-3.1-pro-preview": { ...geminiModels["gemini-3.1-pro-preview"] },
 	"gemini-3.1-pro-preview-customtools": { ...geminiModels["gemini-3.1-pro-preview-customtools"] },
-	"gemini-3-pro-preview": { ...withoutFields(geminiModels["gemini-3-pro-preview"], "deprecated") },
+	"gemini-3-pro-preview": { ...geminiModels["gemini-3-pro-preview"] },
 	"gemini-3-flash-preview": { ...geminiModels["gemini-3-flash-preview"] },
 	"gemini-2.5-flash-preview-05-20:thinking": {
 		maxTokens: 65_535,

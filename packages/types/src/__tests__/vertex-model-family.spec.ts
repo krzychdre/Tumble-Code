@@ -3,6 +3,7 @@
 
 import type { ModelInfo } from "../model.js"
 import {
+	geminiModels,
 	resolveProviderModelSelection,
 	selectAnthropicVertexModel,
 	selectVertexModel,
@@ -37,6 +38,19 @@ describe("vertexModelFamily", () => {
 	it("the default model is a listed Claude model", () => {
 		expect(Object.hasOwn(table, vertexDefaultModelId)).toBe(true)
 		expect(vertexModelFamily({ apiModelId: vertexDefaultModelId })).toBe("claude")
+	})
+
+	// Google shuts a Gemini model down on the Gemini API and on Vertex alike (gemini-3-pro-preview: shut down on
+	// 2026-03-09, no longer listed on Vertex), so the picker must hide it on both.
+	it("a Gemini id both tables list is deprecated on Vertex exactly when it is in the Gemini table", () => {
+		const shared = Object.entries(geminiModels as Record<string, ModelInfo>).filter(([id]) =>
+			Object.hasOwn(table, id),
+		)
+
+		expect(shared.map(([id]) => id)).toContain("gemini-3-pro-preview")
+		for (const [id, info] of shared) {
+			expect(table[id]!.deprecated, id).toBe(info.deprecated)
+		}
 	})
 })
 
