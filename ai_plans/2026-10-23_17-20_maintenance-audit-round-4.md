@@ -772,11 +772,16 @@ Final verification in #997 (every local suite, the VSIX build and GitHub CI) fix
 the CLI found no ripgrep after `@vscode/ripgrep` 1.18 (#974), `vsce package` failed on `"@types/vscode":
 "catalog:"` (#937), and the autoDream MEM-2 and MEM-3 specs waited on fixed 10 ms sleeps instead of the condition
 (the known timing flake; the MEM-3 test also never reached the re-entry guard, the scan throttle stopped the second
-call first). Still open:
+call first). The Code QA run on `main` after #997 then showed two more timing flakes, fixed in #999: the CLI
+`Spinner` test read the frame before React rendered the clock's update (React's scheduler runs on a real
+macrotask that fake timers never reach; `act()` now renders it), and `RunParallelTasksTool.spec` waited 1 s for
+sidecar writes whose lock retries back off for up to 2.5 s (red on Windows twice in a row). #999 also gives `pnpm install` in CI the `GITHUB_TOKEN` again: the
+`@vscode/ripgrep` 1.17 postinstall downloads `rg` from the GitHub API and got HTTP 403 without it. Still open:
 
 - Moving the CLI to `@vscode/ripgrep` 1.18: the per-platform package layout needs the lookup in
   `src/services/ripgrep/index.ts` and `apps/cli/src/commands/cli/doctor.ts`, `apps/cli/scripts/build.sh`,
-  `.github/workflows/cli-release.yml` and `apps/cli/install.sh` to read `@vscode/ripgrep-<platform>-<arch>/bin`.
+  `.github/workflows/cli-release.yml` and `apps/cli/install.sh` to read `@vscode/ripgrep-<platform>-<arch>/bin`; the
+  `GITHUB_TOKEN` of the setup action can then go.
 - The `minimumReleaseAgeExclude` entries in `pnpm-workspace.yaml` can go after 2026-10-24T14:27Z.
 - `.prettierrc.json` has an unknown `ignore` key (Prettier reads `.prettierignore`).
 - `scripts/audit-allowlist.mjs` keeps a dead `js-cookie` entry.
@@ -797,8 +802,9 @@ call first). Still open:
   React Compiler now compiles.
 - TypeScript 7: revisit when `typescript-eslint` supports it (typescript-eslint#10940).
 - `web-tree-sitter` 0.26+: revisit when `tree-sitter-wasms` ships grammars with `dylink.0`.
-- Dependabot opened its first PRs (#954, #955, #958, #961, #965, #966, #969); they are left for the owner. #955
-  moves the cloud api image to Python 3.14, which the CI matrix does not test yet.
+- Dependabot is running: #954 (type definitions), #955 (cloud api image on Python 3.14, which the CI matrix does
+  not test yet) and #998 (`google-auth-library` 10.9.1) are open and left for the owner; it closed its other first
+  PRs (#958, #961, #965, #966, #969) on its own at 20:48 UTC.
 
 ## NOT worth doing (decided in this round)
 

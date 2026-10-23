@@ -183,9 +183,15 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 
 type FakeProvider = ReturnType<typeof makeFakeProvider>
 
-/** Resolves once every subagent of the fan-out ended and its sidecar was written. */
+/**
+ * Resolves once every subagent of the fan-out ended and its sidecar was written. Subagents that end together
+ * contend for the sidecar's file lock, whose retries back off for up to 2.5 s; the 1 s default of waitFor is too
+ * short for that on a slow runner.
+ */
 async function settled(provider: FakeProvider, fanOuts = 1): Promise<void> {
-	await vi.waitFor(() => expect(provider.subagentRegistry.endFanOut).toHaveBeenCalledTimes(fanOuts))
+	await vi.waitFor(() => expect(provider.subagentRegistry.endFanOut).toHaveBeenCalledTimes(fanOuts), {
+		timeout: 10_000,
+	})
 }
 
 /**
