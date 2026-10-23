@@ -2,6 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import { imageSourceToUrl } from "./image-source"
+import { splitAssistantContent, splitUserContent } from "./split-content"
 
 /**
  * Type for OpenRouter's reasoning detail elements.
@@ -343,20 +344,7 @@ export function convertToOpenAiMessages(
         { role: "tool", tool_call_id: "", content: ""}
          */
 			if (anthropicMessage.role === "user") {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolResultBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_result") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						} // user cannot send tool_use messages
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitUserContent(anthropicMessage.content)
 
 				// Process tool result messages FIRST since they must follow the tool use messages
 				const toolResultImages: Anthropic.Messages.ImageBlockParam[] = []
@@ -446,20 +434,7 @@ export function convertToOpenAiMessages(
 					}
 				}
 			} else if (anthropicMessage.role === "assistant") {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolUseBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_use") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						} // assistant cannot send tool_result messages
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitAssistantContent(anthropicMessage.content)
 
 				// Process non-tool messages
 				let content: string | undefined

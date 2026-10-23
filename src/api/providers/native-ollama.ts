@@ -12,6 +12,7 @@ import { TagMatcher } from "../../utils/tag-matcher"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { ollamaCompletionUsage } from "./utils/completion-usage"
 import { logger } from "../../utils/logging"
+import { splitAssistantContent, splitUserContent } from "../transform/split-content"
 
 interface OllamaChatOptions {
 	temperature?: number
@@ -29,20 +30,7 @@ function convertToOllamaMessages(anthropicMessages: Anthropic.Messages.MessagePa
 			})
 		} else {
 			if (anthropicMessage.role === "user") {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolResultBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_result") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						}
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitUserContent(anthropicMessage.content)
 
 				// Process tool result messages FIRST since they must follow the tool use messages
 				const toolResultImages: string[] = []
@@ -98,20 +86,7 @@ function convertToOllamaMessages(anthropicMessages: Anthropic.Messages.MessagePa
 					})
 				}
 			} else if (anthropicMessage.role === "assistant") {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolUseBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_use") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						} // assistant cannot send tool_result messages
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitAssistantContent(anthropicMessage.content)
 
 				// Process non-tool messages
 				let content: string = ""
