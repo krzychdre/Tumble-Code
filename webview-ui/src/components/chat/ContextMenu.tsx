@@ -9,6 +9,7 @@ import {
 	ContextMenuOptionType,
 	ContextMenuQueryItem,
 	getContextMenuOptions,
+	isSelectableOption,
 	SearchResult,
 } from "@src/utils/context-mentions"
 import { removeLeadingNonAlphanumeric } from "@src/utils/removeLeadingNonAlphanumeric"
@@ -196,14 +197,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 		return getIconUrlByName(iconName, materialIconsBaseUri)
 	}
 
-	const isOptionSelectable = (option: ContextMenuQueryItem): boolean => {
-		return (
-			option.type !== ContextMenuOptionType.NoResults &&
-			option.type !== ContextMenuOptionType.URL &&
-			option.type !== ContextMenuOptionType.SectionHeader
-		)
-	}
-
 	const handleSettingsClick = (e: React.MouseEvent) => {
 		// Prevent any default behavior
 		e.preventDefault()
@@ -223,7 +216,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 				ref={menuRef}
 				role="listbox"
 				aria-label={t("chat:contextMenu.menuLabel")}
-				{...(isOptionSelectable(filteredOptions[selectedIndex] ?? ({} as ContextMenuQueryItem))
+				{...(isSelectableOption(filteredOptions[selectedIndex] ?? ({} as ContextMenuQueryItem))
 					? { "aria-activedescendant": contextMenuOptionId(filteredOptions[selectedIndex]) }
 					: {})}
 				className={cn(
@@ -264,24 +257,24 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 				{filteredOptions && filteredOptions.length > 0 ? (
 					filteredOptions.map((option, index) => {
 						const isSectionHeader = option.type === ContextMenuOptionType.SectionHeader
-						const isSelected = index === selectedIndex && isOptionSelectable(option)
+						const isSelected = index === selectedIndex && isSelectableOption(option)
 						return (
 							<div
 								key={`${option.type}-${option.value || index}`}
 								id={contextMenuOptionId(option)}
 								role="option"
 								aria-selected={isSelected}
-								onClick={() => isOptionSelectable(option) && onSelect(option.type, option.value)}
+								onClick={() => isSelectableOption(option) && onSelect(option.type, option.value)}
 								className={cn(
 									"relative flex items-center justify-between",
 									isSectionHeader
 										? "mx-2 px-1 pt-3 pb-1 mb-0.5 border-b border-frame cursor-default"
 										: "mx-1 px-2 py-1 rounded-control",
 									!isSectionHeader &&
-										(isOptionSelectable(option) ? "cursor-pointer" : "cursor-default"),
+										(isSelectableOption(option) ? "cursor-pointer" : "cursor-default"),
 									isSelected && "bg-selected",
 								)}
-								onMouseEnter={() => isOptionSelectable(option) && setSelectedIndex(index)}>
+								onMouseEnter={() => isSelectableOption(option) && setSelectedIndex(index)}>
 								<div className="relative flex items-center flex-1 min-w-0 overflow-hidden">
 									{(option.type === ContextMenuOptionType.File ||
 										option.type === ContextMenuOptionType.Folder ||

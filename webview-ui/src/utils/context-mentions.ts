@@ -123,6 +123,15 @@ export interface ContextMenuQueryItem {
 	argumentHint?: string
 }
 
+/** Section headers, the URL hint and the no-results row are shown but cannot be selected. */
+export function isSelectableOption(option: ContextMenuQueryItem): boolean {
+	return (
+		option.type !== ContextMenuOptionType.NoResults &&
+		option.type !== ContextMenuOptionType.URL &&
+		option.type !== ContextMenuOptionType.SectionHeader
+	)
+}
+
 export function getContextMenuOptions(
 	query: string,
 	selectedType: ContextMenuOptionType | null = null,

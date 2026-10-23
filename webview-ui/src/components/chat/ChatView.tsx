@@ -41,7 +41,7 @@ import { computeRowMeta } from "./rows/computeRowMeta"
 import { withCondensingRow } from "./rows/condensingRow"
 import { selectLatestTodos } from "./latestTodos"
 import { useChatSounds } from "./hooks/useChatSounds"
-import { useAskButtons } from "./hooks/useAskButtons"
+import { useAskButtons, type AskButtonKind } from "./hooks/useAskButtons"
 import { askButtonTooltipKey, askButtonShortcut } from "./askButtonTooltips"
 import { useChatComposer } from "./hooks/useChatComposer"
 import { MAX_IMAGES_PER_MESSAGE, useChatHostMessages } from "./hooks/useChatHostMessages"
@@ -222,12 +222,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			everVisibleMessagesTs.clear()
 		}
 	}, [isHidden, everVisibleMessagesTs])
-
-	useEffect(() => {
-		return () => {
-			everVisibleMessagesTs.clear()
-		}
-	}, [everVisibleMessagesTs])
 
 	const { info: model } = useSelectedModel(apiConfiguration)
 
@@ -473,6 +467,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		],
 	)
 
+	const taskCosts = currentTaskItem?.id ? aggregatedCostsMap.get(currentTaskItem.id) : undefined
+
+	const askButtonTooltip = (kind: AskButtonKind | undefined, role: "primary" | "secondary") => {
+		const key = askButtonTooltipKey(kind)
+		const shortcut = `(${askButtonShortcut(role)})`
+		return key === undefined ? shortcut : `${t(key)} ${shortcut}`
+	}
+
 	return (
 		<div
 			data-testid="chat-view"
@@ -499,26 +501,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						cacheWrites={apiMetrics.totalCacheWrites}
 						cacheReads={apiMetrics.totalCacheReads}
 						totalCost={apiMetrics.totalCost}
-						aggregatedCost={
-							currentTaskItem?.id && aggregatedCostsMap.has(currentTaskItem.id)
-								? aggregatedCostsMap.get(currentTaskItem.id)!.totalCost
-								: undefined
-						}
-						hasSubtasks={
-							!!(
-								currentTaskItem?.id &&
-								aggregatedCostsMap.has(currentTaskItem.id) &&
-								aggregatedCostsMap.get(currentTaskItem.id)!.childrenCost > 0
-							)
-						}
+						aggregatedCost={taskCosts?.totalCost}
+						hasSubtasks={!!taskCosts && taskCosts.childrenCost > 0}
 						parentTaskId={currentTaskItem?.parentTaskId}
 						costBreakdown={
-							currentTaskItem?.id && aggregatedCostsMap.has(currentTaskItem.id)
-								? getCostBreakdownIfNeeded(aggregatedCostsMap.get(currentTaskItem.id)!, {
-										own: t("common:costs.own"),
-										subtasks: t("common:costs.subtasks"),
-									})
-								: undefined
+							taskCosts &&
+							getCostBreakdownIfNeeded(taskCosts, {
+								own: t("common:costs.own"),
+								subtasks: t("common:costs.subtasks"),
+							})
 						}
 						contextTokens={apiMetrics.contextTokens}
 						buttonsDisabled={sendingDisabled}
@@ -607,12 +598,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							) : (
 								<>
 									{primaryButtonText && (
-										<StandardTooltip
-											content={
-												askButtonTooltipKey(primaryButtonKind) !== undefined
-													? `${t(askButtonTooltipKey(primaryButtonKind)!)} (${askButtonShortcut("primary")})`
-													: `(${askButtonShortcut("primary")})`
-											}>
+										<StandardTooltip content={askButtonTooltip(primaryButtonKind, "primary")}>
 											<Button
 												variant="primary"
 												data-ask-button="primary"
@@ -628,20 +614,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 										</StandardTooltip>
 									)}
 									{secondaryButtonText && (
-										<StandardTooltip
-											content={
-												askButtonTooltipKey(secondaryButtonKind) !== undefined
-													? `${t(askButtonTooltipKey(secondaryButtonKind)!)} (${askButtonShortcut("secondary")})`
-													: `(${askButtonShortcut("secondary")})`
-											}>
+										<StandardTooltip content={askButtonTooltip(secondaryButtonKind, "secondary")}>
 											<Button
 												variant="secondary"
 												data-ask-button="secondary"
 												disabled={!enableButtons}
-												className={cn(
-													"flex-1",
-													!enableButtons && "disabled-action-button",
-												)}
+												className={cn("flex-1", !enableButtons && "disabled-action-button")}
 												onClick={() => handleSecondaryButtonClick(inputValue, selectedImages)}>
 												{secondaryButtonText}
 											</Button>

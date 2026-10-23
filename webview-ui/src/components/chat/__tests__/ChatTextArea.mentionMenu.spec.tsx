@@ -120,7 +120,7 @@ describe("ChatTextArea mention menu (characterization)", () => {
 			expect(screen.queryByTestId("menu-probe")).toBeNull()
 		})
 
-		it("opens on '@' with an empty query and the File row preselected", () => {
+		it("opens on '@' with an empty query and the Folder row preselected", () => {
 			render(<Harness />)
 			type("@")
 
@@ -335,7 +335,7 @@ describe("ChatTextArea mention menu (characterization)", () => {
 			expect(textbox().value).toBe("")
 		})
 
-		it("Escape leaves a submenu and preselects the File row, keeping the menu open", () => {
+		it("Escape leaves a submenu and preselects the Folder row, keeping the menu open", () => {
 			render(<Harness />)
 			type("@")
 			act(() => menu.props.onSelect(ContextMenuOptionType.Folder))
@@ -453,6 +453,17 @@ describe("ChatTextArea mention menu (characterization)", () => {
 			fireEvent.mouseDown(screen.getByTestId("menu-probe"))
 			fireEvent.blur(textbox())
 			expect(screen.getByTestId("menu-probe")).toBeInTheDocument()
+		})
+
+		it("closing the menu leaves a submenu, so the next '@' starts at the top level", () => {
+			render(<Harness />)
+			type("@")
+			act(() => menu.props.onSelect(ContextMenuOptionType.Folder))
+			fireEvent.blur(textbox())
+
+			type("@ @")
+			expect(screen.getByTestId("menu-probe")).toBeInTheDocument()
+			expect(menu.props.selectedType).toBeNull()
 		})
 
 		// The "mouse went down on the menu" flag used to be set on mousedown and never reset,

@@ -28,22 +28,8 @@ import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useProviderModels } from "@src/hooks/models/useProviderModels"
 import { useSelectedModel } from "@src/hooks/models/useSelectedModel"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
-import {
-	useOpenRouterModelProviders,
-	OPENROUTER_DEFAULT_PROVIDER_NAME,
-} from "@src/hooks/models/useOpenRouterModelProviders"
 import { filterProviders, filterModels } from "./utils/organizationFilters"
-import {
-	Select,
-	SelectTrigger,
-	SelectValue,
-	SelectContent,
-	SelectItem,
-	SearchableSelect,
-	Collapsible,
-	CollapsibleTrigger,
-	CollapsibleContent,
-} from "@src/components/ui"
+import { SearchableSelect, Collapsible, CollapsibleTrigger, CollapsibleContent } from "@src/components/ui"
 
 import { MODELS_BY_PROVIDER, PROVIDERS } from "./constants"
 import { noTransform } from "./transforms"
@@ -60,8 +46,6 @@ import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl
 import { MaxConcurrentRequestsControl } from "./MaxConcurrentRequestsControl"
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
 import { type SetApiConfigurationField, useProviderField } from "./providers/shared"
-import { ExternalLink } from "lucide-react"
-import { settingDescription } from "./SettingsCard"
 
 export interface ApiOptionsProps {
 	uriScheme: string | undefined
@@ -115,18 +99,6 @@ const ApiOptions = ({
 	)
 	const refetchRouterModels = providerModels.refresh
 
-	const { data: openRouterModelProviders } = useOpenRouterModelProviders(
-		apiConfiguration?.openRouterModelId,
-		apiConfiguration?.openRouterBaseUrl,
-		{
-			enabled:
-				!!apiConfiguration?.openRouterModelId &&
-				routerModels?.openrouter &&
-				Object.keys(routerModels.openrouter).length > 1 &&
-				apiConfiguration.openRouterModelId in routerModels.openrouter,
-		},
-	)
-
 	// Update `apiModelId` whenever `selectedModelId` changes.
 	useEffect(() => {
 		if (isUnavailableSelectedProvider) {
@@ -151,12 +123,12 @@ const ApiOptions = ({
 		250,
 		[
 			selectedProvider,
-			apiConfiguration?.openAiBaseUrl,
-			apiConfiguration?.openAiApiKey,
-			apiConfiguration?.ollamaBaseUrl,
-			apiConfiguration?.lmStudioBaseUrl,
-			apiConfiguration?.litellmBaseUrl,
-			apiConfiguration?.litellmApiKey,
+			apiConfiguration.openAiBaseUrl,
+			apiConfiguration.openAiApiKey,
+			apiConfiguration.ollamaBaseUrl,
+			apiConfiguration.lmStudioBaseUrl,
+			apiConfiguration.litellmBaseUrl,
+			apiConfiguration.litellmApiKey,
 			providerMetadata,
 			refetchRouterModels,
 		],
@@ -429,50 +401,6 @@ const ApiOptions = ({
 									value={apiConfiguration.maxConcurrentRequests}
 									onChange={(value) => setApiConfigurationField("maxConcurrentRequests", value)}
 								/>
-								{selectedProvider === "openrouter" &&
-									openRouterModelProviders &&
-									Object.keys(openRouterModelProviders).length > 0 && (
-										<div>
-											<div className="flex items-center gap-1">
-												<label className="block font-medium mb-1">
-													{t("settings:providers.openRouter.providerRouting.title")}
-												</label>
-												<a href={`https://openrouter.ai/${selectedModelId}/providers`}>
-													<ExternalLink className="w-4 h-4" />
-												</a>
-											</div>
-											<Select
-												value={
-													apiConfiguration?.openRouterSpecificProvider ||
-													OPENROUTER_DEFAULT_PROVIDER_NAME
-												}
-												onValueChange={(value) =>
-													setApiConfigurationField("openRouterSpecificProvider", value)
-												}>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder={t("settings:common.select")} />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value={OPENROUTER_DEFAULT_PROVIDER_NAME}>
-														{OPENROUTER_DEFAULT_PROVIDER_NAME}
-													</SelectItem>
-													{Object.entries(openRouterModelProviders).map(
-														([value, { label }]) => (
-															<SelectItem key={value} value={value}>
-																{label}
-															</SelectItem>
-														),
-													)}
-												</SelectContent>
-											</Select>
-											<div className={settingDescription}>
-												{t("settings:providers.openRouter.providerRouting.description")}{" "}
-												<a href="https://openrouter.ai/docs/features/provider-routing">
-													{t("settings:providers.openRouter.providerRouting.learnMore")}.
-												</a>
-											</div>
-										</div>
-									)}
 							</CollapsibleContent>
 						</Collapsible>
 					)}

@@ -1,10 +1,15 @@
 import { useId, useState } from "react"
+import { ExternalLink } from "lucide-react"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import { type OrganizationAllowList, type RouterModels, openRouterDefaultModelId } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Input } from "@src/components/ui"
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import {
+	useOpenRouterModelProviders,
+	OPENROUTER_DEFAULT_PROVIDER_NAME,
+} from "@src/hooks/models/useOpenRouterModelProviders"
 import { getOpenRouterAuthUrl } from "@src/oauth/urls"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
@@ -26,6 +31,7 @@ export const OpenRouter = ({
 	apiConfiguration,
 	setApiConfigurationField,
 	routerModels,
+	selectedModelId,
 	uriScheme,
 	simplifySettings,
 	organizationAllowList,
@@ -37,6 +43,19 @@ export const OpenRouter = ({
 
 	const handleInputChange = useProviderField(setApiConfigurationField)
 	const apiKeyId = useId()
+
+	const openRouterModels = routerModels?.openrouter
+	const { data: modelProviders } = useOpenRouterModelProviders(
+		apiConfiguration.openRouterModelId,
+		apiConfiguration.openRouterBaseUrl,
+		{
+			enabled:
+				!!apiConfiguration.openRouterModelId &&
+				!!openRouterModels &&
+				Object.keys(openRouterModels).length > 1 &&
+				apiConfiguration.openRouterModelId in openRouterModels,
+		},
+	)
 
 	return (
 		<>
@@ -102,6 +121,41 @@ export const OpenRouter = ({
 				errorMessage={modelValidationError}
 				simplifySettings={simplifySettings}
 			/>
+			{!simplifySettings && modelProviders && Object.keys(modelProviders).length > 0 && (
+				<div>
+					<div className="flex items-center gap-1">
+						<label className="block font-medium mb-1">
+							{t("settings:providers.openRouter.providerRouting.title")}
+						</label>
+						<a href={`https://openrouter.ai/${selectedModelId}/providers`}>
+							<ExternalLink className="w-4 h-4" />
+						</a>
+					</div>
+					<Select
+						value={apiConfiguration.openRouterSpecificProvider || OPENROUTER_DEFAULT_PROVIDER_NAME}
+						onValueChange={(value) => setApiConfigurationField("openRouterSpecificProvider", value)}>
+						<SelectTrigger className="w-full">
+							<SelectValue placeholder={t("settings:common.select")} />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={OPENROUTER_DEFAULT_PROVIDER_NAME}>
+								{OPENROUTER_DEFAULT_PROVIDER_NAME}
+							</SelectItem>
+							{Object.entries(modelProviders).map(([value, { label }]) => (
+								<SelectItem key={value} value={value}>
+									{label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<div className={settingDescription}>
+						{t("settings:providers.openRouter.providerRouting.description")}{" "}
+						<a href="https://openrouter.ai/docs/features/provider-routing">
+							{t("settings:providers.openRouter.providerRouting.learnMore")}.
+						</a>
+					</div>
+				</div>
+			)}
 		</>
 	)
 }
