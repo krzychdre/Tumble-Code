@@ -74,7 +74,7 @@ function FollowupDialog({ ask, onSelect, onCustomInput, countdownSeconds, isActi
 			<SelectList items={items} onSelect={handleSelect} isActive={isActive} numbered={true} />
 			{countdownSeconds !== null && firstSuggestion.length > 0 && (
 				<Text dimColor>
-					Auto-selecting "{firstSuggestion}" in {countdownSeconds}s — press any key to cancel
+					Auto-selecting "{firstSuggestion}" in {countdownSeconds}s, press an arrow key to stop
 				</Text>
 			)}
 		</Box>

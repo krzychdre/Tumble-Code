@@ -36,6 +36,17 @@ describe("FollowupDialog", () => {
 		expect(onSelect).toHaveBeenCalledWith({ answer: "Go", mode: "code" })
 	})
 
+	// Only an arrow key stops the countdown (App's handler); Enter or a digit
+	// answers at once and "Type my own answer…" cancels it, so the line says so.
+	it("tells how to stop the auto-select countdown", () => {
+		const ask: PendingAsk = { id: "f-3", type: "followup", content: "Next?", suggestions: [{ answer: "Go" }] }
+		const { lastFrame } = render(
+			<FollowupDialog ask={ask} onSelect={() => {}} onCustomInput={() => {}} countdownSeconds={42} />,
+		)
+
+		expect(lastFrame()).toContain('Auto-selecting "Go" in 42s, press an arrow key to stop')
+	})
+
 	it("shows the question as given", () => {
 		const ask: PendingAsk = { id: "f-2", type: "followup", content: "Which one?", suggestions: [{ answer: "A" }] }
 		const { lastFrame } = render(
