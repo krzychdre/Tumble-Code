@@ -486,7 +486,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			apiHandler: this.api,
 			taskId: this.taskId,
 			// Surface "recalling memory…" in the UI while a prefetch runs.
-			onActivity: (active) => this.providerRef.deref()?.setMemoryActivity("recall", active),
+			onActivity: (active) => this.providerRef.deref()?.backgroundTaskRunner.setMemoryActivity("recall", active),
 		})
 		return this._memoryCoordinator
 	}

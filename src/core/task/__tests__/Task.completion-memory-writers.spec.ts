@@ -95,11 +95,13 @@ type ProviderStandIn = {
 	getValue: (key: string) => unknown
 	getTaskHistory: () => Promise<unknown[]>
 	getHistoryItem: (id: string) => Promise<{ status?: string }>
-	notifyBackgroundOutcome: (message: string) => void
 	postStateToWebview: () => Promise<void>
 	postMessageToWebview: (message: unknown) => Promise<void>
 	updateTaskHistory: (item: unknown) => Promise<unknown>
-	memoryWriterQuery: (foreground: unknown, taskId?: string) => () => Promise<string>
+	backgroundTaskRunner: {
+		notifyBackgroundOutcome: (message: string) => void
+		memoryWriterQuery: (foreground: unknown, taskId?: string) => () => Promise<string>
+	}
 }
 
 function makeProvider(): ProviderStandIn {
@@ -127,11 +129,10 @@ function makeProvider(): ProviderStandIn {
 		getValue: vi.fn().mockReturnValue(undefined),
 		getTaskHistory: vi.fn().mockResolvedValue([]),
 		getHistoryItem: vi.fn().mockResolvedValue({ status: "completed" }),
-		notifyBackgroundOutcome: vi.fn(),
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		updateTaskHistory: vi.fn().mockResolvedValue([]),
-		memoryWriterQuery: vi.fn(() => async () => "NONE"),
+		backgroundTaskRunner: { notifyBackgroundOutcome: vi.fn(), memoryWriterQuery: vi.fn(() => async () => "NONE") },
 		getCurrentTask(this: ProviderStandIn) {
 			return this.taskSlot.current
 		},
