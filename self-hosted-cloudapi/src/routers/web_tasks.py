@@ -21,7 +21,9 @@ from src.routers.web_page import (
 )
 from src.routers.task_images import image_response
 from src.services.client_kind import CLIENT_LABELS
+from src.services.model_attribution import split_models_label
 from src.services.share_service import delete_shared_task, delete_tasks
+from src.services.task_access import task_owner
 from src.services.task_images import load_task_image
 from src.services.task_summary import derive_title
 from src.services.task_tree import ancestors, subtree_size, subtrees
@@ -180,9 +182,7 @@ async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
         .where(Task.user_id == user_id, Task.models.is_not(None))
         .distinct()
     )
-    models = {
-        m.strip() for value in joined.all() for m in value.split(",") if m.strip()
-    }
+    models = {m for value in joined.all() for m in split_models_label(value)}
     return {
         "project_options": sorted(labels, key=str.lower),
         "model_options": sorted(models, key=str.lower),
@@ -267,8 +267,7 @@ async def task_image(
     as an image that was never uploaded.
     """
     db = web["db"]
-    owner = await db.scalar(select(Task.user_id).where(Task.id == task_id))
-    if owner is None or owner != web["user"]["user_id"]:
+    if await task_owner(db, task_id) != web["user"]["user_id"]:
         return image_response(None)
     return image_response(await load_task_image(db, task_id, ts, path))
 

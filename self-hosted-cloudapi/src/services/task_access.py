@@ -26,6 +26,11 @@ from src.models.organization import Membership
 from src.models.task import Task, TaskShare
 
 
+async def task_owner(db: AsyncSession, task_id: str) -> Optional[str]:
+    """The id of the user who owns ``task_id``; None when there is no such task."""
+    return await db.scalar(select(Task.user_id).where(Task.id == task_id))
+
+
 class ShareVerdict(Enum):
     ALLOWED = "allowed"
     NOT_FOUND = "not_found"

@@ -398,9 +398,6 @@ async def upsert_task_message(
     final drops the `"partial":true"` flag and can be a few bytes shorter despite
     longer text — which is exactly why finals bypass the length check.)
     """
-    if not isinstance(message, dict):
-        return False
-
     task, created = await _get_or_create_task(db, task_id, user_id)
     if task.user_id != user_id:
         # Never let a bridge event write into (or read from) another user's

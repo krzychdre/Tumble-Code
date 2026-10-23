@@ -11,13 +11,13 @@ ai_plans/2026-10-12_18-00_cloud-web-task-images.md.
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.dependencies import get_current_user
-from src.models.task import Task, TaskImage
+from src.models.task import TaskImage
 from src.routers.events import capped_request
+from src.services.task_access import task_owner
 from src.services.task_images import (
     MAX_IMAGE_BYTES,
     MAX_PATH_BYTES,
@@ -54,8 +54,7 @@ async def upload_task_image_endpoint(
     or someone else's task (the same answer, so the id's owner is not
     disclosed), 413 over 10 MB, 415 not PNG, JPEG, GIF or WebP.
     """
-    owner = await db.scalar(select(Task.user_id).where(Task.id == task_id))
-    if owner is None or owner != current_user["user_id"]:
+    if await task_owner(db, task_id) != current_user["user_id"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
     form = await capped_request(request, MAX_IMAGE_BYTES + _ENVELOPE_BYTES).form()

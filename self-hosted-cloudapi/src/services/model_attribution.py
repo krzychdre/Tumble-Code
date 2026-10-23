@@ -40,6 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
 from src.models.task import Task
+from src.services.task_access import task_owner
 from src.services.telemetry_vocab import (
     KIND_LABELS,
     LLM_COMPLETION_EVENT,
@@ -247,6 +248,11 @@ def models_label(completions: list[Completion]) -> Optional[str]:
     return ", ".join(names) if names else None
 
 
+def split_models_label(label: str) -> list[str]:
+    """The model names in a stored ``tasks.models`` label."""
+    return [part.strip() for part in label.split(",") if part.strip()]
+
+
 # How each non-conversation kind reads on the page: the one map in
 # telemetry_vocab. Its ``task`` entry is never read here, because
 # side_calls_summary skips conversation turns before it looks a label up.
@@ -299,9 +305,7 @@ def models_badge(label: Optional[str]) -> Optional[dict]:
     would truncate away the ``+1`` — which is the whole signal that this run was
     not a single model.
     """
-    if not label:
-        return None
-    names = [part.strip() for part in label.split(",") if part.strip()]
+    names = split_models_label(label) if label else []
     if not names:
         return None
     remainder = len(names) - MODELS_SHOWN
@@ -320,7 +324,7 @@ async def refresh_task_models(db: AsyncSession, task_id: str) -> None:
     telemetry ingest — because the two arrive in either order: a task can be
     shared long after it ran, or run live before it is ever shared.
     """
-    owner = await db.scalar(select(Task.user_id).where(Task.id == task_id))
+    owner = await task_owner(db, task_id)
     label = models_label(await completions_for_task(db, task_id, owner))
     if label is None:
         return
@@ -348,6 +352,6 @@ async def note_completion_model(db: AsyncSession, task_id: str, model: str) -> N
     if row is None:
         return
     current = row[1]
-    if current and model in [p.strip() for p in current.split(",")]:
+    if current and model in split_models_label(current):
         return
     await refresh_task_models(db, task_id)
