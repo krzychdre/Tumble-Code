@@ -120,7 +120,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const { id, info, temperature, maxTokens, reasoning: thinking, effort, betas } = this.getModel()
+		const { id, info, maxTokens, reasoning: thinking, effort, betas } = this.getModel()
 
 		const { supportsPromptCache } = info
 
@@ -148,7 +148,6 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		const params = {
 			model: id,
 			max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-			temperature,
 			thinking,
 			...(effort ? { output_config: { effort } } : {}),
 			// Cache the system prompt if caching is enabled.
@@ -223,7 +222,6 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			const {
 				id,
 				info: { supportsPromptCache },
-				temperature,
 				maxTokens = ANTHROPIC_DEFAULT_MAX_TOKENS,
 				reasoning: thinking,
 				effort,
@@ -232,7 +230,6 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			const params = {
 				model: id,
 				max_tokens: maxTokens,
-				temperature,
 				thinking,
 				...(effort ? { output_config: { effort } } : {}),
 				messages: [

@@ -69,6 +69,6 @@ describe("AnthropicVertexHandler request authorization", () => {
 		)
 		const body = JSON.parse(await request.text())
 		expect(body.model).toBeUndefined()
-		expect(body.anthropic_version).toBe("vertex-2023-10-16")
+		expect(body.anthropic_version).toBe("2026-10-21")
 	})
 })

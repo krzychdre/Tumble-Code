@@ -1,4 +1,4 @@
-import { Anthropic } from "@anthropic-ai/sdk"
+import type { ConversationMessage } from "../../api/transform/conversation-message"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -121,9 +121,9 @@ export function insertBlockAfterContent(block: ContentBlock, content: MessageCon
  * orphaned tool_results.
  */
 export function convertOrphanedToolResultsToText(
-	message: Anthropic.MessageParam,
+	message: ConversationMessage,
 	lastEffectiveRole: string | undefined,
-): Anthropic.MessageParam {
+): ConversationMessage {
 	if (lastEffectiveRole !== "assistant" && Array.isArray(message.content)) {
 		return {
 			...message,

@@ -11,13 +11,13 @@ export function addCacheBreakpoints(messages: Anthropic.Messages.MessageParam[])
 	const secondLastIndex = indices[indices.length - 2] ?? -1
 
 	return messages.map((message, index) =>
-		message.role !== "assistant" && (index === lastIndex || index === secondLastIndex)
+		message.role === "user" && (index === lastIndex || index === secondLastIndex)
 			? cachedMessage(message)
 			: message,
 	)
 }
 
-function cachedMessage(message: Anthropic.Messages.MessageParam): Anthropic.Messages.MessageParam {
+function cachedMessage(message: Anthropic.Messages.UserMessageParam): Anthropic.Messages.UserMessageParam {
 	// For string content, we convert to array format with optional cache control.
 	if (typeof message.content === "string") {
 		return {

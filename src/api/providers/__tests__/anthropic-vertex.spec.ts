@@ -151,7 +151,6 @@ describe("VertexHandler", () => {
 				expect.objectContaining({
 					model: "claude-sonnet-4-5@20250929",
 					max_tokens: 8192,
-					temperature: 0,
 					thinking: undefined,
 					system: [
 						{
@@ -824,7 +823,6 @@ describe("VertexHandler", () => {
 			expect(handler["client"].messages.create).toHaveBeenCalledWith({
 				model: "claude-sonnet-4-5@20250929",
 				max_tokens: 8192,
-				temperature: 0,
 				messages: [
 					{
 						role: "user",
@@ -1245,7 +1243,6 @@ describe("VertexHandler", () => {
 			expect(mockCreate).toHaveBeenCalledWith(
 				expect.objectContaining({
 					thinking: { type: "enabled", budget_tokens: 4096 },
-					temperature: 1.0, // Thinking requires temperature 1.0
 				}),
 				{ signal: undefined },
 			)
