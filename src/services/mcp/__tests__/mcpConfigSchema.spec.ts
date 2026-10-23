@@ -61,6 +61,16 @@ describe("validateServerConfig", () => {
 		expect(() => validateServerConfig(config, "x")).toThrow(message)
 	})
 
+	it.each([1, 3600])("accepts a timeout of %i seconds (the bounds are inclusive)", (timeout) => {
+		expect(validateServerConfig({ command: "node", timeout }, "t")).toMatchObject({ timeout })
+	})
+
+	it.each([0, 3601])("rejects a timeout of %i seconds", (timeout) => {
+		expect(() => validateServerConfig({ command: "node", timeout }, "t")).toThrow(
+			'Invalid configuration for server "t": ',
+		)
+	})
+
 	it("names the server and joins the schema problems with semicolons", () => {
 		expect(() => validateServerConfig({ command: "node", timeout: 0 }, "slow")).toThrow(
 			'Invalid configuration for server "slow": ',
