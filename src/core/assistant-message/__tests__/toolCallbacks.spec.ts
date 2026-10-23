@@ -207,5 +207,18 @@ describe("createToolCallbacks", () => {
 			expect(JSON.parse(text).error).toBe('Error doing things: {"code":"E_WEIRD"}')
 			expect(text).not.toContain("/secret/path.ts")
 		})
+
+		it("describes a thrown string as its JSON string, to the model and in the UI", async () => {
+			const callbacks = createToolCallbacks(task, {
+				block: { type: "tool_use" },
+				toolCallId: "call_1",
+				toolName: "read_file",
+			})
+
+			await callbacks.handleError("doing things", "disk on fire" as unknown as Error, "read_file")
+
+			expect(JSON.parse(toolResultText()).error).toBe('Error doing things: "disk on fire"')
+			expect(task.askSay.say).toHaveBeenCalledWith("error", 'Error doing things:\n"disk on fire"')
+		})
 	})
 })

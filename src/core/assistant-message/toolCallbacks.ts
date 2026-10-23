@@ -1,4 +1,3 @@
-import { serializeError } from "serialize-error"
 import { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ToolName, ClineAsk, ToolProgressStatus } from "@tumble-code/types"
@@ -11,6 +10,7 @@ import type {
 	ToolResponse,
 } from "../../shared/tools"
 
+import { serializeThrown } from "../../utils/errors"
 import { AskIgnoredError } from "../task/AskIgnoredError"
 import type { Task } from "../task/Task"
 
@@ -66,7 +66,7 @@ function recordToolFailureAsMistake(
 /**
  * The text the MODEL gets for a failed tool: the error's message, never its stack.
  *
- * `serializeError` keeps the stack of the error and of every nested `cause`. For the model
+ * `serializeThrown` keeps the stack of the error and of every nested `cause`. For the model
  * that is pure noise: about ten frames of local absolute paths (a leak of the user's
  * directory layout) that cost context on every failure, and weak models (GLM, Qwen, local
  * Llamas) tend to reason about the frames instead of the one line that says what went
@@ -94,7 +94,7 @@ function describeToolErrorForModel(error: unknown): string {
 		return causes.length > 0 ? `${message} (cause: ${causes.join("; cause: ")})` : message
 	}
 
-	return JSON.stringify(serializeError(error), (key, value) => (key === "stack" ? undefined : value))
+	return JSON.stringify(serializeThrown(error), (key, value) => (key === "stack" ? undefined : value))
 }
 
 function messageOf(value: unknown): string | undefined {
@@ -268,7 +268,7 @@ export function createToolCallbacks(task: Task, { block, toolCallId, toolName }:
 
 		await task.askSay.say(
 			"error",
-			`Error ${action}:\n${error.message ?? JSON.stringify(serializeError(error), null, 2)}`,
+			`Error ${action}:\n${error.message ?? JSON.stringify(serializeThrown(error), null, 2)}`,
 		)
 
 		// `failedToolName` rides beside the serialized error, never inside it, so the minimal

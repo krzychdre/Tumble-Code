@@ -96,4 +96,8 @@ describe("RetryHandler.handleApiRequestError api_req_failed text", () => {
 			JSON.stringify({ status: 400, detail: "x" }, null, 2),
 		)
 	})
+
+	it("shows a thrown string as its JSON string", async () => {
+		expect(await askedText("upstream said no")).toBe('"upstream said no"')
+	})
 })
