@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from "vitest"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { TaskSlot } from "../core/webview/TaskSlot"
 import { SubagentRegistry } from "../core/webview/SubagentRegistry"
+import { PendingEditOperations } from "../core/webview/PendingEditOperations"
 
 vi.mock("vscode", () => {
 	const window = {
@@ -195,8 +196,8 @@ function makeProvider(overrides: Record<string, any> = {}) {
 			cloudUserInfo: null,
 			taskSyncEnabled: false,
 		}),
-		getPendingEditOperation: vi.fn().mockReturnValue(undefined),
-		clearPendingEditOperation: vi.fn(),
+		pendingEdits: new PendingEditOperations(),
+		switchAwayFromCurrentTask: (ClineProvider.prototype as any).switchAwayFromCurrentTask,
 		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
 		context: { extension: { packageJSON: {} }, globalStorageUri: { fsPath: "/tmp" } },
 		contextProxy: {

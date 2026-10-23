@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { SubagentRegistry } from "../core/webview/SubagentRegistry"
+import { PendingEditOperations } from "../core/webview/PendingEditOperations"
 import { API } from "../extension/api"
 import * as ProfileValidatorMod from "../shared/ProfileValidator"
 
@@ -52,6 +53,7 @@ describe("Single-open-task invariant", () => {
 			}),
 			clearCurrentTask,
 			leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
+			switchAwayFromCurrentTask: (ClineProvider.prototype as any).switchAwayFromCurrentTask,
 			setCurrentTask,
 			subagentRegistry: new SubagentRegistry(() => {}),
 			setProviderProfile: vi.fn(),
@@ -85,6 +87,7 @@ describe("Single-open-task invariant", () => {
 			getCurrentTask: vi.fn(() => undefined), // ensure not rehydrating
 			clearCurrentTask,
 			leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
+			switchAwayFromCurrentTask: (ClineProvider.prototype as any).switchAwayFromCurrentTask,
 			setCurrentTask,
 			updateGlobalState,
 			// The mode and profile restore moved to ModeProfileBinding (CORE-R6 c).
@@ -103,9 +106,7 @@ describe("Single-open-task invariant", () => {
 				cloudUserInfo: null,
 				taskSyncEnabled: false,
 			}),
-			// Methods used by createTaskWithHistoryItem for pending edit cleanup
-			getPendingEditOperation: vi.fn().mockReturnValue(undefined),
-			clearPendingEditOperation: vi.fn(),
+			pendingEdits: new PendingEditOperations(),
 			context: { extension: { packageJSON: {} }, globalStorageUri: { fsPath: "/tmp" } },
 			contextProxy: {
 				extensionUri: {},

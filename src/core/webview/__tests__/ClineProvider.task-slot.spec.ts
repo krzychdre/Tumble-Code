@@ -36,6 +36,7 @@ type ProviderStandIn = {
 	getCurrentTaskStack: typeof ClineProvider.prototype.getCurrentTaskStack
 	getLiveTaskInstance: typeof ClineProvider.prototype.getLiveTaskInstance
 	clearTask: typeof ClineProvider.prototype.clearTask
+	switchAwayFromCurrentTask: () => Promise<void>
 	subagentRegistry: SubagentRegistry
 	subagentPosts: ExtensionMessage[]
 	performPreparationTasks: (task: Task) => Promise<void>
@@ -86,6 +87,7 @@ function makeProvider(): ProviderStandIn {
 		getCurrentTaskStack: ClineProvider.prototype.getCurrentTaskStack,
 		getLiveTaskInstance: ClineProvider.prototype.getLiveTaskInstance,
 		clearTask: ClineProvider.prototype.clearTask,
+		switchAwayFromCurrentTask: (ClineProvider.prototype as any).switchAwayFromCurrentTask,
 		subagentRegistry: undefined as unknown as SubagentRegistry,
 		subagentPosts: [],
 		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
