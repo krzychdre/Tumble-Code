@@ -58,7 +58,7 @@
 			"esbuild-wasm": "^0.28.2",
 			"undici": "^7.29.0",
 			"jsdom>undici": "^8.10.2",
-			"rehype-katex>katex": "^0.18.9",
+			"rehype-katex>katex": "^0.19.0",
 			"brace-expansion": "^2.0.2",
 			"bluebird": ">=3.7.2",
 			"glob": "^13.0.6",
