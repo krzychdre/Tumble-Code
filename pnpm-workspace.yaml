@@ -4,11 +4,8 @@ packages:
     - "apps/*"
     - "packages/*"
 
-# Build scripts nothing here needs; pnpm 10 skipped them too. @vscode/ripgrep 1.17
-# downloads rg in its postinstall; the CLI and its release (apps/cli/scripts/build.sh)
-# take the binary from node_modules/@vscode/ripgrep/bin.
+# Build scripts nothing here needs; pnpm 10 skipped them too.
 allowBuilds:
-    "@vscode/ripgrep": true
     "@google/genai": false
     "@vscode/vsce-sign": false
     esbuild: false

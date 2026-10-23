@@ -367,13 +367,6 @@ Check your internet connection and run the installer again."
         error "Failed to extract tarball. The download may be corrupted."
     }
 
-    # Save ripgrep binary before npm install (npm install will overwrite node_modules)
-    RIPGREP_BIN=""
-    if [ -f "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg" ]; then
-        RIPGREP_BIN="$TMP_DIR/rg"
-        cp "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg" "$RIPGREP_BIN"
-    fi
-
     # Probe the network before installing so an offline machine fails fast
     # with clear guidance instead of stalling in npm's retry loop.
     check_registry
@@ -381,13 +374,6 @@ Check your internet connection and run the installer again."
     # Install npm dependencies; bounded so a wedged network cannot stall us
     NPM_LOG="$TMP_DIR/npm-install.log"
     install_dependencies "$STAGING_DIR" "$NPM_LOG"
-
-    # Restore ripgrep binary after npm install
-    if [ -n "$RIPGREP_BIN" ] && [ -f "$RIPGREP_BIN" ]; then
-        mkdir -p "$STAGING_DIR/node_modules/@vscode/ripgrep/bin"
-        cp "$RIPGREP_BIN" "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg"
-        chmod +x "$STAGING_DIR/node_modules/@vscode/ripgrep/bin/rg"
-    fi
 
     # Make executable
     chmod +x "$STAGING_DIR/bin/tumble"

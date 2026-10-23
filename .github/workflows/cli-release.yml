@@ -99,20 +99,13 @@ jobs:
         # Add package.json to extension directory for CommonJS.
         echo '{"type": "commonjs"}' > "$RELEASE_DIR/extension/package.json"
 
-        # Find and copy ripgrep binary.
-        echo "Looking for ripgrep binary..."
-        RIPGREP_PATH=$(find node_modules -path "*/@vscode/ripgrep/bin/rg" -type f 2>/dev/null | head -1)
-        if [ -n "$RIPGREP_PATH" ] && [ -f "$RIPGREP_PATH" ]; then
-          echo "Found ripgrep at: $RIPGREP_PATH"
-          mkdir -p "$RELEASE_DIR/node_modules/@vscode/ripgrep/bin"
-          cp "$RIPGREP_PATH" "$RELEASE_DIR/node_modules/@vscode/ripgrep/bin/"
-          chmod +x "$RELEASE_DIR/node_modules/@vscode/ripgrep/bin/rg"
-          mkdir -p "$RELEASE_DIR/bin"
-          cp "$RIPGREP_PATH" "$RELEASE_DIR/bin/"
-          chmod +x "$RELEASE_DIR/bin/rg"
-        else
-          echo "Warning: ripgrep binary not found"
-        fi
+        # Ship ripgrep next to the launcher: rgPath of @vscode/ripgrep is the binary
+        # of its package for this platform.
+        echo "Copying ripgrep binary..."
+        RIPGREP_PATH=$(cd apps/cli && node --input-type=module -e "import { rgPath } from '@vscode/ripgrep'; console.log(rgPath)")
+        echo "Found ripgrep at: $RIPGREP_PATH"
+        cp "$RIPGREP_PATH" "$RELEASE_DIR/bin/rg"
+        chmod +x "$RELEASE_DIR/bin/rg"
 
         # Create the wrapper script
         echo "Creating wrapper script..."
@@ -176,6 +169,7 @@ jobs:
         test -f "$VERIFY_DIR/tumble-cli-${PLATFORM}/lib/index.js" || { echo "Missing lib/index.js"; exit 1; }
         test -f "$VERIFY_DIR/tumble-cli-${PLATFORM}/package.json" || { echo "Missing package.json"; exit 1; }
         test -d "$VERIFY_DIR/tumble-cli-${PLATFORM}/extension" || { echo "Missing extension directory"; exit 1; }
+        test -x "$VERIFY_DIR/tumble-cli-${PLATFORM}/bin/rg" || { echo "Missing bin/rg"; exit 1; }
 
         echo "Tarball verification passed!"
 

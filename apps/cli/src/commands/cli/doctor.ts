@@ -14,10 +14,9 @@ import path from "path"
 import { fileURLToPath } from "url"
 
 import { execa } from "execa"
-import { readCliRuntimeEnv } from "@tumble-code/types"
 
-import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
+import { resolveRipgrepPath } from "@/lib/utils/ripgrep.js"
 import { isRecord } from "@/lib/utils/guards.js"
 import { loadSettings } from "@/lib/storage/settings.js"
 import { resolveMcpSettingsPath } from "@/lib/storage/mcp-settings.js"
@@ -88,41 +87,20 @@ export function checkExtensionBundle(extensionPath: string): DoctorCheckResult {
 			}
 }
 
-/**
- * Where the extension looks for ripgrep from the CLI (its `appRoot` is the CLI
- * package root): the release launcher's ROO_RIPGREP_PATH first, then the
- * @vscode/ripgrep layouts of src/services/ripgrep `ripgrepCandidatePaths` that
- * can exist under a node_modules directory.
- */
-export function ripgrepCandidates(cliRoot: string, override?: string): string[] {
-	const binName = process.platform === "win32" ? "rg.exe" : "rg"
-	const platformPackage = `@vscode/ripgrep-${process.platform}-${process.arch}`
-
-	return [
-		...(override && path.isAbsolute(override) ? [override] : []),
-		path.join(cliRoot, "node_modules", "@vscode", "ripgrep", "bin", binName),
-		path.join(cliRoot, "node_modules", platformPackage, "bin", binName),
-	]
-}
-
 export async function checkRipgrep({
-	cliRoot,
-	override = readCliRuntimeEnv(process.env).ripgrepPath,
+	binary,
 	runVersion = async (binary) =>
 		(await execa(binary, ["--version"], { timeout: RIPGREP_TIMEOUT_MS, stdin: "ignore" })).stdout,
 }: {
-	cliRoot: string
-	override?: string
+	/** `resolveRipgrepPath()`: the binary the CLI hands to the extension. */
+	binary: string | undefined
 	runVersion?: (binary: string) => Promise<string>
 }): Promise<DoctorCheckResult> {
-	const candidates = ripgrepCandidates(cliRoot, override)
-	const binary = candidates.find((candidate) => fs.existsSync(candidate))
-
-	if (!binary) {
+	if (!binary || !fs.existsSync(binary)) {
 		return {
 			name: "ripgrep",
 			status: "fail",
-			detail: `not found (looked in ${candidates.join(", ")}); file search and code search will not work`,
+			detail: `not found (${binary ?? "no ROO_RIPGREP_PATH and no @vscode/ripgrep package for this platform"}); file search and code search will not work`,
 		}
 	}
 
@@ -244,7 +222,7 @@ export async function doctor(options: DoctorOptions = {}): Promise<number> {
 		checks: [
 			() => checkNodeVersion(),
 			() => checkExtensionBundle(extensionPath),
-			() => checkRipgrep({ cliRoot: getCliPackageRoot(dirname) }),
+			async () => checkRipgrep({ binary: await resolveRipgrepPath() }),
 			async () => {
 				try {
 					return checkMcpConfig(resolveMcpSettingsPath((await loadSettings()).mcpSettingsPath))

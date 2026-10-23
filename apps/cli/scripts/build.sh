@@ -161,20 +161,13 @@ create_tarball() {
     # Add package.json to extension directory for CommonJS
     echo '{"type": "commonjs"}' > "$RELEASE_DIR/extension/package.json"
 
-    # Find and copy ripgrep binary
-    info "Looking for ripgrep binary..."
-    RIPGREP_PATH=$(find "$REPO_ROOT/node_modules" -path "*/@vscode/ripgrep/bin/rg" -type f 2>/dev/null | head -1)
-    if [ -n "$RIPGREP_PATH" ] && [ -f "$RIPGREP_PATH" ]; then
-        info "Found ripgrep at: $RIPGREP_PATH"
-        mkdir -p "$RELEASE_DIR/node_modules/@vscode/ripgrep/bin"
-        cp "$RIPGREP_PATH" "$RELEASE_DIR/node_modules/@vscode/ripgrep/bin/"
-        chmod +x "$RELEASE_DIR/node_modules/@vscode/ripgrep/bin/rg"
-        mkdir -p "$RELEASE_DIR/bin"
-        cp "$RIPGREP_PATH" "$RELEASE_DIR/bin/"
-        chmod +x "$RELEASE_DIR/bin/rg"
-    else
-        warn "ripgrep binary not found - users will need ripgrep installed"
-    fi
+    # Ship ripgrep next to the launcher: rgPath of @vscode/ripgrep is the binary of
+    # its package for this platform.
+    info "Copying ripgrep binary..."
+    RIPGREP_PATH=$(cd "$CLI_DIR" && node --input-type=module -e "import { rgPath } from '@vscode/ripgrep'; console.log(rgPath)")
+    info "Found ripgrep at: $RIPGREP_PATH"
+    cp "$RIPGREP_PATH" "$RELEASE_DIR/bin/rg"
+    chmod +x "$RELEASE_DIR/bin/rg"
 
     # Create the wrapper script
     info "Creating wrapper script..."
@@ -183,7 +176,6 @@ create_tarball() {
 
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -191,10 +183,7 @@ const __dirname = dirname(__filename);
 // Set environment variables for the CLI
 process.env.ROO_CLI_ROOT = join(__dirname, '..');
 process.env.ROO_EXTENSION_PATH = join(__dirname, '..', 'extension');
-const ripgrepPath = join(__dirname, 'rg');
-if (existsSync(ripgrepPath)) {
-  process.env.ROO_RIPGREP_PATH = ripgrepPath;
-}
+process.env.ROO_RIPGREP_PATH = join(__dirname, 'rg');
 
 // Import and run the actual CLI
 await import(join(__dirname, '..', 'lib', 'index.js'));
