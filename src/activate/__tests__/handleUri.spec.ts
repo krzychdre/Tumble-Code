@@ -14,8 +14,8 @@ vi.mock("@tumble-code/cloud", () => ({
 	},
 }))
 
-vi.mock("../../core/webview/ClineProvider", () => ({
-	ClineProvider: {
+vi.mock("../../core/webview/panelRegistry", () => ({
+	panelRegistry: {
 		getVisibleInstance: vi.fn().mockReturnValue({}),
 	},
 }))

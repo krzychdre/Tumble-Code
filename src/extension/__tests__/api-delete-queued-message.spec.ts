@@ -22,7 +22,7 @@ describe("API - DeleteQueuedMessage Command", () => {
 		mockRemoveMessage = vi.fn().mockReturnValue(true)
 
 		mockProvider = {
-			context: {} as vscode.ExtensionContext,
+			context: { subscriptions: [] } as unknown as vscode.ExtensionContext,
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 			on: vi.fn(),
 			getCurrentTaskStack: vi.fn().mockReturnValue([]),

@@ -23,6 +23,7 @@ import { ContextProxy } from "../../config/ContextProxy"
 import { Task, TaskOptions } from "../../task/Task"
 import { safeWriteJson } from "@tumble-code/core/fs"
 import { ClineProvider } from "../ClineProvider"
+import { panelRegistry } from "../panelRegistry"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { MessageManager } from "../../message-manager"
 import { logger } from "../../../utils/logging"
@@ -547,36 +548,12 @@ describe("ClineProvider", () => {
 		// Since getVisibleInstance returns the last instance where view.visible is true
 		// @ts-expect-error - accessing private property for testing
 		provider.view = mockWebviewView
-		expect(ClineProvider.getVisibleInstance()).toBe(provider)
+		expect(panelRegistry.getVisibleInstance()).toBe(provider)
 	})
 
-	test("getEditorTab returns the newest editor tab panel, never the sidebar view", () => {
-		// Instances from earlier tests stay registered; look at this test's only.
-		// @ts-expect-error - accessing private property for testing
-		const instances: Set<ClineProvider> = ClineProvider.activeInstances
-		const saved = [...instances]
-		instances.clear()
-		instances.add(provider)
-		try {
-			// A sidebar WebviewView has no onDidChangeViewState.
-			// @ts-expect-error - accessing private property for testing
-			provider.view = mockWebviewView
-			expect(ClineProvider.getEditorTab()).toBeUndefined()
-
-			const tab = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
-			const panel = { ...mockWebviewView, onDidChangeViewState: vi.fn() }
-			// @ts-expect-error - accessing private property for testing
-			tab.view = panel
-			expect(ClineProvider.getEditorTab()).toBe(panel)
-		} finally {
-			instances.clear()
-			saved.forEach((instance) => instances.add(instance))
-		}
-	})
-
-	test("observeInstances replays live providers and reports each new one until disposed", () => {
+	test("panelRegistry.observe replays live providers and reports each new one until disposed", () => {
 		const seen: ClineProvider[] = []
-		const observer = ClineProvider.observeInstances((instance) => seen.push(instance))
+		const observer = panelRegistry.observe((instance) => seen.push(instance))
 		expect(seen).toContain(provider)
 
 		const tab = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))

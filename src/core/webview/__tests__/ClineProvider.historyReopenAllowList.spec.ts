@@ -4,6 +4,7 @@ import * as vscode from "vscode"
 import { TumbleCodeEventName, type OrganizationAllowList, type ProviderSettings } from "@tumble-code/types"
 
 import { ClineProvider } from "../ClineProvider"
+import { panelRegistry } from "../panelRegistry"
 import { Task } from "../../task/Task"
 import { OrganizationAllowListViolationError } from "../../../utils/errors"
 
@@ -190,7 +191,9 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 
 		// Providers of earlier tests are never disposed and still hold their
 		// tasks; showTaskWithId would show a task there instead of here.
-		;(ClineProvider as any).activeInstances.clear()
+		if (provider) {
+			panelRegistry.remove(provider)
+		}
 		provider = new ClineProvider(context, { appendLine: vi.fn(), dispose: vi.fn() } as any, "sidebar", contextProxy)
 		provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
 		provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)

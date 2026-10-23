@@ -184,36 +184,34 @@ vi.mock("../i18n", () => ({
 }))
 
 // Mock ClineProvider
-vi.mock("../core/webview/ClineProvider", async () => {
-	const mockInstance = {
-		resolveWebviewView: vi.fn(),
-		postMessageToWebview: vi.fn(),
-		postStateToWebview: vi.fn(),
-		postStateToWebviewWithoutClineMessages: vi.fn(),
-		getState: vi.fn().mockResolvedValue({}),
-		initializeCloudProfileSyncWhenReady: vi.fn().mockResolvedValue(undefined),
-		providerSettingsManager: {},
-		contextProxy: { getGlobalState: vi.fn() },
-		customModesManager: {},
-		upsertProviderProfile: vi.fn().mockResolvedValue(undefined),
-	}
-	return {
-		ClineProvider: Object.assign(
-			vi.fn().mockImplementation(function () {
-				return mockInstance
-			}),
-			{
-				// Static methods used by extension.ts
-				getVisibleInstance: vi.fn().mockReturnValue(mockInstance),
-				// Every open panel gets the cloud state push (one panel here).
-				postStateToAllWebviewsWithoutClineMessages: vi.fn(() =>
-					mockInstance.postStateToWebviewWithoutClineMessages(),
-				),
-				sideBarId: "tumble-code-sidebar",
-			},
-		),
-	}
-})
+const mockInstance = vi.hoisted(() => ({
+	resolveWebviewView: vi.fn(),
+	postMessageToWebview: vi.fn(),
+	postStateToWebview: vi.fn(),
+	postStateToWebviewWithoutClineMessages: vi.fn(),
+	getState: vi.fn().mockResolvedValue({}),
+	initializeCloudProfileSyncWhenReady: vi.fn().mockResolvedValue(undefined),
+	providerSettingsManager: {},
+	contextProxy: { getGlobalState: vi.fn() },
+	customModesManager: {},
+	upsertProviderProfile: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("../core/webview/ClineProvider", async () => ({
+	ClineProvider: Object.assign(
+		vi.fn().mockImplementation(function () {
+			return mockInstance
+		}),
+		{ sideBarId: "tumble-code-sidebar" },
+	),
+}))
+
+vi.mock("../core/webview/panelRegistry", () => ({
+	panelRegistry: {
+		// Every open panel gets the cloud state push (one panel here).
+		postStateToAllWebviewsWithoutClineMessages: vi.fn(() => mockInstance.postStateToWebviewWithoutClineMessages()),
+	},
+}))
 
 // Mock modelCache to prevent network requests during module loading
 const mockGetModels = vi.fn().mockResolvedValue([])
@@ -386,8 +384,7 @@ describe("extension.ts", () => {
 				}) as any,
 			)
 
-			const { ClineProvider } = await import("../core/webview/ClineProvider")
-			const provider = ClineProvider.getVisibleInstance() as any
+			const provider = mockInstance
 			const { activate } = await import("../extension")
 
 			expect(await raceActivation(activate(mockContext))).toBe("activated")

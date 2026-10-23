@@ -77,10 +77,15 @@ Three checks enforce this (PKG-2, CORE-R10):
   `src/api/providers/utils/vsCodeSelectorUtils.ts`, and `packages/config-eslint/__tests__/boundaries.test.mjs`
   checks that the rule still rejects them under their old names.
 - `src/__tests__/layering.spec.ts` pins three edges inside `src`: `ClineProvider` does not import `src/activate`
-  (the commands find the open panels through static lookups on `ClineProvider`); `shared/modes.ts` imports neither
+  (the commands find the open panels through `panelRegistry`, see below); `shared/modes.ts` imports neither
   `vscode` nor extension code (the host-side helpers are in `core/prompts/modeDetails.ts`); and `McpHub`,
   `McpServerManager`, `WorkspaceTracker`, `DiffViewProvider` and `DiagnosticsCollector` depend on narrow interfaces
   listing only the members they use, not on the `ClineProvider` and `Task` classes.
+- One `ClineProvider` serves one panel (the sidebar or one editor tab). What concerns all panels of the window lives
+  in `src/core/webview/panelRegistry.ts`: the set of live providers (each registers itself on construction and
+  leaves when its dispose ends), which panel the user was in last, the task host lookup for the bridge, state pushes
+  to every panel, and the merged working-tasks map every panel shows. The commands, the URI handler, the API, the
+  bridge and `extension.ts` ask the registry, never a static on `ClineProvider`.
 
 ## The CLI runtime contract
 

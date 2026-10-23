@@ -12,6 +12,7 @@ import {
 import { TaskStatus, type RemoteControlStatus } from "@tumble-code/types"
 
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { panelRegistry } from "../core/webview/panelRegistry"
 import { getBridgeRetryDelayMs } from "../activate/cloud-urls"
 import type { API } from "./api"
 import { setRemoteControlStatus } from "./remoteControlStatus"
@@ -68,12 +69,12 @@ export function setupRemoteControlBridge(opts: {
 	// screen and as parallel subagents. A command names its task, so it is
 	// looked up in every panel instead of meaning the sidebar's current task.
 	const bridgeProvider: BridgeProvider = {
-		findTask: (taskId: string) => ClineProvider.findTaskHost(taskId)?.findLiveTask(taskId),
-		stopTask: async (taskId: string) => (await ClineProvider.findTaskHost(taskId)?.stopTask(taskId)) ?? false,
+		findTask: (taskId: string) => panelRegistry.findTaskHost(taskId)?.findLiveTask(taskId),
+		stopTask: async (taskId: string) => (await panelRegistry.findTaskHost(taskId)?.stopTask(taskId)) ?? false,
 		// A task still live in a tab resumes there; any other opens in the sidebar.
-		resumeTask: (id: string) => (ClineProvider.findTaskHost(id) ?? provider).resumeStoppedTask(id),
+		resumeTask: (id: string) => (panelRegistry.findTaskHost(id) ?? provider).resumeStoppedTask(id),
 		// Auto-approval is one setting for every panel.
-		postStateToWebview: () => ClineProvider.postStateToAllWebviewsWithoutClineMessages(),
+		postStateToWebview: () => panelRegistry.postStateToAllWebviewsWithoutClineMessages(),
 		contextProxy: {
 			// The bridge protocol carries untyped key/value pairs; ContextProxy.setValue
 			// wants a known settings key with its value type, which only the remote
@@ -84,7 +85,7 @@ export function setupRemoteControlBridge(opts: {
 
 	const snapshot = async (taskId: string): Promise<InstanceStatePayload | null> => {
 		// The snapshot describes the task it is sent for, wherever it runs.
-		const host = ClineProvider.findTaskHost(taskId)
+		const host = panelRegistry.findTaskHost(taskId)
 		const task = host?.findLiveTask(taskId)
 		const state = await (host ?? provider).getState()
 		const tokenUsage = task?.getTokenUsage?.()

@@ -8,6 +8,7 @@ import { TelemetryService } from "@tumble-code/telemetry"
 import { Package } from "../shared/package"
 import { getCommand } from "../utils/commands"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { panelRegistry } from "../core/webview/panelRegistry"
 import { ContextProxy } from "../core/config/ContextProxy"
 import { focusPanel } from "../utils/focusPanel"
 import { handleNewTask } from "./handleTask"
@@ -22,7 +23,7 @@ import { logger } from "../utils/logging"
  * Helper to get the visible ClineProvider instance or log if not found.
  */
 export function getVisibleProviderOrLog(): ClineProvider | undefined {
-	const visibleProvider = ClineProvider.getVisibleInstance()
+	const visibleProvider = panelRegistry.getVisibleInstance()
 	if (!visibleProvider) {
 		logger.warn("Cannot find any visible Tumble Code instances.")
 		return undefined
@@ -102,7 +103,7 @@ const getCommandsMap = ({
 	editorTitleButtonClicked: async () => {
 		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "editorTitle" })
 
-		const tab = ClineProvider.getEditorTab()
+		const tab = panelRegistry.getEditorTab()
 		if (tab) {
 			tab.reveal()
 			return
@@ -174,7 +175,7 @@ const getCommandsMap = ({
 	},
 	focusInput: async () => {
 		try {
-			const host = ClineProvider.getLastActiveInstance()
+			const host = panelRegistry.getLastActiveInstance()
 			await focusPanel(host)
 
 			// Send focus input message only for the sidebar (`provider`); a
@@ -188,7 +189,7 @@ const getCommandsMap = ({
 	},
 	focusPanel: async () => {
 		try {
-			await focusPanel(ClineProvider.getLastActiveInstance())
+			await focusPanel(panelRegistry.getLastActiveInstance())
 		} catch (error) {
 			logger.error(`Error focusing panel: ${error}`)
 		}
@@ -293,7 +294,7 @@ export const openClineInNewTab = async (
 	// newGroupRight (a new group right of the active one) and then into
 	// column two: with the first Tumble tab in column two, that is its own
 	// group, and the new group stayed empty.
-	viewColumn ??= ClineProvider.getEditorTab()?.viewColumn
+	viewColumn ??= panelRegistry.getEditorTab()?.viewColumn
 
 	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy)
 	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))

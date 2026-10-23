@@ -2,13 +2,13 @@ import * as vscode from "vscode"
 
 import { CloudService } from "@tumble-code/cloud"
 
-import { ClineProvider } from "../core/webview/ClineProvider"
+import { panelRegistry } from "../core/webview/panelRegistry"
 import { waitForCloudStart } from "../extension/cloudStartup"
 
 export const handleUri = async (uri: vscode.Uri) => {
 	const path = uri.path
 	const query = new URLSearchParams(uri.query.replace(/\+/g, "%2B"))
-	const visibleProvider = ClineProvider.getVisibleInstance()
+	const visibleProvider = panelRegistry.getVisibleInstance()
 
 	if (!visibleProvider) {
 		return

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { TumbleCodeEventName } from "@tumble-code/types"
 
 import { ClineProvider } from "../ClineProvider"
+import { panelRegistry } from "../panelRegistry"
 import { Task } from "../../task/Task"
 import { logger } from "../../../utils/logging"
 
@@ -471,7 +472,7 @@ describe("ClineProvider stops a live task by id", () => {
 	it("reports a task it does not run, so another panel can be asked", async () => {
 		;(provider as any).taskSlot.seedForTests(liveTask("fg"))
 		expect(await provider.stopTask("elsewhere")).toBe(false)
-		expect(ClineProvider.findTaskHost("fg")).toBe(provider)
-		expect(ClineProvider.findTaskHost("elsewhere")).toBeUndefined()
+		expect(panelRegistry.findTaskHost("fg")).toBe(provider)
+		expect(panelRegistry.findTaskHost("elsewhere")).toBeUndefined()
 	})
 })

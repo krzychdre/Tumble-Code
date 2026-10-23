@@ -239,7 +239,7 @@ interface ProviderStateSources {
 	nextClineMessagesSeq(): number
 	listSubagents(): SubagentSummary[]
 	getMemoryActivity(): { recall: number; write: number }
-	/** The tasks that work right now in every panel of the window (see ClineProvider.getRunningTasksOfAllPanels). */
+	/** The tasks that work right now in every panel of the window (see panelRegistry.runningTasks). */
 	getRunningTasks(): Record<string, RunningTaskStatus>
 	getWebview(): vscode.Webview | undefined
 	getExtensionVersion(): string

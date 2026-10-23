@@ -1,6 +1,7 @@
 import type { Mock } from "vitest"
 import * as vscode from "vscode"
 import { ClineProvider } from "../../core/webview/ClineProvider"
+import { panelRegistry } from "../../core/webview/panelRegistry"
 
 import { TelemetryEventName } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
@@ -46,6 +47,10 @@ vi.mock("vscode", () => ({
 
 vi.mock("../../core/webview/ClineProvider")
 
+vi.mock("../../core/webview/panelRegistry", () => ({
+	panelRegistry: { getVisibleInstance: vi.fn(), getEditorTab: vi.fn(), getLastActiveInstance: vi.fn() },
+}))
+
 vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { capture: vi.fn() } },
 }))
@@ -72,7 +77,7 @@ describe("getVisibleProviderOrLog", () => {
 
 	it("returns the visible provider if found", () => {
 		const mockProvider = {} as ClineProvider
-		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(mockProvider)
+		;(panelRegistry.getVisibleInstance as Mock).mockReturnValue(mockProvider)
 
 		const result = getVisibleProviderOrLog()
 
@@ -81,7 +86,7 @@ describe("getVisibleProviderOrLog", () => {
 	})
 
 	it("logs and returns undefined if no provider found", () => {
-		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
+		;(panelRegistry.getVisibleInstance as Mock).mockReturnValue(undefined)
 
 		const result = getVisibleProviderOrLog()
 
@@ -192,7 +197,7 @@ describe("openInNewTab", () => {
 	})
 
 	it("opens a second tab beside the Tumble tab used last, without an empty new group", async () => {
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue({ viewColumn: 3 } as unknown as vscode.WebviewPanel)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue({ viewColumn: 3 } as unknown as vscode.WebviewPanel)
 
 		await runRegisteredCommand("openInNewTab")
 
@@ -206,7 +211,7 @@ describe("openInNewTab", () => {
 	})
 
 	it("opens the first tab in a new group to the right when no editor is visible", async () => {
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue(undefined)
 
 		await runRegisteredCommand("openInNewTab")
 
@@ -221,7 +226,7 @@ describe("openInNewTab", () => {
 
 	it("opens another tab from the status bar item even when a Tumble tab is open, and reports the click", async () => {
 		const panel = { reveal: vi.fn(), viewColumn: 3 }
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
 
 		await runRegisteredCommand("openInNewTab", undefined, STATUS_BAR_CLICK_SOURCE)
 
@@ -238,7 +243,7 @@ describe("openInNewTab", () => {
 	})
 
 	it("opens the first tab from the status bar item when none is open", async () => {
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue(undefined)
 
 		await runRegisteredCommand("openInNewTab", undefined, STATUS_BAR_CLICK_SOURCE)
 
@@ -246,7 +251,7 @@ describe("openInNewTab", () => {
 	})
 
 	it("does not report runs from the Tumble tab's title bar or the command palette", async () => {
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue(undefined)
 
 		await runRegisteredCommand("openInNewTab")
 
@@ -261,7 +266,7 @@ describe("focusPanel and focusInput", () => {
 
 	it("focusPanel reveals the panel the user was in last", async () => {
 		const host = { revealView: vi.fn() }
-		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(host as unknown as ClineProvider)
+		vi.mocked(panelRegistry.getLastActiveInstance).mockReturnValue(host as unknown as ClineProvider)
 
 		await runRegisteredCommand("focusPanel")
 
@@ -269,7 +274,7 @@ describe("focusPanel and focusInput", () => {
 	})
 
 	it("focusPanel opens the sidebar when no panel is open", async () => {
-		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(undefined)
+		vi.mocked(panelRegistry.getLastActiveInstance).mockReturnValue(undefined)
 
 		await runRegisteredCommand("focusPanel")
 
@@ -282,12 +287,12 @@ describe("focusPanel and focusInput", () => {
 		const sidebar = { revealView: vi.fn(), postMessageToWebview: vi.fn() }
 		const tab = { revealView: vi.fn(), postMessageToWebview: vi.fn() }
 
-		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(tab as unknown as ClineProvider)
+		vi.mocked(panelRegistry.getLastActiveInstance).mockReturnValue(tab as unknown as ClineProvider)
 		await runRegisteredCommand("focusInput", sidebar as unknown as ClineProvider)
 		expect(tab.revealView).toHaveBeenCalledTimes(1)
 		expect(sidebar.postMessageToWebview).not.toHaveBeenCalled()
 
-		vi.mocked(ClineProvider.getLastActiveInstance).mockReturnValue(sidebar as unknown as ClineProvider)
+		vi.mocked(panelRegistry.getLastActiveInstance).mockReturnValue(sidebar as unknown as ClineProvider)
 		await runRegisteredCommand("focusInput", sidebar as unknown as ClineProvider)
 		expect(sidebar.postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "focusInput" })
 	})
@@ -313,7 +318,7 @@ describe("editorTitleButtonClicked", () => {
 
 	it("reveals the open Tumble tab instead of opening a second one", async () => {
 		const panel = { reveal: vi.fn() }
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue(panel as unknown as vscode.WebviewPanel)
 
 		await runCommand()
 
@@ -322,7 +327,7 @@ describe("editorTitleButtonClicked", () => {
 	})
 
 	it("opens a new Tumble tab when none is open", async () => {
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue(undefined)
 
 		await runCommand()
 
@@ -330,7 +335,7 @@ describe("editorTitleButtonClicked", () => {
 	})
 
 	it("reports a click from the editor title bar, which passes the editor's URI", async () => {
-		vi.mocked(ClineProvider.getEditorTab).mockReturnValue(undefined)
+		vi.mocked(panelRegistry.getEditorTab).mockReturnValue(undefined)
 
 		await runCommand({ scheme: "file", path: "/mock/workspace/a.ts" })
 
