@@ -4,8 +4,11 @@ packages:
     - "apps/*"
     - "packages/*"
 
-# Build scripts nothing here needs; pnpm 10 skipped them too.
+# Build scripts nothing here needs; pnpm 10 skipped them too. @vscode/ripgrep 1.17
+# downloads rg in its postinstall; the CLI and its release (apps/cli/scripts/build.sh)
+# take the binary from node_modules/@vscode/ripgrep/bin.
 allowBuilds:
+    "@vscode/ripgrep": true
     "@google/genai": false
     "@vscode/vsce-sign": false
     esbuild: false
@@ -40,6 +43,8 @@ catalog:
     "@modelcontextprotocol/sdk": "1.32.1"
     "@types/node": "^22.20.4"
     "@types/react": "^19.3.0"
+    # src/package.json spells this range out: vsce package checks it against engines.vscode
+    # and cannot parse "catalog:".
     "@types/vscode": "^1.102.0"
     "@vscode/vsce": "4.0.0"
     axios: "^1.20.0"

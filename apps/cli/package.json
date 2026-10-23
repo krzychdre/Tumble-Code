@@ -24,7 +24,7 @@
 		"@tumble-code/core": "workspace:^",
 		"@tumble-code/types": "workspace:^",
 		"@tumble-code/vscode-shim": "workspace:^",
-		"@vscode/ripgrep": "^1.18.0",
+		"@vscode/ripgrep": "~1.17.1",
 		"beautiful-mermaid": "^1.1.3",
 		"commander": "^15.0.0",
 		"execa": "catalog:",

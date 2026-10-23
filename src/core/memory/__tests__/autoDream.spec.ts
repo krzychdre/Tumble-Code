@@ -171,7 +171,7 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 		return memDir
 	}
 
-	it("asks the model exactly ONCE when called twice rapidly (don't await the first)", async () => {
+	it("asks the model exactly ONCE when called again while the first dream is in flight", async () => {
 		const now = Date.now()
 		vi.setSystemTime(now)
 		await setup(now - 48 * 3_600_000) // time-gate passed
@@ -200,21 +200,18 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 			onImproved: () => {},
 		}
 
-		// Fire first dream — don't await; it stays in flight.
-		void executeAutoDream(ctx)
-		// Give the first call a tick to register in the in-flight set.
-		await new Promise((r) => setTimeout(r, 10))
+		// The first call returns once its dream is registered; the dream stays in flight on the runner.
+		await executeAutoDream(ctx)
+		await vi.waitFor(() => expect(runner).toHaveBeenCalledTimes(1))
 
-		// Fire second dream — should be blocked by the re-entry guard.
-		void executeAutoDream(ctx)
-		await new Promise((r) => setTimeout(r, 10))
+		// Second call while the first dream is in flight, past the 10-minute scan throttle: only the
+		// re-entry guard can block it.
+		vi.setSystemTime(now + 11 * 60_000)
+		await executeAutoDream(ctx)
 
-		// Runner should have been called exactly ONCE — the second call bailed.
-		expect(runner).toHaveBeenCalledTimes(1)
-
-		// Release the first dream and let it settle.
 		resolveFirst()
-		await new Promise((r) => setTimeout(r, 10))
+		await drainPendingDreams(1000)
+		expect(runner).toHaveBeenCalledTimes(1)
 
 		acquireSpy.mockRestore()
 		rollbackSpy.mockRestore()
@@ -321,14 +318,11 @@ describe("drainPendingDreams (MEM-2)", () => {
 			query: runner,
 			onImproved: () => {},
 		})
-		// Give the dream a tick to register the controller.
-		await new Promise((r) => setTimeout(r, 10))
+		// The abort listener exists only once the runner runs.
+		await vi.waitFor(() => expect(runner).toHaveBeenCalled())
 
 		await drainPendingDreams(20)
 		expect(aborted).toBe(true)
-
-		// Give the abort handler a tick to settle the promise and clean up.
-		await new Promise((r) => setTimeout(r, 10))
 
 		acquireSpy.mockRestore()
 		rollbackSpy.mockRestore()
@@ -351,7 +345,7 @@ describe("drainPendingDreams (MEM-2)", () => {
 			return "KEEP"
 		})
 
-		void executeAutoDream({
+		await executeAutoDream({
 			cwd,
 			isMainAgent: true,
 			config: baseConfig,
@@ -360,9 +354,8 @@ describe("drainPendingDreams (MEM-2)", () => {
 			query: runner,
 			onImproved: () => {},
 		})
-		// Wait long enough for the runner to resolve naturally.
-		await new Promise((r) => setTimeout(r, 50))
 		await drainPendingDreams(1000)
+		expect(runner).toHaveBeenCalled()
 		expect(aborted).toBe(false)
 
 		acquireSpy.mockRestore()

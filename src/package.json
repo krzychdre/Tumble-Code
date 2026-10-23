@@ -589,7 +589,7 @@
 		"@types/node": "catalog:",
 		"@types/ps-tree": "^1.1.6",
 		"@types/turndown": "^5.0.6",
-		"@types/vscode": "catalog:",
+		"@types/vscode": "^1.102.0",
 		"@vscode/vsce": "catalog:",
 		"esbuild-wasm": "^0.28.2",
 		"execa": "catalog:",
