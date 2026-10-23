@@ -25,7 +25,7 @@ that depend on each other by name (`"@tumble-code/types": "workspace:^"`).
 | `apps/vscode-e2e/`            | `@tumble-code/vscode-e2e`                                      | End-to-end tests in a real VS Code.                                                                                                                                               |
 | `apps/vscode-nightly/`        | `@tumble-code/vscode-nightly`                                  | The nightly VSIX build.                                                                                                                                                           |
 | `packages/types/`             | `@tumble-code/types`                                           | Zod schemas and TypeScript types shared by everyone: settings, providers, `ExtensionMessage` and `WebviewMessage`, the CLI runtime contract. Its only runtime dependency is zod.  |
-| `packages/core/`              | `@tumble-code/core`                                            | Platform-agnostic logic (no `vscode`). Entry points: `.` (host), `./browser` (webview-safe), `./cli`, `./fs` (`safeWriteJson`, `writeFileAtomic`), `./path`.                      |
+| `packages/core/`              | `@tumble-code/core`                                            | Platform-agnostic logic (no `vscode`). Entry points: `.` (host), `./backoff`, `./browser` (webview-safe), `./cli`, `./fs` (`safeWriteJson`, `writeFileAtomic`), `./path`.         |
 | `packages/cloud/`             | `@tumble-code/cloud`                                           | `CloudService`: login, settings sync, sharing, the bridge to the self-hosted cloud API.                                                                                           |
 | `packages/telemetry/`         | `@tumble-code/telemetry`                                       | `TelemetryService` and its clients.                                                                                                                                               |
 | `packages/agent-interchange/` | `@tumble-code/agent-interchange`                               | Reading and handing off sessions between Claude Code and Tumble Code (an MCP server plus readers).                                                                                |
@@ -62,7 +62,8 @@ graph TD
 ```
 
 `packages/cloud` imports `@tumble-code/core` for one thing: the shared exponential-backoff helper
-(`packages/cloud/src/backoff.ts` re-exports `@tumble-code/core/backoff`). `core` must therefore never import `cloud`.
+`backoffDelayMs` from `@tumble-code/core/backoff` (`RefreshTimer.ts`, `bridge/BridgeOrchestrator.ts`,
+`retry-queue/RetryQueue.ts`). `core` must therefore never import `cloud`.
 
 Three checks enforce this (PKG-2, CORE-R10):
 
@@ -88,7 +89,8 @@ The CLI does not talk to the extension over a network. `apps/cli/src/agent/exten
 The two sides agree on nine environment variables and two `globalThis` slots, all spelled in one place:
 `packages/types/src/cli-runtime.ts` (`CLI_RUNTIME_ENV`, `readCliRuntimeEnv`, `CLI_RUNTIME_GLOBAL_SLOTS`,
 `setCliRuntimeGlobals`). Use those names instead of string literals. `packages/vscode-shim` still reads the two
-slots by literal name, so renaming a slot means changing both. `ClineProvider.getAppProperties` turns
+slots by literal name, so renaming a slot means changing both. `TelemetryPropertiesSource.getAppProperties`
+(`src/core/webview/TelemetryPropertiesSource.ts`, which `ClineProvider.getAppProperties` delegates to) turns
 `ROO_CLI_RUNTIME` and `ROO_CLI_VERSION` (the CLI package version) into `clientKind` (`vscode` or `cli`) and
 `clientVersion`, which every telemetry event, error report and LLM exchange carries to the cloud.
 
