@@ -1,8 +1,8 @@
 [project]
-name = "roo-cloud-api"
+name = "tumble-cloud-api"
 version = "0.1.0"
-description = "Self-hosted Roo Code Cloud API"
-authors = [{name = "Roo Code Community"}]
+description = "Self-hosted Tumble Code Cloud API"
+authors = [{name = "Tumble Code Community"}]
 readme = "README.md"
 requires-python = ">=3.12"
 

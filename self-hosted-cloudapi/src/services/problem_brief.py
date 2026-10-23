@@ -77,8 +77,8 @@ _RULES = {rule.id: rule for rule in CATALOGUE}
 ABOUT = (
     "Tumble Code is a VS Code extension that runs an AI coding agent: the user picks a model (any of about "
     "thirty providers, local servers included) and a mode, and the agent reads files, edits them, runs "
-    "commands and calls MCP tools through native tool calls. It is a community fork of Roo Code (internal "
-    "identifiers still say roo/cline). The repository is a pnpm monorepo: `src/` is the extension (the agent "
+    "commands and calls MCP tools through native tool calls. Internal identifiers still say roo and cline, "
+    "after the extensions it was forked from. The repository is a pnpm monorepo: `src/` is the extension (the agent "
     "loop in `src/core/task`, the tools in `src/core/tools`, their schemas and descriptions in "
     "`src/core/prompts/tools/native-tools`, the provider clients in `src/api/providers` and the stream "
     "parsing in `src/api/transform`, MCP in `src/services/mcp`, the code index in `src/services/code-index`, "

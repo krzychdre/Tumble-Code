@@ -56,7 +56,7 @@ async def test_app_lists_owned_tasks(client, db_session, session_factory):
 
 
 async def test_title_strips_environment_details_wrapper(client, db_session, session_factory):
-    """A first turn in Roo Code's API-prompt form (typed text wrapped in
+    """A first turn in Tumble Code's API-prompt form (typed text wrapped in
     <user_message>, trailed by a machine <environment_details> block) yields a
     title of just the user's query - no mode/file-tree leakage."""
     await _seed_user(db_session)

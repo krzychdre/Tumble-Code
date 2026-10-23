@@ -67,7 +67,7 @@ def conversation_category(message: dict) -> tuple[str, Optional[str]]:
 
     Read from the message's own words: an extension that predates error
     reports wrote nothing else. The texts are the extension's fixed error
-    strings ("Roo tried to use X without value for required parameter",
+    strings ("Tumble tried to use X without value for required parameter",
     "Error reading file", ...); an unrecognized one is a ``tool_error`` with
     no tool, and the catalogue decides from the text.
     """

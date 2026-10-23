@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 def _log_banner() -> None:
     """Log the effective configuration once at startup."""
-    logger.info("Roo Cloud API started")
+    logger.info("Tumble Cloud API started")
     logger.info("  API Base URL: %s", settings.api_base_url)
     logger.info("  Authentik URL: %s", settings.authentik_base_url)
     logger.info("  JWT Algorithm: %s", settings.jwt_algorithm)
@@ -108,7 +108,7 @@ async def lifespan(app: FastAPI):
     # goes away. Nothing is held when the bridge is off.
     await flush_pending_messages()
     await engine.dispose()
-    logger.info("Roo Cloud API stopped")
+    logger.info("Tumble Cloud API stopped")
 
 
 app = FastAPI(

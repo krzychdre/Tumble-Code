@@ -2,7 +2,7 @@
 
 Where the data comes from
 -------------------------
-Roo Code spawns a subtask as a task in its own right, with its own id and its
+Tumble Code spawns a subtask as a task in its own right, with its own id and its
 own conversation. The only place the relationship is stated is telemetry: every
 ``Task Created`` (and in practice several later events) carries ``taskId``
 alongside ``parentTaskId`` and ``isSubtask``. Nothing consumed it, so the web

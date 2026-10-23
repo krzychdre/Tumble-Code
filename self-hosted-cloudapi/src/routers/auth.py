@@ -1,6 +1,6 @@
 """Clerk-compatible auth facade router.
 
-Implements the 5 Clerk API endpoints that the Roo Code client calls:
+Implements the 5 Clerk API endpoints that the Tumble Code client calls:
 - POST /v1/client/sign_ins
 - POST /v1/client/sessions/{session_id}/tokens
 - GET /v1/me
