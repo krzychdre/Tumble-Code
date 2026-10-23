@@ -17,15 +17,12 @@ import {
 	SETTINGS_DEFAULTS,
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
-import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
+import { type ApiHandler } from "../../api"
 import { type ApiStream, type ApiStreamChunk } from "../../api/transform/stream"
 import { isAutoRetryableApiError } from "../../api/apiErrors"
-import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
+import { getEffectiveApiHistory } from "../condense"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
-import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { getCurrentProfileId } from "./currentProfileId"
-import { resolveParallelToolCalls } from "./parallelToolCalls"
-import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { formatResponse } from "../prompts/responses"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { type TaskMessageLog } from "./TaskMessageLog"
@@ -45,7 +42,6 @@ import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { AutoApprovalHandler } from "../auto-approval"
 import { presentAssistantMessage } from "../assistant-message"
 import { type AssistantMessageContent } from "../assistant-message"
-import { type ApiMessage } from "../task-persistence"
 import { ApiRequestBuilder, type ToolsArrayResult } from "./ApiRequestBuilder"
 import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 import { type ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
@@ -310,7 +306,10 @@ export class TaskApiLoop {
 			get api() {
 				return access.api
 			},
-			apiConversationHistory: access.apiConversationHistory,
+			// A getter: the task replaces its history array (resume, overwrite).
+			get apiConversationHistory() {
+				return access.apiConversationHistory
+			},
 			microcompactedIds: access.microcompactedIds,
 			providerRef: access.providerRef,
 			cwd: access.cwd,
@@ -1526,15 +1525,7 @@ export class TaskApiLoop {
 			})
 		}
 
-		// Build clean conversation history
-		const effectiveHistory = getEffectiveApiHistory(this.access.apiConversationHistory)
-		const messagesSinceLastSummary = getMessagesSinceLastSummary(effectiveHistory)
-		const mergedForApi = mergeConsecutiveApiMessages(messagesSinceLastSummary, { roles: ["user"] })
-		const messagesWithoutImages = maybeRemoveImageBlocks(mergedForApi, this.access.api)
-		const cleanConversationHistory = this.apiRequestBuilder.buildCleanConversationHistory(
-			messagesWithoutImages as ApiMessage[],
-			this.access.api.getModel().info.preserveReasoning === true,
-		)
+		const cleanConversationHistory = this.apiRequestBuilder.buildRequestMessages()
 
 		// Check auto-approval limits
 		const approvalResult = await this.access.autoApprovalHandler.checkAutoApprovalLimits(
@@ -1561,49 +1552,18 @@ export class TaskApiLoop {
 		this.access.currentRequestAbortController = new AbortController()
 		const abortSignal = this.access.currentRequestAbortController.signal
 
-		// The compact profile asks for one tool call per message (small models lose track of
-		// parallel results); every handler that sends parallel_tool_calls reads it from here.
-		const parallelToolCalls = resolveParallelToolCalls(this.access.apiConfiguration)
-
-		const metadata: ApiHandlerCreateMessageMetadata = {
-			mode: mode,
-			taskId: this.access.taskId,
-			suppressPreviousResponseId: this.access.skipPrevResponseIdOnce,
+		const metadata = this.apiRequestBuilder.buildRequestMetadata({
+			mode,
 			signal: abortSignal,
-			...(allTools.length > 0
-				? {
-						tools: allTools,
-						tool_choice: "auto",
-						parallelToolCalls,
-						...(allowedFunctionNames ? { allowedFunctionNames } : {}),
-					}
-				: {}),
-		}
+			suppressPreviousResponseId: this.access.skipPrevResponseIdOnce,
+			allTools,
+			allowedFunctionNames,
+		})
 
 		this.access.skipPrevResponseIdOnce = false
 
-		// The request parameters as the error reports and the exchange recorder describe them;
-		// built only when one of them is active.
-		const requestParams = (): Record<string, unknown> => ({
-			mode,
-			toolProtocol: getApiProtocol(
-				this.access.apiConfiguration.apiProvider && !isRetiredProvider(this.access.apiConfiguration.apiProvider)
-					? this.access.apiConfiguration.apiProvider
-					: undefined,
-				this.access.api.getModel().id,
-			),
-			temperature: this.access.apiConfiguration.modelTemperature ?? undefined,
-			maxTokens: getModelMaxOutputTokens({
-				modelId: this.access.api.getModel().id,
-				model: modelInfo,
-				settings: this.access.apiConfiguration,
-			}),
-			reasoningEffort:
-				this.access.apiConfiguration.enableReasoningEffort === false
-					? undefined
-					: this.access.apiConfiguration.reasoningEffort,
-			...(allTools.length > 0 ? { toolChoice: "auto", parallelToolCalls } : {}),
-		})
+		// Built only when error reporting or the exchange recorder is active.
+		const requestParams = () => this.apiRequestBuilder.describeRequestParams(mode, allTools.length > 0)
 
 		// Kept by reference, and only while error reporting is active (signed in to the
 		// cloud): the request a failure report about this attempt describes.
