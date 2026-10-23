@@ -23,6 +23,7 @@ import { ContextProxy } from "../../config/ContextProxy"
 import { Task, TaskOptions } from "../../task/Task"
 import { safeWriteJson } from "@tumble-code/core/fs"
 import { ClineProvider } from "../ClineProvider"
+import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
 import { panelRegistry } from "../panelRegistry"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { MessageManager } from "../../message-manager"
@@ -167,61 +168,13 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 	}),
 }))
 
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	EventEmitter: vi.fn().mockImplementation(function () {
-		return {
-			event: vi.fn(),
-			fire: vi.fn(),
-			dispose: vi.fn(),
-		}
-	}),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	CodeActionKind: {
-		QuickFix: { value: "quickfix" },
-		RefactorRewrite: { value: "refactor.rewrite" },
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		activeTextEditor: undefined,
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		getWorkspaceFolder: vi.fn(),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
+// The specs assert on or stub these members of the shared vscode mock.
+beforeEach(() => {
+	vi.spyOn(vscode.window, "showErrorMessage")
+	vi.spyOn(vscode.Uri, "file")
+	vi.spyOn(vscode.Uri, "joinPath")
+	vi.spyOn(vscode.workspace, "getWorkspaceFolder")
+})
 
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn(),
@@ -437,10 +390,8 @@ describe("ClineProvider", () => {
 
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
-	let mockOutputChannel: vscode.OutputChannel
 	let mockWebviewView: any
 	let mockPostMessage: any
-	let updateGlobalStateSpy: any
 
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -449,41 +400,7 @@ describe("ClineProvider", () => {
 			TelemetryService.createInstance([])
 		}
 
-		const globalState: Record<string, string | undefined> = {
-			mode: "architect",
-			currentApiConfigName: "current-config",
-		}
-
-		const secrets: Record<string, string | undefined> = {}
-
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => globalState[key]),
-				update: vi
-					.fn()
-					.mockImplementation((key: string, value: string | undefined) => (globalState[key] = value)),
-				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((key: string) => secrets[key]),
-				store: vi.fn().mockImplementation((key: string, value: string | undefined) => (secrets[key] = value)),
-				delete: vi.fn().mockImplementation((key: string) => delete secrets[key]),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			subscriptions: [],
-			extension: {
-				packageJSON: { version: "1.0.0" },
-			},
-			globalStorageUri: {
-				fsPath: "/test/storage/path",
-			},
-		} as unknown as vscode.ExtensionContext
+		mockContext = createMockContext({ mode: "architect", currentApiConfigName: "current-config" })
 
 		// Mock CustomModesManager
 		const mockCustomModesManager = {
@@ -492,34 +409,12 @@ describe("ClineProvider", () => {
 			dispose: vi.fn(),
 		}
 
-		// Mock output channel
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
 		// Mock webview
 		mockPostMessage = vi.fn()
 
-		mockWebviewView = {
-			webview: {
-				postMessage: mockPostMessage,
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn().mockImplementation((callback) => {
-				callback()
-				return { dispose: vi.fn() }
-			}),
-			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		}
+		mockWebviewView = createMockWebviewView(mockPostMessage)
 
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		provider = createTestProvider(mockContext)
 
 		defaultTaskOptions = {
 			provider,
@@ -527,8 +422,6 @@ describe("ClineProvider", () => {
 				apiProvider: "openrouter",
 			},
 		}
-
-		updateGlobalStateSpy = vi.spyOn(provider.contextProxy, "setValue")
 
 		// @ts-expect-error - Accessing private property for testing.
 		provider.customModesManager = mockCustomModesManager
@@ -556,12 +449,12 @@ describe("ClineProvider", () => {
 		const observer = panelRegistry.observe((instance) => seen.push(instance))
 		expect(seen).toContain(provider)
 
-		const tab = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+		const tab = createTestProvider(mockContext, "editor")
 		expect(seen[seen.length - 1]).toBe(tab)
 
 		observer.dispose()
 		const count = seen.length
-		new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+		createTestProvider(mockContext, "editor")
 		expect(seen).toHaveLength(count)
 	})
 
@@ -835,9 +728,8 @@ describe("ClineProvider", () => {
 	})
 
 	test("resolveWebviewView sets up webview correctly in development mode even if local server is not running", async () => {
-		provider = new ClineProvider(
+		provider = createTestProvider(
 			{ ...mockContext, extensionMode: vscode.ExtensionMode.Development },
-			mockOutputChannel,
 			"sidebar",
 			new ContextProxy(mockContext),
 		)
@@ -857,7 +749,7 @@ describe("ClineProvider", () => {
 
 		// Verify Content Security Policy connect-src directive
 		expect(mockWebviewView.webview.html).toContain(
-			"connect-src vscode-webview://test-csp-source https://openrouter.ai https://api.requesty.ai",
+			`connect-src ${mockWebviewView.webview.cspSource} https://openrouter.ai https://api.requesty.ai`,
 		)
 
 		// Extract the script-src directive section and verify required security elements
@@ -1508,7 +1400,7 @@ describe("ClineProvider", () => {
 		} as unknown as vscode.ExtensionContext
 
 		// Create new provider with updated mock context
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		provider = createTestProvider(mockContext)
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -2444,7 +2336,7 @@ describe("ClineProvider", () => {
 		test("construction subscribes once, and initializeCloudProfileSyncWhenReady does not add a second listener", async () => {
 			const { fake, restore } = await installFakeCloudService(false)
 			try {
-				const p = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+				const p = createTestProvider(mockContext)
 				await flush()
 				expect(fake.listenerCount("settings-updated")).toBe(1)
 
@@ -2459,7 +2351,7 @@ describe("ClineProvider", () => {
 		test("construction syncs cloud profiles right away when already authenticated", async () => {
 			const { fake, restore } = await installFakeCloudService(true)
 			try {
-				new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+				createTestProvider(mockContext)
 				await flush()
 				expect(fake.getOrganizationSettings).toHaveBeenCalledTimes(1)
 			} finally {
@@ -2475,7 +2367,7 @@ describe("ClineProvider", () => {
 		) => {
 			const cloud = await installFakeCloudService(false)
 			cloud.fake.getOrganizationSettings.mockReturnValue(providerProfiles ? { providerProfiles } : {})
-			const p = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+			const p = createTestProvider(mockContext)
 			await flush()
 			await p.setValue("currentApiConfigName", "local-profile")
 			const sync = vi.spyOn(p.providerSettingsManager, "syncCloudProfiles").mockResolvedValue(syncResult as any)
@@ -2609,7 +2501,7 @@ describe("ClineProvider", () => {
 				extensionUri: { fsPath: "/ext" },
 				extensionMode: development ? vscode.ExtensionMode.Development : vscode.ExtensionMode.Production,
 			} as unknown as vscode.ExtensionContext
-			const p = new ClineProvider(context, mockOutputChannel, "sidebar", new ContextProxy(context))
+			const p = createTestProvider(context)
 			return p
 		}
 
@@ -2857,7 +2749,6 @@ describe("ClineProvider", () => {
 describe("Project MCP Settings", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
-	let mockOutputChannel: vscode.OutputChannel
 	let mockWebviewView: any
 	let mockPostMessage: any
 
@@ -2866,56 +2757,12 @@ describe("Project MCP Settings", () => {
 		const pathUtils = await import("../../../utils/path")
 		vi.mocked(pathUtils.getWorkspacePath).mockReturnValue("")
 
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn(),
-				update: vi.fn(),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			secrets: {
-				get: vi.fn(),
-				store: vi.fn(),
-				delete: vi.fn(),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			subscriptions: [],
-			extension: {
-				packageJSON: { version: "1.0.0" },
-			},
-			globalStorageUri: {
-				fsPath: "/test/storage/path",
-			},
-		} as unknown as vscode.ExtensionContext
-
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
+		mockContext = createMockContext()
 		mockPostMessage = vi.fn()
-		mockWebviewView = {
-			webview: {
-				postMessage: mockPostMessage,
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn(),
-			onDidChangeVisibility: vi.fn(),
-		}
+		mockWebviewView = createMockWebviewView(mockPostMessage)
 		;(vscode.window as any).activeTextEditor = undefined
 		;(vscode.workspace.getWorkspaceFolder as any).mockReset()
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		provider = createTestProvider(mockContext)
 	})
 
 	test("handles openProjectMcpSettings message", async () => {
@@ -3009,7 +2856,6 @@ describe("getTelemetryProperties", () => {
 	let defaultTaskOptions: TaskOptions
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
-	let mockOutputChannel: vscode.OutputChannel
 	let mockCline: any
 
 	beforeEach(() => {
@@ -3021,30 +2867,8 @@ describe("getTelemetryProperties", () => {
 			TelemetryService.createInstance([])
 		}
 
-		// Setup basic mocks
-		mockContext = {
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => {
-					if (key === "mode") return "code"
-					if (key === "apiProvider") return "anthropic"
-					return undefined
-				}),
-				update: vi.fn(),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			secrets: { get: vi.fn(), store: vi.fn(), delete: vi.fn() },
-			extensionUri: {} as vscode.Uri,
-			globalStorageUri: { fsPath: "/test/path" },
-			extension: { packageJSON: { version: "1.0.0" } },
-		} as unknown as vscode.ExtensionContext
-
-		mockOutputChannel = { appendLine: vi.fn() } as unknown as vscode.OutputChannel
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		mockContext = createMockContext({ mode: "code", apiProvider: "anthropic" })
+		provider = createTestProvider(mockContext)
 
 		defaultTaskOptions = {
 			provider,
@@ -3271,49 +3095,9 @@ describe("ClineProvider getTaskWithId", () => {
 			TelemetryService.createInstance([])
 		}
 
-		const globalState: Record<string, string | undefined> = {
-			mode: "code",
-			currentApiConfigName: "current-config",
-		}
+		mockContext = createMockContext({ mode: "code", currentApiConfigName: "current-config" })
 
-		const secrets: Record<string, string | undefined> = {}
-
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => globalState[key]),
-				update: vi
-					.fn()
-					.mockImplementation((key: string, value: string | undefined) => (globalState[key] = value)),
-				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((key: string) => secrets[key]),
-				store: vi.fn().mockImplementation((key: string, value: string | undefined) => (secrets[key] = value)),
-				delete: vi.fn().mockImplementation((key: string) => delete secrets[key]),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			subscriptions: [],
-			extension: {
-				packageJSON: { version: "1.0.0" },
-			},
-			globalStorageUri: {
-				fsPath: "/test/storage/path",
-			},
-		} as unknown as vscode.ExtensionContext
-
-		const mockOutputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		provider = createTestProvider(mockContext)
 	})
 
 	it("returns empty apiConversationHistory when file is missing", async () => {

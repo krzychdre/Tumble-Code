@@ -45,45 +45,6 @@ vi.mock("delay", () => {
 	return { default: delayFn }
 })
 
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
-
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn(),
 }))
