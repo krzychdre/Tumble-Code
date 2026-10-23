@@ -13,6 +13,9 @@ updates:
       ignore:
           - dependency-name: "*"
             update-types: ["version-update:semver-major"]
+          # Follows engines.vscode in src/package.json (the oldest VS Code we support);
+          # vsce package refuses a newer @types/vscode.
+          - dependency-name: "@types/vscode"
       groups:
           type-definitions:
               patterns: ["@types/*"]
@@ -89,6 +92,10 @@ updates:
       ignore:
           - dependency-name: "*"
             update-types: ["version-update:semver-major"]
+          # The image stays on the Python minor that the CI matrix tests; patch and
+          # digest updates still come.
+          - dependency-name: "python"
+            update-types: ["version-update:semver-minor"]
 
     - package-ecosystem: "github-actions"
       directories: ["/", "/.github/actions/*"]
