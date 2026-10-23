@@ -56,10 +56,7 @@ function createCompletedStateInfo(message: ClineMessage): AgentStateInfo {
 		isRunning: false,
 		isStreaming: false,
 		currentAsk: "completion_result",
-		requiredAction: "start_task",
-		lastMessageTs: message.ts,
 		lastMessage: message,
-		description: "Task completed successfully. You can provide feedback or start a new task.",
 	}
 }
 

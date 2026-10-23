@@ -156,7 +156,6 @@ export class MessageProcessor {
 				if (this.debug) {
 					debugLog("[MessageProcessor] EMIT waitingForInput", {
 						ask: currentState.currentAsk,
-						action: currentState.requiredAction,
 					})
 				}
 				const waitingEvent: WaitingForInputEvent = {
