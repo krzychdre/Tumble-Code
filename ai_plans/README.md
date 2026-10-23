@@ -51,6 +51,9 @@ plan. The vision mode is built in since 2026-10-13 (`DEFAULT_MODES` in `packages
   and the R, D, P, S, F items that followed it (all done; P8 parked, see above).
 - [`2026-10-01_simplification-round-2.md`](2026-10-01_simplification-round-2.md): the next round, with the owner's
   decisions.
+- [`2026-10-23_17-20_maintenance-audit-round-4.md`](2026-10-23_17-20_maintenance-audit-round-4.md): round 4,
+  dependency refresh (bot, GitHub Actions, planned majors, Python service) plus refactoring and test-hygiene
+  items for the host, CLI, webview, cloud service and docs. Proposal, nothing implemented yet.
 - [`2026-09-27_ui-modernization.md`](2026-09-27_ui-modernization.md): UI proposals for the VS Code panel, the cloud
   web panel and the CLI; its progress logs record what landed in steps 1 to 5.
 - The 2026-09-24 refactor master plan (`ai_plans/2026-09-24_refactor/`) is intentionally kept on the unmerged
