@@ -9,7 +9,6 @@ Implements the browser-based authentication routes:
 import logging
 import re
 import secrets
-import urllib.parse
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -31,6 +30,7 @@ from src.services.auth_service import (
     get_or_create_user,
     create_session,
     create_ticket,
+    client_callback_url,
     deactivate_session,
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
@@ -315,23 +315,7 @@ async def auth_callback(
             status_code=502,
         )
 
-    # Extract user details from Authentik userinfo
-    authentik_id = userinfo.get("sub", "")
-    email = userinfo.get("email", "")
-    name = userinfo.get("name", "")
-    first_name = userinfo.get("given_name", name.split(" ")[0] if name else "")
-    last_name = userinfo.get("family_name", name.split(" ")[-1] if name and len(name.split()) > 1 else "")
-    picture = userinfo.get("picture", "")
-
-    # Create or update user
-    user = await get_or_create_user(
-        db=db,
-        authentik_id=authentik_id,
-        email=email,
-        first_name=first_name,
-        last_name=last_name,
-        image_url=picture,
-    )
+    user = await get_or_create_user(db, userinfo)
 
     # Create only the session here. The client token is minted later, at
     # POST /v1/client/sign_ins, so the raw token can be handed back to the
@@ -354,33 +338,9 @@ async def auth_callback(
         )
         return response
 
-    # Generate ticket for Clerk sign-in flow
     ticket_code = await create_ticket(db, session.id)
-
-    # Determine organization ID (from Authentik groups or default)
-    org_id = None  # TODO: Map Authentik groups to organizations
-
-    # Build redirect URL back to VS Code
-    # ------------------------------------
-    # The VS Code extension's handleUri() routes on the URI path,
-    # specifically matching "/auth/clerk/callback". The auth_redirect
-    # parameter from the extension is just the base URI scheme
-    # (e.g. "vscode://RooVeterinaryInc.roo-cline"), so we must
-    # append the callback path before adding query parameters.
-    #
-    # IMPORTANT: Query parameter values must be URL-encoded so that
-    # special characters in the ticket code or state (e.g. +, =, /)
-    # do not corrupt the URI parsing in VS Code.
     redirect_url = state_store.auth_redirect
-    callback_path = "/auth/clerk/callback"
-    params = urllib.parse.urlencode({
-        "code": ticket_code,
-        "state": state,
-    })
-    if org_id:
-        params += "&organizationId=" + urllib.parse.quote(str(org_id))
-
-    vscode_uri = redirect_url + callback_path + "?" + params
+    vscode_uri = client_callback_url(redirect_url, ticket_code, state)
 
     # A CLI's loopback redirect is plain http, which a browser follows from a
     # 3xx, so no page is needed. A redirect also suits a CLI on another
