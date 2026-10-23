@@ -13,13 +13,13 @@
 		"clean": "rimraf dist .turbo"
 	},
 	"dependencies": {
-		"zod": "^4.6.5"
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@tumble-code/config-eslint": "workspace:^",
 		"@tumble-code/config-typescript": "workspace:^",
 		"@tumble-code/config-vitest": "workspace:^",
-		"@types/node": "^22.20.4",
-		"vitest": "^5.0.2"
+		"@types/node": "catalog:",
+		"vitest": "catalog:"
 	}
 }

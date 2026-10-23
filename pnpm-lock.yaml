@@ -4,6 +4,87 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@modelcontextprotocol/sdk':
+      specifier: 1.32.1
+      version: 1.32.1
+    '@types/node':
+      specifier: ^22.20.4
+      version: 22.20.4
+    '@types/react':
+      specifier: ^19.3.0
+      version: 19.3.0
+    '@types/vscode':
+      specifier: ^1.102.0
+      version: 1.103.0
+    '@vscode/vsce':
+      specifier: 4.0.0
+      version: 4.0.0
+    axios:
+      specifier: ^1.20.0
+      version: 1.20.0
+    diff:
+      specifier: ^9.0.0
+      version: 9.0.0
+    eslint:
+      specifier: ^10.11.0
+      version: 10.11.0
+    execa:
+      specifier: ^9.6.1
+      version: 9.6.1
+    fast-deep-equal:
+      specifier: ^3.1.3
+      version: 3.1.3
+    fzf:
+      specifier: ^0.5.2
+      version: 0.5.2
+    globals:
+      specifier: ^16.3.0
+      version: 16.3.0
+    i18next:
+      specifier: ^26.4.2
+      version: 26.4.2
+    ignore:
+      specifier: ^7.0.3
+      version: 7.0.5
+    mkdirp:
+      specifier: ^3.0.1
+      version: 3.0.1
+    openai:
+      specifier: ^7.23.0
+      version: 7.23.0
+    p-wait-for:
+      specifier: ^5.0.2
+      version: 5.0.2
+    pretty-bytes:
+      specifier: ^7.0.0
+      version: 7.0.0
+    proper-lockfile:
+      specifier: ^4.1.2
+      version: 4.1.2
+    react:
+      specifier: 19.3.0
+      version: 19.3.0
+    rimraf:
+      specifier: ^6.0.1
+      version: 6.0.1
+    tsup:
+      specifier: ^8.4.0
+      version: 8.5.0
+    tsx:
+      specifier: ^4.19.3
+      version: 4.19.4
+    vitest:
+      specifier: ^5.0.2
+      version: 5.0.2
+    vscode-material-icons:
+      specifier: ^0.1.1
+      version: 0.1.1
+    zod:
+      specifier: 4.6.5
+      version: 4.6.5
+
 overrides:
   tar-fs: '>=3.1.1'
   esbuild: ^0.28.2
@@ -14,10 +95,8 @@ overrides:
   brace-expansion: ^2.0.2
   bluebird: '>=3.7.2'
   glob: ^13.0.6
-  zod: 4.6.5
   '@lmstudio/sdk>zod': 3.25.76
   lodash-es: ^4.18.1
-  typescript: 6.0.3
 
 importers:
 
@@ -33,16 +112,16 @@ importers:
         specifier: workspace:^
         version: link:packages/config-typescript
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       '@vscode/vsce':
-        specifier: 4.0.0
+        specifier: 'catalog:'
         version: 4.0.0
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
       eslint:
-        specifier: ^10.11.0
+        specifier: 'catalog:'
         version: 10.11.0(jiti@2.7.0)
       husky:
         specifier: ^9.1.7
@@ -54,16 +133,16 @@ importers:
         specifier: ^17.6.0
         version: 17.6.0
       mkdirp:
-        specifier: ^3.0.1
+        specifier: 'catalog:'
         version: 3.0.1
       prettier:
         specifier: ^3.4.2
         version: 3.5.3
       rimraf:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
       tsx:
-        specifier: ^4.19.3
+        specifier: 'catalog:'
         version: 4.19.4
       turbo:
         specifier: ^2.9.16
@@ -96,8 +175,8 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0
       execa:
-        specifier: ^9.5.2
-        version: 9.6.0
+        specifier: 'catalog:'
+        version: 9.6.1
       fuzzysort:
         specifier: ^3.1.0
         version: 3.1.0
@@ -105,10 +184,10 @@ importers:
         specifier: 7.1.1
         version: 7.1.1(@types/react@19.3.0)(react@19.3.0)
       p-wait-for:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2
       react:
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       sixel:
         specifier: ^0.16.0
@@ -133,28 +212,28 @@ importers:
         specifier: workspace:^
         version: link:../../packages/config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       ink-testing-library:
         specifier: ^4.0.0
         version: 4.0.0(@types/react@19.3.0)
       rimraf:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
       string-width:
         specifier: ^8.2.2
         version: 8.2.2
       tsup:
-        specifier: ^8.4.0
+        specifier: 'catalog:'
         version: 8.5.0(jiti@2.7.0)(postcss@8.5.28)(tsx@4.19.4)(typescript@6.0.3)(yaml@2.9.1)
       tsx:
-        specifier: ^4.19.3
+        specifier: 'catalog:'
         version: 4.19.4
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   apps/vscode-e2e:
@@ -172,10 +251,10 @@ importers:
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       '@types/vscode':
-        specifier: ^1.102.0
+        specifier: 'catalog:'
         version: 1.103.0
       '@vscode/test-electron':
         specifier: ^2.4.0
@@ -187,7 +266,7 @@ importers:
         specifier: ^11.1.0
         version: 11.2.2
       rimraf:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
 
   apps/vscode-nightly:
@@ -199,13 +278,13 @@ importers:
   packages/agent-interchange:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: 1.32.1
+        specifier: 'catalog:'
         version: 1.32.1(zod@4.6.5)
       '@tumble-code/core':
         specifier: workspace:^
         version: link:../core
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@tumble-code/config-eslint':
@@ -218,22 +297,22 @@ importers:
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
       rimraf:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   packages/build:
     dependencies:
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@tumble-code/config-eslint':
@@ -246,10 +325,10 @@ importers:
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   packages/cloud:
@@ -267,7 +346,7 @@ importers:
         specifier: ^4.8.1
         version: 4.8.3
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@tumble-code/config-eslint':
@@ -280,16 +359,16 @@ importers:
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       '@types/vscode':
-        specifier: ^1.102.0
+        specifier: 'catalog:'
         version: 1.103.0
       globals:
-        specifier: ^16.3.0
+        specifier: 'catalog:'
         version: 16.3.0
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   packages/config-eslint:
@@ -301,7 +380,7 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.7.0))
       eslint:
-        specifier: ^10.11.0
+        specifier: 'catalog:'
         version: 10.11.0(jiti@2.7.0)
       eslint-config-prettier:
         specifier: ^10.1.1
@@ -319,8 +398,8 @@ importers:
         specifier: ^2.4.4
         version: 2.5.6(eslint@10.11.0(jiti@2.7.0))(turbo@2.9.16)
       globals:
-        specifier: ^16.0.0
-        version: 16.1.0
+        specifier: 'catalog:'
+        version: 16.3.0
       typescript-eslint:
         specifier: ^8.70.1
         version: 8.70.1(eslint@10.11.0(jiti@2.7.0))(typescript@6.0.3)
@@ -330,7 +409,7 @@ importers:
   packages/config-vitest:
     devDependencies:
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   packages/core:
@@ -339,22 +418,22 @@ importers:
         specifier: workspace:^
         version: link:../types
       execa:
-        specifier: ^9.5.2
-        version: 9.6.0
+        specifier: 'catalog:'
+        version: 9.6.1
       ignore:
-        specifier: ^7.0.3
+        specifier: 'catalog:'
         version: 7.0.5
       json-stream-stringify:
         specifier: ^3.1.6
         version: 3.1.6
       openai:
-        specifier: ^7.23.0
+        specifier: 'catalog:'
         version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@4.6.5)
       proper-lockfile:
-        specifier: ^4.1.2
+        specifier: 'catalog:'
         version: 4.1.2
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@tumble-code/config-eslint':
@@ -367,13 +446,13 @@ importers:
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       '@types/proper-lockfile':
         specifier: ^4.1.4
         version: 4.1.4
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   packages/telemetry:
@@ -382,7 +461,7 @@ importers:
         specifier: workspace:^
         version: link:../types
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@tumble-code/config-eslint':
@@ -395,16 +474,16 @@ importers:
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   packages/types:
     dependencies:
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@tumble-code/config-eslint':
@@ -417,19 +496,19 @@ importers:
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
       globals:
-        specifier: ^16.3.0
+        specifier: 'catalog:'
         version: 16.3.0
       tsup:
-        specifier: ^8.4.0
+        specifier: 'catalog:'
         version: 8.5.0(jiti@2.7.0)(postcss@8.5.28)(tsx@4.19.4)(typescript@6.0.3)(yaml@2.9.1)
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   packages/vscode-shim:
@@ -444,10 +523,10 @@ importers:
         specifier: workspace:^
         version: link:../config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
   src:
@@ -474,7 +553,7 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0
       '@modelcontextprotocol/sdk':
-        specifier: 1.32.1
+        specifier: 'catalog:'
         version: 1.32.1(zod@4.6.5)
       '@qdrant/js-client-rest':
         specifier: ^1.19.0
@@ -498,7 +577,7 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0
       axios:
-        specifier: ^1.20.0
+        specifier: 'catalog:'
         version: 1.20.0
       chokidar:
         specifier: ^5.0.0
@@ -510,19 +589,19 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0
       diff:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
       fast-deep-equal:
-        specifier: ^3.1.3
+        specifier: 'catalog:'
         version: 3.1.3
       fastest-levenshtein:
         specifier: ^1.0.16
         version: 1.0.16
       fzf:
-        specifier: ^0.5.2
+        specifier: 'catalog:'
         version: 0.5.2
       get-folder-size:
         specifier: ^5.0.0
@@ -537,11 +616,11 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       i18next:
-        specifier: ^26.4.2
+        specifier: 'catalog:'
         version: 26.4.2(typescript@6.0.3)
       ignore:
-        specifier: ^7.0.3
-        version: 7.0.4
+        specifier: 'catalog:'
+        version: 7.0.5
       isbinaryfile:
         specifier: ^5.0.7
         version: 5.0.7
@@ -558,7 +637,7 @@ importers:
         specifier: ^0.6.3
         version: 0.6.3
       openai:
-        specifier: ^7.23.0
+        specifier: 'catalog:'
         version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@4.6.5)
       os-name:
         specifier: ^7.0.1
@@ -567,7 +646,7 @@ importers:
         specifier: ^7.3.3
         version: 7.3.3
       p-wait-for:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2
       partial-json:
         specifier: ^0.1.7
@@ -576,7 +655,7 @@ importers:
         specifier: ^2.4.5
         version: 2.4.5
       pretty-bytes:
-        specifier: ^7.0.0
+        specifier: 'catalog:'
         version: 7.0.0
       ps-tree:
         specifier: ^1.2.0
@@ -615,7 +694,7 @@ importers:
         specifier: ^14.0.2
         version: 14.0.2
       vscode-material-icons:
-        specifier: ^0.1.1
+        specifier: 'catalog:'
         version: 0.1.1
       web-tree-sitter:
         specifier: ^0.25.6
@@ -627,7 +706,7 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@tumble-code/build':
@@ -646,7 +725,7 @@ importers:
         specifier: ^4.0.9
         version: 4.0.9
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       '@types/ps-tree':
         specifier: ^1.1.6
@@ -655,19 +734,19 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5
       '@types/vscode':
-        specifier: ^1.102.0
+        specifier: 'catalog:'
         version: 1.103.0
       '@vscode/vsce':
-        specifier: 4.0.0
+        specifier: 'catalog:'
         version: 4.0.0
       esbuild-wasm:
         specifier: ^0.28.2
         version: 0.28.2
       execa:
-        specifier: ^9.6.1
+        specifier: 'catalog:'
         version: 9.6.1
       mkdirp:
-        specifier: ^3.0.1
+        specifier: 'catalog:'
         version: 3.0.1
       nock:
         specifier: ^14.0.4
@@ -676,13 +755,13 @@ importers:
         specifier: 1.2.0
         version: 1.2.0(@types/node@22.20.4)
       proper-lockfile:
-        specifier: ^4.1.2
+        specifier: 'catalog:'
         version: 4.1.2
       rimraf:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.0))
 
   webview-ui:
@@ -733,7 +812,7 @@ importers:
         specifier: ^0.7.2
         version: 0.7.2
       axios:
-        specifier: ^1.20.0
+        specifier: 'catalog:'
         version: 1.20.0
       class-variance-authority:
         specifier: ^0.7.1
@@ -751,19 +830,19 @@ importers:
         specifier: ^2.1.1
         version: 2.2.0
       diff:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0
       fast-deep-equal:
-        specifier: ^3.1.3
+        specifier: 'catalog:'
         version: 3.1.3
       fzf:
-        specifier: ^0.5.2
+        specifier: 'catalog:'
         version: 0.5.2
       hast-util-to-jsx-runtime:
         specifier: ^2.3.6
         version: 2.3.6
       i18next:
-        specifier: ^26.4.2
+        specifier: 'catalog:'
         version: 26.4.2(typescript@6.0.3)
       katex:
         specifier: ^0.18.9
@@ -778,10 +857,10 @@ importers:
         specifier: ^12.0.0
         version: 12.0.0
       pretty-bytes:
-        specifier: ^7.0.0
+        specifier: 'catalog:'
         version: 7.0.0
       react:
-        specifier: 19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       react-dom:
         specifier: 19.3.0
@@ -829,10 +908,10 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(react@19.3.0)
       vscode-material-icons:
-        specifier: ^0.1.1
+        specifier: 'catalog:'
         version: 0.1.1
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@babel/core':
@@ -863,10 +942,10 @@ importers:
         specifier: workspace:^
         version: link:../packages/config-vitest
       '@types/node':
-        specifier: ^22.20.4
+        specifier: 'catalog:'
         version: 22.20.4
       '@types/react':
-        specifier: ^19.3.0
+        specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
         specifier: ^19.3.0
@@ -896,7 +975,7 @@ importers:
         specifier: ^8.3.1
         version: 8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1)
       vitest:
-        specifier: ^5.0.2
+        specifier: 'catalog:'
         version: 5.0.2(@types/node@22.20.4)(@vitest/ui@5.0.2)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.19.4)(yaml@2.9.1))
 
 packages:
@@ -915,7 +994,7 @@ packages:
     resolution: {integrity: sha512-tl5cBFZC1jVFrTuQyvQObA4WmuNgcYVeXfriqOumgtLAHUm4gPUj18YnszBW60v0PrjDB8nBDOC6wd9CmHQFlA==}
     hasBin: true
     peerDependencies:
-      zod: 4.6.5
+      zod: ^3.25.0 || ^4.0.0
     peerDependenciesMeta:
       zod:
         optional: true
@@ -1057,33 +1136,17 @@ packages:
     resolution: {integrity: sha512-zGQPtqvXPgSA8yfV2CkIQ1qirqk0p9AIVpC5uEkdXQYcKl07QHvyaGYRnZOk0AsQUmxNb4wfkcwY5di8Z5xa9A==}
     engines: {node: '>=22.0.0'}
 
-  '@azure/identity@4.9.1':
-    resolution: {integrity: sha512-986D7Cf1AOwYqSDtO/FnMAyk/Jc8qpftkGsxuehoh4F85MhQ4fICBGX/44+X1y78lN4Sqib3Bsoaoh/FvOGgmg==}
-    engines: {node: '>=18.0.0'}
-
   '@azure/logger@1.2.0':
     resolution: {integrity: sha512-0hKEzLhpw+ZTAfNJyRrn6s+V0nDWzXk9OjBr2TiGIu0OfMr5s2V4FpKLTAK3Ca5r5OKLbf4hkOGDPyiRjie/jA==}
     engines: {node: '>=18.0.0'}
-
-  '@azure/msal-browser@4.12.0':
-    resolution: {integrity: sha512-WD1lmVWchg7wn1mI7Tr4v7QPyTwK+8Nuyje3jRpOFENLRLEBsdK8VVdTw3C+TypZmYn4cOAdj3zREnuFXgvfIA==}
-    engines: {node: '>=0.8.0'}
 
   '@azure/msal-browser@5.23.0':
     resolution: {integrity: sha512-IRCwkRCK47hBXK+7bu67UZWY7HS0Jx1dZgi4C1HVbjlBum8Jy8fb2l87xFr6HxdQJWy951zRUHtwwDITHFAtaA==}
     engines: {node: '>=0.8.0'}
 
-  '@azure/msal-common@15.6.0':
-    resolution: {integrity: sha512-EotmBz42apYGjqiIV9rDUdptaMptpTn4TdGf3JfjLvFvinSe9BJ6ywU92K9ky+t/b0ghbeTSe9RfqlgLh8f2jA==}
-    engines: {node: '>=0.8.0'}
-
   '@azure/msal-common@16.14.1':
     resolution: {integrity: sha512-Or6xhPNyi4zHW25158yxBoyxuCqNSPa5YBVqfF1J5Ks4MJWBo/USXdp05DQIPu1Zli00YZu6t0+h6KvHJealxQ==}
     engines: {node: '>=0.8.0'}
-
-  '@azure/msal-node@3.5.3':
-    resolution: {integrity: sha512-c5mifzHX5mwm5JqMIlURUyp6LEEdKF1a8lmcNRLBo0lD7zpSYPHupa4jHyhJyg9ccLwszLguZJdk2h3ngnXwNw==}
-    engines: {node: '>=16'}
 
   '@azure/msal-node@6.0.1':
     resolution: {integrity: sha512-ixSO1Y/kCVRthRs+hSx/5qkwaunX1/RAePhlMN0wIpIQ4WEZ6AREGGnGd1AP0qspHVsAwzWQKGubpjh50JyJIQ==}
@@ -1744,10 +1807,6 @@ packages:
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
-  '@jridgewell/gen-mapping@0.3.8':
-    resolution: {integrity: sha512-imAbBGkb+ebQyxKgzv5Hu2nmROxoDOXHh80evxdoXNOrvAnVx7zimzc1Oo5h9RlfV4vPXaE2iM5pOFbvOCClWA==}
-    engines: {node: '>=6.0.0'}
-
   '@jridgewell/remapping@2.3.5':
     resolution: {integrity: sha512-LI9u/+laYG4Ds1TDKSJW2YPrIlcVYOwi2fUC6xB43lueCjgxV4lffOCZCtYFiH6TNOX+tQKXx97T4IKHbhyHEQ==}
 
@@ -1755,18 +1814,11 @@ packages:
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
     engines: {node: '>=6.0.0'}
 
-  '@jridgewell/set-array@1.2.1':
-    resolution: {integrity: sha512-R8gLRTZeyp03ymzP/6Lil/28tGeGEzhx1q2k703KGWRAI1VdvPIXdG70VJc2pAMw3NA6JKL5hhFu1sJX0Mnn/A==}
-    engines: {node: '>=6.0.0'}
-
   '@jridgewell/sourcemap-codec@1.5.0':
     resolution: {integrity: sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==}
 
   '@jridgewell/sourcemap-codec@1.6.0':
     resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
-
-  '@jridgewell/trace-mapping@0.3.25':
-    resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
@@ -1839,7 +1891,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
-      zod: 4.6.5
+      zod: ^3.25 || ^4.0
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -2375,7 +2427,7 @@ packages:
     resolution: {integrity: sha512-1+QLUHsWp+WV4PE35FLnH2ckxotWrQEqi/F3t4goF3cCThR0ZxLVtOC4OoOi/E1iyj/iIYBdbuACWMuQ15NAnA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      typescript: 6.0.3
+      typescript: '>=4.7'
 
   '@qdrant/openapi-typescript-fetch@1.2.6':
     resolution: {integrity: sha512-oQG/FejNpItrxRHoyctYvT3rwGZOnK4jr3JdppO/c78ktDvkWiPXPHNsrDf33K9sZdRb6PR7gi4noIapu5q4HA==}
@@ -3540,20 +3592,20 @@ packages:
     peerDependencies:
       '@typescript-eslint/parser': ^8.70.1
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/parser@8.70.1':
     resolution: {integrity: sha512-nO974WLllwhSFWQXnMLj6nDGa8f0khKEz1JzpPJ1u7Vm/4X1X6ZHajpoknU4bb41vJyMB0HHVyS2GqdhWfIXZw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/project-service@8.70.1':
     resolution: {integrity: sha512-62xOgboPfwc3/IgPSX/W6oQR3ZbF04194FPGUGH8HL8iLFHbt/456/8Ph1wLNUgVF+s94FlHoipBsz+v7+LMnA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/scope-manager@8.70.1':
     resolution: {integrity: sha512-Pa0EeSeAusQc1WbjQMac+YfenewYTBu0KjgYvkUKwhXaHUKbFog23Dm/rp0DX/6tyYOQ3Xl1a+3EcFNZynGHCw==}
@@ -3563,14 +3615,14 @@ packages:
     resolution: {integrity: sha512-jumze1fPI+sDOaM2TWGQdn39PDxTr7TZGeuyLkAbNyx2vtMT3uRnVKChN0hfht5V2TugphJzF6bYXvBcE09qqg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/type-utils@8.70.1':
     resolution: {integrity: sha512-7zKTnyvaVWqzLZHPFQtX1hVHqgkMC+WebPWakNCSyrQVbIP1AM0L0TlBZtACldIRb6PptI8Odk+jyZ5kP3B1VA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/types@8.70.1':
     resolution: {integrity: sha512-Dm1ypdhhrGCTyyehxElhgJ6kgk8MVCv5qXdoOVqPr1uqk42jX8KjrZqhROvdShczA8qrDoYiOWn1ykWlx2k81Q==}
@@ -3580,14 +3632,14 @@ packages:
     resolution: {integrity: sha512-TU8PwyGN0PQJUcE96mw8eCQ44SmxGdQlJmlWakHaHQ15eIuuvye5yNtmh/i6oS88jzXVQB71xdNkbkB/fMwL0g==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/utils@8.70.1':
     resolution: {integrity: sha512-Esgul8MsnKnRLdYU2Eb2cRV9bS5HJYtKj1ByJnOzzG2M58DGdSUQ1jUuILxipqcpB2h9WLrbD5GijIWUjX/Tqw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   '@typescript-eslint/visitor-keys@8.70.1':
     resolution: {integrity: sha512-Vwj9lUIW5Xq3wQ9w6gv3R86g1hMK8f2zNOdGTAgeXUMMXFK78G9ruCjjqutHMNJc0+CH7LYRnHeUB9IT8wFmcw==}
@@ -3655,19 +3707,9 @@ packages:
     resolution: {integrity: sha512-8ukpxv4wYe0iWMRQU18jhzJOHkeGKbnw7xWRX3Zw1WJA4cEKbHcmmLPdPrPtL6rhDcrlCZN+xKRpv09n4gRHYg==}
     engines: {node: '>=16'}
 
-  '@vscode/vsce-sign-alpine-arm64@2.0.2':
-    resolution: {integrity: sha512-E80YvqhtZCLUv3YAf9+tIbbqoinWLCO/B3j03yQPbjT3ZIHCliKZlsy1peNc4XNZ5uIb87Jn0HWx/ZbPXviuAQ==}
-    cpu: [arm64]
-    os: [alpine]
-
   '@vscode/vsce-sign-alpine-arm64@2.0.6':
     resolution: {integrity: sha512-wKkJBsvKF+f0GfsUuGT0tSW0kZL87QggEiqNqK6/8hvqsXvpx8OsTEc3mnE1kejkh5r+qUyQ7PtF8jZYN0mo8Q==}
     cpu: [arm64]
-    os: [alpine]
-
-  '@vscode/vsce-sign-alpine-x64@2.0.2':
-    resolution: {integrity: sha512-n1WC15MSMvTaeJ5KjWCzo0nzjydwxLyoHiMJHu1Ov0VWTZiddasmOQHekA47tFRycnt4FsQrlkSCTdgHppn6bw==}
-    cpu: [x64]
     os: [alpine]
 
   '@vscode/vsce-sign-alpine-x64@2.0.6':
@@ -3675,19 +3717,9 @@ packages:
     cpu: [x64]
     os: [alpine]
 
-  '@vscode/vsce-sign-darwin-arm64@2.0.2':
-    resolution: {integrity: sha512-rz8F4pMcxPj8fjKAJIfkUT8ycG9CjIp888VY/6pq6cuI2qEzQ0+b5p3xb74CJnBbSC0p2eRVoe+WgNCAxCLtzQ==}
-    cpu: [arm64]
-    os: [darwin]
-
   '@vscode/vsce-sign-darwin-arm64@2.0.6':
     resolution: {integrity: sha512-5HMHaJRIQuozm/XQIiJiA0W9uhdblwwl2ZNDSSAeXGO9YhB9MH5C4KIHOmvyjUnKy4UCuiP43VKpIxW1VWP4tQ==}
     cpu: [arm64]
-    os: [darwin]
-
-  '@vscode/vsce-sign-darwin-x64@2.0.2':
-    resolution: {integrity: sha512-MCjPrQ5MY/QVoZ6n0D92jcRb7eYvxAujG/AH2yM6lI0BspvJQxp0o9s5oiAM9r32r9tkLpiy5s2icsbwefAQIw==}
-    cpu: [x64]
     os: [darwin]
 
   '@vscode/vsce-sign-darwin-x64@2.0.6':
@@ -3695,19 +3727,9 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@vscode/vsce-sign-linux-arm64@2.0.2':
-    resolution: {integrity: sha512-Ybeu7cA6+/koxszsORXX0OJk9N0GgfHq70Wqi4vv2iJCZvBrOWwcIrxKjvFtwyDgdeQzgPheH5nhLVl5eQy7WA==}
-    cpu: [arm64]
-    os: [linux]
-
   '@vscode/vsce-sign-linux-arm64@2.0.6':
     resolution: {integrity: sha512-cfb1qK7lygtMa4NUl2582nP7aliLYuDEVpAbXJMkDq1qE+olIw/es+C8j1LJwvcRq1I2yWGtSn3EkDp9Dq5FdA==}
     cpu: [arm64]
-    os: [linux]
-
-  '@vscode/vsce-sign-linux-arm@2.0.2':
-    resolution: {integrity: sha512-Fkb5jpbfhZKVw3xwR6t7WYfwKZktVGNXdg1m08uEx1anO0oUPUkoQRsNm4QniL3hmfw0ijg00YA6TrxCRkPVOQ==}
-    cpu: [arm]
     os: [linux]
 
   '@vscode/vsce-sign-linux-arm@2.0.6':
@@ -3715,38 +3737,20 @@ packages:
     cpu: [arm]
     os: [linux]
 
-  '@vscode/vsce-sign-linux-x64@2.0.2':
-    resolution: {integrity: sha512-NsPPFVtLaTlVJKOiTnO8Cl78LZNWy0Q8iAg+LlBiCDEgC12Gt4WXOSs2pmcIjDYzj2kY4NwdeN1mBTaujYZaPg==}
-    cpu: [x64]
-    os: [linux]
-
   '@vscode/vsce-sign-linux-x64@2.0.6':
     resolution: {integrity: sha512-/olerl1A4sOqdP+hjvJ1sbQjKN07Y3DVnxO4gnbn/ahtQvFrdhUi0G1VsZXDNjfqmXw57DmPi5ASnj/8PGZhAA==}
     cpu: [x64]
     os: [linux]
-
-  '@vscode/vsce-sign-win32-arm64@2.0.2':
-    resolution: {integrity: sha512-wPs848ymZ3Ny+Y1Qlyi7mcT6VSigG89FWQnp2qRYCyMhdJxOpA4lDwxzlpL8fG6xC8GjQjGDkwbkWUcCobvksQ==}
-    cpu: [arm64]
-    os: [win32]
 
   '@vscode/vsce-sign-win32-arm64@2.0.6':
     resolution: {integrity: sha512-ivM/MiGIY0PJNZBoGtlRBM/xDpwbdlCWomUWuLmIxbi1Cxe/1nooYrEQoaHD8ojVRgzdQEUzMsRbyF5cJJgYOg==}
     cpu: [arm64]
     os: [win32]
 
-  '@vscode/vsce-sign-win32-x64@2.0.2':
-    resolution: {integrity: sha512-pAiRN6qSAhDM5SVOIxgx+2xnoVUePHbRNC7OD2aOR3WltTKxxF25OfpK8h8UQ7A0BuRkSgREbB59DBlFk4iAeg==}
-    cpu: [x64]
-    os: [win32]
-
   '@vscode/vsce-sign-win32-x64@2.0.6':
     resolution: {integrity: sha512-mgth9Kvze+u8CruYMmhHw6Zgy3GRX2S+Ed5oSokDEK5vPEwGGKnmuXua9tmFhomeAnhgJnL4DCna3TiNuGrBTQ==}
     cpu: [x64]
     os: [win32]
-
-  '@vscode/vsce-sign@2.0.5':
-    resolution: {integrity: sha512-GfYWrsT/vypTMDMgWDm75iDmAOMe7F71sZECJ+Ws6/xyIfmB3ELVnVN+LwMFAvmXY+e6eWhR2EzNGF/zAhWY3Q==}
 
   '@vscode/vsce-sign@2.1.0':
     resolution: {integrity: sha512-9AQrqazrBgTgRSuwleLVXUrIUphY02/SFCh2TKYoLV/xifJAdblhdmEmw5gUrYSPQ3sRwNs9iyCMD14sATEE6g==}
@@ -3780,11 +3784,6 @@ packages:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
-
-  acorn@8.14.1:
-    resolution: {integrity: sha512-OvQ/2pUDKmgfCg++xsTX1wGxfTaszcHVcTctW4UJB4hibJx2HXxxO5UmVgyjMa+ZDsiaf5wWLXYpRWMmBI0QHg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
 
   acorn@8.18.0:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
@@ -4932,10 +4931,6 @@ packages:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
     engines: {node: '>=10'}
 
-  execa@9.6.0:
-    resolution: {integrity: sha512-jpWzZ1ZhwUmeWRhS7Qv3mhpOhLfwI+uAX4e5fOcXqwMR7EcJ0pj2kV1CVzHVMX/LphnKWD3LObjZCoJ71lKpHw==}
-    engines: {node: ^18.19.0 || >=20.5.0}
-
   execa@9.6.1:
     resolution: {integrity: sha512-9Be3ZoN4LmYR90tUoVu2te2BsbzHfhJyfEiAVfz7N5/zv+jduIfLrV2xdQXOHbaD6KgpGdO9PRPM1Y4Q9QkPkA==}
     engines: {node: ^18.19.0 || >=20.5.0}
@@ -5018,14 +5013,6 @@ packages:
 
   fd-slicer@1.1.0:
     resolution: {integrity: sha512-cE1qsB/VwyQozZ+q1dGxR8LBYNZeofhEdUNGSMbQD3Gw2lAzX9Zb3uIU6Ebc/Fmyjo9AWWfnn0AUCHqtevs/8g==}
-
-  fdir@6.4.6:
-    resolution: {integrity: sha512-hiFoqpyZcfNm1yc4u8oWCf9A2c4D3QjCrks3zmoVKVxpQRzmPNar1hUJcBG2RQHvEVGDN+Jm81ZheVLAQMK6+w==}
-    peerDependencies:
-      picomatch: ^3 || ^4
-    peerDependenciesMeta:
-      picomatch:
-        optional: true
 
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
@@ -5194,9 +5181,6 @@ packages:
     resolution: {integrity: sha512-w9UMqWwJxHNOvoNzSJ2oPF5wvYcvP7jUvYzhp67yEhTi17ZDBBC1z9pTdGuzjD+EFIqLSYRweZjqfiPzQ06Ebg==}
     engines: {node: '>= 0.4'}
 
-  get-tsconfig@4.10.0:
-    resolution: {integrity: sha512-kGzZ3LWWQcGIAmg6iWvXn0ei6WDtV26wzHRMwDSzmAbcXrTEXxHy6IehI6/4eT6VRKyMP1eF1VqwrVUmE/LR7A==}
-
   get-tsconfig@4.14.3:
     resolution: {integrity: sha512-++QEw4DIY7WGoukz+/+A/8dGYPT9l9yIadnmSgZ8Rjr3YVSVDipQSO9CdnJo9ePqFqUUqh+wk9uIaoiAwsiPkA==}
 
@@ -5218,10 +5202,6 @@ packages:
   global-agent@4.1.3:
     resolution: {integrity: sha512-KUJEViiuFT3I97t+GYMikLPJS2Lfo/S2F+DQuBWzuzaMPnvt5yyZePzArx36fBzpGTxZjIpDbXLeySLgh+k76g==}
     engines: {node: '>=10.0'}
-
-  globals@16.1.0:
-    resolution: {integrity: sha512-aibexHNbb/jiUSObBgpHLj+sIuUmJnYcgXBlrfsiDZ9rt4aF2TFRbyLgZ2iFQuVZ1K5Mx3FVkbKRSgKrbK3K2g==}
-    engines: {node: '>=18'}
 
   globals@16.3.0:
     resolution: {integrity: sha512-bqWEnJ1Nt3neqx2q5SFfGS8r/ahumIakg3HcwtNlrVlwXIeNumWn/c7Pn/wKzGhf6SaW6H6uWXLqC30STCMchQ==}
@@ -5415,7 +5395,7 @@ packages:
   i18next@26.4.2:
     resolution: {integrity: sha512-RX+R0VLg13IbvRuJSxnqykUFS9vQZTl8wYpWPCIUDWVrSGjsQywB5Y+pjzrkboxGAuYfJZVH1InFTdgBdxq6ug==}
     peerDependencies:
-      typescript: 6.0.3
+      typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -5433,10 +5413,6 @@ packages:
 
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
-    engines: {node: '>= 4'}
-
-  ignore@7.0.4:
-    resolution: {integrity: sha512-gJzzk+PQNznz8ysRrC0aOkBNVRBDtE1n53IqyqEf3PXrYwomFs5q4pGMizBMJF+ykh03insJ27hB8gSrD2Hn8A==}
     engines: {node: '>= 4'}
 
   ignore@7.0.5:
@@ -6190,9 +6166,6 @@ packages:
     resolution: {integrity: sha512-Lci/1in+elqZ589PXnfP/iwZXpwQifTM94WJRQwG2tZSdfY7NfB/aUaTARHrohWCgHlXoabeaeXRDOnF5X9JQw==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  magic-string@0.30.17:
-    resolution: {integrity: sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==}
-
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -6645,7 +6618,7 @@ packages:
       '@smithy/signature-v4': '>=5.4.0 <6'
       undici: ^7.29.0
       ws: ^8.21.0
-      zod: 4.6.5
+      zod: ^3.25 || ^4.0
     peerDependenciesMeta:
       '@aws-sdk/credential-provider-node':
         optional: true
@@ -7003,7 +6976,7 @@ packages:
       react: '>= 16.8.0'
       react-dom: '*'
       react-native: '*'
-      typescript: 6.0.3
+      typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
       react-dom:
         optional: true
@@ -7740,10 +7713,6 @@ packages:
     resolution: {integrity: sha512-GCvB3aoys96IuDFBMcTB46JOR6mdMtAToqwiW8JlWhsoh1mhHi/xn9ss/Dg7N555GiJyEt2qzoG/NHCwM6h1EA==}
     engines: {node: '>=18'}
 
-  tinyglobby@0.2.14:
-    resolution: {integrity: sha512-tX5e7OM1HnYr2+a2C/4V0htOcSQcoSTH9KgJnVvNm5zm/cyEWKJ7j7YutsH9CxMdtOkkLFy2AHrMci9IM8IPZQ==}
-    engines: {node: '>=12.0.0'}
-
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
@@ -7815,7 +7784,7 @@ packages:
     resolution: {integrity: sha512-OJ/ibxhPlqrMM0UiNHJ/0CKQkoKF243/AEmplt3qpRgkW8VG7IfOS41h7V8TjITqdByHzrjcS/2si+y4lIh8NA==}
     engines: {node: '>=18.12'}
     peerDependencies:
-      typescript: 6.0.3
+      typescript: '>=4.8.4'
 
   ts-dedent@2.2.0:
     resolution: {integrity: sha512-q5W7tVM71e2xjHZTlgfTDoPF/SmqKG5hddq9SzR49CH2hayqRKJtQ4mtRlSxKaJlR/+9rEM+mnBHf7I2/BQcpQ==}
@@ -7838,7 +7807,7 @@ packages:
       '@microsoft/api-extractor': ^7.36.0
       '@swc/core': ^1
       postcss: ^8.4.12
-      typescript: 6.0.3
+      typescript: '>=4.5.0'
     peerDependenciesMeta:
       '@microsoft/api-extractor':
         optional: true
@@ -7912,7 +7881,7 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
-      typescript: 6.0.3
+      typescript: '>=4.8.4 <6.1.0'
 
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
@@ -8401,10 +8370,6 @@ packages:
     resolution: {integrity: sha512-U/PBtDf35ff0D8X8D0jfdzHYEPFxAI7jJlxZXwCSez5M3190m+QobIfh+sWDWSHMCWWJN2AWamkegn6vr6YBTw==}
     engines: {node: '>=18'}
 
-  yoctocolors@2.1.1:
-    resolution: {integrity: sha512-GQHQqAopRhwU8Kt1DDM8NjibDXHC8eoh1erhGAJPEyveY9qqVeXvVikNKrDz69sHowPMorbPUrH/mx8c50eiBQ==}
-    engines: {node: '>=18'}
-
   yoctocolors@2.1.2:
     resolution: {integrity: sha512-CzhO+pFNo8ajLM2d2IW/R93ipy99LWjtwblvC1RsoSUMZgyLbYFr221TnSNT7GjGdYui6P459mw9JH/g/zW2ug==}
     engines: {node: '>=18'}
@@ -8419,13 +8384,13 @@ packages:
   zod-to-json-schema@3.25.1:
     resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
     peerDependencies:
-      zod: 4.6.5
+      zod: ^3.25 || ^4
 
   zod-validation-error@4.0.2:
     resolution: {integrity: sha512-Q6/nZLe6jxuU80qb/4uJ4t5v2VEZ44lzQjPDhYJNztRQ4wyWc6VF3D3Kb/fAuPetZQnhS3hnajCf9CsWesghLQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      zod: 4.6.5
+      zod: ^3.25.0 || ^4.0.0
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
@@ -8780,22 +8745,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@azure/identity@4.9.1':
-    dependencies:
-      '@azure/abort-controller': 2.1.2
-      '@azure/core-auth': 1.9.0
-      '@azure/core-client': 1.9.4
-      '@azure/core-rest-pipeline': 1.20.0
-      '@azure/core-tracing': 1.2.0
-      '@azure/core-util': 1.12.0
-      '@azure/logger': 1.2.0
-      '@azure/msal-browser': 4.12.0
-      '@azure/msal-node': 3.5.3
-      open: 10.1.2
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - supports-color
-
   '@azure/logger@1.2.0':
     dependencies:
       '@typespec/ts-http-runtime': 0.2.2
@@ -8803,23 +8752,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@azure/msal-browser@4.12.0':
-    dependencies:
-      '@azure/msal-common': 15.6.0
-
   '@azure/msal-browser@5.23.0':
     dependencies:
       '@azure/msal-common': 16.14.1
 
-  '@azure/msal-common@15.6.0': {}
-
   '@azure/msal-common@16.14.1': {}
-
-  '@azure/msal-node@3.5.3':
-    dependencies:
-      '@azure/msal-common': 15.6.0
-      jsonwebtoken: 9.0.2
-      uuid: 8.3.2
 
   '@azure/msal-node@6.0.1':
     dependencies:
@@ -9475,12 +9412,6 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
-  '@jridgewell/gen-mapping@0.3.8':
-    dependencies:
-      '@jridgewell/set-array': 1.2.1
-      '@jridgewell/sourcemap-codec': 1.5.0
-      '@jridgewell/trace-mapping': 0.3.25
-
   '@jridgewell/remapping@2.3.5':
     dependencies:
       '@jridgewell/gen-mapping': 0.3.13
@@ -9488,16 +9419,9 @@ snapshots:
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
-  '@jridgewell/set-array@1.2.1': {}
-
   '@jridgewell/sourcemap-codec@1.5.0': {}
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
-
-  '@jridgewell/trace-mapping@0.3.25':
-    dependencies:
-      '@jridgewell/resolve-uri': 3.1.2
-      '@jridgewell/sourcemap-codec': 1.5.0
 
   '@jridgewell/trace-mapping@0.3.31':
     dependencies:
@@ -11199,71 +11123,32 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vscode/vsce-sign-alpine-arm64@2.0.2':
-    optional: true
-
   '@vscode/vsce-sign-alpine-arm64@2.0.6':
-    optional: true
-
-  '@vscode/vsce-sign-alpine-x64@2.0.2':
     optional: true
 
   '@vscode/vsce-sign-alpine-x64@2.0.6':
     optional: true
 
-  '@vscode/vsce-sign-darwin-arm64@2.0.2':
-    optional: true
-
   '@vscode/vsce-sign-darwin-arm64@2.0.6':
-    optional: true
-
-  '@vscode/vsce-sign-darwin-x64@2.0.2':
     optional: true
 
   '@vscode/vsce-sign-darwin-x64@2.0.6':
     optional: true
 
-  '@vscode/vsce-sign-linux-arm64@2.0.2':
-    optional: true
-
   '@vscode/vsce-sign-linux-arm64@2.0.6':
-    optional: true
-
-  '@vscode/vsce-sign-linux-arm@2.0.2':
     optional: true
 
   '@vscode/vsce-sign-linux-arm@2.0.6':
     optional: true
 
-  '@vscode/vsce-sign-linux-x64@2.0.2':
-    optional: true
-
   '@vscode/vsce-sign-linux-x64@2.0.6':
-    optional: true
-
-  '@vscode/vsce-sign-win32-arm64@2.0.2':
     optional: true
 
   '@vscode/vsce-sign-win32-arm64@2.0.6':
     optional: true
 
-  '@vscode/vsce-sign-win32-x64@2.0.2':
-    optional: true
-
   '@vscode/vsce-sign-win32-x64@2.0.6':
     optional: true
-
-  '@vscode/vsce-sign@2.0.5':
-    optionalDependencies:
-      '@vscode/vsce-sign-alpine-arm64': 2.0.2
-      '@vscode/vsce-sign-alpine-x64': 2.0.2
-      '@vscode/vsce-sign-darwin-arm64': 2.0.2
-      '@vscode/vsce-sign-darwin-x64': 2.0.2
-      '@vscode/vsce-sign-linux-arm': 2.0.2
-      '@vscode/vsce-sign-linux-arm64': 2.0.2
-      '@vscode/vsce-sign-linux-x64': 2.0.2
-      '@vscode/vsce-sign-win32-arm64': 2.0.2
-      '@vscode/vsce-sign-win32-x64': 2.0.2
 
   '@vscode/vsce-sign@2.1.0':
     optionalDependencies:
@@ -11279,12 +11164,12 @@ snapshots:
 
   '@vscode/vsce@3.9.2':
     dependencies:
-      '@azure/identity': 4.9.1
+      '@azure/identity': 4.13.3
       '@secretlint/node': 10.2.2
       '@secretlint/secretlint-formatter-sarif': 10.2.2
       '@secretlint/secretlint-rule-no-dotenv': 10.2.2
       '@secretlint/secretlint-rule-preset-recommend': 10.2.2
-      '@vscode/vsce-sign': 2.0.5
+      '@vscode/vsce-sign': 2.1.0
       azure-devops-node-api: 12.5.0
       chalk: 4.1.2
       cheerio: 1.0.0
@@ -11359,8 +11244,6 @@ snapshots:
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:
       acorn: 8.18.0
-
-  acorn@8.14.1: {}
 
   acorn@8.18.0: {}
 
@@ -12688,21 +12571,6 @@ snapshots:
       signal-exit: 3.0.7
       strip-final-newline: 2.0.0
 
-  execa@9.6.0:
-    dependencies:
-      '@sindresorhus/merge-streams': 4.0.0
-      cross-spawn: 7.0.6
-      figures: 6.1.0
-      get-stream: 9.0.1
-      human-signals: 8.0.1
-      is-plain-obj: 4.1.0
-      is-stream: 4.0.1
-      npm-run-path: 6.0.0
-      pretty-ms: 9.2.0
-      signal-exit: 4.1.0
-      strip-final-newline: 4.0.0
-      yoctocolors: 2.1.1
-
   execa@9.6.1:
     dependencies:
       '@sindresorhus/merge-streams': 4.0.0
@@ -12824,10 +12692,6 @@ snapshots:
     dependencies:
       pend: 1.2.0
 
-  fdir@6.4.6(picomatch@4.0.7):
-    optionalDependencies:
-      picomatch: 4.0.7
-
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
@@ -12869,7 +12733,7 @@ snapshots:
 
   fix-dts-default-cjs-exports@1.0.1:
     dependencies:
-      magic-string: 0.30.17
+      magic-string: 0.30.21
       mlly: 1.7.4
       rollup: 4.40.2
 
@@ -13005,10 +12869,6 @@ snapshots:
       es-errors: 1.3.0
       get-intrinsic: 1.3.0
 
-  get-tsconfig@4.10.0:
-    dependencies:
-      resolve-pkg-maps: 1.0.0
-
   get-tsconfig@4.14.3:
     dependencies:
       resolve-pkg-maps: 1.0.0
@@ -13036,8 +12896,6 @@ snapshots:
       matcher: 4.0.0
       semver: 7.7.3
       serialize-error: 8.1.0
-
-  globals@16.1.0: {}
 
   globals@16.3.0: {}
 
@@ -13310,8 +13168,6 @@ snapshots:
   ieee754@1.2.1: {}
 
   ignore@5.3.2: {}
-
-  ignore@7.0.4: {}
 
   ignore@7.0.5: {}
 
@@ -14000,10 +13856,6 @@ snapshots:
 
   macos-release@3.5.1: {}
 
-  magic-string@0.30.17:
-    dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.0
-
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -14517,7 +14369,7 @@ snapshots:
 
   mlly@1.7.4:
     dependencies:
-      acorn: 8.14.1
+      acorn: 8.18.0
       pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.6.1
@@ -15942,7 +15794,7 @@ snapshots:
 
   sucrase@3.35.0:
     dependencies:
-      '@jridgewell/gen-mapping': 0.3.8
+      '@jridgewell/gen-mapping': 0.3.13
       commander: 4.1.1
       glob: 13.0.6
       lines-and-columns: 1.2.4
@@ -16049,11 +15901,6 @@ snapshots:
 
   tinyexec@1.3.1: {}
 
-  tinyglobby@0.2.14:
-    dependencies:
-      fdir: 6.4.6(picomatch@4.0.7)
-      picomatch: 4.0.7
-
   tinyglobby@0.2.17:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.7)
@@ -16125,7 +15972,7 @@ snapshots:
       cac: 6.7.14
       chokidar: 4.0.3
       consola: 3.4.2
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3
       esbuild: 0.28.2
       fix-dts-default-cjs-exports: 1.0.1
       joycon: 3.1.1
@@ -16136,7 +15983,7 @@ snapshots:
       source-map: 0.8.0-beta.0
       sucrase: 3.35.0
       tinyexec: 0.3.2
-      tinyglobby: 0.2.14
+      tinyglobby: 0.2.17
       tree-kill: 1.2.2
     optionalDependencies:
       postcss: 8.5.28
@@ -16150,7 +15997,7 @@ snapshots:
   tsx@4.19.4:
     dependencies:
       esbuild: 0.28.2
-      get-tsconfig: 4.10.0
+      get-tsconfig: 4.14.3
     optionalDependencies:
       fsevents: 2.3.3
 
@@ -16704,8 +16551,6 @@ snapshots:
       yoctocolors: 2.1.2
 
   yoctocolors-cjs@2.1.3: {}
-
-  yoctocolors@2.1.1: {}
 
   yoctocolors@2.1.2: {}
 

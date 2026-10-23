@@ -15,11 +15,11 @@
 		"@tumble-code/config-typescript": "workspace:^",
 		"@tumble-code/types": "workspace:^",
 		"@types/mocha": "^10.0.10",
-		"@types/node": "^22.20.4",
-		"@types/vscode": "^1.102.0",
+		"@types/node": "catalog:",
+		"@types/vscode": "catalog:",
 		"@vscode/test-electron": "^2.4.0",
 		"glob": "^13.0.6",
 		"mocha": "^11.1.0",
-		"rimraf": "^6.0.1"
+		"rimraf": "catalog:"
 	}
 }
