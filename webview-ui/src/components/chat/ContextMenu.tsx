@@ -47,7 +47,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 	dynamicSearchResults = [],
 	commands = [],
 }) => {
-	const [materialIconsBaseUri, setMaterialIconsBaseUri] = useState("")
+	const [materialIconsBaseUri] = useState<string>(() => (window as any).MATERIAL_ICONS_BASE_URI)
 	const menuRef = useRef<HTMLDivElement>(null)
 
 	const filteredOptions = useMemo(() => {
@@ -69,12 +69,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 			}
 		}
 	}, [selectedIndex])
-
-	// get the icons base uri on mount
-	useEffect(() => {
-		const w = window as any
-		setMaterialIconsBaseUri(w.MATERIAL_ICONS_BASE_URI)
-	}, [])
 
 	const renderOptionContent = (option: ContextMenuQueryItem) => {
 		switch (option.type) {
