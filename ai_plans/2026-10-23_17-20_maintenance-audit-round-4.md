@@ -775,11 +775,13 @@ the CLI found no ripgrep after `@vscode/ripgrep` 1.18 (#974), `vsce package` fai
 call first). The Code QA run on `main` after #997 then showed two more timing flakes, fixed in #999: the CLI
 `Spinner` test read the frame before React rendered the clock's update (React's scheduler runs on a real
 macrotask that fake timers never reach; `act()` now renders it), and `RunParallelTasksTool.spec` waited 1 s for
-sidecar writes whose lock retries back off for up to 2.5 s (red on Windows twice in a row). Still open:
+sidecar writes whose lock retries back off for up to 2.5 s (red on Windows twice in a row). #999 also gives `pnpm install` in CI the `GITHUB_TOKEN` again: the
+`@vscode/ripgrep` 1.17 postinstall downloads `rg` from the GitHub API and got HTTP 403 without it. Still open:
 
 - Moving the CLI to `@vscode/ripgrep` 1.18: the per-platform package layout needs the lookup in
   `src/services/ripgrep/index.ts` and `apps/cli/src/commands/cli/doctor.ts`, `apps/cli/scripts/build.sh`,
-  `.github/workflows/cli-release.yml` and `apps/cli/install.sh` to read `@vscode/ripgrep-<platform>-<arch>/bin`.
+  `.github/workflows/cli-release.yml` and `apps/cli/install.sh` to read `@vscode/ripgrep-<platform>-<arch>/bin`; the
+  `GITHUB_TOKEN` of the setup action can then go.
 - The `minimumReleaseAgeExclude` entries in `pnpm-workspace.yaml` can go after 2026-10-24T14:27Z.
 - `.prettierrc.json` has an unknown `ignore` key (Prettier reads `.prettierignore`).
 - `scripts/audit-allowlist.mjs` keeps a dead `js-cookie` entry.
