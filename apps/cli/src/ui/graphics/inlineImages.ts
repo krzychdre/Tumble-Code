@@ -6,7 +6,7 @@ import stringWidth from "string-width"
  * Ink cannot carry an image: it measures every string it prints and wraps
  * whatever is wider than its box, and an image sequence is tens of kilobytes
  * on one "line". So the transcript holds a short marker instead, and the
- * stdout wrapper (`scrollSafeStdout.ts`) swaps the marker for the image as
+ * stdout wrapper (`imageStdout.ts`) swaps the marker for the image as
  * the text goes out, together with the cursor moves that make room for it.
  *
  * Only `<Static>` output may carry markers. Ink prints it once and never

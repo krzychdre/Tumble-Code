@@ -4,14 +4,14 @@
  *
  * `react`, `react/jsx-runtime`, `react-reconciler` and `scheduler` each pick a
  * development or a production build once, when they are first loaded, from
- * `process.env.NODE_ENV`. Nothing set it for the CLI, so it ran the
- * development builds, and the development reconciler of React 19.2+ reports
- * every commit to the DevTools performance track through
- * `performance.measure()`, with a diff of the props that changed. Node keeps
- * every measure for the life of the process. A streaming message is such a
- * prop, so every render stored the message's whole text as JSON, both before
- * and after the change, and a long session ran out of heap (4 GB, 26 minutes
- * into a GLM task with long reasoning blocks).
+ * `process.env.NODE_ENV`, which nothing sets for the CLI. The development
+ * reconciler of React 19.2+ reports every commit to the DevTools performance
+ * track through `performance.measure()`, with a diff of the props that
+ * changed serialized as JSON. A streaming message is such a prop, so every
+ * render serializes the message's whole text twice. react-reconciler 0.33
+ * also kept every measure, and a long session ran out of heap (4 GB, 26
+ * minutes into a GLM task with long reasoning blocks); 0.34 clears them, but
+ * the serializing remains.
  *
  * NODE_ENV is set only while the packages load: commands the agent runs
  * inherit this process's environment, and NODE_ENV=production changes what

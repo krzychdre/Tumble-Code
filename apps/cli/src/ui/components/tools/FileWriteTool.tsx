@@ -1,4 +1,4 @@
-import { Box, Text, useStdout } from "ink"
+import { Box, Text, useWindowSize } from "ink"
 
 import { toolPayloadDiffText } from "@tumble-code/core/cli"
 
@@ -39,8 +39,7 @@ function hunkBandWidth(lines: DiffLine[], columns: number): number {
 }
 
 export function FileWriteTool({ toolData, message, expanded = false }: ToolRendererProps) {
-	const { stdout } = useStdout()
-	const columns = stdout?.columns || 80
+	const { columns } = useWindowSize()
 	const status = toolStatusFromMessage(message)
 	const maxHunks = expanded ? Number.POSITIVE_INFINITY : MAX_HUNKS
 	const maxHunkLines = expanded ? Number.POSITIVE_INFINITY : MAX_HUNK_LINES

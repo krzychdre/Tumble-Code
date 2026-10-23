@@ -178,7 +178,7 @@ named tests in place. This list is now the authoritative copy (the plan it was t
 - Public shapes: `ExtensionMessage` and `WebviewMessage` (change them only additively).
 - UI behavior: `webview-ui/src/hooks/useScrollLifecycle.ts` and the ChatRow height contract; the CLI's Ink render
   pipeline (`streamCommit.ts`, `TailViewport.tsx`, the `useInsertionEffect` ordering, `theme.dimmed`, and the image
-  marker expansion in `scrollSafeStdout.ts`: markers may only appear in `<Static>` output).
+  marker expansion in `imageStdout.ts`: markers may only appear in `<Static>` output).
 - Packaging: `extensionExternals` in `packages/build/src/extension.ts` and the `--no-dependencies` VSIX packaging;
   the security pins in the root `pnpm.overrides`.
 - Whole areas: `packages/vscode-shim`, `src/core/memory`, `apps/vscode-nightly`, `scripts/agent-bench`.

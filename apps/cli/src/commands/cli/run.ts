@@ -707,7 +707,7 @@ async function runTui({
 	try {
 		const { render } = await import("ink")
 		const { App } = await import("../../ui/App.js")
-		const { createScrollSafeStdout } = await import("../../ui/utils/scrollSafeStdout.js")
+		const { createImageStdout } = await import("../../ui/utils/imageStdout.js")
 		const { TuiErrorBoundary } = await import("../../ui/components/TuiErrorBoundary.js")
 		const { GraphicsContext } = await import("../../ui/graphics/GraphicsContext.js")
 		const { probeTerminalGraphics } = await import("../../ui/graphics/terminalProbe.js")
@@ -753,9 +753,7 @@ async function runTui({
 				// region every frame, which blinks on each spinner tick
 				// and stream chunk.
 				incrementalRendering: true,
-				// ...which skips unchanged rows with a cursor move that
-				// does not scroll on the bottom row; see scrollSafeStdout.
-				stdout: createScrollSafeStdout(process.stdout),
+				stdout: createImageStdout(process.stdout),
 			},
 		)
 

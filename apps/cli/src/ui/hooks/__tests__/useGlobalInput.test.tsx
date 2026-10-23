@@ -12,7 +12,7 @@ function flush(): Promise<void> {
 }
 
 /**
- * Ink 7 holds a lone ESC byte for 20 ms, because it may be the start of an
+ * Ink holds a lone ESC byte for 20 ms, because it may be the start of an
  * escape sequence, and only then reports it as Escape. Wait for the effect
  * instead of sleeping a fixed time.
  */

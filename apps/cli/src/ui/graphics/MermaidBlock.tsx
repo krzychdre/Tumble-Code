@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 import { useContext, useMemo, type ReactNode } from "react"
-import { Text, useStdout } from "ink"
+import { Text, useWindowSize } from "ink"
 
 import * as theme from "../theme.js"
 
@@ -36,8 +36,7 @@ interface MermaidBlockProps {
 export function MermaidBlock({ source, fallback }: MermaidBlockProps) {
 	const graphics = useContext(GraphicsContext)
 	const protocol = useImageProtocol()
-	const { stdout } = useStdout()
-	const columns = (stdout.columns || 80) - GUTTER_COLUMNS
+	const columns = useWindowSize().columns - GUTTER_COLUMNS
 
 	const text = useMemo(() => renderMermaidText(source, columns), [source, columns])
 	const textView = text ? (

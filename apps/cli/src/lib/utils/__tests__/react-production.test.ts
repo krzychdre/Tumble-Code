@@ -6,9 +6,13 @@ const CLI_ROOT = path.resolve(__dirname, "../../../..")
 const HELPER = path.resolve(__dirname, "../react-production.ts")
 
 // Renders an ink component whose prop changes 20 times, in a process of its
-// own because React picks its build once per process. Reports the performance
-// measures left behind and the NODE_ENV the process ends with.
+// own because React picks its build once per process. Reports how often React
+// called performance.measure (only its development builds do) and the
+// NODE_ENV the process ends with.
 const RENDER_PROBE = `
+let measures = 0
+const measure = performance.measure.bind(performance)
+performance.measure = (...args) => (measures++, measure(...args))
 if (process.env.PROBE_HELPER) {
 	const { loadReactProductionBuilds } = await import(process.env.PROBE_HELPER)
 	await loadReactProductionBuilds()
@@ -24,7 +28,7 @@ for (let i = 0; i < 20; i++) {
 	await new Promise((resolve) => setTimeout(resolve, 5))
 }
 app.unmount()
-console.log(JSON.stringify({ measures: performance.getEntriesByType("measure").length, nodeEnv: process.env.NODE_ENV ?? null }))
+console.log(JSON.stringify({ measures, nodeEnv: process.env.NODE_ENV ?? null }))
 process.exit(0)
 `
 
@@ -51,14 +55,13 @@ function renderProbe(options: { helper: boolean; nodeEnv?: string }): { measures
 }
 
 describe("loadReactProductionBuilds", () => {
-	// The control: without the helper the development reconciler records a
-	// measure per commit. If this starts failing, React stopped doing that and
-	// the helper may no longer be needed.
-	it("leaves the development builds recording a measure per render without it", () => {
+	// The control: without the helper the development reconciler measures
+	// every commit, so the probe can tell the two builds apart.
+	it("leaves the development builds measuring every render without it", () => {
 		expect(renderProbe({ helper: false }).measures).toBeGreaterThan(0)
 	})
 
-	it("renders with the production builds, which record no measures", () => {
+	it("renders with the production builds, which measure nothing", () => {
 		expect(renderProbe({ helper: true })).toEqual({ measures: 0, nodeEnv: null })
 	})
 
