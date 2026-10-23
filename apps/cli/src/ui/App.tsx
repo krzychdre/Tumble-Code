@@ -95,7 +95,6 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		pendingAsk,
 		isLoading,
 		isComplete,
-		hasStartedTask: _hasStartedTask,
 		error,
 		fileSearchResults,
 		allSlashCommands,
@@ -141,6 +140,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const activeProvider = liveProviderSettings?.provider ?? provider
 	const activeModel = liveProviderSettings?.model ?? model
 	const activeReasoningEffort = liveProviderSettings ? liveProviderSettings.reasoningEffort : reasoningEffort
+	// The mode the extension reports, else the one the session started in.
+	const activeMode = currentMode || mode
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const autocompleteRef = useRef<AutocompleteInputHandle<any>>(null)
@@ -180,7 +181,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		onPermissionModeChange: setPermissionMode,
 		workspacePath,
 		model: activeModel,
-		mode: currentMode || mode,
+		mode: activeMode,
 		configuredModels: hostOptions.models,
 		switchModel,
 		cloudAuth: cloudAuthChannel,
@@ -241,12 +242,12 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			workspacePath,
 			provider: activeProvider,
 			model: activeModel,
-			mode: currentMode || mode,
+			mode: activeMode,
 			reasoningEffort: activeReasoningEffort,
 			nonInteractive,
 			version,
 		}),
-		[workspacePath, activeProvider, activeModel, currentMode, mode, activeReasoningEffort, nonInteractive, version],
+		[workspacePath, activeProvider, activeModel, activeMode, activeReasoningEffort, nonInteractive, version],
 	)
 
 	const { staticKey, staticItems, dynamicMessages, streamCommits, committedHead } = useTranscriptPromotion({
@@ -350,13 +351,6 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		showWarning,
 	})
 
-	// `showFollowupSuggestions` is reused by the arrow-key countdown-cancel
-	// `useInput` below.
-	const showFollowupSuggestions =
-		pendingAsk?.type === "followup" &&
-		Boolean(pendingAsk.suggestions && pendingAsk.suggestions.length > 0) &&
-		!showCustomInput
-
 	// --- Autocomplete triggers (unchanged logic) ------------------------------
 
 	const autocompleteTriggers = useAutocompleteTriggers({
@@ -374,13 +368,13 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// --- Followup countdown-cancel: any arrow key cancels the auto-accept ------
 	useInput(
 		(_input, key) => {
-			if (showFollowupSuggestions && countdownSeconds !== null) {
+			if (showFollowupDialog && countdownSeconds !== null) {
 				if (key.upArrow || key.downArrow) {
 					cancelCountdown()
 				}
 			}
 		},
-		{ isActive: showFollowupSuggestions && countdownSeconds !== null },
+		{ isActive: showFollowupDialog && countdownSeconds !== null },
 	)
 
 	// --- Picker render-item fallback ------------------------------------------
@@ -487,7 +481,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 				{/* Model list (/model); a dialog that comes up meanwhile takes the keys */}
 				{showModelPicker && (
 					<ModelPicker
-						mode={currentMode || mode}
+						mode={activeMode}
 						currentModel={activeModel}
 						models={hostOptions.models}
 						onSelect={pickModel}
@@ -572,7 +566,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						triggers={autocompleteTriggers}
 						onPickerStateChange={handlePickerStateChange}
 						inputRef={showFollowupCustomInput ? followupAutocompleteRef : autocompleteRef}
-						mode={currentMode || mode}
+						mode={activeMode}
 						model={activeModel}
 						contextPercent={contextPercent}
 						contextTokens={tokenUsage?.contextTokens}
