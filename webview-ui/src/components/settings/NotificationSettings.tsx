@@ -49,9 +49,9 @@ const CustomSoundRow = ({ audioType, label, description, basename, uri }: Custom
 	const [error, setError] = useState<string | null>(null)
 
 	// When a custom file is set, verify its duration. If it exceeds the max,
-	// auto-reset the slot and surface an inline message.
+	// auto-reset the slot and surface an inline message. The message stays after the
+	// reset clears the file; choosing another file clears it.
 	useEffect(() => {
-		setError(null)
 		if (!uri) return
 		const audio = new Audio()
 		audio.preload = "metadata"
@@ -73,7 +73,10 @@ const CustomSoundRow = ({ audioType, label, description, basename, uri }: Custom
 		}
 	}, [uri, audioType, t])
 
-	const choose = () => vscode.postMessage({ type: "selectCustomSound", audioType })
+	const choose = () => {
+		setError(null)
+		vscode.postMessage({ type: "selectCustomSound", audioType })
+	}
 	const reset = () => vscode.postMessage({ type: "resetCustomSound", audioType })
 	const preview = () => {
 		if (!uri) return
