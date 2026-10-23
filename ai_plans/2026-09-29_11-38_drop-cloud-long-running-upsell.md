@@ -27,10 +27,10 @@ bridge so the owner can follow and control it from the web or a phone.
   not `completion_result`, then rendered a `DismissibleUpsell` with `cloud:upsell.longRunningTask`.
   It did not check whether the user was signed in or whether a cloud was configured at all.
 - While looking for siblings, two more strings turned out to be wrong for this fork:
-  - `cloud:upsell.taskList` (home screen, signed-out users with 6+ tasks) promised "run autonomous
-    Cloud agents", which do not exist here.
-  - `cloud:cloudComingSoon` (Cloud sign-in dialog) said self-hosting the cloud backend is "coming
-    soon", but self-hosting is the only way this fork's cloud runs.
+    - `cloud:upsell.taskList` (home screen, signed-out users with 6+ tasks) promised "run autonomous
+      Cloud agents", which do not exist here.
+    - `cloud:cloudComingSoon` (Cloud sign-in dialog) said self-hosting the cloud backend is "coming
+      soon", but self-hosting is the only way this fork's cloud runs.
 
 ## Fix
 

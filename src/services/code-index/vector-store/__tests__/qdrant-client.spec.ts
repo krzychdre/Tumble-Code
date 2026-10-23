@@ -985,9 +985,7 @@ describe("QdrantVectorStore", () => {
 
 	it("should return true when collection exists", async () => {
 		mockQdrantClientInstance.getCollection.mockResolvedValue({
-			config: {
-				/* collection data */
-			},
+			config: {/* collection data */},
 		} as any)
 
 		const result = await vectorStore.collectionExists()

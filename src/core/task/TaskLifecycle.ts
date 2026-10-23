@@ -58,7 +58,8 @@ import Anthropic from "@anthropic-ai/sdk"
  * This is a narrow interface to minimize coupling between modules.
  */
 export interface TaskLifecycleAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskAbortFlagAccess,
 		TaskApiConfigurationAccess,

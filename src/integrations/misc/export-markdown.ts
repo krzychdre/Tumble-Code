@@ -19,10 +19,7 @@ interface ThoughtSignatureBlock {
 type ToolResultContentBlock = Exclude<Anthropic.Messages.ToolResultBlockParam["content"], string | undefined>[number]
 
 export type ExtendedContentBlock =
-	| Anthropic.Messages.ContentBlockParam
-	| ToolResultContentBlock
-	| ReasoningBlock
-	| ThoughtSignatureBlock
+	Anthropic.Messages.ContentBlockParam | ToolResultContentBlock | ReasoningBlock | ThoughtSignatureBlock
 
 export function getTaskFileName(dateTs: number): string {
 	const date = new Date(dateTs)

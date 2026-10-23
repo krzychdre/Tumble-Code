@@ -6,10 +6,7 @@
 
 /** Deleting and editing chat messages. */
 export type MessageEditsWebviewMessageType =
-	| "deleteMessage"
-	| "submitEditedMessage"
-	| "deleteMessageConfirm"
-	| "editMessageConfirm"
+	"deleteMessage" | "submitEditedMessage" | "deleteMessageConfirm" | "editMessageConfirm"
 
 /** Confirmation dialogs for deleting and editing chat messages. */
 export type MessageEditsExtensionMessageType = "showDeleteMessageDialog" | "showEditMessageDialog"

@@ -27,10 +27,7 @@ export type CloudAuthWebviewMessageType =
  * mutes the extension's notifications.
  */
 export type CloudAuthExtensionMessageType =
-	| "shareTaskSuccess"
-	| "organizationSwitchResult"
-	| "openAiCodexRateLimits"
-	| "cloudAuthResult"
+	"shareTaskSuccess" | "organizationSwitchResult" | "openAiCodexRateLimits" | "cloudAuthResult"
 
 export interface OpenAiCodexRateLimitsMessage {
 	type: "openAiCodexRateLimits"

@@ -47,7 +47,8 @@ import {
 export const SUBAGENT_ASK_FALLBACK_TIMEOUT_MS = 5 * 60 * 1000
 
 export interface TaskAskSayAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskAbortFlagAccess,
 		TaskClineMessagesAccess,

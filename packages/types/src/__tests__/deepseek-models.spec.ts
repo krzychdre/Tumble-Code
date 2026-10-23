@@ -46,13 +46,16 @@ describe("DeepSeek model catalog", () => {
 		expect(info.supportsPromptCache).toBe(true)
 	})
 
-	it.each(["deepseek-flash", "deepseek-v4-pro"])("%s thinks by default at high effort and keeps its reasoning", (id) => {
-		const info = models[id]!
-		expect(info.reasoningEffort).toBe("high")
-		expect(info.preserveReasoning).toBe(true)
-		expect(info.supportsReasoningEffort).toEqual(expect.arrayContaining(["disable", "low", "high"]))
-		expect(info.deprecated).toBeUndefined()
-	})
+	it.each(["deepseek-flash", "deepseek-v4-pro"])(
+		"%s thinks by default at high effort and keeps its reasoning",
+		(id) => {
+			const info = models[id]!
+			expect(info.reasoningEffort).toBe("high")
+			expect(info.preserveReasoning).toBe(true)
+			expect(info.supportsReasoningEffort).toEqual(expect.arrayContaining(["disable", "low", "high"]))
+			expect(info.deprecated).toBeUndefined()
+		},
+	)
 
 	// Retired on 2026-07-24 and no longer on the pricing page: kept only so an
 	// existing profile still resolves, with the settings "no longer available"

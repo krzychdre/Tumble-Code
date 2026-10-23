@@ -43,8 +43,7 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-	extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-		Omit<VariantProps<typeof buttonVariants>, "variant"> {
+	extends React.ButtonHTMLAttributes<HTMLButtonElement>, Omit<VariantProps<typeof buttonVariants>, "variant"> {
 	/**
 	 * The filled and outline looks come from `buttonVariants`. `icon` is the
 	 * bare VS Code icon button (transparent, toolbar hover fill, 3px padding,

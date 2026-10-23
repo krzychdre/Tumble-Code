@@ -24,8 +24,8 @@ object), and throws a clear error when there is none.
 
 ## Before / after
 
-| Run | Before | After |
-| --- | --- | --- |
+| Run                                                     | Before              | After    |
+| ------------------------------------------------------- | ------------------- | -------- |
 | `vitest run src/lib/utils/__tests__/cli-bundle.test.ts` | 2 failed, 5 skipped | 5 passed |
 
 ## Tests

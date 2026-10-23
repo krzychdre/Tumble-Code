@@ -2,8 +2,10 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-export interface LabeledCheckboxProps
-	extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "children" | "className" | "style"> {
+export interface LabeledCheckboxProps extends Omit<
+	React.InputHTMLAttributes<HTMLInputElement>,
+	"type" | "children" | "className" | "style"
+> {
 	/** Label content, shown right of the box; clicking it toggles the box. */
 	children?: React.ReactNode
 	/** Classes for the wrapper that holds box and label (layout, font size). */

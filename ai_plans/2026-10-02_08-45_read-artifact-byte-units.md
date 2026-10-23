@@ -26,15 +26,15 @@ The model copied "24KB" from the tool description ("Defaults to the inline resul
 
 ## Failure surface (before/after)
 
-| Input | Before | After |
-|---|---|---|
-| `limit: "24576"` | `Math.min` coerces, works by accident | 24576 |
-| `limit: "24KB"`, `"24kb"`, `"24 Kb"`, `"24KiB"`, `"24k"` | NaN crash | 24576 |
-| `limit: "1.5MB"`, `"2mib"` | NaN crash | 1572864, 2097152 (then clamped to the budget) |
-| `limit: "300 bytes"`, `"300B"` | NaN crash | 300 |
-| `offset: "2kb"` | NaN crash | 2048 |
-| `limit: 100.7` | fractional `Buffer.alloc` | 100 |
-| `limit: "abc"`, `"24 GB"`, `"-5"` | NaN crash | `Invalid limit: "abc". offset and limit are byte counts: pass a plain number such as 24576 ...` |
+| Input                                                    | Before                                | After                                                                                           |
+| -------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `limit: "24576"`                                         | `Math.min` coerces, works by accident | 24576                                                                                           |
+| `limit: "24KB"`, `"24kb"`, `"24 Kb"`, `"24KiB"`, `"24k"` | NaN crash                             | 24576                                                                                           |
+| `limit: "1.5MB"`, `"2mib"`                               | NaN crash                             | 1572864, 2097152 (then clamped to the budget)                                                   |
+| `limit: "300 bytes"`, `"300B"`                           | NaN crash                             | 300                                                                                             |
+| `offset: "2kb"`                                          | NaN crash                             | 2048                                                                                            |
+| `limit: 100.7`                                           | fractional `Buffer.alloc`             | 100                                                                                             |
+| `limit: "abc"`, `"24 GB"`, `"-5"`                        | NaN crash                             | `Invalid limit: "abc". offset and limit are byte counts: pass a plain number such as 24576 ...` |
 
 ## Fix
 

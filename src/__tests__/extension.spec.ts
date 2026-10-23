@@ -225,8 +225,7 @@ vi.mock("../api/providers/fetchers/modelCache", () => ({
 describe("extension.ts", () => {
 	let mockContext: vscode.ExtensionContext
 	let authStateChangedHandler:
-		| ((data: { state: AuthState; previousState: AuthState }) => void | Promise<void>)
-		| undefined
+		((data: { state: AuthState; previousState: AuthState }) => void | Promise<void>) | undefined
 
 	// Every test re-imports the whole extension module graph after
 	// vi.resetModules(). The first import also transforms that graph (about

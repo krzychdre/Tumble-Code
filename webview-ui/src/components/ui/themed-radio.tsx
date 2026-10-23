@@ -55,8 +55,10 @@ const ThemedRadioGroup = React.forwardRef<HTMLDivElement, ThemedRadioGroupProps>
 )
 ThemedRadioGroup.displayName = "ThemedRadioGroup"
 
-export interface ThemedRadioProps
-	extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "children" | "className" | "style"> {
+export interface ThemedRadioProps extends Omit<
+	React.InputHTMLAttributes<HTMLInputElement>,
+	"type" | "children" | "className" | "style"
+> {
 	value: string
 	/** Label content; clicking it selects the option. */
 	children?: React.ReactNode

@@ -63,10 +63,12 @@ describe("row pipeline functions", () => {
 
 	describe("markEverVisible", () => {
 		it("marks the rows of the last viewport only", () => {
-			const visible = Array.from(
-				{ length: EVER_VISIBLE_VIEWPORT + 5 },
-				(_, i): ClineMessage => ({ type: "say", say: "text", ts: i, text: `row ${i}` }),
-			)
+			const visible = Array.from({ length: EVER_VISIBLE_VIEWPORT + 5 }, (_, i): ClineMessage => ({
+				type: "say",
+				say: "text",
+				ts: i,
+				text: `row ${i}`,
+			}))
 			const everVisible = new Map<number, true>()
 
 			markEverVisible(visible, everVisible)

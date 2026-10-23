@@ -32,7 +32,7 @@ old behavior, so Ruby and CocoaPods still get UTF-8 on a non-UTF-8 host.
 
 - `ExecaTerminalProcess.spec.ts`: new cases "keeps a UTF-8 host locale such as pl_PL.UTF-8" and
   "keeps a UTF-8 LC_ALL set on the host" failed before the fix (`expected 'en_US.UTF-8' to be
-  'pl_PL.UTF-8'` / `'C.UTF-8'`). The existing "sets en_US.UTF-8" case now pins a non-UTF-8 host
+'pl_PL.UTF-8'` / `'C.UTF-8'`). The existing "sets en_US.UTF-8" case now pins a non-UTF-8 host
   (`LANG=C`) instead of depending on the machine running the tests; the "overrides C/POSIX" case is
   unchanged and still passes.
 - New `localeEnv.spec.ts` (6 cases): UTF-8 LANG, `utf8` spelling, LC_CTYPE, LC_ALL=POSIX beating a

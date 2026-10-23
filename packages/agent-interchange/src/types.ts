@@ -91,17 +91,7 @@ export interface ReadOptions {
  * onto one set of verbs.
  */
 export type ActionKind =
-	| "read"
-	| "write"
-	| "command"
-	| "search"
-	| "plan"
-	| "todo"
-	| "question"
-	| "delegate"
-	| "complete"
-	| "web"
-	| "other"
+	"read" | "write" | "command" | "search" | "plan" | "todo" | "question" | "delegate" | "complete" | "web" | "other"
 
 export interface ToolAction {
 	kind: ActionKind

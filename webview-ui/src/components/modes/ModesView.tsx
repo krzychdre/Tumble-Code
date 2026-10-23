@@ -227,38 +227,38 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 						</div>
 					</div>
 
-				<ModePromptFields
-					visualMode={visualMode}
-					customMode={customMode}
-					currentModeSlug={currentMode?.slug}
-					customModePrompts={customModePrompts}
-					onUpdateCustomMode={updateCustomMode}
-					onUpdateAgentPrompt={updateAgentPrompt}
-					onReset={resetAgentPrompt}
-				/>
+					<ModePromptFields
+						visualMode={visualMode}
+						customMode={customMode}
+						currentModeSlug={currentMode?.slug}
+						customModePrompts={customModePrompts}
+						onUpdateCustomMode={updateCustomMode}
+						onUpdateAgentPrompt={updateAgentPrompt}
+						onReset={resetAgentPrompt}
+					/>
 
-				<ModeToolsSection
-					visualMode={visualMode}
-					currentMode={currentMode}
-					customMode={customMode}
-					customModePrompts={customModePrompts}
-					mcpServers={mcpServers}
-					isToolsEditMode={isToolsEditMode}
-					onToggleToolsEditMode={() => setIsToolsEditMode(!isToolsEditMode)}
-					onUpdateCustomMode={postCustomMode}
-					onUpdateAgentPrompt={updateAgentPrompt}
-				/>
+					<ModeToolsSection
+						visualMode={visualMode}
+						currentMode={currentMode}
+						customMode={customMode}
+						customModePrompts={customModePrompts}
+						mcpServers={mcpServers}
+						isToolsEditMode={isToolsEditMode}
+						onToggleToolsEditMode={() => setIsToolsEditMode(!isToolsEditMode)}
+						onUpdateCustomMode={postCustomMode}
+						onUpdateAgentPrompt={updateAgentPrompt}
+					/>
 
-				<ModeCustomInstructionsSection
-					visualMode={visualMode}
-					currentMode={currentMode}
-					customMode={customMode}
-					customModes={customModes}
-					customModePrompts={customModePrompts}
-					onUpdateCustomMode={updateCustomMode}
-					onUpdateAgentPrompt={updateAgentPrompt}
-					onReset={() => resetAgentPrompt("customInstructions")}
-				/>
+					<ModeCustomInstructionsSection
+						visualMode={visualMode}
+						currentMode={currentMode}
+						customMode={customMode}
+						customModes={customModes}
+						customModePrompts={customModePrompts}
+						onUpdateCustomMode={updateCustomMode}
+						onUpdateAgentPrompt={updateAgentPrompt}
+						onReset={() => resetAgentPrompt("customInstructions")}
+					/>
 				</SettingsCard>
 
 				<SystemPromptActions currentModeSlug={currentMode?.slug} />

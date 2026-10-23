@@ -376,8 +376,7 @@ export const tumbleCodeTelemetryEventSchema = z.discriminatedUnion("type", [
  */
 
 export type TelemetryEventSubscription =
-	| { type: "include"; events: TelemetryEventName[] }
-	| { type: "exclude"; events: TelemetryEventName[] }
+	{ type: "include"; events: TelemetryEventName[] } | { type: "exclude"; events: TelemetryEventName[] }
 
 /**
  * TelemetryPropertiesProvider

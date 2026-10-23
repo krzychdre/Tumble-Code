@@ -38,7 +38,8 @@ import type {
  * plain object.
  */
 export interface ModeProfileBindingHost
-	extends CurrentTaskHostMember,
+	extends
+		CurrentTaskHostMember,
 		TaskHistoryStoreHostMember,
 		UpdateTaskHistoryHostMember,
 		ActivateProfileHostMember,

@@ -40,21 +40,21 @@ No `DEEPSEEK_API_KEY` was present in the environment, so the live
 - Prices per 1M tokens, peak (off-peak is exactly half; peak is 01:00-04:00
   and 06:00-10:00 UTC Monday to Friday, excluding Chinese public holidays):
 
-| Model | cache hit | cache miss | output |
-| --- | --- | --- | --- |
-| deepseek-flash | $0.006 | $0.30 | $1.20 |
-| deepseek-v4-pro | $0.044 | $1.32 | $3.96 |
+| Model           | cache hit | cache miss | output |
+| --------------- | --------- | ---------- | ------ |
+| deepseek-flash  | $0.006    | $0.30      | $1.20  |
+| deepseek-v4-pro | $0.044    | $1.32      | $3.96  |
 
 ## Changes
 
-| Id | Before | After |
-| --- | --- | --- |
-| `deepseek-flash` | absent (unknown id, default info, warning) | new default; 1_048_576 ctx, 393_216 out, images, peak prices above |
-| `deepseek-v4-flash` | default; 1_000_000 / 384_000, no images, $0.44 / $1.32 / $0.014 | alias of `deepseek-flash` (sent as configured, hidden from the picker) |
-| `deepseek-v4-flash-vision-exp` | catalog entry, images, V4 Flash prices, no thinking toggle | alias of `deepseek-flash`, gets the thinking toggle |
-| `deepseek-v4-pro` | 1_000_000 / 384_000 | 1_048_576 / 393_216, prices unchanged, description names 0813 |
-| `deepseek-chat` | alias of `deepseek-v4-flash` | catalog entry with `deprecated: true` |
-| `deepseek-reasoner` | alias of `deepseek-v4-flash` | catalog entry with `deprecated: true` |
+| Id                             | Before                                                          | After                                                                  |
+| ------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `deepseek-flash`               | absent (unknown id, default info, warning)                      | new default; 1_048_576 ctx, 393_216 out, images, peak prices above     |
+| `deepseek-v4-flash`            | default; 1_000_000 / 384_000, no images, $0.44 / $1.32 / $0.014 | alias of `deepseek-flash` (sent as configured, hidden from the picker) |
+| `deepseek-v4-flash-vision-exp` | catalog entry, images, V4 Flash prices, no thinking toggle      | alias of `deepseek-flash`, gets the thinking toggle                    |
+| `deepseek-v4-pro`              | 1_000_000 / 384_000                                             | 1_048_576 / 393_216, prices unchanged, description names 0813          |
+| `deepseek-chat`                | alias of `deepseek-v4-flash`                                    | catalog entry with `deprecated: true`                                  |
+| `deepseek-reasoner`            | alias of `deepseek-v4-flash`                                    | catalog entry with `deprecated: true`                                  |
 
 Why `deprecated: true` and not "unknown": the ModelPicker hides a deprecated
 model from the list (unless it is the selected one) and shows "This model is

@@ -58,7 +58,13 @@ describe("parseFollowUpData", () => {
 	})
 
 	it("drops a question or a mode that is not a string", () => {
-		const text = JSON.stringify({ question: 42, suggest: [{ answer: "A", mode: 7 }, { answer: "B", mode: "" }] })
+		const text = JSON.stringify({
+			question: 42,
+			suggest: [
+				{ answer: "A", mode: 7 },
+				{ answer: "B", mode: "" },
+			],
+		})
 
 		expect(parseFollowUpData(text)).toEqual({ suggestions: [{ answer: "A" }, { answer: "B" }] })
 	})

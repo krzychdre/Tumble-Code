@@ -38,7 +38,11 @@ async function collect(chunks: Chunk[], options?: ChatCompletionStreamOptions): 
 	return out
 }
 
-const usage = (completion: number) => ({ prompt_tokens: 10, completion_tokens: completion, total_tokens: 10 + completion })
+const usage = (completion: number) => ({
+	prompt_tokens: 10,
+	completion_tokens: completion,
+	total_tokens: 10 + completion,
+})
 
 const mapUsage: ChatCompletionStreamOptions["mapUsage"] = (u) => ({
 	type: "usage",
@@ -180,7 +184,10 @@ describe("streamChatCompletion", () => {
 			const out = await collect(
 				[
 					chunk({ reasoning: "Pl", reasoning_details: [{ type: "reasoning.text", text: "Pl", index: 0 }] }),
-					chunk({ reasoning: "an", reasoning_details: [{ type: "reasoning.text", text: "an", signature: "s" }] }),
+					chunk({
+						reasoning: "an",
+						reasoning_details: [{ type: "reasoning.text", text: "an", signature: "s" }],
+					}),
 					chunk({ reasoning_details: [{ type: "reasoning.summary", summary: "Sum", index: 1 }] }),
 					chunk({ reasoning_details: [{ type: "reasoning.encrypted", data: "enc", id: "r", index: 2 }] }),
 					chunk({ reasoning_content: "ignored", content: "Answer" }),

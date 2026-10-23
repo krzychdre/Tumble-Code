@@ -37,9 +37,7 @@ type SettingField = {
 	serialize?: (v: unknown) => unknown // replaces the `?? null` / `?? 0.5` coercion
 	section: SectionName
 }
-const SETTINGS_SCHEMA: SettingField[] = [
-	/* one entry per field */
-]
+const SETTINGS_SCHEMA: SettingField[] = [/* one entry per field */]
 ```
 
 `handleSubmit` becomes `vscode.postMessage({ type:"updateSettings", updatedSettings: pickAndSerialize(cachedState, SETTINGS_SCHEMA) })`. The destructure becomes a generic `useCachedSettings(SETTINGS_SCHEMA)` hook. Adding a setting = one schema row + one input component.

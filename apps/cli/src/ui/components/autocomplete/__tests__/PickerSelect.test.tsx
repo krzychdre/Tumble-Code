@@ -25,7 +25,13 @@ const UP = "\x1b[A"
  * of PickerSelect does: the new index only comes back as a prop after the
  * parent has rendered.
  */
-function StatefulHost({ onSelect, initialIndex = 0 }: { onSelect: (item: AutocompleteItem) => void; initialIndex?: number }) {
+function StatefulHost({
+	onSelect,
+	initialIndex = 0,
+}: {
+	onSelect: (item: AutocompleteItem) => void
+	initialIndex?: number
+}) {
 	const [selectedIndex, setSelectedIndex] = useState(initialIndex)
 	return (
 		<PickerSelect

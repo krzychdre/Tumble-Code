@@ -47,7 +47,8 @@ const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
  * This is a narrow interface to minimize coupling.
  */
 export interface RetryHandlerAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskAbortFlagAccess,
 		TaskApiHandlerAccess,

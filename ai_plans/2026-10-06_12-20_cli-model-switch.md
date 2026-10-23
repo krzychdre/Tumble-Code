@@ -38,11 +38,11 @@ CLI wysyła przy starcie wiadomość `cliModeProviderSettings` (`base` + `modes`
 
 ## Przed / po
 
-| Sytuacja | Przed | Po |
-| --- | --- | --- |
-| Zmiana modelu w trakcie sesji | tylko restart | `/model <id>`, następne zapytanie idzie do nowego modelu |
-| Przejście GLM (`max`) na Qwen bez wpisu | nie dotyczy | Qwen bez poziomu, okno 128k, komunikat o braku wpisu |
-| Zmiana modelu w `code`, potem przejście do `architect` | nie dotyczy | `architect` ma swój model, powrót do `code` daje nowy |
+| Sytuacja                                               | Przed         | Po                                                       |
+| ------------------------------------------------------ | ------------- | -------------------------------------------------------- |
+| Zmiana modelu w trakcie sesji                          | tylko restart | `/model <id>`, następne zapytanie idzie do nowego modelu |
+| Przejście GLM (`max`) na Qwen bez wpisu                | nie dotyczy   | Qwen bez poziomu, okno 128k, komunikat o braku wpisu     |
+| Zmiana modelu w `code`, potem przejście do `architect` | nie dotyczy   | `architect` ma swój model, powrót do `code` daje nowy    |
 
 ## Testy
 

@@ -16,9 +16,7 @@ import type {
  * a plain object.
  */
 export interface CloudProfileSyncHost
-	extends ContextProxyHostMember,
-		ActivateProfileHostMember,
-		ProviderSettingsManagerHostMember {
+	extends ContextProxyHostMember, ActivateProfileHostMember, ProviderSettingsManagerHostMember {
 	readonly providerSettingsManager: Pick<ProviderSettingsManager, "syncCloudProfiles"> &
 		ProviderSettingsManagerHostMember["providerSettingsManager"]
 	postStateToWebviewWithoutClineMessages(): Promise<void>

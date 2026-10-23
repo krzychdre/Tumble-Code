@@ -87,9 +87,7 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 						<span className="font-medium">{t("settings:experimental.CUSTOM_TOOLS.name")}</span>
 					</LabeledCheckbox>
 				</div>
-				<p className={cn(checkboxDescription, "mb-0")}>
-					{t("settings:experimental.CUSTOM_TOOLS.description")}
-				</p>
+				<p className={cn(checkboxDescription, "mb-0")}>{t("settings:experimental.CUSTOM_TOOLS.description")}</p>
 			</div>
 
 			{enabled && (

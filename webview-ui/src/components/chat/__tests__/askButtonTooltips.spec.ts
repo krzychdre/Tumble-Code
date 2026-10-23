@@ -1,7 +1,12 @@
 // §2.6: the tooltip lookup table keyed by button kind (not translated
 // labels) and the shortcut strings it appends.
 
-import { askButtonTooltipKey, askButtonShortcut, PRIMARY_ACTION_SHORTCUT, SECONDARY_ACTION_SHORTCUT } from "../askButtonTooltips"
+import {
+	askButtonTooltipKey,
+	askButtonShortcut,
+	PRIMARY_ACTION_SHORTCUT,
+	SECONDARY_ACTION_SHORTCUT,
+} from "../askButtonTooltips"
 import type { AskButtonKind } from "../hooks/useAskButtons"
 
 describe("askButtonTooltips (§2.6)", () => {

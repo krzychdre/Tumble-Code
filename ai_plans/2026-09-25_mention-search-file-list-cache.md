@@ -14,11 +14,11 @@ then built a new `Fzf` over the whole list, for every query. The webview debounc
 Temporary vitest harness (not committed): real ripgrep binary, real fs, vscode mocked with
 default settings. 3 cold-to-cold queries, then "m", "me", ..., "mention" in sequence.
 
-| workspace (files listed) | per query (ms) | "mention" char by char | rg spawns |
-| --- | --- | --- | --- |
-| Roo-Code (3.4k) | 106, 73, 51 | 359 ms | 7 |
-| esp-idf (17k, capped at 10k) | 134, 126, 126 | 1254 ms | 7 |
-| jupyter (55k, capped at 10k) | 149, 176, 153 | 1112 ms | 7 |
+| workspace (files listed)     | per query (ms) | "mention" char by char | rg spawns |
+| ---------------------------- | -------------- | ---------------------- | --------- |
+| Roo-Code (3.4k)              | 106, 73, 51    | 359 ms                 | 7         |
+| esp-idf (17k, capped at 10k) | 134, 126, 126  | 1254 ms                | 7         |
+| jupyter (55k, capped at 10k) | 149, 176, 153  | 1112 ms                | 7         |
 
 The raw walk on Roo-Code alone is only about 11 ms; the rest of each query was building the
 directory set, the search items and the `Fzf` index (it converts every entry to code points).
@@ -35,12 +35,12 @@ directory set, the search items and the `Fzf` index (it converts every entry to 
   cached.
 - Invalidation reuses the watcher `WorkspaceTracker` already runs (`**`):
   `noteWorkspaceFileEvent("create" | "delete" | "change", fsPath)`.
-  - create / delete inside a cached root drop that root's list, except under the directories
-    the listing excludes (`node_modules`, `.git`, `out`, `dist`), so builds do not keep
-    emptying the cache;
-  - a change (or create / delete) of `.gitignore`, `.ignore` or `.rgignore` anywhere drops
-    every list (a parent's ignore file applies too);
-  - plain edits change nothing.
+    - create / delete inside a cached root drop that root's list, except under the directories
+      the listing excludes (`node_modules`, `.git`, `out`, `dist`), so builds do not keep
+      emptying the cache;
+    - a change (or create / delete) of `.gitignore`, `.ignore` or `.rgignore` anywhere drops
+      every list (a parent's ignore file applies too);
+    - plain edits change nothing.
 - Time to live of 30 s after the walk finishes, as the backstop for what the watcher does not
   see (`files.watcherExclude`, followed symlink targets, a global gitignore, a task cwd outside
   the workspace folders).
@@ -51,10 +51,10 @@ directory set, the search items and the `Fzf` index (it converts every entry to 
 ## Measured (after, same harness, same runs interleaved)
 
 | workspace | per query (ms, first is cold) | "mention" char by char | rg spawns |
-| --- | --- | --- | --- |
-| Roo-Code | 127, 31, 12 | 189 ms | 0 |
-| esp-idf | 233, 45, 56 | 976 ms | 0 |
-| jupyter | 193, 50, 51 | 335 ms | 0 |
+| --------- | ----------------------------- | ---------------------- | --------- |
+| Roo-Code  | 127, 31, 12                   | 189 ms                 | 0         |
+| esp-idf   | 233, 45, 56                   | 976 ms                 | 0         |
+| jupyter   | 193, 50, 51                   | 335 ms                 | 0         |
 
 What remains per query is the fuzzy match itself (one-letter queries match almost every
 entry of a 10k list and sort them) and the `lstat` of the 20 results. The machine was shared

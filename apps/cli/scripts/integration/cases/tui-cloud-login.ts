@@ -29,7 +29,7 @@ function check(condition: unknown, message: string, notes: string[]): asserts co
 }
 
 async function waitUntil(condition: () => boolean, timeoutMs = 5_000): Promise<void> {
-	for (const started = Date.now(); !condition() && Date.now() - started < timeoutMs; ) {
+	for (const started = Date.now(); !condition() && Date.now() - started < timeoutMs;) {
 		await new Promise((resolve) => setTimeout(resolve, 50))
 	}
 }

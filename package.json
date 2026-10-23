@@ -37,7 +37,7 @@
 		"knip": "^6.42.1",
 		"lint-staged": "^17.6.0",
 		"mkdirp": "catalog:",
-		"prettier": "^3.4.2",
+		"prettier": "^3.9.10",
 		"rimraf": "catalog:",
 		"tsx": "catalog:",
 		"turbo": "^2.11.10",

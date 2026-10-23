@@ -120,9 +120,7 @@ export const CheckpointSaved = ({
 
 			{/* Keep menu visible while hovering, focused, popover is open, or briefly after close to prevent jump.
 			    When not shown it is sr-only rather than display:none, so its buttons stay in the Tab order. */}
-			<div
-				data-testid="checkpoint-menu-container"
-				className={cn("h-4 -mt-2", menuVisible ? "block" : "sr-only")}>
+			<div data-testid="checkpoint-menu-container" className={cn("h-4 -mt-2", menuVisible ? "block" : "sr-only")}>
 				<CheckpointMenu
 					ts={props.ts}
 					commitHash={props.commitHash}

@@ -121,9 +121,7 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 						}}>
 						{t("settings:providers.vertex1MContextBetaLabel")}
 					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:providers.vertex1MContextBetaDescription")}
-					</div>
+					<div className={checkboxDescription}>{t("settings:providers.vertex1MContextBetaDescription")}</div>
 				</div>
 			)}
 		</>

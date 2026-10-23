@@ -13,10 +13,10 @@ Done on branch `feat/a11y-history-modes` (round 2 of the frame-language work: ke
 - webview-ui/src/components/history/SubtaskCollapsibleRow.tsx
 - webview-ui/src/components/history/SubtaskRow.tsx
 - webview-ui/src/components/history/TaskGroupItem.tsx
-- webview-ui/src/components/history/__tests__/SubtaskRow.spec.tsx
-- webview-ui/src/components/history/__tests__/TaskGroupItem.spec.tsx
+- webview-ui/src/components/history/**tests**/SubtaskRow.spec.tsx
+- webview-ui/src/components/history/**tests**/TaskGroupItem.spec.tsx
 - webview-ui/src/components/modes/ModesViewHeader.tsx
-- webview-ui/src/components/modes/__tests__/ModesView.sections.spec.tsx
+- webview-ui/src/components/modes/**tests**/ModesView.sections.spec.tsx
 
 ## What changed per screen
 

@@ -51,198 +51,199 @@ export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsPr
 
 			<Section>
 				<SettingsCard>
-				<SearchableSetting settingId="memory-enable" section="memory" label={t("settings:memory.enable.label")}>
-					<LabeledCheckbox
-						checked={autoMemoryEnabled ?? SETTINGS_DEFAULTS.autoMemoryEnabled}
-						onChange={(e: any) => {
-							setAutoMemoryEnabled(e.target.checked)
-						}}>
-						<span className="font-medium">{t("settings:memory.enable.label")}</span>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:memory.enable.description")}
-					</div>
-				</SearchableSetting>
+					<SearchableSetting
+						settingId="memory-enable"
+						section="memory"
+						label={t("settings:memory.enable.label")}>
+						<LabeledCheckbox
+							checked={autoMemoryEnabled ?? SETTINGS_DEFAULTS.autoMemoryEnabled}
+							onChange={(e: any) => {
+								setAutoMemoryEnabled(e.target.checked)
+							}}>
+							<span className="font-medium">{t("settings:memory.enable.label")}</span>
+						</LabeledCheckbox>
+						<div className={checkboxDescription}>{t("settings:memory.enable.description")}</div>
+					</SearchableSetting>
 
-				{autoMemoryEnabled && (
-					<>
-						<SearchableSetting
-							settingId="memory-recall"
-							section="memory"
-							label={t("settings:memory.recall.label")}
-							className="mt-section">
-							<LabeledCheckbox
-								checked={memoryRecallEnabled ?? SETTINGS_DEFAULTS.memoryRecallEnabled}
-								onChange={(e: any) => {
-									setMemoryRecallEnabled(e.target.checked)
-								}}>
-								<span className="font-medium">{t("settings:memory.recall.label")}</span>
-							</LabeledCheckbox>
-							<div className={checkboxDescription}>
-								{t("settings:memory.recall.description")}
-							</div>
-						</SearchableSetting>
+					{autoMemoryEnabled && (
+						<>
+							<SearchableSetting
+								settingId="memory-recall"
+								section="memory"
+								label={t("settings:memory.recall.label")}
+								className="mt-section">
+								<LabeledCheckbox
+									checked={memoryRecallEnabled ?? SETTINGS_DEFAULTS.memoryRecallEnabled}
+									onChange={(e: any) => {
+										setMemoryRecallEnabled(e.target.checked)
+									}}>
+									<span className="font-medium">{t("settings:memory.recall.label")}</span>
+								</LabeledCheckbox>
+								<div className={checkboxDescription}>{t("settings:memory.recall.description")}</div>
+							</SearchableSetting>
 
-						<SearchableSetting
-							settingId="memory-directory"
-							section="memory"
-							label={t("settings:memory.directory.label")}
-							className="mt-section">
-							<label className="block text-sm font-medium mb-2">
-								{t("settings:memory.directory.label")}
-							</label>
-							<Input
-								value={autoMemoryDirectory ?? ""}
-								placeholder={t("settings:memory.directory.placeholder")}
-								onChange={(e) => {
-									// "" (not undefined) so Save clears the host's value.
-									setAutoMemoryDirectory(e.target.value)
-								}}
-								className="w-full"
-								data-testid="memory-directory-input"
-							/>
-							<div className={settingDescription}>
-								{t("settings:memory.directory.description")}
-							</div>
-						</SearchableSetting>
+							<SearchableSetting
+								settingId="memory-directory"
+								section="memory"
+								label={t("settings:memory.directory.label")}
+								className="mt-section">
+								<label className="block text-sm font-medium mb-2">
+									{t("settings:memory.directory.label")}
+								</label>
+								<Input
+									value={autoMemoryDirectory ?? ""}
+									placeholder={t("settings:memory.directory.placeholder")}
+									onChange={(e) => {
+										// "" (not undefined) so Save clears the host's value.
+										setAutoMemoryDirectory(e.target.value)
+									}}
+									className="w-full"
+									data-testid="memory-directory-input"
+								/>
+								<div className={settingDescription}>{t("settings:memory.directory.description")}</div>
+							</SearchableSetting>
 
-						<SearchableSetting
-							settingId="memory-share-claude-code"
-							section="memory"
-							label={t("settings:memory.shareWithClaudeCode.label")}
-							className="mt-section">
-							<LabeledCheckbox
-								checked={autoMemoryShareWithClaudeCode ?? false}
-								disabled={!!autoMemoryDirectory}
-								onChange={(e: any) => {
-									setAutoMemoryShareWithClaudeCode(e.target.checked)
-								}}
-								data-testid="memory-share-claude-code-checkbox">
-								<span className="font-medium">{t("settings:memory.shareWithClaudeCode.label")}</span>
-							</LabeledCheckbox>
-							<div className={checkboxDescription}>
-								{autoMemoryDirectory
-									? t("settings:memory.shareWithClaudeCode.overridden")
-									: t("settings:memory.shareWithClaudeCode.description")}
-							</div>
-						</SearchableSetting>
+							<SearchableSetting
+								settingId="memory-share-claude-code"
+								section="memory"
+								label={t("settings:memory.shareWithClaudeCode.label")}
+								className="mt-section">
+								<LabeledCheckbox
+									checked={autoMemoryShareWithClaudeCode ?? false}
+									disabled={!!autoMemoryDirectory}
+									onChange={(e: any) => {
+										setAutoMemoryShareWithClaudeCode(e.target.checked)
+									}}
+									data-testid="memory-share-claude-code-checkbox">
+									<span className="font-medium">
+										{t("settings:memory.shareWithClaudeCode.label")}
+									</span>
+								</LabeledCheckbox>
+								<div className={checkboxDescription}>
+									{autoMemoryDirectory
+										? t("settings:memory.shareWithClaudeCode.overridden")
+										: t("settings:memory.shareWithClaudeCode.description")}
+								</div>
+							</SearchableSetting>
 
-						<SearchableSetting
-							settingId="memory-writer-profile"
-							section="memory"
-							label={t("settings:memory.writerProfile.label")}
-							className="mt-section">
-							<label className="block text-sm font-medium mb-2">
-								{t("settings:memory.writerProfile.label")}
-							</label>
-							<Select
-								value={memoryWriterApiConfigId || UNSET_PROFILE}
-								onValueChange={(value) => {
-									// "" (not undefined) so Save clears the host's value.
-									setMemoryWriterApiConfigId(value === UNSET_PROFILE ? "" : value)
-								}}
-								data-testid="memory-writer-profile-select">
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder={t("settings:memory.writerProfile.useCurrent")} />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={UNSET_PROFILE}>
-										{t("settings:memory.writerProfile.useCurrent")}
-									</SelectItem>
-									{listApiConfigMeta.map((config) => (
-										<SelectItem key={config.id} value={config.id}>
-											{config.name}
+							<SearchableSetting
+								settingId="memory-writer-profile"
+								section="memory"
+								label={t("settings:memory.writerProfile.label")}
+								className="mt-section">
+								<label className="block text-sm font-medium mb-2">
+									{t("settings:memory.writerProfile.label")}
+								</label>
+								<Select
+									value={memoryWriterApiConfigId || UNSET_PROFILE}
+									onValueChange={(value) => {
+										// "" (not undefined) so Save clears the host's value.
+										setMemoryWriterApiConfigId(value === UNSET_PROFILE ? "" : value)
+									}}
+									data-testid="memory-writer-profile-select">
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder={t("settings:memory.writerProfile.useCurrent")} />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={UNSET_PROFILE}>
+											{t("settings:memory.writerProfile.useCurrent")}
 										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<div className={settingDescription}>
-								{t("settings:memory.writerProfile.description")}
-							</div>
-						</SearchableSetting>
+										{listApiConfigMeta.map((config) => (
+											<SelectItem key={config.id} value={config.id}>
+												{config.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<div className={settingDescription}>
+									{t("settings:memory.writerProfile.description")}
+								</div>
+							</SearchableSetting>
 
-						<SearchableSetting
-							settingId="memory-dream-enable"
-							section="memory"
-							label={t("settings:memory.dream.enable.label")}
-							className="mt-section">
-							<LabeledCheckbox
-								checked={autoDreamEnabled ?? SETTINGS_DEFAULTS.autoDreamEnabled}
-								onChange={(e: any) => {
-									setAutoDreamEnabled(e.target.checked)
-								}}>
-								<span className="font-medium">{t("settings:memory.dream.enable.label")}</span>
-							</LabeledCheckbox>
-							<div className={checkboxDescription}>
-								{t("settings:memory.dream.enable.description")}
-							</div>
-						</SearchableSetting>
+							<SearchableSetting
+								settingId="memory-dream-enable"
+								section="memory"
+								label={t("settings:memory.dream.enable.label")}
+								className="mt-section">
+								<LabeledCheckbox
+									checked={autoDreamEnabled ?? SETTINGS_DEFAULTS.autoDreamEnabled}
+									onChange={(e: any) => {
+										setAutoDreamEnabled(e.target.checked)
+									}}>
+									<span className="font-medium">{t("settings:memory.dream.enable.label")}</span>
+								</LabeledCheckbox>
+								<div className={checkboxDescription}>
+									{t("settings:memory.dream.enable.description")}
+								</div>
+							</SearchableSetting>
 
-						{autoDreamEnabled && (
-							<>
-								<SearchableSetting
-									settingId="memory-dream-hours"
-									section="memory"
-									label={t("settings:memory.dream.minHours.label")}
-									className="mt-section">
-									<label className="block text-sm font-medium mb-2">
-										{t("settings:memory.dream.minHours.label")}
-									</label>
-									<div className="flex items-center gap-2">
-										<Slider
-											min={MIN_DREAM_HOURS}
-											max={MAX_DREAM_HOURS}
-											step={1}
-											defaultValue={[autoDreamMinHours ?? SETTINGS_DEFAULTS.autoDreamMinHours]}
-											onValueChange={([value]) => {
-												setAutoDreamMinHours(value)
-											}}
-											className="flex-1"
-											data-testid="memory-dream-hours-slider"
-										/>
-										<span className="w-12 text-center">
-											{autoDreamMinHours ?? SETTINGS_DEFAULTS.autoDreamMinHours}
-										</span>
-									</div>
-									<div className={settingDescription}>
-										{t("settings:memory.dream.minHours.description")}
-									</div>
-								</SearchableSetting>
+							{autoDreamEnabled && (
+								<>
+									<SearchableSetting
+										settingId="memory-dream-hours"
+										section="memory"
+										label={t("settings:memory.dream.minHours.label")}
+										className="mt-section">
+										<label className="block text-sm font-medium mb-2">
+											{t("settings:memory.dream.minHours.label")}
+										</label>
+										<div className="flex items-center gap-2">
+											<Slider
+												min={MIN_DREAM_HOURS}
+												max={MAX_DREAM_HOURS}
+												step={1}
+												defaultValue={[
+													autoDreamMinHours ?? SETTINGS_DEFAULTS.autoDreamMinHours,
+												]}
+												onValueChange={([value]) => {
+													setAutoDreamMinHours(value)
+												}}
+												className="flex-1"
+												data-testid="memory-dream-hours-slider"
+											/>
+											<span className="w-12 text-center">
+												{autoDreamMinHours ?? SETTINGS_DEFAULTS.autoDreamMinHours}
+											</span>
+										</div>
+										<div className={settingDescription}>
+											{t("settings:memory.dream.minHours.description")}
+										</div>
+									</SearchableSetting>
 
-								<SearchableSetting
-									settingId="memory-dream-sessions"
-									section="memory"
-									label={t("settings:memory.dream.minSessions.label")}
-									className="mt-section">
-									<label className="block text-sm font-medium mb-2">
-										{t("settings:memory.dream.minSessions.label")}
-									</label>
-									<div className="flex items-center gap-2">
-										<Slider
-											min={MIN_DREAM_SESSIONS}
-											max={MAX_DREAM_SESSIONS}
-											step={1}
-											defaultValue={[
-												autoDreamMinSessions ?? SETTINGS_DEFAULTS.autoDreamMinSessions,
-											]}
-											onValueChange={([value]) => {
-												setAutoDreamMinSessions(value)
-											}}
-											className="flex-1"
-											data-testid="memory-dream-sessions-slider"
-										/>
-										<span className="w-12 text-center">
-											{autoDreamMinSessions ?? SETTINGS_DEFAULTS.autoDreamMinSessions}
-										</span>
-									</div>
-									<div className={settingDescription}>
-										{t("settings:memory.dream.minSessions.description")}
-									</div>
-								</SearchableSetting>
-							</>
-						)}
-					</>
-				)}
+									<SearchableSetting
+										settingId="memory-dream-sessions"
+										section="memory"
+										label={t("settings:memory.dream.minSessions.label")}
+										className="mt-section">
+										<label className="block text-sm font-medium mb-2">
+											{t("settings:memory.dream.minSessions.label")}
+										</label>
+										<div className="flex items-center gap-2">
+											<Slider
+												min={MIN_DREAM_SESSIONS}
+												max={MAX_DREAM_SESSIONS}
+												step={1}
+												defaultValue={[
+													autoDreamMinSessions ?? SETTINGS_DEFAULTS.autoDreamMinSessions,
+												]}
+												onValueChange={([value]) => {
+													setAutoDreamMinSessions(value)
+												}}
+												className="flex-1"
+												data-testid="memory-dream-sessions-slider"
+											/>
+											<span className="w-12 text-center">
+												{autoDreamMinSessions ?? SETTINGS_DEFAULTS.autoDreamMinSessions}
+											</span>
+										</div>
+										<div className={settingDescription}>
+											{t("settings:memory.dream.minSessions.description")}
+										</div>
+									</SearchableSetting>
+								</>
+							)}
+						</>
+					)}
 				</SettingsCard>
 			</Section>
 		</div>

@@ -118,7 +118,9 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 								className={cn(
 									"font-light flex flex-row gap-2 items-start min-h-[20px] leading-normal mb-2",
 									todo.status === "in_progress" && "text-vscode-charts-yellow",
-									todo.status !== "in_progress" && todo.status !== "completed" && "text-vscode-descriptionForeground",
+									todo.status !== "in_progress" &&
+										todo.status !== "completed" &&
+										"text-vscode-descriptionForeground",
 								)}>
 								{icon}
 								<span>{todo.content}</span>

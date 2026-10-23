@@ -17,10 +17,7 @@ export type CodeIndexWebviewMessageType =
 
 /** Codebase indexing status and settings replies. */
 export type CodeIndexExtensionMessageType =
-	| "indexingStatusUpdate"
-	| "indexCleared"
-	| "codeIndexSettingsSaved"
-	| "codeIndexSecretStatus"
+	"indexingStatusUpdate" | "indexCleared" | "codeIndexSettingsSaved" | "codeIndexSecretStatus"
 
 export interface IndexingStatusPayload {
 	state: "Standby" | "Indexing" | "Indexed" | "Error" | "Stopping"

@@ -142,7 +142,8 @@ export function nextMicrocompactStrippedTokens(result: MicrocompactOutcome, clea
  * This is a narrow interface to minimize coupling between modules.
  */
 export interface TaskContextManagerAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskApiHandlerAccess,
 		TaskApiConfigurationAccess,

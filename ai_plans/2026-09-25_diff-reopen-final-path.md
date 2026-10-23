@@ -20,11 +20,11 @@ apply_patch only show a streaming row; they open the diff inside
 accumulated arguments. partial-json drops an unfinished escape sequence at the
 end of a string (measured):
 
-| accumulated arguments                  | parsed `path` |
-| -------------------------------------- | ------------- |
-| `{"content":"x","path":"a/b`          | `a/b`         |
-| `{"content":"x","path":"a/b\u0`       | `a/b`         |
-| `{"content":"x","path":"a/b\u002`     | `a/b`         |
+| accumulated arguments              | parsed `path` |
+| ---------------------------------- | ------------- |
+| `{"content":"x","path":"a/b`       | `a/b`         |
+| `{"content":"x","path":"a/b\u0`    | `a/b`         |
+| `{"content":"x","path":"a/b\u002`  | `a/b`         |
 | `{"content":"x","path":"a/b\u002e` | `a/b.`        |
 
 So two chunks in a row can carry the same truncated path. This needs the model

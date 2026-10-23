@@ -6,10 +6,7 @@
 
 /** Parallel background subagents. */
 export type SubagentsWebviewMessageType =
-	| "subscribeSubagentMessages"
-	| "unsubscribeSubagentMessages"
-	| "cancelSubagent"
-	| "queueSubagentMessage"
+	"subscribeSubagentMessages" | "unsubscribeSubagentMessages" | "cancelSubagent" | "queueSubagentMessage"
 
 /** Subagent summaries and message snapshots. */
 export type SubagentsExtensionMessageType = "subagentsUpdated" | "subagentMessages"

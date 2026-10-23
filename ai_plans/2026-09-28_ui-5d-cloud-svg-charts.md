@@ -12,16 +12,16 @@ in `self-hosted-cloudapi/` (plus one table in `docs/08-cloud.md`).
   fixture drops that key; every other figure is unchanged).
 - `src/web/presenters/charts.py` computes the geometry; `metrics.html` draws it as inline
   SVG, like the grade and kind bars:
-  - **Tokens per day** and **cost per day**: two bar charts on one time axis (a
-    `viewBox` of 10-unit day slots, stretched with `preserveAspectRatio="none"`), each bar
-    scaled to the busiest day (at least 1% so an active day stays visible), a full-height
-    transparent hit area and a `<title>` per day. The old chart put cost on a second y
-    axis over the token bars; two scales on one plot invite reading a crossing as
-    meaningful, so they are now two charts sharing the x labels.
-  - **Tokens by model / by mode**: horizontal bars, biggest first, name and value on one
-    line with the bar under them. No `viewBox`, bar widths in percent, so the text keeps
-    its size at any width, including a phone. The eight biggest rows are shown and the
-    rest fold into one "N others" row.
+    - **Tokens per day** and **cost per day**: two bar charts on one time axis (a
+      `viewBox` of 10-unit day slots, stretched with `preserveAspectRatio="none"`), each bar
+      scaled to the busiest day (at least 1% so an active day stays visible), a full-height
+      transparent hit area and a `<title>` per day. The old chart put cost on a second y
+      axis over the token bars; two scales on one plot invite reading a crossing as
+      meaningful, so they are now two charts sharing the x labels.
+    - **Tokens by model / by mode**: horizontal bars, biggest first, name and value on one
+      line with the bar under them. No `viewBox`, bar widths in percent, so the text keeps
+      its size at any width, including a phone. The eight biggest rows are shown and the
+      rest fold into one "N others" row.
 - Colour only from CSS classes (`.chart-bar-tokens`, `.chart-bar-cost`, `.chart-bar-rank`,
   `.chart-label`, `.chart-axis`...) that read the tokens: the charts follow the light and
   dark themes and print; the markup carries no `fill`, `stroke` or `style`.

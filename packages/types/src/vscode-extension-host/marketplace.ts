@@ -10,10 +10,7 @@ import { marketplaceItemSchema } from "../marketplace.js"
 
 /** Marketplace browsing, install and removal. */
 export type MarketplaceWebviewMessageType =
-	| "filterMarketplaceItems"
-	| "fetchMarketplaceData"
-	| "installMarketplaceItem"
-	| "removeInstalledMarketplaceItem"
+	"filterMarketplaceItems" | "fetchMarketplaceData" | "installMarketplaceItem" | "removeInstalledMarketplaceItem"
 
 /** Marketplace data and install or removal results. */
 export type MarketplaceExtensionMessageType = "marketplaceInstallResult" | "marketplaceRemoveResult" | "marketplaceData"

@@ -52,9 +52,7 @@ export const UISettings = (props: UISettingsProps) => {
 								data-testid="collapse-thinking-checkbox">
 								<span className="font-medium">{t("settings:ui.collapseThinking.label")}</span>
 							</LabeledCheckbox>
-							<div className={checkboxDescription}>
-								{t("settings:ui.collapseThinking.description")}
-							</div>
+							<div className={checkboxDescription}>{t("settings:ui.collapseThinking.description")}</div>
 						</div>
 					</SearchableSetting>
 
@@ -96,9 +94,7 @@ export const UISettings = (props: UISettingsProps) => {
 									<SelectItem value="compact">{t("settings:ui.density.compact")}</SelectItem>
 								</SelectContent>
 							</Select>
-							<div className={settingDescription}>
-								{t("settings:ui.density.description")}
-							</div>
+							<div className={settingDescription}>{t("settings:ui.density.description")}</div>
 						</div>
 					</SearchableSetting>
 				</SettingsCard>

@@ -40,13 +40,13 @@ by these files (plus one spec).
    and snapshot dependencies; on the `origin/main` lockfile it reports 0 unreachable entries, after the edit also 0.
 4. Dead CSS in `index.css`, each selector grepped in the whole repo (webview, host `src/`, packages, CLI), no
    producer found:
-   - `.animate-smooth-tumble` (the `smooth-tumble` keyframes stay: `RooHero.tsx:24` sets the animation inline)
-   - `@keyframes slide-in-right` + `.animate-slide-in-right`
-   - `.custom-markdown > pre`
-   - every `.code-block-scrollable` rule (the `.scrollable` halves of the shared selectors stay)
-   - `.code-block-scroller pre > code .hljs-addition` / `.hljs-deletion`: the code blocks use Shiki, which writes
-     inline colour styles on spans and never these highlight.js classes; `CodeBlock.tsx` only sets
-     `hljs language-*` on the `<code>` element; diffs render through `DiffView`, which uses its own classes.
+    - `.animate-smooth-tumble` (the `smooth-tumble` keyframes stay: `RooHero.tsx:24` sets the animation inline)
+    - `@keyframes slide-in-right` + `.animate-slide-in-right`
+    - `.custom-markdown > pre`
+    - every `.code-block-scrollable` rule (the `.scrollable` halves of the shared selectors stay)
+    - `.code-block-scroller pre > code .hljs-addition` / `.hljs-deletion`: the code blocks use Shiki, which writes
+      inline colour styles on spans and never these highlight.js classes; `CodeBlock.tsx` only sets
+      `hljs language-*` on the `<code>` element; diffs render through `DiffView`, which uses its own classes.
 
 ## Tests
 

@@ -28,7 +28,7 @@ the tab automatically at startup; that was not the request and was reverted.
   the existing `openClineInNewTab`. One click never stacks duplicate tabs.
 - "Is a tab open" comes from `ClineProvider.getEditorTab()`, which scans the
   live provider instances. `panelRegistry` is not used: `setPanel(..,
-  "sidebar")` forgets the tab as soon as the sidebar view resolves. A closed
+"sidebar")` forgets the tab as soon as the sidebar view resolves. A closed
   tab disposes its provider, so it leaves the instance set.
 - Icon: `icon.svg` (the activity bar spiral) with fixed stroke colours, because
   file icons in menus do not get `currentColor` from the theme; stroke width 7

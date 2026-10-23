@@ -88,8 +88,7 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 								color: "var(--vscode-badge-foreground)",
 								fontSize: 10,
 								fontWeight: "bold",
-							}}>
-						</button>
+							}}></button>
 					)}
 				</div>
 			))}

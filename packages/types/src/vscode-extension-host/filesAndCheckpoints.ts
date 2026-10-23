@@ -21,10 +21,7 @@ export type FilesAndCheckpointsWebviewMessageType =
 
 /** Selected images, file content and checkpoint updates. */
 export type FilesAndCheckpointsExtensionMessageType =
-	| "selectedImages"
-	| "fileContent"
-	| "currentCheckpointUpdated"
-	| "checkpointInitWarning"
+	"selectedImages" | "fileContent" | "currentCheckpointUpdated" | "checkpointInitWarning"
 
 export const checkoutDiffPayloadSchema = z.object({
 	ts: z.number().optional(),

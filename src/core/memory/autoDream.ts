@@ -200,9 +200,7 @@ function stripFrontmatter(content: string): string {
 }
 
 export type DreamVerdict =
-	| { kind: "keep" }
-	| { kind: "drop"; which: 1 | 2 }
-	| { kind: "merge"; description: string; body: string }
+	{ kind: "keep" } | { kind: "drop"; which: 1 | 2 } | { kind: "merge"; description: string; body: string }
 
 /** Parse a dream answer; anything unrecognised is KEEP (the safe default). */
 export function parseDreamVerdict(answer: string): DreamVerdict {

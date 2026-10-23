@@ -275,7 +275,9 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 											// Off: outlined like an input. On: the selection tint with a focus-colour frame.
 											!isEnabled &&
 												"bg-transparent border-input-frame hover:bg-surface-hover hover:border-input-frame-hover",
-											isEnabled && !forced && "bg-selected border-vscode-focusBorder hover:bg-selected",
+											isEnabled &&
+												!forced &&
+												"bg-selected border-vscode-focusBorder hover:bg-selected",
 											// Forced on by bypass / autonomous: orange tint and frame, not clickable.
 											forced &&
 												"bg-orange-600/15 border-orange-600 hover:bg-orange-600/15 disabled:opacity-100 cursor-default",

@@ -243,7 +243,12 @@ describe("verifyTimeBoundClaims", () => {
 		)
 		expect(await archived()).toEqual(["MEMORY.md", "project_chart.md"])
 		const backups = await fs.readdir(path.join(dir, ".archive"))
-		const backup = (name: string) => path.join(dir, ".archive", backups.find((f) => f.endsWith(`_${name}`))!)
+		const backup = (name: string) =>
+			path.join(
+				dir,
+				".archive",
+				backups.find((f) => f.endsWith(`_${name}`))!,
+			)
 		expect(await fs.readFile(backup("project_chart.md"), "utf-8")).toBe(original)
 		expect(await fs.readFile(backup("MEMORY.md"), "utf-8")).toBe(index)
 		// The note keeps its age, so newer notes still count as newer next time.
