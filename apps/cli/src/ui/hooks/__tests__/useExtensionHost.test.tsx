@@ -36,7 +36,6 @@ describe("useExtensionHost", () => {
 			nonInteractive: true,
 			ephemeral: false,
 			debug: false,
-			exitOnComplete: false,
 			terminalShell: "/bin/zsh",
 			exitOnError: true,
 		}
@@ -52,7 +51,7 @@ describe("useExtensionHost", () => {
 		})
 
 		function Harness() {
-			useExtensionHost({ ...options, transcript: sink, createExtensionHost })
+			useExtensionHost({ ...options, exitOnComplete: false, transcript: sink, createExtensionHost })
 			return <Text>harness</Text>
 		}
 
@@ -73,7 +72,6 @@ describe("useExtensionHost task completion", () => {
 		nonInteractive: false,
 		ephemeral: true,
 		debug: false,
-		exitOnComplete: true,
 	}
 
 	beforeEach(() => {
@@ -93,7 +91,7 @@ describe("useExtensionHost task completion", () => {
 		const createExtensionHost = vi.fn(() => host as unknown as ExtensionHostInterface)
 
 		function Harness() {
-			useExtensionHost({ ...options, transcript: sink, createExtensionHost })
+			useExtensionHost({ ...options, exitOnComplete: true, transcript: sink, createExtensionHost })
 			return <Text>harness</Text>
 		}
 
@@ -154,7 +152,6 @@ describe("useExtensionHost cloud sign-in", () => {
 		nonInteractive: false,
 		ephemeral: true,
 		debug: false,
-		exitOnComplete: false,
 	}
 
 	beforeEach(() => {
@@ -173,6 +170,7 @@ describe("useExtensionHost cloud sign-in", () => {
 		function Harness() {
 			channel = useExtensionHost({
 				...options,
+				exitOnComplete: false,
 				transcript: sink,
 				createExtensionHost: () => host as unknown as ExtensionHostInterface,
 			}).cloudAuthChannel

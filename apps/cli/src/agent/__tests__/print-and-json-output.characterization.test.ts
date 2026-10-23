@@ -243,7 +243,6 @@ function createHost(options: Partial<ExtensionHostOptions>): ExtensionHost {
 		extensionPath: "/test/extension",
 		ephemeral: false,
 		debug: false,
-		exitOnComplete: false,
 		nonInteractive: true,
 		integrationTest: true,
 		...options,

@@ -118,7 +118,6 @@ async function createListHost(options: BaseListOptions, hostOptions: ListHostOpt
 		nonInteractive: true,
 		ephemeral: hostOptions.ephemeral,
 		debug: options.debug ?? false,
-		exitOnComplete: true,
 		exitOnError: false,
 		disableOutput: true,
 	}

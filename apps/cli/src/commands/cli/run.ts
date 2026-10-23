@@ -397,7 +397,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		model: effectiveModel,
 		modelSettings: modelSettingsFor(providerConfig),
 		models: settings.models,
-		forcedReasoningEffort: flagOptions.reasoningEffort,
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
 		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),
@@ -407,7 +406,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		exitOnError: flagOptions.exitOnError,
 		ephemeral: flagOptions.ephemeral,
 		debug: flagOptions.debug,
-		exitOnComplete: effectiveExitOnComplete,
 		terminalShell,
 		resolveModelProviderSettings: (mode, model) => {
 			const config = resolveForModel(mode, model)
@@ -650,6 +648,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 							initialPrompt: prompt,
 							initialTaskId: requestedCreateSessionId,
 							initialSessionId: resolvedResumeSessionId,
+							exitOnComplete: effectiveExitOnComplete,
 							openResumePicker: flagOptions.resume,
 							version: VERSION,
 							createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),

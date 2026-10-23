@@ -56,7 +56,6 @@ function createTestHost({
 		extensionPath: "/test/extension",
 		ephemeral: false,
 		debug: false,
-		exitOnComplete: false,
 		...options,
 	})
 }
@@ -246,7 +245,6 @@ describe("ExtensionHost", () => {
 				model: "test-model",
 				ephemeral: false,
 				debug: false,
-				exitOnComplete: false,
 				integrationTest: true, // Set explicitly for testing
 			}
 
@@ -348,6 +346,9 @@ describe("ExtensionHost", () => {
 			reasoningEffort: "max" as const,
 		}
 
+		// run.ts resolves the real settings; here the model only replaces the base one.
+		const onBase = (_mode: string, model: string) => ({ ...base, openAiModelId: model })
+
 		function sentModeSettings(emitSpy: { mock: { calls: unknown[][] } }) {
 			return emitSpy.mock.calls
 				.map((call) => call[1] as WebviewMessage)
@@ -358,14 +359,14 @@ describe("ExtensionHost", () => {
 			const host = createTestHost({
 				provider: "openai",
 				modeProviderSettings: { base, modes: {} },
-				models: { "Qwen3.8-27B": { reasoningEffort: "high" } },
+				resolveModelProviderSettings: onBase,
 			})
 			host.markWebviewReady()
 			const emitSpy = vi.spyOn(host, "emit")
 
 			const { settings } = host.switchModel("code", "Qwen3.8-27B")
 
-			expect(settings).toMatchObject({ openAiModelId: "Qwen3.8-27B", reasoningEffort: "high" })
+			expect(settings).toMatchObject({ openAiModelId: "Qwen3.8-27B" })
 			expect(sentModeSettings(emitSpy)).toEqual([
 				{
 					type: "cliModeProviderSettings",
@@ -373,18 +374,6 @@ describe("ExtensionHost", () => {
 					bool: true,
 				},
 			])
-		})
-
-		it("keeps --reasoning-effort for the new model", () => {
-			const host = createTestHost({
-				provider: "openai",
-				modeProviderSettings: { base, modes: {} },
-				models: { "Qwen3.8-27B": { reasoningEffort: "high" } },
-				forcedReasoningEffort: "low",
-			})
-			host.markWebviewReady()
-
-			expect(host.switchModel("code", "Qwen3.8-27B").settings.reasoningEffort).toBe("low")
 		})
 
 		it("takes the settings from resolveModelProviderSettings, which can put the model on another provider", () => {
@@ -402,7 +391,11 @@ describe("ExtensionHost", () => {
 		})
 
 		it("a later switch starts from the mode's current entry", () => {
-			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: {} } })
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				resolveModelProviderSettings: onBase,
+			})
 			host.markWebviewReady()
 			const emitSpy = vi.spyOn(host, "emit")
 
@@ -421,6 +414,7 @@ describe("ExtensionHost", () => {
 			const host = createTestHost({
 				provider: "openai",
 				modeProviderSettings: { base, modes: {} },
+				resolveModelProviderSettings: onBase,
 				saveModelChoice,
 			})
 			host.markWebviewReady()
@@ -442,6 +436,7 @@ describe("ExtensionHost", () => {
 			const host = createTestHost({
 				provider: "openai",
 				modeProviderSettings: { base, modes: {} },
+				resolveModelProviderSettings: onBase,
 				saveModelChoice,
 			})
 			host.markWebviewReady()
@@ -453,7 +448,11 @@ describe("ExtensionHost", () => {
 		})
 
 		it("lasts for the session only without a saver", async () => {
-			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: {} } })
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				resolveModelProviderSettings: onBase,
+			})
 			host.markWebviewReady()
 
 			await expect(host.switchModel("code", "Q").saved).resolves.toMatchObject({ outcome: "session-only" })
@@ -488,7 +487,11 @@ describe("ExtensionHost", () => {
 		})
 
 		it("follows /model", () => {
-			const host = createTestHost({ provider: "openai", modeProviderSettings: { base, modes: {} } })
+			const host = createTestHost({
+				provider: "openai",
+				modeProviderSettings: { base, modes: {} },
+				resolveModelProviderSettings: (_mode, model) => ({ ...base, openAiModelId: model }),
+			})
 			host.markWebviewReady()
 
 			host.switchModel("code", "Qwen3.8-27B")
