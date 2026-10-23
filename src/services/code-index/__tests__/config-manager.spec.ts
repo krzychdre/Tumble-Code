@@ -1416,6 +1416,24 @@ describe("CodeIndexConfigManager", () => {
 			expect(requiresRestart).toBe(true)
 		})
 
+		// Only rule 1 sees this change: every embedder and Qdrant field stays the same.
+		it("should return true when enabling an already configured index and nothing else", async () => {
+			const settings = {
+				codebaseIndexEmbedderProvider: "openai",
+				codebaseIndexQdrantUrl: "http://localhost:6333",
+			}
+			setupSecretMocks({ codeIndexOpenAiKey: "test-key" })
+			mockContextProxy.getGlobalState.mockReturnValue({ ...settings, codebaseIndexEnabled: false })
+			configManager = new CodeIndexConfigManager(mockContextProxy)
+			await configManager.loadConfiguration()
+
+			mockContextProxy.getGlobalState.mockReturnValue({ ...settings, codebaseIndexEnabled: true })
+			const { configSnapshot, requiresRestart } = await configManager.loadConfiguration()
+
+			expect(configSnapshot).toMatchObject({ enabled: false, configured: true })
+			expect(requiresRestart).toBe(true)
+		})
+
 		it("should return true when disabling the feature", async () => {
 			// Initial state: enabled and configured
 			mockContextProxy.getGlobalState.mockReturnValue({
