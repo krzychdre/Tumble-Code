@@ -1253,7 +1253,7 @@ input[cmdk-input]:focus {
 	cursor: pointer;
 }
 
-/* max-height (window shade) and the caller's preStyle are inline styles */
+/* max-height (window shade) is an inline style */
 .code-block-scroller {
 	background-color: var(--vscode-editor-background, --vscode-sideBar-background, rgb(30 30 30));
 	overflow-y: auto;
@@ -1277,12 +1277,6 @@ input[cmdk-input]:focus {
 	overflow-wrap: break-word;
 	font-size: 0.95em;
 	font-family: var(--font-mono);
-}
-
-.code-block-scroller[data-wordwrap="false"] pre,
-.code-block-scroller[data-wordwrap="false"] code {
-	white-space: pre;
-	overflow-wrap: normal;
 }
 
 .code-block-scroller .hljs {
