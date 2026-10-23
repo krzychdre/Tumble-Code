@@ -20,14 +20,13 @@ import logging
 from typing import Optional
 
 import socketio
-from sqlalchemy import select
 
 from src.auth.jwt_issuer import decode_token
 from src.auth.network_access import client_allowed, scope_client
 from src.auth.origins import is_trusted_origin
 from src.auth.web_session import COOKIE_NAME, resolve_web_user
 from src.database import async_session_factory
-from src.models.task import Task
+from src.services.task_access import task_owner
 from src.services.telemetry_service import upsert_task_message
 from src.realtime.hub import registry
 from src.realtime.partial_buffer import PartialMessageBuffer
@@ -108,19 +107,14 @@ async def _user_owns_task(user_id: str, task_id: str) -> bool:
     if not task_id:
         return False
     async with async_session_factory() as db:
-        result = await db.execute(
-            select(Task.id).where(Task.id == task_id, Task.user_id == user_id)
-        )
-        return result.scalar_one_or_none() is not None
+        return await task_owner(db, task_id) == user_id
 
 
 async def _task_access(user_id: str, task_id: str) -> Optional[bool]:
     """True if ``user_id`` owns the task, False if another user does, None if
     there is no such task (yet)."""
     async with async_session_factory() as db:
-        owner = (
-            await db.execute(select(Task.user_id).where(Task.id == task_id))
-        ).scalar_one_or_none()
+        owner = await task_owner(db, task_id)
     if owner is None:
         return None
     return owner == user_id
