@@ -3,13 +3,12 @@ import React from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { FoldVertical } from "lucide-react"
 
-import { PRUNE_CONDENSE_DEFAULTS, SETTINGS_DEFAULTS } from "@tumble-code/types"
+import { PRUNE_CONDENSE_DEFAULTS, SETTINGS_DEFAULTS, type ProviderSettingsEntry } from "@tumble-code/types"
 
 import { supportPrompt } from "@shared/support-prompt"
 
 import { cn } from "@/lib/utils"
 import {
-	Input,
 	Select,
 	SelectContent,
 	SelectItem,
@@ -18,22 +17,25 @@ import {
 	Slider,
 	Button,
 	StandardTooltip,
-	LabeledCheckbox,
 	Textarea,
 } from "@/components/ui"
 
 import { useSetting } from "./SettingsDraftContext"
+import { CheckboxRow, NumberRow, SliderRow } from "./SettingRows"
 import { postImmediateSetting } from "./postImmediateSetting"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { SettingsCard, SettingsNested, checkboxDescription, settingDescription } from "./SettingsCard"
+import { SettingsCard, SettingsNested, settingDescription } from "./SettingsCard"
 
 const UNSET_PROFILE = "-"
 
 type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	listApiConfigMeta: any[]
+	listApiConfigMeta: ProviderSettingsEntry[]
 }
+
+// The diagnostics slider's top position stands for "no limit", stored as -1 (0 and below also mean no limit).
+const DIAGNOSTICS_SLIDER_UNLIMITED = 100
 
 export const ContextManagementSettings = ({
 	listApiConfigMeta,
@@ -65,23 +67,16 @@ export const ContextManagementSettings = ({
 	const customSupportPrompts = customSupportPromptsSetting || {}
 	const [selectedThresholdProfile, setSelectedThresholdProfile] = React.useState<string>("default")
 
-	// Helper function to get the CONDENSE prompt value
-	const getCondensePromptValue = (): string => {
-		return supportPrompt.get(customSupportPrompts, "CONDENSE")
-	}
+	const diagnosticsUnlimited =
+		(maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0) ||
+		maxDiagnosticMessages === DIAGNOSTICS_SLIDER_UNLIMITED
+	const diagnosticsSliderValue = diagnosticsUnlimited
+		? DIAGNOSTICS_SLIDER_UNLIMITED
+		: (maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages)
+	const unlimitedLabel = t("settings:contextManagement.diagnostics.maxMessages.unlimitedLabel")
 
-	// Helper function to update the CONDENSE prompt
-	const updateCondensePrompt = (value: string | undefined) => {
-		const updatedPrompts = { ...customSupportPrompts }
-		if (value === undefined) {
-			delete updatedPrompts["CONDENSE"]
-		} else {
-			updatedPrompts["CONDENSE"] = value
-		}
-		setCustomSupportPrompts(updatedPrompts)
-	}
+	const setCondensePrompt = (value: string) => setCustomSupportPrompts({ ...customSupportPrompts, CONDENSE: value })
 
-	// Helper function to reset the CONDENSE prompt to default
 	const handleCondenseReset = () => {
 		const updatedPrompts = { ...customSupportPrompts }
 		delete updatedPrompts["CONDENSE"]
@@ -122,511 +117,349 @@ export const ContextManagementSettings = ({
 
 			<Section>
 				<SettingsCard>
-				<SearchableSetting
-					settingId="context-open-tabs"
-					section="contextManagement"
-					label={t("settings:contextManagement.openTabs.label")}>
-					<span className="block font-medium mb-1">{t("settings:contextManagement.openTabs.label")}</span>
-					<div className="flex items-center gap-2">
-						<Slider
-							min={0}
-							max={500}
-							step={1}
-							value={[maxOpenTabsContext ?? SETTINGS_DEFAULTS.maxOpenTabsContext]}
-							onValueChange={([value]) => setMaxOpenTabsContext(value)}
-							data-testid="open-tabs-limit-slider"
-						/>
-						<span className="w-10">{maxOpenTabsContext ?? SETTINGS_DEFAULTS.maxOpenTabsContext}</span>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:contextManagement.openTabs.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-workspace-files"
-					section="contextManagement"
-					label={t("settings:contextManagement.workspaceFiles.label")}>
-					<span className="block font-medium mb-1">
-						{t("settings:contextManagement.workspaceFiles.label")}
-					</span>
-					<div className="flex items-center gap-2">
-						<Slider
-							min={0}
-							max={500}
-							step={1}
-							value={[maxWorkspaceFiles ?? SETTINGS_DEFAULTS.maxWorkspaceFiles]}
-							onValueChange={([value]) => setMaxWorkspaceFiles(value)}
-							data-testid="workspace-files-limit-slider"
-						/>
-						<span className="w-10">{maxWorkspaceFiles ?? SETTINGS_DEFAULTS.maxWorkspaceFiles}</span>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:contextManagement.workspaceFiles.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-max-git-status-files"
-					section="contextManagement"
-					label={t("settings:contextManagement.maxGitStatusFiles.label")}>
-					<span className="block font-medium mb-1">
-						{t("settings:contextManagement.maxGitStatusFiles.label")}
-					</span>
-					<div className="flex items-center gap-2">
-						<Slider
-							min={0}
-							max={50}
-							step={1}
-							value={[maxGitStatusFiles ?? SETTINGS_DEFAULTS.maxGitStatusFiles]}
-							onValueChange={([value]) => setMaxGitStatusFiles(value)}
-							data-testid="max-git-status-files-slider"
-						/>
-						<span className="w-10">{maxGitStatusFiles ?? SETTINGS_DEFAULTS.maxGitStatusFiles}</span>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:contextManagement.maxGitStatusFiles.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-show-rooignored-files"
-					section="contextManagement"
-					label={t("settings:contextManagement.rooignore.label")}>
-					<LabeledCheckbox
+					<SliderRow
+						section="contextManagement"
+						settingId="context-open-tabs"
+						label={t("settings:contextManagement.openTabs.label")}
+						description={t("settings:contextManagement.openTabs.description")}
+						min={0}
+						max={500}
+						step={1}
+						value={maxOpenTabsContext ?? SETTINGS_DEFAULTS.maxOpenTabsContext}
+						onChange={setMaxOpenTabsContext}
+						testId="open-tabs-limit-slider"
+					/>
+					<SliderRow
+						section="contextManagement"
+						settingId="context-workspace-files"
+						label={t("settings:contextManagement.workspaceFiles.label")}
+						description={t("settings:contextManagement.workspaceFiles.description")}
+						min={0}
+						max={500}
+						step={1}
+						value={maxWorkspaceFiles ?? SETTINGS_DEFAULTS.maxWorkspaceFiles}
+						onChange={setMaxWorkspaceFiles}
+						testId="workspace-files-limit-slider"
+					/>
+					<SliderRow
+						section="contextManagement"
+						settingId="context-max-git-status-files"
+						label={t("settings:contextManagement.maxGitStatusFiles.label")}
+						description={t("settings:contextManagement.maxGitStatusFiles.description")}
+						min={0}
+						max={50}
+						step={1}
+						value={maxGitStatusFiles ?? SETTINGS_DEFAULTS.maxGitStatusFiles}
+						onChange={setMaxGitStatusFiles}
+						testId="max-git-status-files-slider"
+					/>
+					<CheckboxRow
+						section="contextManagement"
+						settingId="context-show-rooignored-files"
+						label={t("settings:contextManagement.rooignore.label")}
+						description={t("settings:contextManagement.rooignore.description")}
 						checked={showRooIgnoredFiles}
-						onChange={(e: any) => setShowRooIgnoredFiles(e.target.checked)}
-						data-testid="show-rooignored-files-checkbox">
-						<label className="font-medium">
-							{t("settings:contextManagement.rooignore.label")}
-						</label>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:contextManagement.rooignore.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-enable-subfolder-rules"
-					section="contextManagement"
-					label={t("settings:contextManagement.enableSubfolderRules.label")}>
-					<LabeledCheckbox
+						onChange={setShowRooIgnoredFiles}
+						testId="show-rooignored-files-checkbox"
+					/>
+					<CheckboxRow
+						section="contextManagement"
+						settingId="context-enable-subfolder-rules"
+						label={t("settings:contextManagement.enableSubfolderRules.label")}
+						description={t("settings:contextManagement.enableSubfolderRules.description")}
 						checked={enableSubfolderRules}
-						onChange={(e: any) => setEnableSubfolderRules(e.target.checked)}
-						data-testid="enable-subfolder-rules-checkbox">
-						<label className="font-medium">
-							{t("settings:contextManagement.enableSubfolderRules.label")}
-						</label>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:contextManagement.enableSubfolderRules.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-max-image-file-size"
-					section="contextManagement"
-					label={t("settings:contextManagement.maxImageFileSize.label")}>
-					<div className="flex flex-col gap-2">
-						<span className="font-medium">{t("settings:contextManagement.maxImageFileSize.label")}</span>
-						<div className="flex items-center gap-4">
-							<Input
-								type="number"
-								pattern="[0-9]*"
-								className="w-24 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-								value={maxImageFileSize ?? SETTINGS_DEFAULTS.maxImageFileSize}
-								min={1}
-								max={100}
-								onChange={(e) => {
-									const newValue = parseInt(e.target.value, 10)
-									if (!isNaN(newValue) && newValue >= 1 && newValue <= 100) {
-										setMaxImageFileSize(newValue)
-									}
-								}}
-								onClick={(e) => e.currentTarget.select()}
-								data-testid="max-image-file-size-input"
-							/>
-							<span>{t("settings:contextManagement.maxImageFileSize.mb")}</span>
-						</div>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:contextManagement.maxImageFileSize.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-max-total-image-size"
-					section="contextManagement"
-					label={t("settings:contextManagement.maxTotalImageSize.label")}>
-					<div className="flex flex-col gap-2">
-						<span className="font-medium">{t("settings:contextManagement.maxTotalImageSize.label")}</span>
-						<div className="flex items-center gap-4">
-							<Input
-								type="number"
-								pattern="[0-9]*"
-								className="w-24 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-								value={maxTotalImageSize ?? SETTINGS_DEFAULTS.maxTotalImageSize}
-								min={1}
-								max={500}
-								onChange={(e) => {
-									const newValue = parseInt(e.target.value, 10)
-									if (!isNaN(newValue) && newValue >= 1 && newValue <= 500) {
-										setMaxTotalImageSize(newValue)
-									}
-								}}
-								onClick={(e) => e.currentTarget.select()}
-								data-testid="max-total-image-size-input"
-							/>
-							<span>{t("settings:contextManagement.maxTotalImageSize.mb")}</span>
-						</div>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:contextManagement.maxTotalImageSize.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-include-diagnostic-messages"
-					section="contextManagement"
-					label={t("settings:contextManagement.diagnostics.includeMessages.label")}>
-					<LabeledCheckbox
+						onChange={setEnableSubfolderRules}
+						testId="enable-subfolder-rules-checkbox"
+					/>
+					<NumberRow
+						section="contextManagement"
+						settingId="context-max-image-file-size"
+						label={t("settings:contextManagement.maxImageFileSize.label")}
+						description={t("settings:contextManagement.maxImageFileSize.description")}
+						unit={t("settings:contextManagement.maxImageFileSize.mb")}
+						min={1}
+						max={100}
+						value={maxImageFileSize ?? SETTINGS_DEFAULTS.maxImageFileSize}
+						onChange={setMaxImageFileSize}
+						testId="max-image-file-size-input"
+					/>
+					<NumberRow
+						section="contextManagement"
+						settingId="context-max-total-image-size"
+						label={t("settings:contextManagement.maxTotalImageSize.label")}
+						description={t("settings:contextManagement.maxTotalImageSize.description")}
+						unit={t("settings:contextManagement.maxTotalImageSize.mb")}
+						min={1}
+						max={500}
+						value={maxTotalImageSize ?? SETTINGS_DEFAULTS.maxTotalImageSize}
+						onChange={setMaxTotalImageSize}
+						testId="max-total-image-size-input"
+					/>
+					<CheckboxRow
+						section="contextManagement"
+						settingId="context-include-diagnostic-messages"
+						label={t("settings:contextManagement.diagnostics.includeMessages.label")}
+						description={t("settings:contextManagement.diagnostics.includeMessages.description")}
 						checked={includeDiagnosticMessages}
-						onChange={(e: any) => setIncludeDiagnosticMessages(e.target.checked)}
-						data-testid="include-diagnostic-messages-checkbox">
-						<label className="font-medium">
-							{t("settings:contextManagement.diagnostics.includeMessages.label")}
-						</label>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:contextManagement.diagnostics.includeMessages.description")}
-					</div>
-				</SearchableSetting>
+						onChange={setIncludeDiagnosticMessages}
+						testId="include-diagnostic-messages-checkbox"
+					/>
 
-				<SearchableSetting
-					settingId="context-max-diagnostic-messages"
-					section="contextManagement"
-					label={t("settings:contextManagement.diagnostics.maxMessages.label")}>
-					<span className="block font-medium mb-1">
-						{t("settings:contextManagement.diagnostics.maxMessages.label")}
-					</span>
-					<div className="flex items-center gap-2">
-						<Slider
-							min={1}
-							max={100}
-							step={1}
-							value={[
-								maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0
-									? 100
-									: (maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages),
-							]}
-							onValueChange={([value]) => {
-								// When slider reaches 100, set to -1 (unlimited)
-								setMaxDiagnosticMessages(value === 100 ? -1 : value)
-							}}
-							data-testid="max-diagnostic-messages-slider"
-							aria-label={t("settings:contextManagement.diagnostics.maxMessages.label")}
-							aria-valuemin={1}
-							aria-valuemax={100}
-							aria-valuenow={
-								maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0
-									? 100
-									: (maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages)
-							}
-							aria-valuetext={
-								(maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0) ||
-								maxDiagnosticMessages === 100
-									? t("settings:contextManagement.diagnostics.maxMessages.unlimitedLabel")
-									: `${maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages} ${t("settings:contextManagement.diagnostics.maxMessages.label")}`
-							}
-						/>
-						<span className="w-20 text-sm font-medium">
-							{(maxDiagnosticMessages !== undefined && maxDiagnosticMessages <= 0) ||
-							maxDiagnosticMessages === 100
-								? t("settings:contextManagement.diagnostics.maxMessages.unlimitedLabel")
-								: (maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages)}
+					<SearchableSetting
+						settingId="context-max-diagnostic-messages"
+						section="contextManagement"
+						label={t("settings:contextManagement.diagnostics.maxMessages.label")}>
+						<span className="block font-medium mb-1">
+							{t("settings:contextManagement.diagnostics.maxMessages.label")}
 						</span>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setMaxDiagnosticMessages(50)}
-							title={t("settings:contextManagement.diagnostics.maxMessages.resetTooltip")}
-							className="p-1 h-[22px] w-[22px]"
-							disabled={maxDiagnosticMessages === 50}>
-							<span className="codicon codicon-discard" aria-hidden="true" />
-						</Button>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:contextManagement.diagnostics.maxMessages.description")}
-					</div>
-				</SearchableSetting>
+						<div className="flex items-center gap-2">
+							<Slider
+								min={1}
+								max={DIAGNOSTICS_SLIDER_UNLIMITED}
+								step={1}
+								value={[diagnosticsSliderValue]}
+								onValueChange={([value]) => {
+									setMaxDiagnosticMessages(value === DIAGNOSTICS_SLIDER_UNLIMITED ? -1 : value)
+								}}
+								data-testid="max-diagnostic-messages-slider"
+								aria-label={t("settings:contextManagement.diagnostics.maxMessages.label")}
+								aria-valuemin={1}
+								aria-valuemax={DIAGNOSTICS_SLIDER_UNLIMITED}
+								aria-valuenow={diagnosticsSliderValue}
+								aria-valuetext={
+									diagnosticsUnlimited
+										? unlimitedLabel
+										: `${diagnosticsSliderValue} ${t("settings:contextManagement.diagnostics.maxMessages.label")}`
+								}
+							/>
+							<span className="w-20 text-sm font-medium">
+								{diagnosticsUnlimited ? unlimitedLabel : diagnosticsSliderValue}
+							</span>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setMaxDiagnosticMessages(50)}
+								title={t("settings:contextManagement.diagnostics.maxMessages.resetTooltip")}
+								className="p-1 h-[22px] w-[22px]"
+								disabled={maxDiagnosticMessages === 50}>
+								<span className="codicon codicon-discard" aria-hidden="true" />
+							</Button>
+						</div>
+						<div className={settingDescription}>
+							{t("settings:contextManagement.diagnostics.maxMessages.description")}
+						</div>
+					</SearchableSetting>
 
-				<SearchableSetting
-					settingId="context-write-delay"
-					section="contextManagement"
-					label={t("settings:contextManagement.diagnostics.delayAfterWrite.label")}>
-					<span className="block font-medium mb-1">
-						{t("settings:contextManagement.diagnostics.delayAfterWrite.label")}
-					</span>
-					<div className="flex items-center gap-2">
-						<Slider
-							min={0}
-							max={5000}
-							step={100}
-							value={[writeDelayMs]}
-							onValueChange={([value]) => setWriteDelayMs(value)}
-							data-testid="write-delay-slider"
-						/>
-						<span className="w-20">{writeDelayMs}ms</span>
-					</div>
-					<div className={settingDescription}>
-						{t("settings:contextManagement.diagnostics.delayAfterWrite.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-include-current-time"
-					section="contextManagement"
-					label={t("settings:contextManagement.includeCurrentTime.label")}>
-					<LabeledCheckbox
+					<SliderRow
+						section="contextManagement"
+						settingId="context-write-delay"
+						label={t("settings:contextManagement.diagnostics.delayAfterWrite.label")}
+						description={t("settings:contextManagement.diagnostics.delayAfterWrite.description")}
+						min={0}
+						max={5000}
+						step={100}
+						value={writeDelayMs}
+						onChange={setWriteDelayMs}
+						testId="write-delay-slider"
+						valueText={`${writeDelayMs}ms`}
+					/>
+					<CheckboxRow
+						section="contextManagement"
+						settingId="context-include-current-time"
+						label={t("settings:contextManagement.includeCurrentTime.label")}
+						description={t("settings:contextManagement.includeCurrentTime.description")}
 						checked={includeCurrentTime}
-						onChange={(e: any) => setIncludeCurrentTime(e.target.checked)}
-						data-testid="include-current-time-checkbox">
-						<label className="font-medium">
-							{t("settings:contextManagement.includeCurrentTime.label")}
-						</label>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:contextManagement.includeCurrentTime.description")}
-					</div>
-				</SearchableSetting>
-
-				<SearchableSetting
-					settingId="context-include-current-cost"
-					section="contextManagement"
-					label={t("settings:contextManagement.includeCurrentCost.label")}>
-					<LabeledCheckbox
+						onChange={setIncludeCurrentTime}
+						testId="include-current-time-checkbox"
+					/>
+					<CheckboxRow
+						section="contextManagement"
+						settingId="context-include-current-cost"
+						label={t("settings:contextManagement.includeCurrentCost.label")}
+						description={t("settings:contextManagement.includeCurrentCost.description")}
 						checked={includeCurrentCost}
-						onChange={(e: any) => setIncludeCurrentCost(e.target.checked)}
-						data-testid="include-current-cost-checkbox">
-						<label className="font-medium">
-							{t("settings:contextManagement.includeCurrentCost.label")}
-						</label>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:contextManagement.includeCurrentCost.description")}
-					</div>
-				</SearchableSetting>
+						onChange={setIncludeCurrentCost}
+						testId="include-current-cost-checkbox"
+					/>
 				</SettingsCard>
 			</Section>
 			<Section className="pt-0">
 				<SettingsCard>
-				{/* Context Condensing Prompt Editor */}
-				<SearchableSetting
-					settingId="context-condense-prompt"
-					section="contextManagement"
-					label={t("prompts:supportPrompts.types.CONDENSE.label")}>
-					<div className="flex justify-between items-center mb-1">
-						<label className="block font-medium">{t("prompts:supportPrompts.types.CONDENSE.label")}</label>
-						<StandardTooltip content={t("prompts:supportPrompts.resetPrompt", { promptType: "CONDENSE" })}>
-							<Button
-								aria-label={t("prompts:supportPrompts.resetPrompt", { promptType: "CONDENSE" })}
-								variant="ghost"
-								size="icon"
-								onClick={handleCondenseReset}>
-								<span className="codicon codicon-discard"></span>
-							</Button>
-						</StandardTooltip>
-					</div>
-					<div className={cn(settingDescription, "mt-0 mb-2")}>
-						{t("prompts:supportPrompts.types.CONDENSE.description")}
-					</div>
-					<Textarea
-						value={getCondensePromptValue()}
-						onChange={(e) => updateCondensePrompt(e.target.value)}
-						rows={6}
-						className="w-full resize-y"
-						data-testid="condense-prompt-textarea"
-					/>
-				</SearchableSetting>
-
-				{/* Auto Condense Context */}
-				<SearchableSetting
-					settingId="context-auto-condense"
-					section="contextManagement"
-					label={t("settings:contextManagement.autoCondenseContext.name")}>
-					<LabeledCheckbox
-						checked={autoCondenseContext}
-						onChange={(e: any) => setAutoCondenseContext(e.target.checked)}
-						data-testid="auto-condense-context-checkbox">
-						<span className="font-medium">{t("settings:contextManagement.autoCondenseContext.name")}</span>
-					</LabeledCheckbox>
-				</SearchableSetting>
-				{autoCondenseContext && (
-					<SettingsNested>
-						<div className="flex items-center gap-2 font-medium">
-							<FoldVertical size={16} />
-							<div>{t("settings:contextManagement.condensingThreshold.label")}</div>
+					{/* Context Condensing Prompt Editor */}
+					<SearchableSetting
+						settingId="context-condense-prompt"
+						section="contextManagement"
+						label={t("prompts:supportPrompts.types.CONDENSE.label")}>
+						<div className="flex justify-between items-center mb-1">
+							<label className="block font-medium">
+								{t("prompts:supportPrompts.types.CONDENSE.label")}
+							</label>
+							<StandardTooltip
+								content={t("prompts:supportPrompts.resetPrompt", { promptType: "CONDENSE" })}>
+								<Button
+									aria-label={t("prompts:supportPrompts.resetPrompt", { promptType: "CONDENSE" })}
+									variant="ghost"
+									size="icon"
+									onClick={handleCondenseReset}>
+									<span className="codicon codicon-discard"></span>
+								</Button>
+							</StandardTooltip>
 						</div>
-						<div>
-							<Select
-								value={selectedThresholdProfile || "default"}
-								onValueChange={(value) => {
-									setSelectedThresholdProfile(value)
-								}}
-								data-testid="threshold-profile-select">
-								<SelectTrigger className="w-full">
-									<SelectValue
-										placeholder={
-											t("settings:contextManagement.condensingThreshold.selectProfile") ||
-											"Select profile for threshold"
-										}
+						<div className={cn(settingDescription, "mt-0 mb-2")}>
+							{t("prompts:supportPrompts.types.CONDENSE.description")}
+						</div>
+						<Textarea
+							value={supportPrompt.get(customSupportPrompts, "CONDENSE")}
+							onChange={(e) => setCondensePrompt(e.target.value)}
+							rows={6}
+							className="w-full resize-y"
+							data-testid="condense-prompt-textarea"
+						/>
+					</SearchableSetting>
+
+					<CheckboxRow
+						section="contextManagement"
+						settingId="context-auto-condense"
+						label={t("settings:contextManagement.autoCondenseContext.name")}
+						checked={autoCondenseContext}
+						onChange={setAutoCondenseContext}
+						testId="auto-condense-context-checkbox"
+					/>
+					{autoCondenseContext && (
+						<SettingsNested>
+							<div className="flex items-center gap-2 font-medium">
+								<FoldVertical size={16} />
+								<div>{t("settings:contextManagement.condensingThreshold.label")}</div>
+							</div>
+							<div>
+								<Select
+									value={selectedThresholdProfile || "default"}
+									onValueChange={(value) => {
+										setSelectedThresholdProfile(value)
+									}}
+									data-testid="threshold-profile-select">
+									<SelectTrigger className="w-full">
+										<SelectValue
+											placeholder={t(
+												"settings:contextManagement.condensingThreshold.selectProfile",
+											)}
+										/>
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="default">
+											{t("settings:contextManagement.condensingThreshold.defaultProfile")}
+										</SelectItem>
+										{listApiConfigMeta.map((config) => {
+											const profileThreshold = profileThresholds[config.id]
+											const thresholdDisplay =
+												profileThreshold !== undefined
+													? profileThreshold === -1
+														? ` ${t(
+																"settings:contextManagement.condensingThreshold.usesGlobal",
+																{
+																	threshold: autoCondenseContextPercent,
+																},
+															)}`
+														: ` (${profileThreshold}%)`
+													: ""
+											return (
+												<SelectItem key={config.id} value={config.id}>
+													{config.name}
+													{thresholdDisplay}
+												</SelectItem>
+											)
+										})}
+									</SelectContent>
+								</Select>
+							</div>
+
+							{/* Threshold Slider */}
+							<div>
+								<div className="flex items-center gap-2">
+									<Slider
+										min={10}
+										max={100}
+										step={1}
+										value={[getCurrentThresholdValue()]}
+										onValueChange={([value]) => handleThresholdChange(value)}
+										data-testid="condense-threshold-slider"
 									/>
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="default">
-										{t("settings:contextManagement.condensingThreshold.defaultProfile") ||
-											"Default (applies to all unconfigured profiles)"}
-									</SelectItem>
-									{(listApiConfigMeta || []).map((config) => {
-										const profileThreshold = profileThresholds[config.id]
-										const thresholdDisplay =
-											profileThreshold !== undefined
-												? profileThreshold === -1
-													? ` ${t(
-															"settings:contextManagement.condensingThreshold.usesGlobal",
-															{
-																threshold: autoCondenseContextPercent,
-															},
-														)}`
-													: ` (${profileThreshold}%)`
-												: ""
-										return (
+									<span className="w-20">{getCurrentThresholdValue()}%</span>
+								</div>
+								<div className={settingDescription}>
+									{selectedThresholdProfile === "default"
+										? t("settings:contextManagement.condensingThreshold.defaultDescription", {
+												threshold: autoCondenseContextPercent,
+											})
+										: t("settings:contextManagement.condensingThreshold.profileDescription")}
+								</div>
+							</div>
+
+							{/* Compaction API profile (background model with fallback) */}
+							<SearchableSetting
+								settingId="context-condense-profile"
+								section="contextManagement"
+								label={t("settings:contextManagement.condenseProfile.label")}>
+								<label className="block font-medium mb-1">
+									{t("settings:contextManagement.condenseProfile.label")}
+								</label>
+								<Select
+									value={autoCondenseContextApiConfigId || UNSET_PROFILE}
+									onValueChange={(value) => {
+										// "" (not undefined) so Save clears the host's value.
+										setAutoCondenseContextApiConfigId(value === UNSET_PROFILE ? "" : value)
+									}}
+									data-testid="condense-profile-select">
+									<SelectTrigger className="w-full">
+										<SelectValue
+											placeholder={t("settings:contextManagement.condenseProfile.useCurrent")}
+										/>
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={UNSET_PROFILE}>
+											{t("settings:contextManagement.condenseProfile.useCurrent")}
+										</SelectItem>
+										{listApiConfigMeta.map((config) => (
 											<SelectItem key={config.id} value={config.id}>
 												{config.name}
-												{thresholdDisplay}
 											</SelectItem>
-										)
-									})}
-								</SelectContent>
-							</Select>
-						</div>
+										))}
+									</SelectContent>
+								</Select>
+								<div className={settingDescription}>
+									{t("settings:contextManagement.condenseProfile.description")}
+								</div>
+							</SearchableSetting>
+						</SettingsNested>
+					)}
 
-						{/* Threshold Slider */}
-						<div>
-							<div className="flex items-center gap-2">
-								<Slider
-									min={10}
-									max={100}
-									step={1}
-									value={[getCurrentThresholdValue()]}
-									onValueChange={([value]) => handleThresholdChange(value)}
-									data-testid="condense-threshold-slider"
-								/>
-								<span className="w-20">{getCurrentThresholdValue()}%</span>
-							</div>
-							<div className={settingDescription}>
-								{selectedThresholdProfile === "default"
-									? t("settings:contextManagement.condensingThreshold.defaultDescription", {
-											threshold: autoCondenseContextPercent,
-										})
-									: t("settings:contextManagement.condensingThreshold.profileDescription")}
-							</div>
-						</div>
-
-						{/* Compaction API profile (background model with fallback) */}
-						<SearchableSetting
-							settingId="context-condense-profile"
-							section="contextManagement"
-							label={t("settings:contextManagement.condenseProfile.label")}>
-							<label className="block font-medium mb-1">
-								{t("settings:contextManagement.condenseProfile.label")}
-							</label>
-							<Select
-								value={autoCondenseContextApiConfigId || UNSET_PROFILE}
-								onValueChange={(value) => {
-									// "" (not undefined) so Save clears the host's value.
-									setAutoCondenseContextApiConfigId(value === UNSET_PROFILE ? "" : value)
-								}}
-								data-testid="condense-profile-select">
-								<SelectTrigger className="w-full">
-									<SelectValue
-										placeholder={t("settings:contextManagement.condenseProfile.useCurrent")}
-									/>
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={UNSET_PROFILE}>
-										{t("settings:contextManagement.condenseProfile.useCurrent")}
-									</SelectItem>
-									{(listApiConfigMeta || []).map((config) => (
-										<SelectItem key={config.id} value={config.id}>
-											{config.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<div className={settingDescription}>
-								{t("settings:contextManagement.condenseProfile.description")}
-							</div>
-						</SearchableSetting>
-					</SettingsNested>
-				)}
-
-				{/* Prune Before Condense */}
-				<SearchableSetting
-					settingId="context-prune-before-condense"
-					section="contextManagement"
-					label={t("settings:contextManagement.pruneBeforeCondense.label")}>
-					<LabeledCheckbox
-						checked={pruneBeforeCondense !== false}
-						onChange={(e: any) => setPruneBeforeCondense(e.target.checked)}
-						data-testid="prune-before-condense-checkbox">
-						<span className="font-medium">{t("settings:contextManagement.pruneBeforeCondense.label")}</span>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:contextManagement.pruneBeforeCondense.description")}
-					</div>
-				</SearchableSetting>
-
-				{pruneBeforeCondense !== false && (
-					<SettingsNested>
-					<SearchableSetting
-						settingId="context-prune-tool-result-budget"
+					<CheckboxRow
 						section="contextManagement"
-						label={t("settings:contextManagement.pruneToolResultBudget.label")}>
-						<div className="flex flex-col gap-2">
-							<span className="font-medium">
-								{t("settings:contextManagement.pruneToolResultBudget.label")}
-							</span>
-							<div className="flex items-center gap-4">
-								<Input
-									type="number"
-									pattern="[0-9]*"
-									className="w-28 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-									value={pruneToolResultBudget ?? PRUNE_CONDENSE_DEFAULTS.DEFAULT_TOOL_RESULT_BUDGET}
-									min={PRUNE_CONDENSE_DEFAULTS.MIN_TOOL_RESULT_BUDGET}
-									max={PRUNE_CONDENSE_DEFAULTS.MAX_TOOL_RESULT_BUDGET}
-									onChange={(e) => {
-										const newValue = parseInt(e.target.value, 10)
-										if (
-											!isNaN(newValue) &&
-											newValue >= PRUNE_CONDENSE_DEFAULTS.MIN_TOOL_RESULT_BUDGET &&
-											newValue <= PRUNE_CONDENSE_DEFAULTS.MAX_TOOL_RESULT_BUDGET
-										) {
-											setPruneToolResultBudget(newValue)
-										}
-									}}
-									onClick={(e) => e.currentTarget.select()}
-									data-testid="prune-tool-result-budget-input"
-								/>
-								<span>{t("settings:contextManagement.pruneToolResultBudget.bytes")}</span>
-							</div>
-						</div>
-						<div className={settingDescription}>
-							{t("settings:contextManagement.pruneToolResultBudget.description")}
-						</div>
-					</SearchableSetting>
-					</SettingsNested>
-				)}
+						settingId="context-prune-before-condense"
+						label={t("settings:contextManagement.pruneBeforeCondense.label")}
+						description={t("settings:contextManagement.pruneBeforeCondense.description")}
+						checked={pruneBeforeCondense !== false}
+						onChange={setPruneBeforeCondense}
+						testId="prune-before-condense-checkbox"
+					/>
+
+					{pruneBeforeCondense !== false && (
+						<SettingsNested>
+							<NumberRow
+								section="contextManagement"
+								settingId="context-prune-tool-result-budget"
+								label={t("settings:contextManagement.pruneToolResultBudget.label")}
+								description={t("settings:contextManagement.pruneToolResultBudget.description")}
+								unit={t("settings:contextManagement.pruneToolResultBudget.bytes")}
+								min={PRUNE_CONDENSE_DEFAULTS.MIN_TOOL_RESULT_BUDGET}
+								max={PRUNE_CONDENSE_DEFAULTS.MAX_TOOL_RESULT_BUDGET}
+								value={pruneToolResultBudget ?? PRUNE_CONDENSE_DEFAULTS.DEFAULT_TOOL_RESULT_BUDGET}
+								onChange={setPruneToolResultBudget}
+								testId="prune-tool-result-budget-input"
+								inputWidth="w-28"
+							/>
+						</SettingsNested>
+					)}
 				</SettingsCard>
 			</Section>
 		</div>
