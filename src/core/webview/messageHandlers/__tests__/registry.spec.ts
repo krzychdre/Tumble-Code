@@ -1,7 +1,6 @@
 // The routing table is assembled from domain modules with a plain object
 // merge, so a type claimed by two modules would silently lose one handler.
-// This spec guards the assembly; webviewMessageHandler.routing.spec.ts guards
-// what each handler does.
+// This spec guards the assembly.
 
 vi.mock("vscode", () => ({}))
 vi.mock("../../ClineProvider", () => ({ ClineProvider: class {} }))

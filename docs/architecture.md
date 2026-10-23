@@ -138,7 +138,7 @@ by no source file. The unused-key scan is per tree: a host key counts as used on
    `src/core/webview/messageHandlers/` (one module per domain, assembled in `index.ts`). Find your handler by the
    message type string; a new message gets its name in the domain's types file and its handler in the module of the
    same name (each module is typed to its domain, so a handler in the wrong module does not compile).
-   `webviewMessageHandler.routing.spec.ts` snapshots the side effects of every routed type.
+   `messageHandlers/__tests__/registry.spec.ts` checks that every routed type has exactly one handler.
 3. The answer goes back as an `ExtensionMessage` through `ClineProvider.postMessageToWebview` or one of the
    `postStateToWebview*` methods, and `ExtensionStateContext.tsx` merges it into React state (`case "state"`,
    `case "messageUpdated"`).

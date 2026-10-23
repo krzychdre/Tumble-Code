@@ -157,8 +157,7 @@ export function captureTelemetry(taskId?: string, includeTaskHistory?: boolean):
 
 /**
  * Back-compat facade over the functions above, kept as a plain object so the
- * existing call sites (`MessageEnhancer.enhanceMessage(...)`) and the
- * module mock in webviewMessageHandler.routing.spec.ts keep working
+ * existing call sites (`MessageEnhancer.enhanceMessage(...)`) keep working
  * unchanged. Prefer importing the functions directly in new code.
  */
 export const MessageEnhancer = {

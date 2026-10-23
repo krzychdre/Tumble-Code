@@ -151,9 +151,8 @@ sequenceDiagram
 ```
 
 `src/core/webview/messageHandlers/` has one module per domain (settings, codeIndex, messageEdits, mcp, history,
-...), about 140 routed message types in total. `registry.spec.ts` pins the set of routed types and
-`webviewMessageHandler.routing.spec.ts` snapshots each handler's side effects. A new message type gets its handler
-in the module of its domain and an entry in both specs.
+...), about 140 routed message types in total. `registry.spec.ts` checks that every routed type has exactly one
+handler and pins their count. A new message type gets its handler in the module of its domain and raises that count.
 
 ## Services
 
