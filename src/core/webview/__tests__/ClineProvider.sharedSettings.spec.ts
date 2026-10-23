@@ -8,56 +8,15 @@
 import * as vscode from "vscode"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
+import {
+	createMockContext,
+	createMockWebviewPanel,
+	createMockWebviewView,
+	createTestProvider,
+} from "./helpers/providerHarness"
 import { panelRegistry } from "../panelRegistry"
 import { ContextProxy } from "../../config/ContextProxy"
 import { webviewMessageHandler } from "../webviewMessageHandler"
-
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	CodeActionKind: {
-		QuickFix: { value: "quickfix" },
-		RefactorRewrite: { value: "refactor.rewrite" },
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
 
 vi.mock("../../task/Task", () => ({
 	Task: vi.fn().mockImplementation(function (options) {
@@ -259,99 +218,18 @@ vi.mock("@tumble-code/telemetry", () => ({
 
 type PostMessage = ReturnType<typeof vi.fn>
 
-const makeContext = () => {
-	const globalState: Record<string, unknown> = { mode: "code", currentApiConfigName: "default-profile" }
-	const workspaceState: Record<string, unknown> = {}
-	const secrets: Record<string, string | undefined> = {}
-	return {
-		extensionPath: "/test/path",
-		extensionUri: {} as vscode.Uri,
-		globalState: {
-			get: vi.fn().mockImplementation((key: string) => globalState[key]),
-			update: vi.fn().mockImplementation((key: string, value: unknown) => {
-				globalState[key] = value
-				return Promise.resolve()
-			}),
-			keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-		},
-		secrets: {
-			get: vi.fn().mockImplementation((key: string) => secrets[key]),
-			store: vi.fn().mockImplementation((key: string, value: string | undefined) => {
-				secrets[key] = value
-				return Promise.resolve()
-			}),
-			delete: vi.fn().mockImplementation((key: string) => {
-				delete secrets[key]
-				return Promise.resolve()
-			}),
-		},
-		workspaceState: {
-			get: vi
-				.fn()
-				.mockImplementation((key: string, defaultValue?: unknown) =>
-					key in workspaceState ? workspaceState[key] : defaultValue,
-				),
-			update: vi.fn().mockImplementation((key: string, value: unknown) => {
-				workspaceState[key] = value
-				return Promise.resolve()
-			}),
-			keys: vi.fn().mockImplementation(() => Object.keys(workspaceState)),
-		},
-		subscriptions: [],
-		extension: { packageJSON: { version: "1.0.0" } },
-		globalStorageUri: { fsPath: "/test/storage/path" },
-	} as unknown as vscode.ExtensionContext
-}
-
-const webviewFields = (postMessage: PostMessage) => ({
-	webview: {
-		postMessage,
-		html: "",
-		options: {},
-		onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })),
-		asWebviewUri: vi.fn(),
-		cspSource: "vscode-webview://test-csp-source",
-	},
-	visible: true,
-	onDidDispose: vi.fn(() => ({ dispose: vi.fn() })),
-})
-
-/** The sidebar: a WebviewView. */
-const sidebarView = (postMessage: PostMessage) =>
-	({
-		...webviewFields(postMessage),
-		onDidChangeVisibility: vi.fn(() => ({ dispose: vi.fn() })),
-	}) as unknown as vscode.WebviewView
-
-/** An editor tab: a WebviewPanel. */
-const tabPanel = (postMessage: PostMessage) =>
-	({
-		...webviewFields(postMessage),
-		onDidChangeViewState: vi.fn(() => ({ dispose: vi.fn() })),
-	}) as unknown as vscode.WebviewPanel
-
 const statePushes = (postMessage: PostMessage) =>
 	postMessage.mock.calls.map(([message]) => message).filter((message) => message?.type === "state")
-
-const mcpHubStub = () => ({
-	listTools: vi.fn().mockResolvedValue([]),
-	callTool: vi.fn().mockResolvedValue({ content: [] }),
-	listResources: vi.fn().mockResolvedValue([]),
-	readResource: vi.fn().mockResolvedValue({ contents: [] }),
-	getAllServers: vi.fn().mockReturnValue([]),
-})
 
 /** Longer than the 50 ms coalescing window plus the state build. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 200))
 
 describe("ClineProvider - shared settings reach every open panel", () => {
 	let context: vscode.ExtensionContext
-	let outputChannel: vscode.OutputChannel
 	let providers: ClineProvider[]
 
 	const createProvider = (renderContext: "sidebar" | "editor", contextProxy: ContextProxy) => {
-		const provider = new ClineProvider(context, outputChannel, renderContext, contextProxy)
-		provider.getMcpHub = vi.fn().mockReturnValue(mcpHubStub())
+		const provider = createTestProvider(context, renderContext, contextProxy)
 		providers.push(provider)
 		return provider
 	}
@@ -361,8 +239,7 @@ describe("ClineProvider - shared settings reach every open panel", () => {
 		if (!TelemetryService.hasInstance()) {
 			TelemetryService.createInstance([])
 		}
-		context = makeContext()
-		outputChannel = { appendLine: vi.fn(), clear: vi.fn(), dispose: vi.fn() } as unknown as vscode.OutputChannel
+		context = createMockContext()
 		providers = []
 	})
 
@@ -378,8 +255,8 @@ describe("ClineProvider - shared settings reach every open panel", () => {
 		const tab = createProvider("editor", contextProxy)
 		const sidebarPost = vi.fn().mockResolvedValue(true)
 		const tabPost = vi.fn().mockResolvedValue(true)
-		await sidebar.resolveWebviewView(sidebarView(sidebarPost))
-		await tab.resolveWebviewView(tabPanel(tabPost))
+		await sidebar.resolveWebviewView(createMockWebviewView(sidebarPost))
+		await tab.resolveWebviewView(createMockWebviewPanel(tabPost))
 		await settle()
 		sidebarPost.mockClear()
 		tabPost.mockClear()
@@ -431,7 +308,7 @@ describe("ClineProvider - shared settings reach every open panel", () => {
 		const contextProxy = new ContextProxy(context)
 		const sidebar = createProvider("sidebar", contextProxy)
 		const sidebarPost = vi.fn().mockResolvedValue(true)
-		await sidebar.resolveWebviewView(sidebarView(sidebarPost))
+		await sidebar.resolveWebviewView(createMockWebviewView(sidebarPost))
 		await settle()
 		sidebarPost.mockClear()
 
