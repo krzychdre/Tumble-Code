@@ -334,7 +334,6 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 			lineNavigationActive={!pickerState.isOpen}
 			placeholder={placeholder}
 			isActive={isActive}
-			showCursor={true}
 			prompt={prompt}
 			columns={columns}
 		/>

@@ -67,10 +67,6 @@ export interface MultilineTextInputProps {
 	 */
 	isActive?: boolean
 	/**
-	 * Whether to show the cursor
-	 */
-	showCursor?: boolean
-	/**
 	 * Prompt character for the first line
 	 */
 	prompt?: string
@@ -211,7 +207,6 @@ export function MultilineTextInput({
 	lineNavigationActive = true,
 	placeholder = "",
 	isActive = true,
-	showCursor = true,
 	prompt = "> ",
 	columns,
 }: MultilineTextInputProps) {
@@ -243,6 +238,36 @@ export function MultilineTextInput({
 			setCursorIndex(value.length)
 		}
 	}, [value, cursorIndex])
+
+	// Refs first, so the next keystroke sees the new state before React re-renders.
+	const moveCursor = (newCursorIndex: number) => {
+		cursorIndexRef.current = newCursorIndex
+		setCursorIndex(newCursorIndex)
+	}
+
+	const applyEdit = (newValue: string, newCursorIndex: number) => {
+		valueRef.current = newValue
+		cursorIndexRef.current = newCursorIndex
+		onChange(newValue)
+		setCursorIndex(newCursorIndex)
+	}
+
+	// Up (-1) or down (+1) one line, keeping the column where the line is long
+	// enough; past the first or last line it hands over to history navigation.
+	const moveLine = (delta: -1 | 1) => {
+		const currentValue = valueRef.current
+		const lineCount = currentValue.split("\n").length
+		const { line, col } = getCursorPosition(currentValue, cursorIndexRef.current)
+		const targetLine = line + delta
+
+		if (targetLine < 0) {
+			onUpAtFirstLine?.()
+		} else if (targetLine >= lineCount) {
+			onDownAtLastLine?.()
+		} else {
+			moveCursor(getIndexFromPosition(currentValue, targetLine, col))
+		}
+	}
 
 	// Handle keyboard input
 	useInput(
@@ -282,14 +307,10 @@ export function MultilineTextInput({
 				(input.startsWith("\x1b[") && input.includes(";2") && input.endsWith("u")) // General CSI u with shift modifier
 
 			if (isModifiedEnter) {
-				const newValue =
-					currentValue.slice(0, currentCursorIndex) + "\n" + currentValue.slice(currentCursorIndex)
-				const newCursorIndex = currentCursorIndex + 1
-				// Update refs immediately for next keystroke
-				valueRef.current = newValue
-				cursorIndexRef.current = newCursorIndex
-				onChange(newValue)
-				setCursorIndex(newCursorIndex)
+				applyEdit(
+					currentValue.slice(0, currentCursorIndex) + "\n" + currentValue.slice(currentCursorIndex),
+					currentCursorIndex + 1,
+				)
 				return
 			}
 
@@ -306,75 +327,31 @@ export function MultilineTextInput({
 				return
 			}
 
-			// Arrow up: move cursor up one line, or trigger history if on first line
-			if (key.upArrow) {
-				if (!showCursor || !lineNavigationActive) return
-				const lines = currentValue.split("\n")
-				const { line, col } = getCursorPosition(currentValue, currentCursorIndex)
-
-				if (line > 0) {
-					// Move to previous line
-					const targetLine = lines[line - 1]!
-					const newCol = Math.min(col, targetLine.length)
-					const newCursorIndex = getIndexFromPosition(currentValue, line - 1, newCol)
-					cursorIndexRef.current = newCursorIndex
-					setCursorIndex(newCursorIndex)
-				} else {
-					// On first line - trigger history navigation callback
-					onUpAtFirstLine?.()
+			// Arrow up/down: move between lines, or trigger history on the first/last line
+			if (key.upArrow || key.downArrow) {
+				if (lineNavigationActive) {
+					moveLine(key.upArrow ? -1 : 1)
 				}
 				return
 			}
 
-			// Arrow down: move cursor down one line, or trigger history if on last line
-			if (key.downArrow) {
-				if (!showCursor || !lineNavigationActive) return
-				const lines = currentValue.split("\n")
-				const { line, col } = getCursorPosition(currentValue, currentCursorIndex)
-
-				if (line < lines.length - 1) {
-					// Move to next line
-					const targetLine = lines[line + 1]!
-					const newCol = Math.min(col, targetLine.length)
-					const newCursorIndex = getIndexFromPosition(currentValue, line + 1, newCol)
-					cursorIndexRef.current = newCursorIndex
-					setCursorIndex(newCursorIndex)
-				} else {
-					// On last line - trigger history navigation callback
-					onDownAtLastLine?.()
-				}
-				return
-			}
-
-			// Arrow left: move cursor left
 			if (key.leftArrow) {
-				if (!showCursor) return
-				const newCursorIndex = Math.max(0, currentCursorIndex - 1)
-				cursorIndexRef.current = newCursorIndex
-				setCursorIndex(newCursorIndex)
+				moveCursor(Math.max(0, currentCursorIndex - 1))
 				return
 			}
 
-			// Arrow right: move cursor right
 			if (key.rightArrow) {
-				if (!showCursor) return
-				const newCursorIndex = Math.min(currentValue.length, currentCursorIndex + 1)
-				cursorIndexRef.current = newCursorIndex
-				setCursorIndex(newCursorIndex)
+				moveCursor(Math.min(currentValue.length, currentCursorIndex + 1))
 				return
 			}
 
 			// Backspace/Delete
 			if (key.backspace || key.delete) {
 				if (currentCursorIndex > 0) {
-					const newValue =
-						currentValue.slice(0, currentCursorIndex - 1) + currentValue.slice(currentCursorIndex)
-					const newCursorIndex = currentCursorIndex - 1
-					// Update refs immediately for next keystroke
-					valueRef.current = newValue
-					cursorIndexRef.current = newCursorIndex
-					onChange(newValue)
-					setCursorIndex(newCursorIndex)
+					applyEdit(
+						currentValue.slice(0, currentCursorIndex - 1) + currentValue.slice(currentCursorIndex),
+						currentCursorIndex - 1,
+					)
 				}
 				return
 			}
@@ -382,14 +359,10 @@ export function MultilineTextInput({
 			// Normal character input
 			if (input) {
 				const normalized = normalizeLineEndings(input)
-				const newValue =
-					currentValue.slice(0, currentCursorIndex) + normalized + currentValue.slice(currentCursorIndex)
-				const newCursorIndex = currentCursorIndex + normalized.length
-				// Update refs immediately for next keystroke
-				valueRef.current = newValue
-				cursorIndexRef.current = newCursorIndex
-				onChange(newValue)
-				setCursorIndex(newCursorIndex)
+				applyEdit(
+					currentValue.slice(0, currentCursorIndex) + normalized + currentValue.slice(currentCursorIndex),
+					currentCursorIndex + normalized.length,
+				)
 			}
 		},
 		{ isActive },
@@ -408,9 +381,9 @@ export function MultilineTextInput({
 
 	// Determine which line and column the cursor is on
 	const cursorPosition = useMemo(() => {
-		if (!showCursor || !isActive) return null
+		if (!isActive) return null
 		return getCursorPosition(value, cursorIndex)
-	}, [value, cursorIndex, showCursor, isActive])
+	}, [value, cursorIndex, isActive])
 
 	// Calculate visual rows with wrapping
 	const visualRows = useMemo(() => {
