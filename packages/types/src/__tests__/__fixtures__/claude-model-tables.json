@@ -92,7 +92,8 @@
 				"cacheReadsPrice": 0.3,
 				"supportsReasoningBudget": true,
 				"supportsReasoningEffort": ["low", "medium", "high", "max"],
-				"reasoningEffort": "high"
+				"reasoningEffort": "high",
+				"supportsTemperature": false
 			},
 			"claude-sonnet-4-5": {
 				"maxTokens": 64000,
@@ -113,7 +114,8 @@
 						"cacheReadsPrice": 0.6
 					}
 				],
-				"deprecated": true
+				"deprecated": true,
+				"supportsTemperature": false
 			},
 			"claude-opus-4-6": {
 				"maxTokens": 128000,
@@ -126,7 +128,8 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningEffort": ["low", "medium", "high", "max"],
-				"reasoningEffort": "high"
+				"reasoningEffort": "high",
+				"supportsTemperature": false
 			},
 			"claude-opus-4-7": {
 				"maxTokens": 128000,
@@ -201,7 +204,8 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningEffort": ["low", "medium", "high"],
-				"reasoningEffort": "high"
+				"reasoningEffort": "high",
+				"supportsTemperature": false
 			},
 			"claude-haiku-5-5": {
 				"maxTokens": 128000,
@@ -236,7 +240,8 @@
 				"cacheWritesPrice": 1.25,
 				"cacheReadsPrice": 0.1,
 				"supportsReasoningBudget": true,
-				"description": "Claude Haiku 4.5 delivers near-frontier intelligence at lightning speeds with extended thinking, vision, and multilingual support."
+				"description": "Claude Haiku 4.5 delivers near-frontier intelligence at lightning speeds with extended thinking, vision, and multilingual support.",
+				"supportsTemperature": false
 			}
 		}
 	},
@@ -300,7 +305,8 @@
 						"cacheWritesPrice": 7.5,
 						"cacheReadsPrice": 0.6
 					}
-				]
+				],
+				"supportsTemperature": false
 			},
 			"claude-sonnet-4-5@20250929": {
 				"maxTokens": 64000,
@@ -320,7 +326,8 @@
 						"cacheWritesPrice": 7.5,
 						"cacheReadsPrice": 0.6
 					}
-				]
+				],
+				"supportsTemperature": false
 			},
 			"claude-sonnet-4-6": {
 				"maxTokens": 128000,
@@ -333,7 +340,8 @@
 				"cacheReadsPrice": 0.3,
 				"supportsReasoningBudget": true,
 				"supportsReasoningEffort": ["low", "medium", "high", "max"],
-				"reasoningEffort": "high"
+				"reasoningEffort": "high",
+				"supportsTemperature": false
 			},
 			"claude-haiku-5-5": {
 				"maxTokens": 128000,
@@ -367,7 +375,8 @@
 				"outputPrice": 5,
 				"cacheWritesPrice": 1.25,
 				"cacheReadsPrice": 0.1,
-				"supportsReasoningBudget": true
+				"supportsReasoningBudget": true,
+				"supportsTemperature": false
 			},
 			"claude-opus-4-6": {
 				"maxTokens": 128000,
@@ -380,7 +389,8 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningEffort": ["low", "medium", "high", "max"],
-				"reasoningEffort": "high"
+				"reasoningEffort": "high",
+				"supportsTemperature": false
 			},
 			"claude-opus-4-7": {
 				"maxTokens": 128000,
@@ -519,7 +529,8 @@
 				"cacheReadsPrice": 0.5,
 				"supportsReasoningBudget": true,
 				"supportsReasoningEffort": ["low", "medium", "high"],
-				"reasoningEffort": "high"
+				"reasoningEffort": "high",
+				"supportsTemperature": false
 			},
 			"claude-opus-4@20250514": {
 				"maxTokens": 32000,
@@ -529,7 +540,8 @@
 				"inputPrice": 15,
 				"outputPrice": 75,
 				"cacheWritesPrice": 18.75,
-				"cacheReadsPrice": 1.5
+				"cacheReadsPrice": 1.5,
+				"supportsTemperature": false
 			}
 		}
 	},

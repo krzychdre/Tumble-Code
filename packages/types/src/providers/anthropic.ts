@@ -1,26 +1,26 @@
 import type { ModelInfo } from "../model.js"
 
-import { claudeModels, oneMillionContextIds } from "./claude.js"
+import { claudeModels, oneMillionContextIds, withoutTemperature } from "./claude.js"
 
 export type AnthropicModelId = keyof typeof anthropicModels
 export const anthropicDefaultModelId: AnthropicModelId = "claude-opus-5"
 
 export const anthropicModels = {
-	"claude-opus-5-5": { ...claudeModels["opus-5-5"] },
-	"claude-opus-5": { ...claudeModels["opus-5"] },
-	"claude-sonnet-5-5": { ...claudeModels["sonnet-5-5"] },
-	"claude-sonnet-5": { ...claudeModels["sonnet-5"] },
-	"claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"] },
+	"claude-opus-5-5": withoutTemperature(claudeModels["opus-5-5"]),
+	"claude-opus-5": withoutTemperature(claudeModels["opus-5"]),
+	"claude-sonnet-5-5": withoutTemperature(claudeModels["sonnet-5-5"]),
+	"claude-sonnet-5": withoutTemperature(claudeModels["sonnet-5"]),
+	"claude-sonnet-4-6": withoutTemperature(claudeModels["sonnet-4-6"]),
 	// Deprecated on the Claude API on 2026-09-30, retired on 2026-11-30 (model deprecations page).
-	"claude-sonnet-4-5": { ...claudeModels["sonnet-4-5"], deprecated: true },
-	"claude-opus-4-6": { ...claudeModels["opus-4-6"] },
-	"claude-opus-4-7": { ...claudeModels["opus-4-7"] },
-	"claude-opus-4-8": { ...claudeModels["opus-4-8"] },
-	"claude-fable-5-1": { ...claudeModels["fable-5-1"] },
-	"claude-fable-5": { ...claudeModels["fable-5"] },
-	"claude-opus-4-5-20251101": { ...claudeModels["opus-4-5"] },
-	"claude-haiku-5-5": { ...claudeModels["haiku-5-5"] },
-	"claude-haiku-4-5-20251001": { ...claudeModels["haiku-4-5"] },
+	"claude-sonnet-4-5": { ...withoutTemperature(claudeModels["sonnet-4-5"]), deprecated: true },
+	"claude-opus-4-6": withoutTemperature(claudeModels["opus-4-6"]),
+	"claude-opus-4-7": withoutTemperature(claudeModels["opus-4-7"]),
+	"claude-opus-4-8": withoutTemperature(claudeModels["opus-4-8"]),
+	"claude-fable-5-1": withoutTemperature(claudeModels["fable-5-1"]),
+	"claude-fable-5": withoutTemperature(claudeModels["fable-5"]),
+	"claude-opus-4-5-20251101": withoutTemperature(claudeModels["opus-4-5"]),
+	"claude-haiku-5-5": withoutTemperature(claudeModels["haiku-5-5"]),
+	"claude-haiku-4-5-20251001": withoutTemperature(claudeModels["haiku-4-5"]),
 } as const satisfies Record<string, ModelInfo>
 
 /**

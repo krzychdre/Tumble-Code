@@ -9,6 +9,9 @@ import { claudeModels } from "../providers/claude.js"
 import { litellmDefaultModelId } from "../providers/lite-llm.js"
 import { OPEN_ROUTER_PROMPT_CACHING_MODELS, OPEN_ROUTER_REASONING_BUDGET_MODELS } from "../providers/openrouter.js"
 import { VERTEX_1M_CONTEXT_MODEL_IDS, vertexModels } from "../providers/vertex.js"
+import { minimaxModels } from "../providers/minimax.js"
+import { resolveProviderModelSelection } from "../provider-model-selection.js"
+import type { ProviderName } from "../provider-settings.js"
 
 // Claude models Anthropic has retired: requests to them fail on every platform,
 // so no model table should offer them (Anthropic model list, 2026-09-25).
@@ -192,6 +195,30 @@ describe("Claude model tables", () => {
 		expect(bedrockModels["anthropic.claude-sonnet-4-20250514-v1:0"].tiers).toEqual(
 			vertexModels["claude-sonnet-4@20250514"].tiers,
 		)
+	})
+
+	// The Anthropic and Vertex handlers send no temperature (Anthropic API version 2026-10-21 rejects it), so
+	// the settings must hide the control for every Claude model there, also for an unknown id. Bedrock and
+	// MiniMax still send it.
+	it("take temperature from no Claude model on Anthropic and Vertex, only on Bedrock and MiniMax", () => {
+		const temperature = (apiProvider: ProviderName, apiModelId: string) =>
+			resolveProviderModelSelection({ apiProvider, apiModelId })!.info.supportsTemperature !== false
+		const claudeIds = (table: Record<string, ModelInfo>) => Object.keys(table).filter((id) => id.includes("claude"))
+
+		for (const id of [...Object.keys(anthropicModels), "claude-next-preview", "proxy/claude-sonnet-4-5-x"]) {
+			expect(temperature("anthropic", id), id).toBe(false)
+		}
+		for (const id of [...claudeIds(vertexModels), "claude-next-preview"]) {
+			expect(temperature("vertex", id), id).toBe(false)
+		}
+		expect(temperature("vertex", "gemini-2.5-pro")).toBe(true)
+		expect(
+			(bedrockModels as Record<string, ModelInfo>)["anthropic.claude-sonnet-4-5-20250929-v1:0"]!
+				.supportsTemperature,
+		).not.toBe(false)
+		for (const id of Object.keys(minimaxModels)) {
+			expect(temperature("minimax", id), id).toBe(true)
+		}
 	})
 
 	// Bedrock sends adaptive thinking for Opus 4.7+ and Haiku 5.5 by model id (isAdaptiveThinkingModel), the same

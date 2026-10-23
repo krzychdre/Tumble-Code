@@ -942,7 +942,6 @@ describe("VertexHandler", () => {
 			const result = handler.getModel()
 			expect(result.maxTokens).toBe(32_768)
 			expect(result.reasoningBudget).toEqual(16_384)
-			expect(result.temperature).toBe(1.0)
 		})
 
 		it("does not honor custom maxTokens when the reasoning budget is off", () => {
@@ -956,7 +955,6 @@ describe("VertexHandler", () => {
 			const result = handler.getModel()
 			expect(result.maxTokens).toBe(8192)
 			expect(result.reasoningBudget).toBeUndefined()
-			expect(result.temperature).toBe(0)
 		})
 
 		it("should enable 1M context for Claude Sonnet 4 when beta flag is set", () => {
@@ -1169,7 +1167,6 @@ describe("VertexHandler", () => {
 
 			expect(modelInfo.id).toBe("claude-sonnet-4-5@20250929")
 			expect(modelInfo.reasoningBudget).toBe(4096)
-			expect(modelInfo.temperature).toBe(1.0) // Thinking requires temperature 1.0.
 		})
 
 		it("should calculate thinking budget correctly", () => {

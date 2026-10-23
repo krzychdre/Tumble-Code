@@ -48,13 +48,12 @@ describe("Vertex unknown-id stand-ins", () => {
 		expect(vertexModelFamily({ apiModelId: vertexUnknownGeminiModelStandInId })).toBe("gemini")
 	})
 
-	// A newer Claude we know nothing about must get neither an effort level nor a dropped temperature.
-	it("the Claude stand-in lists no effort levels and accepts temperature", () => {
+	// A newer Claude we know nothing about must get no effort level.
+	it("the Claude stand-in lists no effort levels", () => {
 		const info = table[vertexUnknownClaudeModelStandInId]!
 
 		expect(info.supportsReasoningEffort).toBeUndefined()
 		expect(info.reasoningEffort).toBeUndefined()
-		expect(info.supportsTemperature).not.toBe(false)
 	})
 
 	// getGeminiReasoning sends a thinking budget only for budget models and a thinking level only from an
