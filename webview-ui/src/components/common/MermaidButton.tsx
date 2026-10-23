@@ -20,16 +20,23 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 	const [copyFeedback, setCopyFeedback] = useState(false)
 	const [isHovering, setIsHovering] = useState(false)
 	const [modalViewMode, setModalViewMode] = useState<"diagram" | "code">("diagram")
+	// The rendered diagram, copied from the container when the modal opens.
+	const [diagramHtml, setDiagramHtml] = useState("")
 	const { copyWithFeedback } = useCopyToClipboard()
 	const { t } = useAppTranslation()
+
+	const openModal = (mode: "diagram" | "code") => {
+		setDiagramHtml(containerRef.current?.innerHTML ?? "")
+		setShowModal(true)
+		setModalViewMode(mode)
+	}
 
 	/**
 	 * Opens a modal with the diagram for zooming
 	 */
 	const handleZoom = async (e: React.MouseEvent) => {
 		e.stopPropagation()
-		setShowModal(true)
-		setModalViewMode("diagram")
+		openModal("diagram")
 	}
 
 	/**
@@ -100,10 +107,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 							onZoom={handleZoom}
 							onCopy={handleCopy}
 							onSave={handleSave}
-							onViewCode={() => {
-								setShowModal(true)
-								setModalViewMode("code")
-							}}
+							onViewCode={() => openModal("code")}
 							copyFeedback={copyFeedback}
 						/>
 					</div>
@@ -163,10 +167,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 					)
 				}>
 				{modalViewMode === "diagram" ? (
-					containerRef.current &&
-					containerRef.current.innerHTML && (
-						<div dangerouslySetInnerHTML={{ __html: containerRef.current.innerHTML }} />
-					)
+					diagramHtml && <div dangerouslySetInnerHTML={{ __html: diagramHtml }} />
 				) : (
 					<textarea
 						className="w-full min-h-[200px] bg-vscode-editor-background text-vscode-editor-foreground border border-input-frame hover:border-input-frame-hover rounded-control p-2 font-mono resize-y focus-ring"

@@ -1,4 +1,4 @@
-import { memo } from "react"
+import { memo, useState } from "react"
 import { Check, CircleDashed } from "lucide-react"
 
 import { getModeBySlug } from "@shared/modes"
@@ -27,6 +27,7 @@ interface TaskDetailsProps {
 const TaskDetails = ({ item, id }: TaskDetailsProps) => {
 	const { t } = useAppTranslation()
 	const customModes = useExtensionSelector((s) => s.customModes)
+	const [now] = useState(Date.now)
 
 	const modeName = item.mode ? modeLabel(getModeBySlug(item.mode, customModes)?.name ?? item.mode) : undefined
 	// History saved before `outcome` existed falls back to the status a subtask
@@ -54,7 +55,7 @@ const TaskDetails = ({ item, id }: TaskDetailsProps) => {
 		),
 		<StandardTooltip key="time" content={new Date(item.ts).toLocaleString()}>
 			<span className="tabular-nums">
-				{sameDay(item.ts, Date.now()) ? formatTimestamp(item.ts) : formatDateTime(item.ts)}
+				{sameDay(item.ts, now) ? formatTimestamp(item.ts) : formatDateTime(item.ts)}
 			</span>
 		</StandardTooltip>,
 		outcome && (

@@ -88,6 +88,8 @@ const UsageProgressBar: React.FC<{ usedPercent: number; label?: string }> = ({ u
 export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboardProps> = ({ isAuthenticated }) => {
 	const { t } = useAppTranslation()
 	const [rateLimits, setRateLimits] = useState<OpenAiCodexRateLimitInfo | null>(null)
+	// The time remaining until a reset is counted from when the limits arrived.
+	const [receivedAt, setReceivedAt] = useState(0)
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
@@ -111,6 +113,7 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 					setRateLimits(null)
 				} else if (message.values) {
 					setRateLimits(message.values as OpenAiCodexRateLimitInfo)
+					setReceivedAt(Date.now())
 					setError(null)
 				}
 			}
@@ -163,11 +166,11 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 	const planLabel = formatPlanLabel(planType, t)
 
 	const primaryWindowLabel = primary ? formatWindowLabel(primary.windowMinutes, t) : undefined
-	const primaryTimeRemaining = primary?.resetsAt ? formatTimeRemainingMs(primary.resetsAt - Date.now(), t) : ""
+	const primaryTimeRemaining = primary?.resetsAt ? formatTimeRemainingMs(primary.resetsAt - receivedAt, t) : ""
 	const primaryUsed = primary ? Math.round(primary.usedPercent) : undefined
 
 	const secondaryWindowLabel = secondary ? formatWindowLabel(secondary.windowMinutes, t) : undefined
-	const secondaryTimeRemaining = secondary?.resetsAt ? formatTimeRemainingMs(secondary.resetsAt - Date.now(), t) : ""
+	const secondaryTimeRemaining = secondary?.resetsAt ? formatTimeRemainingMs(secondary.resetsAt - receivedAt, t) : ""
 	const secondaryUsed = secondary ? Math.round(secondary.usedPercent) : undefined
 
 	const getUsageStatusLabel = (used: number | undefined, timeRemaining: string, resetAt?: number) => {

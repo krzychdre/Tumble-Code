@@ -11,7 +11,7 @@
  *   moves to `USER_BROWSING_HISTORY` and prevents forced re-pinning
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "react-use"
 import debounce from "debounce"
 import type { VirtuosoHandle } from "react-virtuoso"
@@ -95,7 +95,6 @@ export function useScrollLifecycle({
 	// --- Hydration window ---
 	const isHydratingRef = useRef(false)
 	const hydrationTimeoutRef = useRef<number | null>(null)
-	const hydrationRetryUsedRef = useRef(false)
 
 	// --- Pointer scroll tracking ---
 	const pointerScrollActiveRef = useRef(false)
@@ -144,15 +143,17 @@ export function useScrollLifecycle({
 	// Scroll commands
 	// -----------------------------------------------------------------------
 
-	const scrollToBottomSmooth = useMemo(
-		() =>
-			debounce(
-				() => virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "smooth" }),
-				10,
-				{ immediate: true },
-			),
-		[virtuosoRef],
-	)
+	// Built in an effect, not during render, because the debounced callback reads virtuosoRef.
+	const scrollToBottomSmoothRef = useRef<(() => void) | null>(null)
+	useEffect(() => {
+		const scroll = debounce(
+			() => virtuosoRef.current?.scrollToIndex({ index: "LAST", align: "end", behavior: "smooth" }),
+			10,
+			{ immediate: true },
+		)
+		scrollToBottomSmoothRef.current = scroll
+		return () => scroll.clear()
+	}, [virtuosoRef])
 
 	const scrollToBottomAuto = useCallback(() => {
 		virtuosoRef.current?.scrollToIndex({
@@ -164,49 +165,45 @@ export function useScrollLifecycle({
 
 	const clearHydrationWindow = useCallback(() => {
 		isHydratingRef.current = false
-		hydrationRetryUsedRef.current = false
 		if (hydrationTimeoutRef.current !== null) {
 			window.clearTimeout(hydrationTimeoutRef.current)
 			hydrationTimeoutRef.current = null
 		}
 	}, [])
 
-	const finishHydrationWindow = useCallback(() => {
+	// End of the window: a hydrating view anchors (at the bottom, or after the one retry, rather than
+	// downgrading to browsing because of non-user transient drift).
+	const endHydrationWindow = useCallback(() => {
 		if (!isMountedRef.current || !isHydratingRef.current) {
 			return
 		}
-
 		if (scrollPhaseRef.current === "HYDRATING_PINNED_TO_BOTTOM") {
-			if (isAtBottomRef.current) {
-				enterAnchoredFollowing()
-			} else {
-				if (!hydrationRetryUsedRef.current) {
-					hydrationRetryUsedRef.current = true
-					scrollToBottomAuto()
-					hydrationTimeoutRef.current = window.setTimeout(() => {
-						finishHydrationWindow()
-					}, HYDRATION_RETRY_WINDOW_MS)
-					return
-				}
-
-				// Retry budget exhausted. Keep anchored follow rather than
-				// downgrading to browsing mode due to non-user transient drift.
-				enterAnchoredFollowing()
-			}
+			enterAnchoredFollowing()
 		}
-
 		clearHydrationWindow()
-	}, [clearHydrationWindow, enterAnchoredFollowing, scrollToBottomAuto])
+	}, [clearHydrationWindow, enterAnchoredFollowing])
+
+	// End of the first window: not at the bottom yet, so scroll once more and end after a short retry window.
+	const finishHydrationWindow = useCallback(() => {
+		if (
+			isMountedRef.current &&
+			isHydratingRef.current &&
+			scrollPhaseRef.current === "HYDRATING_PINNED_TO_BOTTOM" &&
+			!isAtBottomRef.current
+		) {
+			scrollToBottomAuto()
+			hydrationTimeoutRef.current = window.setTimeout(endHydrationWindow, HYDRATION_RETRY_WINDOW_MS)
+			return
+		}
+		endHydrationWindow()
+	}, [endHydrationWindow, scrollToBottomAuto])
 
 	const startHydrationWindow = useCallback(() => {
 		isHydratingRef.current = true
-		hydrationRetryUsedRef.current = false
 		if (hydrationTimeoutRef.current !== null) {
 			window.clearTimeout(hydrationTimeoutRef.current)
 		}
-		hydrationTimeoutRef.current = window.setTimeout(() => {
-			finishHydrationWindow()
-		}, HYDRATION_WINDOW_MS)
+		hydrationTimeoutRef.current = window.setTimeout(finishHydrationWindow, HYDRATION_WINDOW_MS)
 
 		scrollToBottomAuto()
 	}, [finishHydrationWindow, scrollToBottomAuto])
@@ -222,9 +219,8 @@ export function useScrollLifecycle({
 			isMountedRef.current = false
 			clearHydrationWindow()
 			cancelReanchorFrame()
-			scrollToBottomSmooth.clear()
 		}
-	}, [cancelReanchorFrame, clearHydrationWindow, scrollToBottomSmooth])
+	}, [cancelReanchorFrame, clearHydrationWindow])
 
 	// Task switch: reset and begin a short hydration window
 	useEffect(() => {
@@ -263,13 +259,13 @@ export function useScrollLifecycle({
 			const shouldForcePinForAnchoredStreaming = scrollPhaseRef.current === "ANCHORED_FOLLOWING" && isStreaming
 			if (isAtBottomRef.current || shouldForcePinForAnchoredStreaming) {
 				if (isTaller) {
-					scrollToBottomSmooth()
+					scrollToBottomSmoothRef.current?.()
 				} else {
 					scrollToBottomAuto()
 				}
 			}
 		},
-		[isStreaming, scrollToBottomSmooth, scrollToBottomAuto],
+		[isStreaming, scrollToBottomAuto],
 	)
 
 	// -----------------------------------------------------------------------

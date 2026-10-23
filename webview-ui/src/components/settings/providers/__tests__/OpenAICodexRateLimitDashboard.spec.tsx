@@ -18,6 +18,10 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 					return "Weekly limit"
 				case "settings:providers.openAiCodexRateLimits.usedPercent":
 					return `${options?.percent ?? ""}% used`
+				case "settings:providers.openAiCodexRateLimits.duration.hoursMinutes":
+					return `${options?.hours}h ${options?.minutes}m`
+				case "settings:providers.openAiCodexRateLimits.resetsIn":
+					return `resets in ${options?.time}`
 				default:
 					return key
 			}
@@ -75,5 +79,23 @@ describe("OpenAICodexRateLimitDashboard", () => {
 			expect(screen.getByText(/12% used/)).toBeInTheDocument()
 			expect(screen.getByText(/46% used/)).toBeInTheDocument()
 		})
+	})
+
+	it("counts the time until a reset from when the limits arrived", async () => {
+		const arrivedAt = 1_000_000
+		vi.spyOn(Date, "now").mockReturnValue(arrivedAt)
+		render(<OpenAICodexRateLimitDashboard isAuthenticated={true} />)
+
+		window.dispatchEvent(
+			new MessageEvent("message", {
+				data: {
+					type: "openAiCodexRateLimits",
+					values: { primary: { usedPercent: 10, windowMinutes: 300, resetsAt: arrivedAt + 90 * 60_000 } },
+				},
+			}),
+		)
+
+		expect(await screen.findByText(/resets in 1h 30m/)).toBeInTheDocument()
+		vi.mocked(Date.now).mockRestore()
 	})
 })

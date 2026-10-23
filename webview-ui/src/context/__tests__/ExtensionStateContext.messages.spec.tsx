@@ -21,9 +21,13 @@ vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 let latest: ExtensionStateContextType | undefined
 let renders = 0
 
-const Probe = () => {
-	latest = useExtensionState()
+const recordRender = (state: ExtensionStateContextType) => {
+	latest = state
 	renders++
+}
+
+const Probe = () => {
+	recordRender(useExtensionState())
 	return null
 }
 

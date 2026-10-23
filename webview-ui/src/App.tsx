@@ -116,6 +116,9 @@ const App = () => {
 	const chatViewRef = useRef<ChatViewRef>(null)
 	const handledImportRef = useRef<number | undefined>(undefined)
 
+	const [currentSection, setCurrentSection] = useState<string | undefined>(undefined)
+	const [currentMarketplaceTab, setCurrentMarketplaceTab] = useState<string | undefined>(undefined)
+
 	const switchTab = useCallback((newTab: Tab) => {
 		setCurrentSection(undefined)
 		setCurrentMarketplaceTab(undefined)
@@ -126,9 +129,6 @@ const App = () => {
 			setTab(newTab)
 		}
 	}, [])
-
-	const [currentSection, setCurrentSection] = useState<string | undefined>(undefined)
-	const [currentMarketplaceTab, setCurrentMarketplaceTab] = useState<string | undefined>(undefined)
 
 	// The subagent whose transcript is open, and the view to go back to (the
 	// chat from the subagents panel, the history from a history row).
