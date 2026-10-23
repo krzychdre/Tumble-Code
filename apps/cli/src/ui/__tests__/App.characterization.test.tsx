@@ -10,12 +10,14 @@
  *
  * Determinism: `Date` and the timer functions are faked, so the spinner's
  * elapsed time, the store's 150 ms streaming debounce and toasts only move
- * when a step advances them. `setImmediate` stays real because React's
- * scheduler runs passive effects on it; `flush` alternates the two.
+ * when a step advances them. React's scheduler renders on a real macrotask
+ * that fake timers never run, so every step runs inside `act()`, which renders
+ * before it returns.
  */
 
 import { EventEmitter } from "events"
 import path from "path"
+import { act } from "react"
 import { stripVTControlCharacters } from "util"
 
 import { render } from "ink-testing-library"
@@ -46,8 +48,6 @@ vi.mock("../components/TranscriptStatic.js", async (importOriginal) => {
 	}
 })
 
-const realSetImmediate = setImmediate
-
 const WORKSPACE = path.resolve("/tmp/cli-app-characterization")
 const START = new Date("2026-01-01T12:00:00Z").getTime()
 
@@ -75,13 +75,14 @@ class FakeHost extends EventEmitter {
 	dispose = vi.fn(async () => {})
 }
 
-/** Let React run its passive effects and the faked timers fire, a few rounds. */
+/**
+ * Advance the faked timers in a few rounds, rendering after each, so timers
+ * that an effect starts in one round fire in the next.
+ */
 async function flush(ms = 200) {
 	for (let i = 0; i < 4; i++) {
-		await new Promise<void>((resolve) => realSetImmediate(resolve))
-		await vi.advanceTimersByTimeAsync(ms / 4)
+		await act(() => vi.advanceTimersByTimeAsync(ms / 4))
 	}
-	await new Promise<void>((resolve) => realSetImmediate(resolve))
 }
 
 function normalize(frame: string | undefined): string {
@@ -129,8 +130,10 @@ interface Harness {
 	emit: (step: string, message: ExtensionMessage) => Promise<void>
 	/** Type into the terminal, settle, and record the frame. */
 	type: (step: string, input: string) => Promise<void>
-	/** Settle and record the frame. */
-	snap: (step: string) => Promise<void>
+	/** Emit an event of the host's client, settle, and record the frame. */
+	clientEvent: (step: string, event: string, ...args: unknown[]) => Promise<void>
+	/** Settle (advancing the clock by `ms`, 200 by default) and record the frame. */
+	snap: (step: string, ms?: number) => Promise<void>
 	unmount: () => void
 }
 
@@ -156,11 +159,14 @@ async function start(options: { nonInteractive?: boolean; prompt?: string } = {}
 		createExtensionHost,
 	}
 
-	const view = render(<App {...props} />)
+	let view!: ReturnType<typeof render>
+	await act(async () => {
+		view = render(<App {...props} />)
+	})
 	const frames: Harness["frames"] = []
 
-	const snap = async (step: string) => {
-		await flush()
+	const snap = async (step: string, ms?: number) => {
+		await flush(ms)
 		frames.push({ step, frame: normalize(view.lastFrame()), staticItems: staticRegion.last.join(" ") })
 	}
 
@@ -171,20 +177,21 @@ async function start(options: { nonInteractive?: boolean; prompt?: string } = {}
 	}
 
 	const created = host
+	const run = async (step: string, action: () => unknown) => {
+		await act(async () => {
+			action()
+		})
+		await snap(step)
+	}
 
 	return {
 		host: created,
 		frames,
-		emit: async (step, message) => {
-			created.emit("extensionWebviewMessage", message)
-			await snap(step)
-		},
-		type: async (step, input) => {
-			view.stdin.write(input)
-			await snap(step)
-		},
+		emit: (step, message) => run(step, () => created.emit("extensionWebviewMessage", message)),
+		type: (step, input) => run(step, () => view.stdin.write(input)),
+		clientEvent: (step, event, ...args) => run(step, () => created.client.emit(event, ...args)),
 		snap,
-		unmount: () => view.unmount(),
+		unmount: () => act(() => view.unmount()),
 	}
 }
 
@@ -215,6 +222,7 @@ describe("App characterization (recorded message sequences)", () => {
 	const originalRows = Object.getOwnPropertyDescriptor(process.stdout, "rows")
 
 	beforeEach(() => {
+		vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true)
 		vi.useFakeTimers({
 			toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
 			now: START,
@@ -230,6 +238,7 @@ describe("App characterization (recorded message sequences)", () => {
 
 	afterEach(() => {
 		vi.useRealTimers()
+		vi.unstubAllGlobals()
 		for (const [key, descriptor] of [
 			["columns", originalColumns],
 			["rows", originalRows],
@@ -427,8 +436,7 @@ describe("App characterization (recorded message sequences)", () => {
 		expect(h.frames.at(-1)!.frame).toContain(`Auto-selecting "Polish" in ${FOLLOWUP_TIMEOUT_SECONDS}s`)
 
 		await h.type(`pressed ${name} arrow`, key)
-		await vi.advanceTimersByTimeAsync(FOLLOWUP_TIMEOUT_SECONDS * 1000)
-		await h.snap("countdown time passed")
+		await h.snap("countdown time passed", FOLLOWUP_TIMEOUT_SECONDS * 1000)
 
 		expect(h.frames.at(-1)!.frame).not.toContain("Auto-selecting")
 		expect(h.host.sent.filter((m) => m.type === "askResponse")).toEqual([])
@@ -445,8 +453,7 @@ describe("App characterization (recorded message sequences)", () => {
 
 		expect(h.host.sent).toContainEqual({ type: "askResponse", askResponse: "yesButtonClicked" })
 
-		h.host.client.emit("error", new Error("Provider went away"))
-		await h.snap("host error")
+		await h.clientEvent("host error", "error", new Error("Provider went away"))
 
 		expect(render_(h.frames)).toMatchSnapshot()
 		h.unmount()
@@ -461,8 +468,7 @@ describe("App characterization (recorded message sequences)", () => {
 		await h.emit("completion say", updated(say(1003, "completion_result", "Finished the job.", false)))
 		await h.emit("completion ask", updated(ask(1004, "completion_result", "")))
 
-		h.host.client.emit("taskCompleted")
-		await h.snap("task completed")
+		await h.clientEvent("task completed", "taskCompleted")
 
 		expect(render_(h.frames)).toMatchSnapshot()
 		h.unmount()
