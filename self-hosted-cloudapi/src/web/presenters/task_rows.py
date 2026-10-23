@@ -170,7 +170,9 @@ def _metrics_tooltip(task: Task) -> list[str]:
         f"↓ Out: {fmt_int(task.tokens_out)}",
     ]
     if task.cache_writes or task.cache_reads:
-        lines.append(f"⚡ Cache: {fmt_int(task.cache_writes)} write / {fmt_int(task.cache_reads)} read")
+        lines.append(
+            f"⚡ Cache: {fmt_int(task.cache_writes)} write / {fmt_int(task.cache_reads)} read"
+        )
     span = duration_ms(task.first_ts, task.last_ts)
     if span:
         lines.append(f"⏱ Session: {fmt_duration(span)}")
@@ -186,12 +188,16 @@ def _run_tooltip(total: Spend, subtasks: int) -> list[str]:
         f"↓ Out: {fmt_int(total.tokens_out)}",
     ]
     if total.cache_writes or total.cache_reads:
-        lines.append(f"⚡ Cache: {fmt_int(total.cache_writes)} write / {fmt_int(total.cache_reads)} read")
+        lines.append(
+            f"⚡ Cache: {fmt_int(total.cache_writes)} write / {fmt_int(total.cache_reads)} read"
+        )
     lines.append(f"$ Cost: {fmt_cost(total.cost)}")
     return lines
 
 
-def _row_tooltip(task: Task, total: Optional[Spend] = None, subtasks: int = 0) -> Optional[str]:
+def _row_tooltip(
+    task: Task, total: Optional[Spend] = None, subtasks: int = 0
+) -> Optional[str]:
     """What hovering a task row says: the request, then what it cost.
 
     The prompt leads because it is the thing the row cannot show - the title
@@ -216,4 +222,3 @@ def _row_tooltip(task: Task, total: Optional[Spend] = None, subtasks: int = 0) -
     if total and (total.tokens or total.cost):
         blocks.append("\n".join(_run_tooltip(total, subtasks)))
     return "\n\n".join(blocks) or None
-

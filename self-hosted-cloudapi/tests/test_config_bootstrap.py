@@ -140,7 +140,9 @@ def test_alembic_reads_the_database_url_from_the_app_settings(tmp_path):
     lines["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_file}"
     env_file.write_text("".join(f"{key}={value}\n" for key, value in lines.items()))
 
-    env = {k: v for k, v in os.environ.items() if k not in {k.upper() for k in _REQUIRED}}
+    env = {
+        k: v for k, v in os.environ.items() if k not in {k.upper() for k in _REQUIRED}
+    }
     env["CLOUDAPI_ENV_FILE"] = str(env_file)
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "stamp", "head"],

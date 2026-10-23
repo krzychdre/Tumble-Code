@@ -81,7 +81,9 @@ def _backfill() -> None:
                 updates.append({"row_id": row_id, "task_id": task_id})
         if updates:
             conn.execute(
-                sa.text("UPDATE telemetry_events SET task_id = :task_id WHERE id = :row_id"),
+                sa.text(
+                    "UPDATE telemetry_events SET task_id = :task_id WHERE id = :row_id"
+                ),
                 updates,
             )
 

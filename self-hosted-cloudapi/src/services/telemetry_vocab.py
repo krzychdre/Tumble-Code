@@ -65,6 +65,7 @@ KIND_LABELS: dict[str, str] = {
     "memory": "Memory recall",
 }
 
+
 def completion_kind(props: dict) -> str:
     """The kind of the completion an ``LLM Completion`` event records.
 

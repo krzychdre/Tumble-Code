@@ -13,9 +13,17 @@ from pathlib import Path
 
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task, TaskShare
-from tests.web_helpers import _add_message, _msgs, _override_web_user, _seed_user, _summarize
+from tests.web_helpers import (
+    _add_message,
+    _msgs,
+    _override_web_user,
+    _seed_user,
+    _summarize,
+)
 
-_CSS = (Path(__file__).resolve().parent.parent / "src" / "web" / "static" / "app.css").read_text(encoding="utf-8")
+_CSS = (
+    Path(__file__).resolve().parent.parent / "src" / "web" / "static" / "app.css"
+).read_text(encoding="utf-8")
 
 
 async def _pages(client, session_factory):
@@ -25,7 +33,13 @@ async def _pages(client, session_factory):
         await s.flush()
         for m in _msgs():
             await _add_message(s, "run", m)
-        s.add(TaskShare(task_id="run", visibility="public", share_url="http://testserver/shared/run"))
+        s.add(
+            TaskShare(
+                task_id="run",
+                visibility="public",
+                share_url="http://testserver/shared/run",
+            )
+        )
         await _summarize(s, "run")
         await s.commit()
     _override_web_user(client.app)
@@ -36,23 +50,43 @@ async def _pages(client, session_factory):
     return {"owner": owner, "shared": client.get("/shared/run").text}
 
 
-async def test_the_timeline_frame_and_jumps_are_on_both_task_pages(client, session_factory):
+async def test_the_timeline_frame_and_jumps_are_on_both_task_pages(
+    client, session_factory
+):
     for name, html in (await _pages(client, session_factory)).items():
         nav = re.search(r'<nav id="timeline"[^>]*>', html)
-        assert nav and "hidden" in nav.group(0) and 'aria-label="Conversation timeline"' in nav.group(0), name
+        assert (
+            nav
+            and "hidden" in nav.group(0)
+            and 'aria-label="Conversation timeline"' in nav.group(0)
+        ), name
         assert html.index('id="timeline"') < html.index('id="conversation"'), name
         for button in ("tl-next-error", "tl-next-user"):
-            assert re.search(rf'<button type="button" id="{button}"', html), (name, button)
+            assert re.search(rf'<button type="button" id="{button}"', html), (
+                name,
+                button,
+            )
         assert 'id="tl-track"' in html, name
         scripts = re.findall(r'<script src="/static/([\w.]+)\?v=', html)
-        assert scripts.index("timeline.js") == scripts.index("render.js") + 1, (name, scripts)
+        assert scripts.index("timeline.js") == scripts.index("render.js") + 1, (
+            name,
+            scripts,
+        )
 
 
-async def test_a_skeleton_stands_in_while_the_conversation_renders(client, session_factory):
+async def test_a_skeleton_stands_in_while_the_conversation_renders(
+    client, session_factory
+):
     html = (await _pages(client, session_factory))["owner"]
-    convo = html[html.index('<div id="conversation"'):]
-    convo = convo[:convo.index('<div id="live-controls"')] if 'id="live-controls"' in convo else convo
-    loading = re.search(r'<div class="loading skeleton"[^>]*>(.*?)</div>\s*</div>', convo, re.DOTALL)
+    convo = html[html.index('<div id="conversation"') :]
+    convo = (
+        convo[: convo.index('<div id="live-controls"')]
+        if 'id="live-controls"' in convo
+        else convo
+    )
+    loading = re.search(
+        r'<div class="loading skeleton"[^>]*>(.*?)</div>\s*</div>', convo, re.DOTALL
+    )
     assert loading, "no skeleton"
     assert 'role="status"' in loading.group(0)
     # The words are for a screen reader; the eye sees placeholder rows.
@@ -62,7 +96,7 @@ async def test_a_skeleton_stands_in_while_the_conversation_renders(client, sessi
 
 def _rule(selector: str) -> str:
     start = _CSS.index(selector + " {")
-    return _CSS[start:_CSS.index("}", start)]
+    return _CSS[start : _CSS.index("}", start)]
 
 
 def test_offscreen_rows_skip_layout_and_the_skeleton_can_be_still():
@@ -81,8 +115,8 @@ def test_the_composer_hides_the_rows_scrolling_under_it():
     strip = _rule(".live-controls::after")
     assert "top: 100%;" in strip and "background: var(--bg);" in strip
     assert "height: calc(var(--s4) + 1px);" in strip
-    bar = _CSS[_CSS.index(".live-controls {\n\tmargin-top"):]
-    assert "bottom: var(--s4);" in bar[:bar.index("}")]
+    bar = _CSS[_CSS.index(".live-controls {\n\tmargin-top") :]
+    assert "bottom: var(--s4);" in bar[: bar.index("}")]
 
 
 def test_a_long_run_scrolls_the_timeline_track_instead_of_cutting_it_off():
@@ -90,8 +124,8 @@ def test_a_long_run_scrolls_the_timeline_track_instead_of_cutting_it_off():
     and no further) lost its end: the rail clipped the track. Both the strip
     and the rail scroll it now."""
     assert "overflow: auto;" in _rule(".tl-track")
-    rail = _CSS[_CSS.index("@media (min-width: 1240px) {\n\t/* A rail"):]
-    rail_track = rail[rail.index(".tl-track {"):]
+    rail = _CSS[_CSS.index("@media (min-width: 1240px) {\n\t/* A rail") :]
+    rail_track = rail[rail.index(".tl-track {") :]
     assert "overflow: hidden" not in rail_track[: rail_track.index("}")]
 
 
@@ -101,15 +135,21 @@ async def test_the_timeline_says_what_its_ticks_mean(client, session_factory):
         await _seed_user(s)
         s.add(Task(id="t", user_id="user_test"))
         await s.flush()
-        await _add_message(s, "t", {"ts": 1, "type": "say", "say": "text", "text": "hi"})
+        await _add_message(
+            s, "t", {"ts": 1, "type": "say", "say": "text", "text": "hi"}
+        )
         await s.commit()
     _override_web_user(client.app)
     try:
         html = client.get("/app/tasks/t").text
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
-    nav = html[html.index('id="timeline"'):html.index("</nav>", html.index('id="timeline"'))]
-    legend = re.search(r'<ul class="tl-legend" aria-hidden="true">(.*?)</ul>', nav, re.DOTALL)
+    nav = html[
+        html.index('id="timeline"') : html.index("</nav>", html.index('id="timeline"'))
+    ]
+    legend = re.search(
+        r'<ul class="tl-legend" aria-hidden="true">(.*?)</ul>', nav, re.DOTALL
+    )
     assert legend, nav
     for key in ("request", "error", "user"):
         assert f"tl-key-{key}" in legend.group(1), key

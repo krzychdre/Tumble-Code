@@ -111,7 +111,9 @@ def test_render_js_get_metrics_matches_golden_totals(tmp_path):
     )
 
     match = re.search(r'<pre id="results">(.*?)</pre>', result.stdout, re.DOTALL)
-    assert match, f"the harness never wrote its results. stderr:\n{result.stderr[-2000:]}"
+    assert match, (
+        f"the harness never wrote its results. stderr:\n{result.stderr[-2000:]}"
+    )
     report = match.group(1)
     assert "TOTAL_FAILURES=0" in report, f"render.js getMetrics disagrees:\n{report}"
     # Every case must have been checked, not just the ones before a crash.

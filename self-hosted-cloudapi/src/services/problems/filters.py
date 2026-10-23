@@ -30,10 +30,23 @@ if TYPE_CHECKING:
 SORT_IMPACT = "impact"
 SORT_COUNT = "count"
 SORT_RECENT = "recent"
-SORT_LABELS = {SORT_IMPACT: "Impact", SORT_COUNT: "Occurrences", SORT_RECENT: "Last seen"}
+SORT_LABELS = {
+    SORT_IMPACT: "Impact",
+    SORT_COUNT: "Occurrences",
+    SORT_RECENT: "Last seen",
+}
 
 # The order the filters appear in every URL and in the brief's header.
-FILTER_FIELDS = ("class", "category", "model", "provider", "tool", "source", "client", "q")
+FILTER_FIELDS = (
+    "class",
+    "category",
+    "model",
+    "provider",
+    "tool",
+    "source",
+    "client",
+    "q",
+)
 FILTER_LABELS = {
     "class": "Class",
     "category": "Category",
@@ -111,11 +124,21 @@ class ProblemFilter:
 
     def describe(self) -> str:
         """The active filters in one line, for the brief's header."""
-        parts = [f"{FILTER_LABELS[name].lower()} {self.label(name)!r}" for name in FILTER_FIELDS if self.value(name)]
+        parts = [
+            f"{FILTER_LABELS[name].lower()} {self.label(name)!r}"
+            for name in FILTER_FIELDS
+            if self.value(name)
+        ]
         return ", ".join(parts) if parts else "none"
 
-    def matches(self, occurrence: Occurrence, rule: "Rule", *, ignore_class: bool = False) -> bool:
-        if self.klass and not ignore_class and CLASS_KEYS[rule.classification] != self.klass:
+    def matches(
+        self, occurrence: Occurrence, rule: "Rule", *, ignore_class: bool = False
+    ) -> bool:
+        if (
+            self.klass
+            and not ignore_class
+            and CLASS_KEYS[rule.classification] != self.klass
+        ):
             return False
         if self.category and occurrence.category != self.category:
             return False

@@ -98,7 +98,9 @@ async def diagnostics_markdown(
     web: WebPage = Depends(require_web_page),
 ):
     """The agent brief of every problem the filters let through, as a file."""
-    text = await problem_brief_markdown(web["db"], web["user"]["user_id"], filters, zone=web["zone"])
+    text = await problem_brief_markdown(
+        web["db"], web["user"]["user_id"], filters, zone=web["zone"]
+    )
     stamp = today(web["zone"]).isoformat()
     return _markdown(text, f"tumble-problem-report-{filters.period}-{stamp}.md")
 
@@ -139,7 +141,9 @@ async def diagnostics_report(
     web: WebPage = Depends(require_web_page),
 ):
     """One error report in full: facts, request, response. Its owner only."""
-    report = await load_report(web["db"], web["user"]["user_id"], report_id, web["zone"])
+    report = await load_report(
+        web["db"], web["user"]["user_id"], report_id, web["zone"]
+    )
     if report is None:
         return not_found_page(
             request,

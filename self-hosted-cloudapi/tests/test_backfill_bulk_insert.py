@@ -29,9 +29,16 @@ def _conversation():
             "ts": 110,
             "type": "say",
             "say": "api_req_started",
-            "text": json.dumps({"tokensIn": 500, "tokensOut": 40, "cacheReads": 7, "cost": 0.002}),
+            "text": json.dumps(
+                {"tokensIn": 500, "tokensOut": 40, "cacheReads": 7, "cost": 0.002}
+            ),
         },
-        {"ts": 120, "type": "ask", "ask": "tool", "text": json.dumps({"tool": "readFile", "path": "a.py"})},
+        {
+            "ts": 120,
+            "type": "ask",
+            "ask": "tool",
+            "text": json.dumps({"tool": "readFile", "path": "a.py"}),
+        },
         # Same ts twice: only the later message keeps a row.
         {"ts": 130, "type": "ask", "ask": "command_output", "text": ""},
         {"ts": 130, "type": "say", "say": "command_output", "text": "1 passed"},
@@ -52,10 +59,16 @@ def _upload(client, messages, task_id=TASK):
 async def _stored(session_factory, task_id=TASK):
     async with session_factory() as s:
         rows = (
-            await s.execute(
-                select(TaskMessage).where(TaskMessage.task_id == task_id).order_by(TaskMessage.created_at)
+            (
+                await s.execute(
+                    select(TaskMessage)
+                    .where(TaskMessage.task_id == task_id)
+                    .order_by(TaskMessage.created_at)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         task = (await s.execute(select(Task).where(Task.id == task_id))).scalar_one()
     return rows, task
 
@@ -68,7 +81,9 @@ def _insert_counter(engine):
             executions.append(executemany)
 
     event.listen(engine.sync_engine, "before_cursor_execute", before)
-    return executions, lambda: event.remove(engine.sync_engine, "before_cursor_execute", before)
+    return executions, lambda: event.remove(
+        engine.sync_engine, "before_cursor_execute", before
+    )
 
 
 async def test_a_backfill_creates_no_orm_object_per_message(client, db_session):
@@ -90,9 +105,13 @@ async def test_a_backfill_creates_no_orm_object_per_message(client, db_session):
     assert constructed == []
 
 
-async def test_a_backfill_inserts_all_rows_with_one_statement(client, db_session, test_engine):
+async def test_a_backfill_inserts_all_rows_with_one_statement(
+    client, db_session, test_engine
+):
     await _seed_user(db_session)
-    messages = [{"ts": i, "type": "say", "say": "text", "text": f"m{i}"} for i in range(1, 201)]
+    messages = [
+        {"ts": i, "type": "say", "say": "text", "text": f"m{i}"} for i in range(1, 201)
+    ]
     executions, stop = _insert_counter(test_engine)
     try:
         resp = _upload(client, messages)
@@ -103,7 +122,9 @@ async def test_a_backfill_inserts_all_rows_with_one_statement(client, db_session
     assert len(executions) == 1
 
 
-async def test_the_stored_rows_are_the_ones_the_orm_path_stored(client, db_session, session_factory):
+async def test_the_stored_rows_are_the_ones_the_orm_path_stored(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
 
     assert _upload(client, _conversation()).status_code == 200
@@ -128,7 +149,17 @@ async def test_the_stored_rows_are_the_ones_the_orm_path_stored(client, db_sessi
         [
             (100, json.dumps(conversation[0]), None, None, 0, 0, 0, 0, 0.0),
             (110, json.dumps(conversation[1]), "request", None, 500, 40, 7, 0, 0.002),
-            (120, json.dumps(conversation[2]), "tool", "readFile:a.py", 0, 0, 0, 0, 0.0),
+            (
+                120,
+                json.dumps(conversation[2]),
+                "tool",
+                "readFile:a.py",
+                0,
+                0,
+                0,
+                0,
+                0.0,
+            ),
             (130, json.dumps(conversation[4]), None, None, 0, 0, 0, 0, 0.0),
             (-1, json.dumps(conversation[5]), None, None, 0, 0, 0, 0, 0.0),
             (-1, "a bare string", None, None, 0, 0, 0, 0, 0.0),
@@ -144,7 +175,9 @@ async def test_the_stored_rows_are_the_ones_the_orm_path_stored(client, db_sessi
     assert task.tokens_in == 500
 
 
-async def test_a_reupload_still_replaces_the_conversation(client, db_session, session_factory):
+async def test_a_reupload_still_replaces_the_conversation(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     assert _upload(client, _conversation()).status_code == 200
 

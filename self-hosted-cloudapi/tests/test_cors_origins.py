@@ -69,13 +69,15 @@ def test_the_public_url_is_trusted_by_default(http, monkeypatch):
 
 
 def test_cors_origins_adds_origins(http, monkeypatch):
-    monkeypatch.setattr(settings, "cors_origins", "https://panel.example.com, https://other.example")
-    assert _preflight(http, "https://panel.example.com").headers["access-control-allow-origin"] == (
-        "https://panel.example.com"
+    monkeypatch.setattr(
+        settings, "cors_origins", "https://panel.example.com, https://other.example"
     )
-    assert _preflight(http, "https://other.example").headers["access-control-allow-origin"] == (
-        "https://other.example"
-    )
+    assert _preflight(http, "https://panel.example.com").headers[
+        "access-control-allow-origin"
+    ] == ("https://panel.example.com")
+    assert _preflight(http, "https://other.example").headers[
+        "access-control-allow-origin"
+    ] == ("https://other.example")
     # The service's own address stays trusted next to the extra ones.
     assert _preflight(http, OWN).headers["access-control-allow-origin"] == OWN
     assert "access-control-allow-origin" not in _preflight(http, FOREIGN).headers
@@ -89,7 +91,9 @@ def test_a_leftover_wildcard_no_longer_opens_everything(http, monkeypatch):
     assert _preflight(http, OWN).headers["access-control-allow-origin"] == OWN
 
 
-@pytest.mark.parametrize("value", ["panel.example.com", "https://panel.example.com/app", "https://"])
+@pytest.mark.parametrize(
+    "value", ["panel.example.com", "https://panel.example.com/app", "https://"]
+)
 def test_a_malformed_cors_origin_stops_the_server(value):
     # An entry that can never equal a browser's Origin would silently trust
     # nothing; better to say so at startup.
@@ -137,5 +141,8 @@ def test_the_bridge_accepts_the_address_the_browser_is_on(http):
 
 def test_the_bridge_follows_cors_origins(http, monkeypatch):
     monkeypatch.setattr(settings, "cors_origins", "https://panel.example.com")
-    assert http.get(HANDSHAKE, headers={"origin": "https://panel.example.com"}).status_code == 200
+    assert (
+        http.get(HANDSHAKE, headers={"origin": "https://panel.example.com"}).status_code
+        == 200
+    )
     assert http.get(HANDSHAKE, headers={"origin": FOREIGN}).status_code == 400

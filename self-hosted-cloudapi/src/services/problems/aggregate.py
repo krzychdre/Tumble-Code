@@ -89,7 +89,9 @@ def group_occurrences(
     return groups
 
 
-def model_fit(occurrences: Sequence[Occurrence], groups: Sequence[dict], requests: Counter) -> list[dict]:
+def model_fit(
+    occurrences: Sequence[Occurrence], groups: Sequence[dict], requests: Counter
+) -> list[dict]:
     """Per provider and model: requests, problems, problems per 100 requests.
 
     ``requests`` counts the period's LLM Completion events by
@@ -103,8 +105,14 @@ def model_fit(occurrences: Sequence[Occurrence], groups: Sequence[dict], request
     def slot(provider: str, model: str) -> dict:
         return rows.setdefault(
             (provider, model),
-            {"provider": provider, "model": model, "requests": 0, "problems": 0,
-             "categories": Counter(), "classes": Counter()},
+            {
+                "provider": provider,
+                "model": model,
+                "requests": 0,
+                "problems": 0,
+                "categories": Counter(),
+                "classes": Counter(),
+            },
         )
 
     for (provider, model), count in requests.items():
@@ -123,7 +131,7 @@ def model_fit(occurrences: Sequence[Occurrence], groups: Sequence[dict], request
     for provider, model in rows:
         if provider:
             providers_of.setdefault(model, []).append(provider)
-    for (provider, model) in list(rows):
+    for provider, model in list(rows):
         if provider or len(providers_of.get(model, [])) != 1:
             continue
         lone = rows.pop((provider, model))
@@ -145,17 +153,23 @@ def model_fit(occurrences: Sequence[Occurrence], groups: Sequence[dict], request
                 "model": row["model"],
                 "requests": row["requests"],
                 "problems": row["problems"],
-                "per_100": round(row["problems"] * 100.0 / row["requests"], 1) if row["requests"] else None,
+                "per_100": round(row["problems"] * 100.0 / row["requests"], 1)
+                if row["requests"]
+                else None,
                 "top_category": top_category[0][0] if top_category else "",
                 "top_category_count": top_category[0][1] if top_category else 0,
                 "top_class": top_class[0][0] if top_class else "",
             }
         )
-    out.sort(key=lambda r: (-r["problems"], -(r["per_100"] or 0), -r["requests"], r["model"]))
+    out.sort(
+        key=lambda r: (-r["problems"], -(r["per_100"] or 0), -r["requests"], r["model"])
+    )
     return out
 
 
-def _options(occurrences: Sequence[Occurrence], rules: dict[str, Rule]) -> dict[str, list[dict]]:
+def _options(
+    occurrences: Sequence[Occurrence], rules: dict[str, Rule]
+) -> dict[str, list[dict]]:
     """What each filter can be set to in the period, with how many occurrences.
 
     From the unfiltered period, so every choice stays visible after one is
@@ -177,19 +191,30 @@ def _options(occurrences: Sequence[Occurrence], rules: dict[str, Rule]) -> dict[
         sources[o.source] += 1
         clients[o.client] += 1
     options = {
-        name: [{"value": v, "label": v, "count": n} for v, n in sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))]
+        name: [
+            {"value": v, "label": v, "count": n}
+            for v, n in sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))
+        ]
         for name, c in counters.items()
     }
     options["class"] = [
-        {"value": CLASS_KEYS[name], "label": name, "count": classes.get(CLASS_KEYS[name], 0)}
+        {
+            "value": CLASS_KEYS[name],
+            "label": name,
+            "count": classes.get(CLASS_KEYS[name], 0),
+        }
         for name in CLASS_ORDER
         if classes.get(CLASS_KEYS[name])
     ]
     options["source"] = [
-        {"value": key, "label": label, "count": sources[key]} for key, label in SOURCE_LABELS.items() if sources.get(key)
+        {"value": key, "label": label, "count": sources[key]}
+        for key, label in SOURCE_LABELS.items()
+        if sources.get(key)
     ]
     options["client"] = [
-        {"value": key, "label": label, "count": clients[key]} for key, label in CLIENT_LABELS.items() if clients.get(key)
+        {"value": key, "label": label, "count": clients[key]}
+        for key, label in CLIENT_LABELS.items()
+        if clients.get(key)
     ]
     return options
 
@@ -215,7 +240,11 @@ def aggregate_problems(
     """
     filters = filters or ProblemFilter(period=period)
     rules = rules_by_signature(occurrences)
-    unclassed = [o for o in occurrences if filters.matches(o, rules[o.signature], ignore_class=True)]
+    unclassed = [
+        o
+        for o in occurrences
+        if filters.matches(o, rules[o.signature], ignore_class=True)
+    ]
     if key is not None:
         unclassed = [o for o in unclassed if group_key(o.signature) == key]
     selected = [o for o in unclassed if filters.matches(o, rules[o.signature])]
@@ -228,7 +257,8 @@ def aggregate_problems(
             {
                 (provider, model): count
                 for (provider, model), count in requests.items()
-                if (not filters.model or model == filters.model) and (not filters.provider or provider == filters.provider)
+                if (not filters.model or model == filters.model)
+                and (not filters.provider or provider == filters.provider)
             }
         )
     return {
@@ -240,7 +270,8 @@ def aggregate_problems(
         "total": len(selected),
         "tasks": len({o.task_id for o in selected if o.task_id}),
         "by_class": [
-            {"name": name, "key": CLASS_KEYS[name], "count": by_class.get(name, 0)} for name in CLASS_ORDER
+            {"name": name, "key": CLASS_KEYS[name], "count": by_class.get(name, 0)}
+            for name in CLASS_ORDER
         ],
         "groups": groups[:MAX_GROUPS],
         "hidden_groups": max(0, len(groups) - MAX_GROUPS),

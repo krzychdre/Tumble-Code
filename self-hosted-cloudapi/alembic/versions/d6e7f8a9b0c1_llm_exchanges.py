@@ -27,9 +27,17 @@ def upgrade() -> None:
     op.create_table(
         "llm_exchanges",
         sa.Column("id", sa.String(), primary_key=True),
-        sa.Column("user_id", sa.String(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column(
-            "organization_id", sa.String(), sa.ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
+            "user_id",
+            sa.String(),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column(
+            "organization_id",
+            sa.String(),
+            sa.ForeignKey("organizations.id", ondelete="SET NULL"),
+            nullable=True,
         ),
         sa.Column("task_id", sa.String(), nullable=False),
         sa.Column("base_id", sa.String(), nullable=True),
@@ -53,12 +61,21 @@ def upgrade() -> None:
     op.create_index("ix_llm_exchanges_user_id", "llm_exchanges", ["user_id"])
     op.create_index("ix_llm_exchanges_created_at", "llm_exchanges", ["created_at"])
     op.create_index("ix_llm_exchanges_model_id", "llm_exchanges", ["model_id"])
-    op.create_index("ix_llm_exchanges_user_created", "llm_exchanges", ["user_id", "created_at"])
-    op.create_index("ix_llm_exchanges_user_task", "llm_exchanges", ["user_id", "task_id"])
+    op.create_index(
+        "ix_llm_exchanges_user_created", "llm_exchanges", ["user_id", "created_at"]
+    )
+    op.create_index(
+        "ix_llm_exchanges_user_task", "llm_exchanges", ["user_id", "task_id"]
+    )
 
     op.create_table(
         "llm_blobs",
-        sa.Column("user_id", sa.String(), sa.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "user_id",
+            sa.String(),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         sa.Column("task_id", sa.String(), primary_key=True),
         sa.Column("sha256", sa.String(), primary_key=True),
         sa.Column("content", sa.Text(), nullable=False),
@@ -67,11 +84,28 @@ def upgrade() -> None:
 
     op.create_table(
         "dataset_settings",
-        sa.Column("user_id", sa.String(), sa.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("recording_enabled", sa.Boolean(), nullable=False, server_default="0"),
+        sa.Column(
+            "user_id",
+            sa.String(),
+            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "recording_enabled", sa.Boolean(), nullable=False, server_default="0"
+        ),
         sa.Column("anonymize_terms", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
     )
 
 

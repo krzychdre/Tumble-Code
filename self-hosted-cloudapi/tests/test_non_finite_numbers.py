@@ -67,15 +67,25 @@ def test_num_reads_a_non_finite_float_as_zero(value):
 def test_task_detail_attribution_does_not_raise_on_non_finite_figures():
     from src.services import model_attribution
 
-    assert model_attribution._request_tokens(_req('{"tokensIn":1e999,"tokensOut":1}')) == (0, 1)
+    assert model_attribution._request_tokens(
+        _req('{"tokensIn":1e999,"tokensOut":1}')
+    ) == (0, 1)
     # Event properties are decoded with json.loads too, which accepts NaN.
-    props = json.loads('{"modelId":"m","inputTokens":NaN,"outputTokens":Infinity,"cost":NaN}')
+    props = json.loads(
+        '{"modelId":"m","inputTokens":NaN,"outputTokens":Infinity,"cost":NaN}'
+    )
     completion = model_attribution.completion_from_properties(props)
     assert completion is not None
-    assert (completion.input_tokens, completion.output_tokens, completion.cost) == (0, 0, 0.0)
+    assert (completion.input_tokens, completion.output_tokens, completion.cost) == (
+        0,
+        0,
+        0.0,
+    )
 
 
-async def test_backfill_imports_a_conversation_with_a_nan_request(client, db_session, session_factory):
+async def test_backfill_imports_a_conversation_with_a_nan_request(
+    client, db_session, session_factory
+):
     """The NaN request contributes nothing; every message, it included, is stored."""
     from src.dependencies import get_current_user
     from src.main import app
@@ -98,7 +108,11 @@ async def test_backfill_imports_a_conversation_with_a_nan_request(client, db_ses
     assert resp.status_code == 200, resp.text
     async with session_factory() as s:
         count = (
-            await s.execute(select(func.count(TaskMessage.id)).where(TaskMessage.task_id == "task-nan"))
+            await s.execute(
+                select(func.count(TaskMessage.id)).where(
+                    TaskMessage.task_id == "task-nan"
+                )
+            )
         ).scalar_one()
         assert count == 4
         task = (await s.execute(select(Task).where(Task.id == "task-nan"))).scalar_one()

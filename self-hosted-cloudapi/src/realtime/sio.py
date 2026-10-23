@@ -145,7 +145,10 @@ async def connect(sid, environ, auth):
     # "127.0.0.1", which would make every browser look local.
     client = scope_client(environ.get("asgi.scope") or {})
     if not client_allowed(client):
-        logger.info("[bridge] browser handshake rejected: %s is outside WEB_ALLOWED_NETWORKS", client)
+        logger.info(
+            "[bridge] browser handshake rejected: %s is outside WEB_ALLOWED_NETWORKS",
+            client,
+        )
         return False
     async with async_session_factory() as db:
         web_user = await resolve_web_user(_cookie_from_environ(environ), db)
@@ -171,7 +174,9 @@ async def on_extension_register(sid, data):
     meta = registry.meta(sid)
     if not meta or meta["role"] != "extension":
         return {"success": False, "error": "not an extension socket"}
-    registry.register_extension(sid, meta["user_id"], data if isinstance(data, dict) else {})
+    registry.register_extension(
+        sid, meta["user_id"], data if isinstance(data, dict) else {}
+    )
     return {"success": True}
 
 
@@ -273,7 +278,9 @@ async def _persist(sid: str, task_id: str, user_id: str, data: dict) -> Optional
     return await _save_messages(task_id, user_id, [*earlier, data])
 
 
-async def _save_messages(task_id: str, user_id: str, events: list[dict]) -> Optional[bool]:
+async def _save_messages(
+    task_id: str, user_id: str, events: list[dict]
+) -> Optional[bool]:
     """Persist message events of one task in one transaction; return whether
     the task is the user's, or None when the save failed (ownership then stays
     unknown)."""

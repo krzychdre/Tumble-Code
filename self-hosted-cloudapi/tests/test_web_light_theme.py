@@ -23,7 +23,7 @@ _NO_COMMENTS = re.sub(r"/\*.*?\*/", "", _CSS, flags=re.DOTALL)
 
 def _block(css: str, selector: str) -> str:
     start = css.index(selector)
-    body = css[css.index("{", start) + 1:]
+    body = css[css.index("{", start) + 1 :]
     depth, end = 1, 0
     for end, ch in enumerate(body):
         depth += {"{": 1, "}": -1}.get(ch, 0)
@@ -48,7 +48,9 @@ def _side(value: str, theme: str) -> str:
 
 
 def _theme(theme: str) -> dict[str, str]:
-    return {k: _side(v, theme) for k, v in _tokens(_block(_NO_COMMENTS, ":root {")).items()}
+    return {
+        k: _side(v, theme) for k, v in _tokens(_block(_NO_COMMENTS, ":root {")).items()
+    }
 
 
 def _dark() -> dict[str, str]:
@@ -61,7 +63,9 @@ def _light() -> dict[str, str]:
 
 def test_every_colour_is_written_once_for_both_themes():
     raw = _tokens(_block(_NO_COMMENTS, ":root {"))
-    colours = {k: v for k, v in raw.items() if re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", v)}
+    colours = {
+        k: v for k, v in raw.items() if re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", v)
+    }
     assert colours
     # A colour token is a light-dark() pair whose two sides are colours.
     singles = sorted(k for k, v in colours.items() if not _PAIR.match(v))
@@ -71,8 +75,14 @@ def test_every_colour_is_written_once_for_both_themes():
     assert "color-scheme: light dark" in _block(_NO_COMMENTS, ":root {")
     # The reader's forced choice pins the scheme, and the UA widgets
     # (scrollbars, date pickers) follow it.
-    assert _block(_NO_COMMENTS, ':root[data-theme="light"]').strip() == "color-scheme: light;"
-    assert _block(_NO_COMMENTS, ':root[data-theme="dark"]').strip() == "color-scheme: dark;"
+    assert (
+        _block(_NO_COMMENTS, ':root[data-theme="light"]').strip()
+        == "color-scheme: light;"
+    )
+    assert (
+        _block(_NO_COMMENTS, ':root[data-theme="dark"]').strip()
+        == "color-scheme: dark;"
+    )
 
 
 def test_the_light_accent_is_the_darker_amber():
@@ -83,14 +93,38 @@ def test_the_light_accent_is_the_darker_amber():
 def test_text_and_data_hues_pass_aa_on_the_page_and_the_panels(theme):
     t = _dark() if theme == "dark" else _light()
     grounds = ("--bg", "--surface-1")
-    for fg in ("--text", "--text-dim", "--text-faint", "--signal", "--d-in", "--d-out", "--d-cache",
-               "--d-cost", "--d-error", "--d-you", "--status-run"):
+    for fg in (
+        "--text",
+        "--text-dim",
+        "--text-faint",
+        "--signal",
+        "--d-in",
+        "--d-out",
+        "--d-cache",
+        "--d-cost",
+        "--d-error",
+        "--d-you",
+        "--status-run",
+    ):
         for bg in grounds:
-            assert contrast(t[fg], t[bg]) >= 4.5, (theme, fg, bg, round(contrast(t[fg], t[bg]), 2))
+            assert contrast(t[fg], t[bg]) >= 4.5, (
+                theme,
+                fg,
+                bg,
+                round(contrast(t[fg], t[bg]), 2),
+            )
     # The signed-in initial in the top bar: text on the highest surface.
-    assert contrast(t["--text"], t["--surface-3"]) >= 4.5, (theme, "--text", "--surface-3")
+    assert contrast(t["--text"], t["--surface-3"]) >= 4.5, (
+        theme,
+        "--text",
+        "--surface-3",
+    )
     # Text set on a filled button.
-    for ink, fill in (("--signal-ink", "--signal"), ("--d-error-ink", "--d-error"), ("--d-cache-ink", "--d-cache")):
+    for ink, fill in (
+        ("--signal-ink", "--signal"),
+        ("--d-error-ink", "--d-error"),
+        ("--d-cache-ink", "--d-cache"),
+    ):
         assert contrast(t[ink], t[fill]) >= 4.5, (theme, ink, fill)
 
 
@@ -119,7 +153,9 @@ def test_chart_colours_come_from_the_css_variables():
         assert "var(--" in _block(_NO_COMMENTS, rule + " {"), rule
 
 
-async def test_pages_declare_both_schemes_and_apply_the_theme_before_paint(client, db_session):
+async def test_pages_declare_both_schemes_and_apply_the_theme_before_paint(
+    client, db_session
+):
     await _seed_user(db_session)
     _override_web_user(client.app)
     try:
@@ -127,7 +163,7 @@ async def test_pages_declare_both_schemes_and_apply_the_theme_before_paint(clien
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
-    head = html[:html.index("</head>")]
+    head = html[: html.index("</head>")]
     assert '<meta name="color-scheme" content="dark light">' in head
     # Blocking (no defer/async) and before the stylesheet: the attribute is on
     # <html> before anything is painted.

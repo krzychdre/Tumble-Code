@@ -7,23 +7,32 @@ from typing import Optional, List
 
 class ClerkSignInResponse(BaseModel):
     """Response for POST /v1/client/sign_ins."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     class Response(BaseModel):
         model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
         created_session_id: str
+
     response: Response
 
 
 class ClerkSessionTokenResponse(BaseModel):
     """Response for POST /v1/client/sessions/{id}/tokens."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     jwt: str
 
 
 class EmailAddress(BaseModel):
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     id: str
     email_address: str
@@ -31,7 +40,10 @@ class EmailAddress(BaseModel):
 
 class ClerkMeResponse(BaseModel):
     """Response for GET /v1/me."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     class Response(BaseModel):
         model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
@@ -42,12 +54,16 @@ class ClerkMeResponse(BaseModel):
         primary_email_address_id: Optional[str] = None
         email_addresses: Optional[List[EmailAddress]] = None
         public_metadata: Optional[dict] = None
+
     response: Response
 
 
 class ClerkOrganization(BaseModel):
     """Pydantic schema for Clerk organization response (renamed to avoid collision with SQLAlchemy model)."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     id: str
     name: str
@@ -60,7 +76,10 @@ class ClerkOrganization(BaseModel):
 
 class ClerkMembership(BaseModel):
     """Pydantic schema for Clerk membership response (renamed to avoid collision with SQLAlchemy model)."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     id: str
     role: str
@@ -72,6 +91,9 @@ class ClerkMembership(BaseModel):
 
 class ClerkOrgMembershipsResponse(BaseModel):
     """Response for GET /v1/me/organization_memberships."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     response: List[ClerkMembership]

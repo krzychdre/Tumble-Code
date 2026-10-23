@@ -60,7 +60,20 @@ _AUTH_REDIRECT_RE = re.compile(
 # Schemes a browser opens itself (or that name local files) are never an
 # editor callback, even when the rest of the value has the right shape.
 _NON_EDITOR_SCHEMES = frozenset(
-    {"http", "https", "javascript", "data", "file", "blob", "about", "ftp", "ws", "wss", "vbscript", "web"}
+    {
+        "http",
+        "https",
+        "javascript",
+        "data",
+        "file",
+        "blob",
+        "about",
+        "ftp",
+        "ws",
+        "wss",
+        "vbscript",
+        "web",
+    }
 )
 
 
@@ -76,7 +89,9 @@ _NON_EDITOR_SCHEMES = frozenset(
 # overflow such as 99999). Nothing that resolves elsewhere gets through:
 # "127.0.0.1.evil.com", "127.0.0.1:8080@evil.com", "0.0.0.0", "127.1" and a
 # bare "localhost" without a port all fail the full match.
-_LOOPBACK_REDIRECT_RE = re.compile(r"http://(?:127\.0\.0\.1|localhost|\[::1\]):(?P<port>[1-9][0-9]{3,4})")
+_LOOPBACK_REDIRECT_RE = re.compile(
+    r"http://(?:127\.0\.0\.1|localhost|\[::1\]):(?P<port>[1-9][0-9]{3,4})"
+)
 _LOOPBACK_PORTS = range(1024, 65536)
 
 
@@ -106,6 +121,7 @@ def _refuse_auth_redirect() -> HTMLResponse:
 
 router = APIRouter(tags=["browser-auth"])
 
+
 def _auth_success_html(redirect_url: str) -> str:
     """Render an HTML page that navigates to a vscode:// URI.
 
@@ -118,7 +134,9 @@ def _auth_success_html(redirect_url: str) -> str:
 
 def _auth_error_html(reason: str, detail: str = "") -> str:
     """Render an HTML error page for authentication failures (templates/auth_error.html)."""
-    return templates.get_template("auth_error.html").render(reason=reason, detail=detail)
+    return templates.get_template("auth_error.html").render(
+        reason=reason, detail=detail
+    )
 
 
 async def _start_sign_in(
@@ -176,7 +194,9 @@ async def web_login(
     """
     host = request.headers.get("host")
     if settings.web_public_url and not can_sign_in_on(host):
-        return RedirectResponse(url=f"{settings.web_public_url}/app/login", status_code=303)
+        return RedirectResponse(
+            url=f"{settings.web_public_url}/app/login", status_code=303
+        )
 
     state = secrets.token_urlsafe(32)
     code_verifier, code_challenge = generate_pkce_pair()
@@ -251,7 +271,10 @@ async def auth_callback(
     # Retrieve stored state
     state_store = await get_oauth_state(db, state)
     if state_store is None:
-        logger.warning("Auth callback received with invalid or expired state: %s", state[:8] if state else "empty")
+        logger.warning(
+            "Auth callback received with invalid or expired state: %s",
+            state[:8] if state else "empty",
+        )
         return HTMLResponse(
             content=_auth_error_html(
                 "Invalid or expired authentication state.",
@@ -277,8 +300,12 @@ async def auth_callback(
     # A state row whose redirect is neither the web marker nor an editor or
     # loopback callback (stored before DEF-S3 was fixed, say) never gets a
     # ticket.
-    if state_store.auth_redirect != WEB_AUTH_REDIRECT and not is_allowed_auth_redirect(state_store.auth_redirect):
-        logger.warning("Auth callback refused: the stored auth_redirect is not an editor callback URI")
+    if state_store.auth_redirect != WEB_AUTH_REDIRECT and not is_allowed_auth_redirect(
+        state_store.auth_redirect
+    ):
+        logger.warning(
+            "Auth callback refused: the stored auth_redirect is not an editor callback URI"
+        )
         return _refuse_auth_redirect()
 
     # Exchange authorization code for tokens. The browser followed the
@@ -348,8 +375,12 @@ async def auth_callback(
     # its address bar holds the whole callback URL, which the reader copies
     # into the terminal. no-store keeps the ticket out of any cache.
     if is_loopback_auth_redirect(redirect_url):
-        logger.info("Auth callback successful for user %s, redirecting to the CLI", user.id)
-        return RedirectResponse(url=vscode_uri, status_code=303, headers={"Cache-Control": "no-store"})
+        logger.info(
+            "Auth callback successful for user %s, redirecting to the CLI", user.id
+        )
+        return RedirectResponse(
+            url=vscode_uri, status_code=303, headers={"Cache-Control": "no-store"}
+        )
 
     logger.info("Auth callback successful for user %s, redirecting to VS Code", user.id)
 

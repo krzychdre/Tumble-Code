@@ -30,7 +30,11 @@ from config.settings import normalize_origin, settings
 def trusted_origins() -> List[str]:
     """The configured trusted origins, normalized, own addresses first."""
     origins: List[str] = []
-    for candidate in (settings.api_base_url, settings.web_public_url, *settings.cors_origins_list):
+    for candidate in (
+        settings.api_base_url,
+        settings.web_public_url,
+        *settings.cors_origins_list,
+    ):
         origin = normalize_origin(candidate)
         if origin and origin not in origins:
             origins.append(origin)
@@ -57,7 +61,6 @@ def is_trusted_origin(origin: Optional[str], host: Optional[str] = None) -> bool
     if normalized in trusted_origins():
         return True
     return _same_origin_as_host(normalized, host)
-
 
 
 def origin_of_referer(referer: Optional[str]) -> Optional[str]:

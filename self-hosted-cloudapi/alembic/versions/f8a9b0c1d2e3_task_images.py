@@ -25,7 +25,12 @@ def upgrade() -> None:
     op.create_table(
         "task_images",
         sa.Column("id", sa.String(), primary_key=True),
-        sa.Column("task_id", sa.String(), sa.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "task_id",
+            sa.String(),
+            sa.ForeignKey("tasks.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("message_ts", sa.BigInteger(), nullable=False),
         sa.Column("path", sa.String(), nullable=False),
         sa.Column("mime", sa.String(), nullable=False),

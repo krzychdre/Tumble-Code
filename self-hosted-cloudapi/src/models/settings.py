@@ -8,10 +8,16 @@ from src.models.base import Base, TimestampMixin, generate_id
 
 class OrganizationSettings(Base, TimestampMixin):
     """Organization settings model matching the client OrganizationSettings schema."""
+
     __tablename__ = "organization_settings"
 
     id = Column(String, primary_key=True, default=lambda: generate_id("os_"))
-    organization_id = Column(String, ForeignKey("organizations.id", ondelete="CASCADE"), unique=True, nullable=False)
+    organization_id = Column(
+        String,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
     version = Column(Integer, default=0)
 
     # Cloud settings
@@ -45,10 +51,13 @@ class OrganizationSettings(Base, TimestampMixin):
 
 class UserSettings(Base, TimestampMixin):
     """User settings model matching the client UserSettingsData schema."""
+
     __tablename__ = "user_settings"
 
     id = Column(String, primary_key=True, default=lambda: generate_id("us_"))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
     features = Column(Text, default="{}")
     settings = Column(Text, default="{}")
     version = Column(Integer, default=0)

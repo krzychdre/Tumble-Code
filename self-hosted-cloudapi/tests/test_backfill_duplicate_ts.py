@@ -38,7 +38,10 @@ async def _seed_user(db_session):
 
 
 def _upload(client, task_id, messages):
-    client.app.dependency_overrides[get_current_user] = lambda: {"user_id": USER, "org_id": None}
+    client.app.dependency_overrides[get_current_user] = lambda: {
+        "user_id": USER,
+        "org_id": None,
+    }
     try:
         return client.post(
             "/api/events/backfill",
@@ -74,7 +77,12 @@ def _command_run():
         # output, then the output itself.
         {"ts": 130, "type": "ask", "ask": "command_output", "text": ""},
         {"ts": 130, "type": "say", "say": "command_output", "text": "3 passed in 0.1s"},
-        {"ts": 140, "type": "say", "say": "completion_result", "text": "All tests pass"},
+        {
+            "ts": 140,
+            "type": "say",
+            "say": "completion_result",
+            "text": "All tests pass",
+        },
     ]
 
 
@@ -88,7 +96,12 @@ async def test_an_upload_with_a_shared_ts_keeps_the_later_message(
     assert resp.status_code == 200
     rows = await _rows(session_factory, "task-dup")
     assert [ts for ts, _msg, _kind in rows] == [100, 110, 120, 130, 140]
-    assert rows[3][1] == {"ts": 130, "type": "say", "say": "command_output", "text": "3 passed in 0.1s"}
+    assert rows[3][1] == {
+        "ts": 130,
+        "type": "say",
+        "say": "command_output",
+        "text": "3 passed in 0.1s",
+    }
 
     async with session_factory() as s:
         task = (await s.execute(select(Task).where(Task.id == "task-dup"))).scalar_one()
@@ -103,7 +116,9 @@ async def test_an_upload_with_a_shared_ts_keeps_the_later_message(
     assert task.q_completed is True
 
 
-async def test_resharing_a_shared_ts_conversation_replaces_it(client, db_session, session_factory):
+async def test_resharing_a_shared_ts_conversation_replaces_it(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
 
     assert _upload(client, "task-dup", _command_run()[:5]).status_code == 200
@@ -112,7 +127,9 @@ async def test_resharing_a_shared_ts_conversation_replaces_it(client, db_session
     assert len(await _rows(session_factory, "task-dup")) == 5
 
 
-async def test_classification_follows_the_full_conversation(client, db_session, session_factory):
+async def test_classification_follows_the_full_conversation(
+    client, db_session, session_factory
+):
     """The feedback comes after a tool call that ran after the completion, so it
     is a mid-run correction. The tool call's row went to the checkpoint that
     shares its ts; classifying only the stored rows would miss that the run

@@ -85,12 +85,12 @@ async def test_me_after_sign_in_returns_user(client, db_session):
     assert resp.status_code == 200
     raw_token = (resp.headers.get("Authorization") or "").removeprefix("Bearer ")
 
-    me_resp = client.get(
-        "/v1/me", headers={"Authorization": f"Bearer {raw_token}"}
-    )
+    me_resp = client.get("/v1/me", headers={"Authorization": f"Bearer {raw_token}"})
     assert me_resp.status_code == 200, me_resp.text
     assert me_resp.json()["response"]["id"] == user.id
-    assert me_resp.json()["response"]["email_addresses"][0]["email_address"] == user.email
+    assert (
+        me_resp.json()["response"]["email_addresses"][0]["email_address"] == user.email
+    )
 
 
 async def test_token_does_not_unlock_other_session(client, db_session):
@@ -156,16 +156,24 @@ async def _sign_in(client, db_session, authentik_id: str, ticket_code: str):
         )
     )
     await db_session.commit()
-    resp = client.post("/v1/client/sign_ins", data={"strategy": "ticket", "ticket": ticket_code})
+    resp = client.post(
+        "/v1/client/sign_ins", data={"strategy": "ticket", "ticket": ticket_code}
+    )
     assert resp.status_code == 200, resp.text
-    return user.id, session.id, (resp.headers.get("Authorization") or "").removeprefix("Bearer ")
+    return (
+        user.id,
+        session.id,
+        (resp.headers.get("Authorization") or "").removeprefix("Bearer "),
+    )
 
 
 async def _session_is_active(db_session, session_id: str) -> bool:
     from sqlalchemy import select
 
     db_session.expire_all()
-    result = await db_session.execute(select(SessionModel.is_active).where(SessionModel.id == session_id))
+    result = await db_session.execute(
+        select(SessionModel.is_active).where(SessionModel.id == session_id)
+    )
     return bool(result.scalar_one())
 
 
@@ -175,7 +183,9 @@ async def _session_is_active(db_session, session_id: str) -> bool:
 
 async def test_logout_cannot_end_another_users_session(client, db_session):
     _, _, alice_token = await _sign_in(client, db_session, "ak_alice", "ticket_alice")
-    _, bob_session_id, bob_token = await _sign_in(client, db_session, "ak_bob", "ticket_bob")
+    _, bob_session_id, bob_token = await _sign_in(
+        client, db_session, "ak_bob", "ticket_bob"
+    )
 
     resp = client.post(
         f"/v1/client/sessions/{bob_session_id}/remove",
@@ -195,7 +205,9 @@ async def test_logout_cannot_end_another_users_session(client, db_session):
 
 
 async def test_logout_ends_own_session(client, db_session):
-    _, session_id, token = await _sign_in(client, db_session, "ak_carol", "ticket_carol")
+    _, session_id, token = await _sign_in(
+        client, db_session, "ak_carol", "ticket_carol"
+    )
 
     resp = client.post(
         f"/v1/client/sessions/{session_id}/remove",
@@ -223,7 +235,9 @@ async def _org_with_member(db_session, user_id: str | None, name: str) -> str:
     return org.id
 
 
-async def test_session_token_refuses_org_the_user_is_not_a_member_of(client, db_session):
+async def test_session_token_refuses_org_the_user_is_not_a_member_of(
+    client, db_session
+):
     _, session_id, token = await _sign_in(client, db_session, "ak_dave", "ticket_dave")
     foreign_org = await _org_with_member(db_session, None, "foreign")
 
@@ -238,7 +252,9 @@ async def test_session_token_refuses_org_the_user_is_not_a_member_of(client, db_
 
 
 async def test_session_token_carries_org_the_user_belongs_to(client, db_session):
-    user_id, session_id, token = await _sign_in(client, db_session, "ak_erin", "ticket_erin")
+    user_id, session_id, token = await _sign_in(
+        client, db_session, "ak_erin", "ticket_erin"
+    )
     own_org = await _org_with_member(db_session, user_id, "own")
 
     resp = client.post(
@@ -251,7 +267,9 @@ async def test_session_token_carries_org_the_user_belongs_to(client, db_session)
 
 
 async def test_session_token_without_org_is_personal(client, db_session):
-    _, session_id, token = await _sign_in(client, db_session, "ak_frank", "ticket_frank")
+    _, session_id, token = await _sign_in(
+        client, db_session, "ak_frank", "ticket_frank"
+    )
 
     resp = client.post(
         f"/v1/client/sessions/{session_id}/tokens",
@@ -267,10 +285,18 @@ async def test_session_token_without_org_is_personal(client, db_session):
     [
         ({"name": "Ada King Lovelace"}, "Ada", "Lovelace"),
         ({"name": "Ada"}, "Ada", ""),
-        ({"name": "Ada Lovelace", "given_name": "Augusta", "family_name": "King"}, "Augusta", "King"),
+        (
+            {"name": "Ada Lovelace", "given_name": "Augusta", "family_name": "King"},
+            "Augusta",
+            "King",
+        ),
     ],
 )
-async def test_userinfo_names_fall_back_to_the_display_name(db_session, userinfo, first, last):
-    user = await get_or_create_user(db_session, {"sub": "ak_names", "email": "a@example.com", **userinfo})
+async def test_userinfo_names_fall_back_to_the_display_name(
+    db_session, userinfo, first, last
+):
+    user = await get_or_create_user(
+        db_session, {"sub": "ak_names", "email": "a@example.com", **userinfo}
+    )
 
     assert (user.first_name, user.last_name) == (first, last)

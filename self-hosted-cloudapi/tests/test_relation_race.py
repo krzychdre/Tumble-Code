@@ -96,7 +96,11 @@ async def test_a_relation_without_a_rival_is_recorded_once(race):
     async with factory() as s:
         relations = (await s.execute(select(TaskRelation))).scalars().all()
         events = (
-            await s.execute(select(func.count(TelemetryEvent.id)).where(TelemetryEvent.task_id == CHILD))
+            await s.execute(
+                select(func.count(TelemetryEvent.id)).where(
+                    TelemetryEvent.task_id == CHILD
+                )
+            )
         ).scalar_one()
     assert events == 2
     assert len(relations) == 1

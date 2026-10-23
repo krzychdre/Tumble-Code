@@ -67,7 +67,13 @@ def test_a_spend_row_formats_tokens_compactly_and_cost_to_four_places():
 
 
 def test_the_metrics_tooltip_separates_thousands_and_prints_cost():
-    task = _task(tokens_in=1_234_567, tokens_out=3_365, cache_writes=12_000, cache_reads=1_000, cost=1.5)
+    task = _task(
+        tokens_in=1_234_567,
+        tokens_out=3_365,
+        cache_writes=12_000,
+        cache_reads=1_000,
+        cost=1.5,
+    )
     assert _metrics_tooltip(task) == [
         "↑ In: 1,234,567",
         "↓ Out: 3,365",
@@ -118,7 +124,11 @@ def test_the_quality_panel_formats_its_efficiency_figures():
         "Cost / turn": "$0.1250",
     }
     empty = {e["label"]: e["value"] for e in _quality_panel(_task())["efficiency"]}
-    assert empty == {"Tokens / turn": "\u2014", "From cache": "\u2014", "Cost / turn": "\u2014"}
+    assert empty == {
+        "Tokens / turn": "\u2014",
+        "From cache": "\u2014",
+        "Cost / turn": "\u2014",
+    }
 
 
 def test_the_retention_preview_states_its_size():
@@ -143,10 +153,25 @@ async def test_the_metrics_page_prints_its_figures(client, db_session, session_f
     async with session_factory() as s:
         s.add(
             _llm_event(
-                model="big", task_id="t1", tin=1_234_567, tout=3_365, cread=1_500, cwrite=20_000, cost=0.1234
+                model="big",
+                task_id="t1",
+                tin=1_234_567,
+                tout=3_365,
+                cread=1_500,
+                cwrite=20_000,
+                cost=0.1234,
             )
         )
-        s.add(_llm_event(model="small", task_id="t1", tin=500, tout=10, cost=0.03125, kind="condense"))
+        s.add(
+            _llm_event(
+                model="small",
+                task_id="t1",
+                tin=500,
+                tout=10,
+                cost=0.03125,
+                kind="condense",
+            )
+        )
         s.add(_embedding_event(prompt_tokens=2_000))
         s.add(_embedding_event(prompt_tokens=3_000))
         await s.commit()
@@ -172,7 +197,9 @@ async def test_the_metrics_page_prints_its_figures(client, db_session, session_f
     assert '<td class="bd-num">$0.0313</td>' in body
 
 
-async def test_the_metrics_page_says_one_in_the_singular(client, db_session, session_factory):
+async def test_the_metrics_page_says_one_in_the_singular(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     async with session_factory() as s:
         s.add(_llm_event(task_id="t1", tin=10, tout=1, cost=0.0))
@@ -190,7 +217,9 @@ async def test_the_metrics_page_says_one_in_the_singular(client, db_session, ses
     assert '<div class="stat-value">$0.0000</div>' in body
 
 
-async def test_the_task_page_prints_the_side_call_cost(client, db_session, session_factory):
+async def test_the_task_page_prints_the_side_call_cost(
+    client, db_session, session_factory
+):
     async with session_factory() as s:
         await _seed_user(s)
         s.add(Task(id="task-f", user_id="user_test", title="Run"))
@@ -206,7 +235,16 @@ async def test_the_task_page_prints_the_side_call_cost(client, db_session, sessi
             },
         )
         s.add(_llm_event(task_id="task-f", model="m", tin=297_800, tout=5_900))
-        s.add(_llm_event(task_id="task-f", model="bg", tin=40_000, tout=800, cost=0.4321, kind="condense"))
+        s.add(
+            _llm_event(
+                task_id="task-f",
+                model="bg",
+                tin=40_000,
+                tout=800,
+                cost=0.4321,
+                kind="condense",
+            )
+        )
         await _summarize(s, "task-f")
         await s.commit()
 

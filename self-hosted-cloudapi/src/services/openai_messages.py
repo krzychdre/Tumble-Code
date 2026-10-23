@@ -50,7 +50,10 @@ def convert_message(
     message: Any, *, reasoning: bool, text: Text = _identity, args: Args = _identity
 ) -> list[dict]:
     """One canonical message as OpenAI messages (none, one, or a tool message per result)."""
-    if not isinstance(message, dict) or message.get("role") not in ("user", "assistant"):
+    if not isinstance(message, dict) or message.get("role") not in (
+        "user",
+        "assistant",
+    ):
         return []
     role = message["role"]
     content = message.get("content")
@@ -67,11 +70,13 @@ def convert_message(
                 continue
             kind = block.get("type")
             if kind == "tool_result":
-                out.append({
-                    "role": "tool",
-                    "tool_call_id": str(block.get("tool_use_id") or ""),
-                    "content": text(_tool_result_text(block)) or "(empty)",
-                })
+                out.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": str(block.get("tool_use_id") or ""),
+                        "content": text(_tool_result_text(block)) or "(empty)",
+                    }
+                )
             elif kind == "text" and block.get("text"):
                 parts.append(text(block["text"]))
             elif kind == "image":
@@ -90,20 +95,37 @@ def convert_message(
         if kind == "text" and isinstance(block.get("text"), str):
             texts.append(text(block["text"]))
         elif kind in ("reasoning", "thinking"):
-            thought = block.get("text") if isinstance(block.get("text"), str) else block.get("thinking")
+            thought = (
+                block.get("text")
+                if isinstance(block.get("text"), str)
+                else block.get("thinking")
+            )
             if isinstance(thought, str) and thought:
                 thoughts.append(text(thought))
         elif kind == "tool_use":
-            raw = json.dumps(block.get("input") or {}, ensure_ascii=False, separators=(",", ":"))
-            calls.append({
-                "id": str(block.get("id") or ""),
-                "type": "function",
-                "function": {"name": str(block.get("name") or ""), "arguments": args(raw)},
-            })
-    return [assistant_message("\n".join(texts), "\n".join(thoughts) if reasoning else None, calls)]
+            raw = json.dumps(
+                block.get("input") or {}, ensure_ascii=False, separators=(",", ":")
+            )
+            calls.append(
+                {
+                    "id": str(block.get("id") or ""),
+                    "type": "function",
+                    "function": {
+                        "name": str(block.get("name") or ""),
+                        "arguments": args(raw),
+                    },
+                }
+            )
+    return [
+        assistant_message(
+            "\n".join(texts), "\n".join(thoughts) if reasoning else None, calls
+        )
+    ]
 
 
-def assistant_message(content: str, reasoning: Optional[str], calls: list[dict]) -> dict:
+def assistant_message(
+    content: str, reasoning: Optional[str], calls: list[dict]
+) -> dict:
     message: dict = {"role": "assistant", "content": content}
     if reasoning:
         message["reasoning_content"] = reasoning
@@ -112,18 +134,25 @@ def assistant_message(content: str, reasoning: Optional[str], calls: list[dict])
     return message
 
 
-def response_message(response: dict, *, reasoning: bool, text: Text = _identity, args: Args = _identity) -> dict:
+def response_message(
+    response: dict, *, reasoning: bool, text: Text = _identity, args: Args = _identity
+) -> dict:
     """An exchange's answer exactly as the model produced it (raw tool arguments)."""
     calls = [
         {
             "id": str(call.get("id") or ""),
             "type": "function",
-            "function": {"name": str(call.get("name") or ""), "arguments": args(call.get("arguments") or "")},
+            "function": {
+                "name": str(call.get("name") or ""),
+                "arguments": args(call.get("arguments") or ""),
+            },
         }
         for call in response.get("toolCalls") or []
         if isinstance(call, dict)
     ]
     thought = response.get("reasoning") if reasoning else None
     return assistant_message(
-        text(response.get("text") or ""), text(thought) if isinstance(thought, str) and thought else None, calls
+        text(response.get("text") or ""),
+        text(thought) if isinstance(thought, str) and thought else None,
+        calls,
     )

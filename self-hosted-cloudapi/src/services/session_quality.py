@@ -177,7 +177,9 @@ def awaiting_after(msg: dict, previous: bool) -> bool:
     return previous
 
 
-def classify_conversation(messages: Iterable[dict]) -> list[tuple[Optional[str], Optional[str]]]:
+def classify_conversation(
+    messages: Iterable[dict],
+) -> list[tuple[Optional[str], Optional[str]]]:
     """(kind, tool_path) for each message, in order. Used by the backfill path.
 
     Sequence order matters for the completion-reply rule, so this walks the
@@ -275,13 +277,17 @@ class Quality:
         if self.errors:
             out.append(f"{self.errors} error{'' if self.errors == 1 else 's'}")
         if self.retries:
-            out.append(f"{self.retries} provider retr{'y' if self.retries == 1 else 'ies'}")
+            out.append(
+                f"{self.retries} provider retr{'y' if self.retries == 1 else 'ies'}"
+            )
         if self.condense:
             out.append(
                 f"context condensed {self.condense} time{'' if self.condense == 1 else 's'}"
             )
         if self.repeated_work:
-            out.append(f"{self.repeated_work} repeated tool call{'' if self.repeated_work == 1 else 's'}")
+            out.append(
+                f"{self.repeated_work} repeated tool call{'' if self.repeated_work == 1 else 's'}"
+            )
         if not out:
             out.append("nothing went wrong")
         if self.completion_replies:

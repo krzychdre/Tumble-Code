@@ -17,6 +17,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # DEBUG: uvicorn's access log already records every request at INFO;
         # this line adds the duration (LOG_LEVEL=DEBUG shows it).
         logger.debug(
-            "%s %s -> %s (%.3fs)", request.method, request.url.path, response.status_code, duration
+            "%s %s -> %s (%.3fs)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration,
         )
         return response

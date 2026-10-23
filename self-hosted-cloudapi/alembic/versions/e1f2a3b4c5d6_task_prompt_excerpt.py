@@ -57,7 +57,9 @@ def _backfill() -> None:
 
     task_ids = [r[0] for r in conn.execute(sa.text("SELECT id FROM tasks")).fetchall()]
     for task_id in task_ids:
-        rows = conn.execute(sa.text(head_sql), {"tid": task_id, "limit": _HEAD_ROWS}).fetchall()
+        rows = conn.execute(
+            sa.text(head_sql), {"tid": task_id, "limit": _HEAD_ROWS}
+        ).fetchall()
 
         messages = []
         for (payload,) in rows:

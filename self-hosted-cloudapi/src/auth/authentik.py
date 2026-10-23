@@ -45,10 +45,14 @@ def _back_channel_headers(extra: Optional[Dict[str, str]] = None) -> Dict[str, s
 
 def generate_pkce_pair() -> tuple[str, str]:
     """Generate a PKCE code verifier and code challenge."""
-    code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode()).digest()
-    ).decode().rstrip("=")
+    code_verifier = (
+        base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
+    )
+    code_challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
+        .decode()
+        .rstrip("=")
+    )
     return code_verifier, code_challenge
 
 
@@ -114,9 +118,7 @@ async def get_userinfo(access_token: str) -> Dict[str, Any]:
     async with httpx.AsyncClient(timeout=AUTHENTIK_TIMEOUT) as client:
         response = await client.get(
             get_authentik_userinfo_url(),
-            headers=_back_channel_headers(
-                {"Authorization": f"Bearer {access_token}"}
-            ),
+            headers=_back_channel_headers({"Authorization": f"Bearer {access_token}"}),
         )
         response.raise_for_status()
         return response.json()

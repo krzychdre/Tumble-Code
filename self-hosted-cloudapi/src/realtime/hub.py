@@ -110,7 +110,9 @@ class ConnectionRegistry:
 
     # --- extension instances ----------------------------------------------
 
-    def register_extension(self, sid: str, user_id: str, instance: Optional[dict] = None) -> None:
+    def register_extension(
+        self, sid: str, user_id: str, instance: Optional[dict] = None
+    ) -> None:
         sids = self._ext_sids_by_user.setdefault(user_id, [])
         if sid in sids:
             sids.remove(sid)
@@ -142,7 +144,9 @@ class ConnectionRegistry:
             if inst is not None:
                 inst["lastHeartbeat"] = time.time()
 
-    def extension_sid(self, user_id: str, task_id: Optional[str] = None) -> Optional[str]:
+    def extension_sid(
+        self, user_id: str, task_id: Optional[str] = None
+    ) -> Optional[str]:
         """The extension socket a command for ``task_id`` goes to: the one that
         streams the task, else the user's newest."""
         sids = self._ext_sids_by_user.get(user_id)

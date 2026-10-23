@@ -7,7 +7,10 @@ from typing import Optional, Dict, Any
 
 class TelemetryEventRequest(BaseModel):
     """Request for POST /api/events."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
+
+    model_config = ConfigDict(
+        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True
+    )
 
     type: str
     properties: Optional[Dict[str, Any]] = None

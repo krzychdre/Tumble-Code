@@ -67,7 +67,17 @@ def _events() -> list[TelemetryEvent]:
     return [
         # --- valid completions inside every period -------------------------
         _completion(
-            _props("glm-5", "code", "zai", "t1", 1000, 200, 0.5, cacheReadTokens=300, cacheWriteTokens=40),
+            _props(
+                "glm-5",
+                "code",
+                "zai",
+                "t1",
+                1000,
+                200,
+                0.5,
+                cacheReadTokens=300,
+                cacheWriteTokens=40,
+            ),
             _ago(hours=2),
         ),
         _completion(
@@ -75,23 +85,53 @@ def _events() -> list[TelemetryEvent]:
             _ago(hours=1),
         ),
         _completion(
-            _props("qwen-3", "architect", "openai", "t2", 500, 50, 0.0, completionKind="condense"),
+            _props(
+                "qwen-3",
+                "architect",
+                "openai",
+                "t2",
+                500,
+                50,
+                0.0,
+                completionKind="condense",
+            ),
             _ago(days=1, hours=3),
         ),
         _completion(
-            _props("qwen-3", "ask", "openai", "t2", 300, 30, 0.125, completionKind="memory", usageReported=False),
+            _props(
+                "qwen-3",
+                "ask",
+                "openai",
+                "t2",
+                300,
+                30,
+                0.125,
+                completionKind="memory",
+                usageReported=False,
+            ),
             _ago(days=2),
         ),
         # Missing fields: every dimension reads "unknown", every number 0.
         _completion({"taskId": "t3"}, _ago(days=3)),
         # Wrong types: strings and booleans are not numbers.
         _completion(
-            _props("glm-5", "code", "zai", "t3", "900", True, "1.5", cacheReadTokens=False),
+            _props(
+                "glm-5", "code", "zai", "t3", "900", True, "1.5", cacheReadTokens=False
+            ),
             _ago(days=3, hours=1),
         ),
         # Client timestamp given as a float, and one as a bool (ignored).
         _completion(
-            _props("glm-5", "debug", "zai", "t4", 40, 4, 0.01, timestamp=1_758_100_000_500.0),
+            _props(
+                "glm-5",
+                "debug",
+                "zai",
+                "t4",
+                40,
+                4,
+                0.01,
+                timestamp=1_758_100_000_500.0,
+            ),
             _ago(days=5),
         ),
         _completion(
@@ -109,24 +149,70 @@ def _events() -> list[TelemetryEvent]:
         _completion('"a string"', _ago(hours=8)),
         # --- only in 30d / all ---------------------------------------------
         _completion(
-            _props("claude", "code", "anthropic", "t5", 7000, 700, 1.75, completionKind="enhance"),
+            _props(
+                "claude",
+                "code",
+                "anthropic",
+                "t5",
+                7000,
+                700,
+                1.75,
+                completionKind="enhance",
+            ),
             _ago(days=12),
         ),
-        _completion(_props("claude", "orchestrator", "anthropic", None, 100, 10, 0.05), _ago(days=20)),
+        _completion(
+            _props("claude", "orchestrator", "anthropic", None, 100, 10, 0.05),
+            _ago(days=20),
+        ),
         # --- only in all ------------------------------------------------------
-        _completion(_props("old-model", "code", "zai", "t6", 123_456, 7_890, 3.0), _ago(days=200)),
-        _completion(_props("old-model", "code", "zai", "t6", 1, 1, 0.0), _ago(days=199)),
+        _completion(
+            _props("old-model", "code", "zai", "t6", 123_456, 7_890, 3.0),
+            _ago(days=200),
+        ),
+        _completion(
+            _props("old-model", "code", "zai", "t6", 1, 1, 0.0), _ago(days=199)
+        ),
         # --- never counted ------------------------------------------------------
-        _completion(_props("glm-5", "code", "zai", "t1", 99_999, 9_999, 99.0), _ago(hours=1), user_id=OTHER),
-        _completion(_props("glm-5", "code", "zai", "t1", 88_888, 8_888, 88.0), _ago(hours=1), event_type="Task Message"),
-        _completion(_props("glm-5", "code", "zai", "t1", 77_777, 7_777, 77.0), _ago(hours=1), event_type="Tool Used"),
+        _completion(
+            _props("glm-5", "code", "zai", "t1", 99_999, 9_999, 99.0),
+            _ago(hours=1),
+            user_id=OTHER,
+        ),
+        _completion(
+            _props("glm-5", "code", "zai", "t1", 88_888, 8_888, 88.0),
+            _ago(hours=1),
+            event_type="Task Message",
+        ),
+        _completion(
+            _props("glm-5", "code", "zai", "t1", 77_777, 7_777, 77.0),
+            _ago(hours=1),
+            event_type="Tool Used",
+        ),
         # --- embeddings ---------------------------------------------------------
-        _completion({"promptTokens": 5000, "source": "index-scan"}, _ago(hours=3), event_type="Embedding Usage"),
-        _completion({"promptTokens": 700, "source": "search"}, _ago(days=2), event_type="Embedding Usage"),
+        _completion(
+            {"promptTokens": 5000, "source": "index-scan"},
+            _ago(hours=3),
+            event_type="Embedding Usage",
+        ),
+        _completion(
+            {"promptTokens": 700, "source": "search"},
+            _ago(days=2),
+            event_type="Embedding Usage",
+        ),
         _completion({"promptTokens": "12"}, _ago(days=4), event_type="Embedding Usage"),
         _completion("{bad", _ago(days=4), event_type="Embedding Usage"),
-        _completion({"promptTokens": 40_000, "source": "index-scan"}, _ago(days=40), event_type="Embedding Usage"),
-        _completion({"promptTokens": 9_999, "source": "index-scan"}, _ago(hours=3), user_id=OTHER, event_type="Embedding Usage"),
+        _completion(
+            {"promptTokens": 40_000, "source": "index-scan"},
+            _ago(days=40),
+            event_type="Embedding Usage",
+        ),
+        _completion(
+            {"promptTokens": 9_999, "source": "index-scan"},
+            _ago(hours=3),
+            user_id=OTHER,
+            event_type="Embedding Usage",
+        ),
     ]
 
 
@@ -138,7 +224,9 @@ def _broken_events() -> list[TelemetryEvent]:
     ]
 
 
-def _task(task_id, user_id=USER, *, updated, title=None, parent=None, completed=True, **q):
+def _task(
+    task_id, user_id=USER, *, updated, title=None, parent=None, completed=True, **q
+):
     return Task(
         id=task_id,
         user_id=user_id,
@@ -162,8 +250,21 @@ def _tasks() -> list[Task]:
         _task("q-clean", updated=recent, title="Clean run", requests=3, tools=5),
         # No title, and enough friction to be listed: shown under the default title.
         _task("q-untitled", updated=recent, requests=1, errors=19),
-        _task("q-unfinished", updated=recent, title="Never done", completed=False, requests=2, errors=1),
-        _task("q-replied", updated=recent, title="Replied to", requests=4, completion_replies=2),
+        _task(
+            "q-unfinished",
+            updated=recent,
+            title="Never done",
+            completed=False,
+            requests=2,
+            errors=1,
+        ),
+        _task(
+            "q-replied",
+            updated=recent,
+            title="Replied to",
+            requests=4,
+            completion_replies=2,
+        ),
         _task(
             "q-rough",
             updated=recent,
@@ -186,7 +287,9 @@ def _tasks() -> list[Task]:
     # q-untitled (19) and q-rough (11) these fill the 8 places; q-low (3) and,
     # in all time, q-old (5) are cut.
     for n in range(1, 7):
-        tasks.append(_task(f"q-f{n}", updated=recent, title=f"Friction {n}", retries=n + 11))
+        tasks.append(
+            _task(f"q-f{n}", updated=recent, title=f"Friction {n}", retries=n + 11)
+        )
     tasks.append(_task("q-low", updated=recent, title="Low friction", retries=3))
     return tasks
 
@@ -218,7 +321,9 @@ async def _all_metrics(db) -> dict:
 
 
 async def _all_quality(db) -> dict:
-    return {period: await _quality_overview(db, USER, period) for period in ("7d", "all")}
+    return {
+        period: await _quality_overview(db, USER, period) for period in ("7d", "all")
+    }
 
 
 async def test_metrics_result_is_pinned_for_every_period(seeded):
@@ -282,7 +387,11 @@ async def test_metrics_read_only_the_columns_they_use(seeded, captured_sql):
     reads = [s for s in captured_sql if "FROM telemetry_events" in s]
     assert len(reads) == 2, reads
     completions, embeddings = reads
-    assert _selected_columns(completions, "telemetry_events") == {"properties", "created_at", "client_kind"}
+    assert _selected_columns(completions, "telemetry_events") == {
+        "properties",
+        "created_at",
+        "client_kind",
+    }
     assert _selected_columns(embeddings, "telemetry_events") == {"properties"}
 
 

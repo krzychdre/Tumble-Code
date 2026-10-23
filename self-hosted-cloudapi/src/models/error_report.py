@@ -30,8 +30,15 @@ class ErrorReport(Base):
     id = Column(String, primary_key=True)
     # CASCADE, unlike telemetry_events: a report carries the tail of a
     # conversation, which must not outlive the account it belongs to.
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    organization_id = Column(
+        String,
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     # Not a FK, as on telemetry_events: a report can name a task that is never
     # stored as a row. Deleting a stored task deletes its reports explicitly
     # (services/share_service.delete_tasks).
@@ -42,7 +49,9 @@ class ErrorReport(Base):
     mode = Column(String, nullable=True)
     app_version = Column(String, nullable=True)
     # "vscode" or "cli" (services/client_kind): which client sent the report.
-    client_kind = Column(String, nullable=False, default="vscode", server_default="vscode")
+    client_kind = Column(
+        String, nullable=False, default="vscode", server_default="vscode"
+    )
     tool_name = Column(String, nullable=True)
     summary = Column(Text, nullable=False)
     # The grouping key: category, tool and the first line of the message with
@@ -51,7 +60,10 @@ class ErrorReport(Base):
     # When it happened, by the extension's clock; created_at is when it arrived.
     occurred_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(
-        DateTime(timezone=True), nullable=False, index=True, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
     )
     # The whole report as received (JSON text), for the drill-down.
     payload = Column(Text, nullable=False)

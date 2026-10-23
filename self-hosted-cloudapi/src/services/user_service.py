@@ -17,9 +17,7 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
     return result.scalar_one_or_none()
 
 
-async def get_user_memberships(
-    db: AsyncSession, user_id: str
-) -> List[Membership]:
+async def get_user_memberships(db: AsyncSession, user_id: str) -> List[Membership]:
     """Get all organization memberships for a user."""
     result = await db.execute(
         select(Membership)
@@ -44,7 +42,9 @@ async def get_or_create_org_settings(
 ) -> OrganizationSettings:
     """Get or create organization settings."""
     result = await db.execute(
-        select(OrganizationSettings).where(OrganizationSettings.organization_id == org_id)
+        select(OrganizationSettings).where(
+            OrganizationSettings.organization_id == org_id
+        )
     )
     settings = result.scalar_one_or_none()
     if settings is None:
@@ -54,9 +54,7 @@ async def get_or_create_org_settings(
     return settings
 
 
-async def get_or_create_user_settings(
-    db: AsyncSession, user_id: str
-) -> UserSettings:
+async def get_or_create_user_settings(db: AsyncSession, user_id: str) -> UserSettings:
     """Get or create user settings."""
     result = await db.execute(
         select(UserSettings).where(UserSettings.user_id == user_id)

@@ -1,6 +1,5 @@
 """Task sharing service."""
 
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 
@@ -172,14 +171,20 @@ async def delete_tasks(
     # it. Not a foreign key (a report can name a task that was never stored),
     # so it is done here, for this user's reports only.
     await db.execute(
-        delete(ErrorReport).where(ErrorReport.task_id.in_(owned), ErrorReport.user_id == user_id)
+        delete(ErrorReport).where(
+            ErrorReport.task_id.in_(owned), ErrorReport.user_id == user_id
+        )
     )
     # Recorded LLM exchanges and their blobs hold the whole conversation as the
     # model saw it; they go with the task too (also not foreign keys).
     await db.execute(
-        delete(LlmExchange).where(LlmExchange.task_id.in_(owned), LlmExchange.user_id == user_id)
+        delete(LlmExchange).where(
+            LlmExchange.task_id.in_(owned), LlmExchange.user_id == user_id
+        )
     )
-    await db.execute(delete(LlmBlob).where(LlmBlob.task_id.in_(owned), LlmBlob.user_id == user_id))
+    await db.execute(
+        delete(LlmBlob).where(LlmBlob.task_id.in_(owned), LlmBlob.user_id == user_id)
+    )
     await db.execute(delete(TaskShare).where(TaskShare.task_id.in_(owned)))
     await db.execute(delete(Task).where(Task.id.in_(owned)))
     await db.flush()
@@ -196,7 +201,9 @@ async def _owned_ids(db: AsyncSession, task_ids: list[str], user_id: str) -> lis
     return [row[0] for row in result.all()]
 
 
-async def _with_descendants(db: AsyncSession, task_ids: list[str], user_id: str) -> list[str]:
+async def _with_descendants(
+    db: AsyncSession, task_ids: list[str], user_id: str
+) -> list[str]:
     """Expand a selection to include every subtask beneath it, at any depth.
 
     One query whatever the depth (``task_tree.descendant_ids``, which also ends

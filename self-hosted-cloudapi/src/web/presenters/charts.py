@@ -71,7 +71,11 @@ def _axis_cost(dollars: float) -> str:
 
 def _ticks(top: float, fmt) -> list[str]:
     """Axis labels from the top down, so they read in the order they are drawn."""
-    return [fmt(top * i / AXIS_STEPS) for i in range(AXIS_STEPS, -1, -1)] if top > 0 else []
+    return (
+        [fmt(top * i / AXIS_STEPS) for i in range(AXIS_STEPS, -1, -1)]
+        if top > 0
+        else []
+    )
 
 
 def calendar(days: list[dict]) -> list[dict]:
@@ -82,7 +86,10 @@ def calendar(days: list[dict]) -> list[dict]:
     if not days:
         return []
     have = {d["day"]: d for d in days}
-    first, last = date.fromisoformat(days[0]["day"]), date.fromisoformat(days[-1]["day"])
+    first, last = (
+        date.fromisoformat(days[0]["day"]),
+        date.fromisoformat(days[-1]["day"]),
+    )
     out = []
     for i in range((last - first).days + 1):
         day = (first + timedelta(days=i)).isoformat()
@@ -135,7 +142,10 @@ def _smooth(points: list[tuple[float, float]]) -> str:
 def _series(values: list[float], top: float) -> dict:
     """One series' line, the area under it, and a point per day."""
     points = [
-        (i * DAY_SLOT + DAY_SLOT / 2, PLOT_HEIGHT - (PLOT_HEIGHT * v / top if top > 0 else 0))
+        (
+            i * DAY_SLOT + DAY_SLOT / 2,
+            PLOT_HEIGHT - (PLOT_HEIGHT * v / top if top > 0 else 0),
+        )
         for i, v in enumerate(values)
     ]
     if not points:
@@ -180,10 +190,15 @@ def daily(days: list[dict]) -> dict:
     if days:
         active = sum(1 for t, c in zip(tokens, costs) if t or c)
         summary = f"Tokens and cost per day, {days[0]['day']} to {days[-1]['day']}, {active} active days"
-        for what, values, fmt in (("tokens", tokens, fmt_tokens), ("cost", costs, fmt_cost)):
+        for what, values, fmt in (
+            ("tokens", tokens, fmt_tokens),
+            ("cost", costs, fmt_cost),
+        ):
             peak = max(values)
             if peak > 0:
-                summary += f"; highest {what} {fmt(peak)} on {days[values.index(peak)]['day']}"
+                summary += (
+                    f"; highest {what} {fmt(peak)} on {days[values.index(peak)]['day']}"
+                )
     else:
         summary = "Tokens and cost per day: no data"
     return {
@@ -194,7 +209,9 @@ def daily(days: list[dict]) -> dict:
         "tokens": tokens_series,
         "cost": cost_series,
         "dense": len(days) > DOT_LIMIT,
-        "gridlines": [round(PLOT_HEIGHT * i / AXIS_STEPS, 2) for i in range(AXIS_STEPS)],
+        "gridlines": [
+            round(PLOT_HEIGHT * i / AXIS_STEPS, 2) for i in range(AXIS_STEPS)
+        ],
         "tokens_ticks": _ticks(tokens_top, fmt_tokens),
         "cost_ticks": _ticks(cost_top, _axis_cost),
         "summary": summary,
@@ -227,12 +244,17 @@ def ranked(rows: list[dict], what: str) -> dict:
     rest = rows[RANK_LIMIT:]
     if rest:
         shown.append(
-            {"name": f"{len(rest)} other{'' if len(rest) == 1 else 's'}", "tokens": sum(r["tokens"] for r in rest)}
+            {
+                "name": f"{len(rest)} other{'' if len(rest) == 1 else 's'}",
+                "tokens": sum(r["tokens"] for r in rest),
+            }
         )
     peak = max((r["tokens"] for r in shown), default=0)
     items = []
     for i, r in enumerate(shown):
-        width = round(100 * r["tokens"] / peak, 2) if peak > 0 and r["tokens"] > 0 else 0.0
+        width = (
+            round(100 * r["tokens"] / peak, 2) if peak > 0 and r["tokens"] > 0 else 0.0
+        )
         if r["tokens"] > 0:
             width = max(width, 0.5)
         top = i * RANK_ROW

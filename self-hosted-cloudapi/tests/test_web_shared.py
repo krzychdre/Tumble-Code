@@ -103,8 +103,14 @@ async def test_shared_organization_visibility_allows_same_org_user(
     async with session_factory() as s:
         org = Organization(id="org-shared", name="Shared Org")
         s.add(org)
-        s.add(Membership(user_id="owner", organization_id="org-shared", role="org:member"))
-        s.add(Membership(user_id="colleague", organization_id="org-shared", role="org:member"))
+        s.add(
+            Membership(user_id="owner", organization_id="org-shared", role="org:member")
+        )
+        s.add(
+            Membership(
+                user_id="colleague", organization_id="org-shared", role="org:member"
+            )
+        )
         s.add(Task(id="task-org-same", user_id="owner", organization_id="org-shared"))
         await _add_message(s, "task-org-same", _msgs()[0])
         s.add(TaskShare(task_id="task-org-same", visibility="organization"))

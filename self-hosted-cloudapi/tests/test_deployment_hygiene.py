@@ -74,7 +74,15 @@ def test_build_context_excludes_secrets_and_local_state(path):
 
 
 @pytest.mark.parametrize(
-    "path", [".env.example", "src/main.py", "pyproject.toml", "uv.lock", "docker-entrypoint.sh", "db-migrate.sh"]
+    "path",
+    [
+        ".env.example",
+        "src/main.py",
+        "pyproject.toml",
+        "uv.lock",
+        "docker-entrypoint.sh",
+        "db-migrate.sh",
+    ],
 )
 def test_build_context_keeps_the_application(path):
     assert not _dockerignore_excludes(path), path
@@ -106,7 +114,11 @@ def test_container_does_not_run_as_root():
     ],
 )
 def test_startup_refuses_placeholder_or_weak_secrets(overrides):
-    values = {"secret_key": STRONG, "jwt_secret": STRONG, "jwt_algorithm": "HS256"} | overrides
+    values = {
+        "secret_key": STRONG,
+        "jwt_secret": STRONG,
+        "jwt_algorithm": "HS256",
+    } | overrides
     with pytest.raises(ValidationError):
         Settings(**values)
 
@@ -143,7 +155,9 @@ async def _user_session(db_session, authentik_id="ak_ttl") -> str:
 async def _token_row(db_session, raw: str) -> ClientToken:
     db_session.expire_all()
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
-    result = await db_session.execute(select(ClientToken).where(ClientToken.token_hash == token_hash))
+    result = await db_session.execute(
+        select(ClientToken).where(ClientToken.token_hash == token_hash)
+    )
     return result.scalar_one()
 
 
@@ -179,7 +193,9 @@ async def test_expired_client_token_is_refused(client, db_session, monkeypatch):
     assert _me(client, raw) == 401
 
 
-async def test_using_a_client_token_pushes_its_expiry_forward(client, db_session, monkeypatch):
+async def test_using_a_client_token_pushes_its_expiry_forward(
+    client, db_session, monkeypatch
+):
     monkeypatch.setattr(settings, "client_token_idle_days", 30)
     session_id = await _user_session(db_session)
     token, raw = await create_client_token(db_session, session_id)
@@ -208,7 +224,9 @@ async def test_token_issued_before_expiry_existed_keeps_working_and_gets_an_expi
     assert _aware(row.expires_at) > datetime.now(timezone.utc) + timedelta(days=29)
 
 
-async def test_zero_idle_days_means_tokens_never_expire(client, db_session, monkeypatch):
+async def test_zero_idle_days_means_tokens_never_expire(
+    client, db_session, monkeypatch
+):
     monkeypatch.setattr(settings, "client_token_idle_days", 0)
     session_id = await _user_session(db_session)
     token, raw = await create_client_token(db_session, session_id)
@@ -222,25 +240,36 @@ async def test_zero_idle_days_means_tokens_never_expire(client, db_session, monk
 
 @pytest.mark.parametrize("auth_redirect", ["vscode://QUB-IT.tumble-code", "web:/app"])
 def test_sign_in_logs_name_the_user_by_id_not_email(client, caplog, auth_redirect):
-    with patch("src.routers.browser.get_oauth_state") as get_state, \
-         patch("src.routers.browser.exchange_code_for_tokens") as exchange, \
-         patch("src.routers.browser.get_userinfo") as userinfo, \
-         patch("src.routers.browser.get_or_create_user") as create_user, \
-         patch("src.routers.browser.create_session") as create_session, \
-         patch("src.routers.browser.create_ticket") as create_ticket:
-        get_state.return_value = MagicMock(auth_redirect=auth_redirect, code_verifier="v")
+    with (
+        patch("src.routers.browser.get_oauth_state") as get_state,
+        patch("src.routers.browser.exchange_code_for_tokens") as exchange,
+        patch("src.routers.browser.get_userinfo") as userinfo,
+        patch("src.routers.browser.get_or_create_user") as create_user,
+        patch("src.routers.browser.create_session") as create_session,
+        patch("src.routers.browser.create_ticket") as create_ticket,
+    ):
+        get_state.return_value = MagicMock(
+            auth_redirect=auth_redirect, code_verifier="v"
+        )
         exchange.return_value = {"access_token": "a"}
-        userinfo.return_value = {"sub": "authentik-sub-123", "email": "alice@example.com"}
+        userinfo.return_value = {
+            "sub": "authentik-sub-123",
+            "email": "alice@example.com",
+        }
         create_user.return_value = MagicMock(id="user_abc123")
         create_session.return_value = MagicMock(id="sess_1")
         create_ticket.return_value = "ticket-1"
 
         with caplog.at_level(logging.INFO, logger="src.routers.browser"):
             resp = client.get(
-                "/auth/clerk/callback", params={"code": "c", "state": "s"}, follow_redirects=False
+                "/auth/clerk/callback",
+                params={"code": "c", "state": "s"},
+                follow_redirects=False,
             )
 
     assert resp.status_code in (200, 303), resp.text
-    messages = [r.getMessage() for r in caplog.records if r.name == "src.routers.browser"]
+    messages = [
+        r.getMessage() for r in caplog.records if r.name == "src.routers.browser"
+    ]
     assert any("user_abc123" in m for m in messages), messages
     assert not any("alice@example.com" in m for m in messages), messages

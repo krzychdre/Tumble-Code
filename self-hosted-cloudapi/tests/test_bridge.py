@@ -65,8 +65,15 @@ def stub_emit(monkeypatch):
 
 
 async def _seed_user(db, user_id="user_test", email="t@example.com"):
-    db.add(User(id=user_id, authentik_id=f"ak_{user_id}", email=email,
-                first_name="Test", last_name="User"))
+    db.add(
+        User(
+            id=user_id,
+            authentik_id=f"ak_{user_id}",
+            email=email,
+            first_name="Test",
+            last_name="User",
+        )
+    )
     await db.commit()
 
 
@@ -119,7 +126,11 @@ def test_registry_instance_of_a_task_merges_its_snapshot():
     reg = ConnectionRegistry()
     reg.attach("ext1", "extension", "u1")
     reg.register_extension("ext1", "u1", {"instanceId": "i1"})
-    reg.note_task_event("ext1", "t1", {"type": EVT_INSTANCE_STATE, "contextTokens": 1234, "isRunning": True})
+    reg.note_task_event(
+        "ext1",
+        "t1",
+        {"type": EVT_INSTANCE_STATE, "contextTokens": 1234, "isRunning": True},
+    )
     inst = reg.instance("u1", "t1")
     assert inst["instanceId"] == "i1"
     assert inst["contextTokens"] == 1234
@@ -184,7 +195,13 @@ def _signed_token(claims: dict, expires_in: int = 60) -> str:
 
     now = int(time.time())
     return jwt.encode(
-        {"exp": now + expires_in, "iat": now, "nbf": now, "r": {"u": "user_x"}, **claims},
+        {
+            "exp": now + expires_in,
+            "iat": now,
+            "nbf": now,
+            "r": {"u": "user_x"},
+            **claims,
+        },
         get_jwt_key(),
         settings.jwt_algorithm,
     )
@@ -194,7 +211,12 @@ def test_user_id_from_token_accepts_a_static_token():
     # The shape the retired issue_static_token gave long-lived
     # TUMBLE_CODE_CLOUD_TOKEN values, some of which users still hold.
     token = _signed_token(
-        {"iss": "rcc", "v": 1, "sub": "cj_user_static", "r": {"u": "user_static", "t": "cj"}},
+        {
+            "iss": "rcc",
+            "v": 1,
+            "sub": "cj_user_static",
+            "r": {"u": "user_static", "t": "cj"},
+        },
         expires_in=86400 * 365,
     )
     assert _user_id_from_token(token) == "user_static"
@@ -217,7 +239,10 @@ def test_user_id_from_token_refuses_a_token_without_our_issuer_and_version(claim
 async def test_connect_extension_refuses_a_token_without_our_issuer_and_version(
     patch_session_factory, claims
 ):
-    assert await sio_module.connect("extsid", {}, {"token": _signed_token(claims)}) is False
+    assert (
+        await sio_module.connect("extsid", {}, {"token": _signed_token(claims)})
+        is False
+    )
     assert registry.meta("extsid") is None
 
 
@@ -231,7 +256,9 @@ def test_cookie_from_environ_extracts_session_cookie():
 # --- (a) extension handshake registers an instance -------------------------
 
 
-async def test_connect_extension_with_valid_jwt_attaches_and_registers(patch_session_factory):
+async def test_connect_extension_with_valid_jwt_attaches_and_registers(
+    patch_session_factory,
+):
     token = issue_session_token("user_ext", expires_in=300)
     ok = await sio_module.connect("extsid", {}, {"token": token})
     assert ok is True
@@ -295,7 +322,10 @@ async def test_connect_browser_outside_the_allowlist_is_rejected_despite_a_valid
     assert registry.meta("insider") == {"role": "browser", "user_id": "user_web"}
     # The extension authenticates with its token and is not the panel.
     token = issue_session_token("user_web", expires_in=300)
-    assert await sio_module.connect("ext", environ("192.168.51.7"), {"token": token}) is True
+    assert (
+        await sio_module.connect("ext", environ("192.168.51.7"), {"token": token})
+        is True
+    )
 
 
 # --- (b) task:join is ownership-checked ------------------------------------
@@ -360,7 +390,8 @@ async def test_task_command_reaches_the_window_that_runs_the_task(
         registry.attach(sid, "extension", "owner")
         registry.register_extension(sid, "owner")
     await sio_module.on_task_event(
-        "ext_running", {"taskId": "task-own", "type": EVT_INSTANCE_STATE, "isRunning": True}
+        "ext_running",
+        {"taskId": "task-own", "type": EVT_INSTANCE_STATE, "isRunning": True},
     )
     stub_emit.reset_mock()
 
@@ -428,10 +459,14 @@ async def test_task_event_message_relays_and_upserts(
     # ...and persisted so /app/tasks/{id} history stays current.
     async with session_factory() as s:
         rows = (
-            await s.execute(
-                select(TaskMessage).where(TaskMessage.task_id == "task-own")
+            (
+                await s.execute(
+                    select(TaskMessage).where(TaskMessage.task_id == "task-own")
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
         assert rows[0].message_ts == 42
         assert "hello from the task" in rows[0].message_data
@@ -516,11 +551,15 @@ async def test_task_event_backfills_workspace_path_on_legacy_null_task(
     )
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-legacy"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-legacy"))
+        ).scalar_one()
         assert task.workspace_path == ws
 
     # A later event from a different worktree must NOT move the task.
-    registry.register_extension("ext_owner", "owner", {"workspacePath": "/some/other/root"})
+    registry.register_extension(
+        "ext_owner", "owner", {"workspacePath": "/some/other/root"}
+    )
     await sio_module.on_task_event(
         "ext_owner",
         {
@@ -530,7 +569,9 @@ async def test_task_event_backfills_workspace_path_on_legacy_null_task(
         },
     )
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-legacy"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-legacy"))
+        ).scalar_one()
         assert task.workspace_path == ws
 
 
@@ -546,23 +587,44 @@ async def test_task_event_message_upsert_is_idempotent_by_ts(
 
     base = {"taskId": "task-own", "type": EVT_MESSAGE}
     await sio_module.on_task_event(
-        "ext_owner", {**base, "message": {"ts": 7, "type": "say", "say": "text",
-                                          "text": "partial", "partial": True}}
+        "ext_owner",
+        {
+            **base,
+            "message": {
+                "ts": 7,
+                "type": "say",
+                "say": "text",
+                "text": "partial",
+                "partial": True,
+            },
+        },
     )
     await sio_module.on_task_event(
-        "ext_owner", {**base, "message": {"ts": 7, "type": "say", "say": "text",
-                                          "text": "partial then final"}}
+        "ext_owner",
+        {
+            **base,
+            "message": {
+                "ts": 7,
+                "type": "say",
+                "say": "text",
+                "text": "partial then final",
+            },
+        },
     )
 
     async with session_factory() as s:
         n = (
             await s.execute(
-                select(func.count(TaskMessage.id)).where(TaskMessage.task_id == "task-own")
+                select(func.count(TaskMessage.id)).where(
+                    TaskMessage.task_id == "task-own"
+                )
             )
         ).scalar_one()
         assert n == 1
         row = (
-            await s.execute(select(TaskMessage).where(TaskMessage.task_id == "task-own"))
+            await s.execute(
+                select(TaskMessage).where(TaskMessage.task_id == "task-own")
+            )
         ).scalar_one()
         assert "final" in row.message_data
 
@@ -583,21 +645,42 @@ async def test_task_event_reasoning_stream_collapses_and_finalizes(
     for i in range(1, 6):
         await sio_module.on_task_event(
             "ext_owner",
-            {**base, "message": {"ts": 42, "type": "say", "say": "reasoning",
-                                 "text": "thinking " * i, "partial": True}},
+            {
+                **base,
+                "message": {
+                    "ts": 42,
+                    "type": "say",
+                    "say": "reasoning",
+                    "text": "thinking " * i,
+                    "partial": True,
+                },
+            },
         )
     # Finalizer (TaskStreamProcessor sets partial=false on the reasoning row).
     await sio_module.on_task_event(
         "ext_owner",
-        {**base, "message": {"ts": 42, "type": "say", "say": "reasoning",
-                             "text": "thinking thinking thinking thinking thinking",
-                             "partial": False}},
+        {
+            **base,
+            "message": {
+                "ts": 42,
+                "type": "say",
+                "say": "reasoning",
+                "text": "thinking thinking thinking thinking thinking",
+                "partial": False,
+            },
+        },
     )
 
     async with session_factory() as s:
         rows = (
-            await s.execute(select(TaskMessage).where(TaskMessage.task_id == "task-own"))
-        ).scalars().all()
+            (
+                await s.execute(
+                    select(TaskMessage).where(TaskMessage.task_id == "task-own")
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
         assert json.loads(rows[0].message_data).get("partial") is False
 
@@ -621,20 +704,42 @@ async def test_task_event_upsert_never_regresses_to_shorter_partial(
     # Final/full payload commits first...
     await sio_module.on_task_event(
         "ext_owner",
-        {**base, "message": {"ts": 99, "type": "say", "say": "reasoning",
-                             "text": full, "partial": False}},
+        {
+            **base,
+            "message": {
+                "ts": 99,
+                "type": "say",
+                "say": "reasoning",
+                "text": full,
+                "partial": False,
+            },
+        },
     )
     # ...then an early, short partial for the same ts arrives late (the race).
     await sio_module.on_task_event(
         "ext_owner",
-        {**base, "message": {"ts": 99, "type": "say", "say": "reasoning",
-                             "text": "The user says", "partial": True}},
+        {
+            **base,
+            "message": {
+                "ts": 99,
+                "type": "say",
+                "say": "reasoning",
+                "text": "The user says",
+                "partial": True,
+            },
+        },
     )
 
     async with session_factory() as s:
         rows = (
-            await s.execute(select(TaskMessage).where(TaskMessage.task_id == "task-own"))
-        ).scalars().all()
+            (
+                await s.execute(
+                    select(TaskMessage).where(TaskMessage.task_id == "task-own")
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
         stored = json.loads(rows[0].message_data)
         assert stored["text"] == full
@@ -668,8 +773,9 @@ async def test_task_event_instance_state_updates_registry(
 
 async def test_task_event_from_non_extension_is_ignored(stub_emit):
     registry.attach("br1", "browser", "owner")
-    await sio_module.on_task_event("br1", {"taskId": "t", "type": EVT_MESSAGE,
-                                           "message": {"ts": 1}})
+    await sio_module.on_task_event(
+        "br1", {"taskId": "t", "type": EVT_MESSAGE, "message": {"ts": 1}}
+    )
     stub_emit.assert_not_awaited()
 
 
@@ -685,23 +791,44 @@ async def _victim_task_with_one_message(db, session_factory):
     registry.register_extension("ext_victim", "victim")
     original = {"ts": 1, "type": "say", "say": "text", "text": "the real conversation"}
     await sio_module.on_task_event(
-        "ext_victim", {"taskId": "task-victim", "type": EVT_MESSAGE, "message": original}
+        "ext_victim",
+        {"taskId": "task-victim", "type": EVT_MESSAGE, "message": original},
     )
     async with session_factory() as s:
         return (
-            await s.execute(
-                select(TaskMessage.message_data).where(TaskMessage.task_id == "task-victim")
+            (
+                await s.execute(
+                    select(TaskMessage.message_data).where(
+                        TaskMessage.task_id == "task-victim"
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
 
 @pytest.mark.parametrize(
     "event",
     [
-        {"type": EVT_MESSAGE, "message": {"ts": 1, "type": "say", "say": "text",
-                                          "text": "forged by another user"}},
-        {"type": EVT_MESSAGE, "message": {"ts": 2, "type": "say", "say": "text",
-                                          "text": "forged by another user"}},
+        {
+            "type": EVT_MESSAGE,
+            "message": {
+                "ts": 1,
+                "type": "say",
+                "say": "text",
+                "text": "forged by another user",
+            },
+        },
+        {
+            "type": EVT_MESSAGE,
+            "message": {
+                "ts": 2,
+                "type": "say",
+                "say": "text",
+                "text": "forged by another user",
+            },
+        },
         {"type": EVT_INSTANCE_STATE, "isRunning": True, "mode": "forged"},
         {"type": "taskInteractive"},
     ],
@@ -724,10 +851,16 @@ async def test_task_event_for_a_foreign_task_is_neither_relayed_nor_saved(
     stub_emit.assert_not_awaited()
     async with session_factory() as s:
         after = (
-            await s.execute(
-                select(TaskMessage.message_data).where(TaskMessage.task_id == "task-victim")
+            (
+                await s.execute(
+                    select(TaskMessage.message_data).where(
+                        TaskMessage.task_id == "task-victim"
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         owner = (
             await s.execute(select(Task.user_id).where(Task.id == "task-victim"))
         ).scalar_one()
@@ -744,13 +877,18 @@ async def test_first_message_of_an_unknown_task_creates_it_then_relays(
     registry.attach("ext_owner", "extension", "owner")
     registry.register_extension("ext_owner", "owner")
 
-    event = {"taskId": "task-new", "type": EVT_MESSAGE,
-             "message": {"ts": 7, "type": "say", "say": "text", "text": "first words"}}
+    event = {
+        "taskId": "task-new",
+        "type": EVT_MESSAGE,
+        "message": {"ts": 7, "type": "say", "say": "text", "text": "first words"},
+    }
     await sio_module.on_task_event("ext_owner", event)
 
     stub_emit.assert_awaited_once_with(TASK_RELAYED_EVENT, event, room="task:task-new")
     async with session_factory() as s:
-        owner = (await s.execute(select(Task.user_id).where(Task.id == "task-new"))).scalar_one()
+        owner = (
+            await s.execute(select(Task.user_id).where(Task.id == "task-new"))
+        ).scalar_one()
     assert owner == "owner"
 
 
@@ -776,7 +914,9 @@ async def test_state_event_for_an_unknown_task_is_held_until_the_task_exists(
     await db_session.commit()
 
     await sio_module.on_task_event("ext_owner", state)
-    stub_emit.assert_awaited_once_with(TASK_RELAYED_EVENT, state, room="task:task-later")
+    stub_emit.assert_awaited_once_with(
+        TASK_RELAYED_EVENT, state, room="task:task-later"
+    )
 
 
 async def test_task_event_ownership_is_looked_up_once_per_socket_and_task(
@@ -810,8 +950,11 @@ async def test_task_event_ownership_is_looked_up_once_per_socket_and_task(
     for ts in (10, 11, 12):
         await sio_module.on_task_event(
             "ext_owner",
-            {"taskId": "task-own", "type": EVT_MESSAGE,
-             "message": {"ts": ts, "type": "say", "say": "text", "text": "chunk"}},
+            {
+                "taskId": "task-own",
+                "type": EVT_MESSAGE,
+                "message": {"ts": ts, "type": "say", "say": "text", "text": "chunk"},
+            },
         )
     assert opened == 4  # one save per message, no extra lookup
     assert stub_emit.await_count == 7
@@ -838,7 +981,9 @@ def test_registry_task_access_cache_is_bounded_per_socket():
     r.attach("ext1", "extension", "u1")
     for i in range(ConnectionRegistry.TASK_ACCESS_CACHE_SIZE + 10):
         r.remember_task_access("ext1", f"t{i}", True)
-    assert len(r._task_access_by_sid["ext1"]) == ConnectionRegistry.TASK_ACCESS_CACHE_SIZE
+    assert (
+        len(r._task_access_by_sid["ext1"]) == ConnectionRegistry.TASK_ACCESS_CACHE_SIZE
+    )
     assert r.task_access("ext1", "t0") is None
     last = ConnectionRegistry.TASK_ACCESS_CACHE_SIZE + 9
     assert r.task_access("ext1", f"t{last}") is True

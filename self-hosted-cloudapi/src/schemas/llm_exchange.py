@@ -17,12 +17,22 @@ SHA256_PATTERN = r"^[0-9a-f]{64}$"
 # Not enforced on purpose: an unknown status or outcome from a newer extension
 # is stored and treated as "not clean" by services/exchange_quality.
 KNOWN_STATUSES = ("completed", "error", "aborted")
-KNOWN_TOOL_OUTCOMES = ("ok", "invalid_tool_call", "tool_error", "diff_error", "mistake_limit", "rejected")
+KNOWN_TOOL_OUTCOMES = (
+    "ok",
+    "invalid_tool_call",
+    "tool_error",
+    "diff_error",
+    "mistake_limit",
+    "rejected",
+)
 
 
 class _Wire(BaseModel):
     model_config = ConfigDict(
-        populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True, extra="ignore",
+        populate_by_name=True,
+        alias_generator=to_camel,
+        serialize_by_alias=True,
+        extra="ignore",
         allow_inf_nan=False,
     )
 
@@ -55,7 +65,9 @@ class WireArrayField(_Wire):
     delta: ArrayDelta
 
 
-WireField = Annotated[Union[WireValueField, WireBlobField, WireArrayField], Field(discriminator="kind")]
+WireField = Annotated[
+    Union[WireValueField, WireBlobField, WireArrayField], Field(discriminator="kind")
+]
 
 
 class WireRequest(_Wire):

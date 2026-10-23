@@ -49,7 +49,9 @@ def allowlist(monkeypatch):
 def local_stack(monkeypatch):
     """The bundled compose stack's single-host configuration, plus a public URL."""
     monkeypatch.setattr(settings, "authentik_base_url", "http://localhost:9000")
-    monkeypatch.setattr(settings, "authentik_redirect_uri", "http://localhost:8085/auth/clerk/callback")
+    monkeypatch.setattr(
+        settings, "authentik_redirect_uri", "http://localhost:8085/auth/clerk/callback"
+    )
     monkeypatch.setattr(settings, "web_public_url", PUBLIC_URL)
 
 
@@ -88,7 +90,12 @@ def test_a_typo_in_the_allowlist_stops_the_server():
 
 @pytest.mark.parametrize(
     "value",
-    [f"{PUBLIC_URL}/", f"{PUBLIC_URL}/app", "192.168.50.141:8085", "ftp://192.168.50.141"],
+    [
+        f"{PUBLIC_URL}/",
+        f"{PUBLIC_URL}/app",
+        "192.168.50.141:8085",
+        "ftp://192.168.50.141",
+    ],
 )
 def test_the_public_url_must_be_a_bare_origin(value):
     # The blueprint appends the callback path to this exact string.
@@ -240,27 +247,44 @@ def test_an_ipv6_public_host_is_bracketed(local_stack, monkeypatch):
     assert front.redirect_uri == "http://[fd00::5]:8085/auth/clerk/callback"
 
 
-def test_web_login_on_the_public_host_goes_to_authentik_on_that_host(local_stack, client_from):
-    resp = client_from("192.168.50.20").get("/app/login", headers={"host": f"{SERVER}:8085"})
+def test_web_login_on_the_public_host_goes_to_authentik_on_that_host(
+    local_stack, client_from
+):
+    resp = client_from("192.168.50.20").get(
+        "/app/login", headers={"host": f"{SERVER}:8085"}
+    )
 
     assert resp.status_code == 307
     target = urlsplit(resp.headers["location"])
-    assert f"{target.scheme}://{target.netloc}{target.path}" == f"http://{SERVER}:9000/application/o/authorize/"
-    assert parse_qs(target.query)["redirect_uri"] == [f"{PUBLIC_URL}/auth/clerk/callback"]
+    assert (
+        f"{target.scheme}://{target.netloc}{target.path}"
+        == f"http://{SERVER}:9000/application/o/authorize/"
+    )
+    assert parse_qs(target.query)["redirect_uri"] == [
+        f"{PUBLIC_URL}/auth/clerk/callback"
+    ]
 
 
 def test_web_login_on_localhost_is_unchanged(local_stack, client_from):
-    resp = client_from("127.0.0.1").get("/app/login", headers={"host": "localhost:8085"})
+    resp = client_from("127.0.0.1").get(
+        "/app/login", headers={"host": "localhost:8085"}
+    )
 
     target = urlsplit(resp.headers["location"])
     assert target.netloc == "localhost:9000"
-    assert parse_qs(target.query)["redirect_uri"] == ["http://localhost:8085/auth/clerk/callback"]
+    assert parse_qs(target.query)["redirect_uri"] == [
+        "http://localhost:8085/auth/clerk/callback"
+    ]
 
 
-def test_web_login_under_another_name_moves_to_the_public_url_first(local_stack, client_from):
+def test_web_login_under_another_name_moves_to_the_public_url_first(
+    local_stack, client_from
+):
     """The machine's second address (wifi next to ethernet) has no registered
     callback; a sign-in started there could never come back."""
-    resp = client_from("192.168.50.20").get("/app/login", headers={"host": "192.168.50.134:8085"})
+    resp = client_from("192.168.50.20").get(
+        "/app/login", headers={"host": "192.168.50.134:8085"}
+    )
 
     assert resp.status_code == 303
     assert resp.headers["location"] == f"{PUBLIC_URL}/app/login"
@@ -268,14 +292,30 @@ def test_web_login_under_another_name_moves_to_the_public_url_first(local_stack,
 
 @pytest.fixture
 def callback_mocks():
-    with patch("src.routers.browser.exchange_code_for_tokens", new_callable=AsyncMock) as exchange, \
-         patch("src.routers.browser.get_userinfo", new_callable=AsyncMock) as userinfo, \
-         patch("src.routers.browser.get_oauth_state", new_callable=AsyncMock) as get_state, \
-         patch("src.routers.browser.get_or_create_user", new_callable=AsyncMock) as create_user, \
-         patch("src.routers.browser.create_session", new_callable=AsyncMock) as create_session:
-        get_state.return_value = MagicMock(auth_redirect="web:/app", code_verifier="verifier")
+    with (
+        patch(
+            "src.routers.browser.exchange_code_for_tokens", new_callable=AsyncMock
+        ) as exchange,
+        patch("src.routers.browser.get_userinfo", new_callable=AsyncMock) as userinfo,
+        patch(
+            "src.routers.browser.get_oauth_state", new_callable=AsyncMock
+        ) as get_state,
+        patch(
+            "src.routers.browser.get_or_create_user", new_callable=AsyncMock
+        ) as create_user,
+        patch(
+            "src.routers.browser.create_session", new_callable=AsyncMock
+        ) as create_session,
+    ):
+        get_state.return_value = MagicMock(
+            auth_redirect="web:/app", code_verifier="verifier"
+        )
         exchange.return_value = {"access_token": "at"}
-        userinfo.return_value = {"sub": "ak-1", "email": "u@example.com", "name": "U Ser"}
+        userinfo.return_value = {
+            "sub": "ak-1",
+            "email": "u@example.com",
+            "name": "U Ser",
+        }
         create_user.return_value = MagicMock(id="user-1")
         create_session.return_value = MagicMock(id="sess-1")
         yield exchange
@@ -290,7 +330,10 @@ def test_the_callback_exchanges_the_code_with_the_uri_it_was_issued_for(
 
     assert resp.status_code == 303 and resp.headers["location"] == "/app"
     assert "tumble_session=" in resp.headers["set-cookie"]
-    assert callback_mocks.await_args.kwargs["redirect_uri"] == f"{PUBLIC_URL}/auth/clerk/callback"
+    assert (
+        callback_mocks.await_args.kwargs["redirect_uri"]
+        == f"{PUBLIC_URL}/auth/clerk/callback"
+    )
 
 
 def test_a_web_sign_in_is_refused_outside_the_allowlist_before_the_code_is_spent(

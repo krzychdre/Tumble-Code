@@ -49,7 +49,11 @@ async def record_error_report_endpoint(
     try:
         report = ErrorReportRequest.model_validate_json(body)
     except ValidationError as exc:
-        raise RequestValidationError(exc.errors(include_url=False, include_context=False))
+        raise RequestValidationError(
+            exc.errors(include_url=False, include_context=False)
+        )
 
-    await record_error_report(db, current_user["user_id"], current_user.get("org_id"), report)
+    await record_error_report(
+        db, current_user["user_id"], current_user.get("org_id"), report
+    )
     return {"success": True}

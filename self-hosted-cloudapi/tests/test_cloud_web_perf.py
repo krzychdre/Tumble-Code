@@ -41,7 +41,9 @@ class _Statements:
 
     @property
     def selects(self) -> list[str]:
-        return [s for s in self.seen if s.lstrip().upper().startswith(("SELECT", "WITH"))]
+        return [
+            s for s in self.seen if s.lstrip().upper().startswith(("SELECT", "WITH"))
+        ]
 
 
 async def _chain(session_factory, depth: int, prefix: str = "a") -> list[str]:
@@ -67,7 +69,9 @@ async def _chain(session_factory, depth: int, prefix: str = "a") -> list[str]:
 # --- breadcrumb: one query, not one per level ------------------------------
 
 
-async def test_ancestors_cost_one_query_whatever_the_depth(db_session, session_factory, test_engine):
+async def test_ancestors_cost_one_query_whatever_the_depth(
+    db_session, session_factory, test_engine
+):
     from src.services.task_tree import ancestors
 
     await _seed_user(db_session)
@@ -78,8 +82,12 @@ async def test_ancestors_cost_one_query_whatever_the_depth(db_session, session_f
         with _Statements(test_engine) as sql:
             chain = await ancestors(s, leaf)
 
-    assert [t.id for t in chain] == list(reversed(ids[:-1])), "nearest first, up to the root"
-    assert len(sql.selects) == 1, f"one statement for six ancestors, got {len(sql.selects)}"
+    assert [t.id for t in chain] == list(reversed(ids[:-1])), (
+        "nearest first, up to the root"
+    )
+    assert len(sql.selects) == 1, (
+        f"one statement for six ancestors, got {len(sql.selects)}"
+    )
 
 
 async def test_ancestors_stop_at_the_limit_nearest_first(db_session, session_factory):
@@ -98,7 +106,9 @@ async def test_ancestors_stop_at_the_limit_nearest_first(db_session, session_fac
     assert [t.id for t in short] == [ids[-2], ids[-3], ids[-4]]
 
 
-async def test_ancestors_of_a_root_cost_nothing(db_session, session_factory, test_engine):
+async def test_ancestors_of_a_root_cost_nothing(
+    db_session, session_factory, test_engine
+):
     from src.services.task_tree import ancestors
 
     await _seed_user(db_session)
@@ -142,7 +152,9 @@ async def test_the_task_page_does_not_grow_a_query_per_level(
 
     assert resp.status_code == deep_resp.status_code == 200
     for task_id in deep[:-1]:
-        assert f'href="/app/tasks/{task_id}"' in deep_resp.text, "every ancestor is in the breadcrumb"
+        assert f'href="/app/tasks/{task_id}"' in deep_resp.text, (
+            "every ancestor is in the breadcrumb"
+        )
     assert deep_selects == shallow_selects
 
 
@@ -150,7 +162,9 @@ async def test_the_task_page_does_not_grow_a_query_per_level(
 
 
 def test_large_responses_are_gzipped(client):
-    resp = client.get("/static/vendor/socket.io.min.js", headers={"Accept-Encoding": "gzip"})
+    resp = client.get(
+        "/static/vendor/socket.io.min.js", headers={"Accept-Encoding": "gzip"}
+    )
     assert resp.status_code == 200
     assert resp.headers.get("content-encoding") == "gzip"
     assert "Accept-Encoding" in resp.headers.get("vary", "")
@@ -175,10 +189,20 @@ def test_small_responses_stay_plain(client):
 
 
 def test_uncompressed_when_the_client_does_not_ask(client):
-    resp = client.get("/static/vendor/socket.io.min.js", headers={"Accept-Encoding": "identity"})
+    resp = client.get(
+        "/static/vendor/socket.io.min.js", headers={"Accept-Encoding": "identity"}
+    )
     assert "content-encoding" not in resp.headers
     assert len(resp.content) == os.path.getsize(
-        os.path.join(os.path.dirname(__file__), "..", "src", "web", "static", "vendor", "socket.io.min.js")
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "src",
+            "web",
+            "static",
+            "vendor",
+            "socket.io.min.js",
+        )
     )
 
 
@@ -191,17 +215,23 @@ def _static_urls(html: str) -> list[str]:
 
 def test_every_template_versions_its_static_urls():
     """Every page, including those that load a vendored script only on some pages."""
-    templates_dir = os.path.join(os.path.dirname(__file__), "..", "src", "web", "templates")
+    templates_dir = os.path.join(
+        os.path.dirname(__file__), "..", "src", "web", "templates"
+    )
     found = []
     for name in sorted(os.listdir(templates_dir)):
         with open(os.path.join(templates_dir, name), encoding="utf-8") as fh:
             for url in _static_urls(fh.read()):
                 found.append(url)
-                assert url.endswith("?v={{ asset_v }}"), f"{name}: {url} has no version token"
+                assert url.endswith("?v={{ asset_v }}"), (
+                    f"{name}: {url} has no version token"
+                )
     assert any("socket.io.min.js" in u for u in found)
 
 
-async def test_a_rendered_page_carries_the_current_token(client, db_session, session_factory):
+async def test_a_rendered_page_carries_the_current_token(
+    client, db_session, session_factory
+):
     from src.web.templating import templates
 
     await _seed_user(db_session)
@@ -231,7 +261,10 @@ def test_a_versioned_asset_is_cached_for_a_year(client):
 
 
 def test_an_unversioned_or_stale_url_is_not_cached_for_a_year(client):
-    for url in ("/static/vendor/socket.io.min.js", "/static/vendor/socket.io.min.js?v=stale"):
+    for url in (
+        "/static/vendor/socket.io.min.js",
+        "/static/vendor/socket.io.min.js?v=stale",
+    ):
         resp = client.get(url)
         assert resp.status_code == 200
         assert "immutable" not in resp.headers.get("cache-control", ""), url
@@ -247,7 +280,9 @@ def test_the_version_token_follows_content_not_mtime(tmp_path):
     for folder, body in ((one, b"console.log(1)"), (two, b"console.log(2)")):
         folder.mkdir()
         (folder / "a.js").write_bytes(body)
-        os.utime(folder / "a.js", ns=(1_700_000_000_000_000_000, 1_700_000_000_000_000_000))
+        os.utime(
+            folder / "a.js", ns=(1_700_000_000_000_000_000, 1_700_000_000_000_000_000)
+        )
 
     assert _asset_version(one) != _asset_version(two)
     assert _asset_version(one) == _asset_version(one)
@@ -263,7 +298,14 @@ async def _selectable_corpus(session_factory, count: int = 3):
     when = datetime.now(timezone.utc) - timedelta(days=200)
     async with session_factory() as s:
         for n in range(count):
-            s.add(Task(id=f"old-{n}", user_id="user_test", title=f"Old {n}", updated_at=when))
+            s.add(
+                Task(
+                    id=f"old-{n}",
+                    user_id="user_test",
+                    title=f"Old {n}",
+                    updated_at=when,
+                )
+            )
             await s.flush()
             await _add_message(s, f"old-{n}", _msgs()[0])
         policy = await get_policy(s, "user_test")
@@ -291,13 +333,19 @@ async def test_opening_settings_does_not_scan_payload_sizes(
     assert resp.status_code == 200
     assert _size_scans(sql.seen) == [], "a plain GET must not sum payload sizes"
     # The counts are still there, they are cheap.
-    assert re.search(r'signal-value">3</span><span class="signal-label">Tasks', resp.text)
-    assert re.search(r'signal-value">3</span><span class="signal-label">Messages', resp.text)
+    assert re.search(
+        r'signal-value">3</span><span class="signal-label">Tasks', resp.text
+    )
+    assert re.search(
+        r'signal-value">3</span><span class="signal-label">Messages', resp.text
+    )
     # The size is one click away.
     assert 'href="/app/settings?size=1"' in resp.text
 
 
-async def test_the_size_is_calculated_on_demand(client, db_session, session_factory, test_engine):
+async def test_the_size_is_calculated_on_demand(
+    client, db_session, session_factory, test_engine
+):
     from src.services.retention_service import plan_sweep, read_policy
     from src.utils.format import fmt_bytes
 

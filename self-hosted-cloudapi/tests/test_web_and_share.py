@@ -53,7 +53,9 @@ def _find_nulls(obj, path=""):
     out = []
     if isinstance(obj, dict):
         for k, v in obj.items():
-            out.append(f"{path}.{k}") if v is None else out.extend(_find_nulls(v, f"{path}.{k}"))
+            out.append(f"{path}.{k}") if v is None else out.extend(
+                _find_nulls(v, f"{path}.{k}")
+            )
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
             out.extend(_find_nulls(v, f"{path}[{i}]"))
@@ -160,7 +162,9 @@ async def test_backfill_creates_task_and_messages(client, db_session, session_fa
         assert task.user_id == "user_test"
         n = (
             await s.execute(
-                select(func.count(TaskMessage.id)).where(TaskMessage.task_id == "task-1")
+                select(func.count(TaskMessage.id)).where(
+                    TaskMessage.task_id == "task-1"
+                )
             )
         ).scalar_one()
         assert n == 3
@@ -183,12 +187,16 @@ async def test_backfill_is_idempotent_on_reshare(client, db_session, session_fac
     async with session_factory() as s:
         n = (
             await s.execute(
-                select(func.count(TaskMessage.id)).where(TaskMessage.task_id == "task-2")
+                select(func.count(TaskMessage.id)).where(
+                    TaskMessage.task_id == "task-2"
+                )
             )
         ).scalar_one()
         # Replaced, not appended.
         assert n == 1
-        tasks = (await s.execute(select(func.count(Task.id)).where(Task.id == "task-2"))).scalar_one()
+        tasks = (
+            await s.execute(select(func.count(Task.id)).where(Task.id == "task-2"))
+        ).scalar_one()
         assert tasks == 1
 
 
@@ -208,21 +216,30 @@ async def test_backfill_into_another_users_task_is_404_and_changes_nothing(
     _override_current_user(app, "victim")
     try:
         files, data = _backfill_files("task-victim", _msgs())
-        assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+        assert (
+            client.post("/api/events/backfill", files=files, data=data).status_code
+            == 200
+        )
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 
     async with session_factory() as s:
         before = (
-            await s.execute(
-                select(TaskMessage.message_data)
-                .where(TaskMessage.task_id == "task-victim")
-                .order_by(TaskMessage.id)
+            (
+                await s.execute(
+                    select(TaskMessage.message_data)
+                    .where(TaskMessage.task_id == "task-victim")
+                    .order_by(TaskMessage.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert len(before) == 3
 
-    forged = [{"ts": 9, "type": "say", "say": "text", "text": "overwritten by attacker"}]
+    forged = [
+        {"ts": 9, "type": "say", "say": "text", "text": "overwritten by attacker"}
+    ]
     _override_current_user(app, "attacker")
     try:
         files, data = _backfill_files("task-victim", forged)
@@ -234,20 +251,28 @@ async def test_backfill_into_another_users_task_is_404_and_changes_nothing(
     assert resp.status_code == 404
 
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-victim"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-victim"))
+        ).scalar_one()
         assert task.user_id == "victim"
         assert task.workspace_path != "/attacker/path"
         after = (
-            await s.execute(
-                select(TaskMessage.message_data)
-                .where(TaskMessage.task_id == "task-victim")
-                .order_by(TaskMessage.id)
+            (
+                await s.execute(
+                    select(TaskMessage.message_data)
+                    .where(TaskMessage.task_id == "task-victim")
+                    .order_by(TaskMessage.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert after == before
 
 
-async def test_backfill_persists_explicit_workspace_path(client, db_session, session_factory):
+async def test_backfill_persists_explicit_workspace_path(
+    client, db_session, session_factory
+):
     """The explicit client `workspacePath` field is stamped on the task, so an
     offline share (no live bridge) still records its project/worktree."""
     await _seed_user(db_session)
@@ -264,11 +289,15 @@ async def test_backfill_persists_explicit_workspace_path(client, db_session, ses
 
     assert resp.status_code == 200
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-ws-explicit"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-ws-explicit"))
+        ).scalar_one()
         assert task.workspace_path == ws
 
 
-async def test_backfill_falls_back_to_registry_workspace_path(client, db_session, session_factory):
+async def test_backfill_falls_back_to_registry_workspace_path(
+    client, db_session, session_factory
+):
     """An older client that doesn't send `workspacePath` still gets the project
     recorded, sourced from the live registered instance for that user."""
     await _seed_user(db_session)
@@ -287,14 +316,18 @@ async def test_backfill_falls_back_to_registry_workspace_path(client, db_session
 
     assert resp.status_code == 200
     async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "task-ws-fallback"))).scalar_one()
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-ws-fallback"))
+        ).scalar_one()
         assert task.workspace_path == ws
 
 
 # --- Security: share_task ownership check (BUG A) --------------------------
 
 
-async def test_share_task_by_non_owner_returns_not_found(client, db_session, session_factory):
+async def test_share_task_by_non_owner_returns_not_found(
+    client, db_session, session_factory
+):
     """A user may only share tasks they own. Sharing another user's task must
     return the same 'Task not found' response as a missing task - never leak
     that the task exists, and never create a share row."""
@@ -322,7 +355,9 @@ async def test_share_task_by_non_owner_returns_not_found(client, db_session, ses
     async with session_factory() as s:
         shares = (
             await s.execute(
-                select(func.count(TaskShare.id)).where(TaskShare.task_id == "task-own-a")
+                select(func.count(TaskShare.id)).where(
+                    TaskShare.task_id == "task-own-a"
+                )
             )
         ).scalar_one()
         assert shares == 0
@@ -331,7 +366,9 @@ async def test_share_task_by_non_owner_returns_not_found(client, db_session, ses
 # --- Security: visibility Literal constraint (BUG C) -----------------------
 
 
-async def test_share_visibility_rejects_invalid_value(client, db_session, session_factory):
+async def test_share_visibility_rejects_invalid_value(
+    client, db_session, session_factory
+):
     """The visibility field must only accept 'organization' or 'public'.
     An invalid value is rejected with 422 (Pydantic validation error)."""
     await _seed_user(db_session)
@@ -356,7 +393,9 @@ async def test_share_visibility_rejects_invalid_value(client, db_session, sessio
 # --- Security: org policy enforcement server-side (CB-8) -------------------
 
 
-async def test_share_public_rejected_when_org_disallows_public(client, db_session, session_factory):
+async def test_share_public_rejected_when_org_disallows_public(
+    client, db_session, session_factory
+):
     """When the org has allow_public_task_sharing=False, a public-visibility
     share must be rejected with 403. Organization-visibility shares are still
     allowed."""
@@ -366,13 +405,17 @@ async def test_share_public_rejected_when_org_disallows_public(client, db_sessio
     await _seed_user(db_session, user_id="owner", email="owner@example.com")
     async with session_factory() as s:
         s.add(Organization(id="org-nopub", name="NoPub Org"))
-        s.add(Membership(user_id="owner", organization_id="org-nopub", role="org:member"))
+        s.add(
+            Membership(user_id="owner", organization_id="org-nopub", role="org:member")
+        )
         s.add(Task(id="task-nopub", user_id="owner", organization_id="org-nopub"))
-        s.add(OrganizationSettings(
-            organization_id="org-nopub",
-            enable_task_sharing=True,
-            allow_public_task_sharing=False,
-        ))
+        s.add(
+            OrganizationSettings(
+                organization_id="org-nopub",
+                enable_task_sharing=True,
+                allow_public_task_sharing=False,
+            )
+        )
         await s.commit()
 
     from src.main import app
@@ -392,13 +435,17 @@ async def test_share_public_rejected_when_org_disallows_public(client, db_sessio
     async with session_factory() as s:
         shares = (
             await s.execute(
-                select(func.count(TaskShare.id)).where(TaskShare.task_id == "task-nopub")
+                select(func.count(TaskShare.id)).where(
+                    TaskShare.task_id == "task-nopub"
+                )
             )
         ).scalar_one()
         assert shares == 0
 
 
-async def test_share_organization_allowed_when_org_disallows_public(client, db_session, session_factory):
+async def test_share_organization_allowed_when_org_disallows_public(
+    client, db_session, session_factory
+):
     """When the org has allow_public_task_sharing=False but enable_task_sharing=True,
     an organization-visibility share is still allowed."""
     from src.models.organization import Organization, Membership
@@ -407,13 +454,17 @@ async def test_share_organization_allowed_when_org_disallows_public(client, db_s
     await _seed_user(db_session, user_id="owner", email="owner@example.com")
     async with session_factory() as s:
         s.add(Organization(id="org-nopub2", name="NoPub Org 2"))
-        s.add(Membership(user_id="owner", organization_id="org-nopub2", role="org:member"))
+        s.add(
+            Membership(user_id="owner", organization_id="org-nopub2", role="org:member")
+        )
         s.add(Task(id="task-nopub-org", user_id="owner", organization_id="org-nopub2"))
-        s.add(OrganizationSettings(
-            organization_id="org-nopub2",
-            enable_task_sharing=True,
-            allow_public_task_sharing=False,
-        ))
+        s.add(
+            OrganizationSettings(
+                organization_id="org-nopub2",
+                enable_task_sharing=True,
+                allow_public_task_sharing=False,
+            )
+        )
         await s.commit()
 
     from src.main import app
@@ -430,7 +481,9 @@ async def test_share_organization_allowed_when_org_disallows_public(client, db_s
     assert resp.status_code == 200
 
 
-async def test_share_all_visibilities_rejected_when_sharing_disabled(client, db_session, session_factory):
+async def test_share_all_visibilities_rejected_when_sharing_disabled(
+    client, db_session, session_factory
+):
     """When the org has enable_task_sharing=False, both visibility values are
     rejected with 403."""
     from src.models.organization import Organization, Membership
@@ -439,13 +492,19 @@ async def test_share_all_visibilities_rejected_when_sharing_disabled(client, db_
     await _seed_user(db_session, user_id="owner", email="owner@example.com")
     async with session_factory() as s:
         s.add(Organization(id="org-noshare", name="NoShare Org"))
-        s.add(Membership(user_id="owner", organization_id="org-noshare", role="org:member"))
+        s.add(
+            Membership(
+                user_id="owner", organization_id="org-noshare", role="org:member"
+            )
+        )
         s.add(Task(id="task-noshare", user_id="owner", organization_id="org-noshare"))
-        s.add(OrganizationSettings(
-            organization_id="org-noshare",
-            enable_task_sharing=False,
-            allow_public_task_sharing=True,
-        ))
+        s.add(
+            OrganizationSettings(
+                organization_id="org-noshare",
+                enable_task_sharing=False,
+                allow_public_task_sharing=True,
+            )
+        )
         await s.commit()
 
     from src.main import app
@@ -467,7 +526,9 @@ async def test_share_all_visibilities_rejected_when_sharing_disabled(client, db_
     assert resp_org.status_code == 403
 
 
-async def test_share_allowed_when_no_org_settings_configured(client, db_session, session_factory):
+async def test_share_allowed_when_no_org_settings_configured(
+    client, db_session, session_factory
+):
     """When the task has an organization_id but no OrganizationSettings row exists,
     the permissive default applies: both visibilities are allowed (back-compat
     for existing self-hosted deployments that never configured org settings)."""
@@ -476,8 +537,16 @@ async def test_share_allowed_when_no_org_settings_configured(client, db_session,
     await _seed_user(db_session, user_id="owner", email="owner@example.com")
     async with session_factory() as s:
         s.add(Organization(id="org-nosettings", name="NoSettings Org"))
-        s.add(Membership(user_id="owner", organization_id="org-nosettings", role="org:member"))
-        s.add(Task(id="task-nosettings", user_id="owner", organization_id="org-nosettings"))
+        s.add(
+            Membership(
+                user_id="owner", organization_id="org-nosettings", role="org:member"
+            )
+        )
+        s.add(
+            Task(
+                id="task-nosettings", user_id="owner", organization_id="org-nosettings"
+            )
+        )
         await s.commit()
 
     from src.main import app

@@ -8,10 +8,13 @@ from src.models.base import Base
 
 class AuthentikStateStore(Base):
     """Stores OAuth state parameters and PKCE code verifiers during auth flow."""
+
     __tablename__ = "authentik_state_store"
 
     state = Column(String, primary_key=True)
     auth_redirect = Column(String, nullable=False)
     code_verifier = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     expires_at = Column(DateTime(timezone=True), nullable=False)

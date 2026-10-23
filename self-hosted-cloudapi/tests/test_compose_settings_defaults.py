@@ -82,20 +82,32 @@ def test_compose_gives_no_default_where_settings_py_has_one():
     is a second copy of that default, the thing that drifted."""
     for key, value in _api_environment().items():
         field = Settings.model_fields[key.lower()]
-        if key in COMPOSE_OWNED or field.is_required() or _is_required_by_compose(value):
+        if (
+            key in COMPOSE_OWNED
+            or field.is_required()
+            or _is_required_by_compose(value)
+        ):
             continue
-        assert value is None, f"{key} has a compose default ({value!r}); pass it by name instead"
+        assert value is None, (
+            f"{key} has a compose default ({value!r}); pass it by name instead"
+        )
 
 
 def test_bundled_stack_gets_the_settings_py_defaults(monkeypatch):
-    env = _resolve(_api_environment(), {"SECRET_KEY": STRONG_SECRET, "JWT_SECRET": STRONG_SECRET})
+    env = _resolve(
+        _api_environment(), {"SECRET_KEY": STRONG_SECRET, "JWT_SECRET": STRONG_SECRET}
+    )
     loaded = _settings_from(env, monkeypatch)
 
     assert loaded.bridge_enabled is True
     environment = _api_environment()
     for name, field in Settings.model_fields.items():
         key = name.upper()
-        if key in COMPOSE_OWNED or field.is_required() or _is_required_by_compose(environment.get(key)):
+        if (
+            key in COMPOSE_OWNED
+            or field.is_required()
+            or _is_required_by_compose(environment.get(key))
+        ):
             continue
         assert getattr(loaded, name) == field.default, name
 
@@ -129,7 +141,9 @@ def test_compose_refuses_to_start_without_a_secret(missing):
 def test_an_empty_string_does_not_mean_unset(monkeypatch):
     """Why the compose file passes names instead of ``${VAR:-}``: an empty
     string is a value to pydantic-settings, and not a valid boolean."""
-    env = _resolve(_api_environment(), {"SECRET_KEY": STRONG_SECRET, "JWT_SECRET": STRONG_SECRET})
+    env = _resolve(
+        _api_environment(), {"SECRET_KEY": STRONG_SECRET, "JWT_SECRET": STRONG_SECRET}
+    )
     env["BRIDGE_ENABLED"] = ""
     with pytest.raises(ValidationError):
         _settings_from(env, monkeypatch)

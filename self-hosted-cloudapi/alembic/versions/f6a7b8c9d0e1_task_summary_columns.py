@@ -35,7 +35,13 @@ depends_on = None
 
 
 _MESSAGE_COLUMNS = ("tokens_in", "tokens_out", "cache_reads", "cache_writes")
-_TASK_COLUMNS = ("message_count", "tokens_in", "tokens_out", "cache_reads", "cache_writes")
+_TASK_COLUMNS = (
+    "message_count",
+    "tokens_in",
+    "tokens_out",
+    "cache_reads",
+    "cache_writes",
+)
 
 # Rows per chunk while backfilling. The corpus is ~200 MB of JSON, so it is
 # streamed rather than materialized: a full SELECT would peak at the whole
@@ -64,7 +70,9 @@ def upgrade() -> None:
             "tasks",
             sa.Column(name, sa.BigInteger(), nullable=False, server_default="0"),
         )
-    op.add_column("tasks", sa.Column("cost", sa.Float(), nullable=False, server_default="0"))
+    op.add_column(
+        "tasks", sa.Column("cost", sa.Float(), nullable=False, server_default="0")
+    )
     op.add_column("tasks", sa.Column("first_ts", sa.BigInteger(), nullable=True))
     op.add_column("tasks", sa.Column("last_ts", sa.BigInteger(), nullable=True))
 
@@ -108,8 +116,13 @@ def _backfill() -> None:
             metrics = message_metrics(msg)
             # Skip the all-zero majority: writing them back would be 55k
             # pointless UPDATEs, and the server_default already made them 0.
-            if metrics.tokens_in or metrics.tokens_out or metrics.cache_reads \
-                    or metrics.cache_writes or metrics.cost:
+            if (
+                metrics.tokens_in
+                or metrics.tokens_out
+                or metrics.cache_reads
+                or metrics.cache_writes
+                or metrics.cost
+            ):
                 updates.append({"row_id": row_id, **metrics.as_columns()})
 
         if updates:
@@ -203,8 +216,17 @@ def _backfill() -> None:
 
 def downgrade() -> None:
     op.drop_index("ix_tasks_user_updated", table_name="tasks")
-    for name in ("last_ts", "first_ts", "cost", "cache_writes", "cache_reads",
-                 "tokens_out", "tokens_in", "message_count", "title"):
+    for name in (
+        "last_ts",
+        "first_ts",
+        "cost",
+        "cache_writes",
+        "cache_reads",
+        "tokens_out",
+        "tokens_in",
+        "message_count",
+        "title",
+    ):
         op.drop_column("tasks", name)
     for name in ("cost", "cache_writes", "cache_reads", "tokens_out", "tokens_in"):
         op.drop_column("task_messages", name)

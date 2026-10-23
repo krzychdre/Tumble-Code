@@ -19,7 +19,9 @@ IMMUTABLE = "public, max-age=31536000, immutable"
 
 
 class VersionedStaticFiles(StaticFiles):
-    def file_response(self, full_path, stat_result, scope: Scope, status_code: int = 200):
+    def file_response(
+        self, full_path, stat_result, scope: Scope, status_code: int = 200
+    ):
         response = super().file_response(full_path, stat_result, scope, status_code)
         query = parse_qs(scope.get("query_string", b"").decode("latin-1"))
         if query.get("v") == [ASSET_VERSION]:

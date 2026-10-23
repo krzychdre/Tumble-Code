@@ -37,8 +37,8 @@ class TaskRelation(Base):
     # Kept so a relation can be attributed (and purged) with its owner even
     # though neither task may exist as a row yet.
     user_id = Column(String, nullable=True, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
-    __table_args__ = (
-        Index("ix_task_relations_parent", "parent_task_id"),
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+    __table_args__ = (Index("ix_task_relations_parent", "parent_task_id"),)

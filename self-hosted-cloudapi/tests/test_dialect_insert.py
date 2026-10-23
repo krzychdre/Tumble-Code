@@ -16,7 +16,9 @@ def _session(dialect: str):
     return SimpleNamespace(bind=SimpleNamespace(dialect=SimpleNamespace(name=dialect)))
 
 
-@pytest.mark.parametrize("dialect,expected", [("postgresql", postgresql.insert), ("sqlite", sqlite.insert)])
+@pytest.mark.parametrize(
+    "dialect,expected", [("postgresql", postgresql.insert), ("sqlite", sqlite.insert)]
+)
 def test_known_dialects_get_their_own_insert(dialect, expected):
     assert dialect_insert(_session(dialect)) is expected
 

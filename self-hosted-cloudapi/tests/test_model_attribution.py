@@ -218,14 +218,18 @@ async def test_ingest_stamps_the_task_id_and_records_the_model(db_session):
         user_id="user_test",
         org_id=None,
         event_type="LLM Completion",
-        properties={"taskId": "task-m1", "modelId": "GLM-5.2", "mode": "code",
-                    "inputTokens": 100, "outputTokens": 10, "cost": 0.0},
+        properties={
+            "taskId": "task-m1",
+            "modelId": "GLM-5.2",
+            "mode": "code",
+            "inputTokens": 100,
+            "outputTokens": 10,
+            "cost": 0.0,
+        },
     )
     await db_session.commit()
 
-    stored = (
-        await db_session.execute(select(TelemetryEvent.task_id))
-    ).scalar_one()
+    stored = (await db_session.execute(select(TelemetryEvent.task_id))).scalar_one()
     assert stored == "task-m1", "the join key must be lifted out of the blob"
 
     models = await db_session.scalar(select(Task.models).where(Task.id == "task-m1"))
@@ -245,8 +249,14 @@ async def test_a_second_model_extends_the_stored_label(db_session):
             user_id="user_test",
             org_id=None,
             event_type="LLM Completion",
-            properties={"taskId": "task-m2", "modelId": model, "mode": "code",
-                        "inputTokens": tin, "outputTokens": 1, "cost": 0.0},
+            properties={
+                "taskId": "task-m2",
+                "modelId": model,
+                "mode": "code",
+                "inputTokens": tin,
+                "outputTokens": 1,
+                "cost": 0.0,
+            },
         )
     await db_session.commit()
 
@@ -254,7 +264,9 @@ async def test_a_second_model_extends_the_stored_label(db_session):
     assert models == "GLM-5.2, gpt-5.6-sol", "most-used first"
 
 
-async def test_telemetry_for_an_unknown_task_is_stored_but_stores_nothing_else(db_session):
+async def test_telemetry_for_an_unknown_task_is_stored_but_stores_nothing_else(
+    db_session,
+):
     """A run that was never shared has no row to hang a label on."""
     from src.services.telemetry_service import record_event
 
@@ -264,8 +276,13 @@ async def test_telemetry_for_an_unknown_task_is_stored_but_stores_nothing_else(d
         user_id="user_test",
         org_id=None,
         event_type="LLM Completion",
-        properties={"taskId": "never-shared", "modelId": "GLM-5.2",
-                    "inputTokens": 1, "outputTokens": 1, "cost": 0.0},
+        properties={
+            "taskId": "never-shared",
+            "modelId": "GLM-5.2",
+            "inputTokens": 1,
+            "outputTokens": 1,
+            "cost": 0.0,
+        },
     )
     await db_session.commit()
 
@@ -291,7 +308,9 @@ async def test_a_conversation_shared_after_the_fact_picks_up_its_models(db_sessi
     assert models == "GLM-5.2"
 
 
-async def test_completions_for_task_reads_only_that_task_and_only_completions(db_session):
+async def test_completions_for_task_reads_only_that_task_and_only_completions(
+    db_session,
+):
     await _seed_user(db_session)
     db_session.add(_llm_event(task_id="task-m4", model="wanted", tin=1, tout=1))
     db_session.add(_llm_event(task_id="other", model="unwanted", tin=2, tout=2))
@@ -313,7 +332,9 @@ async def test_completions_for_task_reads_only_that_task_and_only_completions(db
 # --- the views --------------------------------------------------------------
 
 
-async def test_task_detail_ships_the_attribution_map(client, db_session, session_factory):
+async def test_task_detail_ships_the_attribution_map(
+    client, db_session, session_factory
+):
     async with session_factory() as s:
         await _seed_user(s)
         s.add(Task(id="task-v1", user_id="user_test", title="Run"))
@@ -395,15 +416,24 @@ async def test_a_task_with_no_telemetry_renders_without_a_badge(
     assert listing.status_code == 200
     assert "badge-model" not in detail.text
     assert "badge-model" not in listing.text
-    assert 'id="request-models"' in detail.text, "the island is always present, just empty"
+    assert 'id="request-models"' in detail.text, (
+        "the island is always present, just empty"
+    )
 
 
 # --- calls that are not turns of the conversation ---------------------------
 
 
-def _c_kind(model: str, tin: int, tout: int, kind: str, cost: float = 0.0) -> Completion:
+def _c_kind(
+    model: str, tin: int, tout: int, kind: str, cost: float = 0.0
+) -> Completion:
     return Completion(
-        model=model, mode="code", input_tokens=tin, output_tokens=tout, kind=kind, cost=cost
+        model=model,
+        mode="code",
+        input_tokens=tin,
+        output_tokens=tout,
+        kind=kind,
+        cost=cost,
     )
 
 
@@ -421,7 +451,9 @@ def test_a_condense_event_is_never_matched_to_a_conversation_row():
     attributed = attribute_requests(messages, completions)
 
     assert attributed["1"]["model"] == "GLM-5.2"
-    assert attributed["2"]["model"] == "GLM-5.2", "the condense event must not win the match"
+    assert attributed["2"]["model"] == "GLM-5.2", (
+        "the condense event must not win the match"
+    )
 
 
 def test_side_calls_do_not_count_as_a_second_model_for_the_run():
@@ -441,7 +473,9 @@ def test_side_calls_do_not_count_as_a_second_model_for_the_run():
 
 def test_a_row_with_no_kind_is_a_conversation_turn():
     """Every completion recorded before the field existed is a task turn."""
-    legacy = Completion(model="GLM-5.2", mode="code", input_tokens=100, output_tokens=10)
+    legacy = Completion(
+        model="GLM-5.2", mode="code", input_tokens=100, output_tokens=10
+    )
 
     assert legacy.kind == "task"
     assert attribute_requests([_req(1, 100, 10)], [legacy])["1"]["model"] == "GLM-5.2"
@@ -484,7 +518,11 @@ async def test_task_detail_names_side_calls_apart_from_the_conversation(
         s.add(_llm_event(task_id="task-v4", model="GLM-5.2", tin=100, tout=10))
         s.add(
             _llm_event(
-                task_id="task-v4", model="a-background-model", tin=40_000, tout=800, kind="condense"
+                task_id="task-v4",
+                model="a-background-model",
+                tin=40_000,
+                tout=800,
+                kind="condense",
             )
         )
         await _summarize(s, "task-v4")
@@ -500,5 +538,9 @@ async def test_task_detail_names_side_calls_apart_from_the_conversation(
     assert "Condensing" in resp.text
     assert "a-background-model" in resp.text
     # …but the conversation's own model list stays the conversation's.
-    models_block = resp.text[resp.text.index('class="detail-models"') : resp.text.index('class="detail-side-calls"')]
+    models_block = resp.text[
+        resp.text.index('class="detail-models"') : resp.text.index(
+            'class="detail-side-calls"'
+        )
+    ]
     assert "a-background-model" not in models_block

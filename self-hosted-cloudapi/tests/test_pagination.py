@@ -26,7 +26,7 @@ def test_window_slides_inward_at_the_end_too():
 
 
 def test_a_single_hidden_page_is_shown_rather_than_elided():
-    """"1 … 3" costs the same width as "1 2 3" while hiding a page."""
+    """ "1 … 3" costs the same width as "1 2 3" while hiding a page."""
     assert page_window(5, 8) == [1, 2, 3, 4, 5, 6, 7, 8]
 
 

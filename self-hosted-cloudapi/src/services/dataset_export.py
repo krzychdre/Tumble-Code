@@ -116,16 +116,26 @@ async def task_ids(db: AsyncSession, user_id: str, options: ExportOptions) -> li
         query = query.where(LlmExchange.client_kind == options.client)
     if options.exclude_workspaces:
         query = query.where(
-            or_(LlmExchange.workspace_path.is_(None), LlmExchange.workspace_path.notin_(options.exclude_workspaces))
+            or_(
+                LlmExchange.workspace_path.is_(None),
+                LlmExchange.workspace_path.notin_(options.exclude_workspaces),
+            )
         )
-    query = query.group_by(LlmExchange.task_id).order_by(func.min(LlmExchange.occurred_at))
+    query = query.group_by(LlmExchange.task_id).order_by(
+        func.min(LlmExchange.occurred_at)
+    )
     return list((await db.scalars(query)).all())
 
 
 class _TaskRenderer:
     """Renders one task's exchanges; caches per message object (histories share them)."""
 
-    def __init__(self, options: ExportOptions, anonymizer: Optional[Anonymizer], since: Optional[datetime]):
+    def __init__(
+        self,
+        options: ExportOptions,
+        anonymizer: Optional[Anonymizer],
+        since: Optional[datetime],
+    ):
         self.options = options
         self.anonymizer = anonymizer
         self.since = since
@@ -143,13 +153,20 @@ class _TaskRenderer:
     def selected(self, exchange: Exchange) -> bool:
         """A target the filters ask for: clean, of a chosen model, in the period and workspaces."""
         options = self.options
-        if exchange.status != "completed" or exchange.messages is None or exchange.system is None:
+        if (
+            exchange.status != "completed"
+            or exchange.messages is None
+            or exchange.system is None
+        ):
             return False
         if not is_clean(exchange.issues, options.strict):
             return False
         if options.models and exchange.model_id not in options.models:
             return False
-        if exchange.workspace_path and exchange.workspace_path in options.exclude_workspaces:
+        if (
+            exchange.workspace_path
+            and exchange.workspace_path in options.exclude_workspaces
+        ):
             return False
         return self.since is None or as_utc(exchange.occurred_at) >= self.since
 
@@ -157,14 +174,19 @@ class _TaskRenderer:
         key = id(message)
         if key not in self._converted:
             self._converted[key] = convert_message(
-                message, reasoning=self.options.reasoning, text=self.text, args=self.args
+                message,
+                reasoning=self.options.reasoning,
+                text=self.text,
+                args=self.args,
             )
         return self._converted[key]
 
     def message_key(self, message: Any) -> str:
         key = id(message)
         if key not in self._keys:
-            self._keys[key] = hashlib.sha256(js_json(message).encode("utf-8")).hexdigest()
+            self._keys[key] = hashlib.sha256(
+                js_json(message).encode("utf-8")
+            ).hexdigest()
         return self._keys[key]
 
     def system(self, exchange: Exchange) -> dict:
@@ -177,17 +199,28 @@ class _TaskRenderer:
         key = id(exchange.tools)
         if key not in self._tools:
             tools = exchange.tools or []
-            self._tools[key] = self.anonymizer.tools(tools) if self.anonymizer else tools
+            self._tools[key] = (
+                self.anonymizer.tools(tools) if self.anonymizer else tools
+            )
         return self._tools[key]
 
     def answer(self, exchange: Exchange) -> dict:
-        return response_message(exchange.response, reasoning=self.options.reasoning, text=self.text, args=self.args)
+        return response_message(
+            exchange.response,
+            reasoning=self.options.reasoning,
+            text=self.text,
+            args=self.args,
+        )
 
     def history(self, messages: list) -> list[dict]:
         out: list[dict] = []
         for message in messages:
             for converted in self.convert(message):
-                out.append({**converted, "weight": 0} if converted["role"] == "assistant" else converted)
+                out.append(
+                    {**converted, "weight": 0}
+                    if converted["role"] == "assistant"
+                    else converted
+                )
         return out
 
     def sample(self, messages: list[dict], exchange: Exchange, metadata: dict) -> dict:
@@ -203,7 +236,11 @@ class _TaskRenderer:
         for exchange in exchanges:
             if not self.selected(exchange):
                 continue
-            messages = [self.system(exchange), *self.history(exchange.messages), {**self.answer(exchange), "weight": 1}]
+            messages = [
+                self.system(exchange),
+                *self.history(exchange.messages),
+                {**self.answer(exchange), "weight": 1},
+            ]
             samples.append(self.sample(messages, exchange, _meta(exchange)))
         return samples
 
@@ -221,10 +258,18 @@ class _TaskRenderer:
         current: list[Exchange] = []
         last_keys: list[str] = []
         for exchange in exchanges:
-            if exchange.status != "completed" or exchange.messages is None or exchange.system is None:
+            if (
+                exchange.status != "completed"
+                or exchange.messages is None
+                or exchange.system is None
+            ):
                 continue
             keys = [self.message_key(m) for m in exchange.messages]
-            if current and len(keys) > len(last_keys) and keys[: len(last_keys)] == last_keys:
+            if (
+                current
+                and len(keys) > len(last_keys)
+                and keys[: len(last_keys)] == last_keys
+            ):
                 current.append(exchange)
             else:
                 if current:
@@ -244,7 +289,11 @@ class _TaskRenderer:
         for index, message in enumerate(last.messages):
             producer = answers.get(index)
             converted = self.convert(message)
-            if producer is not None and len(converted) == 1 and converted[0]["role"] == "assistant":
+            if (
+                producer is not None
+                and len(converted) == 1
+                and converted[0]["role"] == "assistant"
+            ):
                 if self.selected(producer):
                     exact = self.answer(producer)
                     _reuse_call_ids(exact, converted[0])
@@ -252,7 +301,9 @@ class _TaskRenderer:
                     trained.append(producer.id)
                     continue
             for item in converted:
-                messages.append({**item, "weight": 0} if item["role"] == "assistant" else item)
+                messages.append(
+                    {**item, "weight": 0} if item["role"] == "assistant" else item
+                )
         if self.selected(last):
             messages.append({**self.answer(last), "weight": 1})
             trained.append(last.id)
@@ -275,7 +326,10 @@ class _TaskRenderer:
 
 def _reuse_call_ids(exact: dict, sent: dict) -> None:
     """Keep the tool call ids the later tool results answer (the extension may sanitize them)."""
-    exact_calls, sent_calls = exact.get("tool_calls") or [], sent.get("tool_calls") or []
+    exact_calls, sent_calls = (
+        exact.get("tool_calls") or [],
+        sent.get("tool_calls") or [],
+    )
     if len(exact_calls) == len(sent_calls):
         for mine, theirs in zip(exact_calls, sent_calls):
             mine["id"] = theirs["id"]
@@ -292,7 +346,10 @@ def _meta(exchange: Exchange) -> dict:
 
 
 def task_samples(
-    exchanges: list[Exchange], options: ExportOptions, anonymizer: Optional[Anonymizer], since: Optional[datetime]
+    exchanges: list[Exchange],
+    options: ExportOptions,
+    anonymizer: Optional[Anonymizer],
+    since: Optional[datetime],
 ) -> list[dict]:
     """The samples of one task (pure and CPU-bound: run it in a worker thread)."""
     if anonymizer is not None:
@@ -304,14 +361,25 @@ def task_samples(
     if anonymizer is not None:
         # Histories repeat within a task, not across tasks: keep memory flat.
         try:
-            return renderer.trajectories(exchanges) if options.format == "trajectories" else renderer.turns(exchanges)
+            return (
+                renderer.trajectories(exchanges)
+                if options.format == "trajectories"
+                else renderer.turns(exchanges)
+            )
         finally:
             anonymizer.forget_texts()
-    return renderer.trajectories(exchanges) if options.format == "trajectories" else renderer.turns(exchanges)
+    return (
+        renderer.trajectories(exchanges)
+        if options.format == "trajectories"
+        else renderer.turns(exchanges)
+    )
 
 
 async def export_lines(
-    db: AsyncSession, user_id: str, options: ExportOptions, anonymizer: Optional[Anonymizer] = None
+    db: AsyncSession,
+    user_id: str,
+    options: ExportOptions,
+    anonymizer: Optional[Anonymizer] = None,
 ) -> AsyncIterator[str]:
     """The dataset, one JSONL line at a time, task by task."""
     if options.anonymize and anonymizer is None:
@@ -320,7 +388,9 @@ async def export_lines(
     emitted = 0
     for task_id in await task_ids(db, user_id, options):
         exchanges = await load_task(db, user_id, task_id)
-        samples = await anyio.to_thread.run_sync(task_samples, exchanges, options, anonymizer, since)
+        samples = await anyio.to_thread.run_sync(
+            task_samples, exchanges, options, anonymizer, since
+        )
         for sample in samples:
             yield json.dumps(sample, ensure_ascii=False) + "\n"
             emitted += 1

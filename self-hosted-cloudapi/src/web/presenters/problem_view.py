@@ -30,7 +30,9 @@ class ProblemView:
 
     filters: ProblemFilter
 
-    def params(self, filters: Optional[ProblemFilter] = None, *, sort: bool = True) -> list[tuple[str, str]]:
+    def params(
+        self, filters: Optional[ProblemFilter] = None, *, sort: bool = True
+    ) -> list[tuple[str, str]]:
         """The non-empty parameters in a fixed order; the period always leads."""
         f = filters or self.filters
         out = [("period", f.period)]
@@ -39,15 +41,25 @@ class ProblemView:
             out.append(("sort", f.sort))
         return out
 
-    def url(self, filters: Optional[ProblemFilter] = None, path: str = PAGE, *, sort: bool = True) -> str:
+    def url(
+        self,
+        filters: Optional[ProblemFilter] = None,
+        path: str = PAGE,
+        *,
+        sort: bool = True,
+    ) -> str:
         # quote, not quote_plus: a "+" in a search must read back as "+".
         return path + "?" + urlencode(self.params(filters, sort=sort), quote_via=quote)
 
     def periods(self) -> list[dict]:
         """The period tabs, each keeping the filters and the sort."""
         return [
-            {"key": key, "label": label, "active": key == self.filters.period,
-             "href": self.url(replace(self.filters, period=key))}
+            {
+                "key": key,
+                "label": label,
+                "active": key == self.filters.period,
+                "href": self.url(replace(self.filters, period=key)),
+            }
             for key, label in PERIOD_LABELS.items()
         ]
 
@@ -58,15 +70,23 @@ class ProblemView:
 
     def sorts(self) -> list[dict]:
         return [
-            {"key": key, "label": label, "active": key == self.filters.sort,
-             "href": self.url(replace(self.filters, sort=key))}
+            {
+                "key": key,
+                "label": label,
+                "active": key == self.filters.sort,
+                "href": self.url(replace(self.filters, sort=key)),
+            }
             for key, label in SORT_LABELS.items()
         ]
 
     def chips(self) -> list[dict]:
         """One removable chip per active filter, each linking to this view without it."""
         return [
-            {"label": FILTER_LABELS[name], "value": self.filters.label(name), "href": self.url(self.filters.without(name))}
+            {
+                "label": FILTER_LABELS[name],
+                "value": self.filters.label(name),
+                "href": self.url(self.filters.without(name)),
+            }
             for name in FILTER_FIELDS
             if self.filters.value(name)
         ]

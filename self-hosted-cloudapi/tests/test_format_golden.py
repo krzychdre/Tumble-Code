@@ -28,11 +28,20 @@ from pathlib import Path
 
 import pytest
 
-from src.utils.format import fmt_bytes, fmt_cost, fmt_int, fmt_tokens, plural, round_half_up
+from src.utils.format import (
+    fmt_bytes,
+    fmt_cost,
+    fmt_int,
+    fmt_tokens,
+    plural,
+    round_half_up,
+)
 
 from tests.test_browser_js import _find_browser
 
-_FORMAT_JS = Path(__file__).resolve().parent.parent / "src" / "web" / "static" / "format.js"
+_FORMAT_JS = (
+    Path(__file__).resolve().parent.parent / "src" / "web" / "static" / "format.js"
+)
 
 TOKENS = [
     (0, "0"),
@@ -93,9 +102,9 @@ def test_python_formats_costs(value, expected):
 
 
 def test_round_half_up_is_math_round():
-    assert [round_half_up(x) for x in (0.49999999999999994, 0.5, 1.5, 2.5, -0.5, -1.5, -2.5)] == [
-        0, 1, 2, 3, 0, -1, -2
-    ]
+    assert [
+        round_half_up(x) for x in (0.49999999999999994, 0.5, 1.5, 2.5, -0.5, -1.5, -2.5)
+    ] == [0, 1, 2, 3, 0, -1, -2]
 
 
 def test_whole_counts_get_thousands_separators():
@@ -150,8 +159,15 @@ def test_format_js_prints_the_same_strings(tmp_path: Path):
         encoding="utf-8",
     )
     result = subprocess.run(
-        [browser, "--headless", "--disable-gpu", "--no-sandbox", "--allow-file-access-from-files",
-         "--dump-dom", harness.as_uri()],
+        [
+            browser,
+            "--headless",
+            "--disable-gpu",
+            "--no-sandbox",
+            "--allow-file-access-from-files",
+            "--dump-dom",
+            harness.as_uri(),
+        ],
         capture_output=True,
         text=True,
         timeout=120,

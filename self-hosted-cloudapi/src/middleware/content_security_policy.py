@@ -60,7 +60,10 @@ def policy_for(host: str | None) -> str:
 
 
 def _applies(path: str) -> bool:
-    return any(path == p or path.startswith(p + "/") or path.startswith(p + "?") for p in _PREFIXES)
+    return any(
+        path == p or path.startswith(p + "/") or path.startswith(p + "?")
+        for p in _PREFIXES
+    )
 
 
 class ContentSecurityPolicyMiddleware:
@@ -81,9 +84,13 @@ class ContentSecurityPolicyMiddleware:
         async def send_with_policy(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
-                content_type = next((v for k, v in headers if k == b"content-type"), b"")
+                content_type = next(
+                    (v for k, v in headers if k == b"content-type"), b""
+                )
                 if content_type.startswith(b"text/html"):
-                    headers.append((b"content-security-policy", policy_for(host).encode("latin-1")))
+                    headers.append(
+                        (b"content-security-policy", policy_for(host).encode("latin-1"))
+                    )
                     message = {**message, "headers": headers}
             await send(message)
 

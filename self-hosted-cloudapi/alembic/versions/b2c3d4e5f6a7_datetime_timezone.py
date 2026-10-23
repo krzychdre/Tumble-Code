@@ -59,7 +59,11 @@ def _alter_all(new_type, old_type, order) -> None:
     for table, column, nullable in order(_COLUMNS):
         if table in tables:
             op.alter_column(
-                table, column, type_=new_type, existing_type=old_type, existing_nullable=nullable
+                table,
+                column,
+                type_=new_type,
+                existing_type=old_type,
+                existing_nullable=nullable,
             )
 
 

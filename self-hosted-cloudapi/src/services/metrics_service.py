@@ -92,7 +92,10 @@ def _event_ts_ms(props: dict, fallback: datetime) -> float:
 
 
 async def _embedding_payloads(
-    db: AsyncSession, user_id: str, start: Optional[datetime], client: Optional[str] = None
+    db: AsyncSession,
+    user_id: str,
+    start: Optional[datetime],
+    client: Optional[str] = None,
 ) -> list:
     """The ``properties`` blobs of the user's embedding events in the period."""
     stmt = select(TelemetryEvent.properties).where(
@@ -231,7 +234,9 @@ def aggregate_user_metrics(
     task_spans: dict[str, list[float]] = {}
 
     def _bucket(store: dict, name: str, tokens: float, cost: float) -> None:
-        slot = store.setdefault(name, {"name": name, "tokens": 0, "cost": 0.0, "count": 0})
+        slot = store.setdefault(
+            name, {"name": name, "tokens": 0, "cost": 0.0, "count": 0}
+        )
         slot["tokens"] += tokens
         slot["cost"] += cost
         slot["count"] += 1

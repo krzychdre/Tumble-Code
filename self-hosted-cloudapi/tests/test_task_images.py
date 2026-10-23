@@ -32,7 +32,9 @@ async def _seed_task(db_session, task_id="t-img", user_id="user_test"):
     await db_session.commit()
 
 
-def _upload(client, task_id="t-img", ts="5", path="monitoring/x.png", data=PNG, mime="image/png"):
+def _upload(
+    client, task_id="t-img", ts="5", path="monitoring/x.png", data=PNG, mime="image/png"
+):
     return client.post(
         f"/api/tasks/{task_id}/images",
         data={"messageTs": ts, "path": path},
@@ -77,7 +79,10 @@ async def test_upload_accepts_gif_and_webp(client, db_session):
     _signed_in(client)
     assert _upload(client, path="a.gif", data=GIF).status_code == 204
     assert _upload(client, path="a.webp", data=WEBP).status_code == 204
-    assert sorted(r.mime for r in await _images(db_session)) == ["image/gif", "image/webp"]
+    assert sorted(r.mime for r in await _images(db_session)) == [
+        "image/gif",
+        "image/webp",
+    ]
 
 
 async def test_upload_to_someone_elses_or_an_unknown_task_is_404(client, db_session):
@@ -102,7 +107,10 @@ async def test_svg_and_other_bytes_are_415(client, db_session):
     await _seed_task(db_session)
     _signed_in(client)
     assert _upload(client, data=SVG, mime="image/svg+xml").status_code == 415
-    assert _upload(client, data=b"not an image at all", mime="image/png").status_code == 415
+    assert (
+        _upload(client, data=b"not an image at all", mime="image/png").status_code
+        == 415
+    )
     assert await _images(db_session) == []
 
 
@@ -141,8 +149,18 @@ async def test_an_image_never_uploaded_is_404(client, db_session):
     await _seed_task(db_session)
     _signed_in(client)
     _upload(client)
-    assert client.get("/app/tasks/t-img/images", params={"ts": 6, "path": "monitoring/x.png"}).status_code == 404
-    assert client.get("/app/tasks/t-img/images", params={"ts": 5, "path": "other.png"}).status_code == 404
+    assert (
+        client.get(
+            "/app/tasks/t-img/images", params={"ts": 6, "path": "monitoring/x.png"}
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(
+            "/app/tasks/t-img/images", params={"ts": 5, "path": "other.png"}
+        ).status_code
+        == 404
+    )
 
 
 async def test_another_users_image_is_404(client, db_session):
@@ -153,7 +171,9 @@ async def test_another_users_image_is_404(client, db_session):
     assert _upload(client).status_code == 204
     await _seed_user(db_session, user_id="reader", email="r@example.com")
     _override_web_user(app, "reader", "r@example.com")
-    resp = client.get("/app/tasks/t-img/images", params={"ts": 5, "path": "monitoring/x.png"})
+    resp = client.get(
+        "/app/tasks/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+    )
     assert resp.status_code == 404
     assert resp.content == b""
 
@@ -169,7 +189,13 @@ async def test_the_task_page_tells_render_js_where_images_are(client, db_session
 
 
 async def _share(db_session, visibility):
-    db_session.add(TaskShare(task_id="t-img", visibility=visibility, share_url="http://testserver/shared/t-img"))
+    db_session.add(
+        TaskShare(
+            task_id="t-img",
+            visibility=visibility,
+            share_url="http://testserver/shared/t-img",
+        )
+    )
     await db_session.commit()
 
 
@@ -182,7 +208,9 @@ async def test_a_public_share_serves_its_images_to_anybody(client, db_session):
     from src.main import app
 
     app.dependency_overrides.pop(get_web_user_optional, None)
-    resp = client.get("/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"})
+    resp = client.get(
+        "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+    )
     assert resp.status_code == 200
     assert resp.content == PNG
     assert resp.headers["x-content-type-options"] == "nosniff"
@@ -198,24 +226,41 @@ async def test_a_private_share_follows_the_page_rules(client, db_session):
     from src.main import app
 
     # The owner may look.
-    assert client.get("/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}).status_code == 200
+    assert (
+        client.get(
+            "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+        ).status_code
+        == 200
+    )
     # Anonymous: sign in first, like the page.
     app.dependency_overrides.pop(get_web_user_optional, None)
     resp = client.get(
-        "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}, follow_redirects=False
+        "/shared/t-img/images",
+        params={"ts": 5, "path": "monitoring/x.png"},
+        follow_redirects=False,
     )
     assert resp.status_code == 303
     # A stranger: not found.
     await _seed_user(db_session, user_id="stranger", email="s@example.com")
     _override_web_user(app, "stranger", "s@example.com")
-    assert client.get("/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}).status_code == 404
+    assert (
+        client.get(
+            "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+        ).status_code
+        == 404
+    )
 
 
 async def test_an_unshared_task_serves_no_images_under_shared(client, db_session):
     await _seed_task(db_session)
     _signed_in(client)
     _upload(client)
-    assert client.get("/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}).status_code == 404
+    assert (
+        client.get(
+            "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+        ).status_code
+        == 404
+    )
 
 
 # --- removal ----------------------------------------------------------------
@@ -241,12 +286,16 @@ async def test_the_foreign_key_cascades_on_a_plain_delete(client, db_session):
     assert await _images(db_session) == []
 
 
-async def test_the_retention_sweep_removes_images_and_counts_their_bytes(client, db_session):
+async def test_the_retention_sweep_removes_images_and_counts_their_bytes(
+    client, db_session
+):
     await _seed_task(db_session)
     _signed_in(client)
     _upload(client)
 
-    policy = RetentionPolicy(user_id="user_test", enabled=True, keep_shared=True, max_age_days=1)
+    policy = RetentionPolicy(
+        user_id="user_test", enabled=True, keep_shared=True, max_age_days=1
+    )
     later = datetime.now(timezone.utc) + timedelta(days=10)
     plan = await plan_sweep(db_session, "user_test", policy, now=later)
     assert plan.task_ids == ["t-img"]

@@ -35,13 +35,34 @@ BASE_MS = int(BASE.timestamp() * 1000)
 MISSING_PATH = "Roo tried to use apply_diff without value for required parameter 'path'. Retrying..."
 
 
-def _occ(text, *, category="invalid_tool_call", tool="apply_diff", task="t1", model="glm", provider="openai",
-         when=BASE, source=SOURCE_REPORT, report_id=None):
-    return Occurrence(source=source, category=category, tool=tool, text=text, when=when, task_id=task,
-                      model=model, provider=provider, report_id=report_id)
+def _occ(
+    text,
+    *,
+    category="invalid_tool_call",
+    tool="apply_diff",
+    task="t1",
+    model="glm",
+    provider="openai",
+    when=BASE,
+    source=SOURCE_REPORT,
+    report_id=None,
+):
+    return Occurrence(
+        source=source,
+        category=category,
+        tool=tool,
+        text=text,
+        when=when,
+        task_id=task,
+        model=model,
+        provider=provider,
+        report_id=report_id,
+    )
 
 
-def _report_row(report_id, *, user_id="user_test", created_at=None, payload=None, **cols):
+def _report_row(
+    report_id, *, user_id="user_test", created_at=None, payload=None, **cols
+):
     stamp = created_at or datetime.now(timezone.utc)
     body = payload or {"summary": cols.get("summary", MISSING_PATH)}
     values = {
@@ -54,9 +75,16 @@ def _report_row(report_id, *, user_id="user_test", created_at=None, payload=None
         "task_id": "task-r",
         **cols,
     }
-    values["signature"] = problem_signature(values["category"], values["tool_name"], values["summary"])
+    values["signature"] = problem_signature(
+        values["category"], values["tool_name"], values["summary"]
+    )
     return ErrorReport(
-        id=report_id, user_id=user_id, occurred_at=stamp, created_at=stamp, payload=json.dumps(body), **values
+        id=report_id,
+        user_id=user_id,
+        occurred_at=stamp,
+        created_at=stamp,
+        payload=json.dumps(body),
+        **values,
     )
 
 
@@ -78,7 +106,12 @@ async def _add_message(session, task_id, message):
 
 
 def _request(ts, tin, tout):
-    return {"ts": ts, "type": "say", "say": "api_req_started", "text": json.dumps({"tokensIn": tin, "tokensOut": tout})}
+    return {
+        "ts": ts,
+        "type": "say",
+        "say": "api_req_started",
+        "text": json.dumps({"tokensIn": tin, "tokensOut": tout}),
+    }
 
 
 def _say_error(ts, text, say="error"):
@@ -93,17 +126,42 @@ def test_conversation_messages_map_to_categories_and_tools():
         (_say_error(1, MISSING_PATH), ("invalid_tool_call", "apply_diff")),
         (_say_error(1, "MODEL_NO_ASSISTANT_MESSAGES"), ("empty_response", None)),
         (_say_error(1, "Error reading file a.ts: ENOENT"), ("tool_error", "read_file")),
-        (_say_error(1, "Error listing files:\nCannot list files"), ("tool_error", "list_files")),
-        (_say_error(1, "Error executing MCP tool:\nMCP error -32001"), ("tool_error", "use_mcp_tool")),
+        (
+            _say_error(1, "Error listing files:\nCannot list files"),
+            ("tool_error", "list_files"),
+        ),
+        (
+            _say_error(1, "Error executing MCP tool:\nMCP error -32001"),
+            ("tool_error", "use_mcp_tool"),
+        ),
         (_say_error(1, "web_fetch got HTTP 403 for x"), ("tool_error", "web_fetch")),
         (_say_error(1, 'Artifact not found: "x"'), ("tool_error", "read_artifact")),
         (_say_error(1, "Something new"), ("tool_error", None)),
-        (_say_error(1, "<error_details>", say="diff_error"), ("diff_error", "apply_diff")),
+        (
+            _say_error(1, "<error_details>", say="diff_error"),
+            ("diff_error", "apply_diff"),
+        ),
         (_say_error(1, "pattern", say="rooignore_error"), ("rooignore", None)),
-        (_say_error(1, "maximum context length is 1 tokens", say="api_req_retry_delayed"), ("context_overflow", None)),
-        (_say_error(1, "did not provide any assistant messages", say="api_req_retry_delayed"), ("empty_response", None)),
-        (_say_error(1, "Connection error.", say="api_req_retry_delayed"), ("api_error", None)),
-        ({"ts": 1, "type": "ask", "ask": "mistake_limit_reached", "text": "x"}, ("mistake_limit", None)),
+        (
+            _say_error(
+                1, "maximum context length is 1 tokens", say="api_req_retry_delayed"
+            ),
+            ("context_overflow", None),
+        ),
+        (
+            _say_error(
+                1, "did not provide any assistant messages", say="api_req_retry_delayed"
+            ),
+            ("empty_response", None),
+        ),
+        (
+            _say_error(1, "Connection error.", say="api_req_retry_delayed"),
+            ("api_error", None),
+        ),
+        (
+            {"ts": 1, "type": "ask", "ask": "mistake_limit_reached", "text": "x"},
+            ("mistake_limit", None),
+        ),
     ]
     for message, expected in cases:
         assert conversation_category(message) == expected, message
@@ -119,15 +177,31 @@ def test_an_error_takes_the_model_of_the_request_before_it():
     requests = {"t": [(100, (1000, 10)), (200, (2000, 20)), (300, (0, 0))]}
     completions = {
         "t": [
-            Completion(model="glm", mode="code", input_tokens=1000, output_tokens=10, provider="openai"),
-            Completion(model="qwen", mode="code", input_tokens=2000, output_tokens=20, provider="lmstudio"),
+            Completion(
+                model="glm",
+                mode="code",
+                input_tokens=1000,
+                output_tokens=10,
+                provider="openai",
+            ),
+            Completion(
+                model="qwen",
+                mode="code",
+                input_tokens=2000,
+                output_tokens=20,
+                provider="lmstudio",
+            ),
         ]
     }
 
     occurrences = conversation_occurrences(rows, requests, completions)
 
     by_ts = {int(o.when.timestamp() * 1000): o for o in occurrences}
-    assert (by_ts[150].model, by_ts[150].provider, by_ts[150].tool) == ("glm", "openai", "apply_diff")
+    assert (by_ts[150].model, by_ts[150].provider, by_ts[150].tool) == (
+        "glm",
+        "openai",
+        "apply_diff",
+    )
     assert (by_ts[250].model, by_ts[250].category) == ("qwen", "empty_response")
     assert by_ts[50].model is None
     assert all(o.source == SOURCE_CONVERSATION for o in occurrences)
@@ -136,21 +210,37 @@ def test_an_error_takes_the_model_of_the_request_before_it():
 def test_a_one_model_task_attributes_every_error():
     rows = [("t", 150, json.dumps(_say_error(150, "boom")), BASE)]
     requests = {"t": [(100, (5, 5))]}
-    completions = {"t": [Completion(model="glm", mode=None, input_tokens=1, output_tokens=1)]}
+    completions = {
+        "t": [Completion(model="glm", mode=None, input_tokens=1, output_tokens=1)]
+    }
     assert conversation_occurrences(rows, requests, completions)[0].model == "glm"
 
 
 def test_telemetry_events_become_occurrences_with_their_detail():
     detailed = telemetry_occurrence(
         "Exception",
-        json.dumps({"errorName": "TypeError", "errorMessage": "x is undefined", "modelId": "glm", "apiProvider": "zai"}),
+        json.dumps(
+            {
+                "errorName": "TypeError",
+                "errorMessage": "x is undefined",
+                "modelId": "glm",
+                "apiProvider": "zai",
+            }
+        ),
         BASE,
         "t1",
     )
-    assert (detailed.category, detailed.model, detailed.provider, detailed.task_id) == ("exception", "glm", "zai", "t1")
+    assert (detailed.category, detailed.model, detailed.provider, detailed.task_id) == (
+        "exception",
+        "glm",
+        "zai",
+        "t1",
+    )
     assert detailed.text == "TypeError x is undefined"
 
-    bare = telemetry_occurrence("Code Index Error", json.dumps({"appVersion": "1.0.0"}), BASE, None)
+    bare = telemetry_occurrence(
+        "Code Index Error", json.dumps({"appVersion": "1.0.0"}), BASE, None
+    )
     assert (bare.category, bare.text) == ("code_index", "Code index")
     assert telemetry_occurrence("Code Index Error", "not json", BASE, None) is None
 
@@ -159,31 +249,71 @@ def test_telemetry_events_become_occurrences_with_their_detail():
 
 
 def test_occurrences_group_by_signature_and_rank_by_reach():
-    occurrences = [
-        _occ(MISSING_PATH, task=f"t{i}", when=BASE + timedelta(minutes=i)) for i in range(3)
-    ] + [
-        # Many, but all in one task: ranked below the one that hit three.
-        _occ("MODEL_NO_ASSISTANT_MESSAGES", category="empty_response", tool=None, task="t9") for _ in range(10)
-    ] + [
-        _occ("Error reading file a/b.ts: ENOENT", category="tool_error", tool="read_file", task="t1"),
-        _occ("Error reading file c.md: ENOENT", category="tool_error", tool="read_file", task="t2", model=None),
-    ]
+    occurrences = (
+        [
+            _occ(MISSING_PATH, task=f"t{i}", when=BASE + timedelta(minutes=i))
+            for i in range(3)
+        ]
+        + [
+            # Many, but all in one task: ranked below the one that hit three.
+            _occ(
+                "MODEL_NO_ASSISTANT_MESSAGES",
+                category="empty_response",
+                tool=None,
+                task="t9",
+            )
+            for _ in range(10)
+        ]
+        + [
+            _occ(
+                "Error reading file a/b.ts: ENOENT",
+                category="tool_error",
+                tool="read_file",
+                task="t1",
+            ),
+            _occ(
+                "Error reading file c.md: ENOENT",
+                category="tool_error",
+                tool="read_file",
+                task="t2",
+                model=None,
+            ),
+        ]
+    )
 
     groups = group_occurrences(occurrences)
 
-    assert [g["rule"] for g in groups] == ["missing_tool_parameter", "path_guessed", "empty_response"]
+    assert [g["rule"] for g in groups] == [
+        "missing_tool_parameter",
+        "path_guessed",
+        "empty_response",
+    ]
     first = groups[0]
     assert (first["count"], first["tasks"], first["classification"]) == (3, 3, MODEL)
-    assert first["first_seen"] == "2026-10-01 12:00 UTC" and first["last_seen"] == "2026-10-01 12:02 UTC"
+    assert (
+        first["first_seen"] == "2026-10-01 12:00 UTC"
+        and first["last_seen"] == "2026-10-01 12:02 UTC"
+    )
     assert "glm called apply_diff" in first["mitigation"]
     paths = groups[1]
     assert paths["count"] == 2
-    assert {(m["model"], m["count"]) for m in paths["models"]} == {("glm", 1), (UNKNOWN_MODEL, 1)}
+    assert {(m["model"], m["count"]) for m in paths["models"]} == {
+        ("glm", 1),
+        (UNKNOWN_MODEL, 1),
+    }
 
 
 def test_task_less_problems_count_one_per_day_of_reach():
-    burst = [_occ("Code index", category="code_index", tool=None, task=None, when=BASE + timedelta(seconds=i))
-             for i in range(200)]
+    burst = [
+        _occ(
+            "Code index",
+            category="code_index",
+            tool=None,
+            task=None,
+            when=BASE + timedelta(seconds=i),
+        )
+        for i in range(200)
+    ]
     spread = [_occ(MISSING_PATH, task=f"t{i}") for i in range(2)]
     groups = group_occurrences(burst + spread)
     assert [g["rule"] for g in groups] == ["missing_tool_parameter", "code_index"]
@@ -192,15 +322,32 @@ def test_task_less_problems_count_one_per_day_of_reach():
 
 def test_model_fit_counts_requests_problems_and_the_rate():
     occurrences = [_occ(MISSING_PATH, task=f"t{i}") for i in range(3)] + [
-        _occ("MODEL_NO_ASSISTANT_MESSAGES", category="empty_response", tool=None, model="qwen", provider="lmstudio"),
+        _occ(
+            "MODEL_NO_ASSISTANT_MESSAGES",
+            category="empty_response",
+            tool=None,
+            model="qwen",
+            provider="lmstudio",
+        ),
         # No provider recorded: folded into glm's only provider.
         _occ(MISSING_PATH, provider=None),
         _occ("Odd", category="tool_error", tool=None, model=None, provider=None),
         # Not the chat model's: left out of the table.
-        _occ("Code index", category="code_index", tool=None, model=None, provider="openai"),
+        _occ(
+            "Code index",
+            category="code_index",
+            tool=None,
+            model=None,
+            provider="openai",
+        ),
     ]
-    requests = Counter({("openai", "glm"): 200, ("lmstudio", "qwen"): 10, ("anthropic", "claude"): 50})
-    rows = {(r["provider"], r["model"]): r for r in model_fit(occurrences, group_occurrences(occurrences), requests)}
+    requests = Counter(
+        {("openai", "glm"): 200, ("lmstudio", "qwen"): 10, ("anthropic", "claude"): 50}
+    )
+    rows = {
+        (r["provider"], r["model"]): r
+        for r in model_fit(occurrences, group_occurrences(occurrences), requests)
+    }
 
     assert rows[("openai", "glm")]["problems"] == 4
     assert rows[("openai", "glm")]["requests"] == 200
@@ -217,14 +364,24 @@ def test_model_fit_counts_requests_problems_and_the_rate():
 # --- reading the database --------------------------------------------------------
 
 
-async def _seed_conversation(session, task_id="task-c", user_id="user_test", start_ms=None):
+async def _seed_conversation(
+    session, task_id="task-c", user_id="user_test", start_ms=None
+):
     start_ms = start_ms or int(datetime.now(timezone.utc).timestamp() * 1000) - 60_000
     session.add(Task(id=task_id, user_id=user_id))
     await session.commit()
     await _add_message(session, task_id, _request(start_ms, 1000, 10))
     await _add_message(session, task_id, _say_error(start_ms + 1000, MISSING_PATH))
-    session.add(_llm_event(user_id=user_id, task_id=task_id, model="GLM-5.3-Flash-NVFP4", provider="openai",
-                           tin=1000, tout=10))
+    session.add(
+        _llm_event(
+            user_id=user_id,
+            task_id=task_id,
+            model="GLM-5.3-Flash-NVFP4",
+            provider="openai",
+            tin=1000,
+            tout=10,
+        )
+    )
     await session.commit()
 
 
@@ -236,10 +393,19 @@ async def test_the_page_reads_conversations_and_telemetry_of_this_user_only(db_s
     now = datetime.now(timezone.utc)
     db_session.add_all(
         [
-            TelemetryEvent(user_id="user_test", event_type="Code Index Error", properties="{}", created_at=now),
+            TelemetryEvent(
+                user_id="user_test",
+                event_type="Code Index Error",
+                properties="{}",
+                created_at=now,
+            ),
             # Outside the 7-day default.
-            TelemetryEvent(user_id="user_test", event_type="Code Index Error", properties="{}",
-                           created_at=now - timedelta(days=30)),
+            TelemetryEvent(
+                user_id="user_test",
+                event_type="Code Index Error",
+                properties="{}",
+                created_at=now - timedelta(days=30),
+            ),
         ]
     )
     await db_session.commit()
@@ -259,18 +425,34 @@ async def test_the_page_reads_conversations_and_telemetry_of_this_user_only(db_s
 
     everything = await compute_user_problems(db_session, "user_test", period="all")
     assert everything["total"] == 3
-    assert (await compute_user_problems(db_session, "user_test", period="nope"))["period"] == "7d"
+    assert (await compute_user_problems(db_session, "user_test", period="nope"))[
+        "period"
+    ] == "7d"
 
 
 async def test_legacy_sources_stop_at_the_first_error_report(db_session):
     await _seed_user(db_session)
     now = datetime.now(timezone.utc)
     # A conversation error two days ago, then reports from yesterday on.
-    await _seed_conversation(db_session, start_ms=int((now - timedelta(days=2)).timestamp() * 1000))
-    await _add_message(db_session, "task-c", _say_error(int((now - timedelta(hours=1)).timestamp() * 1000),
-                                                        "Error reading file a.ts: ENOENT"))
-    db_session.add(TelemetryEvent(user_id="user_test", event_type="Exception", properties="{}",
-                                  created_at=now - timedelta(hours=2)))
+    await _seed_conversation(
+        db_session, start_ms=int((now - timedelta(days=2)).timestamp() * 1000)
+    )
+    await _add_message(
+        db_session,
+        "task-c",
+        _say_error(
+            int((now - timedelta(hours=1)).timestamp() * 1000),
+            "Error reading file a.ts: ENOENT",
+        ),
+    )
+    db_session.add(
+        TelemetryEvent(
+            user_id="user_test",
+            event_type="Exception",
+            properties="{}",
+            created_at=now - timedelta(hours=2),
+        )
+    )
     db_session.add(_report_row("r1", created_at=now - timedelta(days=1)))
     await db_session.commit()
 
@@ -317,8 +499,13 @@ async def test_diagnostics_redirects_to_login_without_session(client):
 
 async def test_the_page_lists_classified_problems_escaped(client, db_session):
     await _seed_user(db_session)
-    db_session.add(_report_row("r1", summary="Roo tried to use <script>x</script> without value for required parameter 'path'",
-                               tool_name="<b>tool</b>"))
+    db_session.add(
+        _report_row(
+            "r1",
+            summary="Roo tried to use <script>x</script> without value for required parameter 'path'",
+            tool_name="<b>tool</b>",
+        )
+    )
     await db_session.commit()
 
     resp = _get(client, "/app/diagnostics?period=all")
@@ -360,7 +547,13 @@ async def test_a_report_opens_in_full_for_its_owner(client, db_session):
         "response": {
             "text": "ok",
             "reasoning": "thinking hard",
-            "toolCalls": [{"id": "c1", "name": "apply_diff", "arguments": '{"diff": "<<<<<<< SEARCH"}'}],
+            "toolCalls": [
+                {
+                    "id": "c1",
+                    "name": "apply_diff",
+                    "arguments": '{"diff": "<<<<<<< SEARCH"}',
+                }
+            ],
             "stopReason": "tool_calls",
         },
         "toolResult": "the tool said <no>",
@@ -377,7 +570,10 @@ async def test_a_report_opens_in_full_for_its_owner(client, db_session):
     assert "200,000" in body
     assert "48,211 characters" in body
     assert "Fix &lt;the&gt; bug" in body
-    assert "&#34;diff&#34;: &#34;&lt;&lt;&lt;&lt;&lt;&lt;&lt; SEARCH&#34;" in body or "&lt;&lt;&lt;&lt;&lt;&lt;&lt; SEARCH" in body
+    assert (
+        "&#34;diff&#34;: &#34;&lt;&lt;&lt;&lt;&lt;&lt;&lt; SEARCH&#34;" in body
+        or "&lt;&lt;&lt;&lt;&lt;&lt;&lt; SEARCH" in body
+    )
     assert "tool_calls" in body
     assert "the tool said &lt;no&gt;" in body
     assert 'href="/app/tasks/task-r"' in body
@@ -409,7 +605,11 @@ async def test_the_markdown_export_has_a_sample_per_group(client, db_session):
             payload={
                 "summary": "The language model did not provide any assistant messages",
                 "request": {"messages": [{"role": "user", "content": "Do it ``` now"}]},
-                "response": {"text": "", "stopReason": "length", "errorBody": "x" * 3000},
+                "response": {
+                    "text": "",
+                    "stopReason": "length",
+                    "errorBody": "x" * 3000,
+                },
             },
         )
     )
@@ -436,9 +636,20 @@ async def test_the_markdown_export_has_a_sample_per_group(client, db_session):
 
 
 def test_the_markdown_of_an_empty_period_says_so():
-    problems = {"period_label": "7 days", "total": 0, "groups": [], "hidden_groups": 0, "tasks": 0,
-                "by_class": [], "legacy_until": None, "model_fit": [], "has_data": False, "filtered": False,
-                "period_total": 0, "sources": {}}
+    problems = {
+        "period_label": "7 days",
+        "total": 0,
+        "groups": [],
+        "hidden_groups": 0,
+        "tasks": 0,
+        "by_class": [],
+        "legacy_until": None,
+        "model_fit": [],
+        "has_data": False,
+        "filtered": False,
+        "period_total": 0,
+        "sources": {},
+    }
     text = render_brief(problems, ProblemFilter(), {"reports": {}, "context": {}}, BASE)
     assert "No problems recorded in this period." in text
 
@@ -450,5 +661,7 @@ async def test_the_export_needs_a_session(client):
 
 async def test_problem_report_markdown_falls_back_to_the_default_period(db_session):
     await _seed_user(db_session)
-    text = await problem_brief_markdown(db_session, "user_test", ProblemFilter.parse({"period": "nope"}))
+    text = await problem_brief_markdown(
+        db_session, "user_test", ProblemFilter.parse({"period": "nope"})
+    )
     assert "Period: 7 days." in text

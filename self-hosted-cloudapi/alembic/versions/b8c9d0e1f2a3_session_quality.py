@@ -60,7 +60,9 @@ def upgrade() -> None:
         )
     op.add_column(
         "tasks",
-        sa.Column("q_completed", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "q_completed", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
     )
 
     _backfill()

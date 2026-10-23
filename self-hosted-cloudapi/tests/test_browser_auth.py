@@ -15,13 +15,14 @@ def client():
 @pytest.fixture
 def mock_auth_flow():
     """Mock all external dependencies for the auth callback flow."""
-    with patch("src.routers.browser.exchange_code_for_tokens") as mock_exchange, \
-         patch("src.routers.browser.get_userinfo") as mock_userinfo, \
-         patch("src.routers.browser.get_oauth_state") as mock_get_state, \
-         patch("src.routers.browser.get_or_create_user") as mock_create_user, \
-         patch("src.routers.browser.create_session") as mock_session, \
-         patch("src.routers.browser.create_ticket") as mock_ticket:
-
+    with (
+        patch("src.routers.browser.exchange_code_for_tokens") as mock_exchange,
+        patch("src.routers.browser.get_userinfo") as mock_userinfo,
+        patch("src.routers.browser.get_oauth_state") as mock_get_state,
+        patch("src.routers.browser.get_or_create_user") as mock_create_user,
+        patch("src.routers.browser.create_session") as mock_session,
+        patch("src.routers.browser.create_ticket") as mock_ticket,
+    ):
         mock_get_state.return_value = MagicMock(
             auth_redirect="vscode://RooVeterinaryInc.roo-cline",
             code_verifier="test-code-verifier",
@@ -103,7 +104,9 @@ class TestAuthCallbackRedirect:
         assert "state=test-state" in body
         assert "organizationId=" not in body
 
-    def test_callback_html_uses_query_separator_for_simple_uri(self, client, mock_auth_flow):
+    def test_callback_html_uses_query_separator_for_simple_uri(
+        self, client, mock_auth_flow
+    ):
         """When auth_redirect has no query string, use '?' as separator in the vscode URI."""
         response = client.get(
             "/auth/clerk/callback",
@@ -113,9 +116,9 @@ class TestAuthCallbackRedirect:
         assert response.status_code == 200
         body = response.text
 
-        assert "vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?code=" in body, (
-            f"Expected '?' separator for simple URI in HTML. Got: {body[:200]}"
-        )
+        assert (
+            "vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?code=" in body
+        ), f"Expected '?' separator for simple URI in HTML. Got: {body[:200]}"
 
     def test_callback_html_is_success_page(self, client, mock_auth_flow):
         """The HTML response should be a success page whose script follows the link."""
@@ -159,7 +162,10 @@ class TestSignInPageRedirect:
 
         client.get(
             "/extension/sign-in",
-            params={"state": "test-state", "auth_redirect": "vscode://RooVeterinaryInc.roo-cline"},
+            params={
+                "state": "test-state",
+                "auth_redirect": "vscode://RooVeterinaryInc.roo-cline",
+            },
             follow_redirects=False,
         )
 

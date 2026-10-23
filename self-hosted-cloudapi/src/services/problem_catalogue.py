@@ -83,11 +83,22 @@ class Rule:
             return False
         if self.tools is not None and tool not in self.tools:
             return False
-        return self.pattern is None or re.search(self.pattern, text, re.IGNORECASE) is not None
+        return (
+            self.pattern is None
+            or re.search(self.pattern, text, re.IGNORECASE) is not None
+        )
 
 
 def _rule(
-    id, title, classification, mitigation, categories=None, tools=None, pattern=None, task="", code_hints=(),
+    id,
+    title,
+    classification,
+    mitigation,
+    categories=None,
+    tools=None,
+    pattern=None,
+    task="",
+    code_hints=(),
     acceptance="",
 ) -> Rule:
     return Rule(
@@ -231,7 +242,7 @@ CATALOGUE: tuple[Rule, ...] = (
         ),
         acceptance="A unit test calls ReadArtifactTool with the arguments from the samples (and with absent, empty, "
         "negative and non-numeric values) and gets either the artifact's content or a teaching error, "
-        "never \"Received NaN\" or \"size is out of range\". No new occurrences of this signature.",
+        'never "Received NaN" or "size is out of range". No new occurrences of this signature.',
     ),
     _rule(
         "pdf_navigator_crash",
@@ -267,7 +278,7 @@ CATALOGUE: tuple[Rule, ...] = (
             "src/core/prompts/tools/native-tools/read_artifact.ts",
         ),
         acceptance="When the id is unknown or malformed, the error lists the task's existing artifact ids (or says "
-        "there are none), and a test covers both the \"Artifact not found\" and the \"Invalid artifact_id\" "
+        'there are none), and a test covers both the "Artifact not found" and the "Invalid artifact_id" '
         "paths. New reports show the model's next call using a listed id.",
     ),
     _rule(
@@ -482,7 +493,7 @@ CATALOGUE: tuple[Rule, ...] = (
         "the code index settings and test the connection.",
         categories=("code_index",),
         task="Change the default or explain to the user why indexing failed: the error must carry the reason "
-        "(embedder dimension, endpoint, model id) instead of a bare \"Code index\" event.",
+        '(embedder dimension, endpoint, model id) instead of a bare "Code index" event.',
         code_hints=(
             "src/services/code-index/service-factory.ts: findDimensionMismatch",
             "src/services/code-index/orchestrator.ts",
@@ -578,7 +589,7 @@ CATALOGUE: tuple[Rule, ...] = (
             "src/core/prompts/tools/native-tools/apply_diff.ts",
         ),
         acceptance="The failure reason reaches the error report and the telemetry event (today the legacy event says"
-        " only \"Diff not applied\"), so this group splits into diff_no_match, diff_identical or a crash of"
+        ' only "Diff not applied"), so this group splits into diff_no_match, diff_identical or a crash of'
         " ours. A crash of ours gets a test and a fix.",
     ),
     _rule(
@@ -633,10 +644,16 @@ class _Blank(dict):
     """format_map helper: a missing value reads as a neutral phrase."""
 
     def __missing__(self, key):
-        return {"model": "the model", "provider": "the provider", "tool": "the tool"}.get(key, key)
+        return {
+            "model": "the model",
+            "provider": "the provider",
+            "tool": "the tool",
+        }.get(key, key)
 
 
-def _fill(template: str, model: Optional[str], provider: Optional[str], tool: Optional[str]) -> str:
+def _fill(
+    template: str, model: Optional[str], provider: Optional[str], tool: Optional[str]
+) -> str:
     values = _Blank()
     for key, value in (("model", model), ("provider", provider), ("tool", tool)):
         if value:
@@ -644,16 +661,22 @@ def _fill(template: str, model: Optional[str], provider: Optional[str], tool: Op
     return template.format_map(values)
 
 
-def mitigation_for(rule: Rule, model: Optional[str], provider: Optional[str], tool: Optional[str]) -> str:
+def mitigation_for(
+    rule: Rule, model: Optional[str], provider: Optional[str], tool: Optional[str]
+) -> str:
     return _fill(rule.mitigation, model, provider, tool)
 
 
-def task_for(rule: Rule, model: Optional[str], provider: Optional[str], tool: Optional[str]) -> str:
+def task_for(
+    rule: Rule, model: Optional[str], provider: Optional[str], tool: Optional[str]
+) -> str:
     """The rule's one-sentence job for a coding agent, with the group's values."""
     return _fill(rule.task, model, provider, tool)
 
 
-def acceptance_for(rule: Rule, model: Optional[str], provider: Optional[str], tool: Optional[str]) -> str:
+def acceptance_for(
+    rule: Rule, model: Optional[str], provider: Optional[str], tool: Optional[str]
+) -> str:
     return _fill(rule.acceptance, model, provider, tool)
 
 
@@ -677,18 +700,29 @@ def explain(rule: Rule, category: str, tool: Optional[str], text: str) -> str:
     if rule.pattern is not None:
         found = re.search(rule.pattern, text or "", re.IGNORECASE)
         reasons.append(
-            f"the text contains {found.group(0)!r} (pattern {rule.pattern!r})" if found else f"pattern {rule.pattern!r}"
+            f"the text contains {found.group(0)!r} (pattern {rule.pattern!r})"
+            if found
+            else f"pattern {rule.pattern!r}"
         )
     if not reasons:
         reasons.append("it matches any occurrence")
-    return f"Rule {rule.id!r}, the first match in the ordered catalogue: " + ", ".join(reasons) + "."
+    return (
+        f"Rule {rule.id!r}, the first match in the ordered catalogue: "
+        + ", ".join(reasons)
+        + "."
+    )
 
 
 # --- signatures --------------------------------------------------------------
 
 _URL = re.compile(r"\bhttps?://\S+", re.IGNORECASE)
-_UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE)
-_HEX = re.compile(r"\b[0-9a-f]*\d[0-9a-f]*[a-f][0-9a-f]*\b|\b[0-9a-f]*[a-f][0-9a-f]*\d[0-9a-f]*\b", re.IGNORECASE)
+_UUID = re.compile(
+    r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE
+)
+_HEX = re.compile(
+    r"\b[0-9a-f]*\d[0-9a-f]*[a-f][0-9a-f]*\b|\b[0-9a-f]*[a-f][0-9a-f]*\d[0-9a-f]*\b",
+    re.IGNORECASE,
+)
 _QUOTED = re.compile(r"(['\"`])([^'\"`]*)\1")
 _PATH = re.compile(r"(?:[A-Za-z]:)?(?:[\w.~@+\-\[\]]*[/\\])+[\w.~@+\-]*")
 _FILE = re.compile(r"\b[\w\-]+\.[A-Za-z][A-Za-z0-9]{0,4}\b")
@@ -714,7 +748,11 @@ def headline(text: Optional[str]) -> str:
     tool:") the next line is what it introduces, so it is appended.
     """
     lines = [line.strip() for line in (text or "").splitlines()]
-    lines = [line for line in lines if re.search(r"[A-Za-z]", line) and not _TAG_ONLY.match(line)]
+    lines = [
+        line
+        for line in lines
+        if re.search(r"[A-Za-z]", line) and not _TAG_ONLY.match(line)
+    ]
     if not lines:
         return ""
     head = lines[0]

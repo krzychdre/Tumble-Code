@@ -160,7 +160,12 @@ class WebAccessMiddleware:
             await self.app(scope, receive, send)
             return
 
-        logger.warning("[web-access] refused %s %s from %s", scope.get("method"), scope["path"], client)
+        logger.warning(
+            "[web-access] refused %s %s from %s",
+            scope.get("method"),
+            scope["path"],
+            client,
+        )
         response = templates.TemplateResponse(
             Request(scope),
             "forbidden.html",

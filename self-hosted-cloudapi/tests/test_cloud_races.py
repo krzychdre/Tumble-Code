@@ -185,17 +185,13 @@ async def test_concurrent_share_requests_create_exactly_one_share_row(
     async with _sessions(race_engine)() as s:
         count = (
             await s.execute(
-                select(func.count(TaskShare.id)).where(
-                    TaskShare.task_id == "task-race"
-                )
+                select(func.count(TaskShare.id)).where(TaskShare.task_id == "task-race")
             )
         ).scalar_one()
         assert count == 1, f"expected exactly 1 share row, found {count}"
         # And the survivor row is a normal, fully-formed share.
         share = (
-            await s.execute(
-                select(TaskShare).where(TaskShare.task_id == "task-race")
-            )
+            await s.execute(select(TaskShare).where(TaskShare.task_id == "task-race"))
         ).scalar_one()
         assert share.visibility == "public"
         assert share.share_url == "http://testserver/shared/task-race"
@@ -268,9 +264,7 @@ async def _race_settings_calls(engine, parties: int):
 
 
 @pytest.mark.parametrize("parties", [2, 3])
-async def test_concurrent_settings_patches_let_exactly_one_win(
-    race_engine, parties
-):
+async def test_concurrent_settings_patches_let_exactly_one_win(race_engine, parties):
     """R8 settings race. N parallel PATCHes all carrying the same expected
     version: exactly ONE may win; every other caller must get a 409.
 
@@ -295,12 +289,12 @@ async def test_concurrent_settings_patches_let_exactly_one_win(
 
     assert pause.paused == parties, "every caller must reach the read first"
     statuses = sorted(kind for kind, _ in outcomes)
-    assert statuses == ["conflict"] * (parties - 1) + [
-        "ok"
-    ], f"exactly one winner expected, got {statuses}"
-    assert all(
-        code == 409 for kind, code in outcomes if kind == "conflict"
-    ), "losers must see HTTP 409, not another status"
+    assert statuses == ["conflict"] * (parties - 1) + ["ok"], (
+        f"exactly one winner expected, got {statuses}"
+    )
+    assert all(code == 409 for kind, code in outcomes if kind == "conflict"), (
+        "losers must see HTTP 409, not another status"
+    )
 
     winner_version = [v for kind, v in outcomes if kind == "ok"][0]
     assert winner_version == 2, "the winner advanced the version by exactly one"
@@ -316,9 +310,7 @@ async def test_concurrent_settings_patches_let_exactly_one_win(
         assert rows == 1, "one settings row for the user"
         stored = (
             await s.execute(
-                select(UserSettings.version).where(
-                    UserSettings.user_id == "user_test"
-                )
+                select(UserSettings.version).where(UserSettings.user_id == "user_test")
             )
         ).scalar_one()
         assert stored == 2

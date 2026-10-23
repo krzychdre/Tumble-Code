@@ -29,7 +29,12 @@ from src.services.diagnostics_service import (
 )
 from src.services.problem_catalogue import problem_signature
 from tests.test_web_diagnostics import MISSING_PATH, _add_message, _request, _say_error
-from tests.web_helpers import _llm_event, _override_current_user, _override_web_user, _seed_user
+from tests.web_helpers import (
+    _llm_event,
+    _override_current_user,
+    _override_web_user,
+    _seed_user,
+)
 
 BASE = datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)
 BASE_MS = int(BASE.timestamp() * 1000)
@@ -48,8 +53,17 @@ def _get(http, url, **params):
 
 
 def _occ(text, client, *, task="t1", source=SOURCE_REPORT):
-    return Occurrence(source=source, category="invalid_tool_call", tool="apply_diff", text=text, when=BASE,
-                      task_id=task, model="glm", provider="openai", client=client)
+    return Occurrence(
+        source=source,
+        category="invalid_tool_call",
+        tool="apply_diff",
+        text=text,
+        when=BASE,
+        task_id=task,
+        model="glm",
+        provider="openai",
+        client=client,
+    )
 
 
 def test_problem_filter_parses_and_labels_the_client():
@@ -63,27 +77,50 @@ def test_problem_filter_parses_and_labels_the_client():
 
 
 def test_the_client_filter_narrows_problems_and_offers_both_clients():
-    occurrences = [_occ(MISSING_PATH, "vscode", task=f"v{i}") for i in range(3)] + [_occ(MISSING_PATH, "cli", task="c1")]
-    cli = aggregate_problems(occurrences, Counter(), "7d", None, ProblemFilter(period="7d", client="cli"))
+    occurrences = [_occ(MISSING_PATH, "vscode", task=f"v{i}") for i in range(3)] + [
+        _occ(MISSING_PATH, "cli", task="c1")
+    ]
+    cli = aggregate_problems(
+        occurrences, Counter(), "7d", None, ProblemFilter(period="7d", client="cli")
+    )
     assert (cli["total"], cli["tasks"]) == (1, 1)
     # The options come from the unfiltered period, in the fixed order.
     assert cli["options"]["client"] == [
         {"value": "vscode", "label": "VS Code", "count": 3},
         {"value": "cli", "label": "CLI", "count": 1},
     ]
-    both = aggregate_problems(occurrences, Counter(), "7d", None, ProblemFilter(period="7d"))
+    both = aggregate_problems(
+        occurrences, Counter(), "7d", None, ProblemFilter(period="7d")
+    )
     assert both["total"] == 4
 
 
 # --- the problem report: collection and the page ----------------------------------
 
 
-def _report(report_id, client, *, summary=MISSING_PATH, category="invalid_tool_call", tool="apply_diff"):
+def _report(
+    report_id,
+    client,
+    *,
+    summary=MISSING_PATH,
+    category="invalid_tool_call",
+    tool="apply_diff",
+):
     stamp = datetime.now(timezone.utc)
     return ErrorReport(
-        id=report_id, user_id="user_test", category=category, tool_name=tool, summary=summary,
-        model_id="glm", provider="openai", mode="code", task_id=f"task-{report_id}", client_kind=client,
-        signature=problem_signature(category, tool, summary), occurred_at=stamp, created_at=stamp,
+        id=report_id,
+        user_id="user_test",
+        category=category,
+        tool_name=tool,
+        summary=summary,
+        model_id="glm",
+        provider="openai",
+        mode="code",
+        task_id=f"task-{report_id}",
+        client_kind=client,
+        signature=problem_signature(category, tool, summary),
+        occurred_at=stamp,
+        created_at=stamp,
         payload=json.dumps({"summary": summary}),
     )
 
@@ -95,12 +132,23 @@ async def test_every_source_carries_its_client(db_session):
         [
             Task(id="t-cli", user_id="user_test", client_kind="cli"),
             Task(id="t-code", user_id="user_test"),
-            TelemetryEvent(user_id="user_test", event_type="Exception", client_kind="cli",
-                           properties=json.dumps({"errorName": "TypeError", "errorMessage": "boom"}),
-                           created_at=BASE),
-            TelemetryEvent(user_id="user_test", event_type="Exception",
-                           properties=json.dumps({"errorName": "TypeError", "errorMessage": "bang"}),
-                           created_at=BASE),
+            TelemetryEvent(
+                user_id="user_test",
+                event_type="Exception",
+                client_kind="cli",
+                properties=json.dumps(
+                    {"errorName": "TypeError", "errorMessage": "boom"}
+                ),
+                created_at=BASE,
+            ),
+            TelemetryEvent(
+                user_id="user_test",
+                event_type="Exception",
+                properties=json.dumps(
+                    {"errorName": "TypeError", "errorMessage": "bang"}
+                ),
+                created_at=BASE,
+            ),
         ]
     )
     await db_session.commit()
@@ -114,7 +162,9 @@ async def test_every_source_carries_its_client(db_session):
         {"value": "vscode", "label": "VS Code", "count": 2},
         {"value": "cli", "label": "CLI", "count": 2},
     ]
-    cli = await compute_user_problems(db_session, "user_test", filters=ProblemFilter(period="all", client="cli"))
+    cli = await compute_user_problems(
+        db_session, "user_test", filters=ProblemFilter(period="all", client="cli")
+    )
     assert cli["total"] == 2
     assert cli["sources"] == {SOURCE_CONVERSATION: 1, "telemetry": 1}
 
@@ -122,10 +172,15 @@ async def test_every_source_carries_its_client(db_session):
     # first report, so they still count.)
     db_session.add_all([_report("r-cli", "cli"), _report("r-code", "vscode")])
     await db_session.commit()
-    reported = await compute_user_problems(db_session, "user_test", filters=ProblemFilter(period="all", client="cli"))
-    assert reported["sources"] == {SOURCE_REPORT: 1, SOURCE_CONVERSATION: 1, "telemetry": 1}
+    reported = await compute_user_problems(
+        db_session, "user_test", filters=ProblemFilter(period="all", client="cli")
+    )
+    assert reported["sources"] == {
+        SOURCE_REPORT: 1,
+        SOURCE_CONVERSATION: 1,
+        "telemetry": 1,
+    }
     assert [r["id"] for g in reported["groups"] for r in g["reports"]] == ["r-cli"]
-
 
 
 async def test_the_model_fit_counts_requests_of_the_filtered_client(db_session):
@@ -143,8 +198,12 @@ async def test_the_model_fit_counts_requests_of_the_filtered_client(db_session):
     def requests(problems):
         return {row["model"]: row["requests"] for row in problems["model_fit"]}
 
-    assert requests(await compute_user_problems(db_session, "user_test", period="7d")) == {"glm": 3}
-    cli = await compute_user_problems(db_session, "user_test", filters=ProblemFilter(period="7d", client="cli"))
+    assert requests(
+        await compute_user_problems(db_session, "user_test", period="7d")
+    ) == {"glm": 3}
+    cli = await compute_user_problems(
+        db_session, "user_test", filters=ProblemFilter(period="7d", client="cli")
+    )
     assert requests(cli) == {"glm": 1}
 
 
@@ -153,7 +212,13 @@ async def test_the_diagnostics_page_filters_by_client_with_a_chip(client, db_ses
     db_session.add_all(
         [
             _report("r-cli", "cli"),
-            _report("r-code", "vscode", summary=NAN, category="tool_error", tool="read_artifact"),
+            _report(
+                "r-code",
+                "vscode",
+                summary=NAN,
+                category="tool_error",
+                tool="read_artifact",
+            ),
         ]
     )
     await db_session.commit()
@@ -176,7 +241,9 @@ async def test_the_diagnostics_page_filters_by_client_with_a_chip(client, db_ses
 
     # An unknown value is no filter, never an error.
     bogus = _get(client, "/app/diagnostics", period="all", client="vim")
-    assert bogus.status_code == 200 and bogus.text.count('<summary class="diag-row">') == 2
+    assert (
+        bogus.status_code == 200 and bogus.text.count('<summary class="diag-row">') == 2
+    )
 
 
 # --- the task list and the task page ----------------------------------------------
@@ -186,9 +253,16 @@ async def _seed_tasks(session_factory):
     async with session_factory() as s:
         s.add_all(
             [
-                Task(id="code-1", user_id="user_test", title="Code one", updated_at=BASE),
-                Task(id="cli-1", user_id="user_test", title="CLI one", client_kind="cli",
-                     updated_at=BASE - timedelta(minutes=1)),
+                Task(
+                    id="code-1", user_id="user_test", title="Code one", updated_at=BASE
+                ),
+                Task(
+                    id="cli-1",
+                    user_id="user_test",
+                    title="CLI one",
+                    client_kind="cli",
+                    updated_at=BASE - timedelta(minutes=1),
+                ),
             ]
         )
         await s.commit()
@@ -208,21 +282,25 @@ async def test_the_task_list_filters_by_client(client, db_session, session_facto
     assert _order(_get(client, "/app", client="emacs").text) == ["code-1", "cli-1"]
 
 
-async def test_the_task_list_marks_cli_rows_and_shows_the_filter(client, db_session, session_factory):
+async def test_the_task_list_marks_cli_rows_and_shows_the_filter(
+    client, db_session, session_factory
+):
     await _seed_user(db_session)
     await _seed_tasks(session_factory)
 
     html = _get(client, "/app", client="cli", sort="cost", dir="asc").text
     # Only the CLI row gets a badge; VS Code is the default and stays quiet.
     assert html.count('class="badge badge-client"') == 1
-    form = html[html.index('id="filter-form"'):]
-    form = form[:form.index("</form>")]
+    form = html[html.index('id="filter-form"') :]
+    form = form[: form.index("</form>")]
     assert '<select name="client">' in form
     assert '<option value="cli" selected>CLI</option>' in form
-    chips = re.findall(r'<a class="filter-chip" href="([^"]+)"[^>]*>(.*?)</a>', html, re.DOTALL)
-    assert [(unescape(href), re.sub(r"<[^>]+>|\s+", "", label)) for href, label in chips] == [
-        ("/app?scope=roots&sort=cost&dir=asc", "Client:CLI✕")
-    ]
+    chips = re.findall(
+        r'<a class="filter-chip" href="([^"]+)"[^>]*>(.*?)</a>', html, re.DOTALL
+    )
+    assert [
+        (unescape(href), re.sub(r"<[^>]+>|\s+", "", label)) for href, label in chips
+    ] == [("/app?scope=roots&sort=cost&dir=asc", "Client:CLI✕")]
     plain = _get(client, "/app").text
     assert plain.count('class="badge badge-client"') == 1
 
@@ -234,11 +312,18 @@ async def test_bulk_delete_keeps_the_client_filter(client, db_session, session_f
     _override_web_user(client.app)
     try:
         page = client.get("/app", params={"client": "cli"}).text
-        form = page[page.index('id="bulk-form"'):]
-        hidden = dict(re.findall(r'<input type="hidden" name="(\w+)" value="([^"]*)"', form[:form.index("<ul")]))
+        form = page[page.index('id="bulk-form"') :]
+        hidden = dict(
+            re.findall(
+                r'<input type="hidden" name="(\w+)" value="([^"]*)"',
+                form[: form.index("<ul")],
+            )
+        )
         assert hidden == {"scope": "roots", "client": "cli"}
         resp = client.post(
-            "/app/tasks/bulk-delete", data={"task_ids": ["cli-1"], **hidden}, follow_redirects=False
+            "/app/tasks/bulk-delete",
+            data={"task_ids": ["cli-1"], **hidden},
+            follow_redirects=False,
         )
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
@@ -295,7 +380,10 @@ async def _record_two_clients(client, db_session):
             resp = client.post(
                 "/api/llm-exchanges",
                 content=gzip.compress(json.dumps(body).encode()),
-                headers={"Content-Type": "application/json", "Content-Encoding": "gzip"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Encoding": "gzip",
+                },
             )
             assert resp.json()["stored"] is True
     finally:
@@ -315,9 +403,15 @@ async def test_the_dataset_page_and_export_filter_by_client(client, db_session):
     assert 'name="client"' not in everything
 
     def exported(**params):
-        resp = _get(client, "/app/dataset/export.jsonl", anonymize="0", metadata="1", **params)
+        resp = _get(
+            client, "/app/dataset/export.jsonl", anonymize="0", metadata="1", **params
+        )
         assert resp.status_code == 200
-        return sorted(json.loads(line)["metadata"]["model"] for line in resp.text.splitlines() if line.strip())
+        return sorted(
+            json.loads(line)["metadata"]["model"]
+            for line in resp.text.splitlines()
+            if line.strip()
+        )
 
     assert exported() == ["cli-model", "code-model"]
     assert exported(client="cli") == ["cli-model"]

@@ -47,17 +47,26 @@ async def compute_user_problems(
         period = filters.period
     if period not in PERIODS:
         period = DEFAULT_PERIOD
-    filters = replace(filters, period=period) if filters is not None else ProblemFilter(period=period)
+    filters = (
+        replace(filters, period=period)
+        if filters is not None
+        else ProblemFilter(period=period)
+    )
     start = period_start(period, now, zone)
     occurrences, cutoff = await collect_occurrences(db, user_id, start)
     requests = await _request_counts(db, user_id, start, filters.client)
-    return await anyio.to_thread.run_sync(aggregate_problems, occurrences, requests, period, cutoff, filters, key, zone
+    return await anyio.to_thread.run_sync(
+        aggregate_problems, occurrences, requests, period, cutoff, filters, key, zone
     )
 
 
-async def load_report(db: AsyncSession, user_id: str, report_id: str, zone: ZoneInfo = UTC) -> Optional[dict]:
+async def load_report(
+    db: AsyncSession, user_id: str, report_id: str, zone: ZoneInfo = UTC
+) -> Optional[dict]:
     """The drill-down of one report, or None unless ``user_id`` owns it."""
     row = await db.scalar(
-        select(ErrorReport).where(ErrorReport.id == report_id, ErrorReport.user_id == user_id)
+        select(ErrorReport).where(
+            ErrorReport.id == report_id, ErrorReport.user_id == user_id
+        )
     )
     return report_view(row, zone) if row is not None else None

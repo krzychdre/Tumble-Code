@@ -123,8 +123,18 @@ async def test_partials_for_one_ts_within_the_window_coalesce_into_one_commit(
 
     assert len(commits) == 1
     rows = await _rows(session_factory)
-    assert rows == [(42, {"ts": 42, "type": "say", "say": "reasoning",
-                          "text": "thinking " * 5, "partial": True})]
+    assert rows == [
+        (
+            42,
+            {
+                "ts": 42,
+                "type": "say",
+                "say": "reasoning",
+                "text": "thinking " * 5,
+                "partial": True,
+            },
+        )
+    ]
 
 
 async def test_a_long_stream_is_still_written_once_per_window(
@@ -145,7 +155,9 @@ async def test_a_long_stream_is_still_written_once_per_window(
     assert [m["text"] for _ts, m in await _rows(session_factory)] == ["word " * 8]
 
 
-async def test_the_held_revision_is_the_fullest_one(owned_task, emit, commits, delay, session_factory):
+async def test_the_held_revision_is_the_fullest_one(
+    owned_task, emit, commits, delay, session_factory
+):
     """Chunks can be handled out of order; like the database's own upsert
     guard, a shorter partial never replaces a longer one."""
     delay(0.05)
@@ -154,7 +166,9 @@ async def test_the_held_revision_is_the_fullest_one(owned_task, emit, commits, d
 
     await asyncio.sleep(0.2)
 
-    assert [m["text"] for _ts, m in await _rows(session_factory)] == ["The user says they need"]
+    assert [m["text"] for _ts, m in await _rows(session_factory)] == [
+        "The user says they need"
+    ]
 
 
 async def test_a_final_is_written_at_once_and_supersedes_held_partials(
@@ -165,7 +179,9 @@ async def test_a_final_is_written_at_once_and_supersedes_held_partials(
         await sio_module.on_task_event(SID, _chunk(42, "thinking " * i))
     assert commits == []
 
-    await sio_module.on_task_event(SID, _chunk(42, "thinking thinking thinking done", partial=False))
+    await sio_module.on_task_event(
+        SID, _chunk(42, "thinking thinking thinking done", partial=False)
+    )
 
     assert len(commits) == 1
     rows = await _rows(session_factory)
@@ -211,7 +227,9 @@ async def test_a_disconnect_writes_the_sockets_held_partials(
 
     await sio_module.disconnect(SID)
 
-    assert [m["text"] for _ts, m in await _rows(session_factory)] == ["cut off mid-stream"]
+    assert [m["text"] for _ts, m in await _rows(session_factory)] == [
+        "cut off mid-stream"
+    ]
     assert sio_module.partial_messages.pending() == 0
 
 
@@ -235,7 +253,9 @@ async def test_shutdown_writes_every_held_partial(
     async with lifespan(app):
         pass
 
-    assert [m["text"] for _ts, m in await _rows(session_factory)] == ["server going down"]
+    assert [m["text"] for _ts, m in await _rows(session_factory)] == [
+        "server going down"
+    ]
     assert sio_module.partial_messages.pending() == 0
 
 
@@ -254,5 +274,7 @@ async def test_a_partial_for_a_task_of_unknown_owner_is_written_at_once(
     await sio_module.on_task_event(SID, event_)
 
     emit.assert_awaited_once_with(TASK_RELAYED_EVENT, event_, room="task:task-new")
-    assert [m["text"] for _ts, m in await _rows(session_factory, "task-new")] == ["first words"]
+    assert [m["text"] for _ts, m in await _rows(session_factory, "task-new")] == [
+        "first words"
+    ]
     assert registry.task_access(SID, "task-new") is True

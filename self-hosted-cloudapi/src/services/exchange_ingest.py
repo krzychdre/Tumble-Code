@@ -24,7 +24,12 @@ from src.database import dialect_insert
 from src.models.llm_exchange import DatasetSettings, LlmBlob, LlmExchange
 from src.schemas.llm_exchange import LlmExchangeOutcomeRequest, LlmExchangeRequest
 from src.services.client_kind import client_kind_from
-from src.services.exchange_quality import join_issues, outcome_issues, split_issues, static_issues
+from src.services.exchange_quality import (
+    join_issues,
+    outcome_issues,
+    split_issues,
+    static_issues,
+)
 
 COLUMN_MAX = 200
 
@@ -53,11 +58,18 @@ def without_lone_surrogates(value: Any) -> Any:
     for byte: the extension hashed the escape, not the character.)
     """
     if isinstance(value, str):
-        return _LONE_SURROGATE.sub("\ufffd", value) if _LONE_SURROGATE.search(value) else value
+        return (
+            _LONE_SURROGATE.sub("\ufffd", value)
+            if _LONE_SURROGATE.search(value)
+            else value
+        )
     if isinstance(value, list):
         return [without_lone_surrogates(item) for item in value]
     if isinstance(value, dict):
-        return {without_lone_surrogates(k): without_lone_surrogates(v) for k, v in value.items()}
+        return {
+            without_lone_surrogates(k): without_lone_surrogates(v)
+            for k, v in value.items()
+        }
     return value
 
 
@@ -68,7 +80,9 @@ def sha256_hex(text: str) -> str:
 # --- the dataset switch ---------------------------------------------------------
 
 
-async def read_dataset_settings(db: AsyncSession, user_id: str) -> Optional[DatasetSettings]:
+async def read_dataset_settings(
+    db: AsyncSession, user_id: str
+) -> Optional[DatasetSettings]:
     """The user's dataset settings, or None when never saved (a GET must not write)."""
     return await db.get(DatasetSettings, user_id)
 
@@ -122,14 +136,18 @@ def split_blobs(payload: dict) -> dict[str, str]:
     return texts
 
 
-async def _tools_of(db: AsyncSession, user_id: str, task_id: str, ref: dict, sent: dict[str, str]) -> Any:
+async def _tools_of(
+    db: AsyncSession, user_id: str, task_id: str, ref: dict, sent: dict[str, str]
+) -> Any:
     """The tools the request offered: from this upload's blobs or an earlier one's."""
     sha = ref.get("sha256")
     text = sent.get(sha)
     if text is None:
         text = await db.scalar(
             select(LlmBlob.content).where(
-                LlmBlob.user_id == user_id, LlmBlob.task_id == task_id, LlmBlob.sha256 == sha
+                LlmBlob.user_id == user_id,
+                LlmBlob.task_id == task_id,
+                LlmBlob.sha256 == sha,
             )
         )
     try:
@@ -138,24 +156,34 @@ async def _tools_of(db: AsyncSession, user_id: str, task_id: str, ref: dict, sen
         return []
 
 
-async def _insert_ignoring_duplicates(db: AsyncSession, model, values: dict, index_elements: list[str]) -> bool:
+async def _insert_ignoring_duplicates(
+    db: AsyncSession, model, values: dict, index_elements: list[str]
+) -> bool:
     upsert_insert = dialect_insert(db)
     if upsert_insert is None:
         key = {name: values[name] for name in index_elements}
-        exists = await db.scalar(select(getattr(model, index_elements[0])).filter_by(**key))
+        exists = await db.scalar(
+            select(getattr(model, index_elements[0])).filter_by(**key)
+        )
         if exists is not None:
             return False
         db.add(model(**values))
         await db.flush()
         return True
     result = await db.execute(
-        upsert_insert(model).values(**values).on_conflict_do_nothing(index_elements=index_elements)
+        upsert_insert(model)
+        .values(**values)
+        .on_conflict_do_nothing(index_elements=index_elements)
     )
     return result.rowcount == 1
 
 
 async def record_exchange(
-    db: AsyncSession, user_id: str, org_id: Optional[str], raw: dict, exchange: LlmExchangeRequest
+    db: AsyncSession,
+    user_id: str,
+    org_id: Optional[str],
+    raw: dict,
+    exchange: LlmExchangeRequest,
 ) -> bool:
     """Store one validated exchange (``raw`` is the parsed body). True when this call inserted it."""
     payload = json.loads(json.dumps(raw))  # a private copy to edit
@@ -166,7 +194,13 @@ async def record_exchange(
         await _insert_ignoring_duplicates(
             db,
             LlmBlob,
-            {"user_id": user_id, "task_id": task_id, "sha256": sha, "content": text, "created_at": now},
+            {
+                "user_id": user_id,
+                "task_id": task_id,
+                "sha256": sha,
+                "content": text,
+                "created_at": now,
+            },
             ["user_id", "task_id", "sha256"],
         )
 
@@ -180,13 +214,18 @@ async def record_exchange(
         "task_id": task_id,
         "base_id": exchange.base_id,
         "sequence": exchange.sequence,
-        "occurred_at": datetime.fromtimestamp(exchange.occurred_at / 1000.0, tz=timezone.utc),
+        "occurred_at": datetime.fromtimestamp(
+            exchange.occurred_at / 1000.0, tz=timezone.utc
+        ),
         "created_at": now,
         "provider": _short(exchange.provider),
         "model_id": _short(exchange.model_id),
         "mode": _short(exchange.mode),
-        "workspace_path": (exchange.workspace_path or None) and exchange.workspace_path[:1000],
-        "client_kind": client_kind_from({"clientKind": exchange.client_kind, "editorName": exchange.editor_name}),
+        "workspace_path": (exchange.workspace_path or None)
+        and exchange.workspace_path[:1000],
+        "client_kind": client_kind_from(
+            {"clientKind": exchange.client_kind, "editorName": exchange.editor_name}
+        ),
         "status": exchange.status[:40],
         "finish_reason": _short(exchange.response.finish_reason),
         "input_tokens": int((usage and usage.input_tokens) or 0),
@@ -202,19 +241,27 @@ async def record_exchange(
 async def base_exists(db: AsyncSession, user_id: str, base_id: str) -> bool:
     """Whether the exchange a delta builds on is stored for this user."""
     found = await db.scalar(
-        select(LlmExchange.id).where(LlmExchange.id == base_id, LlmExchange.user_id == user_id)
+        select(LlmExchange.id).where(
+            LlmExchange.id == base_id, LlmExchange.user_id == user_id
+        )
     )
     return found is not None
 
 
-async def record_outcome(db: AsyncSession, user_id: str, outcome: LlmExchangeOutcomeRequest) -> bool:
+async def record_outcome(
+    db: AsyncSession, user_id: str, outcome: LlmExchangeOutcomeRequest
+) -> bool:
     """Attach the tool outcomes to the user's exchange. False when it is not stored (yet)."""
     row = await db.scalar(
-        select(LlmExchange).where(LlmExchange.id == outcome.exchange_id, LlmExchange.user_id == user_id)
+        select(LlmExchange).where(
+            LlmExchange.id == outcome.exchange_id, LlmExchange.user_id == user_id
+        )
     )
     if row is None:
         return False
-    results = [r.model_dump(by_alias=True, exclude_none=True) for r in outcome.tool_results]
+    results = [
+        r.model_dump(by_alias=True, exclude_none=True) for r in outcome.tool_results
+    ]
     body: dict[str, Any] = {"toolResults": results}
     if outcome.usage is not None:
         body["usage"] = outcome.usage.model_dump(by_alias=True, exclude_none=True)
@@ -229,7 +276,9 @@ async def record_outcome(db: AsyncSession, user_id: str, outcome: LlmExchangeOut
     if outcome.usage is not None and outcome.usage.output_tokens:
         values["input_tokens"] = int(outcome.usage.input_tokens or 0)
         values["output_tokens"] = int(outcome.usage.output_tokens or 0)
-    await db.execute(update(LlmExchange).where(LlmExchange.id == row.id).values(**values))
+    await db.execute(
+        update(LlmExchange).where(LlmExchange.id == row.id).values(**values)
+    )
     return True
 
 

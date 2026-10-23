@@ -55,7 +55,9 @@ async def upload_task_image_endpoint(
     disclosed), 413 over 10 MB, 415 not PNG, JPEG, GIF or WebP.
     """
     if await task_owner(db, task_id) != current_user["user_id"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
 
     form = await capped_request(request, MAX_IMAGE_BYTES + _ENVELOPE_BYTES).form()
 

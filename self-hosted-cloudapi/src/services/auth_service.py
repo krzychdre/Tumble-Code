@@ -40,7 +40,9 @@ async def get_or_create_user(db: AsyncSession, userinfo: dict) -> User:
     email = userinfo.get("email", "")
     name = userinfo.get("name", "")
     first_name = userinfo.get("given_name", name.split(" ")[0] if name else "")
-    last_name = userinfo.get("family_name", name.split(" ")[-1] if name and len(name.split()) > 1 else "")
+    last_name = userinfo.get(
+        "family_name", name.split(" ")[-1] if name and len(name.split()) > 1 else ""
+    )
     image_url = userinfo.get("picture", "")
 
     result = await db.execute(select(User).where(User.authentik_id == authentik_id))
@@ -193,7 +195,9 @@ async def validate_client_token(
         await db.flush()
 
     result = await db.execute(
-        select(Session).where(Session.id == client_token.session_id, Session.is_active.is_(True))
+        select(Session).where(
+            Session.id == client_token.session_id, Session.is_active.is_(True)
+        )
     )
     return result.scalar_one_or_none()
 
@@ -235,7 +239,9 @@ async def get_oauth_state(
     )
     state_store = result.scalar_one_or_none()
     if state_store is not None:
-        await db.execute(delete(AuthentikStateStore).where(AuthentikStateStore.state == state))
+        await db.execute(
+            delete(AuthentikStateStore).where(AuthentikStateStore.state == state)
+        )
         await db.flush()
     return state_store
 
@@ -252,7 +258,9 @@ async def deactivate_session(
         await db.flush()
 
 
-async def purge_expired_auth_rows(db: AsyncSession, now: Optional[datetime] = None) -> int:
+async def purge_expired_auth_rows(
+    db: AsyncSession, now: Optional[datetime] = None
+) -> int:
     """Delete expired single-use and idle-expired auth rows; return how many.
 
     R10: OAuth state rows, login tickets and client tokens carry an expiry but
@@ -284,7 +292,9 @@ async def purge_expired_auth_rows(db: AsyncSession, now: Optional[datetime] = No
     total += tickets.rowcount or 0
 
     if settings.client_token_idle_days > 0:
-        tokens = await db.execute(delete(ClientToken).where(ClientToken.expires_at < expired))
+        tokens = await db.execute(
+            delete(ClientToken).where(ClientToken.expires_at < expired)
+        )
         total += tokens.rowcount or 0
 
     if total:

@@ -20,9 +20,24 @@ from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
-from src.routers import auth, extension, settings as settings_router, events, error_reports, browser, llm_exchanges
+from src.routers import (
+    auth,
+    extension,
+    settings as settings_router,
+    events,
+    error_reports,
+    browser,
+    llm_exchanges,
+)
 from src.routers import task_images
-from src.routers import shared, web_dataset, web_diagnostics, web_metrics, web_settings, web_tasks
+from src.routers import (
+    shared,
+    web_dataset,
+    web_diagnostics,
+    web_metrics,
+    web_settings,
+    web_tasks,
+)
 from src.web.static_files import VersionedStaticFiles
 
 
@@ -39,7 +54,9 @@ def _log_banner() -> None:
     logger.info("  Web panel open to: %s", describe_policy())
     if settings.web_public_url:
         logger.info("  Web panel public URL: %s", settings.web_public_url)
-    elif settings.web_allowed_networks and is_loopback_host(urlsplit(settings.authentik_base_url).hostname):
+    elif settings.web_allowed_networks and is_loopback_host(
+        urlsplit(settings.authentik_base_url).hostname
+    ):
         # The allowlist lets other machines in, but sign-in would still send
         # them to localhost, which on their side is themselves.
         logger.warning(
@@ -55,11 +72,15 @@ def _log_banner() -> None:
             "(it let any web page act with a signed-in reader's cookie); "
             "remove it and list extra origins explicitly if you need any"
         )
-    logger.info("  Telemetry: %s", "enabled" if settings.telemetry_enabled else "disabled")
+    logger.info(
+        "  Telemetry: %s", "enabled" if settings.telemetry_enabled else "disabled"
+    )
     logger.info("  Bridge: %s", "enabled" if settings.bridge_enabled else "disabled")
     logger.info(
         "  Retention sweep: %s",
-        f"every {settings.retention_sweep_hours}h" if settings.retention_sweep_enabled else "disabled",
+        f"every {settings.retention_sweep_hours}h"
+        if settings.retention_sweep_enabled
+        else "disabled",
     )
 
 
@@ -143,6 +164,7 @@ app.add_middleware(ContentSecurityPolicyMiddleware)
 if settings.rate_limit_enabled and limiter is not None:
     app.state.limiter = limiter
     from slowapi.middleware import SlowAPIMiddleware
+
     app.add_middleware(SlowAPIMiddleware)
 
 # A web route that needs a signed-in reader raises LoginRequired (usually via
@@ -190,6 +212,7 @@ app.include_router(shared.router)
 # current ?v= token is cached for a year, see src/web/static_files.py.
 _STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
 app.mount("/static", VersionedStaticFiles(directory=str(_STATIC_DIR)), name="static")
+
 
 # Live remote-control bridge (socket.io). Mounted as a sub-app so `app` stays a
 # FastAPI instance (tests rely on app.dependency_overrides). The engine.io
@@ -249,6 +272,7 @@ async def readiness_check():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "src.main:app",
         host="0.0.0.0",

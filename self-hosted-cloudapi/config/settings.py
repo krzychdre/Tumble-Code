@@ -20,11 +20,13 @@ def _check_secret(name: str, value: Optional[str]) -> None:
     """Refuse a missing, placeholder or short secret, naming the variable but
     never echoing its value."""
     if not value or not value.strip():
-        raise ValueError(f"{name} is not set. Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\"")
+        raise ValueError(
+            f'{name} is not set. Generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"'
+        )
     if "change-me" in value.lower() or "changeme" in value.lower():
         raise ValueError(
             f"{name} still holds the placeholder from .env.example or docker-compose.yml. "
-            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"'
         )
     if len(value) < MIN_SECRET_LENGTH:
         raise ValueError(f"{name} must be at least {MIN_SECRET_LENGTH} characters long")
@@ -49,7 +51,13 @@ def normalize_origin(value: Optional[str]) -> Optional[str]:
         return None
     scheme = parts.scheme.lower()
     host = parts.hostname
-    if not scheme or not host or parts.path not in ("", "/") or parts.query or parts.fragment:
+    if (
+        not scheme
+        or not host
+        or parts.path not in ("", "/")
+        or parts.query
+        or parts.fragment
+    ):
         return None
     if parts.username is not None or parts.password is not None:
         return None
@@ -82,7 +90,9 @@ class Settings(BaseSettings):
     api_base_url: str = Field(..., description="Public URL of this API")
     port: int = Field(8085, description="Port to run the API server on")
     # Level of the service's own log lines (stdlib names, case-insensitive).
-    log_level: str = Field("INFO", description="DEBUG, INFO, WARNING, ERROR or CRITICAL")
+    log_level: str = Field(
+        "INFO", description="DEBUG, INFO, WARNING, ERROR or CRITICAL"
+    )
 
     @field_validator("log_level")
     @classmethod
@@ -105,10 +115,16 @@ class Settings(BaseSettings):
     # the expiry forward, and a running extension uses its token about once a
     # minute, so only an editor left closed for the whole period has to sign in
     # again. 0 turns expiry off.
-    client_token_idle_days: int = Field(30, ge=0, description="Days a client token may go unused before it expires; 0 = never")
+    client_token_idle_days: int = Field(
+        30,
+        ge=0,
+        description="Days a client token may go unused before it expires; 0 = never",
+    )
 
     # Authentik OAuth
-    authentik_base_url: str = Field(..., description="Authentik instance URL (browser-facing / front-channel)")
+    authentik_base_url: str = Field(
+        ..., description="Authentik instance URL (browser-facing / front-channel)"
+    )
     # Internal (container-network) Authentik URL for server-to-server calls
     # (token/userinfo/discovery/jwks). In a single docker-compose the api
     # container cannot reach the browser-facing `localhost:9000` — it must use
@@ -116,7 +132,8 @@ class Settings(BaseSettings):
     # authentik_base_url when unset, so existing single-host deployments are
     # unaffected.
     authentik_internal_url: Optional[str] = Field(
-        None, description="Internal Authentik URL for back-channel calls; falls back to authentik_base_url"
+        None,
+        description="Internal Authentik URL for back-channel calls; falls back to authentik_base_url",
     )
     authentik_client_id: str = Field(..., description="OAuth2 client ID")
     authentik_client_secret: Optional[str] = None
@@ -132,7 +149,10 @@ class Settings(BaseSettings):
     # the internet read the panel and drive the bridge (DEF-S8).
     # Stored as a raw string to avoid pydantic-settings v2 JSON-parsing issues
     # with List[str] env vars; cors_origins_list is the parsed list.
-    cors_origins: str = Field(default="", description="Extra trusted web origins (comma-separated or JSON array)")
+    cors_origins: str = Field(
+        default="",
+        description="Extra trusted web origins (comma-separated or JSON array)",
+    )
 
     @staticmethod
     def _split_origins(raw: str) -> List[str]:
@@ -230,7 +250,12 @@ class Settings(BaseSettings):
         # No path, not even a trailing slash: the Authentik blueprint appends
         # the callback path to this exact string, so the two must agree to the
         # character, and "http://host:8085//auth/clerk/callback" routes nowhere.
-        if parts.scheme not in ("http", "https") or not parts.hostname or parts.path or parts.query:
+        if (
+            parts.scheme not in ("http", "https")
+            or not parts.hostname
+            or parts.path
+            or parts.query
+        ):
             raise ValueError(
                 "WEB_PUBLIC_URL must be scheme://host[:port] with no path or trailing slash, "
                 f"e.g. http://192.168.50.141:8085 (got {value!r})"
@@ -262,6 +287,7 @@ class Settings(BaseSettings):
                 f"e.g. /bridge/socket.io (got {value!r})"
             )
         return path
+
     telemetry_enabled: bool = True
     # Largest task upload POST /api/events/backfill accepts, in bytes; above it
     # the answer is 413 before the body is read into memory. The extension
@@ -269,7 +295,9 @@ class Settings(BaseSettings):
     # largest of 1212 real ones measured 10 046 249 bytes, so the default
     # leaves about five times that.
     backfill_max_bytes: int = Field(
-        50 * 1024 * 1024, ge=1, description="Largest accepted task backfill upload, in bytes"
+        50 * 1024 * 1024,
+        ge=1,
+        description="Largest accepted task backfill upload, in bytes",
     )
 
     # Task sharing. With no organizations configured (self-hosted single-tenant
