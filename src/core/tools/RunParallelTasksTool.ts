@@ -43,7 +43,6 @@ interface RunParallelTasksParams {
 }
 
 const DEFAULT_MODE = "code"
-const DEFAULT_MAX_CONCURRENCY = DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
 
 /**
  * Modes that are never allowed for a parallel subtask. Subtasks are small
@@ -58,11 +57,12 @@ export const DISALLOWED_SUBTASK_MODES = ["architect", "orchestrator"] as const
  *
  * `maxConcurrencyCap` is the user's configured hard limit
  * (`parallelTasksMaxConcurrency`): the model-supplied `maxConcurrency` may
- * lower concurrency below it but never exceed it.
+ * lower concurrency below it but never exceed it. `execute` calls this only
+ * when the cap enables the tool (see isParallelTasksEnabled).
  */
 export function validateParallelParams(
 	params: Partial<RunParallelTasksParams> | undefined,
-	maxConcurrencyCap: number = DEFAULT_MAX_CONCURRENCY,
+	maxConcurrencyCap: number,
 ): { ok: true; subtasks: NormalizedSubtask[]; maxConcurrency: number } | { ok: false; error: string } {
 	const raw = params?.subtasks
 	// One subtask is fine: it is how a follow-up job starts after a result,
@@ -91,43 +91,20 @@ export function validateParallelParams(
 		}
 		subtasks.push({ message, mode })
 	}
-	const cap =
-		Number.isFinite(maxConcurrencyCap) && maxConcurrencyCap >= 1
-			? Math.floor(maxConcurrencyCap)
-			: DEFAULT_MAX_CONCURRENCY
 	// No value means the user's cap: the settings (and each profile's
 	// maxConcurrentRequests) decide how many subagents run, not the model.
-	let maxConcurrency = params?.maxConcurrency ?? cap
+	let maxConcurrency = params?.maxConcurrency ?? maxConcurrencyCap
 	// Below 2 is treated as invalid, not honored: "parallel with concurrency 1"
 	// defeats the tool's purpose, so a nonsensical request falls back to the
 	// cap instead of degrading the fan-out to a sequential queue.
 	if (typeof maxConcurrency !== "number" || !Number.isFinite(maxConcurrency) || maxConcurrency < 2) {
-		maxConcurrency = cap
+		maxConcurrency = maxConcurrencyCap
 	}
-	return { ok: true, subtasks, maxConcurrency: Math.min(Math.floor(maxConcurrency), cap, subtasks.length) }
-}
-
-/**
- * Run `items` through `worker` with at most `limit` running concurrently,
- * preserving input order in the returned results. A worker that throws yields
- * that slot's rejection via `onError` (never rejects the pool).
- */
-export async function runWithConcurrency<T, R>(
-	items: ReadonlyArray<T>,
-	limit: number,
-	worker: (item: T, index: number) => Promise<R>,
-): Promise<R[]> {
-	const results = new Array<R>(items.length)
-	let next = 0
-	const runNext = async (): Promise<void> => {
-		const current = next++
-		if (current >= items.length) return
-		results[current] = await worker(items[current], current)
-		await runNext()
+	return {
+		ok: true,
+		subtasks,
+		maxConcurrency: Math.min(Math.floor(maxConcurrency), maxConcurrencyCap, subtasks.length),
 	}
-	const runners = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, () => runNext())
-	await Promise.all(runners)
-	return results
 }
 
 /** A fresh id for one run_parallel_tasks call, so a retry never reuses a name. */
@@ -360,6 +337,8 @@ interface RunOneSubtaskArgs {
 	signal: AbortSignal
 	/** `parallelTasksMaxConcurrency`: the provider-wide cap on running subagents. */
 	globalLimit: number
+	/** The model's per-call bound (`maxConcurrency`) on running subagents of this call. */
+	fanOutLimit: number
 	/** The profile the subagent runs on and its subagent slots, see {@link SubagentPlacement}. */
 	placement: SubagentPlacement
 }
@@ -380,35 +359,32 @@ async function runOneSubtask({
 	index,
 	signal,
 	globalLimit,
+	fanOutLimit,
 	placement,
 }: RunOneSubtaskArgs): Promise<ParallelSubtaskResult> {
 	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, runId, index)
 	const registry = provider.subagentRegistry
 	// Until the child Task exists, panel updates target the queued placeholder.
 	let registryId = queuedSubagentId(parentTaskId, runId, index)
-	const cancelled = (): ParallelSubtaskResult => {
-		registry.markTerminal(registryId, "cancelled")
-		return { index, mode: subtask.mode, status: "cancelled" }
-	}
-
-	if (signal.aborted) {
-		return cancelled()
+	/** Mark the panel row terminal and build the result, finalized when it names a worktree. */
+	const end = (
+		status: ParallelSubtaskResult["status"],
+		fields: Pick<ParallelSubtaskResult, "worktreePath" | "branch" | "message" | "error"> = {},
+	): Promise<ParallelSubtaskResult> => {
+		registry.markTerminal(registryId, status, status === "completed" ? fields.message : fields.error)
+		return finalize(cwd, { index, mode: subtask.mode, status, ...fields })
 	}
 
 	const { profile, profileKey, profileLimit } = placement
 	let releaseSlot: () => void
 	try {
 		releaseSlot = await provider.backgroundSubagents.slots.acquire(
-			{ globalLimit, profileKey, profileLimit },
+			{ globalLimit, profileKey, profileLimit, fanOutKey: `${parentTaskId}/${runId}`, fanOutLimit },
 			signal,
 		)
-	} catch (error) {
-		if (signal.aborted) {
-			return cancelled()
-		}
-		const errorMessage = error instanceof Error ? error.message : String(error)
-		registry.markTerminal(registryId, "failed", errorMessage)
-		return { index, mode: subtask.mode, status: "failed", error: errorMessage }
+	} catch {
+		// acquire rejects only when the fan-out was aborted (SlotWaitAbortedError).
+		return end("cancelled")
 	}
 
 	try {
@@ -419,14 +395,11 @@ async function runOneSubtask({
 			lockReason: subtaskLockReason(),
 		})
 		if (!created.success) {
-			const error = `worktree creation failed: ${created.message}`
-			registry.markTerminal(registryId, "failed", error)
-			return { index, mode: subtask.mode, status: "failed", error }
+			return await end("failed", { error: `worktree creation failed: ${created.message}` })
 		}
 
 		if (signal.aborted) {
-			registry.markTerminal(registryId, "cancelled")
-			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
+			return await end("cancelled", { worktreePath, branch })
 		}
 
 		const child = await provider.createBackgroundTask(subtask.message, {
@@ -469,34 +442,22 @@ async function runOneSubtask({
 		// "cancelled" via the cancelSubagent handler).
 		const wasCancelledIndividually = registry.get(registryId)?.status === "cancelled"
 		if (!outcome.completed && (signal.aborted || wasCancelledIndividually)) {
-			registry.markTerminal(registryId, "cancelled")
-			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
+			return await end("cancelled", { worktreePath, branch })
 		}
-		const error = outcome.completed ? undefined : describeSubtaskFailure(outcome)
-		registry.markTerminal(
-			registryId,
-			outcome.completed ? "completed" : "failed",
-			outcome.completed ? outcome.lastMessage : error,
-		)
-		return await finalize(cwd, {
-			index,
-			mode: subtask.mode,
-			status: outcome.completed ? "completed" : "failed",
+		if (outcome.completed) {
+			return await end("completed", { worktreePath, branch, message: outcome.lastMessage })
+		}
+		return await end("failed", {
 			worktreePath,
 			branch,
 			message: outcome.lastMessage,
-			error,
+			error: describeSubtaskFailure(outcome),
 		})
 	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error)
-		registry.markTerminal(registryId, "failed", errorMessage)
-		return await finalize(cwd, {
-			index,
-			mode: subtask.mode,
-			status: "failed",
+		return await end("failed", {
 			worktreePath,
 			branch,
-			error: errorMessage,
+			error: error instanceof Error ? error.message : String(error),
 		})
 	} finally {
 		releaseSlot()
@@ -633,8 +594,8 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 
 			// The user's configured hard cap bounds whatever concurrency the
 			// model asked for; below 2 it disables the feature entirely.
-			const maxConcurrencyCap =
-				(await provider.getState()).parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
+			const state = await provider.getState()
+			const maxConcurrencyCap = state.parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
 			if (!isParallelTasksEnabled(maxConcurrencyCap)) {
 				task.recordToolError("run_parallel_tasks")
 				pushToolResult(
@@ -670,7 +631,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			// A task started in a mode without a pinned profile has no profile
 			// name of its own and runs on the current one.
 			await task.taskApiConfigReady
-			const parentProfileName = task.taskApiConfigName ?? (await provider.getState()).currentApiConfigName
+			const parentProfileName = task.taskApiConfigName ?? state.currentApiConfigName
 			const placed = await placeSubtasks(provider, parentProfileName, subtasks)
 			if (!placed.ok) {
 				this.recordFailure(task, "run_parallel_tasks")
@@ -785,27 +746,32 @@ function startFanOut({ provider, task, subtasks, maxConcurrency, globalLimit, pl
 	}
 	task.on(TumbleCodeEventName.TaskAborted, onParentAborted)
 
-	const runAll = runWithConcurrency(subtasks, maxConcurrency, async (subtask, index) => {
-		const result = await runOneSubtask({
-			provider,
-			cwd,
-			parentTaskId,
-			rootTaskId: task.rootTaskId ?? parentTaskId,
-			runId,
-			subtask,
-			index,
-			signal: controller.signal,
-			globalLimit,
-			placement: placements[index],
-		})
-		// A user-cancelled parent gets no results: nobody should be woken up
-		// to read the cancellations it asked for.
-		subagents.finish(parentTaskId, refs[index].number, controller.signal.aborted ? undefined : result)
-		// Best-effort, never throws (see helper). Written per subagent so a
-		// rehydrated parent sees every finished row.
-		await persistSubagentSummariesSidecar(provider, parentTaskId)
-		return result
-	})
+	// Every subtask waits in the slot pool at once; the pool holds this
+	// call to `maxConcurrency` running subagents (and the global and
+	// per-profile caps), serving them in input order among those that fit.
+	const runAll = Promise.all(
+		subtasks.map(async (subtask, index) => {
+			const result = await runOneSubtask({
+				provider,
+				cwd,
+				parentTaskId,
+				rootTaskId: task.rootTaskId ?? parentTaskId,
+				runId,
+				subtask,
+				index,
+				signal: controller.signal,
+				globalLimit,
+				fanOutLimit: maxConcurrency,
+				placement: placements[index],
+			})
+			// A user-cancelled parent gets no results: nobody should be woken up
+			// to read the cancellations it asked for.
+			subagents.finish(parentTaskId, refs[index].number, controller.signal.aborted ? undefined : result)
+			// Best-effort, never throws (see helper). Written per subagent so a
+			// rehydrated parent sees every finished row.
+			await persistSubagentSummariesSidecar(provider, parentTaskId)
+		}),
+	)
 	void runAll
 		.catch((error) => {
 			logger.error(

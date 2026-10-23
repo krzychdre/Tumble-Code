@@ -45,7 +45,7 @@ describe("TOOL_MINIMAL_EXAMPLES", () => {
 		// to have a single subtask, which the validator rejected on every call, so the teaching
 		// example taught a call that always failed. This asserts against the production
 		// validator so the example cannot drift back.
-		expect(validateParallelParams(TOOL_MINIMAL_EXAMPLES.run_parallel_tasks)).toMatchObject({ ok: true })
+		expect(validateParallelParams(TOOL_MINIMAL_EXAMPLES.run_parallel_tasks, 3)).toMatchObject({ ok: true })
 	})
 })
 

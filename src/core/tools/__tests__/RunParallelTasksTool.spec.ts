@@ -70,7 +70,6 @@ vi.mock("../../prompts/responses", () => ({
 
 import {
 	validateParallelParams,
-	runWithConcurrency,
 	describeSubtaskFailure,
 	worktreeNamesFor,
 	subtaskLockReason,
@@ -285,14 +284,14 @@ function makeCallbacks(overrides: Partial<ToolCallbacks> = {}): ToolCallbacks & 
 describe("RunParallelTasksTool helpers", () => {
 	describe("validateParallelParams", () => {
 		it("rejects missing / empty subtasks", () => {
-			expect(validateParallelParams(undefined)).toEqual({ ok: false, error: expect.any(String) })
-			expect(validateParallelParams({ subtasks: [] })).toEqual({ ok: false, error: expect.any(String) })
+			expect(validateParallelParams(undefined, 3)).toEqual({ ok: false, error: expect.any(String) })
+			expect(validateParallelParams({ subtasks: [] }, 3)).toEqual({ ok: false, error: expect.any(String) })
 		})
 
 		// One subtask is how a follow-up starts after a result, while the
 		// other subagents keep running.
 		it("accepts a single subtask", () => {
-			expect(validateParallelParams({ subtasks: [{ message: "just one job" }] })).toEqual({
+			expect(validateParallelParams({ subtasks: [{ message: "just one job" }] }, 3)).toEqual({
 				ok: true,
 				subtasks: [{ message: "just one job", mode: "code" }],
 				maxConcurrency: 1,
@@ -300,15 +299,18 @@ describe("RunParallelTasksTool helpers", () => {
 		})
 
 		it("rejects a subtask without a message", () => {
-			const r = validateParallelParams({ subtasks: [{ message: "  " } as never, { message: "ok" }] })
+			const r = validateParallelParams({ subtasks: [{ message: "  " } as never, { message: "ok" }] }, 3)
 			expect(r.ok).toBe(false)
 		})
 
 		it("normalizes mode to 'code' by default and clamps concurrency to subtask count", () => {
-			const r = validateParallelParams({
-				subtasks: [{ message: "a" }, { message: "b", mode: "debug" }],
-				maxConcurrency: 10,
-			})
+			const r = validateParallelParams(
+				{
+					subtasks: [{ message: "a" }, { message: "b", mode: "debug" }],
+					maxConcurrency: 10,
+				},
+				3,
+			)
 			expect(r).toEqual({
 				ok: true,
 				subtasks: [
@@ -319,21 +321,24 @@ describe("RunParallelTasksTool helpers", () => {
 			})
 		})
 
-		it("defaults concurrency to 3 for invalid values", () => {
+		it("falls back to the cap for invalid values", () => {
 			const many = Array.from({ length: 5 }, (_, i) => ({ message: `m${i}` }))
-			expect(validateParallelParams({ subtasks: many, maxConcurrency: 0 })).toMatchObject({
+			expect(validateParallelParams({ subtasks: many, maxConcurrency: 0 }, 3)).toMatchObject({
 				maxConcurrency: 3,
 			})
-			expect(validateParallelParams({ subtasks: many, maxConcurrency: null })).toMatchObject({
+			expect(validateParallelParams({ subtasks: many, maxConcurrency: null }, 3)).toMatchObject({
 				maxConcurrency: 3,
 			})
 		})
 
 		it("rejects architect/orchestrator subtask modes with a corrective error", () => {
 			for (const mode of ["architect", "orchestrator"]) {
-				const r = validateParallelParams({
-					subtasks: [{ message: "plan the system", mode }, { message: "ok" }],
-				})
+				const r = validateParallelParams(
+					{
+						subtasks: [{ message: "plan the system", mode }, { message: "ok" }],
+					},
+					3,
+				)
 				expect(r.ok).toBe(false)
 				if (!r.ok) {
 					expect(r.error).toContain(`"${mode}"`)
@@ -342,12 +347,15 @@ describe("RunParallelTasksTool helpers", () => {
 			}
 			// Lightweight modes stay allowed.
 			expect(
-				validateParallelParams({
-					subtasks: [
-						{ message: "q", mode: "ask" },
-						{ message: "r", mode: "ask" },
-					],
-				}).ok,
+				validateParallelParams(
+					{
+						subtasks: [
+							{ message: "q", mode: "ask" },
+							{ message: "r", mode: "ask" },
+						],
+					},
+					3,
+				).ok,
 			).toBe(true)
 		})
 
@@ -368,35 +376,6 @@ describe("RunParallelTasksTool helpers", () => {
 			expect(validateParallelParams({ subtasks: many }, 8)).toMatchObject({ maxConcurrency: 8 })
 			// Default request under a cap tighter than the built-in default.
 			expect(validateParallelParams({ subtasks: many }, 2)).toMatchObject({ maxConcurrency: 2 })
-			// A nonsensical cap falls back to the built-in default.
-			expect(validateParallelParams({ subtasks: many, maxConcurrency: 8 }, 0)).toMatchObject({
-				maxConcurrency: 3,
-			})
-		})
-	})
-
-	describe("runWithConcurrency", () => {
-		it("runs every item, preserving input order in results", async () => {
-			const out = await runWithConcurrency([1, 2, 3, 4], 2, async (n) => n * 10)
-			expect(out).toEqual([10, 20, 30, 40])
-		})
-
-		it("never exceeds the concurrency limit", async () => {
-			let active = 0
-			let peak = 0
-			await runWithConcurrency(
-				Array.from({ length: 8 }, (_, i) => i),
-				3,
-				async (i) => {
-					active++
-					peak = Math.max(peak, active)
-					await new Promise((r) => setTimeout(r, 5))
-					active--
-					return i
-				},
-			)
-			expect(peak).toBeLessThanOrEqual(3)
-			expect(peak).toBeGreaterThan(1)
 		})
 	})
 
@@ -660,6 +639,22 @@ describe("RunParallelTasksTool.execute", () => {
 		expect(report).toContain("Every subagent has reported")
 	})
 
+	it("puts a completed subagent's last message on its panel row", async () => {
+		const provider = makeFakeProvider()
+		provider.awaitTaskCompletion.mockResolvedValueOnce({ completed: true, lastMessage: "done", writtenPaths: [] })
+		await runParallelTasksTool.execute(
+			{ subtasks: [{ message: "job" }] },
+			makeFakeParentTask(provider),
+			makeCallbacks(),
+		)
+		await settled(provider)
+		expect(provider.subagentRegistry.markTerminal).toHaveBeenCalledWith(
+			provider.children[0].taskId,
+			"completed",
+			"done",
+		)
+	})
+
 	it("a second fan-out of the same parent numbers its subagents after the first one's", async () => {
 		const provider = makeFakeProvider()
 		const parent = makeFakeParentTask(provider)
@@ -719,6 +714,58 @@ describe("RunParallelTasksTool.execute", () => {
 		await Promise.all([runA, runB])
 		await settled(provider, 2)
 		expect(provider.backgroundSubagents.slots.running).toBe(0)
+	})
+
+	it("runs at most maxConcurrency subagents of one call at once", async () => {
+		const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 8 })
+		const parent = makeFakeParentTask(provider)
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "a" }, { message: "b" }, { message: "c" }], maxConcurrency: 2 },
+			parent,
+			makeCallbacks(),
+		)
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+		await new Promise((resolve) => setTimeout(resolve, 20))
+		expect(provider.children.length).toBe(2)
+
+		provider.children[0].complete()
+		await execPromise
+		await vi.waitFor(() => expect(provider.children.length).toBe(3))
+		provider.children.slice(1).forEach((c) => c.complete())
+		await settled(provider)
+	})
+
+	// The slot pool enforces the per-call bound, so a subtask that waits for
+	// its full profile holds none of the call's slots: a later subtask on
+	// another profile starts in its place.
+	it("starts a later subtask while an earlier one waits for its profile", async () => {
+		const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 8, currentApiConfigName: "main" })
+		provider.resolveSubagentProfile.mockImplementation(async (mode: string) => ({
+			apiConfiguration: { apiProvider: "fake", mode, maxConcurrentRequests: mode === "ask" ? 1 : undefined },
+			name: `p-${mode}`,
+		}))
+		const parent = makeFakeParentTask(provider)
+		const execPromise = runParallelTasksTool.execute(
+			{
+				subtasks: [
+					{ message: "a", mode: "ask" },
+					{ message: "b", mode: "ask" },
+					{ message: "c", mode: "code" },
+				],
+				maxConcurrency: 2,
+			},
+			parent,
+			makeCallbacks(),
+		)
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+		expect(provider.createBackgroundTask.mock.calls.map((call) => call[0])).toEqual(["a", "c"])
+
+		provider.children[0].complete()
+		await execPromise
+		await vi.waitFor(() => expect(provider.children.length).toBe(3))
+		expect(provider.createBackgroundTask.mock.calls[2][0]).toBe("b")
+		provider.children.slice(1).forEach((c) => c.complete())
+		await settled(provider)
 	})
 
 	it("resolves the subagent's profile before it takes a slot and runs it on that profile", async () => {
@@ -883,7 +930,7 @@ describe("RunParallelTasksTool.execute", () => {
 
 		expect(callbacks.pushToolResult.mock.calls[0][0]).toContain("this task was stopped")
 		for (const child of provider.children) {
-			expect(provider.subagentRegistry.markTerminal).toHaveBeenCalledWith(child.taskId, "cancelled")
+			expect(provider.subagentRegistry.markTerminal).toHaveBeenCalledWith(child.taskId, "cancelled", undefined)
 		}
 		expect(provider.backgroundSubagents.hasWork("parent-12345678")).toBe(false)
 	})
