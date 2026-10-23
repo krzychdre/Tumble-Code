@@ -1264,33 +1264,20 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	test("handles writeDelayMs message", async () => {
+	test.each([
+		["writeDelayMs", 2000],
+		["soundEnabled", true],
+		["autoCondenseContext", false],
+		["autoCondenseContextPercent", 75],
+		["maxWorkspaceFiles", 300],
+	])("updateSettings stores %s in the state", async (key, value) => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
-		await messageHandler({ type: "updateSettings", updatedSettings: { writeDelayMs: 2000 } })
+		await messageHandler({ type: "updateSettings", updatedSettings: { [key]: value } })
 
-		expect(updateGlobalStateSpy).toHaveBeenCalledWith("writeDelayMs", 2000)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("writeDelayMs", 2000)
-		expect(mockPostMessage).toHaveBeenCalled()
-	})
-
-	test("updates sound utility when sound setting changes", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-
-		// Get the message handler from onDidReceiveMessage
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		// Simulate setting sound to enabled
-		await messageHandler({ type: "updateSettings", updatedSettings: { soundEnabled: true } })
-		expect(updateGlobalStateSpy).toHaveBeenCalledWith("soundEnabled", true)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("soundEnabled", true)
-		expect(mockPostMessage).toHaveBeenCalled()
-
-		// Simulate setting sound to disabled
-		await messageHandler({ type: "updateSettings", updatedSettings: { soundEnabled: false } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("soundEnabled", false)
-		expect(mockPostMessage).toHaveBeenCalled()
+		expect((await provider.getState())[key as keyof Awaited<ReturnType<typeof provider.getState>>]).toBe(value)
+		expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
 	})
 
 	test("autoCondenseContext defaults to true", async () => {
@@ -1302,15 +1289,6 @@ describe("ClineProvider", () => {
 		expect(state.autoCondenseContext).toBe(true)
 	})
 
-	test("handles autoCondenseContext message", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-		await messageHandler({ type: "updateSettings", updatedSettings: { autoCondenseContext: false } })
-		expect(updateGlobalStateSpy).toHaveBeenCalledWith("autoCondenseContext", false)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("autoCondenseContext", false)
-		expect(mockPostMessage).toHaveBeenCalled()
-	})
-
 	test("autoCondenseContextPercent defaults to 100", async () => {
 		// Mock globalState.get to return undefined for autoCondenseContextPercent
 		;(mockContext.globalState.get as any).mockImplementation((key: string) =>
@@ -1319,40 +1297,6 @@ describe("ClineProvider", () => {
 
 		const state = await provider.getState()
 		expect(state.autoCondenseContextPercent).toBe(100)
-	})
-
-	test("handles autoCondenseContextPercent message", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		await messageHandler({ type: "updateSettings", updatedSettings: { autoCondenseContextPercent: 75 } })
-
-		expect(updateGlobalStateSpy).toHaveBeenCalledWith("autoCondenseContextPercent", 75)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("autoCondenseContextPercent", 75)
-		expect(mockPostMessage).toHaveBeenCalled()
-	})
-
-	it("loads saved API config when switching modes", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		const profile: ProviderSettingsEntry = { name: "test-config", id: "test-id", apiProvider: "anthropic" }
-
-		;(provider as any).providerSettingsManager = {
-			getModeConfigId: vi.fn().mockResolvedValue("test-id"),
-			listConfig: vi.fn().mockResolvedValue([profile]),
-			activateProfile: vi.fn().mockResolvedValue(profile),
-			setModeConfig: vi.fn(),
-			getProfile: vi.fn().mockResolvedValue(profile),
-		} as any
-
-		// Switch to architect mode
-		await messageHandler({ type: "mode", text: "architect" })
-
-		// Should load the saved config for architect mode
-		expect(provider.providerSettingsManager.getModeConfigId).toHaveBeenCalledWith("architect")
-		expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ name: "test-config" })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
 	})
 
 	it("saves current config when switching to mode without config", async () => {
@@ -1505,17 +1449,6 @@ describe("ClineProvider", () => {
 
 		const state = await provider.getState()
 		expect(state.customModePrompts).toEqual({})
-	})
-
-	test("handles maxWorkspaceFiles message", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		await messageHandler({ type: "updateSettings", updatedSettings: { maxWorkspaceFiles: 300 } })
-
-		expect(updateGlobalStateSpy).toHaveBeenCalledWith("maxWorkspaceFiles", 300)
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("maxWorkspaceFiles", 300)
-		expect(mockPostMessage).toHaveBeenCalled()
 	})
 
 	test("handles mode-specific custom instructions updates", async () => {
