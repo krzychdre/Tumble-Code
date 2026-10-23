@@ -104,7 +104,9 @@ export function useCodeIndexSettings(codebaseIndexConfig: CodebaseIndexConfig | 
 
 	// Use a ref to capture current settings for the save handler
 	const currentSettingsRef = useRef(currentSettings)
-	currentSettingsRef.current = currentSettings
+	useEffect(() => {
+		currentSettingsRef.current = currentSettings
+	}, [currentSettings])
 
 	// Hides the error of a failed save after SAVE_ERROR_VISIBLE_MS. A new save cancels it, so the
 	// old timer cannot reset a running save to "idle".

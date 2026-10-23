@@ -398,6 +398,10 @@ describe("CodeIndexPopover sections", () => {
 			vi.mocked(vscode.postMessage).mockClear()
 			hostMessage({ type: "codeIndexSettingsSaved", success: true })
 			expect(saveButton()).toBeDisabled()
+			// The saved form keeps what was typed.
+			expect(screen.getByPlaceholderText("settings:codeIndex.qdrantUrlPlaceholder")).toHaveValue(
+				"http://changed:6333",
+			)
 			expect(posted()).toContainEqual({ type: "requestCodeIndexSecretStatus" })
 
 			// Closing now needs no confirmation.

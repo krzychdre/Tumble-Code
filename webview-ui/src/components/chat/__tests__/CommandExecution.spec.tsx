@@ -71,10 +71,9 @@ const mockExtensionState = {
 	setDeniedCommands: vi.fn(),
 }
 
-const ExtensionStateWrapper = ({ children }: { children: React.ReactNode }) => {
-	mockSelectorState.current = mockExtensionState
-	return <TooltipProvider>{children}</TooltipProvider>
-}
+const ExtensionStateWrapper = ({ children }: { children: React.ReactNode }) => (
+	<TooltipProvider>{children}</TooltipProvider>
+)
 
 // The whole body (command block, output, pattern selector) is only mounted when
 // the parent marks the row as expanded, so every test that asserts on that body
@@ -83,6 +82,7 @@ const ExtensionStateWrapper = ({ children }: { children: React.ReactNode }) => {
 describe("CommandExecution", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockSelectorState.current = mockExtensionState
 	})
 
 	it("should render command without output", () => {
