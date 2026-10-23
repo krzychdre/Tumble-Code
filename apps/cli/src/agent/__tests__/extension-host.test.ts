@@ -1070,6 +1070,22 @@ describe("ExtensionHost", () => {
 			await expect(taskPromise).rejects.toThrow("API request failed: 401 Incorrect API key")
 		}, 5000)
 
+		// Print mode with --exit-on-error: the run fails through runTask (run.ts
+		// disposes the host and exits 1), not through an exit in the dispatcher.
+		it("rejects runTask with --exit-on-error in print mode, without exiting on its own", async () => {
+			const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never)
+			const host = createTestHost({ exitOnError: true })
+			host.markWebviewReady()
+			const client = getPrivate(host, "client") as ExtensionClient
+
+			const taskPromise = host.runTask("test prompt")
+			setTimeout(() => client.getEmitter().emit("waitingForInput", waitingEvent("500 Internal Server Error")), 10)
+
+			await expect(taskPromise).rejects.toThrow("API request failed: 500 Internal Server Error")
+			expect(exit).not.toHaveBeenCalled()
+			exit.mockRestore()
+		}, 5000)
+
 		it("keeps waiting when the option is off (the TUI answers the ask itself)", async () => {
 			const host = createTestHost()
 			host.markWebviewReady()

@@ -18,7 +18,6 @@ import {
 	type WebviewMessage,
 	type ClineMessage,
 	type ClineAsk,
-	type ClineAskResponse,
 	isIdleAsk,
 	isInteractiveAsk,
 	isResumableAsk,
@@ -75,18 +74,6 @@ export interface AskDispatcherOptions {
 	disabled?: boolean
 }
 
-/**
- * Result of handling an ask.
- */
-export interface AskHandleResult {
-	/** Whether the ask was handled */
-	handled: boolean
-	/** The response sent (if any) */
-	response?: ClineAskResponse
-	/** Any error that occurred */
-	error?: Error
-}
-
 // =============================================================================
 // AskDispatcher Class
 // =============================================================================
@@ -123,31 +110,16 @@ export class AskDispatcher {
 	 * Routes to the appropriate handler based on ask type.
 	 *
 	 * @param message - The ClineMessage with type="ask"
-	 * @returns Promise<AskHandleResult>
 	 */
-	async handleAsk(message: ClineMessage): Promise<AskHandleResult> {
-		// Disabled in TUI mode - TUI handles asks directly
-		if (this.disabled) {
-			return { handled: false }
-		}
-
+	async handleAsk(message: ClineMessage): Promise<void> {
 		const ts = message.ts
 		const ask = message.ask
 		const text = message.text || ""
 
-		// Check if already handled
-		if (this.handledAsks.has(ts)) {
-			return { handled: true }
-		}
-
-		// Must be an ask message
-		if (message.type !== "ask" || !ask) {
-			return { handled: false }
-		}
-
-		// Skip partial messages (wait for complete)
-		if (message.partial) {
-			return { handled: false }
+		// Disabled in TUI mode (the TUI handles asks directly), already handled,
+		// not an ask, or partial (wait for the complete message).
+		if (this.disabled || this.handledAsks.has(ts) || message.type !== "ask" || !ask || message.partial) {
+			return
 		}
 
 		// Mark as being handled
@@ -156,39 +128,23 @@ export class AskDispatcher {
 		try {
 			// Route based on ask category
 			if (isNonBlockingAsk(ask)) {
-				return await this.handleNonBlockingAsk(ts, ask, text)
+				// command_output: print mode writes the output from the transcript
+				// (TranscriptPrinter); approve so the command goes on.
+				this.sendApprovalResponse(true)
+			} else if (isIdleAsk(ask)) {
+				await this.handleIdleAsk(ask, text)
+			} else if (isResumableAsk(ask)) {
+				await this.handleResumeTask(ask, text)
+			} else if (isInteractiveAsk(ask)) {
+				await this.handleInteractiveAsk(ask, text)
+			} else {
+				debugLog("[AskDispatcher] Unknown ask type", { ask, ts })
+				await this.handleUnknownAsk(ask, text)
 			}
-
-			if (isIdleAsk(ask)) {
-				return await this.handleIdleAsk(ts, ask, text)
-			}
-
-			if (isResumableAsk(ask)) {
-				return await this.handleResumableAsk(ts, ask, text)
-			}
-
-			if (isInteractiveAsk(ask)) {
-				return await this.handleInteractiveAsk(ts, ask, text)
-			}
-
-			// Unknown ask type - log and handle generically
-			debugLog("[AskDispatcher] Unknown ask type", { ask, ts })
-			return await this.handleUnknownAsk(ts, ask, text)
-		} catch (error) {
+		} catch {
 			// Re-allow handling on error
 			this.handledAsks.delete(ts)
-			return {
-				handled: false,
-				error: error instanceof Error ? error : new Error(String(error)),
-			}
 		}
-	}
-
-	/**
-	 * Check if an ask has been handled.
-	 */
-	isHandled(ts: number): boolean {
-		return this.handledAsks.has(ts)
 	}
 
 	/**
@@ -203,85 +159,70 @@ export class AskDispatcher {
 	// ===========================================================================
 
 	/**
-	 * Handle non-blocking asks (command_output).
-	 * These don't actually block the agent - just need acknowledgment.
-	 */
-	private async handleNonBlockingAsk(_ts: number, _ask: ClineAsk, _text: string): Promise<AskHandleResult> {
-		// command_output - print mode writes the output from the transcript (TranscriptPrinter)
-		// Just send approval to continue
-		this.sendApprovalResponse(true)
-		return { handled: true, response: "yesButtonClicked" }
-	}
-
-	/**
 	 * Handle idle asks (completion_result, api_req_failed, etc.).
 	 * These indicate the task has stopped.
 	 */
-	private async handleIdleAsk(ts: number, ask: ClineAsk, text: string): Promise<AskHandleResult> {
+	private async handleIdleAsk(ask: ClineAsk, text: string): Promise<void> {
 		switch (ask) {
 			case "completion_result":
 				// Task complete - nothing to do here, TaskCompleted event handles it
-				return { handled: true }
+				return
 
 			case "api_req_failed":
-				return await this.handleApiFailedRetry(ts, text)
+				return this.handleApiFailedRetry(text)
 
 			case "mistake_limit_reached":
-				return await this.handleMistakeLimitReached(ts, text)
+				return this.handleLimitReached("mistake limit reached", "Continue anyway? (y/n): ", text)
 
 			case "resume_completed_task":
-				return await this.handleResumeTask(ts, ask, text)
+				return this.handleResumeTask(ask, text)
 
 			case "auto_approval_max_req_reached":
-				return await this.handleAutoApprovalMaxReached(ts, text)
-
-			default:
-				return { handled: false }
+				return this.handleLimitReached(
+					"auto-approval limit reached",
+					"Continue with manual approval? (y/n): ",
+					text,
+				)
 		}
-	}
-
-	/**
-	 * Handle resumable asks (resume_task).
-	 */
-	private async handleResumableAsk(ts: number, ask: ClineAsk, text: string): Promise<AskHandleResult> {
-		return await this.handleResumeTask(ts, ask, text)
 	}
 
 	/**
 	 * Handle interactive asks (followup, command, tool, use_mcp_server).
 	 * These require user approval or input.
 	 */
-	private async handleInteractiveAsk(ts: number, ask: ClineAsk, text: string): Promise<AskHandleResult> {
+	private async handleInteractiveAsk(ask: ClineAsk, text: string): Promise<void> {
 		switch (ask) {
 			case "followup":
-				return await this.handleFollowupQuestion(ts, text)
+				return this.handleFollowupQuestion(text)
 
 			case "command":
-				return await this.handleCommandApproval(ts, text)
+				return this.handleCommandApproval(text)
 
 			case "tool":
-				return await this.handleToolApproval(ts, text)
+				return this.handleToolApproval(text)
 
 			case "use_mcp_server":
-				return await this.handleMcpApproval(ts, text)
-
-			default:
-				return { handled: false }
+				return this.handleMcpApproval(text)
 		}
 	}
 
 	/**
 	 * Handle unknown ask types.
 	 */
-	private async handleUnknownAsk(ts: number, ask: ClineAsk, text: string): Promise<AskHandleResult> {
+	private async handleUnknownAsk(ask: ClineAsk, text: string): Promise<void> {
 		if (this.nonInteractive) {
 			if (text) {
 				this.outputManager.output(`\n[${ask}]`, text)
 			}
-			return { handled: true }
+			return
 		}
 
-		return await this.handleGenericApproval(ts, ask, text)
+		this.outputManager.output(`\n[${ask}]`)
+		if (text) {
+			this.outputManager.output(`  ${text}`)
+		}
+
+		await this.askYesNo("Approve? (y/n): ")
 	}
 
 	// ===========================================================================
@@ -291,7 +232,7 @@ export class AskDispatcher {
 	/**
 	 * Handle followup questions - prompt for text input with suggestions.
 	 */
-	private async handleFollowupQuestion(ts: number, text: string): Promise<AskHandleResult> {
+	private async handleFollowupQuestion(text: string): Promise<void> {
 		// Read by the rule shared with the webview: only suggestions with a
 		// usable answer are offered (and numbered), so a blank one never
 		// becomes the default reply.
@@ -331,7 +272,7 @@ export class AskDispatcher {
 				this.sendTypedFollowupAnswer(result.value.trim(), suggestions)
 			}
 
-			return { handled: true, response: "messageResponse" }
+			return
 		}
 
 		// Interactive mode
@@ -343,41 +284,29 @@ export class AskDispatcher {
 			)
 
 			this.sendTypedFollowupAnswer(answer.trim(), suggestions)
-			return { handled: true, response: "messageResponse" }
 		} catch {
 			this.outputManager.output(`[Using default: ${defaultAnswer || "(empty)"}]`)
 			this.sendFollowupAnswer(defaultAnswer, defaultSuggestion, false)
-			return { handled: true, response: "messageResponse" }
 		}
 	}
 
 	/**
 	 * Handle command execution approval.
 	 */
-	private async handleCommandApproval(ts: number, text: string): Promise<AskHandleResult> {
+	private async handleCommandApproval(text: string): Promise<void> {
 		this.outputManager.output("\n[command request]")
 		this.outputManager.output(`  Command: ${text || "(no command specified)"}`)
 
-		if (this.nonInteractive) {
-			// Auto-approved by extension settings
-			return { handled: true }
-		}
-
-		try {
-			const approved = await this.promptManager.promptForYesNo("Execute this command? (y/n): ")
-			this.sendApprovalResponse(approved)
-			return { handled: true, response: approved ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
+		// Auto-approved by extension settings in non-interactive mode
+		if (!this.nonInteractive) {
+			await this.askYesNo("Execute this command? (y/n): ")
 		}
 	}
 
 	/**
 	 * Handle tool execution approval.
 	 */
-	private async handleToolApproval(ts: number, text: string): Promise<AskHandleResult> {
+	private async handleToolApproval(text: string): Promise<void> {
 		let toolName = "unknown"
 		let toolInfo: Record<string, unknown> = {}
 
@@ -417,26 +346,16 @@ export class AskDispatcher {
 			this.outputManager.output(`  ${key}: ${displayValue}`)
 		}
 
-		if (this.nonInteractive) {
-			// Auto-approved by extension settings (unless protected)
-			return { handled: true }
-		}
-
-		try {
-			const approved = await this.promptManager.promptForYesNo("Approve this action? (y/n): ")
-			this.sendApprovalResponse(approved)
-			return { handled: true, response: approved ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
+		// Auto-approved by extension settings in non-interactive mode (unless protected)
+		if (!this.nonInteractive) {
+			await this.askYesNo("Approve this action? (y/n): ")
 		}
 	}
 
 	/**
 	 * Handle MCP server access approval.
 	 */
-	private async handleMcpApproval(ts: number, text: string): Promise<AskHandleResult> {
+	private async handleMcpApproval(text: string): Promise<void> {
 		const mcp = parseMcpAsk(text)
 
 		this.outputManager.output("\n[mcp request]")
@@ -454,32 +373,23 @@ export class AskDispatcher {
 			}
 		}
 
-		if (this.nonInteractive) {
-			// Auto-approved by extension settings
-			return { handled: true }
-		}
-
-		try {
-			const approved = await this.promptManager.promptForYesNo("Allow MCP access? (y/n): ")
-			this.sendApprovalResponse(approved)
-			return { handled: true, response: approved ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
+		// Auto-approved by extension settings in non-interactive mode
+		if (!this.nonInteractive) {
+			await this.askYesNo("Allow MCP access? (y/n): ")
 		}
 	}
 
 	/**
 	 * Handle API request failed - retry prompt.
 	 */
-	private async handleApiFailedRetry(ts: number, text: string): Promise<AskHandleResult> {
+	private async handleApiFailedRetry(text: string): Promise<void> {
 		this.outputManager.output("\n[api request failed]")
 		this.outputManager.output(`  Error: ${text || "Unknown error"}`)
 
 		if (this.exitOnError) {
-			console.error(`[CLI] API request failed: ${text || "Unknown error"}`)
-			process.exit(1)
+			// The host fails the run on this ask (waitForTaskCompletion); run.ts
+			// then disposes it and exits with code 1.
+			return
 		}
 
 		if (this.nonInteractive) {
@@ -491,25 +401,18 @@ export class AskDispatcher {
 				"[not retrying: this error needs a fix first, e.g. the API key, profile or model]",
 			)
 			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
+			return
 		}
 
-		try {
-			const retry = await this.promptManager.promptForYesNo("Retry the request? (y/n): ")
-			this.sendApprovalResponse(retry)
-			return { handled: true, response: retry ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
-		}
+		await this.askYesNo("Retry the request? (y/n): ")
 	}
 
 	/**
-	 * Handle mistake limit reached.
+	 * Handle the mistake limit and the auto-approval limit: show the details,
+	 * then go on (non-interactive mode) or ask.
 	 */
-	private async handleMistakeLimitReached(ts: number, text: string): Promise<AskHandleResult> {
-		this.outputManager.output("\n[mistake limit reached]")
+	private async handleLimitReached(title: string, question: string, text: string): Promise<void> {
+		this.outputManager.output(`\n[${title}]`)
 		if (text) {
 			this.outputManager.output(`  Details: ${text}`)
 		}
@@ -517,50 +420,16 @@ export class AskDispatcher {
 		if (this.nonInteractive) {
 			// Auto-proceed in non-interactive mode
 			this.sendApprovalResponse(true)
-			return { handled: true, response: "yesButtonClicked" }
+			return
 		}
 
-		try {
-			const proceed = await this.promptManager.promptForYesNo("Continue anyway? (y/n): ")
-			this.sendApprovalResponse(proceed)
-			return { handled: true, response: proceed ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
-		}
-	}
-
-	/**
-	 * Handle auto-approval max reached.
-	 */
-	private async handleAutoApprovalMaxReached(ts: number, text: string): Promise<AskHandleResult> {
-		this.outputManager.output("\n[auto-approval limit reached]")
-		if (text) {
-			this.outputManager.output(`  Details: ${text}`)
-		}
-
-		if (this.nonInteractive) {
-			// Auto-proceed in non-interactive mode
-			this.sendApprovalResponse(true)
-			return { handled: true, response: "yesButtonClicked" }
-		}
-
-		try {
-			const proceed = await this.promptManager.promptForYesNo("Continue with manual approval? (y/n): ")
-			this.sendApprovalResponse(proceed)
-			return { handled: true, response: proceed ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
-		}
+		await this.askYesNo(question)
 	}
 
 	/**
 	 * Handle task resume prompt.
 	 */
-	private async handleResumeTask(ts: number, ask: ClineAsk, text: string): Promise<AskHandleResult> {
+	private async handleResumeTask(ask: ClineAsk, text: string): Promise<void> {
 		const isCompleted = ask === "resume_completed_task"
 		this.outputManager.output(`\n[Resume ${isCompleted ? "Completed " : ""}Task]`)
 		if (text) {
@@ -571,43 +440,27 @@ export class AskDispatcher {
 			this.outputManager.output("\n[continuing task]")
 			// Auto-resume in non-interactive mode
 			this.sendApprovalResponse(true)
-			return { handled: true, response: "yesButtonClicked" }
+			return
 		}
 
-		try {
-			const resume = await this.promptManager.promptForYesNo("Continue with this task? (y/n): ")
-			this.sendApprovalResponse(resume)
-			return { handled: true, response: resume ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
-		}
-	}
-
-	/**
-	 * Handle generic approval prompts for unknown ask types.
-	 */
-	private async handleGenericApproval(ts: number, ask: ClineAsk, text: string): Promise<AskHandleResult> {
-		this.outputManager.output(`\n[${ask}]`)
-		if (text) {
-			this.outputManager.output(`  ${text}`)
-		}
-
-		try {
-			const approved = await this.promptManager.promptForYesNo("Approve? (y/n): ")
-			this.sendApprovalResponse(approved)
-			return { handled: true, response: approved ? "yesButtonClicked" : "noButtonClicked" }
-		} catch {
-			this.outputManager.output("[Defaulting to: no]")
-			this.sendApprovalResponse(false)
-			return { handled: true, response: "noButtonClicked" }
-		}
+		await this.askYesNo("Continue with this task? (y/n): ")
 	}
 
 	// ===========================================================================
 	// Response Helpers
 	// ===========================================================================
+
+	/**
+	 * Ask a yes/no question and send the answer; a prompt that fails answers no.
+	 */
+	private async askYesNo(question: string): Promise<void> {
+		try {
+			this.sendApprovalResponse(await this.promptManager.promptForYesNo(question))
+		} catch {
+			this.outputManager.output("[Defaulting to: no]")
+			this.sendApprovalResponse(false)
+		}
+	}
 
 	/**
 	 * Send a followup response (text answer) to the extension.

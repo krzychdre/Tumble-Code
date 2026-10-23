@@ -191,7 +191,7 @@ describe("AskDispatcher api_req_failed in non-interactive print mode", () => {
 			nonInteractive: true,
 		})
 
-		const result = await dispatcher.handleAsk({
+		await dispatcher.handleAsk({
 			ts: 7,
 			type: "ask",
 			ask: "api_req_failed",
@@ -200,12 +200,33 @@ describe("AskDispatcher api_req_failed in non-interactive print mode", () => {
 		})
 
 		expect(sent).toEqual([{ type: "askResponse", askResponse: "noButtonClicked" }])
-		expect(result).toMatchObject({ handled: true, response: "noButtonClicked" })
 		expect(promptForYesNo).not.toHaveBeenCalled()
 		expect(output.join("\n")).toContain("401 Incorrect API key provided")
 		expect(output.join("\n")).not.toContain("[retrying api request]")
 		expect(output.join("\n")).toContain("not retrying")
 		// The exit itself belongs to the host (run.ts shuts down cleanly with code 1).
+		expect(exit).not.toHaveBeenCalled()
+		exit.mockRestore()
+	})
+})
+
+describe("AskDispatcher api_req_failed with --exit-on-error", () => {
+	it("leaves the ask to the host: no prompt, no answer, no exit of its own", async () => {
+		const sent: WebviewMessage[] = []
+		const promptForYesNo = vi.fn()
+		const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never)
+		const dispatcher = new AskDispatcher({
+			outputManager: { output: () => {} } as unknown as OutputManager,
+			promptManager: { promptForYesNo } as unknown as PromptManager,
+			sendMessage: (message) => sent.push(message),
+			nonInteractive: false,
+			exitOnError: true,
+		})
+
+		await dispatcher.handleAsk({ ts: 7, type: "ask", ask: "api_req_failed", text: "500", partial: false })
+
+		expect(sent).toEqual([])
+		expect(promptForYesNo).not.toHaveBeenCalled()
 		expect(exit).not.toHaveBeenCalled()
 		exit.mockRestore()
 	})
