@@ -24,8 +24,104 @@ interface PlanReviewSurfaceProps {
 	onDraftsChanged?: (compiledText: string, count: number) => void
 	/** Bump to clear draft annotations from outside (drafts consumed by host). */
 	resetSignal?: number
-	/** Testing seam — jsdom cannot produce text selections. */
-	initialAnnotations?: PlanAnnotation[]
+}
+
+type Point = { x: number; y: number }
+
+/** The one open note editor: a new note on a quote, or an existing note being edited. */
+type NoteEditor = { kind: "new"; quote: string; pos: Point; text: string } | { kind: "edit"; id: string; text: string }
+
+const textareaClass =
+	"w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-input-frame rounded-control p-1 hover:border-input-frame-hover focus:outline-none focus-visible:border-vscode-focusBorder"
+
+interface AnnotationListProps {
+	annotations: PlanAnnotation[]
+	editor: NoteEditor | null
+	onEditorTextChange: (text: string) => void
+	onStartEdit: (annotation: PlanAnnotation) => void
+	onSaveEdit: () => void
+	onCancelEdit: () => void
+	onDelete: (id: string) => void
+}
+
+const AnnotationList = ({
+	annotations,
+	editor,
+	onEditorTextChange,
+	onStartEdit,
+	onSaveEdit,
+	onCancelEdit,
+	onDelete,
+}: AnnotationListProps) => {
+	const { t } = useAppTranslation()
+
+	if (annotations.length === 0) {
+		return (
+			<div className="flex flex-col gap-2 overflow-y-auto h-full">
+				<p className="text-sm text-vscode-descriptionForeground p-2">{t("chat:planReview.emptyState")}</p>
+			</div>
+		)
+	}
+
+	return (
+		<div className="flex flex-col gap-2 overflow-y-auto h-full">
+			{annotations.map((ann) => (
+				<div key={ann.id} className="border border-frame rounded-control bg-surface p-2 flex flex-col gap-1">
+					<blockquote
+						className="border-l-2 border-vscode-textLink-foreground pl-2 text-xs text-vscode-descriptionForeground line-clamp-3"
+						style={{
+							overflow: "hidden",
+							display: "-webkit-box",
+							WebkitLineClamp: 3,
+							WebkitBoxOrient: "vertical",
+						}}>
+						{ann.quote}
+					</blockquote>
+					{editor?.kind === "edit" && editor.id === ann.id ? (
+						<div className="flex flex-col gap-1">
+							<textarea
+								className={textareaClass}
+								rows={2}
+								value={editor.text}
+								onChange={(e) => onEditorTextChange(e.target.value)}
+								autoFocus
+							/>
+							<div className="flex gap-1">
+								<Button variant="primary" size="sm" onClick={onSaveEdit}>
+									{t("chat:planReview.save")}
+								</Button>
+								<Button variant="secondary" size="sm" onClick={onCancelEdit}>
+									{t("chat:planReview.cancel")}
+								</Button>
+							</div>
+						</div>
+					) : (
+						<>
+							<p className="text-sm">{ann.note}</p>
+							<div className="flex gap-1">
+								<StandardTooltip content={t("chat:planReview.editNote")}>
+									<button
+										className="cursor-pointer p-1 rounded-control hover:bg-surface-hover focus-ring"
+										onClick={() => onStartEdit(ann)}
+										aria-label={t("chat:planReview.editNote")}>
+										<Pencil className="w-3.5 h-3.5" />
+									</button>
+								</StandardTooltip>
+								<StandardTooltip content={t("chat:planReview.deleteNote")}>
+									<button
+										className="cursor-pointer p-1 rounded-control hover:bg-surface-hover focus-ring"
+										onClick={() => onDelete(ann.id)}
+										aria-label={t("chat:planReview.deleteNote")}>
+										<Trash2 className="w-3.5 h-3.5" />
+									</button>
+								</StandardTooltip>
+							</div>
+						</>
+					)}
+				</div>
+			))}
+		</div>
+	)
 }
 
 /**
@@ -116,23 +212,19 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 	onSubmit,
 	onDraftsChanged,
 	resetSignal,
-	initialAnnotations,
 }) => {
 	const { t } = useAppTranslation()
 
 	const diffSegments = useMemo(() => diffPlanMarkdown(baselineMarkdown, markdown), [baselineMarkdown, markdown])
 	const hasChanges = useMemo(() => diffSegments.some((s) => s.kind !== "same"), [diffSegments])
 
-	const [annotations, setAnnotations] = useState<PlanAnnotation[]>(initialAnnotations ?? [])
-	const [showNoteEditor, setShowNoteEditor] = useState(false)
-	const [noteEditorText, setNoteEditorText] = useState("")
-	const [pendingQuote, setPendingQuote] = useState("")
-	const [candidateQuote, setCandidateQuote] = useState("")
-	const [chipPos, setChipPos] = useState<{ x: number; y: number } | null>(null)
-	const [editorPos, setEditorPos] = useState<{ x: number; y: number } | null>(null)
-	const [editingId, setEditingId] = useState<string | null>(null)
-	const [editingText, setEditingText] = useState("")
+	const [annotations, setAnnotations] = useState<PlanAnnotation[]>([])
+	// The "Add note" chip over the current selection. The quote is captured with it because clicking
+	// the chip collapses the browser selection before the click handler runs.
+	const [chip, setChip] = useState<{ quote: string; pos: Point } | null>(null)
+	const [editor, setEditor] = useState<NoteEditor | null>(null)
 	const [isWide, setIsWide] = useState(false)
+	const isWritingNewNote = editor?.kind === "new"
 
 	const rootRef = useRef<HTMLDivElement>(null)
 	const markdownRef = useRef<HTMLDivElement>(null)
@@ -196,7 +288,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 	const handleMouseUp = useCallback(() => {
 		// Ignore selection changes while a note is being written (e.g. clicks
 		// inside the editor textarea also bubble a mouseup from the container).
-		if (showNoteEditor) return
+		if (isWritingNewNote) return
 		if (chipTimerRef.current) {
 			clearTimeout(chipTimerRef.current)
 		}
@@ -206,23 +298,23 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 			if (!container) return
 			const sel = window.getSelection()
 			if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-				setChipPos(null)
+				setChip(null)
 				return
 			}
 			const range = sel.getRangeAt(0)
 			// Check that selection is within the markdown container.
 			if (!container.contains(range.commonAncestorContainer)) {
-				setChipPos(null)
+				setChip(null)
 				return
 			}
 			const quote = sel.toString().trim().replace(/\s+/g, " ")
 			if (!quote) {
-				setChipPos(null)
+				setChip(null)
 				return
 			}
 			const rect = range.getBoundingClientRect()
 			if (rect.width === 0 && rect.height === 0) {
-				setChipPos(null)
+				setChip(null)
 				return
 			}
 			const containerRect = container.getBoundingClientRect()
@@ -235,69 +327,31 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 				),
 			)
 			const y = Math.max(0, rect.top - containerRect.top + container.scrollTop - 40)
-			// The quote is captured here because clicking the chip collapses the
-			// browser selection before the click handler runs.
-			setCandidateQuote(quote)
-			setChipPos({ x, y })
+			setChip({ quote, pos: { x, y } })
 		}, 10)
-	}, [showNoteEditor])
+	}, [isWritingNewNote])
 
-	const handleAddNote = useCallback(() => {
-		if (!candidateQuote || !chipPos) {
-			setChipPos(null)
-			return
+	const handleAddNote = () => {
+		if (!chip) return
+		setEditor({ kind: "new", quote: chip.quote, pos: chip.pos, text: "" })
+		setChip(null)
+	}
+
+	const setEditorText = (text: string) => setEditor((prev) => prev && { ...prev, text })
+
+	const handleSaveEditor = () => {
+		if (!editor) return
+		const note = editor.text.trim()
+		if (editor.kind === "new" && note) {
+			setAnnotations((prev) => [...prev, { id: crypto.randomUUID(), quote: editor.quote, note }])
+			window.getSelection()?.removeAllRanges()
+		} else if (editor.kind === "edit" && note) {
+			setAnnotations((prev) => prev.map((a) => (a.id === editor.id ? { ...a, note } : a)))
 		}
-		setPendingQuote(candidateQuote)
-		setNoteEditorText("")
-		setEditorPos(chipPos)
-		setShowNoteEditor(true)
-		setChipPos(null)
-	}, [candidateQuote, chipPos])
+		setEditor(null)
+	}
 
-	const handleSaveNote = useCallback(() => {
-		const note = noteEditorText.trim()
-		if (!note || !pendingQuote) {
-			setShowNoteEditor(false)
-			setPendingQuote("")
-			return
-		}
-		setAnnotations((prev) => [...prev, { id: crypto.randomUUID(), quote: pendingQuote, note }])
-		setShowNoteEditor(false)
-		setPendingQuote("")
-		setNoteEditorText("")
-		// Clear browser selection.
-		window.getSelection()?.removeAllRanges()
-	}, [noteEditorText, pendingQuote])
-
-	const handleCancelNote = useCallback(() => {
-		setShowNoteEditor(false)
-		setPendingQuote("")
-		setNoteEditorText("")
-	}, [])
-
-	const handleDelete = useCallback((id: string) => {
-		setAnnotations((prev) => prev.filter((a) => a.id !== id))
-	}, [])
-
-	const handleStartEdit = useCallback((id: string, currentNote: string) => {
-		setEditingId(id)
-		setEditingText(currentNote)
-	}, [])
-
-	const handleSaveEdit = useCallback(() => {
-		if (!editingId) return
-		const trimmed = editingText.trim()
-		if (trimmed) {
-			setAnnotations((prev) => prev.map((a) => (a.id === editingId ? { ...a, note: trimmed } : a)))
-		}
-		setEditingId(null)
-		setEditingText("")
-	}, [editingId, editingText])
-
-	const handleCancelEdit = useCallback(() => {
-		setEditingId(null)
-		setEditingText("")
-	}, [])
+	const handleDelete = (id: string) => setAnnotations((prev) => prev.filter((a) => a.id !== id))
 
 	const canSend = annotations.length > 0
 
@@ -309,72 +363,6 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 		// clean instead of re-sending the same notes.
 		setAnnotations([])
 	}, [annotations, filePath, onSubmit])
-
-	const annotationsPanel = useMemo(() => {
-		return (
-			<div className="flex flex-col gap-2 overflow-y-auto h-full">
-				{annotations.length === 0 ? (
-					<p className="text-sm text-vscode-descriptionForeground p-2">{t("chat:planReview.emptyState")}</p>
-				) : (
-					annotations.map((ann) => (
-						<div key={ann.id} className="border border-frame rounded-control bg-surface p-2 flex flex-col gap-1">
-							<blockquote
-								className="border-l-2 border-vscode-textLink-foreground pl-2 text-xs text-vscode-descriptionForeground line-clamp-3"
-								style={{
-									overflow: "hidden",
-									display: "-webkit-box",
-									WebkitLineClamp: 3,
-									WebkitBoxOrient: "vertical",
-								}}>
-								{ann.quote}
-							</blockquote>
-							{editingId === ann.id ? (
-								<div className="flex flex-col gap-1">
-									<textarea
-										className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-input-frame rounded-control p-1 hover:border-input-frame-hover focus:outline-none focus-visible:border-vscode-focusBorder"
-										rows={2}
-										value={editingText}
-										onChange={(e) => setEditingText(e.target.value)}
-										autoFocus
-									/>
-									<div className="flex gap-1">
-										<Button variant="primary" size="sm" onClick={handleSaveEdit}>
-											{t("chat:planReview.save")}
-										</Button>
-										<Button variant="secondary" size="sm" onClick={handleCancelEdit}>
-											{t("chat:planReview.cancel")}
-										</Button>
-									</div>
-								</div>
-							) : (
-								<>
-									<p className="text-sm">{ann.note}</p>
-									<div className="flex gap-1">
-										<StandardTooltip content={t("chat:planReview.editNote")}>
-											<button
-												className="cursor-pointer p-1 rounded-control hover:bg-surface-hover focus-ring"
-												onClick={() => handleStartEdit(ann.id, ann.note)}
-												aria-label={t("chat:planReview.editNote")}>
-												<Pencil className="w-3.5 h-3.5" />
-											</button>
-										</StandardTooltip>
-										<StandardTooltip content={t("chat:planReview.deleteNote")}>
-											<button
-												className="cursor-pointer p-1 rounded-control hover:bg-surface-hover focus-ring"
-												onClick={() => handleDelete(ann.id)}
-												aria-label={t("chat:planReview.deleteNote")}>
-												<Trash2 className="w-3.5 h-3.5" />
-											</button>
-										</StandardTooltip>
-									</div>
-								</>
-							)}
-						</div>
-					))
-				)}
-			</div>
-		)
-	}, [annotations, editingId, editingText, t, handleSaveEdit, handleCancelEdit, handleStartEdit, handleDelete])
 
 	return (
 		<div
@@ -397,7 +385,8 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 							data-testid="plan-diff-badge"
 							className="text-xs px-1.5 py-0.5 shrink-0 rounded-control"
 							style={{
-								background: "var(--vscode-diffEditor-insertedTextBackground, color-mix(in srgb, var(--vscode-charts-green) 15%, transparent))",
+								background:
+									"var(--vscode-diffEditor-insertedTextBackground, color-mix(in srgb, var(--vscode-charts-green) 15%, transparent))",
 								color: "var(--vscode-foreground)",
 							}}>
 							{t("chat:planReview.changesHighlighted")}
@@ -417,7 +406,7 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 				{/* Markdown rendering area */}
 				<div
 					ref={markdownRef}
-					className={isWide ? "flex-1 overflow-y-auto p-4 relative" : "flex-1 overflow-y-auto p-4 relative"}
+					className="flex-1 overflow-y-auto p-4 relative"
 					onMouseUp={handleMouseUp}
 					style={{ position: "relative" }}>
 					{diffSegments.map((segment, i) =>
@@ -428,8 +417,10 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 								title={t("chat:planReview.removedContent")}
 								className="my-2 px-2 py-1 text-xs text-vscode-descriptionForeground whitespace-pre-wrap line-through"
 								style={{
-									background: "var(--vscode-diffEditor-removedTextBackground, color-mix(in srgb, var(--vscode-errorForeground) 15%, transparent))",
-									borderLeft: "3px solid var(--vscode-editorGutter-deletedBackground, var(--vscode-errorForeground))",
+									background:
+										"var(--vscode-diffEditor-removedTextBackground, color-mix(in srgb, var(--vscode-errorForeground) 15%, transparent))",
+									borderLeft:
+										"3px solid var(--vscode-editorGutter-deletedBackground, var(--vscode-errorForeground))",
 								}}>
 								{segment.text}
 							</div>
@@ -441,7 +432,8 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 								style={{
 									background:
 										"var(--vscode-diffEditor-insertedTextBackground, color-mix(in srgb, var(--vscode-charts-green) 15%, transparent))",
-									borderLeft: "3px solid var(--vscode-editorGutter-addedBackground, var(--vscode-charts-green))",
+									borderLeft:
+										"3px solid var(--vscode-editorGutter-addedBackground, var(--vscode-charts-green))",
 								}}>
 								<MarkdownBlock markdown={segment.markdown} />
 							</div>
@@ -451,12 +443,12 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					)}
 
 					{/* Floating "Add note" chip */}
-					{chipPos && !showNoteEditor && (
+					{chip && !isWritingNewNote && (
 						<button
 							className="absolute z-10 flex items-center gap-1 px-2 py-1 text-xs rounded-control cursor-pointer focus-ring"
 							style={{
-								left: chipPos.x,
-								top: chipPos.y,
+								left: chip.pos.x,
+								top: chip.pos.y,
 								background: "var(--vscode-button-background)",
 								color: "var(--vscode-button-foreground)",
 								boxShadow: "0 2px 8px var(--vscode-widget-shadow)",
@@ -470,29 +462,29 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					)}
 
 					{/* Inline note editor */}
-					{showNoteEditor && editorPos && (
+					{editor?.kind === "new" && (
 						<div
 							className="absolute z-20 flex flex-col gap-1 p-2 border border-frame-hover rounded-floating"
 							style={{
-								left: editorPos.x,
-								top: editorPos.y,
+								left: editor.pos.x,
+								top: editor.pos.y,
 								background: "var(--vscode-editor-background)",
 								boxShadow: "0 8px 28px var(--vscode-widget-shadow)",
 								minWidth: 240,
 							}}>
 							<textarea
-								className="w-full text-sm bg-vscode-input-background text-vscode-input-foreground border border-input-frame rounded-control p-1 hover:border-input-frame-hover focus:outline-none focus-visible:border-vscode-focusBorder"
+								className={textareaClass}
 								rows={3}
 								placeholder={t("chat:planReview.notePlaceholder")}
-								value={noteEditorText}
-								onChange={(e) => setNoteEditorText(e.target.value)}
+								value={editor.text}
+								onChange={(e) => setEditorText(e.target.value)}
 								autoFocus
 							/>
 							<div className="flex gap-1 justify-end">
-								<Button variant="primary" size="sm" onClick={handleSaveNote}>
+								<Button variant="primary" size="sm" onClick={handleSaveEditor}>
 									{t("chat:planReview.save")}
 								</Button>
-								<Button variant="secondary" size="sm" onClick={handleCancelNote}>
+								<Button variant="secondary" size="sm" onClick={() => setEditor(null)}>
 									{t("chat:planReview.cancel")}
 								</Button>
 							</div>
@@ -507,7 +499,17 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 							? "w-72 border-l border-frame p-2 shrink-0 overflow-hidden"
 							: "max-h-[200px] border-t border-frame p-2 shrink-0"
 					}>
-					{annotationsPanel}
+					<AnnotationList
+						annotations={annotations}
+						editor={editor}
+						onEditorTextChange={setEditorText}
+						onStartEdit={(annotation) =>
+							setEditor({ kind: "edit", id: annotation.id, text: annotation.note })
+						}
+						onSaveEdit={handleSaveEditor}
+						onCancelEdit={() => setEditor(null)}
+						onDelete={handleDelete}
+					/>
 				</div>
 			</div>
 

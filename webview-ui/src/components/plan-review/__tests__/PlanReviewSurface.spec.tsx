@@ -1,9 +1,8 @@
 import React from "react"
-import { describe, expect, it, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@/utils/test-utils"
+import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest"
+import { render, screen, fireEvent, within } from "@/utils/test-utils"
 
 import { PlanReviewSurface } from "../PlanReviewSurface"
-import type { PlanAnnotation } from "../planReviewMessage"
 
 // Mock MarkdownBlock to just render text — avoids complex markdown rendering in jsdom.
 vi.mock("../../common/MarkdownBlock", () => ({
@@ -34,10 +33,33 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 	}),
 }))
 
-const twoNotes: PlanAnnotation[] = [
-	{ id: "a1", quote: "Plan Title", note: "Rename this section" },
-	{ id: "a2", quote: "substantial plan", note: "Add a rollout step" },
-]
+// jsdom has no layout, so a selection range has no size; give it one, like a real selection.
+beforeAll(() => {
+	Range.prototype.getBoundingClientRect = () => new DOMRect(10, 10, 50, 12)
+})
+
+/** Selects `quote` in the rendered plan, clicks the "Add note" chip, types `note` and saves it. */
+const addNote = async (quote: string, note: string) => {
+	const block = screen.getAllByTestId("markdown-block").find((b) => b.textContent!.includes(quote))!
+	const text = block.firstChild as Text
+	const start = text.data.indexOf(quote)
+	const range = document.createRange()
+	range.setStart(text, start)
+	range.setEnd(text, start + quote.length)
+	const selection = window.getSelection()!
+	selection.removeAllRanges()
+	selection.addRange(range)
+	fireEvent.mouseUp(block)
+
+	fireEvent.click(await screen.findByText("Add note"))
+	fireEvent.change(screen.getByPlaceholderText("Write your note…"), { target: { value: note } })
+	fireEvent.click(screen.getByRole("button", { name: "Save" }))
+}
+
+const addTwoNotes = async () => {
+	await addNote("Plan Title", "Rename this section")
+	await addNote("substantial plan", "Add a rollout step")
+}
 
 describe("PlanReviewSurface", () => {
 	const defaultProps = {
@@ -76,15 +98,42 @@ describe("PlanReviewSurface", () => {
 		expect(cancelButtons[0]).toBeVisible()
 	})
 
-	it("send button is enabled and shows the note count when annotations exist", () => {
-		render(<PlanReviewSurface {...defaultProps} initialAnnotations={twoNotes} />)
+	it("a note added on a selection is listed with its quote and enables send", async () => {
+		render(<PlanReviewSurface {...defaultProps} />)
+		await addTwoNotes()
+		expect(screen.getByText("Rename this section")).toBeInTheDocument()
+		expect(screen.getByText("substantial plan", { selector: "blockquote" })).toBeInTheDocument()
 		const sendButton = screen.getByText("Send notes (2)")
 		expect(sendButton.closest("button")).not.toBeDisabled()
 		expect(screen.getByText("Notes: 2")).toBeInTheDocument()
 	})
 
-	it("clicking send compiles the notes and calls onSubmit", () => {
-		render(<PlanReviewSurface {...defaultProps} filePath="plans/plan.md" initialAnnotations={twoNotes} />)
+	it("an empty note is not added", async () => {
+		render(<PlanReviewSurface {...defaultProps} />)
+		await addNote("Plan Title", "   ")
+		expect(screen.queryByPlaceholderText("Write your note…")).not.toBeInTheDocument()
+		expect(screen.getByText("Send notes").closest("button")).toBeDisabled()
+	})
+
+	it("edits and deletes a listed note", async () => {
+		render(<PlanReviewSurface {...defaultProps} />)
+		await addTwoNotes()
+
+		fireEvent.click(screen.getAllByLabelText("Edit note")[0])
+		const list = screen.getByText("Plan Title", { selector: "blockquote" }).parentElement!
+		fireEvent.change(within(list).getByRole("textbox"), { target: { value: "Call it Overview" } })
+		fireEvent.click(within(list).getByRole("button", { name: "Save" }))
+		expect(screen.getByText("Call it Overview")).toBeInTheDocument()
+		expect(screen.queryByText("Rename this section")).not.toBeInTheDocument()
+
+		fireEvent.click(screen.getAllByLabelText("Delete note")[1])
+		expect(screen.queryByText("Add a rollout step")).not.toBeInTheDocument()
+		expect(screen.getByText("Send notes (1)")).toBeInTheDocument()
+	})
+
+	it("clicking send compiles the notes and calls onSubmit", async () => {
+		render(<PlanReviewSurface {...defaultProps} filePath="plans/plan.md" />)
+		await addTwoNotes()
 		fireEvent.click(screen.getByText("Send notes (2)"))
 		expect(defaultProps.onSubmit).toHaveBeenCalledTimes(1)
 		const compiled = defaultProps.onSubmit.mock.calls[0][0] as string
@@ -95,39 +144,27 @@ describe("PlanReviewSurface", () => {
 		expect(compiled).toContain("Please address these notes and update the plan.")
 	})
 
-	it("clears drafts after sending (panel stays open for the next review round)", () => {
-		render(<PlanReviewSurface {...defaultProps} initialAnnotations={twoNotes} />)
+	it("clears drafts after sending (panel stays open for the next review round)", async () => {
+		render(<PlanReviewSurface {...defaultProps} />)
+		await addTwoNotes()
 		fireEvent.click(screen.getByText("Send notes (2)"))
 		expect(defaultProps.onSubmit).toHaveBeenCalledTimes(1)
 		// Send is disabled again until new notes are added.
 		expect(screen.getByText("Send notes").closest("button")).toBeDisabled()
 	})
 
-	it("reports drafts via onDraftsChanged and clears them on resetSignal bump", () => {
+	it("reports drafts via onDraftsChanged and clears them on resetSignal bump", async () => {
 		const onDraftsChanged = vi.fn()
 		const { rerender } = render(
-			<PlanReviewSurface
-				{...defaultProps}
-				initialAnnotations={twoNotes}
-				onDraftsChanged={onDraftsChanged}
-				resetSignal={0}
-			/>,
+			<PlanReviewSurface {...defaultProps} onDraftsChanged={onDraftsChanged} resetSignal={0} />,
 		)
-		// Initial report carries the compiled draft.
-		expect(onDraftsChanged).toHaveBeenCalled()
+		await addTwoNotes()
 		const [compiled, count] = onDraftsChanged.mock.calls.at(-1)!
 		expect(count).toBe(2)
 		expect(compiled).toContain("Note: Rename this section")
 
 		// Host consumed the drafts (user clicked Approve) → resetSignal bump clears.
-		rerender(
-			<PlanReviewSurface
-				{...defaultProps}
-				initialAnnotations={twoNotes}
-				onDraftsChanged={onDraftsChanged}
-				resetSignal={1}
-			/>,
-		)
+		rerender(<PlanReviewSurface {...defaultProps} onDraftsChanged={onDraftsChanged} resetSignal={1} />)
 		const [afterReset, afterCount] = onDraftsChanged.mock.calls.at(-1)!
 		expect(afterCount).toBe(0)
 		expect(afterReset).toBe("")
