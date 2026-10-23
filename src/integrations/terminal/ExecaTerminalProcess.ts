@@ -1,4 +1,4 @@
-import { execa, ExecaError } from "execa"
+import { execa, ExecaError, type ResultPromise } from "execa"
 import * as os from "os"
 import psTree from "ps-tree"
 import process from "process"
@@ -61,7 +61,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 	// overwritten with the first child. Negative-signalling this one reaches the
 	// whole process group in a single call.
 	private pgid?: number
-	private subprocess?: ReturnType<typeof execa>
+	private subprocess?: ResultPromise<{ all: true; stdin: "ignore" }>
 	private pidUpdatePromise?: Promise<void>
 	private askpassServer?: AskpassServer
 
@@ -157,14 +157,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 				})
 			}
 
-			const rawStream = this.subprocess.iterable({ from: "all", preserveNewlines: true })
-
-			// Wrap the stream to ensure all chunks are strings (execa can return Uint8Array)
-			const stream = (async function* () {
-				for await (const chunk of rawStream) {
-					yield typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
-				}
-			})()
+			const stream = this.subprocess.iterable({ from: "all", preserveNewlines: true })
 
 			this.terminal.setActiveStream(stream, this.pid)
 
