@@ -31,7 +31,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Git Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ env.GIT_REF }}
@@ -50,13 +50,11 @@ jobs:
       - name: Changeset Pull Request
         if: steps.check-changesets.outputs.new_changesets != '0'
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          commit: "changeset version bump"
-          title: "Changeset version bump"
-          version: pnpm changeset:version # This performs the changeset version bump
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "changeset version bump"
+          pr-title: "Changeset version bump"
+          version-script: pnpm changeset:version # This performs the changeset version bump
 
   # Job 2: Process version bump PR created by R00-B0T
   changeset-pr-edit-approve:
@@ -88,7 +86,7 @@ jobs:
           fi
 
       - name: Checkout Repo
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -112,7 +110,7 @@ jobs:
       # Add label to indicate changelog has been formatted
       - name: Add changelog-ready label
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-ready') }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -126,7 +124,7 @@ jobs:
       # Auto-approve PR only after it has been labeled
       - name: Auto approve PR
         if: contains(github.event.pull_request.labels.*.name, 'changelog-ready')
-        uses: hmarr/auto-approve-action@v4
+        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
         with:
           review-message: "I'm approving since it's a bump version PR"
       
