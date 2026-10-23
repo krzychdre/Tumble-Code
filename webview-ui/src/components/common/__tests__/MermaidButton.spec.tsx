@@ -281,7 +281,10 @@ describe("MermaidButton", () => {
 		openModal(container)
 		// The dismiss listener is registered on the next tick after opening.
 		await new Promise((resolve) => setTimeout(resolve, 0))
-		fireEvent.pointerDown(document.querySelector('[data-slot="dialog-overlay"]')!)
+		// A primary-button press dismisses on the click that ends it, not on pointerdown.
+		const overlay = document.querySelector('[data-slot="dialog-overlay"]')!
+		fireEvent.pointerDown(overlay)
+		fireEvent.click(overlay)
 		expect(modal()).toBeNull()
 
 		openModal(container)

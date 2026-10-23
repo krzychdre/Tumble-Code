@@ -48,8 +48,7 @@ describe("Tooltip", () => {
 
 		await waitFor(
 			() => {
-				const tooltips = screen.getAllByText(/This is a very long tooltip text/)
-				const visibleTooltip = tooltips.find((el) => el.getAttribute("role") !== "tooltip")
+				const visibleTooltip = screen.getByRole("tooltip")
 				expect(visibleTooltip).toHaveClass("max-w-[300px]", "break-words")
 			},
 			{ timeout: 1000 },
@@ -73,8 +72,7 @@ describe("Tooltip", () => {
 
 		await waitFor(
 			() => {
-				const tooltips = screen.getAllByText("Tooltip text")
-				const visibleTooltip = tooltips.find((el) => el.getAttribute("role") !== "tooltip")
+				const visibleTooltip = screen.getByRole("tooltip")
 				expect(visibleTooltip).not.toHaveClass("overflow-hidden")
 			},
 			{ timeout: 1000 },
@@ -145,8 +143,7 @@ describe("StandardTooltip", () => {
 
 		await waitFor(
 			() => {
-				const tooltips = screen.getAllByText("Long tooltip text")
-				const visibleTooltip = tooltips.find((el) => el.getAttribute("role") !== "tooltip")
+				const visibleTooltip = screen.getByRole("tooltip")
 				expect(visibleTooltip).toHaveStyle({ maxWidth: "200px" })
 			},
 			{ timeout: 1000 },
@@ -169,11 +166,10 @@ describe("StandardTooltip", () => {
 
 		await waitFor(
 			() => {
-				const tooltips = screen.getAllByText("Long tooltip text")
-				const visibleTooltip = tooltips.find((el) => el.getAttribute("role") !== "tooltip")
+				const visibleTooltip = screen.getByRole("tooltip")
 				// The inline style is the contract; toHaveStyle compares the computed
 				// value, which jsdom 30 resolves to pixels (240px).
-				expect((visibleTooltip as HTMLElement).style.maxWidth).toBe("15rem")
+				expect(visibleTooltip.style.maxWidth).toBe("15rem")
 			},
 			{ timeout: 1000 },
 		)
@@ -197,8 +193,7 @@ describe("StandardTooltip", () => {
 
 		await waitFor(
 			() => {
-				const tooltips = screen.getAllByText(longContent)
-				const visibleTooltip = tooltips.find((el) => el.getAttribute("role") !== "tooltip")
+				const visibleTooltip = screen.getByRole("tooltip")
 				expect(visibleTooltip).toHaveClass("max-w-[300px]", "break-words")
 			},
 			{ timeout: 1000 },
