@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { randomUUID } from "crypto"
 import fs from "fs/promises"
 import path from "path"
 import { useStdout } from "ink"
 import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } from "@tumble-code/types"
 
-import { getGlobalCommand } from "../../lib/utils/commands.js"
+import { getGlobalCommand, type GlobalCommandAction } from "../../lib/utils/commands.js"
 import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
 import { TuiCloudAuth, type CloudAuthChannel } from "../../lib/auth/tui-cloud-auth.js"
 import { buildModelRows, formatModelList, formatModelSwitched, hasOtherModel } from "../../lib/utils/model-command.js"
@@ -25,8 +25,8 @@ import {
 } from "../utils/transcriptExport.js"
 
 export interface UseTaskSubmitOptions {
-	sendToExtension: ((msg: WebviewMessage) => void) | null
-	runTask: ((prompt: string) => Promise<void>) | null
+	sendToExtension: (msg: WebviewMessage) => void
+	runTask: (prompt: string) => Promise<void>
 	/** Forget the transcript bookkeeping of the current task (the client's transcript reader). */
 	resetTranscript: () => void
 	permissionMode: PermissionMode
@@ -40,9 +40,9 @@ export interface UseTaskSubmitOptions {
 	/** `models` of cli-settings.json, listed by /model. */
 	configuredModels?: Record<string, CliModelSettings>
 	/** Runs another model in a mode and saves the choice (ExtensionHost.switchModel). */
-	switchModel?: ((mode: string, model: string) => ModelSwitch) | null
-	/** The running extension for /login and /logout (absent: they say so). */
-	cloudAuth?: CloudAuthChannel | null
+	switchModel: (mode: string, model: string) => ModelSwitch
+	/** The running extension for /login and /logout. */
+	cloudAuth: CloudAuthChannel
 }
 
 export interface UseTaskSubmitReturn {
@@ -103,18 +103,15 @@ export function useTaskSubmit({
 	 *
 	 * Shared by /new and /clear; the only thing /clear adds is the screen wipe.
 	 */
-	const resetConversation = useCallback(
-		(send: (msg: WebviewMessage) => void) => {
-			useCLIStore.getState().reset()
+	const resetConversation = useCallback(() => {
+		useCLIStore.getState().reset()
 
-			resetTranscript()
+		resetTranscript()
 
-			send({ type: "clearTask" })
-			send({ type: "requestCommands" })
-			send({ type: "requestModes" })
-		},
-		[resetTranscript],
-	)
+		sendToExtension({ type: "clearTask" })
+		sendToExtension({ type: "requestCommands" })
+		sendToExtension({ type: "requestModes" })
+	}, [resetTranscript, sendToExtension])
 
 	const note = useCallback(
 		(content: string) => addMessage({ id: randomUUID(), role: "system", content }),
@@ -129,11 +126,6 @@ export function useTaskSubmit({
 	/** /login [callback-url] and /logout, run in the background so the prompt stays usable. */
 	const runCloudAuth = useCallback(
 		(action: "cloudLogin" | "cloudLogout", argument: string) => {
-			if (!cloudAuth) {
-				note("Cloud sign-in is not available until the extension has started.")
-				return
-			}
-
 			if (cloudSignInRef.current?.channel !== cloudAuth) {
 				cloudSignInRef.current?.auth.cancel()
 				cloudSignInRef.current = { channel: cloudAuth, auth: new TuiCloudAuth({ channel: cloudAuth, note }) }
@@ -218,8 +210,6 @@ export function useTaskSubmit({
 
 			if (requested === model) {
 				content = `${activeMode} mode already runs ${requested}.`
-			} else if (!switchModel) {
-				content = "The model cannot be changed before the extension has started."
 			} else {
 				try {
 					// In effect from here on; the line waits for the save only.
@@ -253,132 +243,88 @@ export function useTaskSubmit({
 		[model, switchToModel],
 	)
 
-	/**
-	 * Handle user text submission (from input or followup question)
-	 */
-	const handleSubmit = useCallback(
+	/** /model: switch to the named model, or open the list, or print it when there is nothing to pick. */
+	const runModelCommand = useCallback(
+		async (requested: string) => {
+			if (requested) {
+				await switchToModel(requested)
+			} else if (hasOtherModel(buildModelRows(model, configuredModels))) {
+				useUIStateStore.getState().setShowModelPicker(true)
+			} else {
+				// Nothing to pick besides the model already running: the
+				// printed list says how to add entries.
+				note(
+					formatModelList({
+						mode: mode ?? "code",
+						currentModel: model,
+						models: configuredModels,
+						settingsPath: getSettingsPath(),
+					}),
+				)
+			}
+		},
+		[switchToModel, model, configuredModels, mode, note],
+	)
+
+	/** /permissions [mode]: show the options, or switch the approval mode for this session. */
+	const setPermissions = useCallback(
+		(argument: string) => {
+			const result = resolvePermissionArgument(argument, permissionMode)
+
+			if (!result.success) {
+				note(result.error)
+				return
+			}
+
+			if ("mode" in result) {
+				sendToExtension({ type: "updateSettings", updatedSettings: getPermissionSettings(result.mode) })
+				onPermissionModeChange(result.mode)
+				note(
+					result.mode === "allow"
+						? "Permissions: allowing actions without approval for this session."
+						: "Permissions: asking before actions for this session.",
+				)
+				return
+			}
+
+			note(result.help)
+		},
+		[permissionMode, sendToExtension, onPermissionModeChange, note],
+	)
+
+	/** What each CLI global command (/new, /model, ...) does with the text after its name. */
+	const commandHandlers = useMemo<Record<GlobalCommandAction, (argument: string) => void | Promise<void>>>(
+		() => ({
+			clearTask: () => resetConversation(),
+			clearConversation: () => {
+				// Wipe first, reset second: the reset re-renders, the
+				// `<Static>` region remounts on the new clear epoch and
+				// prints the welcome banner, and that banner has to land
+				// on the cleared screen rather than be cleared by it.
+				write(CLEAR_TERMINAL)
+				useUIStateStore.getState().clearTranscript()
+				resetConversation()
+			},
+			copyLastAnswer: copyToClipboard,
+			exportTranscript,
+			cloudLogin: (argument) => runCloudAuth("cloudLogin", argument),
+			cloudLogout: (argument) => runCloudAuth("cloudLogout", argument),
+			// The # trigger is the resume picker; App types it into the prompt.
+			openResumePicker: () => useUIStateStore.getState().requestInput("#"),
+			switchModel: runModelCommand,
+			openMcpPanel: () => useUIStateStore.getState().setShowMcpPanel(true),
+			setPermissions,
+		}),
+		[resetConversation, write, copyToClipboard, exportTranscript, runCloudAuth, runModelCommand, setPermissions],
+	)
+
+	/** A message for the task: an answer to its ask, the first prompt, a reply to its completion, or queued. */
+	const sendUserMessage = useCallback(
 		async (text: string) => {
-			if (!sendToExtension || !text.trim()) {
-				return
-			}
-
-			const trimmedText = text.trim()
-
-			if (trimmedText === "__CUSTOM__") {
-				return
-			}
-
-			// Check for CLI global action commands (e.g., /new)
-			if (trimmedText.startsWith("/")) {
-				const commandMatch = trimmedText.match(/^\/(\w+)(?:\s|$)/)
-
-				if (commandMatch && commandMatch[1]) {
-					const globalCommand = getGlobalCommand(commandMatch[1])
-
-					if (globalCommand?.action === "clearTask") {
-						resetConversation(sendToExtension)
-						return
-					}
-
-					if (globalCommand?.action === "clearConversation") {
-						// Wipe first, reset second: the reset re-renders, the
-						// `<Static>` region remounts on the new clear epoch and
-						// prints the welcome banner, and that banner has to land
-						// on the cleared screen rather than be cleared by it.
-						write(CLEAR_TERMINAL)
-						useUIStateStore.getState().clearTranscript()
-						resetConversation(sendToExtension)
-						return
-					}
-
-					if (globalCommand?.action === "copyLastAnswer") {
-						copyToClipboard(trimmedText.slice(commandMatch[0].length).trim())
-						return
-					}
-
-					if (globalCommand?.action === "exportTranscript") {
-						await exportTranscript(trimmedText.slice(commandMatch[0].length).trim())
-						return
-					}
-
-					if (globalCommand?.action === "cloudLogin" || globalCommand?.action === "cloudLogout") {
-						runCloudAuth(globalCommand.action, trimmedText.slice(commandMatch[0].length).trim())
-						return
-					}
-
-					if (globalCommand?.action === "openResumePicker") {
-						// The # trigger is the resume picker; App types it into the prompt.
-						useUIStateStore.getState().requestInput("#")
-						return
-					}
-
-					if (globalCommand?.action === "switchModel") {
-						const requested = trimmedText.slice(commandMatch[0].length).trim()
-
-						if (requested) {
-							await switchToModel(requested)
-						} else if (hasOtherModel(buildModelRows(model, configuredModels))) {
-							useUIStateStore.getState().setShowModelPicker(true)
-						} else {
-							// Nothing to pick besides the model already running: the
-							// printed list says how to add entries.
-							note(
-								formatModelList({
-									mode: mode ?? "code",
-									currentModel: model,
-									models: configuredModels,
-									settingsPath: getSettingsPath(),
-								}),
-							)
-						}
-						return
-					}
-
-					if (globalCommand?.action === "openMcpPanel") {
-						useUIStateStore.getState().setShowMcpPanel(true)
-						return
-					}
-
-					if (globalCommand?.action === "setPermissions") {
-						const argument = trimmedText.slice(commandMatch[0].length).trim()
-						const result = resolvePermissionArgument(argument, permissionMode)
-
-						if (!result.success) {
-							addMessage({ id: randomUUID(), role: "system", content: result.error })
-							return
-						}
-
-						if ("mode" in result) {
-							sendToExtension({
-								type: "updateSettings",
-								updatedSettings: getPermissionSettings(result.mode),
-							})
-							onPermissionModeChange(result.mode)
-							addMessage({
-								id: randomUUID(),
-								role: "system",
-								content:
-									result.mode === "allow"
-										? "Permissions: allowing actions without approval for this session."
-										: "Permissions: asking before actions for this session.",
-							})
-							return
-						}
-
-						addMessage({ id: randomUUID(), role: "system", content: result.help })
-						return
-					}
-				}
-			}
+			addMessage({ id: randomUUID(), role: "user", content: text })
 
 			if (pendingAsk) {
-				addMessage({ id: randomUUID(), role: "user", content: trimmedText })
-
-				sendToExtension({
-					type: "askResponse",
-					askResponse: "messageResponse",
-					text: trimmedText,
-				})
+				sendToExtension({ type: "askResponse", askResponse: "messageResponse", text })
 
 				setPendingAsk(null)
 				setShowCustomInput(false)
@@ -387,12 +333,9 @@ export function useTaskSubmit({
 			} else if (!hasStartedTask) {
 				setHasStartedTask(true)
 				setLoading(true)
-				addMessage({ id: randomUUID(), role: "user", content: trimmedText })
 
 				try {
-					if (runTask) {
-						await runTask(trimmedText)
-					}
+					await runTask(text)
 				} catch (err) {
 					setError(err instanceof Error ? err.message : String(err))
 					setLoading(false)
@@ -400,13 +343,8 @@ export function useTaskSubmit({
 			} else if (isComplete) {
 				setComplete(false)
 				setLoading(true)
-				addMessage({ id: randomUUID(), role: "user", content: trimmedText })
 
-				sendToExtension({
-					type: "askResponse",
-					askResponse: "messageResponse",
-					text: trimmedText,
-				})
+				sendToExtension({ type: "askResponse", askResponse: "messageResponse", text })
 			} else {
 				// The task is working and asks nothing: queue the message, as
 				// the VS Code chat does. The task takes it at its next ask, and
@@ -414,38 +352,50 @@ export function useTaskSubmit({
 				// it at once and answers. An askResponse here would only be
 				// read by whatever the task asks next.
 				setLoading(true)
-				addMessage({ id: randomUUID(), role: "user", content: trimmedText })
 
-				sendToExtension({ type: "queueMessage", text: trimmedText })
+				sendToExtension({ type: "queueMessage", text })
 			}
 		},
 		[
-			sendToExtension,
-			runTask,
-			pendingAsk,
-			hasStartedTask,
-			isComplete,
 			addMessage,
+			pendingAsk,
+			sendToExtension,
 			setPendingAsk,
-			setHasStartedTask,
-			setLoading,
-			setComplete,
-			setError,
 			setShowCustomInput,
 			setIsTransitioningToCustomInput,
-			resetConversation,
-			write,
-			permissionMode,
-			onPermissionModeChange,
-			copyToClipboard,
-			exportTranscript,
-			runCloudAuth,
-			switchToModel,
-			note,
-			mode,
-			model,
-			configuredModels,
+			setLoading,
+			hasStartedTask,
+			setHasStartedTask,
+			runTask,
+			setError,
+			isComplete,
+			setComplete,
 		],
+	)
+
+	/**
+	 * Handle user text submission (from input or followup question)
+	 */
+	const handleSubmit = useCallback(
+		async (text: string) => {
+			const trimmedText = text.trim()
+
+			if (!trimmedText || trimmedText === "__CUSTOM__") {
+				return
+			}
+
+			// CLI global action commands (e.g., /new); any other text goes to the task.
+			const commandMatch = trimmedText.match(/^\/(\w+)(?:\s|$)/)
+			const command = commandMatch ? getGlobalCommand(commandMatch[1]!) : undefined
+
+			if (commandMatch && command) {
+				await commandHandlers[command.action](trimmedText.slice(commandMatch[0].length).trim())
+				return
+			}
+
+			await sendUserMessage(trimmedText)
+		},
+		[commandHandlers, sendUserMessage],
 	)
 
 	const handleSuggestion = useCallback(
@@ -457,7 +407,7 @@ export function useTaskSubmit({
 			})
 
 			if (mode) {
-				sendToExtension?.({ type: "mode", text: mode })
+				sendToExtension({ type: "mode", text: mode })
 			}
 
 			void handleSubmit(suggestion.answer)
@@ -465,31 +415,18 @@ export function useTaskSubmit({
 		[sendToExtension, permissionMode, handleSubmit],
 	)
 
-	/**
-	 * Handle approval (Y key)
-	 */
-	const handleApprove = useCallback(() => {
-		if (!sendToExtension) {
-			return
-		}
+	/** Y and N on an approval. */
+	const answerApproval = useCallback(
+		(askResponse: "yesButtonClicked" | "noButtonClicked") => {
+			sendToExtension({ type: "askResponse", askResponse })
+			setPendingAsk(null)
+			setLoading(true)
+		},
+		[sendToExtension, setPendingAsk, setLoading],
+	)
 
-		sendToExtension({ type: "askResponse", askResponse: "yesButtonClicked" })
-		setPendingAsk(null)
-		setLoading(true)
-	}, [sendToExtension, setPendingAsk, setLoading])
-
-	/**
-	 * Handle rejection (N key)
-	 */
-	const handleReject = useCallback(() => {
-		if (!sendToExtension) {
-			return
-		}
-
-		sendToExtension({ type: "askResponse", askResponse: "noButtonClicked" })
-		setPendingAsk(null)
-		setLoading(true)
-	}, [sendToExtension, setPendingAsk, setLoading])
+	const handleApprove = useCallback(() => answerApproval("yesButtonClicked"), [answerApproval])
+	const handleReject = useCallback(() => answerApproval("noButtonClicked"), [answerApproval])
 
 	return {
 		handleSubmit,

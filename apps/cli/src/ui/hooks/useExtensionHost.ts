@@ -62,8 +62,8 @@ export interface UseExtensionHostOptions extends ExtensionHostOptions {
 }
 
 export interface UseExtensionHostReturn {
-	sendToExtension: ((msg: WebviewMessage) => void) | null
-	runTask: ((prompt: string) => Promise<void>) | null
+	sendToExtension: (msg: WebviewMessage) => void
+	runTask: (prompt: string) => Promise<void>
 	cleanup: () => Promise<void>
 	/** Forget the transcript bookkeeping of the current task (/new, /clear, switching tasks). */
 	resetTranscript: () => void
