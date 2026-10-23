@@ -142,6 +142,9 @@ describe("the CLI bundle", () => {
 				source,
 				`
 import { loadReactProductionBuilds } from ${JSON.stringify(HELPER.split(path.sep).join("/"))}
+let measures = 0
+const measure = performance.measure.bind(performance)
+performance.measure = ((...args: Parameters<typeof measure>) => (measures++, measure(...args))) as typeof performance.measure
 if (!process.env.PROBE_SKIP_HELPER) {
 	await loadReactProductionBuilds()
 }
@@ -156,7 +159,7 @@ for (let i = 0; i < 20; i++) {
 	await new Promise((resolve) => setTimeout(resolve, 5))
 }
 app.unmount()
-console.log(JSON.stringify({ measures: performance.getEntriesByType("measure").length, nodeEnv: process.env.NODE_ENV ?? null }))
+console.log(JSON.stringify({ measures, nodeEnv: process.env.NODE_ENV ?? null }))
 process.exit(0)
 `,
 			)
@@ -181,11 +184,11 @@ process.exit(0)
 			return JSON.parse(output.trim().split("\n").at(-1)!)
 		}
 
-		it("still carries the development builds, which record a measure per render without the helper", () => {
+		it("still carries the development builds, which measure every render without the helper", () => {
 			expect(run({ skipHelper: true }).measures).toBeGreaterThan(0)
 		})
 
-		it("renders with the production builds, which record no measures", () => {
+		it("renders with the production builds, which measure nothing", () => {
 			expect(run({})).toEqual({ measures: 0, nodeEnv: null })
 		})
 

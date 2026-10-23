@@ -88,7 +88,7 @@ workspace, or a `data:` URL) are drawn in the printed transcript (`ui/graphics/`
   unless a protocol is forced.
 - `InlineImage.tsx` decodes and scales the image with resvg, encodes it (`imageEncoding.ts`) and registers it
   (`inlineImages.ts`). Ink only ever prints a short private-use marker in its place.
-- `utils/scrollSafeStdout.ts` swaps the marker for the image on its way to the terminal, with the cursor moves that
+- `utils/imageStdout.ts` swaps the marker for the image on its way to the terminal, with the cursor moves that
   reserve the rows the image covers. When the terminal does not report its cell size (xterm by default), the
   terminal moves the cursor past the image itself.
 

@@ -1,6 +1,7 @@
 import { EventEmitter } from "events"
 
-import { createScrollSafeStdout } from "../scrollSafeStdout.js"
+import { registerImage, resetInlineImages } from "../../graphics/inlineImages.js"
+import { createImageStdout } from "../imageStdout.js"
 
 class FakeStream extends EventEmitter {
 	chunks: unknown[] = []
@@ -23,30 +24,24 @@ class FakeStream extends EventEmitter {
 
 function wrap() {
 	const stream = new FakeStream()
-	const wrapped = createScrollSafeStdout(stream as unknown as NodeJS.WriteStream)
+	const wrapped = createImageStdout(stream as unknown as NodeJS.WriteStream)
 	return { stream, wrapped }
 }
 
-describe("createScrollSafeStdout", () => {
-	it("turns every cursor-next-line into a scrolling newline", () => {
+describe("createImageStdout", () => {
+	beforeEach(() => resetInlineImages())
+
+	it("draws the image in place of its marker", () => {
 		const { stream, wrapped } = wrap()
-		// The shape of an incremental ink frame: back to the top, skip two
-		// unchanged rows, rewrite the third, skip the last.
-		wrapped.write("\x1b[4A\x1b[E\x1b[E\x1b[1Gspinner\x1b[K\n\x1b[E")
+		const marker = registerImage("a", { sequence: "IMG", rows: 1 })
+		wrapped.write(`\x1b[1Gbefore ${marker}\n`)
 
-		expect(stream.chunks).toEqual(["\x1b[4A\r\n\r\n\x1b[1Gspinner\x1b[K\n\r\n"])
-	})
-
-	it("leaves other output untouched", () => {
-		const { stream, wrapped } = wrap()
-		wrapped.write("\x1b[2K\x1b[1A\x1b[2K\x1b[Gplain text\n")
-
-		expect(stream.chunks).toEqual(["\x1b[2K\x1b[1A\x1b[2K\x1b[Gplain text\n"])
+		expect(stream.chunks).toEqual(["\x1b[1Gbefore \x1b7IMG\x1b8\n"])
 	})
 
 	it("passes non-string chunks through", () => {
 		const { stream, wrapped } = wrap()
-		const buffer = Buffer.from("\x1b[E")
+		const buffer = Buffer.from("\uE000a\uE001")
 		wrapped.write(buffer)
 
 		expect(stream.chunks).toEqual([buffer])

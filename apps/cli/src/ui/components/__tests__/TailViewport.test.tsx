@@ -20,7 +20,7 @@ describe("TailViewport", () => {
 
 	it("clips tall content to the last maxRows rows right after mount", async () => {
 		const lines = Array.from({ length: 10 }, (_, i) => `line ${i}`)
-		const { frames, lastFrame } = render(
+		const { frames } = render(
 			<TailViewport maxRows={4}>
 				{lines.map((l) => (
 					<Text key={l}>{l}</Text>
@@ -29,11 +29,7 @@ describe("TailViewport", () => {
 		)
 		await tick()
 
-		// The cap cannot reach the very first layout (the yoga node is created
-		// in the commit that ink lays out), so at most one frame may exceed it
-		// and the correction must follow in the same tick.
-		expect(lastFrame()).toBe("line 6\nline 7\nline 8\nline 9")
-		expect(frames.length).toBeLessThanOrEqual(2)
+		expect(frames).toEqual(["line 6\nline 7\nline 8\nline 9"])
 	})
 
 	it("shrinks with the content in the same frame (no filler rows above a short tail)", async () => {

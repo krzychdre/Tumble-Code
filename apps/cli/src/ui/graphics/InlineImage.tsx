@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 import { useContext, useMemo, type ReactNode } from "react"
-import { Text, useStdout } from "ink"
+import { Text, useWindowSize } from "ink"
 
 import { debugLog } from "@tumble-code/core/cli"
 
@@ -109,9 +109,7 @@ interface InlineImageProps {
 export function InlineImage({ source, fallback }: InlineImageProps) {
 	const graphics = useContext(GraphicsContext)
 	const protocol = useImageProtocol()
-	const { stdout } = useStdout()
-	const columns = stdout.columns || 80
-	const rows = stdout.rows || 24
+	const { columns, rows } = useWindowSize()
 
 	const marker = useMemo(() => {
 		if (!protocol) {

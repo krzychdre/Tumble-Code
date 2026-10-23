@@ -1,4 +1,4 @@
-import { Box, Text, useStdout } from "ink"
+import { Box, Text, useWindowSize } from "ink"
 
 import { figures } from "../../figures.js"
 import Bullet from "../primitives/Bullet.js"
@@ -44,8 +44,7 @@ function truncateCommand(command: string, columns: number): string {
 }
 
 export function CommandTool({ toolData, message, expanded = false }: ToolRendererProps) {
-	const { stdout } = useStdout()
-	const columns = stdout?.columns || 80
+	const { columns } = useWindowSize()
 	const status = toolStatusFromMessage(message)
 	const maxOutputLines = expanded ? Number.POSITIVE_INFINITY : MAX_OUTPUT_LINES
 	const command = toolData.command ? sanitizeContent(toolData.command).trim() : ""

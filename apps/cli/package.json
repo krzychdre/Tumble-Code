@@ -29,7 +29,7 @@
 		"commander": "^15.0.0",
 		"execa": "catalog:",
 		"fuzzysort": "^4.0.2",
-		"ink": "7.1.1",
+		"ink": "8.0.0",
 		"p-wait-for": "catalog:",
 		"react": "catalog:",
 		"sixel": "^0.16.0",
