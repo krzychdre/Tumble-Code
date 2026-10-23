@@ -494,6 +494,27 @@ describe("ContextManagementSettings", () => {
 		expect(gitStatusSlider).toHaveValue("0")
 	})
 
+	it("a slider row stores the moved value", () => {
+		const setCachedStateField = vi.fn()
+		renderCM({ ...defaultProps, setCachedStateField })
+		fireEvent.change(screen.getByTestId("open-tabs-limit-slider"), { target: { value: "42" } })
+		expect(setCachedStateField).toHaveBeenCalledWith("maxOpenTabsContext", 42)
+	})
+
+	it("a number row stores whole numbers inside its range and ignores the rest", () => {
+		const setCachedStateField = vi.fn()
+		renderCM({ ...defaultProps, setCachedStateField })
+		const input = screen.getByTestId("max-image-file-size-input")
+
+		for (const outside of ["0", "101", "abc"]) {
+			fireEvent.change(input, { target: { value: outside } })
+		}
+		expect(setCachedStateField).not.toHaveBeenCalled()
+
+		fireEvent.change(input, { target: { value: "100" } })
+		expect(setCachedStateField).toHaveBeenCalledWith("maxImageFileSize", 100)
+	})
+
 	it("handles undefined optional props gracefully", () => {
 		const propsWithUndefined = {
 			...defaultProps,
