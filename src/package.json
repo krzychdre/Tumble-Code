@@ -575,7 +575,7 @@
 		"undici": "^7.29.0",
 		"uuid": "^14.0.3",
 		"vscode-material-icons": "catalog:",
-		"web-tree-sitter": "^0.25.6",
+		"web-tree-sitter": "^0.27.1",
 		"workerpool": "^10.0.3",
 		"yaml": "^2.9.1",
 		"zod": "catalog:"
