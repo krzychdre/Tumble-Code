@@ -43,7 +43,7 @@ read. No tsconfig needed a change: the repository already builds on 6.0's defaul
   and `recommendedTypeChecked` fail the same way. So every `pnpm lint` and the pre-commit hook would break.
 - **TypeScript 7.0 ships no compiler API** (its package exports only `unstable/*` entry points). Other tools that
   import `typescript` as a library would need the 6.0 API too: tsup's declaration build in `apps/cli` and
-  `packages/types`, and knip.
+  `packages/types`.
 
 ## Way forward
 
