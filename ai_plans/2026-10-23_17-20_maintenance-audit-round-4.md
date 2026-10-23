@@ -83,7 +83,7 @@ list still stands), `2026-10-01_simplification-round-2.md`, `2026-09-27_simplifi
 ### A3. Safe batch: patch and minor npm updates, then dedupe
 
 **Status:** #941, #953 (replaces the closed #949), #973, #974, #978. Prettier 3.9 moved to its own item: #995 reformat, #996 blame ignore. The final
-verification PR (`chore/r4-final-green`) pins the CLI's `@vscode/ripgrep` back to ~1.17.1: 1.18 moved `rg` into
+verification PR #997 pins the CLI's `@vscode/ripgrep` back to ~1.17.1: 1.18 moved `rg` into
 per-platform packages, which the CLI's lookup and its release build do not read.
 
 - **Scope (minor, grouped as in `renovate.json`):** provider SDKs `openai` 7.23 to 7.43, `@google/genai` 2.24 to
@@ -171,7 +171,7 @@ is set by VS Code's Electron, so the CLI would be the only beneficiary; revisit 
 
 ### A5. Dependency hygiene (one small PR)
 
-**Status:** a to c #933, d #937. The final verification PR spells `@types/vscode` out in `src/package.json`, because
+**Status:** a to c #933, d #937. The final verification PR #997 spells `@types/vscode` out in `src/package.json`, because
 `vsce package` cannot parse `catalog:`.
 
 a. **`esbuild-wasm` ^0.25 while `esbuild` is ^0.28.** The runtime transpiler for custom tools
@@ -768,7 +768,7 @@ cannot swap them). All small; do them when the file is next open.
 
 ## Follow-ups found during execution
 
-Final verification on `chore/r4-final-green` (every local suite, the VSIX build and GitHub CI) fixed three defects:
+Final verification in #997 (every local suite, the VSIX build and GitHub CI) fixed three defects:
 the CLI found no ripgrep after `@vscode/ripgrep` 1.18 (#974), `vsce package` failed on `"@types/vscode":
 "catalog:"` (#937), and the autoDream MEM-2 and MEM-3 specs waited on fixed 10 ms sleeps instead of the condition
 (the known timing flake; the MEM-3 test also never reached the re-entry guard, the scan throttle stopped the second

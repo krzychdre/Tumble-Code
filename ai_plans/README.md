@@ -53,8 +53,8 @@ plan. The vision mode is built in since 2026-10-13 (`DEFAULT_MODES` in `packages
   the VS Code terminal path stays.
 - [`2026-10-23_17-20_maintenance-audit-round-4.md`](2026-10-23_17-20_maintenance-audit-round-4.md): round 4,
   dependency refresh (bot, GitHub Actions, planned majors, Python service) plus refactoring and test-hygiene
-  items for the host, CLI, webview, cloud service and docs. Done 2026-10-23 (#918 to #996 plus the final
-  verification PR); its "Follow-ups found during execution" section lists what is still open.
+  items for the host, CLI, webview, cloud service and docs. Done 2026-10-23 (#918 to #996, final verification in
+  #997); its "Follow-ups found during execution" section lists what is still open.
 - [`2026-09-27_ui-modernization.md`](2026-09-27_ui-modernization.md): UI proposals for the VS Code panel, the cloud
   web panel and the CLI; its progress logs record what landed in steps 1 to 5.
 - The 2026-09-24 refactor master plan (`ai_plans/2026-09-24_refactor/`) is intentionally kept on the unmerged
