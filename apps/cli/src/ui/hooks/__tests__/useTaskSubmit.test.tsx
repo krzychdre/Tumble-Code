@@ -21,6 +21,14 @@ import { useCLIStore } from "../../store.js"
 import { useUIStateStore } from "../../stores/uiStateStore.js"
 import { useTaskSubmit, type UseTaskSubmitReturn } from "../useTaskSubmit.js"
 
+/** The host members a test does not look at (the TUI always passes all of them). */
+const idleHost = {
+	switchModel: (): ModelSwitch => {
+		throw new Error("switchModel is not part of this test")
+	},
+	cloudAuth: { send: () => {}, onMessage: () => () => {}, onOpenExternal: () => () => {} } satisfies CloudAuthChannel,
+}
+
 describe("useTaskSubmit permission commands", () => {
 	let api: UseTaskSubmitReturn
 	let permissionMode: PermissionMode
@@ -30,6 +38,7 @@ describe("useTaskSubmit permission commands", () => {
 
 	function Harness() {
 		api = useTaskSubmit({
+			...idleHost,
 			sendToExtension,
 			runTask,
 			resetTranscript: () => {},
@@ -120,6 +129,7 @@ describe("useTaskSubmit conversation commands", () => {
 
 	function Harness() {
 		api = useTaskSubmit({
+			...idleHost,
 			sendToExtension,
 			runTask,
 			resetTranscript,
@@ -236,6 +246,7 @@ describe("useTaskSubmit messages typed during a task", () => {
 
 	function Harness() {
 		api = useTaskSubmit({
+			...idleHost,
 			sendToExtension,
 			runTask: vi.fn(async () => undefined),
 			resetTranscript: vi.fn(),
@@ -276,6 +287,35 @@ describe("useTaskSubmit messages typed during a task", () => {
 	})
 })
 
+describe("useTaskSubmit approvals", () => {
+	it.each([
+		["handleApprove", "yesButtonClicked"],
+		["handleReject", "noButtonClicked"],
+	] as const)("%s answers the ask with %s", (handler, askResponse) => {
+		const sendToExtension = vi.fn<(message: WebviewMessage) => void>()
+		let api: UseTaskSubmitReturn | undefined
+		function Harness() {
+			api = useTaskSubmit({
+				...idleHost,
+				sendToExtension,
+				runTask: vi.fn(async () => undefined),
+				resetTranscript: vi.fn(),
+				permissionMode: "ask",
+				onPermissionModeChange: vi.fn(),
+			})
+			return <Text>harness</Text>
+		}
+		useCLIStore.getState().reset()
+		render(<Harness />)
+
+		api![handler]()
+
+		expect(sendToExtension).toHaveBeenCalledWith({ type: "askResponse", askResponse })
+		expect(useCLIStore.getState().pendingAsk).toBeNull()
+		expect(useCLIStore.getState().isLoading).toBe(true)
+	})
+})
+
 describe("useTaskSubmit /copy and /export", () => {
 	let api: UseTaskSubmitReturn
 	let sendToExtension: ReturnType<typeof vi.fn<(message: WebviewMessage) => void>>
@@ -285,6 +325,7 @@ describe("useTaskSubmit /copy and /export", () => {
 
 	function Harness() {
 		api = useTaskSubmit({
+			...idleHost,
 			sendToExtension,
 			runTask,
 			resetTranscript: () => {},
@@ -393,8 +434,9 @@ describe("useTaskSubmit /login and /logout", () => {
 		onOpenExternal: () => () => {},
 	}
 
-	function Harness({ cloudAuth }: { cloudAuth: CloudAuthChannel | null }) {
+	function Harness({ cloudAuth }: { cloudAuth: CloudAuthChannel }) {
 		api = useTaskSubmit({
+			...idleHost,
 			sendToExtension: vi.fn(),
 			runTask,
 			resetTranscript: () => {},
@@ -438,15 +480,6 @@ describe("useTaskSubmit /login and /logout", () => {
 		await vi.waitFor(() => expect(systemMessages().at(-1)).toBe("Signed out from Tumble Code Cloud."))
 		expect(sent).toEqual([{ type: "rooCloudSignOut" }])
 	})
-
-	it("says so when the extension has not started yet", async () => {
-		render(<Harness cloudAuth={null} />)
-
-		await api.handleSubmit("/logout")
-
-		expect(systemMessages().at(-1)).toBe("Cloud sign-in is not available until the extension has started.")
-		expect(sent).toEqual([])
-	})
 })
 
 describe("useTaskSubmit /model", () => {
@@ -459,6 +492,7 @@ describe("useTaskSubmit /model", () => {
 
 	function Harness() {
 		api = useTaskSubmit({
+			...idleHost,
 			sendToExtension,
 			runTask,
 			resetTranscript: () => {},
