@@ -185,7 +185,7 @@ describe("Gemini handlers against the real @google/genai client (wire characteri
 	describe("Gemini API (API key)", () => {
 		const options = {
 			geminiApiKey: "test-key",
-			apiModelId: "gemini-3-pro-preview",
+			apiModelId: "gemini-3.1-pro-preview",
 			reasoningEffort: "low" as const,
 		}
 
@@ -198,7 +198,7 @@ describe("Gemini handlers against the real @google/genai client (wire characteri
 			expect(requests).toHaveLength(1)
 			const [request] = requests
 			expect(request.url).toBe(
-				"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:streamGenerateContent?alt=sse",
+				"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:streamGenerateContent?alt=sse",
 			)
 			expect(request.method).toBe("POST")
 			expect(request.headers).toEqual({
@@ -273,7 +273,7 @@ describe("Gemini handlers against the real @google/genai client (wire characteri
 			await collect(handler.createMessage("sys", history, metadata()))
 
 			expect(requests[0].url).toBe(
-				"https://proxy.example.com/v1beta/models/gemini-3-pro-preview:streamGenerateContent?alt=sse",
+				"https://proxy.example.com/v1beta/models/gemini-3.1-pro-preview:streamGenerateContent?alt=sse",
 			)
 		})
 
@@ -320,7 +320,7 @@ describe("Gemini handlers against the real @google/genai client (wire characteri
 		const vertexOptions = {
 			vertexProjectId: "my-project",
 			vertexRegion: "us-central1",
-			apiModelId: "gemini-2.5-pro",
+			apiModelId: "gemini-3.1-pro-preview",
 		}
 
 		it.each([
@@ -335,7 +335,7 @@ describe("Gemini handlers against the real @google/genai client (wire characteri
 
 			expect(requests).toHaveLength(1)
 			expect(requests[0].url).toBe(
-				"https://us-central1-aiplatform.googleapis.com/v1beta1/projects/my-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+				"https://us-central1-aiplatform.googleapis.com/v1beta1/projects/my-project/locations/us-central1/publishers/google/models/gemini-3.1-pro-preview:streamGenerateContent?alt=sse",
 			)
 			expect(requests[0].headers).toEqual({
 				authorization: "Bearer vertex-token",

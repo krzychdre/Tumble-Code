@@ -136,7 +136,7 @@ export const getGeminiReasoning = ({
 
 	// For effort-based Gemini models, rely directly on the selected effort value.
 	// We intentionally ignore enableReasoningEffort here so that explicitly chosen
-	// efforts in the UI (e.g. "High" for gemini-3-pro-preview) always translate
+	// efforts in the UI (e.g. "High" for gemini-3.1-pro-preview) always translate
 	// into a thinkingConfig, regardless of legacy boolean flags.
 	const selectedEffort = (settings.reasoningEffort ?? model.reasoningEffort) as
 		ReasoningEffortExtended | "disable" | undefined
@@ -147,8 +147,8 @@ export const getGeminiReasoning = ({
 	}
 
 	// Validate that the selected effort is supported by this specific model.
-	// e.g. gemini-3-pro-preview only supports ["low", "high"] — sending
-	// "medium" (carried over from a different model's settings) causes errors.
+	// e.g. gemini-3.1-pro-preview has no "minimal" level: sending it (carried over
+	// from a different model's settings) causes errors.
 	const effortToUse =
 		Array.isArray(model.supportsReasoningEffort) &&
 		isGeminiThinkingLevel(selectedEffort) &&

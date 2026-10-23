@@ -125,37 +125,6 @@ export const geminiModels = {
 			},
 		],
 	},
-	// Shut down by Google; kept so existing profiles still resolve, flagged so
-	// the model picker hides it and warns anyone still selecting it.
-	"gemini-3-pro-preview": {
-		deprecated: true,
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningEffort: ["low", "high"],
-		reasoningEffort: "low",
-
-		supportsTemperature: true,
-		defaultTemperature: 1,
-		inputPrice: 4.0,
-		outputPrice: 18.0,
-		cacheReadsPrice: 0.4,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 2.0,
-				outputPrice: 12.0,
-				cacheReadsPrice: 0.2,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 4.0,
-				outputPrice: 18.0,
-				cacheReadsPrice: 0.4,
-			},
-		],
-	},
 	"gemini-3-flash-preview": {
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
@@ -199,104 +168,9 @@ export const geminiModels = {
 			},
 		],
 	},
-	"gemini-2.5-pro-preview-06-05": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
-		outputPrice: 15,
-		cacheReadsPrice: 0.625,
-		cacheWritesPrice: 4.5,
-		maxThinkingTokens: 32_768,
-		supportsReasoningBudget: true,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
-				outputPrice: 15,
-				cacheReadsPrice: 0.625,
-			},
-		],
-	},
-	"gemini-2.5-pro-preview-05-06": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
-		outputPrice: 15,
-		cacheReadsPrice: 0.625,
-		cacheWritesPrice: 4.5,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
-				outputPrice: 15,
-				cacheReadsPrice: 0.625,
-			},
-		],
-	},
-	"gemini-2.5-pro-preview-03-25": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
-		outputPrice: 15,
-		cacheReadsPrice: 0.625,
-		cacheWritesPrice: 4.5,
-		maxThinkingTokens: 32_768,
-		supportsReasoningBudget: true,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
-				outputPrice: 15,
-				cacheReadsPrice: 0.625,
-			},
-		],
-	},
 
 	// 2.5 Flash models
 	"gemini-flash-latest": {
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.3,
-		outputPrice: 2.5,
-		cacheReadsPrice: 0.075,
-		cacheWritesPrice: 1.0,
-		maxThinkingTokens: 24_576,
-		supportsReasoningBudget: true,
-	},
-	// Shut down by Google; kept so existing profiles still resolve, flagged so
-	// the model picker hides it and warns anyone still selecting it.
-	"gemini-2.5-flash-preview-09-2025": {
-		deprecated: true,
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
 		supportsImages: true,
@@ -325,22 +199,6 @@ export const geminiModels = {
 
 	// 2.5 Flash Lite models
 	"gemini-flash-lite-latest": {
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.1,
-		outputPrice: 0.4,
-		cacheReadsPrice: 0.025,
-		cacheWritesPrice: 1.0,
-		supportsReasoningBudget: true,
-		maxThinkingTokens: 24_576,
-	},
-	// Shut down by Google; kept so existing profiles still resolve, flagged so
-	// the model picker hides it and warns anyone still selecting it.
-	"gemini-2.5-flash-lite-preview-09-2025": {
-		deprecated: true,
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
 		supportsImages: true,

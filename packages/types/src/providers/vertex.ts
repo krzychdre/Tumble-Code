@@ -10,178 +10,17 @@ export const vertexDefaultModelId: VertexModelId = "claude-opus-5"
 
 // Info stand-ins for a model id that is not in the table, one per handler (see `vertexModelFamily`).
 // Only the info is used, never the id. An unknown Claude id gets Claude Sonnet 4.5: it lists no effort
-// levels, so a newer Claude we know nothing about gets no effort. An unknown Gemini (or open) id gets Gemini 2.0 Flash: it has no reasoning budget
-// and no effort levels, so the Gemini handler sends no thinking config an older Gemini would reject.
+// levels, so a newer Claude we know nothing about gets no effort. An unknown Gemini (or open) id gets
+// Gemini 3.1 Pro: Vertex serves no Gemini older than 3 any more, and its default thinking level `low` is one
+// every Gemini 3 model accepts.
 export const vertexUnknownClaudeModelStandInId: VertexModelId = "claude-sonnet-4-5@20250929"
-export const vertexUnknownGeminiModelStandInId: VertexModelId = "gemini-2.0-flash-001"
+export const vertexUnknownGeminiModelStandInId: VertexModelId = "gemini-3.1-pro-preview"
 
 export const vertexModels = {
 	"gemini-3.5-flash": { ...geminiModels["gemini-3.5-flash"] },
 	"gemini-3.1-pro-preview": { ...geminiModels["gemini-3.1-pro-preview"] },
 	"gemini-3.1-pro-preview-customtools": { ...geminiModels["gemini-3.1-pro-preview-customtools"] },
-	"gemini-3-pro-preview": { ...geminiModels["gemini-3-pro-preview"] },
 	"gemini-3-flash-preview": { ...geminiModels["gemini-3-flash-preview"] },
-	"gemini-2.5-flash-preview-05-20:thinking": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.15,
-		outputPrice: 3.5,
-		maxThinkingTokens: 24_576,
-		supportsReasoningBudget: true,
-		requiredReasoningBudget: true,
-	},
-	"gemini-2.5-flash-preview-05-20": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.15,
-		outputPrice: 0.6,
-	},
-	"gemini-2.5-flash": { ...geminiModels["gemini-2.5-flash"] },
-	"gemini-2.5-flash-preview-04-17:thinking": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: false,
-
-		inputPrice: 0.15,
-		outputPrice: 3.5,
-		maxThinkingTokens: 24_576,
-		supportsReasoningBudget: true,
-		requiredReasoningBudget: true,
-	},
-	"gemini-2.5-flash-preview-04-17": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: false,
-
-		inputPrice: 0.15,
-		outputPrice: 0.6,
-	},
-	"gemini-2.5-pro-preview-03-25": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 2.5,
-		outputPrice: 15,
-	},
-	"gemini-2.5-pro-preview-05-06": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 2.5,
-		outputPrice: 15,
-	},
-	"gemini-2.5-pro-preview-06-05": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 2.5,
-		outputPrice: 15,
-		maxThinkingTokens: 32_768,
-		supportsReasoningBudget: true,
-	},
-	"gemini-2.5-pro": {
-		maxTokens: 64_000,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 2.5,
-		outputPrice: 15,
-		maxThinkingTokens: 32_768,
-		supportsReasoningBudget: true,
-		requiredReasoningBudget: true,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
-				outputPrice: 15,
-				cacheReadsPrice: 0.625,
-			},
-		],
-	},
-	"gemini-2.5-pro-exp-03-25": {
-		maxTokens: 65_535,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: false,
-
-		inputPrice: 0,
-		outputPrice: 0,
-	},
-	"gemini-2.0-pro-exp-02-05": {
-		maxTokens: 8192,
-		contextWindow: 2_097_152,
-		supportsImages: true,
-		supportsPromptCache: false,
-
-		inputPrice: 0,
-		outputPrice: 0,
-	},
-	"gemini-2.0-flash-001": {
-		maxTokens: 8192,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.15,
-		outputPrice: 0.6,
-	},
-	"gemini-2.0-flash-lite-001": {
-		maxTokens: 8192,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: false,
-
-		inputPrice: 0.075,
-		outputPrice: 0.3,
-	},
-	"gemini-2.0-flash-thinking-exp-01-21": {
-		maxTokens: 8192,
-		contextWindow: 32_768,
-		supportsImages: true,
-		supportsPromptCache: false,
-
-		inputPrice: 0,
-		outputPrice: 0,
-	},
-	"gemini-1.5-flash-002": {
-		maxTokens: 8192,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.075,
-		outputPrice: 0.3,
-	},
-	"gemini-1.5-pro-002": {
-		maxTokens: 8192,
-		contextWindow: 2_097_152,
-		supportsImages: true,
-		supportsPromptCache: false,
-
-		inputPrice: 1.25,
-		outputPrice: 5,
-	},
 	"claude-sonnet-4@20250514": withoutTemperature(claudeModels["sonnet-4"]),
 	"claude-sonnet-4-5@20250929": withoutTemperature(claudeModels["sonnet-4-5"]),
 	"claude-sonnet-4-6": withoutTemperature(claudeModels["sonnet-4-6"]),
@@ -198,19 +37,6 @@ export const vertexModels = {
 	"claude-fable-5": withoutTemperature(claudeModels["fable-5"]),
 	"claude-opus-4-5@20251101": withoutTemperature(claudeModels["opus-4-5"]),
 	"claude-opus-4@20250514": withoutTemperature(withoutFields(claudeModels["opus-4"], "supportsReasoningBudget")),
-	"gemini-2.5-flash-lite-preview-06-17": {
-		maxTokens: 64_000,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.1,
-		outputPrice: 0.4,
-		cacheReadsPrice: 0.025,
-		cacheWritesPrice: 1.0,
-		maxThinkingTokens: 24_576,
-		supportsReasoningBudget: true,
-	},
 } as const satisfies Record<string, ModelInfo>
 
 // Vertex AI models that support 1M context window beta: the Claude entries that price its tier.

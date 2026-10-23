@@ -178,11 +178,11 @@ exports[`Gemini handlers against the real @google/genai client (wire characteriz
     },
   ],
   "generationConfig": {
-    "maxOutputTokens": 16384,
+    "maxOutputTokens": 65536,
     "temperature": 1,
     "thinkingConfig": {
       "includeThoughts": true,
-      "thinkingBudget": 128,
+      "thinkingLevel": "low",
     },
   },
   "systemInstruction": {
@@ -283,11 +283,11 @@ exports[`Gemini handlers against the real @google/genai client (wire characteriz
     },
   ],
   "generationConfig": {
-    "maxOutputTokens": 16384,
+    "maxOutputTokens": 65536,
     "temperature": 1,
     "thinkingConfig": {
       "includeThoughts": true,
-      "thinkingBudget": 128,
+      "thinkingLevel": "low",
     },
   },
   "systemInstruction": {
@@ -388,11 +388,11 @@ exports[`Gemini handlers against the real @google/genai client (wire characteriz
     },
   ],
   "generationConfig": {
-    "maxOutputTokens": 16384,
+    "maxOutputTokens": 65536,
     "temperature": 1,
     "thinkingConfig": {
       "includeThoughts": true,
-      "thinkingBudget": 128,
+      "thinkingLevel": "low",
     },
   },
   "systemInstruction": {
