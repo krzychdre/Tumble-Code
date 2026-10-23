@@ -933,6 +933,7 @@ describe("run provider settings per mode", () => {
 		const settings = mockHost.lastOptions?.modeProviderSettings
 		expect(settings?.modes.architect).toMatchObject({ openAiModelId: "GLM-5.3-NVFP4", reasoningEffort: "low" })
 		expect(settings?.base.reasoningEffort).toBe("low")
+		expect(mockHost.lastOptions!.resolveModelProviderSettings!("code", "Qwen3.8-27B").reasoningEffort).toBe("low")
 	})
 
 	it("a broken mode entry fails at startup and names the mode", async () => {

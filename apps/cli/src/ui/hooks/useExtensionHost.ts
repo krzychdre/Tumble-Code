@@ -55,6 +55,7 @@ export interface UseExtensionHostOptions extends ExtensionHostOptions {
 	initialPrompt?: string
 	initialTaskId?: string
 	initialSessionId?: string
+	exitOnComplete: boolean
 	/** Where the client's transcript reader sends the rows (see useTranscriptSink). */
 	transcript: TranscriptSink
 	createExtensionHost: (options: ExtensionHostOptions) => ExtensionHostInterface
@@ -87,6 +88,7 @@ export function useExtensionHost({
 	initialPrompt,
 	initialTaskId,
 	initialSessionId,
+	exitOnComplete,
 	transcript,
 	createExtensionHost,
 	// Everything else is an ExtensionHostOptions field and goes to the host
@@ -158,7 +160,7 @@ export function useExtensionHost({
 					// message, so --oneshot must not end the session on it.
 					const resumed = event?.message?.type === "ask" && event.message.ask === "resume_completed_task"
 
-					if (hostOptions.exitOnComplete && !resumed) {
+					if (exitOnComplete && !resumed) {
 						await cleanup()
 						exit()
 						setTimeout(() => process.exit(0), 100)

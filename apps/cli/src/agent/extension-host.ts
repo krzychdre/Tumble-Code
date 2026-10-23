@@ -35,18 +35,8 @@ import {
 } from "@tumble-code/vscode-shim"
 import { DebugLogger, setDebugLogEnabled } from "@tumble-code/core/cli"
 
-import {
-	DEFAULT_FLAGS,
-	type CliModelSettings,
-	type ReasoningEffortFlagOptions,
-	type SupportedProvider,
-} from "@/types/index.js"
-import {
-	resolveReasoningEffort,
-	summarizeProviderSettings,
-	toProviderSettings,
-	withModel,
-} from "@/lib/utils/provider-config.js"
+import { DEFAULT_FLAGS, type CliModelSettings, type SupportedProvider } from "@/types/index.js"
+import { summarizeProviderSettings, toProviderSettings } from "@/lib/utils/provider-config.js"
 import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { getCliPackageRoot } from "@/lib/utils/cli-root.js"
@@ -102,14 +92,12 @@ export interface ExtensionHostOptions {
 	modeProviderSettings?: CliModeProviderSettings
 	/** `models` of cli-settings.json: what comes with a model that /model switches to. */
 	models?: Record<string, CliModelSettings>
-	/** The --reasoning-effort flag: one level for every model of the run, /model included. */
-	forcedReasoningEffort?: ReasoningEffortFlagOptions
 	/**
 	 * The provider settings /model gives `model` in `mode`, resolved from the
 	 * settings file: on the model's own provider and base URL when its
 	 * `models` entry sets them, else on the mode's. Throws with the message
-	 * to show when that connection cannot run. Without it /model keeps the
-	 * mode's current connection and changes only the model.
+	 * to show when that connection cannot run. Without it (or without
+	 * `modeProviderSettings`) the session cannot switch models.
 	 */
 	resolveModelProviderSettings?: (mode: string, model: string) => ProviderSettings
 	/**
@@ -144,7 +132,6 @@ export interface ExtensionHostOptions {
 	 */
 	ephemeral: boolean
 	debug: boolean
-	exitOnComplete: boolean
 	terminalShell?: string
 	/**
 	 * When true, exit the process on API request errors instead of retrying.
@@ -218,7 +205,6 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	// Extension lifecycle.
 	private vscode: ReturnType<typeof createVSCodeAPI> | null = null
 	private extensionModule: ExtensionModule | null = null
-	private extensionAPI: unknown = null
 	private options: ExtensionHostOptions
 	private isReady = false
 	private messageListener: ((message: ExtensionMessage) => void) | null = null
@@ -564,7 +550,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		}
 
 		try {
-			this.extensionAPI = await this.extensionModule.activate(this.vscode.context)
+			await this.extensionModule.activate(this.vscode.context)
 		} catch (error) {
 			throw new Error(`Failed to activate extension: ${error instanceof Error ? error.message : String(error)}`)
 		}
@@ -654,24 +640,12 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	 */
 	public switchModel(mode: string, model: string): ModelSwitch {
 		const perMode = this.options.modeProviderSettings
-		if (!perMode) {
+		const resolve = this.options.resolveModelProviderSettings
+		if (!perMode || !resolve) {
 			throw new Error("This session has no provider settings per mode to change")
 		}
 
-		const modelSettings = this.options.models?.[model]
-		const current = perMode.modes[mode] ?? perMode.base
-		const provider = current.apiProvider as SupportedProvider
-		const settings =
-			this.options.resolveModelProviderSettings?.(mode, model) ??
-			withModel(current, model, {
-				reasoningEffort: resolveReasoningEffort(
-					provider,
-					modelSettings,
-					this.options.forcedReasoningEffort,
-					model,
-				),
-				modelSettings,
-			})
+		const settings = resolve(mode, model)
 
 		this.options.modeProviderSettings = { ...perMode, modes: { ...perMode.modes, [mode]: settings } }
 		this.sendToExtension({
@@ -833,7 +807,6 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// Clear references.
 		this.vscode = null
 		this.extensionModule = null
-		this.extensionAPI = null
 
 		// Clear globals.
 		clearCliRuntimeGlobals()

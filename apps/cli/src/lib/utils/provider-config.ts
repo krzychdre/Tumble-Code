@@ -259,31 +259,6 @@ export function toProviderSettings(
 	return applyModelSettings(settings, config.provider, config)
 }
 
-/**
- * The same provider settings running another model of the same provider (the
- * TUI's /model): the provider's model field, and what comes with the model
- * (its reasoning effort and, for the openai provider, its size, prices,
- * image support, preserveReasoning and trimOldReasoning), replacing those of
- * the previous model. The connection (base URL, key) stays.
- */
-export function withModel(
-	settings: ProviderSettings,
-	model: string,
-	options: { reasoningEffort?: ReasoningEffortFlagOptions; modelSettings?: CliModelSettings },
-): ProviderSettings {
-	const provider = settings.apiProvider
-	if (!provider || !isSupportedProvider(provider)) {
-		throw new Error(`Cannot switch the model of provider ${provider ?? "(none)"}`)
-	}
-
-	const next: ProviderSettings = { ...settings, [getModelField(provider)]: model }
-	// The previous model's level must not outlive it when the new one has none.
-	delete next.enableReasoningEffort
-	delete next.reasoningEffort
-
-	return applyModelSettings(next, provider, options)
-}
-
 /** Writes the model-dependent fields of toProviderSettings onto `settings`. */
 function applyModelSettings(
 	settings: ProviderSettings,
