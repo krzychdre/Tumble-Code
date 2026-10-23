@@ -9,6 +9,7 @@ import { MAX_PARALLEL_TASKS_MAX_CONCURRENCY } from "@tumble-code/types"
 import { debugLog, getDebugLogPath } from "@tumble-code/core/cli"
 
 import {
+	type CliSettings,
 	FlagOptions,
 	isAcceptedProvider,
 	supportedProviders,
@@ -86,6 +87,10 @@ function parseCommandExecutionTimeout(value: unknown): number | undefined {
 		: undefined
 }
 
+function missingApiKeyEnvMessage(env: string): string {
+	return `apiKeyEnv names ${env}, but that environment variable is empty or unset.`
+}
+
 /** The key to hand the extension: only providers with an API-key field get it. */
 function keyFor(config: ResolvedProviderConfig): string | undefined {
 	return getApiKeyField(config.provider) !== null ? config.apiKey : undefined
@@ -137,7 +142,7 @@ async function findProviderConfigProblem(
 	// bedrock, vertex) and Ollama, whose key is optional, run without one.
 	if (providerRequiresApiKey(config.provider) && !config.apiKey) {
 		if (config.missingApiKeyEnv) {
-			return [`apiKeyEnv names ${config.missingApiKeyEnv}, but that environment variable is empty or unset.`]
+			return [missingApiKeyEnvMessage(config.missingApiKeyEnv)]
 		}
 
 		return [
@@ -155,14 +160,15 @@ async function findProviderConfigProblem(
 	return undefined
 }
 
-export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
-	setLogger({
-		info: () => {},
-		warn: () => {},
-		error: () => {},
-		debug: () => {},
-	})
+/** The prompt and the session flags, checked against each other. */
+interface PromptAndSession {
+	prompt: string | undefined
+	requestedSessionId: string | undefined
+	requestedCreateSessionId: string | undefined
+	isResumeRequested: boolean
+}
 
+function readPromptAndSession(promptArg: string | undefined, flagOptions: FlagOptions): PromptAndSession {
 	let prompt = promptArg
 
 	if (flagOptions.promptFile) {
@@ -222,18 +228,11 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
-	// Options
+	return { prompt, requestedSessionId, requestedCreateSessionId, isResumeRequested }
+}
 
-	const isTuiSupported = process.stdin.isTTY && process.stdout.isTTY
-	const isTuiEnabled = !flagOptions.print && isTuiSupported
-
-	// The interactive session starts on a clean screen. This runs before any
-	// warning below is printed, so the clear never hides one of them, and
-	// before ink draws its first frame, so writing to stdout directly is safe.
-	if (isTuiEnabled) {
-		process.stdout.write(CLEAR_SCREEN)
-	}
-
+/** cli-settings.json, with its time zone applied and a warning when others can read a key in it. */
+async function loadRunSettings(): Promise<CliSettings> {
 	const settings = await loadSettings()
 	applyTimeZoneSetting(settings, (message) => console.error(`[CLI] Warning: ignoring ${message}`))
 
@@ -248,18 +247,19 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		)
 	}
 
-	// Provider connection: flags > settings file > the CLI's own extension
-	// state (~/.vscode-mock) > defaults, with provider-bound values (model,
-	// base URL, key) used only for the provider they were written for.
-	const vsCodeConfig = readVsCodeConfig()
+	return settings
+}
 
-	// With no provider anywhere (flag, settings file, the CLI's own extension
-	// state) the run starts on the default provider; say how to choose one.
-	if (isTuiEnabled && !flagOptions.provider && !settings.provider && !vsCodeConfig?.provider) {
-		console.log(
-			`[CLI] No provider configured, using ${DEFAULT_FLAGS.provider}. Set provider and apiKey (or apiKeyEnv) in ${getSettingsPath()}, or pass --provider and --api-key.`,
-		)
-	}
+/**
+ * The provider configurations of the run: the base one, one per mode entry
+ * (none under provider flags), the one the session starts with, and the
+ * configuration /model gives a model in a mode.
+ */
+function resolveProviders(
+	settings: CliSettings,
+	flagOptions: FlagOptions,
+	vsCodeConfig: ReturnType<typeof readVsCodeConfig>,
+) {
 	const settingsProviderConfig = pickProviderConfig(settings)
 	const flagProviderConfig = {
 		provider: flagOptions.provider,
@@ -298,16 +298,12 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
 	// The session starts with the configuration of the mode it starts in.
 	const providerConfig = modeProviderConfigs[effectiveMode] ?? baseProviderConfig
-	const effectiveProvider = providerConfig.provider
-	const effectiveModel = providerConfig.model
-	const effectiveBaseUrl = providerConfig.baseUrl
 	// `models` entries follow the model wherever it runs, flags included, and
 	// so does the reasoning effort, which is read from them.
 	const modelSettingsFor = (config: ResolvedProviderConfig) =>
 		getConfiguredModelSettings(settings.models, config.model)
 	const reasoningEffortFor = (config: ResolvedProviderConfig) =>
 		resolveReasoningEffort(config.provider, modelSettingsFor(config), flagOptions.reasoningEffort, config.model)
-	const effectiveReasoningEffort = reasoningEffortFor(providerConfig)
 	// The configuration /model gives `model` in `mode`: the mode's layers (none
 	// under provider flags) with the model's own connection on top, so a model
 	// without one goes back to the mode's connection even after a model that
@@ -322,17 +318,33 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			model,
 		})
 	}
-	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
-	// the current working directory. The workspace is intentionally NEVER read
-	// from persisted settings — `tumble` must follow the directory it is run
-	// in, so a persisted workspace could never override pwd (decision A1 of
-	// ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
-	const effectiveWorkspacePath = flagOptions.workspace ? path.resolve(flagOptions.workspace) : process.cwd()
-	const legacyRequireApprovalFromSettings =
-		settings.requireApproval ??
-		(settings.dangerouslySkipPermissions === undefined ? undefined : !settings.dangerouslySkipPermissions)
-	const effectiveRequireApproval = flagOptions.requireApproval || legacyRequireApprovalFromSettings || false
-	const effectiveExitOnComplete = flagOptions.print || flagOptions.oneshot || settings.oneshot || false
+	// The provider settings the extension runs `config` with.
+	const settingsFor = (config: ResolvedProviderConfig) =>
+		toProviderSettings({
+			...config,
+			apiKey: keyFor(config),
+			reasoningEffort: reasoningEffortFor(config),
+			modelSettings: modelSettingsFor(config),
+		})
+
+	return {
+		isProviderForcedByFlags,
+		modeEntries,
+		modeProviderConfigs,
+		baseProviderConfig,
+		effectiveMode,
+		providerConfig,
+		modelSettingsFor,
+		reasoningEffortFor,
+		resolveForModel,
+		settingsFor,
+	}
+}
+
+type RunProviders = ReturnType<typeof resolveProviders>
+
+/** The mistake limit, the command timeout, the subagent cap and the terminal shell, from flags and settings. */
+async function resolveRunLimits(settings: CliSettings, flagOptions: FlagOptions) {
 	const rawConsecutiveMistakeLimit =
 		flagOptions.consecutiveMistakeLimit ?? settings.consecutiveMistakeLimit ?? DEFAULT_FLAGS.consecutiveMistakeLimit
 	const effectiveConsecutiveMistakeLimit = Number(rawConsecutiveMistakeLimit)
@@ -387,49 +399,22 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		}
 	}
 
-	const extensionHostOptions: ExtensionHostOptions = {
-		mode: effectiveMode,
-		reasoningEffort: effectiveReasoningEffort === "unspecified" ? undefined : effectiveReasoningEffort,
+	return {
 		consecutiveMistakeLimit: effectiveConsecutiveMistakeLimit,
 		commandExecutionTimeout: effectiveCommandExecutionTimeout,
 		maxParallelSubagents,
-		provider: effectiveProvider,
-		model: effectiveModel,
-		modelSettings: modelSettingsFor(providerConfig),
-		models: settings.models,
-		workspacePath: effectiveWorkspacePath,
-		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
-		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),
-		cloudApiUrl: cloudApiUrlSetting(settings, (message) => console.error(`[CLI] Warning: ignoring ${message}`)),
-		baseUrl: effectiveBaseUrl,
-		nonInteractive: !effectiveRequireApproval,
-		exitOnError: flagOptions.exitOnError,
-		ephemeral: flagOptions.ephemeral,
-		debug: flagOptions.debug,
 		terminalShell,
-		resolveModelProviderSettings: (mode, model) => {
-			const config = resolveForModel(mode, model)
-			if (providerRequiresApiKey(config.provider) && !config.apiKey) {
-				throw new Error(
-					config.missingApiKeyEnv
-						? `apiKeyEnv names ${config.missingApiKeyEnv}, but that environment variable is empty or unset.`
-						: `${model} runs on ${config.provider}, which needs an API key: set apiKey or apiKeyEnv in its models entry, or ${getEnvVarName(config.provider)}.`,
-				)
-			}
-			return toProviderSettings({
-				...config,
-				apiKey: keyFor(config),
-				reasoningEffort: reasoningEffortFor(config),
-				modelSettings: modelSettingsFor(config),
-			})
-		},
-		// /model keeps its choice for later sessions, except where this run
-		// ignores the file's mode models or promises to persist nothing.
-		saveModelChoice: createModelChoiceSaver({
-			providerFlags: isProviderForcedByFlags,
-			ephemeral: flagOptions.ephemeral,
-		}),
 	}
+}
+
+/**
+ * Check every configuration this run can switch to, and the settings that
+ * shape them; exits with the first error, warns about what is ignored.
+ */
+async function checkProviders(settings: CliSettings, flagOptions: FlagOptions, providers: RunProviders) {
+	const { providerConfig, baseProviderConfig, modeProviderConfigs, modeEntries, modelSettingsFor, resolveForModel } =
+		providers
+	const effectiveModel = providerConfig.model
 
 	// Validations: every configuration this run can switch to is checked now,
 	// so a broken mode entry fails at startup instead of on the mode switch.
@@ -532,25 +517,114 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			process.exit(1)
 		}
 	}
+}
+
+/** Everything a run needs after the flags and the settings have been read and checked. */
+interface RunOptions {
+	flagOptions: FlagOptions
+	prompt: string | undefined
+	requestedCreateSessionId: string | undefined
+	isResumeRequested: boolean
+	resolvedResumeSessionId: string | undefined
+	outputFormat: OutputFormat
+	exitOnComplete: boolean
+	extensionHostOptions: ExtensionHostOptions
+	/** Named in every crash report: the debug log, or how to get one (§4). */
+	crashHintOptions: { debug: boolean; logPath: string }
+}
+
+async function resolveRunOptions(
+	promptArg: string | undefined,
+	flagOptions: FlagOptions,
+	isTuiEnabled: boolean,
+	isTuiSupported: boolean,
+): Promise<RunOptions> {
+	const { prompt, requestedSessionId, requestedCreateSessionId, isResumeRequested } = readPromptAndSession(
+		promptArg,
+		flagOptions,
+	)
+
+	// The interactive session starts on a clean screen. This runs before any
+	// warning below is printed, so the clear never hides one of them, and
+	// before ink draws its first frame, so writing to stdout directly is safe.
+	if (isTuiEnabled) {
+		process.stdout.write(CLEAR_SCREEN)
+	}
+
+	const settings = await loadRunSettings()
+
+	// Provider connection: flags > settings file > the CLI's own extension
+	// state (~/.vscode-mock) > defaults, with provider-bound values (model,
+	// base URL, key) used only for the provider they were written for.
+	const vsCodeConfig = readVsCodeConfig()
+
+	// With no provider anywhere (flag, settings file, the CLI's own extension
+	// state) the run starts on the default provider; say how to choose one.
+	if (isTuiEnabled && !flagOptions.provider && !settings.provider && !vsCodeConfig?.provider) {
+		console.log(
+			`[CLI] No provider configured, using ${DEFAULT_FLAGS.provider}. Set provider and apiKey (or apiKeyEnv) in ${getSettingsPath()}, or pass --provider and --api-key.`,
+		)
+	}
+	const providers = resolveProviders(settings, flagOptions, vsCodeConfig)
+	const { providerConfig, reasoningEffortFor, resolveForModel, settingsFor } = providers
+
+	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
+	// the current working directory. The workspace is intentionally NEVER read
+	// from persisted settings: `tumble` must follow the directory it is run
+	// in, so a persisted workspace could never override pwd (decision A1 of
+	// ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
+	const effectiveWorkspacePath = flagOptions.workspace ? path.resolve(flagOptions.workspace) : process.cwd()
+	const legacyRequireApprovalFromSettings =
+		settings.requireApproval ??
+		(settings.dangerouslySkipPermissions === undefined ? undefined : !settings.dangerouslySkipPermissions)
+	const effectiveRequireApproval = flagOptions.requireApproval || legacyRequireApprovalFromSettings || false
+	const effectiveExitOnComplete = flagOptions.print || flagOptions.oneshot || settings.oneshot || false
+	const limits = await resolveRunLimits(settings, flagOptions)
+	const effectiveReasoningEffort = reasoningEffortFor(providerConfig)
+
+	const extensionHostOptions: ExtensionHostOptions = {
+		mode: providers.effectiveMode,
+		reasoningEffort: effectiveReasoningEffort === "unspecified" ? undefined : effectiveReasoningEffort,
+		...limits,
+		provider: providerConfig.provider,
+		model: providerConfig.model,
+		modelSettings: providers.modelSettingsFor(providerConfig),
+		models: settings.models,
+		workspacePath: effectiveWorkspacePath,
+		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
+		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),
+		cloudApiUrl: cloudApiUrlSetting(settings, (message) => console.error(`[CLI] Warning: ignoring ${message}`)),
+		baseUrl: providerConfig.baseUrl,
+		nonInteractive: !effectiveRequireApproval,
+		exitOnError: flagOptions.exitOnError,
+		ephemeral: flagOptions.ephemeral,
+		debug: flagOptions.debug,
+		resolveModelProviderSettings: (mode, model) => {
+			const config = resolveForModel(mode, model)
+			if (providerRequiresApiKey(config.provider) && !config.apiKey) {
+				throw new Error(
+					config.missingApiKeyEnv
+						? missingApiKeyEnvMessage(config.missingApiKeyEnv)
+						: `${model} runs on ${config.provider}, which needs an API key: set apiKey or apiKeyEnv in its models entry, or ${getEnvVarName(config.provider)}.`,
+				)
+			}
+			return settingsFor(config)
+		},
+		// /model keeps its choice for later sessions, except where this run
+		// ignores the file's mode models or promises to persist nothing.
+		saveModelChoice: createModelChoiceSaver({
+			providerFlags: providers.isProviderForcedByFlags,
+			ephemeral: flagOptions.ephemeral,
+		}),
+	}
+
+	await checkProviders(settings, flagOptions, providers)
 
 	extensionHostOptions.apiKey = keyFor(providerConfig)
 	extensionHostOptions.modeProviderSettings = {
-		base: toProviderSettings({
-			...baseProviderConfig,
-			apiKey: keyFor(baseProviderConfig),
-			reasoningEffort: reasoningEffortFor(baseProviderConfig),
-			modelSettings: modelSettingsFor(baseProviderConfig),
-		}),
+		base: settingsFor(providers.baseProviderConfig),
 		modes: Object.fromEntries(
-			Object.entries(modeProviderConfigs).map(([modeSlug, config]) => [
-				modeSlug,
-				toProviderSettings({
-					...config,
-					apiKey: keyFor(config),
-					reasoningEffort: reasoningEffortFor(config),
-					modelSettings: modelSettingsFor(config),
-				}),
-			]),
+			Object.entries(providers.modeProviderConfigs).map(([modeSlug, config]) => [modeSlug, settingsFor(config)]),
 		),
 	}
 
@@ -608,196 +682,236 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		}
 	}
 
-	// Run!
+	return {
+		flagOptions,
+		prompt,
+		requestedCreateSessionId,
+		isResumeRequested,
+		resolvedResumeSessionId,
+		outputFormat,
+		exitOnComplete: effectiveExitOnComplete,
+		extensionHostOptions,
+		crashHintOptions: { debug: flagOptions.debug, logPath: getDebugLogPath() },
+	}
+}
 
-	// Named in every crash report: the debug log, or how to get one (§4).
-	const crashHintOptions = { debug: flagOptions.debug, logPath: getDebugLogPath() }
+async function runTui({
+	flagOptions,
+	prompt,
+	requestedCreateSessionId,
+	resolvedResumeSessionId,
+	exitOnComplete,
+	extensionHostOptions,
+	crashHintOptions,
+}: RunOptions): Promise<void> {
+	try {
+		const { render } = await import("ink")
+		const { App } = await import("../../ui/App.js")
+		const { createScrollSafeStdout } = await import("../../ui/utils/scrollSafeStdout.js")
+		const { TuiErrorBoundary } = await import("../../ui/components/TuiErrorBoundary.js")
+		const { GraphicsContext } = await import("../../ui/graphics/GraphicsContext.js")
+		const { probeTerminalGraphics } = await import("../../ui/graphics/terminalProbe.js")
 
-	if (isTuiEnabled) {
-		try {
-			const { render } = await import("ink")
-			const { App } = await import("../../ui/App.js")
-			const { createScrollSafeStdout } = await import("../../ui/utils/scrollSafeStdout.js")
-			const { TuiErrorBoundary } = await import("../../ui/components/TuiErrorBoundary.js")
-			const { GraphicsContext } = await import("../../ui/graphics/GraphicsContext.js")
-			const { probeTerminalGraphics } = await import("../../ui/graphics/terminalProbe.js")
+		// Asked before ink takes stdin over: the terminal answers on stdin.
+		const graphics = await probeTerminalGraphics({ stdin: process.stdin, stdout: process.stdout })
+		debugLog("[CLI] terminal graphics", graphics)
+		// The model learns from the system prompt what reaches the user.
+		extensionHostOptions.display = graphics.protocol ? "images" : "text"
 
-			// Asked before ink takes stdin over: the terminal answers on stdin.
-			const graphics = await probeTerminalGraphics({ stdin: process.stdin, stdout: process.stdout })
-			debugLog("[CLI] terminal graphics", graphics)
-			// The model learns from the system prompt what reaches the user.
-			extensionHostOptions.display = graphics.protocol ? "images" : "text"
-
-			const instance = render(
+		const instance = render(
+			createElement(
+				GraphicsContext.Provider,
+				{ value: { ...graphics, baseDir: extensionHostOptions.workspacePath } },
 				createElement(
-					GraphicsContext.Provider,
-					{ value: { ...graphics, baseDir: effectiveWorkspacePath } },
-					createElement(
-						TuiErrorBoundary,
-						{
-							// A render crash is reported once here; the guards'
-							// uncaughtException handler does not fire for it. The
-							// fallback stays on screen, so the hint goes there and
-							// the stack goes into the debug log (a no-op without
-							// --debug, which is what the hint then suggests).
-							onError: (error: Error) => debugLog("[CLI] TUI crashed", error.stack || error.message),
-							hint: formatCrashHint(crashHintOptions),
-						},
-						createElement(App, {
-							...extensionHostOptions,
-							initialPrompt: prompt,
-							initialTaskId: requestedCreateSessionId,
-							initialSessionId: resolvedResumeSessionId,
-							exitOnComplete: effectiveExitOnComplete,
-							openResumePicker: flagOptions.resume,
-							version: VERSION,
-							createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
-						}),
-					),
+					TuiErrorBoundary,
+					{
+						// A render crash is reported once here; the guards'
+						// uncaughtException handler does not fire for it. The
+						// fallback stays on screen, so the hint goes there and
+						// the stack goes into the debug log (a no-op without
+						// --debug, which is what the hint then suggests).
+						onError: (error: Error) => debugLog("[CLI] TUI crashed", error.stack || error.message),
+						hint: formatCrashHint(crashHintOptions),
+					},
+					createElement(App, {
+						...extensionHostOptions,
+						initialPrompt: prompt,
+						initialTaskId: requestedCreateSessionId,
+						initialSessionId: resolvedResumeSessionId,
+						exitOnComplete,
+						openResumePicker: flagOptions.resume,
+						version: VERSION,
+						createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
+					}),
 				),
-				{
-					// Handle Ctrl+C in App component for double-press exit.
-					exitOnCtrlC: false,
-					// Diff frames per line instead of erase-all + rewrite —
-					// ink's standard log-update repaints the whole dynamic
-					// region every frame, which blinks on each spinner tick
-					// and stream chunk.
-					incrementalRendering: true,
-					// ...which skips unchanged rows with a cursor move that
-					// does not scroll on the bottom row; see scrollSafeStdout.
-					stdout: createScrollSafeStdout(process.stdout),
-				},
-			)
+			),
+			{
+				// Handle Ctrl+C in App component for double-press exit.
+				exitOnCtrlC: false,
+				// Diff frames per line instead of erase-all + rewrite:
+				// ink's standard log-update repaints the whole dynamic
+				// region every frame, which blinks on each spinner tick
+				// and stream chunk.
+				incrementalRendering: true,
+				// ...which skips unchanged rows with a cursor move that
+				// does not scroll on the bottom row; see scrollSafeStdout.
+				stdout: createScrollSafeStdout(process.stdout),
+			},
+		)
 
-			// The TUI installs no handlers of its own anywhere else: without
-			// these, a crash or `kill` left the terminal in raw mode (no
-			// unmount) and --ephemeral storage leaked in /tmp. Cleanup unmounts
-			// the renderer, whose teardown restores the terminal, then lets the
-			// App's own host disposal (useExtensionHost's unmount effect) run.
-			// The exit timeout bounds a hung dispose so the guard cannot strand
-			// the terminal either. Normal exits go through App's Ctrl+C
-			// handler (exitOnCtrlC is false); SIGINT reaches this handler only
-			// when no useInput consumer is alive to see it.
-			//
-			// A crash is only recorded in onError and printed after the
-			// unmount: before it, ink owns the screen, and console.error is
-			// routed into the debug log by the host's quiet mode.
-			let crash: { error: unknown; source: string } | undefined
+		// The TUI installs no handlers of its own anywhere else: without
+		// these, a crash or `kill` left the terminal in raw mode (no
+		// unmount) and --ephemeral storage leaked in /tmp. Cleanup unmounts
+		// the renderer, whose teardown restores the terminal, then lets the
+		// App's own host disposal (useExtensionHost's unmount effect) run.
+		// The exit timeout bounds a hung dispose so the guard cannot strand
+		// the terminal either. Normal exits go through App's Ctrl+C
+		// handler (exitOnCtrlC is false); SIGINT reaches this handler only
+		// when no useInput consumer is alive to see it.
+		//
+		// A crash is only recorded in onError and printed after the
+		// unmount: before it, ink owns the screen, and console.error is
+		// routed into the debug log by the host's quiet mode.
+		let crash: { error: unknown; source: string } | undefined
 
-			const disposeGuards = installProcessGuards({
-				onCleanup: async () => {
-					instance.unmount()
-					// Give the unmount effects (host dispose, transcript
-					// detach) a tick to run before the process goes away.
-					await new Promise((resolve) => setImmediate(resolve))
+		const disposeGuards = installProcessGuards({
+			onCleanup: async () => {
+				instance.unmount()
+				// Give the unmount effects (host dispose, transcript
+				// detach) a tick to run before the process goes away.
+				await new Promise((resolve) => setImmediate(resolve))
 
-					if (crash) {
-						process.stderr.write(
-							formatCrashReport(crash.error, { source: crash.source, ...crashHintOptions }),
-						)
-					}
-				},
-				onError: (error, source) => {
-					crash ??= { error, source }
-					debugLog(`[CLI] ${source}`, error instanceof Error ? error.stack || error.message : String(error))
-				},
-			})
-			void disposeGuards
-		} catch (error) {
-			process.stderr.write(formatCrashReport(error, { source: "starting the TUI", ...crashHintOptions }))
-			process.exit(1)
+				if (crash) {
+					process.stderr.write(formatCrashReport(crash.error, { source: crash.source, ...crashHintOptions }))
+				}
+			},
+			onError: (error, source) => {
+				crash ??= { error, source }
+				debugLog(`[CLI] ${source}`, error instanceof Error ? error.stack || error.message : String(error))
+			},
+		})
+		void disposeGuards
+	} catch (error) {
+		process.stderr.write(formatCrashReport(error, { source: "starting the TUI", ...crashHintOptions }))
+		process.exit(1)
+	}
+}
+
+async function runPrint({
+	prompt,
+	requestedCreateSessionId,
+	isResumeRequested,
+	resolvedResumeSessionId,
+	outputFormat,
+	extensionHostOptions,
+	crashHintOptions,
+}: RunOptions): Promise<void> {
+	const useJsonOutput = outputFormat === "json" || outputFormat === "stream-json"
+
+	extensionHostOptions.disableOutput = useJsonOutput
+	// Nobody answers an api_req_failed ask in an unattended print or JSON run.
+	extensionHostOptions.exitOnApiRequestFailed = extensionHostOptions.nonInteractive
+
+	const host = new ExtensionHost(extensionHostOptions)
+	const jsonEmitter = useJsonOutput ? new JsonEventEmitter({ mode: outputFormat as "json" | "stream-json" }) : null
+
+	const emitRuntimeError = (error: Error, source?: string) => {
+		const errorMessage = source ? `${source}: ${error.message}` : error.message
+
+		if (useJsonOutput) {
+			const errorEvent = { type: "error", id: Date.now(), content: errorMessage }
+			process.stdout.write(JSON.stringify(errorEvent) + "\n")
+			return
 		}
-	} else {
-		const useJsonOutput = outputFormat === "json" || outputFormat === "stream-json"
 
-		extensionHostOptions.disableOutput = useJsonOutput
-		// Nobody answers an api_req_failed ask in an unattended print or JSON run.
-		extensionHostOptions.exitOnApiRequestFailed = extensionHostOptions.nonInteractive
+		// process.stderr, not console.error: while the host is alive,
+		// its quiet mode routes console.error into the debug log, so a
+		// run without --debug never showed why it failed.
+		const stack = error.stack ? `${error.stack}\n` : ""
+		process.stderr.write(`[CLI] Error: ${errorMessage}\n${stack}${formatCrashHint(crashHintOptions)}\n`)
+	}
 
-		const host = new ExtensionHost(extensionHostOptions)
-		const jsonEmitter = useJsonOutput
-			? new JsonEventEmitter({ mode: outputFormat as "json" | "stream-json" })
-			: null
-
-		const emitRuntimeError = (error: Error, source?: string) => {
-			const errorMessage = source ? `${source}: ${error.message}` : error.message
-
-			if (useJsonOutput) {
-				const errorEvent = { type: "error", id: Date.now(), content: errorMessage }
-				process.stdout.write(JSON.stringify(errorEvent) + "\n")
+	const flushStdout = async () => {
+		try {
+			if (!process.stdout.writable || process.stdout.destroyed) {
 				return
 			}
 
-			// process.stderr, not console.error: while the host is alive,
-			// its quiet mode routes console.error into the debug log, so a
-			// run without --debug never showed why it failed.
-			const stack = error.stack ? `${error.stack}\n` : ""
-			process.stderr.write(`[CLI] Error: ${errorMessage}\n${stack}${formatCrashHint(crashHintOptions)}\n`)
-		}
+			await new Promise<void>((resolve, reject) => {
+				process.stdout.write("", (error?: Error | null) => {
+					if (error) {
+						reject(error)
+						return
+					}
 
-		const flushStdout = async () => {
-			try {
-				if (!process.stdout.writable || process.stdout.destroyed) {
-					return
-				}
-
-				await new Promise<void>((resolve, reject) => {
-					process.stdout.write("", (error?: Error | null) => {
-						if (error) {
-							reject(error)
-							return
-						}
-
-						resolve()
-					})
+					resolve()
 				})
-			} catch {
-				// Best effort: shutdown should proceed even if stdout flush fails.
-			}
+			})
+		} catch {
+			// Best effort: shutdown should proceed even if stdout flush fails.
 		}
+	}
 
-		// The same guard module the TUI uses (R6). Cleanup is one pass shared
-		// by signals, crashes and the task loop's own exit paths: host dispose
-		// + JSON emitter flush. The guards run it at most once.
-		const disposeGuards = installProcessGuards({
-			onCleanup: async (cause) => {
-				if (!useJsonOutput && cause !== "dispose") {
-					console.log(`\n[CLI] Received ${cause}, shutting down...`)
-				}
+	// The same guard module the TUI uses (R6). Cleanup is one pass shared
+	// by signals, crashes and the task loop's own exit paths: host dispose
+	// + JSON emitter flush. The guards run it at most once.
+	const disposeGuards = installProcessGuards({
+		onCleanup: async (cause) => {
+			if (!useJsonOutput && cause !== "dispose") {
+				console.log(`\n[CLI] Received ${cause}, shutting down...`)
+			}
 
-				jsonEmitter?.detach()
-				await host.dispose()
-
-				if (jsonEmitter) {
-					await jsonEmitter.flush()
-				}
-			},
-			onError: (error, source) => emitRuntimeError(normalizeError(error), source),
-		})
-
-		try {
-			await host.activate()
+			jsonEmitter?.detach()
+			await host.dispose()
 
 			if (jsonEmitter) {
-				jsonEmitter.attachToClient(host.client)
+				await jsonEmitter.flush()
 			}
+		},
+		onError: (error, source) => emitRuntimeError(normalizeError(error), source),
+	})
 
-			if (isResumeRequested) {
-				await host.resumeTask(resolvedResumeSessionId!)
-			} else {
-				await host.runTask(prompt!, requestedCreateSessionId)
-			}
+	try {
+		await host.activate()
 
-			// The shared cleanup pass (host dispose + JSON flush) also removes
-			// the guards, so nothing double-handles a late signal.
-			await disposeGuards()
-			await flushStdout()
-			process.exit(0)
-		} catch (error) {
-			emitRuntimeError(normalizeError(error))
-			await disposeGuards()
-			await flushStdout()
-			process.exit(1)
+		if (jsonEmitter) {
+			jsonEmitter.attachToClient(host.client)
 		}
+
+		if (isResumeRequested) {
+			await host.resumeTask(resolvedResumeSessionId!)
+		} else {
+			await host.runTask(prompt!, requestedCreateSessionId)
+		}
+
+		// The shared cleanup pass (host dispose + JSON flush) also removes
+		// the guards, so nothing double-handles a late signal.
+		await disposeGuards()
+		await flushStdout()
+		process.exit(0)
+	} catch (error) {
+		emitRuntimeError(normalizeError(error))
+		await disposeGuards()
+		await flushStdout()
+		process.exit(1)
+	}
+}
+
+export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
+	setLogger({
+		info: () => {},
+		warn: () => {},
+		error: () => {},
+		debug: () => {},
+	})
+
+	const isTuiSupported = process.stdin.isTTY && process.stdout.isTTY
+	const isTuiEnabled = !flagOptions.print && isTuiSupported
+	const runOptions = await resolveRunOptions(promptArg, flagOptions, isTuiEnabled, isTuiSupported)
+
+	if (isTuiEnabled) {
+		await runTui(runOptions)
+	} else {
+		await runPrint(runOptions)
 	}
 }
