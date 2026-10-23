@@ -159,57 +159,15 @@ export class CodeIndexOrchestrator {
 				)
 				this.stateManager.setSystemState("Indexing", "Checking for new or modified files...")
 
-				// Mark as incomplete at the start of incremental scan
-				await this.vectorStore.markIndexingIncomplete()
-
-				let cumulativeBlocksIndexed = 0
-				let cumulativeBlocksFoundSoFar = 0
-				const batchErrors: Error[] = []
-
-				const handleFileParsed = (fileBlockCount: number) => {
-					cumulativeBlocksFoundSoFar += fileBlockCount
-					this.stateManager.reportBlockIndexingProgress(cumulativeBlocksIndexed, cumulativeBlocksFoundSoFar)
-				}
-
-				const handleBlocksIndexed = (indexedCount: number) => {
-					cumulativeBlocksIndexed += indexedCount
-					this.stateManager.reportBlockIndexingProgress(cumulativeBlocksIndexed, cumulativeBlocksFoundSoFar)
-				}
-
-				// Run incremental scan - scanner will skip unchanged files using cache
-				const result = await this.scanner.scanDirectory(
-					this.workspacePath,
-					(batchError: Error) => {
-						logger.error(
-							`[CodeIndexOrchestrator] Error during incremental scan batch: ${batchError.message}`,
-							batchError,
-						)
-						batchErrors.push(batchError)
-					},
-					handleBlocksIndexed,
-					handleFileParsed,
-					signal,
-				)
-
-				if (signal.aborted) {
-					await this.cacheManager.flush()
-					this.stopWatcher()
-					this.setStateIfLive("Standby", t("embeddings:orchestrator.indexingStopped"))
+				const scan = await this.scanWorkspace("incremental", signal)
+				if (!scan) {
 					return
-				}
-
-				if (!result) {
-					throw new Error("Incremental scan failed, is scanner initialized?")
 				}
 
 				// Same failure rules as the full scan, but without its cleanup: the collection was
 				// complete before this scan, and files whose batch failed keep their old cache hash,
 				// so the next scan (or the automatic retry on a connection error) picks them up again.
-				const scanFailure = this.findScanFailure(
-					batchErrors,
-					cumulativeBlocksIndexed,
-					cumulativeBlocksFoundSoFar,
-				)
+				const { scanFailure } = scan
 				if (scanFailure) {
 					logger.error("[CodeIndexOrchestrator] Incremental scan failed:", scanFailure)
 					TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
@@ -225,9 +183,9 @@ export class CodeIndexOrchestrator {
 				}
 
 				// If new files were found and indexed, log the results
-				if (cumulativeBlocksFoundSoFar > 0) {
+				if (scan.blocksFound > 0) {
 					logger.info(
-						`[CodeIndexOrchestrator] Incremental scan completed: ${cumulativeBlocksIndexed} blocks indexed from new/changed files`,
+						`[CodeIndexOrchestrator] Incremental scan completed: ${scan.blocksIndexed} blocks indexed from new/changed files`,
 					)
 				} else {
 					logger.info("[CodeIndexOrchestrator] No new or changed files found")
@@ -243,57 +201,12 @@ export class CodeIndexOrchestrator {
 				// No existing data or collection was just created - do a full scan
 				this.stateManager.setSystemState("Indexing", "Services ready. Starting workspace scan...")
 
-				// Mark as incomplete at the start of full scan
-				await this.vectorStore.markIndexingIncomplete()
-
-				let cumulativeBlocksIndexed = 0
-				let cumulativeBlocksFoundSoFar = 0
-				const batchErrors: Error[] = []
-
-				const handleFileParsed = (fileBlockCount: number) => {
-					cumulativeBlocksFoundSoFar += fileBlockCount
-					this.stateManager.reportBlockIndexingProgress(cumulativeBlocksIndexed, cumulativeBlocksFoundSoFar)
-				}
-
-				const handleBlocksIndexed = (indexedCount: number) => {
-					cumulativeBlocksIndexed += indexedCount
-					this.stateManager.reportBlockIndexingProgress(cumulativeBlocksIndexed, cumulativeBlocksFoundSoFar)
-				}
-
-				const result = await this.scanner.scanDirectory(
-					this.workspacePath,
-					(batchError: Error) => {
-						logger.error(
-							`[CodeIndexOrchestrator] Error during initial scan batch: ${batchError.message}`,
-							batchError,
-						)
-						batchErrors.push(batchError)
-					},
-					handleBlocksIndexed,
-					handleFileParsed,
-					signal,
-				)
-
-				if (signal.aborted) {
-					await this.cacheManager.flush()
-					this.stopWatcher()
-					this.setStateIfLive("Standby", t("embeddings:orchestrator.indexingStopped"))
+				const scan = await this.scanWorkspace("initial", signal)
+				if (!scan) {
 					return
 				}
-
-				if (!result) {
-					throw new Error("Scan failed, is scanner initialized?")
-				}
-
-				const { stats } = result
-
-				const scanFailure = this.findScanFailure(
-					batchErrors,
-					cumulativeBlocksIndexed,
-					cumulativeBlocksFoundSoFar,
-				)
-				if (scanFailure) {
-					throw scanFailure
+				if (scan.scanFailure) {
+					throw scan.scanFailure
 				}
 
 				await this._startWatcher()
@@ -307,9 +220,7 @@ export class CodeIndexOrchestrator {
 			// Handle abort gracefully — not an error, just a user-initiated stop
 			if (error?.name === "AbortError" || signal.aborted) {
 				logger.info("[CodeIndexOrchestrator] Indexing aborted by user.")
-				await this.cacheManager.flush()
-				this.stopWatcher()
-				this.setStateIfLive("Standby", t("embeddings:orchestrator.indexingStopped"))
+				await this.stopAfterAbort()
 				return
 			}
 
@@ -358,6 +269,58 @@ export class CodeIndexOrchestrator {
 			this._isProcessing = false
 			this._abortController = null
 		}
+	}
+
+	/**
+	 * Scans the workspace with the collection marked incomplete, reporting block progress.
+	 * @returns The block counts and the scan failure, or undefined when the scan was stopped
+	 */
+	private async scanWorkspace(
+		kind: "incremental" | "initial",
+		signal: AbortSignal,
+	): Promise<{ scanFailure: Error | undefined; blocksIndexed: number; blocksFound: number } | undefined> {
+		await this.vectorStore.markIndexingIncomplete()
+
+		let blocksIndexed = 0
+		let blocksFound = 0
+		const batchErrors: Error[] = []
+
+		await this.scanner.scanDirectory(
+			this.workspacePath,
+			(batchError: Error) => {
+				logger.error(
+					`[CodeIndexOrchestrator] Error during ${kind} scan batch: ${batchError.message}`,
+					batchError,
+				)
+				batchErrors.push(batchError)
+			},
+			(indexedCount: number) => {
+				blocksIndexed += indexedCount
+				this.stateManager.reportBlockIndexingProgress(blocksIndexed, blocksFound)
+			},
+			(fileBlockCount: number) => {
+				blocksFound += fileBlockCount
+				this.stateManager.reportBlockIndexingProgress(blocksIndexed, blocksFound)
+			},
+			signal,
+		)
+
+		if (signal.aborted) {
+			await this.stopAfterAbort()
+			return undefined
+		}
+
+		return {
+			scanFailure: this.findScanFailure(batchErrors, blocksIndexed, blocksFound),
+			blocksIndexed,
+			blocksFound,
+		}
+	}
+
+	private async stopAfterAbort(): Promise<void> {
+		await this.cacheManager.flush()
+		this.stopWatcher()
+		this.setStateIfLive("Standby", t("embeddings:orchestrator.indexingStopped"))
 	}
 
 	/**
