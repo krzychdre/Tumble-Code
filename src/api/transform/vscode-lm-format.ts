@@ -3,6 +3,7 @@ import * as vscode from "vscode"
 
 import { imageSourceMediaType } from "./image-source"
 import { logger } from "../../utils/logging"
+import { splitAssistantContent, splitUserContent } from "./split-content"
 
 /**
  * Safely converts a value into a plain object.
@@ -50,20 +51,7 @@ export function convertToVsCodeLmMessages(
 		// Handle complex message structures
 		switch (anthropicMessage.role) {
 			case "user": {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolResultBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_result") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						}
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitUserContent(anthropicMessage.content)
 
 				// Process tool messages first then non-tool messages
 				const contentParts = [
@@ -102,20 +90,7 @@ export function convertToVsCodeLmMessages(
 			}
 
 			case "assistant": {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolUseBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_use") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						}
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitAssistantContent(anthropicMessage.content)
 
 				// Process non-tool messages first, then tool messages
 				// Tool calls must come at the end so they are properly followed by user message with tool results

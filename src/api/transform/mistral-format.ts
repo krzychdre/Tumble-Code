@@ -5,6 +5,7 @@ import { ToolMessage } from "@mistralai/mistralai/models/components/toolmessage"
 import { UserMessage } from "@mistralai/mistralai/models/components/usermessage"
 
 import { imageSourceToUrl } from "./image-source"
+import { splitAssistantContent, splitUserContent } from "./split-content"
 
 /**
  * Normalizes a tool call ID to be compatible with Mistral's strict ID requirements.
@@ -58,20 +59,7 @@ export function convertToMistralMessages(anthropicMessages: Anthropic.Messages.M
 			})
 		} else {
 			if (anthropicMessage.role === "user") {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolResultBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_result") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						} // user cannot send tool_use messages
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitUserContent(anthropicMessage.content)
 
 				// If there are tool results, handle them
 				// Mistral's message order is strict: user → assistant → tool → assistant
@@ -118,20 +106,7 @@ export function convertToMistralMessages(anthropicMessages: Anthropic.Messages.M
 					})
 				}
 			} else if (anthropicMessage.role === "assistant") {
-				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolUseBlockParam[]
-				}>(
-					(acc, part) => {
-						if (part.type === "tool_use") {
-							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
-							acc.nonToolMessages.push(part)
-						} // assistant cannot send tool_result messages
-						return acc
-					},
-					{ nonToolMessages: [], toolMessages: [] },
-				)
+				const { nonToolMessages, toolMessages } = splitAssistantContent(anthropicMessage.content)
 
 				let content: string | undefined
 				if (nonToolMessages.length > 0) {
