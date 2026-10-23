@@ -78,6 +78,10 @@ describe("useExtensionHost task completion", () => {
 		useCLIStore.getState().reset()
 	})
 
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
 	async function mount() {
 		const client = Object.assign(new EventEmitter(), { transcript: new TranscriptReader() })
 		const dispose = vi.fn(async () => {})
@@ -100,6 +104,21 @@ describe("useExtensionHost task completion", () => {
 		return { client, dispose }
 	}
 
+	/**
+	 * Report the task as completed with the given ask and run past the hook's
+	 * 100 ms delay before process.exit on a fake clock, so a slow runner cannot
+	 * outlast the wait.
+	 */
+	async function completeTask(client: EventEmitter, ask: string) {
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+		client.emit("taskCompleted", {
+			success: true,
+			message: { ts: 1, type: "ask", ask, text: "" },
+			stateInfo: {},
+		})
+		await vi.advanceTimersByTimeAsync(100)
+	}
+
 	// The client reports `taskCompleted` for `resume_completed_task` too (the
 	// ask the core shows when a finished task is opened again), see the
 	// ExtensionClient spec. That is a task waiting for the next message, not a
@@ -108,12 +127,7 @@ describe("useExtensionHost task completion", () => {
 		const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never)
 		const { client, dispose } = await mount()
 
-		client.emit("taskCompleted", {
-			success: true,
-			message: { ts: 1, type: "ask", ask: "resume_completed_task", text: "" },
-			stateInfo: {},
-		})
-		await new Promise((resolve) => setTimeout(resolve, 150))
+		await completeTask(client, "resume_completed_task")
 
 		expect(dispose).not.toHaveBeenCalled()
 		expect(exit).not.toHaveBeenCalled()
@@ -125,16 +139,7 @@ describe("useExtensionHost task completion", () => {
 		const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never)
 		const { client, dispose } = await mount()
 
-		client.emit("taskCompleted", {
-			success: true,
-			message: { ts: 1, type: "ask", ask: "completion_result", text: "" },
-			stateInfo: {},
-		})
-		// The hook calls process.exit 100 ms after ink's exit(). Under
-		// ink-testing-library ink 7 spends more time around that (its fake stdout
-		// has no rows, so every layout asks terminal-size, which probes /dev/tty
-		// and may run tput), so wait for the call instead of a fixed 150 ms.
-		await pWaitFor(() => exit.mock.calls.length > 0, { timeout: 2000 })
+		await completeTask(client, "completion_result")
 
 		expect(dispose).toHaveBeenCalled()
 		expect(exit).toHaveBeenCalledWith(0)
