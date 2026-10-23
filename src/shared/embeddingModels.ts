@@ -130,8 +130,6 @@ export function getModelQueryPrefix(provider: EmbedderProvider, modelId: string)
 /**
  * Gets the default *specific* embedding model ID based on the provider.
  * Does not include the provider prefix.
- * Currently defaults to OpenAI's 'text-embedding-3-small'.
- * TODO: Make this configurable or more sophisticated.
  * @param provider The embedder provider.
  * @returns The default specific model ID for the provider (e.g., "text-embedding-3-small").
  */

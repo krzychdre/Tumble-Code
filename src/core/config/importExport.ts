@@ -232,9 +232,9 @@ export async function importSettingsFromPath(
 		const currentProviderName = providerProfiles.currentApiConfigName
 		contextProxy.setValue("currentApiConfigName", currentProviderName)
 
-		// TODO: It seems like we don't need to have the provider settings in
-		// the proxy; we can just use providerSettingsManager as the source of
-		// truth.
+		// The context proxy keeps a copy of the current profile's settings (the
+		// webview state reads it, see ProviderStateBuilder): refresh it from the
+		// imported profile.
 		if (providerProfiles.apiConfigs[currentProviderName]) {
 			const { name: _name, ...currentProvider } = await providerSettingsManager.getProfile({
 				name: currentProviderName,

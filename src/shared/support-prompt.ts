@@ -1,7 +1,15 @@
 // Support prompts
-type PromptParams = Record<string, string | any[]>
 
-const generateDiagnosticText = (diagnostics?: any[]) => {
+/** The fields of a vscode.Diagnostic the FIX and EXPLAIN prompts list (this module also runs in the webview). */
+interface PromptDiagnostic {
+	source?: string
+	message: string
+	code?: unknown
+}
+
+type PromptParams = Record<string, string | PromptDiagnostic[]>
+
+const generateDiagnosticText = (diagnostics?: PromptDiagnostic[]) => {
 	if (!diagnostics?.length) return ""
 	return `\nCurrent problems detected:\n${diagnostics
 		.map((d) => `- [${d.source || "Error"}] ${d.message}${d.code ? ` (${d.code})` : ""}`)
@@ -11,7 +19,8 @@ const generateDiagnosticText = (diagnostics?: any[]) => {
 export const createPrompt = (template: string, params: PromptParams): string => {
 	return template.replace(/\${(.*?)}/g, (_, key) => {
 		if (key === "diagnosticText") {
-			return generateDiagnosticText(params["diagnostics"] as any[])
+			const diagnostics = params["diagnostics"]
+			return generateDiagnosticText(Array.isArray(diagnostics) ? diagnostics : undefined)
 			// eslint-disable-next-line no-prototype-builtins
 		} else if (params.hasOwnProperty(key)) {
 			// Ensure the value is treated as a string for replacement

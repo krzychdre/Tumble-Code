@@ -74,9 +74,6 @@ function isGLMForcedThinkingModel(modelId: string): boolean {
 	return modelId.toLowerCase().includes("glm-5.3")
 }
 
-// TODO: Rename this to OpenAICompatibleHandler. Also, I think the
-// `OpenAINativeHandler` can subclass from this, since it's obviously
-// compatible with the OpenAI API. We can also rename it to `OpenAIHandler`.
 export class OpenAiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	protected client: OpenAI | null = null

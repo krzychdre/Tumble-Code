@@ -155,8 +155,9 @@ export function getModelParams({
 			reasoning: getAnthropicReasoning({ model, reasoningBudget, reasoningEffort, settings }),
 		}
 	} else if (format === "openai") {
-		// Special case for o1 and o3-mini, which don't support temperature.
-		// TODO: Add a `supportsTemperature` field to the model info.
+		// o1 and o3-mini take no temperature. The id check covers them on every
+		// OpenAI-format provider, also where the model info does not set
+		// `supportsTemperature: false`.
 		if (modelId.startsWith("o1") || modelId.startsWith("o3-mini")) {
 			params.temperature = undefined
 		}
