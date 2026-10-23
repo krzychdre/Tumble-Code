@@ -526,7 +526,7 @@
 		"@aws-sdk/credential-providers": "^3.1156.0",
 		"@google/genai": "^2.31.0",
 		"@lmstudio/sdk": "^2.1.0",
-		"@mistralai/mistralai": "^2.7.0",
+		"@mistralai/mistralai": "^3.1.0",
 		"@modelcontextprotocol/sdk": "catalog:",
 		"@qdrant/js-client-rest": "^1.20.0",
 		"@tumble-code/agent-interchange": "workspace:^",
