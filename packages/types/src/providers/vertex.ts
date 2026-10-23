@@ -1,6 +1,7 @@
 import type { ModelInfo } from "../model.js"
 
 import { claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
+import { geminiModels } from "./gemini.js"
 
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 export type VertexModelId = keyof typeof vertexModels
@@ -16,119 +17,11 @@ export const vertexUnknownClaudeModelStandInId: VertexModelId = "claude-sonnet-4
 export const vertexUnknownGeminiModelStandInId: VertexModelId = "gemini-2.0-flash-001"
 
 export const vertexModels = {
-	"gemini-3.5-flash": {
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningEffort: ["minimal", "low", "medium", "high"],
-		reasoningEffort: "medium",
-		inputPrice: 1.5,
-		outputPrice: 9,
-		cacheReadsPrice: 0.15,
-		cacheWritesPrice: 1.0,
-		supportsReasoningBudget: false,
-	},
-	"gemini-3.1-pro-preview": {
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningEffort: ["low", "medium", "high"],
-		reasoningEffort: "low",
-
-		supportsTemperature: true,
-		defaultTemperature: 1,
-		inputPrice: 4.0,
-		outputPrice: 18.0,
-		cacheReadsPrice: 0.4,
-		cacheWritesPrice: 4.5,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 2.0,
-				outputPrice: 12.0,
-				cacheReadsPrice: 0.2,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 4.0,
-				outputPrice: 18.0,
-				cacheReadsPrice: 0.4,
-			},
-		],
-	},
-	"gemini-3.1-pro-preview-customtools": {
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningEffort: ["low", "medium", "high"],
-		reasoningEffort: "low",
-
-		supportsTemperature: true,
-		defaultTemperature: 1,
-		inputPrice: 4.0,
-		outputPrice: 18.0,
-		cacheReadsPrice: 0.4,
-		cacheWritesPrice: 4.5,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 2.0,
-				outputPrice: 12.0,
-				cacheReadsPrice: 0.2,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 4.0,
-				outputPrice: 18.0,
-				cacheReadsPrice: 0.4,
-			},
-		],
-	},
-	"gemini-3-pro-preview": {
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningEffort: ["low", "high"],
-		reasoningEffort: "low",
-
-		supportsTemperature: true,
-		defaultTemperature: 1,
-		inputPrice: 4.0,
-		outputPrice: 18.0,
-		cacheReadsPrice: 0.4,
-		tiers: [
-			{
-				contextWindow: 200_000,
-				inputPrice: 2.0,
-				outputPrice: 12.0,
-				cacheReadsPrice: 0.2,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 4.0,
-				outputPrice: 18.0,
-				cacheReadsPrice: 0.4,
-			},
-		],
-	},
-	"gemini-3-flash-preview": {
-		maxTokens: 65_536,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-		supportsReasoningEffort: ["minimal", "low", "medium", "high"],
-		reasoningEffort: "medium",
-
-		supportsTemperature: true,
-		defaultTemperature: 1,
-		inputPrice: 0.5,
-		outputPrice: 3.0,
-		cacheReadsPrice: 0.05,
-	},
+	"gemini-3.5-flash": { ...geminiModels["gemini-3.5-flash"] },
+	"gemini-3.1-pro-preview": { ...geminiModels["gemini-3.1-pro-preview"] },
+	"gemini-3.1-pro-preview-customtools": { ...geminiModels["gemini-3.1-pro-preview-customtools"] },
+	"gemini-3-pro-preview": { ...withoutFields(geminiModels["gemini-3-pro-preview"], "deprecated") },
+	"gemini-3-flash-preview": { ...geminiModels["gemini-3-flash-preview"] },
 	"gemini-2.5-flash-preview-05-20:thinking": {
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
@@ -150,19 +43,7 @@ export const vertexModels = {
 		inputPrice: 0.15,
 		outputPrice: 0.6,
 	},
-	"gemini-2.5-flash": {
-		maxTokens: 64_000,
-		contextWindow: 1_048_576,
-		supportsImages: true,
-		supportsPromptCache: true,
-
-		inputPrice: 0.3,
-		outputPrice: 2.5,
-		cacheReadsPrice: 0.075,
-		cacheWritesPrice: 1.0,
-		maxThinkingTokens: 24_576,
-		supportsReasoningBudget: true,
-	},
+	"gemini-2.5-flash": { ...geminiModels["gemini-2.5-flash"] },
 	"gemini-2.5-flash-preview-04-17:thinking": {
 		maxTokens: 65_535,
 		contextWindow: 1_048_576,
