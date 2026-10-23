@@ -15,7 +15,7 @@ import { type ApiHandlerOptions, shouldUseReasoningEffort } from "@tumble-code/c
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { ApiStream, ApiStreamChunk, ApiStreamUsageChunk } from "../transform/stream"
 import { type ChatCompletionStreamOptions, streamChatCompletion } from "../transform/chat-completions-stream"
 import { getModelParams } from "../transform/model-params"
 
@@ -246,28 +246,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			this.addGLMThinkingIfNeeded(requestOptions as unknown as GLMChatCompletionParams, modelId, modelInfo)
 
 			const response = await this.sendChatCompletion(requestOptions, metadata?.signal)
-
-			const message = response.choices?.[0]?.message
-
-			if (message?.tool_calls) {
-				for (const toolCall of message.tool_calls) {
-					if (toolCall.type === "function") {
-						yield {
-							type: "tool_call",
-							id: toolCall.id,
-							name: toolCall.function.name,
-							arguments: toolCall.function.arguments,
-						}
-					}
-				}
-			}
-
-			yield {
-				type: "text",
-				text: message?.content || "",
-			}
-
-			yield this.processUsageMetrics(response.usage, modelInfo)
+			yield* this.yieldNonStreamingResponse(response, modelInfo)
 		}
 	}
 
@@ -477,26 +456,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
 			const response = await this.sendChatCompletion(requestOptions, metadata?.signal)
-
-			const message = response.choices?.[0]?.message
-			if (message?.tool_calls) {
-				for (const toolCall of message.tool_calls) {
-					if (toolCall.type === "function") {
-						yield {
-							type: "tool_call",
-							id: toolCall.id,
-							name: toolCall.function.name,
-							arguments: toolCall.function.arguments,
-						}
-					}
-				}
-			}
-
-			yield {
-				type: "text",
-				text: message?.content || "",
-			}
-			yield this.processUsageMetrics(response.usage, modelInfo)
+			yield* this.yieldNonStreamingResponse(response, modelInfo)
 		}
 	}
 
@@ -530,6 +490,28 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		} finally {
 			this.abortController = undefined
 		}
+	}
+
+	/** The chunks of a non-streamed response: its tool calls, its text (empty when none), its usage. */
+	private *yieldNonStreamingResponse(
+		response: OpenAI.Chat.Completions.ChatCompletion,
+		modelInfo: ModelInfo,
+	): Generator<ApiStreamChunk> {
+		const message = response.choices?.[0]?.message
+		if (message?.tool_calls) {
+			for (const toolCall of message.tool_calls) {
+				if (toolCall.type === "function") {
+					yield {
+						type: "tool_call",
+						id: toolCall.id,
+						name: toolCall.function.name,
+						arguments: toolCall.function.arguments,
+					}
+				}
+			}
+		}
+		yield { type: "text", text: message?.content || "" }
+		yield this.processUsageMetrics(response.usage, modelInfo)
 	}
 
 	/** Same as openChatStream for a non-streamed request; the controller is released on return. */
