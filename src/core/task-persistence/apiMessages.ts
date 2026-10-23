@@ -3,7 +3,7 @@ import { perfCounters } from "../../utils/perfCounters"
 import * as path from "path"
 import * as fs from "fs/promises"
 
-import { Anthropic } from "@anthropic-ai/sdk"
+import type { ConversationMessage } from "../../api/transform/conversation-message"
 
 import { fileExistsAtPath } from "../../utils/fs"
 
@@ -13,7 +13,7 @@ import { getTaskDirectoryPath } from "../../utils/storage"
 import { quarantineCorruptFile } from "./quarantineCorruptFile"
 import { logger } from "../../utils/logging"
 
-export type ApiMessage = Anthropic.MessageParam & {
+export type ApiMessage = ConversationMessage & {
 	ts?: number
 	isSummary?: boolean
 	id?: string

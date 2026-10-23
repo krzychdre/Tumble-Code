@@ -97,6 +97,10 @@ type WireCase = {
 	build: () => ApiHandler
 	url: string
 	auth: [header: string, value: string]
+	/** The other auth header, which must stay off the request. */
+	absentAuth: string
+	/** temperature in the body: dropped where the API version 2026-10-21 rejects it. */
+	temperature: number | undefined
 	/** anthropic-beta values the request must carry (order-insensitive). */
 	betas: string[]
 }
@@ -107,6 +111,23 @@ const CASES: WireCase[] = [
 		build: () => new AnthropicHandler({ apiKey: "test-key", apiModelId: "claude-sonnet-4-5" }),
 		url: "https://api.anthropic.com/v1/messages",
 		auth: ["x-api-key", "test-key"],
+		absentAuth: "authorization",
+		temperature: undefined,
+		betas: ["fine-grained-tool-streaming-2025-05-14", "prompt-caching-2024-07-31"],
+	},
+	{
+		name: "Anthropic gateway with an auth token",
+		build: () =>
+			new AnthropicHandler({
+				apiKey: "test-key",
+				apiModelId: "claude-sonnet-4-5",
+				anthropicBaseUrl: "https://gateway.example",
+				anthropicUseAuthToken: true,
+			}),
+		url: "https://gateway.example/v1/messages",
+		auth: ["authorization", "Bearer test-key"],
+		absentAuth: "x-api-key",
+		temperature: undefined,
 		betas: ["fine-grained-tool-streaming-2025-05-14", "prompt-caching-2024-07-31"],
 	},
 	{
@@ -114,6 +135,8 @@ const CASES: WireCase[] = [
 		build: () => new MiniMaxHandler({ minimaxApiKey: "test-key", apiModelId: "MiniMax-M2.7" }),
 		url: "https://api.minimax.io/anthropic/v1/messages",
 		auth: ["x-api-key", "test-key"],
+		absentAuth: "authorization",
+		temperature: 1,
 		betas: [],
 	},
 	{
@@ -126,6 +149,8 @@ const CASES: WireCase[] = [
 			}),
 		url: "https://us-east5-aiplatform.googleapis.com/v1/projects/test-project/locations/us-east5/publishers/anthropic/models/claude-sonnet-4-5@20250929:streamRawPredict",
 		auth: ["authorization", "Bearer test-access-token"],
+		absentAuth: "x-api-key",
+		temperature: undefined,
 		betas: [],
 	},
 ]
@@ -157,7 +182,7 @@ describe("Anthropic-protocol handlers over the real SDK (DEP-6 wire)", () => {
 		vitest.unstubAllEnvs()
 	})
 
-	describe.each(CASES)("$name", ({ build, url, auth, betas }) => {
+	describe.each(CASES)("$name", ({ build, url, auth, absentAuth, temperature, betas }) => {
 		it("parses the SSE stream into the pinned chunk list", async () => {
 			const handler = build()
 			const chunks: ApiStreamChunk[] = []
@@ -187,11 +212,13 @@ describe("Anthropic-protocol handlers over the real SDK (DEP-6 wire)", () => {
 			expect(request.method).toBe("POST")
 			expect(request.url).toBe(url)
 			expect(request.headers.get(auth[0])).toBe(auth[1])
+			expect(request.headers.get(absentAuth)).toBeNull()
 			const sentBetas = (request.headers.get("anthropic-beta") ?? "").split(",").filter(Boolean)
 			expect([...sentBetas].sort()).toEqual([...betas].sort())
 
 			const body = JSON.parse(await request.text())
 			expect(body.stream).toBe(true)
+			expect(body.temperature).toBe(temperature)
 			// Prompt caching (the Opus 5 fix keyed on supportsPromptCache): the
 			// system prompt and the last user message carry the breakpoint.
 			expect(body.system).toEqual([

@@ -145,7 +145,7 @@ export function addAnthropicCacheControl(
 	const secondLastUserMsgIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
 
 	return messages.map((message, index) => {
-		if (index !== lastUserMsgIndex && index !== secondLastUserMsgIndex) {
+		if (message.role !== "user" || (index !== lastUserMsgIndex && index !== secondLastUserMsgIndex)) {
 			return message
 		}
 

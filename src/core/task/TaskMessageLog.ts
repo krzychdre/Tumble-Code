@@ -27,6 +27,7 @@ import {
 import { CloudService } from "@tumble-code/cloud"
 
 import { type ApiHandler } from "../../api"
+import type { ConversationMessage } from "../../api/transform/conversation-message"
 import {
 	TaskAbortFlagAccess,
 	TaskApiConfigurationAccess,
@@ -145,7 +146,7 @@ export class TaskMessageLog {
 		return readApiMessages({ taskId: this.access.taskId, globalStoragePath: this.access.globalStoragePath })
 	}
 
-	async addToApiConversationHistory(message: Anthropic.MessageParam, reasoning?: string) {
+	async addToApiConversationHistory(message: ConversationMessage, reasoning?: string) {
 		const messageWithTs: ApiMessage =
 			message.role === "assistant"
 				? this.processAssistantMessage(message, reasoning)
@@ -159,7 +160,7 @@ export class TaskMessageLog {
 	 * Build the assistant message with reasoning/thinking/encrypted blocks
 	 * and thought signature blocks inserted into the content array.
 	 */
-	private processAssistantMessage(message: Anthropic.MessageParam, reasoning?: string): ApiMessage {
+	private processAssistantMessage(message: Anthropic.AssistantMessageParam, reasoning?: string): ApiMessage {
 		// Capture the encrypted_content / thought signatures from the provider
 		// (e.g., OpenAI Responses API, Google GenAI) if present.
 		const handler = this.access.api as ApiHandler & {
@@ -239,7 +240,7 @@ export class TaskMessageLog {
 	 * orphaned tool_results to text content when the previous effective
 	 * message is not an assistant message.
 	 */
-	private processUserMessage(message: Anthropic.MessageParam): ApiMessage {
+	private processUserMessage(message: Anthropic.UserMessageParam): ApiMessage {
 		// For user messages, validate tool_result IDs ONLY when the immediately previous *effective*
 		// message is an assistant message.
 		//

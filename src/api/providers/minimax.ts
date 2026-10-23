@@ -16,6 +16,10 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { anthropicCompletionUsage } from "./utils/completion-usage"
 import { convertOpenAIToolsToAnthropic } from "../../core/prompts/tools/native-tools/converters"
 import { wireCaptureFetch } from "./utils/wire-capture"
+import { xApiKeyAuth } from "./utils/x-api-key-auth"
+
+// MiniMax still samples with temperature; the SDK types dropped it with Anthropic API version 2026-10-21.
+type SamplingTemperature = { temperature: number }
 
 /**
  * Converts OpenAI tool_choice to Anthropic ToolChoice format
@@ -73,7 +77,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 
 		this.client = new Anthropic({
 			baseURL,
-			apiKey: options.minimaxApiKey,
+			...xApiKeyAuth(options.minimaxApiKey),
 			timeout: this.timeoutMs,
 			fetch: wireCaptureFetch,
 		})
@@ -104,7 +108,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 		]
 
 		// Prepare request parameters
-		const requestParams: Anthropic.Messages.MessageCreateParams = {
+		const requestParams: Anthropic.Messages.MessageCreateParamsStreaming & SamplingTemperature = {
 			model: modelId,
 			max_tokens: maxTokens ?? 16_384,
 			temperature: temperature ?? 1.0,
@@ -148,13 +152,14 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
 		const { id: model, temperature } = this.getModel()
 
-		const message = await this.client.messages.create({
+		const params: Anthropic.Messages.MessageCreateParamsNonStreaming & SamplingTemperature = {
 			model,
 			max_tokens: 16_384,
 			temperature: temperature ?? 1.0,
 			messages: [{ role: "user", content: prompt }],
 			stream: false,
-		})
+		}
+		const message = await this.client.messages.create(params)
 
 		const content = message.content.find(({ type }) => type === "text")
 		return {

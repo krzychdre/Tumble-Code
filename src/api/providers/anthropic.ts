@@ -27,6 +27,7 @@ import {
 	convertOpenAIToolChoiceToAnthropic,
 } from "../../core/prompts/tools/native-tools/converters"
 import { wireCaptureFetch } from "./utils/wire-capture"
+import { xApiKeyAuth } from "./utils/x-api-key-auth"
 
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
@@ -37,12 +38,11 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		super()
 		this.options = options
 
-		const apiKeyFieldName =
-			this.options.anthropicBaseUrl && this.options.anthropicUseAuthToken ? "authToken" : "apiKey"
+		const useAuthToken = this.options.anthropicBaseUrl && this.options.anthropicUseAuthToken
 
 		this.client = new Anthropic({
 			baseURL: this.options.anthropicBaseUrl || undefined,
-			[apiKeyFieldName]: this.options.apiKey,
+			...(useAuthToken ? { authToken: this.options.apiKey } : xApiKeyAuth(this.options.apiKey)),
 			timeout: this.timeoutMs,
 			fetch: wireCaptureFetch,
 		})
@@ -55,7 +55,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	): ApiStream {
 		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
-		const { id: modelId, maxTokens, temperature, info, reasoningBudget } = this.getModel()
+		const { id: modelId, maxTokens, info, reasoningBudget } = this.getModel()
 		const betas = ["fine-grained-tool-streaming-2025-05-14"]
 		const thinking = getAnthropicProviderReasoning({
 			model: info,
@@ -89,7 +89,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				const requestParams = {
 					model: modelId,
 					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-					temperature,
 					thinking,
 					...outputConfig,
 					// Setting cache breakpoint for system prompt so new tasks can reuse it.
@@ -127,7 +126,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				const requestParams = {
 					model: modelId,
 					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-					temperature,
 					thinking,
 					...outputConfig,
 					system: [{ text: systemPrompt, type: "text" }],
@@ -174,7 +172,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	}
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		const { id: model, temperature, info } = this.getModel()
+		const { id: model, info } = this.getModel()
 		const effort = getAnthropicEffort({ model: info, settings: this.options })
 
 		let message
@@ -184,7 +182,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				max_tokens: ANTHROPIC_DEFAULT_MAX_TOKENS,
 				thinking: undefined,
 				...(effort ? { output_config: { effort } } : {}),
-				temperature,
 				messages: [{ role: "user", content: prompt }],
 				stream: false,
 			})

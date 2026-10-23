@@ -451,7 +451,6 @@ describe("AnthropicHandler", () => {
 				model: mockOptions.apiModelId,
 				messages: [{ role: "user", content: "Test prompt" }],
 				max_tokens: 8192,
-				temperature: 0,
 				thinking: undefined,
 				stream: false,
 			})

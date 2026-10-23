@@ -1,4 +1,5 @@
 import { Anthropic } from "@anthropic-ai/sdk"
+import type { ConversationMessage } from "../../api/transform/conversation-message"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { findLastIndex } from "@tumble-code/core/browser"
 /**
@@ -49,10 +50,10 @@ export class MissingToolResultError extends Error {
  * @returns The validated user message with corrected tool_use_ids and any missing tool_results added
  */
 export function validateAndFixToolResultIds(
-	userMessage: Anthropic.MessageParam,
-	apiConversationHistory: Anthropic.MessageParam[],
+	userMessage: ConversationMessage,
+	apiConversationHistory: ConversationMessage[],
 	onRepair?: (error: Error) => void,
-): Anthropic.MessageParam {
+): ConversationMessage {
 	// Only process user messages with array content
 	if (userMessage.role !== "user" || !Array.isArray(userMessage.content)) {
 		return userMessage

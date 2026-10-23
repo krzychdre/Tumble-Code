@@ -2,7 +2,7 @@
 
 import * as path from "path"
 
-import Anthropic from "@anthropic-ai/sdk"
+import type { ApiMessage } from "../../task-persistence/apiMessages"
 import * as vscode from "vscode"
 import axios from "axios"
 
@@ -1450,7 +1450,7 @@ describe("ClineProvider", () => {
 				{ ts: 4000 },
 				{ ts: 5000 },
 				{ ts: 6000 },
-			] as (Anthropic.MessageParam & { ts?: number })[]
+			] as ApiMessage[]
 
 			// Setup Task instance with auto-mock from the top of the file
 			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
@@ -1536,7 +1536,7 @@ describe("ClineProvider", () => {
 				{ ts: 4000 },
 				{ ts: 5000 },
 				{ ts: 6000 },
-			] as (Anthropic.MessageParam & { ts?: number })[]
+			] as ApiMessage[]
 
 			// Setup Task instance with auto-mock from the top of the file
 			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
