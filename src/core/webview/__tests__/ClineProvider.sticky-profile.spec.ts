@@ -3,57 +3,10 @@
 import * as vscode from "vscode"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
-import { ContextProxy } from "../../config/ContextProxy"
+import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
 import { TaskHistoryStore } from "../../task-persistence"
 import { logger } from "../../../utils/logging"
 import type { HistoryItem } from "@tumble-code/types"
-
-vi.mock("vscode", () => ({
-	ExtensionContext: vi.fn(),
-	OutputChannel: vi.fn(),
-	WebviewView: vi.fn(),
-	Uri: {
-		joinPath: vi.fn(),
-		file: vi.fn(),
-	},
-	CodeActionKind: {
-		QuickFix: { value: "quickfix" },
-		RefactorRewrite: { value: "refactor.rewrite" },
-	},
-	commands: {
-		executeCommand: vi.fn().mockResolvedValue(undefined),
-	},
-	window: {
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	workspace: {
-		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
-			update: vi.fn(),
-		}),
-		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
-			dispose: vi.fn(),
-		})),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	},
-	env: {
-		uriScheme: "vscode",
-		language: "en",
-		appName: "Visual Studio Code",
-	},
-	ExtensionMode: {
-		Production: 1,
-		Development: 2,
-		Test: 3,
-	},
-	version: "1.85.0",
-}))
 
 // Create a counter for unique task IDs.
 let taskIdCounter = 0
@@ -227,9 +180,7 @@ vi.mock("@tumble-code/telemetry", () => ({
 describe("ClineProvider - Sticky Provider Profile", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
-	let mockOutputChannel: vscode.OutputChannel
 	let mockWebviewView: vscode.WebviewView
-	let mockPostMessage: any
 	let originalRooCliRuntimeEnv: string | undefined
 
 	beforeEach(async () => {
@@ -242,87 +193,12 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			TelemetryService.createInstance([])
 		}
 
-		const globalState: Record<string, string | undefined> = {
-			mode: "code",
-			currentApiConfigName: "default-profile",
-		}
-
-		const secrets: Record<string, string | undefined> = {}
-
-		mockContext = {
-			extensionPath: "/test/path",
-			extensionUri: {} as vscode.Uri,
-			globalState: {
-				get: vi.fn().mockImplementation((key: string) => globalState[key]),
-				update: vi.fn().mockImplementation((key: string, value: string | undefined) => {
-					globalState[key] = value
-					return Promise.resolve()
-				}),
-				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((key: string) => secrets[key]),
-				store: vi.fn().mockImplementation((key: string, value: string | undefined) => {
-					secrets[key] = value
-					return Promise.resolve()
-				}),
-				delete: vi.fn().mockImplementation((key: string) => {
-					delete secrets[key]
-					return Promise.resolve()
-				}),
-			},
-			workspaceState: {
-				get: vi.fn().mockReturnValue(undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			subscriptions: [],
-			extension: {
-				packageJSON: { version: "1.0.0" },
-			},
-			globalStorageUri: {
-				fsPath: "/test/storage/path",
-			},
-		} as unknown as vscode.ExtensionContext
-
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			clear: vi.fn(),
-			dispose: vi.fn(),
-		} as unknown as vscode.OutputChannel
-
-		mockPostMessage = vi.fn()
-
-		mockWebviewView = {
-			webview: {
-				postMessage: mockPostMessage,
-				html: "",
-				options: {},
-				onDidReceiveMessage: vi.fn(),
-				asWebviewUri: vi.fn(),
-				cspSource: "vscode-webview://test-csp-source",
-			},
-			visible: true,
-			onDidDispose: vi.fn().mockImplementation((callback) => {
-				callback()
-				return { dispose: vi.fn() }
-			}),
-			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
-
-		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+		mockContext = createMockContext()
+		mockWebviewView = createMockWebviewView()
+		provider = createTestProvider(mockContext)
 
 		// Wait for the async TaskHistoryStore initialization to complete
 		await new Promise((resolve) => setTimeout(resolve, 10))
-
-		// Mock getMcpHub method
-		provider.getMcpHub = vi.fn().mockReturnValue({
-			listTools: vi.fn().mockResolvedValue([]),
-			callTool: vi.fn().mockResolvedValue({ content: [] }),
-			listResources: vi.fn().mockResolvedValue([]),
-			readResource: vi.fn().mockResolvedValue({ contents: [] }),
-			getAllServers: vi.fn().mockReturnValue([]),
-		})
 	})
 
 	afterEach(() => {
