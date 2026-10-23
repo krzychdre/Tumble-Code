@@ -2,7 +2,6 @@
 	"name": "@tumble-code/vscode-nightly",
 	"description": "Nightly build for the Tumble Code VSCode extension.",
 	"private": true,
-	"packageManager": "pnpm@10.8.1",
 	"scripts": {
 		"bundle:nightly": "node esbuild.mjs",
 		"vsix:nightly": "cd build && mkdirp ../../../bin && npx vsce package --no-dependencies --allow-package-env-file --out ../../../bin",
