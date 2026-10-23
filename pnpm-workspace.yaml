@@ -36,11 +36,11 @@ overrides:
 
 catalog:
     "@modelcontextprotocol/sdk": "1.32.1"
-    "@types/node": "^22.20.4"
+    "@types/node": "^22.20.5"
     "@types/react": "^19.3.0"
     # src/package.json spells this range out: vsce package checks it against engines.vscode
     # and cannot parse "catalog:".
-    "@types/vscode": "^1.102.0"
+    "@types/vscode": "^1.140.0"
     "@vscode/vsce": "4.0.0"
     axios: "^1.20.0"
     diff: "^9.0.0"
