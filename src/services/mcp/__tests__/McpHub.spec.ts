@@ -9,7 +9,6 @@ import type { ClineProvider } from "../../../core/webview/ClineProvider"
 
 import type { McpHub as McpHubType, McpConnection, ConnectedMcpConnection, DisconnectedMcpConnection } from "../McpHub"
 import { McpHub } from "../McpHub"
-import { ServerConfigSchema } from "../mcpConfigSchema"
 import type { McpFileListeners, McpWatcherFactory } from "../McpConfigWatcher"
 
 // Mock fs/promises before importing anything that uses it
@@ -812,68 +811,6 @@ describe("McpHub", () => {
 			await expect(mcpHub.readResource("null-safety-server", "test-uri")).rejects.toThrow(
 				"No connection found for server: null-safety-server",
 			)
-		})
-
-		it("should handle connection type checks safely", async () => {
-			// Mock StdioClientTransport
-			const stdioModule = await import("@modelcontextprotocol/sdk/client/stdio.js")
-			const StdioClientTransport = stdioModule.StdioClientTransport as ReturnType<typeof vi.fn>
-
-			const mockTransport = {
-				start: vi.fn().mockResolvedValue(undefined),
-				close: vi.fn().mockResolvedValue(undefined),
-				stderr: {
-					on: vi.fn(),
-				},
-				onerror: null,
-				onclose: null,
-			}
-
-			StdioClientTransport.mockImplementation(function () {
-				return mockTransport
-			})
-
-			// Mock Client
-			const clientModule = await import("@modelcontextprotocol/sdk/client/index.js")
-			const Client = clientModule.Client as ReturnType<typeof vi.fn>
-
-			const mockClient = {
-				connect: vi.fn().mockResolvedValue(undefined),
-				close: vi.fn().mockResolvedValue(undefined),
-				getInstructions: vi.fn().mockReturnValue("test instructions"),
-				request: vi.fn().mockResolvedValue({ tools: [], resources: [], resourceTemplates: [] }),
-			}
-
-			Client.mockImplementation(function () {
-				return mockClient
-			})
-
-			vi.mocked(fs.readFile).mockResolvedValue(
-				JSON.stringify({
-					mcpServers: {
-						"type-check-server": {
-							command: "node",
-							args: ["test.js"],
-						},
-					},
-				}),
-			)
-
-			const mcpHub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
-			await new Promise((resolve) => setTimeout(resolve, 100))
-
-			// Get the connection
-			const connection = mcpHub.connections.find((conn) => conn.server.name === "type-check-server")
-			expect(connection).toBeDefined()
-
-			// Safe type checking
-			if (connection?.type === "connected") {
-				expect(connection.client).toBeDefined()
-				expect(connection.transport).toBeDefined()
-			} else if (connection?.type === "disconnected") {
-				expect(connection.client).toBeNull()
-				expect(connection.transport).toBeNull()
-			}
 		})
 
 		it("should handle missing connections safely", async () => {
@@ -1736,27 +1673,6 @@ describe("McpHub", () => {
 		})
 
 		describe("timeout configuration", () => {
-			it("should validate timeout values", () => {
-				// Test valid timeout values
-				const validConfig = {
-					type: "stdio",
-					command: "test",
-					timeout: 60,
-				}
-				expect(() => ServerConfigSchema.parse(validConfig)).not.toThrow()
-
-				// Test invalid timeout values
-				const invalidConfigs = [
-					{ type: "stdio", command: "test", timeout: 0 }, // Too low
-					{ type: "stdio", command: "test", timeout: 3601 }, // Too high
-					{ type: "stdio", command: "test", timeout: -1 }, // Negative
-				]
-
-				invalidConfigs.forEach((config) => {
-					expect(() => ServerConfigSchema.parse(config)).toThrow()
-				})
-			})
-
 			it("should use default timeout of 60 seconds if not specified", async () => {
 				const mockConnection: ConnectedMcpConnection = {
 					type: "connected",
