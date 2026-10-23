@@ -1,5 +1,5 @@
 import { t } from "../../../i18n"
-import { serializeError } from "serialize-error"
+import { serializeThrown } from "../../../utils/errors"
 
 /**
  * Sanitizes error messages by removing sensitive information like file paths and URLs
@@ -100,7 +100,7 @@ export function extractStatusCode(error: any): number | undefined {
 	}
 
 	// Use serialize-error as fallback for complex objects
-	const serialized = serializeError(error)
+	const serialized = serializeThrown(error) as any
 	if (serialized?.status) return serialized.status
 	if (serialized?.response?.status) return serialized.response.status
 
@@ -128,7 +128,7 @@ export function extractErrorMessage(error: any): string {
 	}
 
 	// Use serialize-error as fallback for complex objects
-	const serialized = serializeError(error)
+	const serialized = serializeThrown(error) as any
 	if (serialized?.message) {
 		return serialized.message
 	}
@@ -148,7 +148,7 @@ export function handleValidationError(
 	},
 ): { valid: boolean; error: string } {
 	// Serialize the error to ensure we have access to all properties
-	const serializedError = serializeError(error)
+	const serializedError = serializeThrown(error)
 
 	// Allow custom handling first (pass original error for backward compatibility)
 	if (customHandlers?.beforeStandardHandling) {

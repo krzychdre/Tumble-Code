@@ -154,3 +154,13 @@ describe("handleValidationError 404", () => {
 		expect(handleValidationError(error, "openai-compatible").error).toContain("validation.invalidEndpoint")
 	})
 })
+
+describe("handleValidationError with a thrown non-Error value", () => {
+	it.each([
+		["a string, as its own text", "embedder exploded", "embedder exploded"],
+		["null, as the generic configuration error", null, "validation.configurationError"],
+	])("reports %s", (_label, thrown, expected) => {
+		expect(handleValidationError(thrown, "openai-compatible").error).toContain(expected)
+		expect(handleValidationError(thrown, "openai-compatible").error).not.toContain("Non-error value")
+	})
+})

@@ -15,7 +15,7 @@
 import delay from "delay"
 import { backoffDelayMsNoJitter, countdown } from "@tumble-code/core"
 import { SETTINGS_DEFAULTS, type ProviderSettings, type ClineApiReqCancelReason } from "@tumble-code/types"
-import { serializeError } from "serialize-error"
+import { serializeThrown } from "../../utils/errors"
 import { type ApiHandler } from "../../api"
 import { describeBackgroundApiFailure, getApiErrorStatus, isAutoRetryableApiError } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
@@ -89,7 +89,7 @@ type GoogleRetryInfoError = {
  * without a null check.
  */
 export function apiErrorDisplayText(error: unknown): string {
-	return (error as { message?: string }).message ?? JSON.stringify(serializeError(error), null, 2)
+	return (error as { message?: string }).message ?? JSON.stringify(serializeThrown(error), null, 2)
 }
 
 /**
