@@ -799,16 +799,6 @@ export class ClineProvider
 		this.pendingEdits.set(operationId, editData)
 	}
 
-	/** See {@link PendingEditOperations.get}. */
-	private getPendingEditOperation(operationId: string): PendingEditOperation | undefined {
-		return this.pendingEdits.get(operationId)
-	}
-
-	/** See {@link PendingEditOperations.clear}. */
-	private clearPendingEditOperation(operationId: string): boolean {
-		return this.pendingEdits.clear(operationId)
-	}
-
 	/** See {@link PendingEditOperations.clearAll}. */
 	private clearAllPendingEditOperations(): void {
 		this.pendingEdits.clearAll()
@@ -1154,30 +1144,17 @@ export class ClineProvider
 		const isRehydratingCurrentTask = currentTask && currentTask.taskId === historyItem.id
 
 		if (!isRehydratingCurrentTask) {
-			// Reset the subagent panel BEFORE popping the stack so the
-			// broadcast still carries the about-to-be-popped task's id as
-			// `sourceTaskId` (the webview scopes by currentTaskId; after the
-			// pop there is no current task and the post would be dropped by
-			// the scope guard). Historical subagents for the task we are
-			// about to rehydrate are restored AFTER the new Task is on the
-			// stack, via `rehydrateSubagents` below.
-			this.subagentRegistry.clearSettled()
-			await this.leaveCurrentTask()
+			// The subagents of the task being opened are restored after it is
+			// on the stack, via `rehydrateSubagents` below.
+			await this.switchAwayFromCurrentTask()
 		}
 
 		// Restore the saved mode and its provider profile (or the CLI's
 		// per-mode settings) before the task reads its configuration.
 		await this.modeProfiles.restoreForHistoryItem(historyItem)
 
-		const {
-			apiConfiguration,
-			organizationAllowList,
-			enableCheckpoints,
-			checkpointTimeout,
-			experiments,
-			cloudUserInfo,
-			taskSyncEnabled,
-		} = await this.getState()
+		const { apiConfiguration, organizationAllowList, enableCheckpoints, checkpointTimeout, experiments } =
+			await this.getState()
 
 		// The profile is known only now, after the saved mode and profile were
 		// restored above. A reopened task obeys the same organization allow
@@ -1229,48 +1206,8 @@ export class ClineProvider
 		// resumeTaskFromHistory pushes further updates asynchronously.
 		await this.postStateToWebview()
 
-		// Check if there's a pending edit after checkpoint restoration
-		const operationId = `task-${task.taskId}`
-		const pendingEdit = this.getPendingEditOperation(operationId)
-		if (pendingEdit) {
-			this.clearPendingEditOperation(operationId) // Clear the pending edit
-
-			logger.debug(`[createTaskWithHistoryItem] Processing pending edit after checkpoint restoration`)
-
-			// Process the pending edit after a short delay to ensure the task is fully initialized
-			setTimeout(async () => {
-				try {
-					// Find the message index in the restored state
-					const { messageIndex, apiConversationHistoryIndex } = (() => {
-						const messageIndex = task.clineMessages.findIndex((msg) => msg.ts === pendingEdit.messageTs)
-						const apiConversationHistoryIndex = task.apiConversationHistory.findIndex(
-							(msg) => msg.ts === pendingEdit.messageTs,
-						)
-						return { messageIndex, apiConversationHistoryIndex }
-					})()
-
-					if (messageIndex !== -1) {
-						// Remove the target message and all subsequent messages
-						await task.overwriteClineMessages(task.clineMessages.slice(0, messageIndex))
-
-						if (apiConversationHistoryIndex !== -1) {
-							await task.overwriteApiConversationHistory(
-								task.apiConversationHistory.slice(0, apiConversationHistoryIndex),
-							)
-						}
-
-						// Process the edited message
-						await task.handleWebviewAskResponse(
-							"messageResponse",
-							pendingEdit.editedContent,
-							pendingEdit.images,
-						)
-					}
-				} catch (error) {
-					logger.error(`[createTaskWithHistoryItem] Error processing pending edit: ${error}`)
-				}
-			}, 100) // Small delay to ensure task is fully ready
-		}
+		// A message edit confirmed with a checkpoint restore continues in the restored task.
+		this.pendingEdits.replayInto(task, `task-${task.taskId}`)
 
 		return task
 	}
@@ -1960,43 +1897,41 @@ export class ClineProvider
 		options: CreateTaskOptions = {},
 		configuration: TumbleCodeSettings = {},
 	): Promise<Task> {
-		if (configuration) {
-			await this.setValues(configuration)
+		await this.setValues(configuration)
 
-			if (configuration.allowedCommands) {
-				await vscode.workspace
-					.getConfiguration(Package.name)
-					.update("allowedCommands", configuration.allowedCommands, vscode.ConfigurationTarget.Global)
-			}
+		if (configuration.allowedCommands) {
+			await vscode.workspace
+				.getConfiguration(Package.name)
+				.update("allowedCommands", configuration.allowedCommands, vscode.ConfigurationTarget.Global)
+		}
 
-			if (configuration.deniedCommands) {
-				await vscode.workspace
-					.getConfiguration(Package.name)
-					.update("deniedCommands", configuration.deniedCommands, vscode.ConfigurationTarget.Global)
-			}
+		if (configuration.deniedCommands) {
+			await vscode.workspace
+				.getConfiguration(Package.name)
+				.update("deniedCommands", configuration.deniedCommands, vscode.ConfigurationTarget.Global)
+		}
 
-			if (configuration.commandExecutionTimeout !== undefined) {
-				await vscode.workspace
-					.getConfiguration(Package.name)
-					.update(
-						"commandExecutionTimeout",
-						configuration.commandExecutionTimeout,
-						vscode.ConfigurationTarget.Global,
-					)
-			}
+		if (configuration.commandExecutionTimeout !== undefined) {
+			await vscode.workspace
+				.getConfiguration(Package.name)
+				.update(
+					"commandExecutionTimeout",
+					configuration.commandExecutionTimeout,
+					vscode.ConfigurationTarget.Global,
+				)
+		}
 
-			if (configuration.currentApiConfigName) {
-				await this.setProviderProfile(configuration.currentApiConfigName)
-			}
+		if (configuration.currentApiConfigName) {
+			await this.setProviderProfile(configuration.currentApiConfigName)
+		}
 
-			// Register custom modes so the CustomModesManager knows about them.
-			// setValues writes to global state, but the manager overwrites that
-			// when it merges .roomodes + global settings on refresh.  Persisting
-			// via updateCustomMode ensures modes survive the merge cycle.
-			if (configuration.customModes?.length) {
-				for (const mode of configuration.customModes) {
-					await this.customModesManager.updateCustomMode(mode.slug, mode)
-				}
+		// Register custom modes so the CustomModesManager knows about them.
+		// setValues writes to global state, but the manager overwrites that
+		// when it merges .roomodes + global settings on refresh.  Persisting
+		// via updateCustomMode ensures modes survive the merge cycle.
+		if (configuration.customModes?.length) {
+			for (const mode of configuration.customModes) {
+				await this.customModesManager.updateCustomMode(mode.slug, mode)
 			}
 		}
 
@@ -2005,18 +1940,8 @@ export class ClineProvider
 
 		// Single-open-task invariant: always enforce for user-initiated top-level tasks
 		if (!parentTask) {
-			// Reset the subagent panel BEFORE popping the stack so the
-			// broadcast still carries the about-to-be-popped task's id as
-			// `sourceTaskId` (the webview scopes by currentTaskId; after the
-			// pop there is no current task and the post would be dropped by
-			// the scope guard). Subagents from the previous task never leak
-			// into the new task's panel.
-			this.subagentRegistry.clearSettled()
-			try {
-				await this.leaveCurrentTask()
-			} catch {
-				// Non-fatal
-			}
+			// Subagents from the previous task never leak into the new task's panel.
+			await this.switchAwayFromCurrentTask()
 		}
 
 		const task = new Task({
@@ -2402,16 +2327,23 @@ export class ClineProvider
 	// Clear the current task without treating it as a subtask.
 	// This is used when the user cancels a task that is not a subtask.
 	public async clearTask(): Promise<void> {
-		// Reset the subagent panel before popping the stack so the broadcast
-		// still carries the about-to-be-cleared task's id as `sourceTaskId`
-		// (the webview scopes by currentTaskId; after the pop there is no
-		// current task and the post would be dropped by the scope guard).
-		this.subagentRegistry.clearSettled()
 		const current = this.taskSlot.current
 		if (current) {
 			logger.info(`[clearTask] clearing task ${current.taskId}.${current.instanceId}`)
-			await this.leaveCurrentTask()
 		}
+		await this.switchAwayFromCurrentTask()
+	}
+
+	/**
+	 * Leaves the current task at a task boundary (new task, clearTask, open
+	 * from history, reattach). The subagent panel is reset first, while the
+	 * leaving task is still current: the broadcast carries its id as
+	 * `sourceTaskId`, which the webview's scope guard accepts, and drops the
+	 * rows of finished fan-outs.
+	 */
+	private async switchAwayFromCurrentTask(): Promise<void> {
+		this.subagentRegistry.clearSettled()
+		await this.leaveCurrentTask()
 	}
 
 	/**
@@ -2421,8 +2353,7 @@ export class ClineProvider
 	 * live instance instead of a new one.
 	 */
 	private async reattachTask(task: Task, historyItem: HistoryItem): Promise<void> {
-		this.subagentRegistry.clearSettled()
-		await this.leaveCurrentTask()
+		await this.switchAwayFromCurrentTask()
 		// Install first: the profile restore below then updates this task,
 		// which already runs on that profile.
 		await this.setCurrentTask(task)

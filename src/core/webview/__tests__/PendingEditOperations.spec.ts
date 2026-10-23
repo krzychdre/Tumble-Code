@@ -56,4 +56,47 @@ describe("PendingEditOperations", () => {
 			vi.useRealTimers()
 		}
 	})
+
+	describe("replayInto", () => {
+		function makeTask(messageTs: number[], apiTs: number[]) {
+			return {
+				clineMessages: messageTs.map((ts) => ({ ts })),
+				apiConversationHistory: apiTs.map((ts) => ({ ts })),
+				overwriteClineMessages: vi.fn(),
+				overwriteApiConversationHistory: vi.fn(),
+				handleWebviewAskResponse: vi.fn(),
+			}
+		}
+
+		beforeEach(() => vi.useFakeTimers())
+		afterEach(() => vi.useRealTimers())
+
+		test("cuts both histories at the edited message and sends the edited text, once", async () => {
+			const ops = new PendingEditOperations()
+			ops.set("task-1", { ...editData, images: ["img"] })
+			const task = makeTask([100, 123, 130], [123, 130])
+
+			ops.replayInto(task as any, "task-1")
+			expect(ops.get("task-1")).toBeUndefined()
+			await vi.advanceTimersByTimeAsync(100)
+
+			expect(task.overwriteClineMessages).toHaveBeenCalledWith([{ ts: 100 }])
+			expect(task.overwriteApiConversationHistory).toHaveBeenCalledWith([])
+			expect(task.handleWebviewAskResponse).toHaveBeenCalledExactlyOnceWith("messageResponse", "new text", [
+				"img",
+			])
+		})
+
+		test("does nothing when the edited message is not in the restored task", async () => {
+			const ops = new PendingEditOperations()
+			ops.set("task-1", { ...editData })
+			const task = makeTask([100], [100])
+
+			ops.replayInto(task as any, "task-1")
+			await vi.advanceTimersByTimeAsync(100)
+
+			expect(task.overwriteClineMessages).not.toHaveBeenCalled()
+			expect(task.handleWebviewAskResponse).not.toHaveBeenCalled()
+		})
+	})
 })

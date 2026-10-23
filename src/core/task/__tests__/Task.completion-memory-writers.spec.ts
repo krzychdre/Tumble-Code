@@ -87,6 +87,7 @@ type ProviderStandIn = {
 	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
 	leaveCurrentTask: typeof ClineProvider.prototype.leaveCurrentTask
 	clearTask: typeof ClineProvider.prototype.clearTask
+	switchAwayFromCurrentTask: () => Promise<void>
 	cancelTask: typeof ClineProvider.prototype.cancelTask
 	delegation: { detach: (parentTaskId: string, childTaskId: string) => Promise<boolean> }
 	context: { globalStorageUri: { fsPath: string } }
@@ -113,6 +114,7 @@ function makeProvider(): ProviderStandIn {
 		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
 		leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
 		clearTask: ClineProvider.prototype.clearTask,
+		switchAwayFromCurrentTask: (ClineProvider.prototype as any).switchAwayFromCurrentTask,
 		cancelTask: ClineProvider.prototype.cancelTask,
 		delegation: {
 			detach: vi.fn().mockResolvedValue(false) as unknown as (

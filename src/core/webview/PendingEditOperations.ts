@@ -1,3 +1,4 @@
+import type { Task } from "../task/Task"
 import { logger } from "../../utils/logging"
 
 /**
@@ -23,9 +24,7 @@ export interface PendingEditOperation {
  * in ClineProvider). Keyed by operation ID (`task-<taskId>`), one entry per
  * task at most: a second confirm for the same task replaces the first.
  *
- * The provider keeps thin delegating members
- * (setPendingEditOperation/getPendingEditOperation/clearPendingEditOperation)
- * so external callers (checkpointRestoreHandler, tests) are unchanged.
+ * The provider keeps `setPendingEditOperation` for checkpointRestoreHandler.
  */
 export class PendingEditOperations {
 	private static readonly TIMEOUT_MS = 30000 // 30 seconds
@@ -68,6 +67,42 @@ export class PendingEditOperations {
 			return true
 		}
 		return false
+	}
+
+	/**
+	 * Continues the pending edit of `operationId` in `task`, the task just
+	 * rehydrated after the checkpoint restore: drops the edited message and
+	 * everything after it, then sends the edited text. Runs after a short
+	 * delay so the task is fully initialized. No-op without a pending edit.
+	 */
+	replayInto(task: Task, operationId: string): void {
+		const pendingEdit = this.get(operationId)
+		if (!pendingEdit) {
+			return
+		}
+		this.clear(operationId)
+		logger.debug(`[createTaskWithHistoryItem] Processing pending edit after checkpoint restoration`)
+
+		setTimeout(async () => {
+			try {
+				const messageIndex = task.clineMessages.findIndex((msg) => msg.ts === pendingEdit.messageTs)
+				const apiConversationHistoryIndex = task.apiConversationHistory.findIndex(
+					(msg) => msg.ts === pendingEdit.messageTs,
+				)
+				if (messageIndex === -1) {
+					return
+				}
+				await task.overwriteClineMessages(task.clineMessages.slice(0, messageIndex))
+				if (apiConversationHistoryIndex !== -1) {
+					await task.overwriteApiConversationHistory(
+						task.apiConversationHistory.slice(0, apiConversationHistoryIndex),
+					)
+				}
+				await task.handleWebviewAskResponse("messageResponse", pendingEdit.editedContent, pendingEdit.images)
+			} catch (error) {
+				logger.error(`[createTaskWithHistoryItem] Error processing pending edit: ${error}`)
+			}
+		}, 100)
 	}
 
 	/** Clears all pending edit operations (dispose path). */
