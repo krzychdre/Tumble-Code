@@ -3,3 +3,5 @@
 579bdd9dbf6d2d569e5e7adb5ff6292b1e42ea34
 # Prettier 3.9.10 whole-tree reformat - PR #995
 42fd97d646c0c50c45d553be567f3f274bfbcbcd
+# ruff format of self-hosted-cloudapi - PR #1006
+3c3634406d9559be3e7c8d72b4b8debb9832aedb
