@@ -165,7 +165,7 @@ export class TaskSlot {
 		// in-place rehydrate) — its fan-out children keep running detached
 		// and must stay visible in the panel. The panel is reset at task
 		// boundaries by the entry points (createTask / clearTask /
-		// createTaskWithHistoryItem) via `resetSubagentPanel`, NOT here,
+		// createTaskWithHistoryItem) via `subagentRegistry.clearSettled`, NOT here,
 		// so mid-task re-fan-out for the same parent (beginFanOut) keeps
 		// its semantics. For a pure abandonment (history switch), the
 		// detached children stay visible until the next task boundary.

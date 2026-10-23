@@ -101,22 +101,9 @@ export class SubagentRegistry {
 		}
 	}
 
-	private dropParent(parentTaskId: string): void {
-		let changed = false
-		for (const [taskId, summary] of this.summaries) {
-			if (summary.parentTaskId === parentTaskId) {
-				this.summaries.delete(taskId)
-				this.watched.delete(taskId)
-				changed = true
-			}
-		}
-		if (changed) {
-			this.postUpdate()
-		}
-	}
-
 	/**
-	 * Drop the rows of every finished fan-out and broadcast. Called by
+	 * Drop the rows of every finished fan-out and broadcast what is left,
+	 * also when nothing was dropped. Called by
 	 * `ClineProvider` at every entry point that changes the foreground task
 	 * (new task, clearTask, open from history, reattach) so a finished
 	 * fan-out's rows do not pile up; the task being opened gets them back from
@@ -129,17 +116,13 @@ export class SubagentRegistry {
 	 * after the reopen, and the sidecar lost the rest.
 	 */
 	clearSettled(): void {
-		let changed = false
 		for (const [taskId, summary] of this.summaries) {
 			if (!this.inProgress.has(summary.parentTaskId)) {
 				this.summaries.delete(taskId)
 				this.watched.delete(taskId)
-				changed = true
 			}
 		}
-		if (changed) {
-			this.postUpdate()
-		}
+		this.broadcast()
 	}
 
 	/**
@@ -147,9 +130,9 @@ export class SubagentRegistry {
 	 * history). A row already in the registry wins: it is at least as new as
 	 * the persisted one (a fan-out still in progress keeps reporting into
 	 * it), so re-rehydrating a task never doubles or rolls back a row. Does
-	 * NOT broadcast: the caller posts the matching `subagentsUpdated` after
-	 * the parent task is on the stack, so the webview's `currentTaskId` is
-	 * set before the message arrives.
+	 * NOT broadcast: the caller calls {@link broadcast} after the parent task
+	 * is on the stack, so the webview's `currentTaskId` is set before the
+	 * message arrives.
 	 */
 	restore(parentTaskId: string, summaries: SubagentSummary[]): void {
 		for (const summary of summaries) {
@@ -163,11 +146,6 @@ export class SubagentRegistry {
 		}
 	}
 
-	/** Alias with intent: a parent task is gone — remove its fan-out entries. */
-	clearForParent(parentTaskId: string): void {
-		this.dropParent(parentTaskId)
-	}
-
 	/**
 	 * Register a queued placeholder for subtask `index` before its child Task
 	 * exists. No-op if an entry with that placeholder id is already present.
@@ -178,7 +156,7 @@ export class SubagentRegistry {
 			return
 		}
 		this.summaries.set(taskId, { ...summary, taskId, status: "queued" })
-		this.postUpdate()
+		this.broadcast()
 	}
 
 	/**
@@ -192,7 +170,7 @@ export class SubagentRegistry {
 			this.watched.add(summary.taskId)
 		}
 		this.summaries.set(summary.taskId, summary)
-		this.postUpdate()
+		this.broadcast()
 	}
 
 	/** Merge `patch` into an existing summary; unknown ids are ignored. */
@@ -202,7 +180,7 @@ export class SubagentRegistry {
 			return
 		}
 		this.summaries.set(taskId, { ...existing, ...patch, taskId, lastActivityAt: Date.now() })
-		this.postUpdate()
+		this.broadcast()
 	}
 
 	/**
@@ -279,7 +257,8 @@ export class SubagentRegistry {
 		return this.watched.has(taskId)
 	}
 
-	private postUpdate(): void {
+	/** Push the full summary list to the webview. */
+	broadcast(): void {
 		this.post({
 			type: "subagentsUpdated",
 			sourceTaskId: this.currentTaskIdProvider(),

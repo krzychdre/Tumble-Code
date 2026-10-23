@@ -3,6 +3,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { TaskSlot } from "../core/webview/TaskSlot"
+import { SubagentRegistry } from "../core/webview/SubagentRegistry"
 
 vi.mock("vscode", () => {
 	const window = {
@@ -207,11 +208,7 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		},
 		taskSlot: undefined,
 		taskEventListeners: new Map(),
-		// The real method rather than a stub. The history items these tests use
-		// carry no `parallelChildIds`, so it returns at its first guard and
-		// touches nothing — while a double that has drifted from the class
-		// still fails here loudly instead of at "is not a function".
-		rehydrateSubagents: (ClineProvider.prototype as any).rehydrateSubagents,
+		subagentRegistry: new SubagentRegistry(() => {}),
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		// No live parallel subagent with the opened id.
 		getBackgroundTask: vi.fn().mockReturnValue(undefined),

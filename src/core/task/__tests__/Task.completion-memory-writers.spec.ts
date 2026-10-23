@@ -74,6 +74,7 @@ vi.mock("../../../api", () => ({
 import { Task, type TaskOptions } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { TaskSlot } from "../../webview/TaskSlot"
+import { SubagentRegistry } from "../../webview/SubagentRegistry"
 import { attemptCompletionTool, type AttemptCompletionCallbacks } from "../../tools/AttemptCompletionTool"
 
 type ProviderStandIn = {
@@ -82,7 +83,7 @@ type ProviderStandIn = {
 	// The real clearCurrentTask reports the empty slot to the task-history
 	// gateway (P7); the stand-in stubs that seam.
 	taskHistory: { setLiveTaskId: (id: string | undefined) => void }
-	resetSubagentPanel: () => Promise<void>
+	subagentRegistry: SubagentRegistry
 	clearCurrentTask: typeof ClineProvider.prototype.clearCurrentTask
 	leaveCurrentTask: typeof ClineProvider.prototype.leaveCurrentTask
 	clearTask: typeof ClineProvider.prototype.clearTask
@@ -108,7 +109,7 @@ function makeProvider(): ProviderStandIn {
 		taskSlot: undefined as unknown as TaskSlot,
 		taskEventListeners: new Map(),
 		taskHistory: { setLiveTaskId: vi.fn() },
-		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
+		subagentRegistry: new SubagentRegistry(() => {}),
 		clearCurrentTask: ClineProvider.prototype.clearCurrentTask,
 		leaveCurrentTask: ClineProvider.prototype.leaveCurrentTask,
 		clearTask: ClineProvider.prototype.clearTask,

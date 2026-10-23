@@ -159,10 +159,16 @@ describe("SubagentRegistry", () => {
 			expect(posted[0].subagents).toEqual([])
 		})
 
-		it("is a no-op (no post) when nothing is dropped", () => {
+		// A task boundary always tells the webview the current rows.
+		it("posts the remaining rows also when nothing is dropped", () => {
+			registry.beginFanOut("p1")
+			registry.register(makeSummary({ taskId: "a", parentTaskId: "p1" }))
 			posted.length = 0
+
 			registry.clearSettled()
-			expect(posted).toHaveLength(0)
+
+			expect(posted).toHaveLength(1)
+			expect(posted[0].subagents?.map((s) => s.taskId)).toEqual(["a"])
 		})
 
 		// Regression: leaving a task whose fan-out still ran off screen wiped

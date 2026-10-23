@@ -14,8 +14,15 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { ClineProvider } from "../ClineProvider"
 import { TaskSlot } from "../TaskSlot"
 import { DelegationService } from "../DelegationService"
+import { SubagentRegistry } from "../SubagentRegistry"
+import { rehydrateSubagents } from "../subagentBackfill"
 import type { Task } from "../../task/Task"
-import { TaskStatus, TumbleCodeEventName } from "@tumble-code/types"
+import { TaskStatus, TumbleCodeEventName, type ExtensionMessage } from "@tumble-code/types"
+
+vi.mock("../subagentBackfill", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../subagentBackfill")>()),
+	rehydrateSubagents: vi.fn().mockResolvedValue(undefined),
+}))
 
 type ProviderStandIn = {
 	taskSlot: TaskSlot
@@ -29,7 +36,8 @@ type ProviderStandIn = {
 	getCurrentTaskStack: typeof ClineProvider.prototype.getCurrentTaskStack
 	getLiveTaskInstance: typeof ClineProvider.prototype.getLiveTaskInstance
 	clearTask: typeof ClineProvider.prototype.clearTask
-	resetSubagentPanel: () => Promise<void>
+	subagentRegistry: SubagentRegistry
+	subagentPosts: ExtensionMessage[]
 	performPreparationTasks: (task: Task) => Promise<void>
 	getState: () => Promise<{ mode: string }>
 	delegation: DelegationService
@@ -78,12 +86,14 @@ function makeProvider(): ProviderStandIn {
 		getCurrentTaskStack: ClineProvider.prototype.getCurrentTaskStack,
 		getLiveTaskInstance: ClineProvider.prototype.getLiveTaskInstance,
 		clearTask: ClineProvider.prototype.clearTask,
-		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
+		subagentRegistry: undefined as unknown as SubagentRegistry,
+		subagentPosts: [],
 		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
 		getState: vi.fn().mockResolvedValue({ mode: "code" }),
 		delegation: undefined as unknown as DelegationService,
 		onDetachedTaskCompleted: vi.fn(),
 	}
+	provider.subagentRegistry = new SubagentRegistry((message) => provider.subagentPosts.push(message))
 	provider.taskSlot = new TaskSlot({
 		getState: () => provider.getState(),
 		performPreparationTasks: (task) => provider.performPreparationTasks(task),
@@ -163,7 +173,7 @@ describe("single-task slot mechanics (D7)", () => {
 
 		await provider.clearTask()
 
-		expect(provider.resetSubagentPanel).toHaveBeenCalled()
+		expect(provider.subagentPosts).toEqual([expect.objectContaining({ type: "subagentsUpdated", subagents: [] })])
 		expect(provider.getCurrentTask()).toBeUndefined()
 	})
 })
@@ -480,7 +490,6 @@ describe("showTaskWithId puts a task running off screen back on screen", () => {
 			getHistoryItem: vi.fn(async (id: string) => ({ id, mode: "code" })),
 			createTaskWithHistoryItem: vi.fn(),
 			modeProfiles: { restoreForHistoryItem: vi.fn().mockResolvedValue(undefined) },
-			rehydrateSubagents: vi.fn().mockResolvedValue(undefined),
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 			getBackgroundTask: vi.fn((): unknown => undefined),
@@ -506,7 +515,7 @@ describe("showTaskWithId puts a task running off screen back on screen", () => {
 		expect(taskB.abortTask).toHaveBeenCalledWith(true)
 		// The panel shows the task's own mode and profile, its subagents, its state.
 		expect(provider.modeProfiles.restoreForHistoryItem).toHaveBeenCalledWith({ id: "task-A", mode: "code" })
-		expect(provider.rehydrateSubagents).toHaveBeenCalled()
+		expect(rehydrateSubagents).toHaveBeenCalledWith(provider, { id: "task-A", mode: "code" })
 		expect(provider.postStateToWebview).toHaveBeenCalled()
 		expect(provider.postMessageToWebview).toHaveBeenCalledWith({ type: "action", action: "chatButtonClicked" })
 	})
