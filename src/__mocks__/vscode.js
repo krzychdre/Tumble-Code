@@ -12,6 +12,10 @@ const mockDisposable = {
 const mockUri = {
 	file: (path) => ({ fsPath: path, path, scheme: "file" }),
 	parse: (path) => ({ fsPath: path, path, scheme: "file" }),
+	joinPath: (base, ...segments) => {
+		const path = [base.path, ...segments].join("/")
+		return { fsPath: path, path, scheme: "file" }
+	},
 }
 
 const mockRange = class {
@@ -104,6 +108,17 @@ export const extensions = {
 
 export const env = {
 	openExternal: () => Promise.resolve(),
+	uriScheme: "vscode",
+	language: "en",
+	appName: "Visual Studio Code",
+}
+
+export const version = "1.85.0"
+
+export const ExtensionMode = {
+	Production: 1,
+	Development: 2,
+	Test: 3,
 }
 
 export const Uri = mockUri
@@ -159,6 +174,8 @@ export default {
 	languages,
 	extensions,
 	env,
+	version,
+	ExtensionMode,
 	Uri,
 	Range,
 	Position,
