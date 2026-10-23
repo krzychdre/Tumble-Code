@@ -376,6 +376,24 @@ describe("Cline", () => {
 			expect(cline.consecutiveMistakeLimit).toBe(0)
 		})
 
+		// A background task has nobody to lift "no limit": it keeps the default.
+		it.each([
+			{ limit: 0, isBackground: false, effective: 0 },
+			{ limit: 0, isBackground: true, effective: 3 },
+			{ limit: 5, isBackground: true, effective: 5 },
+		])("effectiveMistakeLimit of limit $limit, background $isBackground", ({ limit, isBackground, effective }) => {
+			const cline = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				consecutiveMistakeLimit: limit,
+				isBackground,
+				task: "test task",
+				startTask: false,
+			})
+
+			expect(cline.effectiveMistakeLimit).toBe(effective)
+		})
+
 		it("should pass 0 to ToolRepetitionDetector for unlimited mode", () => {
 			const cline = new Task({
 				provider: mockProvider,
