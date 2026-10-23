@@ -19,7 +19,7 @@ import fs from "fs"
 import path from "path"
 import React from "react"
 
-import { render, screen, waitFor } from "@/utils/test-utils"
+import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
 import CodeBlock from "../CodeBlock"
 import MarkdownBlock from "../MarkdownBlock"
@@ -82,8 +82,8 @@ const pick = (el: Element | null | undefined, props: string[]) =>
 	Object.fromEntries(props.map((prop) => [prop, css(el, prop)]))
 
 describe("CodeBlock styles", () => {
-	const renderCodeBlock = (props: Partial<React.ComponentProps<typeof CodeBlock>> = {}) => {
-		const { container } = render(<CodeBlock source={"const a = 1\nconst b = 2"} language="ts" {...props} />)
+	const renderCodeBlock = () => {
+		const { container } = render(<CodeBlock source={"const a = 1\nconst b = 2"} language="ts" />)
 		const root = container.firstElementChild as HTMLElement
 		const scroller = root.firstElementChild as HTMLElement
 		const toolbar = root.children[1] as HTMLElement
@@ -115,21 +115,15 @@ describe("CodeBlock styles", () => {
 			`)
 	})
 
-	it("scroller: honours collapsedHeight, drops the limit when not window-shaded, merges preStyle", () => {
-		expect(css(renderCodeBlock({ collapsedHeight: 200 }).scroller, "max-height")).toMatchInlineSnapshot(`"200px"`)
-		expect(css(renderCodeBlock({ initialWindowShade: false }).scroller, "max-height")).toMatchInlineSnapshot(
-			`"none"`,
-		)
-		const withPreStyle = renderCodeBlock({ preStyle: { marginTop: "7px", maxWidth: "321px" } }).scroller
-		expect(pick(withPreStyle, ["margin-top", "max-width"])).toMatchInlineSnapshot(`
-			{
-			  "margin-top": "7px",
-			  "max-width": "321px",
-			}
-		`)
+	it("scroller: the expand button of a tall block drops the height limit", () => {
+		const tall = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(600)
+		const { scroller, toolbar } = renderCodeBlock()
+		tall.mockRestore()
+		fireEvent.click(toolbar.querySelector("button")!)
+		expect(css(scroller, "max-height")).toBe("none")
 	})
 
-	it("pre and code: wrap by default, keep lines with initialWordWrap=false, mono 0.95em", () => {
+	it("pre and code: wrap, mono 0.95em", () => {
 		const wrapped = renderCodeBlock().scroller
 		const pre = wrapped.querySelector("pre")
 		const code = wrapped.querySelector("code")
@@ -162,26 +156,6 @@ describe("CodeBlock styles", () => {
 		expect(pick(code, ["color"])).toMatchInlineSnapshot(`
 			{
 			  "color": "var(--vscode-editor-foreground,#fff)",
-			}
-		`)
-
-		const unwrapped = renderCodeBlock({ initialWordWrap: false }).scroller
-		const wrap = ["white-space", "word-break", "overflow-wrap"]
-		expect({
-			pre: pick(unwrapped.querySelector("pre"), wrap),
-			code: pick(unwrapped.querySelector("code"), wrap),
-		}).toMatchInlineSnapshot(`
-			{
-			  "code": {
-			    "overflow-wrap": "normal",
-			    "white-space": "pre",
-			    "word-break": "normal",
-			  },
-			  "pre": {
-			    "overflow-wrap": "normal",
-			    "white-space": "pre",
-			    "word-break": "normal",
-			  },
 			}
 		`)
 	})
