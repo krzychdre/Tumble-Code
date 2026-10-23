@@ -81,6 +81,18 @@ describe("MultilineTextInput deleting keys", () => {
 		await vi.waitFor(() => expect(value()).toBe("ab"), { timeout: 10_000, interval: 5 })
 	})
 
+	it("moves between lines keeping the column, clamped to a shorter line, and edits at the cursor", async () => {
+		const { stdin, value } = renderEditable("abcd\nxy")
+
+		// The cursor starts at the end (line 2, column 2).
+		for (const key of ["\x1b[A", "Z", "\x1b[B", "\x1b[D", "!"]) {
+			stdin.write(key)
+			await flush()
+		}
+
+		expect(value()).toBe("abZcd\nx!y")
+	})
+
 	it("removes one character per Backspace press when a held key sends them in one chunk", async () => {
 		const { stdin, value } = renderEditable("")
 
