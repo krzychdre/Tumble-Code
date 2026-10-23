@@ -650,7 +650,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 							initialPrompt: prompt,
 							initialTaskId: requestedCreateSessionId,
 							initialSessionId: resolvedResumeSessionId,
-							continueSession: false,
 							openResumePicker: flagOptions.resume,
 							version: VERSION,
 							createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),

@@ -10,7 +10,6 @@ import {
 	type WebviewMessage,
 	modelSources,
 } from "@tumble-code/types"
-import { arePathsEqual } from "@tumble-code/core/cli"
 
 import { ExtensionHostInterface, ExtensionHostOptions, type ModelSwitch } from "@/agent/index.js"
 import type { TranscriptSink } from "@/agent/transcript-reader.js"
@@ -51,32 +50,17 @@ function extractTaskHistory(message: ExtensionMessage): HistoryItem[] | undefine
 	return undefined
 }
 
-function getMostRecentTaskId(taskHistory: HistoryItem[], workspacePath: string): string | undefined {
-	const workspaceTasks = taskHistory.filter(
-		(item) => typeof item.workspace === "string" && arePathsEqual(item.workspace, workspacePath),
-	)
-
-	if (workspaceTasks.length === 0) {
-		return undefined
-	}
-
-	const sorted = [...workspaceTasks].sort((a, b) => b.ts - a.ts)
-	return sorted[0]?.id
-}
-
 // TODO: Unify with TUIAppProps?
 export interface UseExtensionHostOptions extends ExtensionHostOptions {
 	initialPrompt?: string
 	initialTaskId?: string
 	initialSessionId?: string
-	continueSession?: boolean
 	/** Where the client's transcript reader sends the rows (see useTranscriptSink). */
 	transcript: TranscriptSink
 	createExtensionHost: (options: ExtensionHostOptions) => ExtensionHostInterface
 }
 
 export interface UseExtensionHostReturn {
-	isReady: boolean
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	runTask: ((prompt: string) => Promise<void>) | null
 	cleanup: () => Promise<void>
@@ -103,7 +87,6 @@ export function useExtensionHost({
 	initialPrompt,
 	initialTaskId,
 	initialSessionId,
-	continueSession,
 	transcript,
 	createExtensionHost,
 	// Everything else is an ExtensionHostOptions field and goes to the host
@@ -111,13 +94,12 @@ export function useExtensionHost({
 	// (baseUrl once, consecutiveMistakeLimit/terminalShell/exitOnError later).
 	...hostOptions
 }: UseExtensionHostOptions): UseExtensionHostReturn {
-	const { provider, workspacePath } = hostOptions
+	const { provider } = hostOptions
 	const { exit } = useApp()
 	const { addMessage, setComplete, setLoading, setHasStartedTask, setError, setCurrentTaskId, setIsResumingTask } =
 		useCLIStore()
 
 	const hostRef = useRef<ExtensionHostInterface | null>(null)
-	const isReadyRef = useRef(false)
 	const pendingInitialTaskIdRef = useRef<string | undefined>(initialTaskId?.trim() || undefined)
 
 	const detachTranscriptRef = useRef<(() => void) | null>(null)
@@ -129,7 +111,6 @@ export function useExtensionHost({
 		if (hostRef.current) {
 			await hostRef.current.dispose()
 			hostRef.current = null
-			isReadyRef.current = false
 		}
 	}, [])
 
@@ -143,13 +124,12 @@ export function useExtensionHost({
 				const host = createExtensionHost({ ...hostOptions, disableOutput: true })
 
 				hostRef.current = host
-				isReadyRef.current = true
 
 				// The client reads every message into transcript rows; the sink
 				// applies them to the store.
 				detachTranscriptRef.current = host.client.transcript.attach(transcript)
 
-				// Only for the --session / --continue lookup below.
+				// Only for the --session lookup below (run() resolves --continue into a session id).
 				host.on("extensionWebviewMessage", (msg) => {
 					const taskHistory = extractTaskHistory(msg as ExtensionMessage)
 
@@ -215,35 +195,22 @@ export function useExtensionHost({
 					})
 				}
 
-				if (requestedSessionId || continueSession) {
+				if (requestedSessionId) {
 					await pWaitFor(() => hasReceivedTaskHistory, {
 						interval: 25,
 						timeout: TASK_HISTORY_WAIT_TIMEOUT_MS,
 					}).catch(() => undefined)
 
-					if (requestedSessionId && hasReceivedTaskHistory) {
-						const hasRequestedTask = taskHistorySnapshot.some((item) => item.id === requestedSessionId)
-
-						if (!hasRequestedTask) {
-							throw new Error(`Session not found in task history: ${requestedSessionId}`)
-						}
+					if (hasReceivedTaskHistory && !taskHistorySnapshot.some((item) => item.id === requestedSessionId)) {
+						throw new Error(`Session not found in task history: ${requestedSessionId}`)
 					}
 
-					const resolvedSessionId =
-						requestedSessionId || getMostRecentTaskId(taskHistorySnapshot, workspacePath)
-
-					if (continueSession && !resolvedSessionId) {
-						throw new Error("No previous tasks found to continue in this workspace.")
-					}
-
-					if (resolvedSessionId) {
-						setCurrentTaskId(resolvedSessionId)
-						setIsResumingTask(true)
-						setHasStartedTask(true)
-						setLoading(true)
-						host.sendToExtension({ type: "showTaskWithId", text: resolvedSessionId })
-						return
-					}
+					setCurrentTaskId(requestedSessionId)
+					setIsResumingTask(true)
+					setHasStartedTask(true)
+					setLoading(true)
+					host.sendToExtension({ type: "showTaskWithId", text: requestedSessionId })
+					return
 				}
 
 				setLoading(false)
@@ -328,7 +295,6 @@ export function useExtensionHost({
 	// Memoized return object to prevent unnecessary re-renders in consumers.
 	return useMemo(
 		() => ({
-			isReady: isReadyRef.current,
 			sendToExtension,
 			runTask,
 			cleanup,

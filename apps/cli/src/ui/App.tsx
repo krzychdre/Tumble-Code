@@ -55,7 +55,6 @@ export interface TUIAppProps extends ExtensionHostOptions {
 	initialPrompt?: string
 	initialTaskId?: string
 	initialSessionId?: string
-	continueSession?: boolean
 	/** Start with the task history picker open (`tumble --resume`). */
 	openResumePicker?: boolean
 	version: string
@@ -75,15 +74,8 @@ import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
  * the bordered `InputArea` with its footer.
  */
 function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps) {
-	const {
-		initialPrompt,
-		initialTaskId,
-		initialSessionId,
-		continueSession,
-		openResumePicker,
-		version,
-		...hostOptions
-	} = extensionHostOptions
+	const { initialPrompt, initialTaskId, initialSessionId, openResumePicker, version, ...hostOptions } =
+		extensionHostOptions
 	const { workspacePath, provider, model, mode, nonInteractive = false, reasoningEffort } = hostOptions
 
 	const { exit } = useApp()
@@ -165,7 +157,6 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			initialPrompt,
 			initialTaskId,
 			initialSessionId,
-			continueSession,
 			transcript,
 			createExtensionHost,
 		})
