@@ -20,19 +20,19 @@
 	},
 	"dependencies": {
 		"@tumble-code/types": "workspace:^",
-		"execa": "^9.5.2",
-		"ignore": "^7.0.3",
+		"execa": "catalog:",
+		"ignore": "catalog:",
 		"json-stream-stringify": "^3.1.6",
-		"openai": "^7.23.0",
-		"proper-lockfile": "^4.1.2",
-		"zod": "^4.6.5"
+		"openai": "catalog:",
+		"proper-lockfile": "catalog:",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@tumble-code/config-eslint": "workspace:^",
 		"@tumble-code/config-typescript": "workspace:^",
 		"@tumble-code/config-vitest": "workspace:^",
-		"@types/node": "^22.20.4",
+		"@types/node": "catalog:",
 		"@types/proper-lockfile": "^4.1.4",
-		"vitest": "^5.0.2"
+		"vitest": "catalog:"
 	}
 }

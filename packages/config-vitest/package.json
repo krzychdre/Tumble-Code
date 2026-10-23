@@ -13,9 +13,9 @@
 		"test": "node --test \"__tests__/*.test.mjs\""
 	},
 	"peerDependencies": {
-		"vitest": "^5.0.2"
+		"vitest": "catalog:"
 	},
 	"devDependencies": {
-		"vitest": "^5.0.2"
+		"vitest": "catalog:"
 	}
 }
