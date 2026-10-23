@@ -2,7 +2,7 @@
 # at that day. 3.13 matches local development (uv's .venv) and the CI matrix.
 # To update: `docker buildx imagetools inspect python:3.13-slim`, then replace
 # the version and the digest together.
-FROM python:3.13.17-slim@sha256:fe14fd57a4c0361110eaa0c284112b189750bcb43fb04bb5d1ee7b7744027ccf
+FROM python:3.14.7-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
 
 WORKDIR /app
 
