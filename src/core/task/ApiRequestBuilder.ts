@@ -17,10 +17,13 @@ import {
 	type ToolName,
 	type ClineApiReqInfo,
 	TumbleCodeEventName,
+	getApiProtocol,
 	getModelId,
 	isCompactProfile,
+	isRetiredProvider,
 } from "@tumble-code/types"
-import { type ApiHandler } from "../../api"
+import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
+import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { getRuntimeProviderCapabilities } from "../../api/runtime-provider-registry"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
@@ -29,7 +32,10 @@ import { buildSystemPromptInput, getRequestDisabledTools, isMcpEnabledForPrompt 
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { applyReasoningTrims } from "../context-management/reasoningTrim"
 import { decodeProseToolUsesInHistory } from "../assistant-message/decodeProseToolArgs"
+import { getEffectiveApiHistory, getMessagesSinceLastSummary } from "../condense"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
+import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
+import { resolveParallelToolCalls } from "./parallelToolCalls"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { type ClineProvider } from "../webview/ClineProvider"
@@ -280,6 +286,75 @@ export class ApiRequestBuilder {
 			allTools: toolsResult.tools,
 			allowedFunctionNames: toolsResult.allowedFunctionNames,
 			deferredCatalog: toolsResult.deferredCatalog,
+		}
+	}
+
+	/**
+	 * The conversation this request sends: the effective history since the last summary,
+	 * consecutive user messages merged, images removed for a model that takes none, then
+	 * cleaned by {@link buildCleanConversationHistory}.
+	 */
+	buildRequestMessages(): ReturnType<ApiRequestBuilder["buildCleanConversationHistory"]> {
+		const effectiveHistory = getEffectiveApiHistory(this.access.apiConversationHistory)
+		const messagesSinceLastSummary = getMessagesSinceLastSummary(effectiveHistory)
+		const mergedForApi = mergeConsecutiveApiMessages(messagesSinceLastSummary, { roles: ["user"] })
+		const messagesWithoutImages = maybeRemoveImageBlocks(mergedForApi, this.access.api)
+		return this.buildCleanConversationHistory(
+			messagesWithoutImages as ApiMessage[],
+			this.access.api.getModel().info.preserveReasoning === true,
+		)
+	}
+
+	/** The metadata the provider handler gets with the request. */
+	buildRequestMetadata({
+		mode,
+		signal,
+		suppressPreviousResponseId,
+		allTools,
+		allowedFunctionNames,
+	}: Pick<ToolsArrayResult, "allTools" | "allowedFunctionNames"> & {
+		mode: string
+		signal: AbortSignal
+		suppressPreviousResponseId: boolean
+	}): ApiHandlerCreateMessageMetadata {
+		return {
+			mode: mode,
+			taskId: this.access.taskId,
+			suppressPreviousResponseId,
+			signal,
+			...(allTools.length > 0
+				? {
+						tools: allTools,
+						tool_choice: "auto",
+						// The compact profile asks for one tool call per message (small models lose
+						// track of parallel results); every handler that sends parallel_tool_calls reads it here.
+						parallelToolCalls: resolveParallelToolCalls(this.access.apiConfiguration),
+						...(allowedFunctionNames ? { allowedFunctionNames } : {}),
+					}
+				: {}),
+		}
+	}
+
+	/** The request parameters as the error reports and the exchange recorder describe them. */
+	describeRequestParams(mode: string, hasTools: boolean): Record<string, unknown> {
+		const { apiConfiguration, api } = this.access
+		return {
+			mode,
+			toolProtocol: getApiProtocol(
+				apiConfiguration.apiProvider && !isRetiredProvider(apiConfiguration.apiProvider)
+					? apiConfiguration.apiProvider
+					: undefined,
+				api.getModel().id,
+			),
+			temperature: apiConfiguration.modelTemperature ?? undefined,
+			maxTokens: getModelMaxOutputTokens({
+				modelId: api.getModel().id,
+				model: api.getModel().info,
+				settings: apiConfiguration,
+			}),
+			reasoningEffort:
+				apiConfiguration.enableReasoningEffort === false ? undefined : apiConfiguration.reasoningEffort,
+			...(hasTools ? { toolChoice: "auto", parallelToolCalls: resolveParallelToolCalls(apiConfiguration) } : {}),
 		}
 	}
 
