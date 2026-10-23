@@ -9,10 +9,10 @@
  */
 export const allowlist = [
 	{
-		id: "GHSA-qjx8-664m-686j",
-		module: "js-cookie",
-		reason: "Reached only through react-use's useCookie hook, which the webview does not use; the fix needs js-cookie 3, which react-use does not accept.",
-		removedBy: "no plan item yet: replacing react-use is listed as an open WEB-Q candidate",
+		id: "GHSA-mrhx-c7xc-m3w5",
+		module: "zod",
+		reason: "Only the zod 3 copy of @lmstudio/sdk is affected; it validates the replies of the user's own LM Studio server when listing and loading models (src/api/providers/fetchers/lmstudio.ts). No zod 3 release is patched and @lmstudio/sdk 2.1.0 still requires zod 3.",
+		removedBy: "an @lmstudio/sdk release that accepts zod 4 (then drop the @lmstudio/sdk>zod override too)",
 		expires: "2026-12-31",
 	},
 ]
