@@ -152,7 +152,7 @@ test("gateFindings: an allowlist entry nothing reports anymore is stale and also
 	assert.ok(gate.staleAllowlist.length > 0, "the real allowlist has entries this corpus does not report")
 })
 
-test("the real allowlist entries follow the file / \"file: name\" format and name existing paths", () => {
+test('the real allowlist entries follow the file / "file: name" format and name existing paths', () => {
 	for (const entry of allowlist) {
 		assert.match(entry, /^(src|webview-ui|apps|packages)\/[\w./-]+(?:: [\w$]+)?$/, entry)
 	}

@@ -347,7 +347,10 @@ export function loadTree(tree, root = REPO_ROOT) {
  * root; `sourceRoots` lists the directories whose files form the usage corpus.
  */
 export const I18N_TREES = {
-	webview: { localesDir: ["webview-ui/src/i18n/locales"], sourceRoots: ["webview-ui/src", "src", "apps", "packages"] },
+	webview: {
+		localesDir: ["webview-ui/src/i18n/locales"],
+		sourceRoots: ["webview-ui/src", "src", "apps", "packages"],
+	},
 	src: { localesDir: ["src/i18n/locales"], sourceRoots: ["src", "apps", "packages"] },
 }
 
