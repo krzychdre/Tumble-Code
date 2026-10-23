@@ -9,42 +9,6 @@ import { Task } from "../../task/Task"
 import { logger } from "../../../utils/logging"
 
 // Mock dependencies (mirrors ClineProvider.delegation-cancel-races.spec.ts)
-vi.mock("vscode", () => {
-	const mockDisposable = { dispose: vi.fn() }
-	return {
-		workspace: {
-			getConfiguration: vi.fn(() => ({
-				get: vi.fn().mockReturnValue([]),
-				update: vi.fn().mockResolvedValue(undefined),
-			})),
-			workspaceFolders: [],
-			onDidChangeConfiguration: vi.fn(() => mockDisposable),
-		},
-		env: {
-			uriScheme: "vscode",
-			language: "en",
-		},
-		EventEmitter: vi.fn().mockImplementation(() => ({
-			event: vi.fn(),
-			fire: vi.fn(),
-		})),
-		Disposable: {
-			from: vi.fn(),
-		},
-		window: {
-			showErrorMessage: vi.fn(),
-			showWarningMessage: vi.fn(),
-			createTextEditorDecorationType: vi.fn().mockReturnValue({
-				dispose: vi.fn(),
-			}),
-			onDidChangeActiveTextEditor: vi.fn(() => mockDisposable),
-		},
-		Uri: {
-			file: vi.fn().mockReturnValue({ toString: () => "file://test" }),
-		},
-	}
-})
-
 vi.mock("../../task/Task")
 vi.mock("../../config/ContextProxy")
 vi.mock("../../../services/mcp/McpServerManager", () => ({

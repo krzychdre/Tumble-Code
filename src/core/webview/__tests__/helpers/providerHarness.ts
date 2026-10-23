@@ -8,8 +8,9 @@ import { ContextProxy } from "../../../config/ContextProxy"
 import { ClineProvider } from "../../ClineProvider"
 
 /** An extension context whose global state, workspace state and secrets keep what is written. */
-export const createMockContext = (): vscode.ExtensionContext => {
-	const globalState: Record<string, unknown> = { mode: "code", currentApiConfigName: "default-profile" }
+export const createMockContext = (
+	globalState: Record<string, unknown> = { mode: "code", currentApiConfigName: "default-profile" },
+): vscode.ExtensionContext => {
 	const workspaceState: Record<string, unknown> = {}
 	const secrets: Record<string, string | undefined> = {}
 	return {

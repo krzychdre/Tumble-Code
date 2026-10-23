@@ -28,30 +28,6 @@ import { OrganizationAllowListViolationError } from "../../../utils/errors"
  * ClineProvider with its heavy collaborators mocked.
  */
 
-vi.mock("vscode", () => {
-	const mockDisposable = { dispose: vi.fn() }
-	return {
-		workspace: {
-			getConfiguration: vi.fn(() => ({
-				get: vi.fn().mockReturnValue([]),
-				update: vi.fn().mockResolvedValue(undefined),
-			})),
-			workspaceFolders: [],
-			onDidChangeConfiguration: vi.fn(() => mockDisposable),
-		},
-		env: { uriScheme: "vscode", language: "en" },
-		EventEmitter: vi.fn().mockImplementation(() => ({ event: vi.fn(), fire: vi.fn() })),
-		Disposable: { from: vi.fn() },
-		window: {
-			showErrorMessage: vi.fn(),
-			showWarningMessage: vi.fn(),
-			createTextEditorDecorationType: vi.fn().mockReturnValue({ dispose: vi.fn() }),
-			onDidChangeActiveTextEditor: vi.fn(() => mockDisposable),
-		},
-		Uri: { file: vi.fn().mockReturnValue({ toString: () => "file://test" }) },
-	}
-})
-
 vi.mock("../../task/Task")
 vi.mock("../../config/ContextProxy")
 vi.mock("../../../services/mcp/McpServerManager", () => ({
@@ -165,6 +141,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 	}
 
 	beforeEach(() => {
+		vi.spyOn(vscode.window, "showErrorMessage")
 		vi.clearAllMocks()
 
 		vi.mocked(Task).mockImplementation(function (options: any) {
