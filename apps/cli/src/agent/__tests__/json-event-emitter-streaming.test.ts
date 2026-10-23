@@ -216,6 +216,20 @@ describe("JsonEventEmitter streaming deltas", () => {
 		expect(output[1]).toMatchObject({ content: " pr" })
 	})
 
+	it("suppresses a repeated partial follow-up question that adds nothing", () => {
+		const { stdout, lines } = createMockStdout()
+		const emitter = new JsonEventEmitter({ mode: "stream-json", stdout })
+
+		for (const text of ["Which", "Which", "Which one?"]) {
+			emitMessage(emitter, createAskMessage({ ts: 7, ask: "followup", partial: true, text }))
+		}
+
+		expect(lines().map((line) => [line.type, line.content])).toEqual([
+			["assistant", "Which"],
+			["assistant", " one?"],
+		])
+	})
+
 	it("streams say:command_output as deltas and correlates tool_result id to execute_command", () => {
 		const { stdout, lines } = createMockStdout()
 		const emitter = new JsonEventEmitter({ mode: "stream-json", stdout })
