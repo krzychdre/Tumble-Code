@@ -818,6 +818,28 @@ describe("OpenRouterHandler", () => {
 		})
 	})
 
+	// A rejected create in the OpenRouter shape: telemetry gets the upstream provider's own
+	// message from metadata.raw, the code, and the operation of the path that failed.
+	describe("a rejected request in the OpenRouter error shape", () => {
+		it.each([
+			["createMessage", (handler: OpenRouterHandler) => handler.createMessage("test", []).next()],
+			["completePrompt", (handler: OpenRouterHandler) => handler.completePrompt("test prompt")],
+		])("%s reports the upstream message with its code", async (operation, call) => {
+			const handler = new OpenRouterHandler(mockOptions)
+			const raw = JSON.stringify({ error: { message: "upstream says no" } })
+			const error = { error: { message: "Provider returned error", code: 400, metadata: { raw } } }
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: vitest.fn().mockRejectedValue(error) },
+			} as any
+
+			await expect(call(handler)).rejects.toBeDefined()
+
+			expect(mockCaptureException).toHaveBeenCalledWith(
+				expect.objectContaining({ message: "upstream says no", operation, errorCode: 400, status: 400 }),
+			)
+		})
+	})
+
 	// DEF-C45: an error that OpenRouter sends inside the stream (or in place of a completion)
 	// carries its HTTP status in `code`. The retry loop, the chat error row and the
 	// background-model fallback read `.status`, so the thrown error must carry it there.

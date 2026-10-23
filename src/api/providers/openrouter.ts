@@ -345,38 +345,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		try {
 			stream = await this.client.chat.completions.create(completionParams, requestOptions)
 		} catch (error) {
-			// Try to parse as OpenRouter error structure using Zod
-			const parseResult = OpenRouterErrorResponseSchema.safeParse(error)
-
-			if (parseResult.success && parseResult.data.error) {
-				const openRouterError = parseResult.data
-				const rawString = openRouterError.error?.metadata?.raw
-				const parsedError = extractErrorFromMetadataRaw(rawString)
-				const rawErrorMessage = parsedError || openRouterError.error?.message || "Unknown error"
-
-				const apiError = Object.assign(
-					new ApiProviderError(
-						rawErrorMessage,
-						this.providerName,
-						modelId,
-						"createMessage",
-						openRouterError.error?.code,
-					),
-					{
-						status: openRouterError.error?.code,
-						error: openRouterError.error,
-					},
-				)
-
-				TelemetryService.instance.captureException(apiError)
-				throw handleProviderError(error, this.providerName)
-			} else {
-				// Fallback for non-OpenRouter errors
-				const errorMessage = error instanceof Error ? error.message : String(error)
-				const apiError = new ApiProviderError(errorMessage, this.providerName, modelId, "createMessage")
-				TelemetryService.instance.captureException(apiError)
-				throw handleProviderError(error, this.providerName)
-			}
+			throw this.reportRequestError(error, modelId, "createMessage")
 		}
 
 		yield* streamChatCompletion(stream, {
@@ -428,6 +397,32 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		return { id, info, topP: isDeepSeekR1 ? 0.95 : undefined, ...params }
 	}
 
+	/**
+	 * Report a failed chat.completions.create to telemetry and return the error to throw. An
+	 * error in the OpenRouter shape is reported with its code and the upstream provider's own
+	 * message from metadata.raw when there is one.
+	 */
+	private reportRequestError(error: unknown, modelId: string, operation: "createMessage" | "completePrompt"): Error {
+		const parseResult = OpenRouterErrorResponseSchema.safeParse(error)
+		if (parseResult.success && parseResult.data.error) {
+			const openRouterError = parseResult.data.error
+			const rawErrorMessage =
+				extractErrorFromMetadataRaw(openRouterError.metadata?.raw) || openRouterError.message || "Unknown error"
+			TelemetryService.instance.captureException(
+				Object.assign(
+					new ApiProviderError(rawErrorMessage, this.providerName, modelId, operation, openRouterError.code),
+					{ status: openRouterError.code, error: openRouterError },
+				),
+			)
+		} else {
+			const errorMessage = error instanceof Error ? error.message : String(error)
+			TelemetryService.instance.captureException(
+				new ApiProviderError(errorMessage, this.providerName, modelId, operation),
+			)
+		}
+		return handleProviderError(error, this.providerName)
+	}
+
 	async completePrompt(prompt: string): Promise<string> {
 		return (await this.completePromptWithUsage(prompt)).text
 	}
@@ -463,38 +458,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		try {
 			response = await this.client.chat.completions.create(completionParams, requestOptions)
 		} catch (error) {
-			// Try to parse as OpenRouter error structure using Zod
-			const parseResult = OpenRouterErrorResponseSchema.safeParse(error)
-
-			if (parseResult.success && parseResult.data.error) {
-				const openRouterError = parseResult.data
-				const rawString = openRouterError.error?.metadata?.raw
-				const parsedError = extractErrorFromMetadataRaw(rawString)
-				const rawErrorMessage = parsedError || openRouterError.error?.message || "Unknown error"
-
-				const apiError = Object.assign(
-					new ApiProviderError(
-						rawErrorMessage,
-						this.providerName,
-						modelId,
-						"completePrompt",
-						openRouterError.error?.code,
-					),
-					{
-						status: openRouterError.error?.code,
-						error: openRouterError.error,
-					},
-				)
-
-				TelemetryService.instance.captureException(apiError)
-				throw handleProviderError(error, this.providerName)
-			} else {
-				// Fallback for non-OpenRouter errors
-				const errorMessage = error instanceof Error ? error.message : String(error)
-				const apiError = new ApiProviderError(errorMessage, this.providerName, modelId, "completePrompt")
-				TelemetryService.instance.captureException(apiError)
-				throw handleProviderError(error, this.providerName)
-			}
+			throw this.reportRequestError(error, modelId, "completePrompt")
 		}
 
 		if ("error" in response) {
