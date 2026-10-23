@@ -351,7 +351,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 				await origAbort()
 			})
 			;(provider as any).taskSlot.seedForTests(task)
-			const createBackgroundTask = vi.spyOn(provider, "createBackgroundTask")
+			const createBackgroundTask = vi.spyOn(provider.backgroundTaskRunner, "createBackgroundTask")
 
 			await provider.cancelTask()
 
@@ -363,7 +363,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 
 		it("neither waits on nor aborts a running background task", async () => {
 			const bg = makeBackgroundTaskFake()
-			await provider.createBackgroundTask("extract memories")
+			await provider.backgroundTaskRunner.createBackgroundTask("extract memories")
 			const task = makeMockTask({ isStreaming: true })
 			;(provider as any).taskSlot.seedForTests(task)
 
@@ -376,7 +376,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 
 		it("provider dispose leaves running background tasks alone (today's behavior)", async () => {
 			const bg = makeBackgroundTaskFake()
-			await provider.createBackgroundTask("extract memories")
+			await provider.backgroundTaskRunner.createBackgroundTask("extract memories")
 
 			await provider.dispose()
 

@@ -127,14 +127,20 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 	const provider = {
 		children,
 		historyItems,
-		createBackgroundTask: vi.fn().mockImplementation(() => {
-			const child = new FakeChild()
-			children.push(child)
-			return Promise.resolve(child)
-		}),
-		awaitTaskCompletion: vi
-			.fn()
-			.mockImplementation((child: FakeChild, options: { signal?: AbortSignal }) => child.await(options)),
+		backgroundTaskRunner: {
+			createBackgroundTask: vi.fn().mockImplementation(() => {
+				const child = new FakeChild()
+				children.push(child)
+				return Promise.resolve(child)
+			}),
+			awaitTaskCompletion: vi
+				.fn()
+				.mockImplementation((child: FakeChild, options: { signal?: AbortSignal }) => child.await(options)),
+			resolveSubagentProfile: vi.fn().mockImplementation(async (mode: string) => ({
+				apiConfiguration: { apiProvider: "fake", mode },
+				name: `p-${mode}`,
+			})),
+		},
 		getState: vi.fn().mockResolvedValue({
 			autoApprovalEnabled: true,
 			alwaysAllowExecute: false,
@@ -145,10 +151,6 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 		subagentRegistry,
 		getLiveTaskInstance,
 		backgroundSubagents: new BackgroundSubagents({ getLiveTaskInstance }),
-		resolveSubagentProfile: vi.fn().mockImplementation(async (mode: string) => ({
-			apiConfiguration: { apiProvider: "fake", mode },
-			name: `p-${mode}`,
-		})),
 		atomicReadAndUpdateHistoryItem,
 		// A per-provider temp dir, so the best-effort sidecar write that every
 		// fan-out performs hits the real fs without polluting the workspace.
@@ -159,8 +161,11 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 	return provider as unknown as {
 		children: FakeChild[]
 		historyItems: Map<string, Record<string, unknown>>
-		createBackgroundTask: ReturnType<typeof vi.fn>
-		awaitTaskCompletion: ReturnType<typeof vi.fn>
+		backgroundTaskRunner: {
+			createBackgroundTask: ReturnType<typeof vi.fn>
+			awaitTaskCompletion: ReturnType<typeof vi.fn>
+			resolveSubagentProfile: ReturnType<typeof vi.fn>
+		}
 		getState: ReturnType<typeof vi.fn>
 		subagentRegistry: {
 			beginFanOut: ReturnType<typeof vi.fn>
@@ -171,7 +176,6 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 		}
 		getLiveTaskInstance: ReturnType<typeof vi.fn>
 		backgroundSubagents: BackgroundSubagents
-		resolveSubagentProfile: ReturnType<typeof vi.fn>
 		atomicReadAndUpdateHistoryItem: ReturnType<typeof vi.fn>
 		globalStoragePath: string
 	}
@@ -551,7 +555,7 @@ describe("RunParallelTasksTool.execute", () => {
 		)
 
 		expect(callbacks.askApproval).not.toHaveBeenCalled()
-		expect(provider.createBackgroundTask).not.toHaveBeenCalled()
+		expect(provider.backgroundTaskRunner.createBackgroundTask).not.toHaveBeenCalled()
 		const result = callbacks.pushToolResult.mock.calls[0][0] as string
 		expect(result).toContain("disabled")
 		expect(result).toContain("new_task")
@@ -569,7 +573,7 @@ describe("RunParallelTasksTool.execute", () => {
 		)
 
 		expect(mockCreateWorktree).not.toHaveBeenCalled()
-		expect(provider.createBackgroundTask).not.toHaveBeenCalled()
+		expect(provider.backgroundTaskRunner.createBackgroundTask).not.toHaveBeenCalled()
 		expect(callbacks.askApproval).not.toHaveBeenCalled()
 		const result = callbacks.pushToolResult.mock.calls[0][0] as string
 		expect(result).toContain("not available inside a parallel subtask")
@@ -587,7 +591,7 @@ describe("RunParallelTasksTool.execute", () => {
 		)
 
 		expect(mockCreateWorktree).not.toHaveBeenCalled()
-		expect(provider.createBackgroundTask).not.toHaveBeenCalled()
+		expect(provider.backgroundTaskRunner.createBackgroundTask).not.toHaveBeenCalled()
 		expect(callbacks.pushToolResult).toHaveBeenCalledOnce()
 		const result = callbacks.pushToolResult.mock.calls[0][0] as string
 		expect(result).toContain("cancelled")
@@ -641,7 +645,11 @@ describe("RunParallelTasksTool.execute", () => {
 
 	it("puts a completed subagent's last message on its panel row", async () => {
 		const provider = makeFakeProvider()
-		provider.awaitTaskCompletion.mockResolvedValueOnce({ completed: true, lastMessage: "done", writtenPaths: [] })
+		provider.backgroundTaskRunner.awaitTaskCompletion.mockResolvedValueOnce({
+			completed: true,
+			lastMessage: "done",
+			writtenPaths: [],
+		})
 		await runParallelTasksTool.execute(
 			{ subtasks: [{ message: "job" }] },
 			makeFakeParentTask(provider),
@@ -740,7 +748,7 @@ describe("RunParallelTasksTool.execute", () => {
 	// another profile starts in its place.
 	it("starts a later subtask while an earlier one waits for its profile", async () => {
 		const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 8, currentApiConfigName: "main" })
-		provider.resolveSubagentProfile.mockImplementation(async (mode: string) => ({
+		provider.backgroundTaskRunner.resolveSubagentProfile.mockImplementation(async (mode: string) => ({
 			apiConfiguration: { apiProvider: "fake", mode, maxConcurrentRequests: mode === "ask" ? 1 : undefined },
 			name: `p-${mode}`,
 		}))
@@ -758,12 +766,12 @@ describe("RunParallelTasksTool.execute", () => {
 			makeCallbacks(),
 		)
 		await vi.waitFor(() => expect(provider.children.length).toBe(2))
-		expect(provider.createBackgroundTask.mock.calls.map((call) => call[0])).toEqual(["a", "c"])
+		expect(provider.backgroundTaskRunner.createBackgroundTask.mock.calls.map((call) => call[0])).toEqual(["a", "c"])
 
 		provider.children[0].complete()
 		await execPromise
 		await vi.waitFor(() => expect(provider.children.length).toBe(3))
-		expect(provider.createBackgroundTask.mock.calls[2][0]).toBe("b")
+		expect(provider.backgroundTaskRunner.createBackgroundTask.mock.calls[2][0]).toBe("b")
 		provider.children.slice(1).forEach((c) => c.complete())
 		await settled(provider)
 	})
@@ -780,8 +788,8 @@ describe("RunParallelTasksTool.execute", () => {
 		provider.children[0].complete()
 		await execPromise
 
-		expect(provider.resolveSubagentProfile).toHaveBeenCalledWith("ask")
-		expect(provider.createBackgroundTask.mock.calls[0][1]).toMatchObject({
+		expect(provider.backgroundTaskRunner.resolveSubagentProfile).toHaveBeenCalledWith("ask")
+		expect(provider.backgroundTaskRunner.createBackgroundTask.mock.calls[0][1]).toMatchObject({
 			apiConfiguration: { apiProvider: "fake", mode: "ask" },
 			apiConfigName: "p-ask",
 		})
@@ -795,7 +803,7 @@ describe("RunParallelTasksTool.execute", () => {
 
 		it("runs no more subagents on a profile than its limit allows", async () => {
 			const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 8, currentApiConfigName: "main" })
-			provider.resolveSubagentProfile.mockImplementation(profileWithLimit(2))
+			provider.backgroundTaskRunner.resolveSubagentProfile.mockImplementation(profileWithLimit(2))
 			const parent = makeFakeParentTask(provider)
 			const execPromise = runParallelTasksTool.execute(
 				{ subtasks: [{ message: "a" }, { message: "b" }, { message: "c" }], maxConcurrency: 8 },
@@ -816,7 +824,7 @@ describe("RunParallelTasksTool.execute", () => {
 
 		it("counts the parent when it runs on the same profile", async () => {
 			const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 8 })
-			provider.resolveSubagentProfile.mockImplementation(profileWithLimit(2))
+			provider.backgroundTaskRunner.resolveSubagentProfile.mockImplementation(profileWithLimit(2))
 			const parent = makeFakeParentTask(provider, { taskApiConfigName: "shared" })
 			const execPromise = runParallelTasksTool.execute(
 				{ subtasks: [{ message: "a" }, { message: "b" }], maxConcurrency: 8 },
@@ -836,14 +844,14 @@ describe("RunParallelTasksTool.execute", () => {
 
 		it("refuses before approval when the profile leaves no slot for subagents", async () => {
 			const provider = makeFakeProvider()
-			provider.resolveSubagentProfile.mockImplementation(profileWithLimit(1))
+			provider.backgroundTaskRunner.resolveSubagentProfile.mockImplementation(profileWithLimit(1))
 			const parent = makeFakeParentTask(provider, { taskApiConfigName: "shared" })
 			const callbacks = makeCallbacks()
 
 			await runParallelTasksTool.execute({ subtasks: [{ message: "a" }] }, parent, callbacks)
 
 			expect(callbacks.askApproval).not.toHaveBeenCalled()
-			expect(provider.createBackgroundTask).not.toHaveBeenCalled()
+			expect(provider.backgroundTaskRunner.createBackgroundTask).not.toHaveBeenCalled()
 			const result = String(callbacks.pushToolResult.mock.calls[0][0])
 			expect(result).toContain('API profile "shared" allows 1 request(s) at once')
 			expect(result).toContain("Do this work directly in this task")
@@ -1092,7 +1100,7 @@ describe("RunParallelTasksTool.execute", () => {
 		await execPromise
 		await settled(provider)
 
-		const opts = provider.createBackgroundTask.mock.calls[0][1] as {
+		const opts = provider.backgroundTaskRunner.createBackgroundTask.mock.calls[0][1] as {
 			workspacePath: string
 			subagentInfo: Record<string, unknown>
 		}
@@ -1122,8 +1130,8 @@ describe("RunParallelTasksTool.execute", () => {
 		await execPromise
 		await settled(provider)
 
-		expect(provider.createBackgroundTask).toHaveBeenCalledTimes(2)
-		const opts = provider.createBackgroundTask.mock.calls[0][1] as {
+		expect(provider.backgroundTaskRunner.createBackgroundTask).toHaveBeenCalledTimes(2)
+		const opts = provider.backgroundTaskRunner.createBackgroundTask.mock.calls[0][1] as {
 			autoApprovalOverride?: (ask: string, text?: string, isProtected?: boolean) => Promise<string>
 		}
 		expect(typeof opts.autoApprovalOverride).toBe("function")
@@ -1321,7 +1329,9 @@ describe("RunParallelTasksTool.execute", () => {
 			await settled(provider)
 
 			const queuedRuns = provider.subagentRegistry.registerQueued.mock.calls.map(([row]) => row.runId)
-			const childRuns = provider.createBackgroundTask.mock.calls.map(([, opts]) => opts.subagentInfo.runId)
+			const childRuns = provider.backgroundTaskRunner.createBackgroundTask.mock.calls.map(
+				([, opts]) => opts.subagentInfo.runId,
+			)
 			expect(queuedRuns[0]).toEqual(expect.any(String))
 			expect(new Set([...queuedRuns, ...childRuns])).toEqual(new Set([queuedRuns[0]]))
 		})

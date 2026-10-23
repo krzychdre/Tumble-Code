@@ -67,7 +67,6 @@ import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
 import { Task } from "../task/Task"
 import type { ImageCapableMode } from "../tools/helpers/imageHelpers"
-import type { SideQuery } from "../memory"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@tumble-code/types"
@@ -92,12 +91,7 @@ import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOption
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
 import { TelemetryPropertiesSource } from "./TelemetryPropertiesSource"
 import { ModeProfileQueries } from "./ModeProfileQueries"
-import {
-	BackgroundTaskRunner,
-	type BackgroundTaskOptions,
-	type BackgroundTaskOutcome,
-	type SubagentProfile,
-} from "./BackgroundTaskRunner"
+import { BackgroundTaskRunner } from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
 
@@ -259,9 +253,11 @@ export class ClineProvider
 	/**
 	 * Headless background tasks: memory writers and parallel subagents
 	 * (CORE-R6 d). Kept OUT of the current-task slot so `getCurrentTask()`
-	 * and the webview stay bound to the foreground task.
+	 * and the webview stay bound to the foreground task. Public: the
+	 * fan-out tool, TaskLifecycle and Task start, await and report
+	 * background work through it directly.
 	 */
-	private readonly backgroundTaskRunner: BackgroundTaskRunner
+	public readonly backgroundTaskRunner: BackgroundTaskRunner
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
@@ -2020,23 +2016,6 @@ export class ClineProvider
 		return task
 	}
 
-	/**
-	 * Create and start a HEADLESS background task (memory writer or parallel
-	 * subagent); see {@link BackgroundTaskRunner.createBackgroundTask}. Pair
-	 * with {@link awaitTaskCompletion} to await its result.
-	 */
-	public createBackgroundTask(text: string, options: BackgroundTaskOptions = {}): Promise<Task> {
-		return this.backgroundTaskRunner.createBackgroundTask(text, options)
-	}
-
-	/**
-	 * The API profile a subagent in `taskMode` runs on; see
-	 * {@link BackgroundTaskRunner.resolveSubagentProfile}.
-	 */
-	public resolveSubagentProfile(taskMode: string): Promise<SubagentProfile> {
-		return this.backgroundTaskRunner.resolveSubagentProfile(taskMode)
-	}
-
 	/** Look up a live headless background task (parallel subagent) by id. */
 	public getBackgroundTask(taskId: string): Task | undefined {
 		return this.backgroundTaskRunner.getBackgroundTask(taskId)
@@ -2154,14 +2133,6 @@ export class ClineProvider
 	}
 
 	/**
-	 * Adjust a memory-activity counter and push the change to the webview;
-	 * see {@link BackgroundTaskRunner.setMemoryActivity}.
-	 */
-	public setMemoryActivity(kind: "recall" | "write", active: boolean): void {
-		this.backgroundTaskRunner.setMemoryActivity(kind, active)
-	}
-
-	/**
 	 * Resolve the API profile pinned to `mode` for a mode-scoped subagent;
 	 * undefined means "use the current profile". See
 	 * {@link ModeProfileBinding.getApiConfigurationForMode}.
@@ -2175,30 +2146,6 @@ export class ClineProvider
 	/** See {@link ModeProfileBinding.findImageCapableModes}. */
 	public async findImageCapableModes(): Promise<ImageCapableMode[]> {
 		return this.modeProfiles.findImageCapableModes()
-	}
-
-	/**
-	 * Await a background task's terminal state (completed, or aborted with its
-	 * reason); see {@link BackgroundTaskRunner.awaitTaskCompletion}.
-	 */
-	public awaitTaskCompletion(task: Task, options: { signal?: AbortSignal } = {}): Promise<BackgroundTaskOutcome> {
-		return this.backgroundTaskRunner.awaitTaskCompletion(task, options)
-	}
-
-	/**
-	 * Surface a non-blocking toast for background-task outcomes (memory writes).
-	 */
-	public notifyBackgroundOutcome(message: string): void {
-		this.backgroundTaskRunner.notifyBackgroundOutcome(message)
-	}
-
-	/**
-	 * The one-shot completion of the memory background writers (extraction +
-	 * dream), consumed by `TaskLifecycle.triggerMemoryBackgroundWriters`; see
-	 * {@link BackgroundTaskRunner.memoryWriterQuery}.
-	 */
-	public memoryWriterQuery(foreground: ProviderSettings, taskId?: string): SideQuery {
-		return this.backgroundTaskRunner.memoryWriterQuery(foreground, taskId)
 	}
 
 	public async cancelTask(): Promise<void> {

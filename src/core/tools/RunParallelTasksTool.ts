@@ -15,7 +15,7 @@ import {
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
 import { queuedSubagentId } from "../webview/SubagentRegistry"
-import type { SubagentInfo, SubagentProfile } from "../webview/BackgroundTaskRunner"
+import type { BackgroundTaskRunner, SubagentInfo, SubagentProfile } from "../webview/BackgroundTaskRunner"
 import type { BackgroundSubagents } from "../webview/BackgroundSubagents"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
@@ -233,29 +233,11 @@ export interface SubtaskRegistry {
 
 /** Provider surface needed by a single subtask worker. */
 interface SubtaskProvider {
-	createBackgroundTask(
-		text: string,
-		options: {
-			taskMode?: string
-			workspacePath?: string
-			autoApprovalOverride?: AutoApprovalOverride
-			subagentInfo?: SubagentInfo
-			apiConfiguration?: SubagentProfile["apiConfiguration"]
-			apiConfigName?: string
-		},
-	): Promise<Task>
-	/** The profile a subagent in `taskMode` runs on (see BackgroundTaskRunner.resolveSubagentProfile). */
-	resolveSubagentProfile(taskMode: string): Promise<SubagentProfile>
-	awaitTaskCompletion(
-		task: Task,
-		options: { signal?: AbortSignal },
-	): Promise<{
-		completed: boolean
-		lastMessage?: string
-		writtenPaths: string[]
-		abortReason?: string
-		failureMessage?: string
-	}>
+	/** Starts and awaits the headless subagent tasks. */
+	readonly backgroundTaskRunner: Pick<
+		BackgroundTaskRunner,
+		"createBackgroundTask" | "resolveSubagentProfile" | "awaitTaskCompletion"
+	>
 	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number; currentApiConfigName?: string }>
 	subagentRegistry: SubtaskRegistry
 	/** The running subagents per parent and the provider-wide slot pool. */
@@ -298,13 +280,13 @@ export interface SubagentPlacement {
  * when a profile leaves no slot for subagents.
  */
 export async function placeSubtasks(
-	provider: Pick<SubtaskProvider, "resolveSubagentProfile">,
+	provider: { backgroundTaskRunner: Pick<BackgroundTaskRunner, "resolveSubagentProfile"> },
 	parentProfileName: string | undefined,
 	subtasks: ReadonlyArray<NormalizedSubtask>,
 ): Promise<{ ok: true; placements: SubagentPlacement[] } | { ok: false; error: string }> {
 	const placements: SubagentPlacement[] = []
 	for (const subtask of subtasks) {
-		const profile = await provider.resolveSubagentProfile(subtask.mode)
+		const profile = await provider.backgroundTaskRunner.resolveSubagentProfile(subtask.mode)
 		const profileKey = profile.name ?? ""
 		const maxConcurrentRequests = profile.apiConfiguration.maxConcurrentRequests
 		const profileLimit = subagentSlotsForProfile(maxConcurrentRequests, profileKey === (parentProfileName ?? ""))
@@ -402,7 +384,7 @@ async function runOneSubtask({
 			return await end("cancelled", { worktreePath, branch })
 		}
 
-		const child = await provider.createBackgroundTask(subtask.message, {
+		const child = await provider.backgroundTaskRunner.createBackgroundTask(subtask.message, {
 			taskMode: subtask.mode,
 			workspacePath: worktreePath,
 			// Subagents follow the user's auto-approval settings; worktree
@@ -435,7 +417,7 @@ async function runOneSubtask({
 		// must not break the fan-out (the sidecar write below and the live
 		// panel still work; only rehydration of this run would be affected).
 		await persistParallelChildId(provider, parentTaskId, child.taskId)
-		const outcome = await provider.awaitTaskCompletion(child, { signal })
+		const outcome = await provider.backgroundTaskRunner.awaitTaskCompletion(child, { signal })
 
 		// Cancellation shows up two ways: the fan-out signal (parent aborted)
 		// or a per-subagent cancel from the panel (registry already terminal

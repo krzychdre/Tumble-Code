@@ -47,9 +47,11 @@ function makeProvider() {
 		getState: vi.fn().mockResolvedValue({ customModes: [], mode: "code", parallelTasksMaxConcurrency: 3 }),
 		getHistoryItem: vi.fn(),
 		delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
-		createBackgroundTask: vi.fn(),
 		handleModeSwitch: vi.fn(),
-		resolveSubagentProfile: vi.fn().mockResolvedValue({ apiConfiguration: { apiProvider: "openai" } }),
+		backgroundTaskRunner: {
+			createBackgroundTask: vi.fn(),
+			resolveSubagentProfile: vi.fn().mockResolvedValue({ apiConfiguration: { apiProvider: "openai" } }),
+		},
 	}
 }
 
@@ -194,7 +196,7 @@ describe("subagents under a compact profile", () => {
 
 			await runParallelTasksTool.execute(params, task as any, callbacks)
 
-			expect(task.provider.createBackgroundTask).not.toHaveBeenCalled()
+			expect(task.provider.backgroundTaskRunner.createBackgroundTask).not.toHaveBeenCalled()
 			expect(task.provider.getState).not.toHaveBeenCalled()
 			expect(mockCheckGitRepo).not.toHaveBeenCalled()
 			expect(callbacks.askApproval).not.toHaveBeenCalled()
@@ -238,7 +240,7 @@ describe("subagents under a compact profile", () => {
 				tool: "runParallelTasks",
 				count: 2,
 			})
-			expect(task.provider.createBackgroundTask).not.toHaveBeenCalled()
+			expect(task.provider.backgroundTaskRunner.createBackgroundTask).not.toHaveBeenCalled()
 			expect(task.consecutiveMistakeCount).toBe(0)
 		})
 	})

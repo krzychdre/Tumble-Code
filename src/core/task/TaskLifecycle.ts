@@ -802,7 +802,7 @@ export class TaskLifecycle {
 		if (!isAutoMemoryEnabled()) return
 		const provider = this.access.providerRef.deref()
 		if (!provider) return
-		const query = provider.memoryWriterQuery(this.access.apiConfiguration, this.access.taskId)
+		const query = provider.backgroundTaskRunner.memoryWriterQuery(this.access.apiConfiguration, this.access.taskId)
 		// The user-prose signal of the conversation (task statement, replies,
 		// short assistant context), bounded to a few thousand characters.
 		const transcript = renderTranscript(this.access.apiConversationHistory as unknown as TranscriptMessage[])
@@ -821,7 +821,7 @@ export class TaskLifecycle {
 			onSaved: (count) => {
 				if (count > 0) {
 					logger.info(`[memory] extractMemories saved ${count} memor${count === 1 ? "y" : "ies"}`)
-					provider.notifyBackgroundOutcome(t("common:info.memory_saved", { count }))
+					provider.backgroundTaskRunner.notifyBackgroundOutcome(t("common:info.memory_saved", { count }))
 				}
 			},
 		}).catch(logWriterFailure("extractMemories"))
@@ -852,7 +852,9 @@ export class TaskLifecycle {
 					onImproved: (count) => {
 						if (count > 0) {
 							logger.info(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
-							provider.notifyBackgroundOutcome(t("common:info.memory_consolidated", { count }))
+							provider.backgroundTaskRunner.notifyBackgroundOutcome(
+								t("common:info.memory_consolidated", { count }),
+							)
 						}
 					},
 				}),
