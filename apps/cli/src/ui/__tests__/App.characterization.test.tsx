@@ -25,6 +25,7 @@ import type { ClineMessage, ExtensionMessage, WebviewMessage } from "@tumble-cod
 import type { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 import { TranscriptReader } from "@/agent/transcript-reader.js"
 
+import { FOLLOWUP_TIMEOUT_SECONDS } from "../../types/constants.js"
 import { App, type TUIAppProps } from "../App.js"
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
@@ -399,6 +400,38 @@ describe("App characterization (recorded message sequences)", () => {
 		await h.emit("answer", updated(say(1003, "text", "Cześć!", false)))
 
 		expect(render_(h.frames)).toMatchSnapshot()
+		h.unmount()
+	})
+
+	it.each([
+		["up", "\u001B[A"],
+		["down", "\u001B[B"],
+	])("stops the follow-up auto-select countdown when the %s arrow moves the selection", async (name, key) => {
+		const h = await start({ nonInteractive: true })
+
+		await h.emit("prompt echo", state([PROMPT_ECHO]))
+		await h.emit("request started", updated(REQUEST))
+		await h.emit(
+			"followup ask",
+			updated(
+				ask(
+					1002,
+					"followup",
+					JSON.stringify({
+						question: "Which language?",
+						suggest: [{ answer: "Polish" }, { answer: "English" }],
+					}),
+				),
+			),
+		)
+		expect(h.frames.at(-1)!.frame).toContain(`Auto-selecting "Polish" in ${FOLLOWUP_TIMEOUT_SECONDS}s`)
+
+		await h.type(`pressed ${name} arrow`, key)
+		await vi.advanceTimersByTimeAsync(FOLLOWUP_TIMEOUT_SECONDS * 1000)
+		await h.snap("countdown time passed")
+
+		expect(h.frames.at(-1)!.frame).not.toContain("Auto-selecting")
+		expect(h.host.sent.filter((m) => m.type === "askResponse")).toEqual([])
 		h.unmount()
 	})
 
