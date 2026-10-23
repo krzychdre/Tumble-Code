@@ -8,22 +8,20 @@ import * as fs from "fs"
  *   http/https modules, which breaks when bundled. It needs access to the actual
  *   Node.js module instances.
  * - `esbuild` and `@vscode/ripgrep` ship native binaries that cannot be bundled.
- * - `@opentelemetry/api` and `@opentelemetry/semantic-conventions`: the tracing
- *   module of `@mistralai/mistralai` 2.x imports them and is itself loaded by a
- *   dynamic import inside try/catch. `@opentelemetry/api` is an optional peer we
- *   do not install, so bundling fails; kept external, the require throws at
- *   runtime and the SDK falls back to its no-op tracing, as it does anywhere the
- *   peer is missing. The semantic conventions are only used by that module.
+ * - `@opentelemetry/semantic-conventions`: only the tracing module of
+ *   `@mistralai/mistralai` 2.x imports it, and that module is loaded by a
+ *   dynamic import inside try/catch; kept external, the require throws at
+ *   runtime and the SDK falls back to its no-op tracing.
  *
- * undici, by contrast, must be bundled because the VSIX is packaged with
- * `--no-dependencies`.
+ * Everything else is bundled because the VSIX is packaged with
+ * `--no-dependencies`: undici, and `@opentelemetry/api`, which
+ * `@anthropic-ai/sdk` requires when it loads.
  */
 export const extensionExternals: readonly string[] = Object.freeze([
 	"vscode",
 	"esbuild",
 	"global-agent",
 	"@vscode/ripgrep",
-	"@opentelemetry/api",
 	"@opentelemetry/semantic-conventions",
 ])
 
