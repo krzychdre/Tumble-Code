@@ -1,0 +1,105 @@
+# Dependency updates. Majors are planned work (one branch each, see ai_plans), not bot PRs.
+version: 2
+
+updates:
+    - package-ecosystem: "npm"
+      directory: "/"
+      schedule:
+          interval: "weekly"
+          day: "monday"
+          time: "05:00"
+          timezone: "Europe/Warsaw"
+      open-pull-requests-limit: 6
+      ignore:
+          - dependency-name: "*"
+            update-types: ["version-update:semver-major"]
+      groups:
+          type-definitions:
+              patterns: ["@types/*"]
+          dev-tooling:
+              patterns:
+                  - "eslint"
+                  - "eslint-*"
+                  - "@eslint/*"
+                  - "typescript-eslint"
+                  - "@typescript-eslint/*"
+                  - "prettier"
+                  - "vitest"
+                  - "@vitest/*"
+                  - "vite"
+                  - "@vitejs/*"
+                  - "typescript"
+                  - "knip"
+                  - "turbo"
+                  - "tsx"
+                  - "tsup"
+                  - "esbuild"
+                  - "esbuild-wasm"
+                  - "lint-staged"
+                  - "husky"
+                  - "@changesets/*"
+          provider-sdks:
+              patterns:
+                  - "@anthropic-ai/*"
+                  - "openai"
+                  - "@google/genai"
+                  - "google-auth-library"
+                  - "@aws-sdk/*"
+                  - "@mistralai/*"
+                  - "ollama"
+                  - "@lmstudio/sdk"
+                  - "@modelcontextprotocol/sdk"
+          webview-ui-libs:
+              patterns:
+                  - "react"
+                  - "react-dom"
+                  - "@radix-ui/*"
+                  - "@tanstack/*"
+                  - "lucide-react"
+                  - "mermaid"
+                  - "shiki"
+                  - "react-virtuoso"
+                  - "tailwind-merge"
+                  - "tailwindcss"
+                  - "@tailwindcss/*"
+                  - "i18next"
+                  - "react-i18next"
+
+    - package-ecosystem: "uv"
+      directory: "/self-hosted-cloudapi"
+      schedule:
+          interval: "weekly"
+          day: "monday"
+          time: "05:00"
+          timezone: "Europe/Warsaw"
+      ignore:
+          - dependency-name: "*"
+            update-types: ["version-update:semver-major"]
+      groups:
+          cloud-api-python:
+              patterns: ["*"]
+
+    - package-ecosystem: "docker"
+      directory: "/self-hosted-cloudapi"
+      schedule:
+          interval: "weekly"
+          day: "monday"
+          time: "05:00"
+          timezone: "Europe/Warsaw"
+      ignore:
+          - dependency-name: "*"
+            update-types: ["version-update:semver-major"]
+
+    - package-ecosystem: "github-actions"
+      directories: ["/", "/.github/actions/*"]
+      schedule:
+          interval: "weekly"
+          day: "monday"
+          time: "05:00"
+          timezone: "Europe/Warsaw"
+      ignore:
+          - dependency-name: "*"
+            update-types: ["version-update:semver-major"]
+      groups:
+          github-actions:
+              patterns: ["*"]
