@@ -42,7 +42,6 @@ plan. The vision mode is built in since 2026-10-13 (`DEFAULT_MODES` in `packages
 | Plan                                                                                                 | State                                                                                                          |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | [`2026-10-10_19-36_compact-small-model-profile.md`](2026-10-10_19-36_compact-small-model-profile.md) | Proof of concept on the local branch `feat/compact-small-model-profile`, measured, not merged.                 |
-| [`2026-10-01_simplification-round-2.md`](2026-10-01_simplification-round-2.md)                       | In progress: items A to E, one pull request each. Its Status table says which are merged.                      |
 | [`2026-09-28_p8-measurement.md`](2026-09-28_p8-measurement.md)                                       | Parked: JSONL task persistence is not needed yet. The plan lists the measured thresholds that would reopen it. |
 
 ## Roadmaps
@@ -50,7 +49,8 @@ plan. The vision mode is built in since 2026-10-13 (`DEFAULT_MODES` in `packages
 - [`2026-09-27_simplification-roadmap.md`](2026-09-27_simplification-roadmap.md): what the 2026-09 refactor achieved
   and the R, D, P, S, F items that followed it (all done; P8 parked, see above).
 - [`2026-10-01_simplification-round-2.md`](2026-10-01_simplification-round-2.md): the next round, with the owner's
-  decisions.
+  decisions. Done 2026-10-02: items A to E, one pull request each (#664 to #724); B11 cancelled by the owner, so
+  the VS Code terminal path stays.
 - [`2026-10-23_17-20_maintenance-audit-round-4.md`](2026-10-23_17-20_maintenance-audit-round-4.md): round 4,
   dependency refresh (bot, GitHub Actions, planned majors, Python service) plus refactoring and test-hygiene
   items for the host, CLI, webview, cloud service and docs. Proposal, nothing implemented yet.
