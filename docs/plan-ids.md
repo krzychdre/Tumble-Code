@@ -13,7 +13,8 @@ New code should not add plan IDs to comments: write the reason in a sentence ins
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `CORE-R*`, `API-*`, `SVC-*`, `WEB-*`, `PKG-*`, `CLI-*`, `DEP-*`, `TEST-*`, `CAPI-M*`, `DEF-*` | The 2026-09-24 refactor master plan, folder `ai_plans/2026-09-24_refactor/` on the intentionally unmerged branch `docs/refactor-plan-2026-09-24`. `API P2` and similar are rows of the performance table of one area of that plan (`05-providers-and-services.md`). What it achieved is summarised in the roadmap below. |
 | `R1`-`R11`, `D1`-`D15`, `P1`-`P12`, `S1`-`S7`, `F1`-`F4` (no prefix)                          | [`ai_plans/2026-09-27_simplification-roadmap.md`](../ai_plans/2026-09-27_simplification-roadmap.md) on `main`.                                                                                                                                                                                                           |
-| `CB-*`, `TL-*`                                                                                | [`ai_plans/archive/2026-07/2026-07-11_codebase-review-findings-register.md`](../ai_plans/archive/2026-07/2026-07-11_codebase-review-findings-register.md) (a July code review; `CB` = cloud, `TL` = tools).                                                                                                              |
+| `R3-1` to `R3-12`                                                                             | [`ai_plans/simplification_round3_audit_2026-10-02.md`](../ai_plans/simplification_round3_audit_2026-10-02.md) on `main` (simplification round 3).                                                                                                                                                                        |
+| `CB-*`, `TL-*`, `AP-*`                                                                        | [`ai_plans/archive/2026-07/2026-07-11_codebase-review-findings-register.md`](../ai_plans/archive/2026-07/2026-07-11_codebase-review-findings-register.md) (a July code review; `CB` = cloud, `TL` = tools, `AP` = API providers).                                                                                        |
 | `WS-1` to `WS-8`                                                                              | Two July plans that both numbered their work streams from 1, see the `WS` section.                                                                                                                                                                                                                                       |
 | `WS-B` to `WS-G`                                                                              | [`ai_plans/archive/2026-08/2026-08-24_dsh-adoption-implementation-plan.md`](../ai_plans/archive/2026-08/2026-08-24_dsh-adoption-implementation-plan.md).                                                                                                                                                                 |
 
@@ -32,6 +33,8 @@ A bare short ID usually means the roadmap item. These places use the same letter
   list re-read from disk on every keystroke (P8). Both were fixed by `SVC-11` (#331); the P8 test went away with
   the custom command files.
 - `API P2`, `API P3`, `API P4`, `API P6`: see the refactor plan section below, not the roadmap's P2 to P6.
+- `R3` alone is the roadmap item (the first-chunk abort race, #525). `R3-2`, `R3-10` and the other IDs with a
+  number after the dash are items of simplification round 3, see that section below.
 
 ## Refactor master plan (2026-09-24)
 
@@ -204,20 +207,39 @@ A bare short ID usually means the roadmap item. These places use the same letter
 | S6  | Type safety in `core/task`: `state: any` replaced, `as any` casts and empty `catch {}` bodies reduced.                   | #567, #590, #598               |
 | S7  | `ExtensionMessage` and `WebviewMessage` split by domain; the old group aliases removed.                                  | #568                           |
 
+## Simplification round 3 (2026-10-02)
+
+| ID    | What it was                                                                                                                                                     | PR               |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| R3-2  | The memory and dream defaults were inlined on both sides of the settings boundary; they moved into `SETTINGS_DEFAULTS`.                                         | #763             |
+| R3-3a | CI gate for unused English webview i18n keys (`find-unused-i18n-keys.mjs --check`).                                                                             | #764             |
+| R3-3b | CI gate for exports used only by their own spec (`find-test-only-exports.mjs --check` plus `scripts/test-only-exports-allowlist.mjs`); 27 such exports deleted. | #767             |
+| R3-7  | One shared SDK-mock scaffold for the provider specs (`src/api/providers/__tests__/provider-test-helpers.ts`).                                                   | #779             |
+| R3-8  | Members repeated across the task-side `*Access` and webview-side `*Host` interfaces composed into shared groups (`access-groups.ts`, `host-groups.ts`).         | #783             |
+| R3-9  | `diagnostics_service.py` in the cloud API split by concern into `services/problems`.                                                                            | #778             |
+| R3-10 | Dead i18n keys of the `src` tree deleted, and the unused-key gate extended to both trees, so webview usage cannot keep host keys alive.                         | #766             |
+| R3-12 | Three clusters extracted from `ClineProvider`: `PendingEditOperations` (cluster 1), `TelemetryPropertiesSource` (cluster 2), `ModeProfileQueries` (cluster 3).  | #784, #785, #788 |
+
 ## July and August plans
 
 ### Code review register (2026-07-11)
 
-| ID   | What it was                                                                                   |
-| ---- | --------------------------------------------------------------------------------------------- |
-| CB-3 | `StaticTokenAuthService` never checked JWT expiry, so the cloud broke silently after an hour. |
-| CB-4 | `WebAuthService.refreshSession` did not await `clearCredentials()` (unhandled rejection).     |
-| CB-7 | The cloud web page counted booleans as numbers, drifting from the metrics service.            |
-| CB-8 | `share_task` did not enforce the organization's `allowPublicTaskSharing` on the server.       |
-| TL-1 | Static state in `NativeToolCallParser` raced across parallel tasks.                           |
-| TL-2 | `WriteToFileTool` trusted a stale `editType` from the partial stream.                         |
-| TL-4 | An error in a write tool's partial handling left the diff editor open.                        |
-| TL-6 | A write tool opened the diff editor before validating the path (information disclosure).      |
+| ID   | What it was                                                                                                                  |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------- |
+| CB-3 | `StaticTokenAuthService` never checked JWT expiry, so the cloud broke silently after an hour.                                |
+| CB-4 | `WebAuthService.refreshSession` did not await `clearCredentials()` (unhandled rejection).                                    |
+| CB-7 | The cloud web page counted booleans as numbers, drifting from the metrics service.                                           |
+| CB-8 | `share_task` did not enforce the organization's `allowPublicTaskSharing` on the server.                                      |
+| TL-1 | Static state in `NativeToolCallParser` raced across parallel tasks.                                                          |
+| TL-2 | `WriteToFileTool` trusted a stale `editType` from the partial stream.                                                        |
+| TL-4 | An error in a write tool's partial handling left the diff editor open.                                                       |
+| TL-6 | A write tool opened the diff editor before validating the path (information disclosure).                                     |
+| AP-2 | The base OpenAI-compatible provider finalized tool calls only on `finish_reason` `tool_calls`; weak servers send `stop`.     |
+| AP-4 | An OpenAI-compatible server that sent no usage left the task without a usage chunk; it is now estimated locally once.        |
+| AP-5 | `nextChunkWithAbort` added an abort listener per chunk and never removed it.                                                 |
+| AP-6 | `deepseek.ts` has its own stream loop and did not yield the finish reason (see AP-2).                                        |
+| AP-7 | With zero tracked context tokens (server omitted usage) auto-condense never triggered; tokens are now counted as a fallback. |
+| AP-8 | The O3-family streaming path of `openai.ts` dropped `reasoning_content`.                                                     |
 
 ### Work streams (`WS`)
 
