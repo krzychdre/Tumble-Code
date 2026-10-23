@@ -29,7 +29,7 @@ describe("TaskApiLoop background mistake limit", () => {
 			taskId: "sub-1",
 			isBackground: true,
 			consecutiveMistakeCount: 0,
-			consecutiveMistakeLimit: 3,
+			effectiveMistakeLimit: 3,
 			apiConfiguration: { apiProvider: "openai" },
 			lastToolErrorName: "apply_diff",
 			askSay: { ask: vi.fn(), say: vi.fn() },
@@ -90,15 +90,5 @@ describe("TaskApiLoop background mistake limit", () => {
 		expect(await check(content)).toBe(false)
 		expect(content).toHaveLength(1)
 		expect(access.stopStuckBackgroundTask).not.toHaveBeenCalled()
-	})
-
-	it("a profile limit of 0 (no limit) still uses the default for a subagent", async () => {
-		access.consecutiveMistakeLimit = 0
-		access.consecutiveMistakeCount = 3
-		const content: any[] = []
-
-		await check(content)
-
-		expect(content).toHaveLength(1)
 	})
 })

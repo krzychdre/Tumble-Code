@@ -425,6 +425,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Tool Use
 	consecutiveMistakeCount: number = 0
 	consecutiveMistakeLimit: number
+	/**
+	 * The mistake limit the repetition detector and the background mistake
+	 * check use. A background task has nobody to lift a limit of 0 ("no
+	 * limit") for: it keeps the default so a call repeated forever still stops it.
+	 */
+	readonly effectiveMistakeLimit: number
 	consecutiveMistakeCountForApplyDiff: Map<string, number> = new Map()
 	consecutiveMistakeCountForEditFile: Map<string, number> = new Map()
 	consecutiveNoToolUseCount: number = 0
@@ -1001,7 +1007,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.api = buildApiHandler(this.apiConfiguration)
 		this.autoApprovalHandler = new AutoApprovalHandler()
 
-		this.consecutiveMistakeLimit = consecutiveMistakeLimit ?? DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
+		this.consecutiveMistakeLimit = consecutiveMistakeLimit
+		this.effectiveMistakeLimit =
+			consecutiveMistakeLimit > 0 || !isBackground ? consecutiveMistakeLimit : DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
 		this.providerRef = new WeakRef(provider)
 		this.globalStoragePath = provider.context.globalStorageUri.fsPath
 		this.diffViewProvider = new DiffViewProvider(this.cwd, this)
@@ -1069,13 +1077,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Listen for provider profile changes to update parser state
 		this.lifecycle.setupProviderProfileChangeListener(provider)
 
-		// A background task has nobody to lift a limit of 0 ("no limit") for:
-		// it keeps the default so a call repeated forever still stops it.
-		this.toolRepetitionDetector = new ToolRepetitionDetector(
-			this.consecutiveMistakeLimit > 0 || !isBackground
-				? this.consecutiveMistakeLimit
-				: DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
-		)
+		this.toolRepetitionDetector = new ToolRepetitionDetector(this.effectiveMistakeLimit)
 
 		// Initialize todo list if provided
 		if (initialTodos && initialTodos.length > 0) {

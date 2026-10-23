@@ -14,7 +14,6 @@ import {
 	getApiProtocol,
 	getModelId,
 	isRetiredProvider,
-	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	SETTINGS_DEFAULTS,
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
@@ -115,6 +114,8 @@ export interface TaskApiLoopAccess
 	// Mistake tracking
 	consecutiveMistakeCount: number
 	consecutiveMistakeLimit: number
+	/** See Task#effectiveMistakeLimit. */
+	effectiveMistakeLimit: number
 	consecutiveNoToolUseCount: number
 	consecutiveNoAssistantMessagesCount: number
 	/** Tool whose failure last grew `consecutiveMistakeCount`; see Task#lastToolErrorName. */
@@ -503,17 +504,13 @@ export class TaskApiLoop {
 	 * The mistake limit of a background task (parallel subagent), which has
 	 * nobody to ask. At the limit the model gets one hint to change course; at
 	 * twice the limit, with no successful tool call in between (a success
-	 * resets the count), the task is stopped as stuck. A profile limit of 0
-	 * ("no limit") does not apply here: without it a stuck subagent would run
-	 * forever. Returns true when the task was stopped.
+	 * resets the count), the task is stopped as stuck. The limit is
+	 * Task#effectiveMistakeLimit, never 0 here. Returns true when the task was stopped.
 	 */
 	private async handleBackgroundMistakeLimit(
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 	): Promise<boolean> {
-		const limit =
-			this.access.consecutiveMistakeLimit > 0
-				? this.access.consecutiveMistakeLimit
-				: DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
+		const limit = this.access.effectiveMistakeLimit
 		const count = this.access.consecutiveMistakeCount
 		if (count < limit) {
 			this.backgroundMistakeHintSent = false
