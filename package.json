@@ -1,6 +1,6 @@
 {
 	"name": "tumble-code",
-	"packageManager": "pnpm@10.8.1",
+	"packageManager": "pnpm@12.15.0",
 	"engines": {
 		"node": "22.23.3"
 	},
@@ -47,23 +47,5 @@
 		"*.{js,jsx,ts,tsx,json,css,md}": [
 			"prettier --write"
 		]
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@vscode/ripgrep"
-		],
-		"overrides": {
-			"tar-fs": ">=3.1.1",
-			"esbuild": "^0.28.2",
-			"esbuild-wasm": "^0.28.2",
-			"undici": "^7.29.0",
-			"jsdom>undici": "^8.10.2",
-			"rehype-katex>katex": "^0.19.0",
-			"brace-expansion": "^2.0.2",
-			"bluebird": ">=3.7.2",
-			"glob": "^13.0.6",
-			"@lmstudio/sdk>zod": "3.25.76",
-			"lodash-es": "^4.18.1"
-		}
 	}
 }

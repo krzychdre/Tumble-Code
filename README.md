@@ -52,7 +52,7 @@ Tumble Code adapts to how you work:
 
 ## Local Setup & Development
 
-Requirements: the extension runs in VS Code 1.102 or newer. Development needs Node.js 22 (the exact version is in `.nvmrc`) and pnpm 10.
+Requirements: the extension runs in VS Code 1.102 or newer. Development needs Node.js 22 (the exact version is in `.nvmrc`) and pnpm 12 (the exact version is `packageManager` in `package.json`; an installed pnpm 10 or newer switches to it on its own, or run `corepack enable`).
 
 1. **Clone** the repo:
 
