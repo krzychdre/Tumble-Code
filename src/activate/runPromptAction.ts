@@ -9,7 +9,7 @@ import {
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { ClineProvider } from "../core/webview/ClineProvider"
+import { panelRegistry } from "../core/webview/panelRegistry"
 import { supportPrompt } from "../shared/support-prompt"
 import { OrganizationAllowListViolationError } from "../utils/errors"
 
@@ -25,7 +25,7 @@ export async function runPromptAction(
 ): Promise<void> {
 	TelemetryService.instance.capture(TelemetryEventName.CODE_ACTION_USED, { actionType: promptType })
 
-	const visibleProvider = await ClineProvider.getInstance()
+	const visibleProvider = await panelRegistry.getInstance()
 
 	if (!visibleProvider) {
 		return

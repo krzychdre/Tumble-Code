@@ -84,7 +84,7 @@ describe("API forwards the delegation events DelegationService emits on the prov
 		currentTask = parent
 
 		const outputChannel = { appendLine: vi.fn() } as unknown as vscode.OutputChannel
-		Object.assign(provider, { context: {} })
+		Object.assign(provider, { context: { subscriptions: [] } })
 		api = new API(outputChannel, provider as unknown as ClineProvider)
 
 		// ClineProvider creates both tasks and emits TaskCreated for each, which

@@ -28,8 +28,8 @@ vi.mock("vscode", () => ({
 	Uri: { file: (fsPath: string) => ({ fsPath }) },
 }))
 
-vi.mock("../../webview/ClineProvider", () => ({
-	ClineProvider: {
+vi.mock("../../webview/panelRegistry", () => ({
+	panelRegistry: {
 		getInstance: async () => ({ createTask, getCurrentTask }),
 	},
 }))

@@ -7,44 +7,33 @@
  * the replacement of an orphaned tab after a host restart) streamed nothing,
  * and the cloud showed the task's cost and tokens (telemetry) but no task.
  *
- * ClineProvider is mocked with an instance registry that behaves like the real
- * `observeInstances`: it replays the live providers, then reports new ones.
+ * The providers are stand-ins registered in the real panel registry, which
+ * replays the live providers to an observer, then reports new ones.
  */
 
 import { EventEmitter } from "events"
 
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import type * as vscode from "vscode"
 import { TumbleCodeEventName } from "@tumble-code/types"
-
-const registry = vi.hoisted(() => ({
-	instances: [] as unknown[],
-	observers: [] as Array<(provider: unknown) => void>,
-}))
 
 vi.mock("vscode", () => ({
 	window: { showWarningMessage: vi.fn() },
 	commands: { executeCommand: vi.fn() },
 }))
-vi.mock("../../core/webview/ClineProvider", () => ({
-	ClineProvider: {
-		observeInstances: (observe: (provider: unknown) => void) => {
-			registry.instances.forEach(observe)
-			registry.observers.push(observe)
-			return { dispose: vi.fn() }
-		},
-	},
-}))
 vi.mock("../../activate/registerCommands", () => ({ openClineInNewTab: vi.fn() }))
 
 import { API } from "../api"
 import type { ClineProvider } from "../../core/webview/ClineProvider"
+import { panelRegistry } from "../../core/webview/panelRegistry"
+
+const registered: ClineProvider[] = []
 
 /** A provider stand-in that joins the registry the way the real constructor does. */
 function makeProvider() {
-	const provider = Object.assign(new EventEmitter(), { context: { subscriptions: [] } })
-	registry.instances.push(provider)
-	registry.observers.forEach((observe) => observe(provider))
+	const provider = Object.assign(new EventEmitter(), { context: { subscriptions: [] as vscode.Disposable[] } })
+	registered.push(provider as unknown as ClineProvider)
+	panelRegistry.add(provider as unknown as ClineProvider)
 	return provider
 }
 
@@ -60,13 +49,17 @@ describe("API hears tasks of every provider, not just the sidebar", () => {
 	let heard: Mock<(...args: unknown[]) => void>
 
 	beforeEach(() => {
-		registry.instances.length = 0
-		registry.observers.length = 0
 		sidebar = makeProvider()
 		const outputChannel = { appendLine: vi.fn() } as unknown as vscode.OutputChannel
 		api = new API(outputChannel, sidebar as unknown as ClineProvider)
 		heard = vi.fn<(...args: unknown[]) => void>()
 		api.on(TumbleCodeEventName.Message, heard)
+	})
+
+	afterEach(() => {
+		// The API's registry observer is in the sidebar's subscriptions.
+		sidebar.context.subscriptions.forEach((subscription) => subscription.dispose())
+		registered.splice(0).forEach((provider) => panelRegistry.remove(provider))
 	})
 
 	it("forwards a message of a task in a tab opened after the API started", () => {

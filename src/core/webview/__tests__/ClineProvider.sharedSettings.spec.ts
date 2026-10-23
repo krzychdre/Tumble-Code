@@ -8,6 +8,7 @@
 import * as vscode from "vscode"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
+import { panelRegistry } from "../panelRegistry"
 import { ContextProxy } from "../../config/ContextProxy"
 import { webviewMessageHandler } from "../webviewMessageHandler"
 
@@ -455,7 +456,7 @@ describe("ClineProvider - shared settings reach every open panel", () => {
 	it("postStateToAllWebviewsWithoutClineMessages pushes every open panel", async () => {
 		const { sidebarPost, tabPost } = await openSidebarAndTab()
 
-		await ClineProvider.postStateToAllWebviewsWithoutClineMessages()
+		await panelRegistry.postStateToAllWebviewsWithoutClineMessages()
 
 		expect(statePushes(sidebarPost)).toHaveLength(1)
 		expect(statePushes(tabPost)).toHaveLength(1)

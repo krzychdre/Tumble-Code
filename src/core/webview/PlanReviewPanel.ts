@@ -6,7 +6,7 @@ import { type Language, type WebviewMessage, formatLanguage } from "@tumble-code
 
 import { Package } from "../../shared/package"
 import { getHmrHtml, getProductionHtml, type WebviewHtmlOptions } from "./WebviewHtml"
-import { ClineProvider } from "./ClineProvider"
+import { panelRegistry } from "./panelRegistry"
 import { registerPlanReviewFile, unregisterPlanReviewFile } from "./planReviewRegistry"
 import { arePathsEqual } from "../../utils/path"
 
@@ -146,7 +146,7 @@ export class PlanReviewPanel {
 
 		// getInstance() focuses the sidebar if it isn't visible (the user is
 		// typically focused on this editor panel when submitting).
-		const provider = await ClineProvider.getInstance()
+		const provider = await panelRegistry.getInstance()
 		const task = provider?.getCurrentTask()
 
 		if (task) {

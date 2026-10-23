@@ -32,6 +32,7 @@ import { syncCloudUrls, registerCloudUrlsSubscription } from "./activate/cloud-u
 import { ContextProxy } from "./core/config/ContextProxy"
 import { initMemoryPaths } from "./core/memory/paths"
 import { ClineProvider } from "./core/webview/ClineProvider"
+import { panelRegistry } from "./core/webview/panelRegistry"
 import { flushPendingClineMessageSaves } from "./core/task/TaskMessageLog"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { Terminal } from "./integrations/terminal/Terminal"
@@ -287,7 +288,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// sync switch among them), so every panel gets the push, not only the
 	// visible one: with the sidebar and an editor tab open, the other panel kept
 	// the old value.
-	const postStateListener = () => ClineProvider.postStateToAllWebviewsWithoutClineMessages()
+	const postStateListener = () => panelRegistry.postStateToAllWebviewsWithoutClineMessages()
 
 	authStateChangedHandler = async () => {
 		postStateListener()

@@ -20,6 +20,7 @@ import {
 
 import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { panelRegistry } from "../core/webview/panelRegistry"
 import { Terminal } from "../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../integrations/terminal/TerminalRegistry"
 import { openClineInNewTab } from "../activate/registerCommands"
@@ -51,10 +52,7 @@ export class API extends EventEmitter<TumbleCodeEvents> implements TumbleCodeAPI
 		this.registerListeners(this.sidebarProvider)
 		// Every provider, not just the sidebar: a task run in an editor tab must
 		// reach the bus too (the remote-control bridge stores its messages).
-		const observer = ClineProvider.observeInstances((instance) => this.registerListeners(instance))
-		if (observer) {
-			this.context?.subscriptions.push(observer)
-		}
+		this.context?.subscriptions.push(panelRegistry.observe((instance) => this.registerListeners(instance)))
 	}
 
 	public async startNewTask({

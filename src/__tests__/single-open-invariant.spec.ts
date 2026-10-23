@@ -143,7 +143,7 @@ describe("Single-open-task invariant", () => {
 		const createTask = vi.fn().mockResolvedValue({ taskId: "ipc-1" })
 		const provider = {
 			// A real ExtensionContext always has subscriptions; the API registers its
-			// ClineProvider.observeInstances disposable there.
+			// panelRegistry.observe disposable there.
 			context: { subscriptions: [] } as any,
 			clearCurrentTask,
 			postStateToWebview: vi.fn(),

@@ -72,6 +72,7 @@ import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@tumble-code/types"
 import type { TaskHistoryStore } from "../task-persistence"
 import { SubagentRegistry } from "./SubagentRegistry"
+import { panelRegistry } from "./panelRegistry"
 import { rehydrateSubagents } from "./subagentBackfill"
 import { BackgroundSubagents } from "./BackgroundSubagents"
 import { PendingEditOperations, type PendingEditOperation } from "./PendingEditOperations"
@@ -108,6 +109,9 @@ const RUNNING_TASK_EVENTS = [
 	TumbleCodeEventName.TaskUnfocused,
 ] as const
 
+/** Coalesces a burst of shared-setting writes (an import, a multi-key save) into one push. */
+const SHARED_SETTINGS_PUSH_DELAY_MS = 50
+
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
  * https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/customSidebarViewProvider.ts
@@ -122,13 +126,6 @@ export class ClineProvider
 	// break existing instances of the extension.
 	public static readonly sideBarId = `${Package.name}.SidebarProvider`
 	public static readonly tabPanelId = `${Package.name}.TabPanelProvider`
-	private static activeInstances: Set<ClineProvider> = new Set()
-	// Bumped each time a panel is resolved, focused (an editor tab) or shown
-	// (the sidebar). With several editor tabs open, "reveal", "focus" and the
-	// title-bar buttons act on the panel the user was in last.
-	private static activationCount = 0
-	private activatedAt = 0
-	private static instanceObservers: Set<(provider: ClineProvider) => void> = new Set()
 	private disposables: vscode.Disposable[] = []
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
@@ -175,8 +172,6 @@ export class ClineProvider
 	 */
 	private readonly sharedSettingsSubscription: { dispose(): void }
 	private sharedSettingsPushTimer?: ReturnType<typeof setTimeout>
-	/** Coalesces a burst of writes (an import, a multi-key save) into one push. */
-	private static readonly SHARED_SETTINGS_PUSH_DELAY_MS = 50
 
 	/**
 	 * Mode-to-profile binding and profile activation (CORE-R6 c), including
@@ -274,10 +269,7 @@ export class ClineProvider
 		super()
 		this.currentWorkspacePath = getWorkspacePath()
 
-		ClineProvider.activeInstances.add(this)
-		for (const observe of ClineProvider.instanceObservers) {
-			observe(this)
-		}
+		panelRegistry.add(this)
 
 		// Closures, not `this`: they reach private members and pick up
 		// methods that tests replace on the instance after construction.
@@ -292,8 +284,14 @@ export class ClineProvider
 			onDetachedTaskCompleted: () => void this.postMessageToWebview({ type: "taskCompletedOffScreen" }),
 		})
 		this.statePusher = new WebviewStatePusher({
-			getStateToPostToWebview: (options) =>
-				this.getStateToPostToWebview(options as { includeTaskHistory: TaskHistoryInclusion }),
+			getStateToPostToWebview: async (options) => {
+				const state = await this.getStateToPostToWebview(
+					options as { includeTaskHistory: TaskHistoryInclusion },
+				)
+				// Every state the pusher builds is posted: note its map as the one the view holds.
+				this.runningTasksInView = state.runningTasks!
+				return state
+			},
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
 			getCurrentTask: () => this.getCurrentTask(),
 			hasView: () => !!this.view,
@@ -329,8 +327,7 @@ export class ClineProvider
 			nextClineMessagesSeq: () => ++this.clineMessagesSeq,
 			listSubagents: () => this.subagentRegistry.list(),
 			getMemoryActivity: () => this.backgroundTaskRunner.memoryActivity,
-			// Every built state is posted: note the map as the one the view holds.
-			getRunningTasks: () => (this.runningTasksInView = ClineProvider.getRunningTasksOfAllPanels()),
+			getRunningTasks: () => panelRegistry.runningTasks(),
 			getWebview: () => this.view?.webview,
 			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
 			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
@@ -504,7 +501,7 @@ export class ClineProvider
 		// leaves the set only in its own TaskIdle/TaskAborted listener, which
 		// runs after this one.
 		for (const event of RUNNING_TASK_EVENTS) {
-			this.on(event, () => queueMicrotask(() => ClineProvider.postRunningTasksToAllPanels()))
+			this.on(event, () => queueMicrotask(() => panelRegistry.postRunningTasks()))
 		}
 
 		// Initialize Roo Code Cloud profile sync. When CloudService is not
@@ -532,11 +529,7 @@ export class ClineProvider
 			return
 		}
 
-		const sharesProxy = Array.from(ClineProvider.activeInstances).some(
-			(other) => other !== this && other.contextProxy === this.contextProxy,
-		)
-
-		if (!sharesProxy) {
+		if (!panelRegistry.sharesContextProxy(this)) {
 			return
 		}
 
@@ -550,7 +543,7 @@ export class ClineProvider
 			this.postStateToWebviewWithoutClineMessages().catch((error) =>
 				logger.debug(`[ClineProvider] shared settings push failed: ${String(error)}`),
 			)
-		}, ClineProvider.SHARED_SETTINGS_PUSH_DELAY_MS)
+		}, SHARED_SETTINGS_PUSH_DELAY_MS)
 	}
 
 	/**
@@ -717,46 +710,12 @@ export class ClineProvider
 	}
 
 	/** The working tasks of this panel: the slot's tasks plus the live parallel subagents. */
-	private getOwnRunningTasks(): Record<string, RunningTaskStatus> {
+	public ownRunningTasks(): Record<string, RunningTaskStatus> {
 		return this.taskSlot.getRunningTasks(this.backgroundTaskRunner.liveSubagents())
 	}
 
-	/**
-	 * The working tasks of every panel in this window (the sidebar and each
-	 * editor tab), merged, so all panels show the same statuses on their
-	 * history rows and sort their lists the same way. A panel being disposed
-	 * is left out: its tasks are being stopped. A task runs in one panel
-	 * only; should two panels still report the same id, "awaiting_input"
-	 * wins, as it does in the webview's `withAncestors`. Only what is shown
-	 * is shared: which panel owns a task stays with its TaskSlot.
-	 */
-	private static getRunningTasksOfAllPanels(): Record<string, RunningTaskStatus> {
-		const runningTasks: Record<string, RunningTaskStatus> = {}
-		for (const instance of this.activeInstances) {
-			if (instance._disposed) {
-				continue
-			}
-			for (const [taskId, status] of Object.entries(instance.getOwnRunningTasks())) {
-				if (runningTasks[taskId] !== "awaiting_input") {
-					runningTasks[taskId] = status
-				}
-			}
-		}
-		return runningTasks
-	}
-
-	/** Sends every live panel the merged working tasks, each only if its view holds a different map. */
-	private static postRunningTasksToAllPanels(): void {
-		const runningTasks = this.getRunningTasksOfAllPanels()
-		for (const instance of this.activeInstances) {
-			if (!instance._disposed) {
-				void instance.postRunningTasksIfChanged(runningTasks)
-			}
-		}
-	}
-
 	/** Posts `runningTasksUpdated` when `runningTasks` differs from what the view holds. */
-	private async postRunningTasksIfChanged(runningTasks: Record<string, RunningTaskStatus>): Promise<void> {
+	public async postRunningTasksIfChanged(runningTasks: Record<string, RunningTaskStatus>): Promise<void> {
 		const known = this.runningTasksInView
 		const keys = Object.keys(runningTasks)
 		if (keys.length === Object.keys(known).length && keys.every((id) => runningTasks[id] === known[id])) {
@@ -823,7 +782,7 @@ export class ClineProvider
 		logger.info("Disposing ClineProvider...")
 
 		// The other panels stop showing this panel's tasks, which are stopped below.
-		ClineProvider.postRunningTasksToAllPanels()
+		panelRegistry.postRunningTasks()
 
 		this.sharedSettingsSubscription.dispose()
 		clearTimeout(this.sharedSettingsPushTimer)
@@ -871,74 +830,15 @@ export class ClineProvider
 		// consumer's release disposes the underlying watcher/timers.
 		this.taskHistory.dispose()
 		logger.debug("Disposed all disposables")
-		ClineProvider.activeInstances.delete(this)
+		panelRegistry.remove(this)
 
 		// Clean up any event listeners attached to this provider
 		this.removeAllListeners()
 	}
 
-	/**
-	 * Calls `observe` for every live provider now and for each one created
-	 * later: the sidebar and every editor tab, however the tab was opened
-	 * (command, API, replacement of an orphaned tab). Before, the API bus only
-	 * heard the sidebar and the tabs it opened itself, so a task run in a tab
-	 * never reached the remote-control bridge and the cloud stored its
-	 * telemetry (cost, tokens) but no messages.
-	 */
-	public static observeInstances(observe: (provider: ClineProvider) => void): vscode.Disposable {
-		for (const instance of this.activeInstances) {
-			observe(instance)
-		}
-		this.instanceObservers.add(observe)
-		return { dispose: () => this.instanceObservers.delete(observe) }
-	}
-
-	/** The provider (sidebar or editor tab) that has a live task by this id. */
-	public static findTaskHost(taskId: string): ClineProvider | undefined {
-		return findLast(
-			Array.from(this.activeInstances),
-			(instance) => !instance._disposed && instance.findLiveTask(taskId) !== undefined,
-		)
-	}
-
-	/**
-	 * The live provider matching `filter` that the user was in last. Ties (never
-	 * activated) go to the newest, as `findLast` did. A provider being disposed
-	 * stays in the set until its async cleanup ends, so it is skipped here: its
-	 * panel is already closed.
-	 */
-	private static mostRecentlyActive(filter: (instance: ClineProvider) => boolean): ClineProvider | undefined {
-		let best: ClineProvider | undefined
-		for (const instance of this.activeInstances) {
-			if (!instance._disposed && filter(instance) && (!best || instance.activatedAt >= best.activatedAt)) {
-				best = instance
-			}
-		}
-		return best
-	}
-
-	/** The editor tab Tumble Code was focused in last, if any tab is open. */
-	public static getEditorTab(): vscode.WebviewPanel | undefined {
-		const host = this.mostRecentlyActive((instance) => instance.isEditorTab())
-		return host?.view as vscode.WebviewPanel | undefined
-	}
-
-	/** Of the panels on screen, the one the user was in last. */
-	public static getVisibleInstance(): ClineProvider | undefined {
-		return this.mostRecentlyActive((instance) => instance.view?.visible === true)
-	}
-
-	/** The panel (sidebar or editor tab) the user was in last, visible or not. */
-	public static getLastActiveInstance(): ClineProvider | undefined {
-		return this.mostRecentlyActive((instance) => instance.view !== undefined)
-	}
-
-	private isEditorTab(): boolean {
-		return this.view !== undefined && "onDidChangeViewState" in this.view
-	}
-
-	private markActivated(): void {
-		this.activatedAt = ++ClineProvider.activationCount
+	/** The webview this provider renders into: the sidebar view or an editor tab panel. */
+	public get panelView(): vscode.WebviewView | vscode.WebviewPanel | undefined {
+		return this.view
 	}
 
 	/**
@@ -958,40 +858,6 @@ export class ClineProvider
 		}
 	}
 
-	/**
-	 * Pushes the state (without the chat messages) to every open panel. For
-	 * changes that live outside the ContextProxy but show in every panel, such
-	 * as the cloud account and the cloud settings.
-	 */
-	public static async postStateToAllWebviewsWithoutClineMessages(): Promise<void> {
-		await Promise.all(
-			Array.from(this.activeInstances).map((instance) =>
-				instance
-					.postStateToWebviewWithoutClineMessages()
-					.catch((error) => logger.debug(`[ClineProvider] state push to a panel failed: ${String(error)}`)),
-			),
-		)
-	}
-
-	public static async getInstance(): Promise<ClineProvider | undefined> {
-		let visibleProvider = ClineProvider.getVisibleInstance()
-
-		// If no visible provider, try to show the sidebar view
-		if (!visibleProvider) {
-			await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
-			// Wait briefly for the view to become visible
-			await delay(100)
-			visibleProvider = ClineProvider.getVisibleInstance()
-		}
-
-		// If still no visible provider, return
-		if (!visibleProvider) {
-			return
-		}
-
-		return visibleProvider
-	}
-
 	async resolveWebviewView(webviewView: vscode.WebviewView | vscode.WebviewPanel) {
 		this.view = webviewView
 		// A new webview starts without the task history or any message, and has
@@ -999,7 +865,7 @@ export class ClineProvider
 		this.forgetWebviewTaskHistory()
 		this.setWebviewAcceptsMessageAdded(false)
 		const inTabMode = "onDidChangeViewState" in webviewView
-		this.markActivated()
+		panelRegistry.markActivated(this)
 
 		// Initialize out-of-scope variables that need to receive persistent
 		// global state values.
@@ -1076,7 +942,7 @@ export class ClineProvider
 			let wasVisible = webviewView.visible
 			const viewStateDisposable = webviewView.onDidChangeViewState(() => {
 				if (webviewView.active) {
-					this.markActivated()
+					panelRegistry.markActivated(this)
 				}
 				const isVisible = this.view?.visible ?? false
 				if (isVisible === wasVisible) {
@@ -1095,7 +961,7 @@ export class ClineProvider
 			// sidebar
 			const visibilityDisposable = webviewView.onDidChangeVisibility(() => {
 				if (this.view?.visible) {
-					this.markActivated()
+					panelRegistry.markActivated(this)
 					this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 				} else {
 					this.logWebviewHiddenDiagnostics()
@@ -1474,7 +1340,7 @@ export class ClineProvider
 			// Another panel (the sidebar or another editor tab) runs this task:
 			// rebuilding it here would start a second Task with the same id,
 			// both writing the same task files. Show it in that panel instead.
-			const host = this.findLiveTask(id) ? undefined : ClineProvider.findTaskHost(id)
+			const host = this.findLiveTask(id) ? undefined : panelRegistry.findTaskHost(id)
 			if (host) {
 				await host.showTaskWithId(id)
 				await host.revealView()

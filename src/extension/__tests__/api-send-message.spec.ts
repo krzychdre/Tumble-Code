@@ -23,7 +23,7 @@ describe("API - SendMessage Command", () => {
 		mockPostMessageToWebview = vi.fn().mockResolvedValue(undefined)
 
 		mockProvider = {
-			context: {} as vscode.ExtensionContext,
+			context: { subscriptions: [] } as unknown as vscode.ExtensionContext,
 			postMessageToWebview: mockPostMessageToWebview,
 			on: vi.fn(),
 			getCurrentTaskStack: vi.fn().mockReturnValue([]),

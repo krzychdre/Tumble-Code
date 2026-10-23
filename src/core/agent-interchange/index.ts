@@ -13,7 +13,7 @@ import {
 	type SessionSummary,
 } from "@tumble-code/agent-interchange"
 
-import { ClineProvider } from "../webview/ClineProvider"
+import { panelRegistry } from "../webview/panelRegistry"
 import { getStorageBasePath } from "../../utils/storage"
 import { t } from "../../i18n"
 
@@ -124,7 +124,7 @@ export async function pickUpAgentSession(context: vscode.ExtensionContext): Prom
 		return
 	}
 
-	const provider = await ClineProvider.getInstance()
+	const provider = await panelRegistry.getInstance()
 
 	if (!provider) {
 		vscode.window.showWarningMessage(t("common:agentInterchange.no_provider"))
@@ -144,7 +144,7 @@ export async function pickUpAgentSession(context: vscode.ExtensionContext): Prom
 }
 
 export async function handOffCurrentTask(context: vscode.ExtensionContext): Promise<void> {
-	const provider = await ClineProvider.getInstance()
+	const provider = await panelRegistry.getInstance()
 	const task = provider?.getCurrentTask()
 
 	if (!task) {

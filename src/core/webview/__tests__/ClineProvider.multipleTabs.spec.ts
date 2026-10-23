@@ -8,6 +8,7 @@
 import * as vscode from "vscode"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
+import { panelRegistry } from "../panelRegistry"
 import { ContextProxy } from "../../config/ContextProxy"
 import type { Task } from "../../task/Task"
 import { webviewMessageHandler } from "../webviewMessageHandler"
@@ -423,12 +424,12 @@ describe("ClineProvider - several editor tabs", () => {
 	it("getEditorTab returns the tab the user focused last, not the newest one", async () => {
 		const a = await openTab()
 		const b = await openTab()
-		expect(ClineProvider.getEditorTab()).toBe(b.panel)
+		expect(panelRegistry.getEditorTab()).toBe(b.panel)
 
 		b.blur()
 		a.focus()
 
-		expect(ClineProvider.getEditorTab()).toBe(a.panel)
+		expect(panelRegistry.getEditorTab()).toBe(a.panel)
 	})
 
 	it("closing one tab keeps the other one reachable, even while the closed one is still disposing", async () => {
@@ -440,22 +441,22 @@ describe("ClineProvider - several editor tabs", () => {
 		// must skip it from that moment, its panel is gone.
 		b.close()
 
-		expect(ClineProvider.getEditorTab()).toBe(a.panel)
-		expect(ClineProvider.getLastActiveInstance()).toBe(a.provider)
-		expect(ClineProvider.getVisibleInstance()).toBe(a.provider)
+		expect(panelRegistry.getEditorTab()).toBe(a.panel)
+		expect(panelRegistry.getLastActiveInstance()).toBe(a.provider)
+		expect(panelRegistry.getVisibleInstance()).toBe(a.provider)
 	})
 
 	it("getVisibleInstance picks the visible panel the user was in last", async () => {
 		const sidebar = await openSidebar()
 		const a = await openTab(1)
 		const b = await openTab(2)
-		expect(ClineProvider.getVisibleInstance()).toBe(b.provider)
+		expect(panelRegistry.getVisibleInstance()).toBe(b.provider)
 
 		a.focus()
-		expect(ClineProvider.getVisibleInstance()).toBe(a.provider)
+		expect(panelRegistry.getVisibleInstance()).toBe(a.provider)
 
 		sidebar.show()
-		expect(ClineProvider.getVisibleInstance()).toBe(sidebar.provider)
+		expect(panelRegistry.getVisibleInstance()).toBe(sidebar.provider)
 	})
 
 	it("getEditorTab never returns the sidebar", async () => {
@@ -463,8 +464,8 @@ describe("ClineProvider - several editor tabs", () => {
 		const sidebar = await openSidebar()
 		sidebar.show()
 
-		expect(ClineProvider.getEditorTab()).toBe(tab.panel)
-		expect(ClineProvider.getLastActiveInstance()).toBe(sidebar.provider)
+		expect(panelRegistry.getEditorTab()).toBe(tab.panel)
+		expect(panelRegistry.getLastActiveInstance()).toBe(sidebar.provider)
 	})
 
 	it("a click in one tab (focusPanelRequest) reveals that tab in place, never another one", async () => {

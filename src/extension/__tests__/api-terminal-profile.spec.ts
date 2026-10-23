@@ -19,7 +19,7 @@ describe("API - terminal profile", () => {
 	beforeEach(() => {
 		const outputChannel = { appendLine: vi.fn() } as unknown as vscode.OutputChannel
 		const provider = {
-			context: {} as vscode.ExtensionContext,
+			context: { subscriptions: [] } as unknown as vscode.ExtensionContext,
 			on: vi.fn(),
 		} as unknown as ClineProvider
 
@@ -47,7 +47,7 @@ describe("API - events without the removed IPC server", () => {
 	it("forwards task lifecycle events to listeners of the public API", () => {
 		let onTaskCreated: ((task: EventEmitter) => void) | undefined
 		const provider = {
-			context: {} as vscode.ExtensionContext,
+			context: { subscriptions: [] } as unknown as vscode.ExtensionContext,
 			on: vi.fn((event: string, listener: (task: EventEmitter) => void) => {
 				if (event === TumbleCodeEventName.TaskCreated) {
 					onTaskCreated = listener

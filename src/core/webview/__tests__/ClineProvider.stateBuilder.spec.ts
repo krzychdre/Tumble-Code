@@ -739,7 +739,9 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 			await flush(0)
 
 			task.clineMessages.push({ ts: 2, type: "ask", ask: "completion_result" })
-			expect((await provider.getStateToPostToWebview()).runningTasks).toEqual({})
+			await provider.postStateToWebview()
+			const [[pushed]] = post.mock.calls.filter(([message]) => message.type === "state")
+			expect((pushed as { state: { runningTasks: unknown } }).state.runningTasks).toEqual({})
 			task.emit(TumbleCodeEventName.TaskIdle, "task-A")
 			await flush(0)
 

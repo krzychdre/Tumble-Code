@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { ClineProvider } from "../../core/webview/ClineProvider"
+import { panelRegistry } from "../../core/webview/panelRegistry"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
 import { runPromptAction } from "../runPromptAction"
 
@@ -14,8 +14,8 @@ vi.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { capture: vi.fn() } },
 }))
 
-vi.mock("../../core/webview/ClineProvider", () => ({
-	ClineProvider: { getInstance: vi.fn() },
+vi.mock("../../core/webview/panelRegistry", () => ({
+	panelRegistry: { getInstance: vi.fn() },
 }))
 
 vi.mock("../../shared/support-prompt", () => ({
@@ -28,7 +28,7 @@ function mockProvider() {
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		createTask: vi.fn().mockResolvedValue(undefined),
 	}
-	vi.mocked(ClineProvider.getInstance).mockResolvedValue(provider as any)
+	vi.mocked(panelRegistry.getInstance).mockResolvedValue(provider as any)
 	return provider
 }
 
@@ -87,7 +87,7 @@ describe("runPromptAction", () => {
 	})
 
 	it("does nothing without a visible provider", async () => {
-		vi.mocked(ClineProvider.getInstance).mockResolvedValue(undefined)
+		vi.mocked(panelRegistry.getInstance).mockResolvedValue(undefined)
 
 		await expect(runPromptAction("fixCode", "FIX", {})).resolves.toBeUndefined()
 	})
