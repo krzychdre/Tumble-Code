@@ -8,10 +8,8 @@ import * as fs from "fs"
  *   http/https modules, which breaks when bundled. It needs access to the actual
  *   Node.js module instances.
  * - `esbuild` and `@vscode/ripgrep` ship native binaries that cannot be bundled.
- * - `@opentelemetry/semantic-conventions`: only the tracing module of
- *   `@mistralai/mistralai` 2.x imports it, and that module is loaded by a
- *   dynamic import inside try/catch; kept external, the require throws at
- *   runtime and the SDK falls back to its no-op tracing.
+ * - `@livekit/rtc-node`: an optional peer of `@mistralai/mistralai` that only
+ *   its voice-agent transport imports, behind a dynamic import we never reach.
  *
  * Everything else is bundled because the VSIX is packaged with
  * `--no-dependencies`: undici, and `@opentelemetry/api`, which
@@ -22,7 +20,7 @@ export const extensionExternals: readonly string[] = Object.freeze([
 	"esbuild",
 	"global-agent",
 	"@vscode/ripgrep",
-	"@opentelemetry/semantic-conventions",
+	"@livekit/rtc-node",
 ])
 
 export const extensionAliases: Readonly<Record<string, string>> = Object.freeze({
