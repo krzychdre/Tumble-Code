@@ -56,7 +56,7 @@ test("flags ?? and || literal fallbacks too", () => {
 	const root = makeTree()
 	try {
 		writeFileSync(join(root, "src/b.ts"), "export const g = (s) => s.keyB ?? 100\n")
-		writeFileSync(join(root, "src/c.ts"), "export const h = (s) => s?.keyC || \"default\"\n")
+		writeFileSync(join(root, "src/c.ts"), 'export const h = (s) => s?.keyC || "default"\n')
 		const { violations } = checkSettingsDefaults({ root })
 		assert.equal(violations.length, 2)
 		assert.ok(violations.some((v) => v.key === "keyB"))
@@ -71,7 +71,7 @@ test("SETTINGS_DEFAULTS references pass, plain assignments do not match", () => 
 	try {
 		writeFileSync(
 			join(root, "src/d.ts"),
-			"import { SETTINGS_DEFAULTS } from \"x\"\n" +
+			'import { SETTINGS_DEFAULTS } from "x"\n' +
 				"export const f = (state) => {\n" +
 				"\tconst { keyA = SETTINGS_DEFAULTS.keyA } = state ?? {}\n" +
 				"\ttask.keyB = false // a write, not a default\n" +
@@ -99,10 +99,7 @@ test("scans the webview-ui workspace too", () => {
 	const root = makeTree()
 	try {
 		mkdirSync(join(root, "webview-ui/src/components"), { recursive: true })
-		writeFileSync(
-			join(root, "webview-ui/src/components/a.ts"),
-			"export const f = (s) => s.keyA ?? true\n",
-		)
+		writeFileSync(join(root, "webview-ui/src/components/a.ts"), "export const f = (s) => s.keyA ?? true\n")
 		const { violations } = checkSettingsDefaults({ root })
 		assert.equal(violations.length, 1)
 		assert.equal(violations[0].key, "keyA")

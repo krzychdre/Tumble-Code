@@ -69,10 +69,16 @@ test("reports every other rounded class, inline radius and index.css radius with
 	assert.equal(status, 1)
 	assert.equal(offenders.length, 7)
 	for (const line of [1, 2, 3, 4]) {
-		assert.ok(offenders.some((o) => o.includes(`${bad}:${line}: rounded* class`)), `Bad.tsx:${line}`)
+		assert.ok(
+			offenders.some((o) => o.includes(`${bad}:${line}: rounded* class`)),
+			`Bad.tsx:${line}`,
+		)
 	}
 	for (const line of [5, 6]) {
-		assert.ok(offenders.some((o) => o.includes(`${bad}:${line}: hard-coded borderRadius`)), `Bad.tsx:${line}`)
+		assert.ok(
+			offenders.some((o) => o.includes(`${bad}:${line}: hard-coded borderRadius`)),
+			`Bad.tsx:${line}`,
+		)
 	}
 	assert.ok(offenders.some((o) => o.includes(`${css}:1: non-zero CSS border-radius`)))
 })

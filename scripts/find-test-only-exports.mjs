@@ -294,7 +294,8 @@ function main() {
 				2,
 			),
 		)
-		if (gate && (gate.exports.length > 0 || gate.files.length > 0 || gate.staleAllowlist.length > 0)) process.exit(1)
+		if (gate && (gate.exports.length > 0 || gate.files.length > 0 || gate.staleAllowlist.length > 0))
+			process.exit(1)
 		return
 	}
 

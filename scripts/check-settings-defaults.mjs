@@ -15,9 +15,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { join, relative, sep } from "node:path"
 
-const root = process.argv.includes("--root")
-	? process.argv[process.argv.indexOf("--root") + 1]
-	: process.cwd()
+const root = process.argv.includes("--root") ? process.argv[process.argv.indexOf("--root") + 1] : process.cwd()
 
 const TABLE_PATH = join(root, "packages/types/src/settings-defaults.ts")
 
