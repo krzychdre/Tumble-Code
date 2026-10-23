@@ -12,6 +12,7 @@ from src.dependencies import get_current_user
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task, TaskMessage, TaskShare
 from src.services.task_summary import duration_ms
+from src.web.presenters import task_list
 
 from tests.web_helpers import (
     _seed_user,
@@ -903,7 +904,7 @@ async def test_live_upsert_replaces_metrics_instead_of_adding(db_session, sessio
 
 async def test_task_list_is_paginated(client, db_session, session_factory):
     """More tasks than one page must not all render at once."""
-    from src.routers.web_tasks import PAGE_SIZE
+    PAGE_SIZE = task_list.PAGE_SIZE
 
     await _seed_user(db_session)
     async with session_factory() as s:
@@ -945,9 +946,7 @@ async def _seed_pages(session_factory, count, user_id="user_test", prefix="task-
 
 async def test_pager_links_every_page_in_the_window(client, session_factory, db_session, monkeypatch):
     """Reaching page 5 must cost one click, not four of "Older"."""
-    from src.routers import web_tasks
-
-    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)  # 10 pages
 
@@ -972,9 +971,7 @@ async def test_pager_links_every_page_in_the_window(client, session_factory, db_
 async def test_pager_jump_box_appears_only_when_numbers_stop_covering_the_range(
     client, session_factory, db_session, monkeypatch
 ):
-    from src.routers import web_tasks
-
-    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 8)  # 4 pages: all four are on screen
 
@@ -992,9 +989,7 @@ async def test_pager_jump_box_appears_only_when_numbers_stop_covering_the_range(
 
 
 async def test_pager_jumps_straight_to_a_far_page(client, session_factory, db_session, monkeypatch):
-    from src.routers import web_tasks
-
-    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)
 
@@ -1015,9 +1010,7 @@ async def test_pager_out_of_range_lands_on_the_nearest_real_page(
     client, session_factory, db_session, monkeypatch
 ):
     """A typed page number or a stale bookmark must not replace the list with a 422."""
-    from src.routers import web_tasks
-
-    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)
 
@@ -1037,9 +1030,7 @@ async def test_pager_out_of_range_lands_on_the_nearest_real_page(
 async def test_pager_links_carry_the_search_encoded(client, session_factory, db_session, monkeypatch):
     """Paging must keep the filter, and a search containing & must not truncate
     the URL at the ampersand."""
-    from src.routers import web_tasks
-
-    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)
 

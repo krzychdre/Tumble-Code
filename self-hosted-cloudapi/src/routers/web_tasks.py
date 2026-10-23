@@ -8,8 +8,7 @@ import logging
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from config.settings import settings
 from src.models.task import Task
@@ -21,14 +20,12 @@ from src.routers.web_page import (
 )
 from src.routers.task_images import image_response
 from src.services.client_kind import CLIENT_LABELS
-from src.services.model_attribution import split_models_label
 from src.services.share_service import delete_shared_task, delete_tasks
 from src.services.task_access import task_owner
 from src.services.task_images import load_task_image
 from src.services.task_summary import derive_title
 from src.services.task_tree import ancestors, subtree_size, subtrees
 from src.utils.json_script import json_for_script
-from src.utils.pagination import page_window
 from src.web.presenters.task_detail import (
     _load_task_messages,
     _model_context,
@@ -38,17 +35,12 @@ from src.web.presenters.task_detail import (
     _tree_entry,
     conversation_json,
 )
-from src.web.presenters.task_list import ListView
-from src.web.presenters.task_rows import _list_row, _workspace_label
+from src.web.presenters.task_list import ListView, list_page
+from src.web.presenters.task_rows import _workspace_label
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["web"])
-
-# How many tasks one page of the list shows. The corpus on a working
-# deployment runs to hundreds of tasks; rendering all of them was never a
-# deliberate choice, just the absence of paging.
-PAGE_SIZE = 25
 
 
 @router.get("/", include_in_schema=False)
@@ -113,80 +105,18 @@ async def task_list(
         sort=sort,
         dir=dir,
     )
-    user = web["user"]
-    db = web["db"]
-    user_id = user["user_id"]
-    filters = view.conditions(user_id, web["zone"])
-
-    total = await db.scalar(select(func.count(Task.id)).where(*filters)) or 0
-    page_count = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
-    page = min(max(page, 1), page_count)
-
-    order, rollup = view.order_by(user_id)
-    query = select(Task).where(*filters)
-    if rollup is not None:
-        query = query.outerjoin(rollup, rollup.c.run_id == Task.id)
-    result = await db.execute(
-        query.order_by(*order).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE)
-    )
-
-    page_tasks = list(result.scalars().all())
-    # One query per tree level for the whole page rather than a lookup per row.
-    tree = await subtrees(db, [t.id for t in page_tasks], user_id)
-    nest = view.scope == "roots"
-    items = [_list_row(task, tree, nest) for task in page_tasks]
-
-    # Shown on the scope toggle so the cost of switching is visible up front.
-    all_total = (
-        await db.scalar(select(func.count(Task.id)).where(Task.user_id == user_id)) or 0
-    )
-
     return render_page(
         request,
         web,
         "tasks_list.html",
         "tasks",
-        tasks=items,
         view=view,
         query=view.q,
         scope=view.scope,
-        tree_view=nest,
-        page=page,
-        page_count=page_count,
-        # Numbered links, so any page is one click away rather than N
-        # clicks of "Older"; None entries render as an ellipsis.
-        pages=page_window(page, page_count),
-        total=total,
-        all_total=all_total,
         # What the empty state tells the reader to point the extension at.
         api_url=settings.api_base_url,
-        **await _filter_suggestions(db, user_id),
+        **await list_page(web["db"], view, web["user"]["user_id"], web["zone"], page),
     )
-
-
-async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
-    """The user's own projects and models, offered as the filter fields'
-    suggestions (a <datalist>, so any other text can still be typed).
-
-    Two DISTINCT reads over the user's rows; the project is offered by its
-    badge label (the last path segment), which is what the filter matches.
-    """
-    paths = await db.scalars(
-        select(Task.workspace_path)
-        .where(Task.user_id == user_id, Task.workspace_path.is_not(None))
-        .distinct()
-    )
-    labels = {label for label in (_workspace_label(p) for p in paths.all()) if label}
-    joined = await db.scalars(
-        select(Task.models)
-        .where(Task.user_id == user_id, Task.models.is_not(None))
-        .distinct()
-    )
-    models = {m for value in joined.all() for m in split_models_label(value)}
-    return {
-        "project_options": sorted(labels, key=str.lower),
-        "model_options": sorted(models, key=str.lower),
-    }
 
 
 @router.get("/app/tasks/{task_id}", response_class=HTMLResponse)
