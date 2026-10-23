@@ -22,7 +22,7 @@
 		"@tumble-code/types": "workspace:^",
 		"execa": "catalog:",
 		"ignore": "catalog:",
-		"json-stream-stringify": "^3.1.6",
+		"json-stream-stringify": "^3.1.7",
 		"openai": "catalog:",
 		"proper-lockfile": "catalog:",
 		"zod": "catalog:"

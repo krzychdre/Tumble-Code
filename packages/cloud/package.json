@@ -15,7 +15,7 @@
 		"@tumble-code/core": "workspace:^",
 		"@tumble-code/types": "workspace:^",
 		"jwt-decode": "^4.0.0",
-		"socket.io-client": "^4.8.1",
+		"socket.io-client": "^4.8.4",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
