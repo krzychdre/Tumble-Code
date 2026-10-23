@@ -132,6 +132,31 @@ export const sectionNames = [
 
 export type SectionName = (typeof sectionNames)[number]
 
+/** The tab list, in the order the sidebar shows it. */
+const sections: { id: SectionName; icon: LucideIcon }[] = [
+	{ id: "providers", icon: Plug },
+	{ id: "modes", icon: Users2 },
+	{ id: "skills", icon: GraduationCap },
+	{ id: "autoApprove", icon: CheckCheck },
+	{ id: "mcp", icon: Server },
+	{ id: "checkpoints", icon: GitCommitVertical },
+	{ id: "memory", icon: Brain },
+	{ id: "web", icon: GlobeLock },
+	{ id: "notifications", icon: Bell },
+	{ id: "contextManagement", icon: Database },
+	{ id: "terminal", icon: SquareTerminal },
+	{ id: "prompts", icon: MessageSquare },
+	{ id: "worktrees", icon: GitBranch },
+	{ id: "subagents", icon: Bot },
+	{ id: "ui", icon: Glasses },
+	{ id: "experimental", icon: FlaskConical },
+	{ id: "language", icon: Globe },
+	{ id: "about", icon: Info },
+]
+
+const asSectionName = (name: string | undefined): SectionName | undefined =>
+	sectionNames.find((section) => section === name)
+
 /**
  * §2.10: marks unsaved edits on the Save button and on each tab that has
  * them. A small square (square corners, §1) in the text colour, decorative:
@@ -158,11 +183,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 	const [isDiscardDialogShow, setDiscardDialogShow] = useState(false)
 	const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined)
-	const [activeTab, setActiveTab] = useState<SectionName>(
-		targetSection && sectionNames.includes(targetSection as SectionName)
-			? (targetSection as SectionName)
-			: "providers",
-	)
+	const [activeTab, setActiveTab] = useState<SectionName>(asSectionName(targetSection) ?? "providers")
 
 	const scrollPositions = useRef<Record<SectionName, number>>(
 		Object.fromEntries(sectionNames.map((s) => [s, 0])) as Record<SectionName, number>,
@@ -303,36 +324,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		}
 	}, [])
 
-	const sections: { id: SectionName; icon: LucideIcon }[] = useMemo(
-		() => [
-			{ id: "providers", icon: Plug },
-			{ id: "modes", icon: Users2 },
-			{ id: "skills", icon: GraduationCap },
-			{ id: "autoApprove", icon: CheckCheck },
-			{ id: "mcp", icon: Server },
-			{ id: "checkpoints", icon: GitCommitVertical },
-			{ id: "memory", icon: Brain },
-			{ id: "web", icon: GlobeLock },
-			{ id: "notifications", icon: Bell },
-			{ id: "contextManagement", icon: Database },
-			{ id: "terminal", icon: SquareTerminal },
-			{ id: "prompts", icon: MessageSquare },
-			{ id: "worktrees", icon: GitBranch },
-			{ id: "subagents", icon: Bot },
-			{ id: "ui", icon: Glasses },
-			{ id: "experimental", icon: FlaskConical },
-			{ id: "language", icon: Globe },
-			{ id: "about", icon: Info },
-		],
-		[], // No dependencies needed now
-	)
-
-	// Update target section logic to set active tab
-	useEffect(() => {
-		if (targetSection && sectionNames.includes(targetSection as SectionName)) {
-			setActiveTab(targetSection as SectionName)
+	// A new targetSection from the host opens that tab.
+	const [shownTargetSection, setShownTargetSection] = useState(targetSection)
+	if (targetSection !== shownTargetSection) {
+		setShownTargetSection(targetSection)
+		const section = asSectionName(targetSection)
+		if (section) {
+			setActiveTab(section)
 		}
-	}, [targetSection])
+	}
 
 	// Function to scroll the active tab into view for vertical layout
 	const scrollToActiveTab = useCallback(() => {
@@ -380,9 +380,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		}
 		return Array.from(merged.values())
 	}, [staticIndex, runtimeIndex])
-
-	// Render only the active tab (no indexing cycle that force-mounts tabs).
-	const renderTab = activeTab
 
 	// Handle search navigation - switch to the correct tab and scroll to the element
 	const handleSearchNavigate = useCallback(
@@ -518,7 +515,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					<SettingsDraftProvider value={draftStore}>
 						<SearchIndexProvider value={searchContextValue}>
 							{/* Providers Section */}
-							{renderTab === "providers" && (
+							{activeTab === "providers" && (
 								<div>
 									<SectionHeader>{t("settings:sections.providers")}</SectionHeader>
 
@@ -572,35 +569,35 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							)}
 
 							{/* Auto-Approve Section */}
-							{renderTab === "autoApprove" && <AutoApproveSettings />}
+							{activeTab === "autoApprove" && <AutoApproveSettings />}
 
 							{/* Skills Section */}
-							{renderTab === "skills" && <SkillsSettings />}
+							{activeTab === "skills" && <SkillsSettings />}
 
 							{/* Checkpoints Section */}
-							{renderTab === "checkpoints" && <CheckpointSettings />}
+							{activeTab === "checkpoints" && <CheckpointSettings />}
 
 							{/* Memory Section */}
-							{renderTab === "memory" && <MemorySettings listApiConfigMeta={listApiConfigMeta ?? []} />}
+							{activeTab === "memory" && <MemorySettings listApiConfigMeta={listApiConfigMeta ?? []} />}
 
 							{/* Web Tools Section */}
-							{renderTab === "web" && <WebToolsSettings />}
+							{activeTab === "web" && <WebToolsSettings />}
 
 							{/* Notifications Section */}
-							{renderTab === "notifications" && <NotificationSettings />}
+							{activeTab === "notifications" && <NotificationSettings />}
 
 							{/* Context Management Section */}
-							{renderTab === "contextManagement" && (
+							{activeTab === "contextManagement" && (
 								<ContextManagementSettings listApiConfigMeta={listApiConfigMeta ?? []} />
 							)}
 
 							{/* Terminal Section */}
-							{renderTab === "terminal" && (
+							{activeTab === "terminal" && (
 								<TerminalSettings onTerminalProfilePickerOpened={() => setChangeDetected(true)} />
 							)}
 
 							{/* Modes Section */}
-							{renderTab === "modes" && (
+							{activeTab === "modes" && (
 								<Suspense fallback={<TabLoadingFallback />}>
 									<ModesView
 										onSelectApiConfiguration={(configName: string) =>
@@ -613,32 +610,32 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							)}
 
 							{/* MCP Section */}
-							{renderTab === "mcp" && (
+							{activeTab === "mcp" && (
 								<Suspense fallback={<TabLoadingFallback />}>
 									<McpView />
 								</Suspense>
 							)}
 
 							{/* Worktrees Section */}
-							{renderTab === "worktrees" && <WorktreesView />}
+							{activeTab === "worktrees" && <WorktreesView />}
 
 							{/* Subagents Section */}
-							{renderTab === "subagents" && <SubagentSettings />}
+							{activeTab === "subagents" && <SubagentSettings />}
 
 							{/* Prompts Section */}
-							{renderTab === "prompts" && <PromptsSettings />}
+							{activeTab === "prompts" && <PromptsSettings />}
 
 							{/* UI Section */}
-							{renderTab === "ui" && <UISettings />}
+							{activeTab === "ui" && <UISettings />}
 
 							{/* Experimental Section */}
-							{renderTab === "experimental" && <ExperimentalSettings />}
+							{activeTab === "experimental" && <ExperimentalSettings />}
 
 							{/* Language Section */}
-							{renderTab === "language" && <LanguageSettings />}
+							{activeTab === "language" && <LanguageSettings />}
 
 							{/* About Section */}
-							{renderTab === "about" && <About />}
+							{activeTab === "about" && <About />}
 						</SearchIndexProvider>
 					</SettingsDraftProvider>
 				</TabContent>

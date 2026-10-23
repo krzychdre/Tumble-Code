@@ -12,11 +12,17 @@ import {
 	ContextMenuOptionType,
 	getContextMenuOptions,
 	insertMention,
+	isSelectableOption,
 	removeMention,
 	shouldShowContextMenu,
 	SearchResult,
 } from "@src/utils/context-mentions"
 import { onExtensionMessage } from "@src/utils/extensionBus"
+
+// Initial selection when the menu opens: the first command after the "Commands" section header of the
+// "/" menu, and the Folder entry of the empty "@" menu (Problems, Terminal, URL, Folder, File, Git).
+const FIRST_COMMAND_INDEX = 1
+const EMPTY_MENTION_DEFAULT_INDEX = 3
 
 interface UseMentionMenuOptions {
 	textAreaRef: RefObject<HTMLTextAreaElement | null>
@@ -71,6 +77,11 @@ export function useMentionMenu({
 	const contextMenuContainerRef = useRef<HTMLDivElement>(null)
 	// Ref to store the search timeout.
 	const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+	const hideMenu = useCallback(() => {
+		setShowContextMenu(false)
+		setSelectedType(null)
+	}, [])
 
 	// Commit and file search results.
 	useEffect(() => {
@@ -131,7 +142,7 @@ export function useMentionMenu({
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
 			if (contextMenuContainerRef.current && !contextMenuContainerRef.current.contains(event.target as Node)) {
-				setShowContextMenu(false)
+				hideMenu()
 			}
 		}
 
@@ -142,7 +153,7 @@ export function useMentionMenu({
 		return () => {
 			document.removeEventListener("mousedown", handleClickOutside)
 		}
-	}, [showContextMenu, setShowContextMenu])
+	}, [showContextMenu, hideMenu])
 
 	const handleMentionSelect = useCallback(
 		(type: ContextMenuOptionType, value?: string) => {
@@ -154,7 +165,7 @@ export function useMentionMenu({
 				// Handle mode selection.
 				setMode(value)
 				setInputValue("")
-				setShowContextMenu(false)
+				hideMenu()
 				vscode.postMessage({ type: "mode", text: value })
 				return
 			}
@@ -163,7 +174,7 @@ export function useMentionMenu({
 				// Handle command selection.
 				setSelectedMenuIndex(-1)
 				setInputValue("")
-				setShowContextMenu(false)
+				hideMenu()
 
 				// Insert the command mention into the textarea
 				const commandMention = `/${value}`
@@ -193,24 +204,14 @@ export function useMentionMenu({
 				}
 			}
 
-			setShowContextMenu(false)
-			setSelectedType(null)
+			hideMenu()
 
 			if (textAreaRef.current) {
 				let insertValue = value || ""
-
-				if (type === ContextMenuOptionType.URL) {
-					insertValue = value || ""
-				} else if (type === ContextMenuOptionType.File || type === ContextMenuOptionType.Folder) {
-					insertValue = value || ""
-				} else if (type === ContextMenuOptionType.Problems) {
+				if (type === ContextMenuOptionType.Problems) {
 					insertValue = "problems"
 				} else if (type === ContextMenuOptionType.Terminal) {
 					insertValue = "terminal"
-				} else if (type === ContextMenuOptionType.Git) {
-					insertValue = value || ""
-				} else if (type === ContextMenuOptionType.Command) {
-					insertValue = value ? `/${value}` : ""
 				}
 
 				// Determine if this is a slash command selection
@@ -237,7 +238,12 @@ export function useMentionMenu({
 				}, 0)
 			}
 		},
-		[setInputValue, cursorPosition, setMode, setCursorPosition, setIntendedCursorPosition, textAreaRef],
+		[setInputValue, cursorPosition, setMode, setCursorPosition, setIntendedCursorPosition, textAreaRef, hideMenu],
+	)
+
+	const getMenuOptions = useCallback(
+		() => getContextMenuOptions(searchQuery, selectedType, queryItems, fileSearchResults, allModes, commands),
+		[searchQuery, selectedType, queryItems, fileSearchResults, allModes, commands],
 	)
 
 	/** Menu navigation and selection keys. Returns true when the menu consumed the key. */
@@ -249,7 +255,7 @@ export function useMentionMenu({
 
 			if (event.key === "Escape") {
 				setSelectedType(null)
-				setSelectedMenuIndex(3) // File by default
+				setSelectedMenuIndex(EMPTY_MENTION_DEFAULT_INDEX)
 				return true
 			}
 
@@ -257,25 +263,10 @@ export function useMentionMenu({
 				event.preventDefault()
 				setSelectedMenuIndex((prevIndex) => {
 					const direction = event.key === "ArrowUp" ? -1 : 1
-					const options = getContextMenuOptions(
-						searchQuery,
-						selectedType,
-						queryItems,
-						fileSearchResults,
-						allModes,
-						commands,
-					)
-					const optionsLength = options.length
+					const options = getMenuOptions()
+					if (options.length === 0) return prevIndex
 
-					if (optionsLength === 0) return prevIndex
-
-					// Find selectable options (non-URL types)
-					const selectableOptions = options.filter(
-						(option) =>
-							option.type !== ContextMenuOptionType.URL &&
-							option.type !== ContextMenuOptionType.NoResults &&
-							option.type !== ContextMenuOptionType.SectionHeader,
-					)
+					const selectableOptions = options.filter(isSelectableOption)
 
 					if (selectableOptions.length === 0) return -1 // No selectable options
 
@@ -295,20 +286,8 @@ export function useMentionMenu({
 
 			if ((event.key === "Enter" || event.key === "Tab") && selectedMenuIndex !== -1) {
 				event.preventDefault()
-				const selectedOption = getContextMenuOptions(
-					searchQuery,
-					selectedType,
-					queryItems,
-					fileSearchResults,
-					allModes,
-					commands,
-				)[selectedMenuIndex]
-				if (
-					selectedOption &&
-					selectedOption.type !== ContextMenuOptionType.URL &&
-					selectedOption.type !== ContextMenuOptionType.NoResults &&
-					selectedOption.type !== ContextMenuOptionType.SectionHeader
-				) {
+				const selectedOption = getMenuOptions()[selectedMenuIndex]
+				if (selectedOption && isSelectableOption(selectedOption)) {
 					handleMentionSelect(selectedOption.type, selectedOption.value)
 				}
 				return true
@@ -316,17 +295,7 @@ export function useMentionMenu({
 
 			return false
 		},
-		[
-			showContextMenu,
-			searchQuery,
-			selectedMenuIndex,
-			handleMentionSelect,
-			selectedType,
-			queryItems,
-			allModes,
-			fileSearchResults,
-			commands,
-		],
+		[showContextMenu, selectedMenuIndex, handleMentionSelect, getMenuOptions],
 	)
 
 	/**
@@ -372,7 +341,7 @@ export function useMentionMenu({
 				}
 
 				setJustDeletedSpaceAfterMention(false)
-				setShowContextMenu(false)
+				hideMenu()
 			} else {
 				setJustDeletedSpaceAfterMention(false)
 			}
@@ -385,6 +354,7 @@ export function useMentionMenu({
 			setCursorPosition,
 			setIntendedCursorPosition,
 			textAreaRef,
+			hideMenu,
 		],
 	)
 
@@ -398,8 +368,7 @@ export function useMentionMenu({
 				// Handle slash command - request fresh commands
 				const query = newValue
 				setSearchQuery(query)
-				// Set to first selectable item (skip section headers)
-				setSelectedMenuIndex(1) // Section header is at 0, first command is at 1
+				setSelectedMenuIndex(FIRST_COMMAND_INDEX)
 				// Request commands fresh each time slash menu is shown
 				vscode.postMessage({ type: "requestCommands" })
 			} else {
@@ -435,21 +404,16 @@ export function useMentionMenu({
 						})
 					}, 200) // 200ms debounce.
 				} else {
-					setSelectedMenuIndex(3) // Set to "File" option by default.
+					setSelectedMenuIndex(EMPTY_MENTION_DEFAULT_INDEX)
 				}
 			}
 		} else {
+			setSelectedType(null)
 			setSearchQuery("")
 			setSelectedMenuIndex(-1)
 			setFileSearchResults([]) // Clear file search results.
 		}
 	}, [])
-
-	useEffect(() => {
-		if (!showContextMenu) {
-			setSelectedType(null)
-		}
-	}, [showContextMenu])
 
 	/** Textarea blur: hide the menu unless the user clicked on it. */
 	const handleMenuBlur = useCallback(() => {
@@ -457,10 +421,8 @@ export function useMentionMenu({
 			isMouseDownOnMenuRef.current = false
 			return
 		}
-		setShowContextMenu(false)
-	}, [])
-
-	const closeMenu = useCallback(() => setShowContextMenu(false), [])
+		hideMenu()
+	}, [hideMenu])
 
 	const handleMenuMouseDown = useCallback(() => {
 		isMouseDownOnMenuRef.current = true
@@ -496,6 +458,6 @@ export function useMentionMenu({
 		handleMentionBackspace,
 		updateMenuForInput,
 		handleMenuBlur,
-		closeMenu,
+		closeMenu: hideMenu,
 	}
 }

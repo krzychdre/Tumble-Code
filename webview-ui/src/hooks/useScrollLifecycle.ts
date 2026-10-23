@@ -56,7 +56,6 @@ export interface UseScrollLifecycleOptions {
 }
 
 export interface UseScrollLifecycleReturn {
-	scrollPhase: ScrollPhase
 	showScrollToBottom: boolean
 	handleRowHeightChange: (isTaller: boolean) => void
 	handleScrollToBottomClick: () => void
@@ -227,11 +226,6 @@ export function useScrollLifecycle({
 		}
 	}, [cancelReanchorFrame, clearHydrationWindow, scrollToBottomSmooth])
 
-	// Keep phase ref in sync with state
-	useEffect(() => {
-		scrollPhaseRef.current = scrollPhase
-	}, [scrollPhase])
-
 	// Task switch: reset and begin a short hydration window
 	useEffect(() => {
 		isAtBottomRef.current = false
@@ -362,21 +356,18 @@ export function useScrollLifecycle({
 	// User intent: pointer drag
 	// -----------------------------------------------------------------------
 
+	const handlePointerEnd = useCallback(() => {
+		pointerScrollActiveRef.current = false
+		pointerScrollElementRef.current = null
+		pointerScrollLastTopRef.current = null
+	}, [])
+
 	const handlePointerDown = useCallback(
 		(event: Event) => {
 			const pointerEvent = event as PointerEvent
 			const pointerTarget = pointerEvent.target
-			if (!(pointerTarget instanceof HTMLElement)) {
-				pointerScrollActiveRef.current = false
-				pointerScrollElementRef.current = null
-				pointerScrollLastTopRef.current = null
-				return
-			}
-
-			if (!scrollContainerRef.current?.contains(pointerTarget)) {
-				pointerScrollActiveRef.current = false
-				pointerScrollElementRef.current = null
-				pointerScrollLastTopRef.current = null
+			if (!(pointerTarget instanceof HTMLElement) || !scrollContainerRef.current?.contains(pointerTarget)) {
+				handlePointerEnd()
 				return
 			}
 
@@ -388,14 +379,8 @@ export function useScrollLifecycle({
 			pointerScrollElementRef.current = scroller
 			pointerScrollLastTopRef.current = scroller?.scrollTop ?? null
 		},
-		[scrollContainerRef],
+		[scrollContainerRef, handlePointerEnd],
 	)
-
-	const handlePointerEnd = useCallback(() => {
-		pointerScrollActiveRef.current = false
-		pointerScrollElementRef.current = null
-		pointerScrollLastTopRef.current = null
-	}, [])
 
 	const handlePointerActiveScroll = useCallback(
 		(event: Event) => {
@@ -475,7 +460,6 @@ export function useScrollLifecycle({
 	// -----------------------------------------------------------------------
 
 	return {
-		scrollPhase,
 		showScrollToBottom,
 		handleRowHeightChange,
 		handleScrollToBottomClick,
