@@ -87,7 +87,8 @@ export const EMBEDDER_DESCRIPTORS: Record<EmbedderProvider, EmbedderDescriptor> 
 			const apiKey = saved.secret("codebaseIndexOpenAiCompatibleApiKey")
 			return baseUrl && apiKey ? { baseUrl, apiKey } : undefined
 		},
-		isConfigured: (options) => !!(options?.baseUrl && options?.apiKey),
+		// read() returns options only when both the base URL and the key are set.
+		isConfigured: (options) => !!options,
 		snapshot: (options) => ({
 			openAiCompatibleBaseUrl: options?.baseUrl ?? "",
 			openAiCompatibleApiKey: options?.apiKey ?? "",

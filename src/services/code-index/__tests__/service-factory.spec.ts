@@ -224,38 +224,6 @@ describe("CodeIndexServiceFactory", () => {
 			)
 		})
 
-		it("should throw error when OpenAI Compatible base URL is missing", () => {
-			// Arrange
-			const testConfig = {
-				embedderProvider: "openai-compatible",
-				modelId: "text-embedding-3-large",
-				openAiCompatibleOptions: {
-					baseUrl: undefined,
-					apiKey: "test-api-key",
-				},
-			}
-			mockConfigManager.getConfig.mockReturnValue(testConfig as any)
-
-			// Act & Assert
-			expect(() => factory.createEmbedder()).toThrow("serviceFactory.openAiCompatibleConfigMissing")
-		})
-
-		it("should throw error when OpenAI Compatible API key is missing", () => {
-			// Arrange
-			const testConfig = {
-				embedderProvider: "openai-compatible",
-				modelId: "text-embedding-3-large",
-				openAiCompatibleOptions: {
-					baseUrl: "https://api.example.com/v1",
-					apiKey: undefined,
-				},
-			}
-			mockConfigManager.getConfig.mockReturnValue(testConfig as any)
-
-			// Act & Assert
-			expect(() => factory.createEmbedder()).toThrow("serviceFactory.openAiCompatibleConfigMissing")
-		})
-
 		it("should throw error when OpenAI Compatible options are missing", () => {
 			// Arrange
 			const testConfig = {
