@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 
@@ -30,9 +30,12 @@ export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 	const [isCollapsed, setIsCollapsed] = useState(reasoningBlockCollapsed)
 	const contentRef = useRef<HTMLDivElement>(null)
 
-	useEffect(() => {
+	// A changed setting resets the block to it.
+	const [appliedSetting, setAppliedSetting] = useState(reasoningBlockCollapsed)
+	if (reasoningBlockCollapsed !== appliedSetting) {
+		setAppliedSetting(reasoningBlockCollapsed)
 		setIsCollapsed(reasoningBlockCollapsed)
-	}, [reasoningBlockCollapsed])
+	}
 
 	const handleToggle = () => {
 		setIsCollapsed(!isCollapsed)

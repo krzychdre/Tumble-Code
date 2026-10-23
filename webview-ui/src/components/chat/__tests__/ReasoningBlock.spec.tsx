@@ -8,13 +8,32 @@ vi.mock("@src/utils/format", () => ({
 	formatDuration: (ms: number) => `D(${ms})`,
 }))
 
-vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionSelector: (selector: (s: never) => unknown) => selector({ reasoningBlockCollapsed: false } as never),
+const extensionState = vi.hoisted(() => ({ reasoningBlockCollapsed: false }))
 
-	useExtensionState: () => ({ reasoningBlockCollapsed: false }),
+vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(extensionState as never),
 }))
 
 describe("ReasoningBlock", () => {
+	beforeEach(() => {
+		extensionState.reasoningBlockCollapsed = false
+	})
+
+	it("a changed collapse setting resets a block the user toggled", () => {
+		const { rerender } = render(<ReasoningBlock content="" ts={1000} endTs={7600} />)
+		const toggle = screen.getByRole("button")
+		fireEvent.click(toggle)
+		expect(toggle).toHaveAttribute("aria-expanded", "false")
+
+		extensionState.reasoningBlockCollapsed = true
+		rerender(<ReasoningBlock content="" ts={1000} endTs={7600} />)
+		expect(toggle).toHaveAttribute("aria-expanded", "false")
+
+		extensionState.reasoningBlockCollapsed = false
+		rerender(<ReasoningBlock content="" ts={1000} endTs={7600} />)
+		expect(toggle).toHaveAttribute("aria-expanded", "true")
+	})
+
 	it("renders exactly one duration, derived from the endTs prop", () => {
 		render(<ReasoningBlock content="" ts={1000} endTs={7600} />)
 

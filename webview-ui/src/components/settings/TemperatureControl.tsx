@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useDebounce } from "react-use"
 
@@ -14,17 +14,18 @@ interface TemperatureControlProps {
 
 export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue }: TemperatureControlProps) => {
 	const { t } = useAppTranslation()
-	const [isCustomTemperature, setIsCustomTemperature] = useState(value !== undefined)
+	const [isCustomTemperature, setIsCustomTemperature] = useState(value !== undefined && value !== null)
 	const [inputValue, setInputValue] = useState(value)
 
 	useDebounce(() => onChange(inputValue), 50, [onChange, inputValue])
 
 	// Sync internal state with prop changes when switching profiles.
-	useEffect(() => {
-		const hasCustomTemperature = value !== undefined && value !== null
-		setIsCustomTemperature(hasCustomTemperature)
+	const [syncedValue, setSyncedValue] = useState(value)
+	if (value !== syncedValue) {
+		setSyncedValue(value)
+		setIsCustomTemperature(value !== undefined && value !== null)
 		setInputValue(value)
-	}, [value])
+	}
 
 	return (
 		<>
@@ -44,9 +45,7 @@ export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue
 					}}>
 					<label className="font-medium">{t("settings:temperature.useCustom")}</label>
 				</LabeledCheckbox>
-				<div className={checkboxDescription}>
-					{t("settings:temperature.description")}
-				</div>
+				<div className={checkboxDescription}>{t("settings:temperature.description")}</div>
 			</div>
 
 			{isCustomTemperature && (

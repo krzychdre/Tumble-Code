@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
 import {
@@ -49,9 +49,12 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 		!!apiConfiguration?.apiModelId && BEDROCK_SERVICE_TIER_MODEL_IDS.includes(apiConfiguration.apiModelId as any)
 
 	// Update the endpoint enabled state when the configuration changes
-	useEffect(() => {
-		setAwsEndpointSelected(!!apiConfiguration?.awsBedrockEndpointEnabled)
-	}, [apiConfiguration?.awsBedrockEndpointEnabled])
+	const endpointEnabled = !!apiConfiguration?.awsBedrockEndpointEnabled
+	const [syncedEndpointEnabled, setSyncedEndpointEnabled] = useState(endpointEnabled)
+	if (endpointEnabled !== syncedEndpointEnabled) {
+		setSyncedEndpointEnabled(endpointEnabled)
+		setAwsEndpointSelected(endpointEnabled)
+	}
 
 	const handleInputChange = useProviderField(setApiConfigurationField)
 
@@ -213,9 +216,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 							</StandardTooltip>
 						</div>
 					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:providers.cacheUsageNote")}
-					</div>
+					<div className={checkboxDescription}>{t("settings:providers.cacheUsageNote")}</div>
 				</>
 			)}
 			{supports1MContextBeta && (
