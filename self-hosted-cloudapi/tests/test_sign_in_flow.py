@@ -8,9 +8,11 @@ See ai_plans/archive/2026-05/2026-05-16_fix-self-hosted-auth-404.md.
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
 
 from src.auth.jwt_issuer import decode_token
 from src.models.user import Session as SessionModel, Ticket, User
+from src.services.auth_service import get_or_create_user
 
 
 async def _seed_user_session_ticket(db_session) -> tuple[User, SessionModel, str]:
@@ -258,3 +260,17 @@ async def test_session_token_without_org_is_personal(client, db_session):
     )
     assert resp.status_code == 200, resp.text
     assert "o" not in decode_token(resp.json()["jwt"])["r"]
+
+
+@pytest.mark.parametrize(
+    ("userinfo", "first", "last"),
+    [
+        ({"name": "Ada King Lovelace"}, "Ada", "Lovelace"),
+        ({"name": "Ada"}, "Ada", ""),
+        ({"name": "Ada Lovelace", "given_name": "Augusta", "family_name": "King"}, "Augusta", "King"),
+    ],
+)
+async def test_userinfo_names_fall_back_to_the_display_name(db_session, userinfo, first, last):
+    user = await get_or_create_user(db_session, {"sub": "ak_names", "email": "a@example.com", **userinfo})
+
+    assert (user.first_name, user.last_name) == (first, last)

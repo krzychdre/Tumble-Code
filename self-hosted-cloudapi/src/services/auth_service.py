@@ -2,6 +2,7 @@
 
 import hashlib
 import secrets
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -29,15 +30,19 @@ def _as_utc(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
-async def get_or_create_user(
-    db: AsyncSession,
-    authentik_id: str,
-    email: str,
-    first_name: str = "",
-    last_name: str = "",
-    image_url: Optional[str] = None,
-) -> User:
-    """Get an existing user or create a new one."""
+async def get_or_create_user(db: AsyncSession, userinfo: dict) -> User:
+    """Create or update the user an Authentik userinfo response describes.
+
+    Without ``given_name``/``family_name`` the names come from ``name``: its
+    first word, and its last word when there are two or more.
+    """
+    authentik_id = userinfo.get("sub", "")
+    email = userinfo.get("email", "")
+    name = userinfo.get("name", "")
+    first_name = userinfo.get("given_name", name.split(" ")[0] if name else "")
+    last_name = userinfo.get("family_name", name.split(" ")[-1] if name and len(name.split()) > 1 else "")
+    image_url = userinfo.get("picture", "")
+
     result = await db.execute(select(User).where(User.authentik_id == authentik_id))
     user = result.scalar_one_or_none()
 
@@ -93,6 +98,19 @@ async def create_client_token(
     await db.flush()
 
     return client_token, raw_token
+
+
+def client_callback_url(auth_redirect: str, ticket_code: str, state: str) -> str:
+    """The client's callback URI that carries a sign-in ticket.
+
+    The extension's handleUri() routes on the path "/auth/clerk/callback",
+    while ``auth_redirect`` is only the base URI (e.g.
+    "vscode://RooVeterinaryInc.roo-cline"), so the path is appended here. The
+    query values are URL-encoded so that +, = or / in the ticket or the state
+    do not corrupt the URI.
+    """
+    query = urllib.parse.urlencode({"code": ticket_code, "state": state})
+    return f"{auth_redirect}/auth/clerk/callback?{query}"
 
 
 async def create_ticket(
