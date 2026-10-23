@@ -3,6 +3,7 @@
 **Status:** LANDED on main (content-verified 2026-09-27). Implemented on `feat/cli-context-window-setting` (from `main` ab901f663)
 **Related plans:** `2026-09-22_cli-context-gauge-in-footer.md` (the bar), `2026-09-23_cli-per-mode-provider-settings.md` (how settings reach the extension), `2026-09-23_cli-settings-api-key.md` (layered resolver)
 **Touched:**
+
 - `apps/cli/src/types/types.ts` (`CliModelSettings`, `CliSettings.models`)
 - `apps/cli/src/lib/utils/model-settings.ts` (new: lookup and validation)
 - `apps/cli/src/lib/utils/provider-config.ts` (`toProviderSettings` writes `openAiCustomModelInfo`)
@@ -52,19 +53,19 @@ a request whose system prompt is the condensing prompt gets a summary. Isolated
 
 Print mode (`run.sh`), what the extension did:
 
-| Build and settings | Requests | Condensed |
-| --- | --- | --- |
-| this branch, no `models` entry | 3 main + 1 condense + 1 main | yes, `prevContextTokens 120203` |
-| this branch, `contextWindow: 262144` | 4 main | no |
-| same HOME, entry removed again | 3 main + 1 condense + 1 main | yes; stored size cleared (`None`) |
+| Build and settings                   | Requests                     | Condensed                         |
+| ------------------------------------ | ---------------------------- | --------------------------------- |
+| this branch, no `models` entry       | 3 main + 1 condense + 1 main | yes, `prevContextTokens 120203`   |
+| this branch, `contextWindow: 262144` | 4 main                       | no                                |
+| same HOME, entry removed again       | 3 main + 1 condense + 1 main | yes; stored size cleared (`None`) |
 
 Interactive TUI (`tui.sh`, footer percentages read from the pty output):
 
-| Build and settings | Bar readings |
-| --- | --- |
-| installed CLI (main) | 15%, 30%, 60%, then 9% after condensing |
-| this branch, no entry | 23%, 47%, 94%, then 15% after condensing |
-| this branch, `contextWindow: 262144` | 11%, 23%, 46% |
+| Build and settings                   | Bar readings                             |
+| ------------------------------------ | ---------------------------------------- |
+| installed CLI (main)                 | 15%, 30%, 60%, then 9% after condensing  |
+| this branch, no entry                | 23%, 47%, 94%, then 15% after condensing |
+| this branch, `contextWindow: 262144` | 11%, 23%, 46%                            |
 
 On main the bar read 60% at the moment the extension condensed.
 

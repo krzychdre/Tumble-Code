@@ -58,7 +58,8 @@ const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 export const REASONING_PARTIAL_POST_INTERVAL_MS = PARTIAL_ARGS_PARSE_INTERVAL_MS
 
 export interface TaskStreamProcessorAccess
-	extends StreamToolCallHandlerAccess,
+	extends
+		StreamToolCallHandlerAccess,
 		AssistantMessageAssemblerAccess,
 		TaskIdAccess,
 		TaskProviderRefAccess,

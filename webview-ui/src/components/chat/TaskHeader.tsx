@@ -172,11 +172,11 @@ const TaskHeader = ({
 
 		return Boolean(
 			target.closest('[role="button"]') ||
-				target.closest(".share-button") ||
-				target.closest("[data-radix-popper-content-wrapper]") ||
-				target.closest("img") ||
-				target.closest("[data-todo-list]") ||
-				target.tagName === "IMG",
+			target.closest(".share-button") ||
+			target.closest("[data-radix-popper-content-wrapper]") ||
+			target.closest("img") ||
+			target.closest("[data-todo-list]") ||
+			target.tagName === "IMG",
 		)
 	}
 

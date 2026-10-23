@@ -25,9 +25,7 @@ export const MaxLimitInputs: React.FC<MaxLimitInputsProps> = ({
 				<MaxRequestsInput allowedMaxRequests={allowedMaxRequests} onValueChange={onMaxRequestsChange} />
 				<MaxCostInput allowedMaxCost={allowedMaxCost} onValueChange={onMaxCostChange} />
 			</div>
-			<div className={settingDescription}>
-				{t("settings:autoApprove.maxLimits.description")}
-			</div>
+			<div className={settingDescription}>{t("settings:autoApprove.maxLimits.description")}</div>
 		</div>
 	)
 }

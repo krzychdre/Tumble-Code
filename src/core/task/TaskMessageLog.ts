@@ -64,7 +64,8 @@ import {
 import { logger } from "../../utils/logging"
 
 export interface TaskMessageLogAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskAbortFlagAccess,
 		TaskApiHandlerAccess,

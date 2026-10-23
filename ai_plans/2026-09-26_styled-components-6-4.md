@@ -6,8 +6,8 @@
 
 ## Version before / after
 
-| Package | Before | After |
-|---|---|---|
+| Package                          | Before    | After    |
+| -------------------------------- | --------- | -------- |
 | `styled-components` (webview-ui) | `^6.1.13` | `~6.4.4` |
 
 - No `@types/styled-components` existed anywhere in the monorepo (6.x ships its own TypeScript types), so nothing else to bump.

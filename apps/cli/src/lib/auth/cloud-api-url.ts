@@ -36,8 +36,7 @@ export function normalizeCloudApiUrl(value: string | undefined): string | undefi
 }
 
 export type CloudApiUrlResolution =
-	| { ok: true; url: string; source: "settings" | "environment" }
-	| { ok: false; message: string }
+	{ ok: true; url: string; source: "settings" | "environment" } | { ok: false; message: string }
 
 /** The cloud the extension will use, or why there is none. */
 export function resolveCloudApiUrl(

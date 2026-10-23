@@ -74,16 +74,16 @@ export const ApiKeyField = ({
 	const trio = (
 		<>
 			<div>
-			<label className="block w-full leading-[normal]">
-				<span className="block font-medium mb-1">{t(labelKey)}</span>
-				<Input
-					value={apiKey || ""}
-					type="password"
-					onChange={handleInputChange(field)}
-					placeholder={t("settings:placeholders.apiKey")}
-				/>
-			</label>
-			<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
+				<label className="block w-full leading-[normal]">
+					<span className="block font-medium mb-1">{t(labelKey)}</span>
+					<Input
+						value={apiKey || ""}
+						type="password"
+						onChange={handleInputChange(field)}
+						placeholder={t("settings:placeholders.apiKey")}
+					/>
+				</label>
+				<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
 			</div>
 			{!apiKey && (
 				<VSCodeButtonLink href={getKeyUrl} appearance="secondary">

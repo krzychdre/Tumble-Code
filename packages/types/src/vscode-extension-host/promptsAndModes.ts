@@ -6,11 +6,7 @@
 
 /** Mode switching, mode prompts and custom instructions. */
 export type PromptsAndModesWebviewMessageType =
-	| "customInstructions"
-	| "mode"
-	| "updatePrompt"
-	| "hasOpenedModeSelector"
-	| "requestModes"
+	"customInstructions" | "mode" | "updatePrompt" | "hasOpenedModeSelector" | "requestModes"
 
 /** The list of available modes. */
 export type PromptsAndModesExtensionMessageType = "modes"

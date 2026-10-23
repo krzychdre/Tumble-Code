@@ -8,7 +8,7 @@ left "LM Studio full-history count" open; the worker pool fix it mentions is #22
 
 - `src/api/providers/lm-studio.ts` `createMessage` (lines 88-97 on main) computes
   `inputTokens` with `this.countTokens([{ type: "text", text: systemPrompt },
-  ...flattenMessagesForTokenCount(messages)])`, i.e. the system prompt plus the WHOLE
+...flattenMessagesForTokenCount(messages)])`, i.e. the system prompt plus the WHOLE
   flattened history, once per request. LM Studio reports no usage we trust, so this local
   estimate is the `usage.inputTokens` of every LM Studio request.
 - `BaseProvider.countTokens` -> `utils/countTokens.ts` -> workerpool (1 worker thread,
@@ -25,12 +25,12 @@ left "LM Studio full-history count" open; the worker pool fix it mentions is #22
 Scripted conversation (200 requests, 38 KB system prompt, 4 blocks per turn with a
 3 KB tool result; `tiktoken` inline, same machine, under `nice`):
 
-| | before | after |
-| --- | --- | --- |
-| tokenizer calls per request | 1 | 1 |
-| characters tokenized, total | 71.7 MB | 0.68 MB |
-| characters tokenized, request 200 | 683 KB | 3 KB (request 1: 41 KB) |
-| time in counting, total | 32.5 s | 0.49 s |
+|                                   | before  | after                   |
+| --------------------------------- | ------- | ----------------------- |
+| tokenizer calls per request       | 1       | 1                       |
+| characters tokenized, total       | 71.7 MB | 0.68 MB                 |
+| characters tokenized, request 200 | 683 KB  | 3 KB (request 1: 41 KB) |
+| time in counting, total           | 32.5 s  | 0.49 s                  |
 
 Counts were asserted equal to the uncached `tiktoken` on every request.
 
@@ -40,13 +40,13 @@ Replay of the real API histories (`api_conversation_history.json` under
 `flattenMessagesForTokenCount(getEffectiveApiHistory(prefix))`, system prompt left out),
 fed through the real `BlockTokenCountCache` with a counting stub:
 
-| | before | after |
-| --- | --- | --- |
-| tokenizer calls | 30,923 | 30,911 (12 requests had nothing new) |
-| characters tokenized | 9,567 MB | 251 MB (38x less) |
-| worker time at the 3.2 MB/s of #462 | about 50 min | about 80 s |
-| host-thread key work, whole replay | (structured clone of the full history) | 23 s, 0.75 ms per request |
-| largest cache size | | 1,801 entries |
+|                                     | before                                 | after                                |
+| ----------------------------------- | -------------------------------------- | ------------------------------------ |
+| tokenizer calls                     | 30,923                                 | 30,911 (12 requests had nothing new) |
+| characters tokenized                | 9,567 MB                               | 251 MB (38x less)                    |
+| worker time at the 3.2 MB/s of #462 | about 50 min                           | about 80 s                           |
+| host-thread key work, whole replay  | (structured clone of the full history) | 23 s, 0.75 ms per request            |
+| largest cache size                  |                                        | 1,801 entries                        |
 
 The system prompt (tens of KB, re-tokenized by every request before) now counts once per
 handler, so the real saving is larger than the table. 25 tasks were spot-checked with the

@@ -78,11 +78,11 @@ already ended the loop on decline.
   on a `waitingForInput` event for `api_req_failed`, so `run.ts` takes its
   normal failure path: the error is printed (or emitted as a JSON error
   event), the host is disposed, `--signal-only-exit` is respected, exit code
-  1. `--exit-on-error` gets the same listener (before, it only reacted to
-  `api_req_retry_delayed`, which these errors no longer produce). In
-  stdin-stream mode the same rejection becomes a `task_error` control event;
-  before, that mode could not answer this ask at all
-  (`api_req_failed` is not in `MESSAGE_AS_ASK_RESPONSE_ASKS`).
+    1. `--exit-on-error` gets the same listener (before, it only reacted to
+       `api_req_retry_delayed`, which these errors no longer produce). In
+       stdin-stream mode the same rejection becomes a `task_error` control event;
+       before, that mode could not answer this ask at all
+       (`api_req_failed` is not in `MESSAGE_AS_ASK_RESPONSE_ASKS`).
 - TUI: in "allow" mode the ask was printed as prose and never answered.
   It now gets the Yes/No approval dialog (as in "ask" mode), which shows
   "API request failed", the provider's error and "Retry the request?".

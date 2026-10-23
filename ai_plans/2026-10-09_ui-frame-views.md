@@ -93,7 +93,7 @@
 ## Tests run
 
 - `vitest run src/components/mcp src/components/marketplace src/components/cloud src/components/plan-review
-  src/components/common/__tests__/ImageViewer.spec.tsx`: 18 files, 165 tests passed.
+src/components/common/__tests__/ImageViewer.spec.tsx`: 18 files, 165 tests passed.
 - `vitest run` MermaidBlock, content-blocks.styles, MarkdownBlock golden renders, `src/i18n/__tests__`: 8 files,
   445 tests passed.
 - `tsc --noEmit -p .`, `eslint` on the touched files (`--max-warnings=0`), `check-webview-radius.mjs`,

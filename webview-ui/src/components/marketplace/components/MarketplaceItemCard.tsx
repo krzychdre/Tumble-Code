@@ -173,7 +173,8 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 											"capitalize text-xs px-2 h-[22px] bg-transparent border border-input-frame rounded-control text-vscode-descriptionForeground",
 											"hover:bg-surface-hover hover:text-vscode-foreground",
 											{
-												"border-vscode-focusBorder text-vscode-foreground": filters.tags.includes(tag),
+												"border-vscode-focusBorder text-vscode-foreground":
+													filters.tags.includes(tag),
 											},
 										)}
 										onClick={() => {

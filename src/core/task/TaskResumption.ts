@@ -41,7 +41,8 @@ import {
  * This is a narrow interface to minimize coupling.
  */
 export interface TaskResumptionAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskAbortFlagAccess,
 		TaskApiConversationHistoryAccess,

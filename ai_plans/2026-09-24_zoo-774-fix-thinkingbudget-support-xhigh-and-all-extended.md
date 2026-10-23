@@ -2,7 +2,7 @@
 
 **Status:** ported (one commit on wip/zoo-agent-c)
 **Upstream:** Zoo-Code PR #774, commit 211d36063, merged 2026-07-01 (author edelauna)
-**Touched:** webview-ui/src/components/settings/ThinkingBudget.tsx, webview-ui/src/components/settings/__tests__/ThinkingBudget.spec.tsx
+**Touched:** webview-ui/src/components/settings/ThinkingBudget.tsx, webview-ui/src/components/settings/**tests**/ThinkingBudget.spec.tsx
 
 ## Symptom
 

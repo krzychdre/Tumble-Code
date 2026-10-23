@@ -330,10 +330,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 										placeholder={t("chat:todo.newItemPlaceholder")}
 										onChange={(e) => setNewContent(e.target.value)}
 										onKeyDown={handleNewInputKeyDown}
-										className={cn(
-											TEXT_INPUT,
-											"text-vscode-foreground bg-transparent",
-										)}
+										className={cn(TEXT_INPUT, "text-vscode-foreground bg-transparent")}
 									/>
 									<button
 										type="button"

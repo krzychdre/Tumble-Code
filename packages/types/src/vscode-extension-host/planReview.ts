@@ -6,10 +6,7 @@
 
 /** Plan review panel, handled by PlanReviewPanel rather than the router. */
 export type PlanReviewWebviewMessageType =
-	| "planReviewReady"
-	| "planReviewSubmit"
-	| "planReviewClose"
-	| "planReviewDraftsChanged"
+	"planReviewReady" | "planReviewSubmit" | "planReviewClose" | "planReviewDraftsChanged"
 
 /** Plan review panel content and draft state. */
 export type PlanReviewExtensionMessageType = "planReviewInit" | "planReviewUpdate" | "planReviewDraftsConsumed"

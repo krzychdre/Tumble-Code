@@ -50,13 +50,7 @@ export const shouldUseReasoningEffort = ({
 
 	// Selected effort from settings or model default
 	const selectedEffort = (settings?.reasoningEffort ?? model.reasoningEffort) as
-		| "disable"
-		| "none"
-		| "minimal"
-		| "low"
-		| "medium"
-		| "high"
-		| undefined
+		"disable" | "none" | "minimal" | "low" | "medium" | "high" | undefined
 
 	// "disable" explicitly omits reasoning
 	if (selectedEffort === "disable") return false

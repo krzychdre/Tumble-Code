@@ -27,26 +27,26 @@ export const LanguageSettings = ({ className, ...props }: LanguageSettingsProps)
 
 			<Section>
 				<SettingsCard>
-				<SearchableSetting
-					settingId="language-select"
-					section="language"
-					label={t("settings:sections.language")}>
-					<Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
-						<SelectTrigger className="w-full">
-							<SelectValue placeholder={t("settings:common.select")} />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectGroup>
-								{Object.entries(LANGUAGES).map(([code, name]) => (
-									<SelectItem key={code} value={code}>
-										{name}
-										<span className="text-vscode-descriptionForeground">({code})</span>
-									</SelectItem>
-								))}
-							</SelectGroup>
-						</SelectContent>
-					</Select>
-				</SearchableSetting>
+					<SearchableSetting
+						settingId="language-select"
+						section="language"
+						label={t("settings:sections.language")}>
+						<Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder={t("settings:common.select")} />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectGroup>
+									{Object.entries(LANGUAGES).map(([code, name]) => (
+										<SelectItem key={code} value={code}>
+											{name}
+											<span className="text-vscode-descriptionForeground">({code})</span>
+										</SelectItem>
+									))}
+								</SelectGroup>
+							</SelectContent>
+						</Select>
+					</SearchableSetting>
 				</SettingsCard>
 			</Section>
 		</div>

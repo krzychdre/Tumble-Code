@@ -61,8 +61,7 @@ export const ContextWindowProgress = ({ contextWindow, contextTokens, maxTokens 
 	// shown; the bar's filled width keeps the whole-window ratio so the
 	// reserved segment stays visible.
 	const availableInputSpace = safeContextWindow - reservedForOutput
-	const usedPercent =
-		availableInputSpace > 0 ? Math.min(100, (safeContextTokens / availableInputSpace) * 100) : 0
+	const usedPercent = availableInputSpace > 0 ? Math.min(100, (safeContextTokens / availableInputSpace) * 100) : 0
 	const usedColor =
 		usedPercent > 90
 			? "var(--status-failed)"

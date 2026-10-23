@@ -52,7 +52,7 @@ now shares a wrapper with its input), three provider-form snapshots updated.
 - **Nested sub-options**: `SettingsNested` (1px `border-frame-hover` rule + indent) replaces
   `border-l-2 border-vscode-button-background` everywhere in settings.
 - **Custom tools / Codex rate limits / Skills / Slash commands**: tool and limit cards use `bg-surface border-frame
-  rounded-control`; skill and command rows lost the `border-transparent` box and sit as card rows; footers use
+rounded-control`; skill and command rows lost the `border-transparent` box and sit as card rows; footers use
   `border-frame` with the 20px page gutter and description colour. The Skills mode dialog rows hover with
   `bg-surface-hover` and the separator is `bg-frame`.
 - **Auto-approve tiles**: no more `!bg-orange-600 !text-white`. Tiles are outlined (`border-input-frame`,

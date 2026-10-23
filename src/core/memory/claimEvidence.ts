@@ -202,7 +202,11 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 		)
 	}
 
-	async function checkCommit(ref: ClaimRef & { kind: "commit" }, r: DefaultBranch & { ok: true }, signal: AbortSignal) {
+	async function checkCommit(
+		ref: ClaimRef & { kind: "commit" },
+		r: DefaultBranch & { ok: true },
+		signal: AbortSignal,
+	) {
 		const { sha } = ref
 		if (!SHA_RE.test(sha)) return unknown(ref, `Commit ${sha} is not a valid commit hash.`)
 		const res = await git(["rev-parse", "--verify", "--quiet", `${sha}^{commit}`], signal)
@@ -243,7 +247,11 @@ export function createGitClaimEvidenceLookup(cwd: string, options: GitLookupOpti
 		}
 	}
 
-	async function checkBranch(ref: ClaimRef & { kind: "branch" }, r: DefaultBranch & { ok: true }, signal: AbortSignal) {
+	async function checkBranch(
+		ref: ClaimRef & { kind: "branch" },
+		r: DefaultBranch & { ok: true },
+		signal: AbortSignal,
+	) {
 		const { name } = ref
 		if (!SAFE_BRANCH_RE.test(name)) return unknown(ref, `${name} is not a valid branch name.`)
 		const refs = await refTips(git, [`refs/heads/${name}`, `refs/remotes/origin/${name}`], signal)

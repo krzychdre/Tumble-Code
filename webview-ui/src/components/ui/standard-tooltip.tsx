@@ -70,12 +70,7 @@ export function StandardTooltip({
 	return (
 		<Tooltip delayDuration={delay}>
 			<TooltipTrigger asChild={asChild}>{children}</TooltipTrigger>
-			<TooltipContent
-				side={side}
-				align={align}
-				sideOffset={sideOffset}
-				className={className}
-				style={style}>
+			<TooltipContent side={side} align={align} sideOffset={sideOffset} className={className} style={style}>
 				{content}
 			</TooltipContent>
 		</Tooltip>

@@ -185,7 +185,10 @@ describe("cache usage fields documented by OpenAI-compatible servers", () => {
 		}
 
 		expect(openAiCompletionUsage(usage)).toMatchObject({ cacheReadTokens: 600, cacheWriteTokens: 400 })
-		expect((openAi as any).processUsageMetrics(usage)).toMatchObject({ cacheReadTokens: 600, cacheWriteTokens: 400 })
+		expect((openAi as any).processUsageMetrics(usage)).toMatchObject({
+			cacheReadTokens: 600,
+			cacheWriteTokens: 400,
+		})
 		expect((zai as any).processUsageMetrics(usage)).toMatchObject({ cacheReadTokens: 600, cacheWriteTokens: 400 })
 	})
 

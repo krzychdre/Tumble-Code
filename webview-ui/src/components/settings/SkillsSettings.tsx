@@ -139,9 +139,7 @@ export const SkillsSettings: React.FC = () => {
 	const renderSkillItem = useCallback(
 		(skill: SkillMetadata) => {
 			return (
-				<div
-					key={`${skill.source}-${skill.name}-${skill.modeSlugs?.join(",") || "any"}`}
-					className="min-w-0">
+				<div key={`${skill.source}-${skill.name}-${skill.modeSlugs?.join(",") || "any"}`} className="min-w-0">
 					<div className="flex items-start justify-between gap-2 flex-col min-[400px]:flex-row overflow-hidden">
 						<div className="flex-1 min-w-0">
 							{/* Skill name */}
@@ -150,9 +148,7 @@ export const SkillsSettings: React.FC = () => {
 							</div>
 							{/* Skill description */}
 							{skill.description && (
-								<div className={cn(settingDescription, "line-clamp-3")}>
-									{skill.description}
-								</div>
+								<div className={cn(settingDescription, "line-clamp-3")}>{skill.description}</div>
 							)}
 						</div>
 

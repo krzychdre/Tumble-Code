@@ -152,11 +152,11 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 		isError,
 		isUnknownModel: Boolean(
 			apiConfiguration &&
-				activeProvider &&
-				isReady &&
-				!isLoading &&
-				!isError &&
-				isUnknownModelId(activeProvider, id, apiConfiguration, dynamicModels),
+			activeProvider &&
+			isReady &&
+			!isLoading &&
+			!isError &&
+			isUnknownModelId(activeProvider, id, apiConfiguration, dynamicModels),
 		),
 	}
 }

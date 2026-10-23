@@ -67,7 +67,8 @@ function roundTripsEncryptedReasoning(api: ApiHandler): boolean {
  * This is a narrow interface to minimize coupling.
  */
 export interface ApiRequestBuilderAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskApiHandlerAccess,
 		TaskApiConfigurationAccess,

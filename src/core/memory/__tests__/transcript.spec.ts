@@ -41,7 +41,9 @@ describe("renderTranscript", () => {
 			userText("add a retry"),
 			{
 				role: "assistant",
-				content: [{ type: "tool_use", id: "c1", name: "attempt_completion", input: { result: "Added a retry." } }],
+				content: [
+					{ type: "tool_use", id: "c1", name: "attempt_completion", input: { result: "Added a retry." } },
+				],
 			},
 			{
 				role: "user",
@@ -49,14 +51,17 @@ describe("renderTranscript", () => {
 					{
 						type: "tool_result",
 						tool_use_id: "c1",
-						content: [{ type: "text", text: "<user_message>\nno, always use exponential backoff\n</user_message>" }],
+						content: [
+							{
+								type: "text",
+								text: "<user_message>\nno, always use exponential backoff\n</user_message>",
+							},
+						],
 					},
 				],
 			},
 		])
-		expect(out).toBe(
-			"User: add a retry\n\nAssistant: Added a retry.\n\nUser: no, always use exponential backoff",
-		)
+		expect(out).toBe("User: add a retry\n\nAssistant: Added a retry.\n\nUser: no, always use exponential backoff")
 	})
 
 	it("drops bare acknowledgements", () => {

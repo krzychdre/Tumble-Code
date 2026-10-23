@@ -169,6 +169,7 @@ resets its working directory between calls).
 ### Slice 1: apply same-ts finalization, keep the ts-distinct dedupe (root-cause fix)
 
 Files:
+
 - `apps/cli/src/ui/hooks/useMessageHandlers.ts`
 - `apps/cli/src/ui/hooks/__tests__/useMessageHandlers.test.tsx` (extend)
 - delete the untracked `apps/cli/src/ui/hooks/__tests__/repro-finalization.test.tsx`
@@ -200,6 +201,7 @@ Change, in `handleSayMessage`:
    lands too.
 
 What could break:
+
 - I4 (identical-text dedupe): guarded by the existing tests and by the new
   "still suppressed" test below.
 - I5 (state re-push): guarded by a new test that pushes the same finalized
@@ -211,6 +213,7 @@ What could break:
 
 Tests to add in `useMessageHandlers.test.tsx` (each one names the scenario in
 `it(...)`):
+
 - "applies the same-ts finalization of a streamed say:text" (the repro: after
   the 250 ms wait, `messages.length === 1`, `partial === false`,
   `getStaticCount(messages, false, false) === 1`);
@@ -226,6 +229,7 @@ Tests to add in `useMessageHandlers.test.tsx` (each one names the scenario in
   its own finalization arrives).
 
 Verification:
+
 - `npx vitest run src/ui/hooks/__tests__/useMessageHandlers.test.tsx`
 - `npx vitest run src/ui/__tests__/transcript.test.ts src/ui/__tests__/store.test.ts`
 - `pnpm check-types && pnpm lint`
@@ -233,6 +237,7 @@ Verification:
 ### Slice 2: idle safety net in the promotion rule (defense in depth)
 
 Files:
+
 - `apps/cli/src/ui/transcript.ts`
 - `apps/cli/src/ui/store.ts`
 - `apps/cli/src/ui/__tests__/transcript.test.ts`
@@ -256,6 +261,7 @@ Change:
    would hold text missing the last chunk (I2: printed items never update).
 
 What could break:
+
 - The `isLoading` flag must really mean "no further stream updates". Sites that
   clear it: `useMessageHandlers.ts:190` (resume asks) and `:202`
   (completion_result); the implementer greps `setLoading(false)` across
@@ -265,6 +271,7 @@ What could break:
   pending ask) so they keep testing the streaming rule, and add idle cases.
 
 Tests:
+
 - `transcript.test.ts`: "promotes a stuck partial when idle", "keeps the
   first-partial clamp while loading", "keeps the first-partial clamp while an
   ask is pending".
@@ -273,12 +280,14 @@ Tests:
   `setLoading(false)`, assert the content is applied without waiting).
 
 Verification:
+
 - `npx vitest run src/ui/__tests__/transcript.test.ts src/ui/__tests__/store.test.ts`
 - `pnpm check-types && pnpm lint`
 
 ### Slice 3: `expanded` rendering mode for tool previews and thinking (pure rendering, no behavior change by default)
 
 Files:
+
 - `apps/cli/src/ui/components/ChatHistoryItem.tsx` (new optional prop `expanded?: boolean`, default false, forwarded)
 - `apps/cli/src/ui/components/tools/types.ts` (`ToolRendererProps.expanded?: boolean`)
 - `apps/cli/src/ui/components/primitives/ResultRow.tsx` (accept `maxLines={Number.POSITIVE_INFINITY}`; `slice(0, Infinity)` already works, only the types and the doc comment change)
@@ -291,6 +300,7 @@ Files:
 - `apps/cli/src/ui/components/tools/ModeTool.tsx` and `CompletionTool.tsx`: no cap to lift, no change.
 
 Change:
+
 - Each capped renderer computes its limit as `expanded ? Number.POSITIVE_INFINITY : MAX_...`.
 - `ThinkingMessage`: collapsed (default) renders exactly today's one-liner
   `∴ Thinking…`. Expanded with non-empty content renders the header
@@ -304,6 +314,7 @@ Change:
   `expanded` (I1, I8).
 
 What could break:
+
 - Snapshot-style tests in `apps/cli/src/ui/components/tools/__tests__/*.test.tsx`
   and `apps/cli/src/ui/components/__tests__/ChatHistoryItem.test.tsx` and
   `DynamicTailMessage.test.tsx` compare frames; the default rendering must be
@@ -311,6 +322,7 @@ What could break:
   not clamp tool messages") enforces indirectly.
 
 Tests:
+
 - `tools/__tests__/CommandTool.test.tsx`: "shows all output lines when expanded"
   (30 lines, expect no `+20 lines`, expect line 29 present), and "caps at 10
   by default".
@@ -321,12 +333,14 @@ Tests:
   `content` and `expanded`; tool role forwards `expanded`.
 
 Verification:
+
 - `npx vitest run src/ui/components`
 - `pnpm check-types && pnpm lint`
 
 ### Slice 4: ctrl+o verbose toggle, printed into scrollback (depends on slice 3, after slice 2)
 
 Files:
+
 - `apps/cli/src/lib/utils/input.ts` (register `ctrl-o`, including the CSI u form
   `\x1b[111;5u`, 111 = "o", mirroring the `ctrl-t` entry at `input.ts:58-70`)
 - `apps/cli/src/lib/utils/__tests__/input.test.ts`
@@ -348,6 +362,7 @@ Files:
   global sequence (`apps/cli/src/ui/components/MultilineTextInput.tsx:247-249`).
 
 Behavior:
+
 - ctrl+o flips `verboseTranscript`. Turning it ON also increments
   `transcriptReprintEpoch`, which changes the `<Static>` key. Remounting
   `<Static>` resets its internal index to 0 (`node_modules/ink/build/components/Static.js`,
@@ -373,6 +388,7 @@ content into scrollback through `<Static>`; it never expands anything inside
 the dynamic tail.
 
 What could break:
+
 - I3: the reprint key change also resets nothing else; `prevStaticCount`,
   `prevIdsRef` and the task-switch effect (`App.tsx:274-287`) are untouched,
   and `staticMessages` is the same slice, so the reprint is exactly the
@@ -389,6 +405,7 @@ What could break:
   action.
 
 Tests:
+
 - `input.test.ts`: `ctrl-o` matches `key.ctrl && input === "o"` and the CSI u
   form; `isGlobalInputSequence` returns it (so the text input ignores it).
 - `transcript.test.ts`: `buildStaticItems` for epoch 0 (welcome first, no
@@ -401,6 +418,7 @@ Tests:
   not) in a new `apps/cli/src/ui/stores/__tests__/uiStateStore.test.ts`.
 
 Verification:
+
 - `npx vitest run src/lib/utils/__tests__/input.test.ts src/ui/__tests__/transcript.test.ts src/ui/components/__tests__/DynamicTailMessage.test.tsx src/ui/components/autocomplete/triggers/__tests__/HelpTrigger.test.tsx`
 - `pnpm check-types && pnpm lint`
 - Manual PTY check (slice 5).
@@ -408,24 +426,25 @@ Verification:
 ### Slice 5: full gates and manual verification (last)
 
 Commands, from `/tmp/tumble-cli-fix/apps/cli`:
+
 - `pnpm test` (all), `pnpm check-types`, `pnpm lint`
 - from `/tmp/tumble-cli-fix`: `pnpm knip` must exit 0 (new exports such as
   `buildStaticItems` and `flushPendingStreamUpdates` must have importers).
 - `pnpm build` in `apps/cli`, then run the built CLI in a 24-row terminal
   against a provider that streams long answers (GLM via Z.ai reproduces the
   duplicate-text path best). Check, in this order:
-  1. a long final answer is printed in full into scrollback once the task
-     completes (scroll up: the whole answer is there, no `… +N lines` marker
-     remains for it);
-  2. no duplicated rows appear anywhere (spinner, prompt, dialog options),
-     which would indicate I1 is broken;
-  3. a `Thinking` row followed by a long answer promotes both (the reasoning
-     finalization path);
-  4. ctrl+o prints the divider and the expanded transcript: Bash output
-     uncapped, `∴ Thinking` with the reasoning body; ctrl+o again shows the
-     "Collapsed view" toast; a later tool call prints collapsed;
-  5. Escape mid-stream, then a new prompt: the aborted partial gets promoted
-     when the agent is idle (slice 2) and the session keeps promoting.
+    1. a long final answer is printed in full into scrollback once the task
+       completes (scroll up: the whole answer is there, no `… +N lines` marker
+       remains for it);
+    2. no duplicated rows appear anywhere (spinner, prompt, dialog options),
+       which would indicate I1 is broken;
+    3. a `Thinking` row followed by a long answer promotes both (the reasoning
+       finalization path);
+    4. ctrl+o prints the divider and the expanded transcript: Bash output
+       uncapped, `∴ Thinking` with the reasoning body; ctrl+o again shows the
+       "Collapsed view" toast; a later tool call prints collapsed;
+    5. Escape mid-stream, then a new prompt: the aborted partial gets promoted
+       when the agent is idle (slice 2) and the session keeps promoting.
 - Commit each finished slice immediately (the user rebuilds and tests mid
   session; uncommitted edits have been lost before).
 
@@ -465,26 +484,28 @@ in the tail until the ask resolves; it is then promoted and printed in full.
 Not part of this work. Do NOT rebase in this branch.
 
 Facts (measured 2026-09-21):
+
 - merge-base `main`..`HEAD` = `8f8550ccb`.
 - this branch is 38 commits ahead of the merge-base; `main` is 24 commits ahead
   of it (`61be588a7` at the top).
 - `main` touches `apps/cli` in exactly one of those 24 commits, `d4a7f4182`
   "Chore/provider cleanup model refresh (#154)" (7 retired providers).
 - files changed on BOTH sides since the merge-base, with the commits involved:
-  - `apps/cli/src/lib/utils/provider.ts`: branch `5e06541ef` (provider parity,
-    24 providers derived from the registry) vs main `d4a7f4182`;
-  - `apps/cli/src/types/types.ts`: branch `5e06541ef`, `bb8588903` vs main `d4a7f4182`;
-  - `src/core/assistant-message/presentAssistantMessage.ts`: branch
-    `efcde397a` (stop abort crash in handleError -> say re-throw) vs main
-    `a2b2e102d` (Feat/34 runtime teaching errors);
-  - `src/core/webview/ClineProvider.ts`: branch `627bf3a1c` (mirror
-    apiConfiguration to `~/.roo/cli-settings.json`) vs main `912839e57`,
-    `d4a7f4182`, `a2b2e102d`;
-  - `src/package.json`: branch `f6ed54afd` vs main changesets and knip commits
-    (`60b15ab46` reset to 1.0.0, `5286992a2`, `0aaa2713b`, `6ec983eba`);
-  - `pnpm-lock.yaml`.
+    - `apps/cli/src/lib/utils/provider.ts`: branch `5e06541ef` (provider parity,
+      24 providers derived from the registry) vs main `d4a7f4182`;
+    - `apps/cli/src/types/types.ts`: branch `5e06541ef`, `bb8588903` vs main `d4a7f4182`;
+    - `src/core/assistant-message/presentAssistantMessage.ts`: branch
+      `efcde397a` (stop abort crash in handleError -> say re-throw) vs main
+      `a2b2e102d` (Feat/34 runtime teaching errors);
+    - `src/core/webview/ClineProvider.ts`: branch `627bf3a1c` (mirror
+      apiConfiguration to `~/.roo/cli-settings.json`) vs main `912839e57`,
+      `d4a7f4182`, `a2b2e102d`;
+    - `src/package.json`: branch `f6ed54afd` vs main changesets and knip commits
+      (`60b15ab46` reset to 1.0.0, `5286992a2`, `0aaa2713b`, `6ec983eba`);
+    - `pnpm-lock.yaml`.
 
 Approach options:
+
 1. Linear rebase, as requested: from a fresh worktree,
    `git rebase --onto main 8f8550ccb <branch>` with
    `--exec "pnpm -C apps/cli check-types"` so every replayed commit type-checks.
@@ -501,6 +522,7 @@ Approach options:
    unless the user explicitly wants the replayed history.
 
 Risks either way:
+
 - `main` now gates on knip (`0aaa2713b`, `6ec983eba`); the CLI stack adds many
   exports, so `pnpm knip` from the main tree must exit 0 before pushing.
 - Changesets: `src/package.json` version was reset to 1.0.0 on `main`; the

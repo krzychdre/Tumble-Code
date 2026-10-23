@@ -62,9 +62,7 @@ export function loadLanguage(language: string): Promise<void> {
 		return pending
 	}
 
-	const loaders = Object.entries(lazyLocaleFiles).filter(
-		([path]) => parseLocalePath(path)?.language === language,
-	)
+	const loaders = Object.entries(lazyLocaleFiles).filter(([path]) => parseLocalePath(path)?.language === language)
 
 	const load = Promise.all(
 		loaders.map(async ([path, loader]) => {

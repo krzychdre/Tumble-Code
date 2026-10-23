@@ -110,7 +110,7 @@ function inWorkspace(taskHistory: HistoryItem[], cwd: string | undefined): (item
 	const judge = (item: HistoryItem): boolean => {
 		const chain = new Set<string>()
 		let verdict = false
-		for (let current: HistoryItem | undefined = item; current; ) {
+		for (let current: HistoryItem | undefined = item; current;) {
 			const memo = known.get(current.id)
 			if (memo !== undefined) {
 				verdict = memo

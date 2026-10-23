@@ -66,15 +66,15 @@ Mock tasks in 9 existing specs gained `getTaskMode`. `core/task`, `core/environm
 - Left as is, on purpose: `generateSystemPrompt.ts` (the settings preview of the prompt follows the
   selected mode, not a task).
 - Left as follow-ups (same bug class, different fix shape):
-  - Auto-approval plan gate (`auto-approval/index.ts:284`) reads `state.mode`. For a background
-    subagent the decision is made by `buildSubagentApprovalPolicy`, whose `getState` is the
-    provider's (`RunParallelTasksTool.ts:331`); fixing it means passing the child's mode there, and
-    `TaskAskSay` alone would not change the outcome.
-  - `switch_mode`, a slash command's `mode:` and `run_slash_command` switch through
-    `provider.handleModeSwitch`, which always switches the FOCUSED task. Run from a background
-    task, they switch the user's task instead of the caller.
-  - `webviewMessageHandler.ts:1933/2029` (saving or deleting a custom mode) write the provider mode
-    without `handleModeSwitch`, so the selector can now show a mode the focused task does not run.
+    - Auto-approval plan gate (`auto-approval/index.ts:284`) reads `state.mode`. For a background
+      subagent the decision is made by `buildSubagentApprovalPolicy`, whose `getState` is the
+      provider's (`RunParallelTasksTool.ts:331`); fixing it means passing the child's mode there, and
+      `TaskAskSay` alone would not change the outcome.
+    - `switch_mode`, a slash command's `mode:` and `run_slash_command` switch through
+      `provider.handleModeSwitch`, which always switches the FOCUSED task. Run from a background
+      task, they switch the user's task instead of the caller.
+    - `webviewMessageHandler.ts:1933/2029` (saving or deleting a custom mode) write the provider mode
+      without `handleModeSwitch`, so the selector can now show a mode the focused task does not run.
 
 ## Follow-up commit: deleting a custom mode
 

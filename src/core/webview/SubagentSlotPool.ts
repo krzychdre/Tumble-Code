@@ -95,7 +95,7 @@ export class SubagentSlotPool {
 
 	/** Hand free slots to the waiters at the head of the queue. */
 	private grantFreeSlots(): void {
-		for (let i = 0; i < this.queue.length; ) {
+		for (let i = 0; i < this.queue.length;) {
 			const { request, grant } = this.queue[i]
 			if (!this.fits(request)) {
 				i++

@@ -183,7 +183,10 @@ export const ApiConfigSelector = ({
 					<div className="relative flex items-center gap-1">
 						{isCurrentConfig && (
 							<div className="size-5 p-1 flex items-center justify-center">
-								<span className="codicon codicon-check text-xs text-vscode-focusBorder" aria-hidden="true" />
+								<span
+									className="codicon codicon-check text-xs text-vscode-focusBorder"
+									aria-hidden="true"
+								/>
 							</div>
 						)}
 						<StandardTooltip content={isPinned ? t("chat:unpin") : t("chat:pin")}>

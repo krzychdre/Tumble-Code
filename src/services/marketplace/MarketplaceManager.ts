@@ -59,12 +59,10 @@ export class MarketplaceManager {
 
 			if (orgSettings) {
 				if (orgSettings.mcps && orgSettings.mcps.length > 0) {
-					organizationMcps = orgSettings.mcps.map(
-						(mcp: McpMarketplaceItem): MarketplaceItem => ({
-							...mcp,
-							type: "mcp" as const,
-						}),
-					)
+					organizationMcps = orgSettings.mcps.map((mcp: McpMarketplaceItem): MarketplaceItem => ({
+						...mcp,
+						type: "mcp" as const,
+					}))
 				}
 
 				if (orgSettings.hiddenMcps && orgSettings.hiddenMcps.length > 0) {

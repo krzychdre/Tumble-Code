@@ -56,29 +56,25 @@ export async function pickUpAgentSession(context: vscode.ExtensionContext): Prom
 	const cwd = workspacePath()
 
 	const items: PickItem[] = [
-		...listHandoffs({ cwd, status: "open", to: "tumble-code", limit: 25 }).map(
-			(handoff): PickItem => ({
-				source: "handoff",
-				handoff,
-				label: `$(inbox) ${handoff.title}`,
-				description: t("common:agentInterchange.handoff_from", {
-					agent: AGENT_LABELS[handoff.from],
-					when: handoff.updated.slice(0, 16).replace("T", " "),
-				}),
+		...listHandoffs({ cwd, status: "open", to: "tumble-code", limit: 25 }).map((handoff): PickItem => ({
+			source: "handoff",
+			handoff,
+			label: `$(inbox) ${handoff.title}`,
+			description: t("common:agentInterchange.handoff_from", {
+				agent: AGENT_LABELS[handoff.from],
+				when: handoff.updated.slice(0, 16).replace("T", " "),
 			}),
-		),
-		...listClaudeSessions({ cwd, limit: 30 }).map(
-			(summary): PickItem => ({
-				source: "session",
-				summary,
-				label: `$(comment-discussion) ${summary.title}`,
-				description: t("common:agentInterchange.session_from", {
-					agent: AGENT_LABELS[summary.agent],
-					when: new Date(summary.updatedAt).toISOString().slice(0, 16).replace("T", " "),
-				}),
-				detail: summary.gitBranch ? `$(git-branch) ${summary.gitBranch}` : undefined,
+		})),
+		...listClaudeSessions({ cwd, limit: 30 }).map((summary): PickItem => ({
+			source: "session",
+			summary,
+			label: `$(comment-discussion) ${summary.title}`,
+			description: t("common:agentInterchange.session_from", {
+				agent: AGENT_LABELS[summary.agent],
+				when: new Date(summary.updatedAt).toISOString().slice(0, 16).replace("T", " "),
 			}),
-		),
+			detail: summary.gitBranch ? `$(git-branch) ${summary.gitBranch}` : undefined,
+		})),
 	]
 
 	if (items.length === 0) {

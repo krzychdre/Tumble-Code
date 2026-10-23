@@ -6,15 +6,8 @@
 
 /** Prompt enhancement, system prompt preview and commit or file search. */
 export type EnhanceAndSearchWebviewMessageType =
-	| "enhancePrompt"
-	| "getSystemPrompt"
-	| "copySystemPrompt"
-	| "searchCommits"
-	| "searchFiles"
+	"enhancePrompt" | "getSystemPrompt" | "copySystemPrompt" | "searchCommits" | "searchFiles"
 
 /** Enhanced prompt, system prompt and search results. */
 export type EnhanceAndSearchExtensionMessageType =
-	| "enhancedPrompt"
-	| "systemPrompt"
-	| "commitSearchResults"
-	| "fileSearchResults"
+	"enhancedPrompt" | "systemPrompt" | "commitSearchResults" | "fileSearchResults"

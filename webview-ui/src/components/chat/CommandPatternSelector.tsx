@@ -69,14 +69,11 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 				onClick={() => setIsExpanded(!isExpanded)}
 				className="w-full min-h-[28px] px-2 py-1 flex items-center justify-between text-vscode-descriptionForeground hover:text-vscode-foreground hover:bg-surface-hover transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-vscode-focusBorder">
 				<div className="group flex items-center gap-2 cursor-pointer w-full text-left">
-					<span
-						className={cn("text-sm flex-1", isExpanded && "text-vscode-foreground")}>
+					<span className={cn("text-sm flex-1", isExpanded && "text-vscode-foreground")}>
 						<CheckCheck className="size-3 inline-block mr-2" />
 						{t("chat:commandExecution.manageCommands")}
 					</span>
-					<ChevronUp
-						className={cn("size-4 transition-transform", !isExpanded && "-rotate-180")}
-					/>
+					<ChevronUp className={cn("size-4 transition-transform", !isExpanded && "-rotate-180")} />
 				</div>
 			</button>
 
@@ -129,12 +126,15 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 												: "chat:commandExecution.addToAllowed",
 										)}>
 										<button
-											className={cn("p-1 transition-all cursor-pointer rounded-control focus-ring", {
-												"bg-vscode-charts-green/20 text-vscode-charts-green hover:bg-vscode-charts-green/30":
-													status === "allowed",
-												"text-vscode-descriptionForeground hover:text-vscode-charts-green hover:bg-vscode-charts-green/10":
-													status !== "allowed",
-											})}
+											className={cn(
+												"p-1 transition-all cursor-pointer rounded-control focus-ring",
+												{
+													"bg-vscode-charts-green/20 text-vscode-charts-green hover:bg-vscode-charts-green/30":
+														status === "allowed",
+													"text-vscode-descriptionForeground hover:text-vscode-charts-green hover:bg-vscode-charts-green/10":
+														status !== "allowed",
+												},
+											)}
 											onClick={() => onAllowPatternChange(editState.value)}
 											aria-label={t(
 												status === "allowed"
@@ -151,12 +151,15 @@ export const CommandPatternSelector: React.FC<CommandPatternSelectorProps> = ({
 												: "chat:commandExecution.addToDenied",
 										)}>
 										<button
-											className={cn("p-1 transition-all cursor-pointer rounded-control focus-ring", {
-												"bg-vscode-errorForeground/20 text-vscode-errorForeground hover:bg-vscode-errorForeground/30":
-													status === "denied",
-												"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-vscode-errorForeground/10":
-													status !== "denied",
-											})}
+											className={cn(
+												"p-1 transition-all cursor-pointer rounded-control focus-ring",
+												{
+													"bg-vscode-errorForeground/20 text-vscode-errorForeground hover:bg-vscode-errorForeground/30":
+														status === "denied",
+													"text-vscode-descriptionForeground hover:text-vscode-errorForeground hover:bg-vscode-errorForeground/10":
+														status !== "denied",
+												},
+											)}
 											onClick={() => onDenyPatternChange(editState.value)}
 											aria-label={t(
 												status === "denied"

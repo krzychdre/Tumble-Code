@@ -1,3 +1,9 @@
 # Vendored third-party files keep their upstream bytes, so they can be
 # checked against the published package. Replace them whole, never reformat.
 self-hosted-cloudapi/src/web/static/vendor/
+
+# Prettier 3.9 changes how these render (escapes in pasted logs, a verbatim
+# quote of React Compiler output); keep them as written.
+ai_plans/archive/2026-05/2026-05-14_17-04_error_while_saving_file.md
+ai_plans/archive/2026-07/2026-07-11_background-task-hardening.md
+ai_plans/2026-09-28_webview-context-frozen-by-compiler.md

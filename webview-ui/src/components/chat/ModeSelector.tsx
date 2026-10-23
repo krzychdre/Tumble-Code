@@ -323,7 +323,10 @@ export const ModeSelector = ({
 							<div className="py-1">
 								{modeGroups
 									? modeGroups.map((group) => (
-											<div key={group.key} role="group" aria-labelledby={`${groupIdPrefix}-${group.key}`}>
+											<div
+												key={group.key}
+												role="group"
+												aria-labelledby={`${groupIdPrefix}-${group.key}`}>
 												<div
 													id={`${groupIdPrefix}-${group.key}`}
 													className="mx-1 px-2.5 pt-2 pb-0.5 text-[length:var(--text-meta)] uppercase tracking-wide text-vscode-descriptionForeground">

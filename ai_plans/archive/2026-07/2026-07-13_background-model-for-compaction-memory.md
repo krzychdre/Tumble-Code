@@ -87,12 +87,12 @@ This plan delivers:
 
 ### 2.5 ApiHandler construction & error classification
 
-| Concern                             | Location                                                                                                                                                                                                                        |
+| Concern | Location |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | --------------------- |
-| `ApiHandler` interface              | [`src/api/index.ts:90`](src/api/index.ts:90) — `createMessage` returns an `ApiStream` (async iterable of `{type:"text"                                                                                                          | "usage" | "reasoning"}` chunks) |
-| Error wrapper used by providers     | [`handleProviderError()`](src/api/providers/utils/error-handler.ts:37) — preserves `status`, `errorDetails`, `code` on the wrapped Error                                                                                        |
+| `ApiHandler` interface | [`src/api/index.ts:90`](src/api/index.ts:90) — `createMessage` returns an `ApiStream` (async iterable of `{type:"text"                                                                                                          | "usage" | "reasoning"}` chunks) |
+| Error wrapper used by providers | [`handleProviderError()`](src/api/providers/utils/error-handler.ts:37) — preserves `status`, `errorDetails`, `code` on the wrapped Error |
 | Retry classification (reuse target) | [`RetryHandler.shouldRetry()`](src/core/task/RetryHandler.ts:119) — returns `true` for `ECONNRESET`/`ETIMEDOUT`/`ENOTFOUND`, HTTP `429`, `503`, any `5xx`. **This is the exact classification we want for "trigger fallback".** |
-| 429 RetryInfo parsing               | [`RetryHandler.calculateBackoffDelay()`](src/core/task/RetryHandler.ts:84) reads `error.errorDetails[].@type === "...RetryInfo"`                                                                                                |
+| 429 RetryInfo parsing | [`RetryHandler.calculateBackoffDelay()`](src/core/task/RetryHandler.ts:84) reads `error.errorDetails[].@type === "...RetryInfo"` |
 
 ---
 

@@ -18,10 +18,10 @@ tool-argument previews at most every 100 ms).
 Scripted stream in the new spec (44 KB reasoning, 4-character chunks, 5 ms
 apart, the real `TaskAskSay`, fake timers):
 
-| | posts of the reasoning message | characters posted |
-|---|---|---|
-| before (main) | 10,946 | 245.1 M |
-| after | 550 | 12.4 M |
+|               | posts of the reasoning message | characters posted |
+| ------------- | ------------------------------ | ----------------- |
+| before (main) | 10,946                         | 245.1 M           |
+| after         | 550                            | 12.4 M            |
 
 Real data: the same source as #461, the `ui_messages.json` files of the
 extension's globalStorage (`qub-it.tumble-code/tasks`), 1,054 tasks and 13,598
@@ -31,11 +31,11 @@ assumed streaming rate. The median rate implied by the timestamps of messages
 of 2,000+ characters (reasoning ts to the next message ts) is about 380
 characters per second.
 
-| assumed rate | posts before -> after | characters before -> after |
-|---|---|---|
-| 200 chars/s | 21.0 M -> 4.2 M (5x) | 5.48e11 -> 1.10e11 (5x) |
-| 400 chars/s | 21.0 M -> 2.1 M (10x) | 5.48e11 -> 5.49e10 (10x) |
-| 1000 chars/s | 21.0 M -> 0.86 M (24x) | 5.48e11 -> 2.20e10 (25x) |
+| assumed rate | posts before -> after  | characters before -> after |
+| ------------ | ---------------------- | -------------------------- |
+| 200 chars/s  | 21.0 M -> 4.2 M (5x)   | 5.48e11 -> 1.10e11 (5x)    |
+| 400 chars/s  | 21.0 M -> 2.1 M (10x)  | 5.48e11 -> 5.49e10 (10x)   |
+| 1000 chars/s | 21.0 M -> 0.86 M (24x) | 5.48e11 -> 2.20e10 (25x)   |
 
 The 99th percentile message (74 KB) at 400 chars/s: 18,569 posts and 690 M
 characters before, 1,858 posts and 69 M characters after. The gain equals the

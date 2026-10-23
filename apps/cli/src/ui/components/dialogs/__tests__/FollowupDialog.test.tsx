@@ -18,7 +18,10 @@ describe("FollowupDialog", () => {
 			id: "f-1",
 			type: "followup",
 			content: "Next?",
-			suggestions: [{ answer: "Go", mode: "architect" }, { answer: "Go", mode: "code" }],
+			suggestions: [
+				{ answer: "Go", mode: "architect" },
+				{ answer: "Go", mode: "code" },
+			],
 		}
 		const onSelect = vi.fn()
 		const { stdin } = render(

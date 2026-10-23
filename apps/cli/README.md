@@ -254,7 +254,7 @@ The interactive TUI uses a **print-and-forget transcript** model inspired by Cla
 | `●`   | Assistant messages and tool-call status bullets (color: running = blink, success = green, error = red) |
 | `⎿`   | Tool-result connector (dim)                                                                            |
 | `∴`   | Collapsed thinking (dim italic)                                                                        |
-| `✳`  | Spinner frame (brand orange, ping-pong animation) with a word + turn and step time + tokens out        |
+| `✳`   | Spinner frame (brand orange, ping-pong animation) with a word + turn and step time + tokens out        |
 
 User-prompt rows render on a subtle background band. Assistant text is rendered as markdown (bold, italic, inline code, fenced code blocks, lists, blockquotes, links). Tool results are dim and truncated to 5 lines with a `… +N lines` tail. The spinner cycles through a whimsical verb (`Pondering`, `Rummaging`, `Brewing`, `Tumbling`, …) chosen deterministically per turn.
 

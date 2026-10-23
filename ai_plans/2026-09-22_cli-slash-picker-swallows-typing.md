@@ -132,14 +132,14 @@ this TUI does not have.
 (`/tmp/tumble_probe.py`, 120x40, one key every 30 ms, `node apps/cli/dist/index.js`
 with `ROO_EXTENSION_PATH=~/.roo/cli/extension`):
 
-| keys   | prompt             | picker / transcript                                    |
+| keys | prompt | picker / transcript |
 | ------ | ------------------ | ------------------------------------------------------ | -------------------- |
-| `/`    | `/`                | seven rows, every description clipped to one row       |
-| `perm` | `/perm`            | one row: `/permissions <ask                            | allow> - Change ...` |
-| Enter  | `/permissions `    | closed                                                 |
-| `ask`  | `/permissions ask` | closed                                                 |
-| Enter  | (empty)            | `Permissions: asking before actions for this session.` |
-| `/`    | `/`                | reopens under the system message, input box intact     |
+| `/` | `/` | seven rows, every description clipped to one row |
+| `perm` | `/perm` | one row: `/permissions <ask                            | allow> - Change ...` |
+| Enter | `/permissions ` | closed |
+| `ask` | `/permissions ask` | closed |
+| Enter | (empty) | `Permissions: asking before actions for this session.` |
+| `/` | `/` | reopens under the system message, input box intact |
 
 Against the installed pre-fix build the same `/` shows the redmine skill
 description wrapped over three rows into the input area, as in the original

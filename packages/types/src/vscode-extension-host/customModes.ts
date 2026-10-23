@@ -15,7 +15,4 @@ export type CustomModesWebviewMessageType =
 
 /** Custom mode import, export, rules folder and delete check replies. */
 export type CustomModesExtensionMessageType =
-	| "exportModeResult"
-	| "importModeResult"
-	| "checkRulesDirectoryResult"
-	| "deleteCustomModeCheck"
+	"exportModeResult" | "importModeResult" | "checkRulesDirectoryResult" | "deleteCustomModeCheck"

@@ -384,9 +384,7 @@ describe("ModeSelector", () => {
 		})
 
 		const itemNames = () =>
-			screen
-				.getAllByTestId("mode-selector-item")
-				.map((item) => item.querySelector(".font-semibold")?.textContent)
+			screen.getAllByTestId("mode-selector-item").map((item) => item.querySelector(".font-semibold")?.textContent)
 
 		test("labels the two groups when there are built-in and custom modes, in the visual order", () => {
 			const custom = [mode("mine", "Mine")]
@@ -443,10 +441,7 @@ describe("ModeSelector", () => {
 
 		test("keeps the flat filtered list while searching", () => {
 			const custom = [mode("custom-a", "Custom A"), mode("custom-b", "Custom B")]
-			mockModes = [
-				...Array.from({ length: 5 }, (_, i) => mode(`mode-${i}`, `Mode ${i}`)),
-				...custom,
-			]
+			mockModes = [...Array.from({ length: 5 }, (_, i) => mode(`mode-${i}`, `Mode ${i}`)), ...custom]
 
 			render(
 				<ModeSelector

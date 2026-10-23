@@ -100,140 +100,143 @@ const PromptsSettings = () => {
 
 			<Section>
 				<SettingsCard>
-				<SearchableSetting
-					settingId="prompts-support-prompt-select"
-					section="prompts"
-					label={t("settings:sections.prompts")}>
-					<Select
-						value={activeSupportOption}
-						onValueChange={(type) => setActiveSupportOption(type as SupportPromptType)}>
-						<SelectTrigger className="w-full" data-testid="support-prompt-select-trigger">
-							<SelectValue placeholder={t("settings:common.select")} />
-						</SelectTrigger>
-						<SelectContent>
-							{Object.keys(supportPrompt.default)
-								.filter((type) => type !== "CONDENSE")
-								.map((type) => (
-									<SelectItem key={type} value={type} data-testid={`${type}-option`}>
-										{t(`prompts:supportPrompts.types.${type}.label`)}
-									</SelectItem>
-								))}
-						</SelectContent>
-					</Select>
-					<div className={settingDescription}>
-						{t(`prompts:supportPrompts.types.${activeSupportOption}.description`)}
-					</div>
-				</SearchableSetting>
-
-				<div key={activeSupportOption}>
-					<div className="flex justify-between items-center mb-1">
-						<label className="block font-medium">{t("prompts:supportPrompts.prompt")}</label>
-						<StandardTooltip
-							content={t("prompts:supportPrompts.resetPrompt", {
-								promptType: activeSupportOption,
-							})}>
-							<Button
-								aria-label={t("prompts:supportPrompts.resetPrompt", {
-									promptType: activeSupportOption,
-								})}
-								variant="ghost"
-								size="icon"
-								onClick={() => handleSupportReset(activeSupportOption)}>
-								<span className="codicon codicon-discard"></span>
-							</Button>
-						</StandardTooltip>
-					</div>
-
-					<Textarea
-						value={getSupportPromptValue(activeSupportOption)}
-						onChange={(e) => updateSupportPrompt(activeSupportOption, e.target.value)}
-						rows={6}
-						className="w-full resize-y"
-					/>
-
-					{activeSupportOption === "ENHANCE" && (
-						<SettingsNested className="mt-block">
-							<div>
-								<label className="block font-medium mb-1">
-									{t("prompts:supportPrompts.enhance.apiConfiguration")}
-								</label>
-								<Select
-									value={enhancementApiConfigId || "-"}
-									onValueChange={(value) => {
-										const newConfigId = value === "-" ? "" : value
-										setEnhancementApiConfigId(newConfigId)
-										vscode.postMessage({
-											type: "enhancementApiConfigId",
-											text: value,
-										})
-									}}>
-									<SelectTrigger data-testid="api-config-select" className="w-full">
-										<SelectValue
-											placeholder={t("prompts:supportPrompts.enhance.useCurrentConfig")}
-										/>
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="-">
-											{t("prompts:supportPrompts.enhance.useCurrentConfig")}
+					<SearchableSetting
+						settingId="prompts-support-prompt-select"
+						section="prompts"
+						label={t("settings:sections.prompts")}>
+						<Select
+							value={activeSupportOption}
+							onValueChange={(type) => setActiveSupportOption(type as SupportPromptType)}>
+							<SelectTrigger className="w-full" data-testid="support-prompt-select-trigger">
+								<SelectValue placeholder={t("settings:common.select")} />
+							</SelectTrigger>
+							<SelectContent>
+								{Object.keys(supportPrompt.default)
+									.filter((type) => type !== "CONDENSE")
+									.map((type) => (
+										<SelectItem key={type} value={type} data-testid={`${type}-option`}>
+											{t(`prompts:supportPrompts.types.${type}.label`)}
 										</SelectItem>
-										{(listApiConfigMeta || []).map((config) => (
-											<SelectItem
-												key={config.id}
-												value={config.id}
-												data-testid={`${config.id}-option`}>
-												{config.name}
+									))}
+							</SelectContent>
+						</Select>
+						<div className={settingDescription}>
+							{t(`prompts:supportPrompts.types.${activeSupportOption}.description`)}
+						</div>
+					</SearchableSetting>
+
+					<div key={activeSupportOption}>
+						<div className="flex justify-between items-center mb-1">
+							<label className="block font-medium">{t("prompts:supportPrompts.prompt")}</label>
+							<StandardTooltip
+								content={t("prompts:supportPrompts.resetPrompt", {
+									promptType: activeSupportOption,
+								})}>
+								<Button
+									aria-label={t("prompts:supportPrompts.resetPrompt", {
+										promptType: activeSupportOption,
+									})}
+									variant="ghost"
+									size="icon"
+									onClick={() => handleSupportReset(activeSupportOption)}>
+									<span className="codicon codicon-discard"></span>
+								</Button>
+							</StandardTooltip>
+						</div>
+
+						<Textarea
+							value={getSupportPromptValue(activeSupportOption)}
+							onChange={(e) => updateSupportPrompt(activeSupportOption, e.target.value)}
+							rows={6}
+							className="w-full resize-y"
+						/>
+
+						{activeSupportOption === "ENHANCE" && (
+							<SettingsNested className="mt-block">
+								<div>
+									<label className="block font-medium mb-1">
+										{t("prompts:supportPrompts.enhance.apiConfiguration")}
+									</label>
+									<Select
+										value={enhancementApiConfigId || "-"}
+										onValueChange={(value) => {
+											const newConfigId = value === "-" ? "" : value
+											setEnhancementApiConfigId(newConfigId)
+											vscode.postMessage({
+												type: "enhancementApiConfigId",
+												text: value,
+											})
+										}}>
+										<SelectTrigger data-testid="api-config-select" className="w-full">
+											<SelectValue
+												placeholder={t("prompts:supportPrompts.enhance.useCurrentConfig")}
+											/>
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="-">
+												{t("prompts:supportPrompts.enhance.useCurrentConfig")}
 											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<div className={settingDescription}>
-									{t("prompts:supportPrompts.enhance.apiConfigDescription")}
+											{(listApiConfigMeta || []).map((config) => (
+												<SelectItem
+													key={config.id}
+													value={config.id}
+													data-testid={`${config.id}-option`}>
+													{config.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<div className={settingDescription}>
+										{t("prompts:supportPrompts.enhance.apiConfigDescription")}
+									</div>
 								</div>
-							</div>
 
-							<div>
-								<LabeledCheckbox
-									checked={includeTaskHistoryInEnhance}
-									onChange={(e: Event | FormEvent<HTMLElement>) => {
-										const target = ("target" in e ? e.target : null) as HTMLInputElement | null
+								<div>
+									<LabeledCheckbox
+										checked={includeTaskHistoryInEnhance}
+										onChange={(e: Event | FormEvent<HTMLElement>) => {
+											const target = ("target" in e ? e.target : null) as HTMLInputElement | null
 
-										if (!target) {
-											return
-										}
+											if (!target) {
+												return
+											}
 
-										setIncludeTaskHistoryInEnhance(target.checked)
-										postImmediateSetting("includeTaskHistoryInEnhance", target.checked)
-									}}>
-									<span className="font-medium">
-										{t("prompts:supportPrompts.enhance.includeTaskHistory")}
-									</span>
-								</LabeledCheckbox>
-								<div className={checkboxDescription}>
-									{t("prompts:supportPrompts.enhance.includeTaskHistoryDescription")}
+											setIncludeTaskHistoryInEnhance(target.checked)
+											postImmediateSetting("includeTaskHistoryInEnhance", target.checked)
+										}}>
+										<span className="font-medium">
+											{t("prompts:supportPrompts.enhance.includeTaskHistory")}
+										</span>
+									</LabeledCheckbox>
+									<div className={checkboxDescription}>
+										{t("prompts:supportPrompts.enhance.includeTaskHistoryDescription")}
+									</div>
 								</div>
-							</div>
 
-							<div>
-								<label className="block font-medium mb-1">
-									{t("prompts:supportPrompts.enhance.testEnhancement")}
-								</label>
-								<Textarea
-									value={testPrompt}
-									onChange={(e) => setTestPrompt(e.target.value)}
-									placeholder={t("prompts:supportPrompts.enhance.testPromptPlaceholder")}
-									rows={3}
-									className="w-full resize-y"
-									data-testid="test-prompt-textarea"
-								/>
-								<div className="mt-2 flex justify-start items-center gap-2">
-									<Button variant="primary" onClick={handleTestEnhancement} disabled={isEnhancing}>
-										{t("prompts:supportPrompts.enhance.previewButton")}
-									</Button>
+								<div>
+									<label className="block font-medium mb-1">
+										{t("prompts:supportPrompts.enhance.testEnhancement")}
+									</label>
+									<Textarea
+										value={testPrompt}
+										onChange={(e) => setTestPrompt(e.target.value)}
+										placeholder={t("prompts:supportPrompts.enhance.testPromptPlaceholder")}
+										rows={3}
+										className="w-full resize-y"
+										data-testid="test-prompt-textarea"
+									/>
+									<div className="mt-2 flex justify-start items-center gap-2">
+										<Button
+											variant="primary"
+											onClick={handleTestEnhancement}
+											disabled={isEnhancing}>
+											{t("prompts:supportPrompts.enhance.previewButton")}
+										</Button>
+									</div>
 								</div>
-							</div>
-						</SettingsNested>
-					)}
-				</div>
+							</SettingsNested>
+						)}
+					</div>
 				</SettingsCard>
 			</Section>
 		</div>

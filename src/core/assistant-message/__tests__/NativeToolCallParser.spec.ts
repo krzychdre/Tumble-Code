@@ -777,8 +777,7 @@ describe("NativeToolCallParser", () => {
 			})
 			// Now name is present → tool_call_start should be emitted
 			const startEvent = events2.find((e) => e.type === "tool_call_start") as
-				| { type: string; id: string; name: string }
-				| undefined
+				{ type: string; id: string; name: string } | undefined
 			expect(startEvent).toBeDefined()
 			expect(startEvent!.name).toBe("read_file")
 			// Since hasStarted was false when the real id arrived, the real id should be adopted

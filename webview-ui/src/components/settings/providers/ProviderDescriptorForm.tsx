@@ -281,9 +281,7 @@ const CheckboxField = ({
 				onCheckedChange={(checked: boolean) => setApiConfigurationField(field.key, checked)}>
 				{t(field.labelKey)}
 			</LabeledCheckbox>
-			{field.descriptionKey && (
-				<div className={checkboxDescription}>{t(field.descriptionKey)}</div>
-			)}
+			{field.descriptionKey && <div className={checkboxDescription}>{t(field.descriptionKey)}</div>}
 		</>
 	)
 

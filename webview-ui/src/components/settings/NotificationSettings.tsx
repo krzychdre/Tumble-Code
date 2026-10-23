@@ -157,65 +157,65 @@ export const NotificationSettings = (props: NotificationSettingsProps) => {
 
 			<Section>
 				<SettingsCard>
-				<SearchableSetting
-					settingId="notifications-sound"
-					section="notifications"
-					label={t("settings:notifications.sound.label")}>
-					<LabeledCheckbox
-						checked={soundEnabled}
-						onChange={(e: any) => setSoundEnabled(e.target.checked)}
-						data-testid="sound-enabled-checkbox">
-						<span className="font-medium">{t("settings:notifications.sound.label")}</span>
-					</LabeledCheckbox>
-					<div className={checkboxDescription}>
-						{t("settings:notifications.sound.description")}
-					</div>
-				</SearchableSetting>
+					<SearchableSetting
+						settingId="notifications-sound"
+						section="notifications"
+						label={t("settings:notifications.sound.label")}>
+						<LabeledCheckbox
+							checked={soundEnabled}
+							onChange={(e: any) => setSoundEnabled(e.target.checked)}
+							data-testid="sound-enabled-checkbox">
+							<span className="font-medium">{t("settings:notifications.sound.label")}</span>
+						</LabeledCheckbox>
+						<div className={checkboxDescription}>{t("settings:notifications.sound.description")}</div>
+					</SearchableSetting>
 
-				{soundEnabled && (
-					<SettingsNested>
-						<SearchableSetting
-							settingId="notifications-sound-volume"
-							section="notifications"
-							label={t("settings:notifications.sound.volumeLabel")}>
-							<label className="block font-medium mb-1">
-								{t("settings:notifications.sound.volumeLabel")}
-							</label>
-							<div className="flex items-center gap-2">
-								<Slider
-									min={0}
-									max={1}
-									step={0.01}
-									value={[soundVolume ?? SETTINGS_DEFAULTS.soundVolume]}
-									onValueChange={([value]) => setSoundVolume(value)}
-									data-testid="sound-volume-slider"
+					{soundEnabled && (
+						<SettingsNested>
+							<SearchableSetting
+								settingId="notifications-sound-volume"
+								section="notifications"
+								label={t("settings:notifications.sound.volumeLabel")}>
+								<label className="block font-medium mb-1">
+									{t("settings:notifications.sound.volumeLabel")}
+								</label>
+								<div className="flex items-center gap-2">
+									<Slider
+										min={0}
+										max={1}
+										step={0.01}
+										value={[soundVolume ?? SETTINGS_DEFAULTS.soundVolume]}
+										onValueChange={([value]) => setSoundVolume(value)}
+										data-testid="sound-volume-slider"
+									/>
+									<span className="w-10">
+										{((soundVolume ?? SETTINGS_DEFAULTS.soundVolume) * 100).toFixed(0)}%
+									</span>
+								</div>
+							</SearchableSetting>
+
+							<div>
+								<div className="font-medium">
+									{t("settings:notifications.sound.custom.sectionLabel")}
+								</div>
+								<div className={settingDescription}>
+									{t("settings:notifications.sound.custom.sectionDescription", {
+										max: MAX_CUSTOM_SOUND_DURATION_SECONDS,
+									})}
+								</div>
+							</div>
+							{CUSTOM_SOUND_SLOTS.map((slot) => (
+								<CustomSoundRow
+									key={slot.id}
+									audioType={slot.id}
+									label={t(slot.labelKey)}
+									description={t(slot.descriptionKey)}
+									basename={displayNameFor(slot.id)}
+									uri={customSoundUris?.[slot.id]}
 								/>
-								<span className="w-10">
-									{((soundVolume ?? SETTINGS_DEFAULTS.soundVolume) * 100).toFixed(0)}%
-								</span>
-							</div>
-						</SearchableSetting>
-
-						<div>
-							<div className="font-medium">{t("settings:notifications.sound.custom.sectionLabel")}</div>
-							<div className={settingDescription}>
-							{t("settings:notifications.sound.custom.sectionDescription", {
-								max: MAX_CUSTOM_SOUND_DURATION_SECONDS,
-							})}
-							</div>
-						</div>
-						{CUSTOM_SOUND_SLOTS.map((slot) => (
-							<CustomSoundRow
-								key={slot.id}
-								audioType={slot.id}
-								label={t(slot.labelKey)}
-								description={t(slot.descriptionKey)}
-								basename={displayNameFor(slot.id)}
-								uri={customSoundUris?.[slot.id]}
-							/>
-						))}
-					</SettingsNested>
-				)}
+							))}
+						</SettingsNested>
+					)}
 				</SettingsCard>
 			</Section>
 		</div>

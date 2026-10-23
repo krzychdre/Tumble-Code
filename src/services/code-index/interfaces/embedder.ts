@@ -53,13 +53,7 @@ export interface EmbeddingResponse {
 }
 
 export type AvailableEmbedders =
-	| "openai"
-	| "ollama"
-	| "openai-compatible"
-	| "gemini"
-	| "mistral"
-	| "bedrock"
-	| "openrouter"
+	"openai" | "ollama" | "openai-compatible" | "gemini" | "mistral" | "bedrock" | "openrouter"
 
 export interface EmbedderInfo {
 	name: AvailableEmbedders

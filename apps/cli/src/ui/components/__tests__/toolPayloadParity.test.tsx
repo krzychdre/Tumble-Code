@@ -74,13 +74,11 @@ const rows: ParityRow[] = [
 		"edit_file",
 		"apply_patch",
 		"apply_diff",
-	].map(
-		(tool): ParityRow => ({
-			payload: { tool, path: "src/a.ts", diff: UNIFIED },
-			renderer: FileWriteTool,
-			shows: ["Edit(src/a.ts)", "new unified line"],
-		}),
-	),
+	].map((tool): ParityRow => ({
+		payload: { tool, path: "src/a.ts", diff: UNIFIED },
+		renderer: FileWriteTool,
+		shows: ["Edit(src/a.ts)", "new unified line"],
+	})),
 	{
 		payload: { tool: "insertContent", path: "src/a.ts", diff: UNIFIED, lineNumber: 3 },
 		renderer: FileWriteTool,

@@ -18,10 +18,7 @@ import {
  * This is a narrow interface to minimize coupling between modules.
  */
 export interface TaskSubtasksAccess
-	extends TaskIdAccess,
-		TaskProviderRefAccess,
-		TaskAbortFlagAccess,
-		TaskApiConversationHistoryAccess {
+	extends TaskIdAccess, TaskProviderRefAccess, TaskAbortFlagAccess, TaskApiConversationHistoryAccess {
 	instanceId: string
 
 	// Mutable state flags (all need to be settable)

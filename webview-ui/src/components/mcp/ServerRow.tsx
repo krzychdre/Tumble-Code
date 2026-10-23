@@ -128,9 +128,7 @@ export const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alway
 				className={cn(
 					"flex items-center gap-2 p-row bg-surface border border-frame transition-colors",
 					hasBody ? "rounded-t-control" : "rounded-control",
-					isExpandable
-						? "cursor-pointer hover:bg-surface-hover hover:border-frame-hover"
-						: "cursor-default",
+					isExpandable ? "cursor-pointer hover:bg-surface-hover hover:border-frame-hover" : "cursor-default",
 					server.disabled && "text-vscode-descriptionForeground",
 				)}
 				onClick={handleRowClick}>

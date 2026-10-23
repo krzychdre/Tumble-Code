@@ -73,17 +73,17 @@ export const LiteLLM = ({
 			</label>
 
 			<div>
-			<label className="block w-full leading-[normal]">
-				<span className="block font-medium mb-1">{t("settings:providers.litellmApiKey")}</span>
-				<Input
-					value={apiConfiguration?.litellmApiKey || ""}
-					type="password"
-					onChange={handleInputChange("litellmApiKey")}
-					placeholder={t("settings:placeholders.apiKey")}
-				/>
-			</label>
+				<label className="block w-full leading-[normal]">
+					<span className="block font-medium mb-1">{t("settings:providers.litellmApiKey")}</span>
+					<Input
+						value={apiConfiguration?.litellmApiKey || ""}
+						type="password"
+						onChange={handleInputChange("litellmApiKey")}
+						placeholder={t("settings:placeholders.apiKey")}
+					/>
+				</label>
 
-			<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
+				<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
 			</div>
 
 			<Button

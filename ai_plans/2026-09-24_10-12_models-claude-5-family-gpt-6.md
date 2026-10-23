@@ -3,22 +3,23 @@
 **Status:** done on branch `feat/models-opus-5-5-fable-5-1-gpt-6` (bottom of the 2026-09-24 stack)
 **Related plans:** `2026-05-26_rebrand-roo-to-tumble-code.md` (naming), Zoo-Code ports #778, #1010, #1508, #1506, #1627
 **Touched:**
+
 - `packages/types/src/providers/anthropic.ts`, `bedrock.ts`, `vertex.ts`, `openrouter.ts`, `openai.ts`, `index.ts`
 - `src/api/providers/anthropic.ts`, `bedrock.ts`, `openai-native.ts`, `fetchers/openrouter.ts`
 - tests: `anthropic.spec.ts`, `bedrock.spec.ts`, `openai-native.spec.ts`, `openai-native-usage.spec.ts`, `fetchers/__tests__/openrouter.spec.ts`, `packages/types/src/__tests__/provider-default-model.spec.ts`
 
 ## Sources (checked 2026-09-24)
 
-| Fact | Source |
-|---|---|
-| Opus 5.5: $4/$20, cache read $0.20, 1M/128K, thinking cannot be disabled, forced `tool_choice` returns 400 | Anthropic model docs (claude-api skill `shared/models.md`, `model-migration.md`), OpenRouter `/api/v1/models` (`anthropic/claude-opus-5.5`, created 2026-09-22) |
-| Fable 5.1: $10/$50, cache read $0.25, 1M/128K, same always-on thinking as Fable 5, forced `tool_choice` returns 400 | same, OpenRouter `anthropic/claude-fable-5.1` (2026-09-01) |
-| Sonnet 5 is $2/$10 (not $3/$15) | OpenRouter live catalog 2026-09-24, Anthropic model table |
-| Bedrock ids `anthropic.claude-opus-5-5`, `anthropic.claude-fable-5-1` | `model-migration.md` platform table |
-| GPT-6 Astra $10/$50, Sol $2/$10, Luna $0.10/$0.50; cache write 1.25x, read 0.1x; above 272K input: 2x input and cache, 1.5x output | https://developers.openai.com/api/docs/pricing and the `gpt-6-sol` model page |
-| Astra rejects `none` effort (400); Sol and Luna accept it; default effort `medium`; 1.05M context, 128K output | https://developers.openai.com/api/docs/guides/latest-model, `.../guides/reasoning` |
-| Responses API reports cache writes in `usage.input_tokens_details.cache_write_tokens` | https://developers.openai.com/api/docs/guides/prompt-caching |
-| `gpt-5.6-sol` still lists at $4/$20 | OpenAI pricing page (so Zoo #1506's gpt-5.6 price cut was NOT ported) |
+| Fact                                                                                                                               | Source                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Opus 5.5: $4/$20, cache read $0.20, 1M/128K, thinking cannot be disabled, forced `tool_choice` returns 400                         | Anthropic model docs (claude-api skill `shared/models.md`, `model-migration.md`), OpenRouter `/api/v1/models` (`anthropic/claude-opus-5.5`, created 2026-09-22) |
+| Fable 5.1: $10/$50, cache read $0.25, 1M/128K, same always-on thinking as Fable 5, forced `tool_choice` returns 400                | same, OpenRouter `anthropic/claude-fable-5.1` (2026-09-01)                                                                                                      |
+| Sonnet 5 is $2/$10 (not $3/$15)                                                                                                    | OpenRouter live catalog 2026-09-24, Anthropic model table                                                                                                       |
+| Bedrock ids `anthropic.claude-opus-5-5`, `anthropic.claude-fable-5-1`                                                              | `model-migration.md` platform table                                                                                                                             |
+| GPT-6 Astra $10/$50, Sol $2/$10, Luna $0.10/$0.50; cache write 1.25x, read 0.1x; above 272K input: 2x input and cache, 1.5x output | https://developers.openai.com/api/docs/pricing and the `gpt-6-sol` model page                                                                                   |
+| Astra rejects `none` effort (400); Sol and Luna accept it; default effort `medium`; 1.05M context, 128K output                     | https://developers.openai.com/api/docs/guides/latest-model, `.../guides/reasoning`                                                                              |
+| Responses API reports cache writes in `usage.input_tokens_details.cache_write_tokens`                                              | https://developers.openai.com/api/docs/guides/prompt-caching                                                                                                    |
+| `gpt-5.6-sol` still lists at $4/$20                                                                                                | OpenAI pricing page (so Zoo #1506's gpt-5.6 price cut was NOT ported)                                                                                           |
 
 ## Symptoms and root causes found while adding the models
 
@@ -32,15 +33,15 @@
 
 ## Failure surface (before/after)
 
-| Scenario | Before | After |
-|---|---|---|
-| Anthropic, `claude-opus-5` / `claude-sonnet-5` | no cache breakpoints, full price every turn | system + last two user turns cached, beta header sent |
-| Anthropic, new model added to `anthropicModels` later | silently uncached unless someone edits two switches | cached automatically (`info.supportsPromptCache`) |
-| Bedrock custom `anthropic.claude-opus-5` | `budget_tokens` + temperature, 400 | adaptive thinking, no temperature |
-| OpenAI Native, saved `none`, switch to `gpt-6-astra` | `reasoning.effort: none`, 400 | falls back to `medium` |
-| OpenAI Native, saved `disable`, `gpt-6-astra` | reasoning omitted (Astra requires it) | `medium` |
-| OpenAI Native, 40K cache writes on `gpt-6-sol` | billed as $2/M input | billed as $2.50/M |
-| New OpenAI Native profile, UI | shows `gpt-4o`, no price info | shows `gpt-5.6-sol` like the handler |
+| Scenario                                              | Before                                              | After                                                 |
+| ----------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------- |
+| Anthropic, `claude-opus-5` / `claude-sonnet-5`        | no cache breakpoints, full price every turn         | system + last two user turns cached, beta header sent |
+| Anthropic, new model added to `anthropicModels` later | silently uncached unless someone edits two switches | cached automatically (`info.supportsPromptCache`)     |
+| Bedrock custom `anthropic.claude-opus-5`              | `budget_tokens` + temperature, 400                  | adaptive thinking, no temperature                     |
+| OpenAI Native, saved `none`, switch to `gpt-6-astra`  | `reasoning.effort: none`, 400                       | falls back to `medium`                                |
+| OpenAI Native, saved `disable`, `gpt-6-astra`         | reasoning omitted (Astra requires it)               | `medium`                                              |
+| OpenAI Native, 40K cache writes on `gpt-6-sol`        | billed as $2/M input                                | billed as $2.50/M                                     |
+| New OpenAI Native profile, UI                         | shows `gpt-4o`, no price info                       | shows `gpt-5.6-sol` like the handler                  |
 
 ## Fix
 

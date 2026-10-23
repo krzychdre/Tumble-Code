@@ -530,9 +530,8 @@ describe("safeWriteJson", () => {
 		})
 
 		// Re-import safeWriteJson to use the mocked proper-lockfile
-		const { withLockedJsonTransaction: mockedWithLockedJsonTransaction, LockCompromisedError } = await import(
-			"../safeWriteJson.js"
-		)
+		const { withLockedJsonTransaction: mockedWithLockedJsonTransaction, LockCompromisedError } =
+			await import("../safeWriteJson.js")
 
 		const destinationPath = path.join(tempDir, "compromised-transaction.json")
 		const lockTargetPath = path.join(tempDir, "locks", "compromised.lock-target")

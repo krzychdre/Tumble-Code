@@ -72,7 +72,7 @@ Diagnostic"`.
     - Report header line: `"Zoo Code Ripgrep Diagnostic (…)"` → `"Tumble Code
 Ripgrep Diagnostic (…)"`.
     - Toast: `"Zoo Code: ripgrep diagnostic copied to clipboard."` → `"Tumble
-   Code: ripgrep diagnostic copied to clipboard."`.
+Code: ripgrep diagnostic copied to clipboard."`.
       The test expectations were adapted to the Tumble strings accordingly.
 
 5. **`@vscode/ripgrep` dependency — NOT re-added to `package.json`.** Verified it

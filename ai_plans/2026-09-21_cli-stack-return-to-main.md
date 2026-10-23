@@ -2,13 +2,14 @@
 
 **Date:** 2026-09-21
 **Branches involved:**
+
 - `rescue/cli-installed-build` = `f6ed54afd`: the 38-commit CLI stack, 38 ahead of merge-base `8f8550ccb`, forked BEFORE the 24 commits `main` has gained since.
 - `fix/cli-answer-lost-in-dynamic-tail`: 5 commits on top of `f6ed54afd` (plan doc `10922060d`, finalization fix `2c34d4d2b`, idle promotion `a6631749a`, expanded rendering `1653dccbd`, ctrl+o verbose toggle `fff985550`). Implemented, tested, lint clean, knip output byte-identical to the base.
 - `main` = `61be588a7` at the time of writing.
-**Worktree for the merge work:** a fresh worktree with its OWN `pnpm install` (see slice 0). NOT `/tmp/tumble-cli-fix`, whose `node_modules` is a symlink to the main tree.
-**Status:** RESOLVED 2026-09-21: the stack returned to `main` via PR #166 (squash, `ce2c52c9c`). Nothing in this
-document's execution record was written before the merge; read the slices below as the plan as executed.
-[UPDATE 2026-09-27: merged to main, verified by content.]
+  **Worktree for the merge work:** a fresh worktree with its OWN `pnpm install` (see slice 0). NOT `/tmp/tumble-cli-fix`, whose `node_modules` is a symlink to the main tree.
+  **Status:** RESOLVED 2026-09-21: the stack returned to `main` via PR #166 (squash, `ce2c52c9c`). Nothing in this
+  document's execution record was written before the merge; read the slices below as the plan as executed.
+  [UPDATE 2026-09-27: merged to main, verified by content.]
 
 Writing and coding rule: never use an em dash or an en dash anywhere (code,
 comments, tests, commit messages, UI strings, changesets). Use a hyphen, a
@@ -75,27 +76,27 @@ main tree, so every workspace package (`@roo-code/core`, `@roo-code/types`,
 branch's. That is a useful preview, but it mixes two different kinds of error:
 
 1. Real drift, will conflict or fail after the merge too:
-   - the provider surface: `apps/cli/src/lib/utils/provider-types.ts:132`
-     (`vercel-ai-gateway` entry), `apps/cli/src/lib/utils/context-window.ts:48,50,54`
-     (`requestyModelId`, `unboundModelId`, `vercelAiGatewayModelId`),
-     `apps/cli/src/commands/cli/__tests__/run.test.ts:449,451,455` (`unbound`),
-     `apps/cli/src/lib/utils/__tests__/provider-types.test.ts:169,173`
-     (`vercel-ai-gateway`). `main` deleted those types on purpose.
-   - knip: the unused exports listed in slice 4 exist on the branch point and
-     `main` now fails CI on them.
+    - the provider surface: `apps/cli/src/lib/utils/provider-types.ts:132`
+      (`vercel-ai-gateway` entry), `apps/cli/src/lib/utils/context-window.ts:48,50,54`
+      (`requestyModelId`, `unboundModelId`, `vercelAiGatewayModelId`),
+      `apps/cli/src/commands/cli/__tests__/run.test.ts:449,451,455` (`unbound`),
+      `apps/cli/src/lib/utils/__tests__/provider-types.test.ts:169,173`
+      (`vercel-ai-gateway`). `main` deleted those types on purpose.
+    - knip: the unused exports listed in slice 4 exist on the branch point and
+      `main` now fails CI on them.
 2. Artifacts of the symlink, expected to disappear after a real merge plus
    `pnpm install`, because the branch itself carries the missing piece and
    `main` never touched the file:
-   - `src/lib/storage/settings.ts:5` importing `safeWriteJson` from
-     `@roo-code/core` (branch commit `37f8b0845` adds that export; `main`'s
-     `packages/core/src/index.ts` is unchanged since the merge-base, so the
-     merge keeps the export with no conflict). This also explains the `tsup`
-     build failure and the six failing tests in
-     `src/lib/storage/__tests__/settings.test.ts`.
-   - `src/commands/auth/openai-codex.ts:76` passing `openExternal` (branch
-     commit `05be453a3` adds it to the shim; `main`'s shim is unchanged).
-   - `src/ui/__tests__/figures.test.ts:1` importing `string-width` (declared
-     in the branch's `apps/cli/package.json`; `main`'s install does not have it).
+    - `src/lib/storage/settings.ts:5` importing `safeWriteJson` from
+      `@roo-code/core` (branch commit `37f8b0845` adds that export; `main`'s
+      `packages/core/src/index.ts` is unchanged since the merge-base, so the
+      merge keeps the export with no conflict). This also explains the `tsup`
+      build failure and the six failing tests in
+      `src/lib/storage/__tests__/settings.test.ts`.
+    - `src/commands/auth/openai-codex.ts:76` passing `openExternal` (branch
+      commit `05be453a3` adds it to the shim; `main`'s shim is unchanged).
+    - `src/ui/__tests__/figures.test.ts:1` importing `string-width` (declared
+      in the branch's `apps/cli/package.json`; `main`'s install does not have it).
 
 The plan does not take group 2 on faith: slice 2 re-runs the gates in a
 properly installed merged tree and has an explicit fallback if any of them
@@ -187,21 +188,21 @@ as the "before" column.
 - `git merge main` (no `--squash`; one merge commit, the branch history stays
   intact until the PR squashes it).
 - Expected conflicts and the rule for each:
-  - `apps/cli/src/lib/utils/provider.ts` and `apps/cli/src/types/types.ts`:
-    take the branch's registry-derived structure (provider parity), then apply
-    `main`'s deletions on top: no entry for any of the seven retired providers.
-    Do not resurrect them.
-  - `src/core/assistant-message/presentAssistantMessage.ts`: take `main`'s
-    version (teaching-errors structure from `a2b2e102d`), then re-apply the
-    branch's abort guard from `efcde397a` inside it. The guard is small; read
-    `src/core/assistant-message/__tests__/presentAssistantMessage-abort.spec.ts`
-    (branch side) first, it states the behavior.
-  - `src/core/webview/ClineProvider.ts`: take `main`, re-apply the branch's
-    `cliSettingsMirror` hook from `627bf3a1c` (a call site plus an import).
-  - `src/package.json`: take `main` (`"version": "1.0.0"` and all its
-    dependency edits), add the branch's single line `"punycode": "2.3.1"`.
-  - `pnpm-lock.yaml`: do not hand-merge. Take either side, then run
-    `pnpm install` and commit the regenerated lockfile with the merge.
+    - `apps/cli/src/lib/utils/provider.ts` and `apps/cli/src/types/types.ts`:
+      take the branch's registry-derived structure (provider parity), then apply
+      `main`'s deletions on top: no entry for any of the seven retired providers.
+      Do not resurrect them.
+    - `src/core/assistant-message/presentAssistantMessage.ts`: take `main`'s
+      version (teaching-errors structure from `a2b2e102d`), then re-apply the
+      branch's abort guard from `efcde397a` inside it. The guard is small; read
+      `src/core/assistant-message/__tests__/presentAssistantMessage-abort.spec.ts`
+      (branch side) first, it states the behavior.
+    - `src/core/webview/ClineProvider.ts`: take `main`, re-apply the branch's
+      `cliSettingsMirror` hook from `627bf3a1c` (a call site plus an import).
+    - `src/package.json`: take `main` (`"version": "1.0.0"` and all its
+      dependency edits), add the branch's single line `"punycode": "2.3.1"`.
+    - `pnpm-lock.yaml`: do not hand-merge. Take either side, then run
+      `pnpm install` and commit the regenerated lockfile with the merge.
 - Commit the merge. Immediately run `pnpm install` again if the lockfile was
   taken from one side, and commit the lockfile delta as part of the merge
   commit (`git commit --amend` is acceptable here only because nothing has
@@ -239,6 +240,7 @@ Verification: the three commands above green; also
 ### Slice 3: provider-surface drift (follow `main`'s intent)
 
 Files and the exact edits:
+
 - `apps/cli/src/lib/utils/provider-types.ts`: delete the `"vercel-ai-gateway"`
   entry (lines 132-136 on the branch). Grep the file for the other six retired
   names and delete any remaining entries.
@@ -275,6 +277,7 @@ Run from the properly installed integration worktree: `pnpm knip` at the root
 and `npx knip --workspace apps/cli` for the focused list. Known items on the
 branch point (resolve each; the rule is "delete if unused, otherwise wire the
 import", never add to `ignore` lists):
+
 - `apps/cli/src/ui/components/tools/utils.ts`: `truncateText`,
   `formatDiffStats`, `formatPath` (unused, delete; `sanitizeContent`,
   `getToolDisplayName`, `parseDiff` are used).
@@ -420,16 +423,16 @@ installed CLI bundle is a local build of main; slices 6-8 are moot as written.]
 
 ### Gate table
 
-| Gate | Before the merge | After slices 1-5 |
-| --- | --- | --- |
-| `pnpm -C apps/cli check-types` | pass | pass |
-| `pnpm -C apps/cli test` | 682 pass, 1 skipped | 682 pass, 1 skipped |
-| `pnpm -C apps/cli build` | not run | pass |
-| root `pnpm check-types` | not run | 14/14 pass |
-| root `pnpm lint` | not run | 14/14 pass |
-| root `pnpm knip` | FAIL (6 error categories) | pass, exit 0 |
-| `pnpm install --frozen-lockfile` | n/a | pass |
-| `npx changeset status` | ValidationError | exit 0 |
+| Gate                             | Before the merge          | After slices 1-5    |
+| -------------------------------- | ------------------------- | ------------------- |
+| `pnpm -C apps/cli check-types`   | pass                      | pass                |
+| `pnpm -C apps/cli test`          | 682 pass, 1 skipped       | 682 pass, 1 skipped |
+| `pnpm -C apps/cli build`         | not run                   | pass                |
+| root `pnpm check-types`          | not run                   | 14/14 pass          |
+| root `pnpm lint`                 | not run                   | 14/14 pass          |
+| root `pnpm knip`                 | FAIL (6 error categories) | pass, exit 0        |
+| `pnpm install --frozen-lockfile` | n/a                       | pass                |
+| `npx changeset status`           | ValidationError           | exit 0              |
 
 The pre-merge `check-types` pass settles the "group 2" question from the section
 above: `safeWriteJson`, `openExternal` and `string-width` were symlink artifacts,

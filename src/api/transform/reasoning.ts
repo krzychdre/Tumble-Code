@@ -139,9 +139,7 @@ export const getGeminiReasoning = ({
 	// efforts in the UI (e.g. "High" for gemini-3-pro-preview) always translate
 	// into a thinkingConfig, regardless of legacy boolean flags.
 	const selectedEffort = (settings.reasoningEffort ?? model.reasoningEffort) as
-		| ReasoningEffortExtended
-		| "disable"
-		| undefined
+		ReasoningEffortExtended | "disable" | undefined
 
 	// Respect "off" / unset semantics from the effort selector itself.
 	if (!selectedEffort || selectedEffort === "disable") {

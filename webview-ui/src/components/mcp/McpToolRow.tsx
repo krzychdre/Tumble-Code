@@ -56,9 +56,7 @@ const McpToolRow = ({ tool, serverName, serverSource, alwaysAllowMcp, isInChatCo
 					<StandardTooltip content={tool.name}>
 						<span
 							className={`font-medium truncate ${
-								isToolEnabled
-									? "text-vscode-foreground"
-									: "text-vscode-descriptionForeground"
+								isToolEnabled ? "text-vscode-foreground" : "text-vscode-descriptionForeground"
 							}`}>
 							{tool.name}
 						</span>
@@ -97,9 +95,7 @@ const McpToolRow = ({ tool, serverName, serverSource, alwaysAllowMcp, isInChatCo
 				)}
 			</div>
 			{tool.description && (
-				<div className="mt-1 text-xs text-vscode-descriptionForeground">
-					{tool.description}
-				</div>
+				<div className="mt-1 text-xs text-vscode-descriptionForeground">{tool.description}</div>
 			)}
 			{isToolEnabled &&
 				tool.inputSchema &&

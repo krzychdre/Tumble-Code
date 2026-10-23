@@ -11,11 +11,11 @@ tokens and could not work on small local models.
 Evidence from the on-disk task store (`globalStorage/qub-it.tumble-code/tasks`, aborted writer
 runs keep their directory; `api_req_started` rows of `ui_messages.json`):
 
-| Run (2026-09-25) | Requests | Input tokens per request |
-| --- | --- | --- |
-| extraction 22:41 (`01a0da4b`) | 5 | 44.1k, 41.5k, 47.8k, 48.8k, 49.5k |
-| dream 22:06 (`01a0da27`) | 10 | 26.0k rising to 60.1k (about 450k in total) |
-| dream 18:48 (`01a0d96b`) | 10 | 19.2k rising to 41.3k |
+| Run (2026-09-25)              | Requests | Input tokens per request                    |
+| ----------------------------- | -------- | ------------------------------------------- |
+| extraction 22:41 (`01a0da4b`) | 5        | 44.1k, 41.5k, 47.8k, 48.8k, 49.5k           |
+| dream 22:06 (`01a0da27`)      | 10       | 26.0k rising to 60.1k (about 450k in total) |
+| dream 18:48 (`01a0d96b`)      | 10       | 19.2k rising to 41.3k                       |
 
 Root cause: `BackgroundTaskRunner.memorySubTaskRunner` spawned a full headless `Task` in
 `code` mode for every writer run. That Task built the normal agent prompt, so each request
@@ -86,12 +86,12 @@ the extraction/dream agent system prompts.
 
 Real histories and the real 77-file memory dir, prompt chars / 3.5 as a token estimate:
 
-| Task | Messages | History chars | Signal chars | Prompt tokens (one request) |
-| --- | --- | --- | --- | --- |
-| `019f94b1` | 252 | 4.78M | 2420 | ~2.8k |
-| `01a047b6` | 4 | 4.34M | 716 | ~2.3k |
-| `019ffb00` | 12 | 3.35M | 1811 | ~2.6k |
-| `01a0da49` | 12 | 41k | 462 | ~2.2k |
+| Task       | Messages | History chars | Signal chars | Prompt tokens (one request) |
+| ---------- | -------- | ------------- | ------------ | --------------------------- |
+| `019f94b1` | 252      | 4.78M         | 2420         | ~2.8k                       |
+| `01a047b6` | 4        | 4.34M         | 716          | ~2.3k                       |
+| `019ffb00` | 12       | 3.35M         | 1811         | ~2.6k                       |
+| `01a0da49` | 12       | 41k           | 462          | ~2.2k                       |
 
 Extraction: one request of about 2-3k tokens instead of up to five of 41-50k. Dream on the
 real store: zero candidate pairs (the curated store has no duplicates), so zero model calls;

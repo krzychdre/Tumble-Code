@@ -54,9 +54,7 @@ const ALLOW_PERMISSION_SETTINGS: CliPermissionSettings = {
 }
 
 export type PermissionArgumentResult =
-	| { success: true; mode: PermissionMode }
-	| { success: true; help: string }
-	| { success: false; error: string }
+	{ success: true; mode: PermissionMode } | { success: true; help: string } | { success: false; error: string }
 
 export function getPermissionMode(nonInteractive: boolean): PermissionMode {
 	return nonInteractive ? "allow" : "ask"

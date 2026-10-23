@@ -2,7 +2,7 @@
 
 **Status:** ported (one commit on wip/zoo-agent-c)
 **Upstream:** Zoo-Code PR #1458, commit cd09db10e, merged 2026-08-31 (author Roomote)
-**Touched:** src/core/webview/ClineProvider.ts, src/core/webview/__tests__/ClineProvider.spec.ts
+**Touched:** src/core/webview/ClineProvider.ts, src/core/webview/**tests**/ClineProvider.spec.ts
 
 ## Symptom
 

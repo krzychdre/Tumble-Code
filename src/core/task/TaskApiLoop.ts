@@ -79,7 +79,8 @@ const AUTO_APPROVAL_LIMIT_MESSAGE = "Auto-approval limit reached and user did no
  * This is a narrow interface to minimize coupling between modules.
  */
 export interface TaskApiLoopAccess
-	extends TaskIdAccess,
+	extends
+		TaskIdAccess,
 		TaskProviderRefAccess,
 		TaskAbortFlagAccess,
 		TaskApiHandlerAccess,

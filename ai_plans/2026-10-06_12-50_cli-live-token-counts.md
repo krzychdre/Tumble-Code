@@ -35,11 +35,11 @@ generowania odpowiedzi (często minuty) stał w miejscu. Tokenów wysłanych nie
 
 ## Przed / po
 
-| Sytuacja | Przed | Po |
-| --- | --- | --- |
-| Model generuje odpowiedź przez 2 min | `↓ 70.9K` bez zmian | `↓ ~71.4K`, `~72.0K`, ... co sekundę |
-| Koniec zapytania | skok do prawdziwej sumy | prawdziwa suma, bez `~` |
-| Tokeny wysłane | niewidoczne | `↑ 120.4K` (potwierdzone przez serwer) |
+| Sytuacja                             | Przed                   | Po                                     |
+| ------------------------------------ | ----------------------- | -------------------------------------- |
+| Model generuje odpowiedź przez 2 min | `↓ 70.9K` bez zmian     | `↓ ~71.4K`, `~72.0K`, ... co sekundę   |
+| Koniec zapytania                     | skok do prawdziwej sumy | prawdziwa suma, bez `~`                |
+| Tokeny wysłane                       | niewidoczne             | `↑ 120.4K` (potwierdzone przez serwer) |
 
 ## Testy
 

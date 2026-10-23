@@ -3,6 +3,7 @@
 **Status:** LANDED on main (content-verified 2026-09-27). Implemented on `feat/cli-spinner-step-timer` (from `main` ab901f663)
 **Related plans:** `2026-08-05_cli-claude-code-style-ui-redesign.md` (the spinner), `2026-09-22_cli-spinner-verbs-rock-tumbler.md` (the word)
 **Touched:**
+
 - `apps/cli/src/ui/components/Spinner.tsx` (two clocks, `formatElapsed`)
 - `apps/cli/src/ui/store.ts` (`turnStartedAt`, `stepStartedAt`, `markStepStarted`)
 - `apps/cli/src/ui/hooks/useMessageHandlers.ts` (`api_req_started` marks the step)
@@ -39,13 +40,13 @@ rewrites the same message (same `ts`) when the cost arrives.
 
 Evidence, the screenshot's task `01a0ceed` in `~/.vscode-mock/global-storage/tasks`:
 
-| offset | message |
-| --- | --- |
-| +879.0 s | `ask: use_mcp_server` searxNcrawl crawl |
-| +884.9 s | `say: mcp_server_response` |
-| +885.0 s | `say: api_req_started` (tokensOut 16634 once finished) |
-| +886.8 s | `say: reasoning` "The crawl returned mostly empty content…" |
-| +1076.7 s | first `say: text` of that answer |
+| offset    | message                                                     |
+| --------- | ----------------------------------------------------------- |
+| +879.0 s  | `ask: use_mcp_server` searxNcrawl crawl                     |
+| +884.9 s  | `say: mcp_server_response`                                  |
+| +885.0 s  | `say: api_req_started` (tokensOut 16634 once finished)      |
+| +886.8 s  | `say: reasoning` "The crawl returned mostly empty content…" |
+| +1076.7 s | first `say: text` of that answer                            |
 
 At the screenshot's 976 s the current request was 91 s old and went on to think
 for 190 s. The single number could not show that. The same task had requests of
@@ -88,7 +89,7 @@ still fits an 80-column terminal on one row.
   `markStepStarted` call: the test fails with `expected null to be 2000`.
 - Full CLI suite: 82 files pass. 2 of 11 full runs failed one test each, both
   times (where the name was captured) `SelectList > calls onSelect with the
-  focused value on Enter` ("expected 'second' to be 'third'"): its second
+focused value on Enter` ("expected 'second' to be 'third'"): its second
   arrow-down keystroke is lost when the machine is busy. `SelectList` is not
   touched here and nothing it renders reads the new state.
 
