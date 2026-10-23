@@ -21,7 +21,7 @@ import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api
 import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { McpHub } from "../../services/mcp/McpHub"
-import { manageContext, willManageContext } from "../context-management"
+import { type ContextManagementResult, manageContext, willManageContext } from "../context-management"
 import { resolveGlobalCondensePercent } from "../context-management/compactProfile"
 import { shouldTrimOldReasoning } from "../context-management/reasoningTrim"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
@@ -509,73 +509,7 @@ export class TaskContextManager {
 				await this.access.history.overwriteApiConversationHistory(truncateResult.messages)
 			}
 
-			if (truncateResult.summary) {
-				const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
-				// condenseId links this row to the Summary message in the API history;
-				// without it a rewind across the row cannot find and drop that Summary.
-				const contextCondense: ContextCondense = {
-					summary,
-					cost,
-					newContextTokens,
-					prevContextTokens,
-					condenseId,
-				}
-				await this.access.askSay.say(
-					"condense_context",
-					undefined /* text */,
-					undefined /* images */,
-					false /* partial */,
-					undefined /* checkpoint */,
-					undefined /* progressStatus */,
-					{ isNonInteractive: true } /* options */,
-					contextCondense,
-				)
-			} else if (truncateResult.truncationId) {
-				// Sliding window truncation occurred (fallback when condensing fails or is disabled)
-				const contextTruncation: ContextTruncation = {
-					truncationId: truncateResult.truncationId,
-					messagesRemoved: truncateResult.messagesRemoved ?? 0,
-					prevContextTokens: truncateResult.prevContextTokens,
-					newContextTokens: truncateResult.newContextTokensAfterTruncation ?? 0,
-				}
-				await this.access.askSay.say(
-					"sliding_window_truncation",
-					undefined /* text */,
-					undefined /* images */,
-					false /* partial */,
-					undefined /* checkpoint */,
-					undefined /* progressStatus */,
-					{ isNonInteractive: true } /* options */,
-					undefined /* contextCondense */,
-					contextTruncation,
-				)
-			} else if (truncateResult.summarySkipped && truncateResult.prunedCount) {
-				// A prune-only round, same as the third branch of manageContextIfNeeded.
-				// The forced path persists the rewritten history a few lines above, so
-				// staying silent here would mean tool output vanishing from the stored
-				// transcript with no explanation and no hint that read_artifact can
-				// bring it back. A destructive rewrite must never be silent, and this
-				// path (the context window is ALREADY exceeded) is the likeliest place
-				// for a real prune-only round to happen.
-				const contextPrune: ContextPrune = {
-					prunedCount: truncateResult.prunedCount,
-					bytesSaved: truncateResult.prunedBytesSaved ?? 0,
-					prevContextTokens: truncateResult.prevContextTokens,
-					newContextTokens: truncateResult.newContextTokens ?? 0,
-				}
-				await this.access.askSay.say(
-					"context_pruned",
-					undefined /* text */,
-					undefined /* images */,
-					false /* partial */,
-					undefined /* checkpoint */,
-					undefined /* progressStatus */,
-					{ isNonInteractive: true } /* options */,
-					undefined /* contextCondense */,
-					undefined /* contextTruncation */,
-					contextPrune,
-				)
-			}
+			await this.sayContextChange(truncateResult)
 		} finally {
 			// Notify webview that context management is complete (removes in-progress spinner)
 			// IMPORTANT: Must always be sent to dismiss the spinner, even on error
@@ -751,71 +685,7 @@ export class TaskContextManager {
 				await this.access.askSay.say("condense_context_error", truncateResult.error)
 			}
 
-			if (truncateResult.summary) {
-				const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
-				const contextCondense: ContextCondense = {
-					summary,
-					cost,
-					newContextTokens,
-					prevContextTokens,
-					condenseId,
-				}
-				await this.access.askSay.say(
-					"condense_context",
-					undefined /* text */,
-					undefined /* images */,
-					false /* partial */,
-					undefined /* checkpoint */,
-					undefined /* progressStatus */,
-					{ isNonInteractive: true } /* options */,
-					contextCondense,
-				)
-			} else if (truncateResult.truncationId) {
-				// Sliding window truncation occurred (fallback when condensing fails or is disabled)
-				const contextTruncation: ContextTruncation = {
-					truncationId: truncateResult.truncationId,
-					messagesRemoved: truncateResult.messagesRemoved ?? 0,
-					prevContextTokens: truncateResult.prevContextTokens,
-					newContextTokens: truncateResult.newContextTokensAfterTruncation ?? 0,
-				}
-				await this.access.askSay.say(
-					"sliding_window_truncation",
-					undefined /* text */,
-					undefined /* images */,
-					false /* partial */,
-					undefined /* checkpoint */,
-					undefined /* progressStatus */,
-					{ isNonInteractive: true } /* options */,
-					undefined /* contextCondense */,
-					contextTruncation,
-				)
-			} else if (truncateResult.summarySkipped && truncateResult.prunedCount) {
-				// A prune-only round. It gets its own row because pruning is the one
-				// context pass that REWRITES what the user can scroll back through:
-				// old tool output the transcript used to hold in full now lives in a
-				// task artifact. Microcompaction stays silent because it changes
-				// nothing on disk; this does, so saying nothing would mean text
-				// quietly vanishing from the conversation with no explanation and no
-				// hint that read_artifact can bring it back.
-				const contextPrune: ContextPrune = {
-					prunedCount: truncateResult.prunedCount,
-					bytesSaved: truncateResult.prunedBytesSaved ?? 0,
-					prevContextTokens: truncateResult.prevContextTokens,
-					newContextTokens: truncateResult.newContextTokens ?? 0,
-				}
-				await this.access.askSay.say(
-					"context_pruned",
-					undefined /* text */,
-					undefined /* images */,
-					false /* partial */,
-					undefined /* checkpoint */,
-					undefined /* progressStatus */,
-					{ isNonInteractive: true } /* options */,
-					undefined /* contextCondense */,
-					undefined /* contextTruncation */,
-					contextPrune,
-				)
-			}
+			await this.sayContextChange(truncateResult)
 
 			return {
 				messagesReplaced: truncateResult.messages !== this.access.apiConversationHistory,
@@ -899,6 +769,75 @@ export class TaskContextManager {
 	 * @param state - Provider state (carries `pruneBeforeCondense` / `pruneToolResultBudget`).
 	 * @param willRun - Whether context management is expected to run this pass.
 	 */
+	/**
+	 * The chat row for what a context pass changed: a condense (its condenseId links the row to
+	 * the Summary message in the API history, so a rewind across the row can drop that Summary),
+	 * a sliding-window truncation, or a prune-only round. A prune gets its own row because it
+	 * rewrites what the user can scroll back through: old tool output now lives in a task
+	 * artifact, and a silent rewrite would hide that read_artifact can bring it back.
+	 * Microcompaction stays silent because it changes nothing on disk.
+	 */
+	private async sayContextChange(truncateResult: ContextManagementResult): Promise<void> {
+		if (truncateResult.summary) {
+			const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
+			const contextCondense: ContextCondense = {
+				summary,
+				cost,
+				newContextTokens,
+				prevContextTokens,
+				condenseId,
+			}
+			await this.access.askSay.say(
+				"condense_context",
+				undefined /* text */,
+				undefined /* images */,
+				false /* partial */,
+				undefined /* checkpoint */,
+				undefined /* progressStatus */,
+				{ isNonInteractive: true } /* options */,
+				contextCondense,
+			)
+		} else if (truncateResult.truncationId) {
+			// Sliding window truncation occurred (fallback when condensing fails or is disabled)
+			const contextTruncation: ContextTruncation = {
+				truncationId: truncateResult.truncationId,
+				messagesRemoved: truncateResult.messagesRemoved ?? 0,
+				prevContextTokens: truncateResult.prevContextTokens,
+				newContextTokens: truncateResult.newContextTokensAfterTruncation ?? 0,
+			}
+			await this.access.askSay.say(
+				"sliding_window_truncation",
+				undefined /* text */,
+				undefined /* images */,
+				false /* partial */,
+				undefined /* checkpoint */,
+				undefined /* progressStatus */,
+				{ isNonInteractive: true } /* options */,
+				undefined /* contextCondense */,
+				contextTruncation,
+			)
+		} else if (truncateResult.summarySkipped && truncateResult.prunedCount) {
+			const contextPrune: ContextPrune = {
+				prunedCount: truncateResult.prunedCount,
+				bytesSaved: truncateResult.prunedBytesSaved ?? 0,
+				prevContextTokens: truncateResult.prevContextTokens,
+				newContextTokens: truncateResult.newContextTokens ?? 0,
+			}
+			await this.access.askSay.say(
+				"context_pruned",
+				undefined /* text */,
+				undefined /* images */,
+				false /* partial */,
+				undefined /* checkpoint */,
+				undefined /* progressStatus */,
+				{ isNonInteractive: true } /* options */,
+				undefined /* contextCondense */,
+				undefined /* contextTruncation */,
+				contextPrune,
+			)
+		}
+	}
+
 	private async resolvePruneOptions(
 		state: ProviderState | undefined,
 		willRun: boolean,
