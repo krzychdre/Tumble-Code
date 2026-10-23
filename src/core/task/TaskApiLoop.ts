@@ -306,7 +306,10 @@ export class TaskApiLoop {
 			get apiConfiguration() {
 				return access.apiConfiguration
 			},
-			api: access.api,
+			// A getter too: Task.updateApiConfiguration also replaces the handler.
+			get api() {
+				return access.api
+			},
 			apiConversationHistory: access.apiConversationHistory,
 			microcompactedIds: access.microcompactedIds,
 			providerRef: access.providerRef,
