@@ -61,7 +61,7 @@ def normalize_origin(value: Optional[str]) -> Optional[str]:
 
 
 class Settings(BaseSettings):
-    """Roo Cloud API settings."""
+    """Tumble Cloud API settings."""
 
     # extra="ignore": the same .env is shared with docker-compose and carries
     # infra-only keys (COMPOSE_PORT_*, AUTHENTIK_BOOTSTRAP_*, AUTH_PG_PASS, …)

@@ -1,1 +1,1 @@
-"""Configuration package for Roo Cloud API."""
+"""Configuration package for Tumble Cloud API."""

@@ -354,7 +354,7 @@ async def test_a_group_brief_has_every_section_an_agent_needs(client, db_session
                     "### Evidence", "### How to proceed"):
         assert heading in text, heading
     assert "## Contents" not in text  # one group
-    assert "VS Code extension" in text and "Roo Code" in text and "self-hosted-cloudapi/" in text
+    assert "VS Code extension" in text and "forked from" in text and "self-hosted-cloudapi/" in text
     assert "Make the integration with GLM-5.3-Flash-NVFP4 robust" in text
     assert "Rule 'missing_tool_parameter'" in text and "'without value for required parameter'" in text
     assert "- `src/core/task/TaskAskSay.ts`, look for `sayAndCreateMissingParamError`" in text

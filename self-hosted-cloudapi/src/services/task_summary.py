@@ -70,7 +70,7 @@ PROMPT_MAX = 1000
 # can carry a dozen, and in a hover tooltip they are only lost height.
 _BLANK_RUN_RE = re.compile(r"\n\s*\n(?:\s*\n)+")
 
-# Roo Code's first user turn can reach the cloud in API-prompt form: the typed
+# Tumble Code's first user turn can reach the cloud in API-prompt form: the typed
 # text wrapped in <user_message>/<task>/<feedback>, trailed by a machine-built
 # <environment_details> block (current mode, open tabs, file tree, cost…). None
 # of the environment block is the user's query, so strip it before deriving a

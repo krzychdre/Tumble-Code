@@ -265,7 +265,7 @@
 		}
 	}
 
-	// Roo Code's first user turn (and resumed turns) can arrive wrapped: the typed
+	// Tumble Code's first user turn (and resumed turns) can arrive wrapped: the typed
 	// text inside <user_message>/<task>/<feedback>, trailed by a machine-built
 	// <environment_details> block (current mode, open tabs, file tree, cost…).
 	// Render the human query; tuck the environment block into a collapsed fold so
@@ -1223,7 +1223,9 @@
 			b.textContent = spec[0]
 			b.addEventListener("click", function () {
 				const text =
-					spec[2] === "md" ? convo.toMarkdown(title.trim()) : JSON.stringify(convo.toMessages(), null, 2) + "\n"
+					spec[2] === "md"
+						? convo.toMarkdown(title.trim())
+						: JSON.stringify(convo.toMessages(), null, 2) + "\n"
 				download(fileName(title, spec[2]), text, spec[1])
 			})
 			folds.appendChild(b)
