@@ -104,6 +104,43 @@ const SKIP_SAY_TYPES = new Set([
 /** Key offset for reasoning content to avoid collision with text content delta tracking */
 const REASONING_KEY_OFFSET = 1_000_000_000
 
+type ToolUse = NonNullable<JsonEvent["tool_use"]>
+
+/**
+ * The `tool_use` of each kind of tool ask: for a streamed snapshot (with its
+ * delta) and for the complete message.
+ */
+const TOOL_USE_KINDS: Record<
+	"tool" | "command" | "mcp",
+	{ streamed: (delta: string, text: string | undefined) => ToolUse; complete: (text: string | undefined) => ToolUse }
+> = {
+	command: {
+		streamed: (delta) => ({ name: "execute_command", input: { command: delta } }),
+		complete: (text) => ({ name: "execute_command", input: { command: text } }),
+	},
+	mcp: {
+		streamed: () => ({ name: "mcp_server" }),
+		complete: (text) => ({ name: "mcp_server", input: { raw: text } }),
+	},
+	tool: {
+		streamed: (_delta, text) => ({ name: parseToolInfo(text)?.name ?? "unknown_tool" }),
+		complete: (text) => parseToolInfo(text) ?? { name: "unknown_tool", input: { raw: text } },
+	},
+}
+
+/**
+ * Remember `text` as the latest snapshot of `id` and return what it adds:
+ * the appended part, or the whole text when it does not extend the previous
+ * snapshot. Null when nothing changed.
+ */
+function appendDelta(snapshots: Map<number, string>, id: number, text: string): string | null {
+	const previous = snapshots.get(id) || ""
+	if (text === previous) return null
+
+	snapshots.set(id, text)
+	return text.startsWith(previous) ? text.slice(previous.length) : text
+}
+
 export class JsonEventEmitter {
 	private mode: "json" | "stream-json"
 	private stdout: NodeJS.WriteStream
@@ -187,14 +224,7 @@ export class JsonEventEmitter {
 	 * Returns null if there's no new content.
 	 */
 	private computeDelta(msgId: number, fullContent: string | undefined): string | null {
-		if (!fullContent) return null
-
-		const previous = this.previousContent.get(msgId) || ""
-		if (fullContent === previous) return null
-
-		this.previousContent.set(msgId, fullContent)
-		// If content is appended, return only the new part
-		return fullContent.startsWith(previous) ? fullContent.slice(previous.length) : fullContent
+		return fullContent ? appendDelta(this.previousContent, msgId, fullContent) : null
 	}
 
 	/**
@@ -251,25 +281,6 @@ export class JsonEventEmitter {
 		return fullContent
 	}
 
-	/**
-	 * Check if this is a streaming partial message with no new content.
-	 */
-	private isEmptyStreamingDelta(content: string | null): boolean {
-		return this.mode === "stream-json" && content === null
-	}
-
-	private computeCommandOutputDelta(commandId: number, fullOutput: string | undefined): string | null {
-		const normalized = fullOutput ?? ""
-		const previous = this.previousCommandOutputByToolUseId.get(commandId) || ""
-
-		if (normalized === previous) {
-			return null
-		}
-
-		this.previousCommandOutputByToolUseId.set(commandId, normalized)
-		return normalized.startsWith(previous) ? normalized.slice(previous.length) : normalized
-	}
-
 	private emitCommandOutputEvent(commandId: number, fullOutput: string | undefined, isDone: boolean): void {
 		const event: JsonEvent = {
 			type: "tool_result",
@@ -279,7 +290,7 @@ export class JsonEventEmitter {
 		}
 
 		if (this.mode === "stream-json") {
-			const outputDelta = this.computeCommandOutputDelta(commandId, fullOutput)
+			const outputDelta = appendDelta(this.previousCommandOutputByToolUseId, commandId, fullOutput ?? "")
 
 			// Suppress empty partial updates that carry no delta.
 			if (!isDone && outputDelta === null) {
@@ -305,14 +316,38 @@ export class JsonEventEmitter {
 	}
 
 	/**
-	 * Get content to send for a message (delta for streaming, full for json mode).
+	 * Get content to send for a message: the delta for a streaming partial
+	 * (only stream-json mode gets partials, see handleMessage), else the full text.
 	 */
 	private getContentToSend(msgId: number, text: string | undefined, isPartial: boolean): string | null {
-		if (this.mode === "stream-json" && isPartial) {
-			return this.computeDelta(msgId, text)
+		return isPartial ? this.computeDelta(msgId, text) : (text ?? null)
+	}
+
+	/**
+	 * Emit a text event for `text`, streamed under `key`; a streaming partial
+	 * that adds nothing emits nothing.
+	 */
+	private emitStreamedText(
+		type: "assistant" | "thinking",
+		msg: ClineMessage,
+		key: number,
+		text: string | undefined,
+		subtype?: string,
+	): void {
+		const content = this.getContentToSend(key, text, msg.partial ?? false)
+
+		if (msg.partial && content === null) {
+			return
 		}
 
-		return text ?? null
+		this.emitEvent(this.buildTextEvent(type, msg.ts, content, !msg.partial, subtype))
+	}
+
+	/** The completion text, reported in the result event when the task completes. */
+	private rememberCompletion(msg: ClineMessage): void {
+		if (msg.text && !msg.partial) {
+			this.completionResultContent = msg.text
+		}
 	}
 
 	/**
@@ -393,7 +428,7 @@ export class JsonEventEmitter {
 			const contentToSend = this.getContentToSend(msg.ts, msg.text, msg.partial ?? false)
 
 			// Skip if no new content for streaming partial messages
-			if (msg.partial && this.isEmptyStreamingDelta(contentToSend)) {
+			if (msg.partial && contentToSend === null) {
 				return
 			}
 
@@ -401,7 +436,7 @@ export class JsonEventEmitter {
 		}
 
 		if (msg.type === "ask" && msg.ask) {
-			this.handleAskMessage(msg, isDone)
+			this.handleAskMessage(msg)
 		}
 	}
 
@@ -425,7 +460,7 @@ export class JsonEventEmitter {
 				break
 
 			case "reasoning":
-				this.handleReasoningMessage(msg, isDone)
+				this.handleReasoningMessage(msg)
 				break
 
 			case "error":
@@ -457,9 +492,7 @@ export class JsonEventEmitter {
 				break
 
 			case "completion_result":
-				if (msg.text && !msg.partial) {
-					this.completionResultContent = msg.text
-				}
+				this.rememberCompletion(msg)
 				break
 
 			default:
@@ -476,159 +509,78 @@ export class JsonEventEmitter {
 	/**
 	 * Handle reasoning/thinking messages with separate delta tracking.
 	 */
-	private handleReasoningMessage(msg: ClineMessage, isDone: boolean): void {
-		const reasoningContent = msg.reasoning || msg.text
+	private handleReasoningMessage(msg: ClineMessage): void {
 		const reasoningKey = msg.ts + REASONING_KEY_OFFSET
-		const reasoningDelta = this.getContentToSend(reasoningKey, reasoningContent, msg.partial ?? false)
 
-		if (msg.partial && this.isEmptyStreamingDelta(reasoningDelta)) {
-			return
-		}
+		this.emitStreamedText("thinking", msg, reasoningKey, msg.reasoning || msg.text)
 
 		if (!msg.partial) {
 			this.previousContent.delete(reasoningKey)
 		}
-
-		this.emitEvent(this.buildTextEvent("thinking", msg.ts, reasoningDelta, isDone))
 	}
 
 	/**
 	 * Handle "ask" type messages.
 	 */
-	private handleAskMessage(msg: ClineMessage, isDone: boolean): void {
+	private handleAskMessage(msg: ClineMessage): void {
 		switch (msg.ask) {
 			case "tool":
-				this.handleToolUseAsk(msg, "tool", isDone)
+				this.handleToolUseAsk(msg, "tool")
 				break
 
 			case "command":
-				this.handleToolUseAsk(msg, "command", isDone)
+				this.handleToolUseAsk(msg, "command")
 				break
 
 			case "use_mcp_server":
-				this.handleToolUseAsk(msg, "mcp", isDone)
+				this.handleToolUseAsk(msg, "mcp")
 				break
 
-			case "followup": {
-				const contentToSend = this.getContentToSend(msg.ts, msg.text, msg.partial ?? false)
-
-				// Skip if no new content for streaming partial messages
-				if (msg.partial && this.isEmptyStreamingDelta(contentToSend)) {
-					return
-				}
-
-				this.emitEvent(this.buildTextEvent("assistant", msg.ts, contentToSend, isDone, "followup"))
+			case "followup":
+				this.emitStreamedText("assistant", msg, msg.ts, msg.text, "followup")
 				break
-			}
 
 			case "command_output":
 				// Handled in say type
 				break
 
 			case "completion_result":
-				if (msg.text && !msg.partial) {
-					this.completionResultContent = msg.text
-				}
+				this.rememberCompletion(msg)
 				break
 
 			default:
 				if (msg.text) {
-					const contentToSend = this.getContentToSend(msg.ts, msg.text, msg.partial ?? false)
-
-					// Skip if no new content for streaming partial messages
-					if (msg.partial && this.isEmptyStreamingDelta(contentToSend)) {
-						return
-					}
-
-					this.emitEvent(this.buildTextEvent("assistant", msg.ts, contentToSend, isDone, msg.ask))
+					this.emitStreamedText("assistant", msg, msg.ts, msg.text, msg.ask)
 				}
 				break
 		}
 	}
 
-	private handleToolUseAsk(msg: ClineMessage, subtype: "tool" | "command" | "mcp", isDone: boolean): void {
-		const isStreamingPartial = this.mode === "stream-json" && msg.partial === true
-		const toolInfo = parseToolInfo(msg.text)
+	private handleToolUseAsk(msg: ClineMessage, subtype: "tool" | "command" | "mcp"): void {
+		const kind = TOOL_USE_KINDS[subtype]
 
 		if (subtype === "command") {
 			this.activeCommandToolUseId = msg.ts
+		}
 
-			if (isStreamingPartial) {
-				const commandDelta = this.computeStructuredDelta(msg.ts, msg.text)
-				if (commandDelta === null) {
-					return
-				}
-
-				this.emitEvent({
-					type: "tool_use",
-					id: msg.ts,
-					subtype: "command",
-					content: commandDelta,
-					tool_use: { name: "execute_command", input: { command: commandDelta } },
-				})
+		// Only stream-json mode gets partials (see handleMessage).
+		if (msg.partial) {
+			const delta = this.computeStructuredDelta(msg.ts, msg.text)
+			if (delta === null) {
 				return
 			}
 
 			this.emitEvent({
 				type: "tool_use",
 				id: msg.ts,
-				subtype: "command",
-				tool_use: { name: "execute_command", input: { command: msg.text } },
-				...(isDone ? { done: true } : {}),
+				subtype,
+				content: delta,
+				tool_use: kind.streamed(delta, msg.text),
 			})
 			return
 		}
 
-		if (subtype === "mcp") {
-			if (isStreamingPartial) {
-				const mcpDelta = this.computeStructuredDelta(msg.ts, msg.text)
-				if (mcpDelta === null) {
-					return
-				}
-
-				this.emitEvent({
-					type: "tool_use",
-					id: msg.ts,
-					subtype: "mcp",
-					content: mcpDelta,
-					tool_use: { name: "mcp_server" },
-				})
-				return
-			}
-
-			this.emitEvent({
-				type: "tool_use",
-				id: msg.ts,
-				subtype: "mcp",
-				tool_use: { name: "mcp_server", input: { raw: msg.text } },
-				...(isDone ? { done: true } : {}),
-			})
-			return
-		}
-
-		if (isStreamingPartial) {
-			const toolDelta = this.computeStructuredDelta(msg.ts, msg.text)
-			if (toolDelta === null) {
-				return
-			}
-
-			this.emitEvent({
-				type: "tool_use",
-				id: msg.ts,
-				subtype: "tool",
-				content: toolDelta,
-				tool_use: { name: toolInfo?.name ?? "unknown_tool" },
-			})
-			return
-		}
-
-		this.emitEvent({
-			type: "tool_use",
-			id: msg.ts,
-			subtype: "tool",
-			tool_use: toolInfo ?? { name: "unknown_tool", input: { raw: msg.text } },
-			...(isDone ? { done: true } : {}),
-		})
+		this.emitEvent({ type: "tool_use", id: msg.ts, subtype, tool_use: kind.complete(msg.text), done: true })
 	}
 
 	/** Command output is reported under the id of the execute_command tool use that started it. */
