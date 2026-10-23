@@ -598,7 +598,6 @@ describe("AnthropicHandler", () => {
 			const result = handler.getModel()
 			expect(result.maxTokens).toBe(32_768)
 			expect(result.reasoningBudget).toEqual(16_384)
-			expect(result.temperature).toBe(1.0)
 		})
 
 		it("does not honor custom maxTokens when the reasoning budget is off", () => {
@@ -612,7 +611,6 @@ describe("AnthropicHandler", () => {
 			const result = handler.getModel()
 			expect(result.maxTokens).toBe(8192)
 			expect(result.reasoningBudget).toBeUndefined()
-			expect(result.temperature).toBe(0)
 		})
 
 		it("should handle Claude 4.5 Sonnet model correctly", () => {

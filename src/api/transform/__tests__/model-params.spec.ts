@@ -1034,7 +1034,6 @@ describe("getModelParams", () => {
 
 			expect(result.reasoning).toEqual({ type: "enabled", budget_tokens: 4096 })
 			expect(result.maxTokens).toBe(DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS)
-			expect(result.temperature).toBe(1.0)
 		})
 
 		it("sends no budget when the toggle is off", () => {

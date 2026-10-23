@@ -1,6 +1,6 @@
 import type { ModelInfo } from "../model.js"
 
-import { claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
+import { claudeModels, oneMillionContextIds, withoutFields, withoutTemperature } from "./claude.js"
 import { geminiModels } from "./gemini.js"
 
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
@@ -10,8 +10,7 @@ export const vertexDefaultModelId: VertexModelId = "claude-opus-5"
 
 // Info stand-ins for a model id that is not in the table, one per handler (see `vertexModelFamily`).
 // Only the info is used, never the id. An unknown Claude id gets Claude Sonnet 4.5: it lists no effort
-// levels and accepts temperature, so a newer Claude we know nothing about gets neither an effort nor a
-// dropped temperature. An unknown Gemini (or open) id gets Gemini 2.0 Flash: it has no reasoning budget
+// levels, so a newer Claude we know nothing about gets no effort. An unknown Gemini (or open) id gets Gemini 2.0 Flash: it has no reasoning budget
 // and no effort levels, so the Gemini handler sends no thinking config an older Gemini would reject.
 export const vertexUnknownClaudeModelStandInId: VertexModelId = "claude-sonnet-4-5@20250929"
 export const vertexUnknownGeminiModelStandInId: VertexModelId = "gemini-2.0-flash-001"
@@ -183,22 +182,22 @@ export const vertexModels = {
 		inputPrice: 1.25,
 		outputPrice: 5,
 	},
-	"claude-sonnet-4@20250514": { ...claudeModels["sonnet-4"] },
-	"claude-sonnet-4-5@20250929": { ...claudeModels["sonnet-4-5"] },
-	"claude-sonnet-4-6": { ...claudeModels["sonnet-4-6"] },
-	"claude-haiku-5-5": { ...claudeModels["haiku-5-5"] },
-	"claude-haiku-4-5@20251001": { ...withoutFields(claudeModels["haiku-4-5"], "description") },
-	"claude-opus-4-6": { ...claudeModels["opus-4-6"] },
-	"claude-opus-4-7": { ...claudeModels["opus-4-7"] },
-	"claude-opus-4-8": { ...claudeModels["opus-4-8"] },
-	"claude-opus-5-5": { ...claudeModels["opus-5-5"] },
-	"claude-opus-5": { ...claudeModels["opus-5"] },
-	"claude-sonnet-5-5": { ...claudeModels["sonnet-5-5"] },
-	"claude-sonnet-5": { ...claudeModels["sonnet-5"] },
-	"claude-fable-5-1": { ...claudeModels["fable-5-1"] },
-	"claude-fable-5": { ...claudeModels["fable-5"] },
-	"claude-opus-4-5@20251101": { ...claudeModels["opus-4-5"] },
-	"claude-opus-4@20250514": { ...withoutFields(claudeModels["opus-4"], "supportsReasoningBudget") },
+	"claude-sonnet-4@20250514": withoutTemperature(claudeModels["sonnet-4"]),
+	"claude-sonnet-4-5@20250929": withoutTemperature(claudeModels["sonnet-4-5"]),
+	"claude-sonnet-4-6": withoutTemperature(claudeModels["sonnet-4-6"]),
+	"claude-haiku-5-5": withoutTemperature(claudeModels["haiku-5-5"]),
+	"claude-haiku-4-5@20251001": withoutTemperature(withoutFields(claudeModels["haiku-4-5"], "description")),
+	"claude-opus-4-6": withoutTemperature(claudeModels["opus-4-6"]),
+	"claude-opus-4-7": withoutTemperature(claudeModels["opus-4-7"]),
+	"claude-opus-4-8": withoutTemperature(claudeModels["opus-4-8"]),
+	"claude-opus-5-5": withoutTemperature(claudeModels["opus-5-5"]),
+	"claude-opus-5": withoutTemperature(claudeModels["opus-5"]),
+	"claude-sonnet-5-5": withoutTemperature(claudeModels["sonnet-5-5"]),
+	"claude-sonnet-5": withoutTemperature(claudeModels["sonnet-5"]),
+	"claude-fable-5-1": withoutTemperature(claudeModels["fable-5-1"]),
+	"claude-fable-5": withoutTemperature(claudeModels["fable-5"]),
+	"claude-opus-4-5@20251101": withoutTemperature(claudeModels["opus-4-5"]),
+	"claude-opus-4@20250514": withoutTemperature(withoutFields(claudeModels["opus-4"], "supportsReasoningBudget")),
 	"gemini-2.5-flash-lite-preview-06-17": {
 		maxTokens: 64_000,
 		contextWindow: 1_048_576,

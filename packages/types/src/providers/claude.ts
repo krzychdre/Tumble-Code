@@ -300,6 +300,14 @@ export const claudeModels = {
 	},
 } as const satisfies Record<string, ModelInfo>
 
+/**
+ * A Claude record for the Anthropic and Vertex tables. Their handlers' SDKs send Anthropic API version
+ * 2026-10-21, which rejects `temperature`, so the handlers send none and the settings hide the control.
+ */
+export function withoutTemperature<T extends ModelInfo>(info: T): T & { supportsTemperature: false } {
+	return { ...info, supportsTemperature: false }
+}
+
 /** A copy of a model record without the named fields, for a platform that does not offer them. */
 export function withoutFields<T extends object, K extends keyof T>(info: T, ...fields: K[]): Omit<T, K> {
 	const copy = { ...info }

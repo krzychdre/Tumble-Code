@@ -249,6 +249,13 @@ vi.mock("@src/hooks/models/useSelectedModel", () => ({
 			}
 		}
 
+		if (apiConfiguration.apiModelId === "no-temperature-model") {
+			return {
+				provider: apiConfiguration.apiProvider,
+				info: { contextWindow: 4000, supportsPromptCache: true, supportsTemperature: false },
+			}
+		}
+
 		if (apiConfiguration.apiModelId?.includes("thinking")) {
 			const info: ModelInfo = {
 				contextWindow: 4000,
@@ -359,6 +366,13 @@ describe("ApiOptions", () => {
 			apiConfiguration: {},
 		})
 		expect(screen.getByTestId("temperature-control")).toBeInTheDocument()
+		expect(screen.getByTestId("rate-limit-seconds-control")).toBeInTheDocument()
+	})
+
+	// The handlers of Claude on Anthropic and Vertex send no temperature; their model info says so.
+	it("hides the temperature control for a model that takes no temperature", () => {
+		renderApiOptions({ apiConfiguration: { apiProvider: "anthropic", apiModelId: "no-temperature-model" } })
+		expect(screen.queryByTestId("temperature-control")).not.toBeInTheDocument()
 		expect(screen.getByTestId("rate-limit-seconds-control")).toBeInTheDocument()
 	})
 
