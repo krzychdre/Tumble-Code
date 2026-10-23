@@ -957,8 +957,6 @@ describe("ExtensionHost", () => {
 					isWaitingForInput: false,
 					isRunning: false,
 					isStreaming: false,
-					requiredAction: "start_task" as const,
-					description: "Task completed",
 				},
 			}
 			setTimeout(() => client.getEmitter().emit("taskCompleted", taskCompletedEvent), 10)
@@ -984,8 +982,6 @@ describe("ExtensionHost", () => {
 					isWaitingForInput: false,
 					isRunning: false,
 					isStreaming: false,
-					requiredAction: "start_task" as const,
-					description: "Task completed",
 				},
 			}
 			setTimeout(() => client.getEmitter().emit("taskCompleted", taskCompletedEvent), 10)
@@ -1014,8 +1010,6 @@ describe("ExtensionHost", () => {
 					isWaitingForInput: false,
 					isRunning: false,
 					isStreaming: false,
-					requiredAction: "start_task" as const,
-					description: "Task completed",
 				},
 			}
 			setTimeout(() => client.getEmitter().emit("taskCompleted", taskCompletedEvent), 10)
@@ -1039,8 +1033,6 @@ describe("ExtensionHost", () => {
 					isWaitingForInput: false,
 					isRunning: false,
 					isStreaming: false,
-					requiredAction: "start_task" as const,
-					description: "Task completed",
 				},
 			}
 			setTimeout(() => client.getEmitter().emit("taskCompleted", taskCompletedEvent), 10)
@@ -1063,8 +1055,6 @@ describe("ExtensionHost", () => {
 				isWaitingForInput: true,
 				isRunning: false,
 				isStreaming: false,
-				requiredAction: "retry_or_new_task" as const,
-				description: "API request failed",
 			},
 			message: { ts: 9, type: "ask" as const, ask: "api_req_failed" as const, text, partial: false },
 		})
@@ -1096,8 +1086,6 @@ describe("ExtensionHost", () => {
 							isWaitingForInput: false,
 							isRunning: false,
 							isStreaming: false,
-							requiredAction: "start_task" as const,
-							description: "Task completed",
 						},
 					}),
 				30,
@@ -1147,8 +1135,6 @@ describe("ExtensionHost", () => {
 					isWaitingForInput: false,
 					isRunning: false,
 					isStreaming: false,
-					requiredAction: "start_task" as const,
-					description: "Task completed",
 				},
 			})
 

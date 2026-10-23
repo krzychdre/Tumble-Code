@@ -119,20 +119,6 @@ export enum AgentLoopState {
 // =============================================================================
 
 /**
- * What action the user should/can take in the current state.
- */
-export type RequiredAction =
-	| "none" // No action needed (running/streaming)
-	| "approve" // Can approve/reject (tool, command, mcp)
-	| "answer" // Need to answer a question (followup)
-	| "retry_or_new_task" // Can retry or start new task (api_req_failed)
-	| "proceed_or_new_task" // Can proceed or start new task (mistake_limit)
-	| "start_task" // Should start a new task (completion_result)
-	| "resume_or_abandon" // Can resume or abandon (resume_task)
-	| "start_new_task" // Should start new task (resume_completed_task, no_task)
-	| "continue_or_abort" // Can continue or abort (command_output)
-
-/**
  * Detailed information about the current agent state.
  * Provides everything needed to render UI or make decisions.
  */
@@ -152,17 +138,8 @@ export interface AgentStateInfo {
 	/** The specific ask type if waiting on an ask, undefined otherwise */
 	currentAsk?: ClineAsk
 
-	/** What action the user should/can take */
-	requiredAction: RequiredAction
-
-	/** The timestamp of the last message, useful for tracking */
-	lastMessageTs?: number
-
 	/** The full last message for advanced usage */
 	lastMessage?: ClineMessage
-
-	/** Human-readable description of the current state */
-	description: string
 }
 
 // =============================================================================
@@ -219,84 +196,18 @@ function isApiRequestInProgress(messages: ClineMessage[]): boolean {
 	return false
 }
 
-/**
- * Determine the required action based on the current ask type.
- */
-function getRequiredAction(ask: ClineAsk): RequiredAction {
-	switch (ask) {
-		case "followup":
-			return "answer"
-		case "command":
-		case "tool":
-		case "use_mcp_server":
-			return "approve"
-		case "command_output":
-			return "continue_or_abort"
-		case "api_req_failed":
-			return "retry_or_new_task"
-		case "mistake_limit_reached":
-			return "proceed_or_new_task"
-		case "completion_result":
-			return "start_task"
-		case "resume_task":
-			return "resume_or_abandon"
-		case "resume_completed_task":
-		case "auto_approval_max_req_reached":
-			return "start_new_task"
-		default:
-			return "none"
-	}
-}
-
-/**
- * Get a human-readable description for the current state.
- */
-function getStateDescription(state: AgentLoopState, ask?: ClineAsk): string {
-	switch (state) {
-		case AgentLoopState.NO_TASK:
-			return "No active task. Ready to start a new task."
-
-		case AgentLoopState.RUNNING:
-			return "Agent is actively processing."
-
-		case AgentLoopState.STREAMING:
-			return "Agent is streaming a response."
-
-		case AgentLoopState.WAITING_FOR_INPUT:
-			switch (ask) {
-				case "followup":
-					return "Agent is asking a follow-up question. Please provide an answer."
-				case "command":
-					return "Agent wants to execute a command. Approve or reject."
-				case "tool":
-					return "Agent wants to perform a file operation. Approve or reject."
-				case "use_mcp_server":
-					return "Agent wants to use an MCP server. Approve or reject."
-				default:
-					return "Agent is waiting for user input."
-			}
-
-		case AgentLoopState.IDLE:
-			switch (ask) {
-				case "completion_result":
-					return "Task completed successfully. You can provide feedback or start a new task."
-				case "api_req_failed":
-					return "API request failed. You can retry or start a new task."
-				case "mistake_limit_reached":
-					return "Too many errors encountered. You can proceed anyway or start a new task."
-				case "auto_approval_max_req_reached":
-					return "Auto-approval limit reached. Manual approval required."
-				case "resume_completed_task":
-					return "Previously completed task. Start a new task to continue."
-				default:
-					return "Task is idle."
-			}
-
-		case AgentLoopState.RESUMABLE:
-			return "Task is paused. You can resume or start a new task."
-
-		default:
-			return "Unknown state."
+/** The state info of `state`; the three flags follow from the state. */
+function make(state: AgentLoopState, lastMessage?: ClineMessage, currentAsk?: ClineAsk): AgentStateInfo {
+	return {
+		state,
+		isWaitingForInput:
+			state === AgentLoopState.WAITING_FOR_INPUT ||
+			state === AgentLoopState.IDLE ||
+			state === AgentLoopState.RESUMABLE,
+		isRunning: state === AgentLoopState.RUNNING || state === AgentLoopState.STREAMING,
+		isStreaming: state === AgentLoopState.STREAMING,
+		currentAsk,
+		lastMessage,
 	}
 }
 
@@ -310,46 +221,17 @@ function getStateDescription(state: AgentLoopState, ask?: ClineAsk): string {
  * @returns Detailed state information
  */
 export function detectAgentState(messages: ClineMessage[]): AgentStateInfo {
+	const lastMessage = messages.at(-1)
+
 	// No messages means no task
-	if (!messages || messages.length === 0) {
-		return {
-			state: AgentLoopState.NO_TASK,
-			isWaitingForInput: false,
-			isRunning: false,
-			isStreaming: false,
-			requiredAction: "start_new_task",
-			description: getStateDescription(AgentLoopState.NO_TASK),
-		}
-	}
-
-	const lastMessage = messages[messages.length - 1]
-
-	// Guard against undefined (should never happen after length check, but TypeScript requires it)
 	if (!lastMessage) {
-		return {
-			state: AgentLoopState.NO_TASK,
-			isWaitingForInput: false,
-			isRunning: false,
-			isStreaming: false,
-			requiredAction: "start_new_task",
-			description: getStateDescription(AgentLoopState.NO_TASK),
-		}
+		return make(AgentLoopState.NO_TASK)
 	}
 
 	// Check if the message is still streaming (partial)
 	// This is the PRIMARY indicator of streaming
 	if (lastMessage.partial === true) {
-		return {
-			state: AgentLoopState.STREAMING,
-			isWaitingForInput: false,
-			isRunning: true,
-			isStreaming: true,
-			currentAsk: lastMessage.ask,
-			requiredAction: "none",
-			lastMessageTs: lastMessage.ts,
-			lastMessage,
-			description: getStateDescription(AgentLoopState.STREAMING),
-		}
+		return make(AgentLoopState.STREAMING, lastMessage, lastMessage.ask)
 	}
 
 	// Handle "ask" type messages
@@ -358,88 +240,30 @@ export function detectAgentState(messages: ClineMessage[]): AgentStateInfo {
 
 		// Non-blocking asks (command_output) - agent is running but can be interrupted
 		if (isNonBlockingAsk(ask)) {
-			return {
-				state: AgentLoopState.RUNNING,
-				isWaitingForInput: false,
-				isRunning: true,
-				isStreaming: false,
-				currentAsk: ask,
-				requiredAction: "continue_or_abort",
-				lastMessageTs: lastMessage.ts,
-				lastMessage,
-				description: "Command is running. You can continue or abort.",
-			}
+			return make(AgentLoopState.RUNNING, lastMessage, ask)
 		}
 
-		// Idle asks - task has stopped
+		// Idle asks - task has stopped, the user decides what to do next
 		if (isIdleAsk(ask)) {
-			return {
-				state: AgentLoopState.IDLE,
-				isWaitingForInput: true, // User needs to decide what to do next
-				isRunning: false,
-				isStreaming: false,
-				currentAsk: ask,
-				requiredAction: getRequiredAction(ask),
-				lastMessageTs: lastMessage.ts,
-				lastMessage,
-				description: getStateDescription(AgentLoopState.IDLE, ask),
-			}
+			return make(AgentLoopState.IDLE, lastMessage, ask)
 		}
 
 		// Resumable asks - task is paused
 		if (isResumableAsk(ask)) {
-			return {
-				state: AgentLoopState.RESUMABLE,
-				isWaitingForInput: true,
-				isRunning: false,
-				isStreaming: false,
-				currentAsk: ask,
-				requiredAction: getRequiredAction(ask),
-				lastMessageTs: lastMessage.ts,
-				lastMessage,
-				description: getStateDescription(AgentLoopState.RESUMABLE, ask),
-			}
+			return make(AgentLoopState.RESUMABLE, lastMessage, ask)
 		}
 
 		// Interactive asks - waiting for approval/input
 		if (isInteractiveAsk(ask)) {
-			return {
-				state: AgentLoopState.WAITING_FOR_INPUT,
-				isWaitingForInput: true,
-				isRunning: false,
-				isStreaming: false,
-				currentAsk: ask,
-				requiredAction: getRequiredAction(ask),
-				lastMessageTs: lastMessage.ts,
-				lastMessage,
-				description: getStateDescription(AgentLoopState.WAITING_FOR_INPUT, ask),
-			}
+			return make(AgentLoopState.WAITING_FOR_INPUT, lastMessage, ask)
 		}
 	}
 
 	// For "say" type messages, check if API request is in progress
 	if (isApiRequestInProgress(messages)) {
-		return {
-			state: AgentLoopState.STREAMING,
-			isWaitingForInput: false,
-			isRunning: true,
-			isStreaming: true,
-			requiredAction: "none",
-			lastMessageTs: lastMessage.ts,
-			lastMessage,
-			description: getStateDescription(AgentLoopState.STREAMING),
-		}
+		return make(AgentLoopState.STREAMING, lastMessage)
 	}
 
 	// Default: agent is running
-	return {
-		state: AgentLoopState.RUNNING,
-		isWaitingForInput: false,
-		isRunning: true,
-		isStreaming: false,
-		requiredAction: "none",
-		lastMessageTs: lastMessage.ts,
-		lastMessage,
-		description: getStateDescription(AgentLoopState.RUNNING),
-	}
+	return make(AgentLoopState.RUNNING, lastMessage)
 }

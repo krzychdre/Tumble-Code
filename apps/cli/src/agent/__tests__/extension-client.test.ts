@@ -26,11 +26,6 @@ describe("detectAgentState", () => {
 			expect(state.isWaitingForInput).toBe(false)
 			expect(state.isRunning).toBe(false)
 		})
-
-		it("should return NO_TASK for undefined messages", () => {
-			const state = detectAgentState(undefined as unknown as ClineMessage[])
-			expect(state.state).toBe(AgentLoopState.NO_TASK)
-		})
 	})
 
 	describe("STREAMING state", () => {
@@ -74,7 +69,6 @@ describe("detectAgentState", () => {
 			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
 			expect(state.isWaitingForInput).toBe(true)
 			expect(state.currentAsk).toBe("tool")
-			expect(state.requiredAction).toBe("approve")
 		})
 
 		it("should detect waiting for command approval", () => {
@@ -82,7 +76,6 @@ describe("detectAgentState", () => {
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
 			expect(state.currentAsk).toBe("command")
-			expect(state.requiredAction).toBe("approve")
 		})
 
 		it("should detect waiting for followup answer", () => {
@@ -90,14 +83,12 @@ describe("detectAgentState", () => {
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
 			expect(state.currentAsk).toBe("followup")
-			expect(state.requiredAction).toBe("answer")
 		})
 
 		it("should detect waiting for use_mcp_server approval", () => {
 			const messages = [createMessage({ type: "ask", ask: "use_mcp_server", partial: false })]
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state.requiredAction).toBe("approve")
 		})
 	})
 
@@ -107,35 +98,30 @@ describe("detectAgentState", () => {
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.IDLE)
 			expect(state.isWaitingForInput).toBe(true)
-			expect(state.requiredAction).toBe("start_task")
 		})
 
 		it("should detect api_req_failed as idle", () => {
 			const messages = [createMessage({ type: "ask", ask: "api_req_failed", partial: false })]
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.IDLE)
-			expect(state.requiredAction).toBe("retry_or_new_task")
 		})
 
 		it("should detect mistake_limit_reached as idle", () => {
 			const messages = [createMessage({ type: "ask", ask: "mistake_limit_reached", partial: false })]
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.IDLE)
-			expect(state.requiredAction).toBe("proceed_or_new_task")
 		})
 
 		it("should detect auto_approval_max_req_reached as idle", () => {
 			const messages = [createMessage({ type: "ask", ask: "auto_approval_max_req_reached", partial: false })]
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.IDLE)
-			expect(state.requiredAction).toBe("start_new_task")
 		})
 
 		it("should detect resume_completed_task as idle", () => {
 			const messages = [createMessage({ type: "ask", ask: "resume_completed_task", partial: false })]
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.IDLE)
-			expect(state.requiredAction).toBe("start_new_task")
 		})
 	})
 
@@ -145,7 +131,6 @@ describe("detectAgentState", () => {
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.RESUMABLE)
 			expect(state.isWaitingForInput).toBe(true)
-			expect(state.requiredAction).toBe("resume_or_abandon")
 		})
 	})
 
@@ -168,7 +153,6 @@ describe("detectAgentState", () => {
 			const messages = [createMessage({ type: "ask", ask: "command_output", partial: false })]
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.RUNNING)
-			expect(state.requiredAction).toBe("continue_or_abort")
 		})
 	})
 })
@@ -768,7 +752,6 @@ describe("Edge Cases", () => {
 			const state = detectAgentState(messages)
 			expect(state.state).toBe(AgentLoopState.RUNNING)
 			expect(state.lastMessage).toBeDefined()
-			expect(state.lastMessageTs).toBe(messages[0]!.ts)
 		})
 
 		it("should use last message for state detection", () => {
