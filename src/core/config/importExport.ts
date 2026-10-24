@@ -317,14 +317,6 @@ export const exportSettings = async ({ providerSettingsManager, contextProxy }: 
 		const providerProfiles = await providerSettingsManager.export()
 		const globalSettings = await contextProxy.export()
 
-		// It's okay if there are no global settings, but if there are no
-		// provider profile configured then don't export. If we wanted to
-		// support this case then the `importSettings` function would need to
-		// be updated to handle the case where there are no provider profiles.
-		if (typeof providerProfiles === "undefined") {
-			return
-		}
-
 		// OpenAI Compatible settings are now correctly stored in codebaseIndexConfig
 		// No workaround needed - they will be exported automatically with the config
 
