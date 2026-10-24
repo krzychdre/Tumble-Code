@@ -161,6 +161,17 @@ describe("completion usage mappers", () => {
 			).toEqual({ type: "usage", inputTokens: 100, outputTokens: 5, cacheReadTokens: 60 })
 		})
 
+		it("prefers prompt_tokens_details over the Anthropic-style top-level fields", () => {
+			expect(
+				openAiUsageChunk({
+					prompt_tokens: 1000,
+					completion_tokens: 10,
+					cache_read_input_tokens: 111,
+					prompt_tokens_details: { cached_tokens: 222 },
+				} as any),
+			).toMatchObject({ cacheReadTokens: 222 })
+		})
+
 		it("uses the billed cost, including the upstream cost of bring-your-own-key requests", () => {
 			expect(
 				openAiUsageChunk(
