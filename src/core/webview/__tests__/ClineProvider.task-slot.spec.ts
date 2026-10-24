@@ -1,12 +1,7 @@
-// npx vitest run core/webview/__tests__/ClineProvider.task-slot.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/ClineProvider.task-slot.spec.ts
 //
-// D7/S1 regression spec: the provider holds ONE foreground task (a slot, not a
-// stack), owned by TaskSlot. Every production path removed the current task
-// before adding another, so the retired `clineStack` array never held more
-// than one entry. These tests prove the slot mechanics and that the derived
-// taskNumber matches what the old array logic produced on every real path.
-// The root id of a delegated child is covered in ClineProvider.spec.ts
-// ("createTask delegation lineage"), against the real createTask.
+// The provider holds ONE foreground task (a slot, not a stack), owned by
+// TaskSlot, plus the tasks the user left while they still work.
 
 import { EventEmitter } from "events"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -157,6 +152,7 @@ describe("single-task slot mechanics (D7)", () => {
 		await provider.taskSlot.set(taskA)
 
 		expect(taskA.emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskFocused)
+		expect(provider.performPreparationTasks).toHaveBeenCalledWith(taskA)
 	})
 
 	it("clearTask aborts and clears a resident task", async () => {
@@ -177,43 +173,6 @@ describe("single-task slot mechanics (D7)", () => {
 
 		expect(provider.subagentPosts).toEqual([expect.objectContaining({ type: "subagentsUpdated", subagents: [] })])
 		expect(provider.getCurrentTask()).toBeUndefined()
-	})
-})
-
-describe("createTask taskNumber derivation (D7)", () => {
-	// The old array logic read, at Task-construction time:
-	//   rootTask:   clineStack.length > 0 ? clineStack[0] : undefined
-	//   taskNumber: clineStack.length + 1
-	// Every production path (createTask top-level, delegation child) popped
-	// the previous task first, so length was always 0: rootTask === undefined
-	// and taskNumber === 1. The derivation reproduces both.
-
-	it("top-level task: no root, taskNumber 1 (old: empty array)", () => {
-		const provider = makeProvider()
-
-		// Old behavior: after clearCurrentTask, clineStack.length === 0,
-		// so clineStack[0] === undefined and length + 1 === 1.
-		const oldRootTask = provider.getCurrentTask() // undefined (slot empty)
-		const oldTaskNumber = 1 // 0 + 1
-
-		// New derivation (createTask, no parentTask):
-		const newRootTask = undefined
-		const newTaskNumber = 1
-
-		expect(oldRootTask).toBeUndefined()
-		expect(newRootTask).toBe(oldRootTask)
-		expect(newTaskNumber).toBe(oldTaskNumber)
-	})
-})
-
-describe("getLiveTaskInstance / condense lookup is slot-scoped (D7)", () => {
-	it("matches only the current task id", () => {
-		const provider = makeProvider()
-		const taskA = makeTask("task-A")
-		provider.taskSlot.seedForTests(taskA)
-
-		expect(provider.getLiveTaskInstance("task-A")).toBe(taskA)
-		expect(provider.getLiveTaskInstance("anything-else")).toBeUndefined()
 	})
 })
 

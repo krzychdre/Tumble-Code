@@ -16,7 +16,12 @@ import { TelemetryService } from "@tumble-code/telemetry"
 import { Task, TaskOptions } from "../../task/Task"
 import { safeWriteJson } from "@tumble-code/core/fs"
 import { ClineProvider } from "../ClineProvider"
-import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
+import {
+	createMockContext,
+	createMockWebviewPanel,
+	createMockWebviewView,
+	createTestProvider,
+} from "./helpers/providerHarness"
 import { panelRegistry } from "../panelRegistry"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { MessageManager } from "../../message-manager"
@@ -717,6 +722,35 @@ describe("ClineProvider", () => {
 			.mocked(logger.info)
 			.mock.calls.filter(([msg]) => typeof msg === "string" && msg.includes("Disposing ClineProvider..."))
 		expect(disposeCalls).toHaveLength(1)
+	})
+
+	test.each([
+		["the sidebar", createMockWebviewView, false],
+		["an editor tab", createMockWebviewPanel, true],
+	])("closing %s disposes its webview listeners; the provider is disposed: %s", async (_name, makeView, disposed) => {
+		const view = makeView(mockPostMessage) as any
+		await provider.resolveWebviewView(view)
+		const [messageListener] = view.webview.onDidReceiveMessage.mock.results.map((r: any) => r.value)
+		const [[onClosed]] = view.onDidDispose.mock.calls
+
+		await onClosed()
+
+		expect(messageListener.dispose).toHaveBeenCalled()
+		expect(provider.isDisposed).toBe(disposed)
+	})
+
+	test("deleting a task deletes its subtasks unless told otherwise", async () => {
+		const deleteTaskWithId = vi
+			.spyOn((provider as any).taskHistory, "deleteTaskWithId")
+			.mockResolvedValue(undefined)
+
+		await provider.deleteTaskWithId("task-1")
+		await provider.deleteTaskWithId("task-2", false)
+
+		expect(deleteTaskWithId.mock.calls).toEqual([
+			["task-1", true],
+			["task-2", false],
+		])
 	})
 
 	test("webviewDidLaunch builds the webview state only once", async () => {

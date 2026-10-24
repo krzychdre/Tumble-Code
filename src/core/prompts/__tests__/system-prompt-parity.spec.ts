@@ -247,7 +247,7 @@ describe("system prompt: preview equals live (CORE-R11)", () => {
 
 	it("passes the same compact flag when the focused task runs on the active compact profile", async () => {
 		// Every profile activation hands the profile to the focused task
-		// (ModeProfileBinding.updateTaskApiHandlerIfNeeded), so the preview, which
+		// (ModeProfileBinding.updateTaskApiHandler), so the preview, which
 		// reads the active profile like it does for the model, and the live path,
 		// which reads the task's own profile, agree.
 		const profile = { apiProvider: "openai", todoListEnabled: true, compactProfile: true }

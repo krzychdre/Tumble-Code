@@ -43,7 +43,7 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 			// From the same profile as the preview model above. The live request
 			// reads the focused task's own profile, which every profile
 			// activation keeps equal to this one (ModeProfileBinding
-			// updateTaskApiHandlerIfNeeded), and this also works with no task.
+			// updateTaskApiHandler), and this also works with no task.
 			compactProfile: isCompactProfile(state.apiConfiguration),
 			skillsManager: provider.getSkillsManager(),
 		}),
