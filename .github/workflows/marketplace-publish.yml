@@ -83,22 +83,26 @@ jobs:
         run: |
           current_package_version=$(node -p "require('./src/package.json').version")
 
-          # Extract changelog for current version
-          echo "Extracting changelog for version ${current_package_version}"
-          changelog_content=$(sed -n "/## \\[${current_package_version}\\]/,/## \\[/p" CHANGELOG.md | sed '$d')
-
-          # If changelog extraction failed, use a default message
-          if [ -z "$changelog_content" ]; then
-            echo "Warning: No changelog section found for version ${current_package_version}"
-            changelog_content="Release v${current_package_version}"
-          else
-            echo "Found changelog section for version ${current_package_version}"
+          # The section of this version, headed "## 1.2.3" (changesets) or "## [1.2.3]".
+          awk -v v="$current_package_version" \
+            '$0 == "## " v || $0 == "## [" v "]" { on = 1; next } on && /^## / { exit } on' \
+            CHANGELOG.md > /tmp/release-notes.md
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "Release v${current_package_version}" > /tmp/release-notes.md
           fi
 
-          # Create release with changelog content
+          # GitHub rejects release notes over 125000 characters: cut at a line boundary
+          # and link the full changelog.
+          if [ "$(wc -c < /tmp/release-notes.md)" -gt 120000 ]; then
+            head -c 120000 /tmp/release-notes.md | sed '$d' > /tmp/release-notes.cut.md
+            printf '\n...\n\nFull changelog: https://github.com/%s/blob/v%s/CHANGELOG.md\n' \
+              "$GITHUB_REPOSITORY" "$current_package_version" >> /tmp/release-notes.cut.md
+            mv /tmp/release-notes.cut.md /tmp/release-notes.md
+          fi
+
           gh release create "v${current_package_version}" \
             --title "Release v${current_package_version}" \
-            --notes "$changelog_content" \
+            --notes-file /tmp/release-notes.md \
             --target ${{ env.GIT_REF }} \
             bin/tumble-code-${current_package_version}.vsix
           echo "Successfully created GitHub Release v${current_package_version}"
