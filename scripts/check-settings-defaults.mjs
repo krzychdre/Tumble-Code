@@ -9,7 +9,7 @@
  * settings-table key gets a literal fallback in runtime code.
  *
  * Usage: node scripts/check-settings-defaults.mjs [--root <dir>]
- * Exit 0 = clean, 1 = violations listed on stdout.
+ * Exit 0 = clean, 1 = violations or stale ALLOWED entries listed on stderr.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs"
@@ -147,7 +147,8 @@ function scan(keys, rootDir) {
 			}
 		}
 	}
-	return violations
+	const stale = Object.keys(ALLOWED).filter((id) => !used.has(id))
+	return { violations, stale }
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +158,7 @@ function scan(keys, rootDir) {
 export function checkSettingsDefaults({ root: rootDir = root } = {}) {
 	const tableSource = readFileSync(join(rootDir, "packages/types/src/settings-defaults.ts"), "utf8")
 	const keys = readTableKeys(tableSource)
-	return { keys, violations: scan(keys, rootDir) }
+	return { keys, ...scan(keys, rootDir) }
 }
 
 const isMain = process.argv[1] && process.argv[1].endsWith("check-settings-defaults.mjs")
@@ -178,6 +179,14 @@ if (isMain) {
 		for (const v of result.violations) {
 			console.error(`  ${v.file}:${v.line}  [${v.expression}]  ${v.text}`)
 		}
+	}
+	if (result.stale.length > 0) {
+		console.error(`ALLOWED entries that match nothing (${result.stale.length}): delete them.`)
+		for (const id of result.stale) {
+			console.error(`  ${id}`)
+		}
+	}
+	if (result.violations.length > 0 || result.stale.length > 0) {
 		process.exit(1)
 	}
 
