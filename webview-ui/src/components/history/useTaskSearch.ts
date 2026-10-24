@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Fzf } from "fzf"
 
 import type { HistoryItem, RunningTaskStatus } from "@tumble-code/types"
@@ -146,15 +146,14 @@ export const useTaskSearch = () => {
 	const [lastNonRelevantSort, setLastNonRelevantSort] = useState<SortOption | null>("newest")
 	const [showAllWorkspaces, setShowAllWorkspaces] = useState(false)
 
-	useEffect(() => {
-		if (searchQuery && sortOption !== "mostRelevant" && !lastNonRelevantSort) {
-			setLastNonRelevantSort(sortOption)
-			setSortOption("mostRelevant")
-		} else if (!searchQuery && sortOption === "mostRelevant" && lastNonRelevantSort) {
-			setSortOption(lastNonRelevantSort)
-			setLastNonRelevantSort(null)
-		}
-	}, [searchQuery, sortOption, lastNonRelevantSort])
+	// A search sorts by relevance; clearing it restores the sort from before.
+	if (searchQuery && sortOption !== "mostRelevant" && !lastNonRelevantSort) {
+		setLastNonRelevantSort(sortOption)
+		setSortOption("mostRelevant")
+	} else if (!searchQuery && sortOption === "mostRelevant" && lastNonRelevantSort) {
+		setSortOption(lastNonRelevantSort)
+		setLastNonRelevantSort(null)
+	}
 
 	const presentableTasks = useMemo((): DisplayHistoryItem[] => {
 		let tasks = taskHistory.filter((item) => item.ts && item.task)

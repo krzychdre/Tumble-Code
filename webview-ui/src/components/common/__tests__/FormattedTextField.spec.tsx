@@ -49,6 +49,31 @@ describe("FormattedTextField", () => {
 			expect(input.value).toBe("123")
 		})
 
+		it("shows a new value from the parent unless the user is typing", () => {
+			const field = (value: number | undefined) => (
+				<FormattedTextField
+					value={value}
+					onValueChange={vi.fn()}
+					formatter={unlimitedIntegerFormatter}
+					data-testid="test-input"
+				/>
+			)
+			const { rerender } = render(field(1))
+			const input = screen.getByTestId("test-input") as HTMLInputElement
+
+			rerender(field(2))
+			expect(input.value).toBe("2")
+
+			fireEvent.input(input, { target: { value: "3" } })
+			rerender(field(4))
+			expect(input.value).toBe("3")
+
+			fireEvent.blur(input)
+			expect(input.value).toBe("4")
+			rerender(field(5))
+			expect(input.value).toBe("5")
+		})
+
 		it("should render as HTML input (mock verification)", () => {
 			const mockOnChange = vi.fn()
 			render(
