@@ -88,9 +88,10 @@ describe("WebviewHtml", () => {
 				vi.spyOn(realFs, "existsSync").mockReturnValue(true),
 				vi.spyOn(realFs, "readFileSync").mockReturnValue("6000\n" as any),
 			)
-			const html = await getHmrHtml(base)
+			const html = await getHmrHtml({ ...base, logTag: "Tag" })
 			expect(axios.get).toHaveBeenCalledWith("http://localhost:6000")
 			expect(html).toContain("http://localhost:6000/@react-refresh")
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("[Tag] Using Vite server port from"))
 		})
 
 		it("falls back to the production HTML and reports it when the dev server is down", async () => {

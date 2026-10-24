@@ -137,11 +137,12 @@ describe("CloudProfileSync", () => {
 		})
 	})
 
-	it("a settings-updated event runs a sync", async () => {
+	it("a settings-updated event runs a sync; an unchanged active profile is not activated again", async () => {
 		const { host, typed } = makeHost({ hasChanges: true, activeProfileChanged: false })
 		await new CloudProfileSync(typed).initializeWhenReady()
 		cloud.instance.emit("settings-updated")
 		await flush()
+		expect(host.activateProviderProfile).not.toHaveBeenCalled()
 		expect(host.postStateToWebviewWithoutClineMessages).toHaveBeenCalledTimes(1)
 	})
 

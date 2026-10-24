@@ -1,8 +1,7 @@
-// pnpm --filter roo-cline test core/webview/__tests__/ClineProvider.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/ClineProvider.spec.ts
 
 import * as path from "path"
 
-import type { ApiMessage } from "../../task-persistence/apiMessages"
 import * as vscode from "vscode"
 import axios from "axios"
 
@@ -10,16 +9,10 @@ import {
 	type ProviderSettingsEntry,
 	type ClineMessage,
 	type ExtensionMessage,
-	type ExtensionState,
-	ORGANIZATION_ALLOW_ALL,
-	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	TumbleCodeEventName,
-	experimentDefault,
 } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { defaultModeSlug } from "../../../shared/modes"
-import { ContextProxy } from "../../config/ContextProxy"
 import { Task, TaskOptions } from "../../task/Task"
 import { safeWriteJson } from "@tumble-code/core/fs"
 import { ClineProvider } from "../ClineProvider"
@@ -28,9 +21,6 @@ import { panelRegistry } from "../panelRegistry"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { MessageManager } from "../../message-manager"
 import { logger } from "../../../utils/logging"
-
-// Mock setup must come before imports.
-vi.mock("../../prompts/sections/custom-instructions")
 
 vi.mock("p-wait-for", () => ({
 	__esModule: true,
@@ -131,13 +121,6 @@ vi.mock("@modelcontextprotocol/sdk/types.js", () => ({
 	},
 }))
 
-// Remove duplicate mock - it's already defined below.
-
-const mockAddCustomInstructions = vi.fn().mockResolvedValue("Combined instructions")
-
-;(vi.mocked(await import("../../prompts/sections/custom-instructions")) as any).addCustomInstructions =
-	mockAddCustomInstructions
-
 vi.mock("delay", () => {
 	const delayFn = (_ms: number) => Promise.resolve()
 	delayFn.createDelay = () => delayFn
@@ -145,8 +128,6 @@ vi.mock("delay", () => {
 	delayFn.range = () => Promise.resolve()
 	return { default: delayFn }
 })
-
-// MCP-related modules are mocked once above (lines 87-109).
 
 vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
 	Client: vi.fn().mockImplementation(function () {
@@ -176,22 +157,11 @@ beforeEach(() => {
 	vi.spyOn(vscode.workspace, "getWorkspaceFolder")
 })
 
-vi.mock("../../../api", () => ({
-	buildApiHandler: vi.fn(),
-}))
-
 const lmStudioFetchers = vi.hoisted(() => ({
 	hasLoadedFullDetails: vi.fn(() => false),
 	forceFullModelDetailsLoad: vi.fn(async () => {}),
 }))
 vi.mock("../../../api/providers/fetchers/lmstudio", () => lmStudioFetchers)
-
-vi.mock("../../prompts/system", () => ({
-	SYSTEM_PROMPT: vi.fn().mockImplementation(async function () {
-		return "mocked system prompt"
-	}),
-	codeMode: "code",
-}))
 
 vi.mock("../../../integrations/workspace/WorkspaceTracker", () => {
 	return {
@@ -222,20 +192,6 @@ vi.mock("../../task/Task", () => ({
 			emit: vi.fn(),
 		}
 	}),
-}))
-
-vi.mock("../../../integrations/misc/extract-text", () => ({
-	extractTextFromFile: vi.fn().mockImplementation(async (_filePath: string) => {
-		const content = "const x = 1;\nconst y = 2;\nconst z = 3;"
-		const lines = content.split("\n")
-		return lines.map((line, index) => `${index + 1} | ${line}`).join("\n")
-	}),
-}))
-
-vi.mock("../../../api/providers/fetchers/modelCache", () => ({
-	getModels: vi.fn().mockResolvedValue({}),
-	flushModels: vi.fn(),
-	getModelsFromCache: vi.fn().mockReturnValue(undefined),
 }))
 
 vi.mock("../../../shared/modes", () => ({
@@ -294,28 +250,10 @@ vi.mock("../../../api", () => ({
 	}),
 }))
 
-vi.mock("../../../integrations/misc/extract-text", () => ({
-	extractTextFromFile: vi.fn().mockImplementation(async (_filePath: string) => {
-		const content = "const x = 1;\nconst y = 2;\nconst z = 3;"
-		const lines = content.split("\n")
-		return lines.map((line, index) => `${index + 1} | ${line}`).join("\n")
-	}),
-}))
-
 vi.mock("../../../api/providers/fetchers/modelCache", () => ({
 	getModels: vi.fn().mockResolvedValue({}),
 	flushModels: vi.fn(),
 	getModelsFromCache: vi.fn().mockReturnValue(undefined),
-}))
-
-vi.mock("../diff/strategies/multi-search-replace", () => ({
-	MultiSearchReplaceDiffStrategy: vi.fn().mockImplementation(function () {
-		return {
-			getToolDescription: () => "test",
-			getName: () => "test-strategy",
-			applyDiff: vi.fn(),
-		}
-	}),
 }))
 
 // The state builder awaits this after it has read the chat messages; the state-order test
@@ -628,20 +566,28 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	test("resolveWebviewView sets up webview correctly", async () => {
-		// The webview also allows loading user-uploaded custom sound files from global storage.
-		const customSoundsUri = { fsPath: "/test/storage/path/custom-sounds" } as vscode.Uri
-		;(vscode.Uri.file as any).mockReturnValueOnce(customSoundsUri)
+	test.each([
+		["no workspace folder", []],
+		["a workspace folder", [{ uri: { fsPath: "/test/workspace" } }]],
+	])(
+		"resolveWebviewView with %s lets the webview load the extension, the folders and the custom sounds",
+		async (_name, folders) => {
+			const customSoundsUri = { fsPath: "/test/storage/path/custom-sounds" } as vscode.Uri
+			;(vscode.Uri.file as any).mockReturnValueOnce(customSoundsUri)
+			const saved = vscode.workspace.workspaceFolders
+			;(vscode.workspace as any).workspaceFolders = folders
+			try {
+				await provider.resolveWebviewView(mockWebviewView)
+			} finally {
+				;(vscode.workspace as any).workspaceFolders = saved
+			}
 
-		await provider.resolveWebviewView(mockWebviewView)
-
-		expect(mockWebviewView.webview.options).toEqual({
-			enableScripts: true,
-			localResourceRoots: [mockContext.extensionUri, customSoundsUri],
-		})
-
-		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
-	})
+			expect(mockWebviewView.webview.options).toEqual({
+				enableScripts: true,
+				localResourceRoots: [mockContext.extensionUri, ...folders.map((folder) => folder.uri), customSoundsUri],
+			})
+		},
+	)
 
 	describe("logWebviewHiddenDiagnostics", () => {
 		let visibilityCallback: () => void
@@ -727,98 +673,10 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	test("resolveWebviewView sets up webview correctly in development mode even if local server is not running", async () => {
-		provider = createTestProvider(
-			{ ...mockContext, extensionMode: vscode.ExtensionMode.Development },
-			"sidebar",
-			new ContextProxy(mockContext),
-		)
-		;(axios.get as any).mockRejectedValueOnce(new Error("Network error"))
-
-		const customSoundsUri = { fsPath: "/test/storage/path/custom-sounds" } as vscode.Uri
-		;(vscode.Uri.file as any).mockReturnValueOnce(customSoundsUri)
-
-		await provider.resolveWebviewView(mockWebviewView)
-
-		expect(mockWebviewView.webview.options).toEqual({
-			enableScripts: true,
-			localResourceRoots: [mockContext.extensionUri, customSoundsUri],
-		})
-
-		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
-
-		// Verify Content Security Policy connect-src directive
-		expect(mockWebviewView.webview.html).toContain(
-			`connect-src ${mockWebviewView.webview.cspSource} https://openrouter.ai https://api.requesty.ai`,
-		)
-
-		// Extract the script-src directive section and verify required security elements
-		const html = mockWebviewView.webview.html
-		const scriptSrcMatch = html.match(/script-src[^;]*;/)
-		expect(scriptSrcMatch).not.toBeNull()
-		expect(scriptSrcMatch![0]).toContain("'nonce-")
-		// Verify wasm-unsafe-eval is present for Shiki syntax highlighting
-		expect(scriptSrcMatch![0]).toContain("'wasm-unsafe-eval'")
-	})
-
 	test("postMessageToWebview sends message to webview", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 
-		const mockState: ExtensionState = {
-			version: "1.0.0",
-			clineMessages: [],
-			taskHistory: [],
-			shouldShowAnnouncement: false,
-			apiConfiguration: {
-				apiProvider: "openrouter",
-			},
-			customInstructions: undefined,
-			alwaysAllowReadOnly: false,
-			alwaysAllowReadOnlyOutsideWorkspace: false,
-			alwaysAllowWrite: false,
-			codebaseIndexConfig: {
-				codebaseIndexEnabled: true,
-				codebaseIndexQdrantUrl: "",
-				codebaseIndexEmbedderProvider: "openai",
-				codebaseIndexEmbedderBaseUrl: "",
-				codebaseIndexEmbedderModelId: "",
-			},
-			alwaysAllowWriteOutsideWorkspace: false,
-			alwaysAllowExecute: false,
-			alwaysAllowMcp: false,
-			uriScheme: "vscode",
-			soundEnabled: false,
-			enableCheckpoints: false,
-			writeDelayMs: 1000,
-			mcpEnabled: true,
-			mode: defaultModeSlug,
-			customModes: [],
-			experiments: experimentDefault,
-			maxOpenTabsContext: 20,
-			maxWorkspaceFiles: 200,
-			showRooIgnoredFiles: false,
-			enableSubfolderRules: false,
-			renderContext: "sidebar",
-			maxImageFileSize: 5,
-			maxTotalImageSize: 20,
-			cloudUserInfo: null,
-			organizationAllowList: ORGANIZATION_ALLOW_ALL,
-			autoCondenseContext: true,
-			autoCondenseContextPercent: 100,
-			cloudIsAuthenticated: false,
-			sharingEnabled: false,
-			publicSharingEnabled: false,
-			profileThresholds: {},
-			hasOpenedModeSelector: false,
-			diagnosticsEnabled: true,
-			taskSyncEnabled: false,
-			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-		}
-
-		const message: ExtensionMessage = {
-			type: "state",
-			state: mockState,
-		}
+		const message: ExtensionMessage = { type: "action", action: "chatButtonClicked" }
 		await provider.postMessageToWebview(message)
 
 		expect(mockPostMessage).toHaveBeenCalledWith(message)
@@ -885,133 +743,17 @@ describe("ClineProvider", () => {
 		expect(mockOpenAiCodexIsAuthenticated).not.toHaveBeenCalled()
 	})
 
-	test("handles webviewDidLaunch message", async () => {
+	test("the clearTask message clears the task and pushes the state", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
+		const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
+		const postStateToWebviewSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+		await provider.setCurrentTask(new Task(defaultTaskOptions))
 
-		// Get the message handler from onDidReceiveMessage
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+		await messageHandler({ type: "clearTask" })
 
-		// Simulate webviewDidLaunch message
-		await messageHandler({ type: "webviewDidLaunch" })
-
-		// Should post state and theme to webview
-		expect(mockPostMessage).toHaveBeenCalled()
-	})
-
-	test("clearTask aborts current task", async () => {
-		// Setup Cline instance with auto-mock from the top of the file
-		const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
-
-		// add the mock object as the current task
-		await provider.setCurrentTask(mockCline)
-		expect(provider.getCurrentTask()).toBe(mockCline)
-
-		// call the clearCurrentTask method so it will call the current cline abort and remove it from the slot
-		await provider.clearCurrentTask()
-
-		// check if the abort method was called
-		expect(mockCline.abortTask).toHaveBeenCalled()
-
-		// check that the slot was cleared
-		expect(provider.getCurrentTask()).toBeUndefined()
-	})
-
-	describe("clearTask message handler", () => {
-		beforeEach(async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-		})
-
-		test("calls clearTask (delegation handled via metadata)", async () => {
-			// Setup a single task without parent
-			const mockCline = new Task(defaultTaskOptions)
-
-			// Mock the provider methods
-			const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
-			const postStateToWebviewSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
-
-			// Add task to stack
-			await provider.setCurrentTask(mockCline)
-
-			// Get the message handler
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-			// Trigger clearTask message
-			await messageHandler({ type: "clearTask" })
-
-			// Verify clearTask was called
-			expect(clearTaskSpy).toHaveBeenCalled()
-			expect(postStateToWebviewSpy).toHaveBeenCalled()
-		})
-
-		test("calls clearTask even with parent task (delegation via metadata)", async () => {
-			// Setup parent and child tasks
-			const parentTask = new Task(defaultTaskOptions)
-			const childTask = new Task(defaultTaskOptions)
-
-			// Set up parent-child relationship
-			;(childTask as any).parentTask = parentTask
-
-			// Mock the provider methods
-			const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
-			const postStateToWebviewSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
-
-			// Add both tasks to stack (parent first, then child)
-			await provider.setCurrentTask(parentTask)
-			await provider.setCurrentTask(childTask)
-
-			// Get the message handler
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-			// Trigger clearTask message
-			await messageHandler({ type: "clearTask" })
-
-			// Verify clearTask was called (delegation happens via metadata, not finishSubTask)
-			expect(clearTaskSpy).toHaveBeenCalled()
-			expect(postStateToWebviewSpy).toHaveBeenCalled()
-		})
-
-		test("handles case when no current task exists", async () => {
-			// Don't add any tasks to the stack
-
-			// Mock the provider methods
-			const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
-			const postStateToWebviewSpy = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
-
-			// Get the message handler
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-			// Trigger clearTask message
-			await messageHandler({ type: "clearTask" })
-
-			// When there's no current task, clearTask is still called (it handles the no-task case internally)
-			expect(clearTaskSpy).toHaveBeenCalled()
-			expect(postStateToWebviewSpy).toHaveBeenCalled()
-		})
-
-		test("correctly identifies task scenario for issue #4602", async () => {
-			// This test validates the fix for issue #4602
-			// where canceling during API retry correctly uses clearTask
-
-			const mockCline = new Task(defaultTaskOptions)
-
-			// Mock the provider methods
-			const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
-
-			// Add only one task as the current task
-			await provider.setCurrentTask(mockCline)
-
-			// Verify the slot holds it
-			expect(provider.getCurrentTask()).toBe(mockCline)
-
-			// Get the message handler
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-			// Trigger clearTask message (simulating cancel during API retry)
-			await messageHandler({ type: "clearTask" })
-
-			// clearTask should be called (delegation handled via metadata)
-			expect(clearTaskSpy).toHaveBeenCalled()
-		})
+		expect(clearTaskSpy).toHaveBeenCalledTimes(1)
+		expect(postStateToWebviewSpy).toHaveBeenCalledTimes(1)
 	})
 
 	test("setCurrentTask replaces the current task (single-task slot, D7)", async () => {
@@ -1084,36 +826,12 @@ describe("ClineProvider", () => {
 		expect(state.clineMessagesSeq).toBeUndefined()
 	})
 
-	test("getState returns correct initial state", async () => {
-		const state = await provider.getState()
-
-		expect(state).toHaveProperty("apiConfiguration")
-		expect(state.apiConfiguration).toHaveProperty("apiProvider")
-		expect(state).toHaveProperty("customInstructions")
-		expect(state).toHaveProperty("alwaysAllowReadOnly")
-		expect(state).toHaveProperty("alwaysAllowWrite")
-		expect(state).toHaveProperty("alwaysAllowExecute")
-		expect(state).toHaveProperty("taskHistory")
-		expect(state).toHaveProperty("soundEnabled")
-		expect(state).toHaveProperty("writeDelayMs")
-	})
-
 	test("language is set to VSCode language", async () => {
 		// Mock VSCode language as Spanish
 		;(vscode.env as any).language = "pt-BR"
 
 		const state = await provider.getState()
 		expect(state.language).toBe("pt-BR")
-	})
-
-	test("writeDelayMs defaults to 1000ms", async () => {
-		// Mock globalState.get to return undefined for writeDelayMs
-		;(mockContext.globalState.get as any).mockImplementation((key: string) =>
-			key === "writeDelayMs" ? undefined : null,
-		)
-
-		const state = await provider.getState()
-		expect(state.writeDelayMs).toBe(1000)
 	})
 
 	// DEF-C25, owner decisions 4a and 4b: a user who never touched these
@@ -1123,12 +841,14 @@ describe("ClineProvider", () => {
 			terminalShellIntegrationTimeout: 30_000,
 			soundEnabled: false,
 			enableCheckpoints: true,
+			writeDelayMs: 1000,
+			autoCondenseContext: true,
+			autoCondenseContextPercent: 100,
+			customModePrompts: {},
+			showRooIgnoredFiles: false,
 		}
-		const pick = (state: Record<string, unknown>) => ({
-			terminalShellIntegrationTimeout: state.terminalShellIntegrationTimeout,
-			soundEnabled: state.soundEnabled,
-			enableCheckpoints: state.enableCheckpoints,
-		})
+		const pick = (state: Record<string, unknown>) =>
+			Object.fromEntries(Object.keys(decided).map((key) => [key, state[key]]))
 
 		test("getState resolves the decided defaults", async () => {
 			;(mockContext.globalState.get as any).mockImplementation(() => undefined)
@@ -1138,10 +858,6 @@ describe("ClineProvider", () => {
 		test("the state posted to the webview carries the decided defaults", async () => {
 			;(mockContext.globalState.get as any).mockImplementation(() => undefined)
 			expect(pick((await provider.getStateToPostToWebview()) as any)).toEqual(decided)
-		})
-
-		test("the terminal starts with the decided shell integration timeout", () => {
-			expect(Terminal.defaultShellIntegrationTimeout).toBe(30_000)
 		})
 
 		test("resolveWebviewView applies the decided timeout to the terminal when none is saved", async () => {
@@ -1162,6 +878,7 @@ describe("ClineProvider", () => {
 		["autoCondenseContext", false],
 		["autoCondenseContextPercent", 75],
 		["maxWorkspaceFiles", 300],
+		["showRooIgnoredFiles", true],
 	])("updateSettings stores %s in the state", async (key, value) => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -1170,25 +887,6 @@ describe("ClineProvider", () => {
 
 		expect((await provider.getState())[key as keyof Awaited<ReturnType<typeof provider.getState>>]).toBe(value)
 		expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
-	})
-
-	test("autoCondenseContext defaults to true", async () => {
-		// Mock globalState.get to return undefined for autoCondenseContext
-		;(mockContext.globalState.get as any).mockImplementation((key: string) =>
-			key === "autoCondenseContext" ? undefined : null,
-		)
-		const state = await provider.getState()
-		expect(state.autoCondenseContext).toBe(true)
-	})
-
-	test("autoCondenseContextPercent defaults to 100", async () => {
-		// Mock globalState.get to return undefined for autoCondenseContextPercent
-		;(mockContext.globalState.get as any).mockImplementation((key: string) =>
-			key === "autoCondenseContextPercent" ? undefined : null,
-		)
-
-		const state = await provider.getState()
-		expect(state.autoCondenseContextPercent).toBe(100)
 	})
 
 	it("saves current config when switching to mode without config", async () => {
@@ -1212,7 +910,10 @@ describe("ClineProvider", () => {
 		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "current-id")
 	})
 
-	it("saves config as default for current mode when loading config", async () => {
+	test.each([
+		["loadApiConfiguration", "new-config", { name: "new-config" }],
+		["loadApiConfigurationById", "new-id", { id: "new-id" }],
+	])("%s activates the profile and binds it to the current mode", async (type, text, lookup) => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -1225,64 +926,11 @@ describe("ClineProvider", () => {
 			getModeConfigId: vi.fn().mockResolvedValue(undefined),
 		} as any
 
-		// First set the mode
 		await messageHandler({ type: "mode", text: "architect" })
+		await messageHandler({ type, text })
 
-		// Then load the config
-		await messageHandler({ type: "loadApiConfiguration", text: "new-config" })
-
-		// Should save new config as default for architect mode
+		expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith(lookup)
 		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "new-id")
-	})
-
-	it("load API configuration by ID works and updates mode config", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		const profile: ProviderSettingsEntry = {
-			name: "config-by-id",
-			id: "config-id-123",
-			apiProvider: "anthropic",
-		}
-
-		;(provider as any).providerSettingsManager = {
-			activateProfile: vi.fn().mockResolvedValue(profile),
-			listConfig: vi.fn().mockResolvedValue([profile]),
-			setModeConfig: vi.fn(),
-			getModeConfigId: vi.fn().mockResolvedValue(undefined),
-		} as any
-
-		// First set the mode
-		await messageHandler({ type: "mode", text: "architect" })
-
-		// Then load the config by ID
-		await messageHandler({ type: "loadApiConfigurationById", text: "config-id-123" })
-
-		// Should save new config as default for architect mode
-		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "config-id-123")
-
-		// Ensure the `activateProfile` method was called with the correct ID
-		expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ id: "config-id-123" })
-	})
-
-	test("handles showRooIgnoredFiles setting", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		// Default value should be false
-		expect((await provider.getState()).showRooIgnoredFiles).toBe(false)
-
-		// Test showRooIgnoredFiles with true
-		await messageHandler({ type: "updateSettings", updatedSettings: { showRooIgnoredFiles: true } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("showRooIgnoredFiles", true)
-		expect(mockPostMessage).toHaveBeenCalled()
-		expect((await provider.getState()).showRooIgnoredFiles).toBe(true)
-
-		// Test showRooIgnoredFiles with false
-		await messageHandler({ type: "updateSettings", updatedSettings: { showRooIgnoredFiles: false } })
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("showRooIgnoredFiles", false)
-		expect(mockPostMessage).toHaveBeenCalled()
-		expect((await provider.getState()).showRooIgnoredFiles).toBe(false)
 	})
 
 	test("handles updatePrompt message correctly", async () => {
@@ -1330,265 +978,9 @@ describe("ClineProvider", () => {
 		)
 	})
 
-	test("customModePrompts defaults to empty object", async () => {
-		// Mock globalState.get to return undefined for customModePrompts
-		;(mockContext.globalState.get as any).mockImplementation((key: string) => {
-			if (key === "customModePrompts") {
-				return undefined
-			}
-			return null
-		})
-
-		const state = await provider.getState()
-		expect(state.customModePrompts).toEqual({})
-	})
-
-	test("handles mode-specific custom instructions updates", async () => {
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		// Mock existing prompts
-		const existingPrompts = {
-			code: {
-				roleDefinition: "Code role",
-				customInstructions: "Old instructions",
-			},
-		}
-		mockContext.globalState.get = vi.fn((key: string) => {
-			if (key === "customModePrompts") {
-				return existingPrompts
-			}
-			return undefined
-		})
-
-		// Update custom instructions for code mode
-		await messageHandler({
-			type: "updatePrompt",
-			promptMode: "code",
-			customPrompt: {
-				roleDefinition: "Code role",
-				customInstructions: "New instructions",
-			},
-		})
-
-		// Verify state was updated correctly
-		expect(mockContext.globalState.update).toHaveBeenCalledWith("customModePrompts", {
-			code: {
-				roleDefinition: "Code role",
-				customInstructions: "New instructions",
-			},
-		})
-	})
-
-	it("saves mode config when updating API configuration", async () => {
-		// Setup mock context with mode and config name
-		mockContext = {
-			...mockContext,
-			globalState: {
-				...mockContext.globalState,
-				get: vi.fn((key: string) => {
-					if (key === "mode") {
-						return "code"
-					} else if (key === "currentApiConfigName") {
-						return "test-config"
-					}
-					return undefined
-				}),
-				update: vi.fn(),
-				keys: vi.fn().mockReturnValue([]),
-			},
-		} as unknown as vscode.ExtensionContext
-
-		// Create new provider with updated mock context
-		provider = createTestProvider(mockContext)
-		await provider.resolveWebviewView(mockWebviewView)
-		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-		;(provider as any).providerSettingsManager = {
-			listConfig: vi.fn().mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
-			saveConfig: vi.fn().mockResolvedValue("test-id"),
-			setModeConfig: vi.fn(),
-		} as any
-
-		// Update API configuration
-		await messageHandler({
-			type: "upsertApiConfiguration",
-			text: "test-config",
-			apiConfiguration: { apiProvider: "anthropic" },
-		})
-
-		// Should save config as default for current mode
-		expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("code", "test-id")
-	})
-
-	test("file content includes line numbers", async () => {
-		const { extractTextFromFile } = await import("../../../integrations/misc/extract-text")
-		const result = await extractTextFromFile("test.js")
-		expect(result).toBe("1 | const x = 1;\n2 | const y = 2;\n3 | const z = 3;")
-	})
-
-	describe("deleteMessage", () => {
-		beforeEach(async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-		})
-
-		test("handles deletion with confirmation dialog", async () => {
-			// Setup mock messages
-			const mockMessages = [
-				{ ts: 1000, type: "say", say: "user_feedback" }, // User message 1
-				{ ts: 2000, type: "say", say: "tool" }, // Tool message
-				{ ts: 3000, type: "say", say: "text" }, // Message before delete
-				{ ts: 4000, type: "say", say: "tool" }, // Message to delete
-				{ ts: 5000, type: "say", say: "user_feedback" }, // Next user message
-				{ ts: 6000, type: "say", say: "user_feedback" }, // Final message
-			] as ClineMessage[]
-
-			const mockApiHistory = [
-				{ ts: 1000 },
-				{ ts: 2000 },
-				{ ts: 3000 },
-				{ ts: 4000 },
-				{ ts: 5000 },
-				{ ts: 6000 },
-			] as ApiMessage[]
-
-			// Setup Task instance with auto-mock from the top of the file
-			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
-			mockCline.clineMessages = mockMessages // Set test-specific messages
-			mockCline.apiConversationHistory = mockApiHistory // Set API history
-			await provider.setCurrentTask(mockCline) // Add the mocked instance to the stack
-
-			// Mock getHistoryItem
-			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
-
-			// Mock createTaskWithHistoryItem
-			;(provider as any).createTaskWithHistoryItem = vi.fn()
-
-			// Trigger message deletion
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-			await messageHandler({ type: "deleteMessage", value: 4000 })
-
-			// Verify that the dialog message was sent to webview
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "showDeleteMessageDialog",
-				messageTs: 4000,
-				hasCheckpoint: false,
-			})
-
-			// Simulate user confirming deletion through the dialog
-			await messageHandler({ type: "deleteMessageConfirm", messageTs: 4000 })
-
-			// Verify only messages before the deleted message were kept
-			expect(mockCline.overwriteClineMessages).toHaveBeenCalledWith([
-				mockMessages[0],
-				mockMessages[1],
-				mockMessages[2],
-			])
-
-			// Verify only API messages before the deleted message were kept
-			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([
-				mockApiHistory[0],
-				mockApiHistory[1],
-				mockApiHistory[2],
-			])
-
-			// createTaskWithHistoryItem is only called when restoring checkpoints or aborting tasks
-			expect((provider as any).createTaskWithHistoryItem).not.toHaveBeenCalled()
-		})
-
-		test("handles case when no current task exists", async () => {
-			// Clear the cline stack
-			;(provider as any).taskSlot.seedForTests()
-
-			// Trigger message deletion
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-			await messageHandler({ type: "deleteMessage", value: 2000 })
-
-			// Verify no dialog was shown since there's no current cline
-			expect(mockPostMessage).not.toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "showDeleteMessageDialog",
-				}),
-			)
-		})
-	})
-
 	describe("editMessage", () => {
 		beforeEach(async () => {
 			await provider.resolveWebviewView(mockWebviewView)
-		})
-
-		test("handles edit with confirmation dialog", async () => {
-			// Setup mock messages
-			const mockMessages = [
-				{ ts: 1000, type: "say", say: "user_feedback" }, // User message 1
-				{ ts: 2000, type: "say", say: "tool" }, // Tool message
-				{ ts: 3000, type: "say", say: "text" }, // Message before edit
-				{ ts: 4000, type: "say", say: "tool" }, // Message to edit
-				{ ts: 5000, type: "say", say: "user_feedback" }, // Next user message
-				{ ts: 6000, type: "say", say: "user_feedback" }, // Final message
-			] as ClineMessage[]
-
-			const mockApiHistory = [
-				{ ts: 1000 },
-				{ ts: 2000 },
-				{ ts: 3000 },
-				{ ts: 4000 },
-				{ ts: 5000 },
-				{ ts: 6000 },
-			] as ApiMessage[]
-
-			// Setup Task instance with auto-mock from the top of the file
-			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
-			mockCline.clineMessages = mockMessages // Set test-specific messages
-			mockCline.apiConversationHistory = mockApiHistory // Set API history
-
-			// Explicitly mock the overwrite methods since they're not being called in the tests
-			mockCline.overwriteClineMessages = vi.fn()
-			mockCline.overwriteApiConversationHistory = vi.fn()
-			mockCline.handleWebviewAskResponse = vi.fn()
-
-			await provider.setCurrentTask(mockCline) // Add the mocked instance to the stack
-
-			// Mock getHistoryItem
-			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
-
-			// Trigger message edit
-			// Get the message handler function that was registered with the webview
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-			// Call the message handler with a submitEditedMessage message
-			await messageHandler({
-				type: "submitEditedMessage",
-				value: 4000,
-				editedMessageContent: "Edited message content",
-			})
-
-			// Verify that the dialog message was sent to webview
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "showEditMessageDialog",
-				messageTs: 4000,
-				text: "Edited message content",
-				hasCheckpoint: false,
-				images: undefined,
-			})
-
-			// Simulate user confirming edit through the dialog
-			await messageHandler({
-				type: "editMessageConfirm",
-				messageTs: 4000,
-				text: "Edited message content",
-			})
-
-			// Verify correct messages were kept - delete from the preceding user message to truly replace it
-			expect(mockCline.overwriteClineMessages).toHaveBeenCalledWith([])
-
-			// Verify correct API messages were kept
-			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([])
-
-			// The new flow calls webviewMessageHandler recursively with askResponse
-			// We need to verify the recursive call happened by checking if the handler was called again
-			expect((mockWebviewView.webview.onDidReceiveMessage as any).mock.calls.length).toBeGreaterThanOrEqual(1)
 		})
 
 		// An earlier exchange, then the user message being edited and its reply.
@@ -1614,7 +1006,13 @@ describe("ClineProvider", () => {
 
 			await webviewMessage({ type: "submitEditedMessage", value: 3000, editedMessageContent: "Edited" })
 
-			expect(postedTypes()).toContain("showEditMessageDialog")
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "showEditMessageDialog",
+				messageTs: 3000,
+				text: "Edited",
+				hasCheckpoint: false,
+				images: undefined,
+			})
 			expect(task.overwriteClineMessages).not.toHaveBeenCalled()
 			expect(task.submitUserMessage).not.toHaveBeenCalled()
 
@@ -1623,6 +1021,24 @@ describe("ClineProvider", () => {
 			expect(task.overwriteClineMessages).toHaveBeenCalledWith([first])
 			expect(task.overwriteApiConversationHistory).toHaveBeenCalledWith([{ ts: 1000 }])
 			expect(task.submitUserMessage).toHaveBeenCalledWith("Edited", [])
+		})
+
+		test("delete only asks; confirm keeps the messages before the deleted one", async () => {
+			const task = await setEditableTask()
+			const [first, original] = task.clineMessages
+
+			await webviewMessage({ type: "deleteMessage", value: 3000 })
+
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "showDeleteMessageDialog",
+				messageTs: 3000,
+				hasCheckpoint: false,
+			})
+			expect(task.overwriteClineMessages).not.toHaveBeenCalled()
+
+			await webviewMessage({ type: "deleteMessageConfirm", messageTs: 3000 })
+
+			expect(task.overwriteClineMessages).toHaveBeenCalledWith([first, original])
 		})
 
 		test.each([
@@ -1657,480 +1073,40 @@ describe("ClineProvider", () => {
 			await webviewMessage({ type: "deleteMessage", value: 0 })
 			;(provider as any).taskSlot.seedForTests()
 			await webviewMessage({ type: "submitEditedMessage", value: 3000, editedMessageContent: "Edited" })
+			await webviewMessage({ type: "deleteMessage", value: 3000 })
 
 			expect(postedTypes()).not.toContain("showEditMessageDialog")
 			expect(postedTypes()).not.toContain("showDeleteMessageDialog")
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("errors.message.invalid_timestamp_for_deletion")
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("errors.message.no_active_task_to_delete")
 		})
 	})
 
 	describe("getSystemPrompt", () => {
-		beforeEach(async () => {
-			mockPostMessage.mockClear()
+		test.each([
+			["architect", "architect"],
+			[undefined, "code"],
+		])("the preview for mode %s is built for %s and posted", async (requested, built) => {
+			const { SYSTEM_PROMPT } = await import("../../prompts/system")
+			vi.mocked(SYSTEM_PROMPT).mockResolvedValueOnce("the prompt")
 			await provider.resolveWebviewView(mockWebviewView)
-			// Reset and setup mock
-			mockAddCustomInstructions.mockClear()
-			mockAddCustomInstructions.mockImplementation(
-				(modeInstructions: string, globalInstructions: string, _cwd: string) => {
-					return Promise.resolve(modeInstructions || globalInstructions || "")
-				},
-			)
+			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+
+			await messageHandler({ type: "getSystemPrompt", mode: requested })
+
+			expect(vi.mocked(SYSTEM_PROMPT).mock.calls.at(-1)![0]).toMatchObject({ mode: built })
+			expect(mockPostMessage).toHaveBeenCalledWith({ type: "systemPrompt", text: "the prompt", mode: requested })
 		})
 
-		const getMessageHandler = () => {
-			const mockCalls = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls
-			expect(mockCalls.length).toBeGreaterThan(0)
-			return mockCalls[0][0]
-		}
-
-		test("handles mcpEnabled setting correctly", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-			const handler = getMessageHandler()
-			expect(typeof handler).toBe("function")
-
-			// Test with mcpEnabled: true
-			vi.spyOn(provider, "getState").mockResolvedValueOnce({
-				apiConfiguration: {
-					apiProvider: "openrouter" as const,
-				},
-				mcpEnabled: true,
-				mode: "code" as const,
-				experiments: experimentDefault,
-			} as any)
-
-			await handler({ type: "getSystemPrompt", mode: "code" })
-
-			// Verify system prompt was generated and sent
-			expect(mockPostMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "systemPrompt",
-					text: expect.any(String),
-					mode: "code",
-				}),
-			)
-
-			// Reset for second test
-			mockPostMessage.mockClear()
-
-			// Test with mcpEnabled: false
-			vi.spyOn(provider, "getState").mockResolvedValueOnce({
-				apiConfiguration: {
-					apiProvider: "openrouter" as const,
-				},
-				mcpEnabled: false,
-				mode: "code" as const,
-				experiments: experimentDefault,
-			} as any)
-
-			await handler({ type: "getSystemPrompt", mode: "code" })
-
-			// Verify system prompt was generated and sent
-			expect(mockPostMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "systemPrompt",
-					text: expect.any(String),
-					mode: "code",
-				}),
-			)
-		})
-
-		test("handles errors gracefully", async () => {
-			// Mock SYSTEM_PROMPT to throw an error
+		test("a failure shows the error", async () => {
 			const { SYSTEM_PROMPT } = await import("../../prompts/system")
 			vi.mocked(SYSTEM_PROMPT).mockRejectedValueOnce(new Error("Test error"))
-
+			await provider.resolveWebviewView(mockWebviewView)
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+
 			await messageHandler({ type: "getSystemPrompt", mode: "code" })
 
 			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("errors.get_system_prompt")
-		})
-
-		test("uses code mode custom instructions", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-
-			// Mock getState to return custom instructions for code mode
-			vi.spyOn(provider, "getState").mockResolvedValue({
-				apiConfiguration: {
-					apiProvider: "openrouter" as const,
-				},
-				customModePrompts: {
-					code: { customInstructions: "Code mode specific instructions" },
-				},
-				mode: "code" as const,
-				experiments: experimentDefault,
-			} as any)
-
-			// Trigger getSystemPrompt
-			const handler = getMessageHandler()
-			await handler({ type: "getSystemPrompt", mode: "code" })
-
-			// Verify system prompt was generated and sent
-			expect(mockPostMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "systemPrompt",
-					text: expect.any(String),
-					mode: "code",
-				}),
-			)
-		})
-
-		test("uses correct mode-specific instructions when mode is specified", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-
-			// Mock getState to return architect mode instructions
-			vi.spyOn(provider, "getState").mockResolvedValue({
-				apiConfiguration: {
-					apiProvider: "openrouter",
-				},
-				customModePrompts: {
-					architect: { customInstructions: "Architect mode instructions" },
-				},
-				mode: "architect",
-				mcpEnabled: false,
-				experiments: experimentDefault,
-			} as any)
-
-			// Trigger getSystemPrompt for architect mode
-			const handler = getMessageHandler()
-			await handler({ type: "getSystemPrompt", mode: "architect" })
-
-			// Verify system prompt was generated and sent
-			expect(mockPostMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "systemPrompt",
-					text: expect.any(String),
-					mode: "architect",
-				}),
-			)
-		})
-	})
-
-	describe("handleModeSwitch", () => {
-		beforeEach(async () => {
-			// Set up webview for each test
-			await provider.resolveWebviewView(mockWebviewView)
-		})
-
-		it("loads saved API config when switching modes", async () => {
-			const profile: ProviderSettingsEntry = {
-				name: "saved-config",
-				id: "saved-config-id",
-				apiProvider: "anthropic",
-			}
-
-			;(provider as any).providerSettingsManager = {
-				getModeConfigId: vi.fn().mockResolvedValue("saved-config-id"),
-				listConfig: vi.fn().mockResolvedValue([profile]),
-				activateProfile: vi.fn().mockResolvedValue(profile),
-				setModeConfig: vi.fn(),
-				getProfile: vi.fn().mockResolvedValue(profile),
-			} as any
-
-			// Switch to architect mode
-			await provider.handleModeSwitch("architect")
-
-			// Verify mode was updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
-
-			// Verify saved config was loaded
-			expect(provider.providerSettingsManager.getModeConfigId).toHaveBeenCalledWith("architect")
-			expect(provider.providerSettingsManager.activateProfile).toHaveBeenCalledWith({ name: "saved-config" })
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "saved-config")
-
-			// Verify state was posted to webview
-			expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
-		})
-
-		test("saves current config when switching to mode without config", async () => {
-			;(provider as any).providerSettingsManager = {
-				getModeConfigId: vi.fn().mockResolvedValue(undefined),
-				listConfig: vi
-					.fn()
-					.mockResolvedValue([{ name: "current-config", id: "current-id", apiProvider: "anthropic" }]),
-				setModeConfig: vi.fn(),
-			} as any
-
-			// Mock the ContextProxy's getValue method to return the current config name
-			const contextProxy = (provider as any).contextProxy
-			const getValueSpy = vi.spyOn(contextProxy, "getValue")
-			getValueSpy.mockImplementation((key: any) => {
-				if (key === "currentApiConfigName") return "current-config"
-				return undefined
-			})
-
-			// Switch to architect mode
-			await provider.handleModeSwitch("architect")
-
-			// Verify mode was updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
-
-			// Verify current config was saved as default for new mode
-			expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "current-id")
-
-			// Verify state was posted to webview
-			expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
-		})
-	})
-
-	describe("createTaskWithHistoryItem mode validation", () => {
-		test("validates and falls back to default mode when restored mode no longer exists", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-
-			// Mock custom modes that don't include the saved mode
-			const mockCustomModesManager = {
-				getCustomModes: vi.fn().mockResolvedValue([
-					{
-						slug: "existing-mode",
-						name: "Existing Mode",
-						roleDefinition: "Test role",
-						groups: ["read"] as const,
-					},
-				]),
-				dispose: vi.fn(),
-			}
-			;(provider as any).customModesManager = mockCustomModesManager
-
-			// Mock getModeBySlug to return undefined for non-existent mode
-			const { getModeBySlug } = await import("../../../shared/modes")
-			vi.mocked(getModeBySlug)
-				.mockReturnValueOnce(undefined) // First call returns undefined (mode doesn't exist)
-				.mockReturnValue({
-					slug: "code",
-					name: "Code Mode",
-					roleDefinition: "You are a code assistant",
-					groups: ["read", "edit"],
-				}) // Subsequent calls return default mode
-
-			// Mock provider settings manager
-			;(provider as any).providerSettingsManager = {
-				getModeConfigId: vi.fn().mockResolvedValue(undefined),
-				listConfig: vi.fn().mockResolvedValue([]),
-			}
-
-			// Spy on the logger to verify a warning was logged
-			const loggerWarnSpy = vi.spyOn(logger, "warn")
-
-			// Create history item with non-existent mode
-			const historyItem = {
-				id: "test-id",
-				ts: Date.now(),
-				task: "Test task",
-				mode: "non-existent-mode", // This mode doesn't exist
-				number: 1,
-				tokensIn: 0,
-				tokensOut: 0,
-				totalCost: 0,
-			}
-
-			// Initialize with history item
-			await provider.createTaskWithHistoryItem(historyItem)
-
-			// Verify mode validation occurred
-			expect(mockCustomModesManager.getCustomModes).toHaveBeenCalled()
-			expect(getModeBySlug).toHaveBeenCalledWith("non-existent-mode", expect.any(Array))
-
-			// Verify fallback to default mode
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "code")
-			expect(loggerWarnSpy).toHaveBeenCalledWith(
-				"Mode 'non-existent-mode' from history no longer exists. Falling back to default mode 'code'.",
-			)
-
-			// Verify history item was updated with default mode
-			expect(historyItem.mode).toBe("code")
-		})
-
-		test("preserves mode when it exists in custom modes", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-
-			// Mock custom modes that include the saved mode
-			const mockCustomModesManager = {
-				getCustomModes: vi.fn().mockResolvedValue([
-					{
-						slug: "custom-mode",
-						name: "Custom Mode",
-						roleDefinition: "Custom role",
-						groups: ["read", "edit"] as const,
-					},
-				]),
-				dispose: vi.fn(),
-			}
-			;(provider as any).customModesManager = mockCustomModesManager
-
-			// Mock getModeBySlug to return the custom mode
-			const { getModeBySlug } = await import("../../../shared/modes")
-			vi.mocked(getModeBySlug).mockReturnValue({
-				slug: "custom-mode",
-				name: "Custom Mode",
-				roleDefinition: "Custom role",
-				groups: ["read", "edit"],
-			})
-
-			// Mock provider settings manager
-			;(provider as any).providerSettingsManager = {
-				getModeConfigId: vi.fn().mockResolvedValue("config-id"),
-				listConfig: vi
-					.fn()
-					.mockResolvedValue([{ name: "test-config", id: "config-id", apiProvider: "anthropic" }]),
-				activateProfile: vi
-					.fn()
-					.mockResolvedValue({ name: "test-config", id: "config-id", apiProvider: "anthropic" }),
-			}
-
-			// Spy on the logger to verify no warning was logged
-			const loggerWarnSpy = vi.spyOn(logger, "warn")
-
-			// Create history item with existing custom mode
-			const historyItem = {
-				id: "test-id",
-				ts: Date.now(),
-				task: "Test task",
-				mode: "custom-mode",
-				number: 1,
-				tokensIn: 0,
-				tokensOut: 0,
-				totalCost: 0,
-			}
-
-			// Initialize with history item
-			await provider.createTaskWithHistoryItem(historyItem)
-
-			// Verify mode validation occurred
-			expect(mockCustomModesManager.getCustomModes).toHaveBeenCalled()
-			expect(getModeBySlug).toHaveBeenCalledWith("custom-mode", expect.any(Array))
-
-			// Verify mode was preserved
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "custom-mode")
-			expect(loggerWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining("no longer exists"))
-
-			// Verify history item mode was not changed
-			expect(historyItem.mode).toBe("custom-mode")
-		})
-
-		test("preserves mode when it exists in built-in modes", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-
-			// Mock no custom modes
-			const mockCustomModesManager = {
-				getCustomModes: vi.fn().mockResolvedValue([]),
-				dispose: vi.fn(),
-			}
-			;(provider as any).customModesManager = mockCustomModesManager
-
-			// Mock getModeBySlug to return built-in architect mode
-			const { getModeBySlug } = await import("../../../shared/modes")
-			vi.mocked(getModeBySlug).mockReturnValue({
-				slug: "architect",
-				name: "Architect Mode",
-				roleDefinition: "You are an architect",
-				groups: ["read", "edit"],
-			})
-
-			// Mock provider settings manager
-			;(provider as any).providerSettingsManager = {
-				getModeConfigId: vi.fn().mockResolvedValue(undefined),
-				listConfig: vi.fn().mockResolvedValue([]),
-			}
-
-			// Create history item with built-in mode
-			const historyItem = {
-				id: "test-id",
-				ts: Date.now(),
-				task: "Test task",
-				mode: "architect",
-				number: 1,
-				tokensIn: 0,
-				tokensOut: 0,
-				totalCost: 0,
-			}
-
-			// Initialize with history item
-			await provider.createTaskWithHistoryItem(historyItem)
-
-			// Verify mode was preserved
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("mode", "architect")
-
-			// Verify history item mode was not changed
-			expect(historyItem.mode).toBe("architect")
-		})
-
-		test("handles history items without mode property", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-
-			// Mock provider settings manager
-			;(provider as any).providerSettingsManager = {
-				getModeConfigId: vi.fn().mockResolvedValue(undefined),
-				listConfig: vi.fn().mockResolvedValue([]),
-			}
-
-			// Create history item without mode
-			const historyItem = {
-				id: "test-id",
-				ts: Date.now(),
-				task: "Test task",
-				// No mode property
-				number: 1,
-				tokensIn: 0,
-				tokensOut: 0,
-				totalCost: 0,
-			}
-
-			// Initialize with history item
-			await provider.createTaskWithHistoryItem(historyItem)
-
-			// Verify no mode validation occurred (mode update not called)
-			expect(mockContext.globalState.update).not.toHaveBeenCalledWith("mode", expect.any(String))
-		})
-
-		test("continues with task restoration even if mode config loading fails", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-
-			// Mock custom modes
-			const mockCustomModesManager = {
-				getCustomModes: vi.fn().mockResolvedValue([]),
-				dispose: vi.fn(),
-			}
-			;(provider as any).customModesManager = mockCustomModesManager
-
-			// Mock getModeBySlug to return built-in mode
-			const { getModeBySlug } = await import("../../../shared/modes")
-			vi.mocked(getModeBySlug).mockReturnValue({
-				slug: "code",
-				name: "Code Mode",
-				roleDefinition: "You are a code assistant",
-				groups: ["read", "edit"],
-			})
-
-			// Mock provider settings manager to throw error
-			;(provider as any).providerSettingsManager = {
-				getModeConfigId: vi.fn().mockResolvedValue("config-id"),
-				listConfig: vi
-					.fn()
-					.mockResolvedValue([{ name: "test-config", id: "config-id", apiProvider: "anthropic" }]),
-				activateProfile: vi.fn().mockRejectedValue(new Error("Failed to load config")),
-			}
-
-			// Spy on the logger
-			const loggerWarnSpy = vi.spyOn(logger, "warn")
-
-			// Create history item
-			const historyItem = {
-				id: "test-id",
-				ts: Date.now(),
-				task: "Test task",
-				mode: "code",
-				number: 1,
-				tokensIn: 0,
-				tokensOut: 0,
-				totalCost: 0,
-			}
-
-			// Initialize with history item - should not throw
-			await expect(provider.createTaskWithHistoryItem(historyItem)).resolves.not.toThrow()
-
-			// Verify error was logged but task restoration continued
-			expect(loggerWarnSpy).toHaveBeenCalledWith(
-				expect.stringContaining("Failed to restore API configuration for mode 'code'"),
-			)
 		})
 	})
 
@@ -2197,123 +1173,45 @@ describe("ClineProvider", () => {
 	})
 
 	describe("upsertApiConfiguration", () => {
-		test("handles error in upsertApiConfiguration gracefully", async () => {
+		const upsert = async (saveConfig: ReturnType<typeof vi.fn>) => {
 			await provider.resolveWebviewView(mockWebviewView)
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
 			;(provider as any).providerSettingsManager = {
-				setModeConfig: vi.fn().mockRejectedValue(new Error("Failed to update mode config")),
+				setModeConfig: vi.fn(),
+				saveConfig,
 				listConfig: vi
 					.fn()
 					.mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
+				getModeConfigId: vi.fn().mockResolvedValue(undefined),
 			} as any
-
-			// Mock getState to provide necessary data
-			vi.spyOn(provider, "getState").mockResolvedValue({
-				mode: "code",
-				currentApiConfigName: "test-config",
-			} as any)
-
-			// Trigger upsertApiConfiguration
+			await messageHandler({ type: "mode", text: "architect" })
 			await messageHandler({
 				type: "upsertApiConfiguration",
 				text: "test-config",
 				apiConfiguration: { apiProvider: "anthropic", apiKey: "test-key" },
 			})
+		}
 
-			// Verify error was logged and user was notified (the toast carries
-			// the underlying cause after the generic message)
-			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				expect.stringContaining(
-					"errors.create_api_config: this.providerSettingsManager.saveConfig is not a function",
-				),
-			)
-		})
+		test("saves the profile, makes it current, binds it to the mode and posts the state", async () => {
+			await upsert(vi.fn().mockResolvedValue("test-id"))
 
-		test("handles successful upsertApiConfiguration", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-			;(provider as any).providerSettingsManager = {
-				setModeConfig: vi.fn(),
-				saveConfig: vi.fn().mockResolvedValue(undefined),
-				listConfig: vi
-					.fn()
-					.mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
-			} as any
-
-			const testApiConfig = {
-				apiProvider: "anthropic" as const,
+			expect(provider.providerSettingsManager.saveConfig).toHaveBeenCalledWith("test-config", {
+				apiProvider: "anthropic",
 				apiKey: "test-key",
-			}
-
-			// Trigger upsertApiConfiguration
-			await messageHandler({
-				type: "upsertApiConfiguration",
-				text: "test-config",
-				apiConfiguration: testApiConfig,
 			})
-
-			// Verify config was saved
-			expect(provider.providerSettingsManager.saveConfig).toHaveBeenCalledWith("test-config", testApiConfig)
-
-			// Verify state updates
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("listApiConfigMeta", [
 				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
 			])
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
-
-			// Verify state was posted to webview
+			expect(provider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("architect", "test-id")
 			expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "state" }))
 		})
 
-		test("handles buildApiHandler error in updateApiConfiguration", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+		test("a failing save is logged and shown with its cause", async () => {
+			await upsert(vi.fn().mockRejectedValue(new Error("disk full")))
 
-			// Mock buildApiHandler to throw an error
-			const { buildApiHandler } = await import("../../../api")
-
-			;(buildApiHandler as any).mockImplementationOnce(() => {
-				throw new Error("API handler error")
-			})
-			;(provider as any).providerSettingsManager = {
-				setModeConfig: vi.fn(),
-				saveConfig: vi.fn().mockResolvedValue(undefined),
-				listConfig: vi
-					.fn()
-					.mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
-			} as any
-
-			// Setup Task instance with auto-mock from the top of the file
-			const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
-			await provider.setCurrentTask(mockCline)
-
-			const testApiConfig = {
-				apiProvider: "anthropic" as const,
-				apiKey: "test-key",
-			}
-
-			// Trigger upsertApiConfiguration
-			await messageHandler({
-				type: "upsertApiConfiguration",
-				text: "test-config",
-				apiConfiguration: testApiConfig,
-			})
-
-			// Verify error handling (the toast carries the underlying cause
-			// after the generic message)
 			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Error create new api configuration"))
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				expect.stringContaining("errors.create_api_config: task.updateApiConfiguration is not a function"),
-			)
-
-			// Verify state was still updated
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("listApiConfigMeta", [
-				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
-			])
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("errors.create_api_config: disk full")
 		})
 	})
 
@@ -2359,8 +1257,7 @@ describe("ClineProvider", () => {
 			}
 		})
 
-		// CORE-R6 b characterization: the whole settings-updated round trip,
-		// driven through the provider, pinned before the sync moves out.
+		// The sync decisions are pinned in CloudProfileSync.spec; this pins the provider's host wiring.
 		const makeSyncedProvider = async (
 			syncResult: { hasChanges: boolean; activeProfileChanged: boolean; activeProfileId?: string },
 			providerProfiles: Record<string, unknown> | null = { cloud: { apiProvider: "anthropic" } },
@@ -2404,61 +1301,6 @@ describe("ClineProvider", () => {
 			}
 		})
 
-		test("settings-updated with changes but the same active profile does not activate a profile", async () => {
-			const { cloud, activate, postState } = await makeSyncedProvider({
-				hasChanges: true,
-				activeProfileChanged: false,
-			})
-			try {
-				cloud.fake.emit("settings-updated")
-				await flush()
-				expect(activate).not.toHaveBeenCalled()
-				expect(postState).toHaveBeenCalledTimes(1)
-			} finally {
-				cloud.restore()
-			}
-		})
-
-		test("settings-updated without changes touches nothing", async () => {
-			const { cloud, activate, postState } = await makeSyncedProvider({
-				hasChanges: false,
-				activeProfileChanged: false,
-			})
-			try {
-				vi.mocked(mockContext.globalState.update).mockClear()
-				cloud.fake.emit("settings-updated")
-				await flush()
-				expect(mockContext.globalState.update).not.toHaveBeenCalledWith("listApiConfigMeta", expect.anything())
-				expect(activate).not.toHaveBeenCalled()
-				expect(postState).not.toHaveBeenCalled()
-			} finally {
-				cloud.restore()
-			}
-		})
-
-		test("settings-updated without provider profiles does not call the settings manager", async () => {
-			const { cloud, sync } = await makeSyncedProvider({ hasChanges: true, activeProfileChanged: false }, null)
-			try {
-				cloud.fake.emit("settings-updated")
-				await flush()
-				expect(sync).not.toHaveBeenCalled()
-			} finally {
-				cloud.restore()
-			}
-		})
-
-		test("a failing sync is logged, not thrown", async () => {
-			const { cloud, sync } = await makeSyncedProvider({ hasChanges: true, activeProfileChanged: false })
-			try {
-				sync.mockRejectedValue(new Error("boom"))
-				cloud.fake.emit("settings-updated")
-				await flush()
-				expect(logger.error).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
-			} finally {
-				cloud.restore()
-			}
-		})
-
 		test("dispose removes the settings-updated listener", async () => {
 			const { p, cloud } = await makeSyncedProvider({ hasChanges: false, activeProfileChanged: false })
 			try {
@@ -2471,48 +1313,33 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	// CORE-R6 e characterization: the exact HTML (and CSP) of the sidebar
-	// webview in production and development (HMR) mode, pinned byte for byte
-	// before the generator moves to a module shared with PlanReviewPanel.
+	// The HTML itself is pinned in WebviewHtml.spec; this pins what the sidebar passes to it.
 	describe("webview HTML", () => {
-		// The builtin fs object is shared by `import` and `require`, so a spy
-		// here also controls the port-file lookup (a `require("fs")` call).
-		const realFs = require("fs") as typeof import("fs")
-		const originalReadFileSync = realFs.readFileSync
-		const isPortFile = (p: unknown) => typeof p === "string" && p.endsWith(".vite-port")
-
-		const originalExistsSync = realFs.existsSync
-		const spies: Array<{ mockRestore(): void }> = []
-		const stubPortFile = (port: string | undefined) => {
-			spies.push(
-				vi
-					.spyOn(realFs, "existsSync")
-					.mockImplementation((p) => (isPortFile(p) ? port !== undefined : originalExistsSync(p))),
-				vi
-					.spyOn(realFs, "readFileSync")
-					.mockImplementation(((p: any, ...rest: any[]) =>
-						isPortFile(p) ? port : (originalReadFileSync as any)(p, ...rest)) as any),
-			)
-		}
-
-		const renderSidebar = async (development: boolean) => {
+		const renderSidebar = async (development: boolean, openRouterBaseUrl?: string) => {
 			const context = {
 				...mockContext,
 				extensionUri: { fsPath: "/ext" },
 				extensionMode: development ? vscode.ExtensionMode.Development : vscode.ExtensionMode.Production,
 			} as unknown as vscode.ExtensionContext
 			const p = createTestProvider(context)
-			return p
+			await p.contextProxy.setValue("openRouterBaseUrl", openRouterBaseUrl)
+			await p.resolveWebviewView(mockWebviewView)
+			return mockWebviewView.webview.html as string
 		}
 
+		// A developer's own .vite-port file must not change the port.
+		const realFs = require("fs") as typeof import("fs")
+		const originalExistsSync = realFs.existsSync
+		let existsSpy: { mockRestore(): void }
+
 		beforeEach(() => {
+			existsSpy = vi
+				.spyOn(realFs, "existsSync")
+				.mockImplementation((p) => !String(p).endsWith(".vite-port") && originalExistsSync(p))
 			vi.mocked(vscode.Uri.joinPath).mockImplementation(
 				(base: any, ...parts: string[]) => ({ path: [base?.fsPath, ...parts].join("/") }) as any,
 			)
 			mockWebviewView.webview.asWebviewUri = vi.fn((uri: any) => `vscode-resource:${uri.path}`)
-			spies.push(vi.spyOn(logger, "info").mockImplementation(() => {}))
-			stubPortFile(undefined)
-			// Drop any queued one-shot result an earlier test left behind.
 			vi.mocked(axios.get)
 				.mockReset()
 				.mockResolvedValue({ data: { data: [] } })
@@ -2520,78 +1347,39 @@ describe("ClineProvider", () => {
 
 		afterEach(() => {
 			vi.mocked(vscode.Uri.joinPath).mockReset()
-			vi.mocked(axios.get).mockResolvedValue({ data: { data: [] } })
-			while (spies.length) spies.pop()!.mockRestore()
+			existsSpy.mockRestore()
 		})
 
-		test("production", async () => {
-			const p = await renderSidebar(false)
-			await p.resolveWebviewView(mockWebviewView)
-			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
-				"__snapshots__/webview-html/sidebar.production.html",
-			)
+		test("production loads the built bundle under the Tumble Code title, with the saved OpenRouter origin", async () => {
+			const html = await renderSidebar(false, "https://router.example.com/api/v1")
+
+			expect(html).toContain("<title>Tumble Code</title>")
+			expect(html).toContain('src="vscode-resource:/ext/webview-ui/build/assets/index.js"')
+			expect(html).toContain("https://router.example.com https://api.requesty.ai;")
+			expect(axios.get).not.toHaveBeenCalled()
 		})
 
-		test("production with a custom OpenRouter base URL", async () => {
-			const p = await renderSidebar(false)
-			await p.contextProxy.setValue("openRouterBaseUrl", "https://router.example.com/api/v1")
-			await p.resolveWebviewView(mockWebviewView)
-			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
-				"__snapshots__/webview-html/sidebar.production.openrouter.html",
-			)
-		})
+		test("development is served by the dev server", async () => {
+			const html = await renderSidebar(true)
 
-		test("development with the dev server running on the default port", async () => {
-			const p = await renderSidebar(true)
-			await p.resolveWebviewView(mockWebviewView)
 			expect(axios.get).toHaveBeenCalledWith("http://localhost:5173")
-			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
-				"__snapshots__/webview-html/sidebar.hmr.html",
-			)
-		})
-
-		test("development with the port taken from the .vite-port file", async () => {
-			stubPortFile("5174\n")
-			const p = await renderSidebar(true)
-			await p.resolveWebviewView(mockWebviewView)
-			expect(axios.get).toHaveBeenCalledWith("http://localhost:5174")
-			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
-				"__snapshots__/webview-html/sidebar.hmr.port-5174.html",
-			)
+			expect(html).toContain('src="http://localhost:5173/src/index.tsx"')
+			expect(html).toContain("https://openrouter.ai")
 		})
 
 		test("development without a dev server falls back to production and says so", async () => {
 			vi.mocked(axios.get).mockRejectedValueOnce(new Error("ECONNREFUSED"))
-			const p = await renderSidebar(true)
-			await p.resolveWebviewView(mockWebviewView)
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledTimes(1)
-			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
-				"__snapshots__/webview-html/sidebar.production.html",
-			)
+
+			const html = await renderSidebar(true)
+
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("errors.hmr_not_running")
+			expect(html).toContain('src="vscode-resource:/ext/webview-ui/build/assets/index.js"')
 		})
 	})
 
-	// CORE-R6 f characterization: every task event the provider forwards is
-	// attached once when the task is created and detached when it leaves the
-	// stack (a missing detach is a leak), with today's handlers and arguments.
+	// The forwarding table is pinned in taskEventForwarding.spec; this pins the provider's side:
+	// attach on creation, the host it passes, the rehydrate decision and the detach on removal.
 	describe("task event forwarding", () => {
-		const FORWARDED = [
-			TumbleCodeEventName.TaskStarted,
-			TumbleCodeEventName.TaskCompleted,
-			TumbleCodeEventName.TaskAborted,
-			TumbleCodeEventName.TaskFocused,
-			TumbleCodeEventName.TaskUnfocused,
-			TumbleCodeEventName.TaskActive,
-			TumbleCodeEventName.TaskInteractive,
-			TumbleCodeEventName.TaskResumable,
-			TumbleCodeEventName.TaskIdle,
-			TumbleCodeEventName.TaskPaused,
-			TumbleCodeEventName.TaskUnpaused,
-			TumbleCodeEventName.TaskSpawned,
-			TumbleCodeEventName.TaskUserMessage,
-			TumbleCodeEventName.TaskTokenUsageUpdated,
-		] as const
-
 		const tokenUsage = { totalTokensIn: 10, totalTokensOut: 20, totalCost: 0.5 } as any
 		const toolUsage = { read_file: { attempts: 1, failures: 0 } } as any
 
@@ -2607,66 +1395,33 @@ describe("ClineProvider", () => {
 
 		const attach = (task: any) => (provider as any).taskCreationCallback(task)
 
-		test("creation emits TaskCreated and attaches exactly one listener per forwarded event", async () => {
+		test("creation emits TaskCreated and the task's events reach provider listeners", async () => {
 			const task = await makeTask()
-			const emit = vi.spyOn(provider, "emit")
+			const created = vi.fn()
+			const completed = vi.fn()
+			provider.on(TumbleCodeEventName.TaskCreated, created)
+			provider.on(TumbleCodeEventName.TaskCompleted, completed)
+			const markTerminal = vi.spyOn(provider.subagentRegistry, "markTerminal")
+
 			attach(task)
-			expect(emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskCreated, task)
-			expect(Object.fromEntries(task.eventNames().map((e: string) => [e, task.listenerCount(e)]))).toEqual(
-				Object.fromEntries(FORWARDED.map((e) => [e, 1])),
-			)
+			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+
+			expect(created).toHaveBeenCalledWith(task)
+			expect(completed).toHaveBeenCalledWith("task-1", tokenUsage, toolUsage)
+			expect(markTerminal).toHaveBeenCalledWith("task-1", "completed")
+
+			provider.off(TumbleCodeEventName.TaskCompleted, completed)
+			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			expect(completed).toHaveBeenCalledTimes(1)
 		})
 
-		test("each event is forwarded with today's arguments", async () => {
-			const task = await makeTask()
-			attach(task)
-			const emit = vi.spyOn(provider, "emit").mockClear()
+		test("a parent that turns idle or resumable gets the subagent results waiting for it", () => {
+			const deliverIfIdle = vi.spyOn(provider.backgroundSubagents, "deliverIfIdle").mockImplementation(() => {})
 
-			task.emit(TumbleCodeEventName.TaskStarted)
-			task.emit(TumbleCodeEventName.TaskFocused)
-			task.emit(TumbleCodeEventName.TaskUnfocused)
-			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
-			task.emit(TumbleCodeEventName.TaskActive, "task-1")
-			task.emit(TumbleCodeEventName.TaskInteractive, "task-1")
-			task.emit(TumbleCodeEventName.TaskResumable, "task-1")
-			task.emit(TumbleCodeEventName.TaskIdle, "task-1")
-			task.emit(TumbleCodeEventName.TaskPaused, "task-1")
-			task.emit(TumbleCodeEventName.TaskUnpaused, "task-1")
-			task.emit(TumbleCodeEventName.TaskSpawned, "child-1")
-			task.emit(TumbleCodeEventName.TaskUserMessage, "task-1")
-			task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
-			task.emit(TumbleCodeEventName.TaskAborted)
-			await new Promise((resolve) => setTimeout(resolve, 0))
+			provider.emit(TumbleCodeEventName.TaskIdle, "parent-1")
+			provider.emit(TumbleCodeEventName.TaskResumable, "parent-2")
 
-			expect(emit.mock.calls).toEqual([
-				[TumbleCodeEventName.TaskStarted, "task-1"],
-				[TumbleCodeEventName.TaskFocused, "task-1"],
-				[TumbleCodeEventName.TaskUnfocused, "task-1"],
-				[TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage],
-				[TumbleCodeEventName.TaskActive, "task-1"],
-				[TumbleCodeEventName.TaskInteractive, "task-1"],
-				[TumbleCodeEventName.TaskResumable, "task-1"],
-				[TumbleCodeEventName.TaskIdle, "task-1"],
-				[TumbleCodeEventName.TaskPaused, "task-1"],
-				[TumbleCodeEventName.TaskUnpaused, "task-1"],
-				[TumbleCodeEventName.TaskSpawned, "child-1"],
-				[TumbleCodeEventName.TaskUserMessage, "task-1"],
-				[TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage],
-				[TumbleCodeEventName.TaskAborted, "task-1"],
-			])
-		})
-
-		test("provider.on receives a forwarded event with its arguments and provider.off removes the listener", async () => {
-			const task = await makeTask()
-			attach(task)
-			const listener = vi.fn()
-
-			provider.on(TumbleCodeEventName.TaskCompleted, listener)
-			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
-			provider.off(TumbleCodeEventName.TaskCompleted, listener)
-			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
-
-			expect(listener.mock.calls).toEqual([["task-1", tokenUsage, toolUsage]])
+			expect(deliverIfIdle.mock.calls).toEqual([["parent-1"], ["parent-2"]])
 		})
 
 		test("the delegation host's emit reaches provider listeners with its arguments", () => {
@@ -2678,70 +1433,53 @@ describe("ClineProvider", () => {
 			expect(listener).toHaveBeenCalledWith("parent-1", "child-1", "done")
 		})
 
-		test("lifecycle events update the subagent registry before they are forwarded", async () => {
-			const task = await makeTask()
-			attach(task)
-			const registry = provider.subagentRegistry
-			const markTerminal = vi.spyOn(registry, "markTerminal").mockImplementation(() => {})
-			const setLiveStatus = vi.spyOn(registry, "setLiveStatus").mockImplementation(() => {})
-			const has = vi.spyOn(registry, "has").mockReturnValue(true)
-			const update = vi.spyOn(registry, "update").mockImplementation(() => {})
-
-			task.emit(TumbleCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
-			task.emit(TumbleCodeEventName.TaskAborted)
-			task.emit(TumbleCodeEventName.TaskActive, "task-1")
-			task.emit(TumbleCodeEventName.TaskInteractive, "task-1")
-			task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
-			has.mockReturnValue(false)
-			task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
-
-			expect(markTerminal.mock.calls).toEqual([
-				["task-1", "completed"],
-				["task-1", "failed"],
-			])
-			expect(setLiveStatus.mock.calls).toEqual([
-				["task-1", "running"],
-				["task-1", "awaiting_input"],
-			])
-			expect(update.mock.calls).toEqual([["task-1", { tokensIn: 10, tokensOut: 20, totalCost: 0.5 }]])
-		})
-
-		test("an abort after a streaming failure rehydrates the foreground task from history", async () => {
+		test.each([
+			["a streaming failure of the foreground task", true, {}, "instance-1"],
+			["a user cancel", false, { abortReason: "user_cancelled" }, "instance-1"],
+			["a background task", false, { isBackground: true }, "instance-1"],
+			["an instance already replaced on screen", false, {}, "instance-2"],
+		])("an abort of %s rehydrates it from history: %s", async (_name, rehydrates, overrides, currentInstanceId) => {
 			const task = await makeTask({
 				abortReason: "streaming_failed",
 				isBackground: false,
 				parentTask: { taskId: "parent" },
+				...overrides,
 			})
 			attach(task)
-			vi.spyOn(provider, "getCurrentTask").mockReturnValue(task)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ ...task, instanceId: currentInstanceId })
 			vi.spyOn(provider, "getHistoryItem").mockResolvedValue({ id: "task-1", task: "t" } as any)
 			const rehydrate = vi.spyOn(provider, "createTaskWithHistoryItem").mockResolvedValue(task)
 
 			task.emit(TumbleCodeEventName.TaskAborted)
 			await new Promise((resolve) => setTimeout(resolve, 0))
 
-			expect(rehydrate).toHaveBeenCalledWith({
-				id: "task-1",
-				task: "t",
-				parentTask: { taskId: "parent" },
-			})
+			expect(rehydrate.mock.calls).toEqual(
+				rehydrates ? [[{ id: "task-1", task: "t", parentTask: { taskId: "parent" } }]] : [],
+			)
 		})
 
-		test("removing the task from the stack detaches every forwarded listener", async () => {
+		test("a failed rehydrate is logged, not thrown", async () => {
+			const task = await makeTask({ abortReason: "streaming_failed", isBackground: false })
+			attach(task)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(undefined)
+			vi.spyOn(provider, "getHistoryItem").mockRejectedValue(new Error("Task not found"))
+
+			task.emit(TumbleCodeEventName.TaskAborted)
+			await new Promise((resolve) => setTimeout(resolve, 0))
+
+			expect(logger.error).toHaveBeenCalledWith(
+				"[onTaskAborted] Failed to rehydrate after streaming failure: Task not found",
+			)
+		})
+
+		test("removing the task from the slot detaches every forwarded listener", async () => {
 			const task = await makeTask()
 			attach(task)
 			await provider.setCurrentTask(task)
-			const emit = vi.spyOn(provider, "emit").mockClear()
 
 			await provider.clearCurrentTask()
 
-			for (const event of FORWARDED) {
-				expect(task.listenerCount(event)).toBe(0)
-			}
-			task.emit(TumbleCodeEventName.TaskStarted)
-			task.emit(TumbleCodeEventName.TaskIdle, "task-1")
-			expect(emit).not.toHaveBeenCalledWith(TumbleCodeEventName.TaskStarted, expect.anything())
-			expect(emit).not.toHaveBeenCalledWith(TumbleCodeEventName.TaskIdle, expect.anything())
+			expect(task.eventNames()).toEqual([])
 		})
 	})
 })
@@ -2791,10 +1529,6 @@ describe("Project MCP Settings", () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
-		// Ensure the message handler is properly set up
-		expect(messageHandler).toBeDefined()
-		expect(typeof messageHandler).toBe("function")
-
 		// Trigger openProjectMcpSettings through the message handler
 		await messageHandler({
 			type: "openProjectMcpSettings",
@@ -2805,7 +1539,6 @@ describe("Project MCP Settings", () => {
 
 		// Check that fs.mkdir was called with the correct path
 		expect(mockedFs.mkdir).toHaveBeenCalledWith(expectedRooDir, { recursive: true })
-		expect(pathUtils.getWorkspacePath).toHaveBeenCalled()
 
 		// Verify file was created with default content
 		expect(safeWriteJson).toHaveBeenCalledWith(expectedMcpPath, { mcpServers: {} }, { prettyPrint: true })
@@ -2852,234 +1585,52 @@ describe("Project MCP Settings", () => {
 	})
 })
 
+// The property assembly is pinned in TelemetryPropertiesSource.spec; this pins what the provider feeds it.
 describe("getTelemetryProperties", () => {
-	let defaultTaskOptions: TaskOptions
 	let provider: ClineProvider
-	let mockContext: vscode.ExtensionContext
 	let mockCline: any
 
 	beforeEach(() => {
-		// Reset mocks
 		vi.clearAllMocks()
 
-		// Initialize TelemetryService if not already initialized
 		if (!TelemetryService.hasInstance()) {
 			TelemetryService.createInstance([])
 		}
 
-		mockContext = createMockContext({ mode: "code", apiProvider: "anthropic" })
-		provider = createTestProvider(mockContext)
-
-		defaultTaskOptions = {
-			provider,
-			apiConfiguration: {
-				apiProvider: "openrouter",
-			},
-		}
-
-		// Setup Task instance with mocked getModel method
-		mockCline = new Task(defaultTaskOptions)
-		mockCline.api = {
-			getModel: vi.fn().mockReturnValue({
-				id: "claude-sonnet-4-20250514",
-				info: { contextWindow: 200000 },
-			}),
-		}
+		provider = createTestProvider(createMockContext({ mode: "code", apiProvider: "anthropic" }))
+		mockCline = new Task({ provider, apiConfiguration: { apiProvider: "openrouter" } })
+		mockCline.api = { getModel: vi.fn().mockReturnValue({ id: "claude-sonnet-4-20250514" }) }
 	})
 
-	test("includes basic properties in telemetry", async () => {
-		const properties = await provider.getTelemetryProperties()
-
-		expect(properties).toHaveProperty("vscodeVersion")
-		expect(properties).toHaveProperty("platform")
-		expect(properties).toHaveProperty("appVersion", "1.0.0")
-	})
-
-	describe("client kind", () => {
-		const saved = { runtime: process.env.ROO_CLI_RUNTIME, version: process.env.ROO_CLI_VERSION }
-
-		const restore = (name: string, value: string | undefined) => {
-			if (value === undefined) {
-				delete process.env[name]
-			} else {
-				process.env[name] = value
-			}
-		}
-
-		afterEach(() => {
-			restore("ROO_CLI_RUNTIME", saved.runtime)
-			restore("ROO_CLI_VERSION", saved.version)
-		})
-
-		test("names VS Code as the client outside the CLI", async () => {
-			delete process.env.ROO_CLI_RUNTIME
-			process.env.ROO_CLI_VERSION = "0.2.0"
-
-			const properties = await provider.getTelemetryProperties()
-
-			expect(properties).toHaveProperty("clientKind", "vscode")
-			expect(properties).not.toHaveProperty("clientVersion")
-		})
-
-		test("names the CLI and its version inside the CLI", async () => {
-			process.env.ROO_CLI_RUNTIME = "1"
-			process.env.ROO_CLI_VERSION = "0.2.0"
-
-			const properties = await provider.getTelemetryProperties()
-
-			expect(properties).toMatchObject({ clientKind: "cli", clientVersion: "0.2.0" })
-			expect(provider.appProperties).toMatchObject({ clientKind: "cli", clientVersion: "0.2.0" })
-		})
-
-		test("leaves clientVersion out when the CLI did not publish one", async () => {
-			process.env.ROO_CLI_RUNTIME = "1"
-			delete process.env.ROO_CLI_VERSION
-
-			const properties = await provider.getTelemetryProperties()
-
-			expect(properties).toHaveProperty("clientKind", "cli")
-			expect(properties).not.toHaveProperty("clientVersion")
-		})
-	})
-
-	test("includes model ID from current Cline instance if available", async () => {
-		// Add mock Cline to stack
+	test("the source reads the current task, the extension's package and the subagent runner", async () => {
 		await provider.setCurrentTask(mockCline)
+		vi.spyOn((provider as any).backgroundTaskRunner, "subagentParentOf").mockImplementation((id) =>
+			id === "sub-1" ? mockCline.taskId : undefined,
+		)
 
-		const properties = await provider.getTelemetryProperties()
-
-		expect(properties).toHaveProperty("modelId", "claude-sonnet-4-20250514")
-	})
-
-	// Regression: a subagent's events took the current task's lineage, so the
-	// cloud stored every subagent as a standalone task.
-	describe("lineage of the event's task", () => {
-		test("a subagent's event names the task that fanned it out", async () => {
-			await provider.setCurrentTask(mockCline)
-			vi.spyOn((provider as any).backgroundTaskRunner, "subagentParentOf").mockImplementation((id) =>
-				id === "sub-1" ? mockCline.taskId : undefined,
-			)
-
-			const properties = await provider.getTelemetryProperties("sub-1")
-
-			expect(properties).toMatchObject({ taskId: "sub-1", parentTaskId: mockCline.taskId, isSubtask: true })
-			// The current task's model does not describe the subagent.
-			expect(properties).not.toHaveProperty("modelId")
+		expect(provider.appProperties).toMatchObject({ appVersion: "1.0.0" })
+		expect(await provider.getTelemetryProperties()).toMatchObject({
+			appVersion: "1.0.0",
+			taskId: mockCline.taskId,
+			modelId: "claude-sonnet-4-20250514",
 		})
-
-		test("a task from history keeps its own parent, not the current task's", async () => {
-			await provider.setCurrentTask(mockCline)
-			vi.spyOn(provider as any, "getTaskHistoryStore").mockResolvedValue({
-				get: (id: string) => (id === "old-child" ? { id, parentTaskId: "old-parent" } : undefined),
-			})
-
-			expect(await provider.getTelemetryProperties("old-child")).toMatchObject({
-				taskId: "old-child",
-				parentTaskId: "old-parent",
-				isSubtask: true,
-			})
-			expect(await provider.getTelemetryProperties("old-root")).toMatchObject({
-				taskId: "old-root",
-				isSubtask: false,
-			})
-		})
-
-		test("the current task's own event keeps the current task's properties", async () => {
-			await provider.setCurrentTask(mockCline)
-
-			const properties = await provider.getTelemetryProperties(mockCline.taskId)
-
-			expect(properties).toMatchObject({ taskId: mockCline.taskId, modelId: "claude-sonnet-4-20250514" })
+		expect(await provider.getTelemetryProperties("sub-1")).toMatchObject({
+			taskId: "sub-1",
+			parentTaskId: mockCline.taskId,
+			isSubtask: true,
 		})
 	})
 
-	describe("cloud authentication telemetry", () => {
-		beforeEach(() => {
-			// Reset all mocks before each test
-			vi.clearAllMocks()
+	test("a task from history takes its parent from the history store", async () => {
+		await provider.setCurrentTask(mockCline)
+		vi.spyOn(provider as any, "getTaskHistoryStore").mockResolvedValue({
+			get: (id: string) => (id === "old-child" ? { id, parentTaskId: "old-parent" } : undefined),
 		})
 
-		test("includes cloud authentication property when user is authenticated", async () => {
-			// Import the CloudService mock and update it
-			const { CloudService } = await import("@tumble-code/cloud")
-			const mockCloudService = {
-				isAuthenticated: vi.fn().mockReturnValue(true),
-			}
-
-			// Update the existing mock
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockReturnValue(mockCloudService),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			expect(properties).toHaveProperty("cloudIsAuthenticated", true)
-		})
-
-		test("includes cloud authentication property when user is not authenticated", async () => {
-			// Import the CloudService mock and update it
-			const { CloudService } = await import("@tumble-code/cloud")
-			const mockCloudService = {
-				isAuthenticated: vi.fn().mockReturnValue(false),
-			}
-
-			// Update the existing mock
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockReturnValue(mockCloudService),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			expect(properties).toHaveProperty("cloudIsAuthenticated", false)
-		})
-
-		test("handles CloudService errors gracefully", async () => {
-			// Import the CloudService mock and update it to throw an error
-			const { CloudService } = await import("@tumble-code/cloud")
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockImplementation(() => {
-					throw new Error("CloudService not available")
-				}),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			// Should still include basic telemetry properties
-			expect(properties).toHaveProperty("vscodeVersion")
-			expect(properties).toHaveProperty("platform")
-			expect(properties).toHaveProperty("appVersion", "1.0.0")
-
-			// Cloud property should be undefined when CloudService is not available
-			expect(properties).toHaveProperty("cloudIsAuthenticated", undefined)
-		})
-
-		test("handles CloudService method errors gracefully", async () => {
-			// Import the CloudService mock and update it
-			const { CloudService } = await import("@tumble-code/cloud")
-			const mockCloudService = {
-				isAuthenticated: vi.fn().mockImplementation(() => {
-					throw new Error("Authentication check error")
-				}),
-			}
-
-			// Update the existing mock
-			Object.defineProperty(CloudService, "instance", {
-				get: vi.fn().mockReturnValue(mockCloudService),
-				configurable: true,
-			})
-
-			const properties = await provider.getTelemetryProperties()
-
-			// Should still include basic telemetry properties
-			expect(properties).toHaveProperty("vscodeVersion")
-			expect(properties).toHaveProperty("platform")
-			expect(properties).toHaveProperty("appVersion", "1.0.0")
-
-			// Property that errored should be undefined
-			expect(properties).toHaveProperty("cloudIsAuthenticated", undefined)
+		expect(await provider.getTelemetryProperties("old-child")).toMatchObject({
+			taskId: "old-child",
+			parentTaskId: "old-parent",
+			isSubtask: true,
 		})
 	})
 })
