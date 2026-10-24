@@ -1,3 +1,4 @@
+import { existsSync } from "fs"
 import fs from "fs/promises"
 import * as path from "path"
 
@@ -43,5 +44,15 @@ export async function fileExistsAtPath(filePath: string): Promise<boolean> {
 		return true
 	} catch {
 		return false
+	}
+}
+
+/**
+ * Loads KEY=value pairs from an optional env file into process.env.
+ * A missing file is not an error; variables already set in the environment win.
+ */
+export function loadOptionalEnvFile(envPath: string): void {
+	if (existsSync(envPath)) {
+		process.loadEnvFile(envPath)
 	}
 }

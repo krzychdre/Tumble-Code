@@ -1,23 +1,10 @@
 import * as vscode from "vscode"
-import * as dotenvx from "@dotenvx/dotenvx"
-import * as fs from "fs"
 import * as path from "path"
 
-// Load environment variables from .env file
-// The extension-level .env is optional (not shipped in production builds).
-// Avoid calling dotenvx when the file doesn't exist, otherwise dotenvx emits
-// a noisy [MISSING_ENV_FILE] error to the extension host console.
-const envPath = path.join(__dirname, "..", ".env")
-if (fs.existsSync(envPath)) {
-	try {
-		dotenvx.config({ path: envPath, quiet: true })
-	} catch (e) {
-		// Best-effort only: never fail extension activation due to optional env loading.
-		// The logger is not configured this early; the console is the only place to report it.
-		// eslint-disable-next-line no-console
-		console.warn("Failed to load environment variables:", e)
-	}
-}
+import { loadOptionalEnvFile } from "./utils/fs"
+
+// Development-only .env next to the extension; production builds do not ship one.
+loadOptionalEnvFile(path.join(__dirname, "..", ".env"))
 
 import { type CloudUserInfo, type AuthState, readCliRuntimeEnv, formatLanguage } from "@tumble-code/types"
 import { CloudService } from "@tumble-code/cloud"

@@ -28,8 +28,8 @@ DeepSeek one needs a real key.
 3. Credentials in `apps/vscode-e2e/.env.local` (copy from `.env.local.sample`):
     - `OPENROUTER_API_KEY` — for the three model-backed smoke suites.
     - `DEEPSEEK_API_KEY`, `ZAI_API_KEY` — only for the opt-in provider suites.
-      The file is loaded by `dotenvx`; keys left out simply cause the dependent
-      suites to skip.
+      `pnpm test:run` loads it with `node --env-file-if-exists`; keys left out
+      simply cause the dependent suites to skip.
 4. Linux without a display: run under `xvfb-run -a` (see
    `.github/workflows/vscode-e2e.yml`).
 
