@@ -127,18 +127,18 @@ appear in the panel with a "CLI" badge.
 > (`http://localhost:9000`) is what the _browser_ is redirected to;
 > `AUTHENTIK_INTERNAL_URL` (`http://auth_server:9000`) is what the _api container_
 > uses for server-to-server calls (token/userinfo/jwks). Both are preset in
-> `docker-compose.yml` — only change them if you front Authentik with a real
+> `docker-compose.yml`; only change them if you front Authentik with a real
 > domain/reverse proxy (then point `AUTHENTIK_BASE_URL` at the public domain and
 > leave `AUTHENTIK_INTERNAL_URL` as the in-network service URL).
 >
 > **Why the api overrides the `Host` header on back-channel calls.** Authentik
-> resolves a request's _brand_ — and therefore serves its `/application/o/*`
-> routes — from the HTTP `Host` header, and rejects hosts containing an
+> resolves a request's _brand_ (and therefore serves its `/application/o/*`
+> routes) from the HTTP `Host` header, and rejects hosts containing an
 > underscore (`auth_server` is not a valid RFC-1123 hostname) with a **404**.
 > So the api connects to `AUTHENTIK_INTERNAL_URL` for networking but sends the
 > _front-channel_ host (the host of `AUTHENTIK_BASE_URL`, e.g. `localhost:9000`
-> or `auth.tumblecode.dev`) as `Host`. This is automatic — you don't configure
-> it — and it is why the underscore in the default `auth_server` service name is
+> or `auth.tumblecode.dev`) as `Host`. This is automatic (you don't configure
+> it), and it is why the underscore in the default `auth_server` service name is
 > harmless. If back-channel token exchange ever 404s, this is the mechanism to
 > look at (see [`config/auth.py`](config/auth.py) → `get_back_channel_host_header`).
 
@@ -246,7 +246,7 @@ history, stamp the baseline and upgrade; MANAGED: upgrade).
 The server itself never creates or alters tables, so run `make migrate` before
 the first start and again after every update that brings a new migration.
 
-For a non-compose deployment, leave `AUTHENTIK_INTERNAL_URL` unset — it falls
+For a non-compose deployment, leave `AUTHENTIK_INTERNAL_URL` unset; it falls
 back to `AUTHENTIK_BASE_URL`.
 
 A [`Makefile`](Makefile) wraps these commands (`make help`, `make dev`,
@@ -263,7 +263,7 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `tumble-code` to c
 
 > **Auto-detect:** When `clerkBaseUrl` is not explicitly configured, the extension
 > automatically uses the same URL as `cloudApiUrl` for Clerk auth requests. This means
-> that for self-hosted deployments, you only need to set `cloudApiUrl` — the extension
+> that for self-hosted deployments, you only need to set `cloudApiUrl`: the extension
 > will automatically send auth requests (like ticket validation) to your self-hosted API
 > instead of the production Clerk.
 >
@@ -317,7 +317,7 @@ callback re-checks the stored value before it mints a ticket:
 **`502 Bad Gateway` on `/auth/clerk/callback` right after Authentik login:**
 
 - This is the API's own error page, returned when the **back-channel token
-  exchange** to Authentik fails — not a reverse-proxy error.
+  exchange** to Authentik fails, not a reverse-proxy error.
 - Check the API logs: `docker compose logs api | grep -i "token exchange"`.
   A `404 Not Found` for `…/application/o/token/` means Authentik rejected the
   request's `Host`. The api derives that `Host` from `AUTHENTIK_BASE_URL`, so
