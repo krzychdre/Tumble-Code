@@ -15,4 +15,11 @@ export const allowlist = [
 		removedBy: "an @lmstudio/sdk release that accepts zod 4 (then drop the @lmstudio/sdk>zod override too)",
 		expires: "2026-12-31",
 	},
+	{
+		id: "GHSA-xcx6-jx8p-x3h5",
+		module: "@azure/msal-node",
+		reason: "Reaches the prod tree only as @azure/identity, an optional peer of @mistralai/mistralai that the dev dependency @vscode/vsce installs. Mistral loads it only for Azure blob storage of workflow payloads (DefaultAzureCredential, not the affected auth_code flow); that code is not in the extension bundle and the VSIX ships no node_modules. @azure/identity 4.14.0 still requires msal-node ^6, and no 6.x is patched.",
+		removedBy: "an @azure/identity release that accepts @azure/msal-node 7.1+",
+		expires: "2026-11-30",
+	},
 ]

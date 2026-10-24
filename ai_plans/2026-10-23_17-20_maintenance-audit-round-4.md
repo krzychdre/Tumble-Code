@@ -139,7 +139,7 @@ g. **Small majors with no API we use beyond the default export:** `@vscode/test-
 10 to 11, `isbinaryfile` 5 to 6, `p-wait-for` 5 to 7, `safe-stable-stringify` 2 to 3, `serialize-error` 12 to
 13, `debounce` 2 to 3, `fuzzysort` 3 to 4, `@vscode/codicons` 0.0.36 to 0.0.46, `katex` 0.18 to 0.19,
 `ovsx` 1.3. One PR for the lot, read each changelog's breaking section while doing it. **Effort:** S to M.
-**Status:** #989 and #990 (nock 15); `mocha` 12 with `@vscode/test-electron` 3 in #1019, `serialize-error` 13 in #1021 (keeps the error texts for thrown non-Errors). Deferred: `@dotenvx/dotenvx` 2 (adds 2 MB to the bundle), `google-auth-library` 11 (the SDKs still depend on ^10), `isbinaryfile` 6 (needs Node 24).
+**Status:** #989 and #990 (nock 15); `mocha` 12 with `@vscode/test-electron` 3 in #1019, `serialize-error` 13 in #1021 (keeps the error texts for thrown non-Errors). `@dotenvx/dotenvx` replaced by Node's env-file support in #1033. Deferred: `google-auth-library` 11 (the SDKs still depend on ^10), `isbinaryfile` 6 (needs Node 24).
 h. **`web-tree-sitter` 0.25 to 0.27 with `tree-sitter-wasms` 0.1.13.** The grammar WASM files must match the
 runtime's ABI (`languageGrammars.ts:49` already documents one ABI mismatch). Verify in a worktree with the
 tree-sitter spec family before merging. **Effort:** S. **Risk:** medium.
@@ -808,16 +808,35 @@ Done in the night wave of 2026-10-24 (#1000 to #1021):
 - VSIX smoke test for the newly compiled `App`, `MermaidButton`, `useCodeIndexSettings` and `useScrollLifecycle`:
   the e2e suite is green on VS Code 1.102.
 
+Done in the day wave of 2026-10-24 (#1027 to #1045):
+
+- The `minimumReleaseAgeExclude` entries are gone: #1032 and #1042.
+- `@dotenvx/dotenvx` is replaced by Node's env-file support: #1033 (Dependabot's #1031 closed).
+- Gemini 4 Argon, Gemini 3.8 Flash and Gemini 3.5 Flash-Lite are in the Gemini and Vertex tables: #1034. The
+  Gemini 2.5 Pro and 2.5 Flash cache-read prices are current: #1035. LiteLLM sends Gemini thought signatures for
+  every generation from 2.5 on: #1037.
+- The CLI no longer hangs silently on an unreachable provider: the error text names the cause, the TUI and print
+  mode show each retry, and unattended runs give up after the 7th failed attempt: #1039.
+- The two e2e log nits: no guessed source-map preloads, and a missing `custom_modes.yaml` means no custom modes:
+  #1041.
+- `react-hooks/set-state-in-effect` is on again: #1036, #1038, #1040, #1043, #1044, #1045, with one documented
+  disable in `useScrollLifecycle`.
+- Dependabot: #1028 (`web-tree-sitter` 0.25.10) merged, #1029 closed; the dotenvx ignore was corrected in #1030
+  and removed with the dependency.
+- The third final verification (#1046) moved the `scripts/check-settings-defaults.mjs` allowlist key for
+  `ApiConfigManager.tsx` to line 137 (#1044 had shifted it, so the knip job failed), and accepted advisory
+  GHSA-xcx6-jx8p-x3h5 (`@azure/msal-node`, published 2026-10-23) in `scripts/audit-allowlist.mjs`: it reaches the
+  prod tree only through an optional peer of the Mistral SDK and never ships.
+
 Still open:
 
-- The `minimumReleaseAgeExclude` entries in `pnpm-workspace.yaml` can go after 2026-10-24T14:27Z.
 - TypeScript 7: revisit when `typescript-eslint` supports it (typescript-eslint#10940).
 - `web-tree-sitter` 0.26+: revisit when `tree-sitter-wasms` ships grammars with `dylink.0`.
-- `react-hooks/set-state-in-effect` stays off with 34 findings.
-- Two e2e log nits that predate this round: the source-map lookup tries `index.map.json` and `index.sourcemap`, and
-  `CustomModesManager` logs ENOENT on a fresh profile.
-- Newer Gemini and Vertex models are not added yet (a separate model refresh).
-- The open "Changeset version bump" PR #522 is left for the owner.
+- Babel 8 (A4i): `babel-plugin-react-compiler` declares no Babel 8 support yet.
+- `undici` 8 (A4j): deferred until a reason appears.
+- `google-auth-library` 11: the provider SDKs still require ^10.
+- `isbinaryfile` 6: needs Node 24.
+- The "Changeset version bump" PR #522 (merging it publishes the release): the owner's decision.
 
 ## NOT worth doing (decided in this round)
 
