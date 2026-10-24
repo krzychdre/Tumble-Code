@@ -156,120 +156,43 @@ describe("ClineProvider flicker-free cancel", () => {
 		})
 	})
 
-	it("should not remove current task from slot when rehydrating same taskId", async () => {
-		// Setup: install a task as current first
+	const historyItem = (id: string): HistoryItem => ({
+		id,
+		number: 1,
+		task: "test task",
+		ts: Date.now(),
+		tokensIn: 100,
+		tokensOut: 200,
+		totalCost: 0.001,
+		workspace: "/test/workspace",
+	})
+
+	it("rehydrating the current task replaces it in place, without clearing the slot", async () => {
 		;(provider as any).taskSlot.seedForTests(mockTask1)
+		const cleanups = [vi.fn(), vi.fn()]
+		;(provider as any).taskEventListeners.set(mockTask1, cleanups)
+		const clearCurrentTask = vi.spyOn(provider, "clearCurrentTask")
 
-		// Mock event listeners for cleanup
-		;(provider as any).taskEventListeners = new WeakMap()
-		const mockCleanupFunctions = [vi.fn(), vi.fn()]
-		;(provider as any).taskEventListeners.set(mockTask1, mockCleanupFunctions)
+		await provider.createTaskWithHistoryItem(historyItem("task-1"))
 
-		// Spy on clearCurrentTask to verify it's NOT called
-		const removeClineFromStackSpy = vi.spyOn(provider, "clearCurrentTask")
-
-		// Create history item with same taskId as current task
-		const historyItem: HistoryItem = {
-			id: "task-1", // Same as mockTask1.taskId
-			number: 1,
-			task: "test task",
-			ts: Date.now(),
-			tokensIn: 100,
-			tokensOut: 200,
-			totalCost: 0.001,
-			workspace: "/test/workspace",
-		}
-
-		// Act: Create task with history item (should rehydrate in-place)
-		await provider.createTaskWithHistoryItem(historyItem)
-
-		// Assert: clearCurrentTask should NOT be called
-		expect(removeClineFromStackSpy).not.toHaveBeenCalled()
-
-		// Verify the task was replaced in-place
+		expect(clearCurrentTask).not.toHaveBeenCalled()
 		expect((provider as any).taskSlot.current).toBe(mockTask2)
-
-		// Verify old event listeners were cleaned up
-		expect(mockCleanupFunctions[0]).toHaveBeenCalled()
-		expect(mockCleanupFunctions[1]).toHaveBeenCalled()
-
-		// Verify new task received focus event
+		expect(mockTask1.abortTask).toHaveBeenCalled()
+		for (const cleanup of cleanups) {
+			expect(cleanup).toHaveBeenCalled()
+		}
 		expect(mockTask2.emit).toHaveBeenCalledWith("taskFocused")
 	})
 
-	it("should remove current task when creating different task", async () => {
-		// Setup: install a task as current first
-		;(provider as any).taskSlot.seedForTests(mockTask1)
+	it.each([
+		["another task is current", () => (provider as any).taskSlot.seedForTests(mockTask1)],
+		["the slot is empty", () => (provider as any).taskSlot.seedForTests()],
+	])("opening a task from history when %s leaves the current one first", async (_name, seed) => {
+		seed()
+		const clearCurrentTask = vi.spyOn(provider, "clearCurrentTask").mockResolvedValue(undefined)
 
-		// Spy on clearCurrentTask to verify it IS called
-		const removeClineFromStackSpy = vi.spyOn(provider, "clearCurrentTask").mockResolvedValue(undefined)
+		await provider.createTaskWithHistoryItem(historyItem("task-2"))
 
-		// Create history item with different taskId
-		const historyItem: HistoryItem = {
-			id: "task-2", // Different from mockTask1.taskId
-			number: 2,
-			task: "different task",
-			ts: Date.now(),
-			tokensIn: 150,
-			tokensOut: 250,
-			totalCost: 0.002,
-			workspace: "/test/workspace",
-		}
-
-		// Act: Create task with different history item
-		await provider.createTaskWithHistoryItem(historyItem)
-
-		// Assert: clearCurrentTask should be called
-		expect(removeClineFromStackSpy).toHaveBeenCalled()
-	})
-
-	it("should handle an empty slot gracefully during rehydration attempt", async () => {
-		// Setup: no current task
-		;(provider as any).taskSlot.seedForTests()
-
-		// Spy on clearCurrentTask
-		const removeClineFromStackSpy = vi.spyOn(provider, "clearCurrentTask").mockResolvedValue(undefined)
-
-		// Create history item
-		const historyItem: HistoryItem = {
-			id: "task-1",
-			number: 1,
-			task: "test task",
-			ts: Date.now(),
-			tokensIn: 100,
-			tokensOut: 200,
-			totalCost: 0.001,
-			workspace: "/test/workspace",
-		}
-
-		// Act: Should not error and should call clearCurrentTask
-		await provider.createTaskWithHistoryItem(historyItem)
-
-		// Assert: clearCurrentTask should be called (no current task to rehydrate)
-		expect(removeClineFromStackSpy).toHaveBeenCalled()
-	})
-
-	it("should replace only the current task during flicker-free replacement", async () => {
-		// Setup: single current task (D7: the provider holds at most one)
-		;(provider as any).taskSlot.seedForTests(mockTask1)
-		;(provider as any).taskEventListeners = new WeakMap()
-		;(provider as any).taskEventListeners.set(mockTask1, [vi.fn()])
-
-		// Act: Rehydrate the current task
-		const historyItem: HistoryItem = {
-			id: "task-1",
-			number: 1,
-			task: "test task",
-			ts: Date.now(),
-			tokensIn: 100,
-			tokensOut: 200,
-			totalCost: 0.001,
-			workspace: "/test/workspace",
-		}
-
-		await provider.createTaskWithHistoryItem(historyItem)
-
-		// Assert: the slot now holds the replacement, nothing else
-		expect((provider as any).taskSlot.current).toBe(mockTask2)
+		expect(clearCurrentTask).toHaveBeenCalled()
 	})
 })

@@ -197,10 +197,12 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		// Simulate an abort that takes longer than the 3s pWaitFor bound.
 		// isStreaming stays true until the slow abort resolves.
 		// The abort resolves at 5000ms — past the 3000ms pWaitFor timeout.
+		const abandonedAtAbortStart: boolean[] = []
 		const task = makeMockTask({
 			isStreaming: true,
 			abortTaskImpl: () =>
 				new Promise<void>((resolve) => {
+					abandonedAtAbortStart.push(task.abandoned)
 					setTimeout(() => {
 						task.abort = true
 						task.isStreaming = false
@@ -232,6 +234,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		expect(errorSpy).not.toHaveBeenCalled()
 
 		// abandoned is set after the bounded wait, not before.
+		expect(abandonedAtAbortStart).toEqual([false])
 		expect(task.abandoned).toBe(true)
 
 		// The abort is still in progress (hasn't resolved at 3100ms).
@@ -245,37 +248,6 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 
 		vi.useRealTimers()
 		errorSpy.mockRestore()
-	})
-
-	it("abandoned is not set before the bounded wait concludes", async () => {
-		// Verify ordering: abandoned should be false when abortTask starts,
-		// and only set after the pWaitFor completes.
-		const task = makeMockTask({ isStreaming: true })
-		;(provider as any).taskSlot.seedForTests(task)
-
-		provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
-		provider.createTaskWithHistoryItem = vi.fn().mockResolvedValue(undefined) as any
-
-		const abandonedAtAbortStart: boolean[] = []
-		const origAbort = task.abortTask
-		task.abortTask = vi.fn(async () => {
-			abandonedAtAbortStart.push(task.abandoned)
-			await origAbort()
-		})
-
-		// Use fake timers so pWaitFor's 3s timeout fires instantly.
-		vi.useFakeTimers()
-		const cancelPromise = provider.cancelTask()
-		await vi.advanceTimersByTimeAsync(3100)
-		await cancelPromise
-
-		// When abortTask started, abandoned was NOT yet true.
-		expect(abandonedAtAbortStart).toHaveLength(1)
-		expect(abandonedAtAbortStart[0]).toBe(false)
-		// After cancelTask, abandoned is true.
-		expect(task.abandoned).toBe(true)
-
-		vi.useRealTimers()
 	})
 
 	describe("user cancel versus background tasks (CORE-R6 d characterization)", () => {
