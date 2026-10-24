@@ -1,1339 +1,310 @@
-// npx vitest run src/api/providers/__tests__/anthropic.spec.ts
+// cd src && ./node_modules/.bin/vitest run api/providers/__tests__/anthropic.spec.ts
+// Stream mapping and cost: transform/__tests__/anthropic-stream.spec and the protocol
+// characterization. This spec covers what AnthropicHandler adds: auth, model selection and
+// the request it builds.
 
+const mocks = vi.hoisted(() => ({ create: vi.fn(), captureException: vi.fn() }))
+
+vi.mock("@tumble-code/telemetry", () => ({
+	TelemetryService: { instance: { captureException: mocks.captureException } },
+}))
+vi.mock("@anthropic-ai/sdk", async () => {
+	const { anthropicModuleMock } = await import("./provider-test-helpers")
+	return anthropicModuleMock(mocks.create)
+})
+
+import { Anthropic } from "@anthropic-ai/sdk"
+import type OpenAI from "openai"
+
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { anthropicDefaultModelId, anthropicModels } from "@tumble-code/types"
 
 import { AnthropicHandler } from "../anthropic"
-import { ApiHandlerOptions } from "@tumble-code/core/browser"
+import { defaultAnthropicCreate } from "./provider-test-helpers"
 
-// Mock TelemetryService
-vitest.mock("@tumble-code/telemetry", () => ({
-	TelemetryService: {
-		instance: {
-			captureException: vitest.fn(),
-		},
-	},
-}))
+function handlerFor(options: Partial<ApiHandlerOptions> = {}) {
+	return new AnthropicHandler({ apiKey: "test-api-key", apiModelId: "claude-sonnet-4-5", ...options })
+}
 
-const mockCreate = vi.hoisted(() => vitest.fn())
+async function requestOf(
+	handler: AnthropicHandler,
+	messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }],
+	metadata?: Parameters<AnthropicHandler["createMessage"]>[2],
+) {
+	for await (const _chunk of handler.createMessage("System", messages, metadata)) {
+		// drain
+	}
+	const [body, requestOptions] = mocks.create.mock.calls.at(-1)!
+	return { body, betas: (requestOptions?.headers?.["anthropic-beta"] ?? "").split(","), requestOptions }
+}
 
-vitest.mock("@anthropic-ai/sdk", async () => {
-	const { anthropicModuleMock } = await import("./provider-test-helpers")
-	return anthropicModuleMock(
-		mockCreate.mockImplementation(async (options) => {
-			if (!options.stream) {
-				return {
-					id: "test-completion",
-					content: [{ type: "text", text: "Test response" }],
-					role: "assistant",
-					model: options.model,
-					usage: {
-						input_tokens: 10,
-						output_tokens: 5,
-					},
-				}
-			}
-			return {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						type: "message_start",
-						message: {
-							usage: {
-								input_tokens: 100,
-								output_tokens: 50,
-								cache_creation_input_tokens: 20,
-								cache_read_input_tokens: 10,
-							},
-						},
-					}
-					yield {
-						type: "content_block_start",
-						index: 0,
-						content_block: {
-							type: "text",
-							text: "Hello",
-						},
-					}
-					yield {
-						type: "content_block_delta",
-						delta: {
-							type: "text_delta",
-							text: " world",
-						},
-					}
-				},
-			}
-		}),
-	)
+beforeEach(() => {
+	vi.clearAllMocks()
+	mocks.create.mockImplementation(defaultAnthropicCreate)
 })
 
-// Import after mock
-import { Anthropic } from "@anthropic-ai/sdk"
+describe("client auth", () => {
+	it.each([
+		["the API key by default", {}, { apiKey: "test-api-key" }, "authToken"],
+		[
+			"the API key when the auth token is asked for without a base URL",
+			{ anthropicUseAuthToken: true },
+			{ apiKey: "test-api-key" },
+			"authToken",
+		],
+		[
+			"an auth token for a custom base URL",
+			{ anthropicBaseUrl: "https://proxy.example.com", anthropicUseAuthToken: true },
+			{ authToken: "test-api-key", baseURL: "https://proxy.example.com" },
+			"apiKey",
+		],
+	])("sends %s", (_label, options, expected, absent) => {
+		handlerFor(options)
+		const config = vi.mocked(Anthropic).mock.calls.at(-1)![0]!
+		expect(config).toMatchObject(expected)
+		expect((config as Record<string, unknown>)[absent]).toBeUndefined()
+	})
+})
 
-const mockAnthropicConstructor = vitest.mocked(Anthropic)
-
-describe("AnthropicHandler", () => {
-	let handler: AnthropicHandler
-	let mockOptions: ApiHandlerOptions
-
-	beforeEach(() => {
-		mockOptions = {
-			apiKey: "test-api-key",
-			apiModelId: "claude-sonnet-4-5",
-		}
-		handler = new AnthropicHandler(mockOptions)
-		vitest.clearAllMocks()
+describe("getModel", () => {
+	it.each([
+		["the default model without an id", undefined, anthropicDefaultModelId, anthropicDefaultModelId],
+		["a known id", "claude-sonnet-4-5", "claude-sonnet-4-5", "claude-sonnet-4-5"],
+		[
+			"a custom id that contains a known id",
+			"Anthropic/Claude-Sonnet-4-5-20250929",
+			"Anthropic/Claude-Sonnet-4-5-20250929",
+			"claude-sonnet-4-5",
+		],
+		["an undated alias of a dated model", "claude-haiku-4-5", "claude-haiku-4-5", "claude-haiku-4-5-20251001"],
+		["the longest known id of several", "claude-opus-5-5-20261001", "claude-opus-5-5-20261001", "claude-opus-5-5"],
+	])("resolves %s", (_label, apiModelId, id, infoOf) => {
+		const model = handlerFor({ apiModelId }).getModel()
+		expect(model.id).toBe(id)
+		expect(model.info).toEqual(anthropicModels[infoOf as keyof typeof anthropicModels])
 	})
 
-	describe("constructor", () => {
-		it("should initialize with provided options", () => {
-			expect(handler).toBeInstanceOf(AnthropicHandler)
-			expect(handler.getModel().id).toBe(mockOptions.apiModelId)
+	it.each([
+		["a model retired on the Claude API", "claude-sonnet-4-20250514"],
+		["an unrecognized proxy id", "my-proxy-model"],
+		["an inherited object key", "toString"],
+	])("keeps %s with the default model's limits and no prices", (_label, apiModelId) => {
+		const { id, info } = handlerFor({ apiModelId }).getModel()
+		const defaultInfo = anthropicModels[anthropicDefaultModelId]
+		expect(id).toBe(apiModelId)
+		expect(info).toMatchObject({
+			contextWindow: defaultInfo.contextWindow,
+			maxTokens: defaultInfo.maxTokens,
+			supportsPromptCache: true,
 		})
-
-		it("should initialize with undefined API key", () => {
-			// The SDK will handle API key validation, so we just verify it initializes
-			const handlerWithoutKey = new AnthropicHandler({
-				...mockOptions,
-				apiKey: undefined,
-			})
-			expect(handlerWithoutKey).toBeInstanceOf(AnthropicHandler)
-		})
-
-		it("should use custom base URL if provided", () => {
-			const customBaseUrl = "https://custom.anthropic.com"
-			const handlerWithCustomUrl = new AnthropicHandler({
-				...mockOptions,
-				anthropicBaseUrl: customBaseUrl,
-			})
-			expect(handlerWithCustomUrl).toBeInstanceOf(AnthropicHandler)
-		})
-
-		it("use apiKey for passing token if anthropicUseAuthToken is not set", () => {
-			const handlerWithCustomUrl = new AnthropicHandler({
-				...mockOptions,
-			})
-			expect(handlerWithCustomUrl).toBeInstanceOf(AnthropicHandler)
-			expect(mockAnthropicConstructor).toHaveBeenCalledTimes(1)
-			expect(mockAnthropicConstructor.mock.calls[0]![0]!.apiKey).toEqual("test-api-key")
-			expect(mockAnthropicConstructor.mock.calls[0]![0]!.authToken).toBeUndefined()
-		})
-
-		it("use apiKey for passing token if anthropicUseAuthToken is set but custom base URL is not given", () => {
-			const handlerWithCustomUrl = new AnthropicHandler({
-				...mockOptions,
-				anthropicUseAuthToken: true,
-			})
-			expect(handlerWithCustomUrl).toBeInstanceOf(AnthropicHandler)
-			expect(mockAnthropicConstructor).toHaveBeenCalledTimes(1)
-			expect(mockAnthropicConstructor.mock.calls[0]![0]!.apiKey).toEqual("test-api-key")
-			expect(mockAnthropicConstructor.mock.calls[0]![0]!.authToken).toBeUndefined()
-		})
-
-		it("use authToken for passing token if both of anthropicBaseUrl and anthropicUseAuthToken are set", () => {
-			const customBaseUrl = "https://custom.anthropic.com"
-			const handlerWithCustomUrl = new AnthropicHandler({
-				...mockOptions,
-				anthropicBaseUrl: customBaseUrl,
-				anthropicUseAuthToken: true,
-			})
-			expect(handlerWithCustomUrl).toBeInstanceOf(AnthropicHandler)
-			expect(mockAnthropicConstructor).toHaveBeenCalledTimes(1)
-			expect(mockAnthropicConstructor.mock.calls[0]![0]!.authToken).toEqual("test-api-key")
-			expect(mockAnthropicConstructor.mock.calls[0]![0]!.apiKey).toBeUndefined()
-		})
+		expect([info.inputPrice, info.outputPrice, info.cacheWritesPrice, info.cacheReadsPrice]).toEqual([
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		])
 	})
 
-	describe("createMessage", () => {
-		const systemPrompt = "You are a helpful assistant."
-
-		it("should handle prompt caching for supported models", async () => {
-			const stream = handler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "First message" }],
-				},
-				{
-					role: "assistant",
-					content: [{ type: "text" as const, text: "Response" }],
-				},
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Second message" }],
-				},
-			])
-
-			const chunks: any[] = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// Verify usage information
-			const usageChunk = chunks.find((chunk) => chunk.type === "usage")
-			expect(usageChunk).toBeDefined()
-			expect(usageChunk?.inputTokens).toBe(100)
-			expect(usageChunk?.outputTokens).toBe(50)
-			expect(usageChunk?.cacheWriteTokens).toBe(20)
-			expect(usageChunk?.cacheReadTokens).toBe(10)
-
-			// Verify text content
-			const textChunks = chunks.filter((chunk) => chunk.type === "text")
-			expect(textChunks).toHaveLength(2)
-			expect(textChunks[0].text).toBe("Hello")
-			expect(textChunks[1].text).toBe(" world")
-
-			// Verify API
-			expect(mockCreate).toHaveBeenCalled()
+	it("honors custom max tokens and thinking budget only with the reasoning budget on", () => {
+		const custom = { modelMaxTokens: 32_768, modelMaxThinkingTokens: 16_384 }
+		expect(handlerFor({ ...custom, enableReasoningEffort: true }).getModel()).toMatchObject({
+			maxTokens: 32_768,
+			reasoningBudget: 16_384,
 		})
+		const off = handlerFor(custom).getModel()
+		expect(off.maxTokens).toBe(8192)
+		expect(off.reasoningBudget).toBeUndefined()
+	})
 
-		it("should include 1M context beta header for Claude Sonnet 4.5 when enabled", async () => {
-			const sonnet45Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5",
-				anthropicBeta1MContext: true,
-			})
+	it.each([
+		["claude-sonnet-4-5", true, { contextWindow: 1_000_000, inputPrice: 6.0, outputPrice: 22.5 }],
+		["claude-sonnet-4-6", true, { contextWindow: 1_000_000, inputPrice: 3.0, outputPrice: 15.0 }],
+		["claude-sonnet-4-5", false, { contextWindow: 200_000, inputPrice: 3.0 }],
+	])("prices %s with the 1M flag %s", (apiModelId, anthropicBeta1MContext, expected) => {
+		expect(handlerFor({ apiModelId, anthropicBeta1MContext }).getModel().info).toMatchObject(expected)
+	})
+})
 
-			const stream = sonnet45Handler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
-				},
-			])
+describe("createMessage request", () => {
+	it("marks the system prompt and the user messages for caching and passes the task signal", async () => {
+		const signal = new AbortController().signal
+		const { body, betas, requestOptions } = await requestOf(handlerFor(), undefined, { taskId: "t", signal })
 
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
-			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("context-1m-2025-08-07")
+		expect(body).toMatchObject({
+			model: "claude-sonnet-4-5",
+			max_tokens: 8192,
+			stream: true,
+			system: [{ text: "System", type: "text", cache_control: { type: "ephemeral" } }],
+			messages: [
+				{ role: "user", content: [{ type: "text", text: "Hello", cache_control: { type: "ephemeral" } }] },
+			],
 		})
+		expect(betas).toEqual(["fine-grained-tool-streaming-2025-05-14", "prompt-caching-2024-07-31"])
+		expect(requestOptions.signal).toBe(signal)
+	})
 
-		it("should not require the 1M context beta header for Claude Opus 4.7", async () => {
-			const opus47Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-4-7",
-				anthropicBeta1MContext: true,
-			})
+	it.each([
+		["claude-sonnet-4-5", true, true],
+		["claude-sonnet-4-5", false, false],
+		["claude-opus-4-7", true, false],
+		["claude-opus-4-8", true, false],
+	])("%s with the 1M flag %s sends the 1M beta: %s", async (apiModelId, anthropicBeta1MContext, sendsBeta) => {
+		const { betas } = await requestOf(handlerFor({ apiModelId, anthropicBeta1MContext }))
+		expect(betas.includes("context-1m-2025-08-07")).toBe(sendsBeta)
+	})
 
-			const stream = opus47Handler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
-				},
-			])
+	// Opus 5 and Sonnet 5 were missing from a hardcoded caching switch once, so their
+	// requests went out without cache breakpoints.
+	it.each([
+		"claude-opus-5-5",
+		"claude-opus-5",
+		"claude-sonnet-5-5",
+		"claude-sonnet-5",
+		"claude-fable-5-1",
+		"claude-fable-5",
+		"claude-haiku-5-5",
+		"claude-opus-4-7",
+	])("sends cache breakpoints and adaptive thinking without temperature for %s", async (apiModelId) => {
+		const { body, betas } = await requestOf(handlerFor({ apiModelId, enableReasoningEffort: true }))
+		expect(body.system[0].cache_control).toEqual({ type: "ephemeral" })
+		expect(body.messages[0].content[0].cache_control).toEqual({ type: "ephemeral" })
+		expect(body.thinking).toEqual({ type: "adaptive" })
+		expect(body).not.toHaveProperty("temperature")
+		expect(betas).toContain("prompt-caching-2024-07-31")
+	})
 
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
+	// Sonnet 5.5 and Haiku 5.5 reject `thinking: {type: "disabled"}` and budget_tokens: with the
+	// toggle off the parameter is omitted, which the API runs as adaptive thinking.
+	it.each(["claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-4-7"])(
+		"omits thinking for %s when reasoning is off",
+		async (apiModelId) => {
+			const { body } = await requestOf(handlerFor({ apiModelId, enableReasoningEffort: false }))
+			expect(body.thinking).toBeUndefined()
+		},
+	)
 
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
-			expect(requestBody?.temperature).toBeUndefined()
-			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
-			expect(requestOptions?.headers?.["anthropic-beta"]).not.toContain("context-1m-2025-08-07")
-		})
-
-		it("should use adaptive thinking for Claude Opus 4.7 when reasoning is enabled", async () => {
-			const opus47Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-4-7",
-				enableReasoningEffort: true,
-			})
-
-			const stream = opus47Handler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
-				},
-			])
-
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			expect(requestBody?.thinking).toEqual({ type: "adaptive" })
-			expect(requestBody?.max_tokens).toBe(16384)
-		})
-
-		it("should omit thinking for Claude Opus 4.7 when reasoning is disabled", async () => {
-			const opus47Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-4-7",
-				enableReasoningEffort: false,
-			})
-
-			const stream = opus47Handler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
-				},
-			])
-
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			expect(requestBody?.thinking).toBeUndefined()
-			expect(requestBody?.max_tokens).toBe(8192)
-		})
-
-		it("should preserve custom maxTokens for Claude Opus 4.7 when reasoning is enabled", async () => {
-			const opus47Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-4-7",
-				enableReasoningEffort: true,
-				modelMaxTokens: 32768,
-			})
-
-			const stream = opus47Handler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
-				},
-			])
-
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			expect(requestBody?.thinking).toEqual({ type: "adaptive" })
-			expect(requestBody?.max_tokens).toBe(32768)
-		})
-
-		it("should send a custom model id as-is and keep the cache breakpoints", async () => {
-			const customHandler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5-20250929",
-			})
-
-			const stream = customHandler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
-				},
-			])
-
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
-			expect(requestBody?.model).toBe("claude-sonnet-4-5-20250929")
-			expect(requestBody?.system[0].cache_control).toEqual({ type: "ephemeral" })
-			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
-		})
-
-		it("should use adaptive thinking for Claude Fable 5 when reasoning is enabled", async () => {
-			const fableHandler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-fable-5",
-				enableReasoningEffort: true,
-				modelMaxTokens: 32768,
-			})
-
-			const stream = fableHandler.createMessage(systemPrompt, [
-				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
-				},
-			])
-
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
-			expect(requestBody?.thinking).toEqual({ type: "adaptive" })
-			expect(requestBody?.temperature).toBeUndefined()
-			expect(requestBody?.max_tokens).toBe(32768)
-			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
-		})
-
-		// Opus 5 (the default model) and Sonnet 5 were missing from the hardcoded
-		// caching switch, so their requests went out with no cache breakpoints.
-		it.each([
-			"claude-opus-5-5",
-			"claude-opus-5",
-			"claude-sonnet-5-5",
-			"claude-sonnet-5",
-			"claude-fable-5-1",
-			"claude-fable-5",
-			"claude-haiku-5-5",
-		])("should send cache breakpoints and adaptive thinking for %s", async (modelId) => {
-			const claude5Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: modelId,
-				enableReasoningEffort: true,
-			})
-
-			const stream = claude5Handler.createMessage(systemPrompt, [
-				{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
-			])
-
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
-			expect(requestBody?.model).toBe(modelId)
-			expect(requestBody?.system).toEqual([
-				{ text: systemPrompt, type: "text", cache_control: { type: "ephemeral" } },
-			])
-			expect(requestBody?.messages[0].content[0].cache_control).toEqual({ type: "ephemeral" })
-			expect(requestBody?.thinking).toEqual({ type: "adaptive" })
-			expect(requestBody?.temperature).toBeUndefined()
-			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
-		})
-
-		// Sonnet 5.5 rejects `thinking: {type: "disabled"}` (and budget_tokens): with the toggle off the
-		// parameter must be omitted, which the API runs as adaptive thinking.
-		// Haiku 5.5 rejects `budget_tokens` and non-default sampling values the same way.
-		it.each(["claude-sonnet-5-5", "claude-haiku-5-5"])(
-			"omits the thinking parameter for %s when reasoning is off",
-			async (modelId) => {
-				const sonnet55Handler = new AnthropicHandler({
-					apiKey: "test-api-key",
-					apiModelId: modelId,
-					enableReasoningEffort: false,
-				})
-
-				const stream = sonnet55Handler.createMessage(systemPrompt, [
-					{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
-				])
-
-				for await (const _chunk of stream) {
-					// Consume stream
-				}
-
-				const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-				// undefined is dropped when the body is serialized
-				expect(requestBody?.thinking).toBeUndefined()
-				expect(requestBody?.temperature).toBeUndefined()
-			},
+	it("keeps the custom max tokens with adaptive thinking", async () => {
+		const { body } = await requestOf(
+			handlerFor({ apiModelId: "claude-opus-4-7", enableReasoningEffort: true, modelMaxTokens: 32768 }),
 		)
+		expect(body.max_tokens).toBe(32768)
+	})
 
-		it("should not require the 1M context beta header for Claude Opus 4.8", async () => {
-			const opus48Handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-4-8",
-				anthropicBeta1MContext: true,
-			})
-
-			const stream = opus48Handler.createMessage(systemPrompt, [
+	describe("output_config.effort", () => {
+		it.each([
+			[
+				"next to the toggle off (Opus 5.5 cannot disable thinking)",
+				{ apiModelId: "claude-opus-5-5", enableReasoningEffort: false, reasoningEffort: "xhigh" },
+				undefined,
+				{ effort: "xhigh" },
+			],
+			[
+				"next to adaptive thinking",
+				{ apiModelId: "claude-opus-4-7", enableReasoningEffort: true, reasoningEffort: "low" },
+				{ type: "adaptive" },
+				{ effort: "low" },
+			],
+			[
+				"next to budget thinking (Opus 4.6)",
 				{
-					role: "user",
-					content: [{ type: "text" as const, text: "Hello" }],
+					apiModelId: "claude-opus-4-6",
+					enableReasoningEffort: true,
+					reasoningEffort: "max",
+					modelMaxThinkingTokens: 4096,
 				},
-			])
-
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-
-			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
-			expect(requestBody?.temperature).toBeUndefined()
-			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
-			expect(requestOptions?.headers?.["anthropic-beta"]).not.toContain("context-1m-2025-08-07")
-		})
-	})
-
-	describe("completePrompt", () => {
-		it("should complete prompt successfully", async () => {
-			const result = await handler.completePrompt("Test prompt")
-			expect(result).toBe("Test response")
-			expect(mockCreate).toHaveBeenCalledWith({
-				model: mockOptions.apiModelId,
-				messages: [{ role: "user", content: "Test prompt" }],
-				max_tokens: 8192,
-				thinking: undefined,
-				stream: false,
-			})
-		})
-
-		it("should handle API errors", async () => {
-			mockCreate.mockRejectedValueOnce(new Error("Anthropic completion error: API Error"))
-			await expect(handler.completePrompt("Test prompt")).rejects.toThrow("Anthropic completion error: API Error")
-		})
-
-		it("should handle non-text content", async () => {
-			mockCreate.mockImplementationOnce(async () => ({
-				content: [{ type: "image" }],
-			}))
-			const result = await handler.completePrompt("Test prompt")
-			expect(result).toBe("")
-		})
-
-		it("should handle empty response", async () => {
-			mockCreate.mockImplementationOnce(async () => ({
-				content: [{ type: "text", text: "" }],
-			}))
-			const result = await handler.completePrompt("Test prompt")
-			expect(result).toBe("")
-		})
-	})
-
-	describe("reasoning effort (output_config.effort)", () => {
-		const lastRequestBody = () => mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
-
-		const send = async (options: ApiHandlerOptions) => {
-			const stream = new AnthropicHandler({ apiKey: "test-api-key", ...options }).createMessage("System", [
-				{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
-			])
-			for await (const _chunk of stream) {
-				// Consume stream
-			}
-			return lastRequestBody()
-		}
-
-		it("sends the chosen level with the thinking toggle off (Opus 5.5 cannot disable thinking)", async () => {
-			const body = await send({
-				apiModelId: "claude-opus-5-5",
-				enableReasoningEffort: false,
-				reasoningEffort: "xhigh",
-			})
-
-			expect(body?.output_config).toEqual({ effort: "xhigh" })
-			expect(body?.thinking).toBeUndefined()
-		})
-
-		it("sends the chosen level next to adaptive thinking", async () => {
-			const body = await send({
-				apiModelId: "claude-opus-4-7",
-				enableReasoningEffort: true,
-				reasoningEffort: "low",
-			})
-
-			expect(body?.thinking).toEqual({ type: "adaptive" })
-			expect(body?.output_config).toEqual({ effort: "low" })
-		})
-
-		it("sends the chosen level next to budget thinking (Opus 4.6)", async () => {
-			const body = await send({
-				apiModelId: "claude-opus-4-6",
-				enableReasoningEffort: true,
-				reasoningEffort: "max",
-				modelMaxThinkingTokens: 4096,
-			})
-
-			expect(body?.thinking).toEqual({ type: "enabled", budget_tokens: 4096 })
-			expect(body?.output_config).toEqual({ effort: "max" })
-		})
-
-		it("omits output_config when no level is chosen", async () => {
-			const body = await send({ apiModelId: "claude-opus-5-5", enableReasoningEffort: true })
-
-			expect(body).not.toHaveProperty("output_config")
+				{ type: "enabled", budget_tokens: 4096 },
+				{ effort: "max" },
+			],
+		])("is sent %s", async (_label, options, thinking, outputConfig) => {
+			const { body } = await requestOf(handlerFor(options as Partial<ApiHandlerOptions>))
+			expect(body.thinking).toEqual(thinking)
+			expect(body.output_config).toEqual(outputConfig)
 		})
 
 		it.each([
+			["claude-opus-5-5", undefined],
 			["claude-opus-5-5", "minimal"],
 			["claude-opus-5-5", "none"],
 			["claude-opus-4-6", "xhigh"],
 			["claude-opus-4-5-20251101", "max"],
-		] as const)(
-			"omits output_config for %s when the carried level %s is not offered",
-			async (apiModelId, level) => {
-				const body = await send({ apiModelId, enableReasoningEffort: true, reasoningEffort: level })
-
-				expect(body).not.toHaveProperty("output_config")
-			},
-		)
-
-		it.each(["claude-sonnet-4-5", "claude-haiku-4-5-20251001"])(
-			"never sends effort to %s, which rejects it",
-			async (apiModelId) => {
-				const body = await send({ apiModelId, reasoningEffort: "high" })
-
-				expect(body).not.toHaveProperty("output_config")
-			},
-		)
-
-		it("sends the chosen level from completePrompt", async () => {
-			await new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-5-5",
-				reasoningEffort: "medium",
-			}).completePrompt("Test prompt")
-
-			expect(lastRequestBody()?.output_config).toEqual({ effort: "medium" })
+			["claude-sonnet-4-5", "high"],
+			["claude-haiku-4-5-20251001", "high"],
+		] as const)("is omitted for %s with level %s (unset or not offered)", async (apiModelId, reasoningEffort) => {
+			const { body } = await requestOf(handlerFor({ apiModelId, enableReasoningEffort: true, reasoningEffort }))
+			expect(body).not.toHaveProperty("output_config")
 		})
 	})
 
-	describe("getModel", () => {
-		it("should return default model if no model ID is provided", () => {
-			const handlerWithoutModel = new AnthropicHandler({
-				...mockOptions,
-				apiModelId: undefined,
-			})
-			const model = handlerWithoutModel.getModel()
-			expect(model.id).toBeDefined()
-			expect(model.info).toBeDefined()
-		})
-
-		it("should return specified model if valid model ID is provided", () => {
-			const model = handler.getModel()
-			expect(model.id).toBe(mockOptions.apiModelId)
-			expect(model.info).toBeDefined()
-			expect(model.info.maxTokens).toBe(64_000)
-			expect(model.info.contextWindow).toBe(200_000)
-			expect(model.info.supportsImages).toBe(true)
-			expect(model.info.supportsPromptCache).toBe(true)
-		})
-
-		it("honors custom maxTokens when the reasoning budget is on", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5",
-				enableReasoningEffort: true,
-				modelMaxTokens: 32_768,
-				modelMaxThinkingTokens: 16_384,
-			})
-
-			const result = handler.getModel()
-			expect(result.maxTokens).toBe(32_768)
-			expect(result.reasoningBudget).toEqual(16_384)
-		})
-
-		it("does not honor custom maxTokens when the reasoning budget is off", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5",
-				modelMaxTokens: 32_768,
-				modelMaxThinkingTokens: 16_384,
-			})
-
-			const result = handler.getModel()
-			expect(result.maxTokens).toBe(8192)
-			expect(result.reasoningBudget).toBeUndefined()
-		})
-
-		it("should handle Claude 4.5 Sonnet model correctly", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-sonnet-4-5")
-			expect(model.info.maxTokens).toBe(64000)
-			expect(model.info.contextWindow).toBe(200000)
-			expect(model.info.supportsReasoningBudget).toBe(true)
-		})
-
-		it("should handle Claude 4.6 Sonnet model correctly", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-6",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-sonnet-4-6")
-			expect(model.info.maxTokens).toBe(128000)
-			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.info.supportsReasoningBudget).toBe(true)
-		})
-
-		it("should handle Claude Opus 4.7 model correctly", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-4-7",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-opus-4-7")
-			expect(model.info.maxTokens).toBe(128000)
-			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.maxTokens).toBe(8192)
-			expect(model.info.supportsReasoningBinary).toBe(true)
-			expect(model.info.supportsReasoningBudget).toBe(true)
-			expect(model.info.supportsPromptCache).toBe(true)
-			expect(model.reasoningBudget).toBeUndefined()
-		})
-
-		it("should handle Claude Opus 4.8 model correctly", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-4-8",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-opus-4-8")
-			expect(model.info.maxTokens).toBe(128000)
-			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.maxTokens).toBe(8192)
-			expect(model.info.supportsReasoningBinary).toBe(true)
-			expect(model.info.supportsReasoningBudget).toBe(true)
-			expect(model.info.supportsPromptCache).toBe(true)
-			expect(model.info.supportsTemperature).toBe(false)
-			expect(model.reasoningBudget).toBeUndefined()
-		})
-
-		it("should handle Claude Fable 5 model correctly", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-fable-5",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-fable-5")
-			expect(model.info.maxTokens).toBe(128000)
-			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.maxTokens).toBe(8192)
-			expect(model.info.supportsReasoningBinary).toBe(true)
-			expect(model.info.supportsReasoningBudget).toBe(true)
-			expect(model.info.supportsPromptCache).toBe(true)
-			expect(model.info.supportsTemperature).toBe(false)
-			expect(model.reasoningBudget).toBeUndefined()
-		})
-
-		it("should handle Claude Haiku 5.5 model correctly", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-haiku-5-5",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-haiku-5-5")
-			expect(model.info.maxTokens).toBe(128000)
-			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.maxTokens).toBe(8192)
-			expect(model.info.supportsReasoningBinary).toBe(true)
-			expect(model.info.supportsTemperature).toBe(false)
-			expect(model.info.inputPrice).toBe(0.1)
-			expect(model.info.longContextPricing?.thresholdTokens).toBe(100_000)
-		})
-
-		it("should enable 1M context for Claude 4.5 Sonnet when beta flag is set", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5",
-				anthropicBeta1MContext: true,
-			})
-			const model = handler.getModel()
-			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.info.inputPrice).toBe(6.0)
-			expect(model.info.outputPrice).toBe(22.5)
-		})
-
-		it("keeps standard prices for the native 1M window of Claude 4.6 Sonnet, even with the beta flag set", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-6",
-				anthropicBeta1MContext: true,
-			})
-			const model = handler.getModel()
-			expect(model.info.contextWindow).toBe(1000000)
-			expect(model.info.inputPrice).toBe(3.0)
-			expect(model.info.outputPrice).toBe(15.0)
-		})
-
-		it("keeps a saved id of a model retired on the Claude API as an unknown model without prices", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-20250514",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-sonnet-4-20250514")
-			expect(model.info.contextWindow).toBe(anthropicModels[anthropicDefaultModelId].contextWindow)
-			expect(model.info.inputPrice).toBeUndefined()
-			expect(model.info.outputPrice).toBeUndefined()
-		})
-
-		it("honors a custom model id that contains a known id and uses that model's info", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "Anthropic/Claude-Sonnet-4-5-20250929",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("Anthropic/Claude-Sonnet-4-5-20250929")
-			expect(model.info).toEqual(anthropicModels["claude-sonnet-4-5"])
-		})
-
-		it("matches an undated alias to the dated model it names", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-haiku-4-5",
-			})
-			const model = handler.getModel()
-			expect(model.id).toBe("claude-haiku-4-5")
-			expect(model.info).toEqual(anthropicModels["claude-haiku-4-5-20251001"])
-		})
-
-		it("prefers the longest known id when several match", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-opus-5-5-20261001",
-			})
-			expect(handler.getModel().info).toEqual(anthropicModels["claude-opus-5-5"])
-		})
-
-		it("honors an unrecognized model id with the default model's limits and no pricing", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "my-proxy-model",
-			})
-			const model = handler.getModel()
-			const defaultInfo = anthropicModels[anthropicDefaultModelId]
-			expect(model.id).toBe("my-proxy-model")
-			expect(model.info.contextWindow).toBe(defaultInfo.contextWindow)
-			expect(model.info.maxTokens).toBe(defaultInfo.maxTokens)
-			expect(model.info.supportsPromptCache).toBe(true)
-			expect(model.info.inputPrice).toBeUndefined()
-			expect(model.info.outputPrice).toBeUndefined()
-			expect(model.info.cacheWritesPrice).toBeUndefined()
-			expect(model.info.cacheReadsPrice).toBeUndefined()
-		})
-
-		it("does not resolve an inherited object key to a function", () => {
-			const handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "toString",
-			})
-			const model = handler.getModel()
-			expect(typeof model.info).toBe("object")
-			expect(model.info.contextWindow).toBe(anthropicModels[anthropicDefaultModelId].contextWindow)
-		})
-	})
-
-	describe("reasoning block filtering", () => {
-		const systemPrompt = "You are a helpful assistant."
-
-		it("should filter out internal reasoning blocks before sending to API", async () => {
-			handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5",
-			})
-
-			// Messages with internal reasoning blocks (from stored conversation history)
-			const messagesWithReasoning: Anthropic.Messages.MessageParam[] = [
-				{
-					role: "user",
-					content: "Hello",
-				},
-				{
-					role: "assistant",
-					content: [
-						{
-							type: "reasoning" as any,
-							text: "This is internal reasoning that should be filtered",
-						},
-						{
-							type: "text",
-							text: "This is the response",
-						},
-					],
-				},
-				{
-					role: "user",
-					content: "Continue",
-				},
-			]
-
-			const stream = handler.createMessage(systemPrompt, messagesWithReasoning)
-			const chunks: any[] = []
-
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// Verify the API was called with filtered messages (no reasoning blocks)
-			const calledMessages = mockCreate.mock.calls[mockCreate.mock.calls.length - 1][0].messages
-			expect(calledMessages).toHaveLength(3)
-
-			// Check assistant message - should have reasoning block filtered out
-			const assistantMessage = calledMessages.find((m: any) => m.role === "assistant")
-			expect(assistantMessage).toBeDefined()
-			expect(assistantMessage.content).toEqual([{ type: "text", text: "This is the response" }])
-
-			// Verify reasoning blocks were NOT sent to the API
-			expect(assistantMessage.content).not.toContainEqual(expect.objectContaining({ type: "reasoning" }))
-		})
-
-		it("should filter empty messages after removing all reasoning blocks", async () => {
-			handler = new AnthropicHandler({
-				apiKey: "test-api-key",
-				apiModelId: "claude-sonnet-4-5",
-			})
-
-			// Message with only reasoning content (should be completely filtered)
-			const messagesWithOnlyReasoning: Anthropic.Messages.MessageParam[] = [
-				{
-					role: "user",
-					content: "Hello",
-				},
-				{
-					role: "assistant",
-					content: [
-						{
-							type: "reasoning" as any,
-							text: "Only reasoning, no actual text",
-						},
-					],
-				},
-				{
-					role: "user",
-					content: "Continue",
-				},
-			]
-
-			const stream = handler.createMessage(systemPrompt, messagesWithOnlyReasoning)
-			const chunks: any[] = []
-
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// Verify empty message was filtered out
-			const calledMessages = mockCreate.mock.calls[mockCreate.mock.calls.length - 1][0].messages
-			expect(calledMessages.length).toBe(2) // Only the two user messages
-			expect(calledMessages.every((m: any) => m.role === "user")).toBe(true)
-		})
-	})
-
-	describe("native tool calling", () => {
-		const systemPrompt = "You are a helpful assistant."
-		const messages: Anthropic.Messages.MessageParam[] = [
-			{
-				role: "user",
-				content: [{ type: "text" as const, text: "What's the weather in London?" }],
-			},
+	it("converts the tools, tool_choice and parallel tool calls", async () => {
+		const tools: OpenAI.Chat.ChatCompletionTool[] = [
+			{ type: "function", function: { name: "get_weather", parameters: { type: "object", properties: {} } } },
 		]
+		const { body } = await requestOf(handlerFor(), undefined, {
+			taskId: "t",
+			tools,
+			tool_choice: "required",
+			parallelToolCalls: false,
+		})
+		expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual(["get_weather"])
+		expect(body.tool_choice).toEqual({ type: "any", disable_parallel_tool_use: true })
+	})
 
-		const mockTools = [
+	it("leaves out internal reasoning blocks and the messages they emptied", async () => {
+		const { body } = await requestOf(handlerFor(), [
+			{ role: "user", content: "Hello" },
 			{
-				type: "function" as const,
-				function: {
-					name: "get_weather",
-					description: "Get the current weather",
-					parameters: {
-						type: "object",
-						properties: {
-							location: { type: "string" },
-						},
-						required: ["location"],
-					},
-				},
+				role: "assistant",
+				content: [{ type: "reasoning", text: "internal" } as any, { type: "text", text: "Visible" }],
 			},
-		]
+			{ role: "assistant", content: [{ type: "reasoning", text: "only internal" } as any] },
+			{ role: "user", content: "Continue" },
+		])
+		expect(body.messages.map((message: any) => message.role)).toEqual(["user", "assistant", "user"])
+		expect(body.messages[1].content).toEqual([{ type: "text", text: "Visible" }])
+	})
 
-		it("should include tools in request when tools are provided", async () => {
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tools: expect.arrayContaining([
-						expect.objectContaining({
-							name: "get_weather",
-							description: "Get the current weather",
-							input_schema: expect.objectContaining({
-								type: "object",
-								properties: expect.objectContaining({
-									location: { type: "string" },
-								}),
-							}),
-						}),
-					]),
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should include tools when tools are provided", async () => {
-			const xmlHandler = new AnthropicHandler({
-				...mockOptions,
-			})
-
-			const stream = xmlHandler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			// Tool calling is request-driven: if tools are provided, we should include them.
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tools: expect.arrayContaining([
-						expect.objectContaining({
-							name: "get_weather",
-						}),
-					]),
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should always include tools in request (tools are always present after PR #10841)", async () => {
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			// Tools are now always present (minimum 6 from ALWAYS_AVAILABLE_TOOLS)
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tools: expect.any(Array),
-					tool_choice: expect.any(Object),
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should convert tool_choice 'auto' to Anthropic format", async () => {
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-				tool_choice: "auto",
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tool_choice: { type: "auto", disable_parallel_tool_use: false },
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should convert tool_choice 'required' to Anthropic 'any' format", async () => {
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-				tool_choice: "required",
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tool_choice: { type: "any", disable_parallel_tool_use: false },
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should set tool_choice to undefined when tool_choice is 'none' (tools are still passed)", async () => {
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-				tool_choice: "none",
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			// Tools are now always present (minimum 6 from ALWAYS_AVAILABLE_TOOLS)
-			// When tool_choice is 'none', the converter returns undefined for tool_choice
-			// but tools are still passed since they're always present
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tools: expect.any(Array),
-					tool_choice: undefined,
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should convert specific tool_choice to Anthropic 'tool' format", async () => {
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-				tool_choice: { type: "function" as const, function: { name: "get_weather" } },
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tool_choice: { type: "tool", name: "get_weather", disable_parallel_tool_use: false },
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should enable parallel tool calls when parallelToolCalls is true", async () => {
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-				tool_choice: "auto",
-				parallelToolCalls: true,
-			})
-
-			// Consume the stream to trigger the API call
-			for await (const _chunk of stream) {
-				// Just consume
-			}
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tool_choice: { type: "auto", disable_parallel_tool_use: false },
-				}),
-				expect.anything(),
-			)
-		})
-
-		it("should handle tool_use blocks in stream and emit tool_call_partial", async () => {
-			mockCreate.mockImplementationOnce(async () => ({
-				async *[Symbol.asyncIterator]() {
-					yield {
-						type: "message_start",
-						message: {
-							usage: {
-								input_tokens: 100,
-								output_tokens: 50,
-							},
-						},
-					}
-					yield {
-						type: "content_block_start",
-						index: 0,
-						content_block: {
-							type: "tool_use",
-							id: "toolu_123",
-							name: "get_weather",
-						},
-					}
-				},
-			}))
-
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-			})
-
-			const chunks: any[] = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// Find the tool_call_partial chunk
-			const toolCallChunk = chunks.find((chunk) => chunk.type === "tool_call_partial")
-			expect(toolCallChunk).toBeDefined()
-			expect(toolCallChunk).toEqual({
-				type: "tool_call_partial",
-				index: 0,
-				id: "toolu_123",
-				name: "get_weather",
-				arguments: undefined,
-			})
-		})
-
-		it("should handle input_json_delta in stream and emit tool_call_partial arguments", async () => {
-			mockCreate.mockImplementationOnce(async () => ({
-				async *[Symbol.asyncIterator]() {
-					yield {
-						type: "message_start",
-						message: {
-							usage: {
-								input_tokens: 100,
-								output_tokens: 50,
-							},
-						},
-					}
-					yield {
-						type: "content_block_start",
-						index: 0,
-						content_block: {
-							type: "tool_use",
-							id: "toolu_123",
-							name: "get_weather",
-						},
-					}
-					yield {
-						type: "content_block_delta",
-						index: 0,
-						delta: {
-							type: "input_json_delta",
-							partial_json: '{"location":',
-						},
-					}
-					yield {
-						type: "content_block_delta",
-						index: 0,
-						delta: {
-							type: "input_json_delta",
-							partial_json: '"London"}',
-						},
-					}
-					yield {
-						type: "content_block_stop",
-						index: 0,
-					}
-				},
-			}))
-
-			// Handler uses native protocol by default
-			const stream = handler.createMessage(systemPrompt, messages, {
-				taskId: "test-task",
-				tools: mockTools,
-			})
-
-			const chunks: any[] = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// Find the tool_call_partial chunks
-			const toolCallChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
-			expect(toolCallChunks).toHaveLength(3)
-
-			// First chunk has id and name
-			expect(toolCallChunks[0]).toEqual({
-				type: "tool_call_partial",
-				index: 0,
-				id: "toolu_123",
-				name: "get_weather",
-				arguments: undefined,
-			})
-
-			// Subsequent chunks have arguments
-			expect(toolCallChunks[1]).toEqual({
-				type: "tool_call_partial",
-				index: 0,
-				id: undefined,
-				name: undefined,
-				arguments: '{"location":',
-			})
-
-			expect(toolCallChunks[2]).toEqual({
-				type: "tool_call_partial",
-				index: 0,
-				id: undefined,
-				name: undefined,
-				arguments: '"London"}',
-			})
+	it("reports a failed request to telemetry and rethrows it", async () => {
+		const failure = new Error("overloaded")
+		mocks.create.mockRejectedValueOnce(failure)
+		await expect(requestOf(handlerFor())).rejects.toBe(failure)
+		expect(mocks.captureException.mock.calls[0][0]).toMatchObject({
+			message: "overloaded",
+			provider: "Anthropic",
+			modelId: "claude-sonnet-4-5",
+			operation: "createMessage",
 		})
 	})
 })
 
-// DEF-C9: the cost the handler reports must bill the final output token count.
-// Anthropic reports a small provisional output count in message_start and the
-// real, cumulative count in message_delta (SDK type MessageDeltaUsage:
-// "The cumulative number of output tokens which were used").
-describe("AnthropicHandler cost accounting", () => {
-	const scriptedStream = (events: any[]) =>
-		mockCreate.mockImplementationOnce(async () => ({
-			async *[Symbol.asyncIterator]() {
-				for (const event of events) {
-					yield event
-				}
-			},
-		}))
-
-	const collectCostChunk = async (handler: AnthropicHandler) => {
-		const chunks: any[] = []
-		for await (const chunk of handler.createMessage("system", [{ role: "user", content: "hi" }])) {
-			chunks.push(chunk)
-		}
-		const costChunks = chunks.filter((chunk) => chunk.type === "usage" && chunk.totalCost !== undefined)
-		expect(costChunks).toHaveLength(1)
-		return costChunks[0]
-	}
-
-	const expectedCost = (handler: AnthropicHandler, inputTokens: number, outputTokens: number) => {
-		const { inputPrice = 0, outputPrice = 0 } = handler.getModel().info
-		expect(outputPrice).toBeGreaterThan(0)
-		return (inputPrice * inputTokens + outputPrice * outputTokens) / 1_000_000
-	}
-
-	let handler: AnthropicHandler
-
-	beforeEach(() => {
-		vitest.clearAllMocks()
-		handler = new AnthropicHandler({ apiKey: "test-api-key", apiModelId: "claude-sonnet-4-5" })
+describe("completePrompt", () => {
+	it("sends one non-streaming user message and returns the text with usage", async () => {
+		const result = await handlerFor().completePromptWithUsage("Test prompt")
+		expect(result).toMatchObject({ text: "Test response", usage: { inputTokens: 10, outputTokens: 5 } })
+		expect(mocks.create).toHaveBeenCalledWith({
+			model: "claude-sonnet-4-5",
+			messages: [{ role: "user", content: "Test prompt" }],
+			max_tokens: 8192,
+			thinking: undefined,
+			stream: false,
+		})
 	})
 
-	it("bills the output tokens reported in message_delta", async () => {
-		scriptedStream([
-			{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 1 } } },
-			{ type: "content_block_start", index: 0, content_block: { type: "text", text: "Hello" } },
-			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
-			{ type: "message_stop" },
-		])
-
-		const costChunk = await collectCostChunk(handler)
-
-		expect(costChunk.totalCost).toBeCloseTo(expectedCost(handler, 1000, 500), 12)
+	it("sends the chosen effort level", async () => {
+		await handlerFor({ apiModelId: "claude-sonnet-5-5", reasoningEffort: "medium" }).completePrompt("p")
+		expect(mocks.create.mock.calls.at(-1)![0].output_config).toEqual({ effort: "medium" })
 	})
 
-	it("treats message_delta output tokens as cumulative and does not double count", async () => {
-		scriptedStream([
-			{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 1 } } },
-			{ type: "message_delta", delta: {}, usage: { output_tokens: 200 } },
-			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
-			{ type: "message_stop" },
-		])
-
-		const costChunk = await collectCostChunk(handler)
-
-		expect(costChunk.totalCost).toBeCloseTo(expectedCost(handler, 1000, 500), 12)
+	it.each([
+		["no text block", [{ type: "image" }], ""],
+		["a thinking block before the text", [{ type: "thinking" }, { type: "text", text: "visible" }], "visible"],
+	])("returns the text for %s", async (_label, content, text) => {
+		mocks.create.mockResolvedValueOnce({ content })
+		expect(await handlerFor().completePrompt("p")).toBe(text)
 	})
 
-	// Claude Haiku 5.5 bills a prompt over 100K tokens (cache reads and writes included) at five times
-	// every price, so the cost chunk must use the higher prices for the whole request.
-	it("bills a Claude Haiku 5.5 prompt over 100K tokens at the long prompt prices", async () => {
-		const haikuHandler = new AnthropicHandler({ apiKey: "test-api-key", apiModelId: "claude-haiku-5-5" })
-		scriptedStream([
-			{
-				type: "message_start",
-				message: {
-					usage: {
-						input_tokens: 1_000,
-						output_tokens: 1,
-						cache_creation_input_tokens: 0,
-						cache_read_input_tokens: 120_000,
-					},
-				},
-			},
-			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
-			{ type: "message_stop" },
-		])
-
-		const costChunk = await collectCostChunk(haikuHandler)
-
-		// Input 1000 x $0.50 + reads 120000 x $0.05 + output 500 x $2.50, per million.
-		expect(costChunk.totalCost).toBeCloseTo((1_000 * 0.5 + 120_000 * 0.05 + 500 * 2.5) / 1_000_000, 12)
-	})
-
-	it("keeps the message_start output count when no message_delta arrives", async () => {
-		scriptedStream([{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 7 } } }])
-
-		const costChunk = await collectCostChunk(handler)
-
-		expect(costChunk.totalCost).toBeCloseTo(expectedCost(handler, 1000, 7), 12)
+	it("reports a failed request to telemetry and rethrows it", async () => {
+		mocks.create.mockRejectedValueOnce(new Error("API Error"))
+		await expect(handlerFor().completePrompt("p")).rejects.toThrow("API Error")
+		expect(mocks.captureException.mock.calls[0][0]).toMatchObject({ operation: "completePrompt" })
 	})
 })
