@@ -49,8 +49,8 @@ jobs:
           EOF
       - name: Build VSIX
         run: pnpm vsix:nightly # Produces bin/roo-code-nightly-0.0.[count].vsix
-      # Marketplace publishing is disabled for this fork (no VSCE_PAT / OVSX_PAT).
-      # Instead, attach the nightly VSIX to a GitHub prerelease for direct download.
+      # Nightlies are not published to the Marketplace: the VSIX is attached to a
+      # GitHub prerelease for direct download.
       - name: Create nightly GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

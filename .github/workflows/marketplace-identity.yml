@@ -1,0 +1,25 @@
+# One-off: prints the Azure DevOps profile id of the publishing identity, which the
+# Marketplace needs to add it as a member of the QUB-IT publisher. Delete this file
+# once the identity is a member.
+name: Marketplace identity id
+
+on:
+  workflow_dispatch:
+
+jobs:
+  identity-id:
+    runs-on: ubuntu-latest
+    environment: marketplace
+    permissions:
+      id-token: write
+    steps:
+      - name: Azure login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Print the profile id
+        run: |
+          az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 --query id -o tsv

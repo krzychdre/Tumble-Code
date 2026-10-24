@@ -11,10 +11,13 @@ env:
 jobs:
   publish-extension:
     runs-on: ubuntu-latest
+    # The Azure managed identity trusts only jobs in this environment.
+    environment: marketplace
     permissions:
       contents: write # Required for pushing tags.
+      id-token: write # Required for the Microsoft Entra ID login (OIDC).
     env:
-      HAS_VSCE_PAT: ${{ secrets.VSCE_PAT != '' }}
+      HAS_OVSX_PAT: ${{ secrets.OVSX_PAT != '' }}
     if: >
         ( github.event_name == 'pull_request' &&
         github.event.pull_request.base.ref == 'main' &&
@@ -58,17 +61,22 @@ jobs:
           git tag -a "v${current_package_version}" -m "Release v${current_package_version}"
           git push origin "v${current_package_version}" --no-verify
           echo "Successfully created and pushed git tag v${current_package_version}"
-      # The fork has no Marketplace token: skip this step instead of failing the
-      # job, so the tag and the GitHub release below are still created.
-      - name: Publish Extension
-        if: env.HAS_VSCE_PAT == 'true'
+      # VS Code Marketplace: no stored token. The managed identity in the
+      # AZURE_* repository variables is a Contributor of the QUB-IT publisher.
+      - name: Azure login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Publish to VS Code Marketplace
+        run: pnpm --filter tumble-code publish:marketplace
+      # Open VSX has its own token; skip the step until OVSX_PAT is set.
+      - name: Publish to Open VSX
+        if: env.HAS_OVSX_PAT == 'true'
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: |
-          current_package_version=$(node -p "require('./src/package.json').version")
-          pnpm --filter tumble-code publish:marketplace
-          echo "Successfully published version $current_package_version to VS Code Marketplace"
+        run: pnpm --filter tumble-code publish:openvsx
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
