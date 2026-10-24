@@ -14,8 +14,8 @@
 // - codexSse:  OpenAiCodexHandler, the same events over the plain-fetch SSE fallback
 // - xai:       XAIHandler, events from the openai SDK stream (it has no fallback)
 //
-// The snapshots pin what each path yields, so the extraction of one shared core can
-// prove it changes nothing, and every deliberate change shows up as a snapshot diff.
+// The snapshots pin what OpenAI Native yields on both of its paths; the other handlers are
+// compared with it, so a change in the shared core shows up once as a snapshot diff.
 
 vitest.mock("@tumble-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
@@ -170,7 +170,6 @@ async function replay(events: unknown[]) {
 		nativeSse: await viaSseFallback(nativeHandler(), events, "missing"),
 		codex: await viaSdk(codexHandler(), events),
 		codexSse: await viaSseFallback(codexHandler(), events, "error"),
-		xai: await viaSdk(xaiHandler(), events),
 	}
 }
 
@@ -502,7 +501,10 @@ describe("Responses API handlers: replayed event fixtures", () => {
 	})
 
 	it.each(Object.entries(fixtures))("%s", async (_name, events) => {
-		expect(await replay(events)).toMatchSnapshot()
+		expect({
+			native: await viaSdk(nativeHandler(), events),
+			nativeSse: await viaSseFallback(nativeHandler(), events, "missing"),
+		}).toMatchSnapshot()
 	})
 })
 
@@ -699,23 +701,9 @@ describe("Responses API handlers: request bodies", () => {
 		vitest.unstubAllGlobals()
 	})
 
-	it.each([
-		["gpt-5.4 with default settings", {}],
-		[
-			"gpt-5.4 with effort, summary off, verbosity, flex tier and temperature",
-			{
-				reasoningEffort: "high",
-				enableResponsesReasoningSummary: false,
-				verbosity: "low",
-				openAiNativeServiceTier: "flex",
-				modelTemperature: 0.3,
-			},
-		],
-		["gpt-5.1 (24h prompt cache retention)", { apiModelId: "gpt-5.1" }],
-		["gpt-4.1 (no reasoning, temperature)", { apiModelId: "gpt-4.1", openAiNativeServiceTier: "priority" }],
-		["gpt-5.4 with reasoning disabled", { reasoningEffort: "disable" }],
-	] as const)("native: %s", async (_name, options) => {
-		expect(await requestBodyOf(nativeHandler(options as Partial<ApiHandlerOptions>))).toMatchSnapshot()
+	// The settings variants of the native body are in openai-native.spec.
+	it("native: gpt-5.4 with default settings", async () => {
+		expect(await requestBodyOf(nativeHandler())).toMatchSnapshot()
 	})
 
 	it("native: no tools, forced tool choice and parallel calls off", async () => {

@@ -169,46 +169,6 @@ exports[`Responses API handlers: fallback HTTP errors > a network failure 1`] = 
 
 exports[`Responses API handlers: replayed event fixtures > #10719 argument deltas without any identity 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "arguments": "{"path":",
-        "id": "call_123",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": ""/tmp/test.txt"}",
-        "id": "call_123",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "arguments": "{"path":",
-        "id": "call_123",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": ""/tmp/test.txt"}",
-        "id": "call_123",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
   "native": {
     "chunks": [
       {
@@ -248,66 +208,12 @@ exports[`Responses API handlers: replayed event fixtures > #10719 argument delta
     ],
     "encryptedContent": undefined,
     "responseId": undefined,
-  },
-  "xai": {
-    "chunks": [
-      {
-        "arguments": "{"path":",
-        "id": "call_123",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": ""/tmp/test.txt"}",
-        "id": "call_123",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > #11621 assistant message only in response.output_item.done 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "hello from done item",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_done_item_only",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "hello from done item",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_done_item_only",
-  },
   "native": {
     "chunks": [
       {
@@ -343,63 +249,12 @@ exports[`Responses API handlers: replayed event fixtures > #11621 assistant mess
     ],
     "encryptedContent": undefined,
     "responseId": "resp_done_item_only",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "hello from done item",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > #11621 deltas and content_part.added together 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "hello world",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_delta_content_part",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "hello world",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_delta_content_part",
-  },
   "native": {
     "chunks": [
       {
@@ -435,71 +290,12 @@ exports[`Responses API handlers: replayed event fixtures > #11621 deltas and con
     ],
     "encryptedContent": undefined,
     "responseId": "resp_delta_content_part",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "hello world",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > #11621 deltas and output_text.done together 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "hello ",
-        "type": "text",
-      },
-      {
-        "text": "world",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_delta_done",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "hello ",
-        "type": "text",
-      },
-      {
-        "text": "world",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_delta_done",
-  },
   "native": {
     "chunks": [
       {
@@ -543,71 +339,12 @@ exports[`Responses API handlers: replayed event fixtures > #11621 deltas and out
     ],
     "encryptedContent": undefined,
     "responseId": "resp_delta_done",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "hello ",
-        "type": "text",
-      },
-      {
-        "text": "world",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > #11621 function call only in response.output_item.done (object arguments) 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "arguments": "{"result":"ok"}",
-        "id": "call_done_only",
-        "name": "attempt_completion",
-        "type": "tool_call",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_done_tool_only",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "arguments": "{"result":"ok"}",
-        "id": "call_done_only",
-        "name": "attempt_completion",
-        "type": "tool_call",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_done_tool_only",
-  },
   "native": {
     "chunks": [
       {
@@ -647,65 +384,12 @@ exports[`Responses API handlers: replayed event fixtures > #11621 function call 
     ],
     "encryptedContent": undefined,
     "responseId": "resp_done_tool_only",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "arguments": "{"result":"ok"}",
-        "id": "call_done_only",
-        "name": "attempt_completion",
-        "type": "tool_call",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > #11621 text only in response.content_part.added 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "content part text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_content_part",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "content part text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_content_part",
-  },
   "native": {
     "chunks": [
       {
@@ -741,63 +425,12 @@ exports[`Responses API handlers: replayed event fixtures > #11621 text only in r
     ],
     "encryptedContent": undefined,
     "responseId": "resp_content_part",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "content part text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > #11621 text only in response.output_text.done 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "done-event text only",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_done_text_only",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "done-event text only",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_done_text_only",
-  },
   "native": {
     "chunks": [
       {
@@ -833,63 +466,12 @@ exports[`Responses API handlers: replayed event fixtures > #11621 text only in r
     ],
     "encryptedContent": undefined,
     "responseId": "resp_done_text_only",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "done-event text only",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > #11621 text only in the response.completed output 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "final payload only",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_completed_only",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "final payload only",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_completed_only",
-  },
   "native": {
     "chunks": [
       {
@@ -925,47 +507,12 @@ exports[`Responses API handlers: replayed event fixtures > #11621 text only in t
     ],
     "encryptedContent": undefined,
     "responseId": "resp_completed_only",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "final payload only",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > Chat Completions chunk followed by a done message 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "chat chunk",
-        "type": "text",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "chat chunk",
-        "type": "text",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
   "native": {
     "chunks": [
       {
@@ -985,56 +532,12 @@ exports[`Responses API handlers: replayed event fixtures > Chat Completions chun
     ],
     "encryptedContent": undefined,
     "responseId": undefined,
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "chat chunk",
-        "type": "text",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > GPT-5.6 cache writes in input_tokens_details 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "cached",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 2000,
-        "cacheWriteTokens": 3000,
-        "inputTokens": 10000,
-        "outputTokens": 500,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_cache_write",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "cached",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 2000,
-        "cacheWriteTokens": 3000,
-        "inputTokens": 10000,
-        "outputTokens": 500,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_cache_write",
-  },
   "native": {
     "chunks": [
       {
@@ -1070,67 +573,12 @@ exports[`Responses API handlers: replayed event fixtures > GPT-5.6 cache writes 
     ],
     "encryptedContent": undefined,
     "responseId": "resp_cache_write",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "cached",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 2000,
-        "cacheWriteTokens": 3000,
-        "inputTokens": 10000,
-        "outputTokens": 500,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > argument deltas that carry their own identity 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "arguments": "{"path":"."}",
-        "id": "call_own",
-        "index": 2,
-        "name": "list_files",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": "",
-        "id": "call_own",
-        "index": 2,
-        "name": "list_files",
-        "type": "tool_call_partial",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "arguments": "{"path":"."}",
-        "id": "call_own",
-        "index": 2,
-        "name": "list_files",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": "",
-        "id": "call_own",
-        "index": 2,
-        "name": "list_files",
-        "type": "tool_call_partial",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
   "native": {
     "chunks": [
       {
@@ -1170,62 +618,12 @@ exports[`Responses API handlers: replayed event fixtures > argument deltas that 
     ],
     "encryptedContent": undefined,
     "responseId": undefined,
-  },
-  "xai": {
-    "chunks": [
-      {
-        "arguments": "{"path":"."}",
-        "id": "call_own",
-        "index": 2,
-        "name": "list_files",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": "",
-        "id": "call_own",
-        "index": 2,
-        "name": "list_files",
-        "type": "tool_call_partial",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > audio transcript and tool status events 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_audio",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "spoken words",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_audio",
-  },
   "native": {
     "chunks": [
       {
@@ -1258,51 +656,11 @@ exports[`Responses API handlers: replayed event fixtures > audio transcript and 
     "encryptedContent": undefined,
     "responseId": "resp_audio",
   },
-  "xai": {
-    "chunks": [
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
-  },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > error event 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "partial",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_error",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "partial",
-        "type": "text",
-      },
-    ],
-    "encryptedContent": undefined,
-    "error": "Error processing response stream: Codex API error: The server had an error",
-    "responseId": undefined,
-  },
   "native": {
     "chunks": [
       {
@@ -1332,53 +690,11 @@ exports[`Responses API handlers: replayed event fixtures > error event 1`] = `
     "error": "Error processing response stream: Responses API error: The server had an error",
     "responseId": undefined,
   },
-  "xai": {
-    "chunks": [
-      {
-        "text": "partial",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
-  },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > full response in a non-streaming event 1`] = `
 {
-  "codex": {
-    "chunks": [],
-    "encryptedContent": undefined,
-    "responseId": "resp_snapshot",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "snapshot text",
-        "type": "text",
-      },
-      {
-        "text": "snapshot reasoning",
-        "type": "reasoning",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 8,
-        "outputTokens": 9,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_snapshot",
-  },
   "native": {
     "chunks": [],
     "encryptedContent": undefined,
@@ -1406,82 +722,11 @@ exports[`Responses API handlers: replayed event fixtures > full response in a no
     "encryptedContent": undefined,
     "responseId": "resp_snapshot",
   },
-  "xai": {
-    "chunks": [],
-  },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > reasoning, text and usage of a real GPT-5 answer 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "Thinking about ",
-        "type": "reasoning",
-      },
-      {
-        "text": "the answer",
-        "type": "reasoning",
-      },
-      {
-        "text": "Hello ",
-        "type": "text",
-      },
-      {
-        "text": "there",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 400,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1000,
-        "outputTokens": 200,
-        "reasoningTokens": 120,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": {
-      "encrypted_content": "enc_abc",
-      "id": "rs_1",
-    },
-    "responseId": "resp_full",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "Thinking about ",
-        "type": "reasoning",
-      },
-      {
-        "text": "the answer",
-        "type": "reasoning",
-      },
-      {
-        "text": "Hello ",
-        "type": "text",
-      },
-      {
-        "text": "there",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 400,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1000,
-        "outputTokens": 200,
-        "reasoningTokens": 120,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": {
-      "encrypted_content": "enc_abc",
-      "id": "rs_1",
-    },
-    "responseId": "resp_full",
-  },
   "native": {
     "chunks": [
       {
@@ -1549,100 +794,12 @@ exports[`Responses API handlers: replayed event fixtures > reasoning, text and u
       "id": "rs_1",
     },
     "responseId": "resp_full",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "Thinking about ",
-        "type": "reasoning",
-      },
-      {
-        "text": "the answer",
-        "type": "reasoning",
-      },
-      {
-        "text": "Hello ",
-        "type": "text",
-      },
-      {
-        "text": "there",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 400,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1000,
-        "outputTokens": 200,
-        "reasoningTokens": 120,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > reasoning_text deltas and legacy delta names 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "raw reasoning",
-        "type": "reasoning",
-      },
-      {
-        "text": " more",
-        "type": "reasoning",
-      },
-      {
-        "text": " summary",
-        "type": "reasoning",
-      },
-      {
-        "text": "legacy text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 5,
-        "outputTokens": 6,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_legacy",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "raw reasoning",
-        "type": "reasoning",
-      },
-      {
-        "text": " more",
-        "type": "reasoning",
-      },
-      {
-        "text": " summary",
-        "type": "reasoning",
-      },
-      {
-        "text": "legacy text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 5,
-        "outputTokens": 6,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_legacy",
-  },
   "native": {
     "chunks": [
       {
@@ -1702,75 +859,12 @@ exports[`Responses API handlers: replayed event fixtures > reasoning_text deltas
     ],
     "encryptedContent": undefined,
     "responseId": "resp_legacy",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "raw reasoning",
-        "type": "reasoning",
-      },
-      {
-        "text": " more",
-        "type": "reasoning",
-      },
-      {
-        "text": " summary",
-        "type": "reasoning",
-      },
-      {
-        "text": "legacy text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 5,
-        "outputTokens": 6,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > refusal 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "[Refusal] I cannot help with that.",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_refusal",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "[Refusal] I cannot help with that.",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_refusal",
-  },
   "native": {
     "chunks": [
       {
@@ -1806,37 +900,12 @@ exports[`Responses API handlers: replayed event fixtures > refusal 1`] = `
     ],
     "encryptedContent": undefined,
     "responseId": "resp_refusal",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "[Refusal] I cannot help with that.",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > response.failed 1`] = `
 {
-  "codex": {
-    "chunks": [],
-    "encryptedContent": undefined,
-    "responseId": "resp_failed",
-  },
-  "codexSse": {
-    "chunks": [],
-    "encryptedContent": undefined,
-    "responseId": "resp_failed",
-  },
   "native": {
     "chunks": [],
     "encryptedContent": undefined,
@@ -1846,71 +915,12 @@ exports[`Responses API handlers: replayed event fixtures > response.failed 1`] =
     "chunks": [],
     "encryptedContent": undefined,
     "responseId": "resp_failed",
-  },
-  "xai": {
-    "chunks": [],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > streamed function call (item_id on the deltas, identity on the item) 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "arguments": "{"path":",
-        "id": "call_1",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": ""a.ts"}",
-        "id": "call_1",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_fc",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "arguments": "{"path":",
-        "id": "call_1",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": ""a.ts"}",
-        "id": "call_1",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_fc",
-  },
   "native": {
     "chunks": [
       {
@@ -1966,89 +976,12 @@ exports[`Responses API handlers: replayed event fixtures > streamed function cal
     ],
     "encryptedContent": undefined,
     "responseId": "resp_fc",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "arguments": "{"path":",
-        "id": "call_1",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "arguments": ""a.ts"}",
-        "id": "call_1",
-        "index": 0,
-        "name": "read_file",
-        "type": "tool_call_partial",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > text and reasoning items in response.output_item.added 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "item reasoning",
-        "type": "reasoning",
-      },
-      {
-        "text": "item text",
-        "type": "text",
-      },
-      {
-        "text": "message text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_added_items",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "item reasoning",
-        "type": "reasoning",
-      },
-      {
-        "text": "item text",
-        "type": "text",
-      },
-      {
-        "text": "message text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_added_items",
-  },
   "native": {
     "chunks": [
       {
@@ -2100,71 +1033,12 @@ exports[`Responses API handlers: replayed event fixtures > text and reasoning it
     ],
     "encryptedContent": undefined,
     "responseId": "resp_added_items",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "item reasoning",
-        "type": "reasoning",
-      },
-      {
-        "text": "item text",
-        "type": "text",
-      },
-      {
-        "text": "message text",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 1,
-        "outputTokens": 2,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > usage in a separate event and a Chat Completions chunk 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "text": "chat chunk",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 3,
-        "outputTokens": 4,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "text": "chat chunk",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 3,
-        "outputTokens": 4,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": undefined,
-  },
   "native": {
     "chunks": [
       {
@@ -2200,55 +1074,12 @@ exports[`Responses API handlers: replayed event fixtures > usage in a separate e
     ],
     "encryptedContent": undefined,
     "responseId": undefined,
-  },
-  "xai": {
-    "chunks": [
-      {
-        "text": "chat chunk",
-        "type": "text",
-      },
-      {
-        "cacheReadTokens": 0,
-        "cacheWriteTokens": 0,
-        "inputTokens": 3,
-        "outputTokens": 4,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > usage with Chat Completions and Anthropic style names 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "cacheReadTokens": 13,
-        "cacheWriteTokens": 11,
-        "inputTokens": 50,
-        "outputTokens": 7,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_alt_usage",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "cacheReadTokens": 13,
-        "cacheWriteTokens": 11,
-        "inputTokens": 50,
-        "outputTokens": 7,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_alt_usage",
-  },
   "native": {
     "chunks": [
       {
@@ -2276,51 +1107,12 @@ exports[`Responses API handlers: replayed event fixtures > usage with Chat Compl
     ],
     "encryptedContent": undefined,
     "responseId": "resp_alt_usage",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "cacheReadTokens": 13,
-        "cacheWriteTokens": 11,
-        "inputTokens": 50,
-        "outputTokens": 7,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
 
 exports[`Responses API handlers: replayed event fixtures > usage with only token details 1`] = `
 {
-  "codex": {
-    "chunks": [
-      {
-        "cacheReadTokens": 30,
-        "cacheWriteTokens": 5,
-        "inputTokens": 105,
-        "outputTokens": 9,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_details_only",
-  },
-  "codexSse": {
-    "chunks": [
-      {
-        "cacheReadTokens": 30,
-        "cacheWriteTokens": 5,
-        "inputTokens": 105,
-        "outputTokens": 9,
-        "totalCost": 0,
-        "type": "usage",
-      },
-    ],
-    "encryptedContent": undefined,
-    "responseId": "resp_details_only",
-  },
   "native": {
     "chunks": [
       {
@@ -2348,17 +1140,6 @@ exports[`Responses API handlers: replayed event fixtures > usage with only token
     ],
     "encryptedContent": undefined,
     "responseId": "resp_details_only",
-  },
-  "xai": {
-    "chunks": [
-      {
-        "cacheReadTokens": 30,
-        "cacheWriteTokens": 5,
-        "inputTokens": 105,
-        "outputTokens": 9,
-        "type": "usage",
-      },
-    ],
   },
 }
 `;
@@ -2793,303 +1574,6 @@ exports[`Responses API handlers: request bodies > codex: gpt-5.6-sol with effort
 }
 `;
 
-exports[`Responses API handlers: request bodies > native: gpt-4.1 (no reasoning, temperature) 1`] = `
-{
-  "input": [
-    {
-      "content": [
-        {
-          "text": "Read a.ts",
-          "type": "input_text",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "content": [
-        {
-          "text": "Reading the file.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-    {
-      "arguments": "{"path":"a.ts"}",
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "name": "read_file",
-      "type": "function_call",
-    },
-    {
-      "content": [
-        {
-          "text": "Now explain it",
-          "type": "input_text",
-        },
-        {
-          "image_url": "data:image/png;base64,iVBORw0KGgo=",
-          "type": "input_image",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "output": "file body",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_2",
-      "output": "part onepart two",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_3",
-      "output": "",
-      "type": "function_call_output",
-    },
-    {
-      "encrypted_content": "enc_prev",
-      "id": "rs_prev",
-      "summary": [],
-      "type": "reasoning",
-    },
-    {
-      "content": [
-        {
-          "text": "It exports one function.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-  ],
-  "instructions": "You are a coder.",
-  "max_output_tokens": 32768,
-  "model": "gpt-4.1",
-  "parallel_tool_calls": true,
-  "service_tier": "priority",
-  "store": false,
-  "stream": true,
-  "temperature": 0,
-  "tool_choice": undefined,
-  "tools": [
-    {
-      "description": "Run a command",
-      "name": "execute_command",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "command": {
-            "type": "string",
-          },
-          "cwd": {
-            "type": [
-              "string",
-              "null",
-            ],
-          },
-          "env": {
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-              },
-            },
-            "required": [
-              "name",
-            ],
-            "type": "object",
-          },
-        },
-        "required": [
-          "command",
-          "cwd",
-          "env",
-        ],
-        "type": "object",
-      },
-      "strict": true,
-      "type": "function",
-    },
-    {
-      "description": "Search GitHub",
-      "name": "mcp--github--search",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "limit": {
-            "type": "number",
-          },
-          "query": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "query",
-        ],
-        "type": "object",
-      },
-      "strict": false,
-      "type": "function",
-    },
-  ],
-}
-`;
-
-exports[`Responses API handlers: request bodies > native: gpt-5.1 (24h prompt cache retention) 1`] = `
-{
-  "include": [
-    "reasoning.encrypted_content",
-  ],
-  "input": [
-    {
-      "content": [
-        {
-          "text": "Read a.ts",
-          "type": "input_text",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "content": [
-        {
-          "text": "Reading the file.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-    {
-      "arguments": "{"path":"a.ts"}",
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "name": "read_file",
-      "type": "function_call",
-    },
-    {
-      "content": [
-        {
-          "text": "Now explain it",
-          "type": "input_text",
-        },
-        {
-          "image_url": "data:image/png;base64,iVBORw0KGgo=",
-          "type": "input_image",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "output": "file body",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_2",
-      "output": "part onepart two",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_3",
-      "output": "",
-      "type": "function_call_output",
-    },
-    {
-      "encrypted_content": "enc_prev",
-      "id": "rs_prev",
-      "summary": [],
-      "type": "reasoning",
-    },
-    {
-      "content": [
-        {
-          "text": "It exports one function.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-  ],
-  "instructions": "You are a coder.",
-  "max_output_tokens": 128000,
-  "model": "gpt-5.1",
-  "parallel_tool_calls": true,
-  "prompt_cache_retention": "24h",
-  "reasoning": {
-    "effort": "medium",
-    "summary": "auto",
-  },
-  "store": false,
-  "stream": true,
-  "text": {
-    "verbosity": "medium",
-  },
-  "tool_choice": undefined,
-  "tools": [
-    {
-      "description": "Run a command",
-      "name": "execute_command",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "command": {
-            "type": "string",
-          },
-          "cwd": {
-            "type": [
-              "string",
-              "null",
-            ],
-          },
-          "env": {
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-              },
-            },
-            "required": [
-              "name",
-            ],
-            "type": "object",
-          },
-        },
-        "required": [
-          "command",
-          "cwd",
-          "env",
-        ],
-        "type": "object",
-      },
-      "strict": true,
-      "type": "function",
-    },
-    {
-      "description": "Search GitHub",
-      "name": "mcp--github--search",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "limit": {
-            "type": "number",
-          },
-          "query": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "query",
-        ],
-        "type": "object",
-      },
-      "strict": false,
-      "type": "function",
-    },
-  ],
-}
-`;
-
 exports[`Responses API handlers: request bodies > native: gpt-5.4 with default settings 1`] = `
 {
   "include": [
@@ -3172,303 +1656,6 @@ exports[`Responses API handlers: request bodies > native: gpt-5.4 with default s
     "effort": "none",
     "summary": "auto",
   },
-  "store": false,
-  "stream": true,
-  "text": {
-    "verbosity": "medium",
-  },
-  "tool_choice": undefined,
-  "tools": [
-    {
-      "description": "Run a command",
-      "name": "execute_command",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "command": {
-            "type": "string",
-          },
-          "cwd": {
-            "type": [
-              "string",
-              "null",
-            ],
-          },
-          "env": {
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-              },
-            },
-            "required": [
-              "name",
-            ],
-            "type": "object",
-          },
-        },
-        "required": [
-          "command",
-          "cwd",
-          "env",
-        ],
-        "type": "object",
-      },
-      "strict": true,
-      "type": "function",
-    },
-    {
-      "description": "Search GitHub",
-      "name": "mcp--github--search",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "limit": {
-            "type": "number",
-          },
-          "query": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "query",
-        ],
-        "type": "object",
-      },
-      "strict": false,
-      "type": "function",
-    },
-  ],
-}
-`;
-
-exports[`Responses API handlers: request bodies > native: gpt-5.4 with effort, summary off, verbosity, flex tier and temperature 1`] = `
-{
-  "include": [
-    "reasoning.encrypted_content",
-  ],
-  "input": [
-    {
-      "content": [
-        {
-          "text": "Read a.ts",
-          "type": "input_text",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "content": [
-        {
-          "text": "Reading the file.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-    {
-      "arguments": "{"path":"a.ts"}",
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "name": "read_file",
-      "type": "function_call",
-    },
-    {
-      "content": [
-        {
-          "text": "Now explain it",
-          "type": "input_text",
-        },
-        {
-          "image_url": "data:image/png;base64,iVBORw0KGgo=",
-          "type": "input_image",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "output": "file body",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_2",
-      "output": "part onepart two",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_3",
-      "output": "",
-      "type": "function_call_output",
-    },
-    {
-      "encrypted_content": "enc_prev",
-      "id": "rs_prev",
-      "summary": [],
-      "type": "reasoning",
-    },
-    {
-      "content": [
-        {
-          "text": "It exports one function.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-  ],
-  "instructions": "You are a coder.",
-  "max_output_tokens": 128000,
-  "model": "gpt-5.4",
-  "parallel_tool_calls": true,
-  "reasoning": {
-    "effort": "high",
-  },
-  "service_tier": "flex",
-  "store": false,
-  "stream": true,
-  "text": {
-    "verbosity": "low",
-  },
-  "tool_choice": undefined,
-  "tools": [
-    {
-      "description": "Run a command",
-      "name": "execute_command",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "command": {
-            "type": "string",
-          },
-          "cwd": {
-            "type": [
-              "string",
-              "null",
-            ],
-          },
-          "env": {
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-              },
-            },
-            "required": [
-              "name",
-            ],
-            "type": "object",
-          },
-        },
-        "required": [
-          "command",
-          "cwd",
-          "env",
-        ],
-        "type": "object",
-      },
-      "strict": true,
-      "type": "function",
-    },
-    {
-      "description": "Search GitHub",
-      "name": "mcp--github--search",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "limit": {
-            "type": "number",
-          },
-          "query": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "query",
-        ],
-        "type": "object",
-      },
-      "strict": false,
-      "type": "function",
-    },
-  ],
-}
-`;
-
-exports[`Responses API handlers: request bodies > native: gpt-5.4 with reasoning disabled 1`] = `
-{
-  "input": [
-    {
-      "content": [
-        {
-          "text": "Read a.ts",
-          "type": "input_text",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "content": [
-        {
-          "text": "Reading the file.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-    {
-      "arguments": "{"path":"a.ts"}",
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "name": "read_file",
-      "type": "function_call",
-    },
-    {
-      "content": [
-        {
-          "text": "Now explain it",
-          "type": "input_text",
-        },
-        {
-          "image_url": "data:image/png;base64,iVBORw0KGgo=",
-          "type": "input_image",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "output": "file body",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_2",
-      "output": "part onepart two",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_3",
-      "output": "",
-      "type": "function_call_output",
-    },
-    {
-      "encrypted_content": "enc_prev",
-      "id": "rs_prev",
-      "summary": [],
-      "type": "reasoning",
-    },
-    {
-      "content": [
-        {
-          "text": "It exports one function.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-  ],
-  "instructions": "You are a coder.",
-  "max_output_tokens": 128000,
-  "model": "gpt-5.4",
-  "parallel_tool_calls": true,
   "store": false,
   "stream": true,
   "text": {
