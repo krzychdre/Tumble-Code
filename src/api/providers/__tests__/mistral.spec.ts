@@ -1,545 +1,160 @@
-// Mock TelemetryService - must come before other imports
-const mockCaptureException = vi.hoisted(() => vi.fn())
-vi.mock("@tumble-code/telemetry", () => ({
-	TelemetryService: {
-		instance: {
-			captureException: mockCaptureException,
-		},
-	},
-}))
+// cd src && ./node_modules/.bin/vitest run api/providers/__tests__/mistral.spec.ts
+// The request, the endpoint choice, the stream mapping, the errors and the abort signal are
+// pinned against the real @mistralai/mistralai client by mistral-wire-characterization. This
+// spec covers the remaining branches of MistralHandler with the SDK client replaced.
 
-// Mock Mistral client - must come before other imports
-const mockCreate = vi.hoisted(() => vi.fn())
-const mockComplete = vi.hoisted(() => vi.fn())
+const mocks = vi.hoisted(() => ({ stream: vi.fn(), complete: vi.fn(), captureException: vi.fn() }))
+
+vi.mock("@tumble-code/telemetry", () => ({
+	TelemetryService: { instance: { captureException: mocks.captureException } },
+}))
 vi.mock("@mistralai/mistralai", async () => {
-	const { mistralModuleMock, TEST_RESPONSE_TEXT } = await import("./provider-test-helpers")
-	return mistralModuleMock(
-		mockCreate.mockImplementation(async () => ({
-			[Symbol.asyncIterator]: async function* () {
-				yield {
-					data: {
-						choices: [
-							{
-								delta: { content: TEST_RESPONSE_TEXT },
-								index: 0,
-							},
-						],
-					},
-				}
-			},
-		})),
-		mockComplete.mockImplementation(async () => ({
-			choices: [
-				{
-					message: {
-						content: TEST_RESPONSE_TEXT,
-					},
-				},
-			],
-		})),
-	)
+	const { mistralModuleMock } = await import("./provider-test-helpers")
+	return mistralModuleMock(mocks.stream, mocks.complete)
 })
 
-import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
-import { MistralHandler } from "../mistral"
+
 import type { ApiHandlerOptions } from "@tumble-code/core/browser"
-import type { ApiHandlerCreateMessageMetadata } from "../../index"
-import type { ApiStreamTextChunk, ApiStreamReasoningChunk, ApiStreamToolCallPartialChunk } from "../../transform/stream"
+import { MISTRAL_DEFAULT_TEMPERATURE, mistralDefaultModelId, mistralModels } from "@tumble-code/types"
 
-describe("MistralHandler", () => {
-	let handler: MistralHandler
-	let mockOptions: ApiHandlerOptions
+import { MistralHandler } from "../mistral"
 
-	beforeEach(() => {
-		mockOptions = {
-			apiModelId: "codestral-latest", // Update to match the actual model ID
-			mistralApiKey: "test-api-key",
-			includeMaxTokens: true,
-			modelTemperature: 0,
-		}
-		handler = new MistralHandler(mockOptions)
-		mockCreate.mockClear()
-		mockComplete.mockClear()
-		mockCaptureException.mockClear()
-	})
+function handlerFor(options: Partial<ApiHandlerOptions> = {}) {
+	return new MistralHandler({ mistralApiKey: "test-api-key", apiModelId: "mistral-large-latest", ...options })
+}
 
-	describe("constructor", () => {
-		it("should initialize with provided options", () => {
-			expect(handler).toBeInstanceOf(MistralHandler)
-			expect(handler.getModel().id).toBe(mockOptions.apiModelId)
-		})
-
-		it("should throw error if API key is missing", () => {
-			expect(() => {
-				new MistralHandler({
-					...mockOptions,
-					mistralApiKey: undefined,
-				})
-			}).toThrow("Mistral API key is required")
-		})
-
-		it("should use custom base URL if provided", () => {
-			const customBaseUrl = "https://custom.mistral.ai/v1"
-			const handlerWithCustomUrl = new MistralHandler({
-				...mockOptions,
-				mistralCodestralUrl: customBaseUrl,
-			})
-			expect(handlerWithCustomUrl).toBeInstanceOf(MistralHandler)
-		})
-	})
-
-	describe("getModel", () => {
-		it("should return correct model info", () => {
-			const model = handler.getModel()
-			expect(model.id).toBe(mockOptions.apiModelId)
-			expect(model.info).toBeDefined()
-			expect(model.info.supportsPromptCache).toBe(false)
-		})
-	})
-
-	describe("createMessage", () => {
-		const systemPrompt = "You are a helpful assistant."
-		const messages: Anthropic.Messages.MessageParam[] = [
-			{
-				role: "user",
-				content: [{ type: "text", text: "Hello!" }],
-			},
-		]
-
-		it("should create message successfully", async () => {
-			const iterator = handler.createMessage(systemPrompt, messages)
-			const result = await iterator.next()
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: mockOptions.apiModelId,
-					messages: expect.any(Array),
-					maxTokens: expect.any(Number),
-					temperature: 0,
-					// Tools are now always present (minimum 6 from ALWAYS_AVAILABLE_TOOLS)
-					tools: expect.any(Array),
-					toolChoice: "any",
-				}),
-				undefined,
-			)
-
-			expect(result.value).toBeDefined()
-			expect(result.done).toBe(false)
-		})
-
-		it("should handle streaming response correctly", async () => {
-			const iterator = handler.createMessage(systemPrompt, messages)
-			const results: ApiStreamTextChunk[] = []
-
-			for await (const chunk of iterator) {
-				if ("text" in chunk) {
-					results.push(chunk as ApiStreamTextChunk)
-				}
+function events(...data: unknown[]) {
+	return {
+		async *[Symbol.asyncIterator]() {
+			for (const item of data) {
+				yield { data: item }
 			}
+		},
+	}
+}
 
-			expect(results.length).toBeGreaterThan(0)
-			expect(results[0].text).toBe("Test response")
-		})
+async function drain(stream: AsyncIterable<any>) {
+	const chunks: any[] = []
+	for await (const chunk of stream) {
+		chunks.push(chunk)
+	}
+	return chunks
+}
 
-		it("should handle errors gracefully", async () => {
-			mockCreate.mockRejectedValueOnce(new Error("API Error"))
-			await expect(handler.createMessage(systemPrompt, messages).next()).rejects.toThrow("API Error")
-		})
+beforeEach(() => {
+	vi.clearAllMocks()
+	mocks.stream.mockResolvedValue(events())
+})
 
-		it("should handle thinking content as reasoning chunks", async () => {
-			// Mock stream with thinking content matching new SDK structure
-			mockCreate.mockImplementationOnce(async (_options) => {
-				const stream = {
-					[Symbol.asyncIterator]: async function* () {
-						yield {
-							data: {
-								choices: [
-									{
-										delta: {
-											content: [
-												{
-													type: "thinking",
-													thinking: [{ type: "text", text: "Let me think about this..." }],
-												},
-												{ type: "text", text: "Here's the answer" },
-											],
-										},
-										index: 0,
-									},
-								],
-							},
-						}
-					},
-				}
-				return stream
-			})
+it("requires an API key", () => {
+	expect(() => new MistralHandler({ apiModelId: "mistral-large-latest" })).toThrow("Mistral API key is required")
+})
 
-			const iterator = handler.createMessage(systemPrompt, messages)
-			const results: (ApiStreamTextChunk | ApiStreamReasoningChunk)[] = []
-
-			for await (const chunk of iterator) {
-				if ("text" in chunk) {
-					results.push(chunk as ApiStreamTextChunk | ApiStreamReasoningChunk)
-				}
-			}
-
-			expect(results).toHaveLength(2)
-			expect(results[0]).toEqual({ type: "reasoning", text: "Let me think about this..." })
-			expect(results[1]).toEqual({ type: "text", text: "Here's the answer" })
-		})
-
-		it("should handle mixed content arrays correctly", async () => {
-			// Mock stream with mixed content matching new SDK structure
-			mockCreate.mockImplementationOnce(async (_options) => {
-				const stream = {
-					[Symbol.asyncIterator]: async function* () {
-						yield {
-							data: {
-								choices: [
-									{
-										delta: {
-											content: [
-												{ type: "text", text: "First text" },
-												{
-													type: "thinking",
-													thinking: [{ type: "text", text: "Some reasoning" }],
-												},
-												{ type: "text", text: "Second text" },
-											],
-										},
-										index: 0,
-									},
-								],
-							},
-						}
-					},
-				}
-				return stream
-			})
-
-			const iterator = handler.createMessage(systemPrompt, messages)
-			const results: (ApiStreamTextChunk | ApiStreamReasoningChunk)[] = []
-
-			for await (const chunk of iterator) {
-				if ("text" in chunk) {
-					results.push(chunk as ApiStreamTextChunk | ApiStreamReasoningChunk)
-				}
-			}
-
-			expect(results).toHaveLength(3)
-			expect(results[0]).toEqual({ type: "text", text: "First text" })
-			expect(results[1]).toEqual({ type: "reasoning", text: "Some reasoning" })
-			expect(results[2]).toEqual({ type: "text", text: "Second text" })
+describe("request", () => {
+	// The model's max tokens goes out with includeMaxTokens off as well (`maxTokens ?? info.maxTokens`).
+	it.each([
+		[
+			"the default model with its default temperature",
+			{ apiModelId: undefined },
+			mistralDefaultModelId,
+			MISTRAL_DEFAULT_TEMPERATURE,
+		],
+		["the user's temperature", { includeMaxTokens: true, modelTemperature: 0.7 }, "mistral-large-latest", 0.7],
+	])("sends %s and the model's max tokens", async (_label, options, model, temperature) => {
+		await drain(handlerFor(options).createMessage("System", []))
+		expect(mocks.stream.mock.calls[0][0]).toMatchObject({
+			model,
+			temperature,
+			maxTokens: mistralModels[model as keyof typeof mistralModels].maxTokens,
 		})
 	})
 
-	describe("native tool calling", () => {
-		const systemPrompt = "You are a helpful assistant."
-		const messages: Anthropic.Messages.MessageParam[] = [
-			{
-				role: "user",
-				content: [{ type: "text", text: "What's the weather?" }],
-			},
-		]
+	it("converts the function tools, with empty parameters when a tool has none, and requires a tool", async () => {
+		const tools = [
+			{ type: "function", function: { name: "read_file", description: "Read", parameters: { type: "object" } } },
+			{ type: "function", function: { name: "attempt_completion" } },
+			{ type: "custom", custom: { name: "ignored" } },
+		] as OpenAI.Chat.ChatCompletionTool[]
+		await drain(handlerFor().createMessage("System", [], { taskId: "t", tools }))
+		const request = mocks.stream.mock.calls[0][0]
+		expect(request.tools).toEqual([
+			{ type: "function", function: { name: "read_file", description: "Read", parameters: { type: "object" } } },
+			{ type: "function", function: { name: "attempt_completion", description: undefined, parameters: {} } },
+		])
+		expect(request.toolChoice).toBe("any")
+	})
+})
 
-		const mockTools: OpenAI.Chat.ChatCompletionTool[] = [
-			{
-				type: "function",
-				function: {
-					name: "get_weather",
-					description: "Get the current weather",
-					parameters: {
-						type: "object",
-						properties: {
-							location: { type: "string" },
+describe("stream", () => {
+	it("numbers several tool calls of one event", async () => {
+		mocks.stream.mockResolvedValueOnce(
+			events({
+				choices: [
+					{
+						delta: {
+							toolCalls: [
+								{ id: "a", function: { name: "read_file", arguments: "{}" } },
+								{ id: "b", function: { name: "list_files", arguments: "{}" } },
+							],
 						},
-						required: ["location"],
 					},
-				},
-			},
-		]
-
-		it("should include tools in request by default (native is default)", async () => {
-			const metadata: ApiHandlerCreateMessageMetadata = {
-				taskId: "test-task",
-				tools: mockTools,
-			}
-
-			const iterator = handler.createMessage(systemPrompt, messages, metadata)
-			await iterator.next()
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tools: expect.arrayContaining([
-						expect.objectContaining({
-							type: "function",
-							function: expect.objectContaining({
-								name: "get_weather",
-								description: "Get the current weather",
-								parameters: expect.any(Object),
-							}),
-						}),
-					]),
-					toolChoice: "any",
-				}),
-				undefined,
-			)
-		})
-
-		it("should always include tools in request (tools are always present after PR #10841)", async () => {
-			const metadata: ApiHandlerCreateMessageMetadata = {
-				taskId: "test-task",
-			}
-
-			const iterator = handler.createMessage(systemPrompt, messages, metadata)
-			await iterator.next()
-
-			// Tools are now always present (minimum 6 from ALWAYS_AVAILABLE_TOOLS)
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					tools: expect.any(Array),
-					toolChoice: "any",
-				}),
-				undefined,
-			)
-		})
-
-		it("should handle tool calls in streaming response", async () => {
-			// Mock stream with tool calls
-			mockCreate.mockImplementationOnce(async (_options) => {
-				const stream = {
-					[Symbol.asyncIterator]: async function* () {
-						yield {
-							data: {
-								choices: [
-									{
-										delta: {
-											toolCalls: [
-												{
-													id: "call_123",
-													type: "function",
-													function: {
-														name: "get_weather",
-														arguments: '{"location":"New York"}',
-													},
-												},
-											],
-										},
-										index: 0,
-									},
-								],
-							},
-						}
-					},
-				}
-				return stream
-			})
-
-			const metadata: ApiHandlerCreateMessageMetadata = {
-				taskId: "test-task",
-				tools: mockTools,
-			}
-
-			const iterator = handler.createMessage(systemPrompt, messages, metadata)
-			const results: ApiStreamToolCallPartialChunk[] = []
-
-			for await (const chunk of iterator) {
-				if (chunk.type === "tool_call_partial") {
-					results.push(chunk)
-				}
-			}
-
-			expect(results).toHaveLength(1)
-			expect(results[0]).toEqual({
-				type: "tool_call_partial",
-				index: 0,
-				id: "call_123",
-				name: "get_weather",
-				arguments: '{"location":"New York"}',
-			})
-		})
-
-		it("should handle multiple tool calls in a single response", async () => {
-			// Mock stream with multiple tool calls
-			mockCreate.mockImplementationOnce(async (_options) => {
-				const stream = {
-					[Symbol.asyncIterator]: async function* () {
-						yield {
-							data: {
-								choices: [
-									{
-										delta: {
-											toolCalls: [
-												{
-													id: "call_1",
-													type: "function",
-													function: {
-														name: "get_weather",
-														arguments: '{"location":"NYC"}',
-													},
-												},
-												{
-													id: "call_2",
-													type: "function",
-													function: {
-														name: "get_weather",
-														arguments: '{"location":"LA"}',
-													},
-												},
-											],
-										},
-										index: 0,
-									},
-								],
-							},
-						}
-					},
-				}
-				return stream
-			})
-
-			const metadata: ApiHandlerCreateMessageMetadata = {
-				taskId: "test-task",
-				tools: mockTools,
-			}
-
-			const iterator = handler.createMessage(systemPrompt, messages, metadata)
-			const results: ApiStreamToolCallPartialChunk[] = []
-
-			for await (const chunk of iterator) {
-				if (chunk.type === "tool_call_partial") {
-					results.push(chunk)
-				}
-			}
-
-			expect(results).toHaveLength(2)
-			expect(results[0]).toEqual({
-				type: "tool_call_partial",
-				index: 0,
-				id: "call_1",
-				name: "get_weather",
-				arguments: '{"location":"NYC"}',
-			})
-			expect(results[1]).toEqual({
-				type: "tool_call_partial",
-				index: 1,
-				id: "call_2",
-				name: "get_weather",
-				arguments: '{"location":"LA"}',
-			})
-		})
-
-		it("should always set toolChoice to 'any' when tools are provided", async () => {
-			// Even if tool_choice is provided in metadata, we override it to "any"
-			const metadata: ApiHandlerCreateMessageMetadata = {
-				taskId: "test-task",
-				tools: mockTools,
-				tool_choice: "auto", // This should be ignored
-			}
-
-			const iterator = handler.createMessage(systemPrompt, messages, metadata)
-			await iterator.next()
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					toolChoice: "any",
-				}),
-				undefined,
-			)
-		})
+				],
+			}),
+		)
+		const chunks = await drain(handlerFor().createMessage("s", []))
+		expect(chunks.map((chunk) => [chunk.index, chunk.id])).toEqual([
+			[0, "a"],
+			[1, "b"],
+		])
 	})
 
-	describe("completePrompt", () => {
-		it("should complete prompt successfully", async () => {
-			const prompt = "Test prompt"
-			const result = await handler.completePrompt(prompt)
+	// Servers repeat the cumulative usage in every event and usage chunks are added together,
+	// so only the last one is reported (DEF-C12).
+	it("reports the last usage once, and none without usage", async () => {
+		mocks.stream.mockResolvedValueOnce(
+			events(
+				{ choices: [{ delta: { content: "a" } }], usage: { promptTokens: 10, completionTokens: 1 } },
+				{ choices: [{ delta: { content: "b" } }], usage: { promptTokens: 10, completionTokens: 5 } },
+				{ choices: [] },
+			),
+		)
+		const chunks = await drain(handlerFor().createMessage("s", []))
+		expect(chunks.filter((chunk) => chunk.type === "usage")).toEqual([
+			{ type: "usage", inputTokens: 10, outputTokens: 5 },
+		])
 
-			expect(mockComplete).toHaveBeenCalledWith({
-				model: mockOptions.apiModelId,
-				messages: [{ role: "user", content: prompt }],
-				temperature: 0,
-			})
-
-			expect(result).toBe("Test response")
-		})
-
-		it("should filter out thinking content in completePrompt", async () => {
-			mockComplete.mockImplementationOnce(async (_options) => {
-				return {
-					choices: [
-						{
-							message: {
-								content: [
-									{ type: "thinking", text: "Let me think..." },
-									{ type: "text", text: "Answer part 1" },
-									{ type: "text", text: "Answer part 2" },
-								],
-							},
-						},
-					],
-				}
-			})
-
-			const prompt = "Test prompt"
-			const result = await handler.completePrompt(prompt)
-
-			expect(result).toBe("Answer part 1Answer part 2")
-		})
-
-		it("should handle errors in completePrompt", async () => {
-			mockComplete.mockRejectedValueOnce(new Error("API Error"))
-			await expect(handler.completePrompt("Test prompt")).rejects.toThrow("Mistral completion error: API Error")
-		})
+		mocks.stream.mockResolvedValueOnce(events({ choices: [{ delta: { content: "a" } }] }))
+		expect((await drain(handlerFor().createMessage("s", []))).map((chunk) => chunk.type)).toEqual(["text"])
 	})
 
-	// DEF-C12: usage used to be yielded once per stream event, and
-	// TaskStreamProcessor adds usage chunks together, so a server repeating its
-	// cumulative usage in every event was billed several times over.
-	describe("streaming usage", () => {
-		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
-
-		it("reports cumulative usage repeated in every event once, with the final values", async () => {
-			mockCreate.mockImplementationOnce(async (_options) => ({
-				[Symbol.asyncIterator]: async function* () {
-					yield {
-						data: {
-							choices: [{ delta: { content: "Hello" }, index: 0 }],
-							usage: { promptTokens: 50, completionTokens: 1, totalTokens: 51 },
-						},
-					}
-					yield {
-						data: {
-							choices: [{ delta: { content: " world" }, index: 0 }],
-							usage: { promptTokens: 50, completionTokens: 2, totalTokens: 52 },
-						},
-					}
-					yield {
-						data: {
-							choices: [{ delta: {}, index: 0, finishReason: "stop" }],
-							usage: { promptTokens: 50, completionTokens: 7, totalTokens: 57 },
-						},
-					}
-				},
-			}))
-
-			const chunks: any[] = []
-			for await (const chunk of handler.createMessage("system", messages)) {
-				chunks.push(chunk)
-			}
-
-			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
-			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 50, outputTokens: 7 }])
-			expect(chunks[chunks.length - 1].type).toBe("usage")
+	it("reports a failed request to telemetry and rethrows it with the provider name", async () => {
+		mocks.stream.mockRejectedValueOnce(new Error("bad request"))
+		await expect(drain(handlerFor().createMessage("s", []))).rejects.toThrow(
+			"Mistral completion error: bad request",
+		)
+		expect(mocks.captureException.mock.calls[0][0]).toMatchObject({
+			provider: "Mistral",
+			operation: "createMessage",
 		})
+	})
+})
 
-		it("yields no usage chunk when the stream carries no usage", async () => {
-			const chunks: any[] = []
-			for await (const chunk of handler.createMessage("system", messages)) {
-				chunks.push(chunk)
-			}
+describe("completePrompt", () => {
+	it.each([
+		["string content", "plain", "plain"],
+		["no content", undefined, ""],
+	])("returns the text of %s", async (_label, content, text) => {
+		mocks.complete.mockResolvedValueOnce({ choices: [{ message: { content } }] })
+		expect(await handlerFor().completePrompt("p")).toBe(text)
+	})
 
-			expect(chunks.filter((chunk) => chunk.type === "usage")).toHaveLength(0)
+	it("reports a failure to telemetry and rethrows it with the provider name", async () => {
+		mocks.complete.mockRejectedValueOnce(new Error("bad request"))
+		await expect(handlerFor().completePrompt("p")).rejects.toThrow("Mistral completion error: bad request")
+		expect(mocks.captureException.mock.calls[0][0]).toMatchObject({
+			provider: "Mistral",
+			operation: "completePrompt",
 		})
 	})
 })
