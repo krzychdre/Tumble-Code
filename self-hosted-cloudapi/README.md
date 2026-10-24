@@ -395,4 +395,4 @@ sign-in flow, the data model, how task rows arrive, background work, the databas
 
 ## License
 
-MIT
+Apache 2.0, like the rest of the repository: see [LICENSE](../LICENSE).
