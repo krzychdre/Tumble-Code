@@ -1151,7 +1151,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this._started = true
 			if (task || images) {
 				this.lifecycle.startTask(task, images)
-			} else if (historyItem) {
+			} else {
+				// The check at the top of the constructor guarantees a historyItem here.
 				this.lifecycle.resumeTaskFromHistory().catch((error) => {
 					if (this.abandoned || this.abort) {
 						return
@@ -1171,8 +1172,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						)
 					})
 				})
-			} else {
-				throw new Error("Either historyItem or task/images must be provided")
 			}
 		}
 	}
