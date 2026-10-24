@@ -78,6 +78,17 @@ describe("computeRowMeta", () => {
 		expect(byTs.get(105)).toMatchObject({ newTaskIndex: undefined, followedBySubtaskResult: false })
 	})
 
+	it("looks up a ts shared by two messages at the first of them", () => {
+		const history: ClineMessage[] = [
+			{ type: "say", say: "text", ts: 1, text: "task" },
+			{ type: "say", say: "text", ts: 2, text: "first" },
+			{ type: "say", say: "text", ts: 2, text: "second" },
+			{ type: "say", say: "text", ts: 3, text: "third" },
+		]
+
+		expect(computeRowMeta(history, history.slice(1)).byTs.get(2)?.nextTs).toBe(2)
+	})
+
 	it("gives a row that is not in the history no next message", () => {
 		const rows = withCondensingRow(subtaskHistory.slice(1), true)
 		const { byTs } = computeRowMeta(subtaskHistory, rows)
