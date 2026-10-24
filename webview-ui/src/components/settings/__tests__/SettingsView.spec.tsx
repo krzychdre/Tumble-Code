@@ -1,577 +1,575 @@
-// pnpm --filter @tumble-code/vscode-webview test src/components/settings/__tests__/SettingsView.spec.tsx
+// The Settings view over its Save buffer (the cachedState rule of AGENTS.md):
+// the real sections read and write the buffer through useSetting, Save posts
+// it, discarding restores it, and a profile switch or an import replaces it.
+//
+// Every section is the real component; the host, the translations, the
+// Providers tab and the Radix widgets jsdom cannot drive (slider, select) are
+// replaced. The lazy Modes/MCP tabs and search: SettingsView.lazy-tabs.spec.tsx.
 
-import { render, screen, fireEvent, within } from "@/utils/test-utils"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { act, fireEvent, render, screen, within } from "@/utils/test-utils"
 
-import { vscode } from "@/utils/vscode"
-import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
+import { vscode } from "@src/utils/vscode"
 
 import SettingsView from "../SettingsView"
-import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
-import { ThemedRadio as RealThemedRadio, ThemedRadioGroup as RealThemedRadioGroup } from "@/components/ui/themed-radio"
-import { Textarea as RealTextarea } from "@/components/ui/textarea"
-import { Input as RealInput } from "@/components/ui/input"
+import { buildUpdatedSettings, pickCachedSettings } from "../schema"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
+const mockState = vi.hoisted(() => ({ current: {} as Record<string, unknown> }))
+vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionState: () => mockState.current,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.current as never),
+}))
+
+vi.mock("@src/i18n/TranslationContext", () => ({
+	useAppTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock("react-i18next", () => ({
+	Trans: ({ i18nKey }: { i18nKey?: string }) => <span>{i18nKey}</span>,
+	useTranslation: () => ({ t: (key: string) => key }),
+	initReactI18next: { type: "3rdParty", init: () => {} },
+}))
+
+// The Providers tab: stand-ins that call SettingsView's callbacks the way the
+// real profile manager and provider form do.
 vi.mock("../ApiConfigManager", () => ({
-	__esModule: true,
-	default: ({ currentApiConfigName }: any) => (
-		<div data-testid="api-config-management">
-			<span>Current config: {currentApiConfigName}</span>
+	default: ({ onSelectConfig, onDeleteConfig, onRenameConfig, onUpsertConfig }: any) => (
+		<div>
+			<button onClick={() => onSelectConfig("other-profile")}>select-profile</button>
+			<button onClick={() => onDeleteConfig("old-profile")}>delete-profile</button>
+			<button onClick={() => onRenameConfig("default", "renamed")}>rename-profile</button>
+			<button onClick={() => onUpsertConfig("new-profile")}>upsert-profile</button>
 		</div>
 	),
 }))
-
-vi.mock("../../../components/common/Tab", () => ({
-	...vi.importActual("../../../components/common/Tab"),
-	Tab: ({ children }: any) => <div data-testid="tab-container">{children}</div>,
-	TabHeader: ({ children }: any) => <div data-testid="tab-header">{children}</div>,
-	TabTitle: ({ title, backLabel, onBack }: any) => (
+vi.mock("../ApiOptions", () => ({
+	default: ({ apiConfiguration, setApiConfigurationField, setErrorMessage }: any) => (
 		<div>
-			<button onClick={onBack}>{backLabel}</button>
-			<h3>{title}</h3>
+			<span data-testid="model-id">{apiConfiguration?.apiModelId ?? ""}</span>
+			<button data-testid="edit-model" onClick={() => setApiConfigurationField("apiModelId", "user-edit")}>
+				edit
+			</button>
+			<button data-testid="set-error" onClick={() => setErrorMessage("invalid key")}>
+				error
+			</button>
 		</div>
 	),
-	TabContent: ({ children, "data-testid": dataTestId }: any) => (
-		<div data-testid={dataTestId || "tab-content"}>{children}</div>
+}))
+vi.mock("../SettingsSearch", () => ({ SettingsSearch: () => null }))
+vi.mock("@src/components/modes/ModesView", () => ({
+	default: ({ onSelectApiConfiguration }: { onSelectApiConfiguration: (name: string) => void }) => (
+		<button data-testid="modes-select-profile" onClick={() => onSelectApiConfiguration("other-profile")}>
+			select profile in Modes
+		</button>
 	),
-	TabList: ({ children, value, onValueChange, "data-testid": dataTestId }: any) => {
-		// Store onValueChange in a global variable so TabTrigger can access it
-		;(window as any).__onValueChange = onValueChange
-		return (
-			<div data-testid={dataTestId} data-value={value}>
+}))
+vi.mock("@src/components/mcp/McpView", () => ({ default: () => null }))
+
+vi.mock("@src/components/ui", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@src/components/ui")>()
+	return {
+		...actual,
+		// Radix slider and select do not run in jsdom: native stand-ins that
+		// call the same callbacks with the same argument shapes.
+		Slider: ({ value, defaultValue, onValueChange, "data-testid": testId }: any) => (
+			<input
+				type="range"
+				data-testid={testId}
+				value={(value ?? defaultValue)?.[0] ?? 0}
+				onChange={(e) => onValueChange?.([Number(e.target.value)])}
+			/>
+		),
+		Select: ({ value, onValueChange, children }: any) => (
+			<div data-testid="select" data-value={value}>
+				<input data-testid="select-input" value={value ?? ""} onChange={(e) => onValueChange(e.target.value)} />
 				{children}
 			</div>
-		)
-	},
-	TabTrigger: ({ children, value, "data-testid": dataTestId, onClick, isSelected }: any) => {
-		// This function simulates clicking on a tab and making its content visible
-		const handleClick = () => {
-			if (onClick) onClick()
-			// Access onValueChange from the global variable
-			const onValueChange = (window as any).__onValueChange
-			if (onValueChange) onValueChange(value)
-			// Make all tab contents invisible
-			document.querySelectorAll("[data-tab-content]").forEach((el) => {
-				;(el as HTMLElement).style.display = "none"
-			})
-			// Make this tab's content visible
-			const tabContent = document.querySelector(`[data-tab-content="${value}"]`)
-			if (tabContent) {
-				;(tabContent as HTMLElement).style.display = "block"
-			}
-		}
+		),
+		SelectTrigger: ({ children }: any) => <div>{children}</div>,
+		SelectValue: () => null,
+		SelectContent: () => null,
+		SelectGroup: () => null,
+		SelectItem: () => null,
+		SelectSeparator: () => null,
+	}
+})
 
-		return (
-			<button data-testid={dataTestId} data-value={value} data-selected={isSelected} onClick={handleClick}>
-				{children}
-			</button>
-		)
-	},
-}))
+// A state with a non-default value for most buffered settings, so a lost or
+// swapped field shows in the Save payload.
+const baseState = () => ({
+	currentApiConfigName: "default",
+	listApiConfigMeta: [{ id: "p1", name: "default", apiProvider: "anthropic" }],
+	uriScheme: "vscode",
+	settingsImportedAt: undefined as number | undefined,
+	apiConfiguration: { apiProvider: "anthropic", apiModelId: "live-model" },
+	debug: false,
+	autoApprovalEnabled: true,
+	autoApprovalMode: "default",
+	setAutoApprovalEnabled: vi.fn(),
+	setAutoApprovalMode: vi.fn(),
+	alwaysAllowReadOnly: true,
+	alwaysAllowWrite: false,
+	alwaysAllowExecute: true,
+	allowedCommands: ["git status"],
+	deniedCommands: ["rm -rf"],
+	allowedMaxRequests: 25,
+	allowedMaxCost: 3,
+	followupAutoApproveTimeoutMs: 45000,
+	enableCheckpoints: true,
+	checkpointTimeout: 20,
+	autoMemoryEnabled: true,
+	autoMemoryDirectory: "/mem",
+	memoryRecallEnabled: true,
+	autoDreamEnabled: false,
+	autoDreamMinHours: 12,
+	autoDreamMinSessions: 3,
+	memoryWriterApiConfigId: "",
+	webToolsEnabled: false,
+	searxngBaseUrl: "http://searx.local",
+	webSearchMaxResults: 7,
+	soundEnabled: false,
+	soundVolume: 0.4,
+	autoCondenseContext: true,
+	autoCondenseContextPercent: 80,
+	maxOpenTabsContext: 15,
+	maxWorkspaceFiles: 150,
+	showRooIgnoredFiles: false,
+	enableSubfolderRules: false,
+	maxImageFileSize: 4,
+	maxTotalImageSize: 18,
+	profileThresholds: {},
+	includeDiagnosticMessages: true,
+	maxDiagnosticMessages: 40,
+	writeDelayMs: 900,
+	includeCurrentTime: true,
+	includeCurrentCost: false,
+	maxGitStatusFiles: 9,
+	customSupportPrompts: { ENHANCE: "Improve: ${userInput}" },
+	terminalOutputPreviewSize: "medium",
+	terminalShellIntegrationTimeout: 8000,
+	terminalShellIntegrationDisabled: true,
+	terminalCommandDelay: 0,
+	terminalZshOhMy: false,
+	parallelTasksMaxConcurrency: 2,
+	subagentFollowupTimeoutSec: 30,
+	includeTaskHistoryInEnhance: false,
+	enhancementApiConfigId: "",
+	setEnhancementApiConfigId: vi.fn(),
+	setIncludeTaskHistoryInEnhance: vi.fn(),
+	reasoningBlockCollapsed: true,
+	enterBehavior: "send",
+	uiDensity: "comfortable",
+	experiments: { preventFocusDisruption: false },
+	language: "en",
+})
 
-vi.mock("@/components/ui", () => ({
-	// P4: SettingsView lazy-tab fallback renders a progress ring; stub it.
-	Spinner: () => <span data-testid="progress-ring" />,
-	// The real text field (a native input), not a stub.
-	Input: (props: any) => <RealInput {...props} />,
-	...vi.importActual("@/components/ui"),
-	// The real checkbox (a native input), not a stub: only the barrel is mocked.
-	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
-	// The real radio group (native radios), used by the model size control.
-	ThemedRadioGroup: (props: any) => <RealThemedRadioGroup {...props} />,
-	ThemedRadio: (props: any) => <RealThemedRadio {...props} />,
-	Textarea: (props: any) => <RealTextarea {...props} />,
-	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
-	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
-		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>
-			Toggle
-		</button>
-	),
-	Checkbox: ({ checked, onCheckedChange, id, className, ...props }: any) => (
-		<input
-			type="checkbox"
-			checked={checked}
-			onChange={(e) => onCheckedChange?.(e.target.checked)}
-			id={id}
-			className={className}
-			{...props}
-		/>
-	),
-	Popover: ({ children }: any) => <div data-testid="popover">{children}</div>,
-	PopoverTrigger: ({ children }: any) => <div data-testid="popover-trigger">{children}</div>,
-	PopoverContent: ({ children }: any) => <div data-testid="popover-content">{children}</div>,
-	Command: ({ children }: any) => <div data-testid="command">{children}</div>,
-	CommandInput: ({ value, onValueChange }: any) => (
-		<input data-testid="command-input" value={value} onChange={(e) => onValueChange(e.target.value)} />
-	),
-	CommandGroup: ({ children }: any) => <div data-testid="command-group">{children}</div>,
-	CommandItem: ({ children, onSelect }: any) => (
-		<div data-testid="command-item" onClick={onSelect}>
-			{children}
-		</div>
-	),
-	CommandList: ({ children }: any) => <div data-testid="command-list">{children}</div>,
-	CommandEmpty: ({ children }: any) => <div data-testid="command-empty">{children}</div>,
-	Slider: ({ value, onValueChange, "data-testid": dataTestId }: any) => (
-		<input
-			type="range"
-			value={value?.[0] ?? 0}
-			onChange={(e) => onValueChange?.([parseFloat(e.target.value)])}
-			data-testid={dataTestId}
-		/>
-	),
-	Button: ({ children, onClick, variant, className, "data-testid": dataTestId }: any) => (
-		<button onClick={onClick} data-variant={variant} className={className} data-testid={dataTestId}>
-			{children}
-		</button>
-	),
-	StandardTooltip: ({ children, content }: any) => <div title={content}>{children}</div>,
-	Select: ({ children, value, onValueChange }: any) => (
-		<div data-testid="select" data-value={value}>
-			<button onClick={() => onValueChange && onValueChange("test-change")}>{value}</button>
-			{children}
-		</div>
-	),
-	SelectContent: ({ children }: any) => <div data-testid="select-content">{children}</div>,
-	SelectGroup: ({ children }: any) => <div data-testid="select-group">{children}</div>,
-	SelectItem: ({ children, value }: any) => (
-		<div data-testid={`select-item-${value}`} data-value={value}>
-			{children}
-		</div>
-	),
-	SelectTrigger: ({ children }: any) => <div data-testid="select-trigger">{children}</div>,
-	SelectValue: ({ placeholder }: any) => <div data-testid="select-value">{placeholder}</div>,
-	SearchableSelect: ({ value, onValueChange, options, placeholder }: any) => (
-		<select value={value} onChange={(e) => onValueChange(e.target.value)} data-testid="searchable-select">
-			{placeholder && <option value="">{placeholder}</option>}
-			{options?.map((opt: any) => (
-				<option key={opt.value} value={opt.value}>
-					{opt.label}
-				</option>
-			))}
-		</select>
-	),
-	AlertDialog: ({ children, open }: any) => (
-		<div data-testid="alert-dialog" data-open={open}>
-			{children}
-		</div>
-	),
-	AlertDialogContent: ({ children }: any) => <div data-testid="alert-dialog-content">{children}</div>,
-	AlertDialogHeader: ({ children }: any) => <div data-testid="alert-dialog-header">{children}</div>,
-	AlertDialogTitle: ({ children }: any) => <div data-testid="alert-dialog-title">{children}</div>,
-	AlertDialogDescription: ({ children }: any) => <div data-testid="alert-dialog-description">{children}</div>,
-	AlertDialogFooter: ({ children }: any) => <div data-testid="alert-dialog-footer">{children}</div>,
-	AlertDialogAction: ({ children, onClick }: any) => (
-		<button data-testid="alert-dialog-action" onClick={onClick}>
-			{children}
-		</button>
-	),
-	AlertDialogCancel: ({ children, onClick }: any) => (
-		<button data-testid="alert-dialog-cancel" onClick={onClick}>
-			{children}
-		</button>
-	),
-	// Add Collapsible components
-	Collapsible: ({ children, open }: any) => (
-		<div className="collapsible-mock" data-open={open}>
-			{children}
-		</div>
-	),
-	CollapsibleTrigger: ({ children, className, onClick }: any) => (
-		<div className={`collapsible-trigger-mock ${className || ""}`} onClick={onClick}>
-			{children}
-		</div>
-	),
-	CollapsibleContent: ({ children, className }: any) => (
-		<div className={`collapsible-content-mock ${className || ""}`}>{children}</div>
-	),
-	Dialog: ({ children, ...props }: any) => (
-		<div data-testid="dialog" {...props}>
-			{children}
-		</div>
-	),
-	DialogContent: ({ children, ...props }: any) => (
-		<div data-testid="dialog-content" {...props}>
-			{children}
-		</div>
-	),
-	DialogHeader: ({ children, ...props }: any) => (
-		<div data-testid="dialog-header" {...props}>
-			{children}
-		</div>
-	),
-	DialogTitle: ({ children, ...props }: any) => (
-		<div data-testid="dialog-title" {...props}>
-			{children}
-		</div>
-	),
-	DialogDescription: ({ children, ...props }: any) => (
-		<div data-testid="dialog-description" {...props}>
-			{children}
-		</div>
-	),
-	DialogFooter: ({ children, ...props }: any) => (
-		<div data-testid="dialog-footer" {...props}>
-			{children}
-		</div>
-	),
-}))
+// A new onDone wrapper per element: SettingsView is memoized, and the mocked
+// state is no context, so only new props make a rerender reach it.
+const view = (props: { onDone?: () => void; targetSection?: string } = {}) => (
+	<SettingsView onDone={() => props.onDone?.()} targetSection={props.targetSection} />
+)
 
-// Mock window.postMessage to trigger state hydration
-const mockPostMessage = (state: any) => {
-	window.postMessage(
-		{
-			type: "state",
-			state: {
-				version: "1.0.0",
-				clineMessages: [],
-				taskHistory: [],
-				shouldShowAnnouncement: false,
-				allowedCommands: [],
-				alwaysAllowExecute: false,
-				soundEnabled: false,
-				soundVolume: 0.5,
-				...state,
-			},
-		},
-		"*",
+const renderView = (props: { targetSection?: string } = {}) => {
+	const onDone = vi.fn()
+	const result = render(view({ onDone, ...props }))
+	// A host state push: the view re-renders with the new live state.
+	const pushState = (patch: Record<string, unknown>) => {
+		mockState.current = { ...mockState.current, ...patch }
+		result.rerender(view({ onDone, ...props }))
+	}
+	return { onDone, pushState, rerender: result.rerender }
+}
+
+const openTab = (id: string) => {
+	fireEvent.click(screen.getByTestId(`tab-${id}`))
+	return screen.getByTestId("settings-content")
+}
+
+const content = () => screen.getByTestId("settings-content")
+const saveButton = () => screen.getByTestId("save-button")
+const checkbox = (name: string) => within(content()).getByRole("checkbox", { name })
+const byTestId = (id: string) => within(content()).getByTestId(id)
+const postedMessages = () => vi.mocked(vscode.postMessage).mock.calls.map(([message]) => message as any)
+const messagesOfType = (type: string) => postedMessages().filter((message) => message.type === type)
+const dialogTitle = () => screen.queryByText("settings:unsavedChangesDialog.title")
+const isMarked = (id: string) => screen.getByTestId(`tab-${id}`).getAttribute("data-unsaved") === "true"
+
+/** The keys of a Save payload that differ from the payload of the untouched state. */
+const changedKeys = (payload: Record<string, unknown>) => {
+	const untouched = buildUpdatedSettings(pickCachedSettings(baseState() as never)) as Record<string, unknown>
+	return Object.fromEntries(
+		Object.entries(payload).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(untouched[key])),
 	)
 }
 
-const renderSettingsView = () => {
-	const onDone = vi.fn()
-	const queryClient = new QueryClient()
+// One edit per section, through the control a user would use: what the edit
+// posts at once and which keys of the Save payload it changes.
+const EDITS: { tab: string; edit: () => void; immediate: unknown[]; changed: Record<string, unknown> }[] = [
+	{
+		tab: "autoApprove",
+		edit: () => {
+			fireEvent.click(checkbox("settings:autoApprove.readOnly.outsideWorkspace.label"))
+			fireEvent.change(byTestId("command-input"), { target: { value: "npm test" } })
+			fireEvent.click(byTestId("add-command-button"))
+		},
+		immediate: [{ type: "updateSettings", updatedSettings: { allowedCommands: ["git status", "npm test"] } }],
+		changed: { allowedCommands: ["git status", "npm test"], alwaysAllowReadOnlyOutsideWorkspace: true },
+	},
+	{
+		tab: "checkpoints",
+		edit: () => fireEvent.change(byTestId("checkpoint-timeout-slider"), { target: { value: "42" } }),
+		immediate: [],
+		changed: { checkpointTimeout: 42 },
+	},
+	{
+		tab: "memory",
+		edit: () => fireEvent.input(byTestId("memory-directory-input"), { target: { value: "/other" } }),
+		immediate: [],
+		changed: { autoMemoryDirectory: "/other" },
+	},
+	{
+		tab: "web",
+		edit: () => fireEvent.click(byTestId("web-tools-enabled-checkbox")),
+		immediate: [],
+		changed: { webToolsEnabled: true },
+	},
+	{
+		tab: "notifications",
+		edit: () => fireEvent.click(byTestId("sound-enabled-checkbox")),
+		immediate: [],
+		changed: { soundEnabled: true },
+	},
+	{
+		tab: "contextManagement",
+		edit: () => {
+			fireEvent.click(byTestId("show-rooignored-files-checkbox"))
+			fireEvent.change(byTestId("write-delay-slider"), { target: { value: "100" } })
+		},
+		immediate: [],
+		changed: { showRooIgnoredFiles: true, writeDelayMs: 100 },
+	},
+	{
+		tab: "terminal",
+		edit: () => fireEvent.click(checkbox("settings:terminal.shellIntegrationDisabled.label")),
+		immediate: [],
+		changed: { terminalShellIntegrationDisabled: false },
+	},
+	{
+		tab: "subagents",
+		edit: () => fireEvent.change(byTestId("subagents-max-concurrency-slider"), { target: { value: "4" } }),
+		immediate: [],
+		changed: { parallelTasksMaxConcurrency: 4 },
+	},
+	{
+		tab: "prompts",
+		edit: () => fireEvent.click(checkbox("prompts:supportPrompts.enhance.includeTaskHistory")),
+		immediate: [{ type: "updateSettings", updatedSettings: { includeTaskHistoryInEnhance: true } }],
+		changed: { includeTaskHistoryInEnhance: true },
+	},
+	{
+		tab: "ui",
+		edit: () => fireEvent.click(byTestId("enter-behavior-checkbox")),
+		immediate: [],
+		changed: { enterBehavior: "newline" },
+	},
+	{
+		tab: "experimental",
+		edit: () => fireEvent.click(checkbox("settings:experimental.PREVENT_FOCUS_DISRUPTION.name")),
+		immediate: [],
+		changed: { experiments: { preventFocusDisruption: true } },
+	},
+	{
+		tab: "language",
+		edit: () => fireEvent.change(byTestId("select-input"), { target: { value: "de" } }),
+		immediate: [],
+		changed: { language: "de" },
+	},
+]
 
-	const result = render(
-		<ExtensionStateContextProvider>
-			<QueryClientProvider client={queryClient}>
-				<SettingsView onDone={onDone} />
-			</QueryClientProvider>
-		</ExtensionStateContextProvider>,
-	)
+beforeEach(() => {
+	vi.clearAllMocks()
+	mockState.current = baseState()
+})
 
-	// Hydrate initial state.
-	mockPostMessage({})
+describe("SettingsView Save buffer through the real sections", () => {
+	it.each(EDITS)("$tab: an edit marks the form dirty and Save sends it", ({ tab, edit, immediate, changed }) => {
+		renderView()
+		openTab(tab)
+		expect(saveButton()).toBeDisabled()
 
-	// Helper function to activate a tab and ensure its content is visible
-	const activateTab = (tabId: string) => {
-		// Skip trying to find and click the tab, just directly render with the target section
-		// This bypasses the actual tab clicking mechanism but ensures the content is shown
-		result.rerender(
-			<ExtensionStateContextProvider>
-				<QueryClientProvider client={queryClient}>
-					<SettingsView onDone={onDone} targetSection={tabId} />
-				</QueryClientProvider>
-			</ExtensionStateContextProvider>,
-		)
+		// Only what the edit and Save post, not the requests a tab sends on mount.
+		vi.mocked(vscode.postMessage).mockClear()
+		edit()
+		expect(saveButton()).toBeEnabled()
+		expect(postedMessages()).toEqual(immediate)
+
+		vi.mocked(vscode.postMessage).mockClear()
+		fireEvent.click(saveButton())
+		const [update] = messagesOfType("updateSettings")
+		expect(changedKeys(update.updatedSettings)).toEqual(changed)
+		expect(saveButton()).toBeDisabled()
+	})
+
+	it("Save posts the settings, then the provider profile, then the debug flag", () => {
+		renderView()
+		openTab("about")
+		fireEvent.click(checkbox("settings:about.debugMode.label"))
+		vi.mocked(vscode.postMessage).mockClear()
+
+		fireEvent.click(saveButton())
+
+		expect(postedMessages().map((message) => message.type)).toEqual([
+			"updateSettings",
+			"upsertApiConfiguration",
+			"debugSetting",
+		])
+		expect(postedMessages()[1]).toEqual({
+			type: "upsertApiConfiguration",
+			text: "default",
+			apiConfiguration: { apiProvider: "anthropic", apiModelId: "live-model" },
+		})
+		expect(postedMessages()[2]).toEqual({ type: "debugSetting", bool: true })
+	})
+
+	// The host writes the picked profile into the state; Save must be possible meanwhile.
+	it("opening the terminal profile picker enables Save without changing a value", () => {
+		mockState.current.terminalShellIntegrationDisabled = false
+		renderView()
+		openTab("terminal")
+
+		fireEvent.click(byTestId("terminal-profile-configure-button"))
+
+		expect(postedMessages()).toContainEqual({ type: "openTerminalProfilePicker" })
+		expect(saveButton()).toBeEnabled()
+	})
+
+	it("the buffer, not the live state, drives the control after an edit", () => {
+		renderView()
+		openTab("notifications")
+		const sound = byTestId("sound-enabled-checkbox")
+
+		fireEvent.click(sound)
+
+		expect(sound).toBeChecked()
+		expect(mockState.current.soundEnabled).toBe(false)
+		expect(messagesOfType("updateSettings")).toEqual([])
+	})
+
+	it("an edit survives switching tabs and back", () => {
+		renderView()
+		fireEvent.click(within(openTab("web")).getByTestId("web-tools-enabled-checkbox"))
+		openTab("about")
+
+		expect(within(openTab("web")).getByTestId("web-tools-enabled-checkbox")).toBeChecked()
+		expect(saveButton()).toBeEnabled()
+	})
+
+	it("Done without edits leaves at once", () => {
+		const { onDone } = renderView()
+
+		fireEvent.click(screen.getByRole("button", { name: "settings:common.done" }))
+
+		expect(onDone).toHaveBeenCalledTimes(1)
+		expect(dialogTitle()).toBeNull()
+	})
+
+	it("discarding restores every edited field, clears the dirty flag and then leaves", async () => {
+		const { onDone } = renderView()
+		openTab("ui")
+		fireEvent.click(byTestId("enter-behavior-checkbox"))
+		fireEvent.click(byTestId("collapse-thinking-checkbox"))
+
+		fireEvent.click(screen.getByRole("button", { name: "settings:common.done" }))
+		expect(onDone).not.toHaveBeenCalled()
+		await act(async () => {
+			fireEvent.click(await screen.findByText("settings:unsavedChangesDialog.discardButton"))
+		})
+
+		expect(onDone).toHaveBeenCalledTimes(1)
+		expect(byTestId("enter-behavior-checkbox")).not.toBeChecked()
+		expect(byTestId("collapse-thinking-checkbox")).toBeChecked()
+		expect(saveButton()).toBeDisabled()
+	})
+
+	it("cancelling the discard dialog keeps the edit and the dirty flag", async () => {
+		const { onDone } = renderView()
+		fireEvent.click(within(openTab("web")).getByTestId("web-tools-enabled-checkbox"))
+
+		fireEvent.click(screen.getByRole("button", { name: "settings:common.done" }))
+		await act(async () => {
+			fireEvent.click(await screen.findByText("settings:unsavedChangesDialog.cancelButton"))
+		})
+
+		expect(onDone).not.toHaveBeenCalled()
+		expect(byTestId("web-tools-enabled-checkbox")).toBeChecked()
+		expect(saveButton()).toBeEnabled()
+	})
+
+	it("an invalid provider form disables Save", () => {
+		renderView()
+		fireEvent.click(screen.getByTestId("edit-model"))
+		expect(saveButton()).toBeEnabled()
+
+		fireEvent.click(screen.getByTestId("set-error"))
+
+		expect(saveButton()).toBeDisabled()
+	})
+})
+
+// §2.10: a dot on Save and on each tab with unsaved edits.
+describe("SettingsView unsaved-edit dots", () => {
+	it("marks Save and every edited tab, names it for screen readers, and clears all on Save", () => {
+		renderView()
+		const saveDot = () => within(saveButton()).queryByTestId("unsaved-dot")
+		expect(saveDot()).toBeNull()
+
+		fireEvent.click(within(openTab("web")).getByTestId("web-tools-enabled-checkbox"))
+		fireEvent.click(within(openTab("notifications")).getByTestId("sound-enabled-checkbox"))
+
+		expect(saveDot()).not.toBeNull()
+		expect([isMarked("web"), isMarked("notifications"), isMarked("terminal")]).toEqual([true, true, false])
+		expect(within(screen.getByTestId("tab-web")).getByText("settings:header.unsavedChanges")).toHaveClass("sr-only")
+
+		fireEvent.click(saveButton())
+
+		expect([isMarked("web"), isMarked("notifications")]).toEqual([false, false])
+		expect(saveDot()).toBeNull()
+	})
+})
+
+describe("SettingsView provider profiles", () => {
+	it.each([
+		["select-profile", { type: "loadApiConfiguration", text: "other-profile" }],
+		["delete-profile", { type: "deleteApiConfiguration", text: "old-profile" }],
+		[
+			"rename-profile",
+			{
+				type: "renameApiConfiguration",
+				values: { oldName: "default", newName: "renamed" },
+				apiConfiguration: { apiProvider: "anthropic", apiModelId: "live-model" },
+			},
+		],
+		[
+			"upsert-profile",
+			{
+				type: "upsertApiConfiguration",
+				text: "new-profile",
+				apiConfiguration: { apiProvider: "anthropic", apiModelId: "live-model" },
+			},
+		],
+	])("%s posts %o", (button, message) => {
+		renderView()
+
+		fireEvent.click(screen.getByText(button))
+
+		expect(postedMessages()).toEqual([message])
+	})
+
+	it("a renamed profile is not mistaken for a profile switch: the edits stay", () => {
+		const { pushState } = renderView()
+		fireEvent.click(screen.getByTestId("edit-model"))
+		fireEvent.click(screen.getByText("rename-profile"))
+
+		pushState({ currentApiConfigName: "renamed" })
+
+		expect(screen.getByTestId("model-id").textContent).toBe("user-edit")
+		expect(saveButton()).toBeEnabled()
+	})
+
+	it("a loaded profile (new currentApiConfigName) replaces the Save buffer and clears the unsaved flag", () => {
+		const { pushState } = renderView()
+		fireEvent.click(screen.getByTestId("edit-model"))
+
+		pushState({ currentApiConfigName: "other", apiConfiguration: { apiProvider: "openai", apiModelId: "gpt" } })
+
+		expect(screen.getByTestId("model-id").textContent).toBe("gpt")
+		expect(saveButton()).toBeDisabled()
+	})
+
+	// The Modes tab has its own profile picker; a loaded profile overwrites the
+	// Save buffer, so it must ask first like the Providers tab does.
+	const editThenPickProfileInModesTab = async () => {
+		renderView()
+		fireEvent.click(screen.getByTestId("edit-model"))
+		openTab("modes")
+		fireEvent.click(await screen.findByTestId("modes-select-profile"))
 	}
 
-	// Helper to get elements within the settings content (not the indexing container)
-	const getSettingsContent = () => screen.getByTestId("settings-content")
+	it("asks before discarding unsaved edits and loads the profile only on confirm", async () => {
+		await editThenPickProfileInModesTab()
 
-	return { onDone, activateTab, getSettingsContent }
-}
+		expect(await screen.findByText("settings:unsavedChangesDialog.title")).toBeInTheDocument()
+		expect(messagesOfType("loadApiConfiguration")).toEqual([])
 
-describe("SettingsView - Sound Settings", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
+		fireEvent.click(screen.getByText("settings:unsavedChangesDialog.discardButton"))
+
+		expect(messagesOfType("loadApiConfiguration")).toEqual([
+			{ type: "loadApiConfiguration", text: "other-profile" },
+		])
 	})
 
-	it("initializes with sound disabled by default", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
+	it("keeps the unsaved edits and the current profile when the user cancels", async () => {
+		await editThenPickProfileInModesTab()
 
-		// Activate the notifications tab
-		activateTab("notifications")
+		fireEvent.click(await screen.findByText("settings:unsavedChangesDialog.cancelButton"))
 
-		const content = getSettingsContent()
-		const soundCheckbox = within(content).getByTestId("sound-enabled-checkbox")
-		expect(soundCheckbox).not.toBeChecked()
-
-		// Volume slider should not be visible when sound is disabled
-		expect(within(content).queryByTestId("sound-volume-slider")).not.toBeInTheDocument()
+		expect(messagesOfType("loadApiConfiguration")).toEqual([])
+		expect(saveButton()).toBeEnabled()
 	})
 
-	it("toggles sound setting and sends message to VSCode", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
+	it("loads the profile at once when nothing is unsaved", async () => {
+		renderView()
+		openTab("modes")
+		fireEvent.click(await screen.findByTestId("modes-select-profile"))
 
-		// Activate the notifications tab
-		activateTab("notifications")
-
-		const content = getSettingsContent()
-		const soundCheckbox = within(content).getByTestId("sound-enabled-checkbox")
-
-		// Enable sound
-		fireEvent.click(soundCheckbox)
-		expect(soundCheckbox).toBeChecked()
-
-		// Click Save to save settings
-		const saveButton = screen.getByTestId("save-button")
-		fireEvent.click(saveButton)
-
-		expect(vscode.postMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "updateSettings",
-				updatedSettings: expect.objectContaining({
-					soundEnabled: true,
-				}),
-			}),
-		)
-	})
-
-	it("shows volume slider when sound is enabled", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
-
-		// Activate the notifications tab
-		activateTab("notifications")
-
-		const content = getSettingsContent()
-		// Enable sound
-		const soundCheckbox = within(content).getByTestId("sound-enabled-checkbox")
-		fireEvent.click(soundCheckbox)
-
-		// Volume slider should be visible
-		const volumeSlider = within(content).getByTestId("sound-volume-slider")
-		expect(volumeSlider).toBeInTheDocument()
-		expect(volumeSlider).toHaveValue("0.5")
-	})
-
-	it("updates volume and sends message to VSCode when slider changes", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
-
-		// Activate the notifications tab
-		activateTab("notifications")
-
-		const content = getSettingsContent()
-		// Enable sound
-		const soundCheckbox = within(content).getByTestId("sound-enabled-checkbox")
-		fireEvent.click(soundCheckbox)
-
-		// Change volume
-		const volumeSlider = within(content).getByTestId("sound-volume-slider")
-		fireEvent.change(volumeSlider, { target: { value: "0.75" } })
-
-		// Click Save to save settings
-		const saveButton = screen.getByTestId("save-button")
-		fireEvent.click(saveButton)
-
-		// Verify message sent to VSCode
-		expect(vscode.postMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "updateSettings",
-				updatedSettings: expect.objectContaining({
-					soundVolume: 0.75,
-				}),
-			}),
-		)
+		expect(dialogTitle()).toBeNull()
+		expect(messagesOfType("loadApiConfiguration")).toEqual([
+			{ type: "loadApiConfiguration", text: "other-profile" },
+		])
 	})
 })
 
-describe("SettingsView - API Configuration", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
+// The host sets settingsImportedAt for one state push after an import and then
+// clears it with `undefined`, which postMessage drops: every later push still
+// carries the same, stale timestamp.
+describe("SettingsView settings import signal (settingsImportedAt)", () => {
+	it("keeps an edit made after an import when an unrelated state update arrives", () => {
+		const { pushState } = renderView()
+		pushState({ settingsImportedAt: 1000, apiConfiguration: { apiProvider: "openai", apiModelId: "imported" } })
+		expect(screen.getByTestId("model-id").textContent).toBe("imported")
+
+		fireEvent.click(screen.getByTestId("edit-model"))
+		pushState({ soundEnabled: true })
+
+		expect(screen.getByTestId("model-id").textContent).toBe("user-edit")
+		expect(saveButton()).toBeEnabled()
 	})
 
-	it("renders ApiConfigManagement with correct props", () => {
-		renderSettingsView()
+	it("resets the Save buffer once for each new import", () => {
+		const { pushState } = renderView()
+		fireEvent.click(screen.getByTestId("edit-model"))
 
-		expect(screen.getByTestId("api-config-management")).toBeInTheDocument()
-	})
-})
+		pushState({ settingsImportedAt: 1000, apiConfiguration: { apiProvider: "openai", apiModelId: "first" } })
+		expect(screen.getByTestId("model-id").textContent).toBe("first")
+		expect(saveButton()).toBeDisabled()
 
-describe("SettingsView - Allowed Commands", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
-	})
-
-	it("shows allowed commands section when alwaysAllowExecute is enabled", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
-
-		// Activate the autoApprove tab
-		activateTab("autoApprove")
-
-		const content = getSettingsContent()
-		// Enable always allow execute
-		const executeCheckbox = within(content).getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
-		// Verify allowed commands section appears
-		expect(within(content).getByTestId("allowed-commands-heading")).toBeInTheDocument()
-		expect(within(content).getByTestId("command-input")).toBeInTheDocument()
-	})
-
-	it("adds new command to the list", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
-
-		// Activate the autoApprove tab
-		activateTab("autoApprove")
-
-		const content = getSettingsContent()
-		// Enable always allow execute
-		const executeCheckbox = within(content).getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
-
-		// Add a new command
-		const input = within(content).getByTestId("command-input")
-		fireEvent.change(input, { target: { value: "npm test" } })
-
-		const addButton = within(content).getByTestId("add-command-button")
-		fireEvent.click(addButton)
-
-		// Verify command was added
-		expect(within(content).getByText("npm test")).toBeInTheDocument()
-
-		// Verify VSCode message was sent
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "updateSettings",
-			updatedSettings: {
-				allowedCommands: ["npm test"],
-			},
-		})
-	})
-
-	it("removes command from the list", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
-
-		// Activate the autoApprove tab
-		activateTab("autoApprove")
-
-		const content = getSettingsContent()
-		// Enable always allow execute
-		const executeCheckbox = within(content).getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
-
-		// Add a command
-		const input = within(content).getByTestId("command-input")
-		fireEvent.change(input, { target: { value: "npm test" } })
-		const addButton = within(content).getByTestId("add-command-button")
-		fireEvent.click(addButton)
-
-		// Remove the command
-		const removeButton = within(content).getByTestId("remove-command-0")
-		fireEvent.click(removeButton)
-
-		// Verify command was removed
-		expect(within(content).queryByText("npm test")).not.toBeInTheDocument()
-
-		// Verify VSCode message was sent
-		expect(vscode.postMessage).toHaveBeenLastCalledWith({
-			type: "updateSettings",
-			updatedSettings: {
-				allowedCommands: [],
-			},
-		})
-	})
-
-	describe("SettingsView - Tab Navigation", () => {
-		beforeEach(() => {
-			vi.clearAllMocks()
-		})
-
-		it("renders with providers tab active by default", () => {
-			renderSettingsView()
-
-			// Check that the tab list is rendered
-			const tabList = screen.getByTestId("settings-tab-list")
-			expect(tabList).toBeInTheDocument()
-
-			// Check that providers content is visible
-			expect(screen.getByTestId("api-config-management")).toBeInTheDocument()
-		})
-
-		it("shows unsaved changes dialog when clicking Done with unsaved changes", () => {
-			// Render once and get the activateTab helper
-			const { activateTab, getSettingsContent } = renderSettingsView()
-
-			// Activate the notifications tab
-			activateTab("notifications")
-
-			const content = getSettingsContent()
-			// Make a change to create unsaved changes
-			const soundCheckbox = within(content).getByTestId("sound-enabled-checkbox")
-			fireEvent.click(soundCheckbox)
-
-			// Click the Done button
-			const doneButton = screen.getByText("settings:common.done")
-			fireEvent.click(doneButton)
-
-			// Check that unsaved changes dialog is shown
-			expect(screen.getByText("settings:unsavedChangesDialog.title")).toBeInTheDocument()
-		})
+		fireEvent.click(screen.getByTestId("edit-model"))
+		pushState({ settingsImportedAt: 2000, apiConfiguration: { apiProvider: "openai", apiModelId: "second" } })
+		expect(screen.getByTestId("model-id").textContent).toBe("second")
+		expect(saveButton()).toBeDisabled()
 	})
 })
 
-describe("SettingsView - Duplicate Commands", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
-	})
+describe("SettingsView target section", () => {
+	it("opens the tab the host names, and ignores a name that is no tab", () => {
+		const { rerender } = renderView({ targetSection: "web" })
+		expect(byTestId("web-tools-enabled-checkbox")).toBeInTheDocument()
 
-	it("prevents duplicate commands", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
+		rerender(view({ targetSection: "notifications" }))
+		expect(byTestId("sound-enabled-checkbox")).toBeInTheDocument()
 
-		// Activate the autoApprove tab
-		activateTab("autoApprove")
-
-		const content = getSettingsContent()
-		// Enable always allow execute
-		const executeCheckbox = within(content).getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
-
-		// Add a command twice
-		const input = within(content).getByTestId("command-input")
-		const addButton = within(content).getByTestId("add-command-button")
-
-		// First addition
-		fireEvent.change(input, { target: { value: "npm test" } })
-		fireEvent.click(addButton)
-
-		// Second addition attempt
-		fireEvent.change(input, { target: { value: "npm test" } })
-		fireEvent.click(addButton)
-
-		// Verify command appears only once in active tab
-		const commands = within(content).getAllByText("npm test")
-		expect(commands).toHaveLength(1)
-	})
-
-	it("saves allowed commands when clicking Save", () => {
-		// Render once and get the activateTab helper
-		const { activateTab, getSettingsContent } = renderSettingsView()
-
-		// Activate the autoApprove tab
-		activateTab("autoApprove")
-
-		const content = getSettingsContent()
-		// Enable always allow execute
-		const executeCheckbox = within(content).getByTestId("always-allow-execute-toggle")
-		fireEvent.click(executeCheckbox)
-
-		// Add a command
-		const input = within(content).getByTestId("command-input")
-		fireEvent.change(input, { target: { value: "npm test" } })
-		const addButton = within(content).getByTestId("add-command-button")
-		fireEvent.click(addButton)
-
-		// Click Save
-		const saveButton = screen.getByTestId("save-button")
-		fireEvent.click(saveButton)
-
-		// Verify VSCode messages were sent
-		expect(vscode.postMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "updateSettings",
-				updatedSettings: expect.objectContaining({
-					allowedCommands: ["npm test"],
-				}),
-			}),
-		)
+		rerender(view({ targetSection: "no-such-tab" }))
+		expect(byTestId("sound-enabled-checkbox")).toBeInTheDocument()
 	})
 })

@@ -90,4 +90,35 @@ describe("settings schema (WEB-3)", () => {
 		expect(isSettingChange("allowedCommands", ["ls"], ["ls"])).toBe(true)
 		expect(isSettingChange("soundVolume", 0.5, 0.5)).toBe(false)
 	})
+
+	// DEF-C25: the first Save of an untouched state must not rewrite a value
+	// the user never set, so every payload fallback is the host default.
+	it("sends the host default for every setting the buffer lacks", () => {
+		const payload = buildUpdatedSettings({} as never)
+
+		const drift = Object.entries(payload).filter(
+			([key, value]) =>
+				key in SETTINGS_DEFAULTS &&
+				value !== undefined &&
+				JSON.stringify(value) !== JSON.stringify(SETTINGS_DEFAULTS[key as keyof typeof SETTINGS_DEFAULTS]),
+		)
+
+		expect(drift).toEqual([])
+	})
+
+	// What each kind of row does with the buffered value on the way to the host.
+	it.each([
+		["a value without a row default passes through", { writeDelayMs: 250 }, "writeDelayMs", 250],
+		["a value overrides the row default", { soundEnabled: true }, "soundEnabled", true],
+		["an absent value takes the row default", {}, "soundEnabled", SETTINGS_DEFAULTS.soundEnabled],
+		["a too large tab count is clamped", { maxOpenTabsContext: 900 }, "maxOpenTabsContext", 500],
+		["a negative file count is clamped", { maxWorkspaceFiles: -3 }, "maxWorkspaceFiles", 0],
+		["null is sent as unset", { alwaysAllowReadOnly: null }, "alwaysAllowReadOnly", undefined],
+		["an absent request limit is sent as null, which clears it", {}, "allowedMaxRequests", null],
+		["an absent cost limit is sent as null, which clears it", {}, "allowedMaxCost", null],
+		["an absent terminal profile is sent as an empty string", {}, "terminalProfile", ""],
+		["an empty SearXNG URL is sent as an empty string", { searxngBaseUrl: "" }, "searxngBaseUrl", ""],
+	] as const)("%s", (_, cached, key, expected) => {
+		expect(buildUpdatedSettings(cached as never)[key]).toStrictEqual(expected)
+	})
 })

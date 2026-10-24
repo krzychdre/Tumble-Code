@@ -89,3 +89,16 @@ describe("NotificationSettings custom sound longer than the limit", () => {
 		expect(screen.queryByText(TOO_LONG)).not.toBeInTheDocument()
 	})
 })
+
+describe("NotificationSettings volume", () => {
+	it("shows the volume only while sound is on, at the default when none is set", () => {
+		extensionState.current = {}
+		renderWithSettingsDraft(<NotificationSettings />, { soundEnabled: false })
+		expect(screen.queryByTestId("sound-volume-slider")).not.toBeInTheDocument()
+
+		fireEvent.click(screen.getByTestId("sound-enabled-checkbox"))
+
+		expect(screen.getByTestId("sound-volume-slider")).toBeInTheDocument()
+		expect(screen.getByText("50%")).toBeInTheDocument()
+	})
+})
