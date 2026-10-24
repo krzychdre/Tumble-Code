@@ -1,4 +1,4 @@
-// npx vitest run core/webview/__tests__/ClineProvider.modeProfileBinding.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/ClineProvider.modeProfileBinding.spec.ts
 //
 // Characterization matrix for the mode-to-profile binding (CORE-R6 c). The
 // binding used to be resolved by three copies that drifted: the history
@@ -12,7 +12,8 @@ import * as vscode from "vscode"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
 import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
-import type { CliModeProviderSettings, HistoryItem } from "@tumble-code/types"
+import { TumbleCodeEventName, type CliModeProviderSettings, type HistoryItem } from "@tumble-code/types"
+import { logger } from "../../../utils/logging"
 
 import { getModeBySlug } from "../../../shared/modes"
 
@@ -432,6 +433,13 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 			})
 		})
 
+		it("names the CLI settings 'default' while no profile is current", async () => {
+			await provider.contextProxy.setValue("currentApiConfigName", undefined)
+			provider.setCliModeProviderSettings(cliSettings)
+
+			expect((await provider.getApiConfigurationForMode("architect"))?.name).toBe("default")
+		})
+
 		it("swallows read failures and retired providers (undefined = use the current profile)", async () => {
 			vi.spyOn(manager(), "getProfile").mockRejectedValueOnce(new Error("disk gone"))
 			expect(await provider.getApiConfigurationForMode("architect")).toBeUndefined()
@@ -561,6 +569,32 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 			expect(currentProvider()).toMatchObject(cliSettings.modes.architect)
 		})
 
+		it("keeps the current profile and says so when the item's own profile no longer exists", async () => {
+			const warn = vi.spyOn(logger, "warn")
+
+			await provider.createTaskWithHistoryItem(historyItem({ mode: "ask", apiConfigName: "deleted-profile" }))
+
+			expect(warn).toHaveBeenCalledWith(
+				"Provider profile 'deleted-profile' from history no longer exists. Using current configuration.",
+			)
+			expect(currentProfileName()).toBe("default-profile")
+		})
+
+		it("logs and continues when the item's own profile cannot be activated", async () => {
+			vi.spyOn(provider, "activateProviderProfile").mockRejectedValueOnce(new Error("Activation failed"))
+			const warn = vi.spyOn(logger, "warn")
+
+			await expect(
+				provider.createTaskWithHistoryItem(historyItem({ mode: "ask", apiConfigName: "architect-profile" })),
+			).resolves.toBeDefined()
+
+			expect(warn).toHaveBeenCalledWith(
+				expect.stringContaining(
+					"Failed to restore API configuration 'architect-profile' for task: Activation failed",
+				),
+			)
+		})
+
 		it("does not restore the item's stored profile while CLI per-mode settings are set", async () => {
 			provider.setCliModeProviderSettings(cliSettings)
 			const activate = vi.spyOn(provider, "activateProviderProfile")
@@ -570,6 +604,98 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 			expect(activate).not.toHaveBeenCalled()
 			expect(currentProfileName()).toBe("default-profile")
 			expect(currentProvider()).toMatchObject(cliSettings.base)
+		})
+	})
+
+	// The task on screen keeps the mode and the profile it was switched to, in memory at once
+	// and in its history item once it has one.
+	describe("the current task keeps its own mode and profile", () => {
+		const openTask = async (stored: boolean) => {
+			const task = {
+				taskId: "sticky-task",
+				clineMessages: [],
+				emit: vi.fn(),
+				abortTask: vi.fn(),
+				setTaskMode: vi.fn(),
+				setTaskApiConfigName: vi.fn(),
+				updateApiConfiguration: vi.fn(),
+			}
+			await provider.setCurrentTask(task as any)
+			vi.spyOn(await (provider as any).getTaskHistoryStore(), "get").mockReturnValue(
+				stored ? historyItem({ id: "sticky-task", mode: "code" }) : undefined,
+			)
+			const updateTaskHistory = vi.spyOn(provider, "updateTaskHistory").mockResolvedValue(undefined)
+			return { task, updateTaskHistory }
+		}
+
+		it.each([
+			["stored", true],
+			["not stored yet", false],
+		])("a mode switch of a task %s announces it, records it and sets it", async (_name, stored) => {
+			const { task, updateTaskHistory } = await openTask(stored)
+
+			await provider.handleModeSwitch("architect")
+
+			expect(task.emit).toHaveBeenCalledWith(TumbleCodeEventName.TaskModeSwitched, "sticky-task", "architect")
+			expect(task.setTaskMode).toHaveBeenCalledWith("architect")
+			if (stored) {
+				expect(updateTaskHistory).toHaveBeenCalledWith(
+					expect.objectContaining({ id: "sticky-task", mode: "architect" }),
+				)
+			} else {
+				expect(updateTaskHistory).not.toHaveBeenCalled()
+			}
+		})
+
+		it("a mode the task's history cannot record is not set on the task or the panel", async () => {
+			const { task, updateTaskHistory } = await openTask(true)
+			updateTaskHistory.mockRejectedValueOnce(new Error("Update failed"))
+
+			await expect(provider.handleModeSwitch("architect")).rejects.toThrow("Update failed")
+
+			expect(task.setTaskMode).not.toHaveBeenCalled()
+			expect(mockContext.globalState.get("mode")).toBe("code")
+		})
+
+		it.each([
+			["stored", true],
+			["not stored yet", false],
+		])("a profile switch of a task %s sets it on the task and records it", async (_name, stored) => {
+			const { task, updateTaskHistory } = await openTask(stored)
+
+			await provider.activateProviderProfile({ name: "architect-profile" })
+
+			expect(task.setTaskApiConfigName).toHaveBeenCalledWith("architect-profile")
+			expect(updateTaskHistory.mock.calls).toEqual(
+				stored ? [[expect.objectContaining({ id: "sticky-task", apiConfigName: "architect-profile" })]] : [],
+			)
+		})
+
+		it("a profile the task's history cannot record is logged and the switch completes", async () => {
+			const { updateTaskHistory } = await openTask(true)
+			updateTaskHistory.mockRejectedValueOnce(new Error("Save failed"))
+			const warn = vi.spyOn(logger, "warn")
+
+			await provider.activateProviderProfile({ name: "architect-profile" })
+
+			expect(warn).toHaveBeenCalledWith(
+				"Failed to persist provider profile switch for task sticky-task: Save failed",
+			)
+			expect(currentProfileName()).toBe("architect-profile")
+		})
+
+		it("restoring a profile from history neither binds it to the mode nor records it on the task", async () => {
+			const { task } = await openTask(true)
+			const setModeConfig = vi.spyOn(manager(), "setModeConfig")
+
+			await provider.activateProviderProfile(
+				{ name: "architect-profile" },
+				{ persistModeConfig: false, persistTaskHistory: false },
+			)
+
+			expect(task.setTaskApiConfigName).not.toHaveBeenCalled()
+			expect(setModeConfig).not.toHaveBeenCalled()
+			expect(currentProfileName()).toBe("architect-profile")
 		})
 	})
 })

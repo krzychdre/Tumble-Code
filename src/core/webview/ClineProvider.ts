@@ -765,11 +765,8 @@ export class ClineProvider
 	- https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 	*/
 	private clearWebviewResources() {
-		while (this.webviewDisposables.length) {
-			const x = this.webviewDisposables.pop()
-			if (x) {
-				x.dispose()
-			}
+		for (const disposable of this.webviewDisposables.splice(0).reverse()) {
+			disposable.dispose()
 		}
 	}
 
@@ -810,12 +807,8 @@ export class ClineProvider
 		// Clean up cloud service event listener
 		this.cloudProfileSync.dispose()
 
-		while (this.disposables.length) {
-			const x = this.disposables.pop()
-
-			if (x) {
-				x.dispose()
-			}
+		for (const disposable of this.disposables.splice(0).reverse()) {
+			disposable.dispose()
 		}
 
 		this._workspaceTracker?.dispose()
