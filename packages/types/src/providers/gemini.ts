@@ -6,12 +6,41 @@ export type GeminiModelId = keyof typeof geminiModels
 export const geminiDefaultModelId: GeminiModelId = "gemini-3.1-pro-preview"
 
 export const geminiModels = {
+	// The Gemini 4 Argon prices are promotional through 2026-11-30, after which
+	// they double to $4 / $20.
+	"gemini-4-argon": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: ["low", "medium", "high"],
+		reasoningEffort: "medium",
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		cacheReadsPrice: 0.1,
+		supportsReasoningBudget: false,
+		description: "Google's flagship Gemini 4 reasoning model. Promotional pricing runs through 2026-11-30.",
+	},
 	// Google currently ships no stable Gemini 3.x Pro: the Pro line exists only
 	// as `gemini-3.1-pro-preview`, and the whole stable Gemini 3 offering is
 	// Flash and Flash-Lite.
 	//
-	// The 3.7 and 3.6 Flash prices are promotional through 2026-12-31, after
+	// The 3.8, 3.7 and 3.6 Flash prices are promotional through 2026-12-31, after
 	// which they double to $1.50 / $7.50.
+	"gemini-3.8-flash": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: ["low", "medium", "high"],
+		reasoningEffort: "medium",
+		inputPrice: 0.75,
+		outputPrice: 3.75,
+		cacheReadsPrice: 0.075,
+		cacheWritesPrice: 1.0,
+		supportsReasoningBudget: false,
+		description: "Google's newest Gemini 3.8 Flash model. Promotional pricing runs through 2026-12-31.",
+	},
 	"gemini-3.7-flash": {
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
@@ -24,7 +53,8 @@ export const geminiModels = {
 		cacheReadsPrice: 0.075,
 		cacheWritesPrice: 1.0,
 		supportsReasoningBudget: false,
-		description: "Google's newest Gemini 3.7 Flash model. Promotional pricing runs through 2026-12-31.",
+		description:
+			"Gemini 3.7 Flash. The Gemini API routes it to Gemini 3.8 Flash. Promotional pricing runs through 2026-12-31.",
 	},
 	"gemini-3.6-flash": {
 		maxTokens: 65_536,

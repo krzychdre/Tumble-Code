@@ -17,6 +17,9 @@ export const vertexUnknownClaudeModelStandInId: VertexModelId = "claude-sonnet-4
 export const vertexUnknownGeminiModelStandInId: VertexModelId = "gemini-3.1-pro-preview"
 
 export const vertexModels = {
+	"gemini-4-argon": { ...geminiModels["gemini-4-argon"] },
+	"gemini-3.8-flash": { ...geminiModels["gemini-3.8-flash"] },
+	"gemini-3.5-flash-lite": { ...geminiModels["gemini-3.5-flash-lite"] },
 	"gemini-3.5-flash": { ...geminiModels["gemini-3.5-flash"] },
 	"gemini-3.1-pro-preview": { ...geminiModels["gemini-3.1-pro-preview"] },
 	"gemini-3.1-pro-preview-customtools": { ...geminiModels["gemini-3.1-pro-preview-customtools"] },
