@@ -14,14 +14,7 @@ allowBuilds:
 # Locked before pnpm 12 enforced its one-day minimumReleaseAge default; drop each
 # entry once it is a day old (all are by 2026-10-24T14:27Z).
 minimumReleaseAgeExclude:
-    - "@anthropic-ai/sdk@1.2.0"
-    - "@anthropic-ai/vertex-sdk@1.1.0"
     - "@asamuzakjp/dom-selector@10.0.5"
-    - "@google/genai@2.31.0"
-    - execa@10.2.1
-    - i18next@26.5.6
-    - openai@7.43.0
-    - react-i18next@17.1.4
 
 overrides:
     tar-fs: ">=3.1.1"
