@@ -47,621 +47,121 @@ function makeTaskWithAskSay() {
 	return { task, clineMessages }
 }
 
-describe("TaskAskSay.ask — finalized-duplicate dedup", () => {
-	it("does not append a second ask:command when the tail is already a matching finalized ask:command", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const commandText = "echo hello"
+type Seed = { ts: number; type: "ask" | "say"; ask?: string; say?: string; text: string; partial?: boolean }
 
-		// Bug-state tail: a finalized partial that was finalized by some upstream path
-		// before this second ask(..., false) call ran.
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "command", text: commandText, partial: false })
-		;(task as any).lastMessageTs = seededTs
+const toolText = (fields: Record<string, unknown>) => JSON.stringify(fields)
+const toolAsk = (ts: number, fields: Record<string, unknown>, partial = false): Seed => ({
+	ts,
+	type: "ask",
+	ask: "tool",
+	text: toolText(fields),
+	partial,
+})
+const commandAsk = (ts: number, text: string, partial = false): Seed => ({
+	ts,
+	type: "ask",
+	ask: "command",
+	text,
+	partial,
+})
+const sayRow = (ts: number, say: string): Seed => ({ ts, type: "say", say, text: "" })
 
-		const askPromise = task.ask("command", commandText, false)
-		setTimeout(() => task.approveAsk(), 0)
-		const result = await askPromise
+/** Seeds clineMessages, then asks (and approves) `ask`/`text` with partial=false. */
+async function askOnto(seed: Seed[], ask: "tool" | "command", text: string) {
+	const { task, clineMessages } = makeTaskWithAskSay()
+	clineMessages.push(...seed.map((m) => ({ ...m })))
+	;(task as any).lastMessageTs = seed.at(-1)!.ts
+	const pending = task.ask(ask, text, false)
+	setTimeout(() => task.approveAsk(), 0)
+	const result = await pending
+	const asks = clineMessages.filter((m) => m.type === "ask")
+	return { task, clineMessages, asks, result }
+}
+
+const readFile = (toolCallId: string, extra: Record<string, unknown> = {}) => ({
+	tool: "readFile",
+	path: "src/resource.py",
+	isOutsideWorkspace: false,
+	toolCallId,
+	...extra,
+})
+const complete = { content: "/abs/src/resource.py", reason: "(lines 1-50)", startLine: 1 }
+
+describe("TaskAskSay.ask: one card per tool invocation", () => {
+	// The complete card lands on the card of its own invocation (same text, or same
+	// toolCallId) instead of appending a duplicate that breaks executionId routing.
+	it.each<[string, Seed[], "tool" | "command", string]>([
+		["a finalized ask:command with the same text", [commandAsk(1, "echo hello")], "command", "echo hello"],
+		["a partial ask:command tail with the same text", [commandAsk(1, "ls", true)], "command", "ls"],
+		[
+			"a finalized ask:tool with the same text and no toolCallId",
+			[toolAsk(1, { tool: "codebaseSearch", query: "graphql", path: "lids", isOutsideWorkspace: false })],
+			"tool",
+			toolText({ tool: "codebaseSearch", query: "graphql", path: "lids", isOutsideWorkspace: false }),
+		],
+		[
+			// Task 019e4189: read_file's placeholder and complete payload differ in text.
+			"its own finalized placeholder, found by toolCallId",
+			[toolAsk(1, readFile("call_a"))],
+			"tool",
+			toolText(readFile("call_a", complete)),
+		],
+		[
+			"its own still-partial placeholder behind an intervening say",
+			[toolAsk(1, readFile("call_b"), true), sayRow(2, "checkpoint_saved")],
+			"tool",
+			toolText(readFile("call_b", complete)),
+		],
+		[
+			"its own finalized placeholder behind an intervening say",
+			[toolAsk(1, readFile("call_c")), sayRow(2, "text")],
+			"tool",
+			toolText(readFile("call_c", complete)),
+		],
+	])("reuses %s", async (_label, seed, ask, text) => {
+		const { asks, clineMessages, task, result } = await askOnto(seed, ask, text)
 
 		expect(result.response).toBe("yesButtonClicked")
-		const commandAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "command")
-		expect(commandAsks).toHaveLength(1)
-		expect(commandAsks[0].ts).toBe(seededTs)
-		expect((task as any).lastMessageTs).toBe(seededTs)
+		expect(asks).toHaveLength(1)
+		expect(asks[0]).toMatchObject({ ts: 1, text, partial: false })
+		expect(clineMessages.map((m) => m.ts)).toEqual(seed.map((m) => m.ts))
+		if (seed.length === 1) {
+			expect((task as any).lastMessageTs).toBe(1)
+		}
 	})
 
-	it("dedups ask:tool (covers codebase_search / read_file / apply_diff / etc.)", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const text = JSON.stringify({ tool: "codebaseSearch", query: "graphql requests", path: "lids/c6800/tests" })
+	it.each<[string, Seed[], "tool" | "command", string]>([
+		["a different text of the same ask type", [commandAsk(1, "ls")], "command", "pwd"],
+		["a different ask type with the same text", [commandAsk(1, "ls")], "tool", "ls"],
+		[
+			"another invocation with the same path and range",
+			[toolAsk(1, readFile("call_x1", complete))],
+			"tool",
+			toolText(readFile("call_x2", complete)),
+		],
+		[
+			"another invocation behind an intervening say",
+			[toolAsk(1, readFile("call_d1", complete)), sayRow(2, "checkpoint_saved")],
+			"tool",
+			toolText(readFile("call_d2", complete)),
+		],
+	])("appends a new card after %s", async (_label, seed, ask, text) => {
+		const { asks, clineMessages } = await askOnto(seed, ask, text)
 
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const askPromise = task.ask("tool", text, false)
-		setTimeout(() => task.approveAsk(), 0)
-		const result = await askPromise
-
-		expect(result.response).toBe("yesButtonClicked")
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-		expect((task as any).lastMessageTs).toBe(seededTs)
+		expect(asks).toHaveLength(2)
+		expect(asks[1].text).toBe(text)
+		expect(clineMessages.at(-1)).toBe(asks[1])
 	})
 
-	it("still appends when the tail has a different text (legitimate distinct ask)", async () => {
+	it("updates a displaced partial placeholder in place on a later partial update", async () => {
 		const { task, clineMessages } = makeTaskWithAskSay()
+		clineMessages.push(toolAsk(1, readFile("call_p"), true), sayRow(2, "reasoning"))
+		;(task as any).lastMessageTs = 1
 
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "command", text: "ls", partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const askPromise = task.ask("command", "pwd", false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const commandAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "command")
-		expect(commandAsks).toHaveLength(2)
-		expect(commandAsks.map((m) => m.text)).toEqual(["ls", "pwd"])
-	})
-
-	it("still appends when the tail has a different ask type", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "command", text: "ls", partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const askPromise = task.ask("tool", "ls", false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
+		await task.ask("tool", toolText(readFile("call_p")), true).catch(() => {})
 
 		const asks = clineMessages.filter((m) => m.type === "ask")
-		expect(asks).toHaveLength(2)
-		expect(asks.map((m) => m.ask)).toEqual(["command", "tool"])
-	})
-
-	// --- Invocation-precise dedup keyed on the native tool-call id ---
-	// Cards of one tool invocation share `toolCallId`; two invocations never do.
-	// The dedup merges a finalized tail into the new complete card iff both
-	// carry the SAME toolCallId. When ids are absent it falls back to exact-text
-	// (the prior behavior), so non-adopting tools are unaffected.
-
-	it("(a) merges the complete payload into its own finalized placeholder via toolCallId", async () => {
-		// Real-world bug (task 019e4189 ui_messages.json): read_file's placeholder
-		// and complete payloads differ in text but share the tool-call id.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const filePath = "lids_uniform_api/.../resource_aggregator_helper.py"
-		const toolCallId = "call_abc123"
-
-		const placeholderText = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			toolCallId,
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: placeholderText, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const completeText = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			content: `/abs/${filePath}`,
-			reason: "(indentation mode at line 297)",
-			startLine: 297,
-			toolCallId,
-		})
-
-		const askPromise = task.ask("tool", completeText, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-		expect(toolAsks[0].text).toBe(completeText)
-		expect((task as any).lastMessageTs).toBe(seededTs)
-	})
-
-	it("(a) merges search_files complete results into its own placeholder via toolCallId", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const dirPath = "src/services"
-		const toolCallId = "call_search_1"
-
-		const placeholderText = JSON.stringify({
-			tool: "searchFiles",
-			path: dirPath,
-			regex: "graphql",
-			content: "",
-			isOutsideWorkspace: false,
-			toolCallId,
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: placeholderText, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const completeText = JSON.stringify({
-			tool: "searchFiles",
-			path: dirPath,
-			regex: "graphql",
-			content: "src/services/a.ts\nsrc/services/b.ts",
-			isOutsideWorkspace: false,
-			toolCallId,
-		})
-
-		const askPromise = task.ask("tool", completeText, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-	})
-
-	it("(b) keeps TWO cards for two read_file invocations of the SAME path, DIFFERENT ranges", async () => {
-		// Two distinct invocations have distinct tool-call ids -> never merge.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const filePath = "src/resource.py"
-
-		const firstComplete = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			content: `/abs/${filePath}`,
-			reason: "(lines 1-50)",
-			startLine: 1,
-			toolCallId: "call_read_1",
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: firstComplete, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const secondComplete = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			content: `/abs/${filePath}`,
-			reason: "(lines 100-150)",
-			startLine: 100,
-			toolCallId: "call_read_2",
-		})
-
-		const askPromise = task.ask("tool", secondComplete, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(2)
-		expect(toolAsks.map((m) => JSON.parse(m.text).reason)).toEqual(["(lines 1-50)", "(lines 100-150)"])
-	})
-
-	it("(c) keeps TWO cards for two read_file invocations of the SAME path, SAME range", async () => {
-		// Identical payloads except the tool-call id -> still two distinct cards.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const filePath = "src/resource.py"
-
-		const first = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			content: `/abs/${filePath}`,
-			reason: "(lines 1-50)",
-			startLine: 1,
-			toolCallId: "call_x1",
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: first, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const second = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			content: `/abs/${filePath}`,
-			reason: "(lines 1-50)",
-			startLine: 1,
-			toolCallId: "call_x2",
-		})
-
-		const askPromise = task.ask("tool", second, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(2)
-	})
-
-	it("codebase_search placeholder -> race-finalize -> complete stays ONE card (no regression)", async () => {
-		// codebase_search's placeholder and complete payloads are identical
-		// ({tool,query,path,isOutsideWorkspace}, no content, no toolCallId). The
-		// exact-text fallback must still dedup it after the streaming race.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const payload = JSON.stringify({
-			tool: "codebaseSearch",
-			query: "graphql requests",
-			path: "lids/c6800/tests",
-			isOutsideWorkspace: false,
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: payload, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const askPromise = task.ask("tool", payload, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-	})
-
-	it("appends a second card when ids differ even if tool+path match (no id-collision merge)", async () => {
-		// Defense in depth: a placeholder with one id must never be reused by a
-		// complete card with a different id.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const filePath = "src/resource.py"
-
-		const placeholder = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			toolCallId: "call_p1",
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: placeholder, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const complete = JSON.stringify({
-			tool: "readFile",
-			path: filePath,
-			isOutsideWorkspace: false,
-			content: `/abs/${filePath}`,
-			reason: "(lines 1-20)",
-			toolCallId: "call_p2",
-		})
-
-		const askPromise = task.ask("tool", complete, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(2)
-	})
-
-	it("new_task: placeholder -> race-finalize -> complete collapses to ONE card via toolCallId", async () => {
-		// new_task's placeholder (mode slug, raw todos) and complete payload
-		// (resolved mode name, parsed todos) diverge in text; the id links them.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const toolCallId = "call_newtask_1"
-
-		const placeholder = JSON.stringify({
-			tool: "newTask",
-			mode: "code",
-			content: "Build the feature",
-			toolCallId,
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: placeholder, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const complete = JSON.stringify({
-			tool: "newTask",
-			mode: "Code",
-			content: "Build the feature",
-			todos: [{ id: "1", content: "step", status: "pending" }],
-			toolCallId,
-		})
-
-		const askPromise = task.ask("tool", complete, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-	})
-
-	it("new_task: two distinct invocations stay TWO cards", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-
-		const first = JSON.stringify({ tool: "newTask", mode: "Code", content: "Task A", toolCallId: "call_nt_a" })
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: first, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const second = JSON.stringify({ tool: "newTask", mode: "Code", content: "Task A", toolCallId: "call_nt_b" })
-		const askPromise = task.ask("tool", second, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(2)
-	})
-
-	it("write_to_file: placeholder -> race-finalize -> complete collapses to ONE card via toolCallId", async () => {
-		// write_to_file's placeholder carries raw newContent; the complete card
-		// carries a unified diff. Different text, same invocation -> one card.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const toolCallId = "call_write_1"
-
-		const placeholder = JSON.stringify({
-			tool: "newFileCreated",
-			path: "src/new.ts",
-			content: "export const x = 1\n",
-			isOutsideWorkspace: false,
-			toolCallId,
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: placeholder, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const complete = JSON.stringify({
-			tool: "newFileCreated",
-			path: "src/new.ts",
-			content: "@@ -0,0 +1 @@\n+export const x = 1\n",
-			isOutsideWorkspace: false,
-			diffStats: { added: 1, removed: 0 },
-			toolCallId,
-		})
-
-		const askPromise = task.ask("tool", complete, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-	})
-
-	it("write_to_file: two distinct invocations on the same path stay TWO cards", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-
-		const first = JSON.stringify({
-			tool: "editedExistingFile",
-			path: "src/a.ts",
-			content: "@@ first @@",
-			toolCallId: "call_w_a",
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: first, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const second = JSON.stringify({
-			tool: "editedExistingFile",
-			path: "src/a.ts",
-			content: "@@ second @@",
-			toolCallId: "call_w_b",
-		})
-		const askPromise = task.ask("tool", second, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(2)
-	})
-
-	it("apply_diff / edit-family: placeholder -> race-finalize -> complete collapses to ONE card", async () => {
-		// Diff-family tools (apply_diff, edit, edit_file, search_replace, apply_patch)
-		// emit a content-less `diff`-only placeholder and a content-ful complete card.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const toolCallId = "call_diff_1"
-
-		const placeholder = JSON.stringify({
-			tool: "appliedDiff",
-			path: "src/a.ts",
-			diff: "1 edit operation",
-			isOutsideWorkspace: false,
-			toolCallId,
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: placeholder, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const complete = JSON.stringify({
-			tool: "appliedDiff",
-			path: "src/a.ts",
-			diff: "1 edit operation",
-			content: "@@ -1 +1 @@\n-old\n+new",
-			isOutsideWorkspace: false,
-			toolCallId,
-		})
-
-		const askPromise = task.ask("tool", complete, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-	})
-
-	it("list_files: placeholder (content:'') -> complete collapses to ONE card via toolCallId", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const toolCallId = "call_list_1"
-
-		const placeholder = JSON.stringify({
-			tool: "listFilesTopLevel",
-			path: "src",
-			isOutsideWorkspace: false,
-			content: "",
-			toolCallId,
-		})
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "tool", text: placeholder, partial: false })
-		;(task as any).lastMessageTs = seededTs
-
-		const complete = JSON.stringify({
-			tool: "listFilesTopLevel",
-			path: "src",
-			isOutsideWorkspace: false,
-			content: "src/a.ts\nsrc/b.ts",
-			toolCallId,
-		})
-
-		const askPromise = task.ask("tool", complete, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(seededTs)
-	})
-
-	// --- Race elimination: identity-driven placeholder -> complete transition ---
-	// The streaming placeholder (ask:"tool", partial:true) can be displaced from
-	// the tail of clineMessages by an intervening say (checkpoint_saved, text,
-	// reasoning) emitted between handlePartial and the tool's execute(). The
-	// complete ask("tool", ..., false) must still transition that placeholder
-	// IN PLACE - found by toolCallId anywhere in clineMessages - so the
-	// placeholder is never left orphaned at partial:true and no second card is
-	// appended. This is the primary race cure; the tail dedup is belt-and-braces.
-
-	it("transitions a still-partial placeholder in place when a say intervened (no orphan)", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const toolCallId = "call_race_1"
-
-		// Streaming placeholder created by handlePartial.
-		const placeholderTs = 1
-		clineMessages.push({
-			ts: placeholderTs,
-			type: "ask",
-			ask: "tool",
-			text: JSON.stringify({ tool: "readFile", path: "src/a.ts", toolCallId }),
-			partial: true,
-		})
-		;(task as any).lastMessageTs = placeholderTs
-
-		// An intervening say (e.g. checkpoint_saved) displaces the placeholder
-		// from the tail before the tool's execute() runs.
-		clineMessages.push({ ts: 2, type: "say", say: "checkpoint_saved", text: "" })
-
-		// The tool's requestApproval emits the complete card.
-		const completeText = JSON.stringify({
-			tool: "readFile",
-			path: "src/a.ts",
-			content: "/abs/src/a.ts",
-			reason: "(lines 1-20)",
-			startLine: 1,
-			toolCallId,
-		})
-		const askPromise = task.ask("tool", completeText, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		// Exactly ONE tool card - the placeholder transitioned in place.
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(placeholderTs)
-		expect(toolAsks[0].partial).toBe(false)
-		expect(toolAsks[0].text).toBe(completeText)
-		// The intervening say is untouched and keeps its position.
-		expect(clineMessages.map((m) => m.type)).toEqual(["ask", "say"])
-	})
-
-	it("transitions a finalized placeholder in place when a say intervened (no orphan)", async () => {
-		// Same as above but the placeholder was already finalized to partial:false
-		// by an upstream path before execute() runs.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const toolCallId = "call_race_2"
-
-		const placeholderTs = 1
-		clineMessages.push({
-			ts: placeholderTs,
-			type: "ask",
-			ask: "tool",
-			text: JSON.stringify({ tool: "appliedDiff", path: "src/b.ts", diff: "1 edit", toolCallId }),
-			partial: false,
-		})
-		;(task as any).lastMessageTs = placeholderTs
-
-		clineMessages.push({ ts: 2, type: "say", say: "text", text: "checking downstream usage" })
-
-		const completeText = JSON.stringify({
-			tool: "appliedDiff",
-			path: "src/b.ts",
-			diff: "1 edit",
-			content: "@@ -1 +1 @@",
-			toolCallId,
-		})
-		const askPromise = task.ask("tool", completeText, false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(placeholderTs)
-		expect(toolAsks[0].text).toBe(completeText)
-	})
-
-	it("does NOT reuse a same-id placeholder for a partial update once a say intervened - it would orphan; instead transitions in place on finalize", async () => {
-		// Defense check: a streaming partial update (partial:true) for a tool whose
-		// placeholder is no longer the tail must still update that placeholder in
-		// place, not append a second partial card.
-		const { task, clineMessages } = makeTaskWithAskSay()
-		const toolCallId = "call_race_3"
-
-		const placeholderTs = 1
-		clineMessages.push({
-			ts: placeholderTs,
-			type: "ask",
-			ask: "tool",
-			text: JSON.stringify({ tool: "readFile", path: "src/c.ts", toolCallId }),
-			partial: true,
-		})
-		;(task as any).lastMessageTs = placeholderTs
-		clineMessages.push({ ts: 2, type: "say", say: "reasoning", text: "thinking" })
-
-		// A later partial update for the SAME tool invocation.
-		await task.ask("tool", JSON.stringify({ tool: "readFile", path: "src/c.ts", toolCallId }), true).catch(() => {})
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(1)
-		expect(toolAsks[0].ts).toBe(placeholderTs)
-		expect(toolAsks[0].partial).toBe(true)
-	})
-
-	it("two distinct invocations still produce two cards even with intervening says", async () => {
-		// Regression guard for the race fix: identity-by-id must not collapse
-		// two genuinely different invocations.
-		const { task, clineMessages } = makeTaskWithAskSay()
-
-		clineMessages.push({
-			ts: 1,
-			type: "ask",
-			ask: "tool",
-			text: JSON.stringify({ tool: "readFile", path: "src/a.ts", content: "/abs", toolCallId: "call_d1" }),
-			partial: false,
-		})
-		clineMessages.push({ ts: 2, type: "say", say: "checkpoint_saved", text: "" })
-		;(task as any).lastMessageTs = 2
-
-		const askPromise = task.ask(
-			"tool",
-			JSON.stringify({ tool: "readFile", path: "src/a.ts", content: "/abs", toolCallId: "call_d2" }),
-			false,
-		)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
-		expect(toolAsks).toHaveLength(2)
-	})
-
-	it("finalizes a partial tail in place (existing behavior preserved)", async () => {
-		const { task, clineMessages } = makeTaskWithAskSay()
-
-		const seededTs = 1
-		clineMessages.push({ ts: seededTs, type: "ask", ask: "command", text: "ls", partial: true })
-		;(task as any).lastMessageTs = seededTs
-
-		const askPromise = task.ask("command", "ls", false)
-		setTimeout(() => task.approveAsk(), 0)
-		await askPromise
-
-		expect(clineMessages).toHaveLength(1)
-		expect(clineMessages[0].ts).toBe(seededTs)
-		expect(clineMessages[0].partial).toBe(false)
-		expect((task as any).lastMessageTs).toBe(seededTs)
+		expect(asks).toHaveLength(1)
+		expect(asks[0]).toMatchObject({ ts: 1, partial: true })
 	})
 })

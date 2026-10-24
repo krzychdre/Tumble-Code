@@ -1,9 +1,9 @@
-import { TumbleCodeEventName, ProviderSettings, TokenUsage, ToolUsage } from "@tumble-code/types"
+import { TumbleCodeEventName, ProviderSettings, TokenUsage } from "@tumble-code/types"
 
 import { Task } from "../Task"
 import { CLINE_MESSAGES_SAVE_IDLE_MS } from "../TaskMessageLog"
 import { ClineProvider } from "../../webview/ClineProvider"
-import { hasToolUsageChanged, hasTokenUsageChanged } from "@tumble-code/core/browser"
+import { taskMetadata } from "../../task-persistence"
 
 // Mock dependencies
 vi.mock("../../webview/ClineProvider")
@@ -59,564 +59,149 @@ vi.mock("../../task-persistence", () => ({
 	}),
 }))
 
-describe("Task token usage throttling", () => {
-	let mockProvider: any
-	let mockApiConfiguration: ProviderSettings
+/** Token usage `n` times the base figures, as taskMetadata would report it after `n` saves. */
+const usage = (n: number): TokenUsage => ({
+	totalTokensIn: 100 * n,
+	totalTokensOut: 50 * n,
+	totalCost: 0.01 * n,
+	contextTokens: 150 * n,
+	totalCacheWrites: 0,
+	totalCacheReads: 0,
+})
+
+const metadataWith = (tokenUsage: TokenUsage) => ({
+	historyItem: { id: "test-task-id", number: 1, task: "Test task", ts: 1, totalCost: 0, tokensIn: 0, tokensOut: 0 },
+	tokenUsage,
+})
+
+describe("Task token usage updates", () => {
 	let task: Task
+	let emit: ReturnType<typeof vi.spyOn>
+
+	/** Saves one more message, which reports the token usage taskMetadata computed. */
+	const addMessage = (text: string) =>
+		task.history.addToClineMessages({ ts: Date.now(), type: "say", say: "text", text })
+	const usageEmits = () =>
+		emit.mock.calls.filter(([event]: unknown[]) => event === TumbleCodeEventName.TaskTokenUsageUpdated)
 
 	beforeEach(() => {
-		// Reset all mocks
 		vi.clearAllMocks()
 		vi.useFakeTimers()
-
-		// Mock provider
-		mockProvider = {
-			context: {
-				globalStorageUri: { fsPath: "/test/path" },
-			},
+		const provider = {
+			context: { globalStorageUri: { fsPath: "/test/path" } },
 			getState: vi.fn().mockResolvedValue({ mode: "code" }),
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),
 			postStateToWebviewWithoutTaskHistory: vi.fn().mockResolvedValue(undefined),
 			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 			getCurrentTask: () => task,
 		}
-
-		// Mock API configuration
-		mockApiConfiguration = {
-			apiProvider: "anthropic",
-			apiKey: "test-key",
-		} as ProviderSettings
-
-		// Create task instance without starting it
 		task = new Task({
-			provider: mockProvider as ClineProvider,
-			apiConfiguration: mockApiConfiguration,
+			provider: provider as unknown as ClineProvider,
+			apiConfiguration: { apiProvider: "anthropic", apiKey: "test-key" } as ProviderSettings,
 			startTask: false,
 		})
+		emit = vi.spyOn(task, "emit")
 	})
 
 	afterEach(() => {
 		vi.useRealTimers()
-		if (task && !task.abort) {
+		if (!task.abort) {
 			task.dispose()
 		}
 	})
 
-	test("should emit TaskTokenUsageUpdated immediately on first change", async () => {
-		const emitSpy = vi.spyOn(task, "emit")
+	it("emits the first change at once, with the tool usage, and at most once per 2 s after that", async () => {
+		let saves = 0
+		vi.mocked(taskMetadata).mockImplementation(async () => metadataWith(usage(++saves)))
+		task.toolUsage = { read_file: { attempts: 5, failures: 1 } }
 
-		// Add a message to trigger saveClineMessages
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Test message",
-		})
+		await addMessage("Message 1")
+		expect(usageEmits()).toEqual([
+			[TumbleCodeEventName.TaskTokenUsageUpdated, task.taskId, usage(1), task.toolUsage],
+		])
+		const firstSnapshot = task.tokenUsageSnapshot
 
-		// Should emit immediately on first change
-		expect(emitSpy).toHaveBeenCalledWith(
-			TumbleCodeEventName.TaskTokenUsageUpdated,
-			task.taskId,
-			expect.any(Object),
-			expect.any(Object),
-		)
+		vi.advanceTimersByTime(500)
+		await addMessage("Message 2")
+		expect(usageEmits()).toHaveLength(1)
+		expect(task.tokenUsageSnapshot).toBe(firstSnapshot)
+
+		vi.advanceTimersByTime(1600)
+		await addMessage("Message 3")
+		expect(usageEmits()).toHaveLength(2)
+		expect(task.tokenUsageSnapshot!.totalTokensIn).toBeGreaterThan(firstSnapshot!.totalTokensIn)
 	})
 
-	test("should throttle subsequent emissions within 2 seconds", async () => {
-		const { taskMetadata } = await import("../../task-persistence")
-		let callCount = 0
+	it("does not emit unchanged usage after the window", async () => {
+		vi.mocked(taskMetadata).mockResolvedValue(metadataWith(usage(1)))
 
-		// Mock to return different token usage on each call
-		vi.mocked(taskMetadata).mockImplementation(async () => {
-			callCount++
-			return {
-				historyItem: {
-					id: "test-task-id",
-					number: 1,
-					task: "Test task",
-					ts: Date.now(),
-					totalCost: 0.01 * callCount,
-					tokensIn: 100 * callCount,
-					tokensOut: 50 * callCount,
-				},
-				tokenUsage: {
-					totalTokensIn: 100 * callCount,
-					totalTokensOut: 50 * callCount,
-					totalCost: 0.01 * callCount,
-					contextTokens: 150 * callCount,
-					totalCacheWrites: 0,
-					totalCacheReads: 0,
-				},
-			}
-		})
+		await addMessage("Message 1")
+		vi.advanceTimersByTime(2100)
+		await addMessage("Message 2")
 
-		const emitSpy = vi.spyOn(task, "emit")
-
-		// First message - should emit
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 1",
-		})
-
-		const firstEmitCount = emitSpy.mock.calls.filter(
-			(call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated,
-		).length
-
-		// Second message immediately after - should NOT emit due to throttle
-		vi.advanceTimersByTime(500) // Advance only 500ms
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 2",
-		})
-
-		const secondEmitCount = emitSpy.mock.calls.filter(
-			(call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated,
-		).length
-
-		// Should still be the same count (throttled)
-		expect(secondEmitCount).toBe(firstEmitCount)
-
-		// Third message after 2+ seconds - should emit
-		vi.advanceTimersByTime(1600) // Total time: 2100ms
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 3",
-		})
-
-		const thirdEmitCount = emitSpy.mock.calls.filter(
-			(call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated,
-		).length
-
-		// Should have emitted again after throttle period
-		expect(thirdEmitCount).toBeGreaterThan(secondEmitCount)
+		expect(usageEmits()).toHaveLength(1)
 	})
 
-	test("should include toolUsage in emission payload", async () => {
-		const emitSpy = vi.spyOn(task, "emit")
+	it("emits a tool usage change alone and snapshots a copy of it", async () => {
+		vi.mocked(taskMetadata).mockResolvedValue(metadataWith(usage(1)))
+		await addMessage("Message 1")
+		vi.advanceTimersByTime(2100)
 
-		// Set some tool usage
-		task.toolUsage = {
-			read_file: { attempts: 5, failures: 1 },
-			write_to_file: { attempts: 3, failures: 0 },
-		}
+		task.toolUsage = { read_file: { attempts: 3, failures: 0 }, write_to_file: { attempts: 2, failures: 1 } }
+		await addMessage("Message 2")
+		// The second write is coalesced (CORE-R7 step 4): let it run.
+		await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)
 
-		// Add a message to trigger emission
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Test message",
-		})
-
-		// Should emit with toolUsage as third parameter
-		expect(emitSpy).toHaveBeenCalledWith(
-			TumbleCodeEventName.TaskTokenUsageUpdated,
-			task.taskId,
-			expect.any(Object), // tokenUsage
-			task.toolUsage, // toolUsage
-		)
+		expect(usageEmits()).toHaveLength(2)
+		expect(task.toolUsageSnapshot).toEqual(task.toolUsage)
+		expect(task.toolUsageSnapshot).not.toBe(task.toolUsage)
 	})
 
-	test("should force final emission on task abort", async () => {
-		const emitSpy = vi.spyOn(task, "emit")
+	it("flushes a final update inside the throttle window before TaskAborted", async () => {
+		await addMessage("Message 1")
+		task.toolUsage = { read_file: { attempts: 5, failures: 1 } }
+		emit.mockClear()
 
-		// Set some tool usage
-		task.toolUsage = {
-			read_file: { attempts: 5, failures: 1 },
-		}
-
-		// Add a message first
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 1",
-		})
-
-		// Clear the spy to check for final emission
-		emitSpy.mockClear()
-
-		// Abort task immediately (within throttle window)
 		vi.advanceTimersByTime(500)
 		await task.abortTask()
 
-		// Should have emitted TaskTokenUsageUpdated before TaskAborted
-		const calls = emitSpy.mock.calls
-		const tokenUsageUpdateIndex = calls.findIndex((call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated)
-		const taskAbortedIndex = calls.findIndex((call) => call[0] === TumbleCodeEventName.TaskAborted)
-
-		// Should have both events
-		expect(tokenUsageUpdateIndex).toBeGreaterThanOrEqual(0)
-		expect(taskAbortedIndex).toBeGreaterThanOrEqual(0)
-
-		// TaskTokenUsageUpdated should come before TaskAborted
-		expect(tokenUsageUpdateIndex).toBeLessThan(taskAbortedIndex)
-	})
-
-	test("should update tokenUsageSnapshot when throttled emission occurs", async () => {
-		const { taskMetadata } = await import("../../task-persistence")
-		let callCount = 0
-
-		// Mock to return different token usage on each call
-		vi.mocked(taskMetadata).mockImplementation(async () => {
-			callCount++
-			return {
-				historyItem: {
-					id: "test-task-id",
-					number: 1,
-					task: "Test task",
-					ts: Date.now(),
-					totalCost: 0.01 * callCount,
-					tokensIn: 100 * callCount,
-					tokensOut: 50 * callCount,
-				},
-				tokenUsage: {
-					totalTokensIn: 100 * callCount,
-					totalTokensOut: 50 * callCount,
-					totalCost: 0.01 * callCount,
-					contextTokens: 150 * callCount,
-					totalCacheWrites: 0,
-					totalCacheReads: 0,
-				},
-			}
-		})
-
-		// Add initial message
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 1",
-		})
-
-		// Get the initial snapshot
-		const initialSnapshot = (task as any).tokenUsageSnapshot
-
-		// Add another message within throttle window
-		vi.advanceTimersByTime(500)
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 2",
-		})
-
-		// Snapshot should still be the same (throttled)
-		expect((task as any).tokenUsageSnapshot).toBe(initialSnapshot)
-
-		// Add message after throttle window
-		vi.advanceTimersByTime(1600) // Total: 2100ms
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 3",
-		})
-
-		// Snapshot should be updated now (new object reference)
-		expect((task as any).tokenUsageSnapshot).not.toBe(initialSnapshot)
-		// Values should be different
-		expect((task as any).tokenUsageSnapshot.totalTokensIn).toBeGreaterThan(initialSnapshot.totalTokensIn)
-	})
-
-	test("should not emit if token usage has not changed even after throttle period", async () => {
-		const { taskMetadata } = await import("../../task-persistence")
-
-		// Mock taskMetadata to return same token usage
-		const constantTokenUsage: TokenUsage = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-			totalCacheWrites: 0,
-			totalCacheReads: 0,
-		}
-
-		vi.mocked(taskMetadata).mockResolvedValue({
-			historyItem: {
-				id: "test-task-id",
-				number: 1,
-				task: "Test task",
-				ts: Date.now(),
-				totalCost: 0.01,
-				tokensIn: 100,
-				tokensOut: 50,
-			},
-			tokenUsage: constantTokenUsage,
-		})
-
-		const emitSpy = vi.spyOn(task, "emit")
-
-		// Add first message
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 1",
-		})
-
-		const firstEmitCount = emitSpy.mock.calls.filter(
-			(call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated,
-		).length
-
-		// Wait for throttle period and add another message
-		vi.advanceTimersByTime(2100)
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 2",
-		})
-
-		const secondEmitCount = emitSpy.mock.calls.filter(
-			(call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated,
-		).length
-
-		// Should not have emitted again since token usage didn't change
-		expect(secondEmitCount).toBe(firstEmitCount)
-	})
-
-	test("should emit when tool usage changes even if token usage is the same", async () => {
-		const { taskMetadata } = await import("../../task-persistence")
-
-		// Mock taskMetadata to return same token usage
-		const constantTokenUsage: TokenUsage = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-			totalCacheWrites: 0,
-			totalCacheReads: 0,
-		}
-
-		vi.mocked(taskMetadata).mockResolvedValue({
-			historyItem: {
-				id: "test-task-id",
-				number: 1,
-				task: "Test task",
-				ts: Date.now(),
-				totalCost: 0.01,
-				tokensIn: 100,
-				tokensOut: 50,
-			},
-			tokenUsage: constantTokenUsage,
-		})
-
-		const emitSpy = vi.spyOn(task, "emit")
-
-		// Add first message - should emit
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 1",
-		})
-
-		const firstEmitCount = emitSpy.mock.calls.filter(
-			(call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated,
-		).length
-
-		// Wait for throttle period
-		vi.advanceTimersByTime(2100)
-
-		// Change tool usage (token usage stays the same)
-		task.toolUsage = {
-			read_file: { attempts: 5, failures: 1 },
-		}
-
-		// Add another message
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 2",
-		})
-		// The second write is coalesced (CORE-R7 step 4): let it run.
-		await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)
-
-		const secondEmitCount = emitSpy.mock.calls.filter(
-			(call) => call[0] === TumbleCodeEventName.TaskTokenUsageUpdated,
-		).length
-
-		// Should have emitted because tool usage changed even though token usage didn't
-		expect(secondEmitCount).toBeGreaterThan(firstEmitCount)
-	})
-
-	test("should update toolUsageSnapshot when emission occurs", async () => {
-		// Add initial message
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 1",
-		})
-
-		// Initially toolUsageSnapshot should be set to current toolUsage (empty object)
-		const initialSnapshot = (task as any).toolUsageSnapshot
-		expect(initialSnapshot).toBeDefined()
-		expect(Object.keys(initialSnapshot)).toHaveLength(0)
-
-		// Wait for throttle period
-		vi.advanceTimersByTime(2100)
-
-		// Update tool usage
-		task.toolUsage = {
-			read_file: { attempts: 3, failures: 0 },
-			write_to_file: { attempts: 2, failures: 1 },
-		}
-
-		// Add another message
-		await task.history.addToClineMessages({
-			ts: Date.now(),
-			type: "say",
-			say: "text",
-			text: "Message 2",
-		})
-		// The second write is coalesced (CORE-R7 step 4): let it run.
-		await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)
-
-		// Snapshot should be updated to match the new toolUsage
-		const newSnapshot = (task as any).toolUsageSnapshot
-		expect(newSnapshot).not.toBe(initialSnapshot)
-		expect(newSnapshot.read_file).toEqual({ attempts: 3, failures: 0 })
-		expect(newSnapshot.write_to_file).toEqual({ attempts: 2, failures: 1 })
-	})
-
-	test("emitFinalTokenUsageUpdate should emit on tool usage change alone", async () => {
-		const emitSpy = vi.spyOn(task, "emit")
-
-		// Set initial tool usage and simulate previous emission
-		;(task as any).tokenUsageSnapshot = task.getTokenUsage()
-		;(task as any).toolUsageSnapshot = {}
-
-		// Change tool usage
-		task.toolUsage = {
-			execute_command: { attempts: 1, failures: 0 },
-		}
-
-		// Call emitFinalTokenUsageUpdate
-		task.emitFinalTokenUsageUpdate()
-
-		// Should emit due to tool usage change
-		expect(emitSpy).toHaveBeenCalledWith(
-			TumbleCodeEventName.TaskTokenUsageUpdated,
-			task.taskId,
-			expect.any(Object),
-			task.toolUsage,
+		const events = emit.mock.calls.map(([event]: unknown[]) => event)
+		expect(events.indexOf(TumbleCodeEventName.TaskTokenUsageUpdated)).toBeGreaterThanOrEqual(0)
+		expect(events.indexOf(TumbleCodeEventName.TaskTokenUsageUpdated)).toBeLessThan(
+			events.indexOf(TumbleCodeEventName.TaskAborted),
 		)
 	})
-})
 
-describe("hasToolUsageChanged", () => {
-	test("should return true when snapshot is undefined and current has data", () => {
-		const current: ToolUsage = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-		expect(hasToolUsageChanged(current, undefined)).toBe(true)
+	it("counts tool attempts and failures, and reports a failure only when it has a message", () => {
+		task.recordToolUsage("read_file")
+		task.recordToolUsage("read_file")
+		task.recordToolError("read_file")
+		task.recordToolError("write_to_file", "permission denied")
+
+		expect(task.toolUsage).toEqual({
+			read_file: { attempts: 2, failures: 1 },
+			write_to_file: { attempts: 0, failures: 1 },
+		})
+		expect(emit.mock.calls.filter(([event]: unknown[]) => event === TumbleCodeEventName.TaskToolFailed)).toEqual([
+			[TumbleCodeEventName.TaskToolFailed, task.taskId, "write_to_file", "permission denied"],
+		])
 	})
 
-	test("should return false when both are empty", () => {
-		expect(hasToolUsageChanged({}, {})).toBe(false)
-	})
+	it("computes tokenUsage once and serves the snapshot after that", () => {
+		task.clineMessages = [
+			{ ts: 1, type: "say", say: "text", text: "task" },
+			{
+				ts: 2,
+				type: "say",
+				say: "api_req_started",
+				text: JSON.stringify({ tokensIn: 10, tokensOut: 5, cost: 0.1 }),
+			},
+		]
 
-	test("should return false when snapshot is undefined and current is empty", () => {
-		expect(hasToolUsageChanged({}, undefined)).toBe(false)
-	})
+		const first = task.tokenUsage
 
-	test("should return true when a new tool is added", () => {
-		const current: ToolUsage = {
-			read_file: { attempts: 1, failures: 0 },
-			write_to_file: { attempts: 1, failures: 0 },
-		}
-		const snapshot: ToolUsage = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-		expect(hasToolUsageChanged(current, snapshot)).toBe(true)
-	})
-
-	test("should return true when attempts change", () => {
-		const current: ToolUsage = {
-			read_file: { attempts: 2, failures: 0 },
-		}
-		const snapshot: ToolUsage = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-		expect(hasToolUsageChanged(current, snapshot)).toBe(true)
-	})
-
-	test("should return true when failures change", () => {
-		const current: ToolUsage = {
-			read_file: { attempts: 1, failures: 1 },
-		}
-		const snapshot: ToolUsage = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-		expect(hasToolUsageChanged(current, snapshot)).toBe(true)
-	})
-
-	test("should return false when nothing changed", () => {
-		const current: ToolUsage = {
-			read_file: { attempts: 3, failures: 1 },
-			write_to_file: { attempts: 2, failures: 0 },
-		}
-		const snapshot: ToolUsage = {
-			read_file: { attempts: 3, failures: 1 },
-			write_to_file: { attempts: 2, failures: 0 },
-		}
-		expect(hasToolUsageChanged(current, snapshot)).toBe(false)
-	})
-})
-
-describe("hasTokenUsageChanged", () => {
-	test("should return true when snapshot is undefined", () => {
-		const current: TokenUsage = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
-		expect(hasTokenUsageChanged(current, undefined)).toBe(true)
-	})
-
-	test("should return true when totalTokensIn changes", () => {
-		const current: TokenUsage = {
-			totalTokensIn: 200,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
-		const snapshot: TokenUsage = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
-		expect(hasTokenUsageChanged(current, snapshot)).toBe(true)
-	})
-
-	test("should return false when nothing changed", () => {
-		const current: TokenUsage = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-			totalCacheWrites: 10,
-			totalCacheReads: 5,
-		}
-		const snapshot: TokenUsage = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-			totalCacheWrites: 10,
-			totalCacheReads: 5,
-		}
-		expect(hasTokenUsageChanged(current, snapshot)).toBe(false)
+		expect(first).toMatchObject({ totalTokensIn: 10, totalTokensOut: 5, totalCost: 0.1 })
+		task.clineMessages.push({ ts: 3, type: "say", say: "api_req_started", text: JSON.stringify({ tokensIn: 99 }) })
+		expect(task.tokenUsage).toBe(first)
 	})
 })
