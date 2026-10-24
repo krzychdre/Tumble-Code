@@ -11,11 +11,6 @@ allowBuilds:
     esbuild: false
     protobufjs: false
 
-# Locked before pnpm 12 enforced its one-day minimumReleaseAge default; drop each
-# entry once it is a day old (all are by 2026-10-24T14:27Z).
-minimumReleaseAgeExclude:
-    - "@asamuzakjp/dom-selector@10.0.5"
-
 overrides:
     tar-fs: ">=3.1.1"
     esbuild: "^0.28.2"
