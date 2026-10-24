@@ -83,15 +83,20 @@ describe("WebviewHtml", () => {
 			expect(csp).toContain("connect-src CSP https://openrouter.ai https://* ws://localhost:5173")
 		})
 
-		it("reads the port from the .vite-port file", async () => {
+		it.each([
+			["with a log tag", "Tag", 1],
+			["without a log tag", undefined, 0],
+		])("reads the port from the .vite-port file %s", async (_name, logTag, logged) => {
 			spies.push(
 				vi.spyOn(realFs, "existsSync").mockReturnValue(true),
 				vi.spyOn(realFs, "readFileSync").mockReturnValue("6000\n" as any),
 			)
-			const html = await getHmrHtml({ ...base, logTag: "Tag" })
+			const html = await getHmrHtml({ ...base, logTag })
 			expect(axios.get).toHaveBeenCalledWith("http://localhost:6000")
 			expect(html).toContain("http://localhost:6000/@react-refresh")
-			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("[Tag] Using Vite server port from"))
+			expect(
+				vi.mocked(logger.info).mock.calls.filter(([line]) => String(line).includes("Using Vite server port")),
+			).toHaveLength(logged)
 		})
 
 		it("falls back to the production HTML and reports it when the dev server is down", async () => {

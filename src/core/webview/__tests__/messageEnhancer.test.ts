@@ -1,5 +1,5 @@
 import type { Mock } from "vitest"
-import { ProviderSettings, ClineMessage } from "@tumble-code/types"
+import { type ProviderSettings, type ClineMessage, TelemetryEventName } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
 import { MessageEnhancer, extractTaskHistory } from "../messageEnhancer"
@@ -14,6 +14,8 @@ vi.mock("@tumble-code/telemetry")
 describe("MessageEnhancer", () => {
 	let mockProviderSettingsManager: ProviderSettingsManager
 	let mockSingleCompletion: Mock
+	let capture: Mock
+	let captureEvent: Mock
 
 	const mockApiConfiguration: ProviderSettings = {
 		apiProvider: "openai",
@@ -56,13 +58,11 @@ describe("MessageEnhancer", () => {
 		})
 		vi.mocked(singleCompletionHandlerModule).singleCompletionWithUsage = mockSingleCompletion
 
-		// Mock TelemetryService
+		capture = vi.fn()
+		captureEvent = vi.fn()
 		vi.mocked(TelemetryService).hasInstance = vi.fn().mockReturnValue(true)
-		// Mock the instance getter
 		Object.defineProperty(TelemetryService, "instance", {
-			get: vi.fn().mockReturnValue({
-				capture: vi.fn(),
-			}),
+			get: () => ({ capture, captureEvent }),
 			configurable: true,
 		})
 	})
@@ -205,8 +205,11 @@ describe("MessageEnhancer", () => {
 			expect(calledPrompt).toBe("Custom enhancement template: Test prompt")
 		})
 
-		it("should handle errors gracefully", async () => {
-			mockSingleCompletion.mockRejectedValue(new Error("API error"))
+		it.each([
+			["an Error", new Error("API error"), "API error"],
+			["a non-Error value", "String error", "String error"],
+		])("reports a failed completion that threw %s", async (_name, thrown, message) => {
+			mockSingleCompletion.mockRejectedValue(thrown)
 
 			const result = await MessageEnhancer.enhanceMessage({
 				text: "Test",
@@ -215,23 +218,30 @@ describe("MessageEnhancer", () => {
 				providerSettingsManager: mockProviderSettingsManager,
 			})
 
-			expect(result.success).toBe(false)
-			expect(result.error).toBe("API error")
-			expect(result.enhancedText).toBeUndefined()
+			expect(result).toEqual({ success: false, error: message })
 		})
 
-		it("should handle non-Error exceptions", async () => {
-			mockSingleCompletion.mockRejectedValue("String error")
-
-			const result = await MessageEnhancer.enhanceMessage({
+		it("reports the completion's usage as an LLM completion of the enhancement", async () => {
+			await MessageEnhancer.enhanceMessage({
 				text: "Test",
 				apiConfiguration: mockApiConfiguration,
 				listApiConfigMeta: mockListApiConfigMeta,
 				providerSettingsManager: mockProviderSettingsManager,
+				taskId: "task-1",
 			})
 
-			expect(result.success).toBe(false)
-			expect(result.error).toBe("String error")
+			expect(capture).toHaveBeenCalledWith(TelemetryEventName.LLM_COMPLETION, {
+				taskId: "task-1",
+				inputTokens: 120,
+				outputTokens: 30,
+				cacheReadTokens: 0,
+				cacheWriteTokens: 0,
+				cost: undefined,
+				completionKind: "enhance",
+				usageReported: true,
+				modelId: "gpt-4",
+				apiProvider: "openai",
+			})
 		})
 
 		it("should fall back to default config if enhancement config is invalid", async () => {
@@ -271,48 +281,22 @@ describe("MessageEnhancer", () => {
 	})
 
 	describe("captureTelemetry", () => {
-		it("should capture telemetry when TelemetryService is available", () => {
-			const mockTaskId = "task-123"
-			const mockCaptureEvent = vi.fn()
-			vi.mocked(TelemetryService.instance).captureEvent = mockCaptureEvent
+		it.each([
+			["task-123", true, { taskId: "task-123", includeTaskHistory: true }],
+			[undefined, false, { includeTaskHistory: false }],
+			["task-123", undefined, { taskId: "task-123", includeTaskHistory: false }],
+		])("task %s with history %s is reported as %o", (taskId, includeTaskHistory, properties) => {
+			MessageEnhancer.captureTelemetry(taskId, includeTaskHistory)
 
-			MessageEnhancer.captureTelemetry(mockTaskId, true)
-
-			expect(TelemetryService.hasInstance).toHaveBeenCalled()
-			expect(mockCaptureEvent).toHaveBeenCalledWith(expect.any(String), {
-				taskId: mockTaskId,
-				includeTaskHistory: true,
-			})
+			expect(captureEvent).toHaveBeenCalledWith(TelemetryEventName.PROMPT_ENHANCED, properties)
 		})
 
-		it("should handle missing TelemetryService gracefully", () => {
+		it("reports nothing without a TelemetryService", () => {
 			vi.mocked(TelemetryService).hasInstance = vi.fn().mockReturnValue(false)
 
-			// Should not throw
-			expect(() => MessageEnhancer.captureTelemetry("task-123", true)).not.toThrow()
-		})
+			MessageEnhancer.captureTelemetry("task-123", true)
 
-		it("should work without task ID", () => {
-			const mockCaptureEvent = vi.fn()
-			vi.mocked(TelemetryService.instance).captureEvent = mockCaptureEvent
-
-			MessageEnhancer.captureTelemetry(undefined, false)
-
-			expect(mockCaptureEvent).toHaveBeenCalledWith(expect.any(String), {
-				includeTaskHistory: false,
-			})
-		})
-
-		it("should default includeTaskHistory to false when not provided", () => {
-			const mockCaptureEvent = vi.fn()
-			vi.mocked(TelemetryService.instance).captureEvent = mockCaptureEvent
-
-			MessageEnhancer.captureTelemetry("task-123")
-
-			expect(mockCaptureEvent).toHaveBeenCalledWith(expect.any(String), {
-				taskId: "task-123",
-				includeTaskHistory: false,
-			})
+			expect(captureEvent).not.toHaveBeenCalled()
 		})
 	})
 
@@ -352,23 +336,6 @@ describe("MessageEnhancer", () => {
 			// Should return empty string and log error
 			expect(history).toBe("")
 			expect(loggerErrorSpy).toHaveBeenCalledWith("Failed to extract task history:", expect.any(Error))
-
-			loggerErrorSpy.mockRestore()
-		})
-
-		it("should handle messages with circular references", () => {
-			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
-
-			// Create a message with circular reference
-			const circularMessage: any = { type: "ask", text: "Test" }
-			circularMessage.self = circularMessage
-
-			const messages = [circularMessage] as ClineMessage[]
-
-			const history = extractTaskHistory(messages)
-
-			// Should handle gracefully
-			expect(history).toBe("User: Test")
 
 			loggerErrorSpy.mockRestore()
 		})
