@@ -156,6 +156,21 @@ describe("streamed request", () => {
 		}
 		expect(mocks.logInfo).toHaveBeenCalledWith(expect.stringMatching(/^\[TestProvider\] raw usage: \{/))
 	})
+
+	it("reports a rejected request as a provider error with its root cause and status", async () => {
+		const refused = Object.assign(new Error("Connection error."), {
+			status: 503,
+			cause: new Error("connect ECONNREFUSED 127.0.0.1:8080"),
+		})
+		mocks.create.mockRejectedValueOnce(refused)
+
+		const error = await drain(new TestProvider().createMessage("System", [])).catch((e: unknown) => e)
+
+		expect(error).toMatchObject({
+			message: "TestProvider completion error: Connection error. (connect ECONNREFUSED 127.0.0.1:8080)",
+			status: 503,
+		})
+	})
 })
 
 describe("completePrompt", () => {
