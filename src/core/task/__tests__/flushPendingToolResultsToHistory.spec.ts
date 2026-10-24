@@ -4,7 +4,7 @@ import * as os from "os"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import type { GlobalState, ProviderSettings } from "@tumble-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
 import { Task } from "../Task"
@@ -177,74 +177,52 @@ vi.mock("../../../utils/fs", () => ({
 	fileExistsAtPath: vi.fn().mockReturnValue(false),
 }))
 
-describe("flushPendingToolResultsToHistory", () => {
-	let mockProvider: any
-	let mockApiConfig: ProviderSettings
-	let mockOutputChannel: any
-	let mockExtensionContext: vscode.ExtensionContext
+function makeTask(): Task {
+	const context = {
+		globalState: { get: vi.fn(), update: vi.fn().mockResolvedValue(undefined), keys: vi.fn().mockReturnValue([]) },
+		globalStorageUri: { fsPath: path.join(os.tmpdir(), "test-storage") },
+		workspaceState: {
+			get: vi.fn(),
+			update: vi.fn().mockResolvedValue(undefined),
+			keys: vi.fn().mockReturnValue([]),
+		},
+		secrets: {
+			get: vi.fn().mockResolvedValue(undefined),
+			store: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		},
+		extensionUri: { fsPath: "/mock/extension/path" },
+		extension: { packageJSON: { version: "1.0.0" } },
+	} as unknown as vscode.ExtensionContext
+	const output = {
+		appendLine: vi.fn(),
+		append: vi.fn(),
+		clear: vi.fn(),
+		show: vi.fn(),
+		hide: vi.fn(),
+		dispose: vi.fn(),
+	}
+	const provider = new ClineProvider(context, output as any, "sidebar", new ContextProxy(context)) as any
+	provider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
+	provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+	provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
+	provider.updateTaskHistory = vi.fn().mockResolvedValue(undefined)
+	const apiConfiguration: ProviderSettings = {
+		apiProvider: "anthropic",
+		apiModelId: "claude-3-5-sonnet-20241022",
+		apiKey: "test-api-key",
+	}
+	return new Task({ provider, apiConfiguration, task: "test task", startTask: false })
+}
 
+const result = (id: string, content = `result ${id}`) => ({ type: "tool_result" as const, tool_use_id: id, content })
+
+describe("flushPendingToolResultsToHistory", () => {
 	beforeEach(() => {
 		if (!TelemetryService.hasInstance()) {
 			TelemetryService.createInstance([])
 		}
-
-		const storageUri = {
-			fsPath: path.join(os.tmpdir(), "test-storage"),
-		}
-
-		mockExtensionContext = {
-			globalState: {
-				get: vi.fn().mockImplementation((key: keyof GlobalState) => undefined),
-				update: vi.fn().mockImplementation((_key, _value) => Promise.resolve()),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			globalStorageUri: storageUri,
-			workspaceState: {
-				get: vi.fn().mockImplementation((_key) => undefined),
-				update: vi.fn().mockImplementation((_key, _value) => Promise.resolve()),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((_key) => Promise.resolve(undefined)),
-				store: vi.fn().mockImplementation((_key, _value) => Promise.resolve()),
-				delete: vi.fn().mockImplementation((_key) => Promise.resolve()),
-			},
-			extensionUri: {
-				fsPath: "/mock/extension/path",
-			},
-			extension: {
-				packageJSON: {
-					version: "1.0.0",
-				},
-			},
-		} as unknown as vscode.ExtensionContext
-
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			append: vi.fn(),
-			clear: vi.fn(),
-			show: vi.fn(),
-			hide: vi.fn(),
-			dispose: vi.fn(),
-		}
-
-		mockProvider = new ClineProvider(
-			mockExtensionContext,
-			mockOutputChannel,
-			"sidebar",
-			new ContextProxy(mockExtensionContext),
-		) as any
-
-		mockApiConfig = {
-			apiProvider: "anthropic",
-			apiModelId: "claude-3-5-sonnet-20241022",
-			apiKey: "test-api-key",
-		}
-
-		mockProvider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
-		mockProvider.updateTaskHistory = vi.fn().mockResolvedValue(undefined)
+		mockPWaitFor.mockClear()
 	})
 
 	afterEach(() => {
@@ -252,66 +230,59 @@ describe("flushPendingToolResultsToHistory", () => {
 		TaskHistoryStore.resetSharedStoresForTests()
 	})
 
-	it("should not save anything when userMessageContent is empty", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
+	it("saves nothing when no tool result is pending", async () => {
+		const task = makeTask()
 
-		// Ensure userMessageContent is empty
-		task.userMessageContent = []
-		const initialHistoryLength = task.apiConversationHistory.length
-
-		// Call flush
 		await task.flushPendingToolResultsToHistory()
 
-		// History should not have changed since userMessageContent was empty
-		expect(task.apiConversationHistory.length).toBe(initialHistoryLength)
+		expect(task.apiConversationHistory).toEqual([])
 	})
 
-	it("should save user message when userMessageContent has pending tool results", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		// Set up pending tool result in userMessageContent
-		task.userMessageContent = [
-			{
-				type: "tool_result",
-				tool_use_id: "tool-123",
-				content: "File written successfully",
-			},
-		]
+	it("saves the pending results as one timestamped user message and clears them", async () => {
+		const task = makeTask()
+		task.assistantMessageSavedToHistory = true
+		task.userMessageContent = [result("tool-1"), result("tool-2")]
+		const before = Date.now()
 
 		await task.flushPendingToolResultsToHistory()
 
-		// Should have saved 1 user message
-		expect(task.apiConversationHistory.length).toBe(1)
+		expect(task.apiConversationHistory).toEqual([
+			{ role: "user", content: [result("tool-1"), result("tool-2")], ts: expect.any(Number) },
+		])
+		expect(task.apiConversationHistory[0].ts).toBeGreaterThanOrEqual(before)
+		expect(task.userMessageContent).toEqual([])
+	})
 
-		// Check user message with tool result
-		const userMessage = task.apiConversationHistory[0]
-		expect(userMessage.role).toBe("user")
-		expect(Array.isArray(userMessage.content)).toBe(true)
-		expect((userMessage.content as any[])[0].type).toBe("tool_result")
-		expect((userMessage.content as any[])[0].tool_use_id).toBe("tool-123")
+	it.each([
+		[true, false],
+		[false, true],
+	])("with the assistant message saved = %s, waits for it: %s", async (assistantMessageSaved, waits) => {
+		const task = makeTask()
+		task.assistantMessageSavedToHistory = assistantMessageSaved
+		task.userMessageContent = [result("tool-1")]
+
+		await task.flushPendingToolResultsToHistory()
+
+		expect(mockPWaitFor).toHaveBeenCalledTimes(waits ? 1 : 0)
+		expect(task.apiConversationHistory).toHaveLength(1)
+	})
+
+	it("saves nothing when the task was aborted during the wait", async () => {
+		const task = makeTask()
+		task.userMessageContent = [result("tool-aborted")]
+		task.abort = true
+
+		await task.flushPendingToolResultsToHistory()
+
+		expect(task.apiConversationHistory).toEqual([])
 	})
 
 	// P10: the spill write is asynchronous, and the preview only replaces the inline text once
 	// the artifact file exists. A flush (delegation, abort) must settle those writes first, or the
 	// persisted history keeps the full text and the artifact on disk is an orphan.
 	it("persists the spill preview once a pending artifact write settles", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-		;(task as any).assistantMessageSavedToHistory = true
+		const task = makeTask()
+		task.assistantMessageSavedToHistory = true
 		const hugeResult = Array.from({ length: 400 }, (_, index) => `line-${index + 1}`.padEnd(80, "x")).join("\n")
 		const save = vi.fn(
 			() =>
@@ -321,10 +292,7 @@ describe("flushPendingToolResultsToHistory", () => {
 		)
 		;(task as any).toolResultSpill = { store: { save }, maxInlineBytes: 1024 }
 
-		task.pushToolResultToUserContent(
-			{ type: "tool_result", tool_use_id: "spill-1", content: hugeResult },
-			{ toolName: "search_files" },
-		)
+		task.pushToolResultToUserContent(result("spill-1", hugeResult), { toolName: "search_files" })
 		await task.flushPendingToolResultsToHistory()
 
 		expect(save).toHaveBeenCalledTimes(1)
@@ -332,182 +300,5 @@ describe("flushPendingToolResultsToHistory", () => {
 		expect(flushed.tool_use_id).toBe("spill-1")
 		expect(flushed.content).toContain('Full output saved as artifact "tool-42.txt"')
 		expect(flushed.content.length).toBeLessThan(hugeResult.length)
-	})
-
-	it("should clear userMessageContent after flushing", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		// Set up pending tool result
-		task.userMessageContent = [
-			{
-				type: "tool_result",
-				tool_use_id: "tool-456",
-				content: "Command executed",
-			},
-		]
-
-		await task.flushPendingToolResultsToHistory()
-
-		// userMessageContent should be cleared
-		expect(task.userMessageContent.length).toBe(0)
-	})
-
-	it("should handle multiple tool results in a single flush", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		// Set up multiple pending tool results
-		task.userMessageContent = [
-			{
-				type: "tool_result",
-				tool_use_id: "tool-1",
-				content: "First result",
-			},
-			{
-				type: "tool_result",
-				tool_use_id: "tool-2",
-				content: "Second result",
-			},
-		]
-
-		await task.flushPendingToolResultsToHistory()
-
-		// Check user message has both tool results
-		const userMessage = task.apiConversationHistory[0]
-		expect(Array.isArray(userMessage.content)).toBe(true)
-		expect((userMessage.content as any[]).length).toBe(2)
-		expect((userMessage.content as any[])[0].tool_use_id).toBe("tool-1")
-		expect((userMessage.content as any[])[1].tool_use_id).toBe("tool-2")
-	})
-
-	it("should add timestamp to saved messages", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		const beforeTs = Date.now()
-
-		task.userMessageContent = [
-			{
-				type: "tool_result",
-				tool_use_id: "tool-ts",
-				content: "Result",
-			},
-		]
-
-		await task.flushPendingToolResultsToHistory()
-
-		const afterTs = Date.now()
-
-		// Message should have timestamp
-		expect((task.apiConversationHistory[0] as any).ts).toBeGreaterThanOrEqual(beforeTs)
-		expect((task.apiConversationHistory[0] as any).ts).toBeLessThanOrEqual(afterTs)
-	})
-
-	it("should skip waiting for assistantMessageSavedToHistory when flag is already true", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		// Set flag to true (assistant message already saved)
-		task.assistantMessageSavedToHistory = true
-
-		// Set up pending tool result
-		task.userMessageContent = [
-			{
-				type: "tool_result",
-				tool_use_id: "tool-skip-wait",
-				content: "Result when flag is true",
-			},
-		]
-
-		// Clear mock call history
-		mockPWaitFor.mockClear()
-
-		await task.flushPendingToolResultsToHistory()
-
-		// Should not have called pWaitFor since flag was already true
-		expect(mockPWaitFor).not.toHaveBeenCalled()
-
-		// Should still save the message
-		expect(task.apiConversationHistory.length).toBe(1)
-		expect((task.apiConversationHistory[0].content as any[])[0].tool_use_id).toBe("tool-skip-wait")
-	})
-
-	it("should wait for assistantMessageSavedToHistory when flag is false", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		// Flag is false by default - assistant message not yet saved
-		expect(task.assistantMessageSavedToHistory).toBe(false)
-
-		// Set up pending tool result
-		task.userMessageContent = [
-			{
-				type: "tool_result",
-				tool_use_id: "tool-wait",
-				content: "Result when flag is false",
-			},
-		]
-
-		// Clear mock call history
-		mockPWaitFor.mockClear()
-
-		await task.flushPendingToolResultsToHistory()
-
-		// Should have called pWaitFor since flag was false
-		expect(mockPWaitFor).toHaveBeenCalled()
-
-		// Should still save the message (mock resolves immediately)
-		expect(task.apiConversationHistory.length).toBe(1)
-	})
-
-	it("should not flush when task is aborted during wait", async () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		// Flag is false - will need to wait
-		task.assistantMessageSavedToHistory = false
-
-		// Set up pending tool result
-		task.userMessageContent = [
-			{
-				type: "tool_result",
-				tool_use_id: "tool-aborted",
-				content: "Should not be saved",
-			},
-		]
-
-		// Set abort flag - this will cause the condition in pWaitFor to return true
-		// AND will cause early return after the wait
-		task.abort = true
-
-		await task.flushPendingToolResultsToHistory()
-
-		// Should not have saved anything since task was aborted
-		expect(task.apiConversationHistory.length).toBe(0)
 	})
 })

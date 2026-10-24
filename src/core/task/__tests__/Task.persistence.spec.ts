@@ -276,225 +276,75 @@ describe("Task persistence", () => {
 		mockProvider.updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 	})
 
-	// ── saveApiConversationHistory (via retrySaveApiConversationHistory) ──
+	const newTask = () =>
+		new Task({ provider: mockProvider, apiConfiguration: mockApiConfig, task: "test task", startTask: false })
 
-	describe("saveApiConversationHistory", () => {
-		it("returns true on success", async () => {
+	describe("retrySaveApiConversationHistory", () => {
+		it("saves a copy of the history, not the live array", async () => {
 			mockSaveApiMessages.mockResolvedValueOnce(undefined)
+			const task = newTask()
+			task.apiConversationHistory.push({ role: "user", content: [{ type: "text", text: "snapshot test" }] })
 
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
+			expect(await task.retrySaveApiConversationHistory()).toBe(true)
 
-			task.apiConversationHistory.push({
-				role: "user",
-				content: [{ type: "text", text: "hello" }],
-			})
-
-			const result = await task.retrySaveApiConversationHistory()
-			expect(result).toBe(true)
+			const [{ messages }] = mockSaveApiMessages.mock.calls[0]
+			expect(messages).not.toBe(task.apiConversationHistory)
+			expect(messages).toEqual(task.apiConversationHistory)
 		})
 
-		it("returns false on failure", async () => {
-			vi.useFakeTimers()
+		it.each([
+			{ failures: 1, saved: true, attempts: 2 },
+			{ failures: 3, saved: false, attempts: 3 },
+		])(
+			"after $failures failed writes: saved $saved in $attempts attempts",
+			async ({ failures, saved, attempts }) => {
+				vi.useFakeTimers()
+				try {
+					for (let i = 0; i < failures; i++) {
+						mockSaveApiMessages.mockRejectedValueOnce(new Error(`fail ${i + 1}`))
+					}
+					const task = newTask()
 
-			// All 3 retry attempts must fail for retrySaveApiConversationHistory to return false
-			mockSaveApiMessages
-				.mockRejectedValueOnce(new Error("fail 1"))
-				.mockRejectedValueOnce(new Error("fail 2"))
-				.mockRejectedValueOnce(new Error("fail 3"))
+					const pending = task.retrySaveApiConversationHistory()
+					await vi.runAllTimersAsync()
 
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			const promise = task.retrySaveApiConversationHistory()
-			await vi.runAllTimersAsync()
-			const result = await promise
-
-			expect(result).toBe(false)
-			expect(mockSaveApiMessages).toHaveBeenCalledTimes(3)
-
-			vi.useRealTimers()
-		})
-
-		it("succeeds on 2nd retry attempt", async () => {
-			vi.useFakeTimers()
-
-			mockSaveApiMessages.mockRejectedValueOnce(new Error("fail 1")).mockResolvedValueOnce(undefined) // succeeds on 2nd try
-
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			const promise = task.retrySaveApiConversationHistory()
-			await vi.runAllTimersAsync()
-			const result = await promise
-
-			expect(result).toBe(true)
-			expect(mockSaveApiMessages).toHaveBeenCalledTimes(2)
-
-			vi.useRealTimers()
-		})
-
-		it("snapshots the array before passing to saveApiMessages", async () => {
-			mockSaveApiMessages.mockResolvedValueOnce(undefined)
-
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			const originalMsg = {
-				role: "user" as const,
-				content: [{ type: "text" as const, text: "snapshot test" }],
-			}
-			task.apiConversationHistory.push(originalMsg)
-
-			await task.retrySaveApiConversationHistory()
-
-			expect(mockSaveApiMessages).toHaveBeenCalledTimes(1)
-
-			const callArgs = mockSaveApiMessages.mock.calls[0][0]
-			// The messages passed should be a COPY, not the live reference
-			expect(callArgs.messages).not.toBe(task.apiConversationHistory)
-			// But the content should be the same
-			expect(callArgs.messages).toEqual(task.apiConversationHistory)
-		})
+					expect(await pending).toBe(saved)
+					expect(mockSaveApiMessages).toHaveBeenCalledTimes(attempts)
+				} finally {
+					vi.useRealTimers()
+				}
+			},
+		)
 	})
-
-	// ── saveClineMessages ────────────────────────────────────────────────
 
 	describe("saveClineMessages", () => {
-		it("returns true on success", async () => {
+		it("saves a copy of the messages, not the live array", async () => {
 			mockSaveTaskMessages.mockResolvedValueOnce(undefined)
+			const task = newTask()
+			task.clineMessages.push({ type: "say", say: "text", text: "snapshot test", ts: Date.now() })
 
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
+			expect(await task.history.saveClineMessages()).toBe(true)
 
-			const result = await task.history.saveClineMessages()
-			expect(result).toBe(true)
+			const [{ messages }] = mockSaveTaskMessages.mock.calls[0]
+			expect(messages).not.toBe(task.clineMessages)
+			expect(messages).toEqual(task.clineMessages)
 		})
 
-		it("returns false on failure", async () => {
+		it("returns false when the write fails", async () => {
 			mockSaveTaskMessages.mockRejectedValueOnce(new Error("write error"))
 
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			const result = await task.history.saveClineMessages()
-			expect(result).toBe(false)
-		})
-
-		it("snapshots the array before passing to saveTaskMessages", async () => {
-			mockSaveTaskMessages.mockResolvedValueOnce(undefined)
-
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			task.clineMessages.push({
-				type: "say",
-				say: "text",
-				text: "snapshot test",
-				ts: Date.now(),
-			})
-
-			await task.history.saveClineMessages()
-
-			expect(mockSaveTaskMessages).toHaveBeenCalledTimes(1)
-
-			const callArgs = mockSaveTaskMessages.mock.calls[0][0]
-			// The messages passed should be a COPY, not the live reference
-			expect(callArgs.messages).not.toBe(task.clineMessages)
-			// But the content should be the same
-			expect(callArgs.messages).toEqual(task.clineMessages)
+			expect(await newTask().history.saveClineMessages()).toBe(false)
 		})
 	})
 
-	// ── flushPendingToolResultsToHistory — save failure/success ───────────
+	it("keeps the pending tool results when flushing them fails to save", async () => {
+		mockSaveApiMessages.mockRejectedValueOnce(new Error("disk full"))
+		const task = newTask()
+		task.assistantMessageSavedToHistory = true
+		const pending = { type: "tool_result" as const, tool_use_id: "tool-fail", content: "kept" }
+		task.userMessageContent = [pending]
 
-	describe("flushPendingToolResultsToHistory persistence", () => {
-		it("retains userMessageContent on save failure", async () => {
-			mockSaveApiMessages.mockRejectedValueOnce(new Error("disk full"))
-
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Skip waiting for assistant message
-			task.assistantMessageSavedToHistory = true
-
-			task.userMessageContent = [
-				{
-					type: "tool_result",
-					tool_use_id: "tool-fail",
-					content: "Result that should be retained",
-				},
-			]
-
-			const saved = await task.flushPendingToolResultsToHistory()
-
-			expect(saved).toBe(false)
-			// userMessageContent should NOT be cleared on failure
-			expect(task.userMessageContent.length).toBeGreaterThan(0)
-			expect(task.userMessageContent[0]).toMatchObject({
-				type: "tool_result",
-				tool_use_id: "tool-fail",
-			})
-		})
-
-		it("clears userMessageContent on save success", async () => {
-			mockSaveApiMessages.mockResolvedValueOnce(undefined)
-
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Skip waiting for assistant message
-			task.assistantMessageSavedToHistory = true
-
-			task.userMessageContent = [
-				{
-					type: "tool_result",
-					tool_use_id: "tool-ok",
-					content: "Result that should be cleared",
-				},
-			]
-
-			const saved = await task.flushPendingToolResultsToHistory()
-
-			expect(saved).toBe(true)
-			// userMessageContent should be cleared on success
-			expect(task.userMessageContent).toEqual([])
-		})
+		expect(await task.flushPendingToolResultsToHistory()).toBe(false)
+		expect(task.userMessageContent).toEqual([pending])
 	})
 })
