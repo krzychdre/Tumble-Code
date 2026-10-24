@@ -46,6 +46,16 @@ function makeHistoryItem(overrides: Partial<HistoryItem> = {}): HistoryItem {
 	}
 }
 
+/**
+ * Rewrites a history file as another process would, with an mtime clearly after the store's
+ * last read, so the mtime check sees the change on any file system (no sleep needed).
+ */
+async function writeExternally(filePath: string, data: unknown): Promise<void> {
+	await fs.writeFile(filePath, typeof data === "string" ? data : JSON.stringify(data))
+	const later = new Date(Date.now() + 10_000)
+	await fs.utimes(filePath, later, later)
+}
+
 describe("TaskHistoryStore", () => {
 	let tmpDir: string
 	let store: TaskHistoryStore
@@ -371,13 +381,12 @@ describe("TaskHistoryStore", () => {
 			await store.upsert(makeHistoryItem({ id: "dispose-task" }))
 			store.dispose()
 
-			// Give the flush a moment to complete
-			await new Promise((resolve) => setTimeout(resolve, 100))
-
+			// dispose() starts the flush without awaiting it: wait for its result on disk.
 			const indexPath = path.join(tmpDir, "tasks", GlobalFileNames.historyIndex)
-			const raw = await fs.readFile(indexPath, "utf8")
-			const index = JSON.parse(raw)
-			expect(index.entries).toHaveLength(1)
+			await vi.waitFor(async () => {
+				const index = JSON.parse(await fs.readFile(indexPath, "utf8"))
+				expect(index.entries).toHaveLength(1)
+			})
 		})
 	})
 
@@ -534,26 +543,27 @@ describe("TaskHistoryStore", () => {
 	})
 
 	describe("reconcile() detects modifications to existing records", () => {
-		it("picks up an external mutation to an existing history_item.json without manual invalidate()", async () => {
-			await store.initialize()
+		it.each([
+			{ label: "a different size and the same mtime", tokens: '"tokensIn": 7777', mtime: 1_000_000 },
+			{ label: "the same size and a newer mtime", tokens: '"tokensIn": 777', mtime: 1_000_010 },
+		])(
+			"re-reads an externally rewritten history_item.json with $label, without invalidate()",
+			async ({ tokens, mtime }) => {
+				await store.initialize()
+				await store.upsert(makeHistoryItem({ id: "mutate-me", tokensIn: 100, ts: 1000 }))
+				const filePath = path.join(tmpDir, "tasks", "mutate-me", GlobalFileNames.historyItem)
+				// Pin a known mtime and let the store record it.
+				await fs.utimes(filePath, 1_000_000, 1_000_000)
+				await store.reconcile()
 
-			const item = makeHistoryItem({ id: "mutate-me", tokensIn: 100, ts: 1000 })
-			await store.upsert(item)
-			await store.flushIndex()
+				const raw = (await fs.readFile(filePath, "utf8")).replace('"tokensIn": 100', tokens)
+				await fs.writeFile(filePath, raw)
+				await fs.utimes(filePath, mtime, mtime)
+				await store.reconcile()
 
-			// Externally rewrite the file (simulating another process/instance)
-			const filePath = path.join(tmpDir, "tasks", "mutate-me", GlobalFileNames.historyItem)
-			// Bump mtime by writing with a small delay so mtimeMs differs
-			await new Promise((resolve) => setTimeout(resolve, 20))
-			const mutated = { ...item, tokensIn: 777, task: "Externally mutated" }
-			await fs.writeFile(filePath, JSON.stringify(mutated))
-
-			// reconcile() must detect the mtime/size change and re-read
-			await store.reconcile()
-
-			expect(store.get("mutate-me")?.tokensIn).toBe(777)
-			expect(store.get("mutate-me")?.task).toBe("Externally mutated")
-		})
+				expect(store.get("mutate-me")?.tokensIn).toBe(JSON.parse(raw).tokensIn)
+			},
+		)
 
 		it("does not re-read unchanged files (cheap metadata check)", async () => {
 			await store.initialize()
@@ -585,8 +595,7 @@ describe("TaskHistoryStore", () => {
 
 			// Touch the file (rewrite with new mtime) so metadata changes
 			const filePath = path.join(tmpDir, "tasks", "stable", GlobalFileNames.historyItem)
-			await new Promise((resolve) => setTimeout(resolve, 20))
-			await fs.writeFile(filePath, JSON.stringify({ ...item, tokensIn: 100 }))
+			await writeExternally(filePath, { ...item, tokensIn: 100 })
 
 			readTaskFileResult.mockClear()
 			await store.reconcile()
@@ -633,9 +642,7 @@ describe("TaskHistoryStore", () => {
 
 			// Externally rewrite the file with a newer value the cache hasn't seen
 			const filePath = path.join(tmpDir, "tasks", "stale-cache", GlobalFileNames.historyItem)
-			await new Promise((resolve) => setTimeout(resolve, 20))
-			const externallyNewer = { ...item, tokensIn: 999, task: "Externally newer" }
-			await fs.writeFile(filePath, JSON.stringify(externallyNewer))
+			await writeExternally(filePath, { ...item, tokensIn: 999, task: "Externally newer" })
 
 			// atomicReadAndUpdate must read on-disk under the lock, not the
 			// stale cache (which still says tokensIn: 100)
@@ -864,8 +871,7 @@ describe("TaskHistoryStore", () => {
 
 			// Externally rewrite the file so reconcile detects the mtime change.
 			const filePath = path.join(tmpDir, "tasks", "ext-change", GlobalFileNames.historyItem)
-			await new Promise((resolve) => setTimeout(resolve, 20))
-			await fs.writeFile(filePath, JSON.stringify({ ...item, tokensIn: 999 }))
+			await writeExternally(filePath, { ...item, tokensIn: 999 })
 
 			await store.reconcile()
 
