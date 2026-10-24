@@ -70,9 +70,13 @@ vi.mock("../ChatRow", () => ({
 	default: function MockChatRow({
 		message,
 		isFollowUpAnswered,
+		isExpanded,
+		onToggleExpand,
 	}: {
 		message: ClineMessage
 		isFollowUpAnswered?: boolean
+		isExpanded: boolean
+		onToggleExpand: (ts: number, expand: boolean) => void
 	}) {
 		harness.rows.push(message)
 		if (isFollowUpAnswered) {
@@ -80,7 +84,12 @@ vi.mock("../ChatRow", () => ({
 		} else {
 			harness.answeredFollowUps.delete(message.ts)
 		}
-		return <div data-testid="chat-row">{JSON.stringify(message)}</div>
+		return (
+			<div data-testid="chat-row" data-ts={message.ts} data-expanded={String(isExpanded)}>
+				{JSON.stringify(message)}
+				<button aria-label={`toggle-${message.ts}`} onClick={() => onToggleExpand(message.ts, !isExpanded)} />
+			</div>
+		)
 	},
 }))
 
@@ -1254,5 +1263,74 @@ describe("ChatView welcome screen", () => {
 
 		await act(async () => fireEvent.click(view.getByTestId("announcement")))
 		expect(view.queryByTestId("announcement")).toBeNull()
+	})
+})
+
+describe("ChatView action bar", () => {
+	beforeEach(resetHarness)
+
+	const actionBar = (container: HTMLElement) => container.querySelector('[data-testid="action-bar"]')!
+
+	it.each([
+		["Ctrl+Enter answers with the primary action", { key: "Enter", ctrlKey: true }, "askResponse:yesButtonClicked"],
+		["Esc answers with the secondary action", { key: "Escape" }, "askResponse:noButtonClicked"],
+		["a plain Enter does nothing", { key: "Enter" }, undefined],
+	])("%s", async (_name, keys, posted) => {
+		const { container } = await mount([withAsk(ask("command", { text: "rm -rf /tmp/x" }))])
+
+		const sent = await postedDuring(() => fireEvent.keyDown(actionBar(container), keys))
+
+		expect(sent).toEqual(posted ? [posted] : [])
+	})
+
+	it("disabled buttons get the disabled style and ignore the shortcuts", async () => {
+		const { container } = await mount([withAsk(ask("command", { text: "npm test", partial: true }))])
+
+		const sent = await postedDuring(() => {
+			fireEvent.keyDown(actionBar(container), { key: "Enter", ctrlKey: true })
+			fireEvent.keyDown(actionBar(container), { key: "Escape" })
+		})
+
+		expect(sent).toEqual([])
+		for (const button of approvalButtons(container)) {
+			expect(button).toHaveClass("disabled-action-button")
+		}
+	})
+})
+
+describe("ChatView command row expansion", () => {
+	beforeEach(resetHarness)
+
+	const COMMAND = ask("command", { text: "echo hi" })
+	const expanded = (view: { container: HTMLElement }, ts: number) =>
+		view.container.querySelector(`[data-ts="${ts}"]`)!.getAttribute("data-expanded")
+
+	it.each([
+		["opens a command waiting for manual approval", COMMAND, "true"],
+		["keeps an auto-approved command collapsed", { ...COMMAND, isAnswered: true }, "false"],
+	])("%s", async (_name, command, open) => {
+		const view = await mount([withAsk(command)])
+
+		expect(expanded(view, command.ts)).toBe(open)
+	})
+
+	it("lets the user collapse the default-open row", async () => {
+		const view = await mount([withAsk(COMMAND)])
+
+		await act(async () => fireEvent.click(view.getByLabelText(`toggle-${COMMAND.ts}`)))
+
+		expect(expanded(view, COMMAND.ts)).toBe("false")
+	})
+
+	it("forgets expanded rows when another task opens", async () => {
+		const ANSWER: ClineMessage = { type: "say", say: "text", ts: 3, text: "answer" }
+		const view = await mount([[TASK, API_DONE, ANSWER]])
+		await act(async () => fireEvent.click(view.getByLabelText("toggle-3")))
+		expect(expanded(view, 3)).toBe("true")
+
+		await act(async () => hydrate([{ ...TASK, ts: 100, text: "another task" }]))
+		await act(async () => hydrate([TASK, API_DONE, ANSWER]))
+
+		expect(expanded(view, 3)).toBe("false")
 	})
 })

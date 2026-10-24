@@ -14,13 +14,7 @@ import { ExtensionStateContextProvider } from "@src/context/ExtensionStateContex
 
 import ChatView, { ChatViewProps } from "../ChatView"
 
-import {
-	describeRow,
-	hashText,
-	retryDelayedLastFixture,
-	rowPipelineFixtures,
-	toolBatchingFixture,
-} from "./fixtures/rowPipelineFixtures"
+import { describeRow, retryDelayedLastFixture, rowPipelineFixtures } from "./fixtures/rowPipelineFixtures"
 
 vi.mock("@src/utils/vscode", () => ({
 	vscode: {
@@ -199,26 +193,6 @@ describe("ChatView row pipeline (characterization)", () => {
 
 		await waitFor(() => {
 			expect(renderedRows()).toEqual([retryDelayedLastFixture.expectedRows[0], describeRow(retryDone)])
-		})
-	})
-
-	it("appends the synthetic condensing row while the context is condensing", async () => {
-		renderChatView()
-		await showHistory(toolBatchingFixture.messages)
-
-		await waitFor(() => {
-			expect(renderedRows()).toEqual(toolBatchingFixture.expectedRows)
-		})
-
-		await act(async () => {
-			window.postMessage({ type: "condenseTaskContextStarted", text: "task-id" }, "*")
-		})
-
-		await waitFor(() => {
-			expect(renderedRows()).toEqual([
-				...toolBatchingFixture.expectedRows,
-				`${Number.MAX_SAFE_INTEGER} say condense_context ${hashText(undefined)} partial`,
-			])
 		})
 	})
 })

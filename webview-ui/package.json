@@ -36,7 +36,6 @@
 		"date-fns": "^4.4.0",
 		"debounce": "^3.0.0",
 		"diff": "catalog:",
-		"fast-deep-equal": "catalog:",
 		"fzf": "catalog:",
 		"hast-util-to-jsx-runtime": "^2.3.6",
 		"i18next": "catalog:",

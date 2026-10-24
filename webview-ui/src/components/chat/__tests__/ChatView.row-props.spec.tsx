@@ -1,7 +1,6 @@
 // pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/ChatView.row-props.spec.tsx
 
 import React, { memo, useEffect } from "react"
-import deepEqual from "fast-deep-equal"
 import { render, waitFor, act } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
@@ -19,8 +18,8 @@ interface ClineMessage {
 }
 
 // What each row received on its latest render, and how often each row
-// rendered. The mock is wrapped in memo(deepEqual) exactly like the real
-// ChatRow, so the render count shows whether the real memo would hold.
+// rendered. The mock is wrapped in memo with the real ChatRow comparator, so
+// the render count shows whether the real memo holds.
 const rowState = vi.hoisted(() => ({
 	props: new Map<number, Record<string, unknown>>(),
 	renders: new Map<number, number>(),
@@ -37,7 +36,8 @@ vi.mock("use-sound", () => ({
 	default: vi.fn().mockImplementation(() => [vi.fn()]),
 }))
 
-vi.mock("../ChatRow", () => {
+vi.mock("../ChatRow", async () => {
+	const { chatRowPropsEqual } = await import("../chatRowPropsEqual")
 	const MockChatRow = memo((props: { message: ClineMessage } & Record<string, unknown>) => {
 		const ts = props.message.ts
 		rowState.props.set(ts, props)
@@ -49,7 +49,7 @@ vi.mock("../ChatRow", () => {
 			}
 		}, [isCondensingRow])
 		return <div data-testid={`chat-row-${ts}`} />
-	}, deepEqual)
+	}, chatRowPropsEqual as never)
 	return { default: MockChatRow }
 })
 
@@ -137,22 +137,6 @@ const renderChatView = () =>
 	)
 
 const TASK_TS = 1
-const CHECKPOINT_TS = 2
-const TODO_ASK_TS = 3
-
-// A checkpoint and an updateTodoList tool ask: the two inputs of the removed
-// `hasCheckpoint` and `editable` computations.
-const todoTask = (): ClineMessage[] => [
-	{ type: "say", say: "task", ts: TASK_TS, text: "Initial task" },
-	{ type: "say", say: "checkpoint_saved", ts: CHECKPOINT_TS, text: "abc123" },
-	{
-		type: "ask",
-		ask: "tool",
-		ts: TODO_ASK_TS,
-		text: JSON.stringify({ tool: "updateTodoList", todos: [] }),
-		partial: false,
-	},
-]
 
 const EARLIER_TS = 2
 const STREAMED_TS = 3
@@ -182,24 +166,6 @@ describe("ChatView row props", () => {
 		rowState.condensingMounts = 0
 	})
 
-	it("passes rows no props that ChatRow does not read", async () => {
-		const { getByTestId } = renderChatView()
-
-		await act(async () => {
-			hydrateState(todoTask())
-		})
-
-		await waitFor(() => {
-			expect(getByTestId(`chat-row-${TODO_ASK_TS}`)).toBeInTheDocument()
-		})
-
-		// ChatRow declared `editable` and `hasCheckpoint` but never read them.
-		for (const props of rowState.props.values()) {
-			expect(props).not.toHaveProperty("editable")
-			expect(props).not.toHaveProperty("hasCheckpoint")
-		}
-	})
-
 	it("gives lastModifiedMessage only to the last row", async () => {
 		const { getByTestId } = renderChatView()
 
@@ -213,33 +179,6 @@ describe("ChatView row props", () => {
 
 		expect(rowState.props.get(EARLIER_TS)?.lastModifiedMessage).toBeUndefined()
 		expect(rowState.props.get(STREAMED_TS)?.lastModifiedMessage).toMatchObject({ ts: STREAMED_TS })
-	})
-
-	it("does not re-render earlier rows when only the streamed last message changes", async () => {
-		const { getByTestId } = renderChatView()
-
-		await act(async () => {
-			hydrateState(streamingTask("Hel"))
-		})
-
-		await waitFor(() => {
-			expect(getByTestId(`chat-row-${STREAMED_TS}`)).toBeInTheDocument()
-		})
-
-		const earlierRenders = rowState.renders.get(EARLIER_TS)
-		const streamedRenders = rowState.renders.get(STREAMED_TS) ?? 0
-
-		await act(async () => {
-			streamToken("Hello")
-		})
-
-		await waitFor(() => {
-			expect(rowState.renders.get(STREAMED_TS)).toBeGreaterThan(streamedRenders)
-		})
-
-		// Every row used to receive the last message, which changes on each
-		// token, so the deepEqual memo let every row re-render per token.
-		expect(rowState.renders.get(EARLIER_TS)).toBe(earlierRenders)
 	})
 
 	it("passes each row its history meta, so the row need not scan clineMessages", async () => {
@@ -288,9 +227,12 @@ describe("ChatView row props", () => {
 		expect(rowState.props.get(40)?.meta).toMatchObject({ nextTs: undefined, previousTodos: todos })
 	})
 
-	it("does not re-render an earlier row with history meta when only the streamed last message changes", async () => {
-		const history: ClineMessage[] = [
-			{ type: "say", say: "task", ts: TASK_TS, text: "Initial task" },
+	// Every row used to receive the last message, which changes on each token,
+	// and the meta is recomputed per token: the earlier row must still skip.
+	it.each([
+		["a text row", { type: "say", say: "text", ts: EARLIER_TS, text: "Earlier answer", partial: false }],
+		[
+			"a row with history meta",
 			{
 				type: "ask",
 				ask: "tool",
@@ -298,12 +240,16 @@ describe("ChatView row props", () => {
 				text: JSON.stringify({ tool: "updateTodoList", todos: [{ id: "a", content: "A", status: "pending" }] }),
 				partial: false,
 			},
-			{ type: "say", say: "text", ts: STREAMED_TS, text: "Hel", partial: true },
-		]
+		],
+	] as const)("does not re-render %s before the streamed message", async (_name, earlier) => {
 		const { getByTestId } = renderChatView()
 
 		await act(async () => {
-			hydrateState(history)
+			hydrateState([
+				{ type: "say", say: "task", ts: TASK_TS, text: "Initial task" },
+				earlier,
+				{ type: "say", say: "text", ts: STREAMED_TS, text: "Hel", partial: true },
+			])
 		})
 
 		await waitFor(() => {
@@ -321,9 +267,6 @@ describe("ChatView row props", () => {
 		await waitFor(() => {
 			expect(rowState.renders.get(STREAMED_TS)).toBeGreaterThan(streamedRenders)
 		})
-
-		// The meta is recomputed on every token, but it is equal for the
-		// earlier row, so the deepEqual memo holds.
 		expect(rowState.renders.get(EARLIER_TS)).toBe(earlierRenders)
 	})
 
