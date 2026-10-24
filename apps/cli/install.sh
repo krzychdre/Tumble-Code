@@ -160,71 +160,14 @@ get_version() {
     fi
     
     info "Fetching latest version..."
-    
-    # Try to get the latest cli release
-    RELEASES_JSON=$(curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" "https://api.github.com/repos/$REPO/releases" 2>/dev/null) || {
-        error "Failed to fetch releases from GitHub. Check your internet connection."
+
+    # The latest release carries the extension and the CLI under one version;
+    # nightly builds are pre-releases, which GitHub never reports as latest.
+    RELEASE_JSON=$(curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null) || {
+        error "Failed to fetch the latest release from GitHub. Check your internet connection."
     }
-    
-    # Extract highest cli-v* tag by semantic version (do not rely on API ordering)
-    VERSION=$(printf "%s" "$RELEASES_JSON" | node -e '
-const fs = require("fs")
-const input = fs.readFileSync(0, "utf8")
-let releases
-try {
-  releases = JSON.parse(input)
-} catch {
-  process.exit(1)
-}
+    VERSION=$(printf "%s" "$RELEASE_JSON" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0, "utf8")).tag_name.replace(/^v/, ""))')
 
-function parseVersion(version) {
-  const core = String(version).trim().split("+", 1)[0].split("-", 1)[0]
-  if (!core) return null
-  const parts = core.split(".")
-  if (parts.length === 0 || parts.some((part) => !/^\d+$/.test(part))) {
-    return null
-  }
-  return parts.map((part) => Number.parseInt(part, 10))
-}
-
-function compareVersions(a, b) {
-  const maxLength = Math.max(a.length, b.length)
-  for (let i = 0; i < maxLength; i++) {
-    const aPart = a[i] ?? 0
-    const bPart = b[i] ?? 0
-    if (aPart > bPart) return 1
-    if (aPart < bPart) return -1
-  }
-  return 0
-}
-
-let latestVersion = ""
-let latestParts = null
-
-if (Array.isArray(releases)) {
-  for (const release of releases) {
-    if (!release || typeof release.tag_name !== "string" || !release.tag_name.startsWith("cli-v")) {
-      continue
-    }
-    const candidate = release.tag_name.slice("cli-v".length)
-    const candidateParts = parseVersion(candidate)
-    if (!candidateParts) continue
-    if (!latestParts || compareVersions(candidateParts, latestParts) > 0) {
-      latestVersion = candidate
-      latestParts = candidateParts
-    }
-  }
-}
-
-if (latestVersion) {
-  process.stdout.write(latestVersion)
-}
-')
-    
-    if [ -z "$VERSION" ]; then
-        error "Could not find any CLI releases. The CLI may not have been released yet."
-    fi
-    
     info "Latest version: $VERSION"
 }
 
@@ -332,7 +275,7 @@ download_and_install() {
         info "Using local tarball: $ROO_LOCAL_TARBALL"
         cp "$ROO_LOCAL_TARBALL" "$TMP_DIR/$TARBALL"
     else
-        URL="https://github.com/$REPO/releases/download/cli-v${VERSION}/${TARBALL}"
+        URL="https://github.com/$REPO/releases/download/v${VERSION}/${TARBALL}"
 
         info "Downloading from $URL..."
 
@@ -470,6 +413,9 @@ print_success() {
     echo "  ${BOLD}Example:${NC}"
     echo "    export OPENROUTER_API_KEY=sk-or-v1-..."
     echo "    cd ~/my-project && tumble \"What is this project?\""
+    echo ""
+    echo "  ${BOLD}Settings:${NC} ~/.roo/cli-settings.json, example with every option:"
+    echo "    https://github.com/$REPO/blob/main/apps/cli/examples/cli-settings.example.json"
     echo ""
 }
 

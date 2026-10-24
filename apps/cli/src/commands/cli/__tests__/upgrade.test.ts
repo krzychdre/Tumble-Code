@@ -22,8 +22,7 @@ describe("compareVersions", () => {
 		expect(compareVersions("v1.2.0", "1.2")).toBe(0)
 	})
 
-	it("supports cli tag prefixes and prerelease metadata", () => {
-		expect(compareVersions("cli-v1.2.3", "1.2.2")).toBe(1)
+	it("ignores prerelease metadata", () => {
 		expect(compareVersions("1.2.3-beta.1", "1.2.3")).toBe(0)
 	})
 
@@ -33,16 +32,11 @@ describe("compareVersions", () => {
 })
 
 describe("getLatestCliVersion", () => {
-	it("returns the highest cli-v release tag from GitHub releases", async () => {
-		const fetchImpl = (async () =>
-			createFetchResponse([
-				{ tag_name: "cli-v0.1.9" },
-				{ tag_name: "v9.9.9" },
-				{ tag_name: "cli-v0.1.10" },
-				{ tag_name: "cli-v0.1.8" },
-			])) as typeof fetch
+	it("returns the version of the fork's latest release", async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () => createFetchResponse({ tag_name: "v1.1.1" }))
 
-		await expect(getLatestCliVersion(fetchImpl)).resolves.toBe("0.1.10")
+		await expect(getLatestCliVersion(fetchImpl)).resolves.toBe("1.1.1")
+		expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.github.com/repos/krzychdre/tumble-code/releases/latest")
 	})
 
 	it("throws when release check fails", async () => {
@@ -65,7 +59,7 @@ describe("upgrade", () => {
 
 	it("does not run installer when already up to date", async () => {
 		const runInstaller = vi.fn(async () => undefined)
-		const fetchImpl = (async () => createFetchResponse([{ tag_name: "cli-v0.1.4" }])) as typeof fetch
+		const fetchImpl = (async () => createFetchResponse({ tag_name: "v0.1.4" })) as typeof fetch
 
 		await upgrade({
 			currentVersion: "0.1.4",
@@ -79,7 +73,7 @@ describe("upgrade", () => {
 
 	it("runs installer when a newer version is available", async () => {
 		const runInstaller = vi.fn(async () => undefined)
-		const fetchImpl = (async () => createFetchResponse([{ tag_name: "cli-v0.2.0" }])) as typeof fetch
+		const fetchImpl = (async () => createFetchResponse({ tag_name: "v0.2.0" })) as typeof fetch
 
 		await upgrade({
 			currentVersion: "0.1.4",

@@ -39,6 +39,20 @@ Tumble Code adapts to how you work:
 - Vision Mode: describe screenshots, diagrams and charts for models that cannot see images (pin a vision-capable model to it)
 - Custom Modes: build specialized modes for your team or workflow
 
+## Command-line client
+
+Tumble Code also runs in a terminal, with the same modes and providers. The CLI ships in every release next to the
+extension, under the same version, for macOS on Apple silicon and Linux (x64 and arm64), and needs Node.js 22 or newer:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/krzychdre/tumble-code/main/apps/cli/install.sh | sh
+```
+
+It reads its settings from `~/.roo/cli-settings.json`. Start from the
+[example settings file](https://github.com/krzychdre/tumble-code/blob/main/apps/cli/examples/cli-settings.example.json), which sets every option;
+[examples/README.md](https://github.com/krzychdre/tumble-code/blob/main/apps/cli/examples/README.md) explains each one, and the
+[CLI README](https://github.com/krzychdre/tumble-code/blob/main/apps/cli/README.md) covers the rest.
+
 ## Resources
 
 - **Documentation:** Tumble Code documentation is a work in progress; the architecture notes for contributors live in [docs/](./docs/).

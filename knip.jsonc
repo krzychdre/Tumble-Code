@@ -11,6 +11,9 @@
 		"scripts/**",
 		// Python service, not part of the pnpm workspace graph.
 		"self-hosted-cloudapi/**",
+		// Agent skills and commands (Claude Code, Tumble); their scripts are run by hand, not imported.
+		".claude/**",
+		".roo/**",
 	],
 	// Used by .husky/pre-commit together with the "lint-staged" block in package.json.
 	"ignoreDependencies": ["lint-staged"],

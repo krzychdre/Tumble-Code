@@ -27,29 +27,21 @@ function makeTree(changesets, summary = "Fixed: Text.") {
 	return root
 }
 
-test("accepts one-sided, labeled changesets", () => {
-	const root = makeTree({ "a.md": ["ext"], "b.md": ["@x/cli"], "c.md": ["@x/webview"], "d.md": ["ext", "@x/types"] })
+test("accepts labeled changesets of released packages", () => {
+	const root = makeTree({ "a.md": ["ext"], "b.md": ["ext", "@x/types"] })
 	try {
-		assert.deepEqual(checkChangesets({ root }), { mixed: [], unlabeled: [] })
+		assert.deepEqual(checkChangesets({ root }), { skipped: [], unlabeled: [], extension: "ext" })
 	} finally {
 		rmSync(root, { recursive: true, force: true })
 	}
 })
 
-test("flags a changeset that mixes an ignored package with a released one", () => {
-	const root = makeTree({ "a.md": ["ext", "@x/cli"] })
+test("flags changesets naming an ignored package or a package without a version", () => {
+	const root = makeTree({ "a.md": ["ext", "@x/cli"], "b.md": ["@x/webview"], "c.md": ["ext"] })
 	try {
-		assert.deepEqual(checkChangesets({ root }).mixed, [{ file: "a.md", ignored: ["@x/cli"], released: ["ext"] }])
-	} finally {
-		rmSync(root, { recursive: true, force: true })
-	}
-})
-
-test("treats a package without a version as ignored", () => {
-	const root = makeTree({ "a.md": ["@x/webview", "ext"] })
-	try {
-		assert.deepEqual(checkChangesets({ root }).mixed, [
-			{ file: "a.md", ignored: ["@x/webview"], released: ["ext"] },
+		assert.deepEqual(checkChangesets({ root }).skipped, [
+			{ file: "a.md", packages: ["@x/cli"] },
+			{ file: "b.md", packages: ["@x/webview"] },
 		])
 	} finally {
 		rmSync(root, { recursive: true, force: true })
@@ -57,7 +49,7 @@ test("treats a package without a version as ignored", () => {
 })
 
 test("flags an extension changeset whose summary has no changelog label", () => {
-	const root = makeTree({ "a.md": ["ext"], "b.md": ["@x/cli"], "c.md": ["@x/types"] }, "Text.")
+	const root = makeTree({ "a.md": ["ext"], "c.md": ["@x/types"] }, "Text.")
 	try {
 		assert.deepEqual(checkChangesets({ root }).unlabeled, ["a.md"])
 	} finally {

@@ -4,7 +4,7 @@ This file provides guidance to agents when working with code in this repository.
 
 - Architecture map: read [docs/architecture.md](docs/architecture.md) first. It lists the workspaces, the allowed dependency directions, the CLI runtime contract, the main message paths and the code not to touch. Update it when a change moves a boundary.
 
-- Changesets: a user-facing extension change adds a `.changeset/*.md` whose summary starts with `New:`, `Improved:` or `Fixed:`, then a bold title and one or two sentences for users. Internal changes get none. Details: [.changeset/README.md](.changeset/README.md).
+- Changesets: the extension and the CLI ship in one release with one changelog. A user-facing change to either adds a `.changeset/*.md` naming `"tumble-code"`, whose summary starts with `New:`, `Improved:` or `Fixed:`, then a bold title (`CLI: ...` for the CLI) and one or two sentences for users. Internal changes get none. Details: [.changeset/README.md](.changeset/README.md).
 
 - Settings View Pattern: When working on `SettingsView`, inputs must bind to the local `cachedState`, NOT the live `useExtensionState()`. The `cachedState` acts as a buffer for user edits, isolating them from the `ContextProxy` source-of-truth until the user explicitly clicks "Save". Section components read and write it with `useSetting(key)` (`settings/SettingsDraftContext.tsx`), not through props. Wiring inputs directly to the live state causes race conditions.
 

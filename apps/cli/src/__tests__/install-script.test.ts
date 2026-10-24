@@ -33,8 +33,8 @@ function createTarball(dir: string): string {
 
 /**
  * Runs install.sh with fake `curl` and `npm` first on PATH. The fake curl
- * records every URL it is asked for, answers the GitHub releases API with one
- * CLI release and, unless `serveTarball` is set, fails every download - so the
+ * records every URL it is asked for, answers the GitHub latest-release API
+ * with release v1.2.3 and, unless `serveTarball` is set, fails every download - so the
  * default runs never touch the real network or the real HOME. The fake npm
  * records every invocation in a log and is steered with TUMBLE_NPM_* env
  * variables: which subcommand fails, whether the cache-only (--offline)
@@ -63,7 +63,7 @@ function runInstaller(
 			"#!/bin/sh",
 			`for arg in "$@"; do case "$arg" in http*) echo "$arg" >> "${log}" ;; esac; done`,
 			'case "$*" in',
-			`  *api.github.com*) echo '[{"tag_name":"cli-v1.2.3"},{"tag_name":"nightly-v0.0.1"}]' ;;`,
+			`  *api.github.com*) echo '{"tag_name":"v1.2.3"}' ;;`,
 			"  *)",
 			'    if [ -n "$TUMBLE_TARBALL" ]; then',
 			'      prev=""',
@@ -146,13 +146,13 @@ function runInstaller(
 }
 
 // DEF-C29: the installer fetched releases from the upstream Roo repository,
-// while the fork's release notes (cli-release.yml) tell users to run this
-// script: they got upstream's CLI, or no CLI at all.
+// while the fork's release notes tell users to run this script: they got
+// upstream's CLI, or no CLI at all.
 describe.skipIf(process.platform === "win32")("install.sh", () => {
-	it("looks up the latest CLI release in the fork", () => {
+	it("looks up the latest release in the fork", () => {
 		const { urls } = runInstaller()
 
-		expect(urls[0]).toBe(`https://api.github.com/repos/${FORK}/releases`)
+		expect(urls[0]).toBe(`https://api.github.com/repos/${FORK}/releases/latest`)
 	})
 
 	it("downloads the CLI tarball from the fork's release", () => {
@@ -161,7 +161,7 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
 		expect(status).not.toBe(0) // The fake download fails.
 		expect(urls[1]).toMatch(
 			new RegExp(
-				`^https://github\\.com/${FORK}/releases/download/cli-v1\\.2\\.3/tumble-cli-[a-z]+-[a-z0-9]+\\.tar\\.gz$`,
+				`^https://github\\.com/${FORK}/releases/download/v1\\.2\\.3/tumble-cli-[a-z]+-[a-z0-9]+\\.tar\\.gz$`,
 			),
 		)
 	})
@@ -170,7 +170,7 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
 		const { urls } = runInstaller({ ROO_VERSION: "9.8.7" })
 
 		expect(urls).toHaveLength(1)
-		expect(urls[0]).toMatch(new RegExp(`^https://github\\.com/${FORK}/releases/download/cli-v9\\.8\\.7/`))
+		expect(urls[0]).toMatch(new RegExp(`^https://github\\.com/${FORK}/releases/download/v9\\.8\\.7/`))
 	})
 })
 

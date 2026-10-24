@@ -1,9 +1,10 @@
 import { spawn } from "child_process"
 
 import { VERSION } from "@/lib/utils/version.js"
-import { isRecord } from "@/lib/utils/guards.js"
 
-const RELEASES_URL = "https://api.github.com/repos/krzychdre/tumble-code/releases?per_page=100"
+// The extension and the CLI ship in one release under one version; nightly
+// builds are pre-releases, which GitHub never reports as latest.
+const LATEST_RELEASE_URL = "https://api.github.com/repos/krzychdre/tumble-code/releases/latest"
 export const INSTALL_SCRIPT_COMMAND =
 	"curl -fsSL https://raw.githubusercontent.com/krzychdre/tumble-code/main/apps/cli/install.sh | sh"
 
@@ -14,10 +15,7 @@ export interface UpgradeOptions {
 }
 
 function parseVersion(version: string): number[] {
-	const cleaned = version
-		.trim()
-		.replace(/^cli-v/, "")
-		.replace(/^v/, "")
+	const cleaned = version.trim().replace(/^v/, "")
 	const core = cleaned.split("+", 1)[0]?.split("-", 1)[0]
 
 	if (!core) {
@@ -66,7 +64,7 @@ export function compareVersions(a: string, b: string): number {
 }
 
 export async function getLatestCliVersion(fetchImpl: typeof fetch = fetch): Promise<string> {
-	const response = await fetchImpl(RELEASES_URL, {
+	const response = await fetchImpl(LATEST_RELEASE_URL, {
 		headers: {
 			Accept: "application/vnd.github+json",
 			"User-Agent": "roo-cli",
@@ -77,36 +75,8 @@ export async function getLatestCliVersion(fetchImpl: typeof fetch = fetch): Prom
 		throw new Error(`Failed to check latest version (HTTP ${response.status})`)
 	}
 
-	const releases = await response.json()
-	if (!Array.isArray(releases)) {
-		throw new Error("Invalid release response from GitHub.")
-	}
-
-	let latestVersion: string | undefined
-
-	for (const release of releases) {
-		if (!isRecord(release)) {
-			continue
-		}
-
-		const tagName = release.tag_name
-		if (typeof tagName === "string" && tagName.startsWith("cli-v")) {
-			const candidate = tagName.slice("cli-v".length)
-			try {
-				if (!latestVersion || compareVersions(candidate, latestVersion) > 0) {
-					latestVersion = candidate
-				}
-			} catch {
-				// Ignore malformed CLI tags and keep scanning other releases.
-			}
-		}
-	}
-
-	if (latestVersion) {
-		return latestVersion
-	}
-
-	throw new Error("Could not determine the latest CLI release version.")
+	const release = (await response.json()) as { tag_name: string }
+	return release.tag_name.replace(/^v/, "")
 }
 
 export function runUpgradeInstaller(version?: string, spawnImpl: typeof spawn = spawn): Promise<void> {

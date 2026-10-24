@@ -1,5 +1,5 @@
 ---
-"@tumble-code/cli": patch
+"tumble-code": patch
 ---
 
-The CLI shows math formulas. A formula on a line of its own (`$$...$$` or `\[...\]`) is drawn as an image in terminals that draw images (kitty, iTerm2, sixel), and everywhere else, like a formula inside a sentence, it reads as Unicode text: `∫_(-∞)⁰ (3x³ + 6x + ½) dx`.
+New: **CLI: math formulas.** A formula on a line of its own is drawn as an image where the terminal can show one; everywhere else formulas read as Unicode text, for example `∫_(-∞)⁰ (3x³ + 6x + ½) dx`.

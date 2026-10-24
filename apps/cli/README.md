@@ -1010,21 +1010,10 @@ pnpm lint
 
 ## Releasing
 
-Official releases are created via the GitHub Actions workflow at `.github/workflows/cli-release.yml`.
-
-To trigger a release:
-
-1. Go to **Actions** → **CLI Release**
-2. Click **Run workflow**
-3. Optionally specify a version (defaults to `package.json` version)
-4. Click **Run workflow**
-
-The workflow will:
-
-1. Build the CLI on all platforms (macOS Apple Silicon, Linux x64)
-2. Create platform-specific tarballs with bundled ripgrep
-3. Verify each tarball
-4. Create a GitHub release with all tarballs attached
+The CLI ships in the extension's release, under the same version number and with the same changelog: describe a CLI
+change in a changeset as [.changeset/README.md](../../.changeset/README.md) says. Merging the "Changeset version bump"
+PR builds the tarballs for macOS arm64, Linux x64 and Linux arm64 with `scripts/build.sh --release` and attaches them
+to the GitHub release `v<version>`, next to the VSIX.
 
 ### Local Builds
 

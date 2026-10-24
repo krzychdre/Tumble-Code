@@ -1,4 +1,4 @@
-name: Publish Extension
+name: Publish Release
 
 on:
   pull_request:
@@ -8,8 +8,51 @@ on:
 env:
   GIT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
 
+# One release ships the extension and the CLI under one version: the CLI
+# tarballs are built first, so a failed CLI build stops the release before
+# the tag, the Marketplace and the GitHub release.
 jobs:
+  build-cli:
+    if: >
+        ( github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'main' &&
+        contains(github.event.pull_request.title, 'Changeset version bump') ) ||
+        github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        include:
+          - platform: darwin-arm64
+            runs-on: macos-latest
+          - platform: linux-x64
+            runs-on: ubuntu-latest
+          - platform: linux-arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.GIT_REF }}
+      - name: Setup Node.js and pnpm
+        uses: ./.github/actions/setup-node-pnpm
+      # Builds bin/tumble-cli-<platform>.tar.gz and installs it once as a check.
+      - name: Build CLI tarball
+        run: ./apps/cli/scripts/build.sh --release
+      - name: Checksum
+        working-directory: bin
+        run: shasum -a 256 "tumble-cli-${{ matrix.platform }}.tar.gz" > "tumble-cli-${{ matrix.platform }}.tar.gz.sha256"
+      - name: Upload CLI tarball
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cli-${{ matrix.platform }}
+          path: |
+            bin/tumble-cli-${{ matrix.platform }}.tar.gz
+            bin/tumble-cli-${{ matrix.platform }}.tar.gz.sha256
+          retention-days: 7
+
   publish-extension:
+    needs: build-cli
     runs-on: ubuntu-latest
     # The Azure managed identity trusts only jobs in this environment.
     environment: marketplace
@@ -20,6 +63,7 @@ jobs:
       HAS_OVSX_PAT: ${{ secrets.OVSX_PAT != '' }}
     if: >
         ( github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
         github.event.pull_request.base.ref == 'main' &&
         contains(github.event.pull_request.title, 'Changeset version bump') ) ||
         github.event_name == 'workflow_dispatch'
@@ -55,6 +99,12 @@ jobs:
           
           # Clean up temporary file.
           rm /tmp/tumble-code-vsix-contents.txt
+      - name: Download CLI tarballs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: cli-*
+          path: bin/cli
+          merge-multiple: true
       - name: Create and Push Git Tag
         run: |
           current_package_version=$(node -p "require('./src/package.json').version")
@@ -100,9 +150,25 @@ jobs:
             mv /tmp/release-notes.cut.md /tmp/release-notes.md
           fi
 
+          cat >> /tmp/release-notes.md <<'EOF'
+
+          ## Install
+
+          The extension: [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code), or the `.vsix` below.
+
+          The CLI (macOS on Apple silicon, Linux x64 and arm64; Node.js 22 or newer):
+
+          ```sh
+          curl -fsSL https://raw.githubusercontent.com/krzychdre/tumble-code/main/apps/cli/install.sh | sh
+          ```
+
+          Its settings live in `~/.roo/cli-settings.json`; the [example settings file](https://github.com/krzychdre/tumble-code/blob/main/apps/cli/examples/cli-settings.example.json) sets every option.
+          EOF
+
           gh release create "v${current_package_version}" \
             --title "Release v${current_package_version}" \
             --notes-file /tmp/release-notes.md \
             --target ${{ env.GIT_REF }} \
-            bin/tumble-code-${current_package_version}.vsix
+            bin/tumble-code-${current_package_version}.vsix \
+            bin/cli/*
           echo "Successfully created GitHub Release v${current_package_version}"
