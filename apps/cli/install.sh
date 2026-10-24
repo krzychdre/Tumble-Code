@@ -414,6 +414,9 @@ print_success() {
     echo "    export OPENROUTER_API_KEY=sk-or-v1-..."
     echo "    cd ~/my-project && tumble \"What is this project?\""
     echo ""
+    echo "  ${BOLD}Settings:${NC} ~/.roo/cli-settings.json, example with every option:"
+    echo "    https://github.com/$REPO/blob/main/apps/cli/examples/cli-settings.example.json"
+    echo ""
 }
 
 # Main
