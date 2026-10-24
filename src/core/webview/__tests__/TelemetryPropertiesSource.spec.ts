@@ -1,6 +1,17 @@
 import { TelemetryPropertiesSource, type TelemetryPropertiesSourceHost } from "../TelemetryPropertiesSource"
 import type { ProviderState } from "../ProviderStateBuilder"
 
+const cloud = vi.hoisted(() => ({ hasInstance: false, isAuthenticated: (): boolean => false }))
+
+vi.mock("@tumble-code/cloud", () => ({
+	CloudService: {
+		hasInstance: () => cloud.hasInstance,
+		get instance() {
+			return { isAuthenticated: () => cloud.isAuthenticated() }
+		},
+	},
+}))
+
 // A partial state is enough: the source reads only language/mode/apiConfiguration.
 const partialState = {
 	language: "pl",
@@ -89,5 +100,55 @@ describe("TelemetryPropertiesSource", () => {
 		})
 		const props = await source.getTelemetryProperties("sub-9")
 		expect(props).toMatchObject({ taskId: "sub-9", parentTaskId: undefined, isSubtask: false })
+	})
+
+	describe("client kind", () => {
+		afterEach(() => {
+			vi.unstubAllEnvs()
+		})
+
+		test.each([
+			["VS Code, even with a CLI version set", undefined, "0.2.0", { clientKind: "vscode" }],
+			["the CLI with its version", "1", "0.2.0", { clientKind: "cli", clientVersion: "0.2.0" }],
+			["the CLI without a published version", "1", undefined, { clientKind: "cli" }],
+		])("names %s", async (_name, runtime, version, expected) => {
+			vi.stubEnv("ROO_CLI_RUNTIME", runtime)
+			vi.stubEnv("ROO_CLI_VERSION", version)
+
+			const props = await new TelemetryPropertiesSource(baseHost).getTelemetryProperties()
+
+			expect({ clientKind: props.clientKind, clientVersion: props.clientVersion }).toEqual({
+				clientVersion: undefined,
+				...expected,
+			})
+		})
+	})
+
+	describe("cloud authentication", () => {
+		afterEach(() => {
+			cloud.hasInstance = false
+			cloud.isAuthenticated = () => false
+		})
+
+		test.each([
+			["signed in", true, true, () => true],
+			["signed out", false, true, () => false],
+			["no CloudService", undefined, false, () => true],
+			[
+				"a failing auth check",
+				undefined,
+				true,
+				() => {
+					throw new Error("Authentication check error")
+				},
+			],
+		])("%s reports cloudIsAuthenticated %s", async (_name, expected, hasInstance, isAuthenticated) => {
+			cloud.hasInstance = hasInstance
+			cloud.isAuthenticated = isAuthenticated
+
+			const props = await new TelemetryPropertiesSource(baseHost).getTelemetryProperties()
+
+			expect(props.cloudIsAuthenticated).toBe(expected)
+		})
 	})
 })

@@ -55,22 +55,54 @@ describe("task event forwarding", () => {
 		expect(task.eventNames()).toEqual([])
 	})
 
-	it("events without a task id are forwarded with the task's id, the others with their own arguments", () => {
+	it("events without a task id are forwarded with the task's id, the others under their own name with their own arguments", () => {
 		const task = makeTask()
 		const host = makeHost()
 		forwardTaskEvents(task, host as unknown as TaskEventForwardingHost)
 		task.emit(TumbleCodeEventName.TaskStarted)
 		task.emit(TumbleCodeEventName.TaskFocused)
 		task.emit(TumbleCodeEventName.TaskUnfocused)
-		task.emit(TumbleCodeEventName.TaskSpawned, "child")
 		task.emit(TumbleCodeEventName.TaskCompleted, "t1", tokenUsage, toolUsage)
+		task.emit(TumbleCodeEventName.TaskActive, "t1")
+		task.emit(TumbleCodeEventName.TaskInteractive, "t1")
+		task.emit(TumbleCodeEventName.TaskResumable, "t1")
+		task.emit(TumbleCodeEventName.TaskIdle, "t1")
+		task.emit(TumbleCodeEventName.TaskPaused, "t1")
+		task.emit(TumbleCodeEventName.TaskUnpaused, "t1")
+		task.emit(TumbleCodeEventName.TaskSpawned, "child")
+		task.emit(TumbleCodeEventName.TaskUserMessage, "t1")
+		task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "t1", tokenUsage, toolUsage)
 		expect(host.emit.mock.calls).toEqual([
 			[TumbleCodeEventName.TaskStarted, "t1"],
 			[TumbleCodeEventName.TaskFocused, "t1"],
 			[TumbleCodeEventName.TaskUnfocused, "t1"],
-			[TumbleCodeEventName.TaskSpawned, "child"],
 			[TumbleCodeEventName.TaskCompleted, "t1", tokenUsage, toolUsage],
+			[TumbleCodeEventName.TaskActive, "t1"],
+			[TumbleCodeEventName.TaskInteractive, "t1"],
+			[TumbleCodeEventName.TaskResumable, "t1"],
+			[TumbleCodeEventName.TaskIdle, "t1"],
+			[TumbleCodeEventName.TaskPaused, "t1"],
+			[TumbleCodeEventName.TaskUnpaused, "t1"],
+			[TumbleCodeEventName.TaskSpawned, "child"],
+			[TumbleCodeEventName.TaskUserMessage, "t1"],
+			[TumbleCodeEventName.TaskTokenUsageUpdated, "t1", tokenUsage, toolUsage],
 		])
+	})
+
+	it("lifecycle events update the subagent row: completed, running, awaiting input, token usage", () => {
+		const task = makeTask()
+		const host = makeHost()
+		forwardTaskEvents(task, host as unknown as TaskEventForwardingHost)
+		task.emit(TumbleCodeEventName.TaskCompleted, "t1", tokenUsage, toolUsage)
+		task.emit(TumbleCodeEventName.TaskActive, "t1")
+		task.emit(TumbleCodeEventName.TaskInteractive, "t1")
+		task.emit(TumbleCodeEventName.TaskTokenUsageUpdated, "t1", tokenUsage, toolUsage)
+		expect(host.subagentRegistry.markTerminal.mock.calls).toEqual([["t1", "completed"]])
+		expect(host.subagentRegistry.setLiveStatus.mock.calls).toEqual([
+			["t1", "running"],
+			["t1", "awaiting_input"],
+		])
+		expect(host.subagentRegistry.update).toHaveBeenCalledWith("t1", { tokensIn: 1, tokensOut: 2, totalCost: 3 })
 	})
 
 	it("an abort marks the subagent failed, forwards, then asks the host to rehydrate", async () => {
