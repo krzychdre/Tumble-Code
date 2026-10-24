@@ -107,10 +107,12 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 		setIsToolsEditMode(false)
 	}
 
-	// Sync visualMode with backend mode changes to prevent desync
-	useEffect(() => {
+	// Follow backend mode changes.
+	const [prevMode, setPrevMode] = useState(mode)
+	if (mode !== prevMode) {
+		setPrevMode(mode)
 		setVisualMode(mode)
-	}, [mode])
+	}
 
 	const importExport = useModeImportExport({
 		currentSlug: currentMode?.slug,

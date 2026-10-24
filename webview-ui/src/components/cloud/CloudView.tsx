@@ -28,30 +28,21 @@ type CloudViewProps = {
 export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organizations = [] }: CloudViewProps) => {
 	const { t } = useAppTranslation()
 	const { taskSyncEnabled, setTaskSyncEnabled } = useExtensionState()
-	const wasAuthenticatedRef = useRef(false)
-	const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const manualUrlInputRef = useRef<HTMLInputElement | null>(null)
 	// Manual URL entry state
 	const [authInProgress, setAuthInProgress] = useState(false)
 	const [showManualEntry, setShowManualEntry] = useState(false)
 	const [manualUrl, setManualUrl] = useState("")
 
-	// Track authentication state changes to detect successful logout
-	useEffect(() => {
+	// A completed sign-in ends the sign-in progress and the manual URL entry.
+	const [prevIsAuthenticated, setPrevIsAuthenticated] = useState(isAuthenticated)
+	if (isAuthenticated !== prevIsAuthenticated) {
+		setPrevIsAuthenticated(isAuthenticated)
 		if (isAuthenticated) {
-			wasAuthenticatedRef.current = true
-			// Clear auth in progress state when authentication succeeds
 			setAuthInProgress(false)
 			setShowManualEntry(false)
-			if (timeoutRef.current) {
-				clearTimeout(timeoutRef.current)
-				timeoutRef.current = null
-			}
-		} else if (wasAuthenticatedRef.current && !isAuthenticated) {
-			// User just logged out successfully
-			wasAuthenticatedRef.current = false
 		}
-	}, [isAuthenticated])
+	}
 
 	// Focus the manual URL input when it becomes visible
 	useEffect(() => {
@@ -62,15 +53,6 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 			}, 50)
 		}
 	}, [showManualEntry])
-
-	// Cleanup timeout on unmount
-	useEffect(() => {
-		return () => {
-			if (timeoutRef.current) {
-				clearTimeout(timeoutRef.current)
-			}
-		}
-	}, [])
 
 	const handleConnectClick = () => {
 		vscode.postMessage({ type: "rooCloudSignIn" })

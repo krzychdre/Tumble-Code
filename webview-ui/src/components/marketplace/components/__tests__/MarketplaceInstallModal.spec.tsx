@@ -215,4 +215,50 @@ describe("MarketplaceInstallModal - Nested Parameters", () => {
 			expect(preservedInput).toHaveValue("test-value")
 		})
 	})
+	const pickDockerMethod = async () => {
+		fireEvent.click(screen.getByRole("combobox"))
+		fireEvent.click(await screen.findByText("Docker Installation"))
+		await screen.findByPlaceholderText("Enter image name")
+	}
+
+	it("installs with exactly the parameters of the method picked last", async () => {
+		const item = createMockItem(true)
+		render(<MarketplaceInstallModal item={item} isOpen={true} onClose={mockOnClose} hasWorkspace={true} />)
+		fireEvent.change(screen.getByPlaceholderText("Enter package name"), { target: { value: "pkg" } })
+		fireEvent.change(screen.getByPlaceholderText("Enter NPM API key"), { target: { value: "key" } })
+
+		await pickDockerMethod()
+		fireEvent.change(screen.getByPlaceholderText("Enter image name"), { target: { value: "image" } })
+		fireEvent.click(screen.getByText("marketplace:install.button"))
+
+		expect(mockedVscode.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "installMarketplaceItem",
+				mpInstallOptions: {
+					target: "project",
+					parameters: { apiKey: "key", globalOptional: "", imageName: "image", _selectedIndex: 1 },
+				},
+			}),
+		)
+	})
+
+	it("starts over on the first method with empty values when another item opens", async () => {
+		const { rerender } = render(
+			<MarketplaceInstallModal item={createMockItem(true)} isOpen={true} onClose={mockOnClose} hasWorkspace />,
+		)
+		fireEvent.change(screen.getByPlaceholderText("Optional setting"), { target: { value: "kept?" } })
+		await pickDockerMethod()
+
+		rerender(
+			<MarketplaceInstallModal
+				item={{ ...createMockItem(true), id: "other-item" }}
+				isOpen={true}
+				onClose={mockOnClose}
+				hasWorkspace
+			/>,
+		)
+
+		expect(screen.getByPlaceholderText("Enter package name")).toHaveValue("")
+		expect(screen.getByPlaceholderText("Optional setting")).toHaveValue("")
+	})
 })

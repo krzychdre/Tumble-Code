@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useContext } from "react"
+import { useEffect, useMemo, useContext, useRef } from "react"
 import { Tab, TabContent, TabHeader, TabTitle } from "../common/Tab"
 import { MarketplaceViewStateManager } from "./MarketplaceViewStateManager"
 import { useStateManager } from "./useStateManager"
@@ -25,63 +25,30 @@ interface MarketplaceViewProps {
 export function MarketplaceView({ stateManager, onDone, targetTab }: MarketplaceViewProps) {
 	const { t } = useAppTranslation()
 	const [state, manager] = useStateManager(stateManager)
-	const [hasReceivedInitialState, setHasReceivedInitialState] = useState(false)
 	const extensionState = useContext(ExtensionStateContext)
-	const [lastOrganizationSettingsVersion, setLastOrganizationSettingsVersion] = useState<number>(
-		extensionState?.organizationSettingsVersion ?? -1,
-	)
+	const organizationSettingsVersion = extensionState?.organizationSettingsVersion ?? -1
 
+	// Fetch once on open when the manager has no items yet.
 	useEffect(() => {
-		const currentVersion = extensionState?.organizationSettingsVersion ?? -1
-		if (currentVersion !== lastOrganizationSettingsVersion) {
-			vscode.postMessage({
-				type: "fetchMarketplaceData",
-			})
+		if (manager.getState().allItems.length === 0) {
+			vscode.postMessage({ type: "fetchMarketplaceData" })
 		}
-		setLastOrganizationSettingsVersion(currentVersion)
-	}, [extensionState?.organizationSettingsVersion, lastOrganizationSettingsVersion])
+	}, [manager])
 
-	// Track when we receive the initial state
+	// Fetch again when the organization settings change.
+	const lastOrganizationSettingsVersionRef = useRef(organizationSettingsVersion)
 	useEffect(() => {
-		// Check if we already have items (state might have been received before mount)
-		if (state.allItems.length > 0 && !hasReceivedInitialState) {
-			setHasReceivedInitialState(true)
+		if (organizationSettingsVersion !== lastOrganizationSettingsVersionRef.current) {
+			lastOrganizationSettingsVersionRef.current = organizationSettingsVersion
+			vscode.postMessage({ type: "fetchMarketplaceData" })
 		}
-	}, [state.allItems, hasReceivedInitialState])
+	}, [organizationSettingsVersion])
 
 	useEffect(() => {
 		if (targetTab && (targetTab === "mcp" || targetTab === "mode")) {
 			manager.transition({ type: "SET_ACTIVE_TAB", payload: { tab: targetTab } })
 		}
 	}, [targetTab, manager])
-
-	// Ensure marketplace state manager processes messages when component mounts
-	useEffect(() => {
-		// When the marketplace view first mounts, we need to trigger a state update
-		// to ensure we get the current marketplace items. We do this by sending
-		// a filter message with empty filters, which will cause the extension to
-		// send back the full state including all marketplace items.
-		if (!hasReceivedInitialState && state.allItems.length === 0) {
-			// Fetch marketplace data on demand
-			// Note: isFetching is already true by default for initial load
-			vscode.postMessage({
-				type: "fetchMarketplaceData",
-			})
-		}
-
-		// Listen for state changes to know when initial data arrives
-		const unsubscribe = manager.onStateChange((newState) => {
-			// Mark as received initial state when we get any state update
-			// This prevents infinite loops and ensures proper state handling
-			if (!hasReceivedInitialState && (newState.allItems.length > 0 || newState.displayItems !== undefined)) {
-				setHasReceivedInitialState(true)
-			}
-		})
-
-		return () => {
-			unsubscribe()
-		}
-	}, [manager, hasReceivedInitialState, state.allItems.length])
 
 	// Memoize all available tags
 	const allTags = useMemo(

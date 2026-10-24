@@ -22,6 +22,34 @@ interface MarketplaceInstallModalProps {
 	hasWorkspace: boolean
 }
 
+/** The global parameters of `item`, overridden by those of installation method `methodIndex`. */
+function effectiveParametersOf(item: MarketplaceItem, methodIndex: number): McpParameter[] {
+	const globalParams = item.type === "mcp" ? item.parameters || [] : []
+	let methodParams: McpParameter[] = []
+
+	if (Array.isArray(item.content)) {
+		const selectedMethod = item.content[methodIndex] as McpInstallationMethod
+		methodParams = selectedMethod?.parameters || []
+	}
+
+	const paramMap = new Map<string, McpParameter>()
+	globalParams.forEach((p) => paramMap.set(p.key, p))
+	methodParams.forEach((p) => paramMap.set(p.key, p))
+
+	return Array.from(paramMap.values())
+}
+
+/** One value per parameter of method `methodIndex`: the value typed so far, else empty. */
+function parameterValuesFor(
+	item: MarketplaceItem,
+	methodIndex: number,
+	typed: Record<string, string>,
+): Record<string, string> {
+	return Object.fromEntries(
+		effectiveParametersOf(item, methodIndex).map((param) => [param.key, typed[param.key] || ""]),
+	)
+}
+
 export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = ({
 	item,
 	isOpen,
@@ -31,19 +59,23 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 	const { t } = useAppTranslation()
 	const [scope, setScope] = useState<"project" | "global">(hasWorkspace ? "project" : "global")
 	const [selectedMethodIndex, setSelectedMethodIndex] = useState(0)
-	const [parameterValues, setParameterValues] = useState<Record<string, string>>({})
+	const [parameterValues, setParameterValues] = useState<Record<string, string>>(() =>
+		item ? parameterValuesFor(item, 0, {}) : {},
+	)
 	const [validationError, setValidationError] = useState<string | null>(null)
 	const [installationComplete, setInstallationComplete] = useState(false)
 
-	// Reset state when item changes
-	React.useEffect(() => {
+	// Another item starts over on its first method.
+	const [prevItem, setPrevItem] = useState(item)
+	if (item !== prevItem) {
+		setPrevItem(item)
 		if (item) {
 			setSelectedMethodIndex(0)
-			setParameterValues({})
+			setParameterValues(parameterValuesFor(item, 0, {}))
 			setValidationError(null)
 			setInstallationComplete(false)
 		}
-	}, [item])
+	}
 
 	// Check if item has multiple installation methods
 	const hasMultipleMethods = useMemo(() => {
@@ -59,25 +91,10 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 	}, [item])
 
 	// Get effective parameters for the selected method (global + method-specific)
-	const effectiveParameters = useMemo(() => {
-		if (!item) return []
-
-		const globalParams = item.type === "mcp" ? item.parameters || [] : []
-		let methodParams: McpParameter[] = []
-
-		// Get method-specific parameters if content is an array
-		if (Array.isArray(item.content)) {
-			const selectedMethod = item.content[selectedMethodIndex] as McpInstallationMethod
-			methodParams = selectedMethod?.parameters || []
-		}
-
-		// Create map with global params first, then override with method-specific ones
-		const paramMap = new Map<string, McpParameter>()
-		globalParams.forEach((p) => paramMap.set(p.key, p))
-		methodParams.forEach((p) => paramMap.set(p.key, p))
-
-		return Array.from(paramMap.values())
-	}, [item, selectedMethodIndex])
+	const effectiveParameters = useMemo(
+		() => (item ? effectiveParametersOf(item, selectedMethodIndex) : []),
+		[item, selectedMethodIndex],
+	)
 
 	// Get effective prerequisites for the selected method (global + method-specific)
 	const effectivePrerequisites = useMemo(() => {
@@ -95,37 +112,6 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 		// Combine and deduplicate prerequisites
 		const allPrereqs = [...globalPrereqs, ...methodPrereqs]
 		return Array.from(new Set(allPrereqs))
-	}, [item, selectedMethodIndex])
-
-	// Update parameter values when method changes
-	React.useEffect(() => {
-		if (item) {
-			// Get effective parameters for current method
-			const globalParams = item.type === "mcp" ? item.parameters || [] : []
-			let methodParams: McpParameter[] = []
-
-			if (Array.isArray(item.content)) {
-				const selectedMethod = item.content[selectedMethodIndex] as McpInstallationMethod
-				methodParams = selectedMethod?.parameters || []
-			}
-
-			// Create map with global params first, then override with method-specific ones
-			const paramMap = new Map<string, McpParameter>()
-			globalParams.forEach((p) => paramMap.set(p.key, p))
-			methodParams.forEach((p) => paramMap.set(p.key, p))
-
-			const currentEffectiveParams = Array.from(paramMap.values())
-
-			// Initialize parameter values for effective parameters
-			setParameterValues((prev) => {
-				const newValues: Record<string, string> = {}
-				currentEffectiveParams.forEach((param) => {
-					// Keep existing value if it exists, otherwise empty string
-					newValues[param.key] = prev[param.key] || ""
-				})
-				return newValues
-			})
-		}
 	}, [item, selectedMethodIndex])
 
 	// Listen for installation result messages
@@ -208,6 +194,12 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 
 	if (!item) return null
 
+	const handleMethodChange = (value: string) => {
+		const methodIndex = Number(value)
+		setSelectedMethodIndex(methodIndex)
+		setParameterValues((prev) => parameterValuesFor(item, methodIndex, prev))
+	}
+
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
 			<DialogContent className="sm:max-w-[500px]">
@@ -285,9 +277,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 						{hasMultipleMethods && (
 							<div className="space-y-2">
 								<div className="text-base font-semibold">{t("marketplace:install.method")}</div>
-								<Select
-									value={String(selectedMethodIndex)}
-									onValueChange={(value) => setSelectedMethodIndex(Number(value))}>
+								<Select value={String(selectedMethodIndex)} onValueChange={handleMethodChange}>
 									<SelectTrigger>
 										<SelectValue />
 									</SelectTrigger>
