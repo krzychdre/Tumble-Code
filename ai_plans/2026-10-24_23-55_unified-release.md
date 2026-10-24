@@ -27,8 +27,10 @@ webview changesets in `.changeset/` named packages that changesets ignores, so t
   "mixed packages" check. `apps/cli/CHANGELOG.md` is deleted.
 - **One release.** `marketplace-publish.yml` ("Publish Release") gets a `build-cli` matrix job (macOS arm64, Linux
   x64, Linux arm64) that runs `apps/cli/scripts/build.sh --release` and a checksum; `publish-extension` needs it,
-  so a failed CLI build stops the release before the tag, the Marketplace and the GitHub release. The release
-  `v<version>` carries the VSIX, the three tarballs and their `.sha256` files, and its notes end with install lines.
+  so a failed CLI build stops the release before the tag, the Marketplace and the GitHub release. Both jobs run only
+  when the "Changeset version bump" PR is merged (or by hand), never when it is closed unmerged. The release
+  `v<version>` carries the VSIX, the three tarballs and their `.sha256` files, and its notes end with install lines
+  and a link to the example CLI settings.
 - **`build.sh --release`** versions the tarball as in `apps/cli/package.json` without the `-local.<hash>` suffix.
   CI reuses the local build script instead of the 120-line copy of it that `cli-release.yml` held, and gets its
   install check (`--help`, `--version`) for free.
@@ -38,6 +40,10 @@ webview changesets in `.changeset/` named packages that changesets ignores, so t
   so the next bump gives 1.1.1. Dropped: webview entries (internal, or already described in 1.1.0), CLI entries that
   1.1.0 already lists (display prompt, cloud task images, cloud status line) and internal ones (state store, SDK
   client removal).
+- **Example CLI settings.** `apps/cli/examples/cli-settings.example.json` (with `examples/README.md`) already sets
+  every option; the root README now has a CLI section that links it, and so do the installer's closing message and
+  the release notes.
+- **knip.** `.claude/**` and `.roo/**` are ignored: agent skill scripts there are run by hand, never imported.
 - **Tags.** The 32 `cli-v0.0.42` .. `cli-v0.1.17` tags inherited from Roo Code (none had a release here) are deleted
   from origin and locally. Backup: `/home/krzych/backups/tumble-cli-tags-20261024/` (bundle with all 32 refs and the
   name/SHA list).
@@ -60,4 +66,3 @@ webview changesets in `.changeset/` named packages that changesets ignores, so t
 - The macOS and Linux arm64 build jobs run for the first time on the next release; a failure there stops the release
   before anything is published, and Publish Release can be re-run from Actions after a fix.
 - Until 1.1.1 is out, the latest release (v1.1.0) has no CLI tarball, so the installer reports "Release not found".
-- Unchanged and out of scope: Publish Release starts on any closed "Changeset version bump" PR, merged or not.
