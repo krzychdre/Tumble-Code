@@ -157,205 +157,50 @@ describe("GeminiHandler backend support", () => {
 		})
 	})
 
-	describe("allowedFunctionNames support", () => {
-		const testTools = [
-			{
-				type: "function" as const,
-				function: {
-					name: "read_file",
-					description: "Read a file",
-					parameters: { type: "object", properties: {} },
-				},
-			},
-			{
-				type: "function" as const,
-				function: {
-					name: "write_to_file",
-					description: "Write to a file",
-					parameters: { type: "object", properties: {} },
-				},
-			},
-			{
-				type: "function" as const,
-				function: {
-					name: "execute_command",
-					description: "Execute a command",
-					parameters: { type: "object", properties: {} },
-				},
-			},
-		]
-
-		it("should ignore allowedFunctionNames because Gemini rejects larger restriction lists", async () => {
-			const options = {
-				apiProvider: "gemini",
-			} as ApiHandlerOptions
-			const handler = new GeminiHandler(options)
-			const stub = vi.fn().mockReturnValue((async function* () {})())
-			handler["client"].models.generateContentStream = stub
-
-			await handler
-				.createMessage("test", [] as any, {
-					taskId: "test-task",
-					tools: testTools,
-					allowedFunctionNames: ["read_file", "write_to_file"],
-				})
-				.next()
-
-			const config = stub.mock.calls[0][0].config
-			expect(config.toolConfig).toBeUndefined()
+	describe("tool_choice", () => {
+		const tool = (name: string) => ({
+			type: "function" as const,
+			function: { name, description: name, parameters: { type: "object", properties: {} } },
 		})
+		const testTools = ["read_file", "write_to_file", "execute_command"].map(tool)
 
-		it("should include all tools when allowedFunctionNames is provided", async () => {
-			const options = {
-				apiProvider: "gemini",
-			} as ApiHandlerOptions
-			const handler = new GeminiHandler(options)
+		async function requestConfig(metadata: Record<string, unknown>) {
+			const handler = new GeminiHandler({ apiProvider: "gemini" } as ApiHandlerOptions)
 			const stub = vi.fn().mockReturnValue((async function* () {})())
 			handler["client"].models.generateContentStream = stub
-
 			await handler
-				.createMessage("test", [] as any, {
-					taskId: "test-task",
-					tools: testTools,
-					allowedFunctionNames: ["read_file"],
-				})
+				.createMessage("test", [] as any, { taskId: "test-task", tools: testTools, ...metadata })
 				.next()
+			return stub.mock.calls[0][0].config
+		}
 
-			const config = stub.mock.calls[0][0].config
-			// All tools should be passed to the model
+		// allowedFunctionNames is never passed on: Gemini answers 400 INVALID_ARGUMENT from 26 names
+		// on and rejects earlier calls of tools missing from the list. Every declaration is sent.
+		it.each([
+			["no choice", {}, undefined],
+			["no choice and a restriction list", { allowedFunctionNames: ["read_file"] }, undefined],
+			[
+				"auto and a restriction list",
+				{ tool_choice: "auto", allowedFunctionNames: ["read_file"] },
+				{ mode: FunctionCallingConfigMode.AUTO },
+			],
+			["none", { tool_choice: "none" }, { mode: FunctionCallingConfigMode.NONE }],
+			["required", { tool_choice: "required" }, { mode: FunctionCallingConfigMode.ANY }],
+			[
+				"a named tool that is declared",
+				{ tool_choice: { type: "function", function: { name: "read_file" } } },
+				{ mode: FunctionCallingConfigMode.ANY, allowedFunctionNames: ["read_file"] },
+			],
+			[
+				"a named tool that is not declared",
+				{ tool_choice: { type: "function", function: { name: "missing" } } },
+				{ mode: FunctionCallingConfigMode.AUTO },
+			],
+			["an unknown value", { tool_choice: "sometimes" }, { mode: FunctionCallingConfigMode.AUTO }],
+		])("%s", async (_label, metadata, functionCallingConfig) => {
+			const config = await requestConfig(metadata)
 			expect(config.tools[0].functionDeclarations).toHaveLength(3)
-			expect(config.toolConfig).toBeUndefined()
-		})
-
-		it("should not pass large allowedFunctionNames lists to Gemini", async () => {
-			const options = {
-				apiProvider: "gemini",
-			} as ApiHandlerOptions
-			const handler = new GeminiHandler(options)
-			const stub = vi.fn().mockReturnValue((async function* () {})())
-			handler["client"].models.generateContentStream = stub
-
-			const manyTools = Array.from({ length: 30 }, (_, index) => ({
-				type: "function" as const,
-				function: {
-					name: `tool_${index}`,
-					description: `Tool ${index}`,
-					parameters: { type: "object", properties: {} },
-				},
-			}))
-
-			await handler
-				.createMessage("test", [] as any, {
-					taskId: "test-task",
-					tools: manyTools,
-					allowedFunctionNames: manyTools.map((tool) => tool.function.name),
-				})
-				.next()
-
-			const config = stub.mock.calls[0][0].config
-			expect(config.tools[0].functionDeclarations).toHaveLength(30)
-			expect(config.toolConfig).toBeUndefined()
-		})
-
-		it("should not pass allowedFunctionNames even when history includes tool calls", async () => {
-			const options = {
-				apiProvider: "gemini",
-			} as ApiHandlerOptions
-			const handler = new GeminiHandler(options)
-			const stub = vi.fn().mockReturnValue((async function* () {})())
-			handler["client"].models.generateContentStream = stub
-
-			const manyTools = Array.from({ length: 30 }, (_, index) => ({
-				type: "function" as const,
-				function: {
-					name: `tool_${index}`,
-					description: `Tool ${index}`,
-					parameters: { type: "object", properties: {} },
-				},
-			}))
-			const messages = [
-				{
-					role: "assistant",
-					content: [{ type: "tool_use", id: "tool-call-29", name: "tool_29", input: {} }],
-				},
-			]
-
-			await handler
-				.createMessage("test", messages as any, {
-					taskId: "test-task",
-					tools: manyTools,
-					allowedFunctionNames: manyTools.slice(0, 29).map((tool) => tool.function.name),
-				})
-				.next()
-
-			const config = stub.mock.calls[0][0].config
-			expect(config.tools[0].functionDeclarations).toHaveLength(30)
-			expect(config.toolConfig).toBeUndefined()
-		})
-
-		it("should fall back to tool_choice when allowedFunctionNames is provided", async () => {
-			const options = {
-				apiProvider: "gemini",
-			} as ApiHandlerOptions
-			const handler = new GeminiHandler(options)
-			const stub = vi.fn().mockReturnValue((async function* () {})())
-			handler["client"].models.generateContentStream = stub
-
-			await handler
-				.createMessage("test", [] as any, {
-					taskId: "test-task",
-					tools: testTools,
-					tool_choice: "auto",
-					allowedFunctionNames: ["read_file"],
-				})
-				.next()
-
-			const config = stub.mock.calls[0][0].config
-			expect(config.toolConfig.functionCallingConfig.mode).toBe(FunctionCallingConfigMode.AUTO)
-			expect(config.toolConfig.functionCallingConfig.allowedFunctionNames).toBeUndefined()
-		})
-
-		it("should fall back to tool_choice when allowedFunctionNames is empty", async () => {
-			const options = {
-				apiProvider: "gemini",
-			} as ApiHandlerOptions
-			const handler = new GeminiHandler(options)
-			const stub = vi.fn().mockReturnValue((async function* () {})())
-			handler["client"].models.generateContentStream = stub
-
-			await handler
-				.createMessage("test", [] as any, {
-					taskId: "test-task",
-					tools: testTools,
-					tool_choice: "auto",
-					allowedFunctionNames: [],
-				})
-				.next()
-
-			const config = stub.mock.calls[0][0].config
-			// Empty allowedFunctionNames should fall back to tool_choice behavior
-			expect(config.toolConfig.functionCallingConfig.mode).toBe(FunctionCallingConfigMode.AUTO)
-			expect(config.toolConfig.functionCallingConfig.allowedFunctionNames).toBeUndefined()
-		})
-
-		it("should not set toolConfig when allowedFunctionNames is undefined and no tool_choice", async () => {
-			const options = {
-				apiProvider: "gemini",
-			} as ApiHandlerOptions
-			const handler = new GeminiHandler(options)
-			const stub = vi.fn().mockReturnValue((async function* () {})())
-			handler["client"].models.generateContentStream = stub
-
-			await handler
-				.createMessage("test", [] as any, {
-					taskId: "test-task",
-					tools: testTools,
-				})
-				.next()
-
-			const config = stub.mock.calls[0][0].config
-			// No toolConfig should be set when neither allowedFunctionNames nor tool_choice is provided
-			expect(config.toolConfig).toBeUndefined()
+			expect(config.toolConfig?.functionCallingConfig).toEqual(functionCallingConfig)
 		})
 	})
 
