@@ -50,6 +50,9 @@ describe("ShareButton", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		extensionState.cloudIsAuthenticated = true
+		extensionState.sharingEnabled = true
+		extensionState.publicSharingEnabled = true
+		extensionState.cloudUserInfo.organizationName = "Test Organization"
 
 		mockUseTranslation.mockReturnValue({
 			t: mockT,
@@ -353,5 +356,44 @@ describe("ShareButton", () => {
 		})
 
 		vi.useRealTimers()
+	})
+
+	test("renders nothing for a task without an id", () => {
+		const { container } = render(<ShareButton item={{ ...mockItem, id: "" }} />)
+
+		expect(container).toBeEmptyDOMElement()
+	})
+
+	test("offers a signed-out user the cloud sign-in instead of the share options", async () => {
+		extensionState.cloudIsAuthenticated = false
+		render(<ShareButton item={mockItem} />)
+
+		fireEvent.click(screen.getByRole("button"))
+		fireEvent.click(await screen.findByText("cloud:connect"))
+
+		expect(mockVscode.postMessage).toHaveBeenCalledWith({ type: "rooCloudSignIn" })
+		expect(screen.queryByText("chat:task.shareWithOrganization")).toBeNull()
+		expect(screen.queryByText("chat:task.sharePublicly")).toBeNull()
+	})
+
+	test("is disabled when the organization turned sharing off", () => {
+		extensionState.sharingEnabled = false
+		render(<ShareButton item={mockItem} />)
+
+		expect(screen.getByRole("button")).toBeDisabled()
+	})
+
+	test.each([
+		["a user outside an organization", () => (extensionState.cloudUserInfo.organizationName = ""), false, true],
+		["an organization without public sharing", () => (extensionState.publicSharingEnabled = false), true, false],
+	])("offers %s only the options that apply", async (_name, arrange, organization, publicly) => {
+		arrange()
+		render(<ShareButton item={mockItem} />)
+
+		fireEvent.click(screen.getByRole("button"))
+		await screen.findByRole("dialog")
+
+		expect(screen.queryByText("chat:task.shareWithOrganization") !== null).toBe(organization)
+		expect(screen.queryByText("chat:task.sharePublicly") !== null).toBe(publicly)
 	})
 })
