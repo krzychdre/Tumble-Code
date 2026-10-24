@@ -1,3 +1,5 @@
+import type { Anthropic } from "@anthropic-ai/sdk"
+
 import type { ConversationMessage } from "../../api/transform/conversation-message"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -138,4 +140,18 @@ export function convertOrphanedToolResultsToText(
 		}
 	}
 	return message
+}
+
+/**
+ * Drops the text blocks that are a whole `<environment_details>` block, so fresh details can be
+ * appended without repeating stale ones. Text that only mentions the tags is kept.
+ */
+export function withoutEnvironmentDetails<T extends Anthropic.Messages.ContentBlockParam>(content: T[]): T[] {
+	return content.filter((block) => {
+		if (block.type !== "text") {
+			return true
+		}
+		const text = block.text.trim()
+		return !(text.startsWith("<environment_details>") && text.endsWith("</environment_details>"))
+	})
 }

@@ -5,6 +5,7 @@ import { type TodoItem, type ClineMessage, type ClineApiReqCancelReason, TumbleC
 import { type ApiMessage } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { type TaskMessageLog } from "./TaskMessageLog"
+import { withoutEnvironmentDetails } from "./TaskMessageLog.helpers"
 import { type ClineProvider } from "../webview/ClineProvider"
 import {
 	TaskAbortFlagAccess,
@@ -126,20 +127,10 @@ export class TaskSubtasks {
 		if (lastUserMsgIndex >= 0) {
 			const lastUserMsg = this.access.apiConversationHistory[lastUserMsgIndex]
 			if (Array.isArray(lastUserMsg.content)) {
-				// Remove any existing environment_details blocks before adding fresh ones
-				const contentWithoutEnvDetails = lastUserMsg.content.filter(
-					(block: Anthropic.Messages.ContentBlockParam) => {
-						if (block.type === "text" && typeof block.text === "string") {
-							const isEnvironmentDetailsBlock =
-								block.text.trim().startsWith("<environment_details>") &&
-								block.text.trim().endsWith("</environment_details>")
-							return !isEnvironmentDetailsBlock
-						}
-						return true
-					},
-				)
-				// Add fresh environment details
-				lastUserMsg.content = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
+				lastUserMsg.content = [
+					...withoutEnvironmentDetails(lastUserMsg.content),
+					{ type: "text" as const, text: environmentDetails },
+				]
 			}
 		}
 
