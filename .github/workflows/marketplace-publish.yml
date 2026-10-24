@@ -47,7 +47,8 @@ jobs:
           grep -q "extension/webview-ui/build/assets/index.js" /tmp/tumble-code-vsix-contents.txt || exit 1
           grep -q "extension/assets/codicons/codicon.ttf" /tmp/tumble-code-vsix-contents.txt || exit 1
           grep -q "extension/assets/vscode-material-icons/icons/3d.svg" /tmp/tumble-code-vsix-contents.txt || exit 1
-          grep -q ".env" /tmp/tumble-code-vsix-contents.txt || exit 1
+          # A local src/.env may hold API keys: it must never ship.
+          if grep -qE '/\.env$' /tmp/tumble-code-vsix-contents.txt; then echo "VSIX contains a .env file"; exit 1; fi
           
           # Clean up temporary file.
           rm /tmp/tumble-code-vsix-contents.txt
