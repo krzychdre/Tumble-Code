@@ -135,8 +135,22 @@ test("an allowlisted exception survives edits above it, a second occurrence in t
 	}
 })
 
+test("an allowlist entry whose exception was removed is reported as stale", () => {
+	const root = makeTree()
+	try {
+		writeToolbar(root, TOOLBAR_EXCEPTION)
+		assert.ok(!checkSettingsDefaults({ root }).stale.includes(`${TOOLBAR}: currentApiConfigName || ""`))
+
+		writeToolbar(root, "\t\t\tdisplayName: currentApiConfigName,\n")
+		assert.ok(checkSettingsDefaults({ root }).stale.includes(`${TOOLBAR}: currentApiConfigName || ""`))
+	} finally {
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
 test("the real repo tree is clean", () => {
-	const { keys, violations } = checkSettingsDefaults()
+	const { keys, violations, stale } = checkSettingsDefaults()
 	assert.ok(keys.size > 50, "expected the real table to have dozens of keys")
 	assert.deepEqual(violations, [])
+	assert.deepEqual(stale, [])
 })
