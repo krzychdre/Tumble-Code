@@ -8,7 +8,6 @@ import {
 	type ProviderSettings,
 	type ProviderSettingsEntry,
 	TumbleCodeEventName,
-	getModelId,
 	readCliRuntimeEnv,
 	TelemetryEventName,
 } from "@tumble-code/types"
@@ -144,7 +143,7 @@ export class ModeProfileBinding {
 		}
 
 		await this.host.contextProxy.setProviderSettings(settings)
-		this.updateTaskApiHandlerIfNeeded(settings, { forceRebuild: true })
+		this.updateTaskApiHandler(settings)
 		await this.host.postStateToWebview()
 	}
 
@@ -240,7 +239,7 @@ export class ModeProfileBinding {
 		// never configures (every mode may still point at an unrelated profile).
 		if (resolution.source === "cli") {
 			await this.host.contextProxy.setProviderSettings(resolution.apiConfiguration)
-			this.updateTaskApiHandlerIfNeeded(resolution.apiConfiguration, { forceRebuild: true })
+			this.updateTaskApiHandler(resolution.apiConfiguration)
 			await this.host.postStateToWebview()
 			return
 		}
@@ -498,41 +497,13 @@ export class ModeProfileBinding {
 	}
 
 	/**
-	 * Updates the current task's API handler.
-	 * Rebuilds when:
-	 * - provider or model changes, OR
-	 * - explicitly forced (e.g., user-initiated profile switch/save to apply changed settings like headers/baseUrl/tier).
-	 * Always synchronizes task.apiConfiguration with latest provider settings.
-	 * @param providerSettings The new provider settings to apply
-	 * @param options.forceRebuild Force rebuilding the API handler regardless of provider/model equality
+	 * Hands the new provider settings to the current task, which rebuilds its
+	 * API handler (an explicit profile switch or save must apply settings such
+	 * as headers, base URL or tier even when the model stays the same).
 	 */
-	private updateTaskApiHandlerIfNeeded(
-		providerSettings: ProviderSettings,
-		options: { forceRebuild?: boolean } = {},
-	): void {
-		const task = this.host.getCurrentTask()
-		if (!task) return
-
-		const { forceRebuild = false } = options
-
-		// Determine if we need to rebuild using the previous configuration snapshot
-		const prevConfig = task.apiConfiguration
-		const prevProvider = prevConfig?.apiProvider
-		const prevModelId = prevConfig ? getModelId(prevConfig) : undefined
-		const newProvider = providerSettings.apiProvider
-		const newModelId = getModelId(providerSettings)
-
-		const needsRebuild = forceRebuild || prevProvider !== newProvider || prevModelId !== newModelId
-
-		if (needsRebuild) {
-			// Use updateApiConfiguration which handles both API handler rebuild and parser sync.
-			// Note: updateApiConfiguration is declared async but has no actual async operations,
-			// so we can safely call it without awaiting.
-			task.updateApiConfiguration(providerSettings)
-		} else {
-			// No rebuild needed, just sync apiConfiguration
-			task.apiConfiguration = providerSettings
-		}
+	private updateTaskApiHandler(providerSettings: ProviderSettings): void {
+		// updateApiConfiguration is declared async but does no async work.
+		this.host.getCurrentTask()?.updateApiConfiguration(providerSettings)
 	}
 
 	async upsertProviderProfile(
@@ -570,7 +541,7 @@ export class ModeProfileBinding {
 
 				// Change the provider for the current task.
 				// TODO: We should rename `buildApiHandler` for clarity (e.g. `getProviderClient`).
-				this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
+				this.updateTaskApiHandler(providerSettings)
 
 				// Keep the current task's sticky provider profile in sync with the newly-activated profile.
 				await this.persistStickyProviderProfileToCurrentTask(name)
@@ -646,7 +617,7 @@ export class ModeProfileBinding {
 		}
 
 		// Change the provider for the current task.
-		this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
+		this.updateTaskApiHandler(providerSettings)
 
 		// Update the current task's sticky provider profile, unless this activation is
 		// being used purely as a non-persisting restoration (e.g., reopening a task from history).

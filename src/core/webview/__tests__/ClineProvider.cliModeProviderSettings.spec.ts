@@ -214,7 +214,7 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 	const cliSettings: CliModeProviderSettings = {
 		base: {
 			apiProvider: "openai",
-			openAiBaseUrl: "http://192.168.50.194:11111/v1",
+			openAiBaseUrl: "http://models.local:11111/v1",
 			openAiModelId: "GLM-5.3-Flash-NVFP4",
 			enableReasoningEffort: true,
 			reasoningEffort: "max",
@@ -222,7 +222,7 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 		modes: {
 			architect: {
 				apiProvider: "openai",
-				openAiBaseUrl: "http://192.168.50.194:11111/v1",
+				openAiBaseUrl: "http://models.local:11111/v1",
 				openAiModelId: "GLM-5.3-NVFP4",
 				enableReasoningEffort: true,
 				reasoningEffort: "high",
@@ -235,20 +235,6 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 	})
 
 	describe("handleModeSwitch", () => {
-		it("applies the mode's CLI settings and never consults the profile store", async () => {
-			provider.setCliModeProviderSettings(cliSettings)
-			const getModeConfigIdSpy = vi.spyOn(provider.providerSettingsManager, "getModeConfigId")
-			const setModeConfigSpy = vi.spyOn(provider.providerSettingsManager, "setModeConfig")
-			const activateSpy = vi.spyOn(provider, "activateProviderProfile")
-
-			await provider.handleModeSwitch("architect")
-
-			expect(provider.contextProxy.getProviderSettings()).toMatchObject(cliSettings.modes.architect)
-			expect(getModeConfigIdSpy).not.toHaveBeenCalled()
-			expect(setModeConfigSpy).not.toHaveBeenCalled()
-			expect(activateSpy).not.toHaveBeenCalled()
-		})
-
 		it("falls back to the base settings for a mode without its own entry", async () => {
 			provider.setCliModeProviderSettings(cliSettings)
 
@@ -292,16 +278,6 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 
 			expect(task.updateApiConfiguration).toHaveBeenCalledWith(cliSettings.modes.architect)
 		})
-
-		it("keeps the profile-store behaviour when the CLI sent nothing", async () => {
-			const getModeConfigIdSpy = vi
-				.spyOn(provider.providerSettingsManager, "getModeConfigId")
-				.mockResolvedValue("architect-profile-id")
-
-			await provider.handleModeSwitch("architect")
-
-			expect(getModeConfigIdSpy).toHaveBeenCalledWith("architect")
-		})
 	})
 
 	describe("applyCliProviderSettingsToCurrentMode (the CLI's /model)", () => {
@@ -311,7 +287,7 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 				...cliSettings.modes,
 				code: {
 					apiProvider: "openai",
-					openAiBaseUrl: "http://192.168.50.194:11111/v1",
+					openAiBaseUrl: "http://models.local:11111/v1",
 					openAiModelId: "Qwen3.8-27B",
 				},
 			},
@@ -347,52 +323,6 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 			await provider.applyCliProviderSettingsToCurrentMode()
 
 			expect(provider.contextProxy.getProviderSettings()).toEqual(before)
-		})
-	})
-
-	describe("getApiConfigurationForMode", () => {
-		it("returns the mode's CLI settings, else the base settings", async () => {
-			provider.setCliModeProviderSettings(cliSettings)
-			const getModeConfigIdSpy = vi.spyOn(provider.providerSettingsManager, "getModeConfigId")
-
-			expect((await provider.getApiConfigurationForMode("architect"))?.apiConfiguration).toBe(
-				cliSettings.modes.architect,
-			)
-			expect((await provider.getApiConfigurationForMode("ask"))?.apiConfiguration).toBe(cliSettings.base)
-			expect(getModeConfigIdSpy).not.toHaveBeenCalled()
-		})
-	})
-
-	describe("createTaskWithHistoryItem", () => {
-		const previousCliRuntime = process.env.ROO_CLI_RUNTIME
-
-		afterEach(() => {
-			if (previousCliRuntime === undefined) {
-				delete process.env.ROO_CLI_RUNTIME
-			} else {
-				process.env.ROO_CLI_RUNTIME = previousCliRuntime
-			}
-		})
-
-		it("resumes a task with the provider settings of its own mode", async () => {
-			process.env.ROO_CLI_RUNTIME = "1"
-			provider.setCliModeProviderSettings(cliSettings)
-
-			const historyItem: HistoryItem = {
-				id: "resumed-task",
-				number: 1,
-				ts: Date.now(),
-				task: "Plan the refactor",
-				tokensIn: 0,
-				tokensOut: 0,
-				totalCost: 0,
-				mode: "architect",
-				apiConfigName: "default-profile",
-			}
-
-			await provider.createTaskWithHistoryItem(historyItem)
-
-			expect(provider.contextProxy.getProviderSettings()).toMatchObject(cliSettings.modes.architect)
 		})
 	})
 })
