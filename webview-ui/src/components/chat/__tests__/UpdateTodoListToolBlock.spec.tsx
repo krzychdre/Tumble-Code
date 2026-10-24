@@ -158,4 +158,29 @@ describe("UpdateTodoListToolBlock styling", () => {
 			expect.objectContaining({ id: "c" }),
 		])
 	})
+	it("leaves edit mode for good when the parent makes the block read-only", () => {
+		const { rerender } = render(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} />)
+		fireEvent.click(screen.getByRole("button", { name: "chat:todo.edit" }))
+		expect(screen.getAllByRole("button", { name: "chat:todo.remove" })).toHaveLength(3)
+
+		rerender(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} editable={false} />)
+		expect(screen.queryByRole("button", { name: "chat:todo.remove" })).not.toBeInTheDocument()
+
+		rerender(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} />)
+		expect(screen.queryByRole("button", { name: "chat:todo.remove" })).not.toBeInTheDocument()
+		expect(screen.getByRole("button", { name: "chat:todo.edit" })).toBeInTheDocument()
+	})
+
+	it("replaces local edits with new todos from the parent", () => {
+		const onChange = vi.fn()
+		const { rerender } = render(<UpdateTodoListToolBlock todos={mixed} onChange={onChange} />)
+		fireEvent.click(screen.getByRole("button", { name: "chat:todo.edit" }))
+		fireEvent.click(screen.getAllByRole("button", { name: "chat:todo.remove" })[0])
+		fireEvent.click(screen.getByRole("button", { name: "chat:todo.delete" }))
+		expect(screen.getAllByRole("button", { name: "chat:todo.remove" })).toHaveLength(2)
+
+		rerender(<UpdateTodoListToolBlock todos={[...mixed]} onChange={onChange} />)
+
+		expect(screen.getAllByRole("button", { name: "chat:todo.remove" })).toHaveLength(3)
+	})
 })

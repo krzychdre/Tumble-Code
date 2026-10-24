@@ -116,6 +116,20 @@ describe("SubagentTranscriptView", () => {
 		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "unsubscribeSubagentMessages", taskId: "child-1" })
 	})
 
+	it("switching to another subagent drops the old transcript and resubscribes", () => {
+		state.current = { subagents: [summary(), summary({ taskId: "child-2", index: 1 })], taskHistory: [] }
+		const { rerender } = render(<SubagentTranscriptView taskId="child-1" onDone={vi.fn()} />)
+		fromHost({ type: "subagentMessages", sourceTaskId: "child-1", subagentMessages: TRANSCRIPT })
+		expect(screen.getAllByTestId("row")).toHaveLength(3)
+
+		rerender(<SubagentTranscriptView taskId="child-2" onDone={vi.fn()} />)
+
+		expect(screen.queryByTestId("row")).not.toBeInTheDocument()
+		expect(screen.queryByText("Repo: Game. Fix the ladder.")).not.toBeInTheDocument()
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "unsubscribeSubagentMessages", taskId: "child-1" })
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "subscribeSubagentMessages", taskId: "child-2" })
+	})
+
 	it("shows the subtask message, then every row, read-only", () => {
 		renderView()
 		fromHost({ type: "subagentMessages", sourceTaskId: "child-1", subagentMessages: TRANSCRIPT })

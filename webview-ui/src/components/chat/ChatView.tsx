@@ -212,8 +212,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	// Reset UI states when task changes. Scroll lifecycle is handled by
 	// useScrollLifecycle which has its own effect keyed on taskTs.
-	useEffect(() => {
+	const [prevTaskTs, setPrevTaskTs] = useState(taskTs)
+	if (taskTs !== prevTaskTs) {
+		setPrevTaskTs(taskTs)
 		setExpandedRows({})
+	}
+	useEffect(() => {
 		everVisibleMessagesTs.clear()
 	}, [taskTs, everVisibleMessagesTs])
 

@@ -32,7 +32,6 @@ export const FollowUpSuggest = ({
 	const autoApprovalEnabled = useExtensionSelector((s) => s.autoApprovalEnabled)
 	const alwaysAllowFollowupQuestions = useExtensionSelector((s) => s.alwaysAllowFollowupQuestions)
 	const followupAutoApproveTimeoutMs = useExtensionSelector((s) => s.followupAutoApproveTimeoutMs)
-	const [countdown, setCountdown] = useState<number | null>(null)
 	const [suggestionSelected, setSuggestionSelected] = useState(false)
 	const { t } = useAppTranslation()
 
@@ -41,58 +40,63 @@ export const FollowUpSuggest = ({
 	// undefined into the chat input, so hide them.
 	const visibleSuggestions = useMemo(() => suggestions.filter(hasUsableAnswer), [suggestions])
 
-	// Start countdown timer when auto-approval is enabled for follow-up questions
-	useEffect(() => {
-		// Only start countdown if auto-approval is enabled for follow-up questions and no suggestion has been selected
-		// Also stop countdown if the question has been answered or auto-approval is paused (user is typing)
-		if (
-			autoApprovalEnabled &&
-			alwaysAllowFollowupQuestions &&
-			visibleSuggestions.length > 0 &&
-			!suggestionSelected &&
-			!isAnswered &&
-			!isFollowUpAutoApprovalPaused
-		) {
-			// Start with the configured timeout in seconds
-			const timeoutMs =
-				typeof followupAutoApproveTimeoutMs === "number" && !isNaN(followupAutoApproveTimeoutMs)
-					? followupAutoApproveTimeoutMs
-					: DEFAULT_FOLLOWUP_TIMEOUT_MS
+	// Count down while follow-up questions are auto-approved and nobody has answered, picked a suggestion
+	// or started typing.
+	const isCountingDown =
+		!!autoApprovalEnabled &&
+		!!alwaysAllowFollowupQuestions &&
+		visibleSuggestions.length > 0 &&
+		!suggestionSelected &&
+		!isAnswered &&
+		!isFollowUpAutoApprovalPaused
+	const timeoutMs =
+		typeof followupAutoApproveTimeoutMs === "number" && !isNaN(followupAutoApproveTimeoutMs)
+			? followupAutoApproveTimeoutMs
+			: DEFAULT_FOLLOWUP_TIMEOUT_MS
+	const startCountdown = isCountingDown ? Math.floor(timeoutMs / 1000) : null
+	const [countdown, setCountdown] = useState(startCountdown)
 
-			// Convert milliseconds to seconds for the countdown
-			setCountdown(Math.floor(timeoutMs / 1000))
-
-			// Update countdown every second
-			const intervalId = setInterval(() => {
-				setCountdown((prevCountdown) => {
-					if (prevCountdown === null || prevCountdown <= 1) {
-						clearInterval(intervalId)
-						return null
-					}
-					return prevCountdown - 1
-				})
-			}, COUNTDOWN_INTERVAL_MS)
-
-			// Clean up interval on unmount and notify parent component
-			return () => {
-				clearInterval(intervalId)
-				// Notify parent component that this component is unmounting
-				// so it can clear any related timeouts
-				onCancelAutoApproval?.()
-			}
-		} else {
-			setCountdown(null)
-		}
-	}, [
-		autoApprovalEnabled,
-		alwaysAllowFollowupQuestions,
+	// The countdown starts over whenever one of its inputs changes, the same inputs that restart the
+	// interval below.
+	const [countdownInputs, setCountdownInputs] = useState({
+		isCountingDown,
 		visibleSuggestions,
-		followupAutoApproveTimeoutMs,
-		suggestionSelected,
+		timeoutMs,
 		onCancelAutoApproval,
-		isAnswered,
-		isFollowUpAutoApprovalPaused,
-	])
+	})
+	if (
+		countdownInputs.isCountingDown !== isCountingDown ||
+		countdownInputs.visibleSuggestions !== visibleSuggestions ||
+		countdownInputs.timeoutMs !== timeoutMs ||
+		countdownInputs.onCancelAutoApproval !== onCancelAutoApproval
+	) {
+		setCountdownInputs({ isCountingDown, visibleSuggestions, timeoutMs, onCancelAutoApproval })
+		setCountdown(startCountdown)
+	}
+
+	useEffect(() => {
+		if (!isCountingDown) {
+			return
+		}
+
+		const intervalId = setInterval(() => {
+			setCountdown((prevCountdown) => {
+				if (prevCountdown === null || prevCountdown <= 1) {
+					clearInterval(intervalId)
+					return null
+				}
+				return prevCountdown - 1
+			})
+		}, COUNTDOWN_INTERVAL_MS)
+
+		// Clean up interval on unmount and notify parent component
+		// so it can clear any related timeouts
+		return () => {
+			clearInterval(intervalId)
+			onCancelAutoApproval?.()
+		}
+	}, [isCountingDown, visibleSuggestions, timeoutMs, onCancelAutoApproval])
+
 	const handleSuggestionClick = useCallback(
 		(suggestion: SuggestionItem, event: React.MouseEvent) => {
 			// Mark a suggestion as selected if it's not a shift-click (which just copies to input)
