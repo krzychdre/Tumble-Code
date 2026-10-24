@@ -1,118 +1,94 @@
 // cd src && ./node_modules/.bin/vitest run api/providers/bedrock/__tests__/errors.spec.ts
 
-// Unit tests of the Bedrock error mapping split out of AwsBedrockHandler (API-18).
-// The createMessage error paths end to end are pinned in bedrock-characterization.spec.ts
-// and bedrock-error-handling.spec.ts.
+const logger = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }))
+vi.mock("../../../../utils/logging", () => ({ logger }))
 
-const mockCaptureException = vi.fn()
+import { formatBedrockErrorMessage, getBedrockErrorType, handleBedrockError } from "../errors"
 
-vi.mock("@tumble-code/telemetry", () => ({
-	TelemetryService: {
-		instance: {
-			captureException: (...args: unknown[]) => mockCaptureException(...args),
-		},
-	},
-}))
-
-vi.mock("../../../../utils/logging", () => ({
-	logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
-}))
-
-import type { ApiStreamChunk } from "../../../transform/stream"
-import {
-	type BedrockErrorContext,
-	bedrockStreamFailure,
-	formatBedrockErrorMessage,
-	getBedrockErrorType,
-	handleBedrockError,
-} from "../errors"
-
-function named(name: string, message: string, extra: Record<string, unknown> = {}) {
-	const error = new Error(message) as Error & Record<string, unknown>
-	error.name = name
-	Object.assign(error, extra)
-	return error
+function awsError(message: string, fields: Record<string, unknown> = {}): Error {
+	return Object.assign(new Error(message), fields)
 }
 
-const context: BedrockErrorContext = {
-	getModel: () => ({ id: "model-x", info: { contextWindow: 1000, supportsPromptCache: false } }),
-	clientConfig: { region: "eu-west-1" },
+const context = {
+	getModel: () => ({ id: "m", info: { maxTokens: 1, contextWindow: 1, supportsPromptCache: false } }),
+	clientConfig: { region: "us-east-1" },
 }
 
-describe("bedrock error mapping", () => {
-	beforeEach(() => mockCaptureException.mockClear())
+describe("getBedrockErrorType", () => {
+	it.each([
+		["HTTP 429 status", awsError("Request failed", { status: 429 }), "THROTTLING"],
+		["SDK $metadata 429", awsError("Request failed", { $metadata: { httpStatusCode: 429 } }), "THROTTLING"],
+		["ThrottlingException name", awsError("Some other error", { name: "ThrottlingException" }), "THROTTLING"],
+		["ThrottlingException __type", awsError("Request failed", { __type: "ThrottlingException" }), "THROTTLING"],
+		[
+			"429 over a validation message",
+			awsError("Invalid input", { status: 429, name: "ValidationException" }),
+			"THROTTLING",
+		],
+		["Bedrock busy message", awsError("Bedrock is unable to process your request"), "THROTTLING"],
+		["please wait message", awsError("Please wait and try again"), "THROTTLING"],
+		["quota before throttling", awsError("Service quota exceeded for model requests"), "SERVICE_QUOTA_EXCEEDED"],
+		["model not ready", awsError("Model is not ready, please try again later"), "MODEL_NOT_READY"],
+		["token limit before throttling", awsError("Token limit exceeded"), "TOO_MANY_TOKENS"],
+		["context length", awsError("Maximum context length reached"), "TOO_MANY_TOKENS"],
+		["internal server error", awsError("Internal server error occurred"), "INTERNAL_SERVER_ERROR"],
+		[
+			"on-demand throughput",
+			awsError("Invocation of model ID x with on-demand throughput isn’t supported."),
+			"ON_DEMAND_NOT_SUPPORTED",
+		],
+		["not found", awsError("The resource does not exist"), "NOT_FOUND"],
+		["access denied by name", awsError("No", { name: "AccessDeniedException" }), "ACCESS_DENIED"],
+		["unrecognized message", awsError("Something completely unexpected happened"), "GENERIC"],
+		[
+			"validation message (no dedicated type is checked)",
+			awsError("Malformed input request: field required"),
+			"GENERIC",
+		],
+		["a non-Error value", "plain string failure", "GENERIC"],
+	])("%s -> %s", (_label, error, expected) => {
+		expect(getBedrockErrorType(error)).toBe(expected)
+	})
+})
 
-	it("classifies errors by status, name and message patterns", () => {
-		expect(getBedrockErrorType("not an error")).toBe("GENERIC")
-		expect(getBedrockErrorType(named("Error", "x", { status: 429 }))).toBe("THROTTLING")
-		expect(getBedrockErrorType(named("Error", "x", { $metadata: { httpStatusCode: 429 } }))).toBe("THROTTLING")
-		expect(getBedrockErrorType(named("ThrottlingException", "x"))).toBe("THROTTLING")
-		expect(getBedrockErrorType(new Error("Service quota exceeded for model"))).toBe("SERVICE_QUOTA_EXCEEDED")
-		expect(getBedrockErrorType(new Error("too many tokens"))).toBe("TOO_MANY_TOKENS")
-		expect(getBedrockErrorType(new Error("Access denied"))).toBe("ACCESS_DENIED")
-		expect(getBedrockErrorType(named("AbortError", "aborted"))).toBe("GENERIC")
-		expect(getBedrockErrorType(new Error("field required"))).toBe("GENERIC")
+describe("formatBedrockErrorMessage", () => {
+	it("fills the error message into the template", () => {
+		expect(formatBedrockErrorMessage(awsError("boom"), "GENERIC", context)).toBe("Unknown Error: boom")
 	})
 
-	it("fills the template variables", () => {
-		expect(formatBedrockErrorMessage(new Error("bad thing"), "GENERIC", context)).toBe("Unknown Error: bad thing")
-		expect(formatBedrockErrorMessage("text", "GENERIC", context)).toBe("Unknown Error: {errorMessage}")
-		expect(formatBedrockErrorMessage(new Error("x"), "NO_SUCH_TYPE", context)).toBe("Unknown Error: x")
+	it("falls back to the generic template for an unknown type", () => {
+		expect(formatBedrockErrorMessage(awsError("x"), "NO_SUCH_TYPE", context)).toBe("Unknown Error: x")
 	})
 
-	it("reads the model only for Error instances", () => {
-		const getModel = vi.fn(context.getModel)
-		formatBedrockErrorMessage("text", "GENERIC", { ...context, getModel })
-		expect(getModel).not.toHaveBeenCalled()
-		formatBedrockErrorMessage(new Error("x"), "GENERIC", { ...context, getModel })
-		expect(getModel).toHaveBeenCalledTimes(1)
+	it("leaves the placeholder for a non-Error value", () => {
+		expect(formatBedrockErrorMessage("boom", "GENERIC", context)).toBe("Unknown Error: {errorMessage}")
 	})
 
-	it("returns stream chunks or a prefixed message", () => {
-		expect(handleBedrockError(new Error("oops"), true, context)).toEqual([
-			{ type: "text", text: "Error: Unknown Error: oops" },
-			{ type: "usage", inputTokens: 0, outputTokens: 0 },
-		])
-		expect(handleBedrockError(new Error("oops"), false, context)).toBe(
-			"Bedrock completion error: Unknown Error: oops",
+	it("uses the throttling advice for a throttling error", () => {
+		expect(formatBedrockErrorMessage(awsError("x"), "THROTTLING", context)).toMatch(
+			/^Request was throttled or rate limited/,
 		)
 	})
+})
 
-	async function drain(error: unknown) {
-		const chunks: ApiStreamChunk[] = []
-		let thrown: unknown
-		try {
-			for await (const chunk of bedrockStreamFailure(error, {
-				providerName: "Bedrock",
-				modelId: "model-x",
-				context,
-			})) {
-				chunks.push(chunk)
-			}
-		} catch (caught) {
-			thrown = caught
-		}
-		return { chunks, thrown }
-	}
+describe("handleBedrockError", () => {
+	beforeEach(() => vi.clearAllMocks())
 
-	it("rethrows throttling errors untouched apart from the normalized status", async () => {
-		const error = named("ThrottlingException", "slow down", { $metadata: { httpStatusCode: 429 } })
-		const { chunks, thrown } = await drain(error)
-		expect(chunks).toEqual([])
-		expect(thrown).toBe(error)
-		expect((thrown as any).status).toBe(429)
-		expect(mockCaptureException).toHaveBeenCalledTimes(1)
-	})
-
-	it("yields error chunks, then throws the enhanced error keeping name and status", async () => {
-		const error = named("ValidationException", "boom", { $metadata: { httpStatusCode: 400 } })
-		const { chunks, thrown } = await drain(error)
-		expect(chunks).toEqual([
+	it("returns an error text chunk and a zero usage chunk in the streaming context", () => {
+		expect(handleBedrockError(awsError("boom"), true, context)).toEqual([
 			{ type: "text", text: "Error: Unknown Error: boom" },
 			{ type: "usage", inputTokens: 0, outputTokens: 0 },
 		])
-		expect((thrown as Error).message).toBe("Unknown Error: boom")
-		expect((thrown as Error).name).toBe("ValidationException")
-		expect((thrown as any).status).toBe(400)
+		expect(logger.error).toHaveBeenCalledWith(
+			"GENERIC error in createMessage",
+			expect.objectContaining({ errorType: "GENERIC", errorMessage: "boom", clientRegion: "us-east-1" }),
+		)
+	})
+
+	it("returns the prefixed message for completePrompt", () => {
+		expect(handleBedrockError(awsError("Model is not ready"), false, context)).toMatch(
+			/^Bedrock completion error: Model is not ready or still loading/,
+		)
+		expect(logger.error).toHaveBeenCalledWith("MODEL_NOT_READY error in completePrompt", expect.anything())
 	})
 })

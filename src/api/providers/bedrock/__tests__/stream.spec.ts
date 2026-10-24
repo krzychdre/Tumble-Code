@@ -48,11 +48,11 @@ describe("bedrock stream processing", () => {
 			cacheReadTokens: 3,
 			cacheWriteTokens: 0,
 		})
-		expect(usageChunkFromMetadata({ cacheWriteInputTokenCount: 4 })).toEqual({
+		expect(usageChunkFromMetadata({ cacheReadInputTokenCount: 5, cacheWriteInputTokenCount: 4 })).toEqual({
 			type: "usage",
 			inputTokens: 0,
 			outputTokens: 0,
-			cacheReadTokens: 0,
+			cacheReadTokens: 5,
 			cacheWriteTokens: 4,
 		})
 		expect(
@@ -73,6 +73,9 @@ describe("bedrock stream processing", () => {
 		expect(
 			chunksFromContentBlockStart({ contentBlockIndex: 1, start: { toolUse: { toolUseId: "a", name: "b" } } }),
 		).toEqual([{ type: "tool_call_partial", index: 1, id: "a", name: "b", arguments: undefined }])
+		expect(chunksFromContentBlockStart({ contentBlockIndex: 3, contentBlock: { type: "thinking" } })).toEqual([
+			{ type: "reasoning", text: "\n" },
+		])
 		expect(chunksFromContentBlockStart({ start: { text: "hi" } })).toEqual([{ type: "text", text: "hi" }])
 		expect(chunksFromContentBlockStart({})).toEqual([])
 	})
@@ -88,6 +91,7 @@ describe("bedrock stream processing", () => {
 			{ type: "reasoning", text: "t" },
 		])
 		expect(chunksFromContentBlockDelta({ delta: { text: "x" } })).toEqual([{ type: "text", text: "x" }])
+		expect(chunksFromContentBlockDelta({ delta: {} })).toEqual([])
 		expect(chunksFromContentBlockDelta({})).toEqual([])
 	})
 
@@ -102,7 +106,9 @@ describe("bedrock stream processing", () => {
 							promptRouter: { invokedModelId: "arn:x", usage: { inputTokens: 1, outputTokens: 1 } },
 						},
 					},
-					{ contentBlockDelta: { delta: { text: "hi" } } },
+					"{not json",
+					{ contentBlockStart: { start: { text: "hi" } } },
+					{ contentBlockDelta: { delta: { text: "!" } } },
 					{ metadata: { usage: { inputTokens: 2, outputTokens: 3 } } },
 					{ messageStop: {} },
 				]),
@@ -113,6 +119,7 @@ describe("bedrock stream processing", () => {
 		expect(chunks).toEqual([
 			{ type: "usage", inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
 			{ type: "text", text: "hi" },
+			{ type: "text", text: "!" },
 			{ type: "usage", inputTokens: 2, outputTokens: 3, cacheReadTokens: 0, cacheWriteTokens: 0 },
 		])
 	})

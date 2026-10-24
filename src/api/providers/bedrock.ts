@@ -53,9 +53,6 @@ import {
 import { processBedrockStream } from "./bedrock/stream"
 import { type BedrockErrorContext, bedrockStreamFailure, handleBedrockError } from "./bedrock/errors"
 
-// Kept for importers of the stream event type (bedrock-invokedModelId.spec)
-export type { StreamEvent } from "./bedrock/stream"
-
 /************************************************************************************
  *
  *     PROVIDER
