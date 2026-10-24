@@ -36,17 +36,6 @@ const findMessageIndices = (messageTs: number, currentCline: any) => {
 	return { messageIndex, apiConversationHistoryIndex }
 }
 
-/**
- * Fallback: find first API history index at or after a timestamp.
- * Used when the exact user message isn't present in apiConversationHistory (e.g., after condense).
- */
-const findFirstApiIndexAtOrAfter = (ts: number, currentCline: any) => {
-	if (typeof ts !== "number") return -1
-	return currentCline.apiConversationHistory.findIndex(
-		(msg: ApiMessage) => typeof msg?.ts === "number" && (msg.ts as number) >= ts,
-	)
-}
-
 /** The first checkpoint saved after the given message, which restoring rewinds to. */
 const findNextCheckpoint = (currentCline: CurrentTask, messageTs: number) =>
 	currentCline.clineMessages.filter((msg) => msg.say === "checkpoint_saved" && msg.ts > messageTs)[0]
@@ -141,13 +130,7 @@ const handleDeleteMessageConfirm = async (
 		return
 	}
 
-	const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
-	// Determine API truncation index with timestamp fallback if exact match not found
-	let apiIndexToUse = apiConversationHistoryIndex
-	const tsThreshold = currentCline.clineMessages[messageIndex]?.ts
-	if (apiIndexToUse === -1 && typeof tsThreshold === "number") {
-		apiIndexToUse = findFirstApiIndexAtOrAfter(tsThreshold, currentCline)
-	}
+	const { messageIndex } = findMessageIndices(messageTs, currentCline)
 
 	if (messageIndex === -1) {
 		await vscode.window.showErrorMessage(t("common:errors.message.message_not_found", { messageTs }))
@@ -286,33 +269,14 @@ const handleEditMessageConfirm = async (
 			}
 		}
 
-		// For non-checkpoint edits, remove the ORIGINAL user message being edited and all subsequent messages
-		// Determine the correct starting index to delete from (prefer the last preceding user_feedback message)
+		// For non-checkpoint edits, remove the ORIGINAL user message being edited and all subsequent
+		// messages: rewind from the nearest preceding user message, not just the assistant reply.
+		// The MessageManager rewind truncates the API history to match.
 		let deleteFromMessageIndex = messageIndex
-		let deleteFromApiIndex = apiConversationHistoryIndex
-
-		// Find the nearest preceding user message to ensure we replace the original, not just the assistant reply
 		for (let i = messageIndex; i >= 0; i--) {
-			const m = currentCline.clineMessages[i]
-			if (m?.say === "user_feedback") {
+			if (currentCline.clineMessages[i]?.say === "user_feedback") {
 				deleteFromMessageIndex = i
-				// Align API history truncation to the same user message timestamp if present
-				const userTs = m.ts
-				if (typeof userTs === "number") {
-					const apiIdx = currentCline.apiConversationHistory.findIndex((am: ApiMessage) => am.ts === userTs)
-					if (apiIdx !== -1) {
-						deleteFromApiIndex = apiIdx
-					}
-				}
 				break
-			}
-		}
-
-		// Timestamp fallback for API history when exact user message isn't present
-		if (deleteFromApiIndex === -1) {
-			const tsThresholdForEdit = currentCline.clineMessages[deleteFromMessageIndex]?.ts
-			if (typeof tsThresholdForEdit === "number") {
-				deleteFromApiIndex = findFirstApiIndexAtOrAfter(tsThresholdForEdit, currentCline)
 			}
 		}
 

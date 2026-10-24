@@ -1,4 +1,4 @@
-// npx vitest run core/webview/__tests__/webviewMessageHandler.assignConfigToModes.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/webviewMessageHandler.assignConfigToModes.spec.ts
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import type { ClineProvider } from "../ClineProvider"
@@ -41,19 +41,13 @@ describe("webviewMessageHandler - assignCurrentApiConfigToModes", () => {
 		expect(mockProvider.postStateToWebview).toHaveBeenCalled()
 	})
 
-	it("does nothing when no modes are provided", async () => {
+	it.each([
+		["no modes", { configId: "local-id", modeSlugs: [] }],
+		["no config id", { modeSlugs: ["code"] }],
+	])("does nothing with %s", async (_name, values) => {
 		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
 			type: "assignCurrentApiConfigToModes",
-			values: { configId: "local-id", modeSlugs: [] },
-		})
-
-		expect(mockProvider.providerSettingsManager.setModeConfigs).not.toHaveBeenCalled()
-	})
-
-	it("does nothing when no config id is provided", async () => {
-		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
-			type: "assignCurrentApiConfigToModes",
-			values: { modeSlugs: ["code"] },
+			values,
 		})
 
 		expect(mockProvider.providerSettingsManager.setModeConfigs).not.toHaveBeenCalled()

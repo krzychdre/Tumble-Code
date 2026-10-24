@@ -3,6 +3,7 @@ import { webviewMessageHandler } from "../webviewMessageHandler"
 import { saveTaskMessages } from "../../task-persistence"
 import { handleCheckpointRestoreOperation } from "../checkpointRestoreHandler"
 import { MessageManager } from "../../message-manager"
+import * as vscode from "vscode"
 
 // Mock dependencies
 vi.mock("../../task-persistence")
@@ -37,7 +38,6 @@ describe("webviewMessageHandler - checkpoint operations", () => {
 				{ ts: 3, role: "user", content: [{ type: "text", text: "Message to delete" }] },
 				{ ts: 4, role: "assistant", content: [{ type: "text", text: "After message" }] },
 			],
-			checkpointRestore: vi.fn(),
 			overwriteClineMessages: vi.fn(),
 			overwriteApiConversationHistory: vi.fn(),
 		}
@@ -98,8 +98,15 @@ describe("webviewMessageHandler - checkpoint operations", () => {
 				globalStoragePath: "/test/storage",
 			})
 
-			// Verify checkpoint restore was NOT called
-			expect(mockCline.checkpointRestore).not.toHaveBeenCalled()
+			expect(handleCheckpointRestoreOperation).not.toHaveBeenCalled()
+		})
+
+		it("a message that is gone changes nothing", async () => {
+			await webviewMessageHandler(mockProvider, { type: "deleteMessageConfirm", messageTs: 9999 })
+
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("errors.message.message_not_found")
+			expect(mockCline.overwriteClineMessages).not.toHaveBeenCalled()
+			expect(saveTaskMessages).not.toHaveBeenCalled()
 		})
 	})
 

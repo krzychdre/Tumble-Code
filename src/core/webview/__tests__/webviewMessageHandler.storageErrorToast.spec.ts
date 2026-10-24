@@ -76,30 +76,20 @@ describe("webviewMessageHandler - error toasts carry the underlying cause", () =
 		expect(toast).toContain("profile locked")
 	})
 
-	it("loadApiConfiguration toast contains the failure message", async () => {
+	it.each([
+		["loadApiConfiguration", "profile-1"],
+		["loadApiConfigurationById", "config-123"],
+	] as const)("%s toast contains the failure message", async (type, text) => {
 		const provider = makeProvider({
 			activateProviderProfile: vi.fn().mockRejectedValue(new Error("secret storage unavailable")),
 		})
 
-		await webviewMessageHandler(provider, { type: "loadApiConfiguration", text: "profile-1" })
+		await webviewMessageHandler(provider, { type, text })
 
 		expect(showErrorMessage).toHaveBeenCalledTimes(1)
 		const toast = showErrorMessage.mock.calls[0][0]
 		expect(toast).toContain("common:errors.load_api_config")
 		expect(toast).toContain("secret storage unavailable")
-	})
-
-	it("loadApiConfigurationById toast contains the failure message", async () => {
-		const provider = makeProvider({
-			activateProviderProfile: vi.fn().mockRejectedValue(new Error("read-only file system")),
-		})
-
-		await webviewMessageHandler(provider, { type: "loadApiConfigurationById", text: "config-123" })
-
-		expect(showErrorMessage).toHaveBeenCalledTimes(1)
-		const toast = showErrorMessage.mock.calls[0][0]
-		expect(toast).toContain("common:errors.load_api_config")
-		expect(toast).toContain("read-only file system")
 	})
 
 	it("showTaskWithId toast contains the failure message", async () => {

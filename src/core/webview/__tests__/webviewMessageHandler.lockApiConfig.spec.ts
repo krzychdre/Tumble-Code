@@ -1,4 +1,4 @@
-// npx vitest run core/webview/__tests__/webviewMessageHandler.lockApiConfig.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/webviewMessageHandler.lockApiConfig.spec.ts
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import type { ClineProvider } from "../ClineProvider"
@@ -44,24 +44,13 @@ describe("webviewMessageHandler - lockApiConfigAcrossModes", () => {
 		}
 	})
 
-	it("sets lockApiConfigAcrossModes to true and posts state without mode config fan-out", async () => {
+	it.each([true, false])("stores lockApiConfigAcrossModes=%s for the workspace and binds no mode", async (bool) => {
 		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
 			type: "lockApiConfigAcrossModes",
-			bool: true,
+			bool,
 		})
 
-		expect(mockProvider.context.workspaceState.update).toHaveBeenCalledWith("lockApiConfigAcrossModes", true)
-		expect(mockProvider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
-		expect(mockProvider.postStateToWebview).toHaveBeenCalled()
-	})
-
-	it("sets lockApiConfigAcrossModes to false without applying to all modes", async () => {
-		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
-			type: "lockApiConfigAcrossModes",
-			bool: false,
-		})
-
-		expect(mockProvider.context.workspaceState.update).toHaveBeenCalledWith("lockApiConfigAcrossModes", false)
+		expect(mockProvider.context.workspaceState.update).toHaveBeenCalledWith("lockApiConfigAcrossModes", bool)
 		expect(mockProvider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
 		expect(mockProvider.postStateToWebview).toHaveBeenCalled()
 	})
