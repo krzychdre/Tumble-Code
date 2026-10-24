@@ -42,8 +42,6 @@ interface ChatHostMessagesOptions {
 	currentTaskItem: HistoryItem | undefined
 	/** The live parallel subagents (all tasks); their costs move the aggregate of the task that fanned out. */
 	subagents: SubagentSummary[] | undefined
-	/** Inputs of the "clear the checkpoint warning" effect. */
-	modifiedMessagesLength: number
 }
 
 /**
@@ -60,9 +58,8 @@ export function useChatHostMessages({
 	task,
 	currentTaskItem,
 	subagents,
-	modifiedMessagesLength,
 }: ChatHostMessagesOptions) {
-	const { sendingDisabled, setSendingDisabled, enableButtons, isStreaming } = ask
+	const { sendingDisabled, setSendingDisabled, enableButtons } = ask
 	const {
 		setSelectedImages,
 		handleChatReset,
@@ -79,9 +76,11 @@ export function useChatHostMessages({
 	const taskTs = task?.ts
 
 	// A task switch ends any condensing shown for the previous task.
-	useEffect(() => {
+	const [prevTaskTs, setPrevTaskTs] = useState(taskTs)
+	if (taskTs !== prevTaskTs) {
+		setPrevTaskTs(taskTs)
 		setIsCondensing(false)
-	}, [taskTs])
+	}
 
 	// Request aggregated costs when the task changes and has subtasks or
 	// parallel subagents. While its subagents run, their costs and statuses
@@ -191,12 +190,10 @@ export function useChatHostMessages({
 
 	useExtensionMessage(CHAT_VIEW_MESSAGE_TYPES, handleMessage)
 
-	// Effect to clear checkpoint warning when messages appear or task changes
-	useEffect(() => {
-		if (isHidden || !task) {
-			setCheckpointWarning(undefined)
-		}
-	}, [modifiedMessagesLength, isStreaming, isHidden, task])
+	// A checkpoint warning lives only while the chat shows a task.
+	if ((isHidden || !task) && checkpointWarning !== undefined) {
+		setCheckpointWarning(undefined)
+	}
 
 	// The header's "condense context" button. Stable identity while tokens
 	// stream (P1): the two flags only change on condense/send boundaries, so

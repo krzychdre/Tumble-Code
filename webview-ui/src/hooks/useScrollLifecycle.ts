@@ -228,13 +228,14 @@ export function useScrollLifecycle({
 		clearHydrationWindow()
 		cancelReanchorFrame()
 
+		// The button hides together with the phase change: hidden in render, a Virtuoso
+		// atBottomStateChange that still sees the old phase in the ref would show it again.
+		setShowScrollToBottom(false)
 		if (taskTs) {
 			transitionScrollPhase("HYDRATING_PINNED_TO_BOTTOM")
-			setShowScrollToBottom(false)
 			startHydrationWindow()
 		} else {
 			transitionScrollPhase("USER_BROWSING_HISTORY")
-			setShowScrollToBottom(false)
 		}
 
 		return () => {

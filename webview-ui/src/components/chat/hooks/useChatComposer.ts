@@ -65,9 +65,11 @@ export function useChatComposer({
 	const [showRetiredProviderWarning, setShowRetiredProviderWarning] = useState(false)
 
 	// When the provider changes, clear the retired-provider warning.
-	useEffect(() => {
+	const [prevApiProvider, setPrevApiProvider] = useState(apiProvider)
+	if (apiProvider !== prevApiProvider) {
+		setPrevApiProvider(apiProvider)
 		setShowRetiredProviderWarning(false)
-	}, [apiProvider])
+	}
 
 	const messagesRef = useRef(messages)
 	useEffect(() => {
@@ -80,9 +82,11 @@ export function useChatComposer({
 	}, [inputValue])
 
 	// A new task has no answered follow-up yet.
-	useEffect(() => {
+	const [prevTaskTs, setPrevTaskTs] = useState(taskTs)
+	if (taskTs !== prevTaskTs) {
+		setPrevTaskTs(taskTs)
 		setCurrentFollowUpTs(null)
-	}, [taskTs])
+	}
 
 	// Compute whether auto-approval is paused (user is typing in a followup)
 	const isFollowUpAutoApprovalPaused = useMemo(() => {

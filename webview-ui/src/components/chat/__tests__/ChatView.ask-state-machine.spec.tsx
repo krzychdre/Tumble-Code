@@ -50,6 +50,7 @@ const harness = vi.hoisted(() => ({
 	textArea: undefined as TextAreaProps | undefined,
 	taskHeader: undefined as TaskHeaderProps | undefined,
 	rows: [] as ClineMessage[],
+	answeredFollowUps: new Set<number>(),
 	focus: vi.fn(),
 	played: [] as string[],
 }))
@@ -66,8 +67,19 @@ vi.mock("use-sound", () => ({
 }))
 
 vi.mock("../ChatRow", () => ({
-	default: function MockChatRow({ message }: { message: ClineMessage }) {
+	default: function MockChatRow({
+		message,
+		isFollowUpAnswered,
+	}: {
+		message: ClineMessage
+		isFollowUpAnswered?: boolean
+	}) {
 		harness.rows.push(message)
+		if (isFollowUpAnswered) {
+			harness.answeredFollowUps.add(message.ts)
+		} else {
+			harness.answeredFollowUps.delete(message.ts)
+		}
 		return <div data-testid="chat-row">{JSON.stringify(message)}</div>
 	},
 }))
@@ -671,6 +683,7 @@ describe("ChatView host messages", () => {
 		harness.textArea = undefined
 		harness.taskHeader = undefined
 		harness.rows = []
+		harness.answeredFollowUps.clear()
 		harness.played = []
 	})
 
@@ -903,6 +916,59 @@ describe("ChatView host messages", () => {
 		)
 
 		expect((await findByTestId("checkpoint-warning")).textContent).toBe("WAIT_TIMEOUT:5")
+	})
+
+	it("a task switch ends the condensing row", async () => {
+		const view = await mount([withAsk(ask("followup"))])
+		const condensingRowShown = () =>
+			view.queryAllByTestId("chat-row").some((row) => row.textContent!.includes('"condense_context"'))
+		await act(async () => fromHost({ type: "condenseTaskContextStarted", text: "task-1" }))
+		expect(condensingRowShown()).toBe(true)
+
+		await act(async () => hydrate([{ ...TASK, ts: 10, text: "another task" }, API_DONE, ask("followup")]))
+
+		expect(condensingRowShown()).toBe(false)
+	})
+
+	it("hiding the chat drops the checkpoint warning for good", async () => {
+		const view = await mount([withAsk(ask("followup"))])
+		await act(async () =>
+			fromHost({ type: "checkpointInitWarning", checkpointWarning: { type: "WAIT_TIMEOUT", timeout: 5 } }),
+		)
+		expect(view.queryByTestId("checkpoint-warning")).not.toBeNull()
+		const rerenderHidden = (isHidden: boolean) =>
+			view.rerender(
+				<ExtensionStateContextProvider>
+					<ChatView {...defaultProps} isHidden={isHidden} />
+				</ExtensionStateContextProvider>,
+			)
+
+		await act(async () => rerenderHidden(true))
+		await act(async () => rerenderHidden(false))
+
+		expect(view.queryByTestId("checkpoint-warning")).toBeNull()
+	})
+
+	it("a reopened task does not inherit the follow-up answered in the previous one", async () => {
+		const FOLLOW_UP = ask("followup", { text: JSON.stringify({ question: "which?", suggest: [] }) })
+		await mount([withAsk(FOLLOW_UP)])
+		await act(async () => fromHost({ type: "invoke", invoke: "sendMessage", text: "this one" }))
+		expect(harness.answeredFollowUps.has(FOLLOW_UP.ts)).toBe(true)
+
+		await act(async () => hydrate([{ ...TASK, ts: 10, text: "another task" }]))
+		await act(async () => hydrate(withAsk(FOLLOW_UP)))
+
+		expect(harness.answeredFollowUps.has(FOLLOW_UP.ts)).toBe(false)
+	})
+
+	it("the retired-provider warning goes away when the provider changes", async () => {
+		const view = await mount([withAsk(ask("followup"))], { apiConfiguration: { apiProvider: "cerebras" } })
+		await act(async () => fromHost({ type: "invoke", invoke: "sendMessage", text: "hello" }))
+		expect(view.queryByText("chat:retiredProvider.title")).not.toBeNull()
+
+		await act(async () => hydrate(withAsk(ask("followup")), { apiConfiguration: { apiProvider: "anthropic" } }))
+
+		expect(view.queryByText("chat:retiredProvider.title")).toBeNull()
 	})
 
 	it("interactionRequired plays the notification sound", async () => {
