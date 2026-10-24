@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import type { OpenAiCodexRateLimitInfo, ExtensionMessage } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
@@ -90,19 +90,24 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 	const [rateLimits, setRateLimits] = useState<OpenAiCodexRateLimitInfo | null>(null)
 	// The time remaining until a reset is counted from when the limits arrived.
 	const [receivedAt, setReceivedAt] = useState(0)
-	const [isLoading, setIsLoading] = useState(false)
+	const [isLoading, setIsLoading] = useState(isAuthenticated)
 	const [error, setError] = useState<string | null>(null)
 
-	const fetchRateLimits = useCallback(() => {
-		if (!isAuthenticated) {
-			setRateLimits(null)
+	// Signing in starts loading the limits; the effect below requests them.
+	const [wasAuthenticated, setWasAuthenticated] = useState(isAuthenticated)
+	if (isAuthenticated !== wasAuthenticated) {
+		setWasAuthenticated(isAuthenticated)
+		if (isAuthenticated) {
+			setIsLoading(true)
 			setError(null)
-			return
 		}
+	}
+
+	const retry = () => {
 		setIsLoading(true)
 		setError(null)
 		vscode.postMessage({ type: "requestOpenAiCodexRateLimits" })
-	}, [isAuthenticated])
+	}
 
 	useEffect(() => {
 		const handleMessage = (message: ExtensionMessage) => {
@@ -123,9 +128,9 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 
 	useEffect(() => {
 		if (isAuthenticated) {
-			fetchRateLimits()
+			vscode.postMessage({ type: "requestOpenAiCodexRateLimits" })
 		}
-	}, [isAuthenticated, fetchRateLimits])
+	}, [isAuthenticated])
 
 	if (!isAuthenticated) return null
 
@@ -147,7 +152,7 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 						{t("settings:providers.openAiCodexRateLimits.loadError")}
 					</div>
 					<button
-						onClick={fetchRateLimits}
+						onClick={retry}
 						className="text-xs text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground cursor-pointer bg-transparent border-none">
 						{t("settings:providers.openAiCodexRateLimits.retry")}
 					</button>

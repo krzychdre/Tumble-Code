@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react"
+import { useCallback, useState } from "react"
 
 import { type OrganizationAllowList, litellmDefaultModelId } from "@tumble-code/types"
 
@@ -34,14 +34,13 @@ export const LiteLLM = ({
 	})
 	const [refreshStatus, setRefreshStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
 	const [refreshError, setRefreshError] = useState<string | undefined>()
-	useEffect(() => {
-		if (refreshStatus === "loading" && providerModelsError) {
-			setRefreshStatus("error")
-			setRefreshError(providerModelsError)
-		} else if (refreshStatus === "loading" && Object.keys(litellmModels).length > 0) {
-			setRefreshStatus("success")
-		}
-	}, [litellmModels, providerModelsError, refreshStatus])
+	// A refresh ends with the first error or models that arrive while it loads.
+	if (refreshStatus === "loading" && providerModelsError) {
+		setRefreshStatus("error")
+		setRefreshError(providerModelsError)
+	} else if (refreshStatus === "loading" && Object.keys(litellmModels).length > 0) {
+		setRefreshStatus("success")
+	}
 
 	const handleInputChange = useProviderField(setApiConfigurationField)
 
